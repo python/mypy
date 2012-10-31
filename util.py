@@ -40,8 +40,8 @@ str dump_tagged(list<any> nodes, str tag):
     for n in nodes:
         if isinstance(n, list):
             a.append(dump_tagged(n, None))
-        elif isinstance(n, Pair):
-            s = dump_tagged(n.right, n.left)
+        elif isinstance(n, tuple):
+            s = dump_tagged(n[1], n[0])
             a.append(indent(s, 2))
         elif n is not None:
             a.append(indent(str(n), 2))

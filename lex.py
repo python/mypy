@@ -1,7 +1,6 @@
 import re
 from util import short_type
-from re import MatchResult
-from encodings import Encoding, ascii, utf8, decode, STRICT, DecodeError
+from re import Match, Pattern
 
 
 # Base class for all tokens
@@ -49,8 +48,8 @@ class Name(Token): pass
 # Integer literal
 class IntLit(Token): pass
 
-str_prefix_re = Pattern('[rRbB]*')
-escape_re = Pattern("\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
+str_prefix_re = re.compile('[rRbB]*')
+escape_re = re.compile("\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
 
 escape_map = {'a': '\u0007', 'b': '\u0008', 'f': '\u000c', 'n': '\u000a', 'r': '\u000d', 't': '\u0009', 'v': '\u000b', '"': '"', "'": "'"}
 
@@ -68,26 +67,26 @@ class StrLit(Token):
             return self.replace_escapes(s[1:-1], prefix)
     
     str replace_escapes(self, str s, str prefix):
-        r = xxx_str (MatchResult m):
-            seq = m.group(1)
-            if len(seq) == 1 and escape_map.has_key(seq):
-                return escape_map[seq]
-            elif seq.startswith('x'):
-                return chr(int(seq[1:], 16))
-            elif seq.startswith('u'):
-                if 'b' not in prefix:
-                    return chr(int(seq[1:], 16))
-                else:
-                    return '\\' + seq
-            else:
-                # Octal sequence.
-                ord = int(seq, 8)
-                if 'b' in prefix:
-                    # Make sure code is no larger than 255 for bytes literals.
-                    ord = ord % 256
-                return chr(ord)
-        
-        return re.sub(s, escape_re, r)
+        return re.sub(escape_re, lambda m: escape_repl(m, prefix), s)
+
+str escape_repl(Match m, str prefix):
+    seq = m.group(1)
+    if len(seq) == 1 and seq in escape_map:
+        return escape_map[seq]
+    elif seq.startswith('x'):
+        return chr(int(seq[1:], 16))
+    elif seq.startswith('u'):
+        if 'b' not in prefix:
+            return chr(int(seq[1:], 16))
+        else:
+            return '\\' + seq
+    else:
+        # Octal sequence.
+        ord = int(seq, 8)
+        if 'b' in prefix:
+            # Make sure code is no larger than 255 for bytes literals.
+            ord = ord % 256
+        return chr(ord)
 
 # Float literal
 class FloatLit(Token): pass
@@ -105,18 +104,26 @@ class Bom(Token): pass
 
 # Lexer error token
 class LexError(Token):
-    Constant type # One of the error types below
+    int type # One of the error types below
     
-    void __init__(self, str string, Constant type):
+    void __init__(self, str string, int type):
         super().__init__(string)
         self.type = type
 
 
 # Lexer error types
-any NUMERIC_LITERAL_ERROR, any UNTERMINATED_STRING_LITERAL, any INVALID_CHARACTER, any NON_ASCII_CHARACTER_IN_COMMENT, any NON_ASCII_CHARACTER_IN_STRING, any INVALID_UTF8_SEQUENCE, any INVALID_BACKSLASH, any INVALID_DEDENT
+NUMERIC_LITERAL_ERROR = 0
+UNTERMINATED_STRING_LITERAL = 1
+INVALID_CHARACTER = 2
+NON_ASCII_CHARACTER_IN_COMMENT = 3
+NON_ASCII_CHARACTER_IN_STRING = 4
+INVALID_UTF8_SEQUENCE = 5
+INVALID_BACKSLASH = 6
+INVALID_DEDENT = 7
 
 # Encoding contexts
-any STR_CONTEXT, any COMMENT_CONTEXT
+STR_CONTEXT = 1
+COMMENT_CONTEXT = 2
 
 
 # Analyze s and return an array of token objects, the last of which is always
@@ -137,10 +144,10 @@ set<str> alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 set<str> str_prefixes = set(['r', 'b', 'br'])  
 
 # List of regular expressions that match non-alphabetical operators
-list<Pattern> operators = [Pattern('[-+*/<>.%&|^~]'), Pattern('==|!=|<=|>=|\\*\\*|//|<<|>>')]
+list<Pattern> operators = [re.compile('[-+*/<>.%&|^~]'), re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
 
 # List of regular expressions that match punctuator tokens
-list<Pattern> punctuators = [Pattern('[=,()@]'), Pattern('\\['), Pattern(']'), Pattern('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
+list<Pattern> punctuators = [re.compile('[=,()@]'), re.compile('\\['), re.compile(']'), re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
 
 
 # Source file encodings
@@ -153,17 +160,32 @@ class Lexer:
     str s
     int line
     str pre = ''
-    Constant enc = DEFAULT_ENCODING
+    int enc = DEFAULT_ENCODING
     
     list<Token> tok = []
-    list<func<void>> map = [self.unknown_character] * 256
+    list<func<void>> map
     
     list<int> indents = [0]
     # Open ('s, ['s and {'s without matching closing bracket.
     list<str> open_brackets = []
     
     void __init__(self):
-        for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name), ('abcdefghijklmnopqrstuvwxyz_', self.lex_name), ('0123456789', self.lex_number), ('.', self.lex_number_or_dot), (' ' + '\t' + '\u000c', self.lex_space), ('"', self.lex_str_double), ("'", self.lex_str_single), ('\r' + '\n', self.lex_break), (';', self.lex_semicolon), (':', self.lex_colon), ('#', self.lex_comment), ('\\', self.lex_backslash), ('([{', self.lex_open_bracket), (')]}', self.lex_close_bracket), ('-+*/<>%&|^~=!,@', self.lex_misc)]:
+        self.map = [self.unknown_character] * 256
+        for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
+                            ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
+                            ('0123456789', self.lex_number),
+                            ('.', self.lex_number_or_dot),
+                            (' ' + '\t' + '\u000c', self.lex_space),
+                            ('"', self.lex_str_double),
+                            ("'", self.lex_str_single),
+                            ('\r' + '\n', self.lex_break),
+                            (';', self.lex_semicolon),
+                            (':', self.lex_colon),
+                            ('#', self.lex_comment),
+                            ('\\', self.lex_backslash),
+                            ('([{', self.lex_open_bracket),
+                            (')]}', self.lex_close_bracket),
+                            ('-+*/<>%&|^~=!,@', self.lex_misc)]:
             for c in seq:
                 self.map[ord(c)] = method
     
@@ -197,16 +219,16 @@ class Lexer:
         else:
             self.lex_misc()
     
-    Pattern number_exp = Pattern('[0-9]|\\.[0-9]')  # Used by isAtNumber
+    Pattern number_exp = re.compile('[0-9]|\\.[0-9]')  # Used by isAtNumber
     
     # Is the current location at a numeric literal?
     bool is_at_number(self):
         return self.match(self.number_exp) != ''
     
     # Regexps used by lexNumber
-    Pattern number_exp1 = Pattern('0[xXoO][0-9a-fA-F]+|[0-9]+')
-    Pattern number_exp2 = Pattern('[0-9]*\\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
-    Pattern name_char_exp = Pattern('[a-zA-Z0-9_]')
+    Pattern number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
+    Pattern number_exp2 = re.compile('[0-9]*\\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
+    Pattern name_char_exp = re.compile('[a-zA-Z0-9_]')
     
     # Analyse an Int or Float literal. Assume that the current location points
     # to one of them.
@@ -224,7 +246,7 @@ class Lexer:
         else:
             self.add_token(FloatLit(s2))
     
-    Pattern name_exp = Pattern('[a-zA-Z_][a-zA-Z0-9_]*') # Used by lexName
+    Pattern name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*') # Used by lexName
     
     # Analyse a name (an identifier, a keyword or an alphabetical operator).
     # This also deals with prefixed string literals such as r'...'.
@@ -241,21 +263,21 @@ class Lexer:
     
     # Regexps representing components of string literals
     
-    Pattern str_exp_single = Pattern("[a-z]*'([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_single_multi = Pattern("([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_raw_single = Pattern("[a-z]*'([^'\\r\\n\\\\]|\\\\'|\\\\[^\\n\\r])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_raw_single_multi = Pattern("([^'\\r\\n]|'')*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_single = re.compile("[a-z]*'([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_single_multi = re.compile("([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_raw_single = re.compile("[a-z]*'([^'\\r\\n\\\\]|\\\\'|\\\\[^\\n\\r])*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_raw_single_multi = re.compile("([^'\\r\\n]|'')*('|\\\\(\\n|\\r\\n?))")
     
-    Pattern str_exp_single3 = Pattern("[a-z]*'''")
-    Pattern str_exp_single3end = Pattern("[^\\n\\r]*?'''")
+    Pattern str_exp_single3 = re.compile("[a-z]*'''")
+    Pattern str_exp_single3end = re.compile("[^\\n\\r]*?'''")
     
-    Pattern str_exp_double = Pattern('[a-z]*"([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')
-    Pattern str_exp_double_multi = Pattern('([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')  
-    Pattern str_exp_raw_double = Pattern('[a-z]*"([^"\\r\\n\\\\]|\\\\"|\\\\[^\\n\\r])*("|\\\\(\\n|\\r\\n?))')
-    Pattern str_exp_raw_double_multi = Pattern('([^"\\r\\n]|"")*("|\\\\(\\n|\\r\\n?))')
+    Pattern str_exp_double = re.compile('[a-z]*"([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')
+    Pattern str_exp_double_multi = re.compile('([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')  
+    Pattern str_exp_raw_double = re.compile('[a-z]*"([^"\\r\\n\\\\]|\\\\"|\\\\[^\\n\\r])*("|\\\\(\\n|\\r\\n?))')
+    Pattern str_exp_raw_double_multi = re.compile('([^"\\r\\n]|"")*("|\\\\(\\n|\\r\\n?))')
     
-    Pattern str_exp_double3 = Pattern('[a-z]*"""')
-    Pattern str_exp_double3end = Pattern('[^\\n\\r]*?"""')
+    Pattern str_exp_double3 = re.compile('[a-z]*"""')
+    Pattern str_exp_double3end = re.compile('[^\\n\\r]*?"""')
     
     # Analyse single-quoted string literal
     void lex_str_single(self):
@@ -339,7 +361,7 @@ class Lexer:
             if not m.endswith('\n') and not m.endswith('\r'): break
         self.add_special_token(StrLit(ss), line, 0)
     
-    Pattern comment_exp = Pattern('#[^\\n\\r]*')
+    Pattern comment_exp = re.compile('#[^\\n\\r]*')
     
     # Analyse a comment.
     void lex_comment(self):
@@ -347,7 +369,7 @@ class Lexer:
         self.verify_encoding(s, COMMENT_CONTEXT)
         self.add_pre(s)
     
-    Pattern backslash_exp = Pattern('\\\\(\\n|\\r\\n?)')
+    Pattern backslash_exp = re.compile('\\\\(\\n|\\r\\n?)')
     
     void lex_backslash(self):
         s = self.match(self.backslash_exp)
@@ -357,15 +379,15 @@ class Lexer:
         else:
             self.add_token(LexError('\\', INVALID_BACKSLASH))
     
-    Pattern space_exp = Pattern('[ \\t\u000c]*')
-    Pattern indent_exp = Pattern('[ \\t]*[#\\n\\r]?')
+    Pattern space_exp = re.compile('[ \\t\u000c]*')
+    Pattern indent_exp = re.compile('[ \\t]*[#\\n\\r]?')
     
     # Analyse a run of whitespace characters.
     void lex_space(self):
         s = self.match(self.space_exp)
         self.add_pre(s)
     
-    comment_or_newline = '#' + '\n' + '\r'
+    str comment_or_newline = '#' + '\n' + '\r'
     
     void lex_indent(self):
         s = self.match(self.indent_exp)
@@ -386,7 +408,7 @@ class Lexer:
         else:
             while indent < self.indents[-1]:
                 self.add_token(Dedent(s))
-                self.indents.remove_at(-1)
+                self.indents.pop()
                 s = ''
             if indent != self.indents[-1]:
                 self.add_token(LexError('', INVALID_DEDENT))
@@ -400,7 +422,7 @@ class Lexer:
                 indent += 8 - indent % 8
         return indent
     
-    Pattern break_exp = Pattern('\\r\\n|\\r|\\n|;')
+    Pattern break_exp = re.compile('\\r\\n|\\r|\\n|;')
     
     # Analyse a line break.
     void lex_break(self):
@@ -419,21 +441,21 @@ class Lexer:
     void lex_colon(self):
         self.add_token(Colon(':'))
     
-    Pattern open_bracket_exp = Pattern('[[({]')
+    Pattern open_bracket_exp = re.compile('[[({]')
     
     void lex_open_bracket(self):
         s = self.match(self.open_bracket_exp)
         self.open_brackets.append(s)
         self.add_token(Punct(s))
     
-    Pattern close_bracket_exp = Pattern('[])}]')
+    Pattern close_bracket_exp = re.compile('[])}]')
     
     dict<str, str> open_bracket = {')': '(', ']': '[', '}': '{'}
     
     void lex_close_bracket(self):
         s = self.match(self.close_bracket_exp)
         if self.open_brackets != [] and self.open_bracket[s] == self.open_brackets[-1]:
-            self.open_brackets.remove_at(-1)
+            self.open_brackets.pop()
         self.add_token(Punct(s))
     
     # Analyse a non-alphabetical operator or a punctuator.
@@ -462,15 +484,15 @@ class Lexer:
     
     # If the argument regexp is matched at the current location, return the
     # matched string; otherwise return the empty string.
-    str match(self, Pattern re):
-        m = re.match(re, self.s[self.i:])
+    str match(self, Pattern pattern):
+        m = pattern.match(self.s[self.i:])
         if m is not None:
             return m.group(0)
         else:
             return ''
     
-    str match(self, str re):
-        m = re.match(re, self.s[self.i:])
+    str match(self, str regexp):
+        m = re.match(regexp, self.s[self.i:])
         if m is not None:
             return m.group(0)
         else:
@@ -513,17 +535,16 @@ class Lexer:
     
     # Verify that a token (represented by a string) is encoded correctly
     # according to the file encoding.
-    void verify_encoding(self, str string, Constant context):
-        Encoding codec = None
-        _x = self.enc
-        if _x == ASCII_ENCODING:
-            codec = ascii
-        elif _x in [UTF8_ENCODING, DEFAULT_ENCODING]:
-            codec = utf8
+    void verify_encoding(self, str string, int context):
+        str codec = None
+        if self.enc == ASCII_ENCODING:
+            codec = 'ascii'
+        elif self.enc in [UTF8_ENCODING, DEFAULT_ENCODING]:
+            codec = 'utf8'
         if codec is not None:
             try:
-                decode(string, codec, STRICT)
-            except DecodeError:
+                pass # FIX string.decode(codec)
+            except UnicodeDecodeError:
                 type = INVALID_UTF8_SEQUENCE
                 if self.enc == ASCII_ENCODING:
                     if context == STR_CONTEXT:
