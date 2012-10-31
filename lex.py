@@ -6,8 +6,8 @@ from re import Match, Pattern
 # Base class for all tokens
 class Token:
     str pre = '' # Space, comments etc. before token
-    str string # Token string
-    int line # Token line number
+    str string   # Token string
+    int line     # Token line number
     
     void __init__(self, str string, str pre=''):
         self.string = string
@@ -49,9 +49,18 @@ class Name(Token): pass
 class IntLit(Token): pass
 
 str_prefix_re = re.compile('[rRbB]*')
-escape_re = re.compile("\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
+escape_re = re.compile(
+    "\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
 
-escape_map = {'a': '\u0007', 'b': '\u0008', 'f': '\u000c', 'n': '\u000a', 'r': '\u000d', 't': '\u0009', 'v': '\u000b', '"': '"', "'": "'"}
+escape_map = {'a': '\u0007',
+              'b': '\u0008',
+              'f': '\u000c',
+              'n': '\u000a',
+              'r': '\u000d',
+              't': '\u0009',
+              'v': '\u000b',
+              '"': '"',
+              "'": "'"}
 
 # String literal
 class StrLit(Token):
@@ -135,7 +144,11 @@ list<Token> lex(str s):
 
 
 # Reserved words (not including operators)
-set<str> keywords = set(['any', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally', 'from', 'for', 'global', 'if', 'import', 'interface', 'lambda', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield'])
+set<str> keywords = set([
+    'any', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif',
+    'else', 'except', 'finally', 'from', 'for', 'global', 'if', 'import',
+    'interface', 'lambda', 'pass', 'raise', 'return', 'try', 'while', 'with',
+    'yield'])
 
 # Alphabetical operators (reserved words)
 set<str> alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
@@ -144,14 +157,21 @@ set<str> alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 set<str> str_prefixes = set(['r', 'b', 'br'])  
 
 # List of regular expressions that match non-alphabetical operators
-list<Pattern> operators = [re.compile('[-+*/<>.%&|^~]'), re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
+list<Pattern> operators = [re.compile('[-+*/<>.%&|^~]'),
+                           re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
 
 # List of regular expressions that match punctuator tokens
-list<Pattern> punctuators = [re.compile('[=,()@]'), re.compile('\\['), re.compile(']'), re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
+list<Pattern> punctuators = [re.compile('[=,()@]'),
+                             re.compile('\\['),
+                             re.compile(']'),
+                             re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
 
 
 # Source file encodings
-any DEFAULT_ENCODING, any ASCII_ENCODING, any LATIN1_ENCODING, any UTF8_ENCODING
+DEFAULT_ENCODING = 0
+ASCII_ENCODING = 1
+LATIN1_ENCODING = 2
+UTF8_ENCODING = 3
 
 
 # Lexical analyzer
@@ -204,9 +224,10 @@ class Lexer:
             c = ord(s[self.i])
             map[c]()
         
-        # Append a break if there is no statement/block terminator at the end of
-        # input.
-        if len(self.tok) > 0 and (not isinstance(self.tok[-1], Break) and not isinstance(self.tok[-1], Dedent)):
+        # Append a break if there is no statement/block terminator at the end
+        # of input.
+        if len(self.tok) > 0 and (not isinstance(self.tok[-1], Break) and
+                                  not isinstance(self.tok[-1], Dedent)):
             self.add_token(Break(''))
         self.lex_indent()
         self.add_token(Eof(''))
@@ -227,7 +248,8 @@ class Lexer:
     
     # Regexps used by lexNumber
     Pattern number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
-    Pattern number_exp2 = re.compile('[0-9]*\\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
+    Pattern number_exp2 = re.compile(
+        '[0-9]*\\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
     Pattern name_char_exp = re.compile('[a-zA-Z0-9_]')
     
     # Analyse an Int or Float literal. Assume that the current location points
@@ -237,7 +259,8 @@ class Lexer:
         s2 = self.match(self.number_exp2)
         
         max = max(len(s1), len(s2))
-        if re.match(self.name_char_exp, self.s[self.i + max:self.i + max + 1]) is not None:
+        if re.match(self.name_char_exp,
+                    self.s[self.i + max:self.i + max + 1]) is not None:
             s3 = self.match('[0-9][0-9a-zA-Z_]*')
             max = max(max, len(s3))
             self.add_token(LexError(' ' * max, NUMERIC_LITERAL_ERROR))
@@ -263,29 +286,39 @@ class Lexer:
     
     # Regexps representing components of string literals
     
-    Pattern str_exp_single = re.compile("[a-z]*'([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_single_multi = re.compile("([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_raw_single = re.compile("[a-z]*'([^'\\r\\n\\\\]|\\\\'|\\\\[^\\n\\r])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_raw_single_multi = re.compile("([^'\\r\\n]|'')*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_single = re.compile(
+        "[a-z]*'([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_single_multi = re.compile(
+        "([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_raw_single = re.compile(
+        "[a-z]*'([^'\\r\\n\\\\]|\\\\'|\\\\[^\\n\\r])*('|\\\\(\\n|\\r\\n?))")
+    Pattern str_exp_raw_single_multi = re.compile(
+        "([^'\\r\\n]|'')*('|\\\\(\\n|\\r\\n?))")
     
     Pattern str_exp_single3 = re.compile("[a-z]*'''")
     Pattern str_exp_single3end = re.compile("[^\\n\\r]*?'''")
     
-    Pattern str_exp_double = re.compile('[a-z]*"([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')
-    Pattern str_exp_double_multi = re.compile('([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')  
-    Pattern str_exp_raw_double = re.compile('[a-z]*"([^"\\r\\n\\\\]|\\\\"|\\\\[^\\n\\r])*("|\\\\(\\n|\\r\\n?))')
-    Pattern str_exp_raw_double_multi = re.compile('([^"\\r\\n]|"")*("|\\\\(\\n|\\r\\n?))')
+    Pattern str_exp_double = re.compile(
+        '[a-z]*"([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')
+    Pattern str_exp_double_multi = re.compile(
+        '([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')  
+    Pattern str_exp_raw_double = re.compile(
+        '[a-z]*"([^"\\r\\n\\\\]|\\\\"|\\\\[^\\n\\r])*("|\\\\(\\n|\\r\\n?))')
+    Pattern str_exp_raw_double_multi = re.compile(
+        '([^"\\r\\n]|"")*("|\\\\(\\n|\\r\\n?))')
     
     Pattern str_exp_double3 = re.compile('[a-z]*"""')
     Pattern str_exp_double3end = re.compile('[^\\n\\r]*?"""')
     
     # Analyse single-quoted string literal
     void lex_str_single(self):
-        self.lex_str(self.str_exp_single, self.str_exp_single_multi, self.str_exp_single3, self.str_exp_single3end)
+        self.lex_str(self.str_exp_single, self.str_exp_single_multi,
+                     self.str_exp_single3, self.str_exp_single3end)
     
     # Analyse double-quoted string literal
     void lex_str_double(self):
-        self.lex_str(self.str_exp_double, self.str_exp_double_multi, self.str_exp_double3, self.str_exp_double3end)
+        self.lex_str(self.str_exp_double, self.str_exp_double_multi,
+                     self.str_exp_double3, self.str_exp_double3end)
     
     # Analyse a string literal with a prefix, such as r'...'.
     void lex_prefixed_str(self, str prefix):
@@ -296,19 +329,22 @@ class Lexer:
             if 'r' in prefix:
                 re = self.str_exp_raw_single
                 re2 = self.str_exp_raw_single_multi
-            self.lex_str(re, re2, self.str_exp_single3, self.str_exp_single3end, prefix)
+            self.lex_str(re, re2, self.str_exp_single3,
+                         self.str_exp_single3end, prefix)
         else:
             re = self.str_exp_double
             re2 = self.str_exp_double_multi
             if 'r' in prefix:
                 re = self.str_exp_raw_double
                 re2 = self.str_exp_raw_double_multi
-            self.lex_str(re, re2, self.str_exp_double3, self.str_exp_double3end, prefix)
+            self.lex_str(re, re2, self.str_exp_double3,
+                         self.str_exp_double3end, prefix)
     
     # Analyse a string literal described by regexps. Assume that the current
     # location is at the beginning of the literal. The arguments re3 and re3end
     # describe the corresponding triple-quoted literals.
-    void lex_str(self, Pattern re, Pattern re2, Pattern re3, Pattern re3end, str prefix=''):
+    void lex_str(self, Pattern re, Pattern re2, Pattern re3, Pattern re3end,
+                 str prefix=''):
         s3 = self.match(re3)
         if s3 != '':
             self.lex_triple_quoted_str(re3end, prefix)
@@ -337,7 +373,8 @@ class Lexer:
                 break
             m = re.match('[^\\n\\r]*(\\n|\\r\\n?)', self.s[self.i:])
             if m is None:
-                self.add_special_token(LexError(ss, UNTERMINATED_STRING_LITERAL), line, 0)
+                self.add_special_token(
+                    LexError(ss, UNTERMINATED_STRING_LITERAL), line, 0)
                 return 
             s = m.group(0)
             ss += s
@@ -353,7 +390,8 @@ class Lexer:
         while True:
             m = self.match(re_end)
             if m == '':
-                self.add_special_token(LexError(ss, UNTERMINATED_STRING_LITERAL), line, 0)
+                self.add_special_token(
+                    LexError(ss, UNTERMINATED_STRING_LITERAL), line, 0)
                 return 
             ss += m
             self.line += 1
@@ -454,7 +492,8 @@ class Lexer:
     
     void lex_close_bracket(self):
         s = self.match(self.close_bracket_exp)
-        if self.open_brackets != [] and self.open_bracket[s] == self.open_brackets[-1]:
+        if (self.open_brackets != []
+                and self.open_bracket[s] == self.open_brackets[-1]):
             self.open_brackets.pop()
         self.add_token(Punct(s))
     
@@ -479,7 +518,6 @@ class Lexer:
     
     
     # Utility methods
-    #----------------
     
     
     # If the argument regexp is matched at the current location, return the
@@ -508,7 +546,10 @@ class Lexer:
     # Store a token. Update its line number and record preceding whitespace
     # characters and comments.
     void add_token(self, Token tok):
-        if tok.string == '' and not isinstance(tok, Eof) and not isinstance(tok, Break) and not isinstance(tok, LexError) and not isinstance(tok, Dedent):
+        if (tok.string == '' and not isinstance(tok, Eof)
+                and not isinstance(tok, Break)
+                and not isinstance(tok, LexError)
+                and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
         tok.pre = self.pre
         tok.line = self.line
@@ -517,7 +558,10 @@ class Lexer:
         self.pre = ''
     
     void add_special_token(self, Token tok, int line, int skip):
-        if tok.string == '' and not isinstance(tok, Eof) and not isinstance(tok, Break) and not isinstance(tok, LexError) and not isinstance(tok, Dedent):
+        if (tok.string == '' and not isinstance(tok, Eof)
+                and not isinstance(tok, Break)
+                and not isinstance(tok, LexError)
+                and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
         tok.pre = self.pre
         tok.line = line
