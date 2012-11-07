@@ -1,12 +1,12 @@
 
 
-# Return the last component of the type name of an object. If obj is nil,
-# return 'nil'. For example, if obj is 1, return 'Int'.
+# Return the last component of the type name of an object. If obj is None,
+# return 'nil'. For example, if obj is 1, return 'int'.
 str short_type(object obj):
     if obj is None:
         return 'nil'
     t = str(type(obj))
-    return t.split('::')[1]
+    return t.split('.')[-1].rstrip("'>")
 
 
 # Indent all the lines in s (separated by Newlines) by n spaces.
