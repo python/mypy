@@ -4,6 +4,12 @@ from __testc import members, call_trace
 from time import DateTime, Time
 
 
+bool is_verbose
+bool is_quiet
+list<str> patterns
+list<tuple<Time, str>> times = []
+
+
 class AssertionFailure(Exception):
     void __init__(self, str s=None):
         if s is not None:
@@ -63,7 +69,8 @@ void assertRaises(Type type, any *rest):
 
 void assertType(Type type, object value):
     if type(value) != type:
-        raise AssertionFailure('Invalid type {}, expected {}'.format(type(value), type))
+        raise AssertionFailure('Invalid type {}, expected {}'.format(
+            type(value), type))
 
 
 void fail():
@@ -71,6 +78,10 @@ void fail():
 
 
 class TestCase:
+    str name    
+    func<void> func
+    Suite suite
+    
     void __init__(self, str name, Suite suite=None, func<void> func=None):
         self.func = func
         self.name = name
@@ -87,11 +98,6 @@ class TestCase:
     void tear_down(self):
         if self.suite is not None:
             self.suite.tear_down()
-    
-    str name
-    
-    func<void> func
-    Suite suite
 
 
 class Suite:
@@ -128,11 +134,6 @@ class Suite:
     
     void skip(self):
         raise SkipTestCaseException()
-
-
-bool is_verbose
-bool is_quiet
-list<str> patterns
 
 
 void run_test(Suite t, list<str> args=[]):
@@ -172,7 +173,8 @@ void run_test(Suite t, list<str> args=[]):
 
 
 # The first argument may be TestCase, Suite or (Str, Suite).
-tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail, int num_skip, str prefix, int depth):
+tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
+                                        int num_skip, str prefix, int depth):
     if isinstance(t, TestCase):
         name = prefix + t.name
         
@@ -197,7 +199,7 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail, int 
                 if isinstance(e, SkipTestCaseException):
                     num_skip += 1
                     if is_verbose:
-                        sys.stderr.write_ln(' (skipped)')
+                        sys.stderr.write(' (skipped)\n')
                 else:
                     # Propagate keyboard interrupts.
                     if isinstance(e, InterruptException):
@@ -205,8 +207,7 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail, int 
                     elif isinstance(e, Exception):
                         # Failed test case.
                         if is_verbose:
-                            sys.stderr.write_ln()
-                            sys.stderr.write_ln()
+                            sys.stderr.write('\n\n')
                         str msg
                         if e.message is not None:
                             msg = ': ' + e.message
@@ -238,7 +239,8 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail, int 
             new_prefix = prefix
             if depth > 0:
                 new_prefix = prefix + suite_prefix
-            num_total, num_fail, num_skip = run_test_recursive(tt, num_total, num_fail, num_skip, new_prefix, depth + 1)
+            num_total, num_fail, num_skip = run_test_recursive(
+                tt, num_total, num_fail, num_skip, new_prefix, depth + 1)
     return num_total, num_fail, num_skip
 
 
@@ -271,10 +273,8 @@ list<str> clean_traceback(list<str> tb):
     # Remove clutter from the traceback.
     if tb != [] and tb[-1].find('run of unittest::TestCase') >= 0:
         tb = tb[:-1]
-    for f in ['Assert', 'AssertEqual', 'AssertNotEqual', 'AssertRaises', 'AssertType']:
+    for f in ['Assert', 'AssertEqual', 'AssertNotEqual', 'AssertRaises',
+              'AssertType']:
         if tb != [] and tb[0].find('unittest::{}'.format(f)) >= 0:
             tb = tb[1:]
     return tb
-
-
-list<tuple<Time, str>> times = []
