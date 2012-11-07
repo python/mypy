@@ -1,4 +1,3 @@
-import alore
 import sys
 import re
 from __testc import members, call_trace
@@ -163,11 +162,13 @@ void run_test(Suite t, list<str> args=[]):
     
     if num_fail == 0:
         if not is_quiet:
-            alore.writeln(num_total, ' test cases run', skip_msg, ', all passed.')
-            alore.writeln('*** OK ***')
+            print(num_total, ' test cases run', skip_msg, ', all passed.')
+            print('*** OK ***')
     else:
-        sys.stderr.write_ln(num_fail, '/', num_total, ' test cases failed', skip_msg, '.')
-        sys.stderr.write_ln('*** FAILURE ***')
+        sys.stderr.write('%d/%d test cases failed%s.\n' % (num_fail,
+                                                           num_total,
+                                                           skip_msg))
+        sys.stderr.write('*** FAILURE ***\n')
 
 
 # The first argument may be TestCase, Suite or (Str, Suite).
@@ -211,18 +212,17 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail, int 
                             msg = ': ' + e.message
                         else:
                             msg = ''
-                        sys.stderr.write_ln('Traceback (most recent call last):')
+                        sys.stderr.write(
+                            'Traceback (most recent call last):\n')
                         tb = clean_traceback(traceback[1])
                         for s in reversed(tb):
                             sys.stderr.write_ln('  ', s)
                         type = re.sub(str(type(e)), '^unittest::', '')
-                        sys.stderr.write_ln('{}{}'.format(type, msg))
-                        sys.stderr.write_ln()
-                        sys.stderr.write_ln('{} failed'.format(name))
-                        sys.stderr.write_ln()
+                        sys.stderr.write('{}{}\n\n'.format(type, msg))
+                        sys.stderr.write('{} failed\n\n'.format(name))
                         num_fail += 1
             elif is_verbose:
-                sys.stderr.write_ln()
+                sys.stderr.write('\n')
             num_total += 1
     else:
         Suite suite
