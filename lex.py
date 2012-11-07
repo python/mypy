@@ -13,12 +13,11 @@ class Token:
         self.string = string
         self.pre = pre
     
-    str __str__(self):
+    str __repr__(self):
         t = short_type(self)
         return t + '(' + self.fix(self.pre) + self.fix(self.string) + ')'
     
-    @property
-    str rep():
+    str rep(self):
         return self.pre + self.string
     
     str fix(self, str s):
@@ -182,15 +181,18 @@ class Lexer:
     str pre = ''
     int enc = DEFAULT_ENCODING
     
-    list<Token> tok = []
+    list<Token> tok
     list<func<void>> map
     
-    list<int> indents = [0]
+    list<int> indents
     # Open ('s, ['s and {'s without matching closing bracket.
-    list<str> open_brackets = []
+    list<str> open_brackets
     
     void __init__(self):
         self.map = [self.unknown_character] * 256
+        self.tok = []
+        self.indents = [0]
+        self.open_brackets = []
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
                             ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
                             ('0123456789', self.lex_number),
@@ -261,7 +263,7 @@ class Lexer:
         max = max(len(s1), len(s2))
         if re.match(self.name_char_exp,
                     self.s[self.i + max:self.i + max + 1]) is not None:
-            s3 = self.match('[0-9][0-9a-zA-Z_]*')
+            s3 = self.match(re.compile('[0-9][0-9a-zA-Z_]*'))
             max = max(max, len(s3))
             self.add_token(LexError(' ' * max, NUMERIC_LITERAL_ERROR))
         elif len(s1) > len(s2):
@@ -279,7 +281,7 @@ class Lexer:
             self.add_token(Keyword(s))
         elif s in alpha_operators:
             self.add_token(Op(s))
-        elif s in str_prefixes and self.match('[a-z]+[\'"]') != '':
+        elif s in str_prefixes and self.match(re.compile('[a-z]+[\'"]')) != '':
             self.lex_prefixed_str(s)
         else:
             self.add_token(Name(s))
@@ -322,7 +324,7 @@ class Lexer:
     
     # Analyse a string literal with a prefix, such as r'...'.
     void lex_prefixed_str(self, str prefix):
-        s = self.match('[a-z]+[\'"]')
+        s = self.match(re.compile('[a-z]+[\'"]'))
         if s.endswith("'"):
             re = self.str_exp_single
             re2 = self.str_exp_single_multi
@@ -343,14 +345,14 @@ class Lexer:
     # Analyse a string literal described by regexps. Assume that the current
     # location is at the beginning of the literal. The arguments re3 and re3end
     # describe the corresponding triple-quoted literals.
-    void lex_str(self, Pattern re, Pattern re2, Pattern re3, Pattern re3end,
+    void lex_str(self, Pattern regex, Pattern re2, Pattern re3, Pattern re3end,
                  str prefix=''):
         s3 = self.match(re3)
         if s3 != '':
             self.lex_triple_quoted_str(re3end, prefix)
         else:
             # Single or double quoted string literal.
-            s = self.match(re)
+            s = self.match(regex)
             if s != '':
                 if s.endswith('\n') or s.endswith('\r'):
                     self.lex_multiline_literal(re2, s)
@@ -359,7 +361,7 @@ class Lexer:
                     self.add_token(StrLit(s))
             else:
                 # Unterminated string literal.
-                s = self.match('[^\\n\\r]*')
+                s = self.match(re.compile('[^\\n\\r]*'))
                 self.add_token(LexError(s, UNTERMINATED_STRING_LITERAL))
     
     def lex_triple_quoted_str(self, re3end, prefix):
@@ -524,13 +526,6 @@ class Lexer:
     # matched string; otherwise return the empty string.
     str match(self, Pattern pattern):
         m = pattern.match(self.s[self.i:])
-        if m is not None:
-            return m.group(0)
-        else:
-            return ''
-    
-    str match(self, str regexp):
-        m = re.match(regexp, self.s[self.i:])
         if m is not None:
             return m.group(0)
         else:
