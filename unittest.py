@@ -37,12 +37,12 @@ void assert_not_equal(object a, object b, str fmt='{} == {}'):
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
 
 
-# Usage: AssertRaises(exception class[, message], function[, args])
+# Usage: assert_raises(exception class[, message], function[, args])
 #
 # Call function with the given arguments and expect an exception of the given
 # type.
 #
-# FIX: The type is probably too complex to be supported...
+# TODO use overloads for better type checking
 void assert_raises(type typ, any *rest):
     # Parse arguments.
     str msg = None
@@ -78,10 +78,6 @@ void fail():
 
 
 class TestCase:
-    str name    
-    func<void> func
-    Suite suite
-    
     void __init__(self, str name, Suite suite=None, func<void> func=None):
         self.func = func
         self.name = name
@@ -101,11 +97,9 @@ class TestCase:
 
 
 class Suite:
-    list<any> _test_cases # TestCase or (Str, func)
-    str prefix
-    
     void __init__(self):
         self.prefix = unqualify_name(str(type(self))) + '.'
+        # Each test case is either a TestCase object or (str, function).
         self._test_cases = <any> []
         self.init()
     
@@ -188,11 +182,9 @@ tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
         else:
             match = False
         if match:
-            is_fail, is_skip = run_single(name, test)
-            if is_fail:
-                num_fail += 1
-            if is_skip:
-                num_skip += 1
+            is_fail, is_skip = run_single_test(name, test)
+            if is_fail: num_fail += 1
+            if is_skip: num_skip += 1
             num_total += 1
     else:
         Suite suite
@@ -213,7 +205,7 @@ tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
     return num_total, num_fail, num_skip
 
 
-tuple<bool, bool> run_single(str name, any test):
+tuple<bool, bool> run_single_test(str name, any test):
     if is_verbose:
         sys.stderr.write(name)
 
@@ -229,31 +221,36 @@ tuple<bool, bool> run_single(str name, any test):
     times.append((time.time() - time0, name))
 
     if exc_traceback:
-        tb = traceback.format_tb(exc_traceback)
         if isinstance(exc_value, SkipTestCaseException):
             if is_verbose:
                 sys.stderr.write(' (skipped)\n')
             return False, True
         else:
-            # Failed test case.
-            if is_verbose:
-                sys.stderr.write('\n\n')
-            str msg
-            if exc_value.args and exc_value.args[0]:
-                msg = ': ' + exc_value.args[0]
-            else:
-                msg = ''
-            sys.stderr.write('Traceback (most recent call last):\n')
-            tb = clean_traceback(tb)
-            for s in tb:
-                sys.stderr.write(s)
-            exception = typename(exc_type)
-            sys.stderr.write('{}{}\n\n'.format(exception, msg))
-            sys.stderr.write('{} failed\n\n'.format(name))
+            handle_failure(name, exc_type, exc_value, exc_traceback)
             return True, False
     elif is_verbose:
         sys.stderr.write('\n')
+        
     return False, False
+
+
+void handle_failure(name, exc_type, exc_value, exc_traceback):
+    # Report failed test case.
+    if is_verbose:
+        sys.stderr.write('\n\n')
+    str msg
+    if exc_value.args and exc_value.args[0]:
+        msg = ': ' + exc_value.args[0]
+    else:
+        msg = ''
+    sys.stderr.write('Traceback (most recent call last):\n')
+    tb = traceback.format_tb(exc_traceback)
+    tb = clean_traceback(tb)
+    for s in tb:
+        sys.stderr.write(s)
+    exception = typename(exc_type)
+    sys.stderr.write('{}{}\n\n'.format(exception, msg))
+    sys.stderr.write('{} failed\n\n'.format(name))
 
 
 str typename(type t):
@@ -289,7 +286,7 @@ bool match_pattern(str s, str p):
 
 
 list<str> clean_traceback(list<str> tb):
-    """Remove clutter from the traceback."""
+    # Remove clutter from the traceback.
     start = 0
     for i, s in enumerate(tb):
         if '\n    test.run()\n' in s or '\n    self.func()\n' in s:
