@@ -1,13 +1,13 @@
 import sys
 import re
-from __testc import members, call_trace
-from time import DateTime, Time
+import time
+import traceback
 
 
 bool is_verbose
 bool is_quiet
 list<str> patterns
-list<tuple<Time, str>> times = []
+list<tuple<float, str>> times = []
 
 
 class AssertionFailure(Exception):
@@ -43,7 +43,7 @@ void assertNotEqual(object a, object b, str fmt='{} == {}'):
 # type.
 #
 # FIX: The type is probably too complex to be supported...
-void assertRaises(Type type, any *rest):
+void assertRaises(type typ, any *rest):
     # Parse arguments.
     str msg = None
     if isinstance(rest[0], str) or rest[0] is None:
@@ -60,17 +60,17 @@ void assertRaises(Type type, any *rest):
     try:
         f(*args)
     except Exception as e:
-        assertType(type, e)
+        assertType(typ, e)
         if msg is not None:
-            assert_equal(e.message, msg, 'Invalid message {}, expected {}')
+            assert_equal(e.args[0], msg, 'Invalid message {}, expected {}')
         return 
     assertTrue(False, 'No exception raised')
 
 
-void assertType(Type type, object value):
-    if type(value) != type:
+void assertType(type typ, object value):
+    if type(value) != typ:
         raise AssertionFailure('Invalid type {}, expected {}'.format(
-            type(value), type))
+            type(value), typ))
 
 
 void fail():
@@ -102,8 +102,10 @@ class TestCase:
 
 class Suite:
     list<any> test_cases = [] # TestCase or (Str, func)
+    str prefix
     
     void __init__(self):
+        self.prefix = unqualify_name(str(type(self))) + '.'
         self.init()
     
     void set_up(self):
@@ -113,7 +115,7 @@ class Suite:
         pass
     
     void init(self):
-        for m in members(self):
+        for m in dir(self):
             if m.startswith('test'):
                 t = getattr(self, m)
                 if isinstance(t, Suite):
@@ -130,8 +132,6 @@ class Suite:
     list<any> cases(self):
         return self.test_cases[:]
     
-    str prefix = unqualify_name(str(type(self))) + '.'
-    
     void skip(self):
         raise SkipTestCaseException()
 
@@ -139,7 +139,7 @@ class Suite:
 void run_test(Suite t, list<str> args=[]):
     is_verbose = False
     is_quiet = False
-    patterns = []
+    patterns = <str> []
     i = 0
     while i < len(args):
         a = args[i]
@@ -188,40 +188,41 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
             if is_verbose:
                 sys.stderr.write(name)
             
-            t1 = DateTime()
+            t1 = time.time()
             t.set_up() # FIX: check exceptions
-            traceback = call_trace(t.run)
+            try:
+                t.run()
+            except:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+            else:
+                exc_traceback = None
             t.tear_down() # FIX: check exceptions
-            times.append((DateTime() - t1, name))
+            times.append((time.time() - t1, name))
             
-            if traceback[1] is not None:
-                e = traceback[0]
-                if isinstance(e, SkipTestCaseException):
+            if exc_traceback:
+                tb = traceback.format_tb(exc_traceback)
+                if isinstance(exc_value, SkipTestCaseException):
                     num_skip += 1
                     if is_verbose:
                         sys.stderr.write(' (skipped)\n')
                 else:
-                    # Propagate keyboard interrupts.
-                    if isinstance(e, InterruptException):
-                        raise e
-                    elif isinstance(e, Exception):
-                        # Failed test case.
-                        if is_verbose:
-                            sys.stderr.write('\n\n')
-                        str msg
-                        if e.message is not None:
-                            msg = ': ' + e.message
-                        else:
-                            msg = ''
-                        sys.stderr.write(
-                            'Traceback (most recent call last):\n')
-                        tb = clean_traceback(traceback[1])
-                        for s in reversed(tb):
-                            sys.stderr.write_ln('  ', s)
-                        type = re.sub(str(type(e)), '^unittest::', '')
-                        sys.stderr.write('{}{}\n\n'.format(type, msg))
-                        sys.stderr.write('{} failed\n\n'.format(name))
-                        num_fail += 1
+                    # Failed test case.
+                    if is_verbose:
+                        sys.stderr.write('\n\n')
+                    str msg
+                    if exc_value.message is not None:
+                        msg = ': ' + exc_value.args[0]
+                    else:
+                        msg = ''
+                    sys.stderr.write(
+                        'Traceback (most recent call last):\n')
+                    tb = clean_traceback(tb)
+                    for s in reversed(tb):
+                        sys.stderr.write('  ' + s + '\n')
+                    type = re.sub(str(exc_type), '^unittest::', '')
+                    sys.stderr.write('{}{}\n\n'.format(type, msg))
+                    sys.stderr.write('{} failed\n\n'.format(name))
+                    num_fail += 1
             elif is_verbose:
                 sys.stderr.write('\n')
             num_total += 1
