@@ -136,10 +136,13 @@ class Suite:
         raise SkipTestCaseException()
 
 
-void run_test(Suite t, list<str> args=[]):
+void run_test(Suite t, list<str> args=None):
+    global patterns, is_verbose, is_quiet
+    if not args:
+        args = []
     is_verbose = False
     is_quiet = False
-    patterns = <str> []
+    patterns = []
     i = 0
     while i < len(args):
         a = args[i]
@@ -210,7 +213,7 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
                     if is_verbose:
                         sys.stderr.write('\n\n')
                     str msg
-                    if exc_value.message is not None:
+                    if exc_value.args[0] is not None:
                         msg = ': ' + exc_value.args[0]
                     else:
                         msg = ''
