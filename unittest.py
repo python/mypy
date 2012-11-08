@@ -12,7 +12,7 @@ list<tuple<float, str>> times = []
 
 class AssertionFailure(Exception):
     void __init__(self, str s=None):
-        if s is not None:
+        if s:
             super().__init__(s)
         else:
             super().__init__()
@@ -50,7 +50,7 @@ void assertRaises(type typ, any *rest):
         msg = rest[0]
         rest = rest[1:]
     f = rest[0]
-    list<str> args = []
+    args = <any> []
     if len(rest) > 1:
         args = rest[1]
         if len(rest) > 2:
@@ -61,7 +61,7 @@ void assertRaises(type typ, any *rest):
         f(*args)
     except Exception as e:
         assertType(typ, e)
-        if msg is not None:
+        if msg:
             assert_equal(e.args[0], msg, 'Invalid message {}, expected {}')
         return 
     assertTrue(False, 'No exception raised')
@@ -88,15 +88,15 @@ class TestCase:
         self.suite = suite
     
     void run(self):
-        if self.func is not None:
+        if self.func:
             self.func()
     
     void set_up(self):
-        if self.suite is not None:
+        if self.suite:
             self.suite.set_up()
     
     void tear_down(self):
-        if self.suite is not None:
+        if self.suite:
             self.suite.tear_down()
 
 
@@ -213,7 +213,7 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
                     if is_verbose:
                         sys.stderr.write('\n\n')
                     str msg
-                    if exc_value.args[0] is not None:
+                    if exc_value.args[0]:
                         msg = ': ' + exc_value.args[0]
                     else:
                         msg = ''
