@@ -4,10 +4,11 @@ import time
 import traceback
 
 
-bool is_verbose
-bool is_quiet
-list<str> patterns
-list<tuple<float, str>> times = []
+# TODO remove global state
+is_verbose = False
+is_quiet = False
+patterns = <str> []
+times = <tuple<float, str>> []
 
 
 class AssertionFailure(Exception):
@@ -53,8 +54,7 @@ void assert_raises(type typ, any *rest):
     args = <any> []
     if len(rest) > 1:
         args = rest[1]
-        if len(rest) > 2:
-            raise ValueError('Too many arguments')
+        assert len(rest) <= 2
     
     # Perform call and verify the exception.
     try:
@@ -63,8 +63,8 @@ void assert_raises(type typ, any *rest):
         assert_type(typ, e)
         if msg:
             assert_equal(e.args[0], msg, 'Invalid message {}, expected {}')
-        return 
-    assert_true(False, 'No exception raised')
+    else:
+        raise AssertionFailure('No exception raised')
 
 
 void assert_type(type typ, object value):
@@ -98,7 +98,7 @@ class TestCase:
 
 class Suite:
     void __init__(self):
-        self.prefix = unqualify_name(str(type(self))) + '.'
+        self.prefix = typename(type(self)) + '.'
         # Each test case is either a TestCase object or (str, function).
         self._test_cases = <any> []
         self.init()
@@ -258,14 +258,6 @@ str typename(type t):
         return str(t).split('.')[-1].rstrip("'>")
     else:
         return str(t)[8:-2]
-
-
-str unqualify_name(str s):
-    beg_index = 0
-    for i in range(len(s)):
-        if s[i] == ':':
-            beg_index = i + 1
-    return s[beg_index:]
 
 
 bool match_pattern(str s, str p):
