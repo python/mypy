@@ -177,76 +177,83 @@ void run_test(Suite t, list<str> args=None):
 
 
 # The first argument may be TestCase, Suite or (Str, Suite).
-tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
+tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
                                         int num_skip, str prefix, int depth):
-    if isinstance(t, TestCase):
-        name = prefix + t.name
-        
-        match = False
-        for p in patterns:
-            if match_pattern(name, p):
+    if isinstance(test, TestCase):
+        name = prefix + test.name
+        for pattern in patterns:
+            if match_pattern(name, pattern):
                 match = True
                 break
-        
+        else:
+            match = False
         if match:
-            if is_verbose:
-                sys.stderr.write(name)
-            
-            t1 = time.time()
-            t.set_up() # FIX: check exceptions
-            try:
-                t.run()
-            except:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-            else:
-                exc_traceback = None
-            t.tear_down() # FIX: check exceptions
-            times.append((time.time() - t1, name))
-            
-            if exc_traceback:
-                tb = traceback.format_tb(exc_traceback)
-                if isinstance(exc_value, SkipTestCaseException):
-                    num_skip += 1
-                    if is_verbose:
-                        sys.stderr.write(' (skipped)\n')
-                else:
-                    # Failed test case.
-                    if is_verbose:
-                        sys.stderr.write('\n\n')
-                    str msg
-                    if exc_value.args[0]:
-                        msg = ': ' + exc_value.args[0]
-                    else:
-                        msg = ''
-                    sys.stderr.write(
-                        'Traceback (most recent call last):\n')
-                    tb = clean_traceback(tb)
-                    for s in reversed(tb):
-                        sys.stderr.write('  ' + s + '\n')
-                    exception = exception_name(exc_type)
-                    sys.stderr.write('{}{}\n\n'.format(exception, msg))
-                    sys.stderr.write('{} failed\n\n'.format(name))
-                    num_fail += 1
-            elif is_verbose:
-                sys.stderr.write('\n')
+            is_fail, is_skip = run_single(name, test)
+            if is_fail:
+                num_fail += 1
+            if is_skip:
+                num_skip += 1
             num_total += 1
     else:
         Suite suite
         str suite_prefix
-        if isinstance(t, list) or isinstance(t, tuple):
-            suite = t[1]
-            suite_prefix = t[0]
+        if isinstance(test, list) or isinstance(test, tuple):
+            suite = test[1]
+            suite_prefix = test[0]
         else:
-            suite = t
-            suite_prefix = t.prefix
+            suite = test
+            suite_prefix = test.prefix
         
-        for tt in suite.cases():
+        for stest in suite.cases():
             new_prefix = prefix
             if depth > 0:
                 new_prefix = prefix + suite_prefix
             num_total, num_fail, num_skip = run_test_recursive(
-                tt, num_total, num_fail, num_skip, new_prefix, depth + 1)
+                stest, num_total, num_fail, num_skip, new_prefix, depth + 1)
     return num_total, num_fail, num_skip
+
+
+tuple<bool, bool> run_single(str name, any test):
+    if is_verbose:
+        sys.stderr.write(name)
+
+    time0 = time.time()
+    test.set_up() # FIX: check exceptions
+    try:
+        test.run()
+    except:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+    else:
+        exc_traceback = None
+    test.tear_down() # FIX: check exceptions
+    times.append((time.time() - time0, name))
+
+    if exc_traceback:
+        tb = traceback.format_tb(exc_traceback)
+        if isinstance(exc_value, SkipTestCaseException):
+            if is_verbose:
+                sys.stderr.write(' (skipped)\n')
+            return False, True
+        else:
+            # Failed test case.
+            if is_verbose:
+                sys.stderr.write('\n\n')
+            str msg
+            if exc_value.args[0]:
+                msg = ': ' + exc_value.args[0]
+            else:
+                msg = ''
+            sys.stderr.write('Traceback (most recent call last):\n')
+            tb = clean_traceback(tb)
+            for s in tb:
+                sys.stderr.write('  ' + s + '\n')
+            exception = exception_name(exc_type)
+            sys.stderr.write('{}{}\n\n'.format(exception, msg))
+            sys.stderr.write('{} failed\n\n'.format(name))
+            return True, False
+    elif is_verbose:
+        sys.stderr.write('\n')
+    return False, False
 
 
 str exception_name(type t):
