@@ -101,11 +101,12 @@ class TestCase:
 
 
 class Suite:
-    list<any> test_cases = [] # TestCase or (Str, func)
+    list<any> _test_cases # TestCase or (Str, func)
     str prefix
     
     void __init__(self):
         self.prefix = unqualify_name(str(type(self))) + '.'
+        self._test_cases = <any> []
         self.init()
     
     void set_up(self):
@@ -124,13 +125,13 @@ class Suite:
                     self.add_test(TestCase(m, self, getattr(self, m)))
     
     void add_test(self, TestCase test):
-        self.test_cases.append(test)
+        self._test_cases.append(test)
     
     void add_test(self, tuple<str, func<void>> test):
-        self.test_cases.append(test)
+        self._test_cases.append(test)
     
     list<any> cases(self):
-        return self.test_cases[:]
+        return self._test_cases[:]
     
     void skip(self):
         raise SkipTestCaseException()
@@ -166,7 +167,7 @@ void run_test(Suite t, list<str> args=None):
     
     if num_fail == 0:
         if not is_quiet:
-            print(num_total, ' test cases run', skip_msg, ', all passed.')
+            print('%d test cases run%s, all passed.' % (num_total, skip_msg))
             print('*** OK ***')
     else:
         sys.stderr.write('%d/%d test cases failed%s.\n' % (num_fail,
@@ -222,8 +223,8 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
                     tb = clean_traceback(tb)
                     for s in reversed(tb):
                         sys.stderr.write('  ' + s + '\n')
-                    type = re.sub(str(exc_type), '^unittest::', '')
-                    sys.stderr.write('{}{}\n\n'.format(type, msg))
+                    exception = exception_name(exc_type)
+                    sys.stderr.write('{}{}\n\n'.format(exception, msg))
                     sys.stderr.write('{} failed\n\n'.format(name))
                     num_fail += 1
             elif is_verbose:
@@ -246,6 +247,10 @@ tuple<int, int, int> run_test_recursive(any t, int num_total, int num_fail,
             num_total, num_fail, num_skip = run_test_recursive(
                 tt, num_total, num_fail, num_skip, new_prefix, depth + 1)
     return num_total, num_fail, num_skip
+
+
+str exception_name(type t):
+    return str(t).split('.')[-1].rstrip("'>")
 
 
 str unqualify_name(str s):
