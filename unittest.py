@@ -246,8 +246,8 @@ tuple<bool, bool> run_single(str name, any test):
             sys.stderr.write('Traceback (most recent call last):\n')
             tb = clean_traceback(tb)
             for s in tb:
-                sys.stderr.write('  ' + s + '\n')
-            exception = exception_name(exc_type)
+                sys.stderr.write(s)
+            exception = typename(exc_type)
             sys.stderr.write('{}{}\n\n'.format(exception, msg))
             sys.stderr.write('{} failed\n\n'.format(name))
             return True, False
@@ -256,7 +256,7 @@ tuple<bool, bool> run_single(str name, any test):
     return False, False
 
 
-str exception_name(type t):
+str typename(type t):
     return str(t).split('.')[-1].rstrip("'>")
 
 
@@ -286,11 +286,14 @@ bool match_pattern(str s, str p):
 
 
 list<str> clean_traceback(list<str> tb):
-    # Remove clutter from the traceback.
-    if tb != [] and tb[-1].find('run of unittest::TestCase') >= 0:
-        tb = tb[:-1]
-    for f in ['Assert', 'AssertEqual', 'AssertNotEqual', 'AssertRaises',
-              'AssertType']:
-        if tb != [] and tb[0].find('unittest::{}'.format(f)) >= 0:
-            tb = tb[1:]
+    """Remove clutter from the traceback."""
+    start = 0
+    for i, s in enumerate(tb):
+        if '\n    test.run()\n' in s or '\n    self.func()\n' in s:
+            start = i + 1
+    tb = tb[start:]
+    for f in ['assert_equal', 'assertNotEqual', 'assertRaises',
+              'assertType']:
+        if tb != [] and ', in {}\n'.format(f) in tb[-1]:
+            tb = tb[:-1]
     return tb
