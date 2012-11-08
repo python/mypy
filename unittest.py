@@ -22,7 +22,7 @@ class AssertionFailure(Exception):
 class SkipTestCaseException(Exception): pass
 
 
-void assertTrue(bool b, str msg=None):
+void assert_true(bool b, str msg=None):
     if not b:
         raise AssertionFailure(msg)
 
@@ -32,7 +32,7 @@ void assert_equal(object a, object b, str fmt='{} != {}'):
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
 
 
-void assertNotEqual(object a, object b, str fmt='{} == {}'):
+void assert_not_equal(object a, object b, str fmt='{} == {}'):
     if a == b:
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
 
@@ -43,7 +43,7 @@ void assertNotEqual(object a, object b, str fmt='{} == {}'):
 # type.
 #
 # FIX: The type is probably too complex to be supported...
-void assertRaises(type typ, any *rest):
+void assert_raises(type typ, any *rest):
     # Parse arguments.
     str msg = None
     if isinstance(rest[0], str) or rest[0] is None:
@@ -60,17 +60,17 @@ void assertRaises(type typ, any *rest):
     try:
         f(*args)
     except Exception as e:
-        assertType(typ, e)
+        assert_type(typ, e)
         if msg:
             assert_equal(e.args[0], msg, 'Invalid message {}, expected {}')
         return 
-    assertTrue(False, 'No exception raised')
+    assert_true(False, 'No exception raised')
 
 
-void assertType(type typ, object value):
+void assert_type(type typ, object value):
     if type(value) != typ:
         raise AssertionFailure('Invalid type {}, expected {}'.format(
-            type(value), typ))
+            typename(type(value)), typename(typ)))
 
 
 void fail():
@@ -239,7 +239,7 @@ tuple<bool, bool> run_single(str name, any test):
             if is_verbose:
                 sys.stderr.write('\n\n')
             str msg
-            if exc_value.args[0]:
+            if exc_value.args and exc_value.args[0]:
                 msg = ': ' + exc_value.args[0]
             else:
                 msg = ''
@@ -257,7 +257,10 @@ tuple<bool, bool> run_single(str name, any test):
 
 
 str typename(type t):
-    return str(t).split('.')[-1].rstrip("'>")
+    if '.' in str(t):
+        return str(t).split('.')[-1].rstrip("'>")
+    else:
+        return str(t)[8:-2]
 
 
 str unqualify_name(str s):
@@ -292,8 +295,8 @@ list<str> clean_traceback(list<str> tb):
         if '\n    test.run()\n' in s or '\n    self.func()\n' in s:
             start = i + 1
     tb = tb[start:]
-    for f in ['assert_equal', 'assertNotEqual', 'assertRaises',
-              'assertType']:
+    for f in ['assert_equal', 'assert_not_equal', 'assert_type',
+              'assert_raises', 'assert_true']:
         if tb != [] and ', in {}\n'.format(f) in tb[-1]:
             tb = tb[:-1]
     return tb
