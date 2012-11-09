@@ -1,17 +1,11 @@
 from types import Typ, TypeVarDef
 from util import dump_tagged
-from nodes import Node, Annotation, TypeDef, Var, FuncBase
-
-
-# Supertype for node types that can represent a member variable/accessor.
-interface AccessorNode:
-    TypeInfo info(self)
-    Annotation typ(self)
+from nodes import Node, Annotation, TypeDef, Var, FuncBase, AccessorNode
 
 
 # Class representing the type structure of a single class. The corresponding
 # TypeDef instance represents the parse tree of the class.
-class TypeInfo(Node):
+class TypeInfo(Node, AccessorNode):
     str full_name      # Fully qualified name
     bool is_interface  # Is this a interface type?
     TypeDef defn  # Corresponding TypeDef
@@ -50,13 +44,11 @@ class TypeInfo(Node):
                 self.type_vars.append(vd.name)
     
     # Short name.
-    @property
-    str name():
+    str name(self):
         return self.defn.name
     
     # Is the type generic (i.e. does it have type variables)?
-    @property
-    bool is_generic():
+    bool is_generic(self):
         return self.type_vars is not None and len(self.type_vars) > 0
     
     void set_type_bounds(self, list<TypeVarDef> a):
@@ -77,7 +69,7 @@ class TypeInfo(Node):
         return self.get_var(name) is not None
     
     bool has_method(self, str name):
-        return self.methods.has_key(name) or (self.base is not None and self.base.has_method(name))
+        return name in self.methods or (self.base is not None and self.base.has_method(name))
     
     def has_setter(self, name):
         # FIX implement
@@ -85,7 +77,7 @@ class TypeInfo(Node):
     
     
     Var get_var(self, str name):
-        if self.vars.has_key(name):
+        if name in self.vars:
             return self.vars[name]
         elif self.base is not None:
             return self.base.get_var(name)
@@ -94,7 +86,7 @@ class TypeInfo(Node):
     
     AccessorNode get_var_or_getter(self, str name):
         # TODO getter
-        if self.vars.has_key(name):
+        if name in self.vars:
             return self.vars[name]
         elif self.base is not None:
             return self.base.get_var_or_getter(name)
@@ -103,7 +95,7 @@ class TypeInfo(Node):
     
     AccessorNode get_var_or_setter(self, str name):
         # TODO setter
-        if self.vars.has_key(name):
+        if name in self.vars:
             return self.vars[name]
         elif self.base is not None:
             return self.base.get_var_or_setter(name)
@@ -111,7 +103,7 @@ class TypeInfo(Node):
             return None
     
     FuncBase get_method(self, str name):
-        if self.methods.has_key(name):
+        if name in self.methods:
             return self.methods[name]
         elif self.base is not None:
             return self.base.get_method(name)

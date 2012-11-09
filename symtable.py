@@ -1,6 +1,7 @@
 import re
 from types import Typ
 from util import short_type
+from nodes import Var, FuncDef
 
 
 # TODO move to nodes?
@@ -10,10 +11,10 @@ TVAR = 4 # Constant for type variable nodes in symbol table
 class SymbolTable(dict<str, SymbolTableNode>):
     str __str__(self):
         list<str> a = []
-        for key, value in self:
+        for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
-                if value.full_name != 'builtins':
+                if value.full_name() != 'builtins':
                     a.append('  ' + str(key) + ' : ' + repr(value))
             else:
                 a.append('  <invalid item>')
@@ -45,15 +46,13 @@ class SymbolTableNode:
         self.mod_id = mod_id
         self.tvar_id = tvar_id
     
-    @property
-    str full_name():
+    str full_name(self):
         if self.node is not None:
-            return self.node.full_name
+            return self.node.full_name()
         else:
             return None
     
-    @property
-    Typ typ():
+    Typ typ(self):
         # IDEA: Get rid of the dynamic cast.
         any node = self.node
         if self.type_override is not None:

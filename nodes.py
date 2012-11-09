@@ -13,6 +13,11 @@ MDEF = 2
 MODULE_REF = 3
 
 
+# Supertype for node types that can be stored in a symbol table.
+# TODO better name
+interface AccessorNode: pass
+
+
 class Node:
     int line = -1
     any repr = None # Textual representation
@@ -20,25 +25,19 @@ class Node:
     str __str__(self):
         return self.accept(StrConv())
     
-    Node set_line(self, Token tok_or_line):
-        if isinstance(tok_or_line, int):
-            self.line = (int)tok_or_line
-        else:
-            self.line = ((Token)tok_or_line).line
+    Node set_line(self, Token tok):
+        self.line = tok.line
         return self
     
-    Node set_line(self, int tok_or_line):
-        if isinstance(tok_or_line, int):
-            self.line = (int)tok_or_line
-        else:
-            self.line = ((Token)tok_or_line).line
+    Node set_line(self, int line):
+        self.line = line
         return self
     
     T accept<T>(self, NodeVisitor<T> visitor):
         raise RuntimeError('Not implemented')
 
 
-class MypyFile(Node):
+class MypyFile(Node, AccessorNode):
     str name           # Module name ('__main__' for initial file)
     str full_name          # Qualified module name
     str path           # Path to the file (nil if not known)
@@ -98,15 +97,14 @@ class OverloadedFuncDef(FuncBase):
         self.items = items
         self.set_line(items[0].line)
     
-    @property
-    str name():
+    str name(self):
         return self.items[1].name
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_overloaded_func_def(self)
 
 
-class FuncBase(Node):
+class FuncBase(Node, AccessorNode):
     Annotation typ   # Type signature (Callable or Overloaded)
     TypeInfo info     # If method, reference to TypeInfo
     str name
@@ -205,7 +203,7 @@ class Decorator(Node):
         return visitor.visit_decorator(self)
 
 
-class Var(Node):
+class Var(Node, AccessorNode):
     str name          # Name without module prefix
     str full_name      # Name with module prefix
     bool is_init    # Is is initialized?
@@ -243,14 +241,13 @@ class TypeDef(Node):
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_type_def(self)
     
-    @property
-    bool is_generic():
-        return self.info.is_generic
+    bool is_generic(self):
+        return self.info.is_generic()
 
 
 class VarDef(Node):
     list<tuple<Var, Typ>> items
-    Constant kind     # Ldef/Gdef/Mdef
+    int kind          # Ldef/Gdef/Mdef
     Node init         # Expression or nil
     bool is_top_level # Is the definition at the top level (not within
     # a function or a type)?
@@ -543,7 +540,7 @@ class ParenExpr(Node):
 
 # Abstract base class
 class RefExpr(Node):
-    Constant kind # Ldef/Gdef/Mdef/... (nil if not available)
+    int kind      # Ldef/Gdef/Mdef/... (nil if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
 
 

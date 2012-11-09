@@ -121,8 +121,7 @@ class TypeVar(Typ):
 
 # Abstract base class for function types (Callable and OverloadedCallable).
 class FunctionLike(Typ):
-    @property
-    bool is_type_obj():
+    bool is_type_obj(self):
         pass
     
     list<Callable> items(self): # Abstract
@@ -168,8 +167,7 @@ class Callable(FunctionLike):
         self.bound_vars = bound_vars
         super().__init__(line, repr)
     
-    @property
-    bool is_type_obj():
+    bool is_type_obj(self):
         return self._is_type_obj
     
     T accept<T>(self, TypeVisitor<T> visitor):
@@ -180,10 +178,17 @@ class Callable(FunctionLike):
         ret = self.ret_type
         if isinstance(ret, Void):
             ret = ((Void)ret).with_source(name)
-        return Callable(self.arg_types, self.min_args, self.is_var_arg, ret, self.is_type_obj, name, self.variables, self.bound_vars, self.line, self.repr)
+        return Callable(self.arg_types,
+                        self.min_args,
+                        self.is_var_arg,
+                        ret,
+                        self.is_type_obj(),
+                        name,
+                        self.variables,
+                        self.bound_vars,
+                        self.line, self.repr)
     
-    @property
-    int max_fixed_args():
+    int max_fixed_args(self):
         n = len(self.arg_types)
         if self.is_var_arg:
             n -= 1
@@ -216,15 +221,13 @@ class Overloaded(FunctionLike):
     list<Callable> items(self):
         return self._items
     
-    @property
-    str name():
+    str name(self):
         return self._items[0].name
     
-    @property
-    bool is_type_obj():
+    bool is_type_obj(self):
         # All the items must have the same type object status, so it's sufficient
         # to query only one of them.
-        return self._items[0].is_type_obj
+        return self._items[0].is_type_obj()
     
     Overloaded with_name(self, str name):
         list<Callable> ni = []
