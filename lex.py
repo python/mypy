@@ -65,7 +65,7 @@ escape_map = {'a': '\u0007',
 class StrLit(Token):
     # Return the parsed contents of the literal.
     str parsed(self):
-        prefix = re.match(str_prefix_re, self.string).group(0).lower()
+        prefix = str_prefix_re.match(self.string).group(0).lower()
         s = self.string[len(prefix):]
         if s.startswith("'''") or s.startswith('"""'):
             return s[3:-3]
@@ -75,7 +75,7 @@ class StrLit(Token):
             return self.replace_escapes(s[1:-1], prefix)
     
     str replace_escapes(self, str s, str prefix):
-        return re.sub(escape_re, lambda m: escape_repl(m, prefix), s)
+        return escape_re.sub(lambda m: escape_repl(m, prefix), s)
 
 str escape_repl(Match m, str prefix):
     seq = m.group(1)
@@ -261,7 +261,7 @@ class Lexer:
         s2 = self.match(self.number_exp2)
         
         max = max(len(s1), len(s2))
-        if re.match(self.name_char_exp,
+        if self.name_char_exp.match(
                     self.s[self.i + max:self.i + max + 1]) is not None:
             s3 = self.match(re.compile('[0-9][0-9a-zA-Z_]*'))
             max = max(max, len(s3))
