@@ -367,13 +367,13 @@ class Lexer:
                 s = self.match(re.compile('[^\\n\\r]*'))
                 self.add_token(LexError(s, UNTERMINATED_STRING_LITERAL))
     
-    def lex_triple_quoted_str(self, re3end, prefix):
+    void lex_triple_quoted_str(self, Pattern re3end, str prefix):
         line = self.line
         ss = self.s[self.i:self.i + len(prefix) + 3]
         self.i += len(prefix) + 3
         any m
         while True:
-            m = re.match(re3end, self.s[self.i:])
+            m = re3end.match(self.s, self.i)
             if m is not None:
                 break
             m = re.match('[^\\n\\r]*(\\n|\\r\\n?)', self.s[self.i:])
@@ -534,7 +534,7 @@ class Lexer:
     # If the argument regexp is matched at the current location, return the
     # matched string; otherwise return the empty string.
     str match(self, Pattern pattern):
-        m = pattern.match(self.s[self.i:])
+        m = pattern.match(self.s, self.i)
         if m is not None:
             return m.group(0)
         else:
