@@ -260,12 +260,12 @@ class Lexer:
         s1 = self.match(self.number_exp1)
         s2 = self.match(self.number_exp2)
         
-        max = max(len(s1), len(s2))
+        maxlen = max(len(s1), len(s2))
         if self.name_char_exp.match(
-                    self.s[self.i + max:self.i + max + 1]) is not None:
+                    self.s[self.i + maxlen:self.i + maxlen + 1]) is not None:
             s3 = self.match(re.compile('[0-9][0-9a-zA-Z_]*'))
-            max = max(max, len(s3))
-            self.add_token(LexError(' ' * max, NUMERIC_LITERAL_ERROR))
+            maxlen = max(maxlen, len(s3))
+            self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
         elif len(s1) > len(s2):
             self.add_token(IntLit(s1))
         else:
@@ -326,20 +326,20 @@ class Lexer:
     void lex_prefixed_str(self, str prefix):
         s = self.match(re.compile('[a-z]+[\'"]'))
         if s.endswith("'"):
-            re = self.str_exp_single
+            re1 = self.str_exp_single
             re2 = self.str_exp_single_multi
             if 'r' in prefix:
-                re = self.str_exp_raw_single
+                re1 = self.str_exp_raw_single
                 re2 = self.str_exp_raw_single_multi
-            self.lex_str(re, re2, self.str_exp_single3,
+            self.lex_str(re1, re2, self.str_exp_single3,
                          self.str_exp_single3end, prefix)
         else:
-            re = self.str_exp_double
+            re1 = self.str_exp_double
             re2 = self.str_exp_double_multi
             if 'r' in prefix:
-                re = self.str_exp_raw_double
+                re1 = self.str_exp_raw_double
                 re2 = self.str_exp_raw_double_multi
-            self.lex_str(re, re2, self.str_exp_double3,
+            self.lex_str(re1, re2, self.str_exp_double3,
                          self.str_exp_double3end, prefix)
     
     # Analyse a string literal described by regexps. Assume that the current
@@ -446,10 +446,13 @@ class Lexer:
             self.indents.append(indent)
             self.add_token(Indent(s))
         else:
+            pre = self.pre
+            self.pre = ''
             while indent < self.indents[-1]:
-                self.add_token(Dedent(s))
+                self.add_token(Dedent(''))
                 self.indents.pop()
-                s = ''
+            self.pre = pre
+            self.add_pre(s)
             if indent != self.indents[-1]:
                 self.add_token(LexError('', INVALID_DEDENT))
     
