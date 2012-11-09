@@ -1,0 +1,209 @@
+import sys
+import re
+from unittest import AssertionFailure
+from test import PREFIX
+from os import separator
+
+
+# AssertStringArraysEqual displays special line alignment helper messages if
+# the first different line has at least this many characters,
+MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
+
+
+# Assert that two string arrays are equal. Display any differences in a
+# human-readable form.
+void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
+    actual = clean_up(actual)
+    
+    if actual != expected:
+        num_skip_start = num_skipped_prefix_lines(expected, actual)
+        num_skip_end = num_skipped_suffix_lines(expected, actual)
+        
+        sys.stderr.write_ln('Expected:')
+        
+        # If omit some lines at the beginning, indicate it by displaying a line
+        # with '...'.
+        if num_skip_start > 0:
+            sys.stderr.write_ln('  ...')
+        
+        # Keep track of the first different line.
+        first_diff = -1
+        
+        # Display only this many first characers of identical lines.
+        width = 75
+        
+        for i in range(num_skip_start, len(expected) - num_skip_end):
+            if i >= len(actual) or expected[i] != actual[i]:
+                if first_diff < 0:
+                    first_diff = i
+                sys.stderr.write('  {-45:} (diff)'.format(expected[i]))
+            else:
+                e = expected[i]
+                sys.stderr.write('  ', e[:width])
+                if len(e) > width:
+                    sys.stderr.write('...')
+            sys.stderr.write_ln()
+        if num_skip_end > 0:
+            sys.stderr.write_ln('  ...')
+        
+        sys.stderr.write_ln('Actual:')
+        
+        if num_skip_start > 0:
+            sys.stderr.write_ln('  ...')
+        
+        for i in range(num_skip_start, len(actual) - num_skip_end):
+            if i >= len(expected) or expected[i] != actual[i]:
+                sys.stderr.write('  {-45:} (diff)'.format(actual[i]))
+            else:
+                a = actual[i]
+                sys.stderr.write('  ', a[:width])
+                if len(a) > width:
+                    sys.stderr.write('...')
+            sys.stderr.write_ln()
+        if actual == []:
+            sys.stderr.write_ln('  (empty)')
+        if num_skip_end > 0:
+            sys.stderr.write_ln('  ...')
+        
+        sys.stderr.write_ln()
+        
+        if first_diff >= 0 and first_diff < len(actual) and (len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT):
+            # Display message that helps visualize the differences between two
+            # long lines.
+            show_align_message(expected[first_diff], actual[first_diff])
+        
+        raise AssertionFailure(msg)
+
+
+# Align s1 and s2 so that the their first difference is highlighted. For
+# example, if s1 is 'foobar' and s2 is 'fobar', display the following lines:
+#
+#   E: foobar
+#   A: fobar
+#        ^
+#
+# If s1 and s2 are long, only display a fragment of the strings around the
+# first difference. If s1 is very short, do nothing.
+void show_align_message(str s1, str s2):
+    # Seeing what went wrong is trivial even without alignment if the expected
+    # string is very short. In this case do nothing to simplify output.
+    if len(s1) < 4:
+        return 
+    
+    maxw = 72 # Maximum number of characters shown
+    
+    sys.stderr.write_ln('Alignment of first line difference:')
+    
+    trunc = False
+    while s1[:30] == s2[:30]:
+        s1 = s1[10:]
+        s2 = s2[10:]
+        trunc = True
+    
+    if trunc:
+        s1 = '...' + s1
+        s2 = '...' + s2
+    
+    max_len = max(len(s1), len(s2))
+    extra = ''
+    if max_len > maxw:
+        extra = '...'
+    
+    # Write a chunk of both lines, aligned.
+    sys.stderr.write_ln('  E: ', s1[:maxw], extra)
+    sys.stderr.write_ln('  A: ', s2[:maxw], extra)
+    # Write an indicator character under the different columns.
+    sys.stderr.write('     ')
+    for j in range(min(maxw, max(len(s1), len(s2)))):
+        if s1[j:j + 1] != s2[j:j + 1]:
+            sys.stderr.write('^') # Difference
+            break
+        else:
+            sys.stderr.write(' ') # Equal
+    sys.stderr.write_ln()
+
+
+# Like above, but let a line with only "..." in expected match any number of
+# lines in actual.
+void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual, str msg):
+    actual = clean_up(actual)
+    
+    while actual != [] and actual[-1] == '':
+        actual = actual[:-1]
+    
+    # Expand "..." wildcards away.
+    expected = match_array(expected, actual)
+    assert_string_arrays_equal(expected, actual, msg)
+
+
+# Remove common directory prefix from all strings in a (perform a naive
+# string replace; it seems to work well enough). Also remove trailing carriage
+# returns.
+def clean_up(a):
+    res = []
+    for s in a:
+        prefix = PREFIX + separator
+        ss = s
+        for p in prefix, prefix.replace(separator, '/'):
+            if p != '/' and p != '//' and p != '\\' and p != '\\\\':
+                ss = ss.replace(p, '')
+        # Ignore spaces at end of line.
+        ss = re.sub(ss, ' +$', '')
+        res.append(re.sub(ss, '\\r$', ''))
+    return res
+
+
+# Expand '...' wildcards in pattern by matching against target.
+list<str> match_array(list<str> pattern, list<str> target):
+    list<str> res = []
+    i = 0
+    j = 0
+    
+    while i < len(pattern):
+        if pattern[i] == '...':
+            # Wildcard in pattern.
+            if i + 1 == len(pattern):
+                # Wildcard at end of pattern; match the rest of target.
+                res.extend(target[j:])
+                # Finished.
+                break
+            else:
+                # Must find the instance of the next pattern line in target.
+                jj = j
+                while jj < len(target):
+                    if target[jj] == pattern[i + 1]:
+                        break
+                    jj += 1
+                if jj == len(target):
+                    # No match. Get out.
+                    res.extend(pattern[i:])
+                    break
+                res.extend(target[j:jj])
+                i += 1
+                j = jj
+        elif j < len(target) and (pattern[i] == target[j] or (i + 1 < len(pattern) and j + 1 < len(target) and pattern[i + 1] == target[j + 1])):
+            # In sync; advance one line. The above condition keeps sync also if
+            # only a single line is different, but loses it if two consecutive lines
+            # fail to match.
+            res.append(pattern[i])
+            i += 1
+            j += 1
+        else:
+            # Out of sync. Get out.
+            res.extend(pattern[i:])
+            break
+    return res
+
+
+int num_skipped_prefix_lines(list<str> a1, list<str> a2):
+    num_eq = 0
+    while num_eq < min(len(a1), len(a2)) and a1[num_eq] == a2[num_eq]:
+        num_eq += 1
+    return max(0, num_eq - 4)
+
+
+int num_skipped_suffix_lines(list<str> a1, list<str> a2):
+    num_eq = 0
+    while num_eq < min(len(a1), len(a2)) and a1[-num_eq - 1] == a2[-num_eq - 1]:
+        num_eq += 1
+    return max(0, num_eq - 4)
