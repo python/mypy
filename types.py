@@ -1,4 +1,5 @@
-from nodes import TypeInfo, Node
+from typeinfo import TypeInfo
+from nodes import Node
 
 
 # Abstract base class for all types.
