@@ -1,7 +1,7 @@
 import re
 from mtypes import Typ
 from util import short_type
-from nodes import Var, FuncDef
+import nodes
 
 
 # TODO move to nodes?
@@ -57,7 +57,7 @@ class SymbolTableNode:
         any node = self.node
         if self.type_override is not None:
             return self.type_override
-        elif (isinstance(node, Var) or isinstance(node, FuncDef)) and node.typ is not None:
+        elif (isinstance(node, nodes.Var) or isinstance(node, nodes.FuncDef)) and node.typ is not None:
             return node.typ.typ
         else:
             return None

@@ -1,5 +1,4 @@
-from typeinfo import TypeInfo
-from nodes import Node
+import nodes
 from typevisitor import TypeVisitor
 from typestr import TypeStrVisitor
 
@@ -77,11 +76,11 @@ class NoneType(Typ):
 
 # An instance type of form C<T1, ..., Tn>. Type variables Tn may be empty
 class Instance(Typ):
-    TypeInfo typ
+    nodes.TypeInfo typ
     list<Typ> args
     bool erased      # True if result of type variable substitution
     
-    void __init__(self, TypeInfo typ, list<Typ> args, int line=-1, any repr=None, any erased=False):
+    void __init__(self, nodes.TypeInfo typ, list<Typ> args, int line=-1, any repr=None, any erased=False):
         self.typ = typ
         self.args = args
         self.erased = erased
@@ -156,7 +155,15 @@ class Callable(FunctionLike):
     
     bool _is_type_obj # Does this represent a type object?
     
-    void __init__(self, list<Typ> arg_types, int min_args, bool is_var_arg, Typ ret_type, bool is_type_obj, str name=None, TypeVars variables=TypeVars([]), list<tuple<int, Typ>> bound_vars=[], int line=-1, any repr=None):
+    void __init__(self, list<Typ> arg_types, int min_args, bool is_var_arg,
+                  Typ ret_type, bool is_type_obj, str name=None,
+                  TypeVars variables=None,
+                  list<tuple<int, Typ>> bound_vars=None,
+                  int line=-1, any repr=None):
+        if not variables:
+            variables = TypeVars([])
+        if not bound_vars:
+            bound_vars = []
         self.arg_types = arg_types
         self.min_args = min_args
         self.is_var_arg = is_var_arg
@@ -301,9 +308,9 @@ class TypeVarDef:
 # node types are properly supported (NameExpr, MemberExpr and IndexExpr
 # mainly).
 class RuntimeTypeVar(Typ):
-    Node node
+    nodes.Node node
     
-    void __init__(self, Node node):
+    void __init__(self, nodes.Node node):
         self.node = node
         super().__init__(-1, None)
     
