@@ -1,3 +1,5 @@
+from typevisitor import TypeVisitor
+import types
 
 
 # Visitor for pretty-printing types into strings. Do not preserve original
@@ -42,11 +44,11 @@ class TypeStrVisitor(TypeVisitor<str>):
         else:
             # Named type variable type.
             s = '{}`{}'.format(t.name, t.id)
-            if t.is_wrapper_var == BOUND_VAR:
+            if t.is_wrapper_var == types.BOUND_VAR:
                 s += '!B'
             elif t.is_wrapper_var == True:
                 s += '!W'
-            elif t.is_wrapper_var == OBJECT_VAR:
+            elif t.is_wrapper_var == types.OBJECT_VAR:
                 s += '!O'
             return s
     
@@ -69,7 +71,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         
         s = '({})'.format(s)
         
-        if not isinstance(t.ret_type, Void):
+        if not isinstance(t.ret_type, types.Void):
             s += ' -> {}'.format(t.ret_type)
         
         if t.variables.items != []:
@@ -102,7 +104,7 @@ class TypeStrVisitor(TypeVisitor<str>):
     def list_str(self, a):
         res = []
         for t in a:
-            if isinstance(t, Typ):
+            if isinstance(t, types.Typ):
                 res.append(t.accept(self))
             else:
                 res.append(str(t))

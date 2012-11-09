@@ -1,9 +1,16 @@
 from lex import Token
 from types import TypeVars, Typ
+from strconv import StrConv
+from visitor import NodeVisitor
+from symtable import SymbolTable
+from typeinfo import TypeInfo
 
 
 # Variable kind constants
-any LDEF, any GDEF, any MDEF, any MODULE_REF
+LDEF = 0
+GDEF = 1
+MDEF = 2
+MODULE_REF = 3
 
 
 class Node:

@@ -1,5 +1,7 @@
 from typeinfo import TypeInfo
 from nodes import Node
+from typevisitor import TypeVisitor
+from typestr import TypeStrVisitor
 
 
 # Abstract base class for all types.
@@ -89,7 +91,8 @@ class Instance(Typ):
         return visitor.visit_instance(self)
 
 
-any BOUND_VAR, any OBJECT_VAR
+BOUND_VAR = 2
+OBJECT_VAR = 3
 
 
 # A type variable type. This refers to either a class type variable

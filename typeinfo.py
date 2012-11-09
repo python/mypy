@@ -1,17 +1,12 @@
-import alore
 from types import Typ, TypeVarDef
 from util import dump_tagged
+from nodes import Node, Annotation, TypeDef, Var, FuncBase
 
 
 # Supertype for node types that can represent a member variable/accessor.
 interface AccessorNode:
-    
-    @property
-    TypeInfo info():
-        pass
-    @property
-    Annotation typ():
-        pass
+    TypeInfo info(self)
+    Annotation typ(self)
 
 
 # Class representing the type structure of a single class. The corresponding
@@ -188,4 +183,10 @@ class TypeInfo(Node):
         str iface = None
         if self.is_interface:
             iface = 'Interface'
-        return dump_tagged(['Name({})'.format(self.full_name), iface, base, alore.pair('Interfaces', interfaces), alore.pair('Vars', self.vars.keys()), alore.pair('Methods', self.methods.keys())], 'TypeInfo')
+        return dump_tagged(['Name({})'.format(self.full_name),
+                            iface,
+                            base,
+                            ('Interfaces', interfaces),
+                            ('Vars', self.vars.keys()),
+                            ('Methods', self.methods.keys())],
+                           'TypeInfo')

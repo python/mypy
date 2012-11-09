@@ -1,8 +1,8 @@
-import alore
 import re
 from util import dump_tagged, short_type
-from os import separator
-from string import int_to_str
+import os
+import nodes
+from visitor import NodeVisitor
 
 
 # Visitor for converting a Node to a human-readable string.
@@ -27,17 +27,17 @@ class StrConv(NodeVisitor<str>):
     def func_helper(self, o):
         a = []
         if o.args != []:
-            a.append(alore.pair('Args', o.args))
+            a.append(('Args', o.args))
         if o.typ is not None:
             a.append(o.typ)
         for i in o.init:
             if i is not None:
-                a.append(alore.pair('Init', o.init))
+                a.append(('Init', o.init))
                 break
         if o.var_arg is not None:
-            a.append(alore.pair('VarArg', [o.var_arg]))
+            a.append(('VarArg', [o.var_arg]))
         if o.dict_var_arg is not None:
-            a.append(alore.pair('DictVarArg', [o.dict_var_arg]))
+            a.append(('DictVarArg', [o.dict_var_arg]))
         a.append(o.body)
         return a
     
@@ -56,7 +56,7 @@ class StrConv(NodeVisitor<str>):
         if o.path is not None and o.path != 'main':
             # Insert path. Normalize directory separators to / to unify test case
             # output in all platforms.
-            a.insert(0, o.path.replace(separator, '/'))
+            a.insert(0, o.path.replace(os.sep, '/'))
         return self.dump(a, o)
     
     def visit_import(self, o):
@@ -97,9 +97,9 @@ class StrConv(NodeVisitor<str>):
         # Display base types unless they are implicitly just builtins.object (in
         # this case there is no representation).
         if len(o.base_types) > 1 or (len(o.base_types) == 1 and o.base_types[0].repr is not None):
-            a.insert(1, alore.pair('BaseType', o.base_types))
+            a.insert(1, ('BaseType', o.base_types))
         if o.type_vars is not None:
-            a.insert(1, alore.pair('TypeVars', o.type_vars.items))
+            a.insert(1, ('TypeVars', o.type_vars.items))
         if o.is_interface:
             a.insert(1, 'Interface')
         return self.dump(a, o)
@@ -142,7 +142,7 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.expr], o)
     
     def visit_assignment_stmt(self, o):
-        return self.dump([alore.pair('Lvalues', o.lvalues), o.rvalue], o)
+        return self.dump([('Lvalues', o.lvalues), o.rvalue], o)
     
     def visit_operator_assignment_stmt(self, o):
         return self.dump([o.op, o.lvalue, o.rvalue], o)
@@ -150,7 +150,7 @@ class StrConv(NodeVisitor<str>):
     def visit_while_stmt(self, o):
         a = [o.expr, o.body]
         if o.else_body is not None:
-            a.append(alore.pair('Else', o.else_body.body))
+            a.append(('Else', o.else_body.body))
         return self.dump(a, o)
     
     def visit_for_stmt(self, o):
@@ -159,7 +159,7 @@ class StrConv(NodeVisitor<str>):
             a += o.types
         a.extend([o.expr, o.body])
         if o.else_body is not None:
-            a.append(alore.pair('Else', o.else_body.body))
+            a.append(('Else', o.else_body.body))
         return self.dump(a, o)
     
     def visit_return_stmt(self, o):
@@ -168,13 +168,13 @@ class StrConv(NodeVisitor<str>):
     def visit_if_stmt(self, o):
         a = []
         for i in range(len(o.expr)):
-            a.append(alore.pair('If', [o.expr[i]]))
-            a.append(alore.pair('Then', o.body[i].body))
+            a.append(('If', [o.expr[i]]))
+            a.append(('Then', o.body[i].body))
         
         if o.else_body is None:
             return self.dump(a, o)
         else:
-            return self.dump([a, alore.pair('Else', o.else_body.body)], o)
+            return self.dump([a, ('Else', o.else_body.body)], o)
     
     def visit_break_stmt(self, o):
         return self.dump([], o)
@@ -207,18 +207,18 @@ class StrConv(NodeVisitor<str>):
             a.append(o.handlers[i])
         
         if o.else_body is not None:
-            a.append(alore.pair('Else', o.else_body.body))
+            a.append(('Else', o.else_body.body))
         if o.finally_body is not None:
-            a.append(alore.pair('Finally', o.finally_body.body))
+            a.append(('Finally', o.finally_body.body))
         
         return self.dump(a, o)
     
     def visit_with_stmt(self, o):
         a = []
         for i in range(len(o.expr)):
-            a.append(alore.pair('Expr', [o.expr[i]]))
+            a.append(('Expr', [o.expr[i]]))
             if o.name[i] is not None:
-                a.append(alore.pair('Name', [o.name[i]]))
+                a.append(('Name', [o.name[i]]))
         return self.dump(a + [o.body], o)
     
     
@@ -235,12 +235,9 @@ class StrConv(NodeVisitor<str>):
         return 'StrExpr({})'.format(self.str_repr(o.value))
     
     def str_repr(self, s):
-        s = re.sub(s, '\\\u[0-9a-fA-F]{4}', xxx_def (m):
-            return '\\' + m.group(0)
-        )
-        return re.sub(s, '[^\\x20-\\x7e]', xxx_def (m):
-            return '\u{}'.format(int_to_str(ord(m.group(0)), 16, 4))
-        )
+        s = re.sub(s, '\\\u[0-9a-fA-F]{4}', lambda m: '\\' + m.group(0))
+        return re.sub(s, '[^\\x20-\\x7e]',
+                      lambda m: '\u%.4x' % ord(m.group(0)))
     
     def visit_float_expr(self, o):
         return 'FloatExpr({})'.format(o.value)
@@ -255,13 +252,13 @@ class StrConv(NodeVisitor<str>):
         n = name
         if is_def:
             n += '*'
-        if kind == GDEF or (full_name != name and full_name is not None):
+        if kind == nodes.GDEF or (full_name != name and full_name is not None):
             # Append fully qualified name for global references.
             n += ' [{}]'.format(full_name)
-        elif kind == LDEF:
+        elif kind == nodes.LDEF:
             # Add tag to signify a local reference.
             n += ' [l]'
-        elif kind == MDEF:
+        elif kind == nodes.MDEF:
             # Add tag to signify a member reference.
             n += ' [m]'
         return n
@@ -270,13 +267,13 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.full_name, o.is_def)], o)
     
     def visit_call_expr(self, o):
-        a = [o.callee, alore.pair('Args', o.args)]
+        a = [o.callee, ('Args', o.args)]
         if o.is_var_arg:
             a.append('VarArg')
         if o.dict_var_arg is not None:
-            a.append(alore.pair('DictVarArg', [o.dict_var_arg]))
+            a.append(('DictVarArg', [o.dict_var_arg]))
         for n, v in o.keyword_args:
-            a.append(alore.pair('KwArgs', [n, v]))
+            a.append(('KwArgs', [n, v]))
         return self.dump(a, o)
     
     def visit_op_expr(self, o):
@@ -291,14 +288,14 @@ class StrConv(NodeVisitor<str>):
     def visit_list_expr(self, o):
         a = o.items[:]
         if o.typ is not None:
-            a.insert(0, alore.pair('Type', [o.typ]))
+            a.insert(0, ('Type', [o.typ]))
         return self.dump(a, o)
     
     def visit_dict_expr(self, o):
         a = o.items[:]
         if o.key_type is not None:
-            a.insert(0, alore.pair('ValueType', [o.value_type]))
-            a.insert(0, alore.pair('KeyType', [o.key_type]))
+            a.insert(0, ('ValueType', [o.value_type]))
+            a.insert(0, ('KeyType', [o.key_type]))
         return self.dump(a, o)
     
     def visit_set_expr(self, o):
@@ -307,7 +304,7 @@ class StrConv(NodeVisitor<str>):
     def visit_tuple_expr(self, o):
         a = o.items[:]
         if o.types is not None:
-            a.insert(0, alore.pair('Type', o.types))
+            a.insert(0, ('Type', o.types))
         return self.dump(a, o)
     
     def visit_index_expr(self, o):
@@ -317,7 +314,7 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.name], o)
     
     def visit_type_application(self, o):
-        return self.dump([o.expr, alore.pair('Types', o.types)], o)
+        return self.dump([o.expr, ('Types', o.types)], o)
     
     def visit_func_expr(self, o):
         a = self.func_helper(o)
@@ -342,7 +339,7 @@ class StrConv(NodeVisitor<str>):
         return self.dump(a, o)
     
     def visit_coerce_expr(self, o):
-        return self.dump([o.expr, alore.pair('Types', [o.target_type, o.source_type])], o)
+        return self.dump([o.expr, ('Types', [o.target_type, o.source_type])], o)
     
     def visit_type_expr(self, o):
         return self.dump([str(o.typ)], o)

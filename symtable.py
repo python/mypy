@@ -3,7 +3,8 @@ from types import Typ
 from util import short_type
 
 
-any TVAR # Constant for type variable nodes in symbol table
+# TODO move to nodes?
+TVAR = 4 # Constant for type variable nodes in symbol table
 
 
 class SymbolTable(dict<str, SymbolTableNode>):
@@ -24,17 +25,12 @@ class SymbolTable(dict<str, SymbolTableNode>):
 
 # Supertype for node types that can be stored in the symbol table.
 interface SymNode:
-    
-    @property
-    str name():
-        pass
-    @property
-    str full_name():
-        pass
+    str name(self)
+    str full_name(self)
 
 
 class SymbolTableNode:
-    Constant kind # Ldef/Gdef/Mdef/Tvar
+    int kind # Ldef/Gdef/Mdef/Tvar
     SymNode node  # Parse tree node of definition (FuncDef/Var/
     # TypeInfo), nil for Tvar
     int tvar_id    # Type variable id (for Tvars only)
@@ -42,7 +38,7 @@ class SymbolTableNode:
     
     Typ type_override  # If nil, fall back to type of node
     
-    void __init__(self, Constant kind, SymNode node, str mod_id=None, Typ typ=None, int tvar_id=0):
+    void __init__(self, int kind, SymNode node, str mod_id=None, Typ typ=None, int tvar_id=0):
         self.kind = kind
         self.node = node
         self.type_override = typ
