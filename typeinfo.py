@@ -1,4 +1,4 @@
-from types import Typ, TypeVarDef
+from mtypes import Typ, TypeVarDef
 from util import dump_tagged
 from nodes import Node, Annotation, TypeDef, Var, FuncBase, AccessorNode
 

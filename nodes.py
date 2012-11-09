@@ -1,5 +1,5 @@
 from lex import Token
-from types import TypeVars, Typ
+from mtypes import TypeVars, Typ
 from strconv import StrConv
 from visitor import NodeVisitor
 from symtable import SymbolTable

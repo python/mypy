@@ -1,5 +1,5 @@
-from types import (UnboundType, ErrorType, Any, Void, NoneType, TypeVar,
-                   Instance, Callable, Overloaded, TupleType, RuntimeTypeVar)
+from mtypes import (UnboundType, ErrorType, Any, Void, NoneType, TypeVar,
+                    Instance, Callable, Overloaded, TupleType, RuntimeTypeVar)
 
 
 # Visitor class for types (Typ subclasses). The parameter T is the return

@@ -1,5 +1,5 @@
 import re
-from types import Typ
+from mtypes import Typ
 from util import short_type
 from nodes import Var, FuncDef
 
