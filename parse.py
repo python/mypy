@@ -1,7 +1,21 @@
-from lex import Token, lex, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, FloatLit, Op, Indent, LexError
-from nodes import MypyFile, MypyFileRepr, Import, ImportRepr, Node, ImportAll, ImportFrom, ImportFromRepr, FuncDef, OverloadedFuncDef, TypeDef, TypeDefRepr, Decorator, DecoratorRepr, Annotation, Block, BlockRepr, FuncRepr, Var, FuncArgsRepr, AnnotationRepr, VarRepr, VarDef, VarDefRepr, OperatorAssignmentStmt, OperatorAssignmentStmtRepr, ExpressionStmt, ExpressionStmtRepr, AssignmentStmt, AssignmentStmtRepr, ReturnStmt, SimpleStmtRepr, RaiseStmt, RaiseStmtRepr, AssertStmt, YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl, GlobalDeclRepr, WhileStmt, WhileStmtRepr, ForStmt, ForStmtRepr, IfStmt, IfStmtRepr, TryStmt, TryStmtRepr, WithStmt, WithStmtRepr, CastExpr, CastExprRepr, ParenExpr, ParenExprRepr, TupleExpr, TupleExprRepr, GeneratorExpr, ListComprehension, ListExpr, ListExprRepr, ConditionalExpr, DictExpr, DictExprRepr, SetExpr, NameExpr, NameExprRepr, IntExpr, IntExprRepr, StrExpr, StrExprRepr, FloatExpr, FloatExprRepr, CallExpr, CallExprRepr, SuperExpr, SuperExprRepr, MemberExpr, MemberExprRepr, IndexExpr, SliceExpr, SliceExprRepr, IndexExprRepr, OpExpr, OpExprRepr, UnaryExpr, UnaryExprRepr, FuncExpr, FuncExprRepr, TypeApplication, TypeApplicationRepr
+from lex import (Token, lex, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
+                 StrLit, FloatLit, Op, Indent, Keyword, Name, Punct, LexError)
+from nodes import (
+    MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
+    TypeDef, Decorator, Annotation, Block, Var, VarDef, OperatorAssignmentStmt,
+    ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
+    YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
+    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr, ParenExpr,
+    TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
+    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, FloatExpr, CallExpr,
+    SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr, UnaryExpr, FuncExpr,
+    TypeApplication)
+import noderepr
 from errors import Errors
 from mtypes import Void, Typ, TypeVars, Callable, Any
+from parsetype import (parse_type, parse_type_variables, parse_type_args,
+                       TypeParseError)
+import lex
 
 
 int HIGHEST_PREC = 14
@@ -12,7 +26,7 @@ precedence = {'**': 15, '-u': 14, '+u': 14, '~': 14, '<cast>': 13, '*': 12, '/':
 set<str> op_assign = set(['+=', '-=', '*=', '/=', '//=', '%=', '**=', '|=', '&=', '^=', '>>=', '<<='])
 
 
-Token none = Token('') # Empty token
+none = Token('') # Empty token
 
 
 # Parse a source file, without doing any semantic analysis. Return the parse
@@ -63,7 +77,7 @@ class Parser:
         defs = self.parse_defs()
         eof = self.expect_type(Eof)
         node = MypyFile(defs, is_bom)
-        self.set_repr(node, MypyFileRepr(eof))
+        self.set_repr(node, noderepr.MypyFileRepr(eof))
         return node
     
     # Parse the initial part
@@ -102,7 +116,8 @@ class Parser:
             commas.append(self.expect(','))
         br = self.expect_break()
         node = Import(ids)
-        self.set_repr(node, ImportRepr(import_tok, id_toks, as_names, commas, br))
+        self.set_repr(node, noderepr.ImportRepr(import_tok, id_toks, as_names,
+                                                commas, br))
         return node
     
     Node parse_import_from(self):
@@ -134,7 +149,8 @@ class Parser:
                 rparen = self.expect(')')
             node = ImportFrom(name, targets)
         br = self.expect_break()
-        self.set_repr(node, ImportFromRepr(from_tok, components, import_tok, lparen, name_toks, rparen, br))
+        self.set_repr(node, noderepr.ImportFromRepr(
+            from_tok, components,import_tok, lparen, name_toks, rparen, br))
         return node
     
     tuple<str, str, list<Token>> parse_import_name(self):
@@ -178,7 +194,7 @@ class Parser:
                         n = fdef.name
                         if isinstance(defs[-1], FuncDef) and ((FuncDef)defs[-1]).name == n:
                             defs[-1] = OverloadedFuncDef([(FuncDef)defs[-1], fdef])
-                        elif isinstance(defs[-1], OverloadedFuncDef) and ((OverloadedFuncDef)defs[-1]).name == n:
+                        elif isinstance(defs[-1], OverloadedFuncDef) and ((OverloadedFuncDef)defs[-1]).name() == n:
                             ((OverloadedFuncDef)defs[-1]).items.append(fdef)
                         else:
                             defs.append(defn)
@@ -225,7 +241,8 @@ class Parser:
             defs = self.parse_block(is_interface)
             
             node = TypeDef(name, defs, type_vars, base_types, is_interface)
-            self.set_repr(node, TypeDefRepr(type_tok, name_tok, lparen, commas, rparen))
+            self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
+                                                     lparen, commas, rparen))
             return node
         finally:
             self.errors.set_type(None, False)
@@ -262,7 +279,7 @@ class Parser:
         else:
             target = self.parse_function()
         node = Decorator(target, decorator)
-        self.set_repr(node, DecoratorRepr(at, br))
+        self.set_repr(node, noderepr.DecoratorRepr(at, br))
         return node
     
     FuncDef parse_function_at_name(self, Annotation ret_type, Token def_tok, bool is_in_interface=False):
@@ -274,7 +291,7 @@ class Parser:
             if is_in_interface and isinstance(self.current(), Break):
                 body = Block([])
                 br = self.expect_break()
-                self.set_repr(body, BlockRepr(none, br, none, none))
+                self.set_repr(body, noderepr.BlockRepr(none, br, none, none))
             else:
                 body = self.parse_block()
             
@@ -285,7 +302,8 @@ class Parser:
             
             node = FuncDef(name, args, init, var_arg, dict_var_arg, max_pos, body, typ)
             name_tok, arg_reprs = toks
-            self.set_repr(node, FuncRepr(def_tok, name_tok, arg_reprs))
+            self.set_repr(node, noderepr.FuncRepr(def_tok, name_tok,
+                                                  arg_reprs))
             return node
         finally:
             self.errors.set_function(None)
@@ -298,7 +316,7 @@ class Parser:
         is_error = False
         
         name_tok = none
-        FuncArgsRepr arg_repr
+        noderepr.FuncArgsRepr arg_repr
         
         colon = none
         
@@ -321,7 +339,7 @@ class Parser:
     
     # Parse a function type signature, potentially prefixed with type variable
     # specification within <...>.
-    tuple<list<Var>, list<Node>, Var, Var, int, Annotation, FuncArgsRepr> parse_args(self, Annotation ret_type):
+    tuple<list<Var>, list<Node>, Var, Var, int, Annotation, noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
         type_vars = self.parse_type_vars()
         
         lparen = self.expect('(')
@@ -334,7 +352,9 @@ class Parser:
         # TODO dictionary varargs
         annotation = self.build_func_annotation(ret_type, arg_types, min_args, var_arg, type_vars, lparen.line)
         
-        return args, init, var_arg, dict_var_arg, max_pos, annotation, FuncArgsRepr(lparen, rparen, arg_names, commas, assigns, asterisk)
+        return (args, init, var_arg, dict_var_arg, max_pos, annotation,
+                noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
+                                      assigns, asterisk))
     
     Annotation build_func_annotation(self, Annotation ret_type, list<Typ> arg_types, int min_args, Var var_arg, TypeVars type_vars, int line):
         # Are there any type annotations?
@@ -345,7 +365,7 @@ class Parser:
                 ret = ret_type.typ
             typ = self.construct_function_type(arg_types, min_args, var_arg is not None, ret, type_vars, line)
             annotation = Annotation(typ, line)
-            self.set_repr(annotation, AnnotationRepr())
+            self.set_repr(annotation, noderepr.AnnotationRepr())
             return annotation
         else:
             return None
@@ -379,17 +399,18 @@ class Parser:
                 if self.current_str() == '*' and self.peek().string == ',':
                     self.expect('*')
                     max_pos = len(args)
-                elif self.current_str() in ('*', '**'):
+                elif self.current_str() in ['*', '**']:
                     asterisk = self.skip()
                     dict = asterisk.string == '**'
                     name = self.expect_type(Name)
                     arg_names.append(name)
                     if dict:
                         dict_var_arg = Var(name.string)
-                        self.set_repr(dict_var_arg, VarRepr(name, none))
+                        self.set_repr(dict_var_arg, noderepr.VarRepr(name,
+                                                                     none))
                     else:
                         var_arg = Var(name.string)
-                        self.set_repr(var_arg, VarRepr(name, none))
+                        self.set_repr(var_arg, noderepr.VarRepr(name, none))
                 else:
                     name = self.expect_type(Name)
                     arg_names.append(name)
@@ -417,7 +438,7 @@ class Parser:
     Callable construct_function_type(self, list<Typ> arg_types, int min_args, bool is_var_arg, Typ ret_type, TypeVars type_vars, int line):
         # Complete the type annotation by replacing omitted types with
         # dynamic/void.
-        arg_types = arg_types.copy()
+        arg_types = arg_types[:]
         for i in range(len(arg_types)):
             if arg_types[i] is None:
                 arg_types[i] = Any()
@@ -441,7 +462,7 @@ class Parser:
         br = self.expect_break()
         
         node = VarDef(n, self.is_at_top_level(), init)
-        self.set_repr(node, VarDefRepr(assign_token, br))
+        self.set_repr(node, noderepr.VarDefRepr(assign_token, br))
         return node
     
     # Parse a comma-separated list of variable names, potentially prefixed by
@@ -449,17 +470,17 @@ class Parser:
     list<tuple<Var, Typ>> parse_var_list(self, Typ first_type):
         tok = self.expect_type(Name)
         n = [(Var(tok.string), first_type)]
-        r = [VarRepr(tok, none)]
+        r = [noderepr.VarRepr(tok, none)]
         while self.current_str() == ',':
             tok = self.expect(',')
-            r[-1] = VarRepr(r[-1].name, tok)
+            r[-1] = noderepr.VarRepr(r[-1].name, tok)
             
             Typ t = None
             if self.is_at_type():
                 t = self.parse_type().typ
             tok = self.expect_type(Name)
             n.append((Var(tok.string), t))
-            r.append(VarRepr(tok, none))
+            r.append(noderepr.VarRepr(tok, none))
         for i in range(len(n)):
             self.set_repr(n[i][0], r[i])
         return n
@@ -472,7 +493,7 @@ class Parser:
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
             node = Block([self.parse_statement()]).set_line(colon)
-            self.set_repr(node, BlockRepr(colon, none, none, none))
+            self.set_repr(node, noderepr.BlockRepr(colon, none, none, none))
             return (Block)node
         else:
             # Indented block.
@@ -494,7 +515,7 @@ class Parser:
                             n = fdef.name
                             if isinstance(stmt[-1], FuncDef) and ((FuncDef)stmt[-1]).name == n:
                                 stmt[-1] = OverloadedFuncDef([(FuncDef)stmt[-1], fdef])
-                            elif isinstance(stmt[-1], OverloadedFuncDef) and ((OverloadedFuncDef)stmt[-1]).name == n:
+                            elif isinstance(stmt[-1], OverloadedFuncDef) and ((OverloadedFuncDef)stmt[-1]).name() == n:
                                 ((OverloadedFuncDef)stmt[-1]).items.append(fdef)
                             else:
                                 stmt.append(s)
@@ -506,7 +527,7 @@ class Parser:
             if isinstance(self.current(), Dedent):
                 dedent = self.skip()
             node = Block(stmt).set_line(colon) 
-            self.set_repr(node, BlockRepr(colon, br, indent, dedent))
+            self.set_repr(node, noderepr.BlockRepr(colon, br, indent, dedent))
             return (Block)node
     
     Node parse_interface_body_def(self):
@@ -576,14 +597,15 @@ class Parser:
             r = self.parse_expression()
             br = self.expect_break()
             node = OperatorAssignmentStmt(op, e, r)
-            self.set_repr(node, OperatorAssignmentStmtRepr(assign, br))
+            self.set_repr(node,
+                          noderepr.OperatorAssignmentStmtRepr(assign, br))
             return node
         else:
             # Expression statement.
             br = self.expect_break()
-            node = ExpressionStmt(e)
-            self.set_repr(node, ExpressionStmtRepr(br))
-            return node
+            expr = ExpressionStmt(e)
+            self.set_repr(expr, noderepr.ExpressionStmtRepr(br))
+            return expr
     
     # Parse an assignment statement. Assume that lvalue has been parsed already,
     # and the current token is =.
@@ -600,7 +622,7 @@ class Parser:
         br = self.expect_break()
         
         node = AssignmentStmt(lvalues, e)
-        self.set_repr(node, AssignmentStmtRepr(assigns, br))
+        self.set_repr(node, noderepr.AssignmentStmtRepr(assigns, br))
         return node
     
     ReturnStmt parse_return_stmt(self):
@@ -610,7 +632,7 @@ class Parser:
             expr = self.parse_expression()
         br = self.expect_break()
         node = ReturnStmt(expr)
-        self.set_repr(node, SimpleStmtRepr(return_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(return_tok, br))
         return node
     
     RaiseStmt parse_raise_stmt(self):
@@ -625,7 +647,7 @@ class Parser:
                 from_expr = self.parse_expression()
         br = self.expect_break()
         node = RaiseStmt(expr, from_expr)
-        self.set_repr(node, RaiseStmtRepr(raise_tok, from_tok, br))
+        self.set_repr(node, noderepr.RaiseStmtRepr(raise_tok, from_tok, br))
         return node
     
     AssertStmt parse_assert_stmt(self):
@@ -633,7 +655,7 @@ class Parser:
         expr = self.parse_expression()
         br = self.expect_break()
         node = AssertStmt(expr)
-        self.set_repr(node, SimpleStmtRepr(assert_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(assert_tok, br))
         return node
     
     YieldStmt parse_yield_stmt(self):
@@ -643,7 +665,7 @@ class Parser:
             expr = self.parse_expression()
         br = self.expect_break()
         node = YieldStmt(expr)
-        self.set_repr(node, SimpleStmtRepr(yield_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
         return node
     
     DelStmt parse_del_stmt(self):
@@ -651,28 +673,28 @@ class Parser:
         expr = self.parse_expression()
         br = self.expect_break()
         node = DelStmt(expr)
-        self.set_repr(node, SimpleStmtRepr(del_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(del_tok, br))
         return node
     
     BreakStmt parse_break_stmt(self):
         break_tok = self.expect('break')
         br = self.expect_break()
         node = BreakStmt()
-        self.set_repr(node, SimpleStmtRepr(break_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(break_tok, br))
         return node
     
     ContinueStmt parse_continue_stmt(self):
         continue_tok = self.expect('continue')
         br = self.expect_break()
         node = ContinueStmt()
-        self.set_repr(node, SimpleStmtRepr(continue_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(continue_tok, br))
         return node
     
     PassStmt parse_pass_stmt(self):
         pass_tok = self.expect('pass')
         br = self.expect_break()
         node = PassStmt()
-        self.set_repr(node, SimpleStmtRepr(pass_tok, br))
+        self.set_repr(node, noderepr.SimpleStmtRepr(pass_tok, br))
         return node
     
     GlobalDecl parse_global_decl(self):
@@ -689,7 +711,8 @@ class Parser:
             commas.append(self.skip())
         br = self.expect_break()
         node = GlobalDecl(names)
-        self.set_repr(node, GlobalDeclRepr(global_tok, name_toks, commas, br))
+        self.set_repr(node, noderepr.GlobalDeclRepr(global_tok, name_toks,
+                                                    commas, br))
         return node
     
     WhileStmt parse_while_stmt(self):
@@ -708,7 +731,7 @@ class Parser:
             else_body = self.parse_block()
         if is_error is not None:
             node = WhileStmt(expr, body, else_body)
-            self.set_repr(node, WhileStmtRepr(while_tok, else_tok))
+            self.set_repr(node, noderepr.WhileStmtRepr(while_tok, else_tok))
             return node
         else:
             return None
@@ -728,7 +751,7 @@ class Parser:
             else_body = self.parse_block()
         
         node = ForStmt(index, expr, body, else_body, types)
-        self.set_repr(node, ForStmtRepr(for_tok, in_tok, else_tok))
+        self.set_repr(node, noderepr.ForStmtRepr(for_tok, in_tok, else_tok))
         return node
     
     tuple<list<Var>, list<Annotation>> parse_index_variables(self):
@@ -749,10 +772,10 @@ class Parser:
             index.append((Var)v)
             types.append(ann)
             if self.current_str() != ',':
-                self.set_repr(v, VarRepr(tok, none))
+                self.set_repr(v, noderepr.VarRepr(tok, none))
                 break
             comma = self.skip()
-            self.set_repr(v, VarRepr(tok, comma))
+            self.set_repr(v, noderepr.VarRepr(tok, comma))
         
         if is_paren:
             self.expect(')')
@@ -788,7 +811,8 @@ class Parser:
         
         if not is_error:
             node = IfStmt(expr, body, else_body)
-            self.set_repr(node, IfStmtRepr(if_tok, elif_toks, else_tok))
+            self.set_repr(node, noderepr.IfStmtRepr(if_tok, elif_toks,
+                                                    else_tok))
             return node
         else:
             return None
@@ -833,7 +857,9 @@ class Parser:
                 finally_tok = self.expect('finally')
                 finally_body = self.parse_block()
             node = TryStmt(body, vars, types, handlers, else_body, finally_body)
-            self.set_repr(node, TryStmtRepr(try_tok, except_toks, name_toks, as_toks, else_tok, finally_tok))
+            self.set_repr(node, noderepr.TryStmtRepr(try_tok, except_toks,
+                                                     name_toks, as_toks,
+                                                     else_tok, finally_tok))
             return node
         else:
             return None
@@ -841,7 +867,7 @@ class Parser:
     Var parse_var(self):
         t = self.current()
         v = Var(self.expect_type(Name).string).set_line(t)
-        self.set_repr(v, VarRepr(t, none))
+        self.set_repr(v, noderepr.VarRepr(t, none))
         return (Var)v
     
     WithStmt parse_with_stmt(self):
@@ -865,7 +891,7 @@ class Parser:
             commas.append(self.expect(','))
         body = self.parse_block()
         node = WithStmt(expr, name, body)
-        self.set_repr(node, WithStmtRepr(with_tok, as_toks, commas))
+        self.set_repr(node, noderepr.WithStmtRepr(with_tok, as_toks, commas))
         return node
     
     # Parsing expressions
@@ -989,7 +1015,7 @@ class Parser:
             rparen = self.expect(')')
             expr = self.parse_expression(precedence['<cast>'])
             expr = CastExpr(expr, typ.typ)
-            self.set_repr(expr, CastExprRepr(lparen, rparen))
+            self.set_repr(expr, noderepr.CastExprRepr(lparen, rparen))
         elif self.current_str() == ')':
             # Empty tuple ().
             expr = self.parse_empty_tuple_expr(lparen)
@@ -998,13 +1024,13 @@ class Parser:
             expr = self.parse_expression(0)
             rparen = self.expect(')')
             expr = ParenExpr(expr)
-            self.set_repr(expr, ParenExprRepr(lparen, rparen))
+            self.set_repr(expr, noderepr.ParenExprRepr(lparen, rparen))
         return expr
     
     TupleExpr parse_empty_tuple_expr(self, any lparen):
         rparen = self.expect(')')
         node = TupleExpr([])
-        self.set_repr(node, TupleExprRepr(lparen, [], rparen))
+        self.set_repr(node, noderepr.TupleExprRepr(lparen, [], rparen))
         return node
     
     Node parse_list_expr(self):
@@ -1021,7 +1047,8 @@ class Parser:
             return ListComprehension((GeneratorExpr)items[0])
         else:
             node = ListExpr(items)
-            self.set_repr(node, ListExprRepr(lbracket, commas, rbracket, none, none))
+            self.set_repr(node, noderepr.ListExprRepr(lbracket, commas,
+                                                      rbracket, none, none))
             return node
     
     GeneratorExpr parse_generator_expr(self, Node left_expr):
@@ -1058,7 +1085,7 @@ class Parser:
         list<Token> commas = []
         while self.current_str() != '}' and not self.eol():
             key = self.parse_expression(precedence[','])
-            if self.current_str() in (',', '}') and items == []:
+            if self.current_str() in [',', '}'] and items == []:
                 return self.parse_set_expr(key)
             elif self.current_str() != ':':
                 self.parse_error()
@@ -1070,7 +1097,8 @@ class Parser:
             commas.append(self.expect(','))
         rbrace = self.expect('}')
         node = DictExpr(items)
-        self.set_repr(node, DictExprRepr(lbrace, colons, commas, rbrace, none, none, none))
+        self.set_repr(node, noderepr.DictExprRepr(lbrace, colons, commas,
+                                                  rbrace, none, none, none))
         return node
     
     SetExpr parse_set_expr(self, Node first):
@@ -1088,12 +1116,12 @@ class Parser:
         list<Token> commas = []
         while True:
             commas.append(self.expect(','))
-            if self.current_str() in (')', ']', '=') or isinstance(self.current(), Break):
+            if self.current_str() in [')', ']', '='] or isinstance(self.current(), Break):
                 break
             items.append(self.parse_expression(prec))
             if self.current_str() != ',': break
         node = TupleExpr(items)
-        self.set_repr(node, TupleExprRepr(none, commas, none))
+        self.set_repr(node, noderepr.TupleExprRepr(none, commas, none))
         return node
     
     Node parse_literal_with_prefix_type(self):
@@ -1104,7 +1132,8 @@ class Parser:
                 self.fail('Expected a single type before list literal', e.line)
             else:
                 ((ListExpr)e).typ = types[0]
-                e.repr = ListExprRepr(e.repr.lbracket, e.repr.commas, e.repr.rbracket, langle, rangle)
+                e.repr = noderepr.ListExprRepr(e.repr.lbracket, e.repr.commas,
+                                               e.repr.rbracket, langle, rangle)
         elif isinstance(e, ParenExpr) and isinstance(((ParenExpr)e).expr, TupleExpr):
             t = (TupleExpr)((ParenExpr)e).expr
             if len(types) != len(t.items):
@@ -1117,7 +1146,9 @@ class Parser:
             else:
                 ((DictExpr)e).key_type = types[0]
                 ((DictExpr)e).value_type = types[1]
-                e.repr = DictExprRepr(e.repr.lbrace, e.repr.colons, e.repr.commas, e.repr.rbrace, langle, commas[0], rangle)
+                e.repr = noderepr.DictExprRepr(e.repr.lbrace, e.repr.colons,
+                                               e.repr.commas, e.repr.rbrace,
+                                               langle, commas[0], rangle)
         else:
             self.fail('Expected a list, dictionary or non-empty tuple after <...>', e.line)
         return e
@@ -1125,7 +1156,7 @@ class Parser:
     NameExpr parse_name_expr(self):
         tok = self.expect_type(Name)
         node = NameExpr(tok.string)
-        self.set_repr(node, NameExprRepr(tok))
+        self.set_repr(node, noderepr.NameExprRepr(tok))
         return node
     
     IntExpr parse_int_expr(self):
@@ -1139,7 +1170,7 @@ class Parser:
         else:
             v = int(s)
         node = IntExpr(v)
-        self.set_repr(node, IntExprRepr(tok))
+        self.set_repr(node, noderepr.IntExprRepr(tok))
         return node
     
     StrExpr parse_str_expr(self):
@@ -1151,13 +1182,13 @@ class Parser:
             tok.append(t)
             value += t.parsed()
         node = StrExpr(value)
-        self.set_repr(node, StrExprRepr(tok))
+        self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     
     FloatExpr parse_float_expr(self):
         tok = self.expect_type(FloatLit)
         node = FloatExpr(float(tok.string))
-        self.set_repr(node, FloatExprRepr(tok))
+        self.set_repr(node, noderepr.FloatExprRepr(tok))
         return node
     
     CallExpr parse_call_expr(self, any callee):
@@ -1165,7 +1196,8 @@ class Parser:
         args, is_var_arg, dict_var_arg, commas, at, kw_args, assigns = self.parse_arg_expr()
         rparen = self.expect(')')
         node = CallExpr(callee, args, is_var_arg, kw_args, dict_var_arg)
-        self.set_repr(node, CallExprRepr(lparen, commas, at, assigns, rparen))
+        self.set_repr(node, noderepr.CallExprRepr(lparen, commas, at, assigns,
+                                                  rparen))
         return node
     
     # Parse arguments in a call expression (within '(' and ')').
@@ -1217,10 +1249,13 @@ class Parser:
         Node node
         if isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr) and expr.callee.name == 'super':
             node = SuperExpr(name.string)
-            self.set_repr(node, SuperExprRepr(expr.callee.repr.id, expr.repr.lparen, expr.repr.rparen, dot, name))
+            self.set_repr(node,
+                          noderepr.SuperExprRepr(expr.callee.repr.id,
+                                                 expr.repr.lparen,
+                                                 expr.repr.rparen, dot, name))
         else:
             node = MemberExpr(expr, name.string)
-            self.set_repr(node, MemberExprRepr(dot, name))
+            self.set_repr(node, noderepr.MemberExprRepr(dot, name))
         return node
     
     IndexExpr parse_index_expr(self, any base):
@@ -1241,10 +1276,10 @@ class Parser:
                 if self.current_str() != ']':
                     stride = self.parse_expression()
             index = SliceExpr(index, end_index, stride).set_line(colon.line)
-            self.set_repr(index, SliceExprRepr(colon, colon2))
+            self.set_repr(index, noderepr.SliceExprRepr(colon, colon2))
         rbracket = self.expect(']')
         node = IndexExpr(base, index)
-        self.set_repr(node, IndexExprRepr(lbracket, rbracket))
+        self.set_repr(node, noderepr.IndexExprRepr(lbracket, rbracket))
         return node
     
     OpExpr parse_bin_op_expr(self, Node left, int prec):
@@ -1265,7 +1300,7 @@ class Parser:
             self.parse_error()
         right = self.parse_expression(prec)
         node = OpExpr(op_str, left, right)
-        self.set_repr(node, OpExprRepr(op, op2))
+        self.set_repr(node, noderepr.OpExprRepr(op, op2))
         return node
     
     UnaryExpr parse_unary_expr(self):
@@ -1278,7 +1313,7 @@ class Parser:
             prec = precedence[op]
         expr = self.parse_expression(prec)
         node = UnaryExpr(op, expr)
-        self.set_repr(node, UnaryExprRepr(op_tok))
+        self.set_repr(node, noderepr.UnaryExprRepr(op_tok))
         return node
     
     FuncExpr parse_lambda_expr(self):
@@ -1297,14 +1332,19 @@ class Parser:
         body.set_line(colon)
         
         node = FuncExpr(args, init, None, None, max_pos, body, typ)
-        self.set_repr(node, FuncExprRepr(lambda_tok, colon, FuncArgsRepr(none, none, arg_names, commas, assigns, asterisk)))
+        self.set_repr(node,
+                      noderepr.FuncExprRepr(
+                          lambda_tok, colon,
+                          noderepr.FuncArgsRepr(none, none, arg_names, commas,
+                                                assigns, asterisk)))
         return node
     
     TypeApplication parse_type_application(self, any expr):
         try:
             types, langle, rangle, commas = self.parse_type_list_in_angle_brackets()
             node = TypeApplication(expr, types)
-            self.set_repr(node, TypeApplicationRepr(langle, commas, rangle))
+            self.set_repr(node, noderepr.TypeApplicationRepr(langle, commas,
+                                                             rangle))
             return node
         except TypeParseError as e:
             self.parse_error_at(e.token)
@@ -1315,7 +1355,6 @@ class Parser:
         return types, langle, rangle, commas
     
     # Helper methods
-    #---------------
     
     Token skip(self):
         self.ind += 1
@@ -1338,7 +1377,7 @@ class Parser:
     void fail(self, str msg, int line):
         self.errors.report(line, msg)
     
-    Token expect_type(self, Type typ):
+    Token expect_type(self, type typ):
         if isinstance(self.current(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
@@ -1520,3 +1559,56 @@ class Parser:
 
 
 class ParseError(Exception): pass
+
+
+# Return a representation of a token that can be used in a parse error
+# message.
+str token_repr(Token tok):
+    if isinstance(tok, Break):
+        return 'end of line'
+    elif isinstance(tok, Eof):
+        return 'end of file'
+    elif isinstance(tok, Keyword) or isinstance(tok, Name):
+        return '"{}"'.format(tok.string)
+    elif isinstance(tok, IntLit) or isinstance(tok, FloatLit):
+        return 'numeric literal'
+    elif isinstance(tok, StrLit):
+        return 'string literal'
+    elif isinstance(tok, Punct) or isinstance(tok, Op) or isinstance(tok, Colon):
+        return tok.string
+    elif isinstance(tok, Bom):
+        return 'byte order mark'
+    elif isinstance(tok, Indent):
+        return 'indent'
+    elif isinstance(tok, Dedent):
+        return 'dedent'
+    else:
+        if isinstance(tok, LexError):
+            _x = ((LexError)tok).type
+            if _x == lex.NUMERIC_LITERAL_ERROR:
+                return 'invalid numeric literal'
+            elif _x == lex.UNTERMINATED_STRING_LITERAL:
+                return 'unterminated string literal'
+            elif _x == lex.INVALID_CHARACTER:
+                msg = 'unrecognized character'
+                if ord(tok.string) in range(33, 127):
+                    msg += ' ' + tok.string
+                return msg
+            elif _x == lex.INVALID_UTF8_SEQUENCE:
+                return 'invalid UTF-8 sequence'
+            elif _x == lex.NON_ASCII_CHARACTER_IN_COMMENT:
+                return 'non-ASCII character in comment'
+            elif _x == lex.NON_ASCII_CHARACTER_IN_STRING:
+                return 'non-ASCII character in string'
+            elif _x == lex.INVALID_DEDENT:
+                return 'inconsistent indentation'
+        raise ValueError('Unknown token {}'.format(repr(tok)))
+
+
+# If the node is a parenthesised expression, recursively find the first
+# non-parenthesised subexpression and return that. Otherwise, return node.
+Node unwrap_parens(Node node):
+    if isinstance(node, ParenExpr):
+        return unwrap_parens(((ParenExpr)node).expr)
+    else:
+        return node

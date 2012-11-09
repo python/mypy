@@ -1,5 +1,10 @@
-from types import Typ, TypeVars, TypeVarDef, TypeVarsRepr, TypeVarDefRepr, Any, AnyRepr, Void, VoidRepr, UnboundType, CommonTypeRepr
+from mtypes import Typ, TypeVars, TypeVarDef, Any, Void, UnboundType
+from typerepr import (TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr,
+                      CommonTypeRepr)
 from lex import Token, Name
+
+
+none = Token('') # Empty token
 
 
 # Parse a type. Return (type, index after type).
@@ -128,8 +133,8 @@ class TypeParser:
             langle = self.skip()
             
             while True:
-                t = self.parse_type()
-                args.append(t)
+                typ = self.parse_type()
+                args.append(typ)
                 if self.current_token_str() != ',':
                     break
                 commas.append(self.skip())
@@ -160,7 +165,7 @@ class TypeParser:
         else:
             self.parse_error()
     
-    Token expect_type(self, Type typ):
+    Token expect_type(self, type typ):
         if self.partial_shr:
             self.parse_error()
         elif isinstance(self.current_token(), typ):

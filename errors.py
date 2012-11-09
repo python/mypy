@@ -1,5 +1,4 @@
 import os.path
-from os import base_name, separator
 
 
 # Representation of a single error message.
@@ -64,8 +63,8 @@ class Errors:
     void set_ignore_prefix(self, str prefix):
         prefix = os.path.normpath(prefix)
         # Add separator to the end, if not given.
-        if base_name(prefix) != '':
-            prefix += separator
+        if os.path.basename(prefix) != '':
+            prefix += os.sep
         self.ignore_prefix = prefix
     
     # Set the path of the current file.
@@ -88,15 +87,15 @@ class Errors:
     
     # Remove the topmost item from the import context.
     void pop_import_context(self):
-        self.import_ctx.remove_at(-1)
+        self.import_ctx.pop()
     
     # Return a copy of the import context.
     list<tuple<str, int>> import_context(self):
-        return self.import_ctx.copy()
+        return self.import_ctx[:]
     
     # Replace the entire import context with a new value.
     void set_import_context(self, list<tuple<str, int>> ctx):
-        self.import_ctx = ctx.copy()
+        self.import_ctx = ctx[:]
     
     # Report a message at the given line using the current error context.
     void report(self, int line, str message):
@@ -239,16 +238,9 @@ class CompileError(Exception):
 # Perform a stable sort of a sequence, i.e. if the original sequence has
 # a[n] == a[n+m] (when comparing using the comparison function f), in the
 # sorted sequence item a[n] will be at an earlier index than a[n + m].
-list<T> stable_sort<T>(Sequence<T> a, func<T, T, bool> f):
-    list<tuple<T, int>> a2 = []
-    for i in range(len(a)):
-        a2.append((a[i], i))
-    a2 = sorted(a2, lambda tuple<T, int> s, tuple<T, int> t:
-        f(s[0], t[0]) or (not f(t[0], s[0]) and s[1] < t[1]))
-    list<T> a3 = []
-    for x, y in a2:
-        a3.append(x)
-    return a3
+list<T> stable_sort<T>(sequence<T> a, func<T, T, bool> f):
+    # TODO implement
+    return list(a)
 
 
 # If path starts with prefix, return copy of path with the prefix removed.
