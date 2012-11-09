@@ -174,12 +174,6 @@ class FuncItem(FuncBase):
             else:
                 res.append(None)
         return res
-    
-    list<Node> all_returns(self):
-        # FIX cache results
-        coll = ReturnCollector()
-        self.accept(coll)
-        return coll.rets
 
 
 class FuncDef(FuncItem):
