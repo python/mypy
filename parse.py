@@ -1,4 +1,4 @@
-from lex import (Token, lex, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
+from lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
                  StrLit, FloatLit, Op, Indent, Keyword, Name, Punct, LexError)
 from nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
@@ -64,7 +64,7 @@ class Parser:
             self.errors.set_file('<input>')
     
     MypyFile parse(self, str s):
-        self.tok = lex(s)
+        self.tok = lex.lex(s)
         self.ind = 0
         file = self.parse_file()
         if self.raise_on_error and self.errors.is_errors():
