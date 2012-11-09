@@ -267,8 +267,10 @@ class Lexer:
             maxlen = max(maxlen, len(s3))
             self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
         elif len(s1) > len(s2):
+            # Integer literal.
             self.add_token(IntLit(s1))
         else:
+            # Float literal.
             self.add_token(FloatLit(s2))
     
     Pattern name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*') # Used by lexName
@@ -349,6 +351,7 @@ class Lexer:
                  str prefix=''):
         s3 = self.match(re3)
         if s3 != '':
+            # Triple-quoted string literal.
             self.lex_triple_quoted_str(re3end, prefix)
         else:
             # Single or double quoted string literal.
@@ -513,6 +516,9 @@ class Lexer:
                     t = type
                     s = s2
         if s == '':
+            # Could not match any token; report an invalid character. This is
+            # reached at least if the current character is '!' not followed by
+            # '='.
             self.add_token(LexError(self.s[self.i], INVALID_CHARACTER))
         else:
             self.add_token(t(s))
