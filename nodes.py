@@ -112,9 +112,9 @@ class OverloadedFuncDef(FuncBase):
 
 class FuncItem(FuncBase):
     # Fixed argument names
-    list<Var> args = []
+    list<Var> args
     # Initialization expessions for fixed args; nil if no initialiser
-    list<AssignmentStmt> init = []
+    list<AssignmentStmt> init
     int min_args           # Minimum number of arguments
     int max_pos            # Maximum number of positional arguments, -1 if
     # no explicit limit
@@ -231,7 +231,9 @@ class TypeDef(Node):
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
-    void __init__(self, str name, Block defs, TypeVars type_vars=None, list<Typ> base_types=[], bool is_interface=False):
+    void __init__(self, str name, Block defs, TypeVars type_vars=None, list<Typ> base_types=None, bool is_interface=False):
+        if not base_types:
+            base_types = []
         self.name = name
         self.defs = defs
         self.type_vars = type_vars
@@ -312,7 +314,7 @@ class ExpressionStmt(Node):
 
 
 class AssignmentStmt(Node):
-    list<Node> lvalues = []
+    list<Node> lvalues
     Node rvalue
     
     void __init__(self, list<Node> lvalues, Node rvalue):
@@ -352,8 +354,8 @@ class WhileStmt(Node):
 
 
 class ForStmt(Node):
-    list<Var> index = [] # Var nodes
-    Node expr             # Iterated expression
+    list<Var> index    # Var nodes
+    Node expr          # Iterated expression
     Block body
     Block else_body
     list<Annotation> types
@@ -458,10 +460,10 @@ class RaiseStmt(Node):
 
 
 class TryStmt(Node):
-    Block body                 # Try body
-    list<Node> types = []     # Except type expressions
-    list<Var> vars = []       # Except variable names
-    list<Block> handlers = [] # Except bodies
+    Block body                # Try body
+    list<Node> types          # Except type expressions
+    list<Var> vars            # Except variable names
+    list<Block> handlers      # Except bodies
     Block else_body
     Block finally_body
     
@@ -592,7 +594,9 @@ class CallExpr(Node):
     list<tuple<NameExpr, Node>> keyword_args
     Node dict_var_arg
     
-    void __init__(self, Node callee, list<Node> args, bool is_var_arg=False, list<tuple<NameExpr, Node>> keyword_args=[], Node dict_var_arg=None):
+    void __init__(self, Node callee, list<Node> args, bool is_var_arg=False, list<tuple<NameExpr, Node>> keyword_args=None, Node dict_var_arg=None):
+        if not keyword_args:
+            keyword_args = []
         self.callee = callee
         self.args = args
         self.is_var_arg = is_var_arg
@@ -691,7 +695,7 @@ class FuncExpr(FuncItem):
 
 # List literal expression [...] or <type> [...]
 class ListExpr(Node):
-    list<Node> items = []
+    list<Node> items 
     Typ typ # nil if implicit type
     
     void __init__(self, list<Node> items, Typ typ=None):
@@ -868,30 +872,38 @@ class TypeInfo(Node, AccessorNode):
     bool is_interface  # Is this a interface type?
     TypeDef defn  # Corresponding TypeDef
     TypeInfo base = None # Superclass or nil (not interface)
-    set<TypeInfo> subtypes = set() # Direct subclasses
+    set<TypeInfo> subtypes # Direct subclasses
     
-    dict<str, Var> vars = {}     # Member variables; also slots
-    dict<str, FuncBase> methods = {}
+    dict<str, Var> vars     # Member variables; also slots
+    dict<str, FuncBase> methods
     
     # TypeInfos of base interfaces
-    list<TypeInfo> interfaces = []
+    list<TypeInfo> interfaces
     
     # Information related to type annotations.
     
     # Generic type variable names
-    list<str> type_vars = []
+    list<str> type_vars
     
     # Type variable bounds (each may be nil)
     # TODO implement these
-    list<Typ> bounds = []
+    list<Typ> bounds
     
     # Inherited generic types (Instance or UnboundType or nil). The first base
     # is the superclass, and the rest are interfaces.
-    list<Typ> bases = []
+    list<Typ> bases
     
     
     # Construct a TypeInfo.
-    void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods, TypeDef defn):
+    void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
+                  TypeDef defn):
+        self.subtypes = set()
+        self.vars = {}
+        self.methods = {}
+        self.interfaces = []
+        self.type_vars = []
+        self.bounds = []
+        self.bases = []
         self.full_name = defn.full_name
         self.is_interface = defn.is_interface
         self.vars = vars

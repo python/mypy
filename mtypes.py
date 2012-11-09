@@ -24,7 +24,9 @@ class UnboundType(Typ):
     str name
     list<Typ> args
     
-    void __init__(self, str name, list<Typ> args=[], int line=-1, any repr=None):
+    void __init__(self, str name, list<Typ> args=None, int line=-1, any repr=None):
+        if not args:
+            args = []
         self.name = name
         self.args = args
         super().__init__(line, repr)
