@@ -1,0 +1,2439 @@
+-- Test cases for parser. Each test case consists of two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the parser.
+--
+-- Lines starting with "--" in this file will be ignored, except for lines
+-- starting with "----" that are not ignored. The first two dashes of these
+-- lines are interpreted as escapes and removed.
+
+[case testEmptyFile]
+[out]
+MypyFile:1(
+)
+
+[case testExpressionStatement]
+1
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IntExpr(1)))
+
+[case testAssignment]
+x = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x))
+    IntExpr(1)))
+
+[case testExpressionBasics]
+x = f(1, None)
+123 * (2 + x)
+"hello".lower()
+-1.23
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x))
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        IntExpr(1)
+        NameExpr(None))))
+  ExpressionStmt:2(
+    OpExpr:2(
+      *
+      IntExpr(123)
+      ParenExpr:2(
+        OpExpr:2(
+          +
+          IntExpr(2)
+          NameExpr(x)))))
+  ExpressionStmt:3(
+    CallExpr:3(
+      MemberExpr:3(
+        StrExpr(hello)
+        lower)
+      Args()))
+  ExpressionStmt:4(
+    UnaryExpr:4(
+      -
+      FloatExpr(1.23))))
+
+[case testSingleQuotedStr]
+''
+'foo'
+'foo\
+bar'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr())
+  ExpressionStmt:2(
+    StrExpr(foo))
+  ExpressionStmt:3(
+    StrExpr(foobar)))
+
+[case testDoubleQuotedStr]
+""
+"foo"
+"foo\
+bar"
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr())
+  ExpressionStmt:2(
+    StrExpr(foo))
+  ExpressionStmt:3(
+    StrExpr(foobar)))
+
+[case testTripleQuotedStr]
+''''''
+'''foo'''
+'''foo\
+bar'''
+'''\nfoo
+bar'''
+'''fo''bar'''
+""""""
+"""foo"""
+"""foo\
+bar"""
+"""\nfoo
+bar"""
+"""fo""bar"""
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr())
+  ExpressionStmt:2(
+    StrExpr(foo))
+  ExpressionStmt:3(
+    StrExpr(foobar))
+  ExpressionStmt:4(
+    StrExpr(\nfoo\u000abar))
+  ExpressionStmt:6(
+    StrExpr(fo''bar))
+  ExpressionStmt:7(
+    StrExpr())
+  ExpressionStmt:8(
+    StrExpr(foo))
+  ExpressionStmt:9(
+    StrExpr(foobar))
+  ExpressionStmt:10(
+    StrExpr(\nfoo\u000abar))
+  ExpressionStmt:12(
+    StrExpr(fo""bar)))
+
+[case testRawStr]
+r'x\n\''
+r"x\n\""
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(x\n'))
+  ExpressionStmt:2(
+    StrExpr(x\n")))
+--" fix syntax highlight
+
+[case testBytes]
+b'foo'
+b"foo\
+bar"
+br'x\n\''
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(foo))
+  ExpressionStmt:2(
+    StrExpr(foobar))
+  ExpressionStmt:3(
+    StrExpr(x\n')))
+
+[case testEscapesInStrings]
+'\r\n\t\x2f\u123f'
+b'\r\n\t\x2f\u123f'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(\u000d\u000a\u0009/\u123f))
+  ExpressionStmt:2(
+    StrExpr(\u000d\u000a\u0009/\\u123f)))
+-- Note \\u in the b'...' case (\u sequence not translated)
+
+[case testEscapedQuote]
+'\''
+--' fix syntax highlight
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(')))
+--'
+
+[case testOctalEscapes]
+'\0\1\177\1234'
+b'\1\476'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(\u0000\u0001\u007fS4))
+  ExpressionStmt:2(
+    StrExpr(\u0001>)))
+
+[case testArrays]
+a = []
+a = [1, 2]
+a[[1]] = a[2]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(a))
+    ListExpr:1())
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(a))
+    ListExpr:2(
+      IntExpr(1)
+      IntExpr(2)))
+  AssignmentStmt:3(
+    Lvalues(
+      IndexExpr:3(
+        NameExpr(a)
+        ListExpr:3(
+          IntExpr(1))))
+    IndexExpr:3(
+      NameExpr(a)
+      IntExpr(2))))
+
+[case testTuples]
+()
+(1,)
+(1, foo)
+a, b = 1, (2, 3)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1())
+  ExpressionStmt:2(
+    ParenExpr:2(
+      TupleExpr:2(
+        IntExpr(1))))
+  ExpressionStmt:3(
+    ParenExpr:3(
+      TupleExpr:3(
+        IntExpr(1)
+        NameExpr(foo))))
+  AssignmentStmt:4(
+    Lvalues(
+      TupleExpr:4(
+        NameExpr(a)
+        NameExpr(b)))
+    TupleExpr:4(
+      IntExpr(1)
+      ParenExpr:4(
+        TupleExpr:4(
+          IntExpr(2)
+          IntExpr(3))))))
+
+[case testSimpleFunction]
+def main():
+  1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    main
+    Block:1(
+      ExpressionStmt:2(
+        IntExpr(1)))))
+
+[case testPass]
+def f():
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      PassStmt:2())))
+
+[case testIf]
+if 1:
+    2
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      ExpressionStmt:2(
+        IntExpr(2)))))
+
+[case testIfElse]
+if 1:
+    2
+else:
+    3
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      ExpressionStmt:2(
+        IntExpr(2)))
+    Else(
+      ExpressionStmt:4(
+        IntExpr(3)))))
+
+[case testIfElif]
+if 1:
+    2
+elif 3:
+    4
+elif 5:
+    6
+else:
+    7
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      ExpressionStmt:2(
+        IntExpr(2)))
+    If(
+      IntExpr(3))
+    Then(
+      ExpressionStmt:4(
+        IntExpr(4)))
+    If(
+      IntExpr(5))
+    Then(
+      ExpressionStmt:6(
+        IntExpr(6)))
+    Else(
+      ExpressionStmt:8(
+        IntExpr(7)))))
+
+[case testWhile]
+while 1:
+    pass
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(1)
+    Block:1(
+      PassStmt:2())))
+
+[case testReturn]
+def f():
+    return 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ReturnStmt:2(
+        IntExpr(1)))))
+        
+
+[case testReturnWithoutValue]
+def f():
+    return
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ReturnStmt:2())))
+
+[case testBreak]
+while 1:
+    break
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(1)
+    Block:1(
+      BreakStmt:2())))
+
+[case testLargeBlock]
+if 1:
+    x = 1
+    while 2:
+        pass
+    y = 2
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      AssignmentStmt:2(
+        Lvalues(
+          NameExpr(x))
+        IntExpr(1))
+      WhileStmt:3(
+        IntExpr(2)
+        Block:3(
+          PassStmt:4()))
+      AssignmentStmt:5(
+        Lvalues(
+          NameExpr(y))
+        IntExpr(2)))))
+
+[case testSimpleClass]
+class A:
+    def f(self):
+        pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Block:2(
+        PassStmt:3()))))
+
+[case testGlobalVarWithType]
+int x
+bool y = False
+any a
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(int?))
+  VarDef:2(
+    Var(y)
+    Type(bool?)
+    NameExpr(False))
+  VarDef:3(
+    Var(a)
+    Type(any)))
+
+[case testLocalVarWithType]
+def f():
+  int x
+  bool y = False
+  any a
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      VarDef:2(
+        Var(x)
+        Type(int?))
+      VarDef:3(
+        Var(y)
+        Type(bool?)
+        NameExpr(False))
+      VarDef:4(
+        Var(a)
+        Type(any)))))
+
+[case testFunctionDefWithType]
+int f(str y):
+  return
+class A:
+  x f(self, int a, any b):
+    pass
+  any g(self):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(y))
+    Type:1(def (str?) -> int?)
+    Block:1(
+      ReturnStmt:2()))
+  TypeDef:3(
+    A
+    FuncDef:4(
+      f
+      Args(
+        Var(self)
+        Var(a)
+        Var(b))
+      Type:4(def (any, int?, any) -> x?)
+      Block:4(
+        PassStmt:5()))
+    FuncDef:6(
+      g
+      Args(
+        Var(self))
+      Type:6(def (any) -> any)
+      Block:6(
+        PassStmt:7()))))
+
+[case testFuncWithVoidReturn]
+void f():
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Type:1(def ())
+    Block:1(
+      PassStmt:2())))
+
+[case testVarDefWithGenericType]
+list<str> x
+dict<int, any> y = None
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(list?<str?>))
+  VarDef:2(
+    Var(y)
+    Type(dict?<int?, any>)
+    NameExpr(None)))
+
+[case testSignatureWithGenericTypes]
+a<b<c>, d> f(t<any, x> y):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(y))
+    Type:1(def (t?<any, x?>) -> a?<b?<c?>, d?>)
+    Block:1(
+      PassStmt:2())))
+
+[case testDoubleGtInGenericType]
+a<b<c>> x
+a<b<c<d>>> y
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(a?<b?<c?>>))
+  VarDef:2(
+    Var(y)
+    Type(a?<b?<c?<d?>>>)))
+
+[case testParsingExpressionsWithLessAndGreaterThan]
+# The operators < > can sometimes be confused with generic types.
+x = a < b > c
+f(x < b, y > c)
+a < b > 1
+x < b, y > 2
+(a < b > c)
+[out]
+MypyFile:1(
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(x))
+    OpExpr:2(
+      >
+      OpExpr:2(
+        <
+        NameExpr(a)
+        NameExpr(b))
+      NameExpr(c)))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(f)
+      Args(
+        OpExpr:3(
+          <
+          NameExpr(x)
+          NameExpr(b))
+        OpExpr:3(
+          >
+          NameExpr(y)
+          NameExpr(c)))))
+  ExpressionStmt:4(
+    OpExpr:4(
+      >
+      OpExpr:4(
+        <
+        NameExpr(a)
+        NameExpr(b))
+      IntExpr(1)))
+  ExpressionStmt:5(
+    TupleExpr:5(
+      OpExpr:5(
+        <
+        NameExpr(x)
+        NameExpr(b))
+      OpExpr:5(
+        >
+        NameExpr(y)
+        IntExpr(2))))
+  ExpressionStmt:6(
+    ParenExpr:6(
+      OpExpr:6(
+        >
+        OpExpr:6(
+          <
+          NameExpr(a)
+          NameExpr(b))
+        NameExpr(c)))))
+
+[case testLineContinuation]
+if (1 +
+    2):
+  pass
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      ParenExpr:1(
+        OpExpr:1(
+          +
+          IntExpr(1)
+          IntExpr(2))))
+    Then(
+      PassStmt:3())))
+
+[case testMultipleVarDef]
+int x, a<c> y = z
+a<c> xx, any z, int i = 1
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(int?)
+    Var(y)
+    Type(a?<c?>)
+    NameExpr(z))
+  VarDef:2(
+    Var(xx)
+    Type(a?<c?>)
+    Var(z)
+    Type(any)    
+    Var(i)
+    Type(int?)
+    IntExpr(1)))
+
+[case testSimpleCasts]
+(x)y
+(x)(y)
+(x)*y
+(a<b>)c
+(any)d
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CastExpr:1(
+      NameExpr(y)
+      x?))
+  ExpressionStmt:2(
+    CastExpr:2(
+      ParenExpr:2(
+        NameExpr(y))
+      x?))
+  ExpressionStmt:3(
+    OpExpr:3(
+      *
+      ParenExpr:3(
+        NameExpr(x))
+      NameExpr(y)))
+  ExpressionStmt:4(
+    CastExpr:4(
+      NameExpr(c)
+      a?<b?>))
+  ExpressionStmt:5(
+    CastExpr:5(
+      NameExpr(d)
+      any)))
+
+[case testCastPrecedence]
+(x)y[1]
+(x)y.z
+(x)y(z)
+(x)y * z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CastExpr:1(
+      IndexExpr:1(
+        NameExpr(y)
+        IntExpr(1))
+      x?))
+  ExpressionStmt:2(
+    CastExpr:2(
+      MemberExpr:2(
+        NameExpr(y)
+        z)
+      x?))
+  ExpressionStmt:3(
+    CastExpr:3(
+      CallExpr:3(
+        NameExpr(y)
+        Args(
+          NameExpr(z)))
+      x?))
+  ExpressionStmt:4(
+    OpExpr:4(
+      *
+      CastExpr:4(
+        NameExpr(y)
+        x?)
+      NameExpr(z))))
+
+[case testEmptyClass]
+class C:
+  pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    C
+    PassStmt:2()))
+
+[case testGenericClass]
+class C<T>:
+  pass
+class D<T, S>:
+  pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    C
+    TypeVars(
+      T)
+    PassStmt:2())
+  TypeDef:3(
+    D
+    TypeVars(
+      T
+      S)
+    PassStmt:4()))
+
+[case testSimpleTypeApplication]
+f<t>()
+g<t, s>(x)
+g<a<c>, any>()
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      TypeApplication:1(
+        NameExpr(f)
+        Types(
+          t?))
+      Args()))
+  ExpressionStmt:2(
+    CallExpr:2(
+      TypeApplication:2(
+        NameExpr(g)
+        Types(
+          t?
+          s?))
+      Args(
+        NameExpr(x))))
+  ExpressionStmt:3(
+    CallExpr:3(
+      TypeApplication:3(
+        NameExpr(g)
+        Types(
+          a?<c?>
+          any))
+      Args())))
+
+[case testTypeApplicationSpecialCases]
+(f)<t>()
+1 ** f<t>()
+f < t > -1
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      TypeApplication:1(
+        ParenExpr:1(
+          NameExpr(f))
+        Types(
+          t?))
+      Args()))
+  ExpressionStmt:2(
+    OpExpr:2(
+      **
+      IntExpr(1)
+      CallExpr:2(
+        TypeApplication:2(
+          NameExpr(f)
+          Types(
+            t?))
+        Args())))
+  ExpressionStmt:3(
+    OpExpr:3(
+      >
+      OpExpr:3(
+        <
+        NameExpr(f)
+        NameExpr(t))
+      UnaryExpr:3(
+        -
+        IntExpr(1)))))
+
+[case testOperatorPrecedence]
+a | b ^ c
+a & b << c
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      |
+      NameExpr(a)
+      OpExpr:1(
+        ^
+        NameExpr(b)
+        NameExpr(c))))
+  ExpressionStmt:2(
+    OpExpr:2(
+      &
+      NameExpr(a)
+      OpExpr:2(
+        <<
+        NameExpr(b)
+        NameExpr(c)))))
+
+[case testOperatorAssociativity]
+1 - 2 + 3
+1 << 2 << 3
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      +
+      OpExpr:1(
+        -
+        IntExpr(1)
+        IntExpr(2))
+      IntExpr(3)))
+  ExpressionStmt:2(
+    OpExpr:2(
+      <<
+      OpExpr:2(
+        <<
+        IntExpr(1)
+        IntExpr(2))
+      IntExpr(3))))
+
+[case testUnaryOperators]
+-2 * +3 * ~3 * 2
+~3**2
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      *
+      OpExpr:1(
+        *
+        OpExpr:1(
+          *
+          UnaryExpr:1(
+            -
+            IntExpr(2))
+          UnaryExpr:1(
+            +
+            IntExpr(3)))
+        UnaryExpr:1(
+          ~
+          IntExpr(3)))
+      IntExpr(2)))
+  ExpressionStmt:2(
+    UnaryExpr:2(
+      ~
+      OpExpr:2(
+        **
+        IntExpr(3)
+        IntExpr(2)))))
+
+[case testSingleLineBodies]
+if 1: pass
+while 1: pass
+def f(): pass
+int g(): return 1
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      PassStmt:1()))
+  WhileStmt:2(
+    IntExpr(1)
+    Block:2(
+      PassStmt:2()))
+  FuncDef:3(
+    f
+    Block:3(
+      PassStmt:3()))
+  FuncDef:4(
+    g
+    Type:4(def () -> int?)
+    Block:4(
+      ReturnStmt:4(
+        IntExpr(1)))))
+
+[case testForStatement]
+for x in y:
+  pass
+for x, y in z:
+  1
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    NameExpr(y)
+    Block:1(
+      PassStmt:2()))
+  ForStmt:3(
+    Var(x)
+    Var(y)
+    NameExpr(z)
+    Block:3(
+      ExpressionStmt:4(
+        IntExpr(1)))))
+
+[case testForStatementWithTypeDecls]
+for int x in y:
+  pass
+for c<x> f, any g in [z]:
+  pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    Type:1(int?)
+    NameExpr(y)
+    Block:1(
+      PassStmt:2()))
+  ForStmt:3(
+    Var(f)
+    Var(g)
+    Type:3(c?<x?>)
+    Type:3(any)
+    ListExpr:3(
+      NameExpr(z))
+    Block:3(
+      PassStmt:4())))
+
+[case testGlobalDecl]
+global x
+def f():
+  global x, y
+[out]
+MypyFile:1(
+  GlobalDecl:1(
+    x)
+  FuncDef:2(
+    f
+    Block:2(
+      GlobalDecl:3(
+        x
+        y))))
+
+[case testRaiseStatement]
+raise foo
+[out]
+MypyFile:1(
+  RaiseStmt:1(
+    NameExpr(foo)))
+
+[case testRaiseWithoutArg]
+try:
+  pass
+except:
+  raise
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    Block:3(
+      RaiseStmt:4())))
+    
+[case testRaiseFrom]
+raise e from x
+[out]
+MypyFile:1(
+  RaiseStmt:1(
+    NameExpr(e)
+    NameExpr(x)))
+
+[case testSuperClass]
+class A(B):
+  pass
+class A<T>(B<T>, C<any, d<x>>):
+  pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    BaseType(
+      B?)
+    PassStmt:2())
+  TypeDef:3(
+    A
+    TypeVars(
+      T)
+    BaseType(
+      B?<T?>
+      C?<any, d?<x?>>)
+    PassStmt:4()))
+
+[case testSimpleGenericFunction]
+T f<T>(T x):
+  return x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Type:1(def <T> (T?) -> T?)
+    Block:1(
+      ReturnStmt:2(
+        NameExpr(x)))))
+
+[case testComplexGenericFunction]
+def g<T, S>(t, s):
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    Args(
+      Var(t)
+      Var(s))
+    Type:1(def <T, S> (any, any) -> any)
+    Block:1(
+      PassStmt:2())))
+
+[case testIsNot]
+x is not y
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      is not
+      NameExpr(x)
+      NameExpr(y))))
+
+[case testNotAsRightOperand]
+x in not y
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      in
+      NameExpr(x)
+      UnaryExpr:1(
+        not
+        NameExpr(y)))))
+
+[case testNotIn]
+x not in y
+not x not in y
+x not in y | z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      not in
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:2(
+    UnaryExpr:2(
+      not
+      OpExpr:2(
+        not in
+        NameExpr(x)
+        NameExpr(y))))
+  ExpressionStmt:3(
+    OpExpr:3(
+      not in
+      NameExpr(x)
+      OpExpr:3(
+        |
+        NameExpr(y)
+        NameExpr(z)))))
+
+[case testNotAsBinaryOp]
+x not y
+x not is y
+[out]
+<input>, line 1: Parse error before "y"
+<input>, line 2: Parse error before is
+
+[case testBinaryNegAsBinaryOp]
+1 ~ 2
+[out]
+<input>, line 1: Parse error before ~
+
+[case testDictionaryExpression]
+{}
+{1:x}
+{1:x, 2 or 1:2 and 3}
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    DictExpr:1())
+  ExpressionStmt:2(
+    DictExpr:2(
+      IntExpr(1)
+      NameExpr(x)))
+  ExpressionStmt:3(
+    DictExpr:3(
+      IntExpr(1)
+      NameExpr(x)
+      OpExpr:3(
+        or
+        IntExpr(2)
+        IntExpr(1))
+      OpExpr:3(
+        and
+        IntExpr(2)
+        IntExpr(3)))))
+
+[case testDictionaryExpressionWithTypes]
+<a<b>, any> {}
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    DictExpr:1(
+      KeyType(
+        a?<b?>)
+      ValueType(
+        any))))
+
+[case testImport]
+import x
+import y.z.foo, __foo__.bar
+[out]
+MypyFile:1(
+  Import:1(x : x)
+  Import:2(y.z.foo : y.z.foo, __foo__.bar : __foo__.bar))
+
+[case testTypesWithQualifiedNames]
+x.y x
+x.y<a.b.c> y = 1
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(x.y?))
+  VarDef:2(
+    Var(y)
+    Type(x.y?<a.b.c?>)
+    IntExpr(1)))
+
+[case testQualifiedTypesInCasts]
+(x.y.z)1
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CastExpr:1(
+      IntExpr(1)
+      x.y.z?)))
+
+[case testQualifiedTypesInTypeApp]
+f<x.y, a.b.c>()
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      TypeApplication:1(
+        NameExpr(f)
+        Types(
+          x.y?
+          a.b.c?))
+      Args())))
+
+[case testImportFrom]
+from m import x
+from m.n import x, y, z
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [x : x])
+  ImportFrom:2(m.n, [x : x, y : y, z : z]))
+
+[case testImportFromAs]
+from m import x as y
+from x import y, z as a, c
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [x : y])
+  ImportFrom:2(x, [y : y, z : a, c : c]))
+
+[case testImportStar]
+from x import *
+[out]
+MypyFile:1(
+  ImportAll:1(x))
+
+[case testImportsInDifferentPlaces]
+1
+import x
+def f():
+  from x import y
+  from z import *
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IntExpr(1))
+  Import:2(x : x)
+  FuncDef:3(
+    f
+    Block:3(
+      ImportFrom:4(x, [y : y])
+      ImportAll:5(z))))
+
+[case testImportWithExtraComma]
+from x import (y, z,)
+[out]
+MypyFile:1(
+  ImportFrom:1(x, [y : y, z : z]))
+
+[case testDefaultArgs]
+def f(x=1):
+  pass
+def g(x, y=1+2, z=(1, 2)):
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Init(
+      AssignmentStmt:1(
+        Lvalues(
+          NameExpr(x))
+        IntExpr(1)))
+    Block:1(
+      PassStmt:2()))
+  FuncDef:3(
+    g
+    Args(
+      Var(x)
+      Var(y)
+      Var(z))
+    Init(
+      AssignmentStmt:3(
+        Lvalues(
+          NameExpr(y))
+        OpExpr:3(
+          +
+          IntExpr(1)
+          IntExpr(2)))
+      AssignmentStmt:3(
+        Lvalues(
+          NameExpr(z))
+        ParenExpr:3(
+          TupleExpr:3(
+            IntExpr(1)
+            IntExpr(2)))))
+    Block:3(
+      PassStmt:4())))
+
+[case testTryFinally]
+try:
+  1
+finally:
+  2
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        IntExpr(1)))
+    Finally(
+      ExpressionStmt:4(
+        IntExpr(2)))))
+
+[case testTry]
+try:
+  1
+except x:
+  2
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        IntExpr(1)))
+    NameExpr(x)
+    Block:3(
+      ExpressionStmt:4(
+        IntExpr(2)))))
+
+[case testComplexTry]
+try:
+  1
+except x as y:
+  2
+except x.y:
+  3
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        IntExpr(1)))
+    NameExpr(x)
+    Var(y)
+    Block:3(
+      ExpressionStmt:4(
+        IntExpr(2)))
+    MemberExpr:5(
+      NameExpr(x)
+      y)
+    Block:5(
+      ExpressionStmt:6(
+        IntExpr(3)))))
+
+[case testGeneratorExpression]
+x for y in z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    GeneratorExpr:1(
+      NameExpr(x)
+      Var(y)
+      NameExpr(z))))
+
+[case testListComprehension]
+x=[x for y in z]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x))
+    ListComprehension:1(
+      GeneratorExpr:1(
+        NameExpr(x)
+        Var(y)
+        NameExpr(z)))))
+      
+[case testComplexListComprehension]
+x=[(x, y) for y, z in 1, 2]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x))
+    ListComprehension:1(
+      GeneratorExpr:1(
+        ParenExpr:1(
+          TupleExpr:1(
+            NameExpr(x)
+            NameExpr(y)))
+        Var(y)
+        Var(z)
+        TupleExpr:1(
+          IntExpr(1)
+          IntExpr(2))))))
+
+[case testSlices]
+x[1:2]
+x[:1]
+x[1:]
+x[:]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(x)
+      SliceExpr:1(
+        IntExpr(1)
+        IntExpr(2))))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x)
+      SliceExpr:2(
+        <empty>
+        IntExpr(1))))
+  ExpressionStmt:3(
+    IndexExpr:3(
+      NameExpr(x)
+      SliceExpr:3(
+        IntExpr(1)
+        <empty>)))
+  ExpressionStmt:4(
+    IndexExpr:4(
+      NameExpr(x)
+      SliceExpr:4(
+        <empty>
+        <empty>))))
+
+[case testSliceWithStride]
+x[1:2:3]
+x[1::2]
+x[:1:2]
+x[::2]
+x[1:2:]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(x)
+      SliceExpr:1(
+        IntExpr(1)
+        IntExpr(2)
+        IntExpr(3))))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x)
+      SliceExpr:2(
+        IntExpr(1)
+        <empty>
+        IntExpr(2))))
+  ExpressionStmt:3(
+    IndexExpr:3(
+      NameExpr(x)
+      SliceExpr:3(
+        <empty>
+        IntExpr(1)
+        IntExpr(2))))
+  ExpressionStmt:4(
+    IndexExpr:4(
+      NameExpr(x)
+      SliceExpr:4(
+        <empty>
+        <empty>
+        IntExpr(2))))
+  ExpressionStmt:5(
+    IndexExpr:5(
+      NameExpr(x)
+      SliceExpr:5(
+        IntExpr(1)
+        IntExpr(2)))))
+
+[case testYield]
+def f():
+    yield x + 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      YieldStmt:2(
+        OpExpr:2(
+          +
+          NameExpr(x)
+          IntExpr(1))))))
+
+[case testDel]
+del x
+del x[0], y[1]
+[out]
+MypyFile:1(
+  DelStmt:1(
+    NameExpr(x))
+  DelStmt:2(
+    TupleExpr:2(
+      IndexExpr:2(
+        NameExpr(x)
+        IntExpr(0))
+      IndexExpr:2(
+        NameExpr(y)
+        IntExpr(1)))))
+
+[case testExtraCommas]
+1, 2,
++[1, 2,]
+f(1,)
+{1:2,}
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      IntExpr(1)
+      IntExpr(2)))
+  ExpressionStmt:2(
+    UnaryExpr:2(
+      +
+      ListExpr:2(
+        IntExpr(1)
+        IntExpr(2))))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(f)
+      Args(
+        IntExpr(1))))
+  ExpressionStmt:4(
+    DictExpr:4(
+      IntExpr(1)
+      IntExpr(2))))
+
+[case testExtraCommaInFunc]
+def f(x,):
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Block:1(
+      PassStmt:2())))
+
+[case testLambda]
+lambda: 1
+lambda x: y + 1
+lambda x, y: 1
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Block:1(
+        ExpressionStmt:-1(
+          IntExpr(1)))))
+  ExpressionStmt:2(
+    FuncExpr:2(
+      Args(
+        Var(x))
+      Block:2(
+        ExpressionStmt:-1(
+          OpExpr:2(
+            +
+            NameExpr(y)
+            IntExpr(1))))))
+  ExpressionStmt:3(
+    FuncExpr:3(
+      Args(
+        Var(x)
+        Var(y))
+      Block:3(
+        ExpressionStmt:-1(
+          IntExpr(1))))))
+
+[case testComplexLambda]
+lambda x=2: x
+lambda int x: y
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(x))
+      Init(
+        AssignmentStmt:1(
+          Lvalues(
+            NameExpr(x))
+          IntExpr(2)))
+      Block:1(
+        ExpressionStmt:-1(
+          NameExpr(x)))))
+  ExpressionStmt:2(
+    FuncExpr:2(
+      Args(
+        Var(x))
+      Type:2(def (int?) -> any)
+      Block:2(
+        ExpressionStmt:-1(
+          NameExpr(y))))))
+
+[case testLambdaPrecedence]
+lambda x: 1, 2
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      FuncExpr:1(
+        Args(
+          Var(x))
+        Block:1(
+          ExpressionStmt:-1(
+            IntExpr(1))))
+      IntExpr(2))))
+
+[case testForIndicesInParens]
+for (i, j) in x:
+  pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(i)
+    Var(j)
+    NameExpr(x)
+    Block:1(
+      PassStmt:2())))
+
+[case testGeneratorWithCondition]
+x for y in z if 0
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    GeneratorExpr:1(
+      NameExpr(x)
+      Var(y)
+      NameExpr(z)
+      IntExpr(0))))
+
+[case testListComprehensionWithCondition]
+raise [x for y in z if 0]
+[out]
+MypyFile:1(
+  RaiseStmt:1(
+    ListComprehension:1(
+      GeneratorExpr:1(
+        NameExpr(x)
+        Var(y)
+        NameExpr(z)
+        IntExpr(0)))))
+
+[case testWithStatement]
+with open('foo') as f:
+  pass
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      CallExpr:1(
+        NameExpr(open)
+        Args(
+          StrExpr(foo))))
+    Name(
+      Var(f))
+    Block:1(
+      PassStmt:2())))
+
+[case testWithStatementWithoutTarget]
+with foo:
+  pass
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(foo))
+    Block:1(
+      PassStmt:2())))
+
+[case testHexAndOctLiterals]
+0xa, 0Xaf, 0o7, 0O12
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      IntExpr(10)
+      IntExpr(175)
+      IntExpr(7)
+      IntExpr(10))))
+
+[case testImportFromWithParens]
+from x import (y)
+from x import (y,
+               z)
+[out]
+MypyFile:1(
+  ImportFrom:1(x, [y : y])
+  ImportFrom:2(x, [y : y, z : z]))
+
+[case testContinueStmt]
+while 1:
+  continue
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(1)
+    Block:1(
+      ContinueStmt:2())))
+
+[case testStrLiteralConcatenate]
+'f' 'bar'
+('x'
+ 'y'
+ 'z')
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(fbar))
+  ExpressionStmt:2(
+    ParenExpr:2(
+      StrExpr(xyz))))
+
+[case testCatchAllExcept]
+try:
+  1
+except:
+  pass
+try:
+  1
+except x:
+  pass
+except:
+  2
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        IntExpr(1)))
+    Block:3(
+      PassStmt:4()))
+  TryStmt:5(
+    Block:5(
+      ExpressionStmt:6(
+        IntExpr(1)))
+    NameExpr(x)
+    Block:7(
+      PassStmt:8())
+    Block:9(
+      ExpressionStmt:10(
+        IntExpr(2)))))
+
+[case testTryElse]
+try:
+  pass
+except x:
+  1
+else:
+  2
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    NameExpr(x)
+    Block:3(
+      ExpressionStmt:4(
+        IntExpr(1)))
+    Else(
+      ExpressionStmt:6(
+        IntExpr(2)))))
+
+[case testExceptWithMultipleTypes]
+try:
+  pass
+except (x, y):
+  pass
+except (a, b, c) as e:
+  pass
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    ParenExpr:3(
+      TupleExpr:3(
+        NameExpr(x)
+        NameExpr(y)))
+    Block:3(
+      PassStmt:4())
+    ParenExpr:5(
+      TupleExpr:5(
+        NameExpr(a)
+        NameExpr(b)
+        NameExpr(c)))
+    Var(e)
+    Block:5(
+      PassStmt:6())))
+
+[case testNestedFunctions]
+def f():
+  def g():
+    pass
+int h():
+  int g():
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      FuncDef:2(
+        g
+        Block:2(
+          PassStmt:3()))))
+  FuncDef:4(
+    h
+    Type:4(def () -> int?)
+    Block:4(
+      FuncDef:5(
+        g
+        Type:5(def () -> int?)
+        Block:5(
+          PassStmt:6())))))
+
+[case testStatementsAndDocStringsInClassBody]
+class A:
+  "doc string"
+  x = y
+  def f(self):
+    pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    ExpressionStmt:2(
+      StrExpr(doc string))
+    AssignmentStmt:3(
+      Lvalues(
+        NameExpr(x))
+      NameExpr(y))
+    FuncDef:4(
+      f
+      Args(
+        Var(self))
+      Block:4(
+        PassStmt:5()))))
+
+[case testSingleLineClass]
+class a: pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    a
+    PassStmt:1()))
+
+[case testDecorator]
+@property
+def f():
+  pass
+[out]
+MypyFile:1(
+  Decorator:1(
+    NameExpr(property)
+    FuncDef:-1(
+      f
+      Block:2(
+        PassStmt:3()))))
+
+[case testComplexDecorator]
+@foo(bar, 1)
+@zar
+int f():
+  pass
+[out]
+MypyFile:1(
+  Decorator:1(
+    CallExpr:1(
+      NameExpr(foo)
+      Args(
+        NameExpr(bar)
+        IntExpr(1)))
+    Decorator:-1(
+      NameExpr(zar)
+      FuncDef:-1(
+        f
+        Type:3(def () -> int?)
+        Block:3(
+          PassStmt:4())))))
+
+[case testKeywordArgInCall]
+f(x=1)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args()
+      KwArgs(
+        NameExpr(x)
+        IntExpr(1)))))
+
+[case testComplexKeywordArgs]
+f(x, y=1 or 2, z=y)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        NameExpr(x))
+      KwArgs(
+        NameExpr(y)
+        OpExpr:1(
+          or
+          IntExpr(1)
+          IntExpr(2)))
+      KwArgs(
+        NameExpr(z)
+        NameExpr(y)))))
+
+[case testChainedAssignment]
+x = z = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x)
+      NameExpr(z))
+    IntExpr(1)))
+
+[case testVarArgs]
+def f(x, *a): pass
+f(1, *2)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    VarArg(
+      Var:nil(a))
+    Block:1(
+      PassStmt:1()))
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f)
+      Args(
+        IntExpr(1)
+        IntExpr(2))
+      VarArg)))
+
+[case testVarArgWithType]
+def f(str x, int *a): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Type:1(def (str?, *int?) -> any)
+    VarArg(
+      Var:nil(a))
+    Block:1(
+      PassStmt:1())))
+      
+[case testDictVarArgs]
+def f(x, **a): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    DictVarArg(
+      Var:nil(a))
+    Block:1(
+      PassStmt:1())))
+
+[case testBothVarArgs]
+def f(x, *a, **b): pass
+def g(*a, **b): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    VarArg(
+      Var:nil(a))
+    DictVarArg(
+      Var:nil(b))
+    Block:1(
+      PassStmt:1()))
+  FuncDef:2(
+    g
+    VarArg(
+      Var:nil(a))
+    DictVarArg(
+      Var:nil(b))
+    Block:2(
+      PassStmt:2())))
+
+[case testCallDictVarArgs]
+f(**x)
+f(x, **y)
+f(*x, **y)
+f(x, *y, **z)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args()
+      DictVarArg(
+        NameExpr(x))))
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f)
+      Args(
+        NameExpr(x))
+      DictVarArg(
+        NameExpr(y))))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(f)
+      Args(
+        NameExpr(x))
+      VarArg
+      DictVarArg(
+        NameExpr(y))))
+  ExpressionStmt:4(
+    CallExpr:4(
+      NameExpr(f)
+      Args(
+        NameExpr(x)
+        NameExpr(y))
+      VarArg
+      DictVarArg(
+        NameExpr(z)))))
+
+[case testAssert]
+assert x == y
+[out]
+MypyFile:1(
+  AssertStmt:1(
+    OpExpr:1(
+      ==
+      NameExpr(x)
+      NameExpr(y))))
+
+[case testYieldWithoutExpressions]
+def f():
+  yield
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      YieldStmt:2())))
+
+[case testConditionalExpression]
+x if y else z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ConditionalExpr:1(
+      NameExpr(x)
+      NameExpr(y)
+      NameExpr(z))))
+
+[case testSetLiteral]
+{x or y}
+{1, 2}
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    SetExpr:1(
+      OpExpr:1(
+        or
+        NameExpr(x)
+        NameExpr(y))))
+  ExpressionStmt:2(
+    SetExpr:2(
+      IntExpr(1)
+      IntExpr(2))))
+      
+[case testSetLiteralWithExtraComma]
+{x,}
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    SetExpr:1(
+      NameExpr(x))))
+
+[case testImportAs]
+import x as y
+import x, z as y, a.b as c
+[out]
+MypyFile:1(
+  Import:1(x : y)
+  Import:2(x : x, z : y, a.b : c))
+
+[case testForAndElse]
+for x in y:
+  pass
+else:
+  x
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    NameExpr(y)
+    Block:1(
+      PassStmt:2())
+    Else(
+      ExpressionStmt:4(
+        NameExpr(x)))))
+
+[case testWhileAndElse]
+while x:
+  pass
+else:
+  y
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    NameExpr(x)
+    Block:1(
+      PassStmt:2())
+    Else(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testWithAndMultipleOperands]
+with x as y, a as b:
+  pass
+with x(), y():
+  pass
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(x))
+    Name(
+      Var(y))
+    Expr(
+      NameExpr(a))
+    Name(
+      Var(b))
+    Block:1(
+      PassStmt:2()))
+  WithStmt:3(
+    Expr(
+      CallExpr:3(
+        NameExpr(x)
+        Args()))
+    Expr(
+      CallExpr:3(
+        NameExpr(y)
+        Args()))
+    Block:3(
+      PassStmt:4())))
+
+[case testOperatorAssignment]
+x += 1
+x -= 1
+x *= 1
+x /= 1
+x //= 1
+x %= 1
+x **= 1
+x |= 1
+x &= 1
+x ^= 1
+x >>= 1
+x <<= 1
+[out]
+MypyFile:1(
+  OperatorAssignmentStmt:1(
+    +
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:2(
+    -
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:3(
+    *
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:4(
+    /
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:5(
+    //
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:6(
+    %
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:7(
+    **
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:8(
+    |
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:9(
+    &
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:10(
+    ^
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:11(
+    >>
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:12(
+    <<
+    NameExpr(x)
+    IntExpr(1)))
+
+[case testNestedClasses]
+class A:
+  class B:
+    pass
+  class C:
+    pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    TypeDef:2(
+      B
+      PassStmt:3())
+    TypeDef:4(
+      C
+      PassStmt:5())))
+
+[case testTryWithExceptAndFinally]
+try:
+  pass
+except x:
+  x
+finally:
+  y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    NameExpr(x)
+    Block:3(
+      ExpressionStmt:4(
+        NameExpr(x)))
+    Finally(
+      ExpressionStmt:6(
+        NameExpr(y)))))
+
+[case testBareAsteriskInFuncDef]
+def f(x, *, y=1): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    MaxPos(1)
+    Args(
+      Var(x)
+      Var(y))
+    Init(
+      AssignmentStmt:1(
+        Lvalues(
+          NameExpr(y))
+        IntExpr(1)))
+    Block:1(
+      PassStmt:1())))
+
+[case testListWithSimpleType]
+<t> []
+<any> [1, 2]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ListExpr:1(
+      Type(
+        t?)))
+  ExpressionStmt:2(
+    ListExpr:2(
+      Type(
+        any)
+      IntExpr(1)
+      IntExpr(2))))
+
+[case testTypePrefixPrecedence]
+<t> [] ** 2
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      **
+      ListExpr:1(
+        Type(
+          t?))
+      IntExpr(2))))
+
+[case testTypePrefixWithGenericType]
+<dict<any, foo>> []
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ListExpr:1(
+      Type(
+        dict?<any, foo?>))))
+
+[case testTupleWithTypes]
+<t> (x,)
+<t, any> (x, y)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ParenExpr:1(
+      TupleExpr:1(
+        Type(
+          t?)
+        NameExpr(x))))
+  ExpressionStmt:2(
+    ParenExpr:2(
+      TupleExpr:2(
+        Type(
+          t?
+          any)
+        NameExpr(x)
+        NameExpr(y)))))
+
+[case testOverloadedFunction]
+object f(): pass
+void f(object x): pass
+A f(A a, A b): pass
+class A: pass
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    FuncDef:1(
+      f
+      Type:1(def () -> object?)
+      Block:1(
+        PassStmt:1()))
+    FuncDef:2(
+      f
+      Args(
+        Var(x))
+      Type:2(def (object?))
+      Block:2(
+        PassStmt:2()))
+    FuncDef:3(
+      f
+      Args(
+        Var(a)
+        Var(b))
+      Type:3(def (A?, A?) -> A?)
+      Block:3(
+        PassStmt:3())))
+  TypeDef:4(
+    A
+    PassStmt:4()))
+
+[case testOverloadedMethod]
+class A:
+  def f(self): pass
+  def f(self, any a): pass
+  def f(self, object o): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    OverloadedFuncDef:2(
+      FuncDef:2(
+        f
+        Args(
+          Var(self))
+        Block:2(
+          PassStmt:2()))
+      FuncDef:3(
+        f
+        Args(
+          Var(self)
+          Var(a))
+        Type:3(def (any, any) -> any)
+        Block:3(
+          PassStmt:3()))
+      FuncDef:4(
+        f
+        Args(
+          Var(self)
+          Var(o))
+        Type:4(def (any, object?) -> any)
+        Block:4(
+          PassStmt:4())))))
+
+[case testEmptyInterface]
+interface A: pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    PassStmt:1()))
+
+[case testInterfaceWithMethod]
+interface A:
+    void f(self, object o)
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    FuncDef:2(
+      f
+      Args(
+        Var(self)
+        Var(o))
+      Type:2(def (any, object?))
+      Block:-1())))
+
+[case testInterfaceWithTwoMethods]
+interface A:
+    void f(self, object o)
+    A g(self)
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    FuncDef:2(
+      f
+      Args(
+        Var(self)
+        Var(o))
+      Type:2(def (any, object?))
+      Block:-1())
+    FuncDef:3(
+      g
+      Args(
+        Var(self))
+      Type:3(def (any) -> A?)
+      Block:-1())))
+
+[case testInterfaceWithDefaultMethodBody]
+interface A:
+    A f(self): return None
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Type:2(def (any) -> A?)
+      Block:2(
+        ReturnStmt:2(
+          NameExpr(None))))))
+
+[case testInterfaceWithSuperinterface]
+interface A(B): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    BaseType(
+      B?)
+    PassStmt:1()))
+
+[case testGenericInterface]
+interface A<t>: pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    TypeVars(
+      t)
+    PassStmt:1()))
+
+[case testSuperExpr]
+super().x
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    SuperExpr:1(
+      x)))

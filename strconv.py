@@ -270,7 +270,7 @@ class StrConv(NodeVisitor<str>):
         a = [o.callee, ('Args', o.args)]
         if o.is_var_arg:
             a.append('VarArg')
-        if o.dict_var_arg is not None:
+        if o.dict_var_arg:
             a.append(('DictVarArg', [o.dict_var_arg]))
         for n, v in o.keyword_args:
             a.append(('KwArgs', [n, v]))
@@ -287,13 +287,15 @@ class StrConv(NodeVisitor<str>):
     
     def visit_list_expr(self, o):
         a = o.items[:]
-        if o.typ is not None:
+        if o.typ:
             a.insert(0, ('Type', [o.typ]))
         return self.dump(a, o)
     
     def visit_dict_expr(self, o):
-        a = o.items[:]
-        if o.key_type is not None:
+        a = []
+        for k, v in o.items:
+            a.append([k, v])
+        if o.key_type:
             a.insert(0, ('ValueType', [o.value_type]))
             a.insert(0, ('KeyType', [o.key_type]))
         return self.dump(a, o)

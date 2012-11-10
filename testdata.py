@@ -15,6 +15,8 @@ list<DataDrivenTestCase> parse_test_cases(
     if not include_path:
         include_path = os.path.dirname(path)
     l = open(path).readlines()
+    for i in range(len(l)):
+        l[i] = l[i].rstrip('\n')
     p = parse_test_data(l, path)
     list<DataDrivenTestCase> out = []
     
@@ -179,7 +181,7 @@ list<str> strip_list(list<str> l):
     list<str> r = []
     for s in l:
         # Strip spaces at end of line
-        r.append(re.sub('\\s+$', '', s))
+        r.append(re.sub(r'\s+$', '', s))
     
     while len(r) > 0 and r[-1] == '':
         r.pop()
@@ -191,7 +193,7 @@ list<str> collapse_line_continuation(list<str> l):
     list<str> r = []
     cont = False
     for s in l:
-        ss = re.sub('\\\\$', '', s)
+        ss = re.sub(r'\\$', '', s)
         if cont:
             r[-1] += re.sub('^ +', '', ss)
         else:

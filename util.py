@@ -34,8 +34,8 @@ list<str> array_repr<T>(list<T> a):
 #  - pairs (str : array) are converted recursively, so that str is the tag
 #  - other items are converted to strings and indented
 str dump_tagged(list<any> nodes, str tag):
-    list<str> a = []
-    if tag is not None:
+    a = <str> []
+    if tag:
         a.append(tag + '(')
     for n in nodes:
         if isinstance(n, list):
@@ -43,8 +43,8 @@ str dump_tagged(list<any> nodes, str tag):
         elif isinstance(n, tuple):
             s = dump_tagged(n[1], n[0])
             a.append(indent(s, 2))
-        elif n is not None:
+        elif n:
             a.append(indent(str(n), 2))
-    if tag is not None:
+    if tag:
         a[-1] += ')'
     return '\n'.join(a)
