@@ -949,15 +949,14 @@ class Parser:
         return node
     
     # Parsing expressions
-    #--------------------
     
     # Parse a subexpression within a specific precedence context.
     Node parse_expression(self, int prec=0):
         Node expr
         t = self.current() # Remember token for setting the line number.
         
-        # Parse a "value" expression or unary operator expression and store that
-        # in expr.
+        # Parse a "value" expression or unary operator expression and store
+        # that in expr.
         _x = self.current_str()
         if _x == '(':
             # Parerenthesised expression or cast.
@@ -990,9 +989,9 @@ class Parser:
                 # Invalid expression.
                 self.parse_error()
         
-        # Set the line of the expression node, if not specified. This simplifies
-        # recording the line number as not every node type needs to deal with it
-        # separately.
+        # Set the line of the expression node, if not specified. This
+        # simplifies recording the line number as not every node type needs to
+        # deal with it separately.
         if expr.line < 0:
             expr.set_line(t)
         
@@ -1010,17 +1009,17 @@ class Parser:
                 # Indexing expression.
                 expr = self.parse_index_expr(expr)
             elif _x == ',':
-                # The comma operator is used to build tuples. Comma also separates
-                # array items and function arguments, but in this case the
-                # precedence is too low to build a tuple.
+                # The comma operator is used to build tuples. Comma also
+                # separates array items and function arguments, but in this
+                # case the precedence is too low to build a tuple.
                 if precedence[','] > prec:
                     expr = self.parse_tuple_expr(expr)
                 else:
                     break
             elif _x == 'for':
-                # List comprehension or generator expression. Parse as generator
-                # expression; it will be converted to list comprehension if needed
-                # elsewhere.
+                # List comprehension or generator expression. Parse as
+                # generator expression; it will be converted to list
+                # comprehension if needed elsewhere.
                 expr = self.parse_generator_expr(expr)
             elif _x == 'if':
                 # Conditional expression.
@@ -1043,18 +1042,18 @@ class Parser:
                         if op_prec > prec:
                             expr = self.parse_bin_op_expr(expr, op_prec)
                         else:
-                            # The operation cannot be associated with the current left
-                            # operand due to the precedence context; let the caller handle
-                            # it.
+                            # The operation cannot be associated with the
+                            # current left operand due to the precedence
+                            # context; let the caller handle it.
                             break
                 else:
-                    # Not an operation that accepts a left argument; let the caller
-                    # handle the rest.
+                    # Not an operation that accepts a left argument; let the
+                    # caller handle the rest.
                     break
             
-            # Set the line of the expression node, if not specified. This simplifies
-            # recording the line number as not every node type needs to deal with it
-            # separately.
+            # Set the line of the expression node, if not specified. This
+            # simplifies recording the line number as not every node type
+            # needs to deal with it separately.
             if expr.line < 0:
                 expr.set_line(t)
         
@@ -1170,7 +1169,8 @@ class Parser:
         list<Token> commas = []
         while True:
             commas.append(self.expect(','))
-            if self.current_str() in [')', ']', '='] or isinstance(self.current(), Break):
+            if (self.current_str() in [')', ']', '='] or
+                    isinstance(self.current(), Break)):
                 break
             items.append(self.parse_expression(prec))
             if self.current_str() != ',': break
@@ -1179,7 +1179,8 @@ class Parser:
         return node
     
     Node parse_literal_with_prefix_type(self):
-        types, langle, rangle, commas = self.parse_type_list_in_angle_brackets()
+        (types, langle,
+         rangle, commas) = self.parse_type_list_in_angle_brackets()
         e = self.parse_expression(precedence['**'])
         if isinstance(e, ListExpr):
             if len(types) != 1:
@@ -1188,7 +1189,8 @@ class Parser:
                 ((ListExpr)e).typ = types[0]
                 e.repr = noderepr.ListExprRepr(e.repr.lbracket, e.repr.commas,
                                                e.repr.rbracket, langle, rangle)
-        elif isinstance(e, ParenExpr) and isinstance(((ParenExpr)e).expr, TupleExpr):
+        elif (isinstance(e, ParenExpr) and
+                  isinstance(((ParenExpr)e).expr, TupleExpr)):
             t = (TupleExpr)((ParenExpr)e).expr
             if len(types) != len(t.items):
                 self.fail('Wrong number of types for a tuple literal', e.line)
@@ -1196,7 +1198,8 @@ class Parser:
                 t.types = types
         elif isinstance(e, DictExpr):
             if len(types) != 2:
-                self.fail('Expected two types before dictionary literal', e.line)
+                self.fail('Expected two types before dictionary literal',
+                          e.line)
             else:
                 ((DictExpr)e).key_type = types[0]
                 ((DictExpr)e).value_type = types[1]
@@ -1204,7 +1207,9 @@ class Parser:
                                                e.repr.commas, e.repr.rbrace,
                                                langle, commas[0], rangle)
         else:
-            self.fail('Expected a list, dictionary or non-empty tuple after <...>', e.line)
+            self.fail(
+                'Expected a list, dictionary or non-empty tuple after <...>',
+                e.line)
         return e
     
     NameExpr parse_name_expr(self):
@@ -1247,7 +1252,8 @@ class Parser:
     
     CallExpr parse_call_expr(self, any callee):
         lparen = self.expect('(')
-        args, is_var_arg, dict_var_arg, commas, at, kw_args, assigns = self.parse_arg_expr()
+        (args, is_var_arg, dict_var_arg,
+         commas, at, kw_args, assigns) = self.parse_arg_expr()
         rparen = self.expect(')')
         node = CallExpr(callee, args, is_var_arg, kw_args, dict_var_arg)
         self.set_repr(node, noderepr.CallExprRepr(lparen, commas, at, assigns,
