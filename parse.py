@@ -20,10 +20,27 @@ import lex
 
 int HIGHEST_PREC = 14
 
-precedence = {'**': 15, '-u': 14, '+u': 14, '~': 14, '<cast>': 13, '*': 12, '/': 12, '//': 12, '%': 12, '+': 11, '-': 11, '>>': 10, '<<': 10, '&': 9, '^': 8, '|': 7, '==': 6, '!=': 6, '<': 6, '>': 6, '<=': 6, '>=': 6, 'is': 6, 'in': 6, 'not': 5, 'and': 4, 'or': 3, '<if>': 2, ',': 1}
+precedence = {
+    '**': 15,
+    '-u': 14, '+u': 14, '~': 14,
+    '<cast>': 13,
+    '*': 12, '/': 12, '//': 12, '%': 12,
+    '+': 11, '-': 11,
+    '>>': 10, '<<': 10,
+    '&': 9,
+    '^': 8,
+    '|': 7,
+    '==': 6, '!=': 6, '<': 6, '>': 6, '<=': 6, '>=': 6, 'is': 6, 'in': 6,
+    'not': 5,
+    'and': 4,
+    'or': 3,
+    '<if>': 2, # conditional expression
+    ',': 1}
 
 
-set<str> op_assign = set(['+=', '-=', '*=', '/=', '//=', '%=', '**=', '|=', '&=', '^=', '>>=', '<<='])
+op_assign = set([
+    '+=', '-=', '*=', '/=', '//=', '%=', '**=', '|=', '&=', '^=', '>>=',
+    '<<='])
 
 
 none = Token('') # Empty token
@@ -81,7 +98,6 @@ class Parser:
         return node
     
     # Parse the initial part
-    #-----------------------
     
     # Parse the optional byte order mark at the beginning of a file.
     bool parse_bom(self):
@@ -181,7 +197,6 @@ class Parser:
         return n, components
     
     # Parsing global definitions
-    #---------------------------
     
     list<Node> parse_defs(self):
         list<Node> defs = []
@@ -192,9 +207,12 @@ class Parser:
                     if isinstance(defn, FuncDef) and defs != []:
                         fdef = (FuncDef)defn
                         n = fdef.name
-                        if isinstance(defs[-1], FuncDef) and ((FuncDef)defs[-1]).name == n:
-                            defs[-1] = OverloadedFuncDef([(FuncDef)defs[-1], fdef])
-                        elif isinstance(defs[-1], OverloadedFuncDef) and ((OverloadedFuncDef)defs[-1]).name() == n:
+                        if (isinstance(defs[-1], FuncDef) and
+                                ((FuncDef)defs[-1]).name == n):
+                            defs[-1] = OverloadedFuncDef([(FuncDef)defs[-1],
+                                                          fdef])
+                        elif (isinstance(defs[-1], OverloadedFuncDef) and
+                                  ((OverloadedFuncDef)defs[-1]).name() == n):
                             ((OverloadedFuncDef)defs[-1]).items.append(fdef)
                         else:
                             defs.append(defn)
@@ -223,7 +241,8 @@ class Parser:
                 
                 if self.current_str() == '<':
                     try:
-                        type_vars, self.ind = parse_type_variables(self.tok, self.ind, False)
+                        type_vars, self.ind = parse_type_variables(
+                            self.tok, self.ind, False)
                     except TypeParseError as e:
                         self.parse_error_at(e.token)
                 
@@ -282,7 +301,8 @@ class Parser:
         self.set_repr(node, noderepr.DecoratorRepr(at, br))
         return node
     
-    FuncDef parse_function_at_name(self, Annotation ret_type, Token def_tok, bool is_in_interface=False):
+    FuncDef parse_function_at_name(self, Annotation ret_type, Token def_tok,
+                                   bool is_in_interface=False):
         self.is_function = True
         try:
             name, args, init, var_arg, dict_var_arg, max_pos, typ, is_error, toks = self.parse_function_header(ret_type)
