@@ -33,15 +33,19 @@ list<DataDrivenTestCase> parse_test_cases(
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
-                    files.append((os.path.join(base_path, p[i].arg), '\n'.join(p[i].data)))
+                    files.append((os.path.join(base_path, p[i].arg),
+                                  '\n'.join(p[i].data)))
                 elif p[i].id == 'builtins':
                     # Use a custom source file for the std module.
                     mpath = os.path.join(os.path.dirname(path), p[i].arg)
                     f = open(mpath)
-                    files.append((os.path.join(base_path, 'builtins.py'), f.read()))
+                    files.append((os.path.join(base_path, 'builtins.py'),
+                                  f.read()))
                     f.close()
                 else:
-                    raise ValueError('Invalid section header {} in {} at line {}'.format(p[i].id, path, p[i].line))
+                    raise ValueError(
+                        'Invalid section header {} in {} at line {}'.format(
+                            p[i].id, path, p[i].line))
                 i += 1
             
             list<str> tcout = []
@@ -55,10 +59,13 @@ list<DataDrivenTestCase> parse_test_cases(
             if ok:
                 input = expand_includes(p[i0].data, include_path)
                 expand_errors(input, tcout, 'main')
-                tc = DataDrivenTestCase(p[i0].arg, input, tcout, path, p[i0].line, perform, files)
+                tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
+                                        p[i0].line, perform, files)
                 out.append(tc)
         if not ok:
-            raise ValueError('{}, line {}: Error in test case description'.format(path, p[i0].line))
+            raise ValueError(
+                '{}, line {}: Error in test case description'.format(
+                    path, p[i0].line))
     
     return out
 

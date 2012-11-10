@@ -31,15 +31,16 @@ interface SymNode:
 
 
 class SymbolTableNode:
-    int kind # Ldef/Gdef/Mdef/Tvar
+    int kind      # Ldef/Gdef/Mdef/Tvar/...
     SymNode node  # Parse tree node of definition (FuncDef/Var/
-    # TypeInfo), nil for Tvar
-    int tvar_id    # Type variable id (for Tvars only)
-    str mod_id    # Module id (e.g. "foo.bar") or nil
+                  # TypeInfo), None for Tvar
+    int tvar_id   # Type variable id (for Tvars only)
+    str mod_id    # Module id (e.g. "foo.bar") or None
     
-    Typ type_override  # If nil, fall back to type of node
+    Typ type_override  # If None, fall back to type of node
     
-    void __init__(self, int kind, SymNode node, str mod_id=None, Typ typ=None, int tvar_id=0):
+    void __init__(self, int kind, SymNode node, str mod_id=None, Typ typ=None,
+                  int tvar_id=0):
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -53,11 +54,12 @@ class SymbolTableNode:
             return None
     
     Typ typ(self):
-        # IDEA: Get rid of the dynamic cast.
+        # IDEA: Get rid of the any type.
         any node = self.node
         if self.type_override is not None:
             return self.type_override
-        elif (isinstance(node, nodes.Var) or isinstance(node, nodes.FuncDef)) and node.typ is not None:
+        elif ((isinstance(node, nodes.Var) or isinstance(node, nodes.FuncDef))
+              and node.typ is not None):
             return node.typ.typ
         else:
             return None

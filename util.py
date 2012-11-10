@@ -1,3 +1,4 @@
+# Utility functions
 
 
 # Return the last component of the type name of an object. If obj is None,

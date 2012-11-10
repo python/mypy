@@ -1,6 +1,7 @@
 from mtypes import Typ, TypeVars, TypeVarDef, Any, Void, UnboundType
-from typerepr import (TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr,
-                      CommonTypeRepr)
+from typerepr import (
+    TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr
+)
 from lex import Token, Name
 
 
@@ -15,14 +16,16 @@ tuple<Typ, int> parse_type(list<Token> tok, int index):
 
 # Parse type variables and optional bounds (<...>). Return (bounds, index
 # after bounds).
-tuple<TypeVars, int> parse_type_variables(list<Token> tok, int index, bool is_func):
+tuple<TypeVars, int> parse_type_variables(list<Token> tok, int index,
+                                          bool is_func):
     p = TypeParser(tok, index)
     return p.parse_type_variables(is_func), p.index()
 
 
 # Parse type arguments within angle brackets (<...>). Return (types, < token,
 # > token, comma tokens, token index after >).
-tuple<list<Typ>, Token, Token, list<Token>, int> parse_type_args(list<Token> tok, int index):
+tuple<list<Typ>, Token, Token, \
+      list<Token>, int> parse_type_args(list<Token> tok, int index):
     p = TypeParser(tok, index)
     types, lparen, rparen, commas = p.parse_type_args()
     return types, lparen, rparen, commas, p.index()
@@ -141,7 +144,8 @@ class TypeParser:
             
             rangle = self.expect('>')
         
-        return UnboundType(name, args, line, CommonTypeRepr(components, langle, commas, rangle))
+        return UnboundType(name, args, line, CommonTypeRepr(components, langle,
+                                                            commas, rangle))
     
     # Helpers
     

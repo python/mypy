@@ -43,7 +43,6 @@ class StrConv(NodeVisitor<str>):
     
     
     # Top-level structures
-    #---------------------
     
     
     def visit_mypy_file(self, o):
@@ -51,11 +50,11 @@ class StrConv(NodeVisitor<str>):
         if o.is_bom:
             a.insert(0, 'BOM')
         # Omit path to special file with name "main". This is used to simplify
-        # test case descriptions; the file "main" is used by default in many test
-        # cases.
+        # test case descriptions; the file "main" is used by default in many
+        # test cases.
         if o.path is not None and o.path != 'main':
-            # Insert path. Normalize directory separators to / to unify test case
-            # output in all platforms.
+            # Insert path. Normalize directory separators to / to unify test
+            # case# output in all platforms.
             a.insert(0, o.path.replace(os.sep, '/'))
         return self.dump(a, o)
     
@@ -76,7 +75,6 @@ class StrConv(NodeVisitor<str>):
     
     
     # Definitions
-    #------------
     
     
     def visit_func_def(self, o):
@@ -94,9 +92,10 @@ class StrConv(NodeVisitor<str>):
     
     def visit_type_def(self, o):
         a = [o.name, o.defs.body]
-        # Display base types unless they are implicitly just builtins.object (in
-        # this case there is no representation).
-        if len(o.base_types) > 1 or (len(o.base_types) == 1 and o.base_types[0].repr is not None):
+        # Display base types unless they are implicitly just builtins.object
+        # (in this case there is no representation).
+        if len(o.base_types) > 1 or (len(o.base_types) == 1
+                                     and o.base_types[0].repr is not None):
             a.insert(1, ('BaseType', o.base_types))
         if o.type_vars is not None:
             a.insert(1, ('TypeVars', o.type_vars.items))
@@ -132,7 +131,6 @@ class StrConv(NodeVisitor<str>):
     
     
     # Statements
-    #-----------
     
     
     def visit_block(self, o):
@@ -223,7 +221,6 @@ class StrConv(NodeVisitor<str>):
     
     
     # Expressions
-    #------------
     
     
     # Simple expressions
@@ -246,7 +243,9 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.expr], o)
     
     def visit_name_expr(self, o):
-        return short_type(o) + '(' + self.pretty_name(o.name, o.kind, o.full_name, o.is_def) + ')'
+        return (short_type(o) + '(' + self.pretty_name(o.name, o.kind,
+                                                       o.full_name, o.is_def)
+                + ')')
     
     def pretty_name(self, name, kind, full_name, is_def):
         n = name
@@ -264,7 +263,8 @@ class StrConv(NodeVisitor<str>):
         return n
     
     def visit_member_expr(self, o):
-        return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.full_name, o.is_def)], o)
+        return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.full_name,
+                                                   o.is_def)], o)
     
     def visit_call_expr(self, o):
         a = [o.callee, ('Args', o.args)]
@@ -341,7 +341,8 @@ class StrConv(NodeVisitor<str>):
         return self.dump(a, o)
     
     def visit_coerce_expr(self, o):
-        return self.dump([o.expr, ('Types', [o.target_type, o.source_type])], o)
+        return self.dump([o.expr, ('Types', [o.target_type, o.source_type])],
+                         o)
     
     def visit_type_expr(self, o):
         return self.dump([str(o.typ)], o)

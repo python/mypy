@@ -67,7 +67,9 @@ void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
         
         sys.stderr.write('\n')
         
-        if first_diff >= 0 and first_diff < len(actual) and (len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT):
+        if first_diff >= 0 and first_diff < len(actual) and (
+                len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
+                or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT):
             # Display message that helps visualize the differences between two
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
@@ -125,7 +127,8 @@ void show_align_message(str s1, str s2):
 
 # Like above, but let a line with only "..." in expected match any number of
 # lines in actual.
-void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual, str msg):
+void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual,
+                                          str msg):
     actual = clean_up(actual)
     
     while actual != [] and actual[-1] == '':
@@ -181,10 +184,13 @@ list<str> match_array(list<str> pattern, list<str> target):
                 res.extend(target[j:jj])
                 i += 1
                 j = jj
-        elif j < len(target) and (pattern[i] == target[j] or (i + 1 < len(pattern) and j + 1 < len(target) and pattern[i + 1] == target[j + 1])):
+        elif (j < len(target) and (pattern[i] == target[j]
+                                   or (i + 1 < len(pattern)
+                                       and j + 1 < len(target)
+                                       and pattern[i + 1] == target[j + 1]))):
             # In sync; advance one line. The above condition keeps sync also if
-            # only a single line is different, but loses it if two consecutive lines
-            # fail to match.
+            # only a single line is different, but loses it if two consecutive
+            # lines fail to match.
             res.append(pattern[i])
             i += 1
             j += 1
@@ -204,6 +210,7 @@ int num_skipped_prefix_lines(list<str> a1, list<str> a2):
 
 int num_skipped_suffix_lines(list<str> a1, list<str> a2):
     num_eq = 0
-    while num_eq < min(len(a1), len(a2)) and a1[-num_eq - 1] == a2[-num_eq - 1]:
+    while (num_eq < min(len(a1), len(a2))
+           and a1[-num_eq - 1] == a2[-num_eq - 1]):
         num_eq += 1
     return max(0, num_eq - 4)
