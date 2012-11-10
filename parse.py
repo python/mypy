@@ -9,7 +9,8 @@ from nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, FloatExpr, CallExpr,
     SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr, UnaryExpr, FuncExpr,
-    TypeApplication)
+    TypeApplication
+)
 import noderepr
 from errors import Errors
 from mtypes import Void, Typ, TypeVars, Callable, Any

@@ -38,9 +38,9 @@ class Node:
 
 
 class MypyFile(Node, AccessorNode):
-    str name           # Module name ('__main__' for initial file)
-    str full_name          # Qualified module name
-    str path           # Path to the file (nil if not known)
+    str name          # Module name ('__main__' for initial file)
+    str full_name     # Qualified module name
+    str path          # Path to the file (nil if not known)
     list<Node> defs   # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
@@ -88,7 +88,7 @@ class ImportAll(Node):
 
 class FuncBase(Node, AccessorNode):
     Annotation typ   # Type signature (Callable or Overloaded)
-    TypeInfo info     # If method, reference to TypeInfo
+    TypeInfo info    # If method, reference to TypeInfo
     str name
 
 
@@ -117,15 +117,17 @@ class FuncItem(FuncBase):
     list<AssignmentStmt> init
     int min_args           # Minimum number of arguments
     int max_pos            # Maximum number of positional arguments, -1 if
-    # no explicit limit
+                           # no explicit limit
     Var var_arg            # If not nil, *x arg
-    Var dict_var_arg        # If not nil, **x arg
+    Var dict_var_arg       # If not nil, **x arg
     Block body
     bool is_implicit    # Implicit dynamic types?
     bool is_overload    # Is this an overload variant of function with
-    # more than one overload variant?
+                        # more than one overload variant?
     
-    void __init__(self, list<Var> args, list<Node> init, Var var_arg, Var dict_var_arg, int max_pos, Block body, Annotation typ=None):
+    void __init__(self, list<Var> args, list<Node> init, Var var_arg,
+                  Var dict_var_arg, int max_pos, Block body,
+                  Annotation typ=None):
         self.args = args
         self.var_arg = var_arg
         self.dict_var_arg = dict_var_arg
@@ -141,7 +143,8 @@ class FuncItem(FuncBase):
             if init[i] is not None:
                 rvalue = init[i]
                 lvalue = NameExpr(args[i].name).set_line(rvalue.line)
-                assign = (AssignmentStmt)AssignmentStmt([lvalue], rvalue).set_line(rvalue.line)
+                assign = AssignmentStmt([lvalue], rvalue)
+                assign.set_line(rvalue.line)
                 i2.append(assign)
             else:
                 i2.append(None)
@@ -177,7 +180,9 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem):
     str full_name      # Name with module prefix
     
-    void __init__(self, str name, list<Var> args, list<Node> init, Var var_arg, Var dict_var_arg, int max_pos, Block body, Annotation typ=None):
+    void __init__(self, str name, list<Var> args, list<Node> init, Var var_arg,
+                  Var dict_var_arg, int max_pos, Block body,
+                  Annotation typ=None):
         super().__init__(args, init, var_arg, dict_var_arg, max_pos, body, typ)
         self.name = name
     
@@ -204,13 +209,13 @@ class Decorator(Node):
 
 
 class Var(Node, AccessorNode):
-    str name          # Name without module prefix
-    str full_name      # Name with module prefix
+    str name        # Name without module prefix
+    str full_name   # Name with module prefix
     bool is_init    # Is is initialized?
-    TypeInfo info     # Defining class (for member variables)
-    Annotation typ   # Declared type, or nil if none
+    TypeInfo info   # Defining class (for member variables)
+    Annotation typ  # Declared type, or nil if none
     bool is_self    # Is this the first argument to an ordinary method
-    # (usually "self")?
+                    # (usually "self")?
     
     void __init__(self, str name):
         self.name = name
@@ -223,7 +228,7 @@ class Var(Node, AccessorNode):
 
 class TypeDef(Node):
     str name        # Name of the class without module prefix
-    str full_name    # Fully qualified name of the class
+    str full_name   # Fully qualified name of the class
     Block defs
     TypeVars type_vars
     # Inherited types (Instance or UnboundType).
@@ -231,7 +236,8 @@ class TypeDef(Node):
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
-    void __init__(self, str name, Block defs, TypeVars type_vars=None, list<Typ> base_types=None, bool is_interface=False):
+    void __init__(self, str name, Block defs, TypeVars type_vars=None,
+                  list<Typ> base_types=None, bool is_interface=False):
         if not base_types:
             base_types = []
         self.name = name
@@ -252,7 +258,7 @@ class VarDef(Node):
     int kind          # Ldef/Gdef/Mdef
     Node init         # Expression or nil
     bool is_top_level # Is the definition at the top level (not within
-    # a function or a type)?
+                      # a function or a type)?
     bool is_init
     
     void __init__(self, list<tuple<Var, Typ>> items, bool is_top_level, Node init=None):
@@ -360,7 +366,8 @@ class ForStmt(Node):
     Block else_body
     list<Annotation> types
     
-    void __init__(self, list<Var> index, Node expr, Block body, Block else_body, list<Annotation> types=None):
+    void __init__(self, list<Var> index, Node expr, Block body,
+                  Block else_body, list<Annotation> types=None):
         self.index = index
         self.expr = expr
         self.body = body
@@ -467,7 +474,8 @@ class TryStmt(Node):
     Block else_body
     Block finally_body
     
-    void __init__(self, Block body, list<Var> vars, list<Node> types, list<Block> handlers, Block else_body, Block finally_body):
+    void __init__(self, Block body, list<Var> vars, list<Node> types,
+                  list<Block> handlers, Block else_body, Block finally_body):
         self.body = body
         self.vars = vars
         self.types = types
@@ -550,9 +558,9 @@ class RefExpr(Node):
 # member or global definition)
 class NameExpr(RefExpr):
     str name      # Name referred to (may be qualified)
-    str full_name  # Fully qualified name (or name if not global)
+    str full_name # Fully qualified name (or name if not global)
     TypeInfo info # TypeInfo of class surrounding expression (may be nil)
-    bool is_def # Does this define a new variable as a lvalue?
+    bool is_def   # Does this define a new variable as a lvalue?
     
     void __init__(self, str name):
         self.name = name
@@ -589,12 +597,14 @@ class MemberExpr(RefExpr):
 # Call expression
 class CallExpr(Node):
     Node callee
-    list<Node> args = []
+    list<Node> args
     bool is_var_arg
     list<tuple<NameExpr, Node>> keyword_args
     Node dict_var_arg
     
-    void __init__(self, Node callee, list<Node> args, bool is_var_arg=False, list<tuple<NameExpr, Node>> keyword_args=None, Node dict_var_arg=None):
+    void __init__(self, Node callee, list<Node> args, bool is_var_arg=False,
+                  list<tuple<NameExpr, Node>> keyword_args=None,
+                  Node dict_var_arg=None):
         if not keyword_args:
             keyword_args = []
         self.callee = callee
@@ -751,7 +761,8 @@ class GeneratorExpr(Node):
     list<Var> index
     list<Annotation> types
     
-    void __init__(self, Node left_expr, list<Var> index, list<Annotation> types, Node right_expr, Node condition):
+    void __init__(self, Node left_expr, list<Var> index,
+                  list<Annotation> types, Node right_expr, Node condition):
         self.left_expr = left_expr
         self.right_expr = right_expr
         self.condition = condition
@@ -817,7 +828,8 @@ class CoerceExpr(Node):
     Typ source_type
     bool is_wrapper_class
     
-    void __init__(self, Node expr, Typ target_type, Typ source_type, bool is_wrapper_class):
+    void __init__(self, Node expr, Typ target_type, Typ source_type,
+                  bool is_wrapper_class):
         self.expr = expr
         self.target_type = target_type
         self.source_type = source_type
@@ -870,11 +882,11 @@ class TempNode(Node):
 class TypeInfo(Node, AccessorNode):
     str full_name      # Fully qualified name
     bool is_interface  # Is this a interface type?
-    TypeDef defn  # Corresponding TypeDef
-    TypeInfo base = None # Superclass or nil (not interface)
+    TypeDef defn       # Corresponding TypeDef
+    TypeInfo base = None   # Superclass or nil (not interface)
     set<TypeInfo> subtypes # Direct subclasses
     
-    dict<str, Var> vars     # Member variables; also slots
+    dict<str, Var> vars    # Member variables; also slots
     dict<str, FuncBase> methods
     
     # TypeInfos of base interfaces
@@ -939,7 +951,8 @@ class TypeInfo(Node, AccessorNode):
         return self.get_var(name) is not None
     
     bool has_method(self, str name):
-        return name in self.methods or (self.base is not None and self.base.has_method(name))
+        return name in self.methods or (self.base is not None
+                                        and self.base.has_method(name))
     
     def has_setter(self, name):
         # FIX implement
@@ -989,7 +1002,8 @@ class TypeInfo(Node, AccessorNode):
     # Return True if type has a basetype with the specified name, either via
     # extension or via implementation.
     bool has_base(self, str full_name):
-        if self.full_name == full_name or (self.base is not None and self.base.has_base(full_name)):
+        if self.full_name == full_name or (self.base is not None
+                                           and self.base.has_base(full_name)):
             return True
         for iface in self.interfaces:
             if iface.full_name == full_name or iface.has_base(full_name):
