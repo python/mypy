@@ -41,11 +41,11 @@ class ErrorInfo:
 # error context.
 class Errors:
     # List of generated error messages.
-    list<ErrorInfo> error_info = []
+    list<ErrorInfo> error_info
     
     # Current error context.
     # Import context, as a list of (path, line) pairs.
-    list<tuple<str, int>> import_ctx = []
+    list<tuple<str, int>> import_ctx
     # Path name prefix that is removed from all paths, if set.
     str ignore_prefix = None
     str file = None     # Path to current file.
@@ -57,7 +57,8 @@ class Errors:
     str function_or_member = None
     
     void __init__(self):
-        pass
+        self.error_info = []
+        self.import_ctx = []
     
     # Set path prefix that will be removed from all paths.
     void set_ignore_prefix(self, str prefix):
