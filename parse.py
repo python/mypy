@@ -480,7 +480,9 @@ class Parser:
         return (args, init, min_args, var_arg, dict_var_arg, has_inits,
                 max_pos, arg_names, commas, asterisk, assigns, arg_types)
     
-    Callable construct_function_type(self, list<Typ> arg_types, int min_args, bool is_var_arg, Typ ret_type, TypeVars type_vars, int line):
+    Callable construct_function_type(self, list<Typ> arg_types, int min_args,
+                                     bool is_var_arg, Typ ret_type,
+                                     TypeVars type_vars, int line):
         # Complete the type annotation by replacing omitted types with
         # dynamic/void.
         arg_types = arg_types[:]
@@ -489,10 +491,10 @@ class Parser:
                 arg_types[i] = Any()
         if ret_type is None:
             ret_type = Any()
-        return Callable(arg_types, min_args, is_var_arg, ret_type, False, None, type_vars, [], line, None)
+        return Callable(arg_types, min_args, is_var_arg, ret_type, False, None,
+                        type_vars, [], line, None)
     
     # Parsing statements
-    #-------------------
     
     # Parse variable definition with explicit types.
     VarDef parse_var_def(self, Typ typ):
@@ -531,7 +533,6 @@ class Parser:
         return n
     
     # Parsing statements
-    #-------------------
     
     Block parse_block(self, bool interface_body=False):
         colon = self.expect(':')
@@ -545,7 +546,8 @@ class Parser:
             br = self.expect_break()
             indent = self.expect_indent()
             list<Node> stmt = []
-            while not isinstance(self.current(), Dedent) and not isinstance(self.current(), Eof):
+            while (not isinstance(self.current(), Dedent) and
+                   not isinstance(self.current(), Eof)):
                 try:
                     Node s
                     if interface_body:
@@ -555,16 +557,7 @@ class Parser:
                     else:
                         s = self.parse_statement()
                     if s is not None:
-                        if isinstance(s, FuncDef) and stmt != []:
-                            fdef = (FuncDef)s
-                            n = fdef.name
-                            if isinstance(stmt[-1], FuncDef) and ((FuncDef)stmt[-1]).name == n:
-                                stmt[-1] = OverloadedFuncDef([(FuncDef)stmt[-1], fdef])
-                            elif isinstance(stmt[-1], OverloadedFuncDef) and ((OverloadedFuncDef)stmt[-1]).name() == n:
-                                ((OverloadedFuncDef)stmt[-1]).items.append(fdef)
-                            else:
-                                stmt.append(s)
-                        else:
+                        if not self.try_combine_overloads(s, stmt):
                             stmt.append(s)
                 except ParseError:
                     pass
@@ -574,6 +567,20 @@ class Parser:
             node = Block(stmt).set_line(colon) 
             self.set_repr(node, noderepr.BlockRepr(colon, br, indent, dedent))
             return (Block)node
+
+    bool try_combine_overloads(self, Node s, list<Node> stmt):
+        if isinstance(s, FuncDef) and stmt:
+            fdef = (FuncDef)s
+            n = fdef.name
+            if (isinstance(stmt[-1], FuncDef) and
+                    ((FuncDef)stmt[-1]).name == n):
+                stmt[-1] = OverloadedFuncDef([(FuncDef)stmt[-1], fdef])
+                return True
+            elif (isinstance(stmt[-1], OverloadedFuncDef) and
+                      ((OverloadedFuncDef)stmt[-1]).name() == n):
+                ((OverloadedFuncDef)stmt[-1]).items.append(fdef)
+                return True
+        return False
     
     Node parse_interface_body_def(self):
         return self.parse_function(True)
@@ -581,46 +588,46 @@ class Parser:
     Node parse_statement(self):
         Node stmt
         t = self.current()
-        _x = self.current_str()
-        if _x == 'if':
+        ts = self.current_str()
+        if ts == 'if':
             stmt = self.parse_if_stmt()
-        elif _x == 'def':
+        elif ts == 'def':
             stmt = self.parse_function()
-        elif _x == 'while':
+        elif ts == 'while':
             stmt = self.parse_while_stmt()
-        elif _x == 'return':
+        elif ts == 'return':
             stmt = self.parse_return_stmt()
-        elif _x == 'for':
+        elif ts == 'for':
             stmt = self.parse_for_stmt()
-        elif _x == 'try':
+        elif ts == 'try':
             stmt = self.parse_try_stmt()
-        elif _x == 'break':
+        elif ts == 'break':
             stmt = self.parse_break_stmt()
-        elif _x == 'continue':
+        elif ts == 'continue':
             stmt = self.parse_continue_stmt()
-        elif _x == 'pass':
+        elif ts == 'pass':
             stmt = self.parse_pass_stmt()
-        elif _x == 'raise':
+        elif ts == 'raise':
             stmt = self.parse_raise_stmt()
-        elif _x == 'import':
+        elif ts == 'import':
             stmt = self.parse_import()
-        elif _x == 'from':
+        elif ts == 'from':
             stmt = self.parse_import_from()
-        elif _x == 'class':
+        elif ts == 'class':
             stmt = self.parse_type_def(False)
-        elif _x == 'interface':
+        elif ts == 'interface':
             stmt = self.parse_type_def(True)
-        elif _x == 'global':
+        elif ts == 'global':
             stmt = self.parse_global_decl()
-        elif _x == 'assert':
+        elif ts == 'assert':
             stmt = self.parse_assert_stmt()
-        elif _x == 'yield':
+        elif ts == 'yield':
             stmt = self.parse_yield_stmt()
-        elif _x == 'del':
+        elif ts == 'del':
             stmt = self.parse_del_stmt()
-        elif _x == 'with':
+        elif ts == 'with':
             stmt = self.parse_with_stmt()
-        elif _x == '@':
+        elif ts == '@':
             stmt = self.parse_decorated_function()
         else:
             if self.is_at_type():
@@ -652,8 +659,8 @@ class Parser:
             self.set_repr(expr, noderepr.ExpressionStmtRepr(br))
             return expr
     
-    # Parse an assignment statement. Assume that lvalue has been parsed already,
-    # and the current token is =.
+    # Parse an assignment statement. Assume that lvalue has been parsed
+    # already, and the current token is =.
     AssignmentStmt parse_assignment(self, any lv):
         assigns = [self.expect('=')]
         lvalues = [lv]
@@ -869,7 +876,8 @@ class Parser:
         list<Var> vars = []
         list<Node> types = []
         list<Block> handlers = []
-        except_toks, name_toks, as_toks, except_brs = <Token> [], <Token> [], <Token> [], <Token> []
+        except_toks, name_toks, as_toks, except_brs = (<Token> [], <Token> [],
+                                                       <Token> [], <Token> [])
         while self.current_str() == 'except':
             except_toks.append(self.expect('except'))
             if not isinstance(self.current(), Colon):
@@ -901,7 +909,8 @@ class Parser:
             if self.current_str() == 'finally':
                 finally_tok = self.expect('finally')
                 finally_body = self.parse_block()
-            node = TryStmt(body, vars, types, handlers, else_body, finally_body)
+            node = TryStmt(body, vars, types, handlers, else_body,
+                           finally_body)
             self.set_repr(node, noderepr.TryStmtRepr(try_tok, except_toks,
                                                      name_toks, as_toks,
                                                      else_tok, finally_tok))
