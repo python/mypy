@@ -109,12 +109,8 @@ class BlockRepr:
 
 
 class GlobalDeclRepr:
-    any global_tok
-    any names   # list<Token>
-    any commas  # list<Token>
-    any br
-    
-    void __init__(self, any global_tok, any names, any commas, any br):
+    void __init__(self, any global_tok, list<Token> names, list<Token> commas,
+                  any br):
         self.global_tok = global_tok
         self.names = names
         self.commas = commas
@@ -127,10 +123,7 @@ class ExpressionStmtRepr:
 
 
 class AssignmentStmtRepr:
-    any assigns       # list<Token>
-    any br
-    
-    void __init__(self, any assigns, any br):
+    void __init__(self, list<Token> assigns, any br):
         self.assigns = assigns
         self.br = br
 
@@ -162,10 +155,7 @@ class SimpleStmtRepr:
 
 
 class IfStmtRepr:
-    any if_tok
-    any elif_toks   # list<Token>
-    any else_tok    # May be empty
-    
+    # Note: else_tok may be empty.
     void __init__(self, any if_tok, any elif_toks, any else_tok):
         self.if_tok = if_tok
         self.elif_toks = elif_toks
@@ -210,9 +200,7 @@ class IntExprRepr:
 
 
 class StrExprRepr:
-    any string  # list<Token>
-    
-    void __init__(self, any string):
+    void __init__(self, list<Token> string):
         self.string = string
 
 
@@ -227,17 +215,6 @@ class ParenExprRepr:
         self.rparen = rparen
 
 
-class LvalueRepr:
-    any lparens  # list<Token>
-    any rparens  # list<Token>
-    any base
-    
-    void __init__(self, any lparens, any rparens, any base):
-        self.lparens = lparens
-        self.rparens = rparens
-        self.base = base
-
-
 class NameExprRepr:
     void __init__(self, any id):
         self.id = id
@@ -250,12 +227,7 @@ class MemberExprRepr:
 
 
 class CallExprRepr:
-    any lparen
-    list<Token> commas
-    any asterisk # May be empty
-    list<Token> assigns
-    any rparen
-    
+    # Asterisk may be empty.
     void __init__(self, any lparen, list<Token> commas, any asterisk,
                   list<Token> assigns, any rparen):
         self.lparen = lparen
@@ -283,9 +255,7 @@ class UnaryExprRepr:
 
 
 class OpExprRepr:
-    any op
-    any op2    # May be empty; for "is not" and "not in"
-    
+    # Note: op2 may be empty; it is used for "is not" and "not in".
     void __init__(self, any op, any op2):
         self.op = op
         self.op2 = op2
@@ -315,14 +285,8 @@ class SuperExprRepr:
 
 
 class ListExprRepr:
-    any lbracket
-    any commas    # list<Token>
-    any rbracket
-    any langle
-    any rangle
-    
-    void __init__(self, any lbracket, any commas, any rbracket, any langle,
-                  any rangle):
+    void __init__(self, any lbracket, list<Token> commas, any rbracket,
+                  any langle, any rangle):
         self.lbracket = lbracket
         self.commas = commas
         self.rbracket = rbracket
@@ -331,27 +295,16 @@ class ListExprRepr:
 
 
 class TupleExprRepr:
-    any lparen  # May be empty
-    any commas  # list<Token>
-    any rparen  # May be empty
-    
-    void __init__(self, any lparen, any commas, any rparen):
+    # Note: lparen and rparen may be empty.
+    void __init__(self, any lparen, list<Token> commas, any rparen):
         self.lparen = lparen
         self.commas = commas
         self.rparen = rparen
 
 
 class DictExprRepr:
-    any lbrace
-    any colons  # list<Token>
-    any commas  # list<Token>
-    any rbrace
-    any langle
-    any type_comma
-    any rangle
-    
-    void __init__(self, any lbrace, any colons, any commas, any rbrace,
-                  any langle, any type_comma, any rangle):
+    void __init__(self, any lbrace, list<Token> colons, list<Token> commas,
+                  any rbrace, any langle, any type_comma, any rangle):
         self.lbrace = lbrace
         self.colons = colons
         self.commas = commas
