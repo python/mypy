@@ -40,7 +40,7 @@ class Node:
 class MypyFile(Node, AccessorNode):
     str name          # Module name ('__main__' for initial file)
     str full_name     # Qualified module name
-    str path          # Path to the file (nil if not known)
+    str path          # Path to the file (None if not known)
     list<Node> defs   # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
@@ -113,13 +113,13 @@ class OverloadedFuncDef(FuncBase):
 class FuncItem(FuncBase):
     # Fixed argument names
     list<Var> args
-    # Initialization expessions for fixed args; nil if no initialiser
+    # Initialization expessions for fixed args; None if no initialiser
     list<AssignmentStmt> init
     int min_args           # Minimum number of arguments
     int max_pos            # Maximum number of positional arguments, -1 if
                            # no explicit limit
-    Var var_arg            # If not nil, *x arg
-    Var dict_var_arg       # If not nil, **x arg
+    Var var_arg            # If not None, *x arg
+    Var dict_var_arg       # If not None, **x arg
     Block body
     bool is_implicit    # Implicit dynamic types?
     bool is_overload    # Is this an overload variant of function with
@@ -213,7 +213,7 @@ class Var(Node, AccessorNode):
     str full_name   # Name with module prefix
     bool is_init    # Is is initialized?
     TypeInfo info   # Defining class (for member variables)
-    Annotation typ  # Declared type, or nil if none
+    Annotation typ  # Declared type, or None if none
     bool is_self    # Is this the first argument to an ordinary method
                     # (usually "self")?
     
@@ -255,8 +255,8 @@ class TypeDef(Node):
 
 class VarDef(Node):
     list<tuple<Var, Typ>> items
-    int kind          # Ldef/Gdef/Mdef
-    Node init         # Expression or nil
+    int kind          # Ldef/Gdef/Mdef/...
+    Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
@@ -386,7 +386,7 @@ class ForStmt(Node):
 
 
 class ReturnStmt(Node):
-    Node expr   # Expression or nil
+    Node expr   # Expression or None
     
     void __init__(self, Node expr):
         self.expr = expr
@@ -550,7 +550,7 @@ class ParenExpr(Node):
 
 # Abstract base class
 class RefExpr(Node):
-    int kind      # Ldef/Gdef/Mdef/... (nil if not available)
+    int kind      # Ldef/Gdef/Mdef/... (None if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
 
 
@@ -559,7 +559,7 @@ class RefExpr(Node):
 class NameExpr(RefExpr):
     str name      # Name referred to (may be qualified)
     str full_name # Fully qualified name (or name if not global)
-    TypeInfo info # TypeInfo of class surrounding expression (may be nil)
+    TypeInfo info # TypeInfo of class surrounding expression (may be None)
     bool is_def   # Does this define a new variable as a lvalue?
     
     void __init__(self, str name):
@@ -661,9 +661,9 @@ class OpExpr(Node):
 # Slice expression (e.g. "x:y", "x:", "::2" or ":"); only valid as index in
 # index expressions.
 class SliceExpr(Node):
-    Node begin_index  # May be nil
-    Node end_index    # May be nil
-    Node stride      # May be nil
+    Node begin_index  # May be None
+    Node end_index    # May be None
+    Node stride       # May be None
     
     void __init__(self, Node begin_index, Node end_index, Node stride):
         self.begin_index = begin_index
@@ -706,7 +706,7 @@ class FuncExpr(FuncItem):
 # List literal expression [...] or <type> [...]
 class ListExpr(Node):
     list<Node> items 
-    Typ typ # nil if implicit type
+    Typ typ # None if implicit type
     
     void __init__(self, list<Node> items, Typ typ=None):
         self.items = items
@@ -719,8 +719,8 @@ class ListExpr(Node):
 # Dictionary literal expression {key:value, ...} or <kt, vt> {...}.
 class DictExpr(Node):
     list<tuple<Node, Node>> items
-    Typ key_type    # nil if implicit type
-    Typ value_type  # nil if implicit type
+    Typ key_type    # None if implicit type
+    Typ value_type  # None if implicit type
     
     void __init__(self, list<tuple<Node, Node>> items):
         self.items = items
@@ -757,7 +757,7 @@ class SetExpr(Node):
 class GeneratorExpr(Node):
     Node left_expr
     Node right_expr
-    Node condition   # May be nil
+    Node condition   # May be None
     list<Var> index
     list<Annotation> types
     
@@ -883,7 +883,7 @@ class TypeInfo(Node, AccessorNode):
     str full_name      # Fully qualified name
     bool is_interface  # Is this a interface type?
     TypeDef defn       # Corresponding TypeDef
-    TypeInfo base = None   # Superclass or nil (not interface)
+    TypeInfo base = None   # Superclass or None (not interface)
     set<TypeInfo> subtypes # Direct subclasses
     
     dict<str, Var> vars    # Member variables; also slots
@@ -897,11 +897,11 @@ class TypeInfo(Node, AccessorNode):
     # Generic type variable names
     list<str> type_vars
     
-    # Type variable bounds (each may be nil)
+    # Type variable bounds (each may be None)
     # TODO implement these
     list<Typ> bounds
     
-    # Inherited generic types (Instance or UnboundType or nil). The first base
+    # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
     list<Typ> bases
     

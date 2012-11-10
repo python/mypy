@@ -24,7 +24,8 @@ class UnboundType(Typ):
     str name
     list<Typ> args
     
-    void __init__(self, str name, list<Typ> args=None, int line=-1, any repr=None):
+    void __init__(self, str name, list<Typ> args=None, int line=-1,
+                  any repr=None):
         if not args:
             args = []
         self.name = name
@@ -51,7 +52,7 @@ class Any(Typ):
 # The return type "void". This can only be used as the return type in a
 # callable type and as the result type of calling such callable.
 class Void(Typ):
-    str source   # May be nil; function that generated this value
+    str source   # May be None; function that generated this value
     
     void __init__(self, str source=None, int line=-1, any repr=None):
         self.source = source
@@ -82,7 +83,8 @@ class Instance(Typ):
     list<Typ> args
     bool erased      # True if result of type variable substitution
     
-    void __init__(self, nodes.TypeInfo typ, list<Typ> args, int line=-1, any repr=None, any erased=False):
+    void __init__(self, nodes.TypeInfo typ, list<Typ> args, int line=-1,
+                  any repr=None, any erased=False):
         self.typ = typ
         self.args = args
         self.erased = erased
@@ -110,7 +112,8 @@ class TypeVar(Typ):
     # Can also be BoundVar/ObjectVar TODO better representation
     any is_wrapper_var
     
-    void __init__(self, str name, int id, any is_wrapper_var=False, int line=-1, any repr=None):
+    void __init__(self, str name, int id, any is_wrapper_var=False,
+                  int line=-1, any repr=None):
         self.name = name
         self.id = id
         self.is_wrapper_var = is_wrapper_var
@@ -136,10 +139,10 @@ class FunctionLike(Typ):
 class Callable(FunctionLike):
     list<Typ> arg_types # Types of function arguments
     int min_args        # Minimum number of arguments
-    bool is_var_arg    # Is it a varargs function?
+    bool is_var_arg     # Is it a varargs function?
     Typ ret_type        # Return value type
-    str name        # Name (may be nil; for error messages)
-    TypeVars variables   # Type variables for a generic function
+    str name            # Name (may be None; for error messages)
+    TypeVars variables  # Type variables for a generic function
     
     # Implicit bound values of type variables. These can be either for
     # class type variables or for generic function type variables.
@@ -234,8 +237,8 @@ class Overloaded(FunctionLike):
         return self._items[0].name
     
     bool is_type_obj(self):
-        # All the items must have the same type object status, so it's sufficient
-        # to query only one of them.
+        # All the items must have the same type object status, so it's
+        # sufficient to query only one of them.
         return self._items[0].is_type_obj()
     
     Overloaded with_name(self, str name):
@@ -287,11 +290,12 @@ class TypeVars:
 class TypeVarDef:
     str name
     int id
-    Typ bound  # May be nil
+    Typ bound  # May be None
     int line
     any repr
     
-    void __init__(self, str name, int id, Typ bound=None, int line=-1, any repr=None):
+    void __init__(self, str name, int id, Typ bound=None, int line=-1,
+                  any repr=None):
         self.name = name
         self.id = id
         self.bound = bound

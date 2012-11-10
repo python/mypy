@@ -6,15 +6,10 @@ from lex import Token
 # original formatting and comments).
 #
 # Each node representation usually only contains tokens directly associated
-# with that node (terminals). All members are Tokens or arrays of Tokens,
+# with that node (terminals). All members are Tokens or lists of Tokens,
 # unless explicitly mentioned otherwise.
 #
-# If a representation has a single Break token, the member name is br.
-# Otherwise, there are different members *Br for different breaks. The prefix
-# of the member refers to a token before the Break. For example, defBr in
-# the representation of a function definition refers to the Break token
-# following the 'def' token and endBr refers to the Break following the 'end'
-# token.
+# If a representation has a Break token, the member name is br.
 
 
 class MypyFileRepr:
@@ -31,7 +26,9 @@ class ImportRepr:
     list<Token> commas
     any br
     
-    void __init__(self, any import_tok, list<list<Token>> components, list<tuple<Token, Token>> as_names, list<Token> commas, any br):
+    void __init__(self, any import_tok, list<list<Token>> components,
+                  list<tuple<Token, Token>> as_names, list<Token> commas,
+                  any br):
         self.import_tok = import_tok
         self.components = components
         self.as_names = as_names
@@ -43,14 +40,16 @@ class ImportFromRepr:
     any from_tok
     list<Token> components
     any import_tok
-    any lparen     # May be None
+    any lparen     # May be empty
     # In each tuple, the first item contains tokens for 'name [as name]' and
-    # the second item is a comma or None.
+    # the second item is a comma or empty.
     list<tuple<list<Token>, Token>> names
     any rparen     # May be None
     any br
     
-    void __init__(self, any from_tok, list<Token> components, any import_tok, any lparen, list<tuple<list<Token>, Token>> names, any rparen, any br):
+    void __init__(self, any from_tok, list<Token> components, any import_tok,
+                  any lparen, list<tuple<list<Token>, Token>> names,
+                  any rparen, any br):
         self.from_tok = from_tok
         self.components = components
         self.import_tok = import_tok
@@ -62,7 +61,7 @@ class ImportFromRepr:
 
 class FuncRepr:
     any def_tok
-    any name        # May be None
+    any name        # May be empty
     any args        # FuncArgsRepr
     
     void __init__(self, any def_tok, any name, any args):
@@ -80,7 +79,8 @@ class FuncArgsRepr:
     any assigns
     any asterisk
     
-    void __init__(self, any lseparator, any rseparator, any arg_names, any commas, any assigns, any asterisk):
+    void __init__(self, any lseparator, any rseparator, any arg_names,
+                  any commas, any assigns, any asterisk):
         self.lseparator = lseparator
         self.rseparator = rseparator
         self.arg_names = arg_names
@@ -91,7 +91,7 @@ class FuncArgsRepr:
 
 class VarRepr:
     any name
-    any comma   # May be None
+    any comma   # May be empty
     
     void __init__(self, any name, any comma):
         self.name = name
@@ -102,10 +102,11 @@ class TypeDefRepr:
     any class_tok
     any name
     any lparen
-    any commas        # Array<Token> (after implements)
+    any commas        # list<Token> (after implements)
     any rparen
     
-    void __init__(self, any class_tok, any name, any lparen, any commas, any rparen):
+    void __init__(self, any class_tok, any name, any lparen, any commas,
+                  any rparen):
         self.class_tok = class_tok
         self.name = name
         self.lparen = lparen
@@ -114,7 +115,7 @@ class TypeDefRepr:
 
 
 class VarDefRepr:
-    any assign       # May be None
+    any assign       # May be empty
     any br
     
     void __init__(self, any assign, any br):
@@ -146,8 +147,8 @@ class BlockRepr:
 
 class GlobalDeclRepr:
     any global_tok
-    any names   # Array<Token>
-    any commas  # Array<Token>
+    any names   # list<Token>
+    any commas  # list<Token>
     any br
     
     void __init__(self, any global_tok, any names, any commas, any br):
@@ -165,7 +166,7 @@ class ExpressionStmtRepr:
 
 
 class AssignmentStmtRepr:
-    any assigns       # Array<Token>
+    any assigns       # list<Token>
     any br
     
     void __init__(self, any assigns, any br):
@@ -214,8 +215,8 @@ class SimpleStmtRepr:
 
 class IfStmtRepr:
     any if_tok
-    any elif_toks   # Array<Token>
-    any else_tok    # May be None
+    any elif_toks   # list<Token>
+    any else_tok    # May be empty
     
     void __init__(self, any if_tok, any elif_toks, any else_tok):
         self.if_tok = if_tok
@@ -236,13 +237,14 @@ class RaiseStmtRepr:
 
 class TryStmtRepr:
     any try_tok
-    any except_toks  # Array<Token>
-    any name_toks    # Array<Token>, may be None
-    any as_toks      # Array<Token>, may be None
+    any except_toks  # list<Token>
+    any name_toks    # list<Token>, may be empty
+    any as_toks      # list<Token>, may be empty
     any else_tok
     any finally_tok
     
-    void __init__(self, any try_tok, any except_toks, any name_toks, any as_toks, any else_tok, any finally_tok):
+    void __init__(self, any try_tok, any except_toks, any name_toks,
+                  any as_toks, any else_tok, any finally_tok):
         self.try_tok = try_tok
         self.except_toks = except_toks
         self.name_toks = name_toks
@@ -270,7 +272,7 @@ class IntExprRepr:
 
 
 class StrExprRepr:
-    any string  # Array<Token>
+    any string  # list<Token>
     
     void __init__(self, any string):
         self.string = string
@@ -293,8 +295,8 @@ class ParenExprRepr:
 
 
 class LvalueRepr:
-    any lparens  # Array<Token>
-    any rparens  # Array<Token>
+    any lparens  # list<Token>
+    any rparens  # list<Token>
     any base
     
     void __init__(self, any lparens, any rparens, any base):
@@ -322,11 +324,12 @@ class MemberExprRepr:
 class CallExprRepr:
     any lparen
     list<Token> commas
-    any asterisk # May be None
+    any asterisk # May be empty
     list<Token> assigns
     any rparen
     
-    void __init__(self, any lparen, list<Token> commas, any asterisk, list<Token> assigns, any rparen):
+    void __init__(self, any lparen, list<Token> commas, any asterisk,
+                  list<Token> assigns, any rparen):
         self.lparen = lparen
         self.commas = commas
         self.asterisk = asterisk
@@ -361,7 +364,7 @@ class UnaryExprRepr:
 
 class OpExprRepr:
     any op
-    any op2    # May be None; for "is not" and "not in"
+    any op2    # May be empty; for "is not" and "not in"
     
     void __init__(self, any op, any op2):
         self.op = op
@@ -395,7 +398,8 @@ class SuperExprRepr:
     any dot
     any name
     
-    void __init__(self, any super_tok, any lparen, any rparen, any dot, any name):
+    void __init__(self, any super_tok, any lparen, any rparen, any dot,
+                  any name):
         self.super_tok = super_tok
         self.lparen = lparen
         self.rparen = rparen
@@ -405,12 +409,13 @@ class SuperExprRepr:
 
 class ListExprRepr:
     any lbracket
-    any commas    # Array<Token>
+    any commas    # list<Token>
     any rbracket
     any langle
     any rangle
     
-    void __init__(self, any lbracket, any commas, any rbracket, any langle, any rangle):
+    void __init__(self, any lbracket, any commas, any rbracket, any langle,
+                  any rangle):
         self.lbracket = lbracket
         self.commas = commas
         self.rbracket = rbracket
@@ -419,9 +424,9 @@ class ListExprRepr:
 
 
 class TupleExprRepr:
-    any lparen  # May be None
-    any commas  # Array<Token>
-    any rparen  # May be None
+    any lparen  # May be empty
+    any commas  # list<Token>
+    any rparen  # May be empty
     
     void __init__(self, any lparen, any commas, any rparen):
         self.lparen = lparen
@@ -431,14 +436,15 @@ class TupleExprRepr:
 
 class DictExprRepr:
     any lbrace
-    any colons  # Array<Token>
-    any commas  # Array<Token>
+    any colons  # list<Token>
+    any commas  # list<Token>
     any rbrace
     any langle
     any type_comma
     any rangle
     
-    void __init__(self, any lbrace, any colons, any commas, any rbrace, any langle, any type_comma, any rangle):
+    void __init__(self, any lbrace, any colons, any commas, any rbrace,
+                  any langle, any type_comma, any rangle):
         self.lbrace = lbrace
         self.colons = colons
         self.commas = commas
