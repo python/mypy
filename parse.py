@@ -305,7 +305,9 @@ class Parser:
                                    bool is_in_interface=False):
         self.is_function = True
         try:
-            name, args, init, var_arg, dict_var_arg, max_pos, typ, is_error, toks = self.parse_function_header(ret_type)
+            (name, args, init, var_arg,
+             dict_var_arg, max_pos, typ,
+             is_error, toks) = self.parse_function_header(ret_type)
             
             Block body
             if is_in_interface and isinstance(self.current(), Break):
@@ -320,7 +322,8 @@ class Parser:
             if is_error:
                 return None
             
-            node = FuncDef(name, args, init, var_arg, dict_var_arg, max_pos, body, typ)
+            node = FuncDef(name, args, init, var_arg, dict_var_arg, max_pos,
+                           body, typ)
             name_tok, arg_reprs = toks
             self.set_repr(node, noderepr.FuncRepr(def_tok, name_tok,
                                                   arg_reprs))
@@ -329,16 +332,15 @@ class Parser:
             self.errors.set_function(None)
             self.is_function = False
     
-    tuple<str, list<Var>, list<Node>, Var, Var, int, Annotation, bool, tuple<Token, any>> parse_function_header(self, Annotation ret_type):
-        list<Var> args, list<Node> init, Var var_arg, Var dict_var_arg, int max_pos
+    tuple<str, \
+          list<Var>, \
+          list<Node>, \
+          Var, Var, int, Annotation, bool, \
+          tuple<Token, any>> parse_function_header(
+              self, Annotation ret_type):
         
-        str name, Annotation typ
         is_error = False
-        
         name_tok = none
-        noderepr.FuncArgsRepr arg_repr
-        
-        colon = none
         
         try:
             name_tok = self.expect_type(Name)
@@ -346,7 +348,8 @@ class Parser:
             
             self.errors.set_function(name)
             
-            args, init, var_arg, dict_var_arg, max_pos, typ, arg_repr = self.parse_args(ret_type)
+            (args, init, var_arg, dict_var_arg,
+             max_pos, typ, arg_repr) = self.parse_args(ret_type)
         except ParseError:
             is_error = True
             if not isinstance(self.current(), Break):
@@ -355,35 +358,51 @@ class Parser:
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
         
-        return name, args, init, var_arg, dict_var_arg, max_pos, typ, is_error, (name_tok, arg_repr)
+        return (name, args, init, var_arg, dict_var_arg, max_pos, typ,
+                is_error, (name_tok, arg_repr))
     
     # Parse a function type signature, potentially prefixed with type variable
     # specification within <...>.
-    tuple<list<Var>, list<Node>, Var, Var, int, Annotation, noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
+    tuple<list<Var>, \
+          list<Node>, \
+          Var, Var, int, Annotation, \
+          noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
+        
         type_vars = self.parse_type_vars()
         
         lparen = self.expect('(')
         
         # Parse the argument list (everything within '(' and ')').
-        args, init, min_args, var_arg, dict_var_arg, has_inits, max_pos, arg_names, commas, asterisk, assigns, arg_types = self.parse_arg_list()
+        (args, init, min_args,
+         var_arg, dict_var_arg,
+         has_inits, max_pos, arg_names,
+         commas, asterisk,
+         assigns, arg_types) = self.parse_arg_list()
         
         rparen = self.expect(')')
         
         # TODO dictionary varargs
-        annotation = self.build_func_annotation(ret_type, arg_types, min_args, var_arg, type_vars, lparen.line)
+        annotation = self.build_func_annotation(
+            ret_type, arg_types, min_args, var_arg, type_vars, lparen.line)
         
         return (args, init, var_arg, dict_var_arg, max_pos, annotation,
                 noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
                                       assigns, asterisk))
     
-    Annotation build_func_annotation(self, Annotation ret_type, list<Typ> arg_types, int min_args, Var var_arg, TypeVars type_vars, int line):
+    Annotation build_func_annotation(self, Annotation ret_type,
+                                     list<Typ> arg_types, int min_args,
+                                     Var var_arg, TypeVars type_vars,
+                                     int line):
         # Are there any type annotations?
-        if ret_type is not None or arg_types != [None] * len(arg_types) or type_vars.items != []:
+        if (ret_type or arg_types != [None] * len(arg_types)
+                or type_vars.items):
             # Yes. Construct a type for the function signature.
             Typ ret = None
             if ret_type is not None:
                 ret = ret_type.typ
-            typ = self.construct_function_type(arg_types, min_args, var_arg is not None, ret, type_vars, line)
+            typ = self.construct_function_type(arg_types, min_args,
+                                               var_arg is not None,
+                                               ret, type_vars, line)
             annotation = Annotation(typ, line)
             self.set_repr(annotation, noderepr.AnnotationRepr())
             return annotation
@@ -391,7 +410,12 @@ class Parser:
             return None
     
     # Parse function definition argument list (everything between '(' and ')').
-    tuple<list<Var>, list<Node>, int, Var, Var, bool, int, list<Token>, list<Token>, Token, list<Token>, list<Typ>> parse_arg_list(self):
+    tuple<list<Var>, list<Node>, int, \
+          Var, Var, bool, int, \
+          list<Token>, list<Token>, \
+          Token, list<Token>, \
+          list<Typ>> parse_arg_list(self):
+        
         list<Var> args = []
         list<Node> init = []
         min_args = 0
@@ -441,8 +465,8 @@ class Parser:
                         init.append(self.parse_expression(precedence[',']))
                         has_inits = True
                     else:
-                        # After the first default argument value all the rest of the
-                        # args must have initialisers.
+                        # After the first default argument value all the rest
+                        # of the args must have initialisers.
                         if has_inits:
                             self.parse_error()
                         init.append(None)
@@ -453,7 +477,8 @@ class Parser:
                     break
                 commas.append(self.expect(','))
         
-        return args, init, min_args, var_arg, dict_var_arg, has_inits, max_pos, arg_names, commas, asterisk, assigns, arg_types
+        return (args, init, min_args, var_arg, dict_var_arg, has_inits,
+                max_pos, arg_names, commas, asterisk, assigns, arg_types)
     
     Callable construct_function_type(self, list<Typ> arg_types, int min_args, bool is_var_arg, Typ ret_type, TypeVars type_vars, int line):
         # Complete the type annotation by replacing omitted types with
