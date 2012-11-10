@@ -73,4 +73,4 @@ class SymbolTableNode:
 
 
 str clean_up(str s):
-    return re.sub(s, '.*::', '')
+    return re.sub('.*::', '', s)

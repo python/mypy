@@ -179,7 +179,7 @@ list<str> strip_list(list<str> l):
     list<str> r = []
     for s in l:
         # Strip spaces at end of line
-        r.append(re.sub(s, '\\s+$', ''))
+        r.append(re.sub('\\s+$', '', s))
     
     while len(r) > 0 and r[-1] == '':
         r.pop()
@@ -191,9 +191,9 @@ list<str> collapse_line_continuation(list<str> l):
     list<str> r = []
     cont = False
     for s in l:
-        ss = re.sub(s, '\\\\$', '')
+        ss = re.sub('\\\\$', '', s)
         if cont:
-            r[-1] += re.sub(ss, '^ +', '')
+            r[-1] += re.sub('^ +', '', ss)
         else:
             r.append(ss)
         cont = s.endswith('\\')

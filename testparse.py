@@ -1,8 +1,8 @@
 import os.path
 from unittest import Suite
-from test.helpers import assert_string_arrays_equal
-from test.testdata import parse_test_cases
-from test import config
+from testhelpers import assert_string_arrays_equal
+from testdata import parse_test_cases
+import testconfig
 from parse import parse
 from errors import CompileError
 
@@ -11,7 +11,8 @@ class ParserSuite(Suite):
     def cases(self):
         # The test case descriptions are stored in an external file.
         return parse_test_cases(
-            os.path.join(config.test_data_prefix, 'parse.test'), test_parser)
+            os.path.join(testconfig.test_data_prefix, 'parse.test'),
+            test_parser)
 
 
 # Perform a single parser test case. The argument contains the description

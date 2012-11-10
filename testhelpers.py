@@ -1,7 +1,7 @@
 import sys
 import re
 from unittest import AssertionFailure
-from test import config
+import testconfig
 import os
 
 
@@ -36,7 +36,7 @@ void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
             if i >= len(actual) or expected[i] != actual[i]:
                 if first_diff < 0:
                     first_diff = i
-                sys.stderr.write('  {-45:} (diff)'.format(expected[i]))
+                sys.stderr.write('  {:<45} (diff)'.format(expected[i]))
             else:
                 e = expected[i]
                 sys.stderr.write('  ' + e[:width])
@@ -53,7 +53,7 @@ void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
         
         for j in range(num_skip_start, len(actual) - num_skip_end):
             if j >= len(expected) or expected[j] != actual[j]:
-                sys.stderr.write('  {-45:} (diff)'.format(actual[j]))
+                sys.stderr.write('  {:<45} (diff)'.format(actual[j]))
             else:
                 a = actual[j]
                 sys.stderr.write('  ' + a[:width])
@@ -142,14 +142,14 @@ void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual, 
 def clean_up(a):
     res = []
     for s in a:
-        prefix = config.PREFIX + os.sep
+        prefix = testconfig.PREFIX + os.sep
         ss = s
         for p in prefix, prefix.replace(os.sep, '/'):
             if p != '/' and p != '//' and p != '\\' and p != '\\\\':
                 ss = ss.replace(p, '')
         # Ignore spaces at end of line.
-        ss = re.sub(ss, ' +$', '')
-        res.append(re.sub(ss, '\\r$', ''))
+        ss = re.sub(' +$', '', ss)
+        res.append(re.sub('\\r$', '', ss))
     return res
 
 
