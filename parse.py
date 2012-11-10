@@ -1261,7 +1261,11 @@ class Parser:
         return node
     
     # Parse arguments in a call expression (within '(' and ')').
-    tuple<list<Node>, bool, Node, list<Token>, Token, list<tuple<NameExpr, Node>>, list<Token>> parse_arg_expr(self):
+    tuple<list<Node>, bool, Node, \
+          list<Token>, Token, \
+          list<tuple<NameExpr, Node>>, \
+          list<Token>> parse_arg_expr(self):
+        
         list<Node> args = []
         is_var_arg = False
         at = none
@@ -1275,7 +1279,8 @@ class Parser:
                 kw_args, assigns, c = self.parse_keyword_args()
                 commas.extend(c)
                 break
-            if self.current_str() == '*' and not is_var_arg and dict_var_arg is None:
+            if (self.current_str() == '*' and not is_var_arg
+                    and dict_var_arg is None):
                 is_var_arg = True
                 at = self.expect('*')
                 args.append(self.parse_expression(precedence[',']))
@@ -1289,7 +1294,9 @@ class Parser:
             commas.append(self.expect(','))
         return args, is_var_arg, dict_var_arg, commas, at, kw_args, assigns
     
-    tuple<list<tuple<NameExpr, Node>>, list<Token>, list<Token>> parse_keyword_args(self):
+    tuple<list<tuple<NameExpr, Node>>, \
+          list<Token>, list<Token>> parse_keyword_args(self):
+        
         list<tuple<NameExpr, Node>> res = []
         list<Token> assigns = []
         list<Token> commas = []
@@ -1307,7 +1314,8 @@ class Parser:
         dot = self.expect('.')
         name = self.expect_type(Name)
         Node node
-        if isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr) and expr.callee.name == 'super':
+        if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
+                and expr.callee.name == 'super'):
             node = SuperExpr(name.string)
             self.set_repr(node,
                           noderepr.SuperExprRepr(expr.callee.repr.id,
@@ -1380,9 +1388,13 @@ class Parser:
         is_error = False
         lambda_tok = self.expect('lambda')
         
-        args, init, min_args, var_arg, dict_var_arg, has_inits, max_pos, arg_names, commas, asterisk, assigns, arg_types = self.parse_arg_list()
+        (args, init, min_args, var_arg,
+         dict_var_arg, has_inits, max_pos,
+         arg_names, commas, asterisk,
+         assigns, arg_types) = self.parse_arg_list()
         
-        typ = self.build_func_annotation(None, arg_types, min_args, var_arg, TypeVars([]), lambda_tok.line)
+        typ = self.build_func_annotation(None, arg_types, min_args, var_arg,
+                                         TypeVars([]), lambda_tok.line)
         
         colon = self.expect(':')
         
@@ -1401,7 +1413,8 @@ class Parser:
     
     TypeApplication parse_type_application(self, any expr):
         try:
-            types, langle, rangle, commas = self.parse_type_list_in_angle_brackets()
+            (types, langle,
+             rangle, commas) = self.parse_type_list_in_angle_brackets()
             node = TypeApplication(expr, types)
             self.set_repr(node, noderepr.TypeApplicationRepr(langle, commas,
                                                              rangle))
@@ -1409,7 +1422,8 @@ class Parser:
         except TypeParseError as e:
             self.parse_error_at(e.token)
     
-    tuple<list<Typ>, Token, Token, list<Token>> parse_type_list_in_angle_brackets(self):
+    tuple<list<Typ>, Token, \
+          Token, list<Token>> parse_type_list_in_angle_brackets(self):
         types, langle, rangle, commas, i = parse_type_args(self.tok, self.ind)
         self.ind = i
         return types, langle, rangle, commas
@@ -1484,7 +1498,8 @@ class Parser:
     
     void skip_until_break(self):
         n = 0
-        while not isinstance(self.current(), Break) and not isinstance(self.current(), Eof):
+        while (not isinstance(self.current(), Break)
+               and not isinstance(self.current(), Eof)):
             self.skip()
             n += 1
         if isinstance(self.tok[self.ind - 1], Colon) and n > 1:
@@ -1517,7 +1532,8 @@ class Parser:
         TypeVars type_vars
         if self.current_str() == '<':
             try:
-                type_vars, self.ind = parse_type_variables(self.tok, self.ind, True)
+                type_vars, self.ind = parse_type_variables(self.tok, self.ind,
+                                                           True)
             except TypeParseError as e:
                 self.parse_error_at(e.token)
         else:
@@ -1559,7 +1575,8 @@ class Parser:
     
     bool is_at_sig_type(self):
         i, j = self.try_scan_type(self.ind)
-        if j == 0 and i >= 0 and (isinstance(self.tok[i], Name) or self.tok[i].string == '*'):
+        if j == 0 and i >= 0 and (isinstance(self.tok[i], Name)
+                                  or self.tok[i].string == '*'):
             return True
         else:
             return self.is_at_type()
@@ -1570,7 +1587,9 @@ class Parser:
             return False
         else:
             t = self.tok[i + 1]
-            return isinstance(t, Name) or isinstance(t, IntLit) or isinstance(t, StrLit) or isinstance(t, FloatLit) or t.string in ['(', '[', '{', 'lambda']             
+            return (isinstance(t, Name) or isinstance(t, IntLit)
+                    or isinstance(t, StrLit) or isinstance(t, FloatLit)
+                    or t.string in ['(', '[', '{', 'lambda'])
     
     bool is_at_type_application(self):
         if self.current_str() != '<':
@@ -1588,11 +1607,12 @@ class Parser:
     
     # Return the index of next token after type starting at token index i as
     # the first integer. The second integer is 1 if the first > has been
-    # consumed from >>, 0 otherwise. Return -1 as the first integer if could not
-    # parse a type.
+    # consumed from >>, 0 otherwise. Return -1 as the first integer if could
+    # not parse a type.
     tuple<int, int> try_scan_type(self, int i):
         if isinstance(self.tok[i], Name):
-            while self.tok[i + 1].string == '.' and isinstance(self.tok[i + 2], Name):
+            while (self.tok[i + 1].string == '.'
+                   and isinstance(self.tok[i + 2], Name)):
                 i += 2
             if self.tok[i + 1].string == '<':
                 i += 2
@@ -1634,7 +1654,8 @@ str token_repr(Token tok):
         return 'numeric literal'
     elif isinstance(tok, StrLit):
         return 'string literal'
-    elif isinstance(tok, Punct) or isinstance(tok, Op) or isinstance(tok, Colon):
+    elif (isinstance(tok, Punct) or isinstance(tok, Op)
+          or isinstance(tok, Colon)):
         return tok.string
     elif isinstance(tok, Bom):
         return 'byte order mark'
