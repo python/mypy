@@ -1,14 +1,20 @@
 import os.path
 import os
 import re
-from os import dir_name, remove
+from os import remove
 from unittest import TestCase, SkipTestCaseException
-from io import OUTPUT
 
 
 # Parse a file with test case descriptions. Return an array of test cases.
-list<DataDrivenTestCase> parse_test_cases(str path, func<DataDrivenTestCase, void> perform, str base_path='.', bool optional_out=False, str include_path=dir_name(path)):
-    l = file(path).readlines()
+list<DataDrivenTestCase> parse_test_cases(
+            str path,
+            func<DataDrivenTestCase, void> perform,
+            str base_path='.',
+            bool optional_out=False,
+            str include_path=None):
+    if not include_path:
+        include_path = os.path.dirname(path)
+    l = open(path).readlines()
     p = parse_test_data(l, path)
     list<DataDrivenTestCase> out = []
     
@@ -22,14 +28,14 @@ list<DataDrivenTestCase> parse_test_cases(str path, func<DataDrivenTestCase, voi
             i += 1
             
             list<tuple<str, str>> files = [] # path and contents
-            while i < len(p) and p[i].id not in ('out', 'case'):
+            while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
                     files.append((os.path.join(base_path, p[i].arg), '\n'.join(p[i].data)))
                 elif p[i].id == 'builtins':
                     # Use a custom source file for the std module.
-                    mpath = os.path.join(dir_name(path), p[i].arg)
-                    f = file(mpath)
+                    mpath = os.path.join(os.path.dirname(path), p[i].arg)
+                    f = open(mpath)
                     files.append((os.path.join(base_path, 'builtins.py'), f.read()))
                     f.close()
                 else:
@@ -77,10 +83,10 @@ class DataDrivenTestCase(TestCase):
         super().set_up()
         self.clean_up = []
         for path, content in self.files:
-            dir = dir_name(path)
+            dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
-            f = file(path, OUTPUT)
+            f = open(path, 'w')
             f.write(content)
             f.close()
             self.clean_up.append((False, path))
@@ -91,7 +97,7 @@ class DataDrivenTestCase(TestCase):
         if dir == '' or os.path.isdir(dir):
             return []
         else:
-            dirs = self.add_dirs(dir_name(dir)) + [dir]
+            dirs = self.add_dirs(os.path.dirname(dir)) + [dir]
             os.mkdir(dir)
             return dirs
     
@@ -139,11 +145,10 @@ list<TestItem> parse_test_data(list<str> l, str fnam):
         s = l[i].strip()
         
         if l[i].startswith('[') and s.endswith(']') and not s.startswith('[['):
-            if id is not None:
+            if id:
                 data = collapse_line_continuation(data)
                 data = strip_list(data)
                 ret.append(TestItem(id, arg, strip_list(data), fnam, i0 + 1))
-            
             i0 = i
             id = s[1:-1]
             arg = None
@@ -160,7 +165,7 @@ list<TestItem> parse_test_data(list<str> l, str fnam):
         i += 1
     
     # Process the last item.
-    if id is not None:
+    if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
         ret.append(TestItem(id, arg, data, fnam, i + 1))
@@ -177,7 +182,7 @@ list<str> strip_list(list<str> l):
         r.append(re.sub(s, '\\s+$', ''))
     
     while len(r) > 0 and r[-1] == '':
-        r.remove_at(-1)
+        r.pop()
     
     return r
 
@@ -202,7 +207,7 @@ list<str> expand_includes(list<str> a, str base_path):
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()
-            f = file(os.path.join(base_path, fn))
+            f = open(os.path.join(base_path, fn))
             res.extend(f.readlines())
             f.close()
         else:
@@ -215,5 +220,5 @@ list<str> expand_includes(list<str> a, str base_path):
 def expand_errors(input, output, fnam):
     for i in range(len(input)):
         m = re.search('# E: (.*)$', input[i])
-        if m is not None:
+        if m:
             output.append('{}, line {}: {}'.format(fnam, i + 1, m.group(1)))

@@ -1,8 +1,8 @@
 import sys
 import re
 from unittest import AssertionFailure
-from test import PREFIX
-from os import separator
+from test import config
+import os
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if
@@ -19,12 +19,12 @@ void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
         num_skip_start = num_skipped_prefix_lines(expected, actual)
         num_skip_end = num_skipped_suffix_lines(expected, actual)
         
-        sys.stderr.write_ln('Expected:')
+        sys.stderr.write('Expected:\n')
         
         # If omit some lines at the beginning, indicate it by displaying a line
         # with '...'.
         if num_skip_start > 0:
-            sys.stderr.write_ln('  ...')
+            sys.stderr.write('  ...\n')
         
         # Keep track of the first different line.
         first_diff = -1
@@ -39,33 +39,33 @@ void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
                 sys.stderr.write('  {-45:} (diff)'.format(expected[i]))
             else:
                 e = expected[i]
-                sys.stderr.write('  ', e[:width])
+                sys.stderr.write('  ' + e[:width])
                 if len(e) > width:
                     sys.stderr.write('...')
-            sys.stderr.write_ln()
+            sys.stderr.write('\n')
         if num_skip_end > 0:
-            sys.stderr.write_ln('  ...')
+            sys.stderr.write('  ...\n')
         
-        sys.stderr.write_ln('Actual:')
+        sys.stderr.write('Actual:\n')
         
         if num_skip_start > 0:
-            sys.stderr.write_ln('  ...')
+            sys.stderr.write('  ...\n')
         
-        for i in range(num_skip_start, len(actual) - num_skip_end):
-            if i >= len(expected) or expected[i] != actual[i]:
-                sys.stderr.write('  {-45:} (diff)'.format(actual[i]))
+        for j in range(num_skip_start, len(actual) - num_skip_end):
+            if j >= len(expected) or expected[j] != actual[j]:
+                sys.stderr.write('  {-45:} (diff)'.format(actual[j]))
             else:
-                a = actual[i]
-                sys.stderr.write('  ', a[:width])
+                a = actual[j]
+                sys.stderr.write('  ' + a[:width])
                 if len(a) > width:
                     sys.stderr.write('...')
-            sys.stderr.write_ln()
+            sys.stderr.write('\n')
         if actual == []:
-            sys.stderr.write_ln('  (empty)')
+            sys.stderr.write('  (empty)\n')
         if num_skip_end > 0:
-            sys.stderr.write_ln('  ...')
+            sys.stderr.write('  ...\n')
         
-        sys.stderr.write_ln()
+        sys.stderr.write('\n')
         
         if first_diff >= 0 and first_diff < len(actual) and (len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT):
             # Display message that helps visualize the differences between two
@@ -92,7 +92,7 @@ void show_align_message(str s1, str s2):
     
     maxw = 72 # Maximum number of characters shown
     
-    sys.stderr.write_ln('Alignment of first line difference:')
+    sys.stderr.write('Alignment of first line difference:\n')
     
     trunc = False
     while s1[:30] == s2[:30]:
@@ -110,8 +110,8 @@ void show_align_message(str s1, str s2):
         extra = '...'
     
     # Write a chunk of both lines, aligned.
-    sys.stderr.write_ln('  E: ', s1[:maxw], extra)
-    sys.stderr.write_ln('  A: ', s2[:maxw], extra)
+    sys.stderr.write('  E: {}{}\n'.format(s1[:maxw], extra))
+    sys.stderr.write('  A: {}{}\n'.format(s2[:maxw], extra))
     # Write an indicator character under the different columns.
     sys.stderr.write('     ')
     for j in range(min(maxw, max(len(s1), len(s2)))):
@@ -120,7 +120,7 @@ void show_align_message(str s1, str s2):
             break
         else:
             sys.stderr.write(' ') # Equal
-    sys.stderr.write_ln()
+    sys.stderr.write('\n')
 
 
 # Like above, but let a line with only "..." in expected match any number of
@@ -142,9 +142,9 @@ void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual, 
 def clean_up(a):
     res = []
     for s in a:
-        prefix = PREFIX + separator
+        prefix = config.PREFIX + os.sep
         ss = s
-        for p in prefix, prefix.replace(separator, '/'):
+        for p in prefix, prefix.replace(os.sep, '/'):
             if p != '/' and p != '//' and p != '\\' and p != '\\\\':
                 ss = ss.replace(p, '')
         # Ignore spaces at end of line.
