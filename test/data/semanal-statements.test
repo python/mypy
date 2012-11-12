@@ -1,0 +1,684 @@
+[case testReturn]
+def f(x): return x
+def g(): return
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Block:1(
+      ReturnStmt:1(
+        NameExpr(x [l]))))
+  FuncDef:2(
+    g
+    Block:2(
+      ReturnStmt:2())))
+
+[case testRaise]
+raise object()
+[out]
+MypyFile:1(
+  RaiseStmt:1(
+    CallExpr:1(
+      NameExpr(object [builtins.object])
+      Args())))
+
+[case testYield]
+def f(): yield f
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      YieldStmt:1(
+        NameExpr(f [__main__.f])))))
+
+[case testAssert]
+assert object
+[out]
+MypyFile:1(
+  AssertStmt:1(
+    NameExpr(object [builtins.object])))
+
+[case testOperatorAssignment]
+x = y = 1
+x += y
+y |= x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  OperatorAssignmentStmt:2(
+    +
+    NameExpr(x [__main__.x])
+    NameExpr(y [__main__.y]))
+  OperatorAssignmentStmt:3(
+    |
+    NameExpr(y [__main__.y])
+    NameExpr(x [__main__.x])))
+
+[case testWhile]
+x = y = 1
+while x:
+  y
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  WhileStmt:2(
+    NameExpr(x [__main__.x])
+    Block:2(
+      ExpressionStmt:3(
+        NameExpr(y [__main__.y])))))
+
+[case testFor]
+for x in object:
+  x
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    NameExpr(object [builtins.object])
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x [__main__.x])))))
+
+[case testForInFunction]
+def f():
+  for x in f:
+    x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ForStmt:2(
+        Var(x)
+        NameExpr(f [__main__.f])
+        Block:2(
+          ExpressionStmt:3(
+            NameExpr(x [l])))))))
+
+[case testMultipleForIndexVars]
+for x, y in []:
+  x, y
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    Var(y)
+    ListExpr:1()
+    Block:1(
+      ExpressionStmt:2(
+        TupleExpr:2(
+          NameExpr(x [__main__.x])
+          NameExpr(y [__main__.y]))))))
+
+[case testForWithTypes]
+class c: pass
+for object x, c y in []:
+  x, y
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    PassStmt:1())
+  ForStmt:2(
+    Var(x)
+    Var(y)
+    Type:2(builtins.object)
+    Type:2(__main__.c)
+    ListExpr:2()
+    Block:2(
+      ExpressionStmt:3(
+        TupleExpr:3(
+          NameExpr(x [__main__.x])
+          NameExpr(y [__main__.y]))))))
+
+[case testForIndexVarScope]
+for x in []:
+  pass
+x
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    ListExpr:1()
+    Block:1(
+      PassStmt:2()))
+  ExpressionStmt:3(
+    NameExpr(x [__main__.x])))
+
+[case testForIndexVarScope2]
+def f():
+  for x in []:
+    pass
+  x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ForStmt:2(
+        Var(x)
+        ListExpr:2()
+        Block:2(
+          PassStmt:3()))
+      ExpressionStmt:4(
+        NameExpr(x [l])))))
+
+[case testLoopWithElse]
+for x in []:
+  pass
+else:
+  x
+while 1:
+  pass
+else:
+  x
+[out]
+MypyFile:1(
+  ForStmt:1(
+    Var(x)
+    ListExpr:1()
+    Block:1(
+      PassStmt:2())
+    Else(
+      ExpressionStmt:4(
+        NameExpr(x [__main__.x]))))
+  WhileStmt:5(
+    IntExpr(1)
+    Block:5(
+      PassStmt:6())
+    Else(
+      ExpressionStmt:8(
+        NameExpr(x [__main__.x])))))
+
+[case testBreak]
+while 1:
+  break
+for x in []:
+  break
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(1)
+    Block:1(
+      BreakStmt:2()))
+  ForStmt:3(
+    Var(x)
+    ListExpr:3()
+    Block:3(
+      BreakStmt:4())))
+
+[case testContinue]
+while 1:
+  continue
+for x in []:
+  continue
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(1)
+    Block:1(
+      ContinueStmt:2()))
+  ForStmt:3(
+    Var(x)
+    ListExpr:3()
+    Block:3(
+      ContinueStmt:4())))
+
+[case testIf]
+x = 1
+if x:
+  x
+elif x:
+  x
+elif x:
+  x
+else:
+  x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  IfStmt:2(
+    If(
+      NameExpr(x [__main__.x]))
+    Then(
+      ExpressionStmt:3(
+        NameExpr(x [__main__.x])))
+    If(
+      NameExpr(x [__main__.x]))
+    Then(
+      ExpressionStmt:5(
+        NameExpr(x [__main__.x])))
+    If(
+      NameExpr(x [__main__.x]))
+    Then(
+      ExpressionStmt:7(
+        NameExpr(x [__main__.x])))
+    Else(
+      ExpressionStmt:9(
+        NameExpr(x [__main__.x])))))
+
+[case testSimpleIf]
+if object:
+  object
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      NameExpr(object [builtins.object]))
+    Then(
+      ExpressionStmt:2(
+        NameExpr(object [builtins.object])))))
+
+[case testLvalues]
+x = y = 1
+x = 1
+x.m = 1
+x[y] = 1
+x, y = 1
+[x, y] = 1
+(x, y) = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(x [__main__.x]))
+    IntExpr(1))
+  AssignmentStmt:3(
+    Lvalues(
+      MemberExpr:3(
+        NameExpr(x [__main__.x])
+        m))
+    IntExpr(1))
+  AssignmentStmt:4(
+    Lvalues(
+      IndexExpr:4(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))
+    IntExpr(1))
+  AssignmentStmt:5(
+    Lvalues(
+      TupleExpr:5(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))
+    IntExpr(1))
+  AssignmentStmt:6(
+    Lvalues(
+      ListExpr:6(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))
+    IntExpr(1))
+  AssignmentStmt:7(
+    Lvalues(
+      ParenExpr:7(
+        TupleExpr:7(
+          NameExpr(x [__main__.x])
+          NameExpr(y [__main__.y]))))
+    IntExpr(1)))
+
+[case testMultipleDefinition]
+x, y = 1
+x, y = 2
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      TupleExpr:1(
+        NameExpr(x*)
+        NameExpr(y*)))
+    IntExpr(1))
+  AssignmentStmt:2(
+    Lvalues(
+      TupleExpr:2(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))
+    IntExpr(2)))
+
+[case testComplexDefinitions]
+(x) = 1
+([y]) = 2
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      ParenExpr:1(
+        NameExpr(x*)))
+    IntExpr(1))
+  AssignmentStmt:2(
+    Lvalues(
+      ParenExpr:2(
+        ListExpr:2(
+          NameExpr(y*))))
+    IntExpr(2)))
+
+[case testLocalComplexDefinition]
+def f():
+  (x) = 1
+  x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      AssignmentStmt:2(
+        Lvalues(
+          ParenExpr:2(
+            NameExpr(x* [l])))
+        IntExpr(1))
+      ExpressionStmt:3(
+        NameExpr(x [l])))))
+
+[case testMultipleDefOnlySomeNew]
+x = 1
+y, x = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  AssignmentStmt:2(
+    Lvalues(
+      TupleExpr:2(
+        NameExpr(y*)
+        NameExpr(x [__main__.x])))
+    IntExpr(1)))
+
+[case testIndexedDel]
+x = y = 1
+del x[y]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  DelStmt:2(
+    IndexExpr:2(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))))
+
+[case testTry]
+class c: pass
+try:
+  c
+except object:
+  c
+except c as e:
+  e
+except:
+  c
+finally:
+  c
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    PassStmt:1())
+  TryStmt:2(
+    Block:2(
+      ExpressionStmt:3(
+        NameExpr(c [__main__.c])))
+    NameExpr(object [builtins.object])
+    Block:4(
+      ExpressionStmt:5(
+        NameExpr(c [__main__.c])))
+    NameExpr(c [__main__.c])
+    Var(e)
+    Block:6(
+      ExpressionStmt:7(
+        NameExpr(e [__main__.e])))
+    Block:8(
+      ExpressionStmt:9(
+        NameExpr(c [__main__.c])))
+    Finally(
+      ExpressionStmt:11(
+        NameExpr(c [__main__.c])))))
+
+[case testTryElse]
+try:
+  pass
+except:
+  pass
+else:
+  object
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    Block:3(
+      PassStmt:4())
+    Else(
+      ExpressionStmt:6(
+        NameExpr(object [builtins.object])))))
+
+[case testTryWithOnlyFinally]
+try: 
+  pass
+finally:
+  pass
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    Finally(
+      PassStmt:4())))
+
+[case testExceptWithMultipleTypes]
+class c: pass
+try:
+  pass
+except (c, object) as e:
+  e
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    PassStmt:1())
+  TryStmt:2(
+    Block:2(
+      PassStmt:3())
+    ParenExpr:4(
+      TupleExpr:4(
+        NameExpr(c [__main__.c])
+        NameExpr(object [builtins.object])))
+    Var(e)
+    Block:4(
+      ExpressionStmt:5(
+        NameExpr(e [__main__.e])))))
+
+[case testRaiseWithoutExpr]
+raise
+[out]
+MypyFile:1(
+  RaiseStmt:1())
+
+[case testWith]
+with object:
+  object
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(object [builtins.object]))
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(object [builtins.object])))))
+
+[case testWithAndVariable]
+with object as x:
+  x
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(object [builtins.object]))
+    Name(
+      Var(x))
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x [__main__.x])))))
+
+[case testInFunction]
+def f():
+  with f as x:
+    x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      WithStmt:2(
+        Expr(
+          NameExpr(f [__main__.f]))
+        Name(
+          Var(x))
+        Block:2(
+          ExpressionStmt:3(
+            NameExpr(x [l])))))))
+
+[case testComplexWith]
+with object, object:
+  pass
+with object as a, object as b:
+  pass
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(object [builtins.object]))
+    Expr(
+      NameExpr(object [builtins.object]))
+    Block:1(
+      PassStmt:2()))
+  WithStmt:3(
+    Expr(
+      NameExpr(object [builtins.object]))
+    Name(
+      Var(a))
+    Expr(
+      NameExpr(object [builtins.object]))
+    Name(
+      Var(b))
+    Block:3(
+      PassStmt:4())))
+
+[case testVariableInBlock]
+while object:
+  object x 
+  x = x
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    NameExpr(object [builtins.object])
+    Block:1(
+      VarDef:2(
+        Var(x)
+        Type(builtins.object))
+      AssignmentStmt:3(
+        Lvalues(
+          NameExpr(x [__main__.x]))
+        NameExpr(x [__main__.x])))))
+
+[case testVariableInExceptHandler]
+try:
+  pass
+except object as o:
+  object x
+  o = x
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    NameExpr(object [builtins.object])
+    Var(o)
+    Block:3(
+      VarDef:4(
+        Var(x)
+        Type(builtins.object))
+      AssignmentStmt:5(
+        Lvalues(
+          NameExpr(o [__main__.o]))
+        NameExpr(x [__main__.x])))))
+
+[case testCallInExceptHandler]
+try:
+  pass
+except object as o:
+  o = object()
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    NameExpr(object [builtins.object])
+    Var(o)
+    Block:3(
+      AssignmentStmt:4(
+        Lvalues(
+          NameExpr(o [__main__.o]))
+        CallExpr:4(
+          NameExpr(object [builtins.object])
+          Args())))))
+
+[case testTryExceptWithMultipleHandlers]
+try:
+    pass
+except BaseException as e:
+    pass
+except Err as f:
+    f = BaseException() # Fail
+    f = Err()
+class Err(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      PassStmt:2())
+    NameExpr(BaseException [builtins.BaseException])
+    Var(e)
+    Block:3(
+      PassStmt:4())
+    NameExpr(Err [__main__.Err])
+    Var(f)
+    Block:5(
+      AssignmentStmt:6(
+        Lvalues(
+          NameExpr(f [__main__.f]))
+        CallExpr:6(
+          NameExpr(BaseException [builtins.BaseException])
+          Args()))
+      AssignmentStmt:7(
+        Lvalues(
+          NameExpr(f [__main__.f]))
+        CallExpr:7(
+          NameExpr(Err [__main__.Err])
+          Args()))))
+  TypeDef:8(
+    Err
+    BaseType(
+      builtins.BaseException)
+    PassStmt:8()))

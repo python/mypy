@@ -1,0 +1,52 @@
+[case testEmptyFile]
+[out]
+-- Note that builtins are ignored to simplify output.
+__main__:
+  SymbolTable()
+
+[case testVarDef]
+x = 1
+[out]
+__main__:
+  SymbolTable(
+    x : Gdef/Var (__main__))
+
+[case testFuncDef]
+def f(): pass
+[out]
+__main__:
+  SymbolTable(
+    f : Gdef/FuncDef (__main__))
+
+[case testEmptyClassDef]
+class c: pass
+[out]
+__main__:
+  SymbolTable(
+    c : Gdef/TypeInfo (__main__))
+
+[case testImport]
+import m
+[file m.py]
+x = 1
+[out]
+__main__:
+  SymbolTable(
+    m : ModuleRef/MypyFile (__main__))
+m:
+  SymbolTable(
+    x : Gdef/Var (m))
+
+[case testImportFromModule]
+from m import x
+[file m.py]
+class x: pass
+y = 1
+[out]
+__main__:
+  SymbolTable(
+    x : Gdef/TypeInfo (__main__))
+m:
+  SymbolTable(
+    x : Gdef/TypeInfo (m)
+    y : Gdef/Var (m))

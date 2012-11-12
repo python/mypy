@@ -1,0 +1,375 @@
+[case testPropagatingParseErrors]
+in 1
+def f():
+  1 1
+[out]
+main, line 1: Parse error before in
+main: In function "f":
+main, line 3: Parse error before numeric literal
+
+[case testUndefinedVariableInGlobalStatement]
+x
+y
+[out]
+main, line 1: Name 'x' is not defined
+main, line 2: Name 'y' is not defined
+
+[case testUndefinedVariableWithinFunctionContext]
+def f():
+  x
+y
+[out]
+main: In function "f":
+main, line 2: Name 'x' is not defined
+main: At top level:
+main, line 3: Name 'y' is not defined
+
+[case testMethodScope]
+class A:
+  def f(self): pass
+f
+[out]
+main, line 3: Name 'f' is not defined
+
+[case testMethodScope2]
+class A:
+  def f(self): pass
+class B:
+  def g(self):
+    f
+    g
+[out]
+main: In function "g":
+main, line 5: Name 'f' is not defined
+main, line 6: Name 'g' is not defined
+
+[case testInvalidType]
+X x
+[out]
+main, line 1: Name 'X' is not defined
+
+[case testInvalidGenericArg]
+class A<t>: pass
+A<y> x
+[out]
+main, line 2: Name 'y' is not defined
+
+[case testInvalidNumberOfGenericArgs]
+class A: pass
+class B<t>: pass
+B<A, A> x
+A<A> y
+[out]
+main, line 3: "B" expects 1 type argument, but 2 given
+main, line 4: "A" expects no type arguments, but 1 given
+
+[case testVarOrFuncAsType]
+def f(): pass
+x = 1
+f y
+x z
+[out]
+main, line 3: Invalid type "__main__.f"
+main, line 4: Invalid type "__main__.x"
+
+[case testMultipleVarDefinitions]
+class A: pass
+A x
+A x
+def f():
+  A x
+  A x
+[out]
+main, line 3: Name 'x' already defined
+main: In function "f":
+main, line 6: Name 'x' already defined
+
+[case testMultipleClassDefinitions]
+class A: pass
+class A: pass
+[out]
+main, line 2: Name 'A' already defined
+
+[case testMultipleMixedDefinitions]
+x = 1
+def x(): pass
+class x: pass
+[out]
+main, line 2: Name 'x' already defined
+main, line 3: Name 'x' already defined
+
+[case testNameNotImported]
+from m import y
+x
+[file m.py]
+x = y = 1
+[out]
+main, line 2: Name 'x' is not defined
+
+[case testNameDefinedInDifferentModule]
+import m, n
+m.x
+[file m.py]
+y = 1
+[file n.py]
+x = 1
+[out]
+main, line 2: Module has no attribute 'x'
+
+[case testMissingNameInImportFrom]
+from m import y
+[file m.py]
+x = 1
+[out]
+main, line 1: Module has no attribute 'y'
+
+[case testMissingModule]
+import m
+[out]
+main, line 1: No module named 'm'
+
+[case testMissingModule2]
+from m import x
+[out]
+main, line 1: No module named 'm'
+
+[case testMissingModule2]
+from m import *
+[out]
+main, line 1: No module named 'm'
+
+[case testModuleNotImported]
+import _m
+_n.x
+[file _m.py]
+import _n
+[file _n.py]
+x = 1
+[out]
+main, line 2: Name '_n' is not defined
+
+[case testImportAsteriskPlusUnderscore]
+from _m import *
+_x
+__x__
+[file _m.py]
+_x = __x__ = 1
+[out]
+main, line 2: Name '_x' is not defined
+main, line 3: Name '__x__' is not defined
+
+[case testUndefinedTypeWithQualifiedName]
+import m
+m.c a
+n.c b
+[file m.py]
+[out]
+main, line 2: Name 'm.c' is not defined
+main, line 3: Name 'n' is not defined
+
+[case testMissingPackage]
+import m.n
+[out]
+main, line 1: No module named 'm.n'
+
+[case testMissingPackage]
+from m.n import x
+from a.b import *
+[out]
+main, line 1: No module named 'm.n'
+main, line 2: No module named 'a.b'
+
+[case testErrorInImportedModule]
+import m
+[file m.py]
+x = y
+[out]
+In module imported in main, line 1:
+tmp/m.py, line 1: Name 'y' is not defined
+
+[case testErrorInImportedModule2]
+import m.n
+[file m/__init__.py]
+[file m/n.py]
+import k
+[file k.py]
+x = y
+[out]
+In module imported in tmp/m/n.py, line 1,
+                   in main, line 1:
+tmp/k.py, line 1: Name 'y' is not defined
+
+[case testPackageWithoutInitFile]
+import m.n
+m.n.x
+[file m/n.py]
+x = 1
+[out]
+main, line 1: No module named 'm.n'
+
+[case testBreakOutsideLoop]
+break
+def f():
+  break
+[out]
+main, line 1: 'break' outside loop
+main: In function "f":
+main, line 3: 'break' outside loop
+
+[case testContinueOutsideLoop]
+continue
+def f():
+  continue
+[out]
+main, line 1: 'continue' outside loop
+main: In function "f":
+main, line 3: 'continue' outside loop
+
+[case testReturnOutsideFunction]
+def f(): pass
+return
+return 1
+[out]
+main, line 2: 'return' outside function
+main, line 3: 'return' outside function
+
+[case testYieldOutsideFunction]
+yield 1
+yield
+[out]
+main, line 1: 'yield' outside function
+main, line 2: 'yield' outside function
+
+[case testInvalidLvalues]
+1 = 1
+(1) = 1
+(1, 1) = 1
+[1, 1] = 1
+[out]
+main, line 1: Invalid assignment target
+main, line 2: Invalid assignment target
+main, line 3: Invalid assignment target
+main, line 4: Invalid assignment target
+
+[case testInvalidLvalues2]
+x = y = z = 1
+x, (y, z) = 1
+x, [y, z] = 1
+x, (y) = 1 # ok
+[out]
+main, line 2: Invalid assignment target
+main, line 3: Invalid assignment target
+
+[case testInvalidLvalues3]
+x = 1
+x + x = 1
+-x = 1
+1.1 = 1
+'x' = 1
+x() = 1
+[out]
+main, line 2: Invalid assignment target
+main, line 3: Invalid assignment target
+main, line 4: Invalid assignment target
+main, line 5: Invalid assignment target
+main, line 6: Invalid assignment target
+
+[case testInvalidDel]
+x = 1
+del x # not suppoerted yet
+del x.y # not supported
+del x + 1
+[out]
+main, line 2: Invalid delete target
+main, line 3: Invalid delete target
+main, line 4: Invalid delete target
+
+[case testFunctionTvarScope]
+void f<t>(): pass
+t x
+[out]
+main, line 2: Name 't' is not defined
+
+[case testClassTvarScope]
+class c<t>: pass
+t x
+[out]
+main, line 2: Name 't' is not defined
+
+[case testFunctionAndClassTvarNameClash]
+class c<t>:
+  def f<s>(self): pass
+  def g<t>(self): pass
+[out]
+main: In function "g":
+main, line 3: Name 't' already defined
+
+[case testExpressionRefersToTypeVariable]
+class c<t>:
+  def f(self): x = t
+def f<t>(): x = t
+[out]
+main: In function "f":
+main, line 2: 't' is a type variable and only valid in type context
+main, line 3: 't' is a type variable and only valid in type context
+
+[case testMissingSelf]
+class A:
+  def f(): pass
+[out]
+main, line 2: Method must have at least one argument
+
+[case testInvalidBaseClass]
+class A(B): pass
+[out]
+main, line 1: Name 'B' is not defined
+
+[case testInvalidSuperinterface]
+interface A(B): pass
+[out]
+main, line 1: Name 'B' is not defined
+
+[case testMissingSelfInInterface]
+interface A:
+    def f()
+[out]
+main, line 2: Method must have at least one argument
+
+[case testSuperOutsideClass]
+class A: pass
+super().x
+def f(): super().y
+[out]
+main, line 2: "super" used outside class
+main: In function "f":
+main, line 3: "super" used outside class
+
+[case testMissingSelfInMethod]
+class A:
+  void f(): pass
+  def g(): pass
+[out]
+main, line 2: Method must have at least one argument
+main, line 3: Method must have at least one argument
+
+[case testMissingSelfInInterfaceWithSignature]
+interface A:
+  void f()
+[out]
+main, line 2: Method must have at least one argument
+
+[case testMultipleMethodDefinition]
+class A:
+  void f(self): pass
+  void g(self): pass
+  void f(self, any x): pass
+[out]
+main, line 4: Name 'f' already defined
+
+[case testInvalidGlobalDecl]
+def f():
+    global x
+    x = None
+[out]
+main: In function "f":
+main, line 3: Name 'x' is not defined

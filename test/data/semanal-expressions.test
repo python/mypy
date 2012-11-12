@@ -1,0 +1,183 @@
+[case testLiterals]
+(1, 'x', 1.1)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ParenExpr:1(
+      TupleExpr:1(
+        IntExpr(1)
+        StrExpr(x)
+        FloatExpr(1.1)))))
+
+[case testMemberExpr]
+x = 1
+x.y
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(x [__main__.x])
+      y)))
+
+[case testIndexExpr]
+x = y = 1
+x[y]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))))
+
+[case testBinaryOperations]
+x = y = 1
+x + y
+x | y
+x is not y
+x == y
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    OpExpr:2(
+      +
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y])))
+  ExpressionStmt:3(
+    OpExpr:3(
+      |
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y])))
+  ExpressionStmt:4(
+    OpExpr:4(
+      is not
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y])))
+  ExpressionStmt:5(
+    OpExpr:5(
+      ==
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))))
+
+[case testUnaryOperations]
+x = 1
+-x
+~x
++x
+not x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    UnaryExpr:2(
+      -
+      NameExpr(x [__main__.x])))
+  ExpressionStmt:3(
+    UnaryExpr:3(
+      ~
+      NameExpr(x [__main__.x])))
+  ExpressionStmt:4(
+    UnaryExpr:4(
+      +
+      NameExpr(x [__main__.x])))
+  ExpressionStmt:5(
+    UnaryExpr:5(
+      not
+      NameExpr(x [__main__.x]))))
+
+[case testSlices]
+x = y = z = 1
+x[y:z:x]
+x[:]
+x[:y]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*)
+      NameExpr(z*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x [__main__.x])
+      SliceExpr:2(
+        NameExpr(y [__main__.y])
+        NameExpr(z [__main__.z])
+        NameExpr(x [__main__.x]))))
+  ExpressionStmt:3(
+    IndexExpr:3(
+      NameExpr(x [__main__.x])
+      SliceExpr:3(
+        <empty>
+        <empty>)))
+  ExpressionStmt:4(
+    IndexExpr:4(
+      NameExpr(x [__main__.x])
+      SliceExpr:4(
+        <empty>
+        NameExpr(y [__main__.y])))))
+        
+[case testTupleLiteral]
+x = y = 1
+x, y
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    TupleExpr:2(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))))
+
+[case testListLiteral]
+x = y = 1
+([], [x, y])
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    ParenExpr:2(
+      TupleExpr:2(
+        ListExpr:2()
+        ListExpr:2(
+          NameExpr(x [__main__.x])
+          NameExpr(y [__main__.y]))))))
+
+[case testDictLiterals]
+x = y = 1
+{ x : y, y : x }
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    DictExpr:2(
+      (NameExpr(x [__main__.x]), NameExpr(y [__main__.y]))
+      (NameExpr(y [__main__.y]), NameExpr(x [__main__.x])))))

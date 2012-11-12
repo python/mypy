@@ -1,0 +1,339 @@
+[case testEmptyFile]
+[out]
+MypyFile:1(
+)
+
+[case testGlobalVariable]
+x = 1
+x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  ExpressionStmt:2(
+    NameExpr(x [__main__.x])))
+
+[case testMultipleGlobals]
+x = y = 2
+z = 3
+(x, y, z)
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*)
+      NameExpr(y*))
+    IntExpr(2))
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(z*))
+    IntExpr(3))
+  ExpressionStmt:3(
+    ParenExpr:3(
+      TupleExpr:3(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])
+        NameExpr(z [__main__.z])))))
+
+[case testEmptyFunction]
+def f(): pass
+f()
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      PassStmt:1()))
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f [__main__.f])
+      Args())))
+
+[case testAccessingGlobalNameBeforeDefinition]
+x
+f()
+x = 1
+def f(): pass
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(x [__main__.x]))
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f [__main__.f])
+      Args()))
+  AssignmentStmt:3(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  FuncDef:4(
+    f
+    Block:4(
+      PassStmt:4())))
+
+[case testFunctionArgs]
+def f(x, y):
+  (x, y)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Block:1(
+      ExpressionStmt:2(
+        ParenExpr:2(
+          TupleExpr:2(
+            NameExpr(x [l])
+            NameExpr(y [l])))))))
+
+[case testLocalVar]
+def f():
+  x = 1
+  x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      AssignmentStmt:2(
+        Lvalues(
+          NameExpr(x* [l]))
+        IntExpr(1))
+      ExpressionStmt:3(
+        NameExpr(x [l])))))
+
+[case testAccessGlobalInFn]
+def f():
+  x
+  g()
+x = 1
+def g(): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x [__main__.x]))
+      ExpressionStmt:3(
+        CallExpr:3(
+          NameExpr(g [__main__.g])
+          Args()))))
+  AssignmentStmt:4(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  FuncDef:5(
+    g
+    Block:5(
+      PassStmt:5())))
+
+[case testAssignmentAfterInit]
+x = 1
+x = 2
+def f(y):
+  y = 1
+  z = 1
+  z = 2
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(x [__main__.x]))
+    IntExpr(2))
+  FuncDef:3(
+    f
+    Args(
+      Var(y))
+    Block:3(
+      AssignmentStmt:4(
+        Lvalues(
+          NameExpr(y [l]))
+        IntExpr(1))
+      AssignmentStmt:5(
+        Lvalues(
+          NameExpr(z* [l]))
+        IntExpr(1))
+      AssignmentStmt:6(
+        Lvalues(
+          NameExpr(z [l]))
+        IntExpr(2)))))
+
+[case testLocalAndGlobalAliasing]
+x = 1
+def f():
+  x = 2
+  x
+x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  FuncDef:2(
+    f
+    Block:2(
+      AssignmentStmt:3(
+        Lvalues(
+          NameExpr(x* [l]))
+        IntExpr(2))
+      ExpressionStmt:4(
+        NameExpr(x [l]))))
+  ExpressionStmt:5(
+    NameExpr(x [__main__.x])))
+
+[case testArgumentInitializers]
+def f(x = f, y = object):
+  x, y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Init(
+      AssignmentStmt:1(
+        Lvalues(
+          NameExpr(x [l]))
+        NameExpr(f [__main__.f]))
+      AssignmentStmt:1(
+        Lvalues(
+          NameExpr(y [l]))
+        NameExpr(object [builtins.object])))
+    Block:1(
+      ExpressionStmt:2(
+        TupleExpr:2(
+          NameExpr(x [l])
+          NameExpr(y [l]))))))
+
+[case testVarArgs]
+def f(x, *y):
+  x, y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    VarArg(
+      Var:nil(y))
+    Block:1(
+      ExpressionStmt:2(
+        TupleExpr:2(
+          NameExpr(x [l])
+          NameExpr(y [l]))))))
+
+[case testGlobalDecl]
+x = None
+def f():
+    global x
+    x = None
+    x
+class A: pass
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    NameExpr(None [builtins.None]))
+  FuncDef:2(
+    f
+    Block:2(
+      GlobalDecl:3(
+        x)
+      AssignmentStmt:4(
+        Lvalues(
+          NameExpr(x [__main__.x]))
+        NameExpr(None [builtins.None]))
+      ExpressionStmt:5(
+        NameExpr(x [__main__.x]))))
+  TypeDef:6(
+    A
+    PassStmt:6()))
+
+[case testMultipleNamesInGlobalDecl]
+x, y = None, None
+def f():
+    global x, y
+    x = y
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      TupleExpr:1(
+        NameExpr(x*)
+        NameExpr(y*)))
+    TupleExpr:1(
+      NameExpr(None [builtins.None])
+      NameExpr(None [builtins.None])))
+  FuncDef:2(
+    f
+    Block:2(
+      GlobalDecl:3(
+        x
+        y)
+      AssignmentStmt:4(
+        Lvalues(
+          NameExpr(x [__main__.x]))
+        NameExpr(y [__main__.y])))))
+
+[case testGlobalDeclScope]
+x = None
+def f():
+    global x
+def g():
+    x = None
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    NameExpr(None [builtins.None]))
+  FuncDef:2(
+    f
+    Block:2(
+      GlobalDecl:3(
+        x)))
+  FuncDef:4(
+    g
+    Block:4(
+      AssignmentStmt:5(
+        Lvalues(
+          NameExpr(x* [l]))
+        NameExpr(None [builtins.None])))))
+
+[case testGlobaWithinMethod]
+x = None
+class A:
+  def f(self):
+    global x
+    x = self
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    Lvalues(
+      NameExpr(x*))
+    NameExpr(None [builtins.None]))
+  TypeDef:2(
+    A
+    FuncDef:3(
+      f
+      Args(
+        Var(self))
+      Block:3(
+        GlobalDecl:4(
+          x)
+        AssignmentStmt:5(
+          Lvalues(
+            NameExpr(x [__main__.x]))
+          NameExpr(self [l]))))))

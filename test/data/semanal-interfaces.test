@@ -1,0 +1,61 @@
+[case testInterface]
+interface A:
+  A g(self)
+  A f(self): return self
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    FuncDef:2(
+      g
+      Args(
+        Var(self))
+      Type:2(def (__main__.A) -> __main__.A)
+      Block:-1())
+    FuncDef:3(
+      f
+      Args(
+        Var(self))
+      Type:3(def (__main__.A) -> __main__.A)
+      Block:3(
+        ReturnStmt:3(
+          NameExpr(self [l]))))))
+
+[case testSuperinterface]
+interface B: pass
+interface A(B): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    B
+    Interface
+    PassStmt:1())
+  TypeDef:2(
+    A
+    Interface
+    BaseType(
+      __main__.B)
+    PassStmt:2()))
+
+[case testClassImplementingInterface]
+interface A: pass
+interface B: pass
+class C(A, B): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    PassStmt:1())
+  TypeDef:2(
+    B
+    Interface
+    PassStmt:2())
+  TypeDef:3(
+    C
+    BaseType(
+      builtins.object
+      __main__.A
+      __main__.B)
+    PassStmt:3()))

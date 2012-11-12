@@ -1,0 +1,81 @@
+[case testEmptyFile]
+[out]
+TypeInfoMap()
+
+[case testEmptyClass]
+class c: pass
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Base(builtins.object)
+    Interfaces()
+    Vars()
+    Methods()))
+
+[case testClassWithMethod]
+class c:
+  def f(self): pass
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Base(builtins.object)
+    Interfaces()
+    Vars()
+    Methods(
+      f)))
+
+[case testClassWithAttributes]
+class c:
+  def __init__(self, x):
+    self.y = x
+    self.z = 1
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Base(builtins.object)
+    Interfaces()
+    Vars(
+      y
+      z)
+    Methods(
+      __init__)))
+
+[case testBaseClass]
+class base: pass
+class c(base): pass
+[out]
+TypeInfoMap(
+  __main__.base : TypeInfo(
+    Name(__main__.base)
+    Base(builtins.object)
+    Interfaces()
+    Vars()
+    Methods())
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Base(__main__.base)
+    Interfaces()
+    Vars()
+    Methods()))
+
+[case testClassWithInterface]
+interface i: pass
+class c(i): pass
+[out]
+TypeInfoMap(
+  __main__.i : TypeInfo(
+    Name(__main__.i)
+    Interface
+    Interfaces()
+    Vars()
+    Methods())
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Base(builtins.object)
+    Interfaces(
+      __main__.i)
+    Vars()
+    Methods()))

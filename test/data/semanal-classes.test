@@ -1,0 +1,221 @@
+-- Test cases related to classes (and interfaces) for the semantic analyser. 
+
+[case testSimpleClass]
+class A: pass
+x = A
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(x*))
+    NameExpr(A [__main__.A])))
+
+[case testMethods]
+class A:
+  def __init__(self, x):
+    y = x
+  def f(self):
+    y = self
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      __init__
+      Args(
+        Var(self)
+        Var(x))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            NameExpr(y* [l]))
+          NameExpr(x [l]))))
+    FuncDef:4(
+      f
+      Args(
+        Var(self))
+      Block:4(
+        AssignmentStmt:5(
+          Lvalues(
+            NameExpr(y* [l]))
+          NameExpr(self [l]))))))
+
+[case testMemberDefinitionInInit]
+class A:
+  def __init__(self):
+    self.x = 1
+    self.y = 2
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      __init__
+      Args(
+        Var(self))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            MemberExpr:3(
+              NameExpr(self [l])
+              x*))
+          IntExpr(1))
+        AssignmentStmt:4(
+          Lvalues(
+            MemberExpr:4(
+              NameExpr(self [l])
+              y*))
+          IntExpr(2))))))
+
+[case testMemberAssignmentViaSelfOutsideInit]
+class A:
+  def f(self):
+    self.x = 1
+def __init__(self):
+  self.y = 1
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            MemberExpr:3(
+              NameExpr(self [l])
+              x))
+          IntExpr(1)))))
+  FuncDef:4(
+    __init__
+    Args(
+      Var(self))
+    Block:4(
+      AssignmentStmt:5(
+        Lvalues(
+          MemberExpr:5(
+            NameExpr(self [l])
+            y))
+        IntExpr(1)))))
+
+[case testMemberAssignmentNotViaSelf]
+class A:
+  def __init__(x, self):
+    self.y = 1 # not really self
+class B:
+  def __init__(x):
+    self = x
+    self.z = 1
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      __init__
+      Args(
+        Var(x)
+        Var(self))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            MemberExpr:3(
+              NameExpr(self [l])
+              y))
+          IntExpr(1)))))
+  TypeDef:4(
+    B
+    FuncDef:5(
+      __init__
+      Args(
+        Var(x))
+      Block:5(
+        AssignmentStmt:6(
+          Lvalues(
+            NameExpr(self* [l]))
+          NameExpr(x [l]))
+        AssignmentStmt:7(
+          Lvalues(
+            MemberExpr:7(
+              NameExpr(self [l])
+              z))
+          IntExpr(1))))))
+
+[case testNonStandardNameForSelfAndInit]
+class A:
+  def __init__(x):
+    x.y = 1
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      __init__
+      Args(
+        Var(x))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            MemberExpr:3(
+              NameExpr(x [l])
+              y*))
+          IntExpr(1))))))
+
+[case testAssignmentAfterAttributeInit]
+class A:
+  def __init__(self):
+    self.x = 1
+    self.x = 2
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      __init__
+      Args(
+        Var(self))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            MemberExpr:3(
+              NameExpr(self [l])
+              x*))
+          IntExpr(1))
+        AssignmentStmt:4(
+          Lvalues(
+            MemberExpr:4(
+              NameExpr(self [l])
+              x))
+          IntExpr(2))))))
+
+[case testOverloadedMethod]
+class A:
+  void f(self): self
+  void f(self, A x): self
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    OverloadedFuncDef:2(
+      Type:2(Overload(def (__main__.A), def (__main__.A, __main__.A)))
+      FuncDef:2(
+        f
+        Args(
+          Var(self))
+        Type:2(def (__main__.A))
+        Block:2(
+          ExpressionStmt:2(
+            NameExpr(self [l]))))
+      FuncDef:3(
+        f
+        Args(
+          Var(self)
+          Var(x))
+        Type:3(def (__main__.A, __main__.A))
+        Block:3(
+          ExpressionStmt:3(
+            NameExpr(self [l])))))))

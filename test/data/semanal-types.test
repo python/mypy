@@ -1,0 +1,525 @@
+[case testVarWithType]
+class A: pass
+A x
+y = x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  VarDef:2(
+    Var(x)
+    Type(__main__.A))
+  AssignmentStmt:3(
+    Lvalues(
+      NameExpr(y*))
+    NameExpr(x [__main__.x])))
+
+[case testLocalVarWithType]
+class A: pass
+def f():
+  A x
+  y = x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  FuncDef:2(
+    f
+    Block:2(
+      VarDef:3(
+        Var(x)
+        Type(__main__.A))
+      AssignmentStmt:4(
+        Lvalues(
+          NameExpr(y* [l]))
+        NameExpr(x [l])))))
+
+[case testAnyType]
+any x
+y = x
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(any))
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(y*))
+    NameExpr(x [__main__.x])))
+
+[case testFunctionSig]
+class A: pass
+A f(A x): pass
+void g(any x, A y):
+  z = x, y
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    Type:2(def (__main__.A) -> __main__.A)
+    Block:2(
+      PassStmt:2()))
+  FuncDef:3(
+    g
+    Args(
+      Var(x)
+      Var(y))
+    Type:3(def (any, __main__.A))
+    Block:3(
+      AssignmentStmt:4(
+        Lvalues(
+          NameExpr(z* [l]))
+        TupleExpr:4(
+          NameExpr(x [l])
+          NameExpr(y [l]))))))
+
+[case testBaseclass]
+class A: pass
+class B(A): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  TypeDef:2(
+    B
+    BaseType(
+      __main__.A)
+    PassStmt:2()))
+
+[case testVarDefWithInit]
+class A: pass
+x = 1
+A a = x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(x*))
+    IntExpr(1))
+  VarDef:3(
+    Var(a)
+    Type(__main__.A)
+    NameExpr(x [__main__.x])))
+
+[case testMultipleVarDef]
+class A: pass
+class B: pass
+A a, B b
+x = a, b
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  TypeDef:2(
+    B
+    PassStmt:2())
+  VarDef:3(
+    Var(a)
+    Type(__main__.A)
+    Var(b)
+    Type(__main__.B))
+  AssignmentStmt:4(
+    Lvalues(
+      NameExpr(x*))
+    TupleExpr:4(
+      NameExpr(a [__main__.a])
+      NameExpr(b [__main__.b]))))
+
+[case testGenericType]
+class A<t>: pass
+class B: pass
+A<B> x
+A<any> y
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    TypeVars(
+      t)
+    PassStmt:1())
+  TypeDef:2(
+    B
+    PassStmt:2())
+  VarDef:3(
+    Var(x)
+    Type(__main__.A<__main__.B>))
+  VarDef:4(
+    Var(y)
+    Type(__main__.A<any>)))
+
+[case testGenericType2]
+class A<t, s>: pass
+class B: pass
+A<B, any> x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    TypeVars(
+      t
+      s)
+    PassStmt:1())
+  TypeDef:2(
+    B
+    PassStmt:2())
+  VarDef:3(
+    Var(x)
+    Type(__main__.A<__main__.B, any>)))
+
+[case testAssignmentAfterDef]
+class A: pass
+A a
+a = 1
+def f():
+  A b
+  b = 1
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    PassStmt:1())
+  VarDef:2(
+    Var(a)
+    Type(__main__.A))
+  AssignmentStmt:3(
+    Lvalues(
+      NameExpr(a [__main__.a]))
+    IntExpr(1))
+  FuncDef:4(
+    f
+    Block:4(
+      VarDef:5(
+        Var(b)
+        Type(__main__.A))
+      AssignmentStmt:6(
+        Lvalues(
+          NameExpr(b [l]))
+        IntExpr(1)))))
+
+[case testCast]
+class c: pass
+class d<t>: pass
+(any)1
+(c)1
+(d<c>)c
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    PassStmt:1())
+  TypeDef:2(
+    d
+    TypeVars(
+      t)
+    PassStmt:2())
+  ExpressionStmt:3(
+    CastExpr:3(
+      IntExpr(1)
+      any))
+  ExpressionStmt:4(
+    CastExpr:4(
+      IntExpr(1)
+      __main__.c))
+  ExpressionStmt:5(
+    CastExpr:5(
+      NameExpr(c [__main__.c])
+      __main__.d<__main__.c>)))
+
+[case testTypeApplication]
+class c: pass
+f = 0
+f<c>()
+f<c, object>()
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    PassStmt:1())
+  AssignmentStmt:2(
+    Lvalues(
+      NameExpr(f*))
+    IntExpr(0))
+  ExpressionStmt:3(
+    CallExpr:3(
+      TypeApplication:3(
+        NameExpr(f [__main__.f])
+        Types(
+          __main__.c))
+      Args()))
+  ExpressionStmt:4(
+    CallExpr:4(
+      TypeApplication:4(
+        NameExpr(f [__main__.f])
+        Types(
+          __main__.c
+          builtins.object))
+      Args())))
+
+[case testFunctionTvar]
+void f<t>(t x):
+  t y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Type:1(def <t> (t`-1))
+    Block:1(
+      VarDef:2(
+        Var(y)
+        Type(t`-1)))))
+
+[case testFunctionTvar2]
+void f<t, u>(t x, u y): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Type:1(def <t, u> (t`-1, u`-2))
+    Block:1(
+      PassStmt:1())))
+
+[case testSelfType]
+class A:
+  void f(self, object o): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self)
+        Var(o))
+      Type:2(def (__main__.A, builtins.object))
+      Block:2(
+        PassStmt:2()))))
+
+[case testClassTvar]
+class c<t>:
+  t f(self): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    TypeVars(
+      t)
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Type:2(def (__main__.c<t`1>) -> t`1)
+      Block:2(
+        PassStmt:2()))))
+
+[case testClassTvar2]
+class c<t, s>:
+  t f(self, s x): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    c
+    TypeVars(
+      t
+      s)
+    FuncDef:2(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      Type:2(def (__main__.c<t`1, s`2>, s`2) -> t`1)
+      Block:2(
+        PassStmt:2()))))
+
+[case testGenericBaseClass]
+class d<t>: pass
+class c<t>(d<t>): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    d
+    TypeVars(
+      t)
+    PassStmt:1())
+  TypeDef:2(
+    c
+    TypeVars(
+      t)
+    BaseType(
+      __main__.d<t`1>)
+    PassStmt:2()))
+
+[case testListLiteralWithType]
+<object> []
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ListExpr:1(
+      Type(
+        builtins.object))))
+
+[case testTupleType]
+tuple t
+tuple<object> t1
+tuple<any, object> t2
+[builtins fixtures/tuple.py]
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(t)
+    Type(builtins.tuple))
+  VarDef:2(
+    Var(t1)
+    Type(tuple<builtins.object>))
+  VarDef:3(
+    Var(t2)
+    Type(tuple<any, builtins.object>)))
+
+[case testTupleLiteralWithType]
+<object, type> (1, 2)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ParenExpr:1(
+      TupleExpr:1(
+        Type(
+          builtins.object
+          builtins.type)
+        IntExpr(1)
+        IntExpr(2)))))
+
+[case testFunctionTypes]
+func<object, type, A> f
+func<void> g
+class A: pass
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(f)
+    Type(def (builtins.object, builtins.type) -> __main__.A))
+  VarDef:2(
+    Var(g)
+    Type(def ()))
+  TypeDef:3(
+    A
+    PassStmt:3()))
+
+[case testOverloadedFunction]
+any f(object o): o
+object f(any a): a
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Type:1(Overload(def (builtins.object) -> any, def (any) -> builtins.object))
+    FuncDef:1(
+      f
+      Args(
+        Var(o))
+      Type:1(def (builtins.object) -> any)
+      Block:1(
+        ExpressionStmt:1(
+          NameExpr(o [l]))))
+    FuncDef:2(
+      f
+      Args(
+        Var(a))
+      Type:2(def (any) -> builtins.object)
+      Block:2(
+        ExpressionStmt:2(
+          NameExpr(a [l]))))))
+
+[case testReferenceToOverloadedFunction]
+void f(): pass
+void f(any x): pass
+x = f
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Type:1(Overload(def (), def (any)))
+    FuncDef:1(
+      f
+      Type:1(def ())
+      Block:1(
+        PassStmt:1()))
+    FuncDef:2(
+      f
+      Args(
+        Var(x))
+      Type:2(def (any))
+      Block:2(
+        PassStmt:2())))
+  AssignmentStmt:3(
+    Lvalues(
+      NameExpr(x*))
+    NameExpr(f [__main__.f])))
+
+[case testImplicitGenericType]
+class A<t, s>: pass
+A x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    TypeVars(
+      t
+      s)
+    PassStmt:1())
+  VarDef:2(
+    Var(x)
+    Type(__main__.A<any, any>)))
+
+[case testImplicitGenericBaseClass]
+class A<t>(B): pass
+class B<s>: pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    TypeVars(
+      t)
+    BaseType(
+      __main__.B<any>)
+    PassStmt:1())
+  TypeDef:2(
+    B
+    TypeVars(
+      s)
+    PassStmt:2()))
+
+[case testDictionaryLiteralWithType]
+<B, A<any>> {B:None}
+class A<t>: pass
+class B: pass
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    DictExpr:1(
+      KeyType(
+        __main__.B)
+      ValueType(
+        __main__.A<any>)
+      (NameExpr(B [__main__.B]), NameExpr(None [builtins.None]))))
+  TypeDef:2(
+    A
+    TypeVars(
+      t)
+    PassStmt:2())
+  TypeDef:3(
+    B
+    PassStmt:3()))
