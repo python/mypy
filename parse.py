@@ -340,7 +340,6 @@ class Parser:
           tuple<Token, any>> parse_function_header(
               self, Annotation ret_type):
         
-        is_error = False
         name_tok = none
         
         try:
@@ -352,15 +351,15 @@ class Parser:
             (args, init, var_arg, dict_var_arg,
              max_pos, typ, arg_repr) = self.parse_args(ret_type)
         except ParseError:
-            is_error = True
             if not isinstance(self.current(), Break):
                 self.ind -= 1 # Kludge: go back to the Break token
             # Resynchronise parsing by going back over :, if present.
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
+            return (name, [], [], None, None, 0, None, True, (name_tok, None))
         
         return (name, args, init, var_arg, dict_var_arg, max_pos, typ,
-                is_error, (name_tok, arg_repr))
+                False, (name_tok, arg_repr))
     
     # Parse a function type signature, potentially prefixed with type variable
     # specification within <...>.

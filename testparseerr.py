@@ -1,7 +1,9 @@
 import os.path
 from unittest import Suite, AssertionFailure
-from test.helpers import parse_test_cases, assert_string_arrays_equal
-from parser import parse
+from testdata import parse_test_cases
+from testhelpers import assert_string_arrays_equal
+from testconfig import test_data_prefix
+from parse import parse
 from errors import CompileError
 
 
@@ -13,7 +15,9 @@ INPUT_FILE_NAME = 'file.alo'
 class ParseErrorSuite(Suite):
     def cases(self):
         # Test case descriptions are in an external file.
-        return parse_test_cases(os.path.join(test_data_prefix, 'parse-errors.test'), test_parse_error)
+        return parse_test_cases(os.path.join(test_data_prefix,
+                                             'parse-errors.test'),
+                                test_parse_error)
 
 
 def test_parse_error(testcase):
@@ -24,4 +28,7 @@ def test_parse_error(testcase):
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
-        assert_string_arrays_equal(testcase.output, e.messages, 'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(
+            testcase.output, e.messages,
+            'Invalid compiler output ({}, line {})'.format(testcase.file,
+                                                           testcase.line))
