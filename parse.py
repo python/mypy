@@ -333,12 +333,9 @@ class Parser:
             self.errors.set_function(None)
             self.is_function = False
     
-    tuple<str, \
-          list<Var>, \
-          list<Node>, \
-          Var, Var, int, Annotation, bool, \
-          tuple<Token, any>> parse_function_header(
-              self, Annotation ret_type):
+    tuple<str, list<Var>, list<Node>, Var, Var, int, Annotation, bool, \
+          tuple<Token, any>> \
+              parse_function_header(self, Annotation ret_type):
         
         name_tok = none
         
@@ -363,9 +360,7 @@ class Parser:
     
     # Parse a function type signature, potentially prefixed with type variable
     # specification within <...>.
-    tuple<list<Var>, \
-          list<Node>, \
-          Var, Var, int, Annotation, \
+    tuple<list<Var>, list<Node>, Var, Var, int, Annotation, \
           noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
         
         type_vars = self.parse_type_vars()
@@ -410,11 +405,8 @@ class Parser:
             return None
     
     # Parse function definition argument list (everything between '(' and ')').
-    tuple<list<Var>, list<Node>, int, \
-          Var, Var, bool, int, \
-          list<Token>, list<Token>, \
-          Token, list<Token>, \
-          list<Typ>> parse_arg_list(self):
+    tuple<list<Var>, list<Node>, int, Var, Var, bool, int, list<Token>, \
+          list<Token>, Token, list<Token>, list<Typ>> parse_arg_list(self):
         
         list<Var> args = []
         list<Node> init = []
