@@ -1,0 +1,125 @@
+-- Test cases for parser errors. Each test case consists of two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the parser.
+--
+-- The input code will be stored as file "file.alo".
+--
+-- Comments starting with "--" in this file will be ignored, except for lines
+-- starting with "----" that are not ignored. The first two dashes of these
+-- lines are interpreted as escapes and removed.
+
+[case testInvalidFunction]
+def f()
+  pass
+[out]
+file.alo: In function "f":
+file.alo, line 1: Parse error before end of line
+file.alo: At top level:
+file.alo, line 2: Inconsistent indentation
+
+[case testExtraGtInType]
+a<b>> c
+int f(a<b>> c):
+  pass
+[out]
+-- IDEA: Most of these errors are bogus
+file.alo, line 1: Parse error before >>
+file.alo: In function "f":
+file.alo, line 2: Parse error before >>
+file.alo, line 2: Parse error before )
+file.alo: At top level:
+file.alo, line 2: Parse error before :
+file.alo, line 3: Inconsistent indentation
+
+
+[case testMissingIndent]
+if x:
+1
+[out]
+file.alo, line 2: Expected an indented block
+
+[case testUnexpectedIndent]
+1
+ 2
+[out]
+file.alo, line 2: Inconsistent indentation
+
+[case testInconsistentIndent]
+if x:
+  1
+   1
+[out]
+file.alo, line 3: Inconsistent indentation
+
+[case testInconsistentIndent]
+if x:
+   1
+  1
+[out]
+file.alo, line 3: Inconsistent indentation
+
+[case testInvalidCast]
+(a<b>>)x
+[out]
+file.alo, line 1: Parse error before )
+
+[case testInvalidBinaryOp]
+1>
+a*
+a+1*
+[out]
+file.alo, line 1: Parse error before end of line
+file.alo, line 2: Parse error before end of line
+file.alo, line 3: Parse error before end of line
+
+[case testInvalidTypeApplication]
+f<x>
+f<y>>()
+f<x>(
+[out]
+file.alo, line 1: Parse error before end of line
+file.alo, line 2: Parse error before >>
+file.alo, line 3: Parse error before end of line
+
+[case testInvalidSuperClass]
+class A(C<):
+  pass
+[out]
+file.alo: In class "A":
+file.alo, line 1: Parse error before )
+
+[case testEmptySuperClass]
+class A():
+  pass
+[out]
+file.alo: In class "A":
+file.alo, line 1: Parse error before )
+
+[case testMissingSuperClass]
+class A(:
+  pass
+[out]
+file.alo: In class "A":
+file.alo, line 1: Parse error before :
+file.alo, line 2: Parse error before end of file
+
+[case testUnexpectedEof]
+if 1:
+[out]
+file.alo, line 1: Expected an indented block
+
+[case testInvalidTypePrefix]
+<t, s> []
+<t> 1
+<t> x
+[out]
+file.alo, line 1: Expected a single type before list literal
+file.alo, line 2: Expected a list, dictionary or non-empty tuple after <...>
+file.alo, line 3: Expected a list, dictionary or non-empty tuple after <...>
+
+[case testInvalidTypeForTuple]
+<t, s> ()
+<t> (1, 2)
+[out]
+file.alo, line 1: Expected a list, dictionary or non-empty tuple after <...>
+file.alo, line 2: Wrong number of types for a tuple literal
