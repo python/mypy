@@ -1,7 +1,7 @@
 import os
 import os.path
 from nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
-from symtable import SymbolTableNode
+from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnal
 from mtypes import Typ
 from os.path import dirname, basename

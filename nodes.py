@@ -1,7 +1,9 @@
 from lex import Token
 from strconv import StrConv
 from visitor import NodeVisitor
-from util import dump_tagged
+from util import dump_tagged, short_type
+
+import re
 
 
 # Supertype for objects that are valid as error message locations.
@@ -10,7 +12,6 @@ interface Context:
     int get_line(self)
 
 
-from symtable import SymbolTable, SymNode
 from mtypes import TypeVars, Typ, TypeVarDef
 
 
@@ -19,19 +20,29 @@ LDEF = 0
 GDEF = 1
 MDEF = 2
 MODULE_REF = 3
+TVAR = 4 # Constant for type variable nodes in symbol table
 
 
 node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
     MDEF: 'Mdef',
-    MODULE_REF: 'ModuleRef'
+    MODULE_REF: 'ModuleRef',
+    TVAR: 'Tvar'
 }
 
 
-# Supertype for node types that can be stored in a symbol table.
+# Nodes that can be stored in a symbol table.
 # TODO better name
+# TODO combine with SymNode?
 interface AccessorNode: pass
+
+
+# Nodes that can be stored in the symbol table.
+interface SymNode:
+    # TODO do not use methods for these
+    str name(self)
+    str full_name(self)
 
 
 class Node(Context):
@@ -1110,3 +1121,67 @@ class TypeInfo(Node, AccessorNode, SymNode):
                             ('Vars', self.vars.keys()),
                             ('Methods', self.methods.keys())],
                            'TypeInfo')
+
+
+class SymbolTable(dict<str, SymbolTableNode>):
+    str __str__(self):
+        list<str> a = []
+        for key, value in self.items():
+            # Filter out the implicit import of builtins.
+            if isinstance(value, SymbolTableNode):
+                if value.full_name() != 'builtins':
+                    a.append('  ' + str(key) + ' : ' + str(value))
+            else:
+                a.append('  <invalid item>')
+        a = sorted(a)
+        a.insert(0, 'SymbolTable(')
+        a[-1] += ')'
+        return '\n'.join(a)
+
+
+class SymbolTableNode:
+    int kind      # Ldef/Gdef/Mdef/Tvar/...
+    SymNode node  # Parse tree node of definition (FuncDef/Var/
+                  # TypeInfo), None for Tvar
+    int tvar_id   # Type variable id (for Tvars only)
+    str mod_id    # Module id (e.g. "foo.bar") or None
+    
+    Typ type_override  # If None, fall back to type of node
+    
+    void __init__(self, int kind, SymNode node, str mod_id=None, Typ typ=None,
+                  int tvar_id=0):
+        self.kind = kind
+        self.node = node
+        self.type_override = typ
+        self.mod_id = mod_id
+        self.tvar_id = tvar_id
+    
+    str full_name(self):
+        if self.node is not None:
+            return self.node.full_name()
+        else:
+            return None
+    
+    Typ typ(self):
+        # IDEA: Get rid of the any type.
+        any node = self.node
+        if self.type_override is not None:
+            return self.type_override
+        elif ((isinstance(node, Var) or isinstance(node, FuncDef))
+              and node.typ is not None):
+            return node.typ.typ
+        else:
+            return None
+    
+    str __str__(self):
+        s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
+        if self.mod_id is not None:
+            s += ' ({})'.format(self.mod_id)
+        # Include declared type of variables and functions.
+        if self.typ() is not None:
+            s += ' : {}'.format(self.typ())
+        return s
+
+
+str clean_up(str s):
+    return re.sub('.*::', '', s)

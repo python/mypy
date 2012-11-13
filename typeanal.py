@@ -3,8 +3,7 @@ from mtypes import (
     Void, NoneTyp, TypeVarDef, TypeVisitor
 )
 from typerepr import TypeVarRepr
-from nodes import GDEF, TypeInfo, Context
-from symtable import SymbolTableNode, TVAR
+from nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
 
 
 # Semantic analyzer for types.

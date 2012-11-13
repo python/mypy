@@ -6,10 +6,10 @@ from nodes import (
     RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, TypeApplication, Context
+    SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
+    SymbolTableNode, TVAR
 )
 from visitor import NodeVisitor
-from symtable import SymbolTable, SymbolTableNode, TVAR
 from errors import Errors
 from mtypes import NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar
 from checker import function_type
