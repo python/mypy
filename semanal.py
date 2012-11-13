@@ -13,7 +13,6 @@ from symtable import SymbolTable, SymbolTableNode, TVAR
 from errors import Errors
 from mtypes import NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar
 from checker import function_type
-from typeinfomap import TypeInfoMap
 from typeanal import TypeAnalyser
 
 
@@ -672,3 +671,14 @@ Instance self_type(TypeInfo typ):
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1))
     return Instance(typ, tv)
+
+
+class TypeInfoMap(dict<str, TypeInfo>):
+    str __str__(self):
+        list<str> a = ['TypeInfoMap(']
+        for x, y in sorted(self.items()):
+            if isinstance(x, str) and not x.startswith('builtins.'):
+                ti = ('\n' + '  ').join(str(y).split('\n'))
+                a.append('  {} : {}'.format(x, ti))
+        a[-1] += ')'
+        return '\n'.join(a)
