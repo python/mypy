@@ -66,16 +66,16 @@ interface i: pass
 class c(i): pass
 [out]
 TypeInfoMap(
-  __main__.i : TypeInfo(
-    Name(__main__.i)
-    Interface
-    Interfaces()
-    Vars()
-    Methods())
   __main__.c : TypeInfo(
     Name(__main__.c)
     Base(builtins.object)
     Interfaces(
       __main__.i)
+    Vars()
+    Methods())
+  __main__.i : TypeInfo(
+    Name(__main__.i)
+    Interface
+    Interfaces()
     Vars()
     Methods()))

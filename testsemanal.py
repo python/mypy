@@ -9,8 +9,6 @@ from testconfig import test_data_prefix, test_temp_dir
 
 
 # Semantic analyser test cases: dump parse tree
-# ---------------------------------------------
-
 
 # Semantic analysis test case description files.
 semanal_files = ['semanal-basic.test',
@@ -21,7 +19,6 @@ semanal_files = ['semanal-basic.test',
                  'semanal-statements.test',
                  'semanal-interfaces.test']
 
-
 class SemAnalSuite(Suite):
     def cases(self):
         c = []
@@ -29,7 +26,6 @@ class SemAnalSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_semanal, test_temp_dir)
         return c
-
 
 # Perform a semantic analysis test case. The testcase argument contains a
 # description of the test case (inputs and output).
@@ -56,14 +52,10 @@ def test_semanal(testcase):
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
                                                                 testcase.line))
 
-
-# Semantic analyser test cases: errors
-# ------------------------------------
-
+# Semantic analyser error test cases
 
 # Paths to files containing test case descriptions.
 semanal_error_files = ['semanal-errors.test']
-
 
 class SemAnalErrorSuite(Suite):
     def cases(self):
@@ -72,7 +64,6 @@ class SemAnalErrorSuite(Suite):
         for f in semanal_error_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f), test_semanal_error, test_temp_dir)
         return c
-
 
 # Perform a test case.
 def test_semanal_error(testcase):
@@ -86,7 +77,6 @@ def test_semanal_error(testcase):
         # are equivalent.
         assert_string_arrays_equal(testcase.output, normalize_error_messages(e.messages), 'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
 
-
 # Translate an array of error messages to use / as path separator.
 def normalize_error_messages(messages):
     a = []
@@ -95,13 +85,10 @@ def normalize_error_messages(messages):
     return a
 
 
-# Semantic analyser test cases: export symbol table
-# -------------------------------------------------
-
+# Symbol table export test cases
 
 # Test case descriptions
 semanal_symtable_files = ['semanal-symtable.test']
-
     
 class SemAnalSymtableSuite(Suite):
     def cases(self):
@@ -124,6 +111,32 @@ class SemAnalSymtableSuite(Suite):
                     a.append('{}:'.format(f))
                     for s in str(symtable[f].names).split('\n'):
                         a.append('  ' + s)
+        except CompileError as e:
+            a = e.messages
+        assert_string_arrays_equal(testcase.output, a, 'Invalid semantic analyzer output ({}, line {})'.format(testcase.file, testcase.line))
+
+
+# Type info export test cases
+
+semanal_typeinfo_files = ['semanal-typeinfo.test']
+    
+class SemAnalTypeInfoSuite(Suite):
+    # Test case descriptions
+    def cases(self):
+        c = []
+        for f in semanal_typeinfo_files:
+            c += parse_test_cases(os.path.join(test_data_prefix, f), self.run_test, test_temp_dir)
+        return c
+    
+    # Perform a test case.
+    def run_test(self, testcase):
+        any a
+        try:
+            # Build test case input.
+            src = '\n'.join(testcase.input)
+            trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+            # The output is the symbol table converted into a string.
+            a = str(infos).split('\n')
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(testcase.output, a, 'Invalid semantic analyzer output ({}, line {})'.format(testcase.file, testcase.line))

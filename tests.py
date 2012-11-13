@@ -14,6 +14,7 @@ class AllSuite(Suite):
         self.test_semanal = testsemanal.SemAnalSuite()
         self.test_semanal_errors = testsemanal.SemAnalErrorSuite()
         self.test_semanal_symtable = testsemanal.SemAnalSymtableSuite()
+        self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
         super().__init__()
 
 

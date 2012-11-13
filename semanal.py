@@ -36,7 +36,7 @@ class SemanticAnal(NodeVisitor):
     # Local names
     SymbolTable locals
     # All classes, from name to info (TODO needed?)
-    TypeInfoMap types = TypeInfoMap()
+    TypeInfoMap types
     
     list<str> stack = [None] # Function local/type variable stack
     TypeInfo typ = None   # TypeInfo of enclosing class (or nil)
@@ -52,6 +52,7 @@ class SemanticAnal(NodeVisitor):
     # Create semantic analyzer. Use libPath to search for modules, and report
     # compile errors using the Errors instance.
     void __init__(self, list<str> lib_path, Errors errors):
+        self.types = TypeInfoMap()
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
