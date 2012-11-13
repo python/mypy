@@ -39,13 +39,13 @@ class SemanticAnal(NodeVisitor):
     TypeInfoMap types
     
     list<str> stack     # Function local/type variable stack
-    TypeInfo typ        # TypeInfo of enclosing class (or nil)
+    TypeInfo typ        # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
     bool is_local_ctx   # Are we now analysing a block (not at the
                         # top level or at class body)?
     int loop_depth      # Depth of breakable loops
-    str cur_mod_id      # Current module id (or nil) (phase 2)
+    str cur_mod_id      # Current module id (or None) (phase 2)
     set<str> imports    # Imported modules (during phase 2 analysis)
     Errors errors       # Keep track of generated errors
     

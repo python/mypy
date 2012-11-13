@@ -13,7 +13,8 @@ class TypeAnalyser(TypeVisitor<Typ>):
     func<str, Context, SymbolTableNode> lookup
     func<str, Context, void> fail
     
-    void __init__(self, func<str, Context, SymbolTableNode> lookup_func, func<str, Context, void> fail_func):
+    void __init__(self, func<str, Context, SymbolTableNode> lookup_func,
+                  func<str, Context, void> fail_func):
         self.lookup = lookup_func
         self.fail = fail_func
     
@@ -24,8 +25,10 @@ class TypeAnalyser(TypeVisitor<Typ>):
         if sym is not None:
             if sym.kind == TVAR:
                 if len(t.args) > 0:
-                    self.fail('Type variable "{}" used with arguments'.format(t.name), t)
-                return TypeVar(t.name, sym.tvar_id, False, t.line, TypeVarRepr(t.repr.components[0]))
+                    self.fail('Type variable "{}" used with arguments'.format(
+                        t.name), t)
+                return TypeVar(t.name, sym.tvar_id, False, t.line,
+                               TypeVarRepr(t.repr.components[0]))
             elif sym.kind != GDEF or not isinstance(sym.node, TypeInfo):
                 name = sym.full_name()
                 if name is None:
@@ -39,7 +42,9 @@ class TypeAnalyser(TypeVisitor<Typ>):
                 if len(t.args) == 0:
                     # Implicit 'any' type arguments.
                     # TODO remove <Typ> below
-                    return Instance((TypeInfo)sym.node, <Typ> [Any()] * len(info.type_vars), t.line, t.repr)
+                    return Instance((TypeInfo)sym.node,
+                                    <Typ> [Any()] * len(info.type_vars),
+                                    t.line, t.repr)
                 # Invalid number of type parameters.
                 n = len(((TypeInfo)sym.node).type_vars)
                 s = '{} type arguments'.format(n)
@@ -50,13 +55,15 @@ class TypeAnalyser(TypeVisitor<Typ>):
                 act = str(len(t.args))
                 if act == '0':
                     act = 'none'
-                self.fail('"{}" expects {}, but {} given'.format(((TypeInfo)sym.node).name(), s, act), t)
+                self.fail('"{}" expects {}, but {} given'.format(
+                    ((TypeInfo)sym.node).name(), s, act), t)
                 return t
             else:
-                # Ok; analyze arguments and construct Instance type. Upper bounds are
-                # never present at this stage, as they are only used during type
-                # inference.
-                return Instance((TypeInfo)sym.node, self.anal_array(t.args), t.line, t.repr)
+                # Ok; analyze arguments and construct Instance type. Upper
+                # bounds are never present at this stage, as they are only used
+                # during type inference.
+                return Instance((TypeInfo)sym.node, self.anal_array(t.args),
+                                t.line, t.repr)
         else:
             return t
     
@@ -64,7 +71,8 @@ class TypeAnalyser(TypeVisitor<Typ>):
         list<Typ> a = []
         for at in t.args[:-1]:
             a.append(at.accept(self))
-        return Callable(a, len(a), False, t.args[-1].accept(self), False, None, TypeVars([]), [], t.line, t.repr)
+        return Callable(a, len(a), False, t.args[-1].accept(self), False, None,
+                        TypeVars([]), [], t.line, t.repr)
     
     Typ visit_any(self, Any t):
         return t
