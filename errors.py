@@ -49,11 +49,11 @@ class Errors:
     # Path name prefix that is removed from all paths, if set.
     str ignore_prefix = None
     str file = None     # Path to current file.
-    # Short name of current type (or nil).
+    # Short name of current type (or None).
     str type_name = None
     # Is the current type an interface?
     bool is_interface = False
-    # Short name of current function or member (or nil).
+    # Short name of current function or member (or None).
     str function_or_member = None
     
     void __init__(self):
@@ -204,7 +204,7 @@ class Errors:
             i += 1
             
             # Sort the errors specific to a file according to line number.
-            a = stable_sort(errors[i0:i], lambda a, b: a.line < b.line)
+            a = stable_sort(errors[i0:i], lambda x: x.line)
             result.extend(a)
         return result
     
@@ -239,9 +239,15 @@ class CompileError(Exception):
 # Perform a stable sort of a sequence, i.e. if the original sequence has
 # a[n] == a[n+m] (when comparing using the comparison function f), in the
 # sorted sequence item a[n] will be at an earlier index than a[n + m].
-list<T> stable_sort<T>(sequence<T> a, func<T, T, bool> f):
-    # TODO implement
-    return list(a)
+list<T> stable_sort<T>(sequence<T> a, func<T, any> key):
+    # TODO use sorted with key (need support for keyword arguments)
+    l = <tuple<any, int, T>> []
+    for i, x in enumerate(a):
+        l.append((key(x), i, x))
+    result = <T> []
+    for k, j, y in sorted(l):
+        result.append(y)        
+    return result
 
 
 # If path starts with prefix, return copy of path with the prefix removed.

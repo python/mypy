@@ -146,7 +146,7 @@ class SemanticAnal(NodeVisitor):
         if self.typ is not None:
             defn.info = self.typ
             if not defn.is_overload:
-                if defn.name in self.typ.methods:
+                if defn.name() in self.typ.methods:
                     self.name_already_defined(defn.name(), defn)
                 self.typ.methods[defn.name()] = defn
             if defn.name() == '__init__':
@@ -623,9 +623,9 @@ class SemanticAnal(NodeVisitor):
             v._full_name = self.qualified_name(v.name())
     
     void add_local(self, Var v, Context ctx):
-        if v.name in self.locals:
+        if v.name() in self.locals:
             self.name_already_defined(v.name(), ctx)
-        v.full_name = v.name
+        v._full_name = v.name()
         self.locals[v.name()] = SymbolTableNode(LDEF, v)
     
     void check_no_global(self, str n, Context ctx, bool is_func=False):

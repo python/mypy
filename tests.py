@@ -12,6 +12,7 @@ class AllSuite(Suite):
         self.test_parse = testparse.ParserSuite()
         self.test_parse_errors = testparseerr.ParseErrorSuite()
         self.test_semanal = testsemanal.SemAnalSuite()
+        self.test_semanal_errors = testsemanal.SemAnalErrorSuite()
         super().__init__()
 
 

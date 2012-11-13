@@ -27,9 +27,9 @@ class TypeAnalyser(TypeVisitor<Typ>):
                     self.fail('Type variable "{}" used with arguments'.format(t.name), t)
                 return TypeVar(t.name, sym.tvar_id, False, t.line, TypeVarRepr(t.repr.components[0]))
             elif sym.kind != GDEF or not isinstance(sym.node, TypeInfo):
-                name = sym.full_name
+                name = sym.full_name()
                 if name is None:
-                    name = sym.node.name
+                    name = sym.node.name()
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = (TypeInfo)sym.node
@@ -50,7 +50,7 @@ class TypeAnalyser(TypeVisitor<Typ>):
                 act = str(len(t.args))
                 if act == '0':
                     act = 'none'
-                self.fail('"{}" expects {}, but {} given'.format(((TypeInfo)sym.node).name, s, act), t)
+                self.fail('"{}" expects {}, but {} given'.format(((TypeInfo)sym.node).name(), s, act), t)
                 return t
             else:
                 # Ok; analyze arguments and construct Instance type. Upper bounds are

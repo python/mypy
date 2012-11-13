@@ -107,7 +107,7 @@ class BuildManager:
     list<str> lib_path    # Library path for looking up modules
     SemanticAnal sem_anal # Semantic analyzer
     TypeChecker checker   # Type checker
-    Errors errors = Errors()   # For reporting all errors
+    Errors errors         # For reporting all errors
     
     # States of all individual files that are being processed. Each file in a
     # build is always represented by a single state object (after it has been
@@ -119,6 +119,7 @@ class BuildManager:
     dict<str, str> module_files
     
     void __init__(self, list<str> lib_path, bool do_type_check):
+        self.errors = Errors()
         self.lib_path = lib_path
         self.do_type_check = do_type_check
         self.sem_anal = SemanticAnal(lib_path, self.errors)
