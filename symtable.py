@@ -26,6 +26,7 @@ class SymbolTable(dict<str, SymbolTableNode>):
 
 # Supertype for node types that can be stored in the symbol table.
 interface SymNode:
+    # TODO do not use methods for these
     str name(self)
     str full_name(self)
 

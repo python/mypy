@@ -2,6 +2,7 @@ from unittest import Suite, run_test
 import testlex
 import testparse
 import testparseerr
+import testsemanal
 import sys
 
 
@@ -10,6 +11,7 @@ class AllSuite(Suite):
         self.test_lex = testlex.LexerSuite()
         self.test_parse = testparse.ParserSuite()
         self.test_parse_errors = testparseerr.ParseErrorSuite()
+        self.test_semanal = testsemanal.SemAnalSuite()
         super().__init__()
 
 

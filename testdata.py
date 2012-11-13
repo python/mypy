@@ -1,7 +1,7 @@
 import os.path
 import os
 import re
-from os import remove
+from os import remove, rmdir
 from unittest import TestCase, SkipTestCaseException
 
 
@@ -118,7 +118,10 @@ class DataDrivenTestCase(TestCase):
     
     void tear_down(self):
         for is_dir, path in reversed(self.clean_up):
-            remove(path)
+            if is_dir:
+                rmdir(path)
+            else:
+                remove(path)
         super().tear_down()
 
 

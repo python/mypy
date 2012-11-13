@@ -1,9 +1,17 @@
 from lex import Token
-from mtypes import TypeVars, Typ, TypeVarDef
 from strconv import StrConv
 from visitor import NodeVisitor
-from symtable import SymbolTable
 from util import dump_tagged
+
+
+# Supertype for objects that are valid as error message locations.
+interface Context:
+    # TODO this should be just 'line'
+    int get_line(self)
+
+
+from symtable import SymbolTable, SymNode
+from mtypes import TypeVars, Typ, TypeVarDef
 
 
 # Variable kind constants
@@ -18,7 +26,7 @@ MODULE_REF = 3
 interface AccessorNode: pass
 
 
-class Node:
+class Node(Context):
     int line = -1
     any repr = None # Textual representation
     
@@ -32,14 +40,17 @@ class Node:
     Node set_line(self, int line):
         self.line = line
         return self
+
+    int get_line(self):
+        return self.line
     
     T accept<T>(self, NodeVisitor<T> visitor):
         raise RuntimeError('Not implemented')
 
 
-class MypyFile(Node, AccessorNode):
-    str name          # Module name ('__main__' for initial file)
-    str full_name     # Qualified module name
+class MypyFile(Node, AccessorNode, SymNode):
+    str _name         # Module name ('__main__' for initial file)
+    str _full_name    # Qualified module name
     str path          # Path to the file (None if not known)
     list<Node> defs   # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
@@ -49,6 +60,12 @@ class MypyFile(Node, AccessorNode):
         self.defs = defs
         self.line = 1  # Dummy line number
         self.is_bom = is_bom
+
+    str name(self):
+        return self._name
+
+    str full_name(self):
+        return self._full_name
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_mypy_file(self)
@@ -89,22 +106,25 @@ class ImportAll(Node):
 class FuncBase(Node, AccessorNode):
     Annotation typ   # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
-    str name
+    def name(self): pass
 
 
 # A logical node representing all the overload variants of an overloaded
 # function. This node has no explicit representation in the source program.
 # Overloaded variants must be consecutive in the source file.
-class OverloadedFuncDef(FuncBase):
+class OverloadedFuncDef(FuncBase, SymNode):
     list<FuncDef> items
-    str full_name
+    str _full_name
     
     void __init__(self, list<FuncDef> items):
         self.items = items
         self.set_line(items[0].line)
     
     str name(self):
-        return self.items[1].name
+        return self.items[1].name()
+
+    str full_name(self):
+        return self._full_name
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_overloaded_func_def(self)
@@ -142,7 +162,7 @@ class FuncItem(FuncBase):
         for i in range(len(init)):
             if init[i] is not None:
                 rvalue = init[i]
-                lvalue = NameExpr(args[i].name).set_line(rvalue.line)
+                lvalue = NameExpr(args[i].name()).set_line(rvalue.line)
                 assign = AssignmentStmt([lvalue], rvalue)
                 assign.set_line(rvalue.line)
                 i2.append(assign)
@@ -177,23 +197,30 @@ class FuncItem(FuncBase):
         return res
 
 
-class FuncDef(FuncItem):
-    str full_name      # Name with module prefix
+class FuncDef(FuncItem, SymNode):
+    str _full_name      # Name with module prefix
     
     void __init__(self, str name, list<Var> args, list<Node> init, Var var_arg,
                   Var dict_var_arg, int max_pos, Block body,
                   Annotation typ=None):
         super().__init__(args, init, var_arg, dict_var_arg, max_pos, body, typ)
-        self.name = name
+        self._name = name
+
+    str name(self):
+        return self._name
     
+    str full_name(self):
+        return self._full_name
+
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_func_def(self)
     
     bool is_constructor(self):
-        return self.info is not None and self.name == '__init__'
-    
+        return self.info is not None and self._name == '__init__'
+
+    # TODO merge with name()
     str get_name(self):
-        return self.name
+        return self._name
 
 
 class Decorator(Node):
@@ -208,9 +235,9 @@ class Decorator(Node):
         return visitor.visit_decorator(self)
 
 
-class Var(Node, AccessorNode):
-    str name        # Name without module prefix
-    str full_name   # Name with module prefix
+class Var(Node, AccessorNode, SymNode):
+    str _name       # Name without module prefix
+    str _full_name  # Name with module prefix
     bool is_init    # Is is initialized?
     TypeInfo info   # Defining class (for member variables)
     Annotation typ  # Declared type, or None if none
@@ -218,9 +245,15 @@ class Var(Node, AccessorNode):
                     # (usually "self")?
     
     void __init__(self, str name):
-        self.name = name
+        self._name = name
         self.is_init = False
         self.is_self = False
+
+    str name(self):
+        return self._name
+
+    str full_name(self):
+        return self._full_name
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_var(self)
@@ -879,8 +912,8 @@ class TempNode(Node):
 
 # Class representing the type structure of a single class. The corresponding
 # TypeDef instance represents the parse tree of the class.
-class TypeInfo(Node, AccessorNode):
-    str full_name      # Fully qualified name
+class TypeInfo(Node, AccessorNode, SymNode):
+    str _full_name     # Fully qualified name
     bool is_interface  # Is this a interface type?
     TypeDef defn       # Corresponding TypeDef
     TypeInfo base = None   # Superclass or None (not interface)
@@ -916,7 +949,7 @@ class TypeInfo(Node, AccessorNode):
         self.type_vars = []
         self.bounds = []
         self.bases = []
-        self.full_name = defn.full_name
+        self._full_name = defn.full_name
         self.is_interface = defn.is_interface
         self.vars = vars
         self.methods = methods
@@ -928,6 +961,9 @@ class TypeInfo(Node, AccessorNode):
     # Short name.
     str name(self):
         return self.defn.name
+
+    str full_name(self):
+        return self._full_name
     
     # Is the type generic (i.e. does it have type variables)?
     bool is_generic(self):
@@ -1002,11 +1038,11 @@ class TypeInfo(Node, AccessorNode):
     # Return True if type has a basetype with the specified name, either via
     # extension or via implementation.
     bool has_base(self, str full_name):
-        if self.full_name == full_name or (self.base is not None
-                                           and self.base.has_base(full_name)):
+        if self.full_name() == full_name or (self.base is not None and
+                                             self.base.has_base(full_name)):
             return True
         for iface in self.interfaces:
-            if iface.full_name == full_name or iface.has_base(full_name):
+            if iface.full_name() == full_name or iface.has_base(full_name):
                 return True
         return False
     
@@ -1052,14 +1088,14 @@ class TypeInfo(Node, AccessorNode):
     str __str__(self):
         list<str> interfaces = []
         for i in self.interfaces:
-            interfaces.append(i.full_name)
+            interfaces.append(i.full_name())
         str base = None
         if self.base is not None:
-            base = 'Base({})'.format(self.base.full_name)
+            base = 'Base({})'.format(self.base.full_name())
         str iface = None
         if self.is_interface:
             iface = 'Interface'
-        return dump_tagged(['Name({})'.format(self.full_name),
+        return dump_tagged(['Name({})'.format(self.full_name()),
                             iface,
                             base,
                             ('Interfaces', interfaces),

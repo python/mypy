@@ -179,5 +179,7 @@ MypyFile:1(
     IntExpr(1))
   ExpressionStmt:2(
     DictExpr:2(
-      (NameExpr(x [__main__.x]), NameExpr(y [__main__.y]))
-      (NameExpr(y [__main__.y]), NameExpr(x [__main__.x])))))
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y])
+      NameExpr(y [__main__.y])
+      NameExpr(x [__main__.x]))))

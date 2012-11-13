@@ -1,5 +1,11 @@
-from types import TypeVisitor, Typ, UnboundType, TypeVar, TypeVarRepr, TupleType, Instance, Any, Callable, TypeVars, Void, NoneType, TypeVarDef
-from nodes import SymbolTableNode, TVAR, GDEF, TypeInfo
+from mtypes import (
+    Typ, UnboundType, TypeVar, TupleType, Instance, Any, Callable, TypeVars,
+    Void, NoneTyp, TypeVarDef
+)
+from typerepr import TypeVarRepr
+from nodes import GDEF, TypeInfo, Context
+from symtable import SymbolTableNode, TVAR
+from typevisitor import TypeVisitor
 
 
 # Semantic analyzer for types.
@@ -27,12 +33,13 @@ class TypeAnalyser(TypeVisitor<Typ>):
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = (TypeInfo)sym.node
-            if len(t.args) > 0 and info.full_name == 'builtins.tuple':
+            if len(t.args) > 0 and info.full_name() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args), t.line, t.repr)
             elif len(t.args) != len(info.type_vars):
                 if len(t.args) == 0:
                     # Implicit 'any' type arguments.
-                    return Instance((TypeInfo)sym.node, [Any()] * len(info.type_vars), t.line, t.repr)
+                    # TODO remove <Typ> below
+                    return Instance((TypeInfo)sym.node, <Typ> [Any()] * len(info.type_vars), t.line, t.repr)
                 # Invalid number of type parameters.
                 n = len(((TypeInfo)sym.node).type_vars)
                 s = '{} type arguments'.format(n)
@@ -65,7 +72,7 @@ class TypeAnalyser(TypeVisitor<Typ>):
     Typ visit_void(self, Void t):
         return t
     
-    Typ visit_none_type(self, NoneType t):
+    Typ visit_none_type(self, NoneTyp t):
         return t
     
     Typ visit_instance(self, Instance t):
@@ -75,7 +82,14 @@ class TypeAnalyser(TypeVisitor<Typ>):
         raise RuntimeError('TypeVar is already analysed')
     
     Typ visit_callable(self, Callable t):
-        res = Callable(self.anal_array(t.arg_types), t.min_args, t.is_var_arg, t.ret_type.accept(self), t.is_type_obj, t.name, self.anal_var_defs(t.variables), self.anal_bound_vars(t.bound_vars), t.line, t.repr)
+        res = Callable(self.anal_array(t.arg_types),
+                       t.min_args,
+                       t.is_var_arg,
+                       t.ret_type.accept(self),
+                       t.is_type_obj(),
+                       t.name,
+                       self.anal_var_defs(t.variables),
+                       self.anal_bound_vars(t.bound_vars), t.line, t.repr)
         
         return res
     

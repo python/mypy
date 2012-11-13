@@ -514,7 +514,8 @@ MypyFile:1(
         __main__.B)
       ValueType(
         __main__.A<any>)
-      (NameExpr(B [__main__.B]), NameExpr(None [builtins.None]))))
+      NameExpr(B [__main__.B])
+      NameExpr(None [builtins.None])))
   TypeDef:2(
     A
     TypeVars(

@@ -79,7 +79,7 @@ class StrConv(NodeVisitor<str>):
     
     def visit_func_def(self, o):
         a = self.func_helper(o)
-        a.insert(0, o.name)
+        a.insert(0, o.name())
         if o.max_pos != -1:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         return self.dump(a, o)
@@ -106,7 +106,7 @@ class StrConv(NodeVisitor<str>):
     def visit_var_def(self, o):
         a = []
         for n, t in o.items:
-            a.append('Var({})'.format(n.name))
+            a.append('Var({})'.format(n.name()))
             a.append('Type({})'.format(t))
         if o.init is not None:
             a.append(o.init)
@@ -118,7 +118,7 @@ class StrConv(NodeVisitor<str>):
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
             l = ':nil'
-        return 'Var' + l + '(' + o.name + ')'
+        return 'Var' + l + '(' + o.name() + ')'
     
     def visit_global_decl(self, o):
         return self.dump([o.names], o)

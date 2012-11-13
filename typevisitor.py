@@ -16,7 +16,7 @@ class TypeVisitor<T>:
     T visit_void(self, mtypes.Void t):
         pass
     
-    T visit_none_type(self, mtypes.NoneType t):
+    T visit_none_type(self, mtypes.NoneTyp t):
         pass
     
     T visit_type_var(self, mtypes.TypeVar t):

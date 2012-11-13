@@ -30,7 +30,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         return 'None'
     
     def visit_instance(self, t):
-        s = t.typ.full_name
+        s = t.typ.full_name()
         if t.erased:
             s += '*'
         if t.args != []:

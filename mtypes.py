@@ -4,13 +4,16 @@ from typestr import TypeStrVisitor
 
 
 # Abstract base class for all types.
-class Typ:
+class Typ(nodes.Context):
     int line
     any repr
     
-    def __init__(self, line=-1, repr=None):
+    void __init__(self, int line=-1, repr=None):
         self.line = line
         self.repr = repr
+
+    int get_line(self):
+        return self.line
     
     T accept<T>(self, TypeVisitor<T> visitor):
         raise RuntimeError('Not implemented')
@@ -72,7 +75,10 @@ class Void(Typ):
 # a function with a void type, even though semantically such a function
 # returns a None value; the void type is used instead so that we can report an
 # error if the caller tries to do anything with the return value.
-class NoneType(Typ):
+class NoneTyp(Typ):
+    void __init__(self, int line=-1, repr=None):
+        super().__init__(line, repr)
+    
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_none_type(self)
 
@@ -287,7 +293,7 @@ class TypeVars:
 
 # Definition of a single type variable, with an optional bound (for bounded
 # polymorphism).
-class TypeVarDef:
+class TypeVarDef(nodes.Context):
     str name
     int id
     Typ bound  # May be None
@@ -301,6 +307,9 @@ class TypeVarDef:
         self.bound = bound
         self.line = line
         self.repr = repr
+
+    int get_line(self):
+        return self.line
     
     str __str__(self):
         if self.bound is None:

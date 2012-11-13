@@ -28,8 +28,8 @@ class VoidRepr:
         self.void = void
 
 
-# Representation of NoneType.
-class NoneTypeRepr: pass
+# Representation of NoneTyp.
+class NoneTypRepr: pass
 
 
 # Representation of TypeVar.

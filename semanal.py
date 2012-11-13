@@ -1,7 +1,20 @@
-from nodes import NodeVisitor, MypyFile, SymbolTable, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef, TypeDef, VarDef, Var, SymbolTableNode, GDEF, MODULE_REF, Annotation, FuncItem, TVAR, Import, ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr, IndexExpr, ParenExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt, ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr, SliceExpr, CastExpr, TypeApplication
+from nodes import (
+    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    TypeDef, VarDef, Var, GDEF, MODULE_REF, Annotation, FuncItem, Import,
+    ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
+    IndexExpr, ParenExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
+    RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
+    GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
+    SliceExpr, CastExpr, TypeApplication, Context
+)
+from visitor import NodeVisitor
+from symtable import SymbolTable, SymbolTableNode, TVAR
 from errors import Errors
-from types import NoneType, Callable, Overloaded, Instance, Typ
+from mtypes import NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar
 from checker import function_type
+from typeinfomap import TypeInfoMap
+from typeanal import TypeAnalyser
 
 
 # Semantic analyzer that binds names and does various consistency checks for
@@ -74,7 +87,7 @@ class SemanticAnal(NodeVisitor):
         # Add implicit definition of 'None' to builtins, as we cannot define a
         # variable with a None type explicitly.
         if mod_id == 'builtins':
-            none_def = VarDef([(Var('None'), NoneType())], True)
+            none_def = VarDef([(Var('None'), NoneTyp())], True)
             defs.append(none_def)
             self.anal_var_def(none_def)
     
@@ -83,14 +96,14 @@ class SemanticAnal(NodeVisitor):
             self.analyse_lvalue(lval, False, True)
     
     void anal_func_def(self, FuncDef d):
-        self.check_no_global(d.name, d, True)
-        d.full_name = self.qualified_name(d.name)
-        self.globals[d.name] = SymbolTableNode(GDEF, d, self.cur_mod_id)
+        self.check_no_global(d.name(), d, True)
+        d._full_name = self.qualified_name(d.name())
+        self.globals[d.name()] = SymbolTableNode(GDEF, d, self.cur_mod_id)
     
     void anal_overloaded_func_def(self, OverloadedFuncDef d):
-        self.check_no_global(d.name, d)
-        d.full_name = self.qualified_name(d.name)
-        self.globals[d.name] = SymbolTableNode(GDEF, d, self.cur_mod_id)
+        self.check_no_global(d.name(), d)
+        d._full_name = self.qualified_name(d.name())
+        self.globals[d.name()] = SymbolTableNode(GDEF, d, self.cur_mod_id)
     
     void anal_type_def(self, TypeDef d):
         self.check_no_global(d.name, d)
@@ -103,9 +116,9 @@ class SemanticAnal(NodeVisitor):
     
     void anal_var_def(self, VarDef d):
         for v, t in d.items:
-            self.check_no_global(v.name, d)
-            v.full_name = self.qualified_name(v.name)
-            self.globals[v.name] = SymbolTableNode(GDEF, v, self.cur_mod_id)
+            self.check_no_global(v.name(), d)
+            v._full_name = self.qualified_name(v.name())
+            self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
     
     
     # Second pass of semantic analysis
@@ -120,9 +133,9 @@ class SemanticAnal(NodeVisitor):
         self.errors.set_file(fnam)
         self.globals = file_node.names
         self.module_names = SymbolTable()
-        self.cur_mod_id = file_node.full_name
+        self.cur_mod_id = file_node.full_name()
         
-        if self.modules.has_key('builtins'):
+        if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(MODULE_REF, self.modules['builtins'], self.cur_mod_id)
         
         defs = file_node.defs
@@ -133,15 +146,15 @@ class SemanticAnal(NodeVisitor):
         if self.typ is not None:
             defn.info = self.typ
             if not defn.is_overload:
-                if self.typ.methods.has_key(defn.name):
-                    self.name_already_defined(defn.name, defn)
-                self.typ.methods[defn.name] = defn
-            if defn.name == '__init__':
+                if defn.name in self.typ.methods:
+                    self.name_already_defined(defn.name(), defn)
+                self.typ.methods[defn.name()] = defn
+            if defn.name() == '__init__':
                 self.is_init_method = True
             if defn.args == []:
                 self.fail('Method must have at least one argument', defn)
         
-        self.errors.set_function(defn.name)
+        self.errors.set_function(defn.name())
         self.analyse_function(defn)
         self.errors.set_function(None)
         self.is_init_method = False
@@ -156,7 +169,7 @@ class SemanticAnal(NodeVisitor):
         defn.typ.set_line(defn.line)
         
         if self.typ is not None:
-            self.typ.methods[defn.name] = defn
+            self.typ.methods[defn.name()] = defn
             defn.info = self.typ
     
     void analyse_function(self, FuncItem defn):
@@ -179,9 +192,9 @@ class SemanticAnal(NodeVisitor):
             self.add_local(v, defn)
         if defn.var_arg is not None:
             self.add_local(defn.var_arg, defn)
-        for init in defn.init:
-            if init is not None:
-                init.lvalues[0].accept(self)
+        for init_ in defn.init:
+            if init_ is not None:
+                init_.lvalues[0].accept(self)
         
         # The first argument of a method is self.
         if self.typ is not None and len(defn.args) > 0:
@@ -270,7 +283,7 @@ class SemanticAnal(NodeVisitor):
     
     void visit_import_all(self, ImportAll i):
         m = self.modules[i.id]
-        for name, node in m.names:
+        for name, node in m.names.items():
             if not name.startswith('_'):
                 self.globals[name] = SymbolTableNode(node.kind, node.node, self.cur_mod_id)
     
@@ -299,8 +312,8 @@ class SemanticAnal(NodeVisitor):
                 self.add_local(v, defn)
             elif self.typ is not None:
                 v.info = self.typ
-                self.typ.vars[v.name] = v
-            elif not self.globals.has_key(v.name):
+                self.typ.vars[v.name()] = v
+            elif v.name not in self.globals:
                 defn.kind = GDEF
                 self.add_var(v, defn)
         
@@ -322,16 +335,16 @@ class SemanticAnal(NodeVisitor):
     void analyse_lvalue(self, Node lval, bool nested=False, bool add_defs=False):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
-            if add_defs and not self.globals.has_key(n.name):
+            if add_defs and n.name not in self.globals:
                 v = Var(n.name)
-                v.full_name = self.qualified_name(n.name)
+                v._full_name = self.qualified_name(n.name)
                 n.node = v
                 n.is_def = True
                 self.globals[n.name] = SymbolTableNode(GDEF, v, self.cur_mod_id)
             elif isinstance(n.node, Var) and n.is_def:
                 v = (Var)n.node
-                self.module_names[v.name] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            elif self.locals is not None and not self.locals.has_key(n.name) and n.name not in self.global_decls[-1]:
+                self.module_names[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
+            elif self.locals is not None and n.name not in self.locals and n.name not in self.global_decls[-1]:
                 v = Var(n.name)
                 n.node = v
                 n.is_def = True
@@ -358,7 +371,7 @@ class SemanticAnal(NodeVisitor):
         lval.accept(self)
         if self.is_init_method and isinstance(lval.expr, NameExpr):
             node = ((NameExpr)lval.expr).node
-            if isinstance(node, Var) and ((Var)node).is_self and not self.typ.vars.has_key(lval.name):
+            if isinstance(node, Var) and ((Var)node).is_self and lval.name not in self.typ.vars:
                 lval.is_def = True
                 v = Var(lval.name)
                 v.info = self.typ
@@ -474,7 +487,7 @@ class SemanticAnal(NodeVisitor):
             else:
                 expr.kind = n.kind
                 expr.node = ((Node)n.node)
-                expr.full_name = n.full_name
+                expr.full_name = n.full_name()
     
     void visit_super_expr(self, SuperExpr expr):
         if self.typ is None:
@@ -520,7 +533,7 @@ class SemanticAnal(NodeVisitor):
             n = names.get(expr.name, None)
             if n is not None:
                 expr.kind = n.kind
-                expr.full_name = n.full_name
+                expr.full_name = n.full_name()
                 expr.node = ((Node)n.node)
             else:
                 self.fail("Module has no attribute '{}'".format(expr.name), expr)
@@ -560,21 +573,21 @@ class SemanticAnal(NodeVisitor):
     
     SymbolTableNode lookup(self, str name, Context ctx):
         if name in self.global_decls[-1]:
-            if self.globals.has_key(name):
+            if name in self.globals:
                 return self.globals[name]
             else:
                 self.name_not_defined(name, ctx)
-        elif self.locals is not None and self.locals.has_key(name):
+        elif self.locals is not None and name in self.locals:
             return self.locals[name]
-        elif self.class_tvars is not None and self.class_tvars.has_key(name):
+        elif self.class_tvars is not None and name in self.class_tvars:
             return self.class_tvars[name]
-        elif self.globals.has_key(name):
+        elif name in self.globals:
             return self.globals[name]
         else:
             b = self.globals.get('__builtins__', None)
             if b is not None:
                 table = ((MypyFile)b.node).names
-                if table.has_key(name):
+                if name in table:
                     return table[name]
             self.name_not_defined(name, ctx)
     
@@ -600,23 +613,23 @@ class SemanticAnal(NodeVisitor):
     
     void leave(self):
         self.locals = None
-        self.global_decls.remove_at(-1)
+        self.global_decls.pop()
     
     void add_var(self, Var v, Context ctx):
         if self.locals is not None:
             self.add_local(v, ctx)
         else:
-            self.globals[v.name] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            v.full_name = self.qualified_name(v.name)
+            self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
+            v._full_name = self.qualified_name(v.name())
     
     void add_local(self, Var v, Context ctx):
-        if self.locals.has_key(v.name):
-            self.name_already_defined(v.name, ctx)
+        if v.name in self.locals:
+            self.name_already_defined(v.name(), ctx)
         v.full_name = v.name
-        self.locals[v.name] = SymbolTableNode(LDEF, v)
+        self.locals[v.name()] = SymbolTableNode(LDEF, v)
     
     void check_no_global(self, str n, Context ctx, bool is_func=False):
-        if self.globals.has_key(n):
+        if n in self.globals:
             if is_func and isinstance(self.globals[n].node, FuncDef):
                 self.fail(("Name '{}' already defined" + ' (overload variants must be next to each other)').format(n), ctx)
             else:
@@ -629,4 +642,13 @@ class SemanticAnal(NodeVisitor):
         self.fail("Name '{}' already defined".format(name), ctx)
     
     void fail(self, str msg, Context ctx):
-        self.errors.report(ctx.line, msg)
+        self.errors.report(ctx.get_line(), msg)
+
+
+# For a non-generic type, return instance type representing the type.
+# For a generic G type with parameters T1, .., Tn, return G<T1, ..., Tn>.
+Instance self_type(TypeInfo typ):
+    list<Typ> tv = []
+    for i in range(len(typ.type_vars)):
+        tv.append(TypeVar(typ.type_vars[i], i + 1))
+    return Instance(typ, tv)

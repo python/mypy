@@ -207,9 +207,9 @@ class Parser:
                 if defn is not None:
                     if isinstance(defn, FuncDef) and defs != []:
                         fdef = (FuncDef)defn
-                        n = fdef.name
+                        n = fdef.name()
                         if (isinstance(defs[-1], FuncDef) and
-                                ((FuncDef)defs[-1]).name == n):
+                                ((FuncDef)defs[-1]).name() == n):
                             defs[-1] = OverloadedFuncDef([(FuncDef)defs[-1],
                                                           fdef])
                         elif (isinstance(defs[-1], OverloadedFuncDef) and
@@ -563,9 +563,9 @@ class Parser:
     bool try_combine_overloads(self, Node s, list<Node> stmt):
         if isinstance(s, FuncDef) and stmt:
             fdef = (FuncDef)s
-            n = fdef.name
+            n = fdef.name()
             if (isinstance(stmt[-1], FuncDef) and
-                    ((FuncDef)stmt[-1]).name == n):
+                    ((FuncDef)stmt[-1]).name() == n):
                 stmt[-1] = OverloadedFuncDef([(FuncDef)stmt[-1], fdef])
                 return True
             elif (isinstance(stmt[-1], OverloadedFuncDef) and
