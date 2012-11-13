@@ -3,7 +3,7 @@ import nodes
 
 # Empty base class for parse tree node visitors. The T type argument
 # specifies the return type of the visit methods. As all methods defined here
-# return nil by default, subclasses do not always need to override all the
+# return None by default, subclasses do not always need to override all the
 # methods.
 class NodeVisitor<T>:
     # Top-level structures

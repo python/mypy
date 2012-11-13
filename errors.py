@@ -9,25 +9,27 @@ class ErrorInfo:
     # The source file that was the source of this error.
     str file
     # The name of the type in which this error is located at.
-    str typ     # Unqualified, may be nil
+    str typ     # Unqualified, may be None
     # It the error located within an interface?
     bool is_interface
     # The name of the function or member in which this error is located at.
-    str function_or_member     # Unqualified, may be nil
+    str function_or_member     # Unqualified, may be None
     # The line number related to this error within file.
     int line     # -1 if unknown
     # The error message.
     str message
     
     # Return "interface" or "class" depending on the context of the error.
-    # Call this method only if the type member != nil.
+    # Call this method only if the type member != None.
     str type_id(self):
         if self.is_interface:
             return 'interface'
         else:
             return 'class'
     
-    void __init__(self, list<tuple<str, int>> import_ctx, str file, str typ, bool is_interface, str function_or_member, int line, str message):
+    void __init__(self, list<tuple<str, int>> import_ctx, str file, str typ,
+                  bool is_interface, str function_or_member, int line,
+                  str message):
         self.import_ctx = import_ctx
         self.file = file
         self.typ = typ
@@ -73,11 +75,11 @@ class Errors:
         file = os.path.normpath(file)
         self.file = remove_path_prefix(file, self.ignore_prefix)
     
-    # Set the current function or member short name (it can be nil).
+    # Set the current function or member short name (it can be None).
     void set_function(self, str name):
         self.function_or_member = name
     
-    # Set the short name of the current type (it can be nil).
+    # Set the short name of the current type (it can be None).
     void set_type(self, str name, bool is_interface):
         self.type_name = name
         self.is_interface = is_interface
@@ -100,7 +102,9 @@ class Errors:
     
     # Report a message at the given line using the current error context.
     void report(self, int line, str message):
-        info = ErrorInfo(self.import_context(), self.file, self.type_name, self.is_interface, self.function_or_member, line, message)
+        info = ErrorInfo(self.import_context(), self.file, self.type_name,
+                         self.is_interface, self.function_or_member, line,
+                         message)
         self.error_info.append(info)
     
     # Return the number of generated messages.
@@ -136,7 +140,7 @@ class Errors:
     
     # Translate the messages into a sequence of (path, line, message) tuples.
     # The rendered sequence includes information about error contexts. The path
-    # item may be nil. If the line item is negative, the line number is not
+    # item may be None. If the line item is negative, the line number is not
     # defined for the tuple.
     list<tuple<str, int, str>> render_messages(self, list<ErrorInfo> errors):
         list<tuple<str, int, str>> result = [] # (path, line, message)
@@ -159,28 +163,37 @@ class Errors:
                         fmt += ','
                     else:
                         fmt += ':'
-                    # Remove prefix to ignore from path (if present) to simplify path.
+                    # Remove prefix to ignore from path (if present) to
+                    # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
                     result.append((None, -1, fmt.format(path, line)))
                     i -= 1
             
             # Report context within a source file.
-            if e.function_or_member != prev_function_or_member or e.typ != prev_type:
+            if (e.function_or_member != prev_function_or_member or
+                    e.typ != prev_type):
                 if e.function_or_member is None:
                     if e.typ is None:
                         result.append((e.file, -1, 'At top level:'))
                     else:
-                        result.append((e.file, -1, 'In {} "{}":'.format(e.type_id(), e.typ)))
+                        result.append((e.file, -1, 'In {} "{}":'.format(
+                            e.type_id(), e.typ)))
                 else:
                     if e.typ is None:
-                        result.append((e.file, -1, 'In function "{}":'.format(e.function_or_member)))
+                        result.append((e.file, -1,
+                                       'In function "{}":'.format(
+                                           e.function_or_member)))
                     else:
-                        result.append((e.file, -1, 'In member "{}" of {} "{}":'.format(e.function_or_member, e.type_id(), e.typ)))
+                        result.append((e.file, -1,
+                                       'In member "{}" of {} "{}":'.format(
+                                           e.function_or_member, e.type_id(),
+                                           e.typ)))
             elif e.typ != prev_type:
                 if e.typ is None:
                     result.append((e.file, -1, 'At top level:'))
                 else:
-                    result.append((e.file, -1, 'In {} "{}":'.format(e.type_id(), e.typ)))
+                    result.append((e.file, -1,
+                                   'In {} "{}":'.format(e.type_id(), e.typ)))
             
             result.append((e.file, e.line, e.message))
             
@@ -199,7 +212,9 @@ class Errors:
         while i < len(errors):
             i0 = i
             # Find neighbouring errors with the same context and file.
-            while i + 1 < len(errors) and errors[i + 1].import_ctx == errors[i].import_ctx and errors[i + 1].file == errors[i].file:
+            while (i + 1 < len(errors) and
+                       errors[i + 1].import_ctx == errors[i].import_ctx and
+                       errors[i + 1].file == errors[i].file):
                 i += 1
             i += 1
             
@@ -209,13 +224,15 @@ class Errors:
         return result
     
     # Remove duplicates from a sorted error list.
-    list<tuple<str, int, str>> remove_duplicates(self, list<tuple<str, int, str>> errors):
+    list<tuple<str, int, str>> remove_duplicates(
+                                  self, list<tuple<str, int, str>> errors):
         list<tuple<str, int, str>> res = []
         i = 0
         while i < len(errors):
             dup = False
             j = i - 1
-            while j >= 0 and errors[j][0] == errors[i][0] and errors[j][1] == errors[i][1]:
+            while (j >= 0 and errors[j][0] == errors[i][0] and
+                       errors[j][1] == errors[i][1]):
                 if errors[j] == errors[i]:
                     dup = True
                     break
@@ -251,7 +268,7 @@ list<T> stable_sort<T>(sequence<T> a, func<T, any> key):
 
 
 # If path starts with prefix, return copy of path with the prefix removed.
-# Otherwise, return path. If path is nil, return nil.
+# Otherwise, return path. If path is None, return None.
 str remove_path_prefix(str path, str prefix):
     if prefix is not None and path.startswith(prefix):
         return path[len(prefix):]

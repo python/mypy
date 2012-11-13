@@ -346,7 +346,7 @@ class State:
 
 
 class UnprocessedFile(State):
-    str program_text # Program text (or nil to read from file)
+    str program_text # Program text (or None to read from file)
     
     void __init__(self, StateInfo info, str program_text):
         super().__init__(info)
@@ -478,7 +478,8 @@ def trace(s):
 
 
 # Find and read the source file of a module. Return a pair
-# (path, file contents). Return nil, nil if the module could not be imported.
+# (path, file contents). Return (None, None) if the module could not be
+# imported.
 #
 # id is a string of form "foo" or "foo.bar" (module name)
 tuple<str, str> module_source(str id, list<str> paths):
@@ -498,7 +499,7 @@ tuple<str, str> module_source(str id, list<str> paths):
         return None, None
 
 
-# Return that path of the module source file, or nil if not found.
+# Return that path of the module source file, or None if not found.
 str find_module(str id, list<str> paths):
     for libpath in paths:
         comp = id.split('.')

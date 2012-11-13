@@ -375,7 +375,7 @@ class TypeVisitor<T>:
 #  - Include argument ranges for Instance types, when present.
 #  - Include implicit bound type variables of callables.
 #  - Represent unbound types as Foo? or Foo?<...>.
-#  - Represent the nil type as Nil.
+#  - Represent the NoneType type as NoneTyp.
 class TypeStrVisitor(TypeVisitor<str>):
     def visit_unbound_type(self, t):
         s = t.name + '?'
