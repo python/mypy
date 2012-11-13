@@ -213,7 +213,7 @@ tuple<bool, bool> run_single_test(str name, any test):
     test.set_up() # FIX: check exceptions
     try:
         test.run()
-    except:
+    except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
     else:
         exc_traceback = None
