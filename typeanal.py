@@ -1,11 +1,10 @@
 from mtypes import (
     Typ, UnboundType, TypeVar, TupleType, Instance, Any, Callable, TypeVars,
-    Void, NoneTyp, TypeVarDef
+    Void, NoneTyp, TypeVarDef, TypeVisitor
 )
 from typerepr import TypeVarRepr
 from nodes import GDEF, TypeInfo, Context
 from symtable import SymbolTableNode, TVAR
-from typevisitor import TypeVisitor
 
 
 # Semantic analyzer for types.
