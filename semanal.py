@@ -38,20 +38,24 @@ class SemanticAnal(NodeVisitor):
     # All classes, from name to info (TODO needed?)
     TypeInfoMap types
     
-    list<str> stack = [None] # Function local/type variable stack
-    TypeInfo typ = None   # TypeInfo of enclosing class (or nil)
-    bool is_init_method    # Are we now analysing __init__?
+    list<str> stack     # Function local/type variable stack
+    TypeInfo typ        # TypeInfo of enclosing class (or nil)
+    bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
-    bool is_local_ctx    # Are we now analysing a block (not at the
-    # top level or at class body)?
-    int loop_depth = 0        # Depth of breakable loops
-    str cur_mod_id        # Current module id (or nil) (phase 2)
-    set<str> imports = set() # Imported modules (during phase 2 analysis)
-    Errors errors     # Keep track of generated errors
+    bool is_local_ctx   # Are we now analysing a block (not at the
+                        # top level or at class body)?
+    int loop_depth      # Depth of breakable loops
+    str cur_mod_id      # Current module id (or nil) (phase 2)
+    set<str> imports    # Imported modules (during phase 2 analysis)
+    Errors errors       # Keep track of generated errors
     
     # Create semantic analyzer. Use libPath to search for modules, and report
     # compile errors using the Errors instance.
     void __init__(self, list<str> lib_path, Errors errors):
+        self.stack = [None]
+        self.imports = set()
+        self.typ = None
+        self.loop_depth = 0
         self.types = TypeInfoMap()
         self.lib_path = lib_path
         self.errors = errors
@@ -63,7 +67,6 @@ class SemanticAnal(NodeVisitor):
     
     
     # First pass of semantic analysis
-    #--------------------------------
     
     
     # Perform the first analysis pass. Resolve the full names of definitions
@@ -123,7 +126,6 @@ class SemanticAnal(NodeVisitor):
     
     
     # Second pass of semantic analysis
-    #---------------------------------
     
     
     # Do the bulk of semantic analysis in this second and final semantic
@@ -137,7 +139,8 @@ class SemanticAnal(NodeVisitor):
         self.cur_mod_id = file_node.full_name()
         
         if 'builtins' in self.modules:
-            self.globals['__builtins__'] = SymbolTableNode(MODULE_REF, self.modules['builtins'], self.cur_mod_id)
+            self.globals['__builtins__'] = SymbolTableNode(
+                MODULE_REF, self.modules['builtins'], self.cur_mod_id)
         
         defs = file_node.defs
         for d in defs:
@@ -181,11 +184,14 @@ class SemanticAnal(NodeVisitor):
             if isinstance(defn, FuncDef):
                 fdef = (FuncDef)defn
                 if self.typ is not None:
-                    defn.typ.typ = ((Callable)defn.typ.typ).with_name('"{}" of "{}"'.format(fdef.name, self.typ.name))
+                    defn.typ.typ = ((Callable)defn.typ.typ).with_name(
+                        '"{}" of "{}"'.format(fdef.name, self.typ.name))
                 else:
-                    defn.typ.typ = ((Callable)defn.typ.typ).with_name('"{}"'.format(fdef.name))
-                if self.typ is not None and ((Callable)defn.typ.typ).arg_types != []:
-                    ((Callable)defn.typ.typ).arg_types[0] = self_type(fdef.info)
+                    defn.typ.typ = ((Callable)defn.typ.typ).with_name(
+                        '"{}"'.format(fdef.name))
+                if self.typ and ((Callable)defn.typ.typ).arg_types != []:
+                    ((Callable)defn.typ.typ).arg_types[0] = self_type(
+                        fdef.info)
         for init in defn.init:
             if init is not None:
                 init.rvalue.accept(self)
@@ -232,8 +238,10 @@ class SemanticAnal(NodeVisitor):
         for i in range(len(defn.base_types)):
             defn.base_types[i] = self.anal_type(defn.base_types[i])
             self.typ.bases.append(defn.base_types[i])
-            has_base_class = has_base_class or self.is_instance_type(defn.base_types[i])
-        if not defn.is_interface and not has_base_class and defn.full_name != 'builtins.object':
+            has_base_class = has_base_class or self.is_instance_type(
+                                                        defn.base_types[i])
+        if (not defn.is_interface and not has_base_class and
+                defn.full_name != 'builtins.object'):
             defn.base_types.insert(0, self.object_type())
         if defn.base_types != []:
             bt = defn.base_types
@@ -267,18 +275,21 @@ class SemanticAnal(NodeVisitor):
         for id, as_id in i.ids:
             if as_id != id:
                 m = self.modules[id]
-                self.globals[as_id] = SymbolTableNode(MODULE_REF, m, self.cur_mod_id)
+                self.globals[as_id] = SymbolTableNode(MODULE_REF, m,
+                                                      self.cur_mod_id)
             else:
                 base = id.split('.')[0]
                 m = self.modules[base]
-                self.globals[base] = SymbolTableNode(MODULE_REF, m, self.cur_mod_id)
+                self.globals[base] = SymbolTableNode(MODULE_REF, m,
+                                                     self.cur_mod_id)
     
     void visit_import_from(self, ImportFrom i):
         m = self.modules[i.id]
         for id, as_id in i.names:
             node = m.names.get(id, None)
             if node is not None:
-                self.globals[as_id] = SymbolTableNode(node.kind, node.node, self.cur_mod_id)
+                self.globals[as_id] = SymbolTableNode(node.kind, node.node,
+                                                      self.cur_mod_id)
             else:
                 self.fail("Module has no attribute '{}'".format(id), i)
     
@@ -286,11 +297,11 @@ class SemanticAnal(NodeVisitor):
         m = self.modules[i.id]
         for name, node in m.names.items():
             if not name.startswith('_'):
-                self.globals[name] = SymbolTableNode(node.kind, node.node, self.cur_mod_id)
+                self.globals[name] = SymbolTableNode(node.kind, node.node,
+                                                     self.cur_mod_id)
     
     
     # Statements
-    # ----------
     
     
     void visit_block(self, Block b):
@@ -303,7 +314,8 @@ class SemanticAnal(NodeVisitor):
     
     void visit_var_def(self, VarDef defn):
         for i in range(len(defn.items)):
-            defn.items[i] = (defn.items[i][0], self.anal_type(defn.items[i][1]))
+            defn.items[i] = (defn.items[i][0],
+                             self.anal_type(defn.items[i][1]))
             if defn.items[i][1] is not None:
                 defn.items[i][0].typ = Annotation(defn.items[i][1])
         
@@ -333,7 +345,8 @@ class SemanticAnal(NodeVisitor):
             self.analyse_lvalue(lval)
         s.rvalue.accept(self)
     
-    void analyse_lvalue(self, Node lval, bool nested=False, bool add_defs=False):
+    void analyse_lvalue(self, Node lval, bool nested=False,
+                        bool add_defs=False):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
             if add_defs and n.name not in self.globals:
@@ -341,11 +354,14 @@ class SemanticAnal(NodeVisitor):
                 v._full_name = self.qualified_name(n.name)
                 n.node = v
                 n.is_def = True
-                self.globals[n.name] = SymbolTableNode(GDEF, v, self.cur_mod_id)
+                self.globals[n.name] = SymbolTableNode(GDEF, v,
+                                                       self.cur_mod_id)
             elif isinstance(n.node, Var) and n.is_def:
                 v = (Var)n.node
-                self.module_names[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            elif self.locals is not None and n.name not in self.locals and n.name not in self.global_decls[-1]:
+                self.module_names[v.name()] = SymbolTableNode(GDEF, v,
+                                                              self.cur_mod_id)
+            elif (self.locals is not None and n.name not in self.locals and
+                  n.name not in self.global_decls[-1]):
                 v = Var(n.name)
                 n.node = v
                 n.is_def = True
@@ -361,7 +377,8 @@ class SemanticAnal(NodeVisitor):
                 lval.accept(self)
         elif isinstance(lval, ParenExpr):
             self.analyse_lvalue(((ParenExpr)lval).expr, nested, add_defs)
-        elif (isinstance(lval, TupleExpr) or isinstance(lval, ListExpr)) and not nested:
+        elif (isinstance(lval, TupleExpr) or
+              isinstance(lval, ListExpr)) and not nested:
             items = ((any)lval).items
             for i in items:
                 self.analyse_lvalue(i, True, add_defs)
@@ -372,7 +389,8 @@ class SemanticAnal(NodeVisitor):
         lval.accept(self)
         if self.is_init_method and isinstance(lval.expr, NameExpr):
             node = ((NameExpr)lval.expr).node
-            if isinstance(node, Var) and ((Var)node).is_self and lval.name not in self.typ.vars:
+            if (isinstance(node, Var) and ((Var)node).is_self and
+                    lval.name not in self.typ.vars):
                 lval.is_def = True
                 v = Var(lval.name)
                 v.info = self.typ
@@ -477,14 +495,14 @@ class SemanticAnal(NodeVisitor):
     
     
     # Expressions
-    # -----------
     
     
     void visit_name_expr(self, NameExpr expr):
         n = self.lookup(expr.name, expr)
         if n is not None:
             if n.kind == TVAR:
-                self.fail("'{}' is a type variable and only valid in type context".format(expr.name), expr)
+                self.fail("'{}' is a type variable and only valid in type "
+                          "context".format(expr.name), expr)
             else:
                 expr.kind = n.kind
                 expr.node = ((Node)n.node)
@@ -537,7 +555,8 @@ class SemanticAnal(NodeVisitor):
                 expr.full_name = n.full_name()
                 expr.node = ((Node)n.node)
             else:
-                self.fail("Module has no attribute '{}'".format(expr.name), expr)
+                self.fail("Module has no attribute '{}'".format(expr.name),
+                          expr)
     
     void visit_op_expr(self, OpExpr expr):
         expr.left.accept(self)
@@ -569,7 +588,6 @@ class SemanticAnal(NodeVisitor):
     
     
     # Helpers
-    # -------
     
     
     SymbolTableNode lookup(self, str name, Context ctx):
@@ -632,7 +650,8 @@ class SemanticAnal(NodeVisitor):
     void check_no_global(self, str n, Context ctx, bool is_func=False):
         if n in self.globals:
             if is_func and isinstance(self.globals[n].node, FuncDef):
-                self.fail(("Name '{}' already defined" + ' (overload variants must be next to each other)').format(n), ctx)
+                self.fail(("Name '{}' already defined (overload variants "
+                           "must be next to each other)").format(n), ctx)
             else:
                 self.name_already_defined(n, ctx)
     
