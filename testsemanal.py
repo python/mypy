@@ -62,7 +62,8 @@ class SemAnalErrorSuite(Suite):
         # Read test cases from test case description files.
         c = []
         for f in semanal_error_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), test_semanal_error, test_temp_dir)
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  test_semanal_error, test_temp_dir)
         return c
 
 # Perform a test case.
@@ -71,11 +72,15 @@ def test_semanal_error(testcase):
     try:
         src = '\n'.join(testcase.input)
         build(src, 'main', True, test_temp_dir)
-        raise AssertionError('No errors reported in {}, line {}'.format(testcase.file, testcase.line))
+        raise AssertionError('No errors reported in {}, line {}'.format(
+            testcase.file, testcase.line))
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
-        assert_string_arrays_equal(testcase.output, normalize_error_messages(e.messages), 'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(
+            testcase.output, normalize_error_messages(e.messages),
+            'Invalid compiler output ({}, line {})'.format(testcase.file,
+                                                           testcase.line))
 
 # Translate an array of error messages to use / as path separator.
 def normalize_error_messages(messages):
@@ -94,7 +99,8 @@ class SemAnalSymtableSuite(Suite):
     def cases(self):
         c = []
         for f in semanal_symtable_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), self.run_test, test_temp_dir)
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  self.run_test, test_temp_dir)
         return c
     
     # Perform a test case.
@@ -103,7 +109,8 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+            trees, symtable, infos, types = build(src, 'main', True,
+                                                  test_temp_dir)
             # The output is the symbol table converted into a string.
             a = []      
             for f in sorted(symtable.keys()):
@@ -113,7 +120,10 @@ class SemAnalSymtableSuite(Suite):
                         a.append('  ' + s)
         except CompileError as e:
             a = e.messages
-        assert_string_arrays_equal(testcase.output, a, 'Invalid semantic analyzer output ({}, line {})'.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(
+            testcase.output, a,
+            'Invalid semantic analyzer output ({}, line {})'.format(
+                testcase.file, testcase.line))
 
 
 # Type info export test cases
@@ -125,7 +135,8 @@ class SemAnalTypeInfoSuite(Suite):
     def cases(self):
         c = []
         for f in semanal_typeinfo_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), self.run_test, test_temp_dir)
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  self.run_test, test_temp_dir)
         return c
     
     # Perform a test case.
@@ -134,9 +145,13 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+            trees, symtable, infos, types = build(src, 'main', True,
+                                                  test_temp_dir)
             # The output is the symbol table converted into a string.
             a = str(infos).split('\n')
         except CompileError as e:
             a = e.messages
-        assert_string_arrays_equal(testcase.output, a, 'Invalid semantic analyzer output ({}, line {})'.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(
+            testcase.output, a,
+            'Invalid semantic analyzer output ({}, line {})'.format(
+                testcase.file, testcase.line))
