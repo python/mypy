@@ -15,7 +15,7 @@ class SymbolTable(dict<str, SymbolTableNode>):
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
                 if value.full_name() != 'builtins':
-                    a.append('  ' + str(key) + ' : ' + repr(value))
+                    a.append('  ' + str(key) + ' : ' + str(value))
             else:
                 a.append('  <invalid item>')
         a = sorted(a)
@@ -66,12 +66,12 @@ class SymbolTableNode:
             return None
     
     str __str__(self):
-        s = '{}/{}'.format(clean_up(str(self.kind)), short_type(self.node))
+        s = '{}/{}'.format(nodes.node_kinds[self.kind], short_type(self.node))
         if self.mod_id is not None:
             s += ' ({})'.format(self.mod_id)
         # Include declared type of variables and functions.
-        if self.typ is not None:
-            s += ' : {}'.format(self.typ)
+        if self.typ() is not None:
+            s += ' : {}'.format(self.typ())
         return s
 
 

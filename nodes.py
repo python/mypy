@@ -21,6 +21,14 @@ MDEF = 2
 MODULE_REF = 3
 
 
+node_kinds = {
+    LDEF: 'Ldef',
+    GDEF: 'Gdef',
+    MDEF: 'Mdef',
+    MODULE_REF: 'ModuleRef'
+}
+
+
 # Supertype for node types that can be stored in a symbol table.
 # TODO better name
 interface AccessorNode: pass

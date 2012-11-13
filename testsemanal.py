@@ -13,27 +13,27 @@ from testconfig import test_data_prefix, test_temp_dir
 
 
 # Semantic analysis test case description files.
-sem_anal_files = ['semanal-basic.test',
-                  'semanal-expressions.test',
-                  'semanal-classes.test',
-                  'semanal-types.test',
-                  'semanal-modules.test',
-                  'semanal-statements.test',
-                  'semanal-interfaces.test']
+semanal_files = ['semanal-basic.test',
+                 'semanal-expressions.test',
+                 'semanal-classes.test',
+                 'semanal-types.test',
+                 'semanal-modules.test',
+                 'semanal-statements.test',
+                 'semanal-interfaces.test']
 
 
 class SemAnalSuite(Suite):
     def cases(self):
         c = []
-        for f in sem_anal_files:
+        for f in semanal_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_sem_anal, test_temp_dir)
+                                  test_semanal, test_temp_dir)
         return c
 
 
 # Perform a semantic analysis test case. The testcase argument contains a
 # description of the test case (inputs and output).
-def test_sem_anal(testcase):
+def test_semanal(testcase):
     any a
     try:
         src = '\n'.join(testcase.input)
@@ -62,20 +62,20 @@ def test_sem_anal(testcase):
 
 
 # Paths to files containing test case descriptions.
-sem_anal_error_files = ['semanal-errors.test']
+semanal_error_files = ['semanal-errors.test']
 
 
 class SemAnalErrorSuite(Suite):
     def cases(self):
         # Read test cases from test case description files.
         c = []
-        for f in sem_anal_error_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), test_sem_anal_error, test_temp_dir)
+        for f in semanal_error_files:
+            c += parse_test_cases(os.path.join(test_data_prefix, f), test_semanal_error, test_temp_dir)
         return c
 
 
 # Perform a test case.
-def test_sem_anal_error(testcase):
+def test_semanal_error(testcase):
     any a
     try:
         src = '\n'.join(testcase.input)
@@ -93,3 +93,37 @@ def normalize_error_messages(messages):
     for m in messages:
         a.append(m.replace(os.sep, '/'))
     return a
+
+
+# Semantic analyser test cases: export symbol table
+# -------------------------------------------------
+
+
+# Test case descriptions
+semanal_symtable_files = ['semanal-symtable.test']
+
+    
+class SemAnalSymtableSuite(Suite):
+    def cases(self):
+        c = []
+        for f in semanal_symtable_files:
+            c += parse_test_cases(os.path.join(test_data_prefix, f), self.run_test, test_temp_dir)
+        return c
+    
+    # Perform a test case.
+    def run_test(self, testcase):
+        any a
+        try:
+            # Build test case input.
+            src = '\n'.join(testcase.input)
+            trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+            # The output is the symbol table converted into a string.
+            a = []      
+            for f in sorted(symtable.keys()):
+                if f != 'builtins':
+                    a.append('{}:'.format(f))
+                    for s in str(symtable[f].names).split('\n'):
+                        a.append('  ' + s)
+        except CompileError as e:
+            a = e.messages
+        assert_string_arrays_equal(testcase.output, a, 'Invalid semantic analyzer output ({}, line {})'.format(testcase.file, testcase.line))
