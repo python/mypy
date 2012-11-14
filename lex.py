@@ -371,7 +371,6 @@ class Lexer:
         line = self.line
         ss = self.s[self.i:self.i + len(prefix) + 3]
         self.i += len(prefix) + 3
-        any m
         while True:
             m = re3end.match(self.s, self.i)
             if m is not None:
@@ -391,7 +390,6 @@ class Lexer:
         line = self.line
         self.i += len(prefix)
         ss = prefix
-        any m
         while True:
             m = self.match(re_end)
             if m == '':

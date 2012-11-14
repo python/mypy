@@ -30,7 +30,6 @@ class SemAnalSuite(Suite):
 # Perform a semantic analysis test case. The testcase argument contains a
 # description of the test case (inputs and output).
 def test_semanal(testcase):
-    any a
     try:
         src = '\n'.join(testcase.input)
         trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
@@ -68,7 +67,6 @@ class SemAnalErrorSuite(Suite):
 
 # Perform a test case.
 def test_semanal_error(testcase):
-    any a
     try:
         src = '\n'.join(testcase.input)
         build(src, 'main', True, test_temp_dir)
@@ -105,7 +103,6 @@ class SemAnalSymtableSuite(Suite):
     
     # Perform a test case.
     def run_test(self, testcase):
-        any a
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
@@ -141,7 +138,6 @@ class SemAnalTypeInfoSuite(Suite):
     
     # Perform a test case.
     def run_test(self, testcase):
-        any a
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
