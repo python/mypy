@@ -1,8 +1,10 @@
 import os.path
 from unittest import Suite
-from test.helpers import parse_test_cases, assert_string_arrays_equal
+from testconfig import test_data_prefix, test_temp_dir
+from testdata import parse_test_cases
+from testhelpers import assert_string_arrays_equal
+from testoutput import fix_path, remove_prefix
 from build import build
-from os import separator
 from pythongen import PythonGenerator
 from errors import CompileError
 
@@ -37,7 +39,7 @@ def test_python_generation(testcase):
         # formatting) of all the relevant source files.
         for t in trees:
             # Omit the builtins module and files marked for omission.
-            if not t.path.endswith(separator + 'builtins.py') and '-skip.' not in t.path:
+            if not t.path.endswith(os.sep + 'builtins.py') and '-skip.' not in t.path:
                 # Add file name + colon for files other than the first.
                 if not first:
                     a.append('{}:'.format(fix_path(remove_prefix(t.path, test_temp_dir))))

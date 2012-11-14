@@ -1,8 +1,10 @@
-from output import OutputVisitor
-from parser import none
-from types import Any, Instance, Void, TypeVar, TupleType, Callable, UnboundType
-from nodes import IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt
 from checker import function_type
+from parse import none
+from mtypes import (
+    Any, Instance, Void, TypeVar, TupleType, Callable, UnboundType
+)
+from nodes import IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt
+from output import OutputVisitor
 
 
 # Names present in mypy but not in Python. Imports of these names are removed
@@ -21,7 +23,7 @@ removed_names = {'re': ['Pattern', 'Match']}
 # in OutputVisitor.
 class PythonGenerator(OutputVisitor):
     def visit_import_from(self, o):
-        if removed_names.has_key(o.id):
+        if o.id in removed_names:
             r = o.repr
             
             # Filter out any names not defined in Python from an from ... import
@@ -60,7 +62,7 @@ class PythonGenerator(OutputVisitor):
             self.token(r.name)
         else:
             self.string(' ' + name_override)
-        self.function_header(o, r.args, None, True)
+        self.function_header(o, r.args, None, True, True)
         if o.body.body == []:
             self.string(': pass' + '\n')
         else:
@@ -130,7 +132,7 @@ class PythonGenerator(OutputVisitor):
             a = []
             if t.repr is not None:
                 for tok in t.repr.components:
-                    a.append(tok.rep)
+                    a.append(tok.rep())
             return ''.join(a)
         elif isinstance(t, TupleType):
             return 'tuple' # FIX: aliasing?
@@ -153,7 +155,7 @@ class PythonGenerator(OutputVisitor):
         else:
             # TODO omit (some) comments; now comments may be duplicated
             self.string(self.get_pre_whitespace(first.typ.typ.ret_type) + 'def')
-        self.string(' {}('.format(first.name))
+        self.string(' {}('.format(first.name()))
         self.extra_indent += 4
         fixed_args, is_more = self.get_overload_args(o)
         self.string(', '.join(fixed_args))
@@ -164,13 +166,13 @@ class PythonGenerator(OutputVisitor):
         self.string('):' + '\n' + indent)
         n = 1
         for f in o.items:
-            self.visit_func_def(f, '{}{}'.format(f.name, n))
+            self.visit_func_def(f, '{}{}'.format(f.name(), n))
             n += 1
         self.string('\n')
         
         n = 1
-        for f in o.items:
-            c = self.make_overload_check(f, fixed_args, rest_args)
+        for fi in o.items:
+            c = self.make_overload_check(fi, fixed_args, rest_args)
             self.string(indent)
             if n == 1:
                 self.string('if ')
@@ -178,7 +180,7 @@ class PythonGenerator(OutputVisitor):
                 self.string('elif ')
             self.string(c)
             self.string(':' + '\n' + indent)
-            self.string('    return {}'.format(self.make_overload_call(f, n, fixed_args, rest_args)) + '\n')
+            self.string('    return {}'.format(self.make_overload_call(fi, n, fixed_args, rest_args)) + '\n')
             n += 1
         self.string(indent + 'else:' + '\n')
         self.string(indent + '    raise TypeError("Invalid argument types")')
@@ -216,7 +218,7 @@ class PythonGenerator(OutputVisitor):
         for f in o.items:
             if len(f.args) > len(fixed):
                 for v in f.args[len(fixed):]:
-                    fixed.append(v.name)
+                    fixed.append(v.name())
             min_fixed = min(min_fixed, f.min_args)
             max_fixed = max(max_fixed, len(f.args))
         return fixed[:min_fixed], max_fixed > min_fixed
@@ -228,7 +230,7 @@ class PythonGenerator(OutputVisitor):
             a.append(self.make_argument_count_check(f, len(fixed_args), rest_args))
         for t in function_type(f).arg_types:
             if not isinstance(t, Any) and (t.repr is not None or isinstance(t, Callable)):
-                a.append(self.make_argument_check(f.args[i].name, t))
+                a.append(self.make_argument_check(f.args[i].name(), t))
             i += 1
         return ' and '.join(a)
     
@@ -249,7 +251,7 @@ class PythonGenerator(OutputVisitor):
                 a.append(fixed_args[i])
             else:
                 a.append('{}[{}]'.format(rest_args, i - len(fixed_args)))
-        return '{}{}({})'.format(f.name, n, ', '.join(a))
+        return '{}{}({})'.format(f.name(), n, ', '.join(a))
     
     def visit_list_expr(self, o):
         r = o.repr

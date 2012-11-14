@@ -281,7 +281,8 @@ class StateInfo:
     # The manager that manages this build
     BuildManager manager
     
-    void __init__(self, str path, str id, list<tuple<str, int>> import_context, BuildManager manager):
+    void __init__(self, str path, str id, list<tuple<str, int>> import_context,
+                  BuildManager manager):
         self.path = path
         self.id = id
         self.import_context = import_context

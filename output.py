@@ -1,5 +1,5 @@
 import re
-from nodes import NodeVisitor
+from visitor import NodeVisitor
 
 
 # Parse tree Node visitor that outputs the original, formatted source code.
@@ -125,12 +125,12 @@ class OutputVisitor(NodeVisitor):
             if not erase_type:
                 self.token(arg_repr.arg_names[i])
             else:
-                n = arg_repr.arg_names[i].rep
+                n = arg_repr.arg_names[i].rep()
                 if i == 0 and strip_space_before_first_arg:
                     # Remove spaces before the first argument name. Generally
                     # spaces are only present after a type, and if we erase the
                     # type, we should also erase also the spaces.
-                    n = re.sub(n, ' +([a-zA-Z0-9_])$', '\\1')
+                    n = re.sub(' +([a-zA-Z0-9_])$', '\\1', n)
                 self.string(n)
             if i < len(arg_repr.assigns):
                 self.token(arg_repr.assigns[i])

@@ -3,6 +3,7 @@ import testlex
 import testparse
 import testsemanal
 import testoutput
+import testpythongen
 import sys
 
 
@@ -16,6 +17,7 @@ class AllSuite(Suite):
         self.test_semanal_symtable = testsemanal.SemAnalSymtableSuite()
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
         self.test_output = testoutput.OutputSuite()
+        self.test_pythongen = testpythongen.PythonGenerationSuite()
         super().__init__()
 
 
