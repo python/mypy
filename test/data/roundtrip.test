@@ -1,0 +1,447 @@
+-- Special cases
+-- -------------
+
+
+[case testEmpty]
+[out]
+
+[case testCommentOnlyFile]
+# comment
+
+
+-- Expressions
+-- -----------
+
+
+[case testExpressionStatement]
+1
+
+[case testBinaryOperation]
+1 + 2 # x
+
+[case testNameExpr]
+x + __yDSA2
+
+[case testParentheses]
+( ( x ) )
+
+[case testBinaryOps]
+x + 1 - 2 * 3 / 4 % 5 // 6 ** 7
+x == 1 != 2 < 3 > 4 <= 5 >= 6
+x & 1 ^ 2 | 3 << 4 >> 5
+x in 1
+x  not   in 2
+x is 2
+x  is    not 2
+x and y or z
+
+[case testUnaryOps]
+x = [ + 1, - 2, ~ 3, not 4 ]
+
+[case testLiterals]
+1 + 12359 + 0xAf09 + 0o027
+1.0 + .1 + 1. + 1e123
+'' 'foo' '\n' '\xab' '\u123f'
+"" "foo"
+r'foo' r"foo"
+'''foo''' """bar"""
+b'foo' b"foo"
+
+[case testTupleLiterals]
+( )
+( 1, )
+( 1, 2 )
+( 1 , 2, 3 )
+( 1 , )
+
+[case testMemberExpr]
+x . y
+
+[case testIndexExpr]
+x [ y ]
+x [ 1 , 2 ]
+
+[case testSlices]
+x [ 1 : 2 : 3 ]
+x [ : ]
+x [ : : 2 ]
+
+[case testSimpleCalls]
+f ( )
+f ( x )
+f ( x , y )
+f ( x , y  ,  z )
+
+[case testVarArgsCalls]
+f ( * x )
+f ( x , * x )
+
+[case testCallsWithKeywordArgs]
+f ( x = y )
+f ( x, y = z  ,  a=b+1)
+f(x *y, z=1)
+
+[case testDictLiterals]
+{ }
+{ x : y }
+{ x : y, 1 : 2 }
+{ x : y, 1 : 2, 3 : 4 , }
+
+[case testCasts]
+(x)y
+(any)z
+(c<a, x<d>>)foo.bar
+
+[case testTypeApplication]
+f<t>()
+f<s<x>, any>()
+
+[case testLambdaExpression]
+lambda: 1
+lambda x: x
+lambda x, y: (x, y)
+lambda x, y=1, z = 2: 2
+lambda int x, list<x> y: 2
+lambda x, *y: y
+
+[case testLiteralsWithTypes]
+(  < x > [])
+(  < x  , y > {})
+
+
+-- Assignment
+-- ----------
+
+
+[case testSingleAssignment]
+x = y
+
+[case testChainedAssignment]
+x =  y   =   z
+
+[case testListLiteral]
+x = [ ]
+x = [ 1 ]
+x = [ 1 , 2 ]
+x = [ 1, ]
+
+[case testMultipleAssignment]
+x, y = 1, 2
+(x, y,) = z
+[x, y] = a
+
+
+-- Misc
+-- ----
+
+
+[case testLineContinuation]
+x = \
+  1
+'''fooo
+  bar'''
+x = (   #foo
+   x + 2)
+
+
+-- Imports
+-- -------
+
+
+[case testImport]
+import x , y . z
+import re
+
+[case testFromImport]
+from x import y
+from x . y import z, blah
+from x import (y, z)
+
+[case testFromImportAsterisk]
+from x . y import *
+
+[case testImportAs]
+import x as y
+import x, y as z, a   as   b
+
+[case testFromImportAs]
+from x import y as z
+from x import x, y as z,  a   as   b
+
+
+-- Statements
+-- ----------
+
+[case testOperatorAssignment]
+x  *=   2
+x += 1
+
+[case testBlock]
+while 1:
+  x = 1
+while 1: x = 1
+while 1 :  # foo
+    while 2:
+         x
+    y
+# foo
+
+[case testWhileElse]
+while 1:
+  x
+else:
+  y
+
+[case testIf]
+if x:
+  y
+if x:
+  y
+else:
+  z
+if a:
+  1
+elif 2:
+  22
+elif  3:
+  4
+
+[case testBreak]
+while x:
+  break
+
+[case testContinue]
+while x:
+  continue
+
+[case testPass]
+if x:
+  pass
+
+[case testRaise]
+raise x
+raise y from z
+
+[case testAssert]
+assert x != 1
+
+[case testYield]
+yield x
+yield
+
+[case testDel]
+del x
+del y.x, z[0]
+
+[case testGlobal]
+global x, y
+
+[case testTryExcept]
+try:
+  x
+except E:
+  y
+try:
+  x
+except e as f:
+  y
+except x:
+  z
+except:
+  xx
+else:
+  yy
+
+[case testTryFinally]
+try: 
+  x
+finally:
+  z
+  
+[case testComplexTry]
+try:
+  x
+  y
+except (x, y) as e:
+  foo
+finally:
+  bar
+
+[case testVarDefWithType]
+int x
+int z = 1 + 2
+any a
+x.y z
+list<int> l
+dict < x , c < any > > d
+c < d < e >> x
+
+[case testMultipleVarDef]
+int x , list < c > y
+int x, x y , foobar z = 123
+
+[case testForStatement]
+for x in y: pass
+for x, y in z: pass
+
+[case testForElse]
+for x in y:
+  x
+else:
+  y
+  
+[case testForWithTypes]
+for int x in y: pass
+for int x, str y in z: pass
+
+[case testWith]
+with foo():
+  pass
+with bar() as x:
+  x = 2
+with f() as x, y() as z:
+  pass
+
+
+-- Function definitions
+-- --------------------
+
+
+[case testSimpleFunctions]
+def f(): pass
+def f ( x ) : pass
+def f(x, y): pass
+def f(x,y , z  ,  zz ) : 
+  z = y
+  return 5
+
+[case testFunctionDefWithTypes]
+int f(): pass
+int f(int x): pass
+int f(int x, str y): pass
+void f(): pass
+c<l> f(p<g> x): pass
+
+[case testGenericFunctionDef]
+void f<t>(): pass
+void f < t , s , x > ( x<s> x ) : pass
+
+[case testInitializersInFunctionDefs]
+def f(x = 1 , y  = 2): pass
+def f(x, y=1): pass
+void f (int x=4, float z=2.2) : pass
+
+[case testFunctionWithPartialTypes]
+void f(x, y): pass
+def f(int x, y, str z): pass
+
+[case testFunctionWithVarArgs]
+def f(*x): pass
+def f(x, y=1, *z): pass
+void f(int *x): pass
+void f(x, int *x): pass
+void f(int x, int y=2, str *z): pass
+
+[case testOverloadedFunction]
+void f(): pass
+any f(any x): return x
+
+
+-- Classes
+-- -------
+
+
+[case testSimpleClass]
+class A: pass
+
+[case testBaseClass]
+class A(B): pass
+
+[case testMultipleBaseClasses]
+class A(B, C): pass
+class A(B, C, D): pass
+
+[case testGenericBaseClasses]
+class A(B<x>, C<y, D<z>>): pass
+
+[case testGenericClass]
+class C<t>:
+  pass
+class C<t, x>(foo<t, x>): pass
+
+[case testClassBody]
+class C:
+  x = y
+  def f(self, x):
+    return x
+    
+[case testSuper]
+class C:
+  def f(self):
+    super().__init__()
+
+
+-- Interfaces
+-- ----------
+
+
+[case testInterface]
+interface x:
+  def f(self, x)
+  void g(self): return self
+
+[case testInterface]
+interface x(y, z<x>):
+  def f(self, x)
+  void g(self): return self
+
+
+-- Types
+-- -----
+
+
+[case testTupleType]
+class A:
+  tuple<object, any> t
+
+[case testFuncType]
+class A:
+  func<any> t
+  func<object, void> t
+  func < any, any ,  void > t
+
+
+-- Decorators
+-- ----------
+
+
+[case testFunctionDecorator]
+@foo
+def f(): pass
+@foo(bar)
+@zar.x
+def g(x):
+  return x
+
+
+-- Semantic analysis
+-- -----------------
+
+
+[case testFunctionType_SemanticAnalysis]
+void f( func < object , any > x ): pass
+
+[case testTupleType_SemanticAnalysis]
+void f ( tuple < object , any > x ): pass
+[builtins fixtures/tuple.py]
+
+[case testClasses]
+class A: pass
+class B(A): pass
+interface I: pass
+class C(I): pass
+    
+[case testMethodWithSignature_SemanticAnalysis]
+class A:
+    void __init__(self, A x):
+        self.x = x
