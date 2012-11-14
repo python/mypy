@@ -53,7 +53,7 @@ class PythonGenerator(OutputVisitor):
     def visit_func_def(self, o, name_override=None):
         r = o.repr
         
-        if r.def_tok is not None and r.def_tok.string != '':
+        if r.def_tok and r.def_tok.string:
             self.token(r.def_tok)
         else:
             self.string(self.get_pre_whitespace(o.typ.typ.ret_type) + 'def')
@@ -63,7 +63,7 @@ class PythonGenerator(OutputVisitor):
         else:
             self.string(' ' + name_override)
         self.function_header(o, r.args, None, True, True)
-        if o.body.body == []:
+        if not o.body.body:
             self.string(': pass' + '\n')
         else:
             self.node(o.body)
@@ -89,7 +89,7 @@ class PythonGenerator(OutputVisitor):
         self.omit_next_space = True
         for v, t in o.items:
             self.node(v)
-        if o.init is not None:
+        if o.init:
             self.token(r.assign)
             self.node(o.init)
         else:
@@ -110,7 +110,7 @@ class PythonGenerator(OutputVisitor):
         self.node(o.expr)
         
         self.node(o.body)
-        if o.else_body is not None:
+        if o.else_body:
             self.token(r.else_tok)
             self.node(o.else_body)
     
@@ -130,7 +130,7 @@ class PythonGenerator(OutputVisitor):
     def erased_type(self, t):
         if isinstance(t, Instance) or isinstance(t, UnboundType):
             a = []
-            if t.repr is not None:
+            if t.repr:
                 for tok in t.repr.components:
                     a.append(tok.rep())
             return ''.join(a)
@@ -150,7 +150,7 @@ class PythonGenerator(OutputVisitor):
         indent = self.indent * ' '
         first = o.items[0]
         r = first.repr
-        if r.def_tok is not None and r.def_tok.string != '':
+        if r.def_tok and r.def_tok.string:
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
@@ -164,7 +164,7 @@ class PythonGenerator(OutputVisitor):
         if is_more:
             rest_args = self.make_unique('args', fixed_args)
             self.string(', *{}'.format(rest_args))
-        self.string('):' + '\n' + indent)
+        self.string('):\n' + indent)
         n = 1
         for f in o.items:
             self.visit_func_def(f, '{}{}'.format(f.name(), n))
@@ -191,7 +191,6 @@ class PythonGenerator(OutputVisitor):
         self.token(self.find_break_after_statement(last_stmt))
     
     def find_break_after_statement(self, s):
-        any blocks
         if isinstance(s, IfStmt):
             blocks = s.body + [s.else_body]
         elif isinstance(s, ForStmt) or isinstance(s, WhileStmt):
@@ -203,7 +202,7 @@ class PythonGenerator(OutputVisitor):
         else:
             return s.repr.br
         for b in reversed(blocks):
-            if b is not None:
+            if b:
                 return self.find_break_after_statement(b.body[-1])
         raise RuntimeError('Could not find break after statement')
     
@@ -228,11 +227,11 @@ class PythonGenerator(OutputVisitor):
     def make_overload_check(self, f, fixed_args, rest_args):
         a = []
         i = 0
-        if rest_args is not None:
+        if rest_args:
             a.append(self.make_argument_count_check(f, len(fixed_args),
                                                     rest_args))
         for t in function_type(f).arg_types:
-            if not isinstance(t, Any) and (t.repr is not None or
+            if not isinstance(t, Any) and (t.repr or
                                            isinstance(t, Callable)):
                 a.append(self.make_argument_check(
                     self.argument_ref(i, fixed_args, rest_args), t))
