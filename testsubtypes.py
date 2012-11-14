@@ -1,10 +1,9 @@
-from unittest import Suite
-from checker import is_subtype
+from unittest import Suite, assert_true
+from subtypes import is_subtype
+from typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class SubtypingSuite(Suite):
-    any fx
-    
     def set_up(self):
         self.fx = TypeFixture()
     
@@ -85,7 +84,8 @@ class SubtypingSuite(Suite):
         
         self.assert_proper_subtype(self.fx.callable_type(self.fx.d, self.fx.b), self.fx.callable(self.fx.d, self.fx.a))
         
-        self.assert_proper_subtype(self.fx.callable_type(self.fx.a, self.fx.b), self.fx.callable(self.fx.a, self.fx.b))
+        self.assert_proper_subtype(self.fx.callable_type(self.fx.a, self.fx.b),
+                                   self.fx.callable(self.fx.a, self.fx.b))
     
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):

@@ -1,5 +1,6 @@
 from unittest import Suite, run_test
 import testtypes
+import testsubtypes
 import testlex
 import testparse
 import testsemanal
@@ -20,6 +21,7 @@ class AllSuite(Suite):
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
         self.test_output = testoutput.OutputSuite()
         self.test_pythongen = testpythongen.PythonGenerationSuite()
+        self.test_subtypes = testsubtypes.SubtypingSuite()
         super().__init__()
 
 

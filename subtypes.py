@@ -1,5 +1,9 @@
-from types import Typ, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneType, Instance, TypeVar, Callable, TupleType, Overloaded
+from mtypes import (
+    Typ, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
+    TypeVar, Callable, TupleType, Overloaded
+)
 from nodes import TypeInfo
+from expandtype import expand_type
 
 
 # Is "left" subtype of "right"?
@@ -35,13 +39,13 @@ class SubtypeVisitor(TypeVisitor<bool>):
     bool visit_void(self, Void left):
         return isinstance(self.right, Void)
     
-    bool visit_none_type(self, NoneType left):
+    bool visit_none_type(self, NoneTyp left):
         return not isinstance(self.right, Void)
     
     bool visit_instance(self, Instance left):
         if isinstance(self.right, Instance):
             iright = (Instance)self.right
-            if not left.typ.has_base(iright.typ.full_name) and iright.typ.full_name != 'builtins.object':
+            if not left.typ.has_base(iright.typ.full_name()) and iright.typ.full_name() != 'builtins.object':
                 return False
             
             # Map left type to corresponding right instances.
@@ -66,7 +70,7 @@ class SubtypeVisitor(TypeVisitor<bool>):
             return is_callable_subtype(left, (Callable)self.right)
         elif is_named_instance(self.right, 'builtins.object'):
             return True
-        elif is_named_instance(self.right, 'builtins.type') and left.is_type_obj:
+        elif is_named_instance(self.right, 'builtins.type') and left.is_type_obj():
             return True
         else:
             return False
@@ -114,7 +118,7 @@ bool is_callable_subtype(Callable left, Callable right):
         return False
     
     # Non-type cannot be a subtype of type.
-    if right.is_type_obj and not left.is_type_obj:
+    if right.is_type_obj() and not left.is_type_obj():
         return False
     
     # Check return types.
@@ -225,8 +229,8 @@ list<list<TypeInfo>> interface_implementation_paths(TypeInfo typ, TypeInfo super
     # Try constructing a path via each superinterface.
     if typ.interfaces is not None:
         for iface in typ.interfaces:
-            for path in interface_implementation_paths(iface, supertype):
-                result.append([iface] + path)
+            for path_ in interface_implementation_paths(iface, supertype):
+                result.append([iface] + path_)
     
     return result
 
@@ -252,4 +256,4 @@ list<Instance> map_instance_to_direct_supertypes(Instance instance, TypeInfo sup
 
 
 bool is_named_instance(Typ t, str full_name):
-    return isinstance(t, Instance) and ((Instance)t).typ.full_name == full_name
+    return isinstance(t, Instance) and ((Instance)t).typ.full_name() == full_name

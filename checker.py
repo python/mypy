@@ -1,6 +1,17 @@
-from mtypes import Typ, FunctionLike, Any, Callable
+from mtypes import Typ, FunctionLike, Any, Callable, Instance
 from errors import Errors
 from nodes import MypyFile, Node, FuncBase, FuncDef
+
+
+# Collection of Instance types of basic types (object, type, etc.).
+class BasicTypes:
+    void __init__(self, Instance object, Instance std_type, Typ tuple,
+                  Typ function):
+        self.object = object
+        self.std_type = std_type
+        self.tuple = tuple
+        self.function = function
+
 
 class TypeChecker:
     dict<Node, Typ> type_map  # Types of type checked nodes

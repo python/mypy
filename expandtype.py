@@ -1,4 +1,7 @@
-from types import Typ, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneType, TypeVar, Overloaded, TupleType
+from mtypes import (
+    Typ, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void,
+    NoneTyp, TypeVar, Overloaded, TupleType
+)
 
 
 # Expand any type variable references in a type with the actual values of
@@ -18,8 +21,8 @@ Typ expand_type_by_instance(Typ typ, Instance instance):
         typ = expand_type(typ, variables)
         if isinstance(typ, Callable):
             list<tuple<int, Typ>> bounds = []
-            for i in range(len(instance.args)):
-                bounds.append((i + 1, instance.args[i]))
+            for j in range(len(instance.args)):
+                bounds.append((j + 1, instance.args[j]))
             typ = update_callable_implicit_bounds((Callable)typ, bounds)
         else:
             pass
@@ -44,7 +47,7 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
     Typ visit_void(self, Void t):
         return t
     
-    Typ visit_none_type(self, NoneType t):
+    Typ visit_none_type(self, NoneTyp t):
         return t
     
     Typ visit_instance(self, Instance t):
@@ -61,7 +64,14 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
             return repl
     
     Typ visit_callable(self, Callable t):
-        return Callable(self.expand_types(t.arg_types), t.min_args, t.is_var_arg, t.ret_type.accept(self), t.is_type_obj, t.name, t.variables, self.expand_bound_vars(t.bound_vars), t.line, t.repr)
+        return Callable(self.expand_types(t.arg_types),
+                        t.min_args,
+                        t.is_var_arg,
+                        t.ret_type.accept(self),
+                        t.is_type_obj(),
+                        t.name,
+                        t.variables,
+                        self.expand_bound_vars(t.bound_vars), t.line, t.repr)
     
     Typ visit_overloaded(self, Overloaded t):
         list<Callable> items = []
@@ -83,3 +93,15 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
         for id, t in types:
             a.append((id, t.accept(self)))
         return a
+
+
+Callable update_callable_implicit_bounds(Callable t, list<tuple<int, Typ>> arg_types):
+    # FIX what if there are existing bounds?
+    return Callable(t.arg_types,
+                    t.min_args,
+                    t.is_var_arg,
+                    t.ret_type,
+                    t.is_type_obj(),
+                    t.name,
+                    t.variables,
+                    arg_types, t.line, t.repr)
