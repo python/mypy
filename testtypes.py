@@ -80,7 +80,9 @@ class TypeOpsSuite(Suite):
     # ExpandTypes
     
     def test_trivial_expand(self):
-        for t in self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nilt, self.tuple(self.fx.a), self.callable([], self.fx.a, self.fx.a), self.fx.dyn:
+        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nilt,
+                  self.tuple(self.fx.a),
+                  self.callable([], self.fx.a, self.fx.a), self.fx.dyn):
             self.assert_expand(t, [], t)
             self.assert_expand(t, [], t)
             self.assert_expand(t, [], t)
@@ -110,7 +112,10 @@ class TypeOpsSuite(Suite):
     # ReplaceTypeVars
     
     def test_trivial_replace(self):
-        for t in self.fx.a, self.fx.o, self.fx.void, self.fx.nilt, self.tuple(self.fx.a), self.callable([], self.fx.a, self.fx.a), self.fx.dyn, self.fx.err:
+        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nilt,
+                  self.tuple(self.fx.a),
+                  self.callable([], self.fx.a, self.fx.a), self.fx.dyn,
+                  self.fx.err):
             self.assert_replace(t, t)
     
     def test_replace_type_var(self):
@@ -126,7 +131,8 @@ class TypeOpsSuite(Suite):
     # EraseType
     
     def test_trivial_erase(self):
-        for t in self.fx.a, self.fx.o, self.fx.void, self.fx.nilt, self.fx.dyn, self.fx.err:
+        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nilt,
+                  self.fx.dyn, self.fx.err):
             self.assert_erase(t, t)
     
     def test_erase_with_type_variable(self):
@@ -134,16 +140,19 @@ class TypeOpsSuite(Suite):
     
     def test_erase_with_generic_type(self):
         self.assert_erase(self.fx.ga, self.fx.gdyn)
-        self.assert_erase(self.fx.hab, Instance(self.fx.hi, [self.fx.dyn, self.fx.dyn]))
+        self.assert_erase(self.fx.hab,
+                          Instance(self.fx.hi, [self.fx.dyn, self.fx.dyn]))
     
     def test_erase_with_tuple_type(self):
         self.assert_erase(self.tuple(self.fx.a), self.fx.std_tuple)
     
     def test_erase_with_function_type(self):
-        self.assert_erase(self.fx.callable(self.fx.a, self.fx.b), self.fx.std_function)
+        self.assert_erase(self.fx.callable(self.fx.a, self.fx.b),
+                          self.fx.std_function)
     
     def test_erase_with_type_object(self):
-        self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b), self.fx.std_function)
+        self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b),
+                          self.fx.std_function)
     
     def assert_erase(self, orig, result):
         assert_equal(str(erase_type(orig, self.fx.basic)), str(result))
@@ -161,4 +170,9 @@ class TypeOpsSuite(Suite):
         for v in vars:
             tv.append(TypeVarDef(v, n))
             n -= 1
-        return Callable(a[:-1], len(a) - 1, False, a[-1], False, None, TypeVars(tv))
+        return Callable(a[:-1], len(a) - 1,
+                        False,
+                        a[-1],
+                        False,
+                        None,
+                        TypeVars(tv))

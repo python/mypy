@@ -95,7 +95,8 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
         return a
 
 
-Callable update_callable_implicit_bounds(Callable t, list<tuple<int, Typ>> arg_types):
+Callable update_callable_implicit_bounds(Callable t,
+                                         list<tuple<int, Typ>> arg_types):
     # FIX what if there are existing bounds?
     return Callable(t.arg_types,
                     t.min_args,
