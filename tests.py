@@ -12,6 +12,7 @@ import sys
 class AllSuite(Suite):
     def __init__(self):
         self.test_types = testtypes.TypesSuite()
+        self.test_typeops = testtypes.TypeOpsSuite()
         self.test_lex = testlex.LexerSuite()
         self.test_parse = testparse.ParserSuite()
         self.test_parse_errors = testparse.ParseErrorSuite()

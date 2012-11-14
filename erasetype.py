@@ -1,4 +1,8 @@
-from types import Typ, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneType, Instance, TypeVar, Callable, TupleType
+from mtypes import (
+    Typ, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
+    TypeVar, Callable, TupleType
+)
+from checker import BasicTypes
 
 
 # Erase any type variables from a type. Also replace complex types (tuple,
@@ -6,9 +10,9 @@ from types import Typ, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneType,
 #
 # Examples:
 #   A -> A
-#   B<X> -> B<dynamic>
-#   (A, B) -> Tuple
-#   def (..) -> Function
+#   B<X> -> B<any>
+#   tuple<A, B> -> tuple
+#   func<...> -> function
 Typ erase_type(Typ typ, BasicTypes basic):
     return typ.accept(EraseTypeVisitor(basic))
 
@@ -31,7 +35,7 @@ class EraseTypeVisitor(TypeVisitor<Typ>):
     Typ visit_void(self, Void t):
         return t
     
-    Typ visit_none_type(self, NoneType t):
+    Typ visit_none_type(self, NoneTyp t):
         return t
     
     Typ visit_instance(self, Instance t):
