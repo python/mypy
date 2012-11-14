@@ -1,10 +1,11 @@
 import os.path
 import re
 from unittest import Suite
-from test.helpers import parse_test_cases, assert_string_arrays_equal
+from testhelpers import assert_string_arrays_equal
+from testdata import parse_test_cases
+from testconfig import test_data_prefix, test_temp_dir
 from build import build
-from parser import parse
-from os import separator
+from parse import parse
 from output import OutputVisitor
 from errors import CompileError
 
@@ -46,7 +47,7 @@ def test_output(testcase):
         # formatting) of all the relevant source files.
         for t in trees:
             # Omit the builtins and files marked for omission.
-            if not t.path.endswith(separator + 'builtins.py') and '-skip.' not in t.path:
+            if not t.path.endswith(os.sep + 'builtins.py') and '-skip.' not in t.path:
                 # Add file name + colon for files other than the first.
                 if not first:
                     a.append('{}:'.format(fix_path(remove_prefix(t.path, test_temp_dir))))
@@ -64,8 +65,8 @@ def test_output(testcase):
 
 def remove_prefix(path, prefix):
     regexp = '^' + prefix.replace('\\', '\\\\')
-    np = re.sub(path, regexp, '')
-    if np.startswith(separator):
+    np = re.sub(regexp, '', path)
+    if np.startswith(os.sep):
         np = np[1:]
     return np
 

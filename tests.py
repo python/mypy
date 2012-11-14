@@ -2,6 +2,7 @@ from unittest import Suite, run_test
 import testlex
 import testparse
 import testsemanal
+import testoutput
 import sys
 
 
@@ -14,6 +15,7 @@ class AllSuite(Suite):
         self.test_semanal_errors = testsemanal.SemAnalErrorSuite()
         self.test_semanal_symtable = testsemanal.SemAnalSymtableSuite()
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
+        self.test_output = testoutput.OutputSuite()
         super().__init__()
 
 
