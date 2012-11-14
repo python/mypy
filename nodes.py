@@ -7,7 +7,6 @@ from visitor import NodeVisitor
 from util import dump_tagged, short_type
 
 
-
 # Supertype for objects that are valid as error message locations.
 interface Context:
     # TODO this should be just 'line'

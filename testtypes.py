@@ -5,9 +5,10 @@ from mtypes import (
 
 
 class TypesSuite(Suite):
-    # Helper constants
-    Typ x = UnboundType('X')
-    Typ y = UnboundType('Y')
+    def __init__(self):
+        super().__init__()
+        self.x = UnboundType('X')  # Helpers
+        self.y = UnboundType('Y')
     
     def test_any(self):
         assert_equal(str(Any()), 'any')
