@@ -146,7 +146,7 @@ class SemanticAnal(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
-        if self.typ is not None:
+        if self.typ:
             defn.info = self.typ
             if not defn.is_overload:
                 if defn.name() in self.typ.methods:
@@ -171,18 +171,18 @@ class SemanticAnal(NodeVisitor):
         defn.typ = Annotation(Overloaded(t))
         defn.typ.set_line(defn.line)
         
-        if self.typ is not None:
+        if self.typ:
             self.typ.methods[defn.name()] = defn
             defn.info = self.typ
     
     void analyse_function(self, FuncItem defn):
         self.enter()
         self.add_func_type_variables_to_symbol_table(defn)
-        if defn.typ is not None:
+        if defn.typ:
             defn.typ.accept(self)
             if isinstance(defn, FuncDef):
                 fdef = (FuncDef)defn
-                if self.typ is not None:
+                if self.typ:
                     defn.typ.typ = ((Callable)defn.typ.typ).with_name(
                         '"{}" of "{}"'.format(fdef.name, self.typ.name))
                 else:
@@ -192,25 +192,25 @@ class SemanticAnal(NodeVisitor):
                     ((Callable)defn.typ.typ).arg_types[0] = self_type(
                         fdef.info)
         for init in defn.init:
-            if init is not None:
+            if init:
                 init.rvalue.accept(self)
         for v in defn.args:
             self.add_local(v, defn)
-        if defn.var_arg is not None:
+        if defn.var_arg:
             self.add_local(defn.var_arg, defn)
         for init_ in defn.init:
-            if init_ is not None:
+            if init_:
                 init_.lvalues[0].accept(self)
         
         # The first argument of a method is self.
-        if self.typ is not None and len(defn.args) > 0:
+        if self.typ and defn.args:
             defn.args[0].is_self = True
         
         defn.body.accept(self)
         self.leave()
     
     void add_func_type_variables_to_symbol_table(self, FuncItem defn):
-        if defn.typ is not None:
+        if defn.typ:
             tt = defn.typ.typ
             names = self.type_var_names()
             items = ((Callable)tt).variables.items
@@ -222,7 +222,7 @@ class SemanticAnal(NodeVisitor):
                 names.add(name)
     
     set<str> type_var_names(self):
-        if self.typ is None:
+        if not self.typ:
             return set()
         else:
             return set(self.typ.type_vars)
@@ -286,7 +286,7 @@ class SemanticAnal(NodeVisitor):
         m = self.modules[i.id]
         for id, as_id in i.names:
             node = m.names.get(id, None)
-            if node is not None:
+            if node:
                 self.globals[as_id] = SymbolTableNode(node.kind, node.node,
                                                       self.cur_mod_id)
             else:
@@ -308,32 +308,32 @@ class SemanticAnal(NodeVisitor):
             s.accept(self)
     
     void visit_block_maybe(self, Block b):
-        if b is not None:
+        if b:
             self.visit_block(b)
     
     void visit_var_def(self, VarDef defn):
         for i in range(len(defn.items)):
             defn.items[i] = (defn.items[i][0],
                              self.anal_type(defn.items[i][1]))
-            if defn.items[i][1] is not None:
+            if defn.items[i][1]:
                 defn.items[i][0].typ = Annotation(defn.items[i][1])
         
         for v, t in defn.items:
             if self.locals is not None:
                 defn.kind = LDEF
                 self.add_local(v, defn)
-            elif self.typ is not None:
+            elif self.typ:
                 v.info = self.typ
                 self.typ.vars[v.name()] = v
             elif v.name not in self.globals:
                 defn.kind = GDEF
                 self.add_var(v, defn)
         
-        if defn.init is not None:
+        if defn.init:
             defn.init.accept(self)
     
     Typ anal_type(self, Typ t):
-        if t is not None:
+        if t:
             a = TypeAnalyser(self.lookup_qualified, self.fail)
             return t.accept(a)
         else:
@@ -402,21 +402,21 @@ class SemanticAnal(NodeVisitor):
     void visit_return_stmt(self, ReturnStmt s):
         if self.locals is None:
             self.fail("'return' outside function", s)
-        if s.expr is not None:
+        if s.expr:
             s.expr.accept(self)
     
     void visit_raise_stmt(self, RaiseStmt s):
-        if s.expr is not None:
+        if s.expr:
             s.expr.accept(self)
     
     void visit_yield_stmt(self, YieldStmt s):
         if self.locals is None:
             self.fail("'yield' outside function", s)
-        if s.expr is not None:
+        if s.expr:
             s.expr.accept(self)
     
     void visit_assert_stmt(self, AssertStmt s):
-        if s.expr is not None:
+        if s.expr:
             s.expr.accept(self)
     
     void visit_operator_assignment_stmt(self, OperatorAssignmentStmt s):
@@ -433,7 +433,7 @@ class SemanticAnal(NodeVisitor):
     void visit_for_stmt(self, ForStmt s):
         for i in range(len(s.types)):
             t = s.types[i]
-            if t is not None:
+            if t:
                 t.accept(self)
                 s.index[i].typ = t
         
@@ -467,9 +467,9 @@ class SemanticAnal(NodeVisitor):
     void visit_try_stmt(self, TryStmt s):
         s.body.accept(self)
         for i in range(len(s.types)):
-            if s.types[i] is not None:
+            if s.types[i]:
                 s.types[i].accept(self)
-            if s.vars[i] is not None:
+            if s.vars[i]:
                 self.add_var(s.vars[i], s.vars[i])
             s.handlers[i].accept(self)
         self.visit_block_maybe(s.else_body)
@@ -479,7 +479,7 @@ class SemanticAnal(NodeVisitor):
         for e in s.expr:
             e.accept(self)
         for n in s.name:
-            if n is not None:
+            if n:
                 self.add_var(n, s)
         self.visit_block(s.body)
     
@@ -498,7 +498,7 @@ class SemanticAnal(NodeVisitor):
     
     void visit_name_expr(self, NameExpr expr):
         n = self.lookup(expr.name, expr)
-        if n is not None:
+        if n:
             if n.kind == TVAR:
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
@@ -508,7 +508,7 @@ class SemanticAnal(NodeVisitor):
                 expr.full_name = n.full_name()
     
     void visit_super_expr(self, SuperExpr expr):
-        if self.typ is None:
+        if not self.typ:
             self.fail('"super" used outside class', expr)
             return 
         expr.info = self.typ
@@ -516,7 +516,7 @@ class SemanticAnal(NodeVisitor):
     void visit_tuple_expr(self, TupleExpr expr):
         for item in expr.items:
             item.accept(self)
-        if expr.types is not None:
+        if expr.types:
             for i in range(len(expr.types)):
                 expr.types[i] = self.anal_type(expr.types[i])
     
@@ -549,10 +549,10 @@ class SemanticAnal(NodeVisitor):
         if isinstance(base, RefExpr) and ((RefExpr)base).kind == MODULE_REF:
             names = ((MypyFile)((RefExpr)base).node).names
             n = names.get(expr.name, None)
-            if n is not None:
+            if n:
                 expr.kind = n.kind
                 expr.full_name = n.full_name()
-                expr.node = ((Node)n.node)
+                expr.node = (Node)n.node
             else:
                 self.fail("Module has no attribute '{}'".format(expr.name),
                           expr)
@@ -569,11 +569,11 @@ class SemanticAnal(NodeVisitor):
         expr.index.accept(self)
     
     void visit_slice_expr(self, SliceExpr expr):
-        if expr.begin_index is not None:
+        if expr.begin_index:
             expr.begin_index.accept(self)
-        if expr.end_index is not None:
+        if expr.end_index:
             expr.end_index.accept(self)
-        if expr.stride is not None:
+        if expr.stride:
             expr.stride.accept(self)
     
     void visit_cast_expr(self, CastExpr expr):
@@ -597,13 +597,13 @@ class SemanticAnal(NodeVisitor):
                 self.name_not_defined(name, ctx)
         elif self.locals is not None and name in self.locals:
             return self.locals[name]
-        elif self.class_tvars is not None and name in self.class_tvars:
+        elif self.class_tvars and name in self.class_tvars:
             return self.class_tvars[name]
         elif name in self.globals:
             return self.globals[name]
         else:
             b = self.globals.get('__builtins__', None)
-            if b is not None:
+            if b:
                 table = ((MypyFile)b.node).names
                 if name in table:
                     return table[name]
@@ -615,10 +615,10 @@ class SemanticAnal(NodeVisitor):
         else:
             parts = name.split('.')
             SymbolTableNode n = self.lookup(parts[0], ctx)
-            if n is not None:
+            if n:
                 for i in range(1, len(parts)):
                     n = ((MypyFile)n.node).names.get(parts[i], None)
-                    if n is None:
+                    if not n:
                         self.name_not_defined(name, ctx)
             return n
     
@@ -675,7 +675,7 @@ Instance self_type(TypeInfo typ):
 
 class TypeInfoMap(dict<str, TypeInfo>):
     str __str__(self):
-        list<str> a = ['TypeInfoMap(']
+        a = <str> ['TypeInfoMap(']
         for x, y in sorted(self.items()):
             if isinstance(x, str) and not x.startswith('builtins.'):
                 ti = ('\n' + '  ').join(str(y).split('\n'))
