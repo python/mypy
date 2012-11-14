@@ -18,13 +18,13 @@ class OutputSuite(Suite):
     def cases(self):
         c = []
         for f in output_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), test_output, test_temp_dir, True)
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  test_output, test_temp_dir, True)
         return c
 
 
 # Perform an identity source code transformation test case.
 def test_output(testcase):
-    any a
     expected = testcase.output
     if expected == []:
         expected = testcase.input
@@ -38,7 +38,8 @@ def test_output(testcase):
         # lets us test that semantic analysis does not break source code pretty
         # printing.
         if testcase.name.endswith('_SemanticAnalysis'):
-            trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+            trees, symtable, infos, types = build(src, 'main', True,
+                                                  test_temp_dir)
         else:
             trees = [parse(src, 'main')]
         a = []
@@ -47,10 +48,12 @@ def test_output(testcase):
         # formatting) of all the relevant source files.
         for t in trees:
             # Omit the builtins and files marked for omission.
-            if not t.path.endswith(os.sep + 'builtins.py') and '-skip.' not in t.path:
+            if (not t.path.endswith(os.sep + 'builtins.py') and
+                    '-skip.' not in t.path):
                 # Add file name + colon for files other than the first.
                 if not first:
-                    a.append('{}:'.format(fix_path(remove_prefix(t.path, test_temp_dir))))
+                    a.append('{}:'.format(fix_path(remove_prefix(
+                        t.path, test_temp_dir))))
                 
                 v = OutputVisitor()
                 t.accept(v)
@@ -60,7 +63,9 @@ def test_output(testcase):
             first = False
     except CompileError as e:
         a = e.messages
-    assert_string_arrays_equal(expected, a, 'Invalid source code output ({}, line {})'.format(testcase.file, testcase.line))
+    assert_string_arrays_equal(
+        expected, a, 'Invalid source code output ({}, line {})'.format(
+            testcase.file, testcase.line))
 
 
 def remove_prefix(path, prefix):

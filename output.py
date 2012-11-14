@@ -100,7 +100,8 @@ class OutputVisitor(NodeVisitor):
         for f in o.items:
             f.accept(self)
     
-    def function_header(self, o, arg_repr, pre_args_func=None, erase_type=False, strip_space_before_first_arg=False):
+    def function_header(self, o, arg_repr, pre_args_func=None,
+                        erase_type=False, strip_space_before_first_arg=False):
         r = o.repr
         
         t = None
@@ -126,9 +127,9 @@ class OutputVisitor(NodeVisitor):
             else:
                 n = arg_repr.arg_names[i].rep
                 if i == 0 and strip_space_before_first_arg:
-                    # Remove spaces before the first argument name. Generally spaces
-                    # are only present after a type, and if we erase the type, we should
-                    # also erase also the spaces.
+                    # Remove spaces before the first argument name. Generally
+                    # spaces are only present after a type, and if we erase the
+                    # type, we should also erase also the spaces.
                     n = re.sub(n, ' +([a-zA-Z0-9_])$', '\\1')
                 self.string(n)
             if i < len(arg_repr.assigns):
