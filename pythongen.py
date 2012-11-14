@@ -230,7 +230,7 @@ class PythonGenerator(OutputVisitor):
             a.append(self.make_argument_count_check(f, len(fixed_args), rest_args))
         for t in function_type(f).arg_types:
             if not isinstance(t, Any) and (t.repr is not None or isinstance(t, Callable)):
-                a.append(self.make_argument_check(f.args[i].name(), t))
+                a.append(self.make_argument_check(self.argument_ref(i, fixed_args, rest_args), t))
             i += 1
         return ' and '.join(a)
     
@@ -247,11 +247,14 @@ class PythonGenerator(OutputVisitor):
     def make_overload_call(self, f, n, fixed_args, rest_args):
         a = []
         for i in range(len(f.args)):
-            if i < len(fixed_args):
-                a.append(fixed_args[i])
-            else:
-                a.append('{}[{}]'.format(rest_args, i - len(fixed_args)))
+            a.append(self.argument_ref(i, fixed_args, rest_args))
         return '{}{}({})'.format(f.name(), n, ', '.join(a))
+    
+    def argument_ref(self, i, fixed_args, rest_args):
+        if i < len(fixed_args):
+            return fixed_args[i]
+        else:
+            return '{}[{}]'.format(rest_args, i - len(fixed_args))
     
     def visit_list_expr(self, o):
         r = o.repr
