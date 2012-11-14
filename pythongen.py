@@ -26,8 +26,8 @@ class PythonGenerator(OutputVisitor):
         if o.id in removed_names:
             r = o.repr
             
-            # Filter out any names not defined in Python from an from ... import
-            # statement.
+            # Filter out any names not defined in Python from a
+            # from ... import statement.
             
             toks = []
             comma = none
@@ -154,7 +154,8 @@ class PythonGenerator(OutputVisitor):
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
-            self.string(self.get_pre_whitespace(first.typ.typ.ret_type) + 'def')
+            self.string(self.get_pre_whitespace(first.typ.typ.ret_type) +
+                        'def')
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
         fixed_args, is_more = self.get_overload_args(o)
@@ -180,7 +181,8 @@ class PythonGenerator(OutputVisitor):
                 self.string('elif ')
             self.string(c)
             self.string(':' + '\n' + indent)
-            self.string('    return {}'.format(self.make_overload_call(fi, n, fixed_args, rest_args)) + '\n')
+            self.string('    return {}'.format(self.make_overload_call(
+                fi, n, fixed_args, rest_args)) + '\n')
             n += 1
         self.string(indent + 'else:' + '\n')
         self.string(indent + '    raise TypeError("Invalid argument types")')
@@ -227,10 +229,13 @@ class PythonGenerator(OutputVisitor):
         a = []
         i = 0
         if rest_args is not None:
-            a.append(self.make_argument_count_check(f, len(fixed_args), rest_args))
+            a.append(self.make_argument_count_check(f, len(fixed_args),
+                                                    rest_args))
         for t in function_type(f).arg_types:
-            if not isinstance(t, Any) and (t.repr is not None or isinstance(t, Callable)):
-                a.append(self.make_argument_check(self.argument_ref(i, fixed_args, rest_args), t))
+            if not isinstance(t, Any) and (t.repr is not None or
+                                           isinstance(t, Callable)):
+                a.append(self.make_argument_check(
+                    self.argument_ref(i, fixed_args, rest_args), t))
             i += 1
         return ' and '.join(a)
     
