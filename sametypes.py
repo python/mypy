@@ -1,3 +1,7 @@
+from mtypes import (
+    Typ, UnboundType, ErrorType, Any, NoneTyp, Void, TupleType, Callable,
+    TypeVar, Instance, TypeVisitor
+)
 
 
 # Is "left" the same type as "right"?
@@ -41,8 +45,8 @@ class SameTypeVisitor(TypeVisitor<bool>):
     bool visit_void(self, Void left):
         return isinstance(self.right, Void)
     
-    bool visit_none_type(self, NoneType left):
-        return isinstance(self.right, NoneType)
+    bool visit_none_type(self, NoneTyp left):
+        return isinstance(self.right, NoneTyp)
     
     bool visit_instance(self, Instance left):
         return isinstance(self.right, Instance) and left.typ == ((Instance)self.right).typ and is_same_types(left.args, ((Instance)self.right).args)
@@ -54,7 +58,7 @@ class SameTypeVisitor(TypeVisitor<bool>):
         # FIX generics
         if isinstance(self.right, Callable):
             cright = (Callable)self.right
-            return is_same_type(left.ret_type, cright.ret_type) and is_same_types(left.arg_types, cright.arg_types) and left.min_args == cright.min_args and left.is_var_arg == cright.is_var_arg and left.is_type_obj == cright.is_type_obj
+            return is_same_type(left.ret_type, cright.ret_type) and is_same_types(left.arg_types, cright.arg_types) and left.min_args == cright.min_args and left.is_var_arg == cright.is_var_arg and left.is_type_obj() == cright.is_type_obj()
         else:
             return False
     

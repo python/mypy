@@ -1,4 +1,11 @@
-from types import Typ, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneType, TypeVar, Instance, Callable, TupleType, is_same_type
+from checker import BasicTypes
+from join import is_similar_callables, combine_similar_callables
+from mtypes import (
+    Typ, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
+    Instance, Callable, TupleType
+)
+from sametypes import is_same_type
+from subtypes import is_subtype
 
 
 Typ meet_types(Typ s, Typ t, BasicTypes basic):
@@ -19,7 +26,7 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
     Typ visit_unbound_type(self, UnboundType t):
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
-        elif isinstance(self.s, NoneType):
+        elif isinstance(self.s, NoneTyp):
             return self.s
         else:
             return Any()
@@ -36,7 +43,7 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
         else:
             return ErrorType()
     
-    Typ visit_none_type(self, NoneType t):
+    Typ visit_none_type(self, NoneTyp t):
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             return t
         else:
@@ -60,7 +67,7 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.typ, args)
                 else:
-                    return NoneType()
+                    return NoneTyp()
             else:
                 if is_subtype(t, self.s):
                     return t
@@ -68,7 +75,7 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
                     # See also above comment.
                     return self.s
                 else:
-                    return NoneType()
+                    return NoneTyp()
         else:
             return self.default(self.s)
     
@@ -79,9 +86,10 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
             return self.default(self.s)
     
     Typ visit_tuple_type(self, TupleType t):
-        if isinstance(self.s, TupleType) and len(((TupleType)self.s)) == len(t):
+        if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
+                                              t.length()):
             list<Typ> items = []
-            for i in range(len(t)):
+            for i in range(t.length()):
                 items.append(self.meet(t.items[i], ((TupleType)self.s).items[i]))
             return TupleType(items)
         else:
@@ -103,4 +111,4 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
         else:
-            return NoneType()
+            return NoneTyp()

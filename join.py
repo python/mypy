@@ -1,27 +1,26 @@
-from types import Typ, Any, NoneType, Void, TypeVisitor, Instance, UnboundType, ErrorType, TypeVar, Callable, TupleType
+from checker import BasicTypes
+from mtypes import (
+    Typ, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
+    TypeVar, Callable, TupleType
+)
+from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
 Typ join_types(Typ s, Typ t, BasicTypes basic):
     if isinstance(s, Any):
         return s
     
-    if isinstance(s, NoneType) and not isinstance(t, Void):
+    if isinstance(s, NoneTyp) and not isinstance(t, Void):
         return t
     
     return t.accept(TypeJoinVisitor(s, basic))
 
 
 class TypeJoinVisitor(TypeVisitor<Typ>):
-    Typ s
-    BasicTypes basic
-    
     void __init__(self, Typ s, BasicTypes basic):
         self.s = s
         self.basic = basic
-    
-    @property
-    Instance object():
-        return self.basic.object
+        self.object = basic.object
     
     Typ visit_unbound_type(self, UnboundType t):
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
@@ -41,7 +40,7 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
         else:
             return ErrorType()
     
-    Typ visit_none_type(self, NoneType t):
+    Typ visit_none_type(self, NoneTyp t):
         if not isinstance(self.s, Void):
             return self.s
         else:
@@ -64,17 +63,18 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
     Typ visit_callable(self, Callable t):
         if isinstance(self.s, Callable) and is_similar_callables(t, (Callable)self.s):
             return combine_similar_callables(t, (Callable)self.s, self.basic)
-        elif t.is_type_obj and is_subtype(self.s, self.basic.std_type):
+        elif t.is_type_obj() and is_subtype(self.s, self.basic.std_type):
             return self.basic.std_type
-        elif isinstance(self.s, Instance) and ((Instance)self.s).typ == self.basic.std_type.typ and t.is_type_obj:
+        elif isinstance(self.s, Instance) and ((Instance)self.s).typ == self.basic.std_type.typ and t.is_type_obj():
             return self.basic.std_type
         else:
             return self.default(self.s)
     
     Typ visit_tuple_type(self, TupleType t):
-        if isinstance(self.s, TupleType) and len(((TupleType)self.s)) == len(t):
+        if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
+                                              t.length()):
             list<Typ> items = []
-            for i in range(len(t)):
+            for i in range(t.length()):
                 items.append(self.join(t.items[i], ((TupleType)self.s).items[i]))
             return TupleType(items)
         else:
@@ -209,5 +209,5 @@ Callable combine_similar_callables(Callable t, Callable s, BasicTypes basic):
     list<Typ> arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
-    return Callable(arg_types, t.min_args, t.is_var_arg, join_types(t.ret_type, s.ret_type, basic), t.is_type_obj and s.is_type_obj, None, t.variables)
+    return Callable(arg_types, t.min_args, t.is_var_arg, join_types(t.ret_type, s.ret_type, basic), t.is_type_obj() and s.is_type_obj(), None, t.variables)
     return s

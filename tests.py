@@ -13,6 +13,9 @@ class AllSuite(Suite):
     def __init__(self):
         self.test_types = testtypes.TypesSuite()
         self.test_typeops = testtypes.TypeOpsSuite()
+        self.test_join = testtypes.JoinSuite()
+        self.test_meet = testtypes.MeetSuite()
+        self.test_subtypes = testsubtypes.SubtypingSuite()
         self.test_lex = testlex.LexerSuite()
         self.test_parse = testparse.ParserSuite()
         self.test_parse_errors = testparse.ParseErrorSuite()
@@ -22,7 +25,6 @@ class AllSuite(Suite):
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
         self.test_output = testoutput.OutputSuite()
         self.test_pythongen = testpythongen.PythonGenerationSuite()
-        self.test_subtypes = testsubtypes.SubtypingSuite()
         super().__init__()
 
 
