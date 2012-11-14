@@ -1,0 +1,426 @@
+-- Test cases for mypy-to-Python translation.
+
+
+[case testEmpty]
+[out]
+
+[case testExpressionStatement]
+object()
+
+[case testDynamicallyTypedFunction]
+def f(x): return x + 1
+
+[case testStaticallyTypedFunction]
+void f(any x): 
+    return x + 1
+[out]
+def f(x):
+    return x + 1
+
+[case testMethod]
+class A:
+    void f(self, A x):
+        pass
+    def g(self, y):
+        pass
+[out]
+class A:
+    def f(self, x):
+        pass
+    def g(self, y):
+        pass    
+
+[case testVariableDef]
+any x
+object o, any y = x
+[out]
+x = None
+o, y = x
+
+[case testMultipleVariableDefWithoutInit]
+any x, object o
+[out]
+x, o = None, None
+
+[case testCasts]
+x = (any)object
+[out]
+x = object
+
+[case testForWithTypes]
+for any x in object():
+    pass
+for object y, c<object> z in object():
+    pass
+class c<t>: pass
+[out]    
+for x in object():
+    pass
+for y, z in object():
+    pass
+class c: pass
+
+[case testGenericClass]
+class A<t>:
+    pass
+[out]
+class A:
+    pass
+
+[case testGenericBaseClass]
+class A(B<object>, C<any, object>):
+    pass
+class B<t>: pass
+class C<t, s>: pass
+[out]
+class A(B, C):
+    pass
+class B: pass
+class C: pass
+
+[case testGenericFunction]
+t f<t>(t x): return x
+[out]
+def f(x): return x
+
+[case testLambda]
+lambda foo<bar> z: z
+lambda int n, str s: n * s
+lambda n: n
+lambda n, m: foo
+[out]
+lambda z: z
+lambda n, s: n * s
+lambda n: n
+lambda n, m: foo
+
+[case testSimpleOverloadedFunction]
+void f(A a):
+    a.x()
+void f(B a):
+    a.y()
+class A: pass
+class B: pass
+[out]
+def f(a):
+    def f1(a):
+        a.x()
+    def f2(a):
+        a.y()
+        
+    if isinstance(a, A):
+        return f1(a)
+    elif isinstance(a, B):
+        return f2(a)
+    else:
+        raise TypeError("Invalid argument types")
+class A: pass
+class B: pass
+
+[case testSimpleOverloadedMethod]
+class A:
+    void f(self, A a):
+        a.x()
+    void f(self, B a):
+        a.y()
+class B: pass
+[out]
+class A:
+    def f(self, a):
+        def f1(self, a):
+            a.x()
+        def f2(self, a):
+            a.y()
+            
+        if isinstance(a, A):
+            return f1(self, a)
+        elif isinstance(a, B):
+            return f2(self, a)
+        else:
+            raise TypeError("Invalid argument types")
+class B: pass
+
+[case testSimpleOverloadFollowedByFunction]
+void f(A a):
+    a.x()
+void f(B a):
+    a.y()
+def g(): pass
+class A: pass
+class B: pass
+[out]
+def f(a):
+    def f1(a):
+        a.x()
+    def f2(a):
+        a.y()
+      
+    if isinstance(a, A):
+        return f1(a)
+    elif isinstance(a, B):
+        return f2(a)
+    else:
+        raise TypeError("Invalid argument types")
+def g(): pass
+class A: pass
+class B: pass
+
+[case testDifferentTypesInOverloads]
+void f(tuple<A, any> a): pass
+void f(func<A, void> a): pass
+class A: pass
+[builtins fixtures/tuple.py]
+[out]
+def f(a):
+    def f1(a): pass
+    def f2(a): pass
+
+    if isinstance(a, tuple):
+        return f1(a)
+    elif callable(a):
+        return f2(a)
+    else:
+        raise TypeError("Invalid argument types")
+class A: pass
+
+[case testDifferentArgumentCountsInOverloads]
+def f(x): pass
+def f(x, y): pass
+[out]
+def f(x, *args):
+    def f1(x): pass
+    def f2(x, y): pass
+    if len(args) == 0:
+        return f1(x)
+    elif len(args) == 1:
+        return f2(x, args[0])
+    else:
+        raise TypeError("Invalid argument types")
+
+[case testDifferentArgumentCountsInOverloads2]
+def f(x): pass
+def f(x, y, z): pass
+[out]
+def f(x, *args):
+    def f1(x): pass
+    def f2(x, y, z): pass
+    if len(args) == 0:
+        return f1(x)
+    elif len(args) == 2:
+        return f2(x, args[0], args[1])
+    else:
+        raise TypeError("Invalid argument types")
+
+[case testMultipleArgumentsInOverloads]
+void f(A x, B y): pass
+void f(any x, A y): pass
+class A: pass
+class B: pass
+[out]
+def f(x, y):
+    def f1(x, y): pass
+    def f2(x, y): pass
+
+    if isinstance(x, A) and isinstance(y, B):
+        return f1(x, y)
+    elif isinstance(y, A):
+        return f2(x, y)
+    else:
+        raise TypeError("Invalid argument types")
+class A: pass
+class B: pass
+
+[case testInterfaces]
+interface A: pass
+interface B:
+    void f(self, A a)
+    void g(self): 
+        return 1
+interface C(A, B): pass
+interface D<t>: pass
+interface E<t>(D<t>): pass
+[out]
+class A: pass
+class B:
+    def f(self, a): pass
+    def g(self):
+        return 1
+class C(A, B): pass
+class D: pass
+class E(D): pass
+
+[case testPreservingMethodIndent]
+class A:
+    def a(self): pass
+    void b(self): pass
+    any c(self): pass
+    t d<t>(self): pass
+    A e(self): pass
+    tuple<A, A> f(self): pass
+    func<A> g(self): pass
+[builtins fixtures/tuple.py]
+[out]
+class A:
+    def a(self): pass
+    def b(self): pass
+    def c(self): pass
+    def d(self): pass
+    def e(self): pass
+    def f(self): pass
+    def g(self): pass
+
+[case testOverloadedFunctionWithBlockStatement]
+def f(x):
+  pass
+def f(x, y):
+  if x:
+    pass
+[out]
+def f(x, *args):
+    def f1(x):
+      pass
+    def f2(x, y):
+      if x:
+        pass
+    if len(args) == 0:
+        return f1(x)
+    elif len(args) == 1:
+        return f2(x, args[0])
+    else:
+        raise TypeError("Invalid argument types")
+
+[case testClassWithMultipleVarDefinitions]
+class A:
+  any x
+  A y
+  
+  def f(self): pass
+[out]
+class A:
+  x = None
+  y = None
+  
+  def f(self): pass
+
+[case testOverloadedMethodFollowedByAnotherMethod]
+class A:
+    def f(self): 
+        pass
+    def f(self, x): 
+        pass
+    # Comment
+    def g(self):
+        pass
+[out]
+class A:
+    def f(self, *args):
+        def f1(self):
+            pass
+        def f2(self, x):
+            pass
+
+        if len(args) == 0:
+            return f1(self)
+        elif len(args) == 1:
+            return f2(self, args[0])
+        else:
+            raise TypeError("Invalid argument types")
+    # Comment
+    def g(self):
+        pass
+
+[case testCommentBeforeOverloadedMethod]
+class A:
+    void g(self):
+        pass
+
+    # Comment
+    void f(self): 
+        pass
+    void f(self, any x): 
+        pass
+[out]
+class A:
+    def g(self):
+        pass
+
+    # Comment
+    def f(self, *args):
+
+        # Comment
+        def f1(self):
+            pass
+        def f2(self, x):
+            pass
+        if len(args) == 0:
+            return f1(self)
+        elif len(args) == 1:
+            return f2(self, args[0])
+        else:
+            raise TypeError("Invalid argument types")
+
+[case testImportingMypyOnlyNames]
+from re import Pattern
+from re import match, Pattern, sub
+from re import Match, Pattern
+from re import match, Match, Pattern, sub
+from re import match, Match
+[file re.py]
+# Dummy definitions
+class Pattern: pass
+class Match: pass
+def match(): pass
+def sub(): pass
+[out]
+from re import match, sub
+from re import match, sub
+from re import match
+re.py:
+# Dummy definitions
+class Pattern: pass
+class Match: pass
+def match(): pass
+def sub(): pass
+
+[case testLiteralsWithTypes]
+a = <any> [object()]
+d = <object, any> {a: a}
+[out]
+a = [object()]
+d = {a: a}
+
+[case testOverloadedFunctionWithDifferentArgNames]
+class A: pass
+class B: pass
+def f(A x): pass
+def f(B y): pass
+[out]
+class A: pass
+class B: pass
+def f(x):
+    def f1(x): pass
+    def f2(y): pass
+    if isinstance(x, A):
+        return f1(x)
+    elif isinstance(x, B):
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
+
+[case testOverloadedFunctionWithVariableArgumentCountsAndTypes]
+class A: pass
+class B: pass
+def f(A x): pass
+def f(B y, A z): pass
+[out]
+class A: pass
+class B: pass
+def f(x, *args):
+    def f1(x): pass
+    def f2(y, z): pass
+    if len(args) == 0 and isinstance(x, A):
+        return f1(x)
+    elif len(args) == 1 and isinstance(x, B) and isinstance(args[0], A):
+        return f2(x, args[0])
+    else:
+        raise TypeError("Invalid argument types")
