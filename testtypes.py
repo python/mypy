@@ -1,11 +1,13 @@
 from unittest import Suite, assert_equal
-from types import UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars
+from mtypes import (
+    UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Typ
+)
 
 
 class TypesSuite(Suite):
     # Helper constants
-    x = UnboundType('X')
-    y = UnboundType('Y')
+    Typ x = UnboundType('X')
+    Typ y = UnboundType('Y')
     
     def test_any(self):
         assert_equal(str(Any()), 'any')
@@ -55,9 +57,11 @@ class TypesSuite(Suite):
         assert_equal(str(TypeVarDef('X', 1, UnboundType('Y'))), 'X is Y?')
     
     def test_generic_function_type(self):
-        c = Callable([self.x, self.y], 2, False, self.y, False, None, TypeVars([TypeVarDef('X', -1)]))
+        c = Callable([self.x, self.y], 2, False, self.y, False, None,
+                     TypeVars([TypeVarDef('X', -1)]))
         assert_equal(str(c), 'def <X> (X?, Y?) -> Y?')
         
-        v = TypeVars([TypeVarDef('Y', -1, UnboundType('X')), TypeVarDef('X', -2)])
+        v = TypeVars([TypeVarDef('Y', -1, UnboundType('X')),
+                      TypeVarDef('X', -2)])
         c2 = Callable([], 0, False, Void(None), False, None, v)
         assert_equal(str(c2), 'def <Y is X?, X> ()')

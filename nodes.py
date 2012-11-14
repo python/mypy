@@ -1,18 +1,17 @@
+import re
+
 from lex import Token
+import mtypes
 from strconv import StrConv
 from visitor import NodeVisitor
 from util import dump_tagged, short_type
 
-import re
 
 
 # Supertype for objects that are valid as error message locations.
 interface Context:
     # TODO this should be just 'line'
     int get_line(self)
-
-
-from mtypes import TypeVars, Typ, TypeVarDef
 
 
 # Variable kind constants
@@ -282,14 +281,16 @@ class TypeDef(Node):
     str name        # Name of the class without module prefix
     str full_name   # Fully qualified name of the class
     Block defs
-    TypeVars type_vars
+    mtypes.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
-    list<Typ> base_types
+    list<mtypes.Typ> base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
-    void __init__(self, str name, Block defs, TypeVars type_vars=None,
-                  list<Typ> base_types=None, bool is_interface=False):
+    void __init__(self, str name, Block defs,
+                  mtypes.TypeVars type_vars=None,
+                  list<mtypes.Typ> base_types=None,
+                  bool is_interface=False):
         if not base_types:
             base_types = []
         self.name = name
@@ -306,14 +307,15 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
-    list<tuple<Var, Typ>> items
+    list<tuple<Var, mtypes.Typ>> items
     int kind          # Ldef/Gdef/Mdef/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
     
-    void __init__(self, list<tuple<Var, Typ>> items, bool is_top_level, Node init=None):
+    void __init__(self, list<tuple<Var, mtypes.Typ>> items,
+                  bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
         self.init = init
@@ -728,9 +730,9 @@ class SliceExpr(Node):
 
 class CastExpr(Node):
     Node expr
-    Typ typ
+    mtypes.Typ typ
     
-    void __init__(self, Node expr, Typ typ):
+    void __init__(self, Node expr, mtypes.Typ typ):
         self.expr = expr
         self.typ = typ
     
@@ -758,9 +760,9 @@ class FuncExpr(FuncItem):
 # List literal expression [...] or <type> [...]
 class ListExpr(Node):
     list<Node> items 
-    Typ typ # None if implicit type
+    mtypes.Typ typ # None if implicit type
     
-    void __init__(self, list<Node> items, Typ typ=None):
+    void __init__(self, list<Node> items, mtypes.Typ typ=None):
         self.items = items
         self.typ = typ
     
@@ -771,8 +773,8 @@ class ListExpr(Node):
 # Dictionary literal expression {key:value, ...} or <kt, vt> {...}.
 class DictExpr(Node):
     list<tuple<Node, Node>> items
-    Typ key_type    # None if implicit type
-    Typ value_type  # None if implicit type
+    mtypes.Typ key_type    # None if implicit type
+    mtypes.Typ value_type  # None if implicit type
     
     void __init__(self, list<tuple<Node, Node>> items):
         self.items = items
@@ -784,9 +786,9 @@ class DictExpr(Node):
 # Tuple literal expression (..., ...)
 class TupleExpr(Node):
     list<Node> items
-    list<Typ> types
+    list<mtypes.Typ> types
     
-    void __init__(self, list<Node> items, list<Typ> types=None):
+    void __init__(self, list<Node> items, list<mtypes.Typ> types=None):
         self.items = items
         self.types = types
     
@@ -850,9 +852,9 @@ class ConditionalExpr(Node):
 
 
 class Annotation(Node):
-    Typ typ
+    mtypes.Typ typ
     
-    void __init__(self, Typ typ, int line=-1):
+    void __init__(self, mtypes.Typ typ, int line=-1):
         self.typ = typ
         self.line = line
     
@@ -862,7 +864,7 @@ class Annotation(Node):
 
 class TypeApplication(Node):
     any expr   # Node
-    any types  # Array<Typ>
+    any types  # list<mtypes.Typ>
     
     def __init__(self, expr, types):
         self.expr = expr
@@ -876,12 +878,12 @@ class TypeApplication(Node):
 # inserted after type checking).
 class CoerceExpr(Node):
     Node expr
-    Typ target_type
-    Typ source_type
+    mtypes.Typ target_type
+    mtypes.Typ source_type
     bool is_wrapper_class
     
-    void __init__(self, Node expr, Typ target_type, Typ source_type,
-                  bool is_wrapper_class):
+    void __init__(self, Node expr, mtypes.Typ target_type,
+                  mtypes.Typ source_type, bool is_wrapper_class):
         self.expr = expr
         self.target_type = target_type
         self.source_type = source_type
@@ -893,9 +895,9 @@ class CoerceExpr(Node):
 
 class JavaCast(Node):
     Node expr
-    Typ target
+    mtypes.Typ target
     
-    void __init__(self, Node expr, Typ target):
+    void __init__(self, Node expr, mtypes.Typ target):
         self.expr = expr
         self.target = target
     
@@ -907,9 +909,9 @@ class JavaCast(Node):
 # used only for runtime type checking. This node is always generated only
 # after type checking.
 class TypeExpr(Node):
-    Typ typ
+    mtypes.Typ typ
     
-    void __init__(self, Typ typ):
+    void __init__(self, mtypes.Typ typ):
         self.typ = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -920,9 +922,9 @@ class TypeExpr(Node):
 # of the type checker implementation. It only represents an opaque node with
 # some fixed type.
 class TempNode(Node):
-    Typ typ
+    mtypes.Typ typ
     
-    void __init__(self, Typ typ):
+    void __init__(self, mtypes.Typ typ):
         self.typ = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -951,11 +953,11 @@ class TypeInfo(Node, AccessorNode, SymNode):
     
     # Type variable bounds (each may be None)
     # TODO implement these
-    list<Typ> bounds
+    list<mtypes.Typ> bounds
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
-    list<Typ> bases
+    list<mtypes.Typ> bases
     
     
     # Construct a TypeInfo.
@@ -988,7 +990,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
     bool is_generic(self):
         return self.type_vars is not None and len(self.type_vars) > 0
     
-    void set_type_bounds(self, list<TypeVarDef> a):
+    void set_type_bounds(self, list<mtypes.TypeVarDef> a):
         for vd in a:
             self.bounds.append(vd.bound)
     
@@ -1146,10 +1148,10 @@ class SymbolTableNode:
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
-    Typ type_override  # If None, fall back to type of node
+    mtypes.Typ type_override  # If None, fall back to type of node
     
-    void __init__(self, int kind, SymNode node, str mod_id=None, Typ typ=None,
-                  int tvar_id=0):
+    void __init__(self, int kind, SymNode node, str mod_id=None,
+                  mtypes.Typ typ=None, int tvar_id=0):
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -1162,7 +1164,7 @@ class SymbolTableNode:
         else:
             return None
     
-    Typ typ(self):
+    mtypes.Typ typ(self):
         # IDEA: Get rid of the any type.
         any node = self.node
         if self.type_override is not None:
