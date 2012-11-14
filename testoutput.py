@@ -10,19 +10,19 @@ from errors import CompileError
 
 
 # Files which contain test case descriptions.
-roundtrip_files = ['roundtrip.test']
+output_files = ['output.test']
 
 
-class RoundtripSuite(Suite):
+class OutputSuite(Suite):
     def cases(self):
         c = []
-        for f in roundtrip_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), test_roundtrip, test_temp_dir, True)
+        for f in output_files:
+            c += parse_test_cases(os.path.join(test_data_prefix, f), test_output, test_temp_dir, True)
         return c
 
 
 # Perform an identity source code transformation test case.
-def test_roundtrip(testcase):
+def test_output(testcase):
     any a
     expected = testcase.output
     if expected == []:
