@@ -1,6 +1,6 @@
 from mtypes import Typ, Void, NoneTyp, Any, ErrorType
 from constraints import Constraint, SUPERTYPE_OF
-from checker import BasicTypes
+import checker
 from join import join_types
 from meet import meet_types
 from subtypes import is_subtype
@@ -9,7 +9,7 @@ from subtypes import is_subtype
 # Solve type constraints. Return lower bound for each type variable or
 # nil if the variable could not be solved.
 list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints,
-                            BasicTypes basic):
+                            checker.BasicTypes basic):
     # Collect a list of constraints for each type variable.
     dict<int, list<Constraint>> cmap = {}
     for con in constraints:

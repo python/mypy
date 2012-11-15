@@ -1,5 +1,9 @@
-from types import Typ, Instance, Any, TupleType
-from nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode
+from mtypes import Typ, Instance, Any, TupleType
+from nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
+from messages import MessageBuilder
+from subtypes import map_instance_to_supertype
+from expandtype import expand_type_by_instance
+import checker
 
 
 # Analyse member access. This is a general operation that supports various
@@ -28,7 +32,7 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue, bool 
             # Found a method. The call below has a unique result for all valid
             # programs.
             itype = map_instance_to_supertype(itype, method.info)
-            return expand_type_by_instance(method_type(method), itype)
+            return expand_type_by_instance(checker.method_type(method), itype)
         else:
             # Not a method.
             return analyse_member_var_access(name, itype, info, node, is_lvalue, is_super, msg)
@@ -43,25 +47,29 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue, bool 
         return msg.has_no_member(typ, name, node)
 
 # Analyse member access that does not target a method. This is logically
-# part of AnalyseMemberAccess and the arguments are similar.
-Typ analyse_member_var_access(str name, Instance itype, TypeInfo info, Context node, bool is_lvalue, bool is_super, MessageBuilder msg):
+# part of analyse_member_access and the arguments are similar.
+Typ analyse_member_var_access(str name, Instance itype, TypeInfo info,
+                              Context node, bool is_lvalue, bool is_super,
+                              MessageBuilder msg):
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
     
     if isinstance(v, Var):
         # Found a member variable.
-        
-        itype = map_instance_to_supertype(itype, v.info)
+        var = (Var)v
+        itype = map_instance_to_supertype(itype, var.info)
         # FIX what if more than one?
-        if v.typ is not None:
-            return expand_type_by_instance(v.typ.typ, itype)
+        if var.typ is not None:
+            return expand_type_by_instance(var.typ.typ, itype)
         else:
             # Implicit dynamic type.
             return Any()
     elif isinstance(v, FuncDef):
         # Found a getter or a setter.
-        itype = map_instance_to_supertype(itype, v.info)
-        return expand_type_by_instance(accessor_type(v), itype)
+        raise NotImplementedError()
+        #func = (FuncDef)v
+        #itype = map_instance_to_supertype(itype, func.info)
+        #return expand_type_by_instance(checker.accessor_type(v), itype)
     
     # Could not find the member.
     if is_super:
@@ -73,7 +81,8 @@ Typ analyse_member_var_access(str name, Instance itype, TypeInfo info, Context n
 
 # Find the member variable or accessor node that refers to the given member
 # of a type.
-AccessorNode lookup_member_var_or_accessor(TypeInfo info, str name, bool is_lvalue):
+AccessorNode lookup_member_var_or_accessor(TypeInfo info, str name,
+                                           bool is_lvalue):
     if is_lvalue:
         return info.get_var_or_setter(name)
     else:

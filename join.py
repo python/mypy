@@ -1,4 +1,4 @@
-from checker import BasicTypes
+import checker
 from mtypes import (
     Typ, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
     TypeVar, Callable, TupleType
@@ -6,7 +6,7 @@ from mtypes import (
 from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
-Typ join_types(Typ s, Typ t, BasicTypes basic):
+Typ join_types(Typ s, Typ t, checker.BasicTypes basic):
     if isinstance(s, Any):
         return s
     
@@ -17,7 +17,7 @@ Typ join_types(Typ s, Typ t, BasicTypes basic):
 
 
 class TypeJoinVisitor(TypeVisitor<Typ>):
-    void __init__(self, Typ s, BasicTypes basic):
+    void __init__(self, Typ s, checker.BasicTypes basic):
         self.s = s
         self.basic = basic
         self.object = basic.object
@@ -101,7 +101,7 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
 #
 # Return ErrorType if the result is ambiguous.
 Typ join_instances(Instance t, Instance s, bool allow_interfaces,
-                   BasicTypes basic):
+                   checker.BasicTypes basic):
     if t.typ == s.typ:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
@@ -127,7 +127,8 @@ Typ join_instances(Instance t, Instance s, bool allow_interfaces,
 
 
 Typ join_instances_via_supertype(Instance t, Instance s,
-                                 bool allow_interfaces, BasicTypes basic):
+                                 bool allow_interfaces,
+                                 checker.BasicTypes basic):
     res = s
     mapped = map_instance_to_supertype(t, t.typ.base)
     join = join_instances(mapped, res, False, basic)
@@ -152,7 +153,8 @@ Typ join_instances_via_supertype(Instance t, Instance s,
 # Interface type result is expected in the following cases:
 #  * exactly one of t or s is an interface type
 #  * neither t nor s is an interface type, and neither is subtype of the other
-Typ join_instances_as_interface(Instance t, Instance s, BasicTypes basic):
+Typ join_instances_as_interface(Instance t, Instance s,
+                                checker.BasicTypes basic):
     t_ifaces = implemented_interfaces(t)
     s_ifaces = implemented_interfaces(s)
     
@@ -213,7 +215,8 @@ bool is_similar_callables(Callable t, Callable s):
             and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
 
 
-Callable combine_similar_callables(Callable t, Callable s, BasicTypes basic):
+Callable combine_similar_callables(Callable t, Callable s,
+                                   checker.BasicTypes basic):
     list<Typ> arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))

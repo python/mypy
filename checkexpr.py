@@ -10,9 +10,15 @@ from nodes import (
 )
 from sametypes import is_same_type
 import checker
-from replacetvars import relace_func_type_vars, replace_type_vars
+from replacetvars import replace_func_type_vars, replace_type_vars
 from messages import MessageBuilder
 import messages
+from infer import infer_type_arguments, infer_function_type_arguments
+from expandtype import expand_type, expand_caller_var_args
+from subtypes import is_subtype
+from erasetype import erase_type
+from checkmember import analyse_member_access
+from semanal import self_type
 
 
 # This class type checks expressions. It works closely together with
@@ -49,10 +55,10 @@ class ExpressionChecker:
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             f = (FuncDef)node
-            result = function_type(f)
+            result = checker.function_type(f)
         elif isinstance(node, OverloadedFuncDef):
-            f = (OverloadedFuncDef)node
-            result = f.typ.typ
+            o = (OverloadedFuncDef)node
+            result = o.typ.typ
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = self.type_object_type((TypeInfo)node)
@@ -130,7 +136,7 @@ class ExpressionChecker:
         
         fixed = len(args)
         if callee is not None:
-            fixed = min(fixed, callee.max_fixed_args)
+            fixed = min(fixed, callee.max_fixed_args())
         
         for i in range(fixed):
             arg = args[i]#FIX refactor
@@ -139,11 +145,11 @@ class ExpressionChecker:
                 ctx = callee.arg_types[i]
             res.append(self.accept(arg, ctx))
         
-        for i in range(fixed, len(args)):
+        for j in range(fixed, len(args)):
             if callee is not None and callee.is_var_arg:
-                res.append(self.accept(args[i], callee.arg_types[-1]))
+                res.append(self.accept(args[j], callee.arg_types[-1]))
             else:
-                res.append(self.accept(args[i]))
+                res.append(self.accept(args[j]))
         
         return res
     
@@ -200,7 +206,7 @@ class ExpressionChecker:
     # Check argument types against a callable type. If isVarArg is True,
     # the caller uses varargs.
     void check_argument_types(self, list<Typ> arg_types, bool is_var_arg, Callable callee, Context context):
-        callee_num_args = callee.max_fixed_args
+        callee_num_args = callee.max_fixed_args()
         
         Typ caller_rest = None # Rest of types for varargs calls
         if is_var_arg:
@@ -232,8 +238,9 @@ class ExpressionChecker:
         
         # Verify varargs.
         if callee.is_var_arg:
-            for i in range(callee_num_args, caller_num_args):
-                self.check_arg(arg_types[i], callee.arg_types[-1], i + 1, callee, context)
+            for j in range(callee_num_args, caller_num_args):
+                self.check_arg(arg_types[j], callee.arg_types[-1], j + 1,
+                               callee, context)
     
     # Check the type of a single argument in a call.
     void check_arg(self, Typ caller_type, Typ callee_type, int n, Callable callee, Context context):
@@ -277,7 +284,7 @@ class ExpressionChecker:
             if not self.is_valid_var_arg(arg_types[-1]):
                 return False
             Typ rest
-            arg_types, rest = expand_caller_var_args(arg_types, typ.max_fixed_args)
+            arg_types, rest = expand_caller_var_args(arg_types, typ.max_fixed_args())
         
         for i in range(len(arg_types)):
             if not is_subtype(erase_type(arg_types[i], self.chk.basic_types()), erase_type(replace_type_vars(typ.arg_types[i]), self.chk.basic_types())):
@@ -312,10 +319,18 @@ class ExpressionChecker:
         
         list<tuple<int, Typ>> bound_vars = []
         for tv in tvars:
-            if map.has_key(tv.id):
+            if tv.id in map:
                 bound_vars.append((tv.id, map[tv.id]))
         
-        return Callable(arg_types, callable.min_args, callable.is_var_arg, expand_type(callable.ret_type, map), callable.is_type_obj, callable.name, TypeVars([]), callable.bound_vars + bound_vars, callable.line, callable.repr)
+        return Callable(arg_types,
+                        callable.min_args,
+                        callable.is_var_arg,
+                        expand_type(callable.ret_type, map),
+                        callable.is_type_obj(),
+                        callable.name,
+                        TypeVars([]),
+                        callable.bound_vars + bound_vars,
+                        callable.line, callable.repr)
     
     # Visit member expression (of form e.id).
     Typ visit_member_expr(self, MemberExpr e):
@@ -476,20 +491,21 @@ class ExpressionChecker:
             list<Typ> items = []
             for i in range(len(e.items)):
                 item = e.items[i]
-                Typ t
+                Typ tt
                 if ctx is None:
-                    t = self.accept(item)
+                    tt = self.accept(item)
                 else:
-                    t = self.accept(item, ctx.items[i])
+                    tt = self.accept(item, ctx.items[i])
                 self.check_not_void(t, e)
                 items.append(t)
             return TupleType(items)
         else:
             # Explicit item types, i.e. expression of form <t, ...> (e, ...).
-            for i in range(len(e.types)):
-                item = e.items[i]
-                t = self.accept(item)
-                self.chk.check_subtype(t, e.types[i], item, messages.INCOMPATIBLE_TUPLE_ITEM_TYPE)
+            for j in range(len(e.types)):
+                item = e.items[j]
+                itemtype = self.accept(item)
+                self.chk.check_subtype(t, e.types[j], itemtype,
+                                       messages.INCOMPATIBLE_TUPLE_ITEM_TYPE)
             return TupleType(e.types)
     
     Typ visit_dict_expr(self, DictExpr e):
@@ -509,11 +525,11 @@ class ExpressionChecker:
                 args.append(TupleExpr([key, value]))
             return self.check_call(constructor, args, e)
         else:
-            for key, value in e.items:
-                kt = self.accept(key)
-                vt = self.accept(value)
-                self.chk.check_subtype(kt, e.key_type, key, messages.INCOMPATIBLE_KEY_TYPE)
-                self.chk.check_subtype(vt, e.value_type, value, messages.INCOMPATIBLE_VALUE_TYPE)
+            for key_, value_ in e.items:
+                kt = self.accept(key_)
+                vt = self.accept(value_)
+                self.chk.check_subtype(kt, e.key_type, key_, messages.INCOMPATIBLE_KEY_TYPE)
+                self.chk.check_subtype(vt, e.value_type, value_, messages.INCOMPATIBLE_VALUE_TYPE)
             return self.chk.named_generic_type('builtins.dict', [e.key_type, e.value_type])
     
     # Type check lambda expression.
@@ -585,7 +601,7 @@ class ExpressionChecker:
         else:
             # Construct callable type based on signature of __init__. Adjust
             # return type and insert type arguments.
-            init_type = method_type(init_method)
+            init_type = checker.method_type(init_method)
             if isinstance(init_type, Callable):
                 return self.class_callable((Callable)init_type, info)
             else:
@@ -613,7 +629,7 @@ class ExpressionChecker:
     
     # Is the argument an instance type list<...>?
     bool is_list_instance(self, Typ t):
-        return isinstance(t, Instance) and ((Instance)t).typ.full_name == 'builtins.list'
+        return isinstance(t, Instance) and ((Instance)t).typ.full_name() == 'builtins.list'
     
     # Does a type have a member variable or an accessor with the given name?
     bool has_non_method(self, Typ typ, str member):
@@ -636,3 +652,19 @@ class ExpressionChecker:
         for n in a:
             r.append(self.unwrap(n))
         return r
+
+
+# Return a boolean indicating whether a call expression has a (potentially)
+# compatible number of arguments for calling a function. Varargs at caller are
+# not checked.
+bool is_valid_argc(int nargs, bool is_var_arg, Callable callable):
+    if is_var_arg:
+        if callable.is_var_arg:
+            return True
+        else:
+            return nargs - 1 <= callable.max_fixed_args()
+    elif callable.is_var_arg:
+        return nargs >= callable.min_args
+    else:
+        # Neither has varargs.
+        return nargs <= len(callable.arg_types) and nargs >= callable.min_args

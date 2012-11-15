@@ -32,7 +32,7 @@ node_kinds = {
 
 # Nodes that can be stored in a symbol table.
 # TODO better name
-# TODO combine with SymNode?
+# TODO remove or combine with SymNode?
 interface AccessorNode: pass
 
 

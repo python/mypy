@@ -1,4 +1,4 @@
-from checker import BasicTypes
+import checker
 from join import is_similar_callables, combine_similar_callables
 from mtypes import (
     Typ, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
@@ -8,7 +8,7 @@ from sametypes import is_same_type
 from subtypes import is_subtype
 
 
-Typ meet_types(Typ s, Typ t, BasicTypes basic):
+Typ meet_types(Typ s, Typ t, checker.BasicTypes basic):
     if isinstance(s, Any):
         return s
     
@@ -16,7 +16,7 @@ Typ meet_types(Typ s, Typ t, BasicTypes basic):
 
 
 class TypeMeetVisitor(TypeVisitor<Typ>):
-    void __init__(self, Typ s, BasicTypes basic):
+    void __init__(self, Typ s, checker.BasicTypes basic):
         self.s = s
         self.basic = basic
     

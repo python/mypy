@@ -2,7 +2,7 @@ from mtypes import (
     Typ, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
     TypeVar, Callable, TupleType
 )
-from checker import BasicTypes
+import checker
 
 
 # Erase any type variables from a type. Also replace complex types (tuple,
@@ -13,14 +13,12 @@ from checker import BasicTypes
 #   B<X> -> B<any>
 #   tuple<A, B> -> tuple
 #   func<...> -> function
-Typ erase_type(Typ typ, BasicTypes basic):
+Typ erase_type(Typ typ, checker.BasicTypes basic):
     return typ.accept(EraseTypeVisitor(basic))
 
 
 class EraseTypeVisitor(TypeVisitor<Typ>):
-    BasicTypes basic
-    
-    void __init__(self, BasicTypes basic):
+    void __init__(self, checker.BasicTypes basic):
         self.basic = basic
     
     Typ visit_unbound_type(self, UnboundType t):
