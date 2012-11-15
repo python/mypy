@@ -2,6 +2,8 @@ from mtypes import (
     Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
     Instance, TupleType
 )
+from expandtype import expand_caller_var_args
+from subtypes import map_instance_to_supertype
 
 
 # Infer type variable constraints for a callable and a list of argument types.
@@ -33,8 +35,8 @@ list<Constraint> infer_constraints_for_callable(Callable callee, list<Typ> arg_t
     
     # Infer constraints for varargs.
     if callee.is_var_arg:
-        for i in range(callee_num_args, caller_num_args):
-            c = infer_constraints(callee.arg_types[-1], arg_types[i])
+        for j in range(callee_num_args, caller_num_args):
+            c = infer_constraints(callee.arg_types[-1], arg_types[j])
             constraints.extend(c)
     
     return constraints
@@ -78,7 +80,7 @@ class Constraint:
             op_str = ':>'
         return '{} {} {}'.format(self.type_var, op_str, self.target)
     
-    void __init__(self, int type_var, Constant op, Typ target):
+    void __init__(self, int type_var, int op, Typ target):
         self.type_var = type_var
         self.op = op
         self.target = target

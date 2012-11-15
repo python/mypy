@@ -16,7 +16,7 @@ class Typ(nodes.Context):
     T accept<T>(self, TypeVisitor<T> visitor):
         raise RuntimeError('Not implemented')
     
-    str __str__(self):
+    str __repr__(self):
         return self.accept(TypeStrVisitor())
 
 
