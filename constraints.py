@@ -8,7 +8,8 @@ from subtypes import map_instance_to_supertype
 
 # Infer type variable constraints for a callable and a list of argument types.
 # Return a list of constraints.
-list<Constraint> infer_constraints_for_callable(Callable callee, list<Typ> arg_types, bool is_var_arg):
+list<Constraint> infer_constraints_for_callable(
+            Callable callee, list<Typ> arg_types, bool is_var_arg):
     # FIX check argument counts
     
     callee_num_args = callee.max_fixed_args()
@@ -17,7 +18,8 @@ list<Constraint> infer_constraints_for_callable(Callable callee, list<Typ> arg_t
     
     Typ caller_rest = None # Rest of types for varargs calls
     if is_var_arg:
-        arg_types, caller_rest = expand_caller_var_args(arg_types, callee_num_args)
+        arg_types, caller_rest = expand_caller_var_args(arg_types,
+                                                        callee_num_args)
         if arg_types is None:
             # Invalid varargs arguments.
             return []
@@ -115,19 +117,22 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     # Non-leaf types
     
     list<Constraint> visit_instance(self, Instance template):
-        if isinstance(self.actual, Instance) and ((Instance)self.actual).typ.has_base(template.typ.full_name()):
+        actual = self.actual
+        if (isinstance(actual, Instance) and
+                ((Instance)actual).typ.has_base(template.typ.full_name())):
             list<Constraint> res = []
             
-            mapped = map_instance_to_supertype((Instance)self.actual, template.typ)
+            mapped = map_instance_to_supertype((Instance)actual, template.typ)
             for i in range(len(template.args)):
-                # The constraints for generic type parameters are invariant. Include
-                # the default constraint and its negation to achieve the effect.
+                # The constraints for generic type parameters are invariant.
+                # Include the default constraint and its negation to achieve
+                # the effect.
                 cb = infer_constraints(template.args[i], mapped.args[i])
                 res.extend(cb)
                 res.extend(negate_constraints(cb))
-            
+                
             return res
-        elif isinstance(self.actual, Any):
+        elif isinstance(actual, Any):
             # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args)
         else:
@@ -141,7 +146,8 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
             list<Constraint> res = []
             for i in range(len(template.arg_types)):
                 # Negate constraints due function argument type contravariance.
-                res.extend(negate_constraints(infer_constraints(template.arg_types[i], cactual.arg_types[i])))
+                res.extend(negate_constraints(infer_constraints(
+                    template.arg_types[i], cactual.arg_types[i])))
             res.extend(infer_constraints(template.ret_type, cactual.ret_type))
             return res
         elif isinstance(self.actual, Any):
@@ -153,12 +159,15 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
             return []
     
     list<Constraint> visit_tuple_type(self, TupleType template):
-        if isinstance(self.actual, TupleType) and len(((TupleType)self.actual).items) == len(template.items):
+        actual = self.actual
+        if (isinstance(actual, TupleType) and
+                len(((TupleType)actual).items) == len(template.items)):
             list<Constraint> res = []
             for i in range(len(template.items)):
-                res.extend(infer_constraints(template.items[i], ((TupleType)self.actual).items[i]))
+                res.extend(infer_constraints(template.items[i],
+                                             ((TupleType)actual).items[i]))
             return res
-        elif isinstance(self.actual, Any):
+        elif isinstance(actual, Any):
             return self.infer_against_any(template.items)
         else:
             return []

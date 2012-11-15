@@ -8,7 +8,8 @@ from subtypes import is_subtype
 
 # Solve type constraints. Return lower bound for each type variable or
 # nil if the variable could not be solved.
-list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints, BasicTypes basic):
+list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints,
+                            BasicTypes basic):
     # Collect a list of constraints for each type variable.
     dict<int, list<Constraint>> cmap = {}
     for con in constraints:
@@ -55,7 +56,9 @@ list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints, BasicT
             bottom = Any()
         
         # Pick the most specific type if it satisfies the constraints.
-        if (top is None or bottom is None or is_subtype(bottom, top)) and not isinstance(top, ErrorType) and not isinstance(bottom, ErrorType):
+        if (not top or not bottom or is_subtype(bottom, top)) and (
+                not isinstance(top, ErrorType) and
+                not isinstance(bottom, ErrorType)):
             res.append(bottom)
         else:
             res.append(None)

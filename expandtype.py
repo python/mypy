@@ -115,14 +115,16 @@ Callable update_callable_implicit_bounds(Callable t,
 # (nil, nil) if the last (vararg) argument had an invalid type. If the vararg
 # argument was not an array (nor dynamic), the last item in the returned
 # tuple is nil.
-tuple<list<Typ>, Typ> expand_caller_var_args(list<Typ> arg_types, int fixed_argc):
+tuple<list<Typ>, Typ> expand_caller_var_args(list<Typ> arg_types,
+                                             int fixed_argc):
     if isinstance(arg_types[-1], TupleType):
         return arg_types[:-1] + ((TupleType)arg_types[-1]).items, None
     else:
         Typ item_type
         if isinstance(arg_types[-1], Any):
             item_type = Any()
-        elif isinstance(arg_types[-1], Instance) and ((Instance)arg_types[-1]).typ.full_name() == 'builtins.list':
+        elif isinstance(arg_types[-1], Instance) and (
+                ((Instance)arg_types[-1]).typ.full_name() == 'builtins.list'):
             # List.
             item_type = ((Instance)arg_types[-1]).args[0]
         else:
@@ -131,4 +133,5 @@ tuple<list<Typ>, Typ> expand_caller_var_args(list<Typ> arg_types, int fixed_argc
         if len(arg_types) > fixed_argc:
             return arg_types[:-1], item_type
         else:
-            return arg_types[:-1] + [item_type] * (fixed_argc - len(arg_types) + 1), item_type
+            return (arg_types[:-1] +
+                    [item_type] * (fixed_argc - len(arg_types) + 1), item_type)
