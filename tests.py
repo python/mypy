@@ -5,6 +5,7 @@ import testsolve
 import testlex
 import testparse
 import testsemanal
+import testcheck
 import testoutput
 import testpythongen
 import sys

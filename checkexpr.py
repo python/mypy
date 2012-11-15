@@ -1,18 +1,32 @@
-from types import Typ, Any, Callable, Overloaded, replace_func_type_vars, NoneType, Void, is_same_type, replace_type_vars, TypeVarDef, TypeVars, TupleType, Instance, TypeVar
-from nodes import NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr, Node, MemberExpr, IntExpr, StrExpr, FloatExpr, OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr
+from mtypes import (
+    Typ, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
+    TupleType, Instance, TypeVar
+)
+from nodes import (
+        NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+        Node, MemberExpr, IntExpr, StrExpr, FloatExpr, OpExpr, UnaryExpr,
+        IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr, DictExpr,
+        FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context
+)
+from sametypes import is_same_type
+import checker
+from replacetvars import relace_func_type_vars, replace_type_vars
+from messages import MessageBuilder
+import messages
 
 
 # This class type checks expressions. It works closely together with
 # TypeChecker.
 class ExpressionChecker:
     # Some services are provided by a TypeChecker instance.
-    TypeChecker chk
+    checker.TypeChecker chk
     # This is shared with TypeChecker, but stored also here for convenience.
-    MessageBuilder msg
-    
+    MessageBuilder msg    
     
     # Construct an expression checker.
-    void __init__(self, TypeChecker chk, MessageBuilder msg):
+    void __init__(self,
+                  checker.TypeChecker chk,
+                  MessageBuilder msg):
         self.chk = chk
         self.msg = msg
     
@@ -150,7 +164,7 @@ class ExpressionChecker:
         #      might not be optimal.
         some_not_nil = False
         for i in range(len(args)):
-            if not isinstance(args[i], NoneType):
+            if not isinstance(args[i], NoneTyp):
                 some_not_nil = True
         if not some_not_nil:
             return callable
@@ -208,7 +222,7 @@ class ExpressionChecker:
             
             # Check vararg types.
             if caller_rest is not None and callee.is_var_arg:
-                self.chk.check_subtype(caller_rest, callee.arg_types[-1], context, INCOMPATIBLE_ARRAY_VAR_ARGS)
+                self.chk.check_subtype(caller_rest, callee.arg_types[-1], context, messages.INCOMPATIBLE_ARRAY_VAR_ARGS)
         
         caller_num_args = len(arg_types)
         
@@ -343,8 +357,8 @@ class ExpressionChecker:
                 return result
             else:
                 return self.chk.bool_type()
-        elif op_methods.has_key(e.op):
-            method = op_methods[e.op]
+        elif checker.op_methods.has_key(e.op):
+            method = checker.op_methods[e.op]
             return self.check_op(method, left_type, e.right, e)
         elif e.op == 'and' or e.op == 'or':
             return self.check_boolean_op(e.op, left_type, right_type, e)
@@ -402,10 +416,10 @@ class ExpressionChecker:
                 if n < len(tuple_type.items):
                     return tuple_type.items[n]
                 else:
-                    self.chk.fail(TUPLE_INDEX_OUT_OF_RANGE, e)
+                    self.chk.fail(messages.TUPLE_INDEX_OUT_OF_RANGE, e)
                     return Any()
             else:
-                self.chk.fail(TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
+                self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
                 return Any()
         else:
             return self.check_op('__getitem__', left_type, e.index, e)
@@ -432,7 +446,7 @@ class ExpressionChecker:
         if isinstance(expr_type, Callable):
             return self.apply_generic_arguments((Callable)expr_type, tapp.types, [], tapp)
         else:
-            self.chk.fail(INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
+            self.chk.fail(messages.INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
             return Any()
     
     # Type check a list expression [...] or <t> [...].
@@ -475,7 +489,7 @@ class ExpressionChecker:
             for i in range(len(e.types)):
                 item = e.items[i]
                 t = self.accept(item)
-                self.chk.check_subtype(t, e.types[i], item, INCOMPATIBLE_TUPLE_ITEM_TYPE)
+                self.chk.check_subtype(t, e.types[i], item, messages.INCOMPATIBLE_TUPLE_ITEM_TYPE)
             return TupleType(e.types)
     
     Typ visit_dict_expr(self, DictExpr e):
@@ -498,8 +512,8 @@ class ExpressionChecker:
             for key, value in e.items:
                 kt = self.accept(key)
                 vt = self.accept(value)
-                self.chk.check_subtype(kt, e.key_type, key, INCOMPATIBLE_KEY_TYPE)
-                self.chk.check_subtype(vt, e.value_type, value, INCOMPATIBLE_VALUE_TYPE)
+                self.chk.check_subtype(kt, e.key_type, key, messages.INCOMPATIBLE_KEY_TYPE)
+                self.chk.check_subtype(vt, e.value_type, value, messages.INCOMPATIBLE_VALUE_TYPE)
             return self.chk.named_generic_type('builtins.dict', [e.key_type, e.value_type])
     
     # Type check lambda expression.
@@ -528,7 +542,7 @@ class ExpressionChecker:
         for index in [e.begin_index, e.end_index, e.stride]:
             if index is not None:
                 t = self.accept(index)
-                self.chk.check_subtype(t, self.named_type('builtins.int'), index, INVALID_SLICE_INDEX)
+                self.chk.check_subtype(t, self.named_type('builtins.int'), index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
     
     

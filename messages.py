@@ -1,38 +1,42 @@
 import re
 from errors import Errors
-from types import Typ, Callable, Instance, TypeVar, TupleType, Void, NoneType, Any, Overloaded
-from nodes import TypeInfo
+from mtypes import (
+    Typ, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any, Overloaded
+)
+from nodes import TypeInfo, Context
+import checker
 
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
 
-str NO_RETURN_VALUE_EXPECTED = 'No return value expected'
-str INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
-str RETURN_VALUE_EXPECTED = 'Return value expected'
-str BOOLEAN_VALUE_EXPECTED = 'Boolean value expected'
-str BOOLEAN_EXPECTED_FOR_IF = 'Boolean value expected for if condition'
-str BOOLEAN_EXPECTED_FOR_WHILE = 'Boolean value expected for while condition'
-str BOOLEAN_EXPECTED_FOR_UNTIL = 'Boolean value expected for until condition'
-str BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
-str INVALID_EXCEPTION_TYPE = 'Invalid exception type'
-str INCOMPATIBLE_TYPES = 'Incompatible types'
-str INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
-str INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
-str GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = 'Type of getter incompatible with setter'
-str TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must an integer literal'
-str TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-str TYPE_CONSTANT_EXPECTED = 'Type "Constant" or initializer expected'
-str INCOMPATIBLE_PAIR_ITEM_TYPE = 'Incompatible Pair item type'
-str INVALID_TYPE_APPLICATION_TARGET_TYPE = 'Invalid type application target type'
-str INCOMPATIBLE_TUPLE_ITEM_TYPE = 'Incompatible tuple item type'
-str INCOMPATIBLE_KEY_TYPE = 'Incompatible dictionary key type'
-str INCOMPATIBLE_VALUE_TYPE = 'Incompatible dictionary value type'
-str NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
-str ITERABLE_EXPECTED = 'Iterable expected'
-str INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
-str INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
-str INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  
+NO_RETURN_VALUE_EXPECTED = 'No return value expected'
+INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
+RETURN_VALUE_EXPECTED = 'Return value expected'
+BOOLEAN_VALUE_EXPECTED = 'Boolean value expected'
+BOOLEAN_EXPECTED_FOR_IF = 'Boolean value expected for if condition'
+BOOLEAN_EXPECTED_FOR_WHILE = 'Boolean value expected for while condition'
+BOOLEAN_EXPECTED_FOR_UNTIL = 'Boolean value expected for until condition'
+BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
+INVALID_EXCEPTION_TYPE = 'Invalid exception type'
+INCOMPATIBLE_TYPES = 'Incompatible types'
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
+INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
+GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
+                                     'Type of getter incompatible with setter'
+TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must an integer literal'
+TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
+TYPE_CONSTANT_EXPECTED = 'Type "Constant" or initializer expected'
+INCOMPATIBLE_PAIR_ITEM_TYPE = 'Incompatible Pair item type'
+INVALID_TYPE_APPLICATION_TARGET_TYPE = 'Invalid type application target type'
+INCOMPATIBLE_TUPLE_ITEM_TYPE = 'Incompatible tuple item type'
+INCOMPATIBLE_KEY_TYPE = 'Incompatible dictionary key type'
+INCOMPATIBLE_VALUE_TYPE = 'Incompatible dictionary value type'
+NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
+ITERABLE_EXPECTED = 'Iterable expected'
+INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
+INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
+INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  
 
 
 # Helper class for reporting type checker error messages with parameters.
@@ -55,7 +59,7 @@ class MessageBuilder:
     
     # Report an error message.
     void fail(self, str msg, Context context):
-        self.errors.report(context.line, msg.strip())
+        self.errors.report(context.get_line(), msg.strip())
     
     # Convert a type to a relatively short string that is suitable for error
     # messages. Mostly behave like formatSimple below, but never return an
@@ -86,7 +90,7 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = (Instance)typ
             # Get the short name of the type.
-            base_str = itype.typ.name
+            base_str = itype.typ.name()
             if itype.args == []:
                 # No type arguments. Place the type name in quotes to avoid potential
                 # for confusion: otherwise, the type name could be interpreted as a
@@ -108,17 +112,17 @@ class MessageBuilder:
             # This is similar to non-generic instance types.
             return '"{}"'.format(((TypeVar)typ).name)
         elif isinstance(typ, TupleType):
-            list<str> a = []
+            list<str> items = []
             for t in ((TupleType)typ).items:
-                a.append(strip_quotes(self.format(t)))
-            s = '"tuple<{}>"'.format(', '.join(a))
+                items.append(strip_quotes(self.format(t)))
+            s = '"tuple<{}>"'.format(', '.join(items))
             if len(s) < 20:
                 return s
             else:
                 return 'tuple'
         elif isinstance(typ, Void):
             return 'void'
-        elif isinstance(typ, NoneType):
+        elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, Any):
             return '"any"'
@@ -146,10 +150,10 @@ class MessageBuilder:
             self.check_void(typ, context)
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(self.format(typ)), context)
-        elif member in op_methods.values():
+        elif member in checker.op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does not
             # handle indexing operations.
-            for op, method in op_methods:
+            for op, method in checker.op_methods:
                 if method == member:
                     self.unsupported_left_operand(op, typ, context)
                     break
@@ -212,7 +216,7 @@ class MessageBuilder:
             name = callee.name
             base = extract_type(name)
             
-            for op, method in op_methods:
+            for op, method in checker.op_methods:
                 if name.startswith('"{}" of'.format(method)):
                     if op == 'in':
                         self.unsupported_operand_types(op, arg_type, base, context)

@@ -1,14 +1,33 @@
 import os.path
 from unittest import Suite
-from test.helpers import parse_test_cases, assert_string_arrays_equal
+from testconfig import test_temp_dir, test_data_prefix
+from testdata import parse_test_cases
+from testhelpers import assert_string_arrays_equal
 from build import build
 from errors import CompileError
+from testsemanal import normalize_error_messages
+
+
+# List of files that contain test case descriptions.
+files = ['check-basic.test',
+         'check-generics.test',
+         'check-classes.test',
+         'check-expressions.test',
+         'check-statements.test',
+         'check-tuples.test',
+         'check-inference.test',
+         'check-inference-context.test',
+         'check-dynamic.test',
+         'check-functions.test',
+         'check-varargs.test',
+         'check-overloading.test',
+         'check-interfaces.test',
+         'check-super.test',
+         'check-modules.test',
+         'check-generic-subtyping.test']
 
 
 class TypeCheckSuite(Suite):
-    # List of files that contain test case descriptions.
-    files = ['check-basic.test', 'check-generics.test', 'check-classes.test', 'check-expressions.test', 'check-statements.test', 'check-tuples.test', 'check-inference.test', 'check-inference-context.test', 'check-dynamic.test', 'check-functions.test', 'check-varargs.test', 'check-overloading.test', 'check-interfaces.test', 'check-super.test', 'check-modules.test', 'check-generic-subtyping.test']
-    
     def cases(self):
         c = []
         for f in self.files:
