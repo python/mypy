@@ -49,16 +49,24 @@ class SameTypeVisitor(TypeVisitor<bool>):
         return isinstance(self.right, NoneTyp)
     
     bool visit_instance(self, Instance left):
-        return isinstance(self.right, Instance) and left.typ == ((Instance)self.right).typ and is_same_types(left.args, ((Instance)self.right).args)
+        return (isinstance(self.right, Instance) and
+                left.typ == ((Instance)self.right).typ and
+                is_same_types(left.args, ((Instance)self.right).args))
     
     bool visit_type_var(self, TypeVar left):
-        return isinstance(self.right, TypeVar) and left.id == ((TypeVar)self.right).id and left.is_wrapper_var == ((TypeVar)self.right).is_wrapper_var
+        return (isinstance(self.right, TypeVar) and
+                left.id == ((TypeVar)self.right).id and
+                left.is_wrapper_var == ((TypeVar)self.right).is_wrapper_var)
     
     bool visit_callable(self, Callable left):
         # FIX generics
         if isinstance(self.right, Callable):
             cright = (Callable)self.right
-            return is_same_type(left.ret_type, cright.ret_type) and is_same_types(left.arg_types, cright.arg_types) and left.min_args == cright.min_args and left.is_var_arg == cright.is_var_arg and left.is_type_obj() == cright.is_type_obj()
+            return (is_same_type(left.ret_type, cright.ret_type) and
+                    is_same_types(left.arg_types, cright.arg_types) and
+                    left.min_args == cright.min_args and
+                    left.is_var_arg == cright.is_var_arg and
+                    left.is_type_obj() == cright.is_type_obj())
         else:
             return False
     

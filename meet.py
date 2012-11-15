@@ -16,9 +16,6 @@ Typ meet_types(Typ s, Typ t, BasicTypes basic):
 
 
 class TypeMeetVisitor(TypeVisitor<Typ>):
-    Typ s
-    BasicTypes basic
-    
     void __init__(self, Typ s, BasicTypes basic):
         self.s = s
         self.basic = basic
@@ -80,7 +77,8 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
             return self.default(self.s)
     
     Typ visit_callable(self, Callable t):
-        if isinstance(self.s, Callable) and is_similar_callables(t, (Callable)self.s):
+        if isinstance(self.s, Callable) and is_similar_callables(
+                                                        t, (Callable)self.s):
             return combine_similar_callables(t, (Callable)self.s, self.basic)
         else:
             return self.default(self.s)
@@ -90,7 +88,8 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
                                               t.length()):
             list<Typ> items = []
             for i in range(t.length()):
-                items.append(self.meet(t.items[i], ((TupleType)self.s).items[i]))
+                items.append(self.meet(t.items[i],
+                                       ((TupleType)self.s).items[i]))
             return TupleType(items)
         else:
             return self.default(self.s)

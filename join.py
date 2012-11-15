@@ -61,11 +61,14 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
             return self.default(self.s)
     
     Typ visit_callable(self, Callable t):
-        if isinstance(self.s, Callable) and is_similar_callables(t, (Callable)self.s):
+        if isinstance(self.s, Callable) and is_similar_callables(
+                                                    t, (Callable)self.s):
             return combine_similar_callables(t, (Callable)self.s, self.basic)
         elif t.is_type_obj() and is_subtype(self.s, self.basic.std_type):
             return self.basic.std_type
-        elif isinstance(self.s, Instance) and ((Instance)self.s).typ == self.basic.std_type.typ and t.is_type_obj():
+        elif (isinstance(self.s, Instance) and
+                  ((Instance)self.s).typ == self.basic.std_type.typ and
+                  t.is_type_obj()):
             return self.basic.std_type
         else:
             return self.default(self.s)
@@ -75,7 +78,8 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
                                               t.length()):
             list<Typ> items = []
             for i in range(t.length()):
-                items.append(self.join(t.items[i], ((TupleType)self.s).items[i]))
+                items.append(self.join(t.items[i],
+                                       ((TupleType)self.s).items[i]))
             return TupleType(items)
         else:
             return self.default(self.s)
@@ -96,10 +100,11 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
 # consider interface-type results for non-interface types.
 #
 # Return ErrorType if the result is ambiguous.
-Typ join_instances(Instance t, Instance s, bool allow_interfaces, BasicTypes basic):
+Typ join_instances(Instance t, Instance s, bool allow_interfaces,
+                   BasicTypes basic):
     if t.typ == s.typ:
-        # Simplest case: join two types with the same base type (but  potentially
-        # different arguments).
+        # Simplest case: join two types with the same base type (but
+        # potentially different arguments).
         if is_subtype(t, s):
             # Compatible; combine type arguments.
             list<Typ> args = []
@@ -121,7 +126,8 @@ Typ join_instances(Instance t, Instance s, bool allow_interfaces, BasicTypes bas
         return basic.object
 
 
-Typ join_instances_via_supertype(Instance t, Instance s, bool allow_interfaces, BasicTypes basic):
+Typ join_instances_via_supertype(Instance t, Instance s,
+                                 bool allow_interfaces, BasicTypes basic):
     res = s
     mapped = map_instance_to_supertype(t, t.typ.base)
     join = join_instances(mapped, res, False, basic)
@@ -132,7 +138,8 @@ Typ join_instances_via_supertype(Instance t, Instance s, bool allow_interfaces, 
     # Now the result must be an Instance, so the cast below cannot fail.
     res = (Instance)join
     
-    if res.typ == basic.object.typ and not t.typ.is_interface and allow_interfaces:
+    if (res.typ == basic.object.typ and not t.typ.is_interface and
+            allow_interfaces):
         return join_instances_as_interface(t, s, basic)
     else:
         return res
@@ -172,8 +179,8 @@ Typ join_instances_as_interface(Instance t, Instance s, BasicTypes basic):
         # ambigous (ErrorType).
         j = res[0]
         for i in range(1, len(res)):
-            # As above, the join of two interface types is always an Instance type.
-            # The cast below is thus safe.
+            # As above, the join of two interface types is always an Instance
+            # type. The cast below is thus safe.
             j = (Instance)join_types(j, res[i], basic)
         if j.typ != basic.object.typ:
             return j
@@ -202,12 +209,19 @@ list<Typ> implemented_interfaces(Instance t):
 # Return True if t and s are equivalent and have identical numbers of
 # arguments, default arguments and varargs.
 bool is_similar_callables(Callable t, Callable s):
-    return len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and t.is_var_arg == s.is_var_arg and is_equivalent(t, s)
+    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args
+            and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
 
 
 Callable combine_similar_callables(Callable t, Callable s, BasicTypes basic):
     list<Typ> arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
-    return Callable(arg_types, t.min_args, t.is_var_arg, join_types(t.ret_type, s.ret_type, basic), t.is_type_obj() and s.is_type_obj(), None, t.variables)
+    return Callable(arg_types,
+                    t.min_args,
+                    t.is_var_arg,
+                    join_types(t.ret_type, s.ret_type, basic),
+                    t.is_type_obj() and s.is_type_obj(),
+                    None,
+                    t.variables)
     return s
