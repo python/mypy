@@ -1,5 +1,7 @@
 from unittest import Suite, assert_equal
-from checker import solve_constraints, Constraint, SUPERTYPE_OF, SUBTYPE_OF
+from constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
+from solve import solve_constraints
+from typefixture import TypeFixture
 
 
 class SolveSuite(Suite):

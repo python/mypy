@@ -1,4 +1,7 @@
-from types import Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneType, TypeVar, Instance, TupleType
+from mtypes import (
+    Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
+    Instance, TupleType
+)
 
 
 # Infer type variable constraints for a callable and a list of argument types.
@@ -6,7 +9,7 @@ from types import Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneType, 
 list<Constraint> infer_constraints_for_callable(Callable callee, list<Typ> arg_types, bool is_var_arg):
     # FIX check argument counts
     
-    callee_num_args = callee.max_fixed_args
+    callee_num_args = callee.max_fixed_args()
     
     list<Constraint> constraints = []
     
@@ -58,14 +61,15 @@ list<Constraint> infer_constraints(Typ template, Typ actual):
     return template.accept(ConstraintBuilderVisitor(actual))
 
 
-any SUBTYPE_OF, any SUPERTYPE_OF
+SUBTYPE_OF = 0
+SUPERTYPE_OF = 1
 
 
 # A representatino of a type constraint, either T <: type or T :> type (T is
 # a type variable).
 class Constraint:
-    int type_var      # Type variable id
-    Constant op # SubtypeOf or SupertypeOf
+    int type_var   # Type variable id
+    int op         # SUBTYPE_OF or SUPERTYPE_OF
     Typ target
     
     str __str__(self):
@@ -98,7 +102,7 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     list<Constraint> visit_void(self, Void template):
         return []
     
-    list<Constraint> visit_none_type(self, NoneType template):
+    list<Constraint> visit_none_type(self, NoneTyp template):
         return []
     
     # Non-trivial leaf type
@@ -109,7 +113,7 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     # Non-leaf types
     
     list<Constraint> visit_instance(self, Instance template):
-        if isinstance(self.actual, Instance) and ((Instance)self.actual).typ.has_base(template.typ.full_name):
+        if isinstance(self.actual, Instance) and ((Instance)self.actual).typ.has_base(template.typ.full_name()):
             list<Constraint> res = []
             
             mapped = map_instance_to_supertype((Instance)self.actual, template.typ)
@@ -172,7 +176,7 @@ list<Constraint> negate_constraints(list<Constraint> constraints):
 
 
 # Map SubtypeOf to SupertypeOf and vice versa.
-Constant neg_op(Constant op):
+int neg_op(int op):
     if op == SUBTYPE_OF:
         return SUPERTYPE_OF
     elif op == SUPERTYPE_OF:

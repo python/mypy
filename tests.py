@@ -1,6 +1,7 @@
 from unittest import Suite, run_test
 import testtypes
 import testsubtypes
+import testsolve
 import testlex
 import testparse
 import testsemanal
@@ -16,6 +17,7 @@ class AllSuite(Suite):
         self.test_join = testtypes.JoinSuite()
         self.test_meet = testtypes.MeetSuite()
         self.test_subtypes = testsubtypes.SubtypingSuite()
+        self.test_solve = testsolve.SolveSuite()
         self.test_lex = testlex.LexerSuite()
         self.test_parse = testparse.ParserSuite()
         self.test_parse_errors = testparse.ParseErrorSuite()

@@ -1,4 +1,4 @@
-from types import Typ, Void, NoneType, Any, ErrorType
+from mtypes import Typ, Void, NoneTyp, Any, ErrorType
 
 
 # Solve type constraints. Return lower bound for each type variable or
@@ -43,7 +43,7 @@ list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints, BasicT
             if isinstance(top, Void):
                 bottom = Void()
             else:
-                bottom = NoneType()
+                bottom = NoneTyp()
         
         if isinstance(top, Any) or isinstance(bottom, Any):
             top = Any()
