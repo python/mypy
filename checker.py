@@ -112,9 +112,10 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return typ
     
-    
+
+    #
     # Definitions
-    #------------
+    #
     
     
     # Type check a variable definition (of any kind: local, member or local).
@@ -125,25 +126,30 @@ class TypeChecker(NodeVisitor<Typ>):
             if defn.items[0][1] is not None:
                 # Explicit types.
                 if len(defn.items) == 1:
-                    self.check_assignment(defn.items[0][1], None, defn.init, defn.init)
+                    self.check_assignment(defn.items[0][1], None, defn.init,
+                                          defn.init)
                 else:
                     # Multiple assignment.
                     list<Typ> lvt = []
                     for v, t in defn.items:
                         lvt.append(t)
-                    self.check_multi_assignment(lvt, <tuple<Typ, Node>> [None] * len(lvt), defn.init, defn.init)
+                    self.check_multi_assignment(
+                        lvt, <tuple<Typ, Node>> [None] * len(lvt),
+                        defn.init, defn.init)
             else:
                 init_type = self.accept(defn.init)
                 if defn.kind == LDEF and not defn.is_top_level:
-                    # Infer local variable type if there is an initializer except if the
-                    # definition is at the top level (outside a function).
+                    # Infer local variable type if there is an initializer
+                    # except if the# definition is at the top level (outside a
+                    # function).
                     list<Var> names = []
                     for vv, tt in defn.items:
                         names.append(vv)
                     self.infer_local_variable_type(names, init_type, defn)
         else:
             # No initializer
-            if defn.kind == LDEF and defn.items[0][1] is None and not defn.is_top_level and not self.is_dynamic_function():
+            if (defn.kind == LDEF and defn.items[0][1] is None and
+                    not defn.is_top_level and not self.is_dynamic_function()):
                 self.fail(messages.NEED_ANNOTATION_FOR_VAR, defn)
     
     def infer_local_variable_type(self, x, y, z):
@@ -189,16 +195,19 @@ class TypeChecker(NodeVisitor<Typ>):
     void check_func_def(self, FuncItem defn, Typ typ):
         # We may be checking a function definition or an anonymous function. In
         # the first case, set up another reference with the precise type.
-        FuncDef fdef = None
         if isinstance(defn, FuncDef):
             fdef = (FuncDef)defn
+        else:
+            fdef = None
         
         self.enter()
         
-        if fdef is not None:
-            # The cast below will work since non-method create will cause semantic
-            # analysis to fail, and type checking won't be done.
-            if fdef.info is not None and fdef.name() == '__init__' and not isinstance(((Callable)typ).ret_type, Void) and not self.dynamic_funcs[-1]:
+        if fdef:
+            # The cast below will work since non-method create will cause
+            # semantic analysis to fail, and type checking won't be done.
+            if (fdef.info and fdef.name() == '__init__' and
+                    not isinstance(((Callable)typ).ret_type, Void) and
+                    not self.dynamic_funcs[-1]):
                 self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE, defn.typ)
         
         # Push return type.
@@ -239,8 +248,9 @@ class TypeChecker(NodeVisitor<Typ>):
     
     # Check that function definition is compatible with any overridden
     # definition in the specified supertype.
-    void check_method_or_accessor_override_for_base(self, FuncBase defn, TypeInfo base):
-        if base is not None:
+    void check_method_or_accessor_override_for_base(self, FuncBase defn,
+                                                    TypeInfo base):
+        if base:
             if defn.name() != '__init__':
                 # Check method override (create is special).
                 base_method = base.get_method(defn.name())
@@ -249,10 +259,12 @@ class TypeChecker(NodeVisitor<Typ>):
                     
                     # Construct the type of the overriding method.
                     typ = method_type(defn)
-                    # Map the overridden method type to subtype context so that it
-                    # can be checked for compatibility. Note that multiple types from
-                    # multiple implemented interface instances may be present.
-                    original_type = map_type_from_supertype(method_type(base_method), defn.info, base)
+                    # Map the overridden method type to subtype context so that
+                    # it can be checked for compatibility. Note that multiple
+                    # types from multiple implemented interface instances may
+                    # be present.
+                    original_type = map_type_from_supertype(
+                        method_type(base_method), defn.info, base)
                     # Check that the types are compatible.
                     # TODO overloaded signatures
                     self.check_override((FunctionLike)typ,
@@ -265,9 +277,9 @@ class TypeChecker(NodeVisitor<Typ>):
             for iface in base.interfaces:
                 self.check_method_or_accessor_override_for_base(defn, iface)
             
-            # We have to check that the member is compatible with all supertypes
-            # due to the dynamic type. Otherwise we could first override with
-            # dynamic and then with an arbitary type.
+            # We have to check that the member is compatible with all
+            # supertypes due to the dynamic type. Otherwise we could first
+            # override with dynamic and then with an arbitary type.
             self.check_method_or_accessor_override_for_base(defn, base.base)
     
     # Check a method override with given signatures.
@@ -277,24 +289,35 @@ class TypeChecker(NodeVisitor<Typ>):
     #  name:      The name of the subtype. This and the next argument are
     #             only used for generating error messages.
     #  supertype: The name of the supertype.
-    void check_override(self, FunctionLike override, FunctionLike original, str name, str supertype, Context node):
-        if isinstance(override, Overloaded) or isinstance(original, Overloaded) or len(((Callable)override).arg_types) != len(((Callable)original).arg_types) or ((Callable)override).min_args != ((Callable)original).min_args:
+    void check_override(self, FunctionLike override, FunctionLike original,
+                        str name, str supertype, Context node):
+        if (isinstance(override, Overloaded) or
+                isinstance(original, Overloaded) or
+                len(((Callable)override).arg_types) !=
+                    len(((Callable)original).arg_types) or
+                ((Callable)override).min_args !=
+                    ((Callable)original).min_args):
             if not is_subtype(override, original):
-                self.msg.signature_incompatible_with_supertype(name, supertype, node)
-            return 
+                self.msg.signature_incompatible_with_supertype(
+                    name, supertype, node)
+            return
         else:
-            # Give more detailed messages for the common case of both signatures
-            # having the same number of arguments and no intersection types.
+            # Give more detailed messages for the common case of both
+            # signatures having the same number of arguments and no
+            # intersection types.
             
             coverride = (Callable)override
             coriginal = (Callable)original
             
             for i in range(len(coverride.arg_types)):
-                if not is_equivalent(coriginal.arg_types[i], coverride.arg_types[i]):
-                    self.msg.argument_incompatible_with_supertype(i + 1, name, supertype, node)
+                if not is_equivalent(coriginal.arg_types[i],
+                                     coverride.arg_types[i]):
+                    self.msg.argument_incompatible_with_supertype(
+                        i + 1, name, supertype, node)
             
             if not is_subtype(coverride.ret_type, coriginal.ret_type):
-                self.msg.return_type_incompatible_with_supertype(name, supertype, node)
+                self.msg.return_type_incompatible_with_supertype(
+                    name, supertype, node)
     
     # Type check a type definition (class or interface).
     Typ visit_type_def(self, TypeDef defn):
@@ -341,9 +364,10 @@ class TypeChecker(NodeVisitor<Typ>):
                 if not typ.has_method(n):
                     self.msg.interface_member_not_implemented(typ, iface, n)
     
-    
+
+    #
     # Statements
-    #-----------
+    #
     
     
     Typ visit_block(self, Block b):
@@ -387,14 +411,17 @@ class TypeChecker(NodeVisitor<Typ>):
         
         if len(lvalues) == 1:
             # Single lvalue.
-            self.check_assignment(lvalue_types[0], index_lvalue_types[0], s.rvalue, s.rvalue)
+            self.check_assignment(lvalue_types[0], index_lvalue_types[0],
+                                  s.rvalue, s.rvalue)
         else:
-            self.check_multi_assignment(lvalue_types, index_lvalue_types, s.rvalue, s.rvalue)
+            self.check_multi_assignment(lvalue_types, index_lvalue_types,
+                                        s.rvalue, s.rvalue)
         if is_inferred:
             self.infer_variable_type(inferred, self.accept(s.rvalue), s.rvalue)
     
     def is_definition(self, s):
-        return (isinstance(s, NameExpr) or isinstance(s, MemberExpr)) and s.is_def
+        return ((isinstance(s, NameExpr) or isinstance(s, MemberExpr)) and
+                s.is_def)
     
     list<Node> expand_lvalues(self, Node n):
         if isinstance(n, TupleExpr):
@@ -408,7 +435,8 @@ class TypeChecker(NodeVisitor<Typ>):
     
     # Infer the type of initialized local variables from the type of the
     # initializer expression.
-    void infer_variable_type(self, list<Var> names, Typ init_type, Context context):
+    void infer_variable_type(self, list<Var> names, Typ init_type,
+                             Context context):
         if isinstance(init_type, Void):
             self.check_not_void(init_type, context)
         elif not self.is_valid_inferred_type(init_type):
@@ -429,8 +457,11 @@ class TypeChecker(NodeVisitor<Typ>):
                         for i in range(len(names)):
                             names[i].typ = Annotation(tinit_type.items[i], -1)
                     else:
-                        self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT, context)
-                elif isinstance(init_type, Instance) and ((Instance)init_type).typ.full_name() == 'builtins.list':
+                        self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                  context)
+                elif (isinstance(init_type, Instance) and
+                        ((Instance)init_type).typ.full_name() ==
+                            'builtins.list'):
                     # Initializer with an array type.
                     item_type = ((Instance)init_type).args[0]
                     for j in range(len(names)):
@@ -439,7 +470,8 @@ class TypeChecker(NodeVisitor<Typ>):
                     for k in range(len(names)):
                         names[k].typ = Annotation(Any(), -1)
                 else:
-                    self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT, context)
+                    self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                              context)
             else:
                 for v in names:
                     v.typ = Annotation(init_type, -1)
@@ -474,8 +506,14 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return typ
     
-    void check_multi_assignment(self, list<Typ> lvalue_types, list<tuple<Typ, Node>> index_lvalue_types, Node rvalue, Context context, str msg=messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT):
-        rvalue_type = self.accept(rvalue) # TODO maybe do this elsewhere; redundant
+    void check_multi_assignment(self, list<Typ> lvalue_types,
+                                list<tuple<Typ, Node>> index_lvalue_types,
+                                Node rvalue,
+                                Context context,
+                                str msg=None):
+        if not msg:
+            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
+        rvalue_type = self.accept(rvalue) # TODO maybe elsewhere; redundant
         # Try to expand rvalue to lvalue(s).
         if isinstance(rvalue_type, Any):
             pass
@@ -487,37 +525,49 @@ class TypeChecker(NodeVisitor<Typ>):
                 if lvalue_types[i] is not None:
                     items.append(lvalue_types[i])
                 elif i < len(trvalue.items):
-                    # TODO Figure out more precise type context, probably based on the
-                    #      type signature of the _set method.
+                    # TODO Figure out more precise type context, probably
+                    #      based on the type signature of the _set method.
                     items.append(trvalue.items[i])
             trvalue = ((TupleType)self.accept(rvalue, TupleType(items)))
             if len(trvalue.items) != len(lvalue_types):
-                self.msg.incompatible_value_count_in_assignment(len(lvalue_types), len(trvalue.items), context)
+                self.msg.incompatible_value_count_in_assignment(
+                    len(lvalue_types), len(trvalue.items), context)
             else:
                 # The number of values is compatible. Check their types.
                 for j in range(len(lvalue_types)):
-                    self.check_assignment(lvalue_types[j], index_lvalue_types[j], self.temp_node(trvalue.items[j]), context, msg)
-        elif isinstance(rvalue_type, Instance) and ((Instance)rvalue_type).typ.full_name() == 'builtins.list':
+                    self.check_assignment(lvalue_types[j],
+                                          index_lvalue_types[j],
+                                          self.temp_node(trvalue.items[j]),
+                                          context, msg)
+        elif (isinstance(rvalue_type, Instance) and
+                ((Instance)rvalue_type).typ.full_name() == 'builtins.list'):
             # Rvalue with Array type.
             item_type = ((Instance)rvalue_type).args[0]
             for k in range(len(lvalue_types)):
-                self.check_assignment(lvalue_types[k], index_lvalue_types[k], self.temp_node(item_type), context, msg)
+                self.check_assignment(lvalue_types[k],
+                                      index_lvalue_types[k],
+                                      self.temp_node(item_type), context, msg)
         else:
             self.fail(msg, context)
     
-    void check_assignment(self, Typ lvalue_type, tuple<Typ, Node> index_lvalue, Node rvalue, Context context, str msg=messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT):
-        if lvalue_type is not None:
+    void check_assignment(self, Typ lvalue_type, tuple<Typ, Node> index_lvalue,
+                          Node rvalue, Context context,
+                          str msg=messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT):
+        if lvalue_type:
             rvalue_type = self.accept(rvalue, lvalue_type)      
             self.check_subtype(rvalue_type, lvalue_type, context, msg)
-        elif index_lvalue is not None:
+        elif index_lvalue:
             self.check_indexed_assignment(index_lvalue, rvalue, context)
     
     # Type check indexed assignment base[index] = rvalue. The lvalueTypes
     # argument is the tuple (base type, index), the rvaluaType is the type
     # of the rvalue.
-    Typ check_indexed_assignment(self, tuple<Typ, Node> lvalue, Node rvalue, Context context):
-        method_type = self.expr_checker.analyse_external_member_access('__setitem__', lvalue[0], context)
-        return self.expr_checker.check_call(method_type, [lvalue[1], rvalue], context)
+    Typ check_indexed_assignment(self, tuple<Typ, Node> lvalue, Node rvalue,
+                                 Context context):
+        method_type = self.expr_checker.analyse_external_member_access(
+            '__setitem__', lvalue[0], context)
+        return self.expr_checker.check_call(method_type, [lvalue[1], rvalue],
+                                            context)
     
     Typ visit_expression_stmt(self, ExpressionStmt s):
         self.accept(s.expr)
@@ -533,10 +583,13 @@ class TypeChecker(NodeVisitor<Typ>):
                     if isinstance(self.return_types[-1], Void):
                         self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                     else:
-                        self.check_subtype(typ, self.return_types[-1], s, messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
+                        self.check_subtype(
+                            typ, self.return_types[-1], s,
+                            messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
                 # Return without a value.
-                if not isinstance(self.return_types[-1], Void) and not self.is_dynamic_function():
+                if (not isinstance(self.return_types[-1], Void) and
+                        not self.is_dynamic_function()):
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
     
     # Type check an if statement.
@@ -560,11 +613,13 @@ class TypeChecker(NodeVisitor<Typ>):
     # Type check an operator assignment statement, e.g. x += 1.
     Typ visit_operator_assignment_stmt(self, OperatorAssignmentStmt s):
         lvalue_type = self.accept(s.lvalue)
-        rvalue_type = self.expr_checker.check_op(op_methods[s.op], lvalue_type, s.rvalue, s)
+        rvalue_type = self.expr_checker.check_op(op_methods[s.op], lvalue_type,
+                                                 s.rvalue, s)
         
         if isinstance(s.lvalue, IndexExpr):
             lv = (IndexExpr)s.lvalue
-            self.check_assignment(None, (self.accept(lv.base), lv.index), s.rvalue, s.rvalue)
+            self.check_assignment(None, (self.accept(lv.base), lv.index),
+                                  s.rvalue, s.rvalue)
         else:
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
@@ -581,7 +636,8 @@ class TypeChecker(NodeVisitor<Typ>):
     # Type check a raise statement.
     Typ visit_raise_stmt(self, RaiseStmt s):
         typ = self.accept(s.expr)
-        self.check_subtype(typ, self.named_type('builtins.BaseException'), s, messages.INVALID_EXCEPTION_TYPE)
+        self.check_subtype(typ, self.named_type('builtins.BaseException'), s,
+                           messages.INVALID_EXCEPTION_TYPE)
     
     # Type check a try statement.
     Typ visit_try_stmt(self, TryStmt s):
@@ -598,7 +654,8 @@ class TypeChecker(NodeVisitor<Typ>):
             self.accept(s.else_body)
     
     Typ exception_type(self, Node n):
-        if isinstance(n, NameExpr) and isinstance(((NameExpr)n).node, TypeInfo):
+        if isinstance(n, NameExpr) and isinstance(((NameExpr)n).node,
+                                                  TypeInfo):
             return Instance((TypeInfo)((NameExpr)n).node, [])
         elif isinstance(self.expr_checker.unwrap(n), TupleExpr):
             self.fail('Multiple exception types not supported yet', n)
@@ -611,14 +668,19 @@ class TypeChecker(NodeVisitor<Typ>):
         iterable = self.accept(s.expr)
         
         self.check_not_void(iterable, s.expr)
-        self.check_subtype(iterable, self.named_generic_type('builtins.iterable', [Any()]), s.expr, messages.ITERABLE_EXPECTED)
+        self.check_subtype(iterable,
+                           self.named_generic_type('builtins.iterable',
+                                                   [Any()]),
+                           s.expr, messages.ITERABLE_EXPECTED)
         
         Typ method
         
         echk = self.expr_checker
-        method = echk.analyse_external_member_access('__iter__', iterable, s.expr)
+        method = echk.analyse_external_member_access('__iter__', iterable,
+                                                     s.expr)
         iterator = echk.check_call(method, [], s.expr)
-        method = echk.analyse_external_member_access('__next__', iterator, s.expr)
+        method = echk.analyse_external_member_access('__next__', iterator,
+                                                     s.expr)
         item = echk.check_call(method, [], s.expr)
         
         if not s.is_annotated():
@@ -626,7 +688,9 @@ class TypeChecker(NodeVisitor<Typ>):
         
         if len(s.index) == 1:
             if s.index[0].typ is not None:
-                self.check_assignment(s.index[0].typ.typ, None, self.temp_node(item), s, messages.INCOMPATIBLE_TYPES_IN_FOR)
+                self.check_assignment(s.index[0].typ.typ, None,
+                                      self.temp_node(item), s,
+                                      messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
             list<Typ> t = []
             for index in s.index:
@@ -634,7 +698,10 @@ class TypeChecker(NodeVisitor<Typ>):
                     t.append(index.typ.typ)
                 else:
                     t.append(Any())
-            self.check_multi_assignment(t, <tuple<Typ, Node>> [None] * len(s.types), self.temp_node(item), s.expr, messages.INCOMPATIBLE_TYPES_IN_FOR)
+            self.check_multi_assignment(
+                t, <tuple<Typ, Node>> [None] * len(s.types),
+                self.temp_node(item), s.expr,
+                messages.INCOMPATIBLE_TYPES_IN_FOR)
         
         self.accept(s.body)
     
@@ -649,9 +716,10 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return None # this case is handled in semantical analysis
     
-    
+
+    #
     # Expressions
-    # -----------
+    #
     
     
     Typ visit_name_expr(self, NameExpr e):
@@ -711,21 +779,24 @@ class TypeChecker(NodeVisitor<Typ>):
     Typ visit_temp_node(self, TempNode e):
         return e.typ
     
-    
+
+    #
     # Helpers
-    # -------
+    #
     
     
     # Generate an error if the subtype is not compatible with supertype.
-    void check_subtype(self, Typ subtype, Typ supertype, Context context, str msg=messages.INCOMPATIBLE_TYPES):
+    void check_subtype(self, Typ subtype, Typ supertype, Context context,
+                       str msg=messages.INCOMPATIBLE_TYPES):
         if not is_subtype(subtype, supertype):
             if isinstance(subtype, Void):
                 self.msg.does_not_return_value(subtype, context)
             else:
                 self.fail(msg, context)
     
-    # Return an instance type with type given by the name and no type arguments.
-    # For example, namedType("builtins.object") produces the object type.
+    # Return an instance type with type given by the name and no type
+    # arguments. For example, namedType("builtins.object") produces the object
+    # type.
     Instance named_type(self, str name):
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
@@ -764,14 +835,15 @@ class TypeChecker(NodeVisitor<Typ>):
     
     # Return instance type 'tuple'.
     Typ tuple_type(self):
-        # We need the tuple for analysing member access. We want to be able to do
-        # this even if tuple type is not available (useful in test cases), so we
-        # return an unbound type if there is no tuple type.
+        # We need the tuple for analysing member access. We want to be able to
+        # do this even if tuple type is not available (useful in test cases),
+        # so we return an unbound type if there is no tuple type.
         return self.named_type_if_exists('builtins.tuple')
     
     # Generate an error if the types are not equivalent. The dynamic type is
     # equivalent with all types.
-    void check_type_equivalency(self, Typ t1, Typ t2, Context node, str msg=messages.INCOMPATIBLE_TYPES):
+    void check_type_equivalency(self, Typ t1, Typ t2, Context node,
+                                str msg=messages.INCOMPATIBLE_TYPES):
         if not is_equivalent(t1, t2):
             self.fail(msg, node)
     
@@ -819,7 +891,9 @@ class TypeChecker(NodeVisitor<Typ>):
     # needed for certain type operations (joins, for example).
     BasicTypes basic_types(self):
         # TODO function type
-        return BasicTypes(self.object_type(), self.type_type(), self.named_type_if_exists('builtins.tuple'), self.named_type_if_exists('builtins.function'))
+        return BasicTypes(self.object_type(), self.type_type(),
+                          self.named_type_if_exists('builtins.tuple'),
+                          self.named_type_if_exists('builtins.function'))
     
     # Are we currently type checking within a function (i.e. not at class body
     # or at the top level)?

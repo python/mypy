@@ -31,7 +31,8 @@ class TypeCheckSuite(Suite):
     def cases(self):
         c = []
         for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), self.run_test, test_temp_dir, True)
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  self.run_test, test_temp_dir, True)
         return c
     
     def run_test(self, testcase):
@@ -41,4 +42,7 @@ class TypeCheckSuite(Suite):
             build(src, 'main', True, test_temp_dir, True)
         except CompileError as e:
             a = normalize_error_messages(e.messages)
-        assert_string_arrays_equal(testcase.output, a, 'Invalid type checker output ({}, line {})'.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(
+            testcase.output, a,
+            'Invalid type checker output ({}, line {})'.format(
+                testcase.file, testcase.line))

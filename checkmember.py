@@ -14,7 +14,9 @@ from nodes import method_type
 #      overrideInfo should refer to the supertype)
 #
 # Note that this function may return a RangeCallable type.
-Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue, bool is_super, Typ tuple_type, MessageBuilder msg, TypeInfo override_info=None):
+Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
+                          bool is_super, Typ tuple_type, MessageBuilder msg,
+                          TypeInfo override_info=None):
     if isinstance(typ, Instance):
         # The base object has an instance type.
         itype = (Instance)typ
@@ -35,16 +37,19 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue, bool 
             return expand_type_by_instance(method_type(method), itype)
         else:
             # Not a method.
-            return analyse_member_var_access(name, itype, info, node, is_lvalue, is_super, msg)
+            return analyse_member_var_access(name, itype, info, node,
+                                             is_lvalue, is_super, msg)
     elif isinstance(typ, Any):
         # The base object has dynamic type.
         return Any()
     elif isinstance(typ, TupleType):
         # Actually look up from the tuple type.
-        return analyse_member_access(name, tuple_type, node, is_lvalue, is_super, tuple_type, msg)
+        return analyse_member_access(name, tuple_type, node, is_lvalue,
+                                     is_super, tuple_type, msg)
     else:
         # The base object has an unsupported type.
         return msg.has_no_member(typ, name, node)
+
 
 # Analyse member access that does not target a method. This is logically
 # part of analyse_member_access and the arguments are similar.
