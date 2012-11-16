@@ -1,0 +1,308 @@
+-- Test cases for the type checker related to functions and function types.
+
+-- See also check-varargs.test.
+
+
+-- Function type basics
+-- --------------------
+
+
+[case testCallingVariableWithFunctionType]
+func<A, B> f
+A a, B b
+a = f(a)    # E: Incompatible types in assignment
+b = f(b)    # E: Argument 1 has incompatible type "B"
+b = f()     # E: Too few arguments
+b = f(a, a) # E: Too many arguments
+b = f(a)
+
+class A: pass
+class B: pass
+
+[case testSubtypingFunctionTypes]
+func<B, A> f
+func<A, A> g
+func<B, B> h  # subtype of f
+g = f  # E: Incompatible types in assignment
+g = h  # E: Incompatible types in assignment
+h = f  # E: Incompatible types in assignment
+h = g  # E: Incompatible types in assignment
+f = g  # E: Incompatible types in assignment
+f = h
+f = f
+g = g
+h = h
+
+class A: pass
+class B(A): pass
+
+[case testFunctionTypeCompatibilityWithOtherTypes]
+func<void> f
+A a, object o
+a = f   # E: Incompatible types in assignment
+f = a   # E: Incompatible types in assignment
+f = o   # E: Incompatible types in assignment
+f = f() # E: Function does not return a value
+
+f = f
+f = None
+o = f
+
+class A: pass
+
+[case testFunctionSubtypingWithVoid]
+func<void> f
+func<object> g
+f = g  # E: Incompatible types in assignment
+g = f  # E: Incompatible types in assignment
+
+f = f
+g = g
+
+[case testFunctionSubtypingWithMultipleArgs]
+func<A, A, void> f
+func<A, B, void> g
+func<B, B, void> h
+f = g  # E: Incompatible types in assignment
+f = h  # E: Incompatible types in assignment
+g = h  # E: Incompatible types in assignment
+g = f  # E: Incompatible types in assignment
+h = f  # E: Incompatible types in assignment
+h = g  # E: Incompatible types in assignment
+f = f
+g = g
+h = h
+
+class A: pass
+class B(A): pass
+
+[case testFunctionTypesWithDifferentArgumentCounts]
+func<void> f
+func<A, void> g
+func<A, A, void> h
+
+f = g   # E: Incompatible types in assignment
+f = h   # E: Incompatible types in assignment
+h = f   # E: Incompatible types in assignment
+h = g   # E: Incompatible types in assignment
+
+f = f
+g = g
+h = h
+
+class A: pass
+[out]
+
+[case testCompatibilityOfSimpleTypeObjectWithStdType]
+type t
+A a
+
+a = A # E: Incompatible types in assignment
+t = f # E: Incompatible types in assignment
+t = A
+
+class A:
+    void __init__(self, A a): pass
+
+void f(): pass
+
+[case testFunctionTypesWithOverloads]
+func<AA, A> f
+func<B, B> g
+func<A, AA> h
+
+h = i  # E: Incompatible types in assignment
+f = j  # E: Incompatible types in assignment
+
+f = i
+g = i
+g = j
+
+A i(AA x):
+    pass
+
+B i(B x):
+    pass
+B j(B x):
+    pass
+
+AA j(A x):
+    pass
+
+class A: pass
+class AA(A): pass
+class B: pass
+
+[case testOverloadWithThreeItems]
+func<A, A> g1
+func<B, B> g2
+func<C, C> g3
+func<A, B> g4
+A a, B b, C c
+
+b = f(a)  # E: Incompatible types in assignment
+a = f(b)  # E: Incompatible types in assignment
+b = f(c)  # E: Incompatible types in assignment
+g4 = f    # E: Incompatible types in assignment
+
+g1 = f
+g2 = f
+g3 = f
+a = f(a)
+b = f(b)
+c = f(c)
+
+A f(A x):
+    pass
+
+B f(B x):
+    pass
+
+C f(C x):
+    pass
+
+class A: pass
+class B: pass
+class C: pass
+
+
+-- Default argument values
+-- -----------------------
+
+
+[case testDefaultArgumentExpressions]
+void f(A x=A()):
+    B b = x # Fail
+    A a = x
+
+void g(A x=B()): # Fail
+    B b = x # Fail
+    A a = x
+
+class B: pass
+class A: pass
+[out]
+main: In function "f":
+main, line 2: Incompatible types in assignment
+main: In function "g":
+main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+
+[case testDefaultArgumentsWithSubtypes]
+void f(B x=A()): # E: Incompatible types in assignment
+    pass
+void g(A x=B()):
+    pass
+
+class A: pass
+class B(A): pass
+[out]
+main: In function "f":
+
+[case testMultipleDefaultArgumentExpressions]
+void f(A x=B(), B y=B()): # Fail
+    pass
+void g(A x=A(), B y=A()): # Fail
+    pass
+void h(A x=A(), B y=B()):
+    pass
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 1: Incompatible types in assignment
+main: In function "g":
+main, line 3: Incompatible types in assignment
+
+[case testCallingFunctionsWithDefaultArgumentValues]
+A a, B b
+a = f()     # E: Incompatible types in assignment
+b = f(b)    # E: Argument 1 to "f" has incompatible type "B"
+b = f(a, a) # E: Too many arguments for "f"
+
+b = f()
+b = f(a)
+b = f(AA())
+
+B f(A x = None): pass
+
+class A: pass
+class AA(A): pass
+class B: pass
+
+
+-- Default argument values
+-- -----------------------
+
+
+[case testDefaultArgumentExpressions]
+void f(A x=A()):
+    B b = x # E: Incompatible types in assignment
+    A a = x
+
+class B: pass
+class A: pass
+[out]
+main: In function "f":
+
+[case testDefaultArgumentExpressions]
+void f(A x=B()): # E: Incompatible types in assignment
+    B b = x      # E: Incompatible types in assignment
+    A a = x
+
+class B: pass
+class A: pass
+[out]
+main: In function "f":
+
+[case testDefaultArgumentsWithSubtypes]
+void f(B x=A()): # E: Incompatible types in assignment
+    pass
+void g(A x=B()):
+    pass
+
+class A: pass
+class B(A): pass
+[out]
+main: In function "f":
+
+[case testMultipleDefaultArgumentExpressions]
+void f(A x=B(), B y=B()): # E: Incompatible types in assignment
+    pass
+void h(A x=A(), B y=B()):
+    pass
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testMultipleDefaultArgumentExpressions2]
+void g(A x=A(), B y=A()): # E: Incompatible types in assignment
+    pass
+
+class A: pass
+class B: pass
+[out]
+main: In function "g":
+
+[case testCallingFunctionsWithDefaultArgumentValues]
+A a, B b
+a = f()     # Fail
+b = f(b)    # Fail
+b = f(a, a) # Fail
+
+b = f()
+b = f(a)
+b = f(AA())
+
+B f(A x=None): pass
+
+class A: pass
+class AA(A): pass 
+class B: pass
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Argument 1 to "f" has incompatible type "B"
+main, line 4: Too many arguments for "f"

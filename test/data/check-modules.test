@@ -1,0 +1,29 @@
+-- Test cases for the type checker.
+
+[case testAccessImportedDefinitions]
+import m
+m.f()           # E: Too few arguments for "f"
+m.f(object())   # E: Argument 1 to "f" has incompatible type "object"
+m.x = object()  # E: Incompatible types in assignment
+m.f(m.A())
+m.x = m.A()
+[file m.py]
+class A: pass
+void f(A a): pass
+A x
+
+[case testAccessImportedDefinitions]
+import m
+m.f(object()) # E: Argument 1 to "f" has incompatible type "object"
+m.f(m.A())
+[file m.py]
+class A: pass
+void f(A a): pass
+
+[case AccessImportedDefinitions2]
+from m import f, A
+f(object()) # E: Argument 1 to "f" has incompatible type "object"
+f(A())
+[file m.py]
+class A: pass
+void f(A a): pass

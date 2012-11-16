@@ -1,0 +1,57 @@
+-- Test cases for type checker related to super().
+
+
+-- Supertype member reference
+-- --------------------------
+
+
+[case testAccessingSupertypeMethod]
+class A(B):
+  A f(self):
+    A a, B b
+    a = super().f() # Fail
+    a = super().g() # Fail
+    b = super().f()
+class B:
+  B f(self): pass
+[out]
+main: In member "f" of class "A":
+main, line 4: Incompatible types in assignment
+main, line 5: "g" undefined in superclass
+
+[case testAccessingSuperTypeMethodWithArgs]
+class A(B):
+  void f(self, any x):
+    A a, B b
+    super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
+    super().f(a)
+    self.f(b)
+    self.f(a)
+class B:
+  void f(self, A y): pass
+[out]
+main: In member "f" of class "A":
+
+[case testAccessingSuperInit]
+class A(B):
+  void __init__(self):
+    super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"
+    super().__init__()       # E: Too few arguments for "__init__" of "B"
+    super().__init__(A())
+class B:
+    void __init__(self, A x):
+        pass
+[out]
+main: In member "__init__" of class "A":
+
+[case testAccessingSuperMemberWithDeepHierarchy]
+class A(B):
+  void f(self):
+    super().g() # Fail
+    super().f()
+class B(C): pass
+class C:
+  void f(self): pass
+[out]
+main: In member "f" of class "A":
+main, line 3: "g" undefined in superclass

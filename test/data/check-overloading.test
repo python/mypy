@@ -1,0 +1,181 @@
+-- Test cases for function overloading
+
+
+[case testTypeCheckOverloadedFunctionBody]
+def f(A x):
+    x = B() # E: Incompatible types in assignment
+    x = A()
+def f(B x):
+    x = A() # E: Incompatible types in assignment
+    x = B()
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testTypeCheckOverloadedMethodBody]
+class A:
+    def f(self, A x):
+        x = B() # E: Incompatible types in assignment
+        x = A()
+    def f(self, B x):
+        x = A() # E: Incompatible types in assignment
+        x = B()
+class B: pass
+[out]
+main: In member "f" of class "A":
+
+[case testCallToOverloadedFunction]
+f(C()) # E: No overload variant of "f" matches argument types
+f(A())
+f(B())
+
+void f(A x): pass
+void f(B x): pass
+
+class A: pass
+class B: pass
+class C: pass
+
+[case testOverloadedFunctionReturnValue]
+A a, B b
+b = f(a) # E: Incompatible types in assignment
+a = f(b) # E: Incompatible types in assignment
+a = f(a)
+b = f(b)
+
+A f(A x): pass
+B f(B x): pass
+class A: pass
+class B: pass
+
+[case testCallToOverloadedMethod]
+A().f(C()) # E: No overload variant of "f" of "A" matches argument types
+A().f(A())
+A().f(B())
+
+class A:
+  void f(self, A x): pass
+  void f(self, B x): pass
+
+class B: pass
+class C: pass
+
+[case testOverloadedMethodReturnValue]
+A a, B b
+b = a.f(a) # E: Incompatible types in assignment
+a = a.f(b) # E: Incompatible types in assignment
+a = a.f(a)
+b = a.f(b)
+
+class A:
+  A f(self, A x): pass
+  B f(self, B x): pass
+class B: pass
+
+[case testNonConsecutiveOverloads]
+void f(): pass
+void g(): pass
+void f(any x): pass # E: Name 'f' already defined (overload variants must be next to each other)
+
+[case testOverloadsWithDifferentArgumentCounts]
+A a, B b
+a = f(a)
+b = f(a) # E: Incompatible types in assignment
+f(b)     # E: No overload variant of "f" matches argument types
+b = f(b, a)
+a = f(b, a) # E: Incompatible types in assignment
+f(a, a)     # E: No overload variant of "f" matches argument types
+f(b, b)     # E: No overload variant of "f" matches argument types
+
+A f(A x): pass
+B f(B x, A y): pass
+class A: pass
+class B: pass
+
+[case testGenericOverloadVariant]
+A<B> ab, A<C> ac, B b, C c
+b = f(ab)
+c = f(ac)
+b = f(ac) # E: Argument 1 to "f" has incompatible type A<C>
+b = f(b)
+c = f(b)  # E: Incompatible types in assignment
+t f<t>(A<t> x): pass
+B f(B x): pass
+class A<t>: pass
+class B: pass
+class C: pass
+
+[case testOverloadedInit]
+A a, B b
+a = A(a)
+a = A(b)
+a = A(object()) # E: No overload variant of "A" matches argument types
+
+class A:
+  void __init__(self, A a): pass
+  void __init__(self, B b): pass
+class B: pass
+
+[case testIntersectionTypeCompatibility]
+object o
+A a
+
+a = f # E: Incompatible types in assignment
+o = f
+
+void f(A a): pass
+void f(func<void> a): pass
+class A: pass
+
+[case testCompatibilityOfIntersectionTypeObjectWithStdType]
+type t, A a
+
+a = A # E: Incompatible types in assignment
+t = A
+
+class A:
+    void __init__(self, A a): pass    
+    void __init__(self, B a): pass
+class B: pass
+
+[case testOverloadedGetitem]
+A a, B b
+a = a[a]
+b = a[a] # E: Incompatible types in assignment
+b = a[b]
+a = a[b] # E: Incompatible types in assignment
+
+class A:
+    A __getitem__(self, A a): pass
+    B __getitem__(self, B b): pass
+class B: pass
+
+[case testOverloadedGetitemWithGenerics]
+A a, B b, C<A> c
+a = c[a]
+b = c[a] # E: Incompatible types in assignment
+a = c[b]
+b = c[b] # E: Incompatible types in assignment
+
+class C<t>:
+    t __getitem__(self, A a): pass
+    t __getitem__(self, B b): pass
+class A: pass
+class B: pass
+
+[case testImplementingOverloadedMethod]
+interface I:
+    void f(self)
+    void f(self, A a)
+class A(I):
+    void f(self): pass
+    void f(self, A a): pass
+
+[case testOverloadWithFunctionType]
+class A: pass
+void f(A x): pass
+void f(func<void> x): pass
+
+f(A())
+[builtins fixtures/function.py]

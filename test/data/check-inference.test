@@ -1,0 +1,574 @@
+-- Inferring locals/globals with simple types
+
+
+[case testInferSimpleGvarType]
+x = A()
+y = B()
+x = B() # Fail
+x = A()
+x = y   # Fail
+x = x
+class A: pass
+class B: pass
+[out]
+main, line 3: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+
+[case testInferSimpleLvarType]
+void f():
+  x = A()
+  y = B()
+  x = B() # Fail
+  x = A()
+  x = y   # Fail
+  x = x
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 4: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+
+[case testLvarInitializedToNilWithoutType]
+void f():
+    a = None # E: Need type annotation for variable
+    a.x()
+[out]
+main: In function "f":
+
+[case testLvarInitializedToVoid]
+void f():
+    a = g()    # E: "g" does not return a value
+    #b, c = g() # "g" does not return a value TODO
+
+void g(): pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypeFromArgument]
+void f(A a):
+    b = a
+    b = B() # E: Incompatible types in assignment
+    b = a
+    a = b
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypeFromGvar]
+B g
+
+void f():
+    a = g
+    a = A() # E: Incompatible types in assignment
+    a = B()
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testInferringImplicitDynamicTypeForLvar]
+void f():
+    a = g()
+    None(a) # E: None not callable
+    a.x()
+    
+def g(): pass
+[out]
+main: In function "f":
+
+[case testInferringExplicitDynamicTypeForLvar]
+any g
+
+void f(any a):
+    b = g
+    None(b) # E: None not callable
+    a.x()
+[out]
+main: In function "f":
+
+
+-- Inferring types of local variables with complex types
+-- -----------------------------------------------------
+
+
+[case testInferringTupleTypeForLvar]
+void f():
+    a = A(), B()
+    A aa
+    B bb
+    bb = a[0] # E: Incompatible types in assignment
+    aa = a[1] # E: Incompatible types in assignment
+    aa = a[0]
+    bb = a[1]
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.py]
+[out]
+main: In function "f":
+
+[case testInferringTupleTypeForLvarWithNils]
+void f():
+    a = A(), None # E: Need type annotation for variable
+    b = None, A() # E: Need type annotation for variable
+
+class A: pass
+[builtins fixtures/tuple.py]
+[out]
+main: In function "f":
+
+[case testInferringGenericTypeForLvar]
+A<C> ac
+A<D> ad
+
+void f():
+    a = A<C>()
+    a = ad # E: Incompatible types in assignment
+    a = ac
+
+class A<T>: pass
+class C: pass
+class D: pass
+[builtins fixtures/tuple.py]
+[out]
+main: In function "f":
+
+[case testInferringFunctionTypeForLvar]
+void f():
+    a = g
+    a(B()) # E: Argument 1 has incompatible type "B"
+    a(A())
+
+void g(A a): pass
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testInferringFunctionTypeForLvarFromTypeObject]
+void f():
+    a = A
+    a(A()) # E: Too many arguments
+    a()
+    type t = a
+
+class A: pass
+[out]
+main: In function "f":
+
+[case testInferringGenericFunctionTypeForLvar]
+void f():
+    a = id
+    B b
+    C c
+    b = a<B>(c) # E: Argument 1 has incompatible type "C"
+    b = a<B>(b)
+    c = a<C>(c)
+
+T id<T>(T x):
+    return x
+
+class B: pass
+class C:pass
+[out]
+main: In function "f":
+
+
+-- Inferring local variable types in multiple definition
+-- -----------------------------------------------------
+
+
+[case testInferringLvarTypesInMultiDef]
+void f():
+    a, b = A(), B()
+    a = b   # E: Incompatible types in assignment
+    a = B() # E: Incompatible types in assignment
+    b = A() # E: Incompatible types in assignment
+    
+    a = A()
+    b = B()
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypesInMultiDefWithNilTypes]
+void f():
+    a, b = A(), None # E: Need type annotation for variable
+    c, d = None, A() # E: Need type annotation for variable
+
+class A: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypesInMultiDefWithInvalidTuple]
+tuple<object, object, object> t
+
+void f():
+    a, b = t         # Fail
+    c, d, e, f = t   # Fail
+    g, h, i = t
+[builtins fixtures/tuple.py]
+[out]
+main: In function "f":
+main, line 4: Too many values to assign
+main, line 4: Incompatible types in assignment
+main, line 5: Need 4 values to assign
+main, line 5: Incompatible types in assignment
+
+[case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
+void f():
+    a, b = f   # E: Incompatible types in assignment
+    c, d = A() # E: Incompatible types in assignment
+class A: pass
+[out]
+main: In function "f":
+
+[case testInferringMultipleLvarDefinitionWithListRvalue]
+void f():
+    a, b = <C> []
+    c, d, e = <D> []
+    a = D() # E: Incompatible types in assignment
+    b = D() # E: Incompatible types in assignment
+    c = C() # E: Incompatible types in assignment
+    b = c   # E: Incompatible types in assignment
+    
+    a = C()
+    b = C()
+    c = D()
+    d = D()
+    e = D()
+    
+    a = b
+    c = d
+    d = e
+
+class C: pass
+class D: pass
+[builtins fixtures/list.py]
+[out]
+main: In function "f":
+
+[case testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue]
+void f():
+    a, b = g()
+    a.x
+    b.x
+def g(): pass
+
+[case testInferringMultipleLvarDefinitionWithExplicitDynamicRvalue]
+void f(any d):
+    a, b = d
+    a.x
+    b.x
+
+
+-- Type variable inference for generic functions
+-- ---------------------------------------------
+
+
+[case testInferSimpleGenericFunction]
+A a
+B b
+tuple<A, object> c
+
+b = id(a) # E: Argument 1 to "id" has incompatible type "A"
+a = id(b) # E: Argument 1 to "id" has incompatible type "B"
+a = id(c) # E: Argument 1 to "id" has incompatible type "tuple<A, object>"
+
+a = id(a)
+b = id(b)
+c = id(c)
+
+T id<T>(T a): pass
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.py]
+
+[case testUnderspecifiedInferenceResult]
+A a
+
+void ff():
+    x = f() # E: Need type annotation for variable
+
+g(None) # Ok
+f()     # Ok because not used to infer local variable type
+f<A>()
+g(a)
+
+T f<T>():
+    pass
+
+void g<T>(T a):
+    pass
+
+class A: pass
+[out]
+main: In function "ff":
+
+[case testUnsolvableInferenceResult]
+f(A(), g()) # Fail
+f(A(), A())
+
+void f<T>(T a, T b): pass
+void g(): pass
+class A: pass
+[out]
+main, line 1: Cannot infer type argument 1 of "f"
+main, line 1: "g" does not return a value
+
+[case testInferenceWithMultipleConstraints]
+A a
+B b
+
+b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"
+b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"
+a = f(a, b)
+a = f(b, a)
+
+T f<T>(T a, T b): pass
+
+class A: pass
+class B(A): pass
+
+[case testInferenceWithMultipleVariables]
+A a, B b
+tuple<A, A> taa
+tuple<A, B> tab
+tuple<B, A> tba
+
+taa = f(a, b) # Fail
+taa = f(b, a) # Fail
+tba = f(a, b) # Fail
+
+tab = f(a, b)
+tba = f(b, a)
+
+tuple<T, S> f<T, S>(T a, S b): pass
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.py]
+[out]
+main, line 6: Argument 2 to "f" has incompatible type "B"
+main, line 7: Argument 1 to "f" has incompatible type "B"
+main, line 8: Argument 1 to "f" has incompatible type "A"
+main, line 8: Argument 2 to "f" has incompatible type "B"
+
+[case testConstraintSolvingWithSimpleGenerics]
+A<object> ao
+A<B> ab
+A<C> ac
+
+ab = f(ao) # E: Argument 1 to "f" has incompatible type A<object>
+ao = f(ab) # E: Argument 1 to "f" has incompatible type A<B>
+ab = f(ac) # E: Argument 1 to "f" has incompatible type A<C>
+ab = g(ao) # E: Argument 1 to "g" has incompatible type A<object>
+ao = g(ab) # E: Argument 1 to "g" has incompatible type A<B>
+
+ab = f(ab)
+ac = f(ac)
+ao = f(ao)
+
+ab = g(ab)
+ao = g(ao)
+
+A<T> f<T>(A<T> a): pass
+
+T g<T>(T a): pass
+
+class A<T>: pass
+class B: pass
+class C: pass
+
+[case testConstraintSolvingFailureWithSimpleGenerics]
+A<object> ao
+A<B> ab
+
+f(ao, ab) # E: Cannot infer type argument 1 of "f"
+f(ab, ao) # E: Cannot infer type argument 1 of "f"
+f(ao, ao)
+f(ab, ab)
+
+void f<T>(A<T> a, A<T> b): pass
+
+class A<T>: pass
+class B: pass
+
+[case testTypeInferenceWithCalleeDefaultArgs]
+A a
+object o
+
+a = f(o)    # E: Argument 1 to "f" has incompatible type "object"
+a = g(a, o) # E: Argument 2 to "g" has incompatible type "object"
+
+o = f()
+o = f(o)
+a = f(a)
+a = g(a)
+
+T f<T>(T a=None): pass
+T g<T>(T a, T b=None): pass
+
+class A: pass
+
+
+-- Generic function inference with interfaces
+-- ------------------------------------------
+
+
+[case testUniqueAndNonUniqueInterfaceInference]
+I i, J j
+
+# Ambiguous join:
+f(A(), B())     # E: Cannot infer type argument 1 of "f"
+
+j = f(A(), C()) # E: Argument 2 to "f" has incompatible type "C"
+
+i = f(A(), C())
+
+T f<T>(T a, T b):
+    pass
+
+interface I: pass
+interface J: pass
+
+class A(I, J): pass
+class B(I, J): pass
+class C(I): pass
+
+[case testInterfaceInferenceWithInheritance1]
+I i
+
+f(B(), C())  # E: Cannot infer type argument 1 of "f"
+
+i = f(A(), B())
+i = f(A(), C())
+
+T f<T>(T a, T b): pass
+
+interface I: pass
+interface J: pass
+
+class A(I): pass
+class B(A, J): pass
+class C(I, J): pass
+
+[case testInterfaceInferenceWithInheritance2]
+J j, K k
+
+f(B(), C())     # E: Cannot infer type argument 1 of "f"
+k = f(A(), C()) # E: Argument 2 to "f" has incompatible type "C"
+
+k = f(A(), B())
+j = f(A(), C())
+
+T f<T>(T a, T b):
+    pass
+
+interface I: pass
+interface J: pass
+interface K(J): pass
+
+class A(K): pass
+class B(A, I): pass
+class C(I, J): pass
+
+[case testPrecedenceOfClassInferenceResultOverInterfaceResult]
+A a, I i, J j
+
+a = f(B(), C())
+
+interface I: pass
+interface J: pass
+
+T f<T>(T a, T b): pass
+
+class A: pass
+class B(A, I, J): pass
+class C(A, I, J): pass
+
+
+-- Literal expressions
+-- -------------------
+
+
+[case testDictLiteral]
+A a, B b
+d = {a:b}
+d = <A, B> {}
+d = <A, A> {} # E: Incompatible types in assignment
+d = <B, B> {} # E: Incompatible types in assignment
+class A: pass
+class B: pass
+[builtins fixtures/dict.py]
+
+
+-- For statements
+-- --------------
+
+
+[case testInferenceOfFor1]
+A a, B b
+
+for x in [A()]:
+    b = x # E: Incompatible types in assignment
+    a = x
+
+for x in []: # E: Need type annotation for variable
+    a = x
+
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testInferenceOfFor2]
+A a, B b
+for x, y in [(A(), B())]:
+    b = x # Fail
+    a = y # Fail
+    a = x
+    b = y
+for x, y, z in [(A(), B())]: # Fail
+    pass
+for x, y in [(None, None)]: # Fail
+    pass
+
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+[out]
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+main, line 7: Need 3 values to assign
+main, line 9: Need type annotation for variable
+
+[case testInferenceOfFor3]
+A a, B b
+
+for x, y in [[A()]]:
+    b = x # E: Incompatible types in assignment
+    b = y # E: Incompatible types in assignment
+    a = x
+    a = y
+
+for x, y in [[]]: # E: Need type annotation for variable
+    pass
+
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testForStatementInferenceWithVoid]
+for x in f(): # E: "f" does not return a value
+    pass
+void f(): pass
+[builtins fixtures/for.py]

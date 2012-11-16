@@ -1,0 +1,428 @@
+-- Return statement
+-- ----------------
+
+
+[case testReturnValue]
+A f():
+    return A()
+    return B()
+B g():
+    return A()
+class A:
+    pass
+class B:
+    pass
+[out]
+main: In function "f":
+main, line 3: Incompatible return value type
+main: In function "g":
+main, line 5: Incompatible return value type
+
+[case testReturnSubtype]
+B f():
+    return A()
+A g():
+    return B()
+class A:
+    pass
+class B(A):
+    pass
+[out]
+main: In function "f":
+main, line 2: Incompatible return value type
+
+[case testReturnWithoutAValue]
+A f():
+    return 
+void g():
+    return 
+class A:
+    pass
+[out]
+main: In function "f":
+main, line 2: Return value expected
+
+
+-- If statement
+-- ------------
+
+
+[case testIfStatement]
+A a
+bool b
+if a:
+    a = b # Fail
+elif a:
+    a = b # Fail
+elif a:
+    a = b # Fail
+else:
+    a = b # Fail
+if b:
+    pass
+elif b:
+    pass
+if b:
+    pass
+
+class A: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 4: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+main, line 8: Incompatible types in assignment
+main, line 10: Incompatible types in assignment
+
+
+-- Loops
+-- -----
+
+
+[case testWhileStatement]
+A a
+bool b
+while a:
+    a = b    # Fail
+else:
+    a = b    # Fail
+while b:
+    b = b
+
+class A: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 4: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+
+[case testBreakStatement]
+while None:
+    break
+[builtins fixtures/bool.py]
+[out]
+
+[case testContinueStatement]
+while None:
+    continue
+[builtins fixtures/bool.py]
+[out]
+
+
+-- Operator assignment
+-- -------------------
+
+
+[case testPlusAssign]
+A a, B b, C c
+a += b   # Fail
+b += a   # Fail
+c += a   # Fail
+a += c
+
+class A:
+    A __add__(self, C x): pass
+
+class B:
+    C __add__(self, A x): pass
+
+class C: pass
+[out]
+main, line 2: Unsupported operand types for + ("A" and "B")
+main, line 3: Result type of + incompatible in assignment
+main, line 4: Unsupported left operand type for + ("C")
+
+[case testMinusAssign]
+A a, B b, C c
+a -= b   # Fail
+b -= a   # Fail
+c -= a   # Fail
+a -= c
+
+class A:
+    A __sub__(self, C x): pass
+
+class B:
+    C __sub__(self, A x): pass
+
+class C: pass
+[out]
+main, line 2: Unsupported operand types for - ("A" and "B")
+main, line 3: Result type of - incompatible in assignment
+main, line 4: Unsupported left operand type for - ("C")
+
+[case testMulAssign]
+A a, C c
+a *= a   # Fail
+c *= a   # Fail
+a *= c
+
+class A:
+    A __mul__(self, C x): pass
+
+class C: pass
+[out]
+main, line 2: Unsupported operand types for * ("A" and "A")
+main, line 3: Unsupported left operand type for * ("C")
+
+[case testDivAssign]
+A a, C c
+a /= a   # Fail
+c /= a   # Fail
+a /= c
+
+class A:
+    A __truediv__(self, C x): pass
+
+class C: pass
+[out]
+main, line 2: Unsupported operand types for / ("A" and "A")
+main, line 3: Unsupported left operand type for / ("C")
+
+[case testPowAssign]
+A a, C c
+a **= a   # Fail
+c **= a   # Fail
+a **= c
+
+class A:
+    A __pow__(self, C x): pass
+
+class C: pass
+[out]
+main, line 2: Unsupported operand types for ** ("A" and "A")
+main, line 3: Unsupported left operand type for ** ("C")
+
+[case testSubtypesInOperatorAssignment]
+A a, B b
+b += b
+b += a
+a += b
+
+class A:
+    B __add__(self, A x): pass
+
+class B(A): pass
+[out]
+
+[case testAdditionalOperatorsInOpAssign]
+A a, C c
+a &= a  # Fail
+a >>= a # Fail
+a //= a # Fail
+a &= c
+a >>= c
+a //= c
+class A:
+    A __and__(self, C x): pass
+    A __rshift__(self, C x): pass
+    A __floordiv__(self, C x): pass
+class C: pass
+[out]
+main, line 2: Unsupported operand types for & ("A" and "A")
+main, line 3: Unsupported operand types for >> ("A" and "A")
+main, line 4: Unsupported operand types for // ("A" and "A")
+
+
+-- Unsupported statements
+-- ----------------------
+
+
+[case testYield]
+any f():
+  yield None
+[out]
+main: In function "f":
+main, line 2: yield statement not implemented yet
+
+[case testWith]
+void f():
+  with None:
+    pass
+[out]
+main: In function "f":
+main, line 2: with statement not implemented yet
+
+
+-- Assert statement
+-- ----------------
+
+
+[case testAssert]
+assert None + None # Fail
+assert None
+[out]
+main, line 1: Unsupported left operand type for + (None)
+
+
+-- Exception handling
+-- ------------------
+
+
+[case testRaiseStatement]
+BaseException e
+MyError f
+A a
+raise a # Fail
+raise e
+raise f
+class A: pass
+class MyError(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+main, line 4: Invalid exception type
+
+[case testTryFinallyStatement]
+try:
+    A b = object() # Fail
+finally:
+    A c = object() # Fail
+class A: pass
+[out]
+main, line 2: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+
+[case testSimpleTryExcept]
+try:
+  pass
+except BaseException as e:
+  BaseException a, object o
+  e = a
+  e = o # Fail
+class A: pass
+class B: pass
+[builtins fixtures/exception.py]
+[out]
+main, line 6: Incompatible types in assignment
+
+[case testTypeErrorInBlock]
+while object:
+  A x
+  x = object()
+  x = B()
+class A: pass
+class B: pass
+[out]
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+
+[case testTypeErrorInvolvingBaseException]
+BaseException x, A a
+a = BaseException()  # Fail
+a = object()         # Fail
+x = object()         # Fail
+x = A()              # Fail
+x = BaseException()
+class A: pass
+[builtins fixtures/exception.py]
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+
+[case testSimpleTryExcept2]
+try:
+  pass
+except BaseException as e:
+  e = object() # Fail
+  e = BaseException()
+[builtins fixtures/exception.py]
+[out]
+main, line 4: Incompatible types in assignment
+
+[case testBaseClassAsExceptionTypeInExcept]
+try:
+  pass
+except Err as e:
+  e = BaseException() # Fail
+  e = Err()
+class Err(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+main, line 4: Incompatible types in assignment
+
+[case testMultipleExceptHandlers]
+try:
+    pass
+except BaseException as e:
+    pass
+except Err as f:
+    f = BaseException() # Fail
+    f = Err()
+class Err(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+main, line 6: Incompatible types in assignment
+
+[case testTryExceptStatement]
+try:
+    A a = B()       # Fail
+except BaseException as e:
+    e = A()             # Fail
+    e = Err()
+except Err as f:
+    f = BaseException() # Fail
+    f = Err()
+class A: pass
+class B: pass
+class Err(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+main, line 2: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+
+[case testTryExceptWithinFunction]
+void f():
+  try: pass
+  except BaseException as e:
+    e = object() # Fail
+    e = BaseException()
+  except Err as f:
+    f = BaseException() # Fail
+    f = Err()
+class Err(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+main: In function "f":
+main, line 4: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+
+[case testTryWithElse]
+try: pass
+except BaseException: pass
+else:
+  None = object()
+[builtins fixtures/exception.py]
+[out]
+main, line 4: Incompatible types in assignment
+
+[case testMultipleExceptionTypes]
+try: pass
+except (BaseException, Err): # Fail; but should work eventually
+  pass
+class Err(BaseException): pass
+[builtins fixtures/exception.py]
+[out]
+main, line 2: Multiple exception types not supported yet
+
+[case testExceptWithoutType]
+try: 
+    -None # E: Unsupported operand type for unary - (None)
+except:
+    ~None # E: Unsupported operand type for ~ (None)
+[builtins fixtures/exception.py]
+
+
+-- Del statement
+-- -------------
+
+
+[case testDelStmtWithIndex]
+A a, B b
+del b[a]
+del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"
+del a[a] # E: "A" has no member "__delitem__"
+del a[b] # E: "A" has no member "__delitem__"
+class B:
+  def __delitem__(self, A index): pass
+class A: pass

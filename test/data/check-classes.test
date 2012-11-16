@@ -1,0 +1,364 @@
+-- Methods
+-- -------
+
+
+[case testMethodCall]
+A a
+B b
+
+a.foo(B())        # Fail
+a.bar(B(), A())   # Fail
+
+a.foo(A())
+b.bar(B(), A())
+
+class A:
+  void foo(self, A x): pass
+class B:
+  void bar(self, B x, A y): pass
+[out]
+main, line 4: Argument 1 to "foo" of "A" has incompatible type "B"
+main, line 5: "A" has no member "bar"
+
+[case testMethodCallWithSubtype]
+A a
+a.foo(A())
+a.foo(B())
+a.bar(A()) # Fail
+a.bar(B())
+
+class A:
+  void foo(self, A x): pass
+  void bar(self, B x): pass
+class B(A): pass
+[out]
+main, line 4: Argument 1 to "bar" of "A" has incompatible type "A"
+
+[case testInheritingMethod]
+B a
+a.foo(A()) # Fail
+a.foo(B())
+
+class A:
+  void foo(self, B x): pass
+class B(A): pass
+[out]
+main, line 2: Argument 1 to "foo" of "A" has incompatible type "A"
+
+[case testMethodCallWithInvalidNumberOfArguments]
+A a
+a.foo()               # Fail
+a.foo(object(), A())  # Fail
+
+class A:
+  void foo(self, A x): pass
+[out]
+main, line 2: Too few arguments for "foo" of "A"
+main, line 3: Too many arguments for "foo" of "A"
+main, line 3: Argument 1 to "foo" of "A" has incompatible type "object"
+
+[case testMethodBody]
+class A:
+  void f(self):
+    A a = object()    # Fail
+[out]
+main: In member "f" of class "A":
+main, line 3: Incompatible types in assignment
+
+[case testMethodArguments]
+class A:
+  void f(self, A a, B b):
+    a = B() # Fail
+    b = A() # Fail
+    a = A()
+    b = B()
+    a = a
+    a = b # Fail
+class B: pass
+[out]
+main: In member "f" of class "A":
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+main, line 8: Incompatible types in assignment
+
+[case testReturnFromMethod]
+class A:
+  A f(self):
+    return B() # Fail
+    return A()
+class B: pass
+[out]
+main: In member "f" of class "A":
+main, line 3: Incompatible return value type
+
+[case testSelfArgument]
+class A:
+  void f(self):
+    B o = self    # Fail
+    self.g()      # Fail
+    A a = self
+    self.f()
+class B: pass
+[out]
+main: In member "f" of class "A":
+main, line 3: Incompatible types in assignment
+main, line 4: "A" has no member "g"
+
+
+-- Attributes
+-- ----------
+
+
+[case testReferToInvalidAttribute]
+class A:
+  def __init__(self):
+    self.x = object()
+A a
+a.y
+a.y = object()
+a.x
+a.x = object()
+[out]
+main, line 5: "A" has no member "y"
+main, line 6: "A" has no member "y"
+
+[case testArgumentTypeInference]
+class A:
+  void __init__(self, A aa, B bb):
+    self.a = aa
+    self.b = bb
+class B: pass
+A a
+B b
+a.a = b # Fail
+a.b = a # Fail
+b.a     # Fail
+a.a = a
+a.b = b
+[out]
+main, line 8: Incompatible types in assignment
+main, line 9: Incompatible types in assignment
+main, line 10: "B" has no member "a"
+
+[case testExplicitAttributeInBody]
+A a
+a.x = object() # Fail
+a.x = A()
+class A:
+  A x
+[out]
+main, line 2: Incompatible types in assignment
+
+
+-- Method overriding
+-- -----------------
+
+
+[case testMethodOverridingWithIdenticalSignature]
+class A:
+  void f(self, A x): pass
+  A g(self, B x , object y): pass
+  void h(self): pass
+class B(A):
+  void f(self, A x): pass
+  A g(self, B x , object y): pass
+  void h(self): pass
+[out]
+
+[case testMethodOverridingWithReturnTypeCoVariance]
+class A:
+  A f(self, A x, B y): pass
+class B(A):
+  B f(self, A x, B y): pass
+[out]
+
+[case testMethodOverridingWithIncompatibleTypes]
+class A:
+  A f(self, A x, B y): pass
+  A g(self, A x, B y): pass
+  A h(self, A x, B y): pass
+class B(A):
+  A f(self, B x, B y): pass  # Fail
+  A g(self, A x, A y): pass  # Fail
+  object h(self, A x, B y): pass  # Fail
+[out]
+main: In class "B":
+main, line 6: Argument 1 of "f" incompatible with supertype "A"
+main, line 7: Argument 2 of "g" incompatible with supertype "A"
+main, line 8: Return type of "h" incompatible with supertype "A"
+
+[case testMethodOverridingWithIncompatibleArgumentCount]
+class A:
+    void f(self, A x): pass
+    A g(self, A x, B y): pass
+class B(A):
+    void f(self, A x, A y): pass # Fail
+    A g(self, A x): pass # Fail
+[out]
+main: In class "B":
+main, line 5: Signature of "f" incompatible with supertype "A"
+main, line 6: Signature of "g" incompatible with supertype "A"
+
+[case testMethodOverridingAcrossDeepInheritanceHierarchy1]
+class C(B): # with gap in implementations
+    void f(self, C x):  # Fail
+        pass
+class B(A):
+    pass
+class A:
+    void f(self, B x):
+        pass
+[out]
+main: In class "C":
+main, line 2: Argument 1 of "f" incompatible with supertype "A"
+
+[case testMethodOverridingAcrossDeepInheritanceHierarchy2]
+class C(B): # with multiple implementations
+    B f(self):  # Fail
+        pass
+class B(A):
+    C f(self):
+        pass
+class A:
+    B f(self):
+        pass
+[out]
+main: In class "C":
+main, line 2: Return type of "f" incompatible with supertype "B"
+
+[case testMethodOverridingWithVoidReturnValue]
+class B(A):
+    A f(self):  # Fail
+        pass
+    void g(self):  # Fail
+        pass
+class A:
+    void f(self):
+        pass
+    A g(self):
+        pass
+[out]
+main: In class "B":
+main, line 2: Return type of "f" incompatible with supertype "A"
+main, line 4: Return type of "g" incompatible with supertype "A"
+
+
+-- Constructors
+-- ------------
+
+
+[case testTrivialConstructor]
+A a = A()
+B b = A() # Fail
+class A:
+    void __init__(self): pass
+class B: pass
+[out]
+main, line 2: Incompatible types in assignment
+
+[case testConstructor]
+A a = A(B())
+A aa = A(object())  # Fail
+B b = A(B())       # Fail
+class A:
+    void __init__(self, B x): pass
+class B: pass
+[out]
+main, line 2: Argument 1 to "A" has incompatible type "object"
+main, line 3: Incompatible types in assignment
+
+[case testConstructorWithTwoArguments]
+A a = A(C(), B())  # Fail
+
+class A:
+    void __init__(self, B x, C y): pass
+class B: pass
+class C(B): pass
+[out]
+main, line 1: Argument 2 to "A" has incompatible type "B"
+
+[case testInheritedConstructor]
+B b = B(C())
+A a = B(D()) # Fail
+class A:
+    void __init__(self, C x): pass
+class B(A): pass
+class C: pass
+class D: pass
+[out]
+main, line 2: Argument 1 to "B" has incompatible type "D"
+
+[case testOverridingWithIncompatibleConstructor]
+A()    # Fail
+B(C()) # Fail
+A(C())
+B()
+class A:
+    void __init__(self, C x): pass
+class B(A):
+    void __init__(self): pass
+class C: pass
+[out]
+main, line 1: Too few arguments for "A"
+main, line 2: Too many arguments for "B"
+
+[case testConstructorWithReturnValueType]
+class A:
+    A __init__(self): pass
+[out]
+main: In member "__init__" of class "A":
+main, line 2: Cannot define return type for "__init__"
+
+[case testGlobalFunctionInitWithReturnType]
+A a = __init__()
+B b = __init__() # Fail
+A __init__(): pass
+class A: pass
+class B: pass
+[out]
+main, line 2: Incompatible types in assignment
+
+
+-- Inheritance
+-- -----------
+
+
+[case testDeepInheritanceHierarchy]
+D d = C()  # Fail
+d = B()      # Fail
+d = A()      # Fail
+d = D2()     # Fail
+A a = D()
+a = D2()
+B b = D()
+b = D2()
+
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(C): pass
+class D2(C): pass
+[out]
+main, line 1: Incompatible types in assignment
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+
+
+-- Special cases
+-- -------------
+
+
+[case testMultipleClassDefinition]
+A()
+class A: pass
+class A: pass
+[out]
+main, line 3: Name 'A' already defined
+
+
+-- TODO
+--   attribute inherited from superclass; assign in __init__
+--   refer to attribute before type has been inferred (the initialization in
+--   __init__ has not been analysed)
+

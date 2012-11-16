@@ -1,0 +1,836 @@
+-- Simple generic types
+-- --------------------
+
+
+[case testGenericMethodReturnType]
+A<B> a, B b, C c
+c = a.f() # Fail
+b = a.f()
+
+class A<T>:
+    T f(self): pass
+
+class B: pass
+class C: pass
+[out]
+main, line 2: Incompatible types in assignment
+
+[case testGenericMethodArgument]
+a.f(c) # Fail
+a.f(b)
+
+A<B> a
+B b
+C c
+
+class A<T>:
+    void f(self, T a): pass
+
+class B: pass
+class C: pass
+[out]
+main, line 1: Argument 1 to "f" of "A" has incompatible type "C"
+
+[case testGenericMemberVariable]
+class A<T>:
+    void __init__(self, T v):
+        self.v = v
+        
+A<B> a, B b, C c
+a.v = c # Fail
+a.v = b
+
+class B: pass
+class C: pass
+[out]
+main, line 6: Incompatible types in assignment
+
+[case testGenericMemberVariable]
+A<B> a, B b, C c
+a.v = c # Fail
+a.v = b
+
+class A<T>:
+    T v
+class B: pass
+class C: pass
+[out]
+main, line 2: Incompatible types in assignment
+
+[case testSimpleGenericSubtyping]
+A<B> b, A<B> bb, A<C> c
+c = b # Fail
+b = c # Fail
+
+b = b
+b = bb
+
+class A<T>: pass
+class B: pass
+class C(B): pass
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+
+[case testGenericTypeCompatibilityWithAny]
+A<B> b, A<C> c, A<any> d
+
+b = d
+c = d
+d = b
+d = c
+
+class A<T>: pass
+class B: pass
+class C(B): pass
+[out]
+
+[case testTypeVariableAsTypeArgument]
+A<B> a
+A<B> b
+A<C> c
+
+a.v = c # Fail
+c = a.v # Fail
+a.v = b
+b = a.v
+
+class A<T>:
+    A<T> v = None
+
+class B: pass
+class C: pass
+[out]
+main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+
+[case testMultipleGenericTypeParametersWithMemberVars]
+A<B, C> a
+B s
+C t
+
+t = a.s # Fail
+s = a.t # Fail
+
+s = a.s
+t = a.t
+
+class A<S, T>:
+    S s
+    T t
+class B: pass
+class C: pass
+[out]
+main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+
+[case testMultipleGenericTypeParametersWithMethods]
+A<B, C> a
+B s
+C t
+
+a.f(s, s) # Fail
+a.f(t, t) # Fail
+a.f(s, t)
+
+class A<S, T>:
+    void f(self, S s, T t): pass
+class B: pass
+class C: pass
+[out]
+main, line 5: Argument 2 to "f" of "A" has incompatible type "B"
+main, line 6: Argument 1 to "f" of "A" has incompatible type "C"
+
+[case testMultipleGenericTypeParametersAndSubtyping]
+A<B, C> bc
+A<B, B> bb
+A<C, B> cb
+
+bb = bc # Fail
+bb = cb # Fail
+bc = bb # Fail
+
+bb = bb
+bc = bc
+
+class A<S, T>:
+    S s
+    T t
+
+class B: pass
+class C(B):pass
+[out]
+main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+
+
+-- Simple generic type bodies
+-- --------------------------
+
+
+[case testGenericTypeBody1]
+class A<T>:
+    T a
+    
+    T f(self, T b):
+        self.f(x)     # Fail
+        A<B> d = self # Fail
+        self.a = self.f(self.a)
+        return self.a
+        A<T> c = self
+B x
+class B: pass
+[out]
+main: In member "f" of class "A":
+main, line 5: Argument 1 to "f" of "A" has incompatible type "B"
+main, line 6: Incompatible types in assignment
+
+[case testGenericTypeBodyWithMultipleVariables]
+class A<S, T>:
+    void f(self):
+        S s
+        T t
+        s = t # Fail
+        t = s # Fail
+        A<S, B> a = self # Fail
+        A<T, T> b = self # Fail
+        A<S, T> c = self
+        t = t
+
+class B: pass
+[out]
+main: In member "f" of class "A":
+main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+main, line 8: Incompatible types in assignment
+
+[case testCompatibilityOfNoneWithTypeVar]
+class A<T>:
+    void f(self):
+        T a = None
+        a = None
+[out]
+
+[case testCompatibilityOfTypeVarWithObject]
+class A<T>:
+    T f(self):
+        T a = object()  # Fail
+        a = object()    # Fail
+        object b = self.f()
+        b = self.f()
+[out]
+main: In member "f" of class "A":
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
+
+
+-- Operations with generic types
+-- -----------------------------
+
+
+[case testGenericOperations]
+A<B, C> a
+B b
+C c
+
+b = a + b # Fail
+c = a + c # Fail
+c = a[c]  # Fail
+b = a[b]  # Fail
+
+c = a + b
+b = a[c]
+
+class A<S, T>:
+    T __add__(self, S a): pass    
+    S __getitem__(self, T i): pass
+
+class B: pass
+class C: pass
+[out]
+main, line 5: Incompatible types in assignment
+main, line 6: Unsupported operand types for + ("A" and "C")
+main, line 7: Incompatible types in assignment
+main, line 8: Invalid index type "B" for "A"
+
+[case testOperatorAssignmentWithIndexLvalue1]
+B b
+C c
+A<C> ac
+
+ac[b] += b # Fail
+ac[c] += c # Fail
+ac[b] += c
+ac[b] = ac[b] + c
+
+class A<T>:
+    T __getitem__(self, B i): pass    
+    void __setitem__(self, B i, T v): pass
+
+class B: pass
+class C:
+    C __add__(self, C o): pass
+[out]
+main, line 5: Unsupported operand types for + ("C" and "B")
+main, line 5: Incompatible types in assignment
+main, line 6: Invalid index type "C" for "A"
+
+[case testOperatorAssignmentWithIndexLvalue2]
+B b
+C c
+A<C> ac
+
+ac[b] += c        # Fail
+ac[c] += c        # Fail
+ac[b] = ac[b] + c # Fail
+
+class A<T>:
+    T __getitem__(self, B i): pass    
+    void __setitem__(self, C i, T v): pass
+
+class B: pass
+class C:
+    C __add__(self, C o): pass
+[out]
+main, line 5: Invalid index type "B" for "A"
+main, line 6: Invalid index type "C" for "A"
+main, line 7: Invalid index type "B" for "A"
+
+
+-- Nested generic types
+-- --------------------
+
+
+[case testNestedGenericTypes]
+A<A<B>> aab
+A<A<C>> aac
+A<B> ab
+A<C> ac
+
+ac = aab.x # Fail
+ac.y = aab # Fail
+
+ab = aab.x
+ac = aac.x
+ab.y = aab
+ac.y = aac
+
+class A<T>:
+    T x = None
+    A<A<T>> y = None
+
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+
+
+-- Generic functions
+-- -----------------
+
+
+[case testTrivialTypeApplication]
+id<object>()
+void id<T>(): pass
+[out]
+
+[case testSimpleGenericFunction]
+A a
+B b
+
+b = id<B>(a)  # Fail
+a = id<B>(b)  # Fail
+
+a = id<A>(a)
+
+T id<T>(T a):
+    return a
+
+class A: pass
+class B: pass
+[out]
+main, line 4: Argument 1 to "id" has incompatible type "A"
+main, line 5: Incompatible types in assignment
+
+[case testGenericFunctionWithTwoTypeArguments]
+t<B, C> tbc
+t<B, B> tbb
+B b
+C c
+
+tbc = f<B, C>(c, tbc) # Fail
+tbc = f<B, C>(b, tbb) # Fail
+tbb = f<B, C>(b, tbc) # Fail
+
+tbc = f<B, C>(b, tbc)
+
+t<S, T> f<S, T>(S a, t<S, T> b): pass
+
+class t<S, T>: pass
+class B: pass
+class C: pass
+[out]
+main, line 6: Argument 1 to "f" has incompatible type "C"
+main, line 7: Argument 2 to "f" has incompatible type t<B, B>
+main, line 8: Incompatible types in assignment
+
+[case testInvalidNumberOfTypeArgumentsForGenericFunction]
+p<object, object> a
+
+a = f<object>(a)                 # Fail
+a = f<object, object, object>(a) # Fail
+g<object>()                      # Fail
+f<object, object>(a)
+
+void f<s, t>(p<s, t> a): pass
+void g(): pass
+
+class p<s, t>: pass
+[out]
+main, line 3: Type application has too few types (2 expected)
+main, line 4: Type application has too many types (2 expected)
+main, line 5: Type application targets a non-generic function
+
+[case testGenericMethodInNonGenericType]
+A a, B b
+
+a = a.f<B>(b) # Fail
+a = a.f<A>(b) # Fail
+
+a = a.f<A>(a)
+
+class A:
+    T f<T>(self, T a): pass
+class B: pass
+[out]
+main, line 3: Incompatible types in assignment
+main, line 4: Argument 1 to "f" of "A" has incompatible type "B"
+
+[case testGenericMethodInGenericType]
+A<B> ab
+A<t<C, B>> acb
+A<t<B, C>> abc
+B b
+C c
+
+abc = ab.f<C>(c) # Fail
+acb = ab.f<C>(b) # Fail
+
+acb = ab.f<C>(c)
+
+class A<T>:
+    A<t<S, T>> f<S>(self, S a):
+        pass
+class t<T, S>: pass
+class B: pass
+class C: pass
+[out]
+main, line 7: Incompatible types in assignment
+main, line 8: Argument 1 to "f" of "A" has incompatible type "B"
+
+[case testTypeCheckingGenericFunctionBody]
+p<T, A> f<S, T>(S s, T t):
+    S a = t # Fail
+    s = t   # Fail
+    return p<S, A>(s, A()) # Fail
+    T b = t
+    S c = s
+    return p<T, A>(t, A())
+    
+class p<T, A>:
+    void __init__(self, T t, A a): pass
+class A: pass
+[out]
+main: In function "f":
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible return value type
+
+[case testTypeCheckingGenericMethodBody]
+class A<T>:
+    p<S, T> f<S>(self, S s, T t):
+        s = t # Fail
+        return p<S, S>(s, s) # Fail
+        return p<T, T>(t, t) # Fail
+        t = t
+        s = s
+        return p<S, T>(s, t)
+class p<T, A>:
+    void __init__(self, T t, A a): pass
+[out]
+main: In member "f" of class "A":
+main, line 3: Incompatible types in assignment
+main, line 4: Incompatible return value type
+main, line 5: Incompatible return value type
+
+
+-- Constructing instances + generics
+-- ---------------------------------
+
+
+[case testConstructingGenericInstanceWithEmptyConstructor]
+A<C> a = A<B>() # Fail
+a = A<B>()      # Fail
+
+A<B> e = A<B>()
+e = A<B>()
+
+class A<T>: pass
+class B: pass
+class C: pass
+[out]
+main, line 1: Incompatible types in assignment
+main, line 2: Incompatible types in assignment
+
+[case testNonEmptyGenericTypeConstructor]
+A<C> ac
+A<B> ab
+B b
+C c
+
+ac = A<C>(b, b) # Fail
+ab = A<C>(c, b) # Fail
+
+ac = A<C>(c, b)
+
+class A<T>:
+    void __init__(self, T a, B b): pass
+
+class B: pass
+class C: pass
+[out]
+main, line 6: Argument 1 to "A" has incompatible type "B"
+main, line 7: Incompatible types in assignment
+
+[case testConstructorForGenericTypeWithMultipleArguments]
+A<B, C> abc
+A<C, B> acb
+B b, C c
+
+abc = A<B, C>(b, b) # Fail
+abc = A<B, C>(c, c) # Fail
+acb = A<B, C>(c, b) # Fail
+
+abc = A<B, C>(c, b)
+acb = A<C, B>(b, c)
+
+class A<S, T>:
+    void __init__(self, T t, S s): pass
+
+class B: pass
+class C: pass
+[out]
+main, line 5: Argument 1 to "A" has incompatible type "B"
+main, line 6: Argument 2 to "A" has incompatible type "C"
+main, line 7: Incompatible types in assignment
+
+[case testGenericConstructorOfNonGenericType]
+A a, B b, C c
+
+a = A<B>(b, c) # Fail
+a = A<B>(c, b) # Fail
+b = A<B>(b, b) # Fail
+
+a = A<B>(b, b)
+a = A<C>(c, c)
+
+class A:
+    void __init__<T>(self, T a, T b):
+        pass
+
+class B: pass
+class C: pass
+[out]
+main, line 3: Argument 2 to "A" has incompatible type "C"
+main, line 4: Argument 1 to "A" has incompatible type "C"
+main, line 5: Incompatible types in assignment
+
+
+-- Built-in type expressions
+-- -------------------------
+
+
+[case testArrayExpressionsWithTypeApplication]
+list<A> aa
+list<B> ab
+A a, A2 a2, B b
+
+ab = <A> []      # Fail
+aa = <A> [a, b]  # Fail
+aa = <A> [b, a]  # Fail
+<A2> [a]         # Fail
+
+aa = <A> []
+ab = <B> []
+aa = <A> [a, a2]
+ab = <B> [b, b]
+
+class A:
+    pass
+class B:
+    pass
+class A2(A):
+    pass
+[builtins fixtures/list.py]
+[out]
+main, line 5: Incompatible types in assignment
+main, line 6: List item 2 has incompatible type "B"
+main, line 7: List item 1 has incompatible type "B"
+main, line 8: List item 1 has incompatible type "A"
+
+[case testNestedArrayWithTypeApplication]
+list<list<B>> aa
+B b
+C c
+
+aa = <list<B>> [<B> [], <C> [c]] # Fail
+aa = <list<B>> [<B> [], <B> [b]]
+
+class B: pass
+class C: pass
+[builtins fixtures/list.py]
+[out]
+main, line 5: List item 2 has incompatible type list<C>
+
+[case testInvalidTypeApplicationTarget]
+A a
+a<A>() # Fail
+class A: pass
+[out]
+main, line 2: Invalid type application target type
+
+[case testTypeApplicationWithTuples]
+tuple<A, B> t2
+tuple<A, B, B> t3
+A a
+B b
+B2 b2
+
+<B2, B2> (b, b2)  # E: Incompatible tuple item type
+<B2, B2> (b2, b)  # E: Incompatible tuple item type
+t2 = <A, A> (None, None) # E: Incompatible types in assignment
+
+t2 = <A, B> (None, None)
+t3 = <A, B, B> (a, b, b2)
+
+class A: pass
+class B: pass
+class B2(B): pass
+[builtins fixtures/tuple.py]
+
+[case testDictLiteralWithExplicitType]
+dict<A, B> ab, dict<B, A> ba
+A a, B b
+
+ab = <A, A> {} # E: Incompatible types in assignment
+ab = <B, B> {} # E: Incompatible types in assignment
+
+ab = <A, B> {}
+ba = <B, A> {}
+
+class A: pass
+class B: pass
+[builtins fixtures/dict.py]
+
+[case testDictLiteralItemsWithExplicitType]
+A a, B b
+<A, B> {a:a}      # E: Incompatible dictionary value type
+<A, B> {a:b, b:b} # E: Incompatible dictionary key type
+<A, B> {a:b}
+<A, B> {a:b, None:None, a:b}
+class A: pass
+class B: pass
+[builtins fixtures/dict.py]
+
+
+-- Multiple assignment with arrays
+-- -------------------------------
+
+
+[case testMultipleAsssignmentWithLists]
+A a
+B b
+B2 b2
+
+a, b = <A> []   # E: Incompatible types in assignment
+b, a = <A> []   # E: Incompatible types in assignment
+b2, b2 = <B> [] # E: Incompatible types in assignment
+
+a, a = <A> []
+b, b2, b = <B2> []
+
+class A: pass
+class B: pass
+class B2(B): pass
+[builtins fixtures/list.py]
+
+[case testMultipleAssignmentWithListsInInitialization]
+A a, object b = <object> [] # E: Incompatible types in assignment
+object c, A d = <object> [] # E: Incompatible types in assignment
+A e, object f = <A> []
+
+class A: pass
+[builtins fixtures/list.py]
+
+[case testMultipleAssignmentWithArrayAndIndexing]
+list<A> a
+list<int> b
+
+a[1], b[1] = a # E: Incompatible types in assignment
+a[1], a[2] = a
+
+class A: pass
+[file builtins.py]
+class object: pass
+class list<T>:
+  void __setitem__(self, int x, T v): pass
+class int: pass
+
+
+-- Error messages
+-- --------------
+
+
+[case testErrorWithLongGenericTypeName]
+f(a)
+
+A<object, object, object, object, object, object> a
+
+void f(C a):
+    pass
+
+class A<B, C, D, E, F, G>: pass
+
+class C: pass
+[out]
+main, line 1: Argument 1 to "f" has incompatible type A<...>
+
+[case testErrorWithShorterGenericTypeName]
+A<object, B> a
+f(a) # E: Argument 1 to "f" has incompatible type A<object, B>
+
+void f(B a): pass
+class A<S, T>: pass
+class B: pass
+
+[case testErrorWithShorterGenericTypeName2]
+A<object, func<void>> a
+f(a) # E: Argument 1 to "f" has incompatible type A<object, function>
+
+void f(B a): pass
+class A<S, T>: pass
+class B: pass
+
+
+-- Overloads + generics
+-- --------------------
+
+
+[case testGenericArgumentInIntersectionType]
+A a, B b
+
+b = f([a]) # E: Incompatible types in assignment
+a = f([b]) # E: List item 1 has incompatible type "B"
+a = f(b)   # E: Incompatible types in assignment
+
+a = f([a])
+b = f(b)
+
+A f(list<A> a): pass
+B f(B a): pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+[case testGenericFunctionAsIntersectionItem]
+A a, B b
+
+b = f([a]) # E: List item 1 has incompatible type "A"
+a = f([b]) # E: List item 1 has incompatible type "B"
+a = f(b)   # E: Incompatible types in assignment
+
+a = f([a])
+b = f([b])
+b = f(b)
+
+B f(B a): pass
+T f<T>(list<T> a): pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+
+-- For statements (without type inference)
+-- ---------------------------------------
+
+
+[case testSimpleForStatement]
+list<B> ab
+A a
+B b
+
+for B x in ab:
+    a = x # E: Incompatible types in assignment
+    b = x
+
+for A x in ab:  # E: Incompatible types in for statement
+    b = x # E: Incompatible types in assignment
+    a = x
+
+for A x in B(): # E: Iterable expected
+    pass
+
+class A: pass
+class B:
+    iterator<A> __iter__(self): pass
+[builtins fixtures/for.py]
+
+[case testForStatementWithMultipleVars1]
+list<tuple<A, B>> at
+list<list<B>> aab
+A a, B b
+
+for A x, B y in at:
+    b = x # E: Incompatible types in assignment
+    a = y # E: Incompatible types in assignment
+    a = x
+    b = y
+
+for B x, B y in aab:
+    a = x # E: Incompatible types in assignment
+    a = y # E: Incompatible types in assignment
+    b = x
+    b = y
+
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testForStatementWithMultipleVars1]
+list<tuple<A, B>> at
+list<list<B>> aab
+list<A> aa
+
+A a, B b
+
+for A x, A y in at: pass  # E: Incompatible types in for statement
+for B x, B y in at: pass  # E: Incompatible types in for statement
+for B x, A y in aab: pass # E: Incompatible types in for statement
+for A x, B y in aab: pass # E: Incompatible types in for statement
+for A x, A y in aa: pass  # E: Incompatible types in for statement
+
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testForStatementWithVoid]
+for object x in f(): pass # E: "f" does not return a value
+void f(): pass
+[builtins fixtures/for.py]

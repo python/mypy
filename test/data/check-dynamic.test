@@ -1,0 +1,624 @@
+
+
+-- Assignment
+-- ----------
+
+
+[case testAssignmentWithDynamic]
+any d
+A a
+
+a = d # Everything ok
+d = a
+d = d
+d.x = a
+d.x = d
+
+class A: pass
+
+[case testMultipleAssignmentWithDynamic]
+any d
+A a, B b
+
+d, a = b, b    # E: Incompatible types in assignment
+d, d = d, d, d # E: Too many values to assign
+
+a, b = d, d
+d, d = a, b
+a, b = d
+s, t = d
+
+class A: pass
+class B: pass
+
+
+-- Expressions
+-- -----------
+
+
+[case testCallingFunctionWithDynamicArgumentTypes]
+A a, B b
+
+b = f(a) # E: Incompatible types in assignment
+
+a = f(a)
+a = f(b)
+a = f(None)
+a = f(f)
+
+A f(any x):
+    pass
+
+class A: pass
+class B: pass
+
+[case testCallingWithDynamicReturnType]
+A a, B b
+
+a = f(b) # E: Argument 1 to "f" has incompatible type "B"
+
+a = f(a)
+b = f(a)
+
+any f(A x):
+    pass
+
+class A: pass
+class B: pass
+
+[case testBinaryOperationsWithDynamicLeftOperand]
+any d
+A a
+C c
+bool b
+int n
+
+d in a  # E: Unsupported right operand type for in ("A")
+d and a
+d or a
+c = d and b # E: Incompatible types in assignment
+c = d or b  # E: Incompatible types in assignment
+
+c = d + a
+c = d - a
+c = d * a
+c = d / a
+c = d // a
+c = d % a
+c = d ** a
+b = d == a
+b = d != a
+b = d < a
+b = d <= a
+b = d > a
+b = d >= a
+b = d in c
+b = d and b
+b = d or b
+
+class A: pass
+class C:
+    bool __contains__(self, A a):
+        pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class bool: pass
+class int: pass
+
+[case testBinaryOperationsWithDynamicAsRightOperand]
+-- TODO: relational operations
+any d
+A a
+C c
+bool b
+int n
+
+a and d
+a or d
+c = a in d
+c = b and d # E: Incompatible types in assignment
+c = b or d  # E: Incompatible types in assignment
+b = a + d   # E: Incompatible types in assignment
+b = a / d   # E: Incompatible types in assignment
+
+c = a + d
+c = a - d
+c = a * d
+c = a / d
+c = a // d
+c = a % d
+c = a ** d
+b = a in d
+b = b and d
+b = b or d
+
+class A:
+    C __add__(self, A a):
+        pass
+    C __sub__(self, A a):
+        pass
+    C __mul__(self, A a):
+        pass
+    C __truediv__(self, A a):
+        pass
+    C __floordiv__(self, A a):
+        pass
+    C __mod__(self, A a):
+        pass
+    C __pow__(self, A a):
+        pass
+    bool _lt(self, A a):
+        pass
+    bool _gt(self, A a):
+        pass
+
+class C: pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class bool: pass
+class int: pass
+
+[case testDynamicWithUnaryExpressions]
+any d
+A a
+bool b
+
+a = not d # E: Incompatible types in assignment
+
+b = not d
+a = -d
+
+class A: pass
+[builtins fixtures/bool.py]
+[out]
+
+[case testDynamicWithMemberAccess]
+any d
+A a
+
+a = d.foo(a()) # E: "A" not callable
+
+a = d.x
+a = d.foo(a, a)
+d.x = a
+d.x.y.z
+
+class A: pass
+[out]
+
+[case testIndexingWithDynamic]
+any d
+A a
+
+a = d[a()] # E: "A" not callable
+d[a()] = a # E: "A" not callable
+
+a = d[a]
+d[a] = a
+d[a], d[a] = a, a
+
+class A: pass
+
+[case testTupleExpressionsWithDynamci]
+tuple<A, A> t2
+any d
+
+t2 = (d, d, d)  # E: Incompatible types in assignment
+t2 = (d, d)
+
+class A: pass
+[builtins fixtures/tuple.py]
+
+[case testCastsWithDynamicType]
+any d
+A a
+B b
+
+b = (A)d # E: Incompatible types in assignment
+
+a = (A)d
+b = (any)d
+a = (any)f()
+
+void f(): pass
+
+class A: pass
+class B: pass
+
+[case testCompatibilityOfDynamicWithOtherTypes]
+any d
+tuple<A, A> t
+# TODO: callable types, overloaded functions
+
+d = None # All ok
+d = t
+d = g
+d = A
+t = d
+f = d
+
+void g(A a):
+    pass
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.py]
+
+
+-- Statements
+-- ----------
+
+
+[case testDynamicCondition]
+any d
+while d:
+    pass
+if d:
+    pass
+elif d:
+    pass
+[builtins fixtures/bool.py]
+
+[case testRaiseWithDynamic]
+any d
+raise d
+[builtins fixtures/exception.py]
+
+[case testReturnWithDynamic]
+any d
+
+void f():
+    return d # Ok
+
+A g():
+    return d # Ok
+
+class A: pass
+
+
+-- Implicit dynamic types for functions
+-- ------------------------------------
+
+
+[case testImplicitGlobalFunctionSignature]
+any x
+A a
+func<void> g
+func<A, void> h
+
+f()     # E: Too few arguments for "f"
+f(x, x) # E: Too many arguments for "f"
+g = f   # E: Incompatible types in assignment
+f(a)
+f(x)
+a = f(a)
+h = f
+
+def f(x): pass
+
+class A: pass
+
+[case testImplicitGlobalFunctionSignatureWithDifferentArgCounts]
+func<void> g0
+func<A, void> g1
+func<A, A, void> g2
+A a
+
+g1 = f0 # E: Incompatible types in assignment
+g2 = f0 # E: Incompatible types in assignment
+g0 = f2 # E: Incompatible types in assignment
+g1 = f2 # E: Incompatible types in assignment
+
+g0 = g0
+g2 = f2
+f0()
+f2(a, a)
+
+def f0(): pass
+
+def f2(x, y): pass
+
+class A: pass
+
+[case testImplicitGlobalFunctionSignatureWithDefaultArgs]
+A a, B b
+
+func<void> g0
+func<A, void> g1
+func<A, A, void> g2
+func<A, A, A, void> g3
+func<A, A, A, A, void> g4
+
+f01(a, a)       # Fail
+f13()           # Fail
+f13(a, a, a, a) # Fail
+g2 = f01 # Fail
+g0 = f13 # Fail
+g4 = f13 # Fail
+
+f01()
+f01(a)
+f13(a)
+f13(a, a)
+f13(a, a, a)
+
+g0 = f01
+g1 = f01
+g1 = f13
+g2 = f13
+g3 = f13
+
+def f01(x = b): pass
+def f13(x, y = b, z = b): pass
+
+class A: pass
+class B: pass
+[out]
+main, line 9: Too many arguments for "f01"
+main, line 10: Too few arguments for "f13"
+main, line 11: Too many arguments for "f13"
+main, line 12: Incompatible types in assignment
+main, line 13: Incompatible types in assignment
+main, line 14: Incompatible types in assignment
+
+[case testSkipTypeCheckingWithImplicitSignature]
+A a
+def f():
+    a()
+def g(x):
+    a()
+    a.x
+    a + a
+    if a():
+        a()
+class A: pass
+[builtins fixtures/bool.py]
+
+[case testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs]
+A a
+def f(x=a()):
+    a()
+def g(x, y=a, z=a()):
+    a()
+class A: pass
+
+[case testImplicitMethodSignature]
+func<void> g0
+func<A, void> g1
+func<A, A, void> g2
+A a
+
+g0 = a.f # E: Incompatible types in assignment
+g2 = a.f # E: Incompatible types in assignment
+a = a.f  # E: Incompatible types in assignment
+
+class A:
+    void g(self):
+        a = self.f(a)
+    def f(self, x): pass
+
+g1 = a.f
+a = a.f(a)
+
+[case testSkipTypeCheckingImplicitMethod]
+A a
+class A:
+    def f(self):
+        a()
+    def g(self, x, y=a()):
+        a()
+
+[case testImplicitInheritedMethod]
+func<void> g0
+func<A, void> g1
+A a
+
+g0 = a.f # E: Incompatible types in assignment
+
+g1 = a.f
+a = a.f(a)
+
+class A(B):
+    void g(self):
+        a = self.f(a)
+class B:
+    def f(self, x):
+        pass
+
+[case testEmptyReturnWithImplicitSignature]
+def f():
+    return 
+class A:
+    def g(self):
+        return 
+        
+[case testVarArgsWithImplicitSignature]
+any o
+def f(x, *a): pass
+f() # E: Too few arguments for "f"
+f(o)
+f(o, o)
+f(o, o, o)
+
+
+-- Implicit types for constructors
+-- -------------------------------
+
+
+[case testInitMethodWithImplicitSignature]
+func<A, A> f1
+func<A, A, A> f2
+A a
+
+A(a)   # Fail
+f1 = A # Fail
+
+A(a, a)
+f2 = A
+
+class A:
+  def __init__(self, a, b): pass
+[out]
+main, line 5: Too few arguments for "A"
+main, line 6: Incompatible types in assignment
+
+[case testUsingImplicitTypeObjectWithIs]
+type t 
+t = A
+t = B
+
+class A: pass
+class B:
+    def __init__(self): pass
+
+
+-- Type compatibility
+-- ------------------
+
+
+[case testTupleTypeCompatibility]
+tuple<any, A> t1
+tuple<A, any> t2
+tuple<any, any> t3
+tuple<A, A> t4
+tuple<any, any, any> t5
+
+t3 = t5 # E: Incompatible types in assignment
+t5 = t4 # E: Incompatible types in assignment
+
+t1 = t1
+t1 = t2
+t1 = t3
+t1 = t4
+t2 = t1
+t2 = t3
+t2 = t4
+t3 = t1
+t3 = t2
+t3 = t4
+t4 = t1
+t4 = t2
+t4 = t3
+
+class A: pass
+[builtins fixtures/tuple.py]
+
+[case testFunctionTypeCompatibilityAndReturnTypes]
+func<any> f1
+func<A> f2
+func<void> f3
+
+f2 = f3 # E: Incompatible types in assignment
+
+f1 = f2
+f1 = f3
+f2 = f1
+f3 = f1
+
+class A: pass
+
+[case testFunctionTypeCompatibilityAndArgumentTypes]
+func<A, any, void> f1
+func<any, A, void> f2
+func<A, A, void> f3
+
+f1 = f1
+f1 = f2
+f1 = f3
+
+f2 = f1
+f2 = f2
+f2 = f3
+
+f3 = f1
+f3 = f2
+f3 = f3
+
+class A: pass
+
+[case testFunctionTypeCompatibilityAndArgumentCounts]
+func<any, void> f1
+func<any, any, void> f2
+
+f1 = f2 # E: Incompatible types in assignment
+
+
+-- Overriding
+-- ----------
+
+
+[case testOverridingMethodWithDynamicTypes]
+A a, B b
+
+b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
+a = a.f(b)
+
+class A(B):
+    any f(self, any x):
+        pass
+    
+    void g(self, any x):
+        pass
+class B:
+    B f(self, A x):
+        pass
+    void g(self, B x):
+        pass
+
+[case testOverridingMethodWithImplicitDynamicTypes]
+A a, B b
+
+b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
+a = a.f(b)
+
+class A(B):
+    def f(self, x):
+        pass
+    
+    def g(self, x):
+        pass
+class B:
+    B f(self, A x):
+        pass
+    void g(self, B x):
+        pass
+
+[case testOverridingMethodAcrossHierarchy]
+class A(B):
+    void f(self, D a): # E: Argument 1 of "f" incompatible with supertype "C"
+        pass
+
+class B(C):
+    def f(self, a):
+        pass
+
+class C:
+    void f(self, A a):
+        pass
+
+class D: pass
+[out]
+main: In class "A":
+
+[case testInvalidOverrideArgumentCountWithImplicitSignature1]
+class A(B):
+    def f(self, x, y):
+        x()
+class B:
+    void f(self, A x):
+        pass
+[out]
+main: In class "A":
+main, line 2: Signature of "f" incompatible with supertype "B"
+
+[case testInvalidOverrideArgumentCountWithImplicitSignature2]
+class A(B):
+    void f(self, A x): # E: Signature of "f" incompatible with supertype "B"
+        pass
+class B:
+    def f(self, x, y):
+        pass
+[out]
+main: In class "A":

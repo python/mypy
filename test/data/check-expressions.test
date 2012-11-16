@@ -1,0 +1,683 @@
+-- None
+-- ----
+
+
+[case testNoneAsRvalue]
+A a = None
+class A: pass
+[out]
+
+[case testNilAsArgument]
+void f(A x, B y): pass
+f(None, None)
+class A: pass
+class B(A): pass
+[out]
+
+
+-- Simple expressions
+-- ------------------
+
+
+[case testIntLiteral]
+int a
+A b
+b = 1
+a = 1
+class A:
+    pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class int: pass
+[out]
+main, line 3: Incompatible types in assignment
+
+[case testStrLiteral]
+str a
+A b
+b = 'x'
+a = 'x'
+class A:
+    pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class str: pass
+[out]
+main, line 3: Incompatible types in assignment
+
+[case testFloatLiteral]
+float a
+A b
+b = 1.1
+a = 1.1
+class A:
+    pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class float: pass
+[out]
+main, line 3: Incompatible types in assignment
+
+
+-- Binary operators
+-- ----------------
+
+
+[case testAdd]
+A a, B b, C c
+c = a + c  # Fail
+a = a + b  # Fail
+c = b + a  # Fail
+c = a + b
+
+class A:
+    C __add__(self, B x): pass
+class B: pass
+class C: pass
+[out]
+main, line 2: Unsupported operand types for + ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for + ("B")
+[case testAdd]
+A a, B b, C c
+c = a + c  # Fail
+a = a + b  # Fail
+c = b + a  # Fail
+c = a + b
+
+class A:
+    C __add__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for + ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for + ("B")
+
+[case testSub]
+A a, B b, C c
+c = a - c  # Fail
+a = a - b  # Fail
+c = b - a  # Fail
+c = a - b
+
+class A:
+    C __sub__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for - ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for - ("B")
+
+[case testMul]
+A a, B b, C c
+c = a * c  # Fail
+a = a * b  # Fail
+c = b * a  # Fail
+c = a * b
+
+class A:
+    C __mul__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for * ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for * ("B")
+
+[case testDiv]
+A a, B b, C c
+c = a / c  # Fail
+a = a / b  # Fail
+c = b / a  # Fail
+c = a / b
+
+class A:
+    C __truediv__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for / ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for / ("B")
+
+[case testIntDiv]
+A a, B b, C c
+c = a // c  # Fail
+a = a // b  # Fail
+c = b // a  # Fail
+c = a // b
+
+class A:
+    C __floordiv__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for // ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for // ("B")
+
+[case testMod]
+A a, B b, C c
+c = a % c  # Fail
+a = a % b  # Fail
+c = b % a  # Fail
+c = a % b
+
+class A:
+    C __mod__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for % ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for % ("B")
+
+[case testPow]
+A a, B b, C c
+c = a ** c  # Fail
+a = a ** b  # Fail
+c = b ** a  # Fail
+c = a ** b
+
+class A:
+    C __pow__(self, B x):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Unsupported operand types for ** ("A" and "C")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported left operand type for ** ("B")
+
+[case testMiscBinaryOperators]
+A a, B b
+b = a & a  # Fail
+b = a | b  # Fail
+b = a ^ a  # Fail
+b = a << b # Fail
+b = a >> a # Fail
+
+b = a & b
+b = a | a
+b = a ^ b
+b = a << a
+b = a >> b
+class A:
+  B __and__(self, B x): pass
+  B __or__(self, A x): pass
+  B __xor__(self, B x): pass
+  B __lshift__(self, A x): pass
+  B __rshift__(self, B x): pass
+class B: pass
+[out]
+main, line 2: Unsupported operand types for & ("A" and "A")
+main, line 3: Unsupported operand types for | ("A" and "B")
+main, line 4: Unsupported operand types for ^ ("A" and "A")
+main, line 5: Unsupported operand types for << ("A" and "B")
+main, line 6: Unsupported operand types for >> ("A" and "A")
+
+[case testAndOr]
+A a, bool b
+b = b and a
+a = b and b  # Fail
+b = a and b
+b = b and b
+b = b or a
+a = b or b  # Fail
+b = a or b
+b = b or b
+class A: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 3: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+
+[case testInOperator]
+A a, B b, bool c
+c = c in a  # Fail
+a = b in a  # Fail
+c = a in b  # Fail
+c = b in a
+
+class A:
+    bool __contains__(self, B x): pass
+class B: pass
+class C: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Unsupported operand types for in ("bool" and "A")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported right operand type for in ("B")
+
+[case testNotInOperator]
+A a, B b, bool c
+c = c not in a  # Fail
+a = b not in a  # Fail
+c = a not in b  # Fail
+c = b not in a
+
+class A:
+    bool __contains__(self, B x): pass
+class B: pass
+class C: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Unsupported operand types for in ("bool" and "A")
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported right operand type for in ("B")
+
+[case testNonBooleanContainsReturnValue]
+A a, bool b
+b = a not in a
+b = a in a
+
+class A:
+  object __contains__(self, A x): pass
+[builtins fixtures/bool.py]
+[out]
+main, line 3: Incompatible types in assignment
+
+[case testEq]
+A a, bool b
+a = a == b # Fail
+a = a != b # Fail
+b = a == b
+b = a != b
+
+class A:
+  bool __eq__(self, object o): pass
+  bool __ne__(self, object o): pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+
+[case testLtAndGt]
+A a, bool b
+a = a < b # Fail
+a = a > b # Fail
+b = a < b
+b = a > b
+
+class A:
+  bool __lt__(self, object o): pass
+  bool __gt__(self, object o): pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+
+[case testLeAndGe]
+A a, bool b
+a = a <= b # Fail
+a = a >= b # Fail
+b = a <= b
+b = a >= b
+
+class A:
+  bool __le__(self, object o): pass
+  bool __ge__(self, object o): pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+
+[case testIs]
+A a, bool b
+a = a is b # Fail
+b = a is b
+b = b is a
+b = a is None
+class A: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Incompatible types in assignment
+
+[case testIsNot]
+A a, bool b
+a = a is not b # Fail
+b = a is not b
+b = b is not a
+b = a is not None
+class A: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Incompatible types in assignment
+
+
+-- Unary operators
+-- ---------------
+
+
+[case testUnaryMinus]
+A a, B b
+a = -a   # Fail
+b = -b   # Fail
+b = -a
+
+class A:
+    B __neg__(self):
+        pass
+class B:
+    pass
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Unsupported operand type for unary - ("B")
+
+[case testUnaryNot]
+A a, bool b
+a = not b  # Fail
+b = not a
+b = not b
+class A:
+    pass
+[builtins fixtures/bool.py]
+[out]
+main, line 2: Incompatible types in assignment
+
+[case testUnaryBitwiseNeg]
+A a, B b
+a = ~a   # Fail
+b = ~b   # Fail
+b = ~a
+
+class A:
+    B __invert__(self):
+        pass
+class B:
+    pass
+[out]
+main, line 2: Incompatible types in assignment
+main, line 3: Unsupported operand type for ~ ("B")
+
+
+-- Indexing
+-- --------
+
+
+[case testIndexing]
+A a, B b, C c
+c = a[c]  # Fail
+a = a[b]  # Fail
+c = b[a]  # Fail
+c = a[b]
+
+class A:
+    C __getitem__(self, B x):
+        pass
+class B: pass
+class C: pass
+[out]
+main, line 2: Invalid index type "C" for "A"
+main, line 3: Incompatible types in assignment
+main, line 4: Value of type "B" is not indexable
+
+[case testIndexingAsLvalue]
+A a, B b, C c
+a[c] = c  # Fail
+a[b] = a  # Fail
+b[a] = c  # Fail
+a[b] = c
+
+class A:
+    void __setitem__(self, B x, C y):
+        pass
+class B:
+    pass
+class C:
+    pass
+[out]
+main, line 2: Invalid index type "C" for "A"
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported target for indexed assignment
+
+
+-- Cast expression
+-- ---------------
+
+
+[case testCastExpressions]
+A a, B b, C c
+a = (A)a()       # Fail
+a = (A)b         # Fail
+a = (any)a()     # Fail
+b = (A)a         # Fail
+
+a = (A)a
+c = (C)a
+a = (A)c
+a = (any)b
+b = (any)a
+
+class A: pass
+class B: pass
+class C(A): pass
+[out]
+main, line 2: "A" not callable
+main, line 3: Cannot cast from "B" to "A"
+main, line 4: "A" not callable
+main, line 5: Incompatible types in assignment
+
+
+-- Void type
+-- ---------
+
+
+[case testVoidTypeBasics]
+A a, object o
+a = f()         # Fail
+o = A().g(a)    # Fail
+A().g(f())      # Fail
+A x = f() # Fail
+f()
+A().g(a)
+
+void f():
+    pass
+
+class A:
+    void g(self, object x):
+        pass
+[out]
+main, line 2: "f" does not return a value
+main, line 3: "g" of "A" does not return a value
+main, line 4: "f" does not return a value
+main, line 5: "f" does not return a value
+
+[case testVoidWithStatements]
+raise f() # Fail
+if f():   # Fail
+    pass
+elif f(): # Fail
+    pass
+while f(): # Fail
+    pass
+object g():
+    return f() # Fail
+
+void f(): pass
+[builtins fixtures/exception.py]
+[out]
+main, line 1: "f" does not return a value
+main, line 2: "f" does not return a value
+main, line 4: "f" does not return a value
+main, line 6: "f" does not return a value
+main: In function "g":
+main, line 9: "f" does not return a value
+
+[case testVoidWithExpressions]
+A a
+[f()]       # E: "f" does not return a value
+f() + a     # E: "f" does not return a value
+a + f()     # E: "f" does not return a value
+f() == a    # E: "f" does not return a value
+a != f()    # E: Unsupported left operand type for != ("A")
+(A)f()      # E: "f" does not return a value
+f().foo     # E: "f" does not return a value
+
+void f(): pass
+
+class A:
+    A __add__(self, A x): pass
+[builtins fixtures/list.py]
+
+[case testVoidWithExpressions2]
+A a, bool b
+a < f()    # E: Unsupported left operand type for < ("A")
+f() <= a   # E: "f" does not return a value
+f() in a   # E: Unsupported right operand type for in ("A")
+a in f()   # E: "f" does not return a value
+-f()       # E: "f" does not return a value
+not f()    # E: "f" does not return a value
+f() and b  # E: "f" does not return a value
+b or f()   # E: "f" does not return a value
+
+void f(): pass
+class A:
+    A __add__(self, A x):
+        pass
+[builtins fixtures/bool.py]
+
+
+-- Slicing
+-- -------
+
+
+[case testGetSlice]
+A a, B b
+a = a[1:2] # E: Incompatible types in assignment
+a = a[1:]  # E: Incompatible types in assignment
+a = a[:2]  # E: Incompatible types in assignment
+a = a[:]   # E: Incompatible types in assignment
+
+b = a[1:2]
+b = a[1:]
+b = a[:2]
+b = a[:]
+
+class A:
+  B __getitem__(self, slice s): pass
+class B: pass
+[builtins fixtures/slice.py]
+
+[case testSlicingWithInvalidBase]
+A a
+a[1:2] # E: Invalid index type "slice" for "A"
+a[:]   # E: Invalid index type "slice" for "A"
+class A:
+  A __getitem__(self, int n): pass
+[builtins fixtures/slice.py]
+
+[case testSlicingWithNonindexable]
+object o
+o[1:2] # E: Value of type "object" is not indexable
+o[:]   # E: Value of type "object" is not indexable
+[builtins fixtures/slice.py]
+
+[case testNonIntSliceBounds]
+any a, object o
+a[o:1] # E: Slice index must be an integer or None
+a[1:o] # E: Slice index must be an integer or None
+a[o:]  # E: Slice index must be an integer or None
+a[:o]  # E: Slice index must be an integer or None
+[builtins fixtures/slice.py]
+
+[case testNoneSliceBounds]
+any a
+a[None:1]
+a[1:None]
+a[None:]
+a[:None]
+[builtins fixtures/slice.py]
+
+
+-- Lambda
+-- ------
+
+
+[case testTrivialLambda]
+func<object, object> f = lambda m: m
+
+
+-- Special cases
+-- -------------
+
+
+[case testOperationsWithNonInstanceTypes]
+A a
+None + a   # Fail
+f + a      # Fail
+a + f      # Fail
+(A)f       # Fail
+
+void f():
+    pass
+
+class A:
+    A __add__(self, A a):
+        pass
+[out]
+main, line 2: Unsupported left operand type for + (None)
+main, line 3: Unsupported left operand type for + (function)
+main, line 4: Unsupported operand types for + ("A" and function)
+main, line 5: Cannot cast from function to "A"
+
+[case testOperatorMethodWithInvalidArgCount]
+A a
+a + a  # Fail
+
+class A:
+    A __add__(self):
+        pass
+[out]
+main, line 2: Too many arguments for "__add__" of "A"
+
+[case testOperatorMethodAsVar]
+A a
+a + a   # Currently fails (but should work in the future)
+
+class A:
+    void __init__(self, any _add):
+        self.__add__ = _add
+[out]
+main, line 2: Expected operator method "__add__" in "A"
+
+[case testIndexedLvalueWithSubtypes]
+A a, B b, C c
+a[c] = c
+a[b] = c
+a[c] = b
+
+class A:
+    void __setitem__(self, B x, B y):
+        pass
+class B:
+    pass
+class C(B):
+    pass
+[out]

@@ -1,0 +1,457 @@
+-- Test cases for the type checker related to varargs.
+
+
+-- Varargs within body
+-- -------------------
+
+
+[case testVarArgsWithinFunction]
+void f(B *b):
+    list<B> ab
+    list<C> ac
+    b = ac # E: Incompatible types in assignment
+    ac = b # E: Incompatible types in assignment
+    b = ab
+    ab = b
+
+class B: pass
+class C: pass
+[builtins fixtures/list.py]
+[out]
+main: In function "f":
+
+
+-- Calling varargs function
+-- ------------------------
+
+
+[case testCallingVarArgsFunction]
+A a
+B b
+C c
+
+f(c)       # E: Argument 1 to "f" has incompatible type "C"
+f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"
+f(g())     # E: "g" does not return a value
+f(a, g())  # E: "g" does not return a value
+f()
+f(a)
+f(b)
+f(a, b, a, b)
+
+void f(A *a): pass
+
+void g(): pass
+
+class A: pass
+class B(A): pass
+class C: pass
+[builtins fixtures/list.py]
+
+[case testCallingVarArgsFunctionWithAlsoNormalArgs]
+A a
+B b
+C c
+
+f(a)       # E: Argument 1 to "f" has incompatible type "A"
+f(c, c)    # E: Argument 2 to "f" has incompatible type "C"
+f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"
+f(c)
+f(c, a)
+f(c, b, b, a, b)
+
+void f(C a, A *b): pass
+
+class A: pass
+class B(A): pass
+class C: pass
+[builtins fixtures/list.py]
+
+[case testCallingVarArgsFunctionWithDefaultArgs]
+A a
+B b
+C c
+
+f(a)           # E: Argument 1 to "f" has incompatible type "A"
+f(c, c)        # E: Argument 2 to "f" has incompatible type "C"
+f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"
+f()
+f(c)
+f(c, a)
+f(c, b, b, a, b)
+
+void f(C a=None, A *b):
+    pass
+
+class A: pass
+class B(A): pass
+class C: pass
+[builtins fixtures/list.py]
+
+
+-- Calling varargs function + type inference
+-- -----------------------------------------
+
+
+[case testTypeInferenceWithCalleeVarArgs]
+A a
+B b
+C c
+object o
+
+a = f(o) # E: Argument 1 to "f" has incompatible type "object"
+b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"
+b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"
+
+o = f()
+a = f(a)
+a = f(b)
+a = f(a, b, a)
+o = f(a, b, o)
+c = f(c)
+
+T f<T>(T *a):
+    pass
+
+class A: pass
+class B(A): pass
+class C: pass
+[builtins fixtures/list.py]
+
+[case testTypeInferenceWithCalleeVarArgsAndDefaultArgs]
+A a
+object o
+
+a = f(o) # E: Argument 1 to "f" has incompatible type "object"
+a = f(a, o) # E: Argument 2 to "f" has incompatible type "object"
+a = f(a, a, o) # E: Argument 3 to "f" has incompatible type "object"
+a = f(a, a, a, o) # E: Argument 4 to "f" has incompatible type "object"
+
+a = f(a)
+a = f(a, a)
+a = f(a, a, a)
+
+T f<T>(T a, T b=None, T *c):
+    pass
+
+class A: pass
+[builtins fixtures/list.py]
+
+
+-- Calling normal function with varargs
+-- ------------------------------------
+
+
+[case testCallingWithListVarArgs]
+list<A> aa
+list<B> ab
+A a
+B b
+
+f(*aa)    # Fail
+f(a, *ab) # Fail
+f(a, b)
+((any)f)(*aa)     # IDEA: Move to check-dynamic?
+((any)f)(a, *ab)  # IDEA: Move to check-dynamic?
+
+void f(A a, B b):
+    pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+main, line 6: Too many arguments for "f"
+main, line 6: Argument 2 to "f" has incompatible type "A"
+main, line 7: Too many arguments for "f"
+
+[case testCallingWithTupleVarArgs]
+A a
+B b
+C c
+CC cc
+
+f(*(a, b, b)) # E: Argument 3 to "f" has incompatible type "B"
+f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "B"
+f(a, *(b, b)) # E: Argument 3 to "f" has incompatible type "B"
+f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"
+f(*(a, b))    # E: Too few arguments for "f"
+f(*(a, b, c, c)) # E: Too many arguments for "f"
+f(a, *(b, c, c)) # E: Too many arguments for "f"
+f(*(a, b, c))
+f(a, *(b, c))
+f(a, b, *(c,))
+f(a, *(b, cc))
+
+void f(A a, B b, C c): pass
+
+class A: pass
+class B: pass
+class C: pass
+class CC(C): pass
+[builtins fixtures/tuple.py]
+
+[case testInvalidVarArg]
+A a
+
+f(*None) # E: List or tuple expected as variable arguments
+f(*a)    # E: List or tuple expected as variable arguments
+f(*(a,))
+
+void f(A a):
+    pass
+
+class A: pass
+[builtins fixtures/tuple.py]
+
+
+-- Calling varargs function with varargs
+-- -------------------------------------
+
+
+[case testCallingVarArgsFunctionWithListVarArgs]
+list<A> aa, list<B> ab, A a, B b
+f(*aa)           # Fail
+f(a, *aa)        # Fail
+f(b, *ab)        # Fail
+f(a, a, *ab)     # Fail
+f(a, b, *aa)     # Fail
+f(b, b, *ab)     # Fail
+g(*ab)           # Fail
+f(a, *ab)
+f(a, b, *ab)
+f(a, b, b, *ab)
+g(*aa)
+
+void f(A a, B *b): pass
+void g(A a, A *b): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+main, line 2: Incompatible variable arguments in call
+main, line 3: Incompatible variable arguments in call
+main, line 4: Argument 1 to "f" has incompatible type "B"
+main, line 5: Argument 2 to "f" has incompatible type "A"
+main, line 6: Incompatible variable arguments in call
+main, line 7: Argument 1 to "f" has incompatible type "B"
+main, line 8: Incompatible variable arguments in call
+main, line 8: Argument 1 to "g" has incompatible type "B"
+
+[case testCallingWithTupleVarArgs]
+A a
+B b
+C c
+CC cc
+
+f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "B"
+f(*(a, a, b))   # E: Argument 2 to "f" has incompatible type "A"
+f(*(a, b, a))   # E: Argument 3 to "f" has incompatible type "A"
+f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "A"
+f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"
+f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"
+f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"
+f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "A"
+f(*())          # E: Too few arguments for "f"
+f(*(a, b, b))
+f(a, *(b, b))
+f(a, b, *(b,))
+
+void f(A a, B *b):
+    pass
+
+class A: pass
+class B: pass
+class C: pass
+class CC(C): pass
+[builtins fixtures/list.py]
+
+
+-- Varargs special cases
+-- ---------------------
+
+
+[case testDynamicVarArg]
+any d, A a
+f(a, a, *d) # Fail
+f(a, *d)    # Fail
+
+f(*d)
+g(*d)
+g(a, *d)
+g(a, a, *d)
+
+void f(A a): pass
+void g(A a, A *b): pass
+class A: pass
+[builtins fixtures/list.py]
+[out]
+main, line 2: Too many arguments for "f"
+main, line 3: Too many arguments for "f"
+
+[case testListVarArgsAndSubtyping]
+list<A> aa
+list<B> ab
+
+g(*aa) # E: Incompatible variable arguments in call
+f(*aa)
+f(*ab)
+g(*ab)
+
+void f(A *a):
+    pass
+
+void g(B *a):
+    pass
+
+class A: pass
+class B(A): pass
+[builtins fixtures/list.py]
+
+[case testCallerVarArgsAndDefaultArgs]
+A a, B b
+f(*())        # Fail
+f(a, *[a])    # Fail
+f(a, b, *[a]) # Fail
+f(*(a, a, b)) # Fail
+f(*(a,))
+f(*(a, b))
+f(*(a, b, b, b))
+f(a, *[])
+f(a, *[b])
+f(a, *[b, b])
+
+void f(A a, B b=None, B *c):
+    pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+main, line 2: Too few arguments for "f"
+main, line 3: Incompatible variable arguments in call
+main, line 3: Argument 2 to "f" has incompatible type "A"
+main, line 4: Incompatible variable arguments in call
+main, line 5: Argument 2 to "f" has incompatible type "A"
+
+
+-- Overloads + varargs
+-- -------------------
+
+
+[case testIntersectionTypesAndVarArgs]
+A a, B b
+
+b = f()        # E: Incompatible types in assignment
+b = f(a)       # E: Incompatible types in assignment
+b = f(a, b)    # E: Incompatible types in assignment
+a = f(b)       # E: Incompatible types in assignment
+a = f(b, b)    # E: Incompatible types in assignment
+b = f(a, *[b]) # E: Incompatible types in assignment
+b = f(*())
+b = f(*(a,))   # E: Incompatible types in assignment
+b = f(*(a, b)) # E: Incompatible types in assignment
+a = f(*(b,))   # E: Incompatible types in assignment
+a = f(*(b, b)) # E: Incompatible types in assignment
+a = f(*[b])    # E: Incompatible types in assignment
+
+a = f()
+a = f(a)
+a = f(a, b)
+b = f(b)
+b = f(b, b)
+a = f(a, *[b])
+a = f(*())
+a = f(*(a,))
+a = f(*(a, b))
+b = f(*(b,))
+b = f(*(b, b))
+b = f(*[b])
+
+A f(A a=None, B *b): pass
+
+B f(B a, B *b): pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+
+-- Caller varargs + type inference
+-- -------------------------------
+
+
+[case testCallerVarArgsListWithTypeInference]
+A a, B b, list<A> aa
+
+a, b = f(*aa)    # Fail
+b, b = f(*aa)    # Fail
+a, a = f(b, *aa) # Fail
+b, b = f(b, *aa) # Fail
+b, b = f(b, b, *aa) # Fail
+a, b = f(a, *a)  # Fail
+a, b = f(*a)     # Fail
+
+a, a = f(*aa)
+b, a = f(b, *aa)
+b, a = f(b, a, *aa)
+
+tuple<S, T> f<S, T>(S a, T *b):
+    pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+main, line 3: Incompatible variable arguments in call
+main, line 4: Incompatible variable arguments in call
+main, line 4: Argument 1 to "f" has incompatible type "A"
+main, line 5: Argument 1 to "f" has incompatible type "B"
+main, line 6: Incompatible variable arguments in call
+main, line 7: Incompatible variable arguments in call
+main, line 8: List or tuple expected as variable arguments
+main, line 9: List or tuple expected as variable arguments
+
+[case testCallerVarArgsTupleWithTypeInference]
+A a, B b
+
+a, a = f(*(a, b))   # E: Argument 2 to "f" has incompatible type "B"
+b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
+a, a = f(*(a, b))   # E: Argument 2 to "f" has incompatible type "B"
+b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
+a, b = f(*(a, b, b)) # E: Too many arguments for "f"
+
+a, b = f(*(a, b))
+a, b = f(a, *(b,))
+
+tuple<S, T> f<S, T>(S a, T b): pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+[case testCallerVarargsAndComplexTypeInference]
+A a, B b
+list<object> ao
+list<A> aa
+list<B> ab
+
+a, aa = G().f(*[a])  # Fail
+aa, a = G().f(*[a])  # Fail
+ab, aa = G().f(*[a]) # Fail
+
+ao, ao = G().f(*[a]) # E: Incompatible types in assignment
+aa, aa = G().f(*[a]) # E: Incompatible types in assignment
+
+class G<T>:
+    tuple<list<S>, list<T>> f<S>(self, S *a):
+        pass
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+main, line 8: Incompatible variable arguments in call  
+main, line 8: Incompatible types in assignment

@@ -1,0 +1,211 @@
+[case testEmptyFile]
+[out]
+
+[case testAssignmentAndVarDef]
+A a
+B b
+a = a 
+a = b # Fail
+class A: pass
+class B: pass
+[out]
+main, line 4: Incompatible types in assignment
+
+[case testConstructionAndAssignment]
+A x
+x = A()
+x = B()
+class A: 
+    def __init__(self): pass
+class B:
+    def __init__(self): pass
+[out]
+main, line 3: Incompatible types in assignment
+
+[case testInheritInitFromObject]
+A x
+x = A()
+x = B()
+class A(object): pass
+class B(object): pass
+[out]
+main, line 3: Incompatible types in assignment
+
+[case testImplicitInheritInitFromObject]
+A x
+object o
+x = A()
+o = x
+x = o # Fail
+class A: pass
+class B: pass
+[out]
+main, line 5: Incompatible types in assignment
+
+[case testTooManyConstructorArgs]
+object(object())
+[out]
+main, line 1: Too many arguments for "object"
+
+[case testVarDefWithInit]
+A a = A()
+A b = object()
+class A: pass
+[out]
+main, line 2: Incompatible types in assignment
+
+[case testInheritanceBasedSubtyping]
+A x = B()
+B y = A() # Fail
+class A: pass
+class B(A): pass
+[out]
+main, line 2: Incompatible types in assignment
+
+
+-- Simple functions and calling
+-- ----------------------------
+
+
+[case testFunction]
+void f(A x): pass
+f(A())
+f(B()) # Fail
+class A: pass
+class B: pass
+[out]
+main, line 3: Argument 1 to "f" has incompatible type "B"
+
+[case testNotCallable]
+A()()
+class A: pass
+[out]
+main, line 1: "A" not callable
+
+[case testSubtypeArgument]
+void f(A x, B y): pass
+f(B(), A()) # Fail
+f(B(), B())
+
+class A: pass
+class B(A): pass
+[out]
+main, line 2: Argument 2 to "f" has incompatible type "A"
+
+[case testInvalidArgumentCount]
+void f(x, y): pass
+f(object())
+f(object(), object(), object())
+[out]
+main, line 2: Too few arguments for "f"
+main, line 3: Too many arguments for "f"
+
+
+-- Locals
+-- ------
+
+
+[case testLocalVariables]
+void f():
+  A x
+  B y
+  x = x
+  x = y # Fail
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 5: Incompatible types in assignment
+
+[case testLocalVariableScope]
+void f():
+  A x
+  x = A()
+void g():
+  B x
+  x = A() # Fail
+class A: pass
+class B: pass
+[out]
+main: In function "g":
+main, line 6: Incompatible types in assignment
+
+[case testFunctionArguments]
+void f(A x, B y):
+  x = y # Fail
+  x = x
+  y = B()
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 2: Incompatible types in assignment
+
+[case testLocalVariableInitialization]
+void f():
+  A a = A()
+  A b = B() # Fail
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 3: Incompatible types in assignment
+
+[case testVariableInitializationWithSubtype]
+A x = B()
+B y = A() # Fail
+class A: pass
+class B(A): pass
+[out]
+main, line 2: Incompatible types in assignment
+
+
+-- Misc
+-- ----
+
+
+[case testInvalidReturn]
+A f():
+  return B()
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 2: Incompatible return value type
+
+[case testTopLevelContextAndInvalidReturn]
+A f():
+  return B()
+A a = B()
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+main, line 2: Incompatible return value type
+main: At top level:
+main, line 3: Incompatible types in assignment
+
+
+-- Scoping and shadowing
+-- ---------------------
+
+
+[case testLocalVariableShadowing]
+A a
+a = B()       # Fail
+a = A()
+void f():
+  B a
+  a = A()     # Fail
+  a = B()
+a = B()       # Fail
+a = A()
+
+class A: pass
+class B: pass
+[out]
+main, line 2: Incompatible types in assignment
+main: In function "f":
+main, line 6: Incompatible types in assignment
+main: At top level:
+main, line 8: Incompatible types in assignment

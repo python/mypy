@@ -1,0 +1,564 @@
+-- Test cases for the type checker related to subtyping (inheritance and
+-- interfaces) with generics.
+
+
+-- Subtyping + inheritance
+-- -----------------------
+
+
+[case testSubtypingAndInheritingNonGenericTypeFromGenericType]
+A<C> ac
+A<D> ad
+B b
+
+b = ad # E: Incompatible types in assignment
+ad = b # E: Incompatible types in assignment
+b = ac # E: Incompatible types in assignment
+
+b = b
+ac = b
+
+class A<T>: pass
+class B(A<C>): pass
+class C: pass
+class D: pass
+
+[case testSubtypingAndInheritingGenericTypeFromNonGenericType]
+A a
+B<C> bc
+B<D> bd
+
+bc = bd # E: Incompatible types in assignment
+bd = bc # E: Incompatible types in assignment
+bc = a  # E: Incompatible types in assignment
+bd = a  # E: Incompatible types in assignment
+
+a = bc
+a = bd
+
+class A: pass
+class B<T>(A): pass
+class C: pass
+class D: pass
+
+[case testSubtypingAndInheritingGenericTypeFromGenericType]
+A<C> ac
+A<D> ad
+B<C, C> bcc
+B<D, C> bdc
+
+ad = bcc # E: Incompatible types in assignment
+ad = bdc # E: Incompatible types in assignment
+bcc = ac # E: Incompatible types in assignment
+bdc = ac # E: Incompatible types in assignment
+
+bcc = bcc
+bdc = bdc
+ac = bcc
+ac = bdc
+
+class A<T>: pass
+class B<T, S>(A<S>): pass
+class C: pass
+class D: pass
+
+[case testSubtypingAndInheritingGenericTypeFromGenericTypeAcrossHierarchy]
+A<A<E>> ae
+A<A<F>> af
+
+C<E, F> cef
+C<F, F> cff
+C<F, E> cfe
+
+ae = cef # E: Incompatible types in assignment
+af = cfe # E: Incompatible types in assignment
+
+ae = cfe
+af = cef
+af = cff
+
+class A<T>: pass
+class B<T, S>(A<S>): pass
+class C<X, Y>(B<A<X>, A<Y>>): pass
+class E: pass
+class F: pass
+
+
+-- Accessing inherited generic members
+-- -----------------------------------
+
+
+[case testAccessingMethodInheritedFromGenericType]
+B<C, D> b
+C c, D d
+
+b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
+b.f(d)
+
+class A<T>:
+    void f(self, T a):
+        pass
+class B<T, S>(A<S>): pass
+class C: pass
+class D: pass
+
+[case testAccessingMethodInheritedFromGenericTypeInNonGenericType]
+B b, C c, D d
+
+b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
+b.f(d)
+
+class A<T>:
+    void f(self, T a):
+        pass
+class B(A<D>): pass
+class C: pass
+class D: pass
+
+[case testAccessingMemberVarInheritedFromGenericType]
+class A<T>:
+    void __init__(self, T a):
+        self.a = a
+        
+B<C, D> b
+C c, D d
+
+b.a = c # E: Incompatible types in assignment
+b.a = d
+
+class B<T, S>(A<S>): pass
+class C: pass
+class D: pass
+
+
+-- Overriding with generic types
+-- -----------------------------
+
+
+[case testOverridingMethodInSimpleTypeInheritingGenericType]
+class A(B<C>):
+    void f(self, D a): # E: Argument 1 of "f" incompatible with supertype "B"
+        pass
+    void g(self, C a):
+        pass
+
+class B<T>:
+    void f(self, T a):
+        pass
+    void g(self, T a):
+        pass
+
+class C: pass
+class D: pass
+[out]
+main: In class "A":
+
+[case testOverridingMethodInGenericTypeInheritingSimpleType]
+class A<T>(B):
+    void f(self, T a): # E: Argument 1 of "f" incompatible with supertype "B"
+        pass
+    void g(self, C a):
+        pass
+
+class B:
+    void f(self, C a):
+        pass
+    void g(self, C a):
+        pass
+
+class C: pass
+[out]
+main: In class "A":
+
+[case testOverridingMethodInGenericTypeInheritingGenericType]
+class A<T, S>(B<S>):
+    void f(self, T a): # E: Argument 1 of "f" incompatible with supertype "B"
+        pass
+    void g(self, S a):
+        pass
+
+class B<T>:
+    void f(self, T a):
+        pass
+    void g(self, T a):
+        pass
+[out]
+main: In class "A":
+
+[case testOverridingMethodInMultilevelHierarchyOfGenericTypes]
+class A<T, S>(B<S>):
+    void f(self, T a): # E: Argument 1 of "f" incompatible with supertype "C"
+        pass
+    void g(self, S a):
+        pass
+
+class B<T>(C<D, D, T>): pass
+
+class C<T, U, V>:
+    void f(self, V a):
+        pass
+    void g(self, V a):
+        pass
+
+class D: pass
+[out]
+main: In class "A":
+
+
+-- Inheritance from generic types with implicit dynamic supertype
+-- --------------------------------------------------------------
+
+
+[case testInheritanceFromGenericWithImplicitDynamicAndSubtyping]
+A a
+B<C> bc
+B<D> bd
+
+a = bc # E: Incompatible types in assignment
+
+bc = a
+bd = a
+
+class A(B): pass
+class B<T>: pass
+class C: pass
+class D: pass
+[out]
+
+[case testInheritanceFromGenericWithImplicitDynamicAndExternalAccess]
+A a
+C c
+B<C> bc
+
+a.x = c # E: Incompatible types in assignment
+a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
+a.x = bc
+a.f(bc)
+
+class A(B): pass
+class B<T>:
+    B<T> x
+    void f(self, B<T> a):
+        pass
+    
+    void __init__(self, B<T> x):
+        self.x = x
+
+class C: pass
+[out]
+
+[case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess]
+A a
+C c
+B<C> bc
+
+class A(B):
+  void g(self):
+    self.x = c # E: Incompatible types in assignment
+    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
+    self.x = bc
+    self.f(bc)
+
+class B<T>:
+  B<T> x
+  void f(self, B<T> a):
+    pass
+  void __init__(self, B<T> x):
+    self.x = x
+    
+class C: pass
+[out]
+main: In member "g" of class "A":
+
+[case testInheritanceFromGenericWithImplicitDynamicAndOverriding]
+class A(B):
+    def f(self, a, b):
+        pass
+
+class B<T>:
+    void f(self, T a, tuple<T, B<T>> b):
+        pass
+[builtins fixtures/tuple.py]
+[out]
+
+
+-- Inheritance from generic types and super expressions
+-- ----------------------------------------------------
+
+
+[case testSuperExpressionsWhenInheritingFromGenericType]
+class A<T, S>(B<S>):
+    void g(self, T t, S s):
+        super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"
+        super().f(s)
+
+class B<T>:
+    void f(self, T a):
+        pass
+[out]
+main: In member "g" of class "A":
+
+[case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy]
+class A<T, S>(B<S>):
+    void g(self, T t, S s):
+        super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"
+        super().f(s)
+
+class B<T>(C<D, D, T>): pass
+
+class C<T, U, V>:
+    void f(self, V a):
+        pass
+
+class D: pass
+[out]
+main: In member "g" of class "A":
+
+
+-- Subtyping with a generic interface
+-- ----------------------------------
+
+
+[case testSubtypingWithGenericTypeImplementingGenericInterface]
+A<C, D> acd
+A<D, C> adc
+I<C> ic
+I<D> id
+
+ic = acd # E: Incompatible types in assignment
+id = adc # E: Incompatible types in assignment
+adc = ic # E: Incompatible types in assignment
+
+ic = adc
+id = acd
+
+class A<T, S>(I<S>): pass
+interface I<S>: pass
+class C: pass
+class D: pass
+
+[case testImplementingInterfaceTwice]
+class A(I<C>, I<object>): pass # Fail
+interface I<t>: pass
+class C: pass
+[out]
+main: In class "A":
+main, line 1: Class "A" implements interface "I" more than once
+
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance]
+A a, B b
+I<C> ic, I<D> id, I<E> ie
+
+class A(B): pass
+class B(I<C>, I<D>): pass # Fail
+interface I<S>: pass
+
+ie = a # E: Incompatible types in assignment
+a = ic # E: Incompatible types in assignment
+a = id # E: Incompatible types in assignment
+a = b  # E: Incompatible types in assignment
+id = a # E: Incompatible types in assignment
+
+ic = a
+b = a
+
+class C: pass
+class D: pass
+class E: pass
+[out]
+main: In class "B":
+main, line 5: Class "B" implements interface "I" more than once
+main: At top level:
+
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance2]
+class A<T, S>(B<S>): pass
+class B<T>(I<T>, I<D>): pass # Fail
+interface I<S>: pass
+class C: pass
+class D: pass
+[out]
+main: In class "B":
+main, line 2: Class "B" implements interface "I" more than once
+
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance3]
+class A(I<C>, I<D>): pass # Fail
+interface I<T>(J<E, T>): pass
+interface J<U, V>: pass
+
+class C: pass
+class D: pass
+class E: pass
+[out]
+main: In class "A":
+main, line 1: Class "A" implements interface "I" more than once
+
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance4]
+class A(I<C>): pass
+class B(A, I<D>): pass # Fail
+interface I<T>: pass
+
+class C: pass
+class D: pass
+[out]
+main: In class "B":
+main, line 2: Class "B" implements interface "I" more than once
+
+
+-- Implementing a generic interface
+-- --------------------------------
+
+
+[case testImplementingGenericInterface1]
+class A(I<C>):
+    void f(self, D a): # E: Argument 1 of "f" incompatible with supertype "I"
+        pass
+    void g(self, C a):
+        pass
+
+interface I<T>:
+    void f(self, T a)
+    void g(self, T a)
+
+class C: pass
+class D: pass
+[out]
+main: In class "A":
+
+
+-- Implementing a generic interface with deep type hierarchy
+-- ---------------------------------------------------------
+
+
+[case testImplementingGenenericInterfaceWithDeepHierarchy]
+A a
+I<C> ic, I<D> id
+
+class A(B):
+    void g(self, C a, C b): pass # Fail
+    void f(self, C a, C b): pass
+
+id = a # E: Incompatible types in assignment
+ic = a
+
+class B(I<C>):
+    void f(self, C a, C b): pass
+    void g(self, C a, any b): pass
+interface I<T>:
+    void f(self, T a, T b)
+    void g(self, T a, D b)
+class C: pass
+class D: pass
+[out]
+main: In class "A":
+main, line 5: Argument 2 of "g" incompatible with supertype "I"
+main: At top level:
+
+[case testImplementingGenenericInterfaceWithDeepHierarchy2]
+class A(B):
+    void f(self, C a, D b): # E: Argument 2 of "f" incompatible with supertype "I"
+        pass
+
+class B(I<C>):
+    void f(self, C a, any b): pass
+interface I<T>:
+    void f(self, T a, T b)
+class C: pass
+class D: pass
+[out]
+main: In class "A":
+
+
+-- Implicit dynamic types and implementing generic interfaces
+-- ----------------------------------------------------------
+
+
+[case testImplementingGenericInterfaceWithImplicitDynamic]
+any a
+I<C> ic
+I<D> id
+
+ic = a
+id = a
+
+class A(I):
+    def f(self, a): pass
+
+interface I<T>:
+    void f(self, T a)
+
+class C: pass
+class D: pass
+
+[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy]
+any a
+I<C> ic
+I<D> id
+
+ic = a
+id = a
+
+class A(B):
+    void f(self, C a, D b): pass
+
+class B(I):
+    def f(self, a, b): pass
+
+interface I<T>:
+    void f(self, T a, T b)
+
+class C: pass
+class D: pass
+
+[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy2]
+any a
+J<C> jc
+J<D> jd
+
+jc = a
+jd = a
+
+class A(I):
+    void f(self, C a, D b): pass
+
+interface I(J):
+    def f(self, a, b)
+
+interface J<T>:
+    void f(self, T a, T b)
+
+class C: pass
+class D: pass
+
+
+-- Accessing generic interface members
+-- -----------------------------------
+
+
+[case testAccessingGenericInterfaceMembers]
+A a, B b
+I<A> ia
+
+ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"
+ia.f(a)
+
+interface I<T>:
+    void f(self, T a)
+
+class A: pass
+class B: pass
+[out]
+
+[case testAccessingInheritedInterfaceMembers]
+A a, B b
+I<A> ia
+
+ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"
+ia.f(a)
+
+interface I<T>(J<T>): pass
+
+interface J<T>:
+    void f(self, T a)
+
+class A: pass
+class B: pass

@@ -1,0 +1,269 @@
+-- Type checker test cases for interfaces.
+
+
+-- Subtyping with interfaces
+-- -------------------------
+
+
+[case testInterfaceSubtypingViaImplementation]
+I i
+J j
+A a
+B b
+C c
+
+j = c  # E: Incompatible types in assignment
+a = i  # E: Incompatible types in assignment
+a = j  # E: Incompatible types in assignment
+b = i  # E: Incompatible types in assignment
+
+i = a
+i = b
+i = c
+j = a
+j = b
+a = b
+
+interface I: pass
+interface J: pass
+class A(I, J): pass
+class B(A): pass
+class C(I): pass
+
+[case testInterfaceSubtypingViaExtension]
+I i
+J j
+A a
+object o
+
+j = i # E: Incompatible types in assignment
+a = i # E: Incompatible types in assignment
+a = j # E: Incompatible types in assignment
+i = o # E: Incompatible types in assignment
+j = o # E: Incompatible types in assignment
+
+i = a
+j = a
+i = j
+o = i
+o = j
+
+interface I: pass
+interface J(I): pass
+class A(J): pass
+
+[case testImplementingInSubclass]
+I i
+A a
+B b
+
+i = a # E: Incompatible types in assignment
+b = a # E: Incompatible types in assignment
+
+a = b
+i = b
+
+interface I: pass
+class A: pass
+class B(A, I): pass
+
+
+-- Interfaces objects
+-- ------------------
+
+
+[case testInterfaceAsTypeObject]
+object o
+type t
+
+o = I
+t = I
+
+interface I: pass
+
+[case testInterfacesInCasts]
+I i, A a, B b
+object o
+
+a = (I)o # E: Incompatible types in assignment
+b = (B)i # Ok; a subclass of B might implement I
+i = (I)b # Ok; a subclass of B might implement I
+
+i = (I)o
+i = (I)a
+
+interface I: pass
+class A(I): pass
+class B: pass
+
+[case testConstructingInterface]
+I() # E: "type" not callable
+J() # E: "type" not callable
+
+interface I: pass
+interface J:
+    def __init__(self)
+
+
+-- Implementing interface methods
+-- ------------------------------
+
+
+[case testImplementingInterfaceMethod]
+class A(I):
+    A f(self, B x): # E: Argument 1 of "f" incompatible with supertype "I"
+        pass
+    A g(self, A x):
+        pass
+
+interface I:
+    A f(self, A x)
+    A g(self, A x)
+
+class B: pass
+[out]
+main: In class "A":
+
+[case testImplementingInterfaceMethodWithMultipleInterfaces]
+class A(I, J):
+    A f(self, B x): # Fail
+        pass
+    B g(self, A x): # Fail
+        pass
+    B h(self): # Not related to any interface
+        pass
+interface I:
+    A f(self, A x)
+interface J:
+    A g(self, A x)
+class B: pass
+[out]
+main: In class "A":
+main, line 2: Argument 1 of "f" incompatible with supertype "I"
+main, line 4: Return type of "g" incompatible with supertype "J"
+
+[case testImplementingInterfaceMethodWithExtension]
+class A(I):
+    A f(self, B x): # E: Argument 1 of "f" incompatible with supertype "J"
+        pass
+interface I(J): pass
+interface J:
+    A f(self, A x)
+class B: pass
+[out]
+main: In class "A":
+
+[case testInvalidSubinterfaceMethod]
+interface I(J):
+    void f(self, I x)
+interface J:
+    void f(self, J x)
+[out]
+main: In interface "I":
+main, line 2: Argument 1 of "f" incompatible with supertype "J"
+
+[case testInterfaceCoAndContraVariance]
+class A(I):
+    I h(self, A a): # Fail
+        pass
+    I f(self, I a): # Fail
+        pass
+    A g(self, A a):
+        pass
+interface I:
+    I f(self, A a)
+    I g(self, A a)
+    A h(self, I a)
+[out]
+main: In class "A":
+main, line 2: Argument 1 of "h" incompatible with supertype "I"
+main, line 2: Return type of "h" incompatible with supertype "I"
+main, line 4: Argument 1 of "f" incompatible with supertype "I"
+
+
+-- Accessing interface members
+-- ---------------------------
+
+
+[case testAccessingInterfaceMethod]
+I i, A a, B b
+
+a = i.f(a) # E: Incompatible types in assignment
+b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "B"
+i.g()      # E: "I" has no member "g"
+
+b = i.f(a)
+
+interface I:
+    B f(self, A a)
+
+class A: pass
+class B: pass
+
+[case testAccessingInheritedInterfaceMethod]
+I i, A a, B b
+
+a = i.f(a) # E: Incompatible types in assignment
+b = i.f(a)
+
+interface I(J): pass
+interface J:
+    B f(self, A a)
+
+class A: pass
+class B: pass
+
+
+-- Dynamic types
+-- -------------
+
+
+[case testInterfacesWithAllDynamicTypes]
+class A(I):
+    def f(self, x):
+        pass
+
+interface I:
+    def f(self, x)
+
+[case testTypedInterfaceWithUntypedImplementation]
+class A(I):
+    def f(self, x):
+        pass
+interface I:
+    void f(self, A x)
+
+
+-- Missing implementations
+-- -----------------------
+
+
+[case testMethodWithoutImplementation]
+class A(I): pass
+interface I:
+  void f(self)
+[out]
+main: In class "A":
+main, line 1: "A" does not implement "f" defined in "I"
+
+[case testMethodWithoutImplementationWithInterfaceInheritance]
+class A(J): pass
+interface J(I): pass
+interface I:
+  void f(self)
+[out]
+main: In class "A":
+main, line 1: "A" does not implement "f" defined in "I"
+
+
+-- Special cases
+-- -------------
+
+
+[case testMultipleBaseInterfaces]
+interface A:
+  void f(self): pass
+interface B:
+  void g(self): pass
+interface C(A, B):
+  void h(self): pass
