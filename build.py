@@ -1,9 +1,9 @@
 import os
 import os.path
+from mtypes import Typ
 from nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
 from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnal
-from mtypes import Typ
 from os.path import dirname, basename
 from sys import platform
 from checker import TypeChecker
