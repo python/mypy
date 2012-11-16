@@ -1,9 +1,9 @@
 import os.path
+
 from unittest import Suite
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
 from build import build
-from os.path import basename, splitext
 from errors import CompileError
 from testconfig import test_data_prefix, test_temp_dir
 
@@ -41,8 +41,9 @@ def test_semanal(testcase):
             # path.
             # TODO the test is not reliable
             if (not t.path.endswith(os.sep + 'builtins.py')
-                    and not basename(t.path).startswith('_')
-                    and not splitext(basename(t.path))[0].endswith('_')):
+                    and not os.path.basename(t.path).startswith('_')
+                    and not os.path.splitext(
+                        os.path.basename(t.path))[0].endswith('_')):
                 a += str(t).split('\n')
     except CompileError as e:
         a = e.messages

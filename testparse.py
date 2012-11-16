@@ -1,4 +1,5 @@
 import os.path
+
 from unittest import Suite, AssertionFailure
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
