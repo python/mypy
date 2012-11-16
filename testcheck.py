@@ -30,7 +30,7 @@ files = ['check-basic.test',
 class TypeCheckSuite(Suite):
     def cases(self):
         c = []
-        for f in self.files:
+        for f in files:
             c += parse_test_cases(os.path.join(test_data_prefix, f), self.run_test, test_temp_dir, True)
         return c
     

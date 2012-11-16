@@ -1203,10 +1203,10 @@ mtypes.FunctionLike function_type(FuncBase func):
             name = '"{}"'.format(name)
         return mtypes.Callable(<mtypes.Typ> [mtypes.Any()] * len(fdef.args),
                                fdef.min_args,
-                               False,
+                               fdef.var_arg is not None,
                                mtypes.Any(),
                                False,
-                               name)     
+                               name)
 
 
 # Return the signature of a method (omit self).

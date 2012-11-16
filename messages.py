@@ -153,7 +153,7 @@ class MessageBuilder:
         elif member in checker.op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does not
             # handle indexing operations.
-            for op, method in checker.op_methods:
+            for op, method in checker.op_methods.items():
                 if method == member:
                     self.unsupported_left_operand(op, typ, context)
                     break
@@ -216,7 +216,7 @@ class MessageBuilder:
             name = callee.name
             base = extract_type(name)
             
-            for op, method in checker.op_methods:
+            for op, method in checker.op_methods.items():
                 if name.startswith('"{}" of'.format(method)):
                     if op == 'in':
                         self.unsupported_operand_types(op, arg_type, base, context)
@@ -279,8 +279,8 @@ class MessageBuilder:
             self.fail('{} does not return a value'.format(capitalize(((Void)void_type).source)), context)
     
     void no_variant_matches_arguments(self, Overloaded overload, Context context):
-        if overload.name is not None:
-            self.fail('No overload variant of {} matches argument types'.format(overload.name), context)
+        if overload.name() is not None:
+            self.fail('No overload variant of {} matches argument types'.format(overload.name()), context)
         else:
             self.fail('No overload variant matches argument types', context)
     
@@ -342,7 +342,7 @@ class MessageBuilder:
         self.fail('"{}" has incomplete match to supertype type variable'.format(member), context)
     
     void duplicate_interfaces(self, TypeInfo typ, TypeInfo iface):
-        self.fail('Class "{}" implements interface "{}" more than once'.format(typ.name, iface.name), typ)
+        self.fail('Class "{}" implements interface "{}" more than once'.format(typ.name(), iface.name()), typ)
     
     void not_implemented(self, str msg, Context context):
         self.fail('{} not implemented yet'.format(msg), context)
@@ -375,12 +375,12 @@ str capitalize(str s):
 # the type portion in quotes (e.g. "y"). Otherwise, return the string
 # unmodified.
 str extract_type(str name):
-    name = re.sub(name, '^"[a-zA-Z0-9_]+" of ', '')
+    name = re.sub('^"[a-zA-Z0-9_]+" of ', '', name)
     return name
 
 
 # Strip a double quote at the beginning and end of the string, if any.
 str strip_quotes(str s):
-    s = re.sub(s, '^"', '')
-    s = re.sub(s, '"$', '')
+    s = re.sub('^"', '', s)
+    s = re.sub('"$', '', s)
     return s

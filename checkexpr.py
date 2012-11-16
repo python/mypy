@@ -377,7 +377,7 @@ class ExpressionChecker:
                 return result
             else:
                 return self.chk.bool_type()
-        elif checker.op_methods.has_key(e.op):
+        elif e.op in checker.op_methods:
             method = checker.op_methods[e.op]
             return self.check_op(method, left_type, e.right, e)
         elif e.op == 'and' or e.op == 'or':
@@ -475,12 +475,25 @@ class ExpressionChecker:
         if e.typ is not None:
             # A list expression with an explicit item type; translate into type
             # checking a function call.
-            constructor = Callable([e.typ], 0, True, self.chk.named_generic_type('builtins.list', [e.typ]), False, '<list>')
+            constructor = Callable([e.typ],
+                                   0,
+                                   True,
+                                   self.chk.named_generic_type('builtins.list',
+                                                               [e.typ]),
+                                   False,
+                                   '<list>')
         else:
             # A list expression without an explicit type; translate into type
             # checking a generic function call.
             tv = TypeVar('T', -1)
-            constructor = Callable([tv], 0, True, self.chk.named_generic_type('builtins.list', [tv]), False, '<list>', TypeVars([TypeVarDef('T', -1)]))
+            constructor = Callable([tv],
+                                   0,
+                                   True,
+                                   self.chk.named_generic_type('builtins.list',
+                                                               [tv]),
+                                   False,
+                                   '<list>',
+                                   TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor, e.items, e)
     
     # Type check a tuple expression.
@@ -501,15 +514,15 @@ class ExpressionChecker:
                     tt = self.accept(item)
                 else:
                     tt = self.accept(item, ctx.items[i])
-                self.check_not_void(t, e)
-                items.append(t)
+                self.check_not_void(tt, e)
+                items.append(tt)
             return TupleType(items)
         else:
             # Explicit item types, i.e. expression of form <t, ...> (e, ...).
             for j in range(len(e.types)):
                 item = e.items[j]
                 itemtype = self.accept(item)
-                self.chk.check_subtype(t, e.types[j], itemtype,
+                self.chk.check_subtype(itemtype, e.types[j], item,
                                        messages.INCOMPATIBLE_TUPLE_ITEM_TYPE)
             return TupleType(e.types)
     
@@ -523,7 +536,15 @@ class ExpressionChecker:
             # The callable type represents a function like this:
             #
             #   dict<kt, vt> make_dict<kt, vt>(tuple<kt, vt> *v): ...
-            constructor = Callable([TupleType([tv1, tv2])], 0, True, self.chk.named_generic_type('builtins.dict', [tv1, tv2]), False, '<list>', TypeVars([TypeVarDef('KT', -1), TypeVarDef('VT', -2)]))
+            constructor = Callable([TupleType([tv1, tv2])],
+                                   0,
+                                   True,
+                                   self.chk.named_generic_type('builtins.dict',
+                                                               [tv1, tv2]),
+                                   False,
+                                   '<list>',
+                                   TypeVars([TypeVarDef('KT', -1),
+                                             TypeVarDef('VT', -2)]))
             # Synthesize function arguments.
             list<Node> args = []
             for key, value in e.items:
@@ -626,7 +647,14 @@ class ExpressionChecker:
         
         variables.extend(init_type.variables.items)
         
-        return Callable(init_type.arg_types, init_type.min_args, init_type.is_var_arg, self_type(info), True, None, TypeVars(variables)).with_name('"{}"'.format(info.name))
+        return Callable(init_type.arg_types,
+                        init_type.min_args,
+                        init_type.is_var_arg,
+                        self_type(info),
+                        True,
+                        None,
+                        TypeVars(variables)).with_name('"{}"'.format(
+                                                                 info.name()))
     
     # Is a type valid as a vararg argument?
     bool is_valid_var_arg(self, Typ typ):

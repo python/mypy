@@ -184,10 +184,10 @@ class SemanticAnal(NodeVisitor):
                 fdef = (FuncDef)defn
                 if self.typ:
                     defn.typ.typ = ((Callable)defn.typ.typ).with_name(
-                        '"{}" of "{}"'.format(fdef.name, self.typ.name))
+                        '"{}" of "{}"'.format(fdef.name(), self.typ.name()))
                 else:
                     defn.typ.typ = ((Callable)defn.typ.typ).with_name(
-                        '"{}"'.format(fdef.name))
+                        '"{}"'.format(fdef.name()))
                 if self.typ and ((Callable)defn.typ.typ).arg_types != []:
                     ((Callable)defn.typ.typ).arg_types[0] = self_type(
                         fdef.info)

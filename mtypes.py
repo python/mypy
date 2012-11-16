@@ -178,6 +178,7 @@ class Callable(FunctionLike):
         self.is_var_arg = is_var_arg
         self.ret_type = ret_type
         self._is_type_obj = is_type_obj
+        assert not name or '<bound method' not in name
         self.name = name
         self.variables = variables
         self.bound_vars = bound_vars
@@ -280,7 +281,7 @@ class TypeVars:
         self.items = items
         self.repr = repr
     
-    str __str__(self):
+    str __repr__(self):
         if self.items == []:
             return ''
         list<str> a = []
@@ -309,7 +310,7 @@ class TypeVarDef(nodes.Context):
     int get_line(self):
         return self.line
     
-    str __str__(self):
+    str __repr__(self):
         if self.bound is None:
             return str(self.name)
         else:
