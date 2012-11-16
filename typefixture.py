@@ -13,9 +13,10 @@ IS_INTERFACE = 3
 INTERFACES = 4
 
 
-# Helper class that is used as a fixture in type-related unit tests. The
-# members are initialized to contain various type-related values.
 class TypeFixture:
+    """Helper class that is used as a fixture in type-related unit tests. The
+    members are initialized to contain various type-related values.
+    """
     def __init__(self):
         # Type variables
 
@@ -136,30 +137,36 @@ class TypeFixture:
     
     # Helper methods
     
-    # callable(a1, ..., an, r) constructs a callable with argument types
-    # a1, ... an and return type r.
     def callable(self, *a):
+        """callable(a1, ..., an, r) constructs a callable with argument types
+        a1, ... an and return type r.
+        """
         return Callable(a[:-1], len(a) - 1, False, a[-1], False)
     
-    # typeCallable(a1, ..., an, r) constructs a callable with argument types
-    # a1, ... an and return type r, and which represents a type.
     def callable_type(self, *a):
+        """typeCallable(a1, ..., an, r) constructs a callable with
+        argument types a1, ... an and return type r, and which
+        represents a type.
+        """
         return Callable(a[:-1], len(a) - 1, False, a[-1], True)
     
-    # callableDefault(minArgs, a1, ..., an, r) constructs a callable with
-    # argument types a1, ... an and return type r, with minArgs mandatory fixed
-    # arguments.
     def callable_default(self, min_args, *a):
+        """callableDefault(minArgs, a1, ..., an, r) constructs a
+        callable with argument types a1, ... an and return type r,
+        with minArgs mandatory fixed arguments.
+        """
         return Callable(a[:-1], min_args, False, a[-1], False)
     
-    # callableVarArg(minArgs, a1, ..., an, r) constructs a callable with
-    # argument types a1, ... *an and return type r.
     def callable_var_arg(self, min_args, *a):
+        """callableVarArg(minArgs, a1, ..., an, r) constructs a callable with
+        argument types a1, ... *an and return type r.
+        """
         return Callable(a[:-1], min_args, True, a[-1], False)
 
 
-# Extension of TypeFixture that contains additional generic interface types.
 class InterfaceTypeFixture(TypeFixture):
+    """Extension of TypeFixture that contains additional generic
+    interface types."""
     def __init__(self):
         super().__init__()
         # interface GF<T>
@@ -175,8 +182,8 @@ class InterfaceTypeFixture(TypeFixture):
         self.m1 = Instance(self.m1i, []) # M1
 
 
-# Make a TypeInfo suitable for use in unit tests.
 TypeInfo make_type_info(any name, any *args):
+    """Make a TypeInfo suitable for use in unit tests."""
     map = dict(args)
     
     type_def = TypeDef(name, Block([]), None, [])

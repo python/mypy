@@ -1,11 +1,12 @@
 import nodes
 
 
-# Empty base class for parse tree node visitors. The T type argument
-# specifies the return type of the visit methods. As all methods defined here
-# return None by default, subclasses do not always need to override all the
-# methods.
 class NodeVisitor<T>:
+    """Empty base class for parse tree node visitors. The T type argument
+    specifies the return type of the visit methods. As all methods defined here
+    return None by default, subclasses do not always need to override all the
+    methods.
+    """
     # Top-level structures
     
     T visit_mypy_file(self, nodes.MypyFile o):

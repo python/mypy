@@ -6,8 +6,8 @@ from typerepr import TypeVarRepr
 from nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
 
 
-# Semantic analyzer for types.
 class TypeAnalyser(TypeVisitor<Typ>):
+    """Semantic analyzer for types."""
     func<str, Context, SymbolTableNode> lookup
     func<str, Context, void> fail
     

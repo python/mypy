@@ -19,11 +19,11 @@ class AssertionFailure(Exception):
             super().__init__()
 
 
-# Exception used to signal skipped test cases.
 class SkipTestCaseException(Exception): pass
 
 
 void assert_true(bool b, str msg=None):
+    """Exception used to signal skipped test cases."""
     if not b:
         raise AssertionFailure(msg)
 
@@ -38,13 +38,14 @@ void assert_not_equal(object a, object b, str fmt='{} == {}'):
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
 
 
-# Usage: assert_raises(exception class[, message], function[, args])
-#
-# Call function with the given arguments and expect an exception of the given
-# type.
-#
-# TODO use overloads for better type checking
 void assert_raises(type typ, any *rest):
+    """Usage: assert_raises(exception class[, message], function[, args])
+    
+    Call function with the given arguments and expect an exception of the given
+    type.
+    
+    TODO use overloads for better type checking
+    """
     # Parse arguments.
     str msg = None
     if isinstance(rest[0], str) or rest[0] is None:
@@ -170,9 +171,9 @@ void run_test(Suite t, list<str> args=None):
         sys.stderr.write('*** FAILURE ***\n')
 
 
-# The first argument may be TestCase, Suite or (Str, Suite).
 tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
                                         int num_skip, str prefix, int depth):
+    """The first argument may be TestCase, Suite or (Str, Suite)."""
     if isinstance(test, TestCase):
         name = prefix + test.name
         for pattern in patterns:
