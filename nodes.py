@@ -1,7 +1,6 @@
 import re
 
 from lex import Token
-import mtypes
 from strconv import StrConv
 from visitor import NodeVisitor
 from util import dump_tagged, short_type
@@ -11,6 +10,9 @@ from util import dump_tagged, short_type
 interface Context:
     # TODO this should be just 'line'
     int get_line(self)
+
+
+import mtypes
 
 
 # Variable kind constants
