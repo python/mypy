@@ -6,8 +6,8 @@ from nodes import TypeInfo
 from expandtype import expand_type
 
 
-# Is "left" subtype of "right"?
 bool is_subtype(Typ left, Typ right):
+    """Is 'left' subtype of 'right'?"""
     if isinstance(right, Any) or isinstance(right, UnboundType):
         return True
     else:
@@ -148,11 +148,12 @@ bool is_callable_subtype(Callable left, Callable right):
     return True
 
 
-# Map an Instance type, including the type arguments, to compatible
-# Instance of a specific supertype.
-#
-# Assume that supertype is a supertype of instance.type.
 Instance map_instance_to_supertype(Instance instance, TypeInfo supertype):
+    """Map an Instance type, including the type arguments, to compatible
+    Instance of a specific supertype.
+    
+    Assume that supertype is a supertype of instance.type.
+    """
     if instance.typ == supertype:
         return instance
     
@@ -197,10 +198,10 @@ dict<int, Typ> type_var_map(TypeInfo typ, list<Typ> args):
         return tvars
 
 
-# FIX: Currently we should only have one supertype per interface, so no need
-#      to return an array
 list<Instance> map_instance_to_interface_supertypes(Instance instance,
                                                     TypeInfo supertype):
+    # FIX: Currently we should only have one supertype per interface, so no
+    #      need to return an array
     result = <Instance> []
     for path in interface_implementation_paths(instance.typ, supertype):
         types = [instance]
@@ -213,18 +214,17 @@ list<Instance> map_instance_to_interface_supertypes(Instance instance,
     return result
 
 
-# Return an array of non-empty paths of direct supertypes from type to
-# supertype.
-# Return [] if no such path could be found.
-#
-#   InterfaceImplementationPaths(A, B) == [[B]] if A inherits B
-#   InterfaceImplementationPaths(A, C) == [[B, C]] if A inherits B and
-#                                                     B inherits C
-#
-# FIX: Currently we might only ever have a single path, so this could be
-#      simplified
 list<list<TypeInfo>> interface_implementation_paths(TypeInfo typ,
                                                     TypeInfo supertype):
+    """Return an array of non-empty paths of direct supertypes from
+    type to supertype.  Return [] if no such path could be found.
+    
+      InterfaceImplementationPaths(A, B) == [[B]] if A inherits B
+      InterfaceImplementationPaths(A, C) == [[B, C]] if A inherits B and
+                                                        B inherits C
+    """
+    # FIX: Currently we might only ever have a single path, so this could be
+    #      simplified
     list<list<TypeInfo>> result = []
     
     if typ.base == supertype or supertype in typ.interfaces:
@@ -245,9 +245,9 @@ list<list<TypeInfo>> interface_implementation_paths(TypeInfo typ,
     return result
 
 
-# FIX: There should now only be one supertypes, always.
 list<Instance> map_instance_to_direct_supertypes(Instance instance,
                                                  TypeInfo supertype):
+    # FIX: There should only be one supertypes, always.
     typ = instance.typ
     list<Instance> result = []
     

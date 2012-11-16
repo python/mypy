@@ -3,9 +3,10 @@ from mtypes import Typ, Any, NoneTyp, TypeTranslator, TypeVar
 from typerepr import AnyRepr
 
 
-# Replace type variable references in a type with the dynamic type. If
-# funcTvars is false, only replace instance type variables.
 Typ replace_type_vars(Typ typ, bool func_tvars=True):
+    """Replace type variable references in a type with the dynamic type. If
+    funcTvars is false, only replace instance type variables.
+    """
     return typ.accept(ReplaceTypeVarsVisitor(func_tvars))
 
 
@@ -31,8 +32,8 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
             return t
 
 
-# Replace type variable references in a type with the nil (empty) type.
 Typ replace_func_type_vars(Typ typ):
+    """Replace type variable references in a type with the nil (empty) type."""
     return typ.accept(ReplaceFuncTypeVarsVisitor())
 
 

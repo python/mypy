@@ -16,9 +16,11 @@ from nodes import function_type
 from typeanal import TypeAnalyser
 
 
-# Semantic analyzer that binds names and does various consistency checks for
-# a parse tree. Note that type checking is performed as a separate pass.
 class SemanticAnal(NodeVisitor):
+    """Semantic analyzer that binds names and does various consistency
+    checks for a parse tree. Note that type checking is performed as a
+    separate pass.
+    """
     # Library search paths
     list<str> lib_path
     # Module name space
@@ -48,9 +50,10 @@ class SemanticAnal(NodeVisitor):
     set<str> imports    # Imported modules (during phase 2 analysis)
     Errors errors       # Keep track of generated errors
     
-    # Create semantic analyzer. Use libPath to search for modules, and report
-    # compile errors using the Errors instance.
     void __init__(self, list<str> lib_path, Errors errors):
+        """Create semantic analyzer. Use libPath to search for
+        modules, and report compile errors using the Errors instance.
+        """
         self.stack = [None]
         self.imports = set()
         self.typ = None
@@ -68,10 +71,11 @@ class SemanticAnal(NodeVisitor):
     # First pass of semantic analysis
     
     
-    # Perform the first analysis pass. Resolve the full names of definitions
-    # and construct type info structures, but do not resolve inter-definition
-    # references such as base classes.
     void anal_defs(self, list<Node> defs, str fnam, str mod_id):
+        """Perform the first analysis pass. Resolve the full names of
+        definitions and construct type info structures, but do not
+        resolve inter-definition references such as base classes.
+        """
         self.cur_mod_id = mod_id
         self.errors.set_file(fnam)
         self.globals = SymbolTable()
@@ -664,9 +668,10 @@ class SemanticAnal(NodeVisitor):
         self.errors.report(ctx.get_line(), msg)
 
 
-# For a non-generic type, return instance type representing the type.
-# For a generic G type with parameters T1, .., Tn, return G<T1, ..., Tn>.
 Instance self_type(TypeInfo typ):
+    """For a non-generic type, return instance type representing the type.
+    For a generic G type with parameters T1, .., Tn, return G<T1, ..., Tn>.
+    """
     list<Typ> tv = []
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1))

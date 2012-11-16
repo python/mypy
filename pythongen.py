@@ -18,10 +18,11 @@ from output import OutputVisitor
 removed_names = {'re': ['Pattern', 'Match']}
 
 
-# Python backend. Translate semantically analyzed parse trees to Python.
-# Reuse most of the generation logic from the mypy pretty printer implemented
-# in OutputVisitor.
 class PythonGenerator(OutputVisitor):
+    """Python backend. Translate semantically analyzed parse trees to Python.
+    Reuse most of the generation logic from the mypy pretty printer implemented
+    in OutputVisitor.
+    """
     def visit_import_from(self, o):
         if o.id in removed_names:
             r = o.repr
@@ -68,8 +69,8 @@ class PythonGenerator(OutputVisitor):
         else:
             self.node(o.body)
     
-    # Return whitespace before the first token of a type.
     def get_pre_whitespace(self, t):
+        """Return whitespace before the first token of a type."""
         if isinstance(t, Any):
             return t.repr.any_tok.pre
         elif isinstance(t, Instance):

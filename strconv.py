@@ -6,26 +6,30 @@ import nodes
 from visitor import NodeVisitor
 
 
-# Visitor for converting a Node to a human-readable string.
-#
-# For example, an MypyFile node from program "1" is converted into
-# something like this:
-#   MypyFile:1(
-#     fnam
-#     ExpressionStmt:1(
-#       IntExpr(1)))
 class StrConv(NodeVisitor<str>):
-    # Convert an array of items to a multiline pretty-printed string. The tag
-    # is produced from the type name of obj and its line number. See
-    # util::DumpTagged for a description of the nodes argument.
+    """Visitor for converting a Node to a human-readable string.
+    
+    For example, an MypyFile node from program '1' is converted into
+    something like this:
+      MypyFile:1(
+        fnam
+        ExpressionStmt:1(
+          IntExpr(1)))
+          """
     def dump(self, nodes, obj):
+        """Convert an array of items to a multiline pretty-printed
+        string. The tag is produced from the type name of obj and its
+        line number. See util::DumpTagged for a description of the
+        nodes argument.
+        """
         return dump_tagged(nodes, short_type(obj) + ':' + str(obj.line))
     
-    # Return an array in a format suitable for dump() that represents the
-    # arguments and the body of a function. The caller can then decorate the
-    # array with information specific to methods, global functions or
-    # anonymous functions.
     def func_helper(self, o):
+        """Return an array in a format suitable for dump() that represents the
+        arguments and the body of a function. The caller can then decorate the
+        array with information specific to methods, global functions or
+        anonymous functions.
+        """
         a = []
         if o.args != []:
             a.append(('Args', o.args))
@@ -348,7 +352,7 @@ class StrConv(NodeVisitor<str>):
     def visit_type_expr(self, o):
         return self.dump([str(o.typ)], o)
     
-    # These are for convenience. These node types are not defined in the parser
-    # module.
     def visit_filter_node(self, o):
+        # These are for convenience. These node types are not defined in the
+        # parser module.
         pass

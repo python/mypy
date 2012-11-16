@@ -4,8 +4,8 @@ from mtypes import (
 )
 
 
-# Is "left" the same type as "right"?
 bool is_same_type(Typ left, Typ right):
+    """Is 'left' the same type as 'right'?"""
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
         # generated spurious error messages.
@@ -23,10 +23,8 @@ bool is_same_types(list<Typ> a1, list<Typ> a2):
     return True
 
 
-# Visitor for checking whether two types are the "same" type.
 class SameTypeVisitor(TypeVisitor<bool>):
-    Typ right
-    
+    """Visitor for checking whether two types are the 'same' type."""
     void __init__(self, Typ right):
         self.right = right
     
