@@ -1,4 +1,5 @@
 import os.path
+
 from unittest import Suite
 from testconfig import test_data_prefix, test_temp_dir
 from testdata import parse_test_cases

@@ -1,3 +1,4 @@
+import lex
 from lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
                  StrLit, FloatLit, Op, Indent, Keyword, Name, Punct, LexError)
 from nodes import (
@@ -16,7 +17,6 @@ from errors import Errors
 from mtypes import Void, Typ, TypeVars, Callable, Any
 from parsetype import (parse_type, parse_type_variables, parse_type_args,
                        TypeParseError)
-import lex
 
 
 int HIGHEST_PREC = 14

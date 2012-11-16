@@ -1,5 +1,6 @@
 import os.path
 import re
+
 from unittest import Suite
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases

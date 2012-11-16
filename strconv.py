@@ -1,6 +1,7 @@
 import re
-from util import dump_tagged, short_type
 import os
+
+from util import dump_tagged, short_type
 import nodes
 from visitor import NodeVisitor
 
@@ -28,15 +29,15 @@ class StrConv(NodeVisitor<str>):
         a = []
         if o.args != []:
             a.append(('Args', o.args))
-        if o.typ is not None:
+        if o.typ:
             a.append(o.typ)
         for i in o.init:
-            if i is not None:
+            if i:
                 a.append(('Init', o.init))
                 break
-        if o.var_arg is not None:
+        if o.var_arg:
             a.append(('VarArg', [o.var_arg]))
-        if o.dict_var_arg is not None:
+        if o.dict_var_arg:
             a.append(('DictVarArg', [o.dict_var_arg]))
         a.append(o.body)
         return a
@@ -86,7 +87,7 @@ class StrConv(NodeVisitor<str>):
     
     def visit_overloaded_func_def(self, o):
         a = o.items[:]
-        if o.typ is not None:
+        if o.typ:
             a.insert(0, o.typ)
         return self.dump(a, o)
     
@@ -95,9 +96,9 @@ class StrConv(NodeVisitor<str>):
         # Display base types unless they are implicitly just builtins.object
         # (in this case there is no representation).
         if len(o.base_types) > 1 or (len(o.base_types) == 1
-                                     and o.base_types[0].repr is not None):
+                                     and o.base_types[0].repr):
             a.insert(1, ('BaseType', o.base_types))
-        if o.type_vars is not None:
+        if o.type_vars:
             a.insert(1, ('TypeVars', o.type_vars.items))
         if o.is_interface:
             a.insert(1, 'Interface')
@@ -108,7 +109,7 @@ class StrConv(NodeVisitor<str>):
         for n, t in o.items:
             a.append('Var({})'.format(n.name()))
             a.append('Type({})'.format(t))
-        if o.init is not None:
+        if o.init:
             a.append(o.init)
         return self.dump(a, o)
     
@@ -147,7 +148,7 @@ class StrConv(NodeVisitor<str>):
     
     def visit_while_stmt(self, o):
         a = [o.expr, o.body]
-        if o.else_body is not None:
+        if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
     
@@ -156,7 +157,7 @@ class StrConv(NodeVisitor<str>):
         if o.types != [None] * len(o.types):
             a += o.types
         a.extend([o.expr, o.body])
-        if o.else_body is not None:
+        if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
     
@@ -169,7 +170,7 @@ class StrConv(NodeVisitor<str>):
             a.append(('If', [o.expr[i]]))
             a.append(('Then', o.body[i].body))
         
-        if o.else_body is None:
+        if not o.else_body:
             return self.dump(a, o)
         else:
             return self.dump([a, ('Else', o.else_body.body)], o)
@@ -200,13 +201,13 @@ class StrConv(NodeVisitor<str>):
         
         for i in range(len(o.vars)):
             a.append(o.types[i])
-            if o.vars[i] is not None:
+            if o.vars[i]:
                 a.append(o.vars[i])
             a.append(o.handlers[i])
         
-        if o.else_body is not None:
+        if o.else_body:
             a.append(('Else', o.else_body.body))
-        if o.finally_body is not None:
+        if o.finally_body:
             a.append(('Finally', o.finally_body.body))
         
         return self.dump(a, o)
@@ -215,7 +216,7 @@ class StrConv(NodeVisitor<str>):
         a = []
         for i in range(len(o.expr)):
             a.append(('Expr', [o.expr[i]]))
-            if o.name[i] is not None:
+            if o.name[i]:
                 a.append(('Name', [o.name[i]]))
         return self.dump(a + [o.body], o)
     
@@ -334,9 +335,9 @@ class StrConv(NodeVisitor<str>):
     
     def visit_slice_expr(self, o):
         a = [o.begin_index, o.end_index, o.stride]
-        if a[0] is None:
+        if not a[0]:
             a[0] = '<empty>'
-        if a[1] is None:
+        if not a[1]:
             a[1] = '<empty>'
         return self.dump(a, o)
     

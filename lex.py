@@ -1,6 +1,7 @@
 import re
-from util import short_type
 from re import Match, Pattern
+
+from util import short_type
 
 
 # Base class for all tokens

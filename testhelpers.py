@@ -1,8 +1,9 @@
 import sys
 import re
+import os
+
 from unittest import AssertionFailure
 import testconfig
-import os
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if

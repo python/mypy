@@ -1,3 +1,5 @@
+import sys
+
 from unittest import Suite, run_test
 import testtypes
 import testsubtypes
@@ -8,7 +10,6 @@ import testsemanal
 import testcheck
 import testoutput
 import testpythongen
-import sys
 
 
 class AllSuite(Suite):
