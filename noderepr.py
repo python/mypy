@@ -29,10 +29,6 @@ class ImportRepr:
 
 
 class ImportFromRepr:
-    # Notes:
-    #  - lparen and rparen may be empty
-    #  - in each names tuple, the first item contains tokens for
-    #    'name [as name]' and the second item is a comma or empty.
     void __init__(self,
                   any from_tok,
                   list<Token> components,
@@ -40,6 +36,10 @@ class ImportFromRepr:
                   any lparen,
                   list<tuple<list<Token>, Token>> names,
                   any rparen, any br):
+        # Notes:
+        # - lparen and rparen may be empty
+        # - in each names tuple, the first item contains tokens for
+        #   'name [as name]' and the second item is a comma or empty.
         self.from_tok = from_tok
         self.components = components
         self.import_tok = import_tok
@@ -50,18 +50,18 @@ class ImportFromRepr:
 
 
 class FuncRepr:
-    # Note: name may be empty.
     void __init__(self, any def_tok, any name, FuncArgsRepr args):
+        # Note: name may be empty.
         self.def_tok = def_tok
         self.name = name
         self.args = args
 
 
-# Representation of a set of function arguments.
 class FuncArgsRepr:
-    # Lseparator and rseparator are '(' and ')', respectively.
+    """Representation of a set of function arguments."""
     void __init__(self, any lseparator, any rseparator, any arg_names,
                   any commas, any assigns, any asterisk):
+        # Lseparator and rseparator are '(' and ')', respectively.
         self.lseparator = lseparator
         self.rseparator = rseparator
         self.arg_names = arg_names
@@ -71,8 +71,8 @@ class FuncArgsRepr:
 
 
 class VarRepr:
-    # Note_ comma may be empty.
     void __init__(self, any name, any comma):
+        # Note_ comma may be empty.
         self.name = name
         self.comma = comma
 
@@ -88,8 +88,8 @@ class TypeDefRepr:
 
 
 class VarDefRepr:
-    # Note: assign may be empty.
     void __init__(self, any assign, any br):
+        # Note: assign may be empty.
         self.assign = assign
         self.br = br
 
@@ -147,16 +147,16 @@ class ForStmtRepr:
         self.else_tok = else_tok
 
 
-# break/continue/pass/return/assert
 class SimpleStmtRepr:
+    """break/continue/pass/return/assert"""
     void __init__(self, any keyword, any br):
         self.keyword = keyword
         self.br = br
 
 
 class IfStmtRepr:
-    # Note: else_tok may be empty.
     void __init__(self, any if_tok, any elif_toks, any else_tok):
+        # Note: else_tok may be empty.
         self.if_tok = if_tok
         self.elif_toks = elif_toks
         self.else_tok = else_tok
@@ -227,9 +227,9 @@ class MemberExprRepr:
 
 
 class CallExprRepr:
-    # Asterisk may be empty.
     void __init__(self, any lparen, list<Token> commas, any asterisk,
                   list<Token> assigns, any rparen):
+        # Asterisk may be empty.
         self.lparen = lparen
         self.commas = commas
         self.asterisk = asterisk
@@ -255,8 +255,8 @@ class UnaryExprRepr:
 
 
 class OpExprRepr:
-    # Note: op2 may be empty; it is used for "is not" and "not in".
     void __init__(self, any op, any op2):
+        # Note: op2 may be empty; it is used for "is not" and "not in".
         self.op = op
         self.op2 = op2
 
@@ -295,8 +295,8 @@ class ListExprRepr:
 
 
 class TupleExprRepr:
-    # Note: lparen and rparen may be empty.
     void __init__(self, any lparen, list<Token> commas, any rparen):
+        # Note: lparen and rparen may be empty.
         self.lparen = lparen
         self.commas = commas
         self.rparen = rparen

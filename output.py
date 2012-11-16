@@ -3,9 +3,11 @@ import re
 from visitor import NodeVisitor
 
 
-# Parse tree Node visitor that outputs the original, formatted source code.
-# You can implement custom transformations by subclassing this class.
 class OutputVisitor(NodeVisitor):
+    """Parse tree Node visitor that outputs the original, formatted
+    source code.  You can implement custom transformations by
+    subclassing this class.
+    """
     def __init__(self):
         super().__init__()
         self.result = []  # strings
@@ -18,8 +20,8 @@ class OutputVisitor(NodeVisitor):
         # break
         self.extra_indent = 0
     
-    # Return a string representation of the output.
     def output(self):
+        """Return a string representation of the output."""
         return ''.join(self.result)
     
     def visit_mypy_file(self, o):
@@ -436,8 +438,8 @@ class OutputVisitor(NodeVisitor):
     def line(self):
         return self.line_number
     
-    # Output a string.
     def string(self, s):
+        """Output a string."""
         if self.omit_next_space:
             if s.startswith(' '):
                 s = s[1:]
@@ -447,21 +449,21 @@ class OutputVisitor(NodeVisitor):
             s = s.replace('\n', '\n' + ' ' * self.extra_indent)
             self.result.append(s)
     
-    # Output a token.
     def token(self, t):
+        """Output a token."""
         self.string(t.rep())
     
-    # Output an array of tokens.
     def tokens(self, a):
+        """Output an array of tokens."""
         for t in a:
             self.token(t)
     
-    # Output a node.
     def node(self, n):
+        """Output a node."""
         if n: n.accept(self)
     
-    # Output an array of nodes.
     def nodes(self, a):
+        """Output an array of nodes."""
         for n in a:
             self.node(n)
     
@@ -477,8 +479,8 @@ class OutputVisitor(NodeVisitor):
             if i < len(commas):
                 self.token(commas[i])
     
-    # Output a type.
     def typ(self, t):
+        """Output a type."""
         if t:
             v = TypeOutputVisitor()
             t.accept(v)
@@ -492,13 +494,13 @@ class OutputVisitor(NodeVisitor):
 
 
 
-# Type visitor that outputs source code.
 class TypeOutputVisitor:
+    """Type visitor that outputs source code."""
     def __init__(self):
         self.result = []  # strings
     
-    # Return a string representation of the output.
     def output(self):
+        """Return a string representation of the output."""
         return ''.join(self.result)
     
     def visit_unbound_type(self, t):
@@ -556,21 +558,21 @@ class TypeOutputVisitor:
     
     # Helpers
     
-    # Output a string.
     def string(self, s):
+        """Output a string."""
         self.result.append(s)
     
-    # Output a token.
     def token(self, t):
+        """Output a token."""
         self.result.append(t.rep())
     
-    # Output an array of tokens.
     def tokens(self, a):
+        """Output an array of tokens."""
         for t in a:
             self.token(t)
     
-    # Output a type.
     def typ(self, n):
+        """Output a type."""
         if n: n.accept(self)
     
     def comma_list(self, items, commas):

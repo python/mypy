@@ -8,24 +8,26 @@ from lex import Token, Name
 none = Token('') # Empty token
 
 
-# Parse a type. Return (type, index after type).
 tuple<Typ, int> parse_type(list<Token> tok, int index):
+    """Parse a type. Return (type, index after type)."""
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
 
 
-# Parse type variables and optional bounds (<...>). Return (bounds, index
-# after bounds).
 tuple<TypeVars, int> parse_type_variables(list<Token> tok, int index,
                                           bool is_func):
+    """Parse type variables and optional bounds (<...>). Return (bounds, index
+    after bounds).
+    """
     p = TypeParser(tok, index)
     return p.parse_type_variables(is_func), p.index()
 
 
-# Parse type arguments within angle brackets (<...>). Return (types, < token,
-# > token, comma tokens, token index after >).
 tuple<list<Typ>, Token, Token, \
       list<Token>, int> parse_type_args(list<Token> tok, int index):
+    """Parse type arguments within angle brackets (<...>). Return
+    (types, < token, > token, comma tokens, token index after >).
+    """
     p = TypeParser(tok, index)
     types, lparen, rparen, commas = p.parse_type_args()
     return types, lparen, rparen, commas, p.index()
@@ -45,8 +47,8 @@ class TypeParser:
     int index(self):
         return self.ind
     
-    # Parse a type.
     Typ parse_type(self):
+        """Parse a type."""
         t = self.current_token()
         if t.string == 'any':
             return self.parse_any_type()
@@ -57,8 +59,8 @@ class TypeParser:
         else:
             self.parse_error()
     
-    # Parse type variables and optional bounds (<...>).
     TypeVars parse_type_variables(self, bool is_func):
+        """Parse type variables and optional bounds (<...>)."""
         langle = self.expect('<')
         
         list<Token> commas = []
@@ -92,8 +94,8 @@ class TypeParser:
         
         return TypeVarDef(name, n, bound, line, TypeVarDefRepr(t, is_tok))
     
-    # Parse type arguments within angle brackets (<...>).
     tuple<list<Typ>, Token, Token, list<Token>> parse_type_args(self):
+        """Parse type arguments within angle brackets (<...>)."""
         langle = self.expect('<')
         list<Token> commas = []
         list<Typ> types = []
@@ -105,13 +107,13 @@ class TypeParser:
         rangle = self.expect('>')
         return types, langle, rangle, commas
     
-    # Parse "any" type.
     Any parse_any_type(self):
+        """Parse "any" type."""
         tok = self.skip()
         return Any(tok.line, AnyRepr(tok))
     
-    # Parse "void" type.
     Void parse_void_type(self):
+        """Parse "void" type."""
         tok = self.skip()
         return Void(None, tok.line, VoidRepr(tok))
     

@@ -47,12 +47,13 @@ op_assign = set([
 none = Token('') # Empty token
 
 
-# Parse a source file, without doing any semantic analysis. Return the parse
-# tree (MypyFile object).
-#
-# If errors is not provided, raise ParseError on failure. Otherwise, use
-# the errors object to report parse errors.
 MypyFile parse(str s, str fnam=None, Errors errors=None):
+    """Parse a source file, without doing any semantic
+    analysis. Return the parse tree (MypyFile object).
+    
+    If errors is not provided, raise ParseError on failure. Otherwise, use
+    the errors object to report parse errors.
+    """
     parser = Parser(fnam, errors)
     tree = parser.parse(s)
     tree.path = fnam
@@ -89,8 +90,8 @@ class Parser:
             self.errors.raise_error()
         return file
     
-    # Parse a mypy source file.
     MypyFile parse_file(self):
+        """Parse a mypy source file."""
         is_bom = self.parse_bom()
         defs = self.parse_defs()
         eof = self.expect_type(Eof)
@@ -100,8 +101,8 @@ class Parser:
     
     # Parse the initial part
     
-    # Parse the optional byte order mark at the beginning of a file.
     bool parse_bom(self):
+        """Parse the optional byte order mark at the beginning of a file."""
         if isinstance(self.current(), Bom):
             self.expect_type(Bom)
             if isinstance(self.current(), Break):
@@ -182,10 +183,11 @@ class Parser:
         else:
             return name, name, tokens
     
-    # Parse a name with an optional module qualifier. Return a tuple with the
-    # name as a string and a token array containing all the components of the
-    # name.
     tuple<str, list<Token>> parse_qualified_name(self):
+        """Parse a name with an optional module qualifier. Return a
+        tuple with the name as a string and a token array containing
+        all the components of the name.
+        """
         list<Token> components = []
         tok = self.expect_type(Name)
         n = tok.string
@@ -358,10 +360,11 @@ class Parser:
         return (name, args, init, var_arg, dict_var_arg, max_pos, typ,
                 False, (name_tok, arg_repr))
     
-    # Parse a function type signature, potentially prefixed with type variable
-    # specification within <...>.
     tuple<list<Var>, list<Node>, Var, Var, int, Annotation, \
           noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
+        """Parse a function type signature, potentially prefixed with
+        type variable specification within <...>.
+        """
         
         type_vars = self.parse_type_vars()
         
@@ -404,9 +407,10 @@ class Parser:
         else:
             return None
     
-    # Parse function definition argument list (everything between '(' and ')').
     tuple<list<Var>, list<Node>, int, Var, Var, bool, int, list<Token>, \
           list<Token>, Token, list<Token>, list<Typ>> parse_arg_list(self):
+        """Parse function definition argument list (everything between
+        '(' and ')')."""
         
         list<Var> args = []
         list<Node> init = []
@@ -488,8 +492,8 @@ class Parser:
     
     # Parsing statements
     
-    # Parse variable definition with explicit types.
     VarDef parse_var_def(self, Typ typ):
+        """Parse variable definition with explicit types."""
         n = self.parse_var_list(typ)
         Node init = None
         assign_token = none
@@ -504,9 +508,10 @@ class Parser:
         self.set_repr(node, noderepr.VarDefRepr(assign_token, br))
         return node
     
-    # Parse a comma-separated list of variable names, potentially prefixed by
-    # type declarations.
     list<tuple<Var, Typ>> parse_var_list(self, Typ first_type):
+        """Parse a comma-separated list of variable names, potentially
+        prefixed by type declarations.
+        """
         tok = self.expect_type(Name)
         n = [(Var(tok.string), first_type)]
         r = [noderepr.VarRepr(tok, none)]
@@ -651,9 +656,10 @@ class Parser:
             self.set_repr(expr, noderepr.ExpressionStmtRepr(br))
             return expr
     
-    # Parse an assignment statement. Assume that lvalue has been parsed
-    # already, and the current token is =.
     AssignmentStmt parse_assignment(self, any lv):
+        """Parse an assignment statement. Assume that lvalue has been parsed
+        already, and the current token is =.
+        """
         assigns = [self.expect('=')]
         lvalues = [lv]
         
@@ -942,8 +948,8 @@ class Parser:
     
     # Parsing expressions
     
-    # Parse a subexpression within a specific precedence context.
     Node parse_expression(self, int prec=0):
+        """Parse a subexpression within a specific precedence context."""
         Node expr
         t = self.current() # Remember token for setting the line number.
         
@@ -1252,11 +1258,11 @@ class Parser:
                                                   rparen))
         return node
     
-    # Parse arguments in a call expression (within '(' and ')').
     tuple<list<Node>, bool, Node, \
           list<Token>, Token, \
           list<tuple<NameExpr, Node>>, \
           list<Token>> parse_arg_expr(self):
+        """Parse arguments in a call expression (within '(' and ')')."""
         
         list<Node> args = []
         is_var_arg = False
@@ -1519,8 +1525,8 @@ class Parser:
             self.parse_error_at(e.token)
         return Annotation(typ, line)
     
-    # Note: For type variables of generic functions only.
     TypeVars parse_type_vars(self):
+        """Note: For type variables of generic functions only."""
         TypeVars type_vars
         if self.current_str() == '<':
             try:
@@ -1540,10 +1546,11 @@ class Parser:
     any repr(self, Node node):
         return node.repr
     
-    # If e is a ParenExpr, return an array of left-paren tokens (more that one
-    # if nested parens) and an array of corresponding right-paren tokens.
-    # Otherwise, return [], [].
     tuple<list<Token>, list<Token>> paren_repr(self, Node e):
+        """If e is a ParenExpr, return an array of left-paren tokens
+        (more that one if nested parens) and an array of corresponding
+        right-paren tokens.  Otherwise, return [], [].
+        """
         if isinstance(e, ParenExpr):
             lp, rp = self.paren_repr(((ParenExpr)e).expr)
             lp.insert(0, self.repr(e).lparen)
@@ -1552,9 +1559,10 @@ class Parser:
         else:
             return [], []
     
-    # Are we currently parsing at the top level of a file (i.e. not within a
-    # class or a function)?
     bool is_at_top_level(self):
+        """Are we currently parsing at the top level of a file
+        (i.e. not within a class or a function)?
+        """
         return not self.is_function and not self.is_type
     
     bool is_at_type(self):
@@ -1597,11 +1605,12 @@ class Parser:
             i += 1
         return self.tok[i].string == '>' and self.tok[i + 1].string == '('
     
-    # Return the index of next token after type starting at token index i as
-    # the first integer. The second integer is 1 if the first > has been
-    # consumed from >>, 0 otherwise. Return -1 as the first integer if could
-    # not parse a type.
     tuple<int, int> try_scan_type(self, int i):
+        """Return the index of next token after type starting at token
+        index i as the first integer. The second integer is 1 if the
+        first > has been consumed from >>, 0 otherwise. Return -1 as
+        the first integer if could not parse a type.
+        """
         if isinstance(self.tok[i], Name):
             while (self.tok[i + 1].string == '.'
                    and isinstance(self.tok[i + 2], Name)):
@@ -1633,9 +1642,10 @@ class Parser:
 class ParseError(Exception): pass
 
 
-# Return a representation of a token that can be used in a parse error
-# message.
 str token_repr(Token tok):
+    """Return a representation of a token that can be used in a parse error
+    message.
+    """
     if isinstance(tok, Break):
         return 'end of line'
     elif isinstance(tok, Eof):
@@ -1678,9 +1688,10 @@ str token_repr(Token tok):
         raise ValueError('Unknown token {}'.format(repr(tok)))
 
 
-# If the node is a parenthesised expression, recursively find the first
-# non-parenthesised subexpression and return that. Otherwise, return node.
 Node unwrap_parens(Node node):
+    """If the node is a parenthesised expression, recursively find the first
+    non-parenthesised subexpression and return that. Otherwise, return node.
+    """
     if isinstance(node, ParenExpr):
         return unwrap_parens(((ParenExpr)node).expr)
     else:

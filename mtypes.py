@@ -1,8 +1,8 @@
 import nodes
 
 
-# Abstract base class for all types.
 class Typ(nodes.Context):
+    """Abstract base class for all types."""
     int line
     any repr
     
@@ -20,8 +20,8 @@ class Typ(nodes.Context):
         return self.accept(TypeStrVisitor())
 
 
-# Instance type that has not been bound during semantic analysis.
 class UnboundType(Typ):
+    """Instance type that has not been bound during semantic analysis."""
     str name
     list<Typ> args
     
@@ -37,22 +37,24 @@ class UnboundType(Typ):
         return visitor.visit_unbound_type(self)
 
 
-# The error type is only used as a result of join and meet operations, when
-# the result is undefined.
 class ErrorType(Typ):
+    """The error type is only used as a result of join and meet
+    operations, when the result is undefined.
+    """
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_error_type(self)
 
 
-# The type "any".
 class Any(Typ):
+    """The type "any"."""
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_any(self)
 
 
-# The return type "void". This can only be used as the return type in a
-# callable type and as the result type of calling such callable.
 class Void(Typ):
+    """The return type 'void'. This can only be used as the return type in a
+    callable type and as the result type of calling such callable.
+    """
     str source   # May be None; function that generated this value
     
     void __init__(self, str source=None, int line=-1, any repr=None):
@@ -66,14 +68,16 @@ class Void(Typ):
         return Void(source, self.line, self.repr)
 
 
-# The type of "None". This is only used internally during type inference.
-# Programs cannot declare a variable of this type, and the type checker
-# refuses to infer this type for a variable. However, subexpressions often
-# have this type. Note that this is not used as the result type when calling
-# a function with a void type, even though semantically such a function
-# returns a None value; the void type is used instead so that we can report an
-# error if the caller tries to do anything with the return value.
 class NoneTyp(Typ):
+    """The type of 'None'. This is only used internally during type
+    inference.  Programs cannot declare a variable of this type, and
+    the type checker refuses to infer this type for a
+    variable. However, subexpressions often have this type. Note that
+    this is not used as the result type when calling a function with a
+    void type, even though semantically such a function returns a None
+    value; the void type is used instead so that we can report an
+    error if the caller tries to do anything with the return value.
+    """
     void __init__(self, int line=-1, repr=None):
         super().__init__(line, repr)
     
@@ -81,8 +85,9 @@ class NoneTyp(Typ):
         return visitor.visit_none_type(self)
 
 
-# An instance type of form C<T1, ..., Tn>. Type variables Tn may be empty
 class Instance(Typ):
+    """An instance type of form C<T1, ..., Tn>. Type variables Tn may
+    be empty"""
     nodes.TypeInfo typ
     list<Typ> args
     bool erased      # True if result of type variable substitution
@@ -102,9 +107,10 @@ BOUND_VAR = 2
 OBJECT_VAR = 3
 
 
-# A type variable type. This refers to either a class type variable
-# (id > 0) or a function type variable (id < 0).
 class TypeVar(Typ):
+    """A type variable type. This refers to either a class type variable
+    (id > 0) or a function type variable (id < 0).
+    """
     str name # Name of the type variable (for messages and debugging)
     int id # 1, 2, ... for type-related, -1, ... for function-related
     
@@ -127,8 +133,9 @@ class TypeVar(Typ):
         return visitor.visit_type_var(self)
 
 
-# Abstract base class for function types (Callable and OverloadedCallable).
 class FunctionLike(Typ):
+    """Abstract base class for function types (Callable and
+    OverloadedCallable)."""
     bool is_type_obj(self):
         pass
     
@@ -139,8 +146,8 @@ class FunctionLike(Typ):
         pass
 
 
-# Type of a callable object (function).
 class Callable(FunctionLike):
+    """Type of a callable object (function)."""
     list<Typ> arg_types # Types of function arguments
     int min_args        # Minimum number of arguments
     bool is_var_arg     # Is it a varargs function?
@@ -190,8 +197,8 @@ class Callable(FunctionLike):
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_callable(self)
     
-    # Return a copy of this type with the specified name.
     Callable with_name(self, str name):
+        """Return a copy of this type with the specified name."""
         ret = self.ret_type
         if isinstance(ret, Void):
             ret = ((Void)ret).with_source(name)
@@ -224,11 +231,12 @@ class Callable(FunctionLike):
         return a
 
 
-# Overloaded function type T1, ... Tn, where each Ti is Callable.
-#
-# The variant to call is chosen based on runtime argument types; the first
-# matching signature is the target.
 class Overloaded(FunctionLike):
+    """Overloaded function type T1, ... Tn, where each Ti is Callable.
+    
+    The variant to call is chosen based on runtime argument types; the first
+    matching signature is the target.
+    """
     list<Callable> _items # Must not be empty
     
     void __init__(self, list<Callable> items):
@@ -256,8 +264,8 @@ class Overloaded(FunctionLike):
         return visitor.visit_overloaded(self)
 
 
-# The tuple type tuple<T1, ..., Tn> (at least one type argument).
 class TupleType(Typ):
+    """The tuple type tuple<T1, ..., Tn> (at least one type argument)."""
     list<Typ> items
     
     void __init__(self, list<Typ> items, int line=-1, any repr=None):
@@ -271,9 +279,10 @@ class TupleType(Typ):
         return visitor.visit_tuple_type(self)
 
 
-# Representation of type variables of a function or type (i.e.
-# <T1 [is B1], ..., Tn [is Bn]>).
 class TypeVars:
+    """Representation of type variables of a function or type (i.e.
+    <T1 [is B1], ..., Tn [is Bn]>).
+    """
     list<TypeVarDef> items
     any repr
     
@@ -290,9 +299,10 @@ class TypeVars:
         return '<{}>'.format(', '.join(a))
 
 
-# Definition of a single type variable, with an optional bound (for bounded
-# polymorphism).
 class TypeVarDef(nodes.Context):
+    """Definition of a single type variable, with an optional bound
+    (for bounded polymorphism).
+    """
     str name
     int id
     Typ bound  # May be None
@@ -317,11 +327,12 @@ class TypeVarDef(nodes.Context):
             return '{} is {}'.format(self.name, self.bound)
 
 
-# Reference to a runtime variable that represents the value of a type
-# variable. The reference can must be a expression node, but only some
-# node types are properly supported (NameExpr, MemberExpr and IndexExpr
-# mainly).
 class RuntimeTypeVar(Typ):
+    """Reference to a runtime variable that represents the value of a type
+    variable. The reference can must be a expression node, but only some
+    node types are properly supported (NameExpr, MemberExpr and IndexExpr
+    mainly).
+    """
     nodes.Node node
     
     void __init__(self, nodes.Node node):
@@ -337,9 +348,10 @@ class RuntimeTypeVar(Typ):
 #
 
 
-# Visitor class for types (Typ subclasses). The parameter T is the return
-# type of the visit methods.
 class TypeVisitor<T>:
+    """Visitor class for types (Typ subclasses). The parameter T is the return
+    type of the visit methods.
+    """
     T visit_unbound_type(self, UnboundType t):
         pass
     
@@ -374,9 +386,10 @@ class TypeVisitor<T>:
         pass
 
 
-# Identity type transformation. Subclass this and override some methods to
-# implement a non-trivial transformation.
 class TypeTranslator(TypeVisitor<Typ>):
+    """Identity type transformation. Subclass this and override some methods to
+    implement a non-trivial transformation.
+    """
     Typ visit_unbound_type(self, UnboundType t):
         return t
     
@@ -426,15 +439,16 @@ class TypeTranslator(TypeVisitor<Typ>):
         return a
 
 
-# Visitor for pretty-printing types into strings. Do not preserve original
-# formatting.
-#
-# Notes:
-#  - Include argument ranges for Instance types, when present.
-#  - Include implicit bound type variables of callables.
-#  - Represent unbound types as Foo? or Foo?<...>.
-#  - Represent the NoneType type as NoneTyp.
 class TypeStrVisitor(TypeVisitor<str>):
+    """Visitor for pretty-printing types into strings. Do not preserve original
+    formatting.
+    
+    Notes:
+     - Include argument ranges for Instance types, when present.
+     - Include implicit bound type variables of callables.
+     - Represent unbound types as Foo? or Foo?<...>.
+     - Represent the NoneType type as NoneTyp.
+     """
     def visit_unbound_type(self, t):
         s = t.name + '?'
         if t.args != []:
@@ -523,9 +537,10 @@ class TypeStrVisitor(TypeVisitor<str>):
     def visit_runtime_type_var(self, t):
         return '<RuntimeTypeVar>'
     
-    # Convert items of an array to strings (pretty-print types) and join the
-    # results with commas.
     def list_str(self, a):
+        """Convert items of an array to strings (pretty-print types)
+        and join the results with commas.
+        """
         res = []
         for t in a:
             if isinstance(t, Typ):
