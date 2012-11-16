@@ -1,6 +1,6 @@
 from errors import Errors
 from nodes import (
-    NodeVisitor, SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
+    SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
     OverloadedFuncDef, FuncDef, FuncItem, Annotation, FuncBase, TypeInfo,
     TypeDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ParenExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -10,17 +10,19 @@ from nodes import (
     DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode, Context,
     AccessorNode
 )
+from nodes import function_type, method_type
 from mtypes import (
     Typ, Any, Callable, Void, FunctionLike, Overloaded, TupleType, Instance,
     NoneTyp, UnboundType
 )
 from sametypes import is_same_type
 from messages import MessageBuilder
-from checkexpr import ExpressionChecker
+import checkexpr
 import messages
 from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 from semanal import self_type
 from expandtype import expand_type_by_instance
+from visitor import NodeVisitor
 
 
 # Map from binary operator id to related method name.
@@ -59,17 +61,16 @@ class BasicTypes:
 
 class TypeChecker(NodeVisitor<Typ>):
     Errors errors          # Error reporting
-    SymbolTable symtable     # Symbol table for the whole program
-    MessageBuilder msg  # Utility for generating messages
+    SymbolTable symtable   # Symbol table for the whole program
+    MessageBuilder msg     # Utility for generating messages
     dict<Node, Typ> type_map  # Types of type checked nodes
-    ExpressionChecker expr_checker
+    checkexpr.ExpressionChecker expr_checker
     
-    list<str> stack = [None] # Stack of local variable definitions;
-    # nil separates nested functions
-    list<Typ> return_types = [] # Stack of function return types
-    list<Typ> type_context = [] # Type context for type inference
-    list<bool> dynamic_funcs = [] # Flags; true for dynamically 
-    # typed functions
+    list<str> stack # Stack of local variable definitions
+                    # None separates nested functions
+    list<Typ> return_types   # Stack of function return types
+    list<Typ> type_context   # Type context for type inference
+    list<bool> dynamic_funcs # Flags; true for dynamically typed functions
     
     SymbolTable globals
     SymbolTable class_tvars
@@ -84,7 +85,11 @@ class TypeChecker(NodeVisitor<Typ>):
         self.modules = modules
         self.msg = MessageBuilder(errors)
         self.type_map = {}
-        self.expr_checker = ExpressionChecker(self, self.msg)
+        self.expr_checker = checkexpr.ExpressionChecker(self, self.msg)
+        self.stack = [None]
+        self.return_types = []
+        self.type_context = []
+        self.dynamic_funcs = []
     
     # Type check a mypy file with the given path.
     void visit_file(self, MypyFile file_node, str path):  
@@ -833,45 +838,6 @@ class TypeChecker(NodeVisitor<Typ>):
     # Produce an error message.
     void fail(self, str msg, Context context):
         self.msg.fail(msg, context)
-        
-
-FunctionLike function_type(FuncBase func):
-    if func.typ:
-        return (FunctionLike)func.typ.typ
-    else:
-        # Implicit type signature with dynamic types.
-        
-        # Overloaded functions always have a signature, so func must be an
-        # ordinary function.
-        fdef = (FuncDef)func
-        
-        name = func.name()
-        if name:
-            name = '"{}"'.format(name)
-        return Callable(<Typ> [Any()] * len(fdef.args), fdef.min_args, False, Any(), False, name)     
-
-
-# Return the signature of a method (omit self).
-FunctionLike method_type(FuncBase func):
-    t = function_type(func)
-    if isinstance(t, Callable):
-        return method_callable((Callable)t)
-    else:
-        o = (Overloaded)t
-        list<Callable> it = []
-        for c in o.items():
-            it.append(method_callable(c))
-        return Overloaded(it)
-
-
-Callable method_callable(Callable c):
-    return Callable(c.arg_types[1:],
-                    c.min_args - 1,
-                    c.is_var_arg,
-                    c.ret_type,
-                    c.is_type_obj(),
-                    c.name,
-                    c.variables)
 
 
 # Map type variables in a type defined in a supertype context to be valid

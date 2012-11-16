@@ -1186,3 +1186,47 @@ class SymbolTableNode:
 
 str clean_up(str s):
     return re.sub('.*::', '', s)
+        
+
+mtypes.FunctionLike function_type(FuncBase func):
+    if func.typ:
+        return (mtypes.FunctionLike)func.typ.typ
+    else:
+        # Implicit type signature with dynamic types.
+        
+        # Overloaded functions always have a signature, so func must be an
+        # ordinary function.
+        fdef = (FuncDef)func
+        
+        name = func.name()
+        if name:
+            name = '"{}"'.format(name)
+        return mtypes.Callable(<mtypes.Typ> [mtypes.Any()] * len(fdef.args),
+                               fdef.min_args,
+                               False,
+                               mtypes.Any(),
+                               False,
+                               name)     
+
+
+# Return the signature of a method (omit self).
+mtypes.FunctionLike method_type(FuncBase func):
+    t = function_type(func)
+    if isinstance(t, mtypes.Callable):
+        return method_callable((mtypes.Callable)t)
+    else:
+        o = (mtypes.Overloaded)t
+        list<mtypes.Callable> it = []
+        for c in o.items():
+            it.append(method_callable(c))
+        return mtypes.Overloaded(it)
+
+
+mtypes.Callable method_callable(mtypes.Callable c):
+    return mtypes.Callable(c.arg_types[1:],
+                           c.min_args - 1,
+                           c.is_var_arg,
+                           c.ret_type,
+                           c.is_type_obj(),
+                           c.name,
+                           c.variables)

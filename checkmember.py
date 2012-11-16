@@ -3,7 +3,7 @@ from nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
 from messages import MessageBuilder
 from subtypes import map_instance_to_supertype
 from expandtype import expand_type_by_instance
-import checker
+from nodes import method_type
 
 
 # Analyse member access. This is a general operation that supports various
@@ -32,7 +32,7 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue, bool 
             # Found a method. The call below has a unique result for all valid
             # programs.
             itype = map_instance_to_supertype(itype, method.info)
-            return expand_type_by_instance(checker.method_type(method), itype)
+            return expand_type_by_instance(method_type(method), itype)
         else:
             # Not a method.
             return analyse_member_var_access(name, itype, info, node, is_lvalue, is_super, msg)

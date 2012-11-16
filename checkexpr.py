@@ -8,15 +8,16 @@ from nodes import (
         IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr, DictExpr,
         FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context
 )
-from sametypes import is_same_type
+from nodes import function_type, method_type
 import checker
+from sametypes import is_same_type
 from replacetvars import replace_func_type_vars, replace_type_vars
 from messages import MessageBuilder
 import messages
 from infer import infer_type_arguments, infer_function_type_arguments
 from expandtype import expand_type, expand_caller_var_args
 from subtypes import is_subtype
-from erasetype import erase_type
+import erasetype
 from checkmember import analyse_member_access
 from semanal import self_type
 
@@ -55,7 +56,7 @@ class ExpressionChecker:
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             f = (FuncDef)node
-            result = checker.function_type(f)
+            result = function_type(f)
         elif isinstance(node, OverloadedFuncDef):
             o = (OverloadedFuncDef)node
             result = o.typ.typ
@@ -287,7 +288,11 @@ class ExpressionChecker:
             arg_types, rest = expand_caller_var_args(arg_types, typ.max_fixed_args())
         
         for i in range(len(arg_types)):
-            if not is_subtype(erase_type(arg_types[i], self.chk.basic_types()), erase_type(replace_type_vars(typ.arg_types[i]), self.chk.basic_types())):
+            if not is_subtype(erasetype.erase_type(arg_types[i],
+                                                   self.chk.basic_types()),
+                              erasetype.erase_type(
+                                  replace_type_vars(typ.arg_types[i]),
+                                  self.chk.basic_types())):
                 return False
         return True
     
@@ -601,7 +606,7 @@ class ExpressionChecker:
         else:
             # Construct callable type based on signature of __init__. Adjust
             # return type and insert type arguments.
-            init_type = checker.method_type(init_method)
+            init_type = method_type(init_method)
             if isinstance(init_type, Callable):
                 return self.class_callable((Callable)init_type, info)
             else:

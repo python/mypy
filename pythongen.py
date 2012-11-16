@@ -1,9 +1,9 @@
-from checker import function_type
 from parse import none
 from mtypes import (
     Any, Instance, Void, TypeVar, TupleType, Callable, UnboundType
 )
 from nodes import IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt
+from nodes import function_type
 from output import OutputVisitor
 
 

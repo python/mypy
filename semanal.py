@@ -12,7 +12,7 @@ from nodes import (
 from visitor import NodeVisitor
 from errors import Errors
 from mtypes import NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar
-from checker import function_type
+from nodes import function_type
 from typeanal import TypeAnalyser
 
 
