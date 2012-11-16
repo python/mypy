@@ -6,17 +6,18 @@ from expandtype import expand_type_by_instance
 from nodes import method_type
 
 
-# Analyse member access. This is a general operation that supports various
-# different variations:
-#
-#   1. lvalue or non-lvalue access (i.e. setter or getter access)
-#   2. supertype access (when using the super keyword; isSuper == True and
-#      overrideInfo should refer to the supertype)
-#
-# Note that this function may return a RangeCallable type.
 Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
                           bool is_super, Typ tuple_type, MessageBuilder msg,
                           TypeInfo override_info=None):
+    """Analyse member access. This is a general operation that supports various
+    different variations:
+    
+      1. lvalue or non-lvalue access (i.e. setter or getter access)
+      2. supertype access (when using the super keyword; isSuper == True and
+         overrideInfo should refer to the supertype)
+    
+    Note that this function may return a RangeCallable type.
+    """
     if isinstance(typ, Instance):
         # The base object has an instance type.
         itype = (Instance)typ
@@ -51,11 +52,12 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
         return msg.has_no_member(typ, name, node)
 
 
-# Analyse member access that does not target a method. This is logically
-# part of analyse_member_access and the arguments are similar.
 Typ analyse_member_var_access(str name, Instance itype, TypeInfo info,
                               Context node, bool is_lvalue, bool is_super,
                               MessageBuilder msg):
+    """Analyse member access that does not target a method. This is logically
+    part of analyse_member_access and the arguments are similar.
+    """
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
     
@@ -84,10 +86,11 @@ Typ analyse_member_var_access(str name, Instance itype, TypeInfo info,
         return msg.has_no_member(itype, name, node)
 
 
-# Find the member variable or accessor node that refers to the given member
-# of a type.
 AccessorNode lookup_member_var_or_accessor(TypeInfo info, str name,
                                            bool is_lvalue):
+    """Find the member variable or accessor node that refers to the
+    given member of a type.
+    """
     if is_lvalue:
         return info.get_var_or_setter(name)
     else:
