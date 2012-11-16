@@ -47,7 +47,7 @@ class ExpressionChecker:
         if isinstance(node, Var):
             # Variable or constant reference.
             v = (Var)node
-            if v.typ is None:
+            if not v.typ:
                 # Implicit dynamic type.
                 result = Any()
             else:
@@ -145,18 +145,18 @@ class ExpressionChecker:
         list<Typ> res = []
         
         fixed = len(args)
-        if callee is not None:
+        if callee:
             fixed = min(fixed, callee.max_fixed_args())
         
         for i in range(fixed):
             arg = args[i]#FIX refactor
             Typ ctx = None
-            if callee is not None and i < len(callee.arg_types):
+            if callee and i < len(callee.arg_types):
                 ctx = callee.arg_types[i]
             res.append(self.accept(arg, ctx))
         
         for j in range(fixed, len(args)):
-            if callee is not None and callee.is_var_arg:
+            if callee and callee.is_var_arg:
                 res.append(self.accept(args[j], callee.arg_types[-1]))
             else:
                 res.append(self.accept(args[j]))
@@ -166,7 +166,7 @@ class ExpressionChecker:
     Callable infer_function_type_arguments_using_context(self,
                                                          Callable callable):
         ctx = self.chk.type_context[-1]
-        if ctx is None:
+        if not ctx:
             return callable
         # The return type may have references to function type variables that
         # we are inferring right now. We must consider them as indeterminate
@@ -214,7 +214,7 @@ class ExpressionChecker:
         # bogus error messages.
         for i in range(len(inferred_args)):
             inferred_type = inferred_args[i]
-            if inferred_type is None:
+            if not inferred_type:
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1 - len(implicit_type_vars), context)
@@ -305,7 +305,7 @@ class ExpressionChecker:
                     match = Any()
                 else:
                     match = typ
-        if match is None:
+        if not match:
             self.msg.no_variant_matches_arguments(overload, context)
             return Any()
         else:
@@ -355,7 +355,7 @@ class ExpressionChecker:
         # Create a map from type variable name to target type.
         dict<int, Typ> map = {}
         for i in range(len(tvars)):
-            if types[i] is not None:
+            if types[i]:
                 map[tvars[i].id] = types[i]
         
         list<Typ> arg_types = []
@@ -529,7 +529,7 @@ class ExpressionChecker:
     # Type check a list expression [...] or <t> [...].
     Typ visit_list_expr(self, ListExpr e):
         Callable constructor
-        if e.typ is not None:
+        if e.typ:
             # A list expression with an explicit item type; translate into type
             # checking a function call.
             constructor = Callable([e.typ],
@@ -567,7 +567,7 @@ class ExpressionChecker:
             for i in range(len(e.items)):
                 item = e.items[i]
                 Typ tt
-                if ctx is None:
+                if not ctx:
                     tt = self.accept(item)
                 else:
                     tt = self.accept(item, ctx.items[i])
@@ -584,7 +584,7 @@ class ExpressionChecker:
             return TupleType(e.types)
     
     Typ visit_dict_expr(self, DictExpr e):
-        if e.key_type is None:
+        if not e.key_type:
             # A dict expression without an explicit type; translate into type
             # checking a generic function call.
             tv1 = TypeVar('KT', -1)
@@ -630,7 +630,7 @@ class ExpressionChecker:
     
     # Type check a super expression.
     Typ analyse_super(self, SuperExpr e, bool is_lvalue):
-        if e.info is not None and e.info.base is not None:
+        if e.info and e.info.base:
             return analyse_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
                                          self.chk.tuple_type(), self.msg,
@@ -645,7 +645,7 @@ class ExpressionChecker:
     
     Typ visit_slice_expr(self, SliceExpr e):
         for index in [e.begin_index, e.end_index, e.stride]:
-            if index is not None:
+            if index:
                 t = self.accept(index)
                 self.chk.check_subtype(t, self.named_type('builtins.int'),
                                        index, messages.INVALID_SLICE_INDEX)
@@ -685,7 +685,7 @@ class ExpressionChecker:
         if info.is_interface:
             return self.chk.type_type()
         init_method = info.get_method('__init__')
-        if init_method is None:
+        if not init_method:
             # Must be an invalid class definition.
             return Any()
         else:

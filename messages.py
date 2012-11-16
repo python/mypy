@@ -226,7 +226,7 @@ class MessageBuilder:
     void incompatible_argument(self, int n, Callable callee, Typ arg_type,
                                Context context):
         target = ''
-        if callee.name is not None:
+        if callee.name:
             name = callee.name
             base = extract_type(name)
             
@@ -279,13 +279,13 @@ class MessageBuilder:
     
     void too_few_arguments(self, Callable callee, Context context):
         msg = 'Too few arguments'
-        if callee.name is not None:
+        if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
     
     void too_many_arguments(self, Callable callee, Context context):
         msg = 'Too many arguments'
-        if callee.name is not None:
+        if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
     
@@ -302,7 +302,7 @@ class MessageBuilder:
     
     void no_variant_matches_arguments(self, Overloaded overload,
                                       Context context):
-        if overload.name() is not None:
+        if overload.name():
             self.fail('No overload variant of {} matches argument types'
                       .format(overload.name()), context)
         else:
@@ -377,7 +377,7 @@ class MessageBuilder:
     
     void could_not_infer_type_arguments(self, Callable callee_type, int n,
                                         Context context):
-        if callee_type.name is not None and n > 0:
+        if callee_type.name and n > 0:
             self.fail('Cannot infer type argument {} of {}'.format(
                 n, callee_type.name), context)
         else:

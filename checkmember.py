@@ -22,7 +22,7 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
         itype = (Instance)typ
         
         info = itype.typ
-        if override_info is not None:
+        if override_info:
             info = override_info
         
         # Look up the member. First look up the method dictionary.
@@ -30,7 +30,7 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
         if not is_lvalue:
             method = info.get_method(name)
         
-        if method is not None:
+        if method:
             # Found a method. The call below has a unique result for all valid
             # programs.
             itype = map_instance_to_supertype(itype, method.info)
@@ -64,7 +64,7 @@ Typ analyse_member_var_access(str name, Instance itype, TypeInfo info,
         var = (Var)v
         itype = map_instance_to_supertype(itype, var.info)
         # FIX what if more than one?
-        if var.typ is not None:
+        if var.typ:
             return expand_type_by_instance(var.typ.typ, itype)
         else:
             # Implicit dynamic type.

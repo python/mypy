@@ -121,9 +121,9 @@ class TypeChecker(NodeVisitor<Typ>):
     # Type check a variable definition (of any kind: local, member or local).
     Typ visit_var_def(self, VarDef defn):
         # Type check initializer.
-        if defn.init is not None:
+        if defn.init:
             # There is an initializer.
-            if defn.items[0][1] is not None:
+            if defn.items[0][1]:
                 # Explicit types.
                 if len(defn.items) == 1:
                     self.check_assignment(defn.items[0][1], None, defn.init,
@@ -148,7 +148,7 @@ class TypeChecker(NodeVisitor<Typ>):
                     self.infer_local_variable_type(names, init_type, defn)
         else:
             # No initializer
-            if (defn.kind == LDEF and defn.items[0][1] is None and
+            if (defn.kind == LDEF and not defn.items[0][1] and
                     not defn.is_top_level and not self.is_dynamic_function()):
                 self.fail(messages.NEED_ANNOTATION_FOR_VAR, defn)
     
@@ -159,13 +159,13 @@ class TypeChecker(NodeVisitor<Typ>):
     Typ visit_overloaded_func_def(self, OverloadedFuncDef defn):
         for fdef in defn.items:
             self.check_func_item(fdef)
-        if defn.info is not None:
+        if defn.info:
             self.check_method_override(defn)
     
     # Type check a function definition.
     Typ visit_func_def(self, FuncDef defn):
         self.check_func_item(defn)
-        if defn.info is not None:
+        if defn.info:
             self.check_method_override(defn)
     
     Typ check_func_item(self, FuncItem defn):
@@ -177,7 +177,7 @@ class TypeChecker(NodeVisitor<Typ>):
         
         self.dynamic_funcs.append(defn.typ is None)
         
-        if fdef is not None:
+        if fdef:
             self.errors.set_function(fdef.name())
         
         typ = function_type(defn)
@@ -186,7 +186,7 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             raise RuntimeError('Not supported')
         
-        if fdef is not None:
+        if fdef:
             self.errors.set_function(None)
         
         self.dynamic_funcs.pop()
@@ -218,7 +218,7 @@ class TypeChecker(NodeVisitor<Typ>):
         nargs = len(defn.args)
         for i in range(len(ctype.arg_types)):
             arg_type = ctype.arg_types[i]
-            if defn.var_arg is not None and i == nargs:
+            if defn.var_arg and i == nargs:
                 arg_type = self.named_generic_type('builtins.list', [arg_type])
                 defn.var_arg.typ = Annotation(arg_type)
             else:
@@ -226,7 +226,7 @@ class TypeChecker(NodeVisitor<Typ>):
         
         # Type check initialization expressions.
         for j in range(len(defn.init)):
-            if defn.init[j] is not None:
+            if defn.init[j]:
                 self.accept(defn.init[j])
         
         # Type check body.
@@ -254,7 +254,7 @@ class TypeChecker(NodeVisitor<Typ>):
             if defn.name() != '__init__':
                 # Check method override (create is special).
                 base_method = base.get_method(defn.name())
-                if base_method is not None and base_method.info == base:
+                if base_method and base_method.info == base:
                     # There is an overridden method in the supertype.
                     
                     # Construct the type of the overriding method.
@@ -340,19 +340,19 @@ class TypeChecker(NodeVisitor<Typ>):
         ifaces = typ.interfaces[:]
         
         dup = find_duplicate(ifaces)
-        if dup is not None:
+        if dup:
             self.msg.duplicate_interfaces(typ, dup)
             return 
         
         base = typ.base
-        while base is not None:
+        while base:
             # Avoid duplicate error messages.
-            if find_duplicate(base.interfaces) is not None:
+            if find_duplicate(base.interfaces):
                 return 
             
             ifaces.extend(base.interfaces)
             dup = find_duplicate(ifaces)
-            if dup is not None:
+            if dup:
                 self.msg.duplicate_interfaces(typ, dup)
                 return 
             base = base.base
@@ -522,7 +522,7 @@ class TypeChecker(NodeVisitor<Typ>):
             trvalue = (TupleType)rvalue_type
             list<Typ> items = []
             for i in range(len(lvalue_types)):
-                if lvalue_types[i] is not None:
+                if lvalue_types[i]:
                     items.append(lvalue_types[i])
                 elif i < len(trvalue.items):
                     # TODO Figure out more precise type context, probably
@@ -575,7 +575,7 @@ class TypeChecker(NodeVisitor<Typ>):
     # Type check a return statement.
     Typ visit_return_stmt(self, ReturnStmt s):
         if self.is_within_function():
-            if s.expr is not None:
+            if s.expr:
                 # Return with a value.
                 typ = self.accept(s.expr, self.return_types[-1])
                 # Returning a value of type dynamic is always fine.
@@ -599,7 +599,7 @@ class TypeChecker(NodeVisitor<Typ>):
             self.check_not_void(t, e)
         for b in s.body:
             self.accept(b)
-        if s.else_body is not None:
+        if s.else_body:
             self.accept(s.else_body)
     
     # Type check a while statement.
@@ -607,7 +607,7 @@ class TypeChecker(NodeVisitor<Typ>):
         t = self.accept(s.expr)
         self.check_not_void(t, s)
         self.accept(s.body)
-        if s.else_body is not None:
+        if s.else_body:
             self.accept(s.else_body)
     
     # Type check an operator assignment statement, e.g. x += 1.
@@ -643,14 +643,14 @@ class TypeChecker(NodeVisitor<Typ>):
     Typ visit_try_stmt(self, TryStmt s):
         self.accept(s.body)
         for i in range(len(s.handlers)):
-            if s.types[i] is not None:
+            if s.types[i]:
                 t = self.exception_type(s.types[i])
-                if s.vars[i] is not None:
+                if s.vars[i]:
                     s.vars[i].typ = Annotation(t)
             self.accept(s.handlers[i])
-        if s.finally_body is not None:
+        if s.finally_body:
             self.accept(s.finally_body)
-        if s.else_body is not None:
+        if s.else_body:
             self.accept(s.else_body)
     
     Typ exception_type(self, Node n):
@@ -687,14 +687,14 @@ class TypeChecker(NodeVisitor<Typ>):
             self.infer_variable_type(s.index, item, s)
         
         if len(s.index) == 1:
-            if s.index[0].typ is not None:
+            if s.index[0].typ:
                 self.check_assignment(s.index[0].typ.typ, None,
                                       self.temp_node(item), s,
                                       messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
             list<Typ> t = []
             for index in s.index:
-                if index.typ is not None:
+                if index.typ:
                     t.append(index.typ.typ)
                 else:
                     t.append(Any())
@@ -865,7 +865,7 @@ class TypeChecker(NodeVisitor<Typ>):
             return self.globals[name]
         else:
             b = self.globals.get('__builtins__', None)
-            if b is not None:
+            if b:
                 table = ((MypyFile)b.node).names
                 if name in table:
                     return table[name]
