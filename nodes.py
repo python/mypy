@@ -6,9 +6,8 @@ from visitor import NodeVisitor
 from util import dump_tagged, short_type
 
 
-# Supertype for objects that are valid as error message locations.
 interface Context:
-    # TODO this should be just 'line'
+    # Supertype for objects that are valid as error message locations.
     int get_line(self)
 
 
@@ -32,14 +31,14 @@ node_kinds = {
 }
 
 
-# Nodes that can be stored in a symbol table.
+# Nodes that can be stored in the symbol table.
 # TODO better name
 # TODO remove or combine with SymNode?
 interface AccessorNode: pass
 
 
-# Nodes that can be stored in the symbol table.
 interface SymNode:
+    # Nodes that can be stored in a symbol table.
     # TODO do not use methods for these
     str name(self)
     str full_name(self)
@@ -61,6 +60,7 @@ class Node(Context):
         return self
 
     int get_line(self):
+        # TODO this should be just 'line'
         return self.line
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -125,13 +125,15 @@ class ImportAll(Node):
 class FuncBase(Node, AccessorNode):
     Annotation typ   # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
-    def name(self): pass
+    def name(self):
+        pass
 
 
-# A logical node representing all the overload variants of an overloaded
-# function. This node has no explicit representation in the source program.
-# Overloaded variants must be consecutive in the source file.
 class OverloadedFuncDef(FuncBase, SymNode):
+    """A logical node representing all the overload variants of an overloaded
+    function. This node has no explicit representation in the source program.
+    Overloaded variants must be consecutive in the source file.
+    """
     list<FuncDef> items
     str _full_name
     
@@ -237,8 +239,8 @@ class FuncDef(FuncItem, SymNode):
     bool is_constructor(self):
         return self.info is not None and self._name == '__init__'
 
-    # TODO merge with name()
     str get_name(self):
+        """TODO merge with name()"""
         return self._name
 
 
@@ -559,8 +561,8 @@ class WithStmt(Node):
 # Expressions
 
 
-# Integer literal
 class IntExpr(Node):
+    """Integer literal"""
     int value
     
     void __init__(self, int value):
@@ -570,8 +572,8 @@ class IntExpr(Node):
         return visitor.visit_int_expr(self)
 
 
-# String literal
 class StrExpr(Node):
+    """String literal"""
     str value
     
     void __init__(self, str value):
@@ -581,8 +583,8 @@ class StrExpr(Node):
         return visitor.visit_str_expr(self)
 
 
-# Float literal
 class FloatExpr(Node):
+    """Float literal"""
     float value
     
     void __init__(self, float value):
@@ -592,8 +594,8 @@ class FloatExpr(Node):
         return visitor.visit_float_expr(self)
 
 
-# Parenthesised expression
 class ParenExpr(Node):
+    """Parenthesised expression"""
     Node expr
     
     void __init__(self, Node expr):
@@ -603,15 +605,16 @@ class ParenExpr(Node):
         return visitor.visit_paren_expr(self)
 
 
-# Abstract base class
 class RefExpr(Node):
+    """Abstract base class"""
     int kind      # Ldef/Gdef/Mdef/... (None if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
 
 
-# Name expression optionally with a ::-based qualifier (may refer to a local,
-# member or global definition)
 class NameExpr(RefExpr):
+    """Name expression optionally with a ::-based qualifier (may refer to a local,
+    member or global definition)
+    """
     str name      # Name referred to (may be qualified)
     str full_name # Fully qualified name (or name if not global)
     TypeInfo info # TypeInfo of class surrounding expression (may be None)
@@ -628,8 +631,8 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
 
-# Member access expression x.y
 class MemberExpr(RefExpr):
+    """Member access expression x.y"""
     Node expr
     str name
     # Full name if referring to a name in module.
@@ -649,8 +652,8 @@ class MemberExpr(RefExpr):
         return visitor.visit_member_expr(self)
 
 
-# Call expression
 class CallExpr(Node):
+    """Call expression"""
     Node callee
     list<Node> args
     bool is_var_arg
@@ -672,8 +675,8 @@ class CallExpr(Node):
         return visitor.visit_call_expr(self)
 
 
-# Index expression x[y]
 class IndexExpr(Node):
+    """Index expression x[y]"""
     Node base
     Node index
     
@@ -685,8 +688,8 @@ class IndexExpr(Node):
         return visitor.visit_index_expr(self)
 
 
-# Unary operation
 class UnaryExpr(Node):
+    """Unary operation"""
     str op
     Node expr
     
@@ -698,8 +701,8 @@ class UnaryExpr(Node):
         return visitor.visit_unary_expr(self)
 
 
-# Binary operation (other than . or [], which have specific nodes)
 class OpExpr(Node):
+    """Binary operation (other than . or [], which have specific nodes)"""
     str op
     Node left
     Node right
@@ -713,9 +716,10 @@ class OpExpr(Node):
         return visitor.visit_op_expr(self)
 
 
-# Slice expression (e.g. "x:y", "x:", "::2" or ":"); only valid as index in
-# index expressions.
 class SliceExpr(Node):
+    """Slice expression (e.g. 'x:y', 'x:', '::2' or ':'); only valid
+    as index in index expressions.
+    """
     Node begin_index  # May be None
     Node end_index    # May be None
     Node stride       # May be None
@@ -752,14 +756,14 @@ class SuperExpr(Node):
         return visitor.visit_super_expr(self)
 
 
-# Anonymous function expression
 class FuncExpr(FuncItem):
+    """Anonymous function expression"""
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_func_expr(self)
 
 
-# List literal expression [...] or <type> [...]
 class ListExpr(Node):
+    """List literal expression [...] or <type> [...]"""
     list<Node> items 
     mtypes.Typ typ # None if implicit type
     
@@ -771,8 +775,8 @@ class ListExpr(Node):
         return visitor.visit_list_expr(self)
 
 
-# Dictionary literal expression {key:value, ...} or <kt, vt> {...}.
 class DictExpr(Node):
+    """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
     list<tuple<Node, Node>> items
     mtypes.Typ key_type    # None if implicit type
     mtypes.Typ value_type  # None if implicit type
@@ -784,8 +788,8 @@ class DictExpr(Node):
         return visitor.visit_dict_expr(self)
 
 
-# Tuple literal expression (..., ...)
 class TupleExpr(Node):
+    """Tuple literal expression (..., ...)"""
     list<Node> items
     list<mtypes.Typ> types
     
@@ -797,8 +801,8 @@ class TupleExpr(Node):
         return visitor.visit_tuple_expr(self)
 
 
-# Set literal expression {value, ...}.
 class SetExpr(Node):
+    """Set literal expression {value, ...}."""
     list<Node> items
     
     void __init__(self, list<Node> items):
@@ -808,8 +812,8 @@ class SetExpr(Node):
         return visitor.visit_set_expr(self)
 
 
-# Generator expression ... for ... in ... [ if ... ].
 class GeneratorExpr(Node):
+    """Generator expression ... for ... in ... [ if ... ]."""
     Node left_expr
     Node right_expr
     Node condition   # May be None
@@ -875,9 +879,10 @@ class TypeApplication(Node):
         return visitor.visit_type_application(self)
 
 
-# Implicit coercion expression (used only when compiling/transforming;
-# inserted after type checking).
 class CoerceExpr(Node):
+    """Implicit coercion expression (used only when compiling/transforming;
+    inserted after type checking).
+    """
     Node expr
     mtypes.Typ target_type
     mtypes.Typ source_type
@@ -906,10 +911,11 @@ class JavaCast(Node):
         return visitor.visit_java_cast(self)
 
 
-# Expression that evaluates to a runtime representation of a type. This is
-# used only for runtime type checking. This node is always generated only
-# after type checking.
 class TypeExpr(Node):
+    """Expression that evaluates to a runtime representation of a type. This is
+    used only for runtime type checking. This node is always generated only
+    after type checking.
+    """
     mtypes.Typ typ
     
     void __init__(self, mtypes.Typ typ):
@@ -919,10 +925,11 @@ class TypeExpr(Node):
         return visitor.visit_type_expr(self)
 
 
-# This node is not present in the original program; it is just an artifact
-# of the type checker implementation. It only represents an opaque node with
-# some fixed type.
 class TempNode(Node):
+    """This node is not present in the original program; it is just an artifact
+    of the type checker implementation. It only represents an opaque node with
+    some fixed type.
+    """
     mtypes.Typ typ
     
     void __init__(self, mtypes.Typ typ):
@@ -932,9 +939,12 @@ class TempNode(Node):
         return visitor.visit_temp_node(self)
 
 
-# Class representing the type structure of a single class. The corresponding
-# TypeDef instance represents the parse tree of the class.
 class TypeInfo(Node, AccessorNode, SymNode):
+    """Class representing the type structure of a single class.
+
+    The corresponding TypeDef instance represents the parse tree of
+    the class.
+    """
     str _full_name     # Fully qualified name
     bool is_interface  # Is this a interface type?
     TypeDef defn       # Corresponding TypeDef
@@ -961,9 +971,9 @@ class TypeInfo(Node, AccessorNode, SymNode):
     list<mtypes.Typ> bases
     
     
-    # Construct a TypeInfo.
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
                   TypeDef defn):
+        """Construct a TypeInfo."""
         self.subtypes = set()
         self.vars = {}
         self.methods = {}
@@ -980,15 +990,15 @@ class TypeInfo(Node, AccessorNode, SymNode):
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
     
-    # Short name.
     str name(self):
+        """Short name."""
         return self.defn.name
 
     str full_name(self):
         return self._full_name
     
-    # Is the type generic (i.e. does it have type variables)?
     bool is_generic(self):
+        """Is the type generic (i.e. does it have type variables)?"""
         return self.type_vars is not None and len(self.type_vars) > 0
     
     void set_type_bounds(self, list<mtypes.TypeVarDef> a):
@@ -1052,14 +1062,15 @@ class TypeInfo(Node, AccessorNode, SymNode):
             return None
     
     
-    # Set the base class.
     void set_base(self, TypeInfo base):
+        """Set the base class."""
         self.base = base
         base.subtypes.add(self)
     
-    # Return True if type has a basetype with the specified name, either via
-    # extension or via implementation.
     bool has_base(self, str full_name):
+        """Return True if type has a basetype with the specified name,
+        either via extension or via implementation.
+        """
         if self.full_name() == full_name or (self.base is not None and
                                              self.base.has_base(full_name)):
             return True
@@ -1068,8 +1079,8 @@ class TypeInfo(Node, AccessorNode, SymNode):
                 return True
         return False
     
-    # Return TypeInfos of all subtypes, including this type, as a set.
     set<TypeInfo> all_subtypes(self):
+        """Return TypeInfos of all subtypes, including this type, as a set."""
         set = set([self])
         for subt in self.subtypes:
             for t in subt.all_subtypes():
@@ -1077,13 +1088,15 @@ class TypeInfo(Node, AccessorNode, SymNode):
         return set
     
     
-    # Add a base interface.
     void add_interface(self, TypeInfo base):
+        """Add a base interface."""
         self.interfaces.append(base)
     
-    # Return an Array of interfaces that are either directly implemented by the
-    # type or that are the supertypes of other interfaces in the array.
     list<TypeInfo> all_directly_implemented_interfaces(self):
+        """Return a list of interfaces that are either directly
+        implemented by the type or that are the supertypes of other
+        interfaces in the array.
+        """
         # Interfaces never implement interfaces.
         if self.is_interface:
             return []
@@ -1099,15 +1112,18 @@ class TypeInfo(Node, AccessorNode, SymNode):
                     a.append(ifa)
         return a
     
-    # Return an array of directly implemented interfaces. Omit inherited
-    # interfaces.
     list<TypeInfo> directly_implemented_interfaces(self):
+        """Return a directly implemented interfaces.
+
+        Omit inherited interfaces.
+        """
         return self.interfaces[:]
     
     
-    # Return a string representation of the type, which includes the most
-    # important information about the type.
     str __str__(self):
+        """Return a string representation of the type, which includes the most
+        important information about the type.
+        """
         list<str> interfaces = []
         for i in self.interfaces:
             interfaces.append(i.full_name())
@@ -1195,11 +1211,9 @@ mtypes.FunctionLike function_type(FuncBase func):
         return (mtypes.FunctionLike)func.typ.typ
     else:
         # Implicit type signature with dynamic types.
-        
         # Overloaded functions always have a signature, so func must be an
         # ordinary function.
-        fdef = (FuncDef)func
-        
+        fdef = (FuncDef)func        
         name = func.name()
         if name:
             name = '"{}"'.format(name)
@@ -1211,8 +1225,8 @@ mtypes.FunctionLike function_type(FuncBase func):
                                name)
 
 
-# Return the signature of a method (omit self).
 mtypes.FunctionLike method_type(FuncBase func):
+    """Return the signature of a method (omit self)."""
     t = function_type(func)
     if isinstance(t, mtypes.Callable):
         return method_callable((mtypes.Callable)t)
