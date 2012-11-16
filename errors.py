@@ -1,8 +1,8 @@
 import os.path
 
 
-# Representation of a single error message.
 class ErrorInfo:
+    """Representation of a single error message."""
     # Description of a sequence of imports that refer to the source file
     # related to this error. Each item is a (path, line number) tuple.
     list<tuple<str, int>> import_ctx
@@ -19,9 +19,10 @@ class ErrorInfo:
     # The error message.
     str message
     
-    # Return "interface" or "class" depending on the context of the error.
-    # Call this method only if the type member != None.
     str type_id(self):
+        """Return 'interface' or 'class' depending on the context of the error.
+        Call this method only if the type member != None.
+        """
         if self.is_interface:
             return 'interface'
         else:
@@ -39,9 +40,10 @@ class ErrorInfo:
         self.message = message
 
 
-# Container that generates and keeps tracks of compile errors and the current
-# error context.
 class Errors:
+    """Container that generates and keeps tracks of compile errors and
+    the current error context.
+    """
     # List of generated error messages.
     list<ErrorInfo> error_info
     
@@ -62,67 +64,70 @@ class Errors:
         self.error_info = []
         self.import_ctx = []
     
-    # Set path prefix that will be removed from all paths.
     void set_ignore_prefix(self, str prefix):
+        """Set path prefix that will be removed from all paths."""
         prefix = os.path.normpath(prefix)
         # Add separator to the end, if not given.
         if os.path.basename(prefix) != '':
             prefix += os.sep
         self.ignore_prefix = prefix
     
-    # Set the path of the current file.
     void set_file(self, str file):
+        """Set the path of the current file."""
         file = os.path.normpath(file)
         self.file = remove_path_prefix(file, self.ignore_prefix)
     
-    # Set the current function or member short name (it can be None).
     void set_function(self, str name):
+        """Set the current function or member short name (it can be None)."""
         self.function_or_member = name
     
-    # Set the short name of the current type (it can be None).
     void set_type(self, str name, bool is_interface):
+        """Set the short name of the current type (it can be None)."""
         self.type_name = name
         self.is_interface = is_interface
     
-    # Add a (file, line) tuple to the import context.
     void push_import_context(self, str path, int line):
+        """Add a (file, line) tuple to the import context."""
         self.import_ctx.append((os.path.normpath(path), line))
     
-    # Remove the topmost item from the import context.
     void pop_import_context(self):
+        """Remove the topmost item from the import context."""
         self.import_ctx.pop()
     
-    # Return a copy of the import context.
     list<tuple<str, int>> import_context(self):
+        """Return a copy of the import context."""
         return self.import_ctx[:]
     
-    # Replace the entire import context with a new value.
     void set_import_context(self, list<tuple<str, int>> ctx):
+        """Replace the entire import context with a new value."""
         self.import_ctx = ctx[:]
     
-    # Report a message at the given line using the current error context.
     void report(self, int line, str message):
+        """Report a message at the given line using the current error
+        context."""
         info = ErrorInfo(self.import_context(), self.file, self.type_name,
                          self.is_interface, self.function_or_member, line,
                          message)
         self.error_info.append(info)
     
-    # Return the number of generated messages.
     int num_messages(self):
+        """Return the number of generated messages."""
         return len(self.error_info)
     
-    # Are there any generated errors?
     bool is_errors(self):
+        """Are there any generated errors?"""
         return len(self.error_info) > 0
     
-    # Raise a CompileError with the generated messages. Render the messages
-    # suitable for displaying.
     void raise_error(self):
+        """Raise a CompileError with the generated messages. Render
+        the messages suitable for displaying.
+        """
         raise CompileError(self.messages())
     
-    # Return a string array that represents the error messages in a form
-    # suitable for displaying to the user.
     list<str> messages(self):
+        """Return a string array that represents the error messages in a form
+        suitable for displaying to the user.
+        """
         list<str> a = []
         errors = self.render_messages(self.sort_messages(self.error_info))
         errors = self.remove_duplicates(errors)
@@ -138,11 +143,13 @@ class Errors:
             a.append(s)
         return a
     
-    # Translate the messages into a sequence of (path, line, message) tuples.
-    # The rendered sequence includes information about error contexts. The path
-    # item may be None. If the line item is negative, the line number is not
-    # defined for the tuple.
     list<tuple<str, int, str>> render_messages(self, list<ErrorInfo> errors):
+        """Translate the messages into a sequence of (path, line,
+        message) tuples.  The rendered sequence includes information
+        about error contexts. The path item may be None. If the line
+        item is negative, the line number is not defined for the
+        tuple.
+        """
         list<tuple<str, int, str>> result = [] # (path, line, message)
         
         list<tuple<str, int>> prev_import_context = []
@@ -203,10 +210,11 @@ class Errors:
         
         return result
     
-    # Sort an array of error messages locally by line number, i.e. sort a
-    # run of consecutive messages with the same file context by line number,
-    # but otherwise retain the general ordering of the messages.
     list<ErrorInfo> sort_messages(self, list<ErrorInfo> errors):
+        """Sort an array of error messages locally by line number, i.e. sort a
+        run of consecutive messages with the same file context by line number,
+        but otherwise retain the general ordering of the messages.
+        """
         list<ErrorInfo> result = []
         i = 0
         while i < len(errors):
@@ -223,9 +231,9 @@ class Errors:
             result.extend(a)
         return result
     
-    # Remove duplicates from a sorted error list.
     list<tuple<str, int, str>> remove_duplicates(
                                   self, list<tuple<str, int, str>> errors):
+        """Remove duplicates from a sorted error list."""
         list<tuple<str, int, str>> res = []
         i = 0
         while i < len(errors):
@@ -243,9 +251,10 @@ class Errors:
         return res
 
 
-# Exception raised when there is a parse, semantic analysis, type check or
-# other compilation-related error.
 class CompileError(Exception):
+    """Exception raised when there is a parse, semantic analysis, type check or
+    other compilation-related error.
+    """
     list<str> messages
     
     void __init__(self, list<str> messages):
@@ -253,10 +262,11 @@ class CompileError(Exception):
         self.messages = messages
 
 
-# Perform a stable sort of a sequence, i.e. if the original sequence has
-# a[n] == a[n+m] (when comparing using the comparison function f), in the
-# sorted sequence item a[n] will be at an earlier index than a[n + m].
 list<T> stable_sort<T>(sequence<T> a, func<T, any> key):
+    """Perform a stable sort of a sequence, i.e. if the original sequence has
+    a[n] == a[n+m] (when comparing using the comparison function f), in the
+    sorted sequence item a[n] will be at an earlier index than a[n + m].
+    """
     # TODO use sorted with key (need support for keyword arguments)
     l = <tuple<any, int, T>> []
     for i, x in enumerate(a):
@@ -267,9 +277,10 @@ list<T> stable_sort<T>(sequence<T> a, func<T, any> key):
     return result
 
 
-# If path starts with prefix, return copy of path with the prefix removed.
-# Otherwise, return path. If path is None, return None.
 str remove_path_prefix(str path, str prefix):
+    """If path starts with prefix, return copy of path with the prefix removed.
+    Otherwise, return path. If path is None, return None.
+    """
     if prefix is not None and path.startswith(prefix):
         return path[len(prefix):]
     else:

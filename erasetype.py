@@ -5,15 +5,16 @@ from mtypes import (
 import checker
 
 
-# Erase any type variables from a type. Also replace complex types (tuple,
-# function) with the corresponding concrete types.
-#
-# Examples:
-#   A -> A
-#   B<X> -> B<any>
-#   tuple<A, B> -> tuple
-#   func<...> -> function
 Typ erase_type(Typ typ, checker.BasicTypes basic):
+    """Erase any type variables from a type. Also replace complex types (tuple,
+    function) with the corresponding concrete types.
+    
+    Examples:
+      A -> A
+      B<X> -> B<any>
+      tuple<A, B> -> tuple
+      func<...> -> function
+      """
     return typ.accept(EraseTypeVisitor(basic))
 
 

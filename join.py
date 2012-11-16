@@ -96,12 +96,14 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
             return self.object
 
 
-# Calculate the join of two instance types. If allowInterfaces is True, also
-# consider interface-type results for non-interface types.
-#
-# Return ErrorType if the result is ambiguous.
 Typ join_instances(Instance t, Instance s, bool allow_interfaces,
                    checker.BasicTypes basic):
+    """Calculate the join of two instance types. If allowInterfaces is
+    True, also consider interface-type results for non-interface
+    types.
+    
+    Return ErrorType if the result is ambiguous.
+    """
     if t.typ == s.typ:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
@@ -146,15 +148,17 @@ Typ join_instances_via_supertype(Instance t, Instance s,
         return res
 
 
-# Compute join of two instances with a preference to an interface type result.
-# Return Object if no common interface type is found and ErrorType if the
-# result type is ambiguous.
-#
-# Interface type result is expected in the following cases:
-#  * exactly one of t or s is an interface type
-#  * neither t nor s is an interface type, and neither is subtype of the other
 Typ join_instances_as_interface(Instance t, Instance s,
                                 checker.BasicTypes basic):
+    """Compute join of two instances with a preference to an interface
+    type result.  Return Object if no common interface type is found
+    and ErrorType if the result type is ambiguous.
+    
+    Interface type result is expected in the following cases:
+     * exactly one of t or s is an interface type
+     * neither t nor s is an interface type, and neither is subtype of the
+       other
+    """
     t_ifaces = implemented_interfaces(t)
     s_ifaces = implemented_interfaces(s)
     
@@ -190,9 +194,10 @@ Typ join_instances_as_interface(Instance t, Instance s,
             return ErrorType()
 
 
-# If t is a class instance, return all the directly implemented interface
-# types by t and its supertypes, including mapped type arguments.
 list<Typ> implemented_interfaces(Instance t):
+    """If t is a class instance, return all the directly implemented interface
+    types by t and its supertypes, including mapped type arguments.
+    """
     if t.typ.is_interface:
         return [t]
     else:
@@ -208,9 +213,10 @@ list<Typ> implemented_interfaces(Instance t):
         return res
 
 
-# Return True if t and s are equivalent and have identical numbers of
-# arguments, default arguments and varargs.
 bool is_similar_callables(Callable t, Callable s):
+    """Return True if t and s are equivalent and have identical numbers of
+    arguments, default arguments and varargs.
+    """
     return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args
             and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
 

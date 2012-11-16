@@ -40,14 +40,15 @@ INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  
 
 
-# Helper class for reporting type checker error messages with parameters.
-# The methods of this class need to be provided with the context within a
-# file; the errors member manages the wider context.
-#
-# IDEA: Support a "verbose mode" that includes full information about types
-#       in error messages and that may otherwise produce more detailed error
-#       messages.
 class MessageBuilder:
+    """Helper class for reporting type checker error messages with parameters.
+    The methods of this class need to be provided with the context within a
+    file; the errors member manages the wider context.
+    
+    IDEA: Support a "verbose mode" that includes full information about types
+          in error messages and that may otherwise produce more detailed error
+          messages.
+          """
     # Report errors using this instance. It knows about the current file and
     # import context.
     Errors errors
@@ -59,14 +60,15 @@ class MessageBuilder:
     # Helpers
     #
     
-    # Report an error message.
     void fail(self, str msg, Context context):
+        """Report an error message."""
         self.errors.report(context.get_line(), msg.strip())
     
-    # Convert a type to a relatively short string that is suitable for error
-    # messages. Mostly behave like formatSimple below, but never return an
-    # empty string.
     str format(self, Typ typ):
+        """Convert a type to a relatively short string that is
+        suitable for error messages. Mostly behave like formatSimple
+        below, but never return an empty string.
+        """
         s = self.format_simple(typ)
         if s != '':
             # If formatSimple returns a non-trivial result, use that.
@@ -79,16 +81,17 @@ class MessageBuilder:
             # Default case; we simply have to return something meaningful here.
             return 'object'
     
-    # Convert simple types to string that is suitable for error messages,
-    # otherwise return "". Try to keep the length of the result relatively
-    # short to avoid overly long error messages.
-    #
-    # Examples:
-    #   builtins.int -> "int"
-    #   any -> "any"
-    #   void -> void
-    #   function type -> "" (empty string)
     str format_simple(self, Typ typ):
+        """Convert simple types to string that is suitable for error messages,
+        otherwise return "". Try to keep the length of the result relatively
+        short to avoid overly long error messages.
+        
+        Examples:
+          builtins.int -> 'int'
+          any -> 'any'
+          void -> void
+          function type -> "" (empty string)
+          """
         if isinstance(typ, Instance):
             itype = (Instance)typ
             # Get the short name of the type.
@@ -145,10 +148,12 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
     
-    # Report a missing or non-accessible member.
-    # The type argument is the base type. If member corresponds to an operator,
-    # use the corresponding operator name in the messages. Return type Any.
     Typ has_no_member(self, Typ typ, str member, Context context):
+        """Report a missing or non-accessible member.  The type
+        argument is the base type. If member corresponds to an
+        operator, use the corresponding operator name in the
+        messages. Return type Any.
+        """
         if (isinstance(typ, Instance) and
                 ((Instance)typ).typ.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
@@ -183,10 +188,11 @@ class MessageBuilder:
                                                      member), context)
         return Any()
     
-    # Report unsupported operand types for a binary operation.
-    # Types can be Typ objects or strings.
     void unsupported_operand_types(self, str op, any left_type, any right_type,
                                    Context context):
+        """Report unsupported operand types for a binary operation.
+        Types can be Typ objects or strings.
+        """
         if isinstance(left_type, Void) or isinstance(right_type, Void):
             self.check_void(left_type, context)
             self.check_void(right_type, context)
@@ -220,12 +226,13 @@ class MessageBuilder:
         self.fail('{} not callable'.format(self.format(typ)), context)
         return Any()
     
-    # Report an error about an incompatible type argType for argument n when
-    # calling a value with type callee. If the callee represents a method that
-    # corresponds to an operator, use the corresponding operator name in the
-    # messages.
     void incompatible_argument(self, int n, Callable callee, Typ arg_type,
                                Context context):
+        """Report an error about an incompatible type argType for
+        argument n when calling a value with type callee. If the
+        callee represents a method that corresponds to an operator,
+        use the corresponding operator name in the messages.
+        """
         target = ''
         if callee.name:
             name = callee.name
@@ -290,11 +297,12 @@ class MessageBuilder:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
     
-    # Report an error about a void type in a non-void context. The first
-    # argument must be a void type. If the void type has a source in it, report
-    # it in the error message. This allows giving messages such as "Foo does
-    # not return a value".
     void does_not_return_value(self, Typ void_type, Context context):
+        """Report an error about a void type in a non-void
+        context. The first argument must be a void type. If the void
+        type has a source in it, report it in the error message. This
+        allows giving messages such as 'Foo does not return a value'.
+        """
         if ((Void)void_type).source is None:
             self.fail('Function does not return a value', context)
         else:
@@ -406,9 +414,10 @@ class MessageBuilder:
     void undefined_in_superclass(self, str member, Context context):
         self.fail('"{}" undefined in superclass'.format(member), context)
     
-    # If type is void, report an error such as ".. does not return a value"
-    # and return True. Otherwise, return False.
     bool check_void(self, Typ typ, Context context):
+        """If type is void, report an error such as '.. does not
+        return a value' and return True. Otherwise, return False.
+        """
         if isinstance(typ, Void):
             self.does_not_return_value(typ, context)
             return True
@@ -416,24 +425,25 @@ class MessageBuilder:
             return False
 
 
-# Capitalize the first character of a string.
 str capitalize(str s):
+    """Capitalize the first character of a string."""
     if s == '':
         return ''
     else:
         return s[0].upper() + s[1:]
 
 
-# If the argument is the name of a method (of form C.m), return
-# the type portion in quotes (e.g. "y"). Otherwise, return the string
-# unmodified.
 str extract_type(str name):
+    """If the argument is the name of a method (of form C.m), return
+    the type portion in quotes (e.g. "y"). Otherwise, return the string
+    unmodified.
+    """
     name = re.sub('^"[a-zA-Z0-9_]+" of ', '', name)
     return name
 
 
-# Strip a double quote at the beginning and end of the string, if any.
 str strip_quotes(str s):
+    """Strip a double quote at the beginning and end of the string, if any."""
     s = re.sub('^"', '', s)
     s = re.sub('"$', '', s)
     return s

@@ -4,14 +4,16 @@ from mtypes import (
 )
 
 
-# Expand any type variable references in a type with the actual values of
-# type variables in an instance.
 Typ expand_type(Typ typ, dict<int, Typ> map):
+    """Expand any type variable references in a type with the actual values of
+    type variables in an instance.
+    """
     return typ.accept(ExpandTypeVisitor(map))
 
 
-# Expand type variables in type using type variable values in an instance.
 Typ expand_type_by_instance(Typ typ, Instance instance):
+    """Expand type variables in type using type variable values in an
+    instance."""
     if instance.args == []:
         return typ
     else:
@@ -108,15 +110,17 @@ Callable update_callable_implicit_bounds(Callable t,
                     arg_types, t.line, t.repr)
 
 
-# Expand the caller argument types in a varargs call. Fixedargc is the maximum
-# number of fixed arguments that the target function accepts.
-#
-# Return (fixed argument types, type of the rest of the arguments). Return
-# (nil, nil) if the last (vararg) argument had an invalid type. If the vararg
-# argument was not an array (nor dynamic), the last item in the returned
-# tuple is nil.
 tuple<list<Typ>, Typ> expand_caller_var_args(list<Typ> arg_types,
                                              int fixed_argc):
+    """Expand the caller argument types in a varargs call. Fixedargc
+    is the maximum number of fixed arguments that the target function
+    accepts.
+    
+    Return (fixed argument types, type of the rest of the arguments). Return
+    (nil, nil) if the last (vararg) argument had an invalid type. If the vararg
+    argument was not an array (nor dynamic), the last item in the returned
+    tuple is nil.
+    """
     if isinstance(arg_types[-1], TupleType):
         return arg_types[:-1] + ((TupleType)arg_types[-1]).items, None
     else:

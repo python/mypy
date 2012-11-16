@@ -6,10 +6,11 @@ from expandtype import expand_caller_var_args
 from subtypes import map_instance_to_supertype
 
 
-# Infer type variable constraints for a callable and a list of argument types.
-# Return a list of constraints.
 list<Constraint> infer_constraints_for_callable(
             Callable callee, list<Typ> arg_types, bool is_var_arg):
+    """Infer type variable constraints for a callable and a list of
+    argument types.  Return a list of constraints.
+    """
     # FIX check argument counts
     
     callee_num_args = callee.max_fixed_args()
@@ -44,24 +45,26 @@ list<Constraint> infer_constraints_for_callable(
     return constraints
 
 
-# Infer type constraints. Match a template type, which may contain type
-# variable references, recursively against a type which does not contain
-# (the same) type variable references. The result is a list of type constrains
-# of form "T is a supertype/subtype of x", where T is a type variable present
-# in the the template and x is a type without reference to type variables
-# present in the template.
-#
-# Assume T and S are type variables. Now the following results can be
-# calculated (read as "(template, actual) --> result"):
-#
-#   (T, X)            -->  T :> X
-#   (X<T>, X<Y>)      -->  T <: Y and T :> Y
-#   ((T, T), (X, Y))  -->  T :> X and T :> Y
-#   ((T, S), (X, Y))  -->  T :> X and S :> Y
-#   (X<T>, dynamic)   -->  T <: dynamic and T :> dynamic
-#
-# The constraints are represented as Constraint objects.
 list<Constraint> infer_constraints(Typ template, Typ actual):
+    """Infer type constraints. Match a template type, which may
+    contain type variable references, recursively against a type which
+    does not contain (the same) type variable references. The result
+    is a list of type constrains of form 'T is a supertype/subtype of
+    x', where T is a type variable present in the the template and x
+    is a type without reference to type variables present in the
+    template.
+    
+    Assume T and S are type variables. Now the following results can be
+    calculated (read as '(template, actual) --> result'):
+    
+      (T, X)            -->  T :> X
+      (X<T>, X<Y>)      -->  T <: Y and T :> Y
+      ((T, T), (X, Y))  -->  T :> X and T :> Y
+      ((T, S), (X, Y))  -->  T :> X and S :> Y
+      (X<T>, dynamic)   -->  T <: dynamic and T :> dynamic
+    
+    The constraints are represented as Constraint objects.
+    """
     return template.accept(ConstraintBuilderVisitor(actual))
 
 
@@ -69,9 +72,10 @@ SUBTYPE_OF = 0
 SUPERTYPE_OF = 1
 
 
-# A representatino of a type constraint, either T <: type or T :> type (T is
-# a type variable).
 class Constraint:
+    """A representatino of a type constraint, either T <: type or T :>
+    type (T is a type variable).
+    """
     int type_var   # Type variable id
     int op         # SUBTYPE_OF or SUPERTYPE_OF
     Typ target
@@ -88,8 +92,8 @@ class Constraint:
         self.target = target
 
 
-# Visitor class for inferring type constraints.
 class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
+    """Visitor class for inferring type constraints."""
     Typ actual # The type that is compared against a template
     
     void __init__(self, Typ actual):
@@ -186,8 +190,8 @@ list<Constraint> negate_constraints(list<Constraint> constraints):
     return res
 
 
-# Map SubtypeOf to SupertypeOf and vice versa.
 int neg_op(int op):
+    """Map SubtypeOf to SupertypeOf and vice versa."""
     if op == SUBTYPE_OF:
         return SUPERTYPE_OF
     elif op == SUPERTYPE_OF:
