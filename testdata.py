@@ -6,13 +6,16 @@ from os import remove, rmdir
 from unittest import TestCase, SkipTestCaseException
 
 
-# Parse a file with test case descriptions. Return an array of test cases.
 list<DataDrivenTestCase> parse_test_cases(
             str path,
             func<DataDrivenTestCase, void> perform,
             str base_path='.',
             bool optional_out=False,
             str include_path=None):
+    """Parse a file with test case descriptions.
+
+    Return an array of test cases.
+    """
     if not include_path:
         include_path = os.path.dirname(path)
     l = open(path).readlines()
@@ -101,9 +104,11 @@ class DataDrivenTestCase(TestCase):
             f.close()
             self.clean_up.append((False, path))
     
-    # Add all subdirectories required to create dir. Return an array of the
-    # created directories in the order of creation.
     list<str> add_dirs(self, str dir):
+        """Add all subdirectories required to create dir.
+
+        Return an array of the created directories in the order of creation.
+        """
         if dir == '' or os.path.isdir(dir):
             return []
         else:
@@ -126,10 +131,13 @@ class DataDrivenTestCase(TestCase):
         super().tear_down()
 
 
-# Parsed item of the form
-#   [id arg]
-#   .. data ..
 class TestItem:
+    """Parsed test caseitem.
+
+    An item is of the form
+      [id arg]
+      .. data ..
+    """
     str id
     str arg
     list<str> data # Text data, array of 8-bit strings
@@ -144,8 +152,8 @@ class TestItem:
         self.line = line
 
 
-# Parse a list of lines that represent a sequence of test items.
 list<TestItem> parse_test_data(list<str> l, str fnam):
+    """Parse a list of lines that represent a sequence of test items."""
     list<TestItem> ret = []
     
     str id = None
@@ -186,9 +194,12 @@ list<TestItem> parse_test_data(list<str> l, str fnam):
     return ret
 
 
-# Return a stripped copy of l. Strip whitespace at the end of all lines, and
-# strip all empty lines from the end of the array.
 list<str> strip_list(list<str> l):
+    """Return a stripped copy of l.
+
+    Strip whitespace at the end of all lines, and strip all empty
+    lines from the end of the array.
+    """
     list<str> r = []
     for s in l:
         # Strip spaces at end of line
@@ -213,9 +224,11 @@ list<str> collapse_line_continuation(list<str> l):
     return r
 
 
-# Replace all lies starting with @include with the contents of the file name
-# following the prefix. Look for the files in basePath.
 list<str> expand_includes(list<str> a, str base_path):
+    """Replace all lies starting with @include with the contents of
+    the file name following the prefix. Look for the files in
+    basePath.
+    """
     list<str> res = []
     for s in a:
         if s.startswith('@include '):
@@ -228,9 +241,10 @@ list<str> expand_includes(list<str> a, str base_path):
     return res
 
 
-# Transform comments such as "# E: message" in input to to lines like
-# "fnam, line N: message" in the output.
 def expand_errors(input, output, fnam):
+    """Transform comments such as '# E: message' in input to to lines like
+    'fnam, line N: message' in the output.
+    """
     for i in range(len(input)):
         m = re.search('# E: (.*)$', input[i])
         if m:

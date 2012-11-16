@@ -27,9 +27,10 @@ class SemAnalSuite(Suite):
                                   test_semanal, test_temp_dir)
         return c
 
-# Perform a semantic analysis test case. The testcase argument contains a
-# description of the test case (inputs and output).
 def test_semanal(testcase):
+    """Perform a semantic analysis test case. The testcase argument contains a
+    description of the test case (inputs and output).
+    """
     try:
         src = '\n'.join(testcase.input)
         trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
@@ -66,8 +67,8 @@ class SemAnalErrorSuite(Suite):
                                   test_semanal_error, test_temp_dir)
         return c
 
-# Perform a test case.
 def test_semanal_error(testcase):
+    """Perform a test case."""
     try:
         src = '\n'.join(testcase.input)
         build(src, 'main', True, test_temp_dir)
@@ -81,8 +82,8 @@ def test_semanal_error(testcase):
             'Invalid compiler output ({}, line {})'.format(testcase.file,
                                                            testcase.line))
 
-# Translate an array of error messages to use / as path separator.
 def normalize_error_messages(messages):
+    """Translate an array of error messages to use / as path separator."""
     a = []
     for m in messages:
         a.append(m.replace(os.sep, '/'))
@@ -102,8 +103,8 @@ class SemAnalSymtableSuite(Suite):
                                   self.run_test, test_temp_dir)
         return c
     
-    # Perform a test case.
     def run_test(self, testcase):
+        """Perform a test case."""
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
@@ -129,16 +130,16 @@ class SemAnalSymtableSuite(Suite):
 semanal_typeinfo_files = ['semanal-typeinfo.test']
     
 class SemAnalTypeInfoSuite(Suite):
-    # Test case descriptions
     def cases(self):
+        """Test case descriptions"""
         c = []
         for f in semanal_typeinfo_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir)
         return c
     
-    # Perform a test case.
     def run_test(self, testcase):
+        """Perform a test case."""
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)

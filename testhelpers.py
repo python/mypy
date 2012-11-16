@@ -11,9 +11,10 @@ import testconfig
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
 
 
-# Assert that two string arrays are equal. Display any differences in a
-# human-readable form.
 void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
+    """Assert that two string arrays are equal. Display any differences in a
+    human-readable form.
+    """
     actual = clean_up(actual)
     
     if actual != expected:
@@ -78,16 +79,17 @@ void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
         raise AssertionFailure(msg)
 
 
-# Align s1 and s2 so that the their first difference is highlighted. For
-# example, if s1 is 'foobar' and s2 is 'fobar', display the following lines:
-#
-#   E: foobar
-#   A: fobar
-#        ^
-#
-# If s1 and s2 are long, only display a fragment of the strings around the
-# first difference. If s1 is very short, do nothing.
 void show_align_message(str s1, str s2):
+    """Align s1 and s2 so that the their first difference is highlighted. For
+    example, if s1 is 'foobar' and s2 is 'fobar', display the following lines:
+    
+      E: foobar
+      A: fobar
+           ^
+    
+    If s1 and s2 are long, only display a fragment of the strings around the
+    first difference. If s1 is very short, do nothing.
+    """
     # Seeing what went wrong is trivial even without alignment if the expected
     # string is very short. In this case do nothing to simplify output.
     if len(s1) < 4:
@@ -126,10 +128,10 @@ void show_align_message(str s1, str s2):
     sys.stderr.write('\n')
 
 
-# Like above, but let a line with only "..." in expected match any number of
-# lines in actual.
 void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual,
                                           str msg):
+    # Like above, but let a line with only '...' in expected match any number
+    # of lines in actual.
     actual = clean_up(actual)
     
     while actual != [] and actual[-1] == '':
@@ -140,10 +142,11 @@ void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual,
     assert_string_arrays_equal(expected, actual, msg)
 
 
-# Remove common directory prefix from all strings in a (perform a naive
-# string replace; it seems to work well enough). Also remove trailing carriage
-# returns.
 def clean_up(a):
+    """Remove common directory prefix from all strings in a (perform a
+    naive string replace; it seems to work well enough). Also remove
+    trailing carriage returns.
+    """
     res = []
     for s in a:
         prefix = testconfig.PREFIX + os.sep
@@ -157,8 +160,8 @@ def clean_up(a):
     return res
 
 
-# Expand '...' wildcards in pattern by matching against target.
 list<str> match_array(list<str> pattern, list<str> target):
+    """Expand '...' wildcards in pattern by matching against target."""
     list<str> res = []
     i = 0
     j = 0

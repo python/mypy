@@ -24,8 +24,8 @@ class OutputSuite(Suite):
         return c
 
 
-# Perform an identity source code transformation test case.
 def test_output(testcase):
+    """Perform an identity source code transformation test case."""
     expected = testcase.output
     if expected == []:
         expected = testcase.input

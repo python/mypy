@@ -22,12 +22,12 @@ class PythonGenerationSuite(Suite):
         return c
 
 
-# Perform a mypy-to-Python source code transformation test case.
 def test_python_generation(testcase):
+    """Perform a mypy-to-Python source code transformation test case."""
     any a
     expected = testcase.output
-    # By default, assume an identity translation. This is useful for dynamically
-    # typed code.
+    # By default, assume an identity translation. This is useful for
+    # dynamically typed code.
     if expected == []:
         expected = testcase.input
     try:
@@ -40,10 +40,12 @@ def test_python_generation(testcase):
         # formatting) of all the relevant source files.
         for t in trees:
             # Omit the builtins module and files marked for omission.
-            if not t.path.endswith(os.sep + 'builtins.py') and '-skip.' not in t.path:
+            if not t.path.endswith(os.sep +
+                                   'builtins.py') and '-skip.' not in t.path:
                 # Add file name + colon for files other than the first.
                 if not first:
-                    a.append('{}:'.format(fix_path(remove_prefix(t.path, test_temp_dir))))
+                    a.append('{}:'.format(
+                        fix_path(remove_prefix(t.path, test_temp_dir))))
                 
                 v = PythonGenerator()
                 t.accept(v)
@@ -53,4 +55,6 @@ def test_python_generation(testcase):
             first = False
     except CompileError as e:
         a = e.messages
-    assert_string_arrays_equal(expected, a, 'Invalid source code output ({}, line {})'.format(testcase.file, testcase.line))
+    assert_string_arrays_equal(
+        expected, a, 'Invalid source code output ({}, line {})'.format(
+            testcase.file, testcase.line))

@@ -16,9 +16,10 @@ class ParserSuite(Suite):
             test_parser)
 
 
-# Perform a single parser test case. The argument contains the description
-# of the test case.
 def test_parser(testcase):
+    """Perform a single parser test case. The argument contains the description
+    of the test case.
+    """
     try:
         n = parse('\n'.join(testcase.input))
         a = str(n).split('\n')
