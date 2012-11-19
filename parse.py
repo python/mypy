@@ -237,7 +237,6 @@ class Parser:
         rparen = none
         
         try:
-            any name_tok, any name
             type_vars, commas, base_types = None, [], []
             try:
                 name_tok = self.expect_type(Name)
@@ -545,7 +544,7 @@ class Parser:
             # Indented block.
             br = self.expect_break()
             indent = self.expect_indent()
-            list<Node> stmt = []
+            stmt = <Node> []
             # Always allow a doc string at the beginning of a block.
             if (isinstance(self.current(), StrLit) and
                     isinstance(self.peek(), Break)):
@@ -587,7 +586,10 @@ class Parser:
         return False
     
     Node parse_interface_body_def(self):
-        return self.parse_function(True)
+        if self.current_str() == 'pass':
+            return self.parse_pass_stmt()
+        else:
+            return self.parse_function(True)
     
     Node parse_statement(self):
         Node stmt

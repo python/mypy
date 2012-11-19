@@ -2448,3 +2448,13 @@ MypyFile:1(
     Interface
     ExpressionStmt:2(
       StrExpr(foo))))
+
+[case testInterfaceWithEmptyBodyOnSeparateLine]
+interface A:
+    pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    PassStmt:2()))
