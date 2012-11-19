@@ -145,10 +145,10 @@ class stat_result:
 # ----- os function stubs -----
 OSError error(): pass
 str name(): pass
-dict<str, str> environ(): pass
-dict<any, any> environb(): pass  # TODO: change any to bytes
-any fsencode(str filename): pass  # TODO: change any to bytes
-str fsdecode(any filename): pass  # TODO: change any to bytes
+mapping<str, str> environ(): pass
+mapping<bytes, bytes> environb(): pass
+bytes fsencode(str filename): pass
+str fsdecode(bytes filename): pass
 list<str> get_exec_path(env=None) : pass
 # NOTE: get_exec_path(): returns list<bytes> when env not None
 #str ctermid(): pass  # Unix only
@@ -166,7 +166,7 @@ int getppid(): pass
 #list<int> getresgid(): pass  # Unix only, returns 3-tuple of int
 int getuid(): pass  # Unix only
 str getenv(str key, str default=None): pass
-any getenvb(any key, any default=None): pass  # TODO: change any to bytes
+bytes getenvb(bytes key, bytes default=None): pass
 void putenv(str key, str value): pass
 #void setegid(int egid): pass  # Unix only
 #void seteuid(int euid): pass  # Unix only
@@ -213,7 +213,7 @@ bool access(str path, int mode): pass
 void chdir(str path): pass
 void fchdir(int fd): pass
 str getcwd(): pass
-any getcwdb(): pass  # TODO: change any to bytes
+bytes getcwdb(): pass
 #void chflags(str path, int flags): pass  # Unix only
 #void chroot(str path): pass  # Unix only
 void chmod(str path, int mode): pass
@@ -239,11 +239,8 @@ void rename(str src, str dst): pass
 void renames(str old, str new): pass
 void rmdir(str path): pass
 stat_result stat(str path): pass
-# TODO verify
-list<float> stat_float_times(list<bool> newvalue): pass
-# TODO verify
-list<int> stat_float_times(list<bool> newvalue): pass
-# NOTE: return value of stat_float_times varies by os
+bool stat_float_times(): pass
+bool stat_float_times(bool newvalue): pass
 #statvfs_result statvfs(str path): pass # Unix only
 #void symlink(str source, str link_name): pass  # Unix only
 #void symlink(str source, str link_name, bool target_is_directory=False):
@@ -253,7 +250,7 @@ void utime(str path, tuple<int, int> times=None): pass
 void utime(str path, tuple<float, float> times=None): pass
 # TODO onerror: function from OSError to void
 list<str> walk(str top, bool topdown=True, any onerror=None, 
-            bool followlinks=False): 
+               bool followlinks=False): 
     pass
 # walk(): "By default errors from the os.listdir() call are ignored.  If
 # optional arg 'onerror' is specified, it should be a function; it
@@ -262,10 +259,10 @@ list<str> walk(str top, bool topdown=True, any onerror=None,
 # to abort the walk.  Note that the filename is available as the
 # filename attribute of the exception object."
 void abort(): pass
-void execl(str path, list<str> args): pass
-void execle(str path, list<str> args, dict<str, str> env): pass
-void execlp(str path, list<str> args): pass
-void execlpe(str path, list<str> args, dict<str, str> env): pass
+void execl(str path, list<str> args): pass # TODO fix
+void execle(str path, list<str> args, dict<str, str> env): pass # TODO fix
+void execlp(str path, list<str> args): pass # TODO fix
+void execlpe(str path, list<str> args, dict<str, str> env): pass # TODO fix
 void execv(str path, list<str> args): pass
 void execve(str path, list<str> args, dict<str, str> env): pass
 void execvp(str file, list<str> args): pass
@@ -281,11 +278,12 @@ void kill(int pid, int sig): pass
 # TODO return type
 IO popen(str command, str mode='r', int bufsize=-1): pass  # TODO: params???
 
-int spawnl(int mode, str path, list<str> args): pass
-int spawnle(int mode, str path, list<str> args, dict<str, str> env): pass
-int spawnlp(int mode, IO file, list<str> args): pass  # Unix only
+int spawnl(int mode, str path, list<str> args): pass # TODO fix
+int spawnle(int mode, str path, list<str> args,
+            dict<str, str> env): pass # TODO fix
+int spawnlp(int mode, IO file, list<str> args): pass  # Unix only TODO fix
 int spawnlpe(int mode, IO file, list<str> args, dict<str, str> env): 
-    pass  # Unix only
+    pass  # Unix only TODO fix
 int spawnv(int mode, str path, list<str> args): pass
 int spawnve(int mode, str path, list<str> args, dict<str, str> env): pass
 int spawnvp(int mode, IO file, list<str> args): pass  # Unix only
@@ -312,4 +310,4 @@ tuple<int, int> waitpid(int pid, int options): pass
 #str? confstr(str name): pass  # Unix only
 #tuple<float, float, float> getloadavg(): pass  # Unix only
 #int sysconf(str name): pass  # Unix only
-str urandom(int n): pass  # TODO change str to bytes
+bytes urandom(int n): pass
