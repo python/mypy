@@ -399,6 +399,7 @@ class dict<kt, vt>(mapping<kt, vt>):
     void __init__(self): pass
     void __init__(self, mapping<kt, vt> map): pass
     void __init__(self, iterable<tuple<kt, vt>> iter): pass
+    # TODO __init__ keyword args
     
     int __len__(self): pass
     
