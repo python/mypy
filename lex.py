@@ -1,3 +1,5 @@
+"""Lexical analyzer for mypy. Translate a string to a list of tokens."""
+
 import re
 from re import Match, Pattern
 
@@ -150,17 +152,17 @@ list<Token> lex(str s):
 
 
 # Reserved words (not including operators)
-set<str> keywords = set([
+keywords = set([
     'any', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif',
     'else', 'except', 'finally', 'from', 'for', 'global', 'if', 'import',
     'interface', 'lambda', 'pass', 'raise', 'return', 'try', 'while', 'with',
     'yield'])
 
 # Alphabetical operators (reserved words)
-set<str> alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
+alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-set<str> str_prefixes = set(['r', 'b', 'br'])  
+str_prefixes = set(['r', 'b', 'br'])  
 
 # List of regular expressions that match non-alphabetical operators
 list<Pattern> operators = [re.compile('[-+*/<>.%&|^~]'),
@@ -181,7 +183,7 @@ UTF8_ENCODING = 3
 
 
 class Lexer:
-    """Lexical analyzer"""
+    """Lexical analyzer."""
     int i
     str s
     int line

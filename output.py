@@ -1,3 +1,5 @@
+"""Parse tree pretty printer."""
+
 import re
 
 from visitor import NodeVisitor

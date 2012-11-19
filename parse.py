@@ -1,3 +1,6 @@
+"""Mypy parser. Constructs a parse tree based on a string representing a
+source file. Performs only minimal semantic checks."""
+
 import lex
 from lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
                  StrLit, FloatLit, Op, Indent, Keyword, Name, Punct, LexError)

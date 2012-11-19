@@ -1,3 +1,5 @@
+"""Abstract syntax tree node classes (i.e. parse tree)."""
+
 import re
 
 from lex import Token
@@ -45,6 +47,8 @@ interface SymNode:
 
 
 class Node(Context):
+    """Common base class for all non-type parse tree nodes."""
+    
     int line = -1
     any repr = None # Textual representation
     
@@ -68,6 +72,8 @@ class Node(Context):
 
 
 class MypyFile(Node, AccessorNode, SymNode):
+    """The abstract syntax tree of a single source file."""
+    
     str _name         # Module name ('__main__' for initial file)
     str _full_name    # Qualified module name
     str path          # Path to the file (None if not known)

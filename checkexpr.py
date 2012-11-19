@@ -1,3 +1,5 @@
+"""Expression type checker. This file is conceptually part of TypeChecker."""
+
 from mtypes import (
     Typ, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
     TupleType, Instance, TypeVar
@@ -668,11 +670,9 @@ class ExpressionChecker:
                                        index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
     
-
     #
     # Helpers
     #
-    
     
     Typ accept(self, Node node, Typ context=None):
         """Type check a node. Alias for TypeChecker.accept."""

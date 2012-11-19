@@ -1,3 +1,5 @@
+"""Conversion of parse tree nodes to strings."""
+
 import re
 import os
 
@@ -11,11 +13,12 @@ class StrConv(NodeVisitor<str>):
     
     For example, an MypyFile node from program '1' is converted into
     something like this:
+    
       MypyFile:1(
         fnam
         ExpressionStmt:1(
           IntExpr(1)))
-          """
+    """
     def dump(self, nodes, obj):
         """Convert an array of items to a multiline pretty-printed
         string. The tag is produced from the type name of obj and its

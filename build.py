@@ -1,3 +1,6 @@
+""" High-level build logic. Parse and analyze the source files of a program
+in the correct order (based on file dependencies), and collect the results."""
+
 import os
 import os.path
 

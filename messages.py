@@ -1,3 +1,8 @@
+"""Facilities and constants for generating error messages during type checking.
+
+The type checker itself does not deal with message string literals to
+improve code clarity and to simplify localization (in the future)."""
+
 import re
 
 from errors import Errors

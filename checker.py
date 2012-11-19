@@ -1,3 +1,5 @@
+"""Mypy type checker."""
+
 from errors import Errors
 from nodes import (
     SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
@@ -60,6 +62,11 @@ class BasicTypes:
 
 
 class TypeChecker(NodeVisitor<Typ>):
+    """Mypy type checker.
+
+    Type check mypy source files that have been semantically analysed.
+    """
+    
     Errors errors          # Error reporting
     SymbolTable symtable   # Symbol table for the whole program
     MessageBuilder msg     # Utility for generating messages
@@ -114,11 +121,9 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return typ
     
-
     #
     # Definitions
     #
-    
     
     Typ visit_var_def(self, VarDef defn):
         """Type check a variable definition (of any kind: local,
@@ -370,11 +375,9 @@ class TypeChecker(NodeVisitor<Typ>):
                 if not typ.has_method(n):
                     self.msg.interface_member_not_implemented(typ, iface, n)
     
-
     #
     # Statements
     #
-    
     
     Typ visit_block(self, Block b):
         for s in b.body:
@@ -728,11 +731,9 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return None # this case is handled in semantical analysis
     
-
     #
     # Expressions
     #
-    
     
     Typ visit_name_expr(self, NameExpr e):
         return self.expr_checker.visit_name_expr(e)
@@ -791,11 +792,9 @@ class TypeChecker(NodeVisitor<Typ>):
     Typ visit_temp_node(self, TempNode e):
         return e.typ
     
-
     #
     # Helpers
     #
-    
     
     void check_subtype(self, Typ subtype, Typ supertype, Context context,
                        str msg=messages.INCOMPATIBLE_TYPES):

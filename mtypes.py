@@ -1,3 +1,5 @@
+"""Classes for representing mypy types."""
+
 import nodes
 
 
@@ -147,7 +149,7 @@ class FunctionLike(Typ):
 
 
 class Callable(FunctionLike):
-    """Type of a callable object (function)."""
+    """Type of a non-overloaded callable object (function)."""
     list<Typ> arg_types # Types of function arguments
     int min_args        # Minimum number of arguments
     bool is_var_arg     # Is it a varargs function?
@@ -281,8 +283,10 @@ class TupleType(Typ):
 
 class TypeVars:
     """Representation of type variables of a function or type (i.e.
-    <T1 [is B1], ..., Tn [is Bn]>).
-    """
+    <T1 [: B1], ..., Tn [: Bn]>).
+
+    TODO bounds are not supported, but they may be supported in future
+    """    
     list<TypeVarDef> items
     any repr
     
@@ -444,10 +448,9 @@ class TypeStrVisitor(TypeVisitor<str>):
     formatting.
     
     Notes:
-     - Include argument ranges for Instance types, when present.
      - Include implicit bound type variables of callables.
      - Represent unbound types as Foo? or Foo?<...>.
-     - Represent the NoneType type as NoneTyp.
+     - Represent the NoneTyp type as None.
      """
     def visit_unbound_type(self, t):
         s = t.name + '?'

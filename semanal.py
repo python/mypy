@@ -1,3 +1,7 @@
+"""The semantic analyzer binds names to definitions and does various other
+simple consistency checks. Semantic analysis is first analysis pass after
+parsing."""
+
 from nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     TypeDef, VarDef, Var, GDEF, MODULE_REF, Annotation, FuncItem, Import,
