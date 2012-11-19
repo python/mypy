@@ -59,3 +59,21 @@ MypyFile:1(
       __main__.A
       __main__.B)
     PassStmt:3()))
+
+[case testInterfaceWithDocString]
+interface A:
+    "foo"
+    A f(self)
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    ExpressionStmt:2(
+      StrExpr(foo))
+    FuncDef:3(
+      f
+      Args(
+        Var(self))
+      Type:3(def (__main__.A) -> __main__.A)
+      Block:-1())))

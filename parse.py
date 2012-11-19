@@ -546,6 +546,10 @@ class Parser:
             br = self.expect_break()
             indent = self.expect_indent()
             list<Node> stmt = []
+            # Always allow a doc string at the beginning of a block.
+            if (isinstance(self.current(), StrLit) and
+                    isinstance(self.peek(), Break)):
+                stmt.append(self.parse_statement())
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:
@@ -1561,6 +1565,8 @@ class Parser:
             return lp, rp
         else:
             return [], []
+
+    # Helpers
     
     bool is_at_top_level(self):
         """Are we currently parsing at the top level of a file

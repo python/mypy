@@ -2437,3 +2437,14 @@ MypyFile:1(
   ExpressionStmt:1(
     SuperExpr:1(
       x)))
+
+[case testDocStringInTerface]
+interface A:
+    """foo"""
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Interface
+    ExpressionStmt:2(
+      StrExpr(foo))))
