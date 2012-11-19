@@ -5,10 +5,10 @@ from mtypes import (
     TupleType, Instance, TypeVar
 )
 from nodes import (
-        NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
-        Node, MemberExpr, IntExpr, StrExpr, FloatExpr, OpExpr, UnaryExpr,
-        IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr, DictExpr,
-        FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context
+    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
+    UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
+    DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context
 )
 from nodes import function_type, method_type
 import checker
@@ -423,6 +423,10 @@ class ExpressionChecker:
     Typ visit_str_expr(self, StrExpr e):
         """Type check a string literal (trivial)."""
         return self.named_type('builtins.str')
+    
+    Typ visit_bytes_expr(self, BytesExpr e):
+        """Type check a bytes literal (trivial)."""
+        return self.named_type('builtins.bytes')
     
     Typ visit_float_expr(self, FloatExpr e):
         """Type check a float literal (trivial)."""

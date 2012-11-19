@@ -3,7 +3,8 @@ source file. Performs only minimal semantic checks."""
 
 import lex
 from lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
-                 StrLit, FloatLit, Op, Indent, Keyword, Name, Punct, LexError)
+                 StrLit, BytesLit, FloatLit, Op, Indent, Keyword, Name, Punct,
+                 LexError)
 from nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     TypeDef, Decorator, Annotation, Block, Var, VarDef, OperatorAssignmentStmt,
@@ -11,9 +12,9 @@ from nodes import (
     YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr, ParenExpr,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
-    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, FloatExpr, CallExpr,
-    SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr, UnaryExpr, FuncExpr,
-    TypeApplication
+    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, FloatExpr,
+    CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr, UnaryExpr,
+    FuncExpr, TypeApplication
 )
 import noderepr
 from errors import Errors
@@ -989,6 +990,9 @@ class Parser:
             elif isinstance(self.current(), StrLit):
                 # String literal.
                 expr = self.parse_str_expr()
+            elif isinstance(self.current(), BytesLit):
+                # Bytes literal.
+                expr = self.parse_bytes_expr()
             elif isinstance(self.current(), FloatLit):
                 # Float literal.
                 expr = self.parse_float_expr()
@@ -1248,6 +1252,18 @@ class Parser:
             tok.append(t)
             value += t.parsed()
         node = StrExpr(value)
+        self.set_repr(node, noderepr.StrExprRepr(tok))
+        return node
+    
+    BytesExpr parse_bytes_expr(self):
+        # XXX \uxxxx literals
+        tok = [self.expect_type(BytesLit)]
+        value = ((BytesLit)tok[0]).parsed()
+        while isinstance(self.current(), BytesLit):
+            t = (BytesLit)self.skip()
+            tok.append(t)
+            value += t.parsed()
+        node = BytesExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     

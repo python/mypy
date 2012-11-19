@@ -86,6 +86,8 @@ class NodeVisitor<T>:
         pass
     T visit_str_expr(self, nodes.StrExpr o):
         pass
+    T visit_bytes_expr(self, nodes.BytesExpr o):
+        pass
     T visit_float_expr(self, nodes.FloatExpr o):
         pass
     T visit_paren_expr(self, nodes.ParenExpr o):

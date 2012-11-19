@@ -147,11 +147,11 @@ br'x\n\''
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    StrExpr(foo))
+    BytesExpr(foo))
   ExpressionStmt:2(
-    StrExpr(foobar))
+    BytesExpr(foobar))
   ExpressionStmt:3(
-    StrExpr(x\n')))
+    BytesExpr(x\n')))
 
 [case testEscapesInStrings]
 '\r\n\t\x2f\u123f'
@@ -161,7 +161,7 @@ MypyFile:1(
   ExpressionStmt:1(
     StrExpr(\u000d\u000a\u0009/\u123f))
   ExpressionStmt:2(
-    StrExpr(\u000d\u000a\u0009/\\u123f)))
+    BytesExpr(\u000d\u000a\u0009/\\u123f)))
 -- Note \\u in the b'...' case (\u sequence not translated)
 
 [case testEscapedQuote]
@@ -181,7 +181,7 @@ MypyFile:1(
   ExpressionStmt:1(
     StrExpr(\u0000\u0001\u007fS4))
   ExpressionStmt:2(
-    StrExpr(\u0001>)))
+    BytesExpr(\u0001>)))
 
 [case testArrays]
 a = []

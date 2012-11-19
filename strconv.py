@@ -239,6 +239,9 @@ class StrConv(NodeVisitor<str>):
     def visit_str_expr(self, o):
         return 'StrExpr({})'.format(self.str_repr(o.value))
     
+    def visit_bytes_expr(self, o):
+        return 'BytesExpr({})'.format(self.str_repr(o.value))
+    
     def str_repr(self, s):
         s = re.sub(r'\\u[0-9a-fA-F]{4}', lambda m: '\\' + m.group(0), s)
         return re.sub('[^\\x20-\\x7e]',

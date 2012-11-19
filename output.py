@@ -311,6 +311,9 @@ class OutputVisitor(NodeVisitor):
     def visit_str_expr(self, o):
         self.tokens(o.repr.string)
     
+    def visit_bytes_expr(self, o):
+        self.tokens(o.repr.string)
+    
     def visit_float_expr(self, o):
         self.token(o.repr.float)
     

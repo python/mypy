@@ -38,6 +38,8 @@ str a
 A b
 b = 'x'
 a = 'x'
+a = r"x"
+a = """foo"""
 class A:
     pass
 [file builtins.py]
@@ -60,6 +62,18 @@ class object:
 class float: pass
 [out]
 main, line 3: Incompatible types in assignment
+
+[case testBytesLiteral]
+bytes b, A a
+b = b'foo'
+b = br"foo"
+b = b'''foo'''
+a = b'foo' # E: Incompatible types in assignment
+class A: pass
+[file builtins.py]
+class object:
+    def __init__(self): pass
+class bytes: pass
 
 
 -- Binary operators

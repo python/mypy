@@ -50,9 +50,32 @@ class Name(Token):
 class IntLit(Token):
     """Integer literal"""
 
+class StrLit(Token):
+    """String literal"""
+    str parsed(self):
+        """Return the parsed contents of the literal."""
+        return _parsed(self.string)
+
+class BytesLit(Token):
+    "Bytes literal"
+    str parsed(self):
+        """Return the parsed contents of the literal."""
+        return _parsed(self.string)
+
 str_prefix_re = re.compile('[rRbB]*')
+
 escape_re = re.compile(
     "\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
+
+str _parsed(str string):
+    prefix = str_prefix_re.match(string).group(0).lower()
+    s = string[len(prefix):]
+    if s.startswith("'''") or s.startswith('"""'):
+        return s[3:-3]
+    elif 'r' in prefix:
+        return s[1:-1].replace('\\' + s[0], s[0])
+    else:
+        return escape_re.sub(lambda m: escape_repl(m, prefix), s[1:-1])
 
 escape_map = {'a': '\u0007',
               'b': '\u0008',
@@ -63,22 +86,6 @@ escape_map = {'a': '\u0007',
               'v': '\u000b',
               '"': '"',
               "'": "'"}
-
-class StrLit(Token):
-    """String literal"""
-    str parsed(self):
-        """Return the parsed contents of the literal."""
-        prefix = str_prefix_re.match(self.string).group(0).lower()
-        s = self.string[len(prefix):]
-        if s.startswith("'''") or s.startswith('"""'):
-            return s[3:-3]
-        elif 'r' in prefix:
-            return s[1:-1].replace('\\' + s[0], s[0])
-        else:
-            return self.replace_escapes(s[1:-1], prefix)
-    
-    str replace_escapes(self, str s, str prefix):
-        return escape_re.sub(lambda m: escape_repl(m, prefix), s)
 
 str escape_repl(Match m, str prefix):
     seq = m.group(1)
@@ -376,7 +383,10 @@ class Lexer:
                     self.lex_multiline_literal(re2, s)
                 else:
                     self.verify_encoding(s, STR_CONTEXT)
-                    self.add_token(StrLit(s))
+                    if 'b' in prefix:
+                        self.add_token(BytesLit(s))
+                    else:
+                        self.add_token(StrLit(s))
             else:
                 # Unterminated string literal.
                 s = self.match(re.compile('[^\\n\\r]*'))
@@ -399,7 +409,12 @@ class Lexer:
             ss += s
             self.line += 1
             self.i += len(s)
-        self.add_special_token(StrLit(ss + m.group(0)), line, len(m.group(0)))
+        Token lit
+        if 'b' in prefix:
+            lit = BytesLit(ss + m.group(0))
+        else:
+            lit = StrLit(ss + m.group(0))
+        self.add_special_token(lit, line, len(m.group(0)))
     
     def lex_multiline_literal(self, re_end, prefix):
         line = self.line
@@ -415,7 +430,7 @@ class Lexer:
             self.line += 1
             self.i += len(m)        
             if not m.endswith('\n') and not m.endswith('\r'): break
-        self.add_special_token(StrLit(ss), line, 0)
+        self.add_special_token(StrLit(ss), line, 0) # TODO bytes
     
     Pattern comment_exp = re.compile('#[^\\n\\r]*')
     

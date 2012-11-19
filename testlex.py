@@ -221,19 +221,19 @@ class LexerSuite(Suite):
         
         self.assert_lex("r'''" + '\n' + "x'''", "StrLit(r'''\\nx''') ...")
     
-    def test_byte_strings(self):
+    def test_bytes(self):
         self.assert_lex("b'\\'' b'foo bar'",
-                        "StrLit(b'\\'') StrLit( b'foo bar') ...")
+                        "BytesLit(b'\\'') BytesLit( b'foo bar') ...")
         self.assert_lex('b"\\"" b"foo bar"',
-                        'StrLit(b"\\"") StrLit( b"foo bar") ...')
+                        'BytesLit(b"\\"") BytesLit( b"foo bar") ...')
         
-        self.assert_lex("b'''" + '\n' + " x'''", "StrLit(b'''\\n x''') ...")
+        self.assert_lex("b'''" + '\n' + " x'''", "BytesLit(b'''\\n x''') ...")
     
-    def test_raw_byte_strings(self):
-        self.assert_lex("br'x\\x\\''", "StrLit(br'x\\x\\'') ...")
-        self.assert_lex('br"x\\y\\""', 'StrLit(br"x\\y\\"") ...')
+    def test_raw_bytes(self):
+        self.assert_lex("br'x\\x\\''", "BytesLit(br'x\\x\\'') ...")
+        self.assert_lex('br"x\\y\\""', 'BytesLit(br"x\\y\\"") ...')
         
-        self.assert_lex('br"""' + '\n' + 'x"""', 'StrLit(br"""\\nx""") ...')
+        self.assert_lex('br"""' + '\n' + 'x"""', 'BytesLit(br"""\\nx""") ...')
     
     def test_backslash(self):
         self.assert_lex('a\\' + '\n' + ' b', 'Name(a) Name(\\\\n b) ...')    

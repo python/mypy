@@ -589,6 +589,17 @@ class StrExpr(Node):
         return visitor.visit_str_expr(self)
 
 
+class BytesExpr(Node):
+    """Bytes literal"""
+    str value # TODO use bytes
+    
+    void __init__(self, str value):
+        self.value = value
+    
+    T accept<T>(self, NodeVisitor<T> visitor):
+        return visitor.visit_bytes_expr(self)
+
+
 class FloatExpr(Node):
     """Float literal"""
     float value

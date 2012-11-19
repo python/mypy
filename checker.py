@@ -8,9 +8,9 @@ from nodes import (
     TupleExpr, ListExpr, ParenExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, YieldStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr, TypeApplication,
-    DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode, Context,
-    AccessorNode
+    BytesExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
+    TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
+    Context, AccessorNode
 )
 from nodes import function_type, method_type
 from mtypes import (
@@ -752,6 +752,9 @@ class TypeChecker(NodeVisitor<Typ>):
     
     Typ visit_str_expr(self, StrExpr e):
         return self.expr_checker.visit_str_expr(e)
+    
+    Typ visit_bytes_expr(self, BytesExpr e):
+        return self.expr_checker.visit_bytes_expr(e)
     
     Typ visit_float_expr(self, FloatExpr e):
         return self.expr_checker.visit_float_expr(e)
