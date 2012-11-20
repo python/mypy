@@ -53,9 +53,9 @@ class FunctionTestCase(Testable):
     int countTestCases(self): pass
 
 class TestSuite(Testable):
-    void __init__(self, iterable<Testable> tests=None): pass
+    void __init__(self, Iterable<Testable> tests=None): pass
     void addTest(self, Testable test): pass
-    void addTests(self, iterable<Testable> tests): pass
+    void addTests(self, Iterable<Testable> tests): pass
     void run(self, TestResult result): pass
     void debug(self): pass
     int countTestCases(self): pass

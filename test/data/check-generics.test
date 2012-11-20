@@ -789,7 +789,7 @@ for A x in B(): # E: Iterable expected
 
 class A: pass
 class B:
-    iterator<A> __iter__(self): pass
+    Iterator<A> __iter__(self): pass
 [builtins fixtures/for.py]
 
 [case testForStatementWithMultipleVars1]

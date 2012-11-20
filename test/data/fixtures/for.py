@@ -5,14 +5,14 @@ class object:
 class type: pass
 class bool: pass
 
-interface iterable<t>:
-    iterator<t> __iter__(self)
+interface Iterable<t>:
+    Iterator<t> __iter__(self)
 
-interface iterator<t>:
-    iterator<t> __iter__(self)
+interface Iterator<t>:
+    Iterator<t> __iter__(self)
     t __next__(self)
 
-class list<t>(iterable<t>):
-    iterator<t> __iter__(self): pass
+class list<t>(Iterable<t>):
+    Iterator<t> __iter__(self): pass
 
 class tuple: pass

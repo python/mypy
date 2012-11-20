@@ -29,18 +29,18 @@ interface float_t:
 interface len_t:
     int __len__(self)
 
-interface iterable<t>:
-    iterator<t> __iter__(self)
+interface Iterable<t>:
+    Iterator<t> __iter__(self)
 
-interface iterator<t>(iterable<t>):
+interface Iterator<t>(Iterable<t>):
     t __next__(self)
 
-interface sequence<t>(len_t, iterable<t>):
+interface sequence<t>(len_t, Iterable<t>):
     bool __contains__(self, t x)
     t __getitem__(self, int i)
     sequence<t> __getitem__(self, slice s)
 
-interface mapping<kt, vt>(len_t, iterable<kt>):
+interface mapping<kt, vt>(len_t, Iterable<kt>):
     vt __getitem__(self, kt k)
     void __setitem__(self, kt k, vt v)
     void __delitem__(self, kt v)
@@ -58,7 +58,7 @@ interface mapping<kt, vt>(len_t, iterable<kt>):
     
     # TODO keyword arguments
     void update(self, mapping<kt, vt> m)
-    void update(self, iterable<tuple<kt, vt>> m)
+    void update(self, Iterable<tuple<kt, vt>> m)
     
     # TODO use views for the return values instead
     list<kt> keys(self)
@@ -251,7 +251,7 @@ class str(int_t, float_t, sequence<str>):
     bool isspace(self): pass
     bool istitle(self): pass
     bool isupper(self): pass
-    str join(self, iterable<str> iter): pass
+    str join(self, Iterable<str> iter): pass
     str ljust(self, int width, str fillchar=' '): pass
     str lower(self): pass
     str lstrip(self, str chars=None): pass
@@ -295,7 +295,7 @@ class str(int_t, float_t, sequence<str>):
 
     bool __contains__(self, str s): pass
 
-    iterator<str> __iter__(self): pass
+    Iterator<str> __iter__(self): pass
 
     str __str__(self): return self
     str __repr__(self): pass
@@ -306,7 +306,7 @@ class str(int_t, float_t, sequence<str>):
     
 
 class bytes(int_t, float_t, sequence<int>):
-    void __init__(self, iterable<int> ints): pass
+    void __init__(self, Iterable<int> ints): pass
     void __init__(self, str string, str encoding, str errors='strict'): pass
     void __init__(self, int length): pass
     void __init__(self): pass
@@ -317,13 +317,13 @@ class bytes(int_t, float_t, sequence<int>):
     bytes lower(self): pass
     # TODO keyword args
     bytes replace(self, bytes old, bytes new, int count=-1): pass
-    bytes join(self, iterable<bytes> iter): pass
+    bytes join(self, Iterable<bytes> iter): pass
     list<bytes> split(self, bytes sep=None, int maxsplit=-1): pass
     bool startswith(self, bytes prefix): pass
     bool endswith(self, bytes suffix): pass
     
     int __len__(self): pass
-    iterator<int> __iter__(self): pass
+    Iterator<int> __iter__(self): pass
     str __str__(self): pass
     str __repr__(self): pass
     int __int__(self): pass
@@ -369,10 +369,10 @@ class function:
 
 class list<t>(sequence<t>):
     void __init__(self): pass
-    void __init__(self, iterable<t> iter): pass
+    void __init__(self, Iterable<t> iter): pass
     
     void append(self, t object): pass
-    void extend(self, iterable<t> iter): pass
+    void extend(self, Iterable<t> iter): pass
     t pop(self): pass
     int index(self, t object): pass
     int count(self, t object): pass
@@ -382,7 +382,7 @@ class list<t>(sequence<t>):
     void sort(self, func<t, any> key=None, bool reverse=False): pass
     
     int __len__(self): pass
-    iterator<t> __iter__(self): pass
+    Iterator<t> __iter__(self): pass
     str __str__(self): pass
     int __hash__(self): pass
     
@@ -398,7 +398,7 @@ class list<t>(sequence<t>):
 class dict<kt, vt>(mapping<kt, vt>):
     void __init__(self): pass
     void __init__(self, mapping<kt, vt> map): pass
-    void __init__(self, iterable<tuple<kt, vt>> iter): pass
+    void __init__(self, Iterable<tuple<kt, vt>> iter): pass
     # TODO __init__ keyword args
     
     int __len__(self): pass
@@ -410,7 +410,7 @@ class dict<kt, vt>(mapping<kt, vt>):
 
     bool __contains__(self, object o): pass
 
-    iterator<kt> __iter__(self): pass
+    Iterator<kt> __iter__(self): pass
     
     void clear(self): pass
     dict<kt, vt> copy(self): pass
@@ -423,7 +423,7 @@ class dict<kt, vt>(mapping<kt, vt>):
     vt setdefault(self, kt k, vt default): pass
     
     void update(self, mapping<kt, vt> m): pass
-    void update(self, iterable<tuple<kt, vt>> m): pass
+    void update(self, Iterable<tuple<kt, vt>> m): pass
 
     # TODO use views for the return values instead
     list<kt> keys(self): pass
@@ -433,22 +433,22 @@ class dict<kt, vt>(mapping<kt, vt>):
     str __str__(self): pass
 
 
-class set<t>(len_t, iterable<t>):
+class set<t>(len_t, Iterable<t>):
     void __init__(self): pass
-    void __init__(self, iterable<t> iter): pass
+    void __init__(self, Iterable<t> iter): pass
     
     void add(self, t element): pass
     void remove(self, t element): pass
     
     int __len__(self): pass
     bool __contains__(self, object o): pass
-    iterator<t> __iter__(self): pass    
+    Iterator<t> __iter__(self): pass    
     str __str__(self): pass
 
 
-class enumerate<t>(iterator<tuple<int, t>>):
-    void __init__(self, iterable<t> iter, int start=0): pass
-    iterator<tuple<int, t>> __iter__(self): pass
+class enumerate<t>(Iterator<tuple<int, t>>):
+    void __init__(self, Iterable<t> iter, int start=0): pass
+    Iterator<tuple<int, t>> __iter__(self): pass
     tuple<int, t> __next__(self): pass
     # TODO __getattribute__
 
@@ -462,16 +462,16 @@ False = 0 == 1
 
 int abs(int n): pass
 float abs(float n): pass
-bool all(iterable i): pass
+bool all(Iterable i): pass
 # TODO name clash with 'any' type
-#bool any(iterable i): pass
+#bool any(Iterable i): pass
 str ascii(object o): pass
 str chr(int code): pass
 list<str> dir(): pass
 list<str> dir(object o): pass
 tuple<int, int> divmod(int a, int b): pass
 tuple<float, float> divmod(float a, float b): pass
-iterator<t> filter<t>(func<t, bool> function, iterable<t> iter): pass
+Iterator<t> filter<t>(func<t, bool> function, Iterable<t> iter): pass
 str format(object o, str format_spec=''): pass
 any getattr(any o, str name): pass
 any getattr(any o, str name, any default): pass
@@ -482,21 +482,21 @@ str hex(int i): pass
 int id(object o): pass
 str input(str prompt=None): pass
 # TODO issubclass
-iterator<t> iter<t>(iterable<t> iter): pass
-iterator<t> iter<t>(func<t> function, t sentinel): pass
+Iterator<t> iter<t>(Iterable<t> iter): pass
+Iterator<t> iter<t>(func<t> function, t sentinel): pass
 bool isinstance(object o, type t): pass
 # TODO support this
 #bool isinstance(object o, sequence<type> t): pass
 int len(len_t o): pass
 # TODO map
 # TODO keyword argument key
-t max<t>(iterable<t> iter): pass
+t max<t>(Iterable<t> iter): pass
 t max<t>(t arg1, t arg2, t *args): pass
 # TODO memoryview
-t min<t>(iterable<t> iter): pass
+t min<t>(Iterable<t> iter): pass
 t min<t>(t arg1, t arg2, t *args): pass
-t next<t>(iterator<t> i): pass
-t next<t>(iterator<t> i, t default): pass
+t next<t>(Iterator<t> i): pass
+t next<t>(Iterator<t> i, t default): pass
 # TODO __index__
 str oct(int i): pass
 # TODO return type
@@ -519,19 +519,19 @@ float pow(float x, float y, float z): pass
 list<int> range(int hi): pass
 list<int> range(int lo, int hi): pass
 # TODO support __reversed__ method
-iterator<t> reversed<t>(sequence<t> seq): pass
+Iterator<t> reversed<t>(sequence<t> seq): pass
 str repr(object o): pass
 # Always return a float if ndigits is present.
 # TODO support __round__ method
 int round(float number): pass
 float round(float number, int ndigits): pass
 void setattr(any object, str name, any value): pass
-list<t> sorted<t>(iterable<t> iiter, func<t, any> key=None,
+list<t> sorted<t>(Iterable<t> iiter, func<t, any> key=None,
                   bool reverse=False): pass
-list<t> sorted<t>(iterable<t> iter, bool reverse=False): pass
+list<t> sorted<t>(Iterable<t> iter, bool reverse=False): pass
 # TODO more general types
-int sum(iterable<int> iter, int start=0): pass
-float sum(iterable<float> iter, float start=0.0): pass
+int sum(Iterable<int> iter, int start=0): pass
+float sum(Iterable<float> iter, float start=0.0): pass
 
 
 # Exceptions

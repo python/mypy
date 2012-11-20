@@ -684,7 +684,7 @@ class TypeChecker(NodeVisitor<Typ>):
         
         self.check_not_void(iterable, s.expr)
         self.check_subtype(iterable,
-                           self.named_generic_type('builtins.iterable',
+                           self.named_generic_type('builtins.Iterable',
                                                    [Any()]),
                            s.expr, messages.ITERABLE_EXPECTED)
         
