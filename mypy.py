@@ -34,7 +34,8 @@ void main():
         # TODO determine directory more intelligently
         # TODO make sure only the current user can access the directory
         output_dir = '/tmp/mypy-xx'
-        os.makedirs(output_dir, 0o777, True)
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir, 0o777)
         
         # Parse and type check the program and dependencies.
         trees, symtable, infos, types = build(text, path, False, None, True)
