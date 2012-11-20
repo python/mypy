@@ -213,7 +213,7 @@ class Lexer:
                             ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
                             ('0123456789', self.lex_number),
                             ('.', self.lex_number_or_dot),
-                            (' ' + '\t' + '\u000c', self.lex_space),
+                            (' ' + '\t' + '\x0c', self.lex_space),
                             ('"', self.lex_str_double),
                             ("'", self.lex_str_single),
                             ('\r' + '\n', self.lex_break),
@@ -233,7 +233,7 @@ class Lexer:
         self.i = 0
         self.line = 1    
         
-        if s.startswith('\u00ef\u00bb\u00bf'):
+        if s.startswith('\xef\xbb\xbf'):
             self.add_token(Bom(s[0:3]))
         self.lex_indent()
         
@@ -450,7 +450,7 @@ class Lexer:
         else:
             self.add_token(LexError('\\', INVALID_BACKSLASH))
     
-    Pattern space_exp = re.compile('[ \\t\u000c]*')
+    Pattern space_exp = re.compile('[ \\t\x0c]*')
     Pattern indent_exp = re.compile('[ \\t]*[#\\n\\r]?')
     
     void lex_space(self):

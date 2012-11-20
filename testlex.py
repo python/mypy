@@ -277,7 +277,7 @@ class LexerSuite(Suite):
                         'Break() Dedent() Eof()')
     
     def test_form_feed(self):
-        self.assert_lex('\u000c' + '\n' + 'x', 'Name(\u000c\\nx) ...')
+        self.assert_lex('\x0c' + '\n' + 'x', 'Name(\x0c\\nx) ...')
     
     def test_line_numbers(self):
         self.assert_line('a\\nb', [1, 1, 2, 2, 2])
