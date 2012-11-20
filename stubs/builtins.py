@@ -528,7 +528,8 @@ str repr(object o): pass
 int round(float number): pass
 float round(float number, int ndigits): pass
 void setattr(any object, str name, any value): pass
-list<t> sorted<t>(Iterable<t> iiter, func<t, any> key=None,
+# TODO 'key' must be keyword argument
+list<t> sorted<t>(Iterable<t> iterable, func<t, any> key=None,
                   bool reverse=False): pass
 list<t> sorted<t>(Iterable<t> iterable, bool reverse=False): pass
 t sum<t>(Iterable<t> iterable, t start=None): pass
