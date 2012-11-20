@@ -444,6 +444,8 @@ class set<t>(Sized, Iterable<t>):
     Iterator<t> __iter__(self): pass    
     str __str__(self): pass
 
+    # TODO more set operations
+
 
 class enumerate<t>(Iterator<tuple<int, t>>):
     void __init__(self, Iterable<t> iterable, int start=0): pass
