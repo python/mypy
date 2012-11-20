@@ -145,8 +145,8 @@ class stat_result:
 # ----- os function stubs -----
 OSError error(): pass
 str name(): pass
-mapping<str, str> environ(): pass
-mapping<bytes, bytes> environb(): pass
+Mapping<str, str> environ(): pass
+Mapping<bytes, bytes> environb(): pass
 bytes fsencode(str filename): pass
 str fsdecode(bytes filename): pass
 list<str> get_exec_path(env=None) : pass

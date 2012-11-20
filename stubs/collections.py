@@ -9,7 +9,7 @@
 # TODO abstract base classes
 
 
-class deque<t>(len_t, Iterable<t>):
+class deque<t>(Sized, Iterable<t>):
     # TODO int with None default
     int maxlen # TODO readonly
     void __init__(self, Iterable<t> iter=None, int maxlen=None): pass
@@ -39,13 +39,13 @@ class deque<t>(len_t, Iterable<t>):
     
 class Counter<t>(dict<t, int>):
     void __init__(self): pass
-    void __init__(self, mapping<t, int> mapping): pass
+    void __init__(self, Mapping<t, int> Mapping): pass
     void __init__(self, Iterable<t> iter): pass
     # TODO keyword arguments
     Iterator<t> elements(self): pass
     list<t> most_common(self): pass
     list<t> most_common(self, int n): pass
-    void subtract(self, mapping<t, int> mapping): pass
+    void subtract(self, Mapping<t, int> Mapping): pass
     void subtract(self, Iterable<t> iter): pass
     # TODO update
 
@@ -58,10 +58,10 @@ class OrderedDict<kt, vt>(dict<kt, vt>):
 class defaultdict<kt, vt>(dict<kt, vt>):
     func<vt> default_factory
     void __init__(self): pass
-    void __init__(self, mapping<kt, vt> map): pass
+    void __init__(self, Mapping<kt, vt> map): pass
     void __init__(self, Iterable<tuple<kt, vt>> iter): pass
     void __init__(self, func<vt> default_factory): pass
-    void __init__(self, func<vt> default_factory, mapping<kt, vt> map): pass
+    void __init__(self, func<vt> default_factory, Mapping<kt, vt> map): pass
     void __init__(self, func<vt> default_factory,
                   Iterable<tuple<kt, vt>> iter): pass
     # TODO __init__ keyword args

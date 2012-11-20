@@ -26,7 +26,7 @@ interface int_t:
 interface float_t:
     float __float__(self)
 
-interface len_t:
+interface Sized:
     int __len__(self)
 
 interface Iterable<t>:
@@ -35,19 +35,19 @@ interface Iterable<t>:
 interface Iterator<t>(Iterable<t>):
     t __next__(self)
 
-interface sequence<t>(len_t, Iterable<t>):
+interface Sequence<t>(Sized, Iterable<t>):
     bool __contains__(self, t x)
     t __getitem__(self, int i)
-    sequence<t> __getitem__(self, slice s)
+    Sequence<t> __getitem__(self, slice s)
 
-interface mapping<kt, vt>(len_t, Iterable<kt>):
+interface Mapping<kt, vt>(Sized, Iterable<kt>):
     vt __getitem__(self, kt k)
     void __setitem__(self, kt k, vt v)
     void __delitem__(self, kt v)
     bool __contains__(self, object o)
 
     void clear(self)
-    mapping<kt, vt> copy(self)
+    Mapping<kt, vt> copy(self)
     vt get(self, kt k)
     vt get(self, kt k, vt default)
     vt pop(self, kt k)
@@ -57,7 +57,7 @@ interface mapping<kt, vt>(len_t, Iterable<kt>):
     vt setdefault(self, kt k, vt default)
     
     # TODO keyword arguments
-    void update(self, mapping<kt, vt> m)
+    void update(self, Mapping<kt, vt> m)
     void update(self, Iterable<tuple<kt, vt>> m)
     
     # TODO use views for the return values instead
@@ -221,7 +221,7 @@ class float(float_t, int_t):
     int __hash__(self): pass
     
 
-class str(int_t, float_t, sequence<str>):
+class str(int_t, float_t, Sequence<str>):
     # TODO maketrans
     
     void __init__(self, object o): pass
@@ -237,7 +237,7 @@ class str(int_t, float_t, sequence<str>):
     int find(self, str sub, int start, int end): pass
     # TODO keyword args
     str format(self, any *args): pass
-    str format_map(self, mapping<str, any> map): pass
+    str format_map(self, Mapping<str, any> map): pass
     int index(self, str sub, int start=0): pass
     int index(self, str sub, int start, int end): pass
     bool isalnum(self): pass
@@ -305,7 +305,7 @@ class str(int_t, float_t, sequence<str>):
     int __hash__(self): pass
     
 
-class bytes(int_t, float_t, sequence<int>):
+class bytes(int_t, float_t, Sequence<int>):
     void __init__(self, Iterable<int> ints): pass
     void __init__(self, str string, str encoding, str errors='strict'): pass
     void __init__(self, int length): pass
@@ -367,7 +367,7 @@ class function:
     pass
 
 
-class list<t>(sequence<t>):
+class list<t>(Sequence<t>):
     void __init__(self): pass
     void __init__(self, Iterable<t> iter): pass
     
@@ -395,9 +395,9 @@ class list<t>(sequence<t>):
     bool __contains__(self, t o): pass
 
 
-class dict<kt, vt>(mapping<kt, vt>):
+class dict<kt, vt>(Mapping<kt, vt>):
     void __init__(self): pass
-    void __init__(self, mapping<kt, vt> map): pass
+    void __init__(self, Mapping<kt, vt> map): pass
     void __init__(self, Iterable<tuple<kt, vt>> iter): pass
     # TODO __init__ keyword args
     
@@ -422,7 +422,7 @@ class dict<kt, vt>(mapping<kt, vt>):
     vt setdefault(self, kt k): pass
     vt setdefault(self, kt k, vt default): pass
     
-    void update(self, mapping<kt, vt> m): pass
+    void update(self, Mapping<kt, vt> m): pass
     void update(self, Iterable<tuple<kt, vt>> m): pass
 
     # TODO use views for the return values instead
@@ -433,7 +433,7 @@ class dict<kt, vt>(mapping<kt, vt>):
     str __str__(self): pass
 
 
-class set<t>(len_t, Iterable<t>):
+class set<t>(Sized, Iterable<t>):
     void __init__(self): pass
     void __init__(self, Iterable<t> iter): pass
     
@@ -486,8 +486,8 @@ Iterator<t> iter<t>(Iterable<t> iter): pass
 Iterator<t> iter<t>(func<t> function, t sentinel): pass
 bool isinstance(object o, type t): pass
 # TODO support this
-#bool isinstance(object o, sequence<type> t): pass
-int len(len_t o): pass
+#bool isinstance(object o, Sequence<type> t): pass
+int len(Sized o): pass
 # TODO map
 # TODO keyword argument key
 t max<t>(Iterable<t> iter): pass
@@ -519,7 +519,7 @@ float pow(float x, float y, float z): pass
 list<int> range(int hi): pass
 list<int> range(int lo, int hi): pass
 # TODO support __reversed__ method
-Iterator<t> reversed<t>(sequence<t> seq): pass
+Iterator<t> reversed<t>(Sequence<t> seq): pass
 str repr(object o): pass
 # Always return a float if ndigits is present.
 # TODO support __round__ method
