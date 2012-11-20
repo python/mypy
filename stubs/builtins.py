@@ -20,6 +20,9 @@ class object:
 # Interfacess
 
 
+# TODO Hashable, Container, Set etc.
+
+
 interface int_t:
     int __int__(self)
     
