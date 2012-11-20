@@ -254,7 +254,7 @@ class str(int_t, float_t, Sequence<str>):
     bool isspace(self): pass
     bool istitle(self): pass
     bool isupper(self): pass
-    str join(self, Iterable<str> iter): pass
+    str join(self, Iterable<str> iterable): pass
     str ljust(self, int width, str fillchar=' '): pass
     str lower(self): pass
     str lstrip(self, str chars=None): pass
@@ -320,7 +320,7 @@ class bytes(int_t, float_t, Sequence<int>):
     bytes lower(self): pass
     # TODO keyword args
     bytes replace(self, bytes old, bytes new, int count=-1): pass
-    bytes join(self, Iterable<bytes> iter): pass
+    bytes join(self, Iterable<bytes> iterable): pass
     list<bytes> split(self, bytes sep=None, int maxsplit=-1): pass
     bool startswith(self, bytes prefix): pass
     bool endswith(self, bytes suffix): pass
@@ -372,10 +372,10 @@ class function:
 
 class list<t>(Sequence<t>):
     void __init__(self): pass
-    void __init__(self, Iterable<t> iter): pass
+    void __init__(self, Iterable<t> iterable): pass
     
     void append(self, t object): pass
-    void extend(self, Iterable<t> iter): pass
+    void extend(self, Iterable<t> iterable): pass
     t pop(self): pass
     int index(self, t object): pass
     int count(self, t object): pass
@@ -401,7 +401,7 @@ class list<t>(Sequence<t>):
 class dict<kt, vt>(Mapping<kt, vt>):
     void __init__(self): pass
     void __init__(self, Mapping<kt, vt> map): pass
-    void __init__(self, Iterable<tuple<kt, vt>> iter): pass
+    void __init__(self, Iterable<tuple<kt, vt>> iterable): pass
     # TODO __init__ keyword args
     
     int __len__(self): pass
@@ -438,7 +438,7 @@ class dict<kt, vt>(Mapping<kt, vt>):
 
 class set<t>(Sized, Iterable<t>):
     void __init__(self): pass
-    void __init__(self, Iterable<t> iter): pass
+    void __init__(self, Iterable<t> iterable): pass
     
     void add(self, t element): pass
     void remove(self, t element): pass
@@ -450,7 +450,7 @@ class set<t>(Sized, Iterable<t>):
 
 
 class enumerate<t>(Iterator<tuple<int, t>>):
-    void __init__(self, Iterable<t> iter, int start=0): pass
+    void __init__(self, Iterable<t> iterable, int start=0): pass
     Iterator<tuple<int, t>> __iter__(self): pass
     tuple<int, t> __next__(self): pass
     # TODO __getattribute__
@@ -474,7 +474,7 @@ list<str> dir(): pass
 list<str> dir(object o): pass
 tuple<int, int> divmod(int a, int b): pass
 tuple<float, float> divmod(float a, float b): pass
-Iterator<t> filter<t>(func<t, bool> function, Iterable<t> iter): pass
+Iterator<t> filter<t>(func<t, bool> function, Iterable<t> iterable): pass
 str format(object o, str format_spec=''): pass
 any getattr(any o, str name): pass
 any getattr(any o, str name, any default): pass
@@ -485,18 +485,18 @@ str hex(int i): pass
 int id(object o): pass
 str input(str prompt=None): pass
 # TODO issubclass
-Iterator<t> iter<t>(Iterable<t> iter): pass
-Iterator<t> iter<t>(func<t> function, t sentinel): pass
+Iterator<t> iterable<t>(Iterable<t> iterable): pass
+Iterator<t> iterable<t>(func<t> function, t sentinel): pass
 bool isinstance(object o, type t): pass
 # TODO support this
 #bool isinstance(object o, Sequence<type> t): pass
 int len(Sized o): pass
 # TODO map
 # TODO keyword argument key
-t max<t>(Iterable<t> iter): pass
+t max<t>(Iterable<t> iterable): pass
 t max<t>(t arg1, t arg2, t *args): pass
 # TODO memoryview
-t min<t>(Iterable<t> iter): pass
+t min<t>(Iterable<t> iterable): pass
 t min<t>(t arg1, t arg2, t *args): pass
 t next<t>(Iterator<t> i): pass
 t next<t>(Iterator<t> i, t default): pass
@@ -531,10 +531,10 @@ float round(float number, int ndigits): pass
 void setattr(any object, str name, any value): pass
 list<t> sorted<t>(Iterable<t> iiter, func<t, any> key=None,
                   bool reverse=False): pass
-list<t> sorted<t>(Iterable<t> iter, bool reverse=False): pass
+list<t> sorted<t>(Iterable<t> iterable, bool reverse=False): pass
 # TODO more general types
-int sum(Iterable<int> iter, int start=0): pass
-float sum(Iterable<float> iter, float start=0.0): pass
+int sum(Iterable<int> iterable, int start=0): pass
+float sum(Iterable<float> iterable, float start=0.0): pass
 
 
 # Exceptions

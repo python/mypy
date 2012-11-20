@@ -12,13 +12,13 @@
 class deque<t>(Sized, Iterable<t>):
     # TODO int with None default
     int maxlen # TODO readonly
-    void __init__(self, Iterable<t> iter=None, int maxlen=None): pass
+    void __init__(self, Iterable<t> iterable=None, int maxlen=None): pass
     void append(self, t x): pass
     void appendleft(self, t x): pass
     void clear(self): pass
     int count(self, t x): pass
-    void extend(self, Iterable<t> iter): pass
-    void extendleft(self, Iterable<t> iter): pass
+    void extend(self, Iterable<t> iterable): pass
+    void extendleft(self, Iterable<t> iterable): pass
     t pop(self): pass
     t popleft(self): pass
     void remove(self, t value): pass
@@ -40,13 +40,13 @@ class deque<t>(Sized, Iterable<t>):
 class Counter<t>(dict<t, int>):
     void __init__(self): pass
     void __init__(self, Mapping<t, int> Mapping): pass
-    void __init__(self, Iterable<t> iter): pass
+    void __init__(self, Iterable<t> iterable): pass
     # TODO keyword arguments
     Iterator<t> elements(self): pass
     list<t> most_common(self): pass
     list<t> most_common(self, int n): pass
     void subtract(self, Mapping<t, int> Mapping): pass
-    void subtract(self, Iterable<t> iter): pass
+    void subtract(self, Iterable<t> iterable): pass
     # TODO update
 
 
@@ -59,11 +59,11 @@ class defaultdict<kt, vt>(dict<kt, vt>):
     func<vt> default_factory
     void __init__(self): pass
     void __init__(self, Mapping<kt, vt> map): pass
-    void __init__(self, Iterable<tuple<kt, vt>> iter): pass
+    void __init__(self, Iterable<tuple<kt, vt>> iterable): pass
     void __init__(self, func<vt> default_factory): pass
     void __init__(self, func<vt> default_factory, Mapping<kt, vt> map): pass
     void __init__(self, func<vt> default_factory,
-                  Iterable<tuple<kt, vt>> iter): pass
+                  Iterable<tuple<kt, vt>> iterable): pass
     # TODO __init__ keyword args
     vt __missing__(self, kt key): pass
     # TODO __reversed__
