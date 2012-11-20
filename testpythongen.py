@@ -18,7 +18,8 @@ class PythonGenerationSuite(Suite):
     def cases(self):
         c = []
         for f in python_generation_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f), test_python_generation, test_temp_dir, True)
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  test_python_generation, test_temp_dir, True)
         return c
 
 
@@ -46,8 +47,11 @@ def test_python_generation(testcase):
                 if not first:
                     a.append('{}:'.format(
                         fix_path(remove_prefix(t.path, test_temp_dir))))
-                
-                v = PythonGenerator()
+
+                ver = 3
+                if '-2' in testcase.name:
+                    ver = 2
+                v = PythonGenerator(ver)
                 t.accept(v)
                 s = v.output()
                 if s != '':

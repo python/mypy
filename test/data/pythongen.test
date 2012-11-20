@@ -424,3 +424,12 @@ def f(x, *args):
         return f2(x, args[0])
     else:
         raise TypeError("Invalid argument types")
+
+[case testSuper-2]
+class A:
+    def __init__(self):
+        super().__init__()
+[out]
+class A(object):
+    def __init__(self):
+        super(A, self).__init__()

@@ -23,6 +23,11 @@ class PythonGenerator(OutputVisitor):
     Reuse most of the generation logic from the mypy pretty printer implemented
     in OutputVisitor.
     """
+
+    def __init__(self, pyversion=3):
+        super().__init__()
+        self.pyversion = pyversion
+    
     def visit_import_from(self, o):
         if o.id in removed_names:
             r = o.repr
@@ -126,6 +131,8 @@ class PythonGenerator(OutputVisitor):
             if i < len(r.commas):
                 self.token(r.commas[i])
         self.token(r.rparen)
+        if not r.lparen.string and self.pyversion == 2:
+            self.string('(object)')
         self.node(o.defs)
     
     def erased_type(self, t):
@@ -279,3 +286,14 @@ class PythonGenerator(OutputVisitor):
                 self.token(r.commas[i])
             i += 1
         self.token(r.rbrace)
+
+    def visit_super_expr(self, o):
+        if self.pyversion > 2:
+            super().visit_super_expr(o)
+        else:
+            r = o.repr
+            self.tokens([r.super_tok, r.lparen])
+            # TODO do not hard code 'self'
+            self.string('%s, self' % o.info.name())
+            self.tokens([r.rparen, r.dot, r.name])
+            

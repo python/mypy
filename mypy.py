@@ -9,10 +9,14 @@ from errors import CompileError
 
 void main():
     verbose = False
+    pyversion = 3
     args = sys.argv[1:]
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
             verbose = True
+            args = args[1:]
+        elif args[0] == '--py2':
+            pyversion = 2
             args = args[1:]
         else:
             fail('Invalid option {}'.format(args[0]))
@@ -42,7 +46,7 @@ void main():
                 out_path = os.path.join(output_dir, os.path.basename(t.path))
                 if verbose:
                     print('LOG: translate {} to {}'.format(t.path, out_path))
-                v = PythonGenerator()
+                v = PythonGenerator(pyversion)
                 t.accept(v)
                 outfile = open(out_path, 'w')
                 outfile.write(v.output())
@@ -55,9 +59,14 @@ void main():
         for arg in args[1:]:
             # TODO escape arguments etc.
             a.append('"{}"'.format(arg))
+
+        cmd = 'python3'
+        if pyversion == 2:
+            cmd = 'python'
         
-        os.system('python3 "{}/{}" {}'.format(
-                             output_dir, os.path.basename(path), ' '.join(a)))
+        os.system('{} "{}/{}" {}'.format(
+                             cmd, output_dir, os.path.basename(path),
+                             ' '.join(a)))
     except CompileError as e:
         for m in e.messages:
             print(m)
