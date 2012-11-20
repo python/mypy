@@ -292,7 +292,7 @@ int spawnvpe(int mode, IO file, list<str> args, dict<str, str> env):
 #void startfile(str path): pass  # Windows only
 #void startfile(str path, str operation): pass  # Windows only
 #tuple<int, int> system(str command): pass  # Unix only
-#int system(str command): pass  # Windows only
+int system(str command): pass
 list<float> times(): pass  # actually returns a 5-tuple of float
 #tuple<int, int> wait(): pass  # Unix only
 tuple<int, int> waitpid(int pid, int options): pass
