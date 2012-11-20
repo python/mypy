@@ -6,10 +6,6 @@ class object:
     
     bool __eq__(self, object o): pass
     bool __ne__(self, object o): pass
-    #bool __lt__(self, object o): pass
-    #bool __le__(self, object o): pass
-    #bool __gt__(self, object o): pass
-    #bool __ge__(self, object o): pass
     
     str __str__(self): pass
     str __repr__(self): pass
@@ -23,10 +19,10 @@ class object:
 # TODO Hashable, Container, Set etc.
 
 
-interface int_t:
+interface int_t: # TODO rename
     int __int__(self)
     
-interface float_t:
+interface float_t: # TODO rename
     float __float__(self)
 
 interface Sized:
@@ -457,6 +453,7 @@ class enumerate<t>(Iterator<tuple<int, t>>):
 
 
 # TODO frozenset
+# TODO bytearray
 
 
 True = 0 == 0
@@ -532,9 +529,7 @@ void setattr(any object, str name, any value): pass
 list<t> sorted<t>(Iterable<t> iiter, func<t, any> key=None,
                   bool reverse=False): pass
 list<t> sorted<t>(Iterable<t> iterable, bool reverse=False): pass
-# TODO more general types
-int sum(Iterable<int> iterable, int start=0): pass
-float sum(Iterable<float> iterable, float start=0.0): pass
+t sum<t>(Iterable<t> iterable, t start=None): pass
 
 
 # Exceptions
