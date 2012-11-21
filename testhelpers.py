@@ -2,7 +2,7 @@ import sys
 import re
 import os
 
-from unittest import AssertionFailure
+from myunit import AssertionFailure
 import testconfig
 
 

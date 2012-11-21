@@ -1,4 +1,4 @@
-from unittest import Suite, assert_equal
+from myunit import Suite, assert_equal
 from constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
 from solve import solve_constraints
 from typefixture import TypeFixture

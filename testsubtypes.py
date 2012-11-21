@@ -1,4 +1,4 @@
-from unittest import Suite, assert_true
+from myunit import Suite, assert_true
 from subtypes import is_subtype
 from typefixture import TypeFixture, InterfaceTypeFixture
 

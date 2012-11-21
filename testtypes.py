@@ -1,4 +1,4 @@
-from unittest import Suite, assert_equal, assert_true
+from myunit import Suite, assert_equal, assert_true
 from erasetype import erase_type
 from expandtype import expand_type
 from join import join_types

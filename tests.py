@@ -1,6 +1,6 @@
 import sys
 
-from unittest import Suite, run_test
+from myunit import Suite, run_test
 import testtypes
 import testsubtypes
 import testsolve

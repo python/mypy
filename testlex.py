@@ -1,4 +1,4 @@
-from unittest import Suite, assert_equal
+from myunit import Suite, assert_equal
 from lex import lex
 
 

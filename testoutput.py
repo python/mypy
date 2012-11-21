@@ -1,7 +1,7 @@
 import os.path
 import re
 
-from unittest import Suite
+from myunit import Suite
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
 from testconfig import test_data_prefix, test_temp_dir
