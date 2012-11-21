@@ -455,3 +455,11 @@ void f(A<B> x): pass
 void f(B x): pass
 class A<T>: pass
 class B: pass
+
+[case testInferenceWithInterfaceContext]
+I<B> x = A()
+I<B> y = A<object>() # E: Incompatible types in assignment
+
+class A<t>(I<t>): pass
+interface I<t>: pass
+class B: pass

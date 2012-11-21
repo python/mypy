@@ -125,15 +125,16 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     list<Constraint> visit_instance(self, Instance template):
         actual = self.actual
         if (isinstance(actual, Instance) and
-                ((Instance)actual).typ.has_base(template.typ.full_name())):
+                template.typ.has_base(((Instance)actual).typ.full_name())):
             list<Constraint> res = []
+            instance = (Instance)actual
             
-            mapped = map_instance_to_supertype((Instance)actual, template.typ)
-            for i in range(len(template.args)):
+            mapped = map_instance_to_supertype(template, instance.typ)
+            for i in range(len(instance.args)):
                 # The constraints for generic type parameters are invariant.
                 # Include the default constraint and its negation to achieve
                 # the effect.
-                cb = infer_constraints(template.args[i], mapped.args[i])
+                cb = infer_constraints(mapped.args[i], instance.args[i])
                 res.extend(cb)
                 res.extend(negate_constraints(cb))
                 
