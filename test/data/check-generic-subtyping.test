@@ -403,6 +403,19 @@ class D: pass
 main: In class "B":
 main, line 2: Class "B" implements interface "I" more than once
 
+[case testSubtypingAndInterfaceExtension]
+A<object> a, I<object> i, J<object> j
+i = a
+j = a
+j = i
+a = i # E: Incompatible types in assignment
+a = j # E: Incompatible types in assignment
+
+class A<t>(I<t>): pass
+interface I<t>(X, J<t>): pass
+interface J<t>: pass
+interface X: pass
+
 
 -- Implementing a generic interface
 -- --------------------------------
