@@ -463,3 +463,31 @@ I<B> y = A<object>() # E: Incompatible types in assignment
 class A<t>(I<t>): pass
 interface I<t>: pass
 class B: pass
+
+[case testInferenceWithInterfaceContext2]
+A<B> a = f(A())
+aa = f(A<B>())
+A<t> f<t>(I<t> i): pass
+class A<t>(I<t>): 
+    pass
+interface I<t>: 
+    pass
+class B: pass
+
+[case testInferenceWithInterfaceContext3]
+bool b
+l = set([b])
+#l = set<bool>([])
+#l = set<object>([]) # Incompatible types in assignment
+class set<t>:
+    void __init__(self, Iterable<t> iterable): pass
+[builtins fixtures/for.py]
+
+[case testInferenceWithInterfaceContext4]
+bool b
+l = f([b])
+l = f<bool>([])
+l = f<object>([]) # E: Incompatible types in assignment
+class set<t>: pass
+set<t> f<t>(Iterable<t> iterable): pass
+[builtins fixtures/for.py]

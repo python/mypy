@@ -2,6 +2,7 @@ import checker
 from constraints import infer_constraints, infer_constraints_for_callable
 from mtypes import Typ, Callable
 from solve import solve_constraints
+from constraints import SUBTYPE_OF
 
 
 list<Typ> infer_function_type_arguments(Callable callee_type,
@@ -34,5 +35,5 @@ list<Typ> infer_type_arguments(list<int> type_var_ids,
                                checker.BasicTypes basic):
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
-    constraints = infer_constraints(template, actual)
+    constraints = infer_constraints(template, actual, SUBTYPE_OF)
     return solve_constraints(type_var_ids, constraints, basic)

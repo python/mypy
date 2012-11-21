@@ -422,7 +422,7 @@ class TypeTranslator(TypeVisitor<Typ>):
                         t.ret_type.accept(self),
                         t.is_type_obj(),
                         t.name,
-                        t.variables,
+                        self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
                         t.line, t.repr)
     
@@ -441,6 +441,9 @@ class TypeTranslator(TypeVisitor<Typ>):
         for id, t in types:
             a.append((id, t.accept(self)))
         return a
+
+    TypeVars translate_variables(self, TypeVars variables):
+        return variables
 
 
 class TypeStrVisitor(TypeVisitor<str>):

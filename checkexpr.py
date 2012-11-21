@@ -2,7 +2,7 @@
 
 from mtypes import (
     Typ, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
-    TupleType, Instance, TypeVar
+    TupleType, Instance, TypeVar, TypeTranslator
 )
 from nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -725,23 +725,23 @@ class ExpressionChecker:
                 return Overloaded(items)
     
     Callable class_callable(self, Callable init_type, TypeInfo info):
-        """Create a callable/overloaded type from the signature of the
-        constructor and the TypeInfo of the class.
-        """
-        list<TypeVarDef> variables = []
+        """Create a type object type based on the signature of __init__."""
+        variables = <TypeVarDef> []
         for i in range(len(info.type_vars)): # TODO bounds
             variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
+
+        initvars = init_type.variables.items
+        variables.extend(initvars)
         
-        variables.extend(init_type.variables.items)
-        
-        return Callable(init_type.arg_types,
-                        init_type.min_args,
-                        init_type.is_var_arg,
-                        self_type(info),
-                        True,
-                        None,
-                        TypeVars(variables)).with_name('"{}"'.format(
-                                                                 info.name()))
+        c = Callable(init_type.arg_types,
+                     init_type.min_args,
+                     init_type.is_var_arg,
+                     self_type(info),
+                     True,
+                     None,
+                     TypeVars(variables)).with_name(
+                                          '"{}"'.format(info.name()))
+        return convert_class_tvars_to_func_tvars(c, len(initvars))
     
     bool is_valid_var_arg(self, Typ typ):
         """Is a type valid as a vararg argument?"""
@@ -793,3 +793,33 @@ bool is_valid_argc(int nargs, bool is_var_arg, Callable callable):
     else:
         # Neither has varargs.
         return nargs <= len(callable.arg_types) and nargs >= callable.min_args
+
+
+Callable convert_class_tvars_to_func_tvars(Callable callable,
+                                           int num_func_tvars):
+    return (Callable)callable.accept(TvarTranslator(num_func_tvars))
+
+
+class TvarTranslator(TypeTranslator):
+    void __init__(self, int num_func_tvars):
+        super().__init__()
+        self.num_func_tvars = num_func_tvars
+    
+    Typ visit_type_var(self, TypeVar t):
+        if t.id < 0:
+            return t
+        else:
+            return TypeVar(t.name, -t.id - self.num_func_tvars)
+    
+    TypeVars translate_variables(self, TypeVars variables):
+        if not variables.items:
+            return variables
+        items = <TypeVarDef> []
+        for v in variables.items:
+            if v.id > 0:
+                # TODO translate bound
+                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
+                                        v.bound))
+            else:
+                items.append(v)
+        return TypeVars(items)

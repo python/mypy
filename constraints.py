@@ -26,26 +26,28 @@ list<Constraint> infer_constraints_for_callable(
             return []
         
         if caller_rest is not None and callee.is_var_arg:
-            c = infer_constraints(callee.arg_types[-1], caller_rest)
+            c = infer_constraints(callee.arg_types[-1], caller_rest,
+                                  SUPERTYPE_OF)
             constraints.extend(c)
     
     caller_num_args = len(arg_types)
     
     # Infer constraints for fixed arguments.
     for i in range(min(callee_num_args, caller_num_args)):
-        c = infer_constraints(callee.arg_types[i], arg_types[i])
+        c = infer_constraints(callee.arg_types[i], arg_types[i],
+                              SUPERTYPE_OF)
         constraints.extend(c)
     
     # Infer constraints for varargs.
     if callee.is_var_arg:
         for j in range(callee_num_args, caller_num_args):
-            c = infer_constraints(callee.arg_types[-1], arg_types[j])
+            c = infer_constraints(callee.arg_types[-1], arg_types[j],
+                                  SUPERTYPE_OF)
             constraints.extend(c)
-    
     return constraints
 
 
-list<Constraint> infer_constraints(Typ template, Typ actual):
+list<Constraint> infer_constraints(Typ template, Typ actual, int direction):
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -66,7 +68,7 @@ list<Constraint> infer_constraints(Typ template, Typ actual):
     
     The constraints are represented as Constraint objects.
     """
-    return template.accept(ConstraintBuilderVisitor(actual))
+    return template.accept(ConstraintBuilderVisitor(actual, direction))
 
 
 SUBTYPE_OF = 0
@@ -81,7 +83,7 @@ class Constraint:
     int op         # SUBTYPE_OF or SUPERTYPE_OF
     Typ target
     
-    str __str__(self):
+    str __repr__(self):
         op_str = '<:'
         if self.op == SUPERTYPE_OF:
             op_str = ':>'
@@ -98,8 +100,10 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     
     Typ actual # The type that is compared against a template
     
-    void __init__(self, Typ actual):
+    void __init__(self, Typ actual, int direction):
+        # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
+        self.direction = direction
     
     # Trivial leaf types
     
@@ -124,22 +128,33 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     
     list<Constraint> visit_instance(self, Instance template):
         actual = self.actual
-        if (isinstance(actual, Instance) and
-                template.typ.has_base(((Instance)actual).typ.full_name())):
-            list<Constraint> res = []
+        if isinstance(actual, Instance):
+            res = <Constraint> []
             instance = (Instance)actual
-            
-            mapped = map_instance_to_supertype(template, instance.typ)
-            for i in range(len(instance.args)):
-                # The constraints for generic type parameters are invariant.
-                # Include the default constraint and its negation to achieve
-                # the effect.
-                cb = infer_constraints(mapped.args[i], instance.args[i])
-                res.extend(cb)
-                res.extend(negate_constraints(cb))
-                
-            return res
-        elif isinstance(actual, Any):
+            if (self.direction == SUBTYPE_OF and
+                    template.typ.has_base(instance.typ.full_name())):
+                mapped = map_instance_to_supertype(template, instance.typ)
+                for i in range(len(instance.args)):
+                    # The constraints for generic type parameters are
+                    # invariant. Include the default constraint and its
+                    # negation to achieve the effect.
+                    cb = infer_constraints(mapped.args[i], instance.args[i],
+                                           self.direction)
+                    res.extend(cb)
+                    res.extend(negate_constraints(cb))
+                return res
+            elif (self.direction == SUPERTYPE_OF and
+                    instance.typ.has_base(template.typ.full_name())):
+                mapped = map_instance_to_supertype(instance, template.typ)
+                for j in range(len(template.args)):
+                    # The constraints for generic type parameters are
+                    # invariant.
+                    cb = infer_constraints(template.args[j], mapped.args[j],
+                                           self.direction)
+                    res.extend(cb)
+                    res.extend(negate_constraints(cb))
+                return res
+        if isinstance(actual, Any):
             # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args)
         else:
@@ -154,13 +169,16 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
             for i in range(len(template.arg_types)):
                 # Negate constraints due function argument type contravariance.
                 res.extend(negate_constraints(infer_constraints(
-                    template.arg_types[i], cactual.arg_types[i])))
-            res.extend(infer_constraints(template.ret_type, cactual.ret_type))
+                    template.arg_types[i], cactual.arg_types[i],
+                    self.direction)))
+            res.extend(infer_constraints(template.ret_type, cactual.ret_type,
+                                         self.direction))
             return res
         elif isinstance(self.actual, Any):
             # FIX what if generic
             res = self.infer_against_any(template.arg_types)
-            res.extend(infer_constraints(template.ret_type, Any()))
+            res.extend(infer_constraints(template.ret_type, Any(),
+                                         self.direction))
             return res
         else:
             return []
@@ -172,7 +190,8 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
             list<Constraint> res = []
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
-                                             ((TupleType)actual).items[i]))
+                                             ((TupleType)actual).items[i],
+                                             self.direction))
             return res
         elif isinstance(actual, Any):
             return self.infer_against_any(template.items)
@@ -182,7 +201,7 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     list<Constraint> infer_against_any(self, list<Typ> types):
         list<Constraint> res = []
         for t in types:
-            res.extend(infer_constraints(t, Any()))
+            res.extend(infer_constraints(t, Any(), self.direction))
         return res
 
 

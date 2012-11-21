@@ -15,7 +15,7 @@ from nodes import (
 from nodes import function_type, method_type
 from mtypes import (
     Typ, Any, Callable, Void, FunctionLike, Overloaded, TupleType, Instance,
-    NoneTyp, UnboundType
+    NoneTyp, UnboundType, TypeTranslator
 )
 from sametypes import is_same_type
 from messages import MessageBuilder
