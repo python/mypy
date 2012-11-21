@@ -361,7 +361,8 @@ class slice:
 
 
 class tuple:
-    pass
+    void __init__(self): pass
+    void __init__(self, Iterable<any> iterable): pass
 
 
 class function:
@@ -449,6 +450,18 @@ class set<t>(Sized, Iterable<t>):
     # TODO more set operations
 
 
+class frozenset<t>(Sized, Iterable<t>):
+    void __init__(self): pass
+    void __init__(self, Iterable<t> iterable): pass
+    
+    int __len__(self): pass
+    bool __contains__(self, object o): pass
+    Iterator<t> __iter__(self): pass    
+    str __str__(self): pass
+
+    # TODO more set operations
+
+
 class enumerate<t>(Iterator<tuple<int, t>>):
     void __init__(self, Iterable<t> iterable, int start=0): pass
     Iterator<tuple<int, t>> __iter__(self): pass
@@ -456,12 +469,14 @@ class enumerate<t>(Iterator<tuple<int, t>>):
     # TODO __getattribute__
 
 
-# TODO frozenset
 # TODO bytearray
 
 
 True = 0 == 0
 False = 0 == 1
+
+class _NotImplementedType: pass # TODO name of the class
+_NotImplementedType NotImplemented
 
 
 int abs(int n): pass
@@ -489,8 +504,11 @@ str input(str prompt=None): pass
 Iterator<t> iterable<t>(Iterable<t> iterable): pass
 Iterator<t> iterable<t>(func<t> function, t sentinel): pass
 bool isinstance(object o, type t): pass
-# TODO support this
+# TODO perhaps support this
 #bool isinstance(object o, Sequence<type> t): pass
+bool issubclass(type cls, type classinfo): pass
+# TODO perhaps support this
+#bool issubclass(type cld, Sequence<type> classinfo): pass
 int len(Sized o): pass
 # TODO map
 # TODO keyword argument key

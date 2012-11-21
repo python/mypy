@@ -22,6 +22,7 @@ TextIO __stderr__
 int tracebacklimit
 str version
 int api_version
+dict<str, any> modules # TODO type
 
 # TODO type of traceback
 tuple<type, any, any> exc_info(): pass
