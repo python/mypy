@@ -8,8 +8,10 @@ from subtypes import is_subtype
 
 list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints,
                             checker.BasicTypes basic):
-    """Solve type constraints. Return lower bound for each type variable or
-    nil if the variable could not be solved.
+    """Solve type constraints.
+
+    Return lower bound for each type variable or None if the variable could
+    not be solved.
     """
     # Collect a list of constraints for each type variable.
     dict<int, list<Constraint>> cmap = {}

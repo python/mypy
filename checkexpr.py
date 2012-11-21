@@ -93,18 +93,18 @@ class ExpressionChecker:
     Typ check_call_expr_with_callee_type(self, Typ callee_type, CallExpr e):
         """Type check call expression. The given callee type overrides
         the type of the callee expression.
-        """
-        
+        """        
         return self.check_call(callee_type, e.args, e, e.is_var_arg)
     
     Typ check_call(self, Typ callee, list<Node> args, Context context,
                    bool is_var_arg=False, bool check_arg_count=True):
-        """Type check a call with the given callee and argument
-        types. If isVarArg is True, the callee uses varargs. If
-        checkArgCount is False, do not report invalid number of
-        arguments as an error (this is used when the error has already
-        been reported by the semantic analyzer and we don't want
-        duplicate error messages).
+        """Type check a call.
+
+        Use the given callee and argument types. If is_var_arg is
+        True, the callee uses varargs. If check_arg_count is False, do
+        not report invalid number of arguments as an error (this is
+        used when the error has already been reported by the semantic
+        analyzer and we don't want duplicate error messages).
         """
         if isinstance(callee, Callable):
             callable = (Callable)callee

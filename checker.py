@@ -393,8 +393,8 @@ class TypeChecker(NodeVisitor<Typ>):
         
         # Collect lvalue types. Index lvalues require special consideration,
         # since we cannot typecheck them until we known the rvalue type.
-        list<Typ> lvalue_types = []    # May be nil
-        # Base type and index types (or nil)
+        list<Typ> lvalue_types = []    # May be None
+        # Base type and index types (or None)
         list<tuple<Typ, Node>> index_lvalue_types = []
         list<Var> inferred = []
         is_inferred = False

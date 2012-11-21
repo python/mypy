@@ -46,13 +46,14 @@ list<Constraint> infer_constraints_for_callable(
 
 
 list<Constraint> infer_constraints(Typ template, Typ actual):
-    """Infer type constraints. Match a template type, which may
-    contain type variable references, recursively against a type which
-    does not contain (the same) type variable references. The result
-    is a list of type constrains of form 'T is a supertype/subtype of
-    x', where T is a type variable present in the the template and x
-    is a type without reference to type variables present in the
-    template.
+    """Infer type constraints.
+
+    Match a template type, which may contain type variable references,
+    recursively against a type which does not contain (the same) type
+    variable references. The result is a list of type constrains of
+    form 'T is a supertype/subtype of x', where T is a type variable
+    present in the the template and x is a type without reference to
+    type variables present in the template.
     
     Assume T and S are type variables. Now the following results can be
     calculated (read as '(template, actual) --> result'):
@@ -73,7 +74,7 @@ SUPERTYPE_OF = 1
 
 
 class Constraint:
-    """A representatino of a type constraint, either T <: type or T :>
+    """A representation of a type constraint, either T <: type or T :>
     type (T is a type variable).
     """
     int type_var   # Type variable id
@@ -94,6 +95,7 @@ class Constraint:
 
 class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     """Visitor class for inferring type constraints."""
+    
     Typ actual # The type that is compared against a template
     
     void __init__(self, Typ actual):
