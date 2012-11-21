@@ -43,13 +43,13 @@ class TestCase(Testable):
     int countTestCases(self): pass
     TestResult defaultTestResult(self): pass
     str id(self): pass
-    str shortDescription(self): # May return None
+    str shortDescription(self): pass # May return None
 
 class FunctionTestCase(Testable):
     void __init__(self, func<void> testFunc, func<void> setUp=None,
                   func<void> tearDown=None, str description=None): pass
     void run(self, TestResult result): pass
-    void debug(self)
+    void debug(self): pass
     int countTestCases(self): pass
 
 class TestSuite(Testable):
