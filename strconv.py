@@ -54,7 +54,12 @@ class StrConv(NodeVisitor<str>):
     
     
     def visit_mypy_file(self, o):
-        a = [o.defs]
+        # Skip implicit definition of __name__.
+        if (o.defs and isinstance(o.defs[0], nodes.VarDef) and
+                o.defs[0].items[0][0].name() == '__name__'):
+            a = [o.defs[1:]]
+        else:
+            a = [o.defs]
         if o.is_bom:
             a.insert(0, 'BOM')
         # Omit path to special file with name "main". This is used to simplify

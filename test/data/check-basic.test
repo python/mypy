@@ -185,6 +185,15 @@ main, line 2: Incompatible return value type
 main: At top level:
 main, line 3: Incompatible types in assignment
 
+[case test__name__]
+str x = __name__
+a = __name__
+class A: pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class str: pass
+
 
 -- Scoping and shadowing
 -- ---------------------

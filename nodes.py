@@ -1165,7 +1165,8 @@ class SymbolTable(dict<str, SymbolTableNode>):
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
-                if value.full_name() != 'builtins':
+                if (value.full_name() != 'builtins' and
+                        not value.full_name().endswith('.__name__')):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:
                 a.append('  <invalid item>')

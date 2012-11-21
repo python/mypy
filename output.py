@@ -147,12 +147,13 @@ class OutputVisitor(NodeVisitor):
     
     def visit_var_def(self, o):
         r = o.repr
-        for v, t in o.items:
-            self.typ(t)
-            self.node(v)
-        self.token(r.assign)
-        self.node(o.init)
-        self.token(r.br)
+        if r:
+            for v, t in o.items:
+                self.typ(t)
+                self.node(v)
+            self.token(r.assign)
+            self.node(o.init)
+            self.token(r.br)
     
     def visit_var(self, o):
         r = o.repr

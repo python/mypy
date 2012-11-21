@@ -15,7 +15,9 @@ from nodes import (
 )
 from visitor import NodeVisitor
 from errors import Errors
-from mtypes import NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar
+from mtypes import (
+    NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar, Any
+)
 from nodes import function_type
 from typeanal import TypeAnalyser
 
@@ -76,14 +78,21 @@ class SemanticAnal(NodeVisitor):
     
     
     void anal_defs(self, list<Node> defs, str fnam, str mod_id):
-        """Perform the first analysis pass. Resolve the full names of
-        definitions and construct type info structures, but do not
-        resolve inter-definition references such as base classes.
+        """Perform the first analysis pass.
+
+        Resolve the full names of definitions and construct type info
+        structures, but do not resolve inter-definition references
+        such as base classes.
         """
         self.cur_mod_id = mod_id
         self.errors.set_file(fnam)
         self.globals = SymbolTable()
         self.global_decls = [set()]
+        
+        # Add implicit definition of '__name__'.
+        name_def = VarDef([(Var('__name__'), Any())], True)
+        defs.insert(0, name_def)
+        
         for d in defs:
             if isinstance(d, AssignmentStmt):
                 self.anal_assignment_stmt((AssignmentStmt)d)

@@ -91,16 +91,17 @@ class PythonGenerator(OutputVisitor):
     
     def visit_var_def(self, o):
         r = o.repr
-        self.string(self.get_pre_whitespace(o.items[0][1]))
-        self.omit_next_space = True
-        for v, t in o.items:
-            self.node(v)
-        if o.init:
-            self.token(r.assign)
-            self.node(o.init)
-        else:
-            self.string(' = {}'.format(', '.join(['None'] * len(o.items))))
-        self.token(r.br)
+        if r:
+            self.string(self.get_pre_whitespace(o.items[0][1]))
+            self.omit_next_space = True
+            for v, t in o.items:
+                self.node(v)
+            if o.init:
+                self.token(r.assign)
+                self.node(o.init)
+            else:
+                self.string(' = {}'.format(', '.join(['None'] * len(o.items))))
+            self.token(r.br)
     
     def visit_cast_expr(self, o):
         self.string(o.repr.lparen.pre)
