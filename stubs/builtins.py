@@ -230,7 +230,8 @@ class str(int_t, float_t, Sequence<str>):
     str center(self, int width, str fillchar=' '): pass
     int count(self, str x): pass
     bytes encode(self, str encoding='utf-8', str errors='strict'): pass
-    bool endswith(self, str suffix): pass
+    # TODO tuple suffix; None value for int
+    bool endswith(self, str suffix, int start=0, int end=None): pass
     str expandtabs(self, int tabsize=8): pass
     int find(self, str sub, int start=0): pass
     int find(self, str sub, int start, int end): pass
@@ -266,7 +267,8 @@ class str(int_t, float_t, Sequence<str>):
     str rstrip(self, str chars=None): pass
     list<str> split(self, str sep=None, int maxsplit=-1): pass
     list<str> splitlines(self, bool keepends=False): pass
-    bool startswith(self, str prefix): pass
+    # TODO tuple prefix; None value for int
+    bool startswith(self, str prefix, int start=0, int end=None): pass
     str strip(self): pass
     str swapcase(self): pass
     str title(self): pass
