@@ -35,7 +35,7 @@ interface Iterator<t>(Iterable<t>):
     t __next__(self)
 
 interface Sequence<t>(Sized, Iterable<t>):
-    bool __contains__(self, t x)
+    bool __contains__(self, object x)
     t __getitem__(self, int i)
     Sequence<t> __getitem__(self, slice s)
 
@@ -294,7 +294,7 @@ class str(int_t, float_t, Sequence<str>):
     bool __gt__(self, object x): pass
     bool __ge__(self, object x): pass
 
-    bool __contains__(self, str s): pass
+    bool __contains__(self, object s): pass
 
     Iterator<str> __iter__(self): pass
 
@@ -335,7 +335,7 @@ class bytes(int_t, float_t, Sequence<int>):
     bytes __getitem__(self, slice s): pass
     bytes __add__(self, bytes s): pass    
     bytes __mul__(self, int n): pass
-    bool __contains__(self, int i): pass
+    bool __contains__(self, object o): pass
     # TODO __contains__ with bytes argument
     
     bool __eq__(self, object x): pass
@@ -394,7 +394,7 @@ class list<t>(Sequence<t>):
     void __delitem__(self, int i): pass    
     list<t> __add__(self, list<t> x): pass
     list<t> __mul__(self, int n): pass
-    bool __contains__(self, t o): pass
+    bool __contains__(self, object o): pass
 
 
 class dict<kt, vt>(Mapping<kt, vt>):
@@ -469,6 +469,23 @@ class enumerate<t>(Iterator<tuple<int, t>>):
     # TODO __getattribute__
 
 
+class range(Sized, Iterable<int>):
+    void __init__(self, int stop): pass
+    void __init__(self, int start, int stop, int step=1): pass
+    
+    int count(self, int value): pass
+    # None with int
+    int index(self, int value, int start=0, int stop=None): pass
+    
+    int __len__(self): pass
+    bool __contains__(self, object o): pass
+    Iterator<int> __iter__(self): pass
+    int __getitem__(self, int i): pass
+    range __getitem__(self, slice s): pass
+    str __repr__(self): pass
+    # TODO __reversed__
+
+
 # TODO bytearray
 
 
@@ -541,9 +558,6 @@ any pow(int x, int y, int z): pass
 float pow(float x, float y): pass
 float pow(float x, float y, float z): pass
 # TODO property
-# TODO use a range class instead
-list<int> range(int hi): pass
-list<int> range(int lo, int hi): pass
 # TODO support __reversed__ method
 Iterator<t> reversed<t>(Sequence<t> seq): pass
 str repr(object o): pass
