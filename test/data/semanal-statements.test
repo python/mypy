@@ -722,3 +722,20 @@ MypyFile:1(
     BaseType(
       builtins.BaseException)
     PassStmt:8()))
+
+[case testMultipleAssignmentWithPartialNewDef]
+object o
+x, o = o, o
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(o)
+    Type(builtins.object))
+  AssignmentStmt:2(
+    Lvalues(
+      TupleExpr:2(
+        NameExpr(x*)
+        NameExpr(o [__main__.o])))
+    TupleExpr:2(
+      NameExpr(o [__main__.o])
+      NameExpr(o [__main__.o]))))

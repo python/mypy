@@ -594,3 +594,36 @@ class B: pass
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
+
+
+-- Regression tests
+-- ----------------
+
+
+[case testMultipleAssignmentWithPartialDefinition]
+A a
+x, a = a, a
+x = a
+a = x
+x = object() # E: Incompatible types in assignment
+a = object() # E: Incompatible types in assignment
+class A: pass
+
+[case testMultipleAssignmentWithPartialDefinition2]
+A a
+a, x = [a]
+x = a
+a = x
+x = object() # E: Incompatible types in assignment
+a = object() # E: Incompatible types in assignment
+class A: pass
+[builtins fixtures/for.py]
+
+[case testMultipleAssignmentWithPartialDefinition3]
+A a
+x, a = (any)a
+x = a
+a = x
+x = object()
+a = object() # E: Incompatible types in assignment
+class A: pass
