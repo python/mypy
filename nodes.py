@@ -629,8 +629,9 @@ class RefExpr(Node):
 
 
 class NameExpr(RefExpr):
-    """Name expression optionally with a ::-based qualifier (may refer to a local,
-    member or global definition)
+    """Name expression
+
+    This refers to a local name, global name or a module.
     """
     str name      # Name referred to (may be qualified)
     str full_name # Fully qualified name (or name if not global)
