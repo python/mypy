@@ -490,7 +490,7 @@ list<str> dir(): pass
 list<str> dir(object o): pass
 tuple<int, int> divmod(int a, int b): pass
 tuple<float, float> divmod(float a, float b): pass
-Iterator<t> filter<t>(func<t, bool> function, Iterable<t> iterable): pass
+Iterator<t> filter<t>(func<t, any> function, Iterable<t> iterable): pass
 str format(object o, str format_spec=''): pass
 any getattr(any o, str name): pass
 any getattr(any o, str name, any default): pass
@@ -510,7 +510,11 @@ bool issubclass(type cls, type classinfo): pass
 # TODO perhaps support this
 #bool issubclass(type cld, Sequence<type> classinfo): pass
 int len(Sized o): pass
-# TODO map
+# TODO more than two iterables
+Iterator<s> map<t1, s>(func<t1, s> func, Iterable<t1> iter1): pass
+Iterator<s> map<t1, t2, s>(func<t1, t2, s> func,
+                         Iterable<t1> iter1,
+                         Iterable<t2> iter2): pass
 # TODO keyword argument key
 t max<t>(Iterable<t> iterable): pass
 t max<t>(t arg1, t arg2, t *args): pass
@@ -553,6 +557,10 @@ list<t> sorted<t>(Iterable<t> iterable, func<t, any> key=None,
                   bool reverse=False): pass
 list<t> sorted<t>(Iterable<t> iterable, bool reverse=False): pass
 t sum<t>(Iterable<t> iterable, t start=None): pass
+# TODO more than two iterables
+Iterator<tuple<t1>> zip<t1>(Iterable<t1> iter1): pass
+Iterator<tuple<t1, t2>> zip<t1, t2>(Iterable<t1> iter1,
+                                    Iterable<t2> iter2): pass
 
 
 # Exceptions
