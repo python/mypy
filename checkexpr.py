@@ -82,6 +82,8 @@ class ExpressionChecker:
     
     Typ visit_call_expr(self, CallExpr e):
         """Type check a call expression."""
+        if e.dict_var_arg or e.keyword_args:
+            return self.msg.not_implemented('keyword arguments', e)            
         self.accept(e.callee)
         # Access callee type directly, since accept may return the any type
         # even if the type is known (in a dynamically typed function). This

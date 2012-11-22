@@ -178,6 +178,9 @@ class TypeChecker(NodeVisitor<Typ>):
             self.check_method_override(defn)
     
     Typ check_func_item(self, FuncItem defn):
+        if defn.dict_var_arg:
+            return self.msg.not_implemented('keyword arguments', defn)
+        
         # We may be checking a function definition or an anonymous function. In
         # the first case, set up another reference with the precise type.
         FuncDef fdef = None

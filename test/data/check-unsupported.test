@@ -35,3 +35,11 @@ void f():
 [out]
 main: In function "f":
 main, line 2: Feature not implemented yet (with statement)
+
+[case testKeywordArgsInCall]
+f(x=None) # E: Feature not implemented yet (keyword arguments)
+f(**None) # E: Feature not implemented yet (keyword arguments)
+def f(x): pass
+
+[case testKeywordArgsInFunc]
+def f(**x): pass # E: Feature not implemented yet (keyword arguments)
