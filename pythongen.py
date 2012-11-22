@@ -111,8 +111,8 @@ class PythonGenerator(OutputVisitor):
         r = o.repr
         self.token(r.for_tok)
         for i in range(len(o.index)):
-            self.token(o.index[i].repr.name)
-            self.token(o.index[i].repr.comma)
+            self.node(o.index[i])
+            self.token(r.commas[i])
         self.token(r.in_tok)
         self.node(o.expr)
         

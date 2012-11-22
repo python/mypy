@@ -780,11 +780,11 @@ for B x in ab:
     a = x # E: Incompatible types in assignment
     b = x
 
-for A x in ab:  # E: Incompatible types in for statement
-    b = x # E: Incompatible types in assignment
-    a = x
+for A y in ab:  # E: Incompatible types in for statement
+    b = y # E: Incompatible types in assignment
+    a = y
 
-for A x in B(): # E: Iterable expected
+for A z in B(): # E: Iterable expected
     pass
 
 class A: pass
@@ -803,28 +803,28 @@ for A x, B y in at:
     a = x
     b = y
 
-for B x, B y in aab:
-    a = x # E: Incompatible types in assignment
-    a = y # E: Incompatible types in assignment
-    b = x
-    b = y
+for B e, B f in aab:
+    a = e # E: Incompatible types in assignment
+    a = f # E: Incompatible types in assignment
+    b = e
+    b = f
 
 class A: pass
 class B: pass
 [builtins fixtures/for.py]
 
-[case testForStatementWithMultipleVars1]
+[case testForStatementWithMultipleVars2]
 list<tuple<A, B>> at
 list<list<B>> aab
 list<A> aa
 
 A a, B b
 
-for A x, A y in at: pass  # E: Incompatible types in for statement
-for B x, B y in at: pass  # E: Incompatible types in for statement
-for B x, A y in aab: pass # E: Incompatible types in for statement
-for A x, B y in aab: pass # E: Incompatible types in for statement
-for A x, A y in aa: pass  # E: Incompatible types in for statement
+for A x1, A y1 in at: pass  # E: Incompatible types in for statement
+for B x2, B y2 in at: pass  # E: Incompatible types in for statement
+for B x3, A y3 in aab: pass # E: Incompatible types in for statement
+for A x4, B y4 in aab: pass # E: Incompatible types in for statement
+for A x5, A y5 in aa: pass  # E: Incompatible types in for statement
 
 class A: pass
 class B: pass
@@ -834,3 +834,28 @@ class B: pass
 for object x in f(): pass # E: "f" does not return a value
 void f(): pass
 [builtins fixtures/for.py]
+
+[case testReusingForIndexVariable]
+for A a in []: pass
+a = A()
+a = B() # E: Incompatible types in assignment
+for a in []: pass
+a = A()
+a = B() # E: Incompatible types in assignment
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testReusingForIndexVariable2]
+void f():
+    for A a in []: pass
+    a = A()
+    a = B() # E: Incompatible types in assignment
+    for a in []: pass
+    a = A()
+    a = B() # E: Incompatible types in assignment
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+[out]
+main: In function "f":

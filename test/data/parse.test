@@ -889,13 +889,13 @@ for x, y in z:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
+    NameExpr(x)
     NameExpr(y)
     Block:1(
       PassStmt:2()))
   ForStmt:3(
-    Var(x)
-    Var(y)
+    NameExpr(x)
+    NameExpr(y)
     NameExpr(z)
     Block:3(
       ExpressionStmt:4(
@@ -909,14 +909,14 @@ for c<x> f, any g in [z]:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
+    NameExpr(x)
     Type:1(int?)
     NameExpr(y)
     Block:1(
       PassStmt:2()))
   ForStmt:3(
-    Var(f)
-    Var(g)
+    NameExpr(f)
+    NameExpr(g)
     Type:3(c?<x?>)
     Type:3(any)
     ListExpr:3(
@@ -1561,8 +1561,8 @@ for (i, j) in x:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(i)
-    Var(j)
+    NameExpr(i)
+    NameExpr(j)
     NameExpr(x)
     Block:1(
       PassStmt:2())))
@@ -2049,7 +2049,7 @@ else:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
+    NameExpr(x)
     NameExpr(y)
     Block:1(
       PassStmt:2())

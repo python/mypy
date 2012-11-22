@@ -423,13 +423,13 @@ class WhileStmt(Node):
 
 
 class ForStmt(Node):
-    list<Var> index    # Var nodes
-    Node expr          # Iterated expression
+    list<NameExpr> index   # Index variables
+    list<Annotation> types # Index variable types (each may be None)
+    Node expr              # Expression to iterate
     Block body
     Block else_body
-    list<Annotation> types
     
-    void __init__(self, list<Var> index, Node expr, Block body,
+    void __init__(self, list<NameExpr> index, Node expr, Block body,
                   Block else_body, list<Annotation> types=None):
         self.index = index
         self.expr = expr

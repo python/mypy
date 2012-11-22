@@ -798,7 +798,7 @@ class Parser:
     
     ForStmt parse_for_stmt(self):
         for_tok = self.expect('for')
-        index, types = self.parse_index_variables()
+        index, types, commas = self.parse_for_index_variables()
         in_tok = self.expect('in')
         expr = self.parse_expression()
         
@@ -811,13 +811,43 @@ class Parser:
             else_body = self.parse_block()
         
         node = ForStmt(index, expr, body, else_body, types)
-        self.set_repr(node, noderepr.ForStmtRepr(for_tok, in_tok, else_tok))
+        self.set_repr(node, noderepr.ForStmtRepr(for_tok, commas, in_tok,
+                                                 else_tok))
         return node
+    
+    tuple<list<NameExpr>, list<Annotation>, list<Token>> \
+                              parse_for_index_variables(self):
+        # Parse index variables of a 'for' statement.
+        index = <NameExpr> []
+        types = <Annotation> []
+        commas = <Token> []
+        
+        is_paren = self.current_str() == '('
+        if is_paren:
+            self.skip()
+        
+        while True:
+            Annotation ann = None
+            if self.is_at_type():
+                ann = self.parse_type()
+            v = self.parse_name_expr()
+            index.append(v)
+            types.append(ann)
+            if self.current_str() != ',':
+                commas.append(none)
+                break
+            commas.append(self.skip())
+        
+        if is_paren:
+            self.expect(')')
+        
+        return index, types, commas
     
     tuple<list<Var>, list<Annotation>> parse_index_variables(self):
         # Parse index variables.
-        list<Var> index = []
-        list<Annotation> types = []
+        # TODO Do we need this and the above?
+        index = <Var> []
+        types = <Annotation> []
         
         is_paren = self.current_str() == '('
         if is_paren:

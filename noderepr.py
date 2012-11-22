@@ -142,14 +142,15 @@ class WhileStmtRepr:
 
 
 class ForStmtRepr:
-    void __init__(self, any for_tok, any in_tok, any else_tok):
+    void __init__(self, any for_tok, any commas, any in_tok, any else_tok):
         self.for_tok = for_tok
+        self.commas = commas
         self.in_tok = in_tok
         self.else_tok = else_tok
 
 
 class SimpleStmtRepr:
-    """break/continue/pass/return/assert"""
+    """Representation for break, continue, pass, return and assert."""
     void __init__(self, any keyword, any br):
         self.keyword = keyword
         self.br = br

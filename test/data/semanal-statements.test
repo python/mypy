@@ -84,7 +84,7 @@ for x in object:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
+    NameExpr(x*)
     NameExpr(object [builtins.object])
     Block:1(
       ExpressionStmt:2(
@@ -100,7 +100,7 @@ MypyFile:1(
     f
     Block:1(
       ForStmt:2(
-        Var(x)
+        NameExpr(x* [l])
         NameExpr(f [__main__.f])
         Block:2(
           ExpressionStmt:3(
@@ -112,8 +112,8 @@ for x, y in []:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
-    Var(y)
+    NameExpr(x*)
+    NameExpr(y*)
     ListExpr:1()
     Block:1(
       ExpressionStmt:2(
@@ -131,8 +131,8 @@ MypyFile:1(
     c
     PassStmt:1())
   ForStmt:2(
-    Var(x)
-    Var(y)
+    NameExpr(x*)
+    NameExpr(y*)
     Type:2(builtins.object)
     Type:2(__main__.c)
     ListExpr:2()
@@ -149,7 +149,7 @@ x
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
+    NameExpr(x*)
     ListExpr:1()
     Block:1(
       PassStmt:2()))
@@ -167,12 +167,52 @@ MypyFile:1(
     f
     Block:1(
       ForStmt:2(
-        Var(x)
+        NameExpr(x* [l])
         ListExpr:2()
         Block:2(
           PassStmt:3()))
       ExpressionStmt:4(
         NameExpr(x [l])))))
+
+[case testReusingForLoopIndexVariable]
+for x in None:
+    pass
+for x in None:
+    pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    NameExpr(x*)
+    NameExpr(None [builtins.None])
+    Block:1(
+      PassStmt:2()))
+  ForStmt:3(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    Block:3(
+      PassStmt:4())))
+
+[case testReusingForLoopIndexVariable2]
+def f():
+    for x in None:
+        pass
+    for x in None:
+        pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ForStmt:2(
+        NameExpr(x* [l])
+        NameExpr(None [builtins.None])
+        Block:2(
+          PassStmt:3()))
+      ForStmt:4(
+        NameExpr(x [l])
+        NameExpr(None [builtins.None])
+        Block:4(
+          PassStmt:5())))))
 
 [case testLoopWithElse]
 for x in []:
@@ -186,7 +226,7 @@ else:
 [out]
 MypyFile:1(
   ForStmt:1(
-    Var(x)
+    NameExpr(x*)
     ListExpr:1()
     Block:1(
       PassStmt:2())
@@ -213,7 +253,7 @@ MypyFile:1(
     Block:1(
       BreakStmt:2()))
   ForStmt:3(
-    Var(x)
+    NameExpr(x*)
     ListExpr:3()
     Block:3(
       BreakStmt:4())))
@@ -230,7 +270,7 @@ MypyFile:1(
     Block:1(
       ContinueStmt:2()))
   ForStmt:3(
-    Var(x)
+    NameExpr(x*)
     ListExpr:3()
     Block:3(
       ContinueStmt:4())))

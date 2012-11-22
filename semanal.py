@@ -104,6 +104,8 @@ class SemanticAnal(NodeVisitor):
                 self.anal_type_def((TypeDef)d)
             elif isinstance(d, VarDef):
                 self.anal_var_def((VarDef)d)
+            elif isinstance(d, ForStmt):
+                self.anal_for_stmt((ForStmt)d)
         # Add implicit definition of 'None' to builtins, as we cannot define a
         # variable with a None type explicitly.
         if mod_id == 'builtins':
@@ -139,6 +141,10 @@ class SemanticAnal(NodeVisitor):
             self.check_no_global(v.name(), d)
             v._full_name = self.qualified_name(v.name())
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
+
+    void anal_for_stmt(self, ForStmt s):
+        for n in s.index:
+            self.analyse_lvalue(n, False, True)
     
     
     # Second pass of semantic analysis
@@ -448,19 +454,25 @@ class SemanticAnal(NodeVisitor):
         self.visit_block_maybe(s.else_body)
     
     void visit_for_stmt(self, ForStmt s):
+        s.expr.accept(self)
+        
+        # Bind index variables and check if they define new names.
+        for n in s.index:
+            self.analyse_lvalue(n)
+        
+        # Analyze index variable types.
         for i in range(len(s.types)):
             t = s.types[i]
             if t:
                 t.accept(self)
-                s.index[i].typ = t
+                v = (Var)s.index[i].node
+                # TODO check if redefinition
+                v.typ = t
         
         # Report error if only some of the loop variables have annotations.
         if s.types != [None] * len(s.types) and None in s.types:
             self.fail('Cannot mix unannotated and annotated loop variables', s)
-        
-        s.expr.accept(self)
-        for ind in s.index:
-            self.add_var(ind, s)
+            
         self.loop_depth += 1
         self.visit_block(s.body)
         self.loop_depth -= 1

@@ -134,8 +134,8 @@ class TypeChecker(NodeVisitor<Typ>):
             if defn.items[0][1]:
                 # Explicit types.
                 if len(defn.items) == 1:
-                    self.check_assignment(defn.items[0][1], None, defn.init,
-                                          defn.init)
+                    self.check_single_assignment(defn.items[0][1], None,
+                                                 defn.init, defn.init)
                 else:
                     # Multiple assignment.
                     list<Typ> lvt = []
@@ -295,13 +295,14 @@ class TypeChecker(NodeVisitor<Typ>):
     void check_override(self, FunctionLike override, FunctionLike original,
                         str name, str supertype, Context node):
         """Check a method override with given signatures.
-        
-         override:  The signature of the overriding method.
-         original:  The signature of the original supertype method.
-         name:      The name of the subtype. This and the next argument are
-                    only used for generating error messages.
-         supertype: The name of the supertype.
-         """
+
+        Arguments:
+          override:  The signature of the overriding method.
+          original:  The signature of the original supertype method.
+          name:      The name of the subtype. This and the next argument are
+                     only used for generating error messages.
+          supertype: The name of the supertype.
+        """
         if (isinstance(override, Overloaded) or
                 isinstance(original, Overloaded) or
                 len(((Callable)override).arg_types) !=
@@ -390,16 +391,18 @@ class TypeChecker(NodeVisitor<Typ>):
         # TODO support chained assignment x = y = z
         if len(s.lvalues) > 1:
             self.fail('Chained assignment not supported yet', s)
-        
+
+        self.check_assignments(self.expand_lvalues(s.lvalues[0]), s.rvalue)
+
+    void check_assignments(self, list<Node> lvalues, Node rvalue):        
         # Collect lvalue types. Index lvalues require special consideration,
-        # since we cannot typecheck them until we known the rvalue type.
-        list<Typ> lvalue_types = []    # May be None
+        # since we cannot typecheck them until we know the rvalue type.
+        lvalue_types = <Typ> []    # May be None
         # Base type and index types (or None)
-        list<tuple<Typ, Node>> index_lvalue_types = []
-        list<Var> inferred = []
+        index_lvalue_types = <tuple<Typ, Node>> []
+        inferred = <Var> []
         is_inferred = False
         
-        lvalues = self.expand_lvalues(s.lvalues[0])
         for lv in lvalues:
             if self.is_definition(lv):
                 is_inferred = True
@@ -421,13 +424,13 @@ class TypeChecker(NodeVisitor<Typ>):
         
         if len(lvalues) == 1:
             # Single lvalue.
-            self.check_assignment(lvalue_types[0], index_lvalue_types[0],
-                                  s.rvalue, s.rvalue)
+            self.check_single_assignment(lvalue_types[0],
+                                         index_lvalue_types[0], rvalue, rvalue)
         else:
             self.check_multi_assignment(lvalue_types, index_lvalue_types,
-                                        s.rvalue, s.rvalue)
+                                        rvalue, rvalue)
         if is_inferred:
-            self.infer_variable_type(inferred, self.accept(s.rvalue), s.rvalue)
+            self.infer_variable_type(inferred, self.accept(rvalue), rvalue)
     
     def is_definition(self, s):
         return ((isinstance(s, NameExpr) or isinstance(s, MemberExpr)) and
@@ -468,8 +471,8 @@ class TypeChecker(NodeVisitor<Typ>):
                         for i in range(len(names)):
                             names[i].typ = Annotation(tinit_type.items[i], -1)
                     else:
-                        self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                                  context)
+                        self.msg.incompatible_value_count_in_assignment(
+                            len(names), len(tinit_type.items), context)
                 elif (isinstance(init_type, Instance) and
                         ((Instance)init_type).typ.full_name() ==
                             'builtins.list'):
@@ -548,22 +551,23 @@ class TypeChecker(NodeVisitor<Typ>):
             else:
                 # The number of values is compatible. Check their types.
                 for j in range(len(lvalue_types)):
-                    self.check_assignment(lvalue_types[j],
-                                          index_lvalue_types[j],
-                                          self.temp_node(trvalue.items[j]),
-                                          context, msg)
+                    self.check_single_assignment(
+                        lvalue_types[j], index_lvalue_types[j],
+                        self.temp_node(trvalue.items[j]), context, msg)
         elif (isinstance(rvalue_type, Instance) and
                 ((Instance)rvalue_type).typ.full_name() == 'builtins.list'):
             # Rvalue with Array type.
             item_type = ((Instance)rvalue_type).args[0]
             for k in range(len(lvalue_types)):
-                self.check_assignment(lvalue_types[k],
-                                      index_lvalue_types[k],
-                                      self.temp_node(item_type), context, msg)
+                self.check_single_assignment(lvalue_types[k],
+                                             index_lvalue_types[k],
+                                             self.temp_node(item_type),
+                                             context, msg)
         else:
             self.fail(msg, context)
     
-    void check_assignment(self, Typ lvalue_type, tuple<Typ, Node> index_lvalue,
+    void check_single_assignment(self,
+                          Typ lvalue_type, tuple<Typ, Node> index_lvalue,
                           Node rvalue, Context context,
                           str msg=messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT):
         if lvalue_type:
@@ -633,8 +637,9 @@ class TypeChecker(NodeVisitor<Typ>):
         
         if isinstance(s.lvalue, IndexExpr):
             lv = (IndexExpr)s.lvalue
-            self.check_assignment(None, (self.accept(lv.base), lv.index),
-                                  s.rvalue, s.rvalue)
+            self.check_single_assignment(None,
+                                         (self.accept(lv.base), lv.index),
+                                         s.rvalue, s.rvalue)
         else:
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
@@ -699,18 +704,24 @@ class TypeChecker(NodeVisitor<Typ>):
         item = echk.check_call(method, [], s.expr)
         
         if not s.is_annotated():
-            self.infer_variable_type(s.index, item, s)
-        
-        if len(s.index) == 1:
-            if s.index[0].typ:
-                self.check_assignment(s.index[0].typ.typ, None,
-                                      self.temp_node(item), s,
-                                      messages.INCOMPATIBLE_TYPES_IN_FOR)
+            # Create a temporary copy of variables with Node item type.
+            # TODO this is ugly
+            index = <Node> []
+            for i in s.index:
+                index.append(i)
+            self.check_assignments(index, self.temp_node(item, s.expr))
+        elif len(s.index) == 1:
+            v = (Var)s.index[0].node
+            if v.typ:
+                self.check_single_assignment(v.typ.typ, None,
+                                           self.temp_node(item), s,
+                                           messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
             list<Typ> t = []
-            for index in s.index:
-                if index.typ:
-                    t.append(index.typ.typ)
+            for ii in s.index:
+                v = (Var)ii.node
+                if v.typ:
+                    t.append(v.typ.typ)
                 else:
                     t.append(Any())
             self.check_multi_assignment(
@@ -929,9 +940,12 @@ class TypeChecker(NodeVisitor<Typ>):
         if isinstance(typ, Void):
             self.msg.does_not_return_value(typ, context)
     
-    Node temp_node(self, Typ t):
+    Node temp_node(self, Typ t, Context context=None):
         """Create a temporary node with the given, fixed type."""
-        return TempNode(t)
+        temp = TempNode(t)
+        if context:
+            temp.set_line(context.get_line())
+        return temp
     
     void fail(self, str msg, Context context):
         """Produce an error message."""
