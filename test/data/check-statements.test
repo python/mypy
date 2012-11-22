@@ -222,26 +222,6 @@ main, line 3: Unsupported operand types for >> ("A" and "A")
 main, line 4: Unsupported operand types for // ("A" and "A")
 
 
--- Unsupported statements
--- ----------------------
-
-
-[case testYield]
-any f():
-  yield None
-[out]
-main: In function "f":
-main, line 2: yield statement not implemented yet
-
-[case testWith]
-void f():
-  with None:
-    pass
-[out]
-main: In function "f":
-main, line 2: with statement not implemented yet
-
-
 -- Assert statement
 -- ----------------
 

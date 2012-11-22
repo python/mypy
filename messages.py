@@ -408,8 +408,9 @@ class MessageBuilder:
         self.fail('Class "{}" implements interface "{}" more than once'
                   .format(typ.name(), iface.name()), typ)
     
-    void not_implemented(self, str msg, Context context):
-        self.fail('{} not implemented yet'.format(msg), context)
+    Typ not_implemented(self, str msg, Context context):
+        self.fail('Feature not implemented yet ({})'.format(msg), context)
+        return Any()
     
     void interface_member_not_implemented(self, TypeInfo typ, TypeInfo iface,
                                           str member):

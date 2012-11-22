@@ -10,7 +10,8 @@ from nodes import (
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     BytesExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
-    Context, AccessorNode
+    Context, AccessorNode, ListComprehension, ConditionalExpr, GeneratorExpr,
+    Decorator, SetExpr
 )
 from nodes import function_type, method_type
 from mtypes import (
@@ -644,12 +645,6 @@ class TypeChecker(NodeVisitor<Typ>):
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
     
-    Typ visit_yield_stmt(self, YieldStmt s):
-        self.msg.not_implemented('yield statement', s)
-    
-    Typ visit_with_stmt(self, WithStmt s):
-        self.msg.not_implemented('with statement', s)
-    
     Typ visit_assert_stmt(self, AssertStmt s):
         self.accept(s.expr)
     
@@ -805,6 +800,31 @@ class TypeChecker(NodeVisitor<Typ>):
     
     Typ visit_temp_node(self, TempNode e):
         return e.typ
+
+    #
+    # Currently unsupported features
+    #
+
+    Typ visit_list_comprehension(self, ListComprehension e):
+        return self.msg.not_implemented('list comprehension', e)
+
+    Typ visit_set_expr(self, SetExpr e):
+        return self.msg.not_implemented('set literal', e)
+
+    Typ visit_conditional_expr(self, ConditionalExpr e):
+        return self.msg.not_implemented('conditional expression', e)
+
+    Typ visit_generator_expr(self, GeneratorExpr e):
+        return self.msg.not_implemented('generator expression', e)
+
+    Typ visit_decorator(self, Decorator e):
+        return self.msg.not_implemented('decorator', e)
+    
+    Typ visit_yield_stmt(self, YieldStmt s):
+        self.msg.not_implemented('yield statement', s)
+    
+    Typ visit_with_stmt(self, WithStmt s):
+        self.msg.not_implemented('with statement', s)
     
     #
     # Helpers
