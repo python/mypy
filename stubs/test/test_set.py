@@ -5,3 +5,4 @@
 # TODO this is a partial implementation
 
 def cube(n): pass
+def linegraph(x): pass
