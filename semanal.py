@@ -51,8 +51,6 @@ class SemanticAnal(NodeVisitor):
     TypeInfo typ        # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
-    bool is_local_ctx   # Are we now analysing a block (not at the
-                        # top level or at class body)?
     int block_depth     # Depth of nested blocks
     int loop_depth      # Depth of breakable loops
     str cur_mod_id      # Current module id (or None) (phase 2)
@@ -75,7 +73,6 @@ class SemanticAnal(NodeVisitor):
         self.class_tvars = None
         self.is_init_method = False
         self.is_function = False
-        self.is_local_ctx = False
     
     #
     # First pass of semantic analysis
@@ -172,6 +169,9 @@ class SemanticAnal(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
+        if self.locals is not None:
+            self.fail('Nested functions not supported yet', defn)
+            return
         if self.typ:
             defn.info = self.typ
             if not defn.is_overload:
