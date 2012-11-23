@@ -82,5 +82,5 @@ class TextTestRunner:
     void __init__(self, TextIO stream=None, bool descriptions=True,
                   int verbosity=1): pass
 
-void main(str module='__main__', str defaultTest=None, list<str> argv=None,
+void main(str module='__main__', str defaultTest=None, str[] argv=None,
           any testRunner=None, any testLoader=None): pass # TODO types

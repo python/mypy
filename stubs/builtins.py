@@ -60,8 +60,8 @@ interface Mapping<kt, vt>(Sized, Iterable<kt>):
     void update(self, Iterable<tuple<kt, vt>> m)
     
     # TODO use views for the return values instead
-    list<kt> keys(self)
-    list<vt> values(self)
+    kt[] keys(self)
+    vt[] values(self)
     list<tuple<kt, vt>> items(self)
 
 interface IO:    
@@ -82,7 +82,7 @@ interface IO:
     bytes read(self, int n=-1)
     bool readable(self)
     bytes readline(self, int limit=-1)
-    list<bytes> readlines(self, int hint=-1)
+    bytes[] readlines(self, int hint=-1)
     int seek(self, int offset, int whence=0)
     bool seekable(self)
     int tell(self)
@@ -91,7 +91,7 @@ interface IO:
     bool writable(self)
     # TODO buffer objects
     int write(self, bytes s)
-    void writelines(self, list<bytes> lines)
+    void writelines(self, bytes[] lines)
 
 interface TextIO:
     # TODO __enter__ etc.
@@ -113,7 +113,7 @@ interface TextIO:
     str read(self, int n=-1)
     bool readable(self)
     str readline(self, int limit=-1)
-    list<str> readlines(self, int hint=-1)
+    str[] readlines(self, int hint=-1)
     int seek(self, int offset, int whence=0)
     bool seekable(self)
     int tell(self)
@@ -122,7 +122,7 @@ interface TextIO:
     bool writable(self)
     # TODO buffer objects
     int write(self, str s)
-    void writelines(self, list<str> lines)
+    void writelines(self, str[] lines)
 
 
 # Classes
@@ -147,7 +147,7 @@ class int(int_t, float_t):
     int __mul__(self, int x): pass
     float __mul__(self, float x): pass
     str __mul__<t>(self, str s): pass
-    list<t> __mul__<t>(self, list<t> l): pass
+    t[] __mul__<t>(self, t[] l): pass
     
     int __floordiv__(self, int x): pass
     float __floordiv__(self, float x): pass
@@ -263,10 +263,10 @@ class str(int_t, float_t, Sequence<str>):
     int rindex(self, str sub, int start, int end): pass
     str rjust(self, int width, str fillchar=' '): pass
     tuple<str, str, str> rpartition(self, str sep): pass
-    list<str> rsplit(self, str sep=None, int maxsplit=-1): pass
+    str[] rsplit(self, str sep=None, int maxsplit=-1): pass
     str rstrip(self, str chars=None): pass
-    list<str> split(self, str sep=None, int maxsplit=-1): pass
-    list<str> splitlines(self, bool keepends=False): pass
+    str[] split(self, str sep=None, int maxsplit=-1): pass
+    str[] splitlines(self, bool keepends=False): pass
     # TODO tuple prefix; None value for int
     bool startswith(self, str prefix, int start=0, int end=None): pass
     str strip(self): pass
@@ -319,7 +319,7 @@ class bytes(int_t, float_t, Sequence<int>):
     # TODO keyword args
     bytes replace(self, bytes old, bytes new, int count=-1): pass
     bytes join(self, Iterable<bytes> iterable): pass
-    list<bytes> split(self, bytes sep=None, int maxsplit=-1): pass
+    bytes[] split(self, bytes sep=None, int maxsplit=-1): pass
     bool startswith(self, bytes prefix): pass
     bool endswith(self, bytes suffix): pass
     
@@ -389,11 +389,11 @@ class list<t>(Sequence<t>):
     int __hash__(self): pass
     
     t __getitem__(self, int i): pass
-    list<t> __getitem__(self, slice s): pass    
+    t[] __getitem__(self, slice s): pass    
     void __setitem__(self, int i, t o): pass
     void __delitem__(self, int i): pass    
-    list<t> __add__(self, list<t> x): pass
-    list<t> __mul__(self, int n): pass
+    t[] __add__(self, t[] x): pass
+    t[] __mul__(self, int n): pass
     bool __contains__(self, object o): pass
 
 
@@ -428,8 +428,8 @@ class dict<kt, vt>(Mapping<kt, vt>):
     void update(self, Iterable<tuple<kt, vt>> m): pass
 
     # TODO use views for the return values instead
-    list<kt> keys(self): pass
-    list<vt> values(self): pass
+    kt[] keys(self): pass
+    vt[] values(self): pass
     list<tuple<kt, vt>> items(self): pass
 
     str __str__(self): pass
@@ -503,8 +503,8 @@ bool all(Iterable i): pass
 #bool any(Iterable i): pass
 str ascii(object o): pass
 str chr(int code): pass
-list<str> dir(): pass
-list<str> dir(object o): pass
+str[] dir(): pass
+str[] dir(object o): pass
 tuple<int, int> divmod(int a, int b): pass
 tuple<float, float> divmod(float a, float b): pass
 Iterator<t> filter<t>(func<t, any> function, Iterable<t> iterable): pass
@@ -567,9 +567,9 @@ int round(float number): pass
 float round(float number, int ndigits): pass
 void setattr(any object, str name, any value): pass
 # TODO 'key' must be keyword argument
-list<t> sorted<t>(Iterable<t> iterable, func<t, any> key=None,
+t[] sorted<t>(Iterable<t> iterable, func<t, any> key=None,
                   bool reverse=False): pass
-list<t> sorted<t>(Iterable<t> iterable, bool reverse=False): pass
+t[] sorted<t>(Iterable<t> iterable, bool reverse=False): pass
 t sum<t>(Iterable<t> iterable, t start=None): pass
 # TODO more than two iterables
 Iterator<tuple<t1>> zip<t1>(Iterable<t1> iter1): pass

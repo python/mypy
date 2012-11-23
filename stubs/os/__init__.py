@@ -149,21 +149,21 @@ Mapping<str, str> environ(): pass
 Mapping<bytes, bytes> environb(): pass
 bytes fsencode(str filename): pass
 str fsdecode(bytes filename): pass
-list<str> get_exec_path(env=None) : pass
-# NOTE: get_exec_path(): returns list<bytes> when env not None
+str[] get_exec_path(env=None) : pass
+# NOTE: get_exec_path(): returns bytes[] when env not None
 #str ctermid(): pass  # Unix only
 #int getegid(): pass  # Unix only
 #int geteuid(): pass  # Unix only
 #int getgid(): pass  # Unix only
-#list<int> getgroups(): pass  # Unix only, behaves differently on Mac
+#int[] getgroups(): pass  # Unix only, behaves differently on Mac
 #void initgroups(str username, int gid): pass  # Unix only
 str getlogin(): pass
 #int getpgid(pid): pass  # Unix only
 #int getpgrp(): pass  # Unix only
 int getpid(): pass
 int getppid(): pass
-#list<int> getresuid(): pass  # Unix only, returns 3-tuple of int
-#list<int> getresgid(): pass  # Unix only, returns 3-tuple of int
+#int[] getresuid(): pass  # Unix only, returns 3-tuple of int
+#int[] getresgid(): pass  # Unix only, returns 3-tuple of int
 int getuid(): pass  # Unix only
 str getenv(str key, str default=None): pass
 bytes getenvb(bytes key, bytes default=None): pass
@@ -171,7 +171,7 @@ void putenv(str key, str value): pass
 #void setegid(int egid): pass  # Unix only
 #void seteuid(int euid): pass  # Unix only
 #void setgid(int gid): pass  # Unix only
-#void setgroups(list<int> groups): pass  # Unix only
+#void setgroups(int[] groups): pass  # Unix only
 #int setpgrp(): pass  # Unix only
 #int setpgid(int pid, int pgrp): pass  # Unix only
 #void setregid(int rgid, int egid): pass  # Unix only
@@ -183,7 +183,7 @@ void putenv(str key, str value): pass
 #void setuid(uid): pass  # Unix only
 str strerror(int code): pass
 int umask(int mask): pass
-#list<str> uname(): pass  # Unix only, reurns 5-tuple of str
+#str[] uname(): pass  # Unix only, reurns 5-tuple of str
 void unsetenv(str key): pass
 IO fdopen(int fd, str file, int flags, int mode=0o777): pass
 void close(int fd): pass
@@ -222,7 +222,7 @@ void chown(str path, int uid, int gid): pass  # Unix only
 #void lchmod(str path, int mode): pass  # Unix only
 #void lchown(str path, int uid, int gid): pass  # Unix only
 void link(str src, str link_name): pass
-list<str> listdir(str path='.'): pass
+str[] listdir(str path='.'): pass
 str lstat(str path): pass
 #void mkfifo(path, int mode=0o666): pass  # Unix only
 void mknod(str filename, int mode=0o600, int device=0): pass
@@ -249,7 +249,7 @@ void unlink(str path): pass
 void utime(str path, tuple<int, int> times=None): pass
 void utime(str path, tuple<float, float> times=None): pass
 # TODO onerror: function from OSError to void
-list<str> walk(str top, bool topdown=True, any onerror=None, 
+str[] walk(str top, bool topdown=True, any onerror=None, 
                bool followlinks=False): 
     pass
 # walk(): "By default errors from the os.listdir() call are ignored.  If
@@ -259,14 +259,14 @@ list<str> walk(str top, bool topdown=True, any onerror=None,
 # to abort the walk.  Note that the filename is available as the
 # filename attribute of the exception object."
 void abort(): pass
-void execl(str path, list<str> args): pass # TODO fix
-void execle(str path, list<str> args, dict<str, str> env): pass # TODO fix
-void execlp(str path, list<str> args): pass # TODO fix
-void execlpe(str path, list<str> args, dict<str, str> env): pass # TODO fix
-void execv(str path, list<str> args): pass
-void execve(str path, list<str> args, dict<str, str> env): pass
-void execvp(str file, list<str> args): pass
-void execvpe(str file, list<str> args, dict<str, str> env): pass
+void execl(str path, str[] args): pass # TODO fix
+void execle(str path, str[] args, dict<str, str> env): pass # TODO fix
+void execlp(str path, str[] args): pass # TODO fix
+void execlpe(str path, str[] args, dict<str, str> env): pass # TODO fix
+void execv(str path, str[] args): pass
+void execve(str path, str[] args, dict<str, str> env): pass
+void execvp(str file, str[] args): pass
+void execvpe(str file, str[] args, dict<str, str> env): pass
 void _exit(int n): pass
 #int fork(): pass  # Unix only
 #tuple<int, int> forkpty(): pass  # some flavors of Unix
@@ -278,22 +278,22 @@ void kill(int pid, int sig): pass
 # TODO return type
 IO popen(str command, str mode='r', int bufsize=-1): pass  # TODO: params???
 
-int spawnl(int mode, str path, list<str> args): pass # TODO fix
-int spawnle(int mode, str path, list<str> args,
+int spawnl(int mode, str path, str[] args): pass # TODO fix
+int spawnle(int mode, str path, str[] args,
             dict<str, str> env): pass # TODO fix
-int spawnlp(int mode, IO file, list<str> args): pass  # Unix only TODO fix
-int spawnlpe(int mode, IO file, list<str> args, dict<str, str> env): 
+int spawnlp(int mode, IO file, str[] args): pass  # Unix only TODO fix
+int spawnlpe(int mode, IO file, str[] args, dict<str, str> env): 
     pass  # Unix only TODO fix
-int spawnv(int mode, str path, list<str> args): pass
-int spawnve(int mode, str path, list<str> args, dict<str, str> env): pass
-int spawnvp(int mode, IO file, list<str> args): pass  # Unix only
-int spawnvpe(int mode, IO file, list<str> args, dict<str, str> env): 
+int spawnv(int mode, str path, str[] args): pass
+int spawnve(int mode, str path, str[] args, dict<str, str> env): pass
+int spawnvp(int mode, IO file, str[] args): pass  # Unix only
+int spawnvpe(int mode, IO file, str[] args, dict<str, str> env): 
     pass  # Unix only
 #void startfile(str path): pass  # Windows only
 #void startfile(str path, str operation): pass  # Windows only
 #tuple<int, int> system(str command): pass  # Unix only
 int system(str command): pass
-list<float> times(): pass  # actually returns a 5-tuple of float
+float[] times(): pass  # actually returns a 5-tuple of float
 #tuple<int, int> wait(): pass  # Unix only
 tuple<int, int> waitpid(int pid, int options): pass
 #tuple<int, int, object> wait3(): pass  # Unix only

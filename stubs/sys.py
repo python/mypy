@@ -1,6 +1,6 @@
 # Stubs for the sys module
 
-list<str> argv
+str[] argv
 str byteorder
 str exec_prefix
 str executable
@@ -8,7 +8,7 @@ str float_repr_style
 int hexversion
 int maxsize
 int maxunicode
-list<str> path
+str[] path
 str platform
 str prefix
 str ps1
@@ -34,7 +34,7 @@ str intern(str string): pass
 # TODO these are not available:
 #
 # abiflags
-# list<str> builtin_module_names
+# str[] builtin_module_names
 # def call_tracing(func, args): pass
 # str copyright
 # int dllhandle

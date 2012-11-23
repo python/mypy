@@ -43,8 +43,8 @@ class Counter<t>(dict<t, int>):
     void __init__(self, Iterable<t> iterable): pass
     # TODO keyword arguments
     Iterator<t> elements(self): pass
-    list<t> most_common(self): pass
-    list<t> most_common(self, int n): pass
+    t[] most_common(self): pass
+    t[] most_common(self, int n): pass
     void subtract(self, Mapping<t, int> Mapping): pass
     void subtract(self, Iterable<t> iterable): pass
     # TODO update

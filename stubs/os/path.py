@@ -9,7 +9,7 @@ bool supports_unicode_filenames
 # ----- os.path function stubs -----
 str abspath(str path): pass
 str basename(path): pass
-str commonprefix(list<str> list): pass
+str commonprefix(str[] list): pass
 str dirname(str path): pass
 bool exists(str path): pass
 bool lexists(str path): pass

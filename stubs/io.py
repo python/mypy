@@ -27,14 +27,14 @@ class BytesIO(IO):
     bytes read(self, int n=-1): pass
     bool readable(self): pass
     bytes readline(self, int limit=-1): pass
-    list<bytes> readlines(self, int hint=-1): pass
+    bytes[] readlines(self, int hint=-1): pass
     int seek(self, int offset, int whence=0): pass
     bool seekable(self): pass
     int tell(self): pass
     int truncate(self, int size=None): pass
     bool writable(self): pass
     int write(self, bytes s): pass
-    void writelines(self, list<bytes> lines): pass
+    void writelines(self, bytes[] lines): pass
     bytes getvalue(self): pass
     str read1(self): pass
 
@@ -49,12 +49,12 @@ class StringIO(TextIO):
     str read(self, int n=-1): pass
     bool readable(self): pass
     str readline(self, int limit=-1): pass
-    list<str> readlines(self, int hint=-1): pass
+    str[] readlines(self, int hint=-1): pass
     int seek(self, int offset, int whence=0): pass
     bool seekable(self): pass
     int tell(self): pass
     int truncate(self, int size=None): pass
     bool writable(self): pass
     int write(self, str s): pass
-    void writelines(self, list<str> lines): pass
+    void writelines(self, str[] lines): pass
     str getvalue(self): pass

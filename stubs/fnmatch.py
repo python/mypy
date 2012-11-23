@@ -4,5 +4,5 @@
 
 bool fnmatch(str filename, str pattern): pass
 bool fnmatchcase(str filename, str pattern): pass
-list<str> filter(Iterable<str> names, str pattern): pass
+str[] filter(Iterable<str> names, str pattern): pass
 str translate(str pattern): pass
