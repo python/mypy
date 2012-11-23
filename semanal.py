@@ -23,9 +23,11 @@ from typeanal import TypeAnalyser
 
 
 class SemanticAnal(NodeVisitor):
-    """Semantic analyzer that binds names and does various consistency
-    checks for a parse tree. Note that type checking is performed as a
-    separate pass.
+    """Semantically analyze parsed mypy files.
+
+    The analyzer binds names and does various consistency checks for a
+    parse tree. Note that type checking is performed as a separate
+    pass.
     """
     # Library search paths
     str[] lib_path
@@ -34,7 +36,7 @@ class SemanticAnal(NodeVisitor):
     # Global name space for current module
     SymbolTable globals
     # Names declared using "global" (separate set for each scope)
-    list<set<str>> global_decls
+    set<str>[] global_decls
     # Module-local name space for current modules
     # TODO not needed?
     SymbolTable module_names
@@ -45,12 +47,13 @@ class SemanticAnal(NodeVisitor):
     # All classes, from name to info (TODO needed?)
     TypeInfoMap types
     
-    str[] stack     # Function local/type variable stack
+    str[] stack         # Function local/type variable stack
     TypeInfo typ        # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
     bool is_local_ctx   # Are we now analysing a block (not at the
                         # top level or at class body)?
+    int block_depth     # Depth of nested blocks
     int loop_depth      # Depth of breakable loops
     str cur_mod_id      # Current module id (or None) (phase 2)
     set<str> imports    # Imported modules (during phase 2 analysis)
@@ -63,6 +66,7 @@ class SemanticAnal(NodeVisitor):
         self.stack = [None]
         self.imports = set()
         self.typ = None
+        self.block_depth = 0
         self.loop_depth = 0
         self.types = TypeInfoMap()
         self.lib_path = lib_path
@@ -73,9 +77,9 @@ class SemanticAnal(NodeVisitor):
         self.is_function = False
         self.is_local_ctx = False
     
-    
+    #
     # First pass of semantic analysis
-    
+    #
     
     void anal_defs(self, Node[] defs, str fnam, str mod_id):
         """Perform the first analysis pass.
@@ -146,13 +150,12 @@ class SemanticAnal(NodeVisitor):
         for n in s.index:
             self.analyse_lvalue(n, False, True)
     
-    
+    #
     # Second pass of semantic analysis
-    
+    #
     
     # Do the bulk of semantic analysis in this second and final semantic
     # analysis pass (other than type checking).
-    
     
     void visit_file(self, MypyFile file_node, str fnam):
         self.errors.set_file(fnam)
@@ -322,9 +325,9 @@ class SemanticAnal(NodeVisitor):
                 self.globals[name] = SymbolTableNode(node.kind, node.node,
                                                      self.cur_mod_id)
     
-    
+    #
     # Statements
-    
+    #
     
     void visit_block(self, Block b):
         for s in b.body:
@@ -521,9 +524,9 @@ class SemanticAnal(NodeVisitor):
         for n in g.names:
             self.global_decls[-1].add(n)
     
-    
+    #
     # Expressions
-    
+    #
     
     void visit_name_expr(self, NameExpr expr):
         n = self.lookup(expr.name, expr)
@@ -614,9 +617,9 @@ class SemanticAnal(NodeVisitor):
         for i in range(len(expr.types)):
             expr.types[i] = self.anal_type(expr.types[i])
     
-    
+    #
     # Helpers
-    
+    #
     
     SymbolTableNode lookup(self, str name, Context ctx):
         if name in self.global_decls[-1]:
