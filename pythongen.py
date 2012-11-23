@@ -20,8 +20,10 @@ removed_names = {'re': ['Pattern', 'Match']}
 
 
 class PythonGenerator(OutputVisitor):
-    """Python backend. Translate semantically analyzed parse trees to Python.
-    Reuse most of the generation logic from the mypy pretty printer implemented
+    """Python backend.
+
+    Translate semantically analyzed parse trees to Python.  Reuse most
+    of the generation logic from the mypy pretty printer implemented
     in OutputVisitor.
     """
 
@@ -160,6 +162,12 @@ class PythonGenerator(OutputVisitor):
         self.node(o.body.body[0].expr)
     
     def visit_overloaded_func_def(self, o):
+        """Translate overloaded function definition.
+
+        Overloaded functions are transformed into a single Python function that
+        performs argument type checks and length checks to dispatch to the
+        right implementation.
+        """
         indent = self.indent * ' '
         first = o.items[0]
         r = first.repr
