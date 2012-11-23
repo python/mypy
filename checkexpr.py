@@ -151,7 +151,7 @@ class ExpressionChecker:
             return self.msg.not_callable(callee, context)
     
     Typ[] infer_arg_types_in_context(self, Callable callee,
-                                         Node[] args):
+                                     Node[] args):
         Typ[] res = []
         
         fixed = len(args)
