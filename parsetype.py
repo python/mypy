@@ -107,17 +107,18 @@ class TypeParser:
         rangle = self.expect('>')
         return types, langle, rangle, commas
     
-    Any parse_any_type(self):
-        """Parse "any" type."""
+    Typ parse_any_type(self):
+        """Parse 'any' type (or list of ... of any)."""
         tok = self.skip()
-        return Any(tok.line, AnyRepr(tok))
+        anyt = Any(tok.line, AnyRepr(tok))
+        return self.parse_optional_list_type(anyt)
     
     Void parse_void_type(self):
-        """Parse "void" type."""
+        """Parse 'void' type."""
         tok = self.skip()
         return Void(None, tok.line, VoidRepr(tok))
     
-    UnboundType parse_named_type(self):
+    Typ parse_named_type(self):
         line = self.current_token().line
         name = ''
         list<Token> components = []
@@ -146,8 +147,20 @@ class TypeParser:
             
             rangle = self.expect('>')
         
-        return UnboundType(name, args, line, CommonTypeRepr(components, langle,
-                                                            commas, rangle))
+        typ = UnboundType(name, args, line, CommonTypeRepr(components,
+                                                           langle,
+                                                           commas, rangle))
+        return self.parse_optional_list_type(typ)
+
+    Typ parse_optional_list_type(self, Typ typ):
+        """Try to parse list types t[]."""
+        while self.current_token_str() == '[':
+            line = self.current_token().line
+            # TODO representation
+            self.skip()
+            self.expect(']')
+            typ = UnboundType('__builtins__.list', [typ], line, None)
+        return typ
     
     # Helpers
     

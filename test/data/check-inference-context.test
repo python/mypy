@@ -117,7 +117,7 @@ void h():
     ab = y
 
 A<T> f<T>(T a): pass
-list<T> g<T>(T a): pass
+T[] g<T>(T a): pass
 
 class A<T>: pass
 class B: pass
@@ -310,8 +310,8 @@ class C(B): pass
 
 
 [case testEmptyListExpression]
-list<A> aa
-list<object> ao
+A[] aa
+object[] ao
 A a
 
 a = [] # E: Incompatible types in assignment
@@ -323,9 +323,9 @@ class A: pass
 [builtins fixtures/list.py]
 
 [case testSingleItemListExpressions]
-list<A> aa
-list<B> ab
-list<object> ao
+A[] aa
+B[] ab
+object[] ao
 A a
 B b
 
@@ -343,9 +343,9 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testMultiItemListExpressions]
-list<A> aa
-list<B> ab
-list<object> ao
+A[] aa
+B[] ab
+object[] ao
 A a
 B b
 
@@ -372,13 +372,13 @@ class B: pass
 main: In function "f":
 
 [case testNestedListExpressions]
-list<list<object>> aao
-list<list<B>> aab
-list<B> ab
+object[][] aao
+B[][] aab
+B[] ab
 B b
 object o
 
-aao = [[o], ab] # E: List item 2 has incompatible type list<B>
+aao = [[o], ab] # E: List item 2 has incompatible type B[]
 aab = [[], [o]] # E: List item 1 has incompatible type "object"
 
 aao = [[None], [b], [], [o]]
@@ -394,7 +394,7 @@ class B: pass
 
 
 [case testParenthesesAndContext]
-list<object> l = ([A()])
+object[] l = ([A()])
 class A: pass
 [builtins fixtures/list.py]
 

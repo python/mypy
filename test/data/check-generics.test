@@ -556,8 +556,8 @@ main, line 5: Incompatible types in assignment
 
 
 [case testArrayExpressionsWithTypeApplication]
-list<A> aa
-list<B> ab
+A[] aa
+B[] ab
 A a, A2 a2, B b
 
 ab = <A> []      # Fail
@@ -584,18 +584,18 @@ main, line 7: List item 1 has incompatible type "B"
 main, line 8: List item 1 has incompatible type "A"
 
 [case testNestedArrayWithTypeApplication]
-list<list<B>> aa
+B[][] aa
 B b
 C c
 
-aa = <list<B>> [<B> [], <C> [c]] # Fail
-aa = <list<B>> [<B> [], <B> [b]]
+aa = <B[]> [<B> [], <C> [c]] # Fail
+aa = <B[]> [<B> [], <B> [b]]
 
 class B: pass
 class C: pass
 [builtins fixtures/list.py]
 [out]
-main, line 5: List item 2 has incompatible type list<C>
+main, line 5: List item 2 has incompatible type C[]
 
 [case testInvalidTypeApplicationTarget]
 A a

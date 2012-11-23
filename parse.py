@@ -1680,20 +1680,33 @@ class Parser:
                         return -1, 0
                     if gt > 0:
                         # There was an unconsumed < of a << token; use that.
-                        return j, 0
+                        return self.try_scan_list_type(j)
                     elif self.tok[j].string == '>':
-                        return j + 1, 0
+                        return self.try_scan_list_type(j + 1)
                     elif self.tok[j].string == '>>':
                         return j + 1, 1
                     elif self.tok[j].string != ',':
                         return -1, 0
                     i = j + 1
             else:
-                return i + 1, 0
+                return self.try_scan_list_type(i + 1)
         elif self.tok[i].string == 'any':
-            return i + 1, 0
+            return self.try_scan_list_type(i + 1)
         else:
             return -1, 0
+
+    tuple<int, int> try_scan_list_type(self, int i):
+        if self.tok[i].string == '[':
+            while True:
+                if (self.tok[i].string == '[' and
+                        self.tok[i + 1].string == ']'):
+                    i += 2
+                    if self.tok[i].string != '[':
+                        return i, 0
+                else:
+                    return -1, 0
+        else:
+            return i, 0
 
 
 class ParseError(Exception): pass
