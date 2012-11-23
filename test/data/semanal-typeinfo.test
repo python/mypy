@@ -79,3 +79,16 @@ TypeInfoMap(
     Interfaces()
     Vars()
     Methods()))
+
+[case testAttributeWithoutType]
+class A:
+    a = A
+[out]
+TypeInfoMap(
+  __main__.A : TypeInfo(
+    Name(__main__.A)
+    Base(builtins.object)
+    Interfaces()
+    Vars(
+      a)
+    Methods()))

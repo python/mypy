@@ -652,3 +652,26 @@ if A:
     a = B() # E: Incompatible types in assignment
 class A: pass
 class B: pass
+
+
+-- Inferring attribute types
+-- -------------------------
+
+
+[case testInferAttributeType]
+class A:
+    a = B()
+class B: pass
+
+A().a = B()
+A().a = A() # E: Incompatible types in assignment
+
+[case testInferAttributeTypeAndAssignInInit]
+class A:
+    a = B()
+    void __init__(self):
+        self.a = A() # E: Incompatible types in assignment
+        self.a = B()
+class B: pass
+[out]
+main: In member "__init__" of class "A":

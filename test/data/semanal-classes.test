@@ -219,3 +219,15 @@ MypyFile:1(
         Block:3(
           ExpressionStmt:3(
             NameExpr(self [l])))))))
+
+[case testAttributeWithoutType]
+class A:
+    a = object
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    AssignmentStmt:2(
+      Lvalues(
+        NameExpr(a*))
+      NameExpr(object [builtins.object]))))

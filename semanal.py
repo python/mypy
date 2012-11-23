@@ -268,6 +268,7 @@ class SemanticAnal(NodeVisitor):
             self.typ.bases.append(defn.base_types[i])
             has_base_class = has_base_class or self.is_instance_type(
                                                         defn.base_types[i])
+        # Add 'object' as implicit base if there is no other base class.
         if (not defn.is_interface and not has_base_class and
                 defn.full_name != 'builtins.object'):
             defn.base_types.insert(0, self.object_type())
@@ -392,8 +393,10 @@ class SemanticAnal(NodeVisitor):
                         bool add_defs=False):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
-            nested_global = (self.locals is None and self.block_depth > 0)
+            nested_global = (self.locals is None and self.block_depth > 0 and
+                             not self.typ)
             if (add_defs or nested_global) and n.name not in self.globals:
+                # Define new global name.
                 v = Var(n.name)
                 v._full_name = self.qualified_name(n.name)
                 n.node = v
@@ -406,12 +409,22 @@ class SemanticAnal(NodeVisitor):
                                                               self.cur_mod_id)
             elif (self.locals is not None and n.name not in self.locals and
                   n.name not in self.global_decls[-1]):
+                # Define new local name.
                 v = Var(n.name)
                 n.node = v
                 n.is_def = True
                 n.kind = LDEF
                 self.add_local(v, n)
+            elif self.locals is None and (self.typ and
+                                          n.name not in self.typ.vars):
+                # Define a new attribute.
+                v = Var(n.name)
+                v.info = self.typ
+                n.node = v
+                n.is_def = True
+                self.typ.vars[n.name] = v
             else:
+                # Bind to an existing name.
                 lval.accept(self)
         elif isinstance(lval, MemberExpr):
             if not add_defs:
