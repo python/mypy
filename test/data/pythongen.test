@@ -448,3 +448,11 @@ def f(o):
         return f2(o)
     else:
         raise TypeError("Invalid argument types")
+
+[case testListTypeReturnType]
+class A:
+    object[] f(self): pass
+[builtins fixtures/list.py]
+[out]
+class A:
+    def f(self): pass

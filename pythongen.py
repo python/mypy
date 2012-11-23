@@ -82,7 +82,10 @@ class PythonGenerator(OutputVisitor):
         if isinstance(t, Any):
             return t.repr.any_tok.pre
         elif isinstance(t, Instance):
-            return t.repr.components[0].pre
+            if isinstance(t.repr, ListTypeRepr):
+                return self.get_pre_whitespace(t.args[0])
+            else:
+                return t.repr.components[0].pre
         elif isinstance(t, Void):
             return t.repr.void.pre
         elif isinstance(t, TypeVar):
