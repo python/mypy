@@ -128,8 +128,8 @@ class TypeFixture:
         self.hbb = Instance(self.hi, [self.b, self.b])    # H<B, B>
         self.hts = Instance(self.hi, [self.t, self.s])    # H<T, S>
 
-        self.lsta = Instance(self.std_listi, [self.a])  # list<A>
-        self.lstb = Instance(self.std_listi, [self.b])  # list<B>
+        self.lsta = Instance(self.std_listi, [self.a])  # A[]
+        self.lstb = Instance(self.std_listi, [self.b])  # B[]
 
         # Basic types
         self.basic = BasicTypes(self.o, self.std_type, self.std_tuple,
@@ -190,7 +190,7 @@ TypeInfo make_type_info(any name, any *args):
     type_def.full_name = name
     
     if VARS in map:
-        list<TypeVarDef> v = []
+        TypeVarDef[] v = []
         id = 1
         for n in map[VARS]:
             v.append(TypeVarDef(n, id))

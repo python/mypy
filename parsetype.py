@@ -9,13 +9,13 @@ from lex import Token, Name
 none = Token('') # Empty token
 
 
-tuple<Typ, int> parse_type(list<Token> tok, int index):
+tuple<Typ, int> parse_type(Token[] tok, int index):
     """Parse a type. Return (type, index after type)."""
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
 
 
-tuple<TypeVars, int> parse_type_variables(list<Token> tok, int index,
+tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
                                           bool is_func):
     """Parse type variables and optional bounds (<...>). Return (bounds, index
     after bounds).
@@ -24,8 +24,8 @@ tuple<TypeVars, int> parse_type_variables(list<Token> tok, int index,
     return p.parse_type_variables(is_func), p.index()
 
 
-tuple<list<Typ>, Token, Token, \
-      list<Token>, int> parse_type_args(list<Token> tok, int index):
+tuple<Typ[], Token, Token, \
+      Token[], int> parse_type_args(Token[] tok, int index):
     """Parse type arguments within angle brackets (<...>). Return
     (types, < token, > token, comma tokens, token index after >).
     """
@@ -35,12 +35,12 @@ tuple<list<Typ>, Token, Token, \
 
 
 class TypeParser:
-    list<Token> tok
+    Token[] tok
     int ind
     # Have we consumed only the first '>' of a '>>' token?
     bool partial_shr
     
-    void __init__(self, list<Token> tok, int ind):
+    void __init__(self, Token[] tok, int ind):
         self.tok = tok
         self.ind = ind
         self.partial_shr = False
@@ -64,8 +64,8 @@ class TypeParser:
         """Parse type variables and optional bounds (<...>)."""
         langle = self.expect('<')
         
-        list<Token> commas = []
-        list<TypeVarDef> items = []
+        Token[] commas = []
+        TypeVarDef[] items = []
         n = 1
         while True:
             t = self.parse_type_variable(n, is_func)
@@ -95,11 +95,11 @@ class TypeParser:
         
         return TypeVarDef(name, n, bound, line, TypeVarDefRepr(t, is_tok))
     
-    tuple<list<Typ>, Token, Token, list<Token>> parse_type_args(self):
+    tuple<Typ[], Token, Token, Token[]> parse_type_args(self):
         """Parse type arguments within angle brackets (<...>)."""
         langle = self.expect('<')
-        list<Token> commas = []
-        list<Typ> types = []
+        Token[] commas = []
+        Typ[] types = []
         while True:
             types.append(self.parse_type())
             if self.current_token_str() != ',':
@@ -122,7 +122,7 @@ class TypeParser:
     Typ parse_named_type(self):
         line = self.current_token().line
         name = ''
-        list<Token> components = []
+        Token[] components = []
         
         components.append(self.expect_type(Name))
         name += components[-1].string
@@ -134,8 +134,8 @@ class TypeParser:
             name += '.' + t.string
         
         langle, rangle = none, none
-        list<Token> commas = []
-        list<Typ> args = []
+        Token[] commas = []
+        Typ[] args = []
         if self.current_token_str() == '<':
             langle = self.skip()
             
@@ -212,7 +212,7 @@ class TypeParseError(Exception):
     int index
     Token token
     
-    void __init__(self, list<Token> token, int index):
+    void __init__(self, Token[] token, int index):
         self.token = token[index]
         self.index = index
         super().__init__()

@@ -98,7 +98,7 @@ class ExpressionChecker:
         """        
         return self.check_call(callee_type, e.args, e, e.is_var_arg)
     
-    Typ check_call(self, Typ callee, list<Node> args, Context context,
+    Typ check_call(self, Typ callee, Node[] args, Context context,
                    bool is_var_arg=False, bool check_arg_count=True):
         """Type check a call.
 
@@ -110,7 +110,7 @@ class ExpressionChecker:
         """
         if isinstance(callee, Callable):
             callable = (Callable)callee
-            list<Typ> arg_types
+            Typ[] arg_types
             
             if callable.is_generic():
                 callable = self.infer_function_type_arguments_using_context(
@@ -150,9 +150,9 @@ class ExpressionChecker:
         else:
             return self.msg.not_callable(callee, context)
     
-    list<Typ> infer_arg_types_in_context(self, Callable callee,
-                                         list<Node> args):
-        list<Typ> res = []
+    Typ[] infer_arg_types_in_context(self, Callable callee,
+                                         Node[] args):
+        Typ[] res = []
         
         fixed = len(args)
         if callee:
@@ -200,20 +200,20 @@ class ExpressionChecker:
         return (Callable)self.apply_generic_arguments(callable, args, [], None)
     
     Callable infer_function_type_arguments(self, Callable callee_type,
-                                           list<Typ> arg_types,
+                                           Typ[] arg_types,
                                            bool is_var_arg, Context context):
         """Infer the type arguments for a generic callee type. Return a derived
         callable type that has the arguments applied (and stored as implicit
         type arguments). If isVarArg is True, the callee uses varargs.
         """
-        list<Typ> inferred_args = infer_function_type_arguments(
+        Typ[] inferred_args = infer_function_type_arguments(
             callee_type, arg_types, is_var_arg, self.chk.basic_types())
         return self.apply_inferred_arguments(callee_type, inferred_args, [],
                                              context)
     
     Callable apply_inferred_arguments(self, Callable callee_type,
-                                      list<Typ> inferred_args,
-                                      list<int> implicit_type_vars,
+                                      Typ[] inferred_args,
+                                      int[] implicit_type_vars,
                                       Context context):
         """Apply inferred values of type arguments to a generic
         function. If implicitTypeVars are given, they correspond to
@@ -240,7 +240,7 @@ class ExpressionChecker:
                                                       inferred_args,
                                                       implicit_type_vars, None)
     
-    void check_argument_types(self, list<Typ> arg_types, bool is_var_arg,
+    void check_argument_types(self, Typ[] arg_types, bool is_var_arg,
                               Callable callee, Context context):
         """Check argument types against a callable type. If isVarArg is True,
         the caller uses varargs.
@@ -295,7 +295,7 @@ class ExpressionChecker:
         elif not is_subtype(caller_type, callee_type):
             self.msg.incompatible_argument(n, callee, caller_type, context)
     
-    Typ overload_call_target(self, list<Typ> arg_types, bool is_var_arg,
+    Typ overload_call_target(self, Typ[] arg_types, bool is_var_arg,
                              Overloaded overload, Context context):
         """Infer the correct overload item to call with the given argument
         types. The return value may be Callable or any (if an unique item
@@ -326,7 +326,7 @@ class ExpressionChecker:
         else:
             return match
     
-    bool matches_signature(self, list<Typ> arg_types, bool is_var_arg,
+    bool matches_signature(self, Typ[] arg_types, bool is_var_arg,
                            Callable typ):
         """Determine whether argument types match the given
         signature. If isVarArg is True, the caller uses varargs.
@@ -350,8 +350,8 @@ class ExpressionChecker:
                 return False
         return True
     
-    Typ apply_generic_arguments(self, Callable callable, list<Typ> types,
-                                list<int> implicit_type_vars, Context context):
+    Typ apply_generic_arguments(self, Callable callable, Typ[] types,
+                                int[] implicit_type_vars, Context context):
         """Apply generic type arguments to a callable type. For
         example, applying int to 'def <T> (T) -> T' results in
         'def [int] (int) -> int'. Here '[int]' is an implicit bound type
@@ -359,7 +359,7 @@ class ExpressionChecker:
         
         Note that each type can be nil; in this case, it will not be applied.
         """
-        list<TypeVarDef> tvars = []
+        TypeVarDef[] tvars = []
         for v in implicit_type_vars:
             # The name of type variable is not significant, so nil is fine.
             tvars.append(TypeVarDef(None, v))
@@ -376,7 +376,7 @@ class ExpressionChecker:
             if types[i]:
                 map[tvars[i].id] = types[i]
         
-        list<Typ> arg_types = []
+        Typ[] arg_types = []
         for at in callable.arg_types:
             arg_types.append(expand_type(at, map))
         
@@ -588,7 +588,7 @@ class ExpressionChecker:
                 if len(t.items) == len(e.items):
                     ctx = t
             # Infer item types.
-            list<Typ> items = []
+            Typ[] items = []
             for i in range(len(e.items)):
                 item = e.items[i]
                 Typ tt
@@ -628,7 +628,7 @@ class ExpressionChecker:
                                    TypeVars([TypeVarDef('KT', -1),
                                              TypeVarDef('VT', -2)]))
             # Synthesize function arguments.
-            list<Node> args = []
+            Node[] args = []
             for key, value in e.items:
                 args.append(TupleExpr([key, value]))
             return self.check_call(constructor, args, e)
@@ -721,7 +721,7 @@ class ExpressionChecker:
                 return self.class_callable((Callable)init_type, info)
             else:
                 # Overloaded __init__.
-                list<Callable> items = []
+                Callable[] items = []
                 for it in ((Overloaded)init_type).items():
                     items.append(self.class_callable(it, info))
                 return Overloaded(items)
@@ -751,7 +751,7 @@ class ExpressionChecker:
                     isinstance(typ, Any))
     
     bool is_list_instance(self, Typ t):
-        """Is the argument an instance type list<...>?"""
+        """Is the argument an instance type ...[]?"""
         return (isinstance(t, Instance) and
                 ((Instance)t).typ.full_name() == 'builtins.list')
     
@@ -772,9 +772,9 @@ class ExpressionChecker:
         else:
             return e
     
-    list<Node> unwrap_list(self, list<Node> a):
+    Node[] unwrap_list(self, Node[] a):
         """Unwrap parentheses from an expression node."""
-        list<Node> r = []
+        Node[] r = []
         for n in a:
             r.append(self.unwrap(n))
         return r

@@ -113,7 +113,7 @@ class MessageBuilder:
                 # (using format() instead of formatSimple() to avoid empty
                 # strings). If the result is too long, replace arguments
                 # with <...>.
-                list<str> a = []
+                str[] a = []
                 for arg in itype.args:
                     a.append(strip_quotes(self.format(arg)))
                 s = ', '.join(a)
@@ -125,7 +125,7 @@ class MessageBuilder:
             # This is similar to non-generic instance types.
             return '"{}"'.format(((TypeVar)typ).name)
         elif isinstance(typ, TupleType):
-            list<str> items = []
+            str[] items = []
             for t in ((TupleType)typ).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"tuple<{}>"'.format(', '.join(items))

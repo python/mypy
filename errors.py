@@ -45,7 +45,7 @@ class Errors:
     the current error context.
     """
     # List of generated error messages.
-    list<ErrorInfo> error_info
+    ErrorInfo[] error_info
     
     # Current error context.
     # Import context, as a list of (path, line) pairs.
@@ -124,11 +124,11 @@ class Errors:
         """
         raise CompileError(self.messages())
     
-    list<str> messages(self):
+    str[] messages(self):
         """Return a string array that represents the error messages in a form
         suitable for displaying to the user.
         """
-        list<str> a = []
+        str[] a = []
         errors = self.render_messages(self.sort_messages(self.error_info))
         errors = self.remove_duplicates(errors)
         for file, line, message in errors:
@@ -143,7 +143,7 @@ class Errors:
             a.append(s)
         return a
     
-    list<tuple<str, int, str>> render_messages(self, list<ErrorInfo> errors):
+    list<tuple<str, int, str>> render_messages(self, ErrorInfo[] errors):
         """Translate the messages into a sequence of (path, line,
         message) tuples.  The rendered sequence includes information
         about error contexts. The path item may be None. If the line
@@ -210,12 +210,12 @@ class Errors:
         
         return result
     
-    list<ErrorInfo> sort_messages(self, list<ErrorInfo> errors):
+    ErrorInfo[] sort_messages(self, ErrorInfo[] errors):
         """Sort an array of error messages locally by line number, i.e. sort a
         run of consecutive messages with the same file context by line number,
         but otherwise retain the general ordering of the messages.
         """
-        list<ErrorInfo> result = []
+        ErrorInfo[] result = []
         i = 0
         while i < len(errors):
             i0 = i
@@ -255,14 +255,14 @@ class CompileError(Exception):
     """Exception raised when there is a parse, semantic analysis, type check or
     other compilation-related error.
     """
-    list<str> messages
+    str[] messages
     
-    void __init__(self, list<str> messages):
+    void __init__(self, str[] messages):
         super().__init__()
         self.messages = messages
 
 
-list<T> stable_sort<T>(Sequence<T> a, func<T, any> key):
+T[] stable_sort<T>(Sequence<T> a, func<T, any> key):
     """Perform a stable sort of a sequence, i.e. if the original sequence has
     a[n] == a[n+m] (when comparing using the comparison function f), in the
     sorted sequence item a[n] will be at an earlier index than a[n + m].

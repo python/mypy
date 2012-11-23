@@ -28,7 +28,7 @@ class SemanticAnal(NodeVisitor):
     separate pass.
     """
     # Library search paths
-    list<str> lib_path
+    str[] lib_path
     # Module name space
     dict<str, MypyFile> modules
     # Global name space for current module
@@ -45,7 +45,7 @@ class SemanticAnal(NodeVisitor):
     # All classes, from name to info (TODO needed?)
     TypeInfoMap types
     
-    list<str> stack     # Function local/type variable stack
+    str[] stack     # Function local/type variable stack
     TypeInfo typ        # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
@@ -56,7 +56,7 @@ class SemanticAnal(NodeVisitor):
     set<str> imports    # Imported modules (during phase 2 analysis)
     Errors errors       # Keep track of generated errors
     
-    void __init__(self, list<str> lib_path, Errors errors):
+    void __init__(self, str[] lib_path, Errors errors):
         """Create semantic analyzer. Use libPath to search for
         modules, and report compile errors using the Errors instance.
         """
@@ -77,7 +77,7 @@ class SemanticAnal(NodeVisitor):
     # First pass of semantic analysis
     
     
-    void anal_defs(self, list<Node> defs, str fnam, str mod_id):
+    void anal_defs(self, Node[] defs, str fnam, str mod_id):
         """Perform the first analysis pass.
 
         Resolve the full names of definitions and construct type info
@@ -186,7 +186,7 @@ class SemanticAnal(NodeVisitor):
         self.is_init_method = False
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
-        list<Callable> t = []
+        Callable[] t = []
         for f in defn.items:
             f.is_overload = True
             f.accept(self)
@@ -697,7 +697,7 @@ Instance self_type(TypeInfo typ):
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G<T1, ..., Tn>.
     """
-    list<Typ> tv = []
+    Typ[] tv = []
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1))
     return Instance(typ, tv)

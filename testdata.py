@@ -6,7 +6,7 @@ from os import remove, rmdir
 from myunit import TestCase, SkipTestCaseException
 
 
-list<DataDrivenTestCase> parse_test_cases(
+DataDrivenTestCase[] parse_test_cases(
             str path,
             func<DataDrivenTestCase, void> perform,
             str base_path='.',
@@ -22,7 +22,7 @@ list<DataDrivenTestCase> parse_test_cases(
     for i in range(len(l)):
         l[i] = l[i].rstrip('\n')
     p = parse_test_data(l, path)
-    list<DataDrivenTestCase> out = []
+    DataDrivenTestCase[] out = []
     
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
@@ -52,7 +52,7 @@ list<DataDrivenTestCase> parse_test_cases(
                             p[i].id, path, p[i].line))
                 i += 1
             
-            list<str> tcout = []
+            str[] tcout = []
             if i < len(p) and p[i].id == 'out':
                 tcout = p[i].data
                 ok = True
@@ -75,8 +75,8 @@ list<DataDrivenTestCase> parse_test_cases(
 
 
 class DataDrivenTestCase(TestCase):
-    list<str> input
-    list<str> output
+    str[] input
+    str[] output
     str file
     int line
     func<DataDrivenTestCase, void> perform
@@ -104,7 +104,7 @@ class DataDrivenTestCase(TestCase):
             f.close()
             self.clean_up.append((False, path))
     
-    list<str> add_dirs(self, str dir):
+    str[] add_dirs(self, str dir):
         """Add all subdirectories required to create dir.
 
         Return an array of the created directories in the order of creation.
@@ -140,11 +140,11 @@ class TestItem:
     """
     str id
     str arg
-    list<str> data # Text data, array of 8-bit strings
+    str[] data # Text data, array of 8-bit strings
     str file
     int line # Line number in file
     
-    void __init__(self, str id, str arg, list<str> data, str file, int line):
+    void __init__(self, str id, str arg, str[] data, str file, int line):
         self.id = id
         self.arg = arg
         self.data = data
@@ -152,13 +152,13 @@ class TestItem:
         self.line = line
 
 
-list<TestItem> parse_test_data(list<str> l, str fnam):
+TestItem[] parse_test_data(str[] l, str fnam):
     """Parse a list of lines that represent a sequence of test items."""
-    list<TestItem> ret = []
+    TestItem[] ret = []
     
     str id = None
     str arg = None
-    list<str> data = []
+    str[] data = []
     
     i = 0
     i0 = 0
@@ -194,13 +194,13 @@ list<TestItem> parse_test_data(list<str> l, str fnam):
     return ret
 
 
-list<str> strip_list(list<str> l):
+str[] strip_list(str[] l):
     """Return a stripped copy of l.
 
     Strip whitespace at the end of all lines, and strip all empty
     lines from the end of the array.
     """
-    list<str> r = []
+    str[] r = []
     for s in l:
         # Strip spaces at end of line
         r.append(re.sub(r'\s+$', '', s))
@@ -211,8 +211,8 @@ list<str> strip_list(list<str> l):
     return r
 
 
-list<str> collapse_line_continuation(list<str> l):
-    list<str> r = []
+str[] collapse_line_continuation(str[] l):
+    str[] r = []
     cont = False
     for s in l:
         ss = re.sub(r'\\$', '', s)
@@ -224,12 +224,12 @@ list<str> collapse_line_continuation(list<str> l):
     return r
 
 
-list<str> expand_includes(list<str> a, str base_path):
+str[] expand_includes(str[] a, str base_path):
     """Replace all lies starting with @include with the contents of
     the file name following the prefix. Look for the files in
     basePath.
     """
-    list<str> res = []
+    str[] res = []
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()

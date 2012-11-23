@@ -5,8 +5,8 @@ from solve import solve_constraints
 from constraints import SUBTYPE_OF
 
 
-list<Typ> infer_function_type_arguments(Callable callee_type,
-                                        list<Typ> arg_types,
+Typ[] infer_function_type_arguments(Callable callee_type,
+                                        Typ[] arg_types,
                                         bool is_var_arg,
                                         checker.BasicTypes basic):
     """Infer the type arguments of a generic function.
@@ -30,7 +30,7 @@ list<Typ> infer_function_type_arguments(Callable callee_type,
     return solve_constraints(type_vars, constraints, basic)
 
 
-list<Typ> infer_type_arguments(list<int> type_var_ids,
+Typ[] infer_type_arguments(int[] type_var_ids,
                                Typ template, Typ actual,
                                checker.BasicTypes basic):
     # Like infer_function_type_arguments, but only match a single type

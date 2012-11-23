@@ -11,7 +11,7 @@ import testconfig
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
 
 
-void assert_string_arrays_equal(list<str> expected, list<str> actual, str msg):
+void assert_string_arrays_equal(str[] expected, str[] actual, str msg):
     """Assert that two string arrays are equal. Display any differences in a
     human-readable form.
     """
@@ -128,7 +128,7 @@ void show_align_message(str s1, str s2):
     sys.stderr.write('\n')
 
 
-void assert_string_arrays_equal_wildcards(list<str> expected, list<str> actual,
+void assert_string_arrays_equal_wildcards(str[] expected, str[] actual,
                                           str msg):
     # Like above, but let a line with only '...' in expected match any number
     # of lines in actual.
@@ -160,9 +160,9 @@ def clean_up(a):
     return res
 
 
-list<str> match_array(list<str> pattern, list<str> target):
+str[] match_array(str[] pattern, str[] target):
     """Expand '...' wildcards in pattern by matching against target."""
-    list<str> res = []
+    str[] res = []
     i = 0
     j = 0
     
@@ -205,14 +205,14 @@ list<str> match_array(list<str> pattern, list<str> target):
     return res
 
 
-int num_skipped_prefix_lines(list<str> a1, list<str> a2):
+int num_skipped_prefix_lines(str[] a1, str[] a2):
     num_eq = 0
     while num_eq < min(len(a1), len(a2)) and a1[num_eq] == a2[num_eq]:
         num_eq += 1
     return max(0, num_eq - 4)
 
 
-int num_skipped_suffix_lines(list<str> a1, list<str> a2):
+int num_skipped_suffix_lines(str[] a1, str[] a2):
     num_eq = 0
     while (num_eq < min(len(a1), len(a2))
            and a1[-num_eq - 1] == a2[-num_eq - 1]):

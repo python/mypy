@@ -149,7 +149,7 @@ STR_CONTEXT = 1
 COMMENT_CONTEXT = 2
 
 
-list<Token> lex(str s):
+Token[] lex(str s):
     """Analyze s and return an array of token objects, the last of
     which is always Eof.
     """
@@ -172,11 +172,11 @@ alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 str_prefixes = set(['r', 'b', 'br'])  
 
 # List of regular expressions that match non-alphabetical operators
-list<Pattern> operators = [re.compile('[-+*/<>.%&|^~]'),
+Pattern[] operators = [re.compile('[-+*/<>.%&|^~]'),
                            re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
 
 # List of regular expressions that match punctuator tokens
-list<Pattern> punctuators = [re.compile('[=,()@]'),
+Pattern[] punctuators = [re.compile('[=,()@]'),
                              re.compile('\\['),
                              re.compile(']'),
                              re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
@@ -197,12 +197,12 @@ class Lexer:
     str pre = ''
     int enc = DEFAULT_ENCODING
     
-    list<Token> tok
+    Token[] tok
     list<func<void>> map
     
-    list<int> indents
+    int[] indents
     # Open ('s, ['s and {'s without matching closing bracket.
-    list<str> open_brackets
+    str[] open_brackets
     
     void __init__(self):
         self.map = [self.unknown_character] * 256

@@ -14,7 +14,7 @@ bool is_same_type(Typ left, Typ right):
         return left.accept(SameTypeVisitor(right))
 
 
-bool is_same_types(list<Typ> a1, list<Typ> a2):
+bool is_same_types(Typ[] a1, Typ[] a2):
     if len(a1) != len(a2):
         return False
     for i in range(len(a1)):

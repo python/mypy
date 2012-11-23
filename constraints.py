@@ -6,8 +6,8 @@ from expandtype import expand_caller_var_args
 from subtypes import map_instance_to_supertype
 
 
-list<Constraint> infer_constraints_for_callable(
-            Callable callee, list<Typ> arg_types, bool is_var_arg):
+Constraint[] infer_constraints_for_callable(
+            Callable callee, Typ[] arg_types, bool is_var_arg):
     """Infer type variable constraints for a callable and a list of
     argument types.  Return a list of constraints.
     """
@@ -15,7 +15,7 @@ list<Constraint> infer_constraints_for_callable(
     
     callee_num_args = callee.max_fixed_args()
     
-    list<Constraint> constraints = []
+    Constraint[] constraints = []
     
     Typ caller_rest = None # Rest of types for varargs calls
     if is_var_arg:
@@ -47,7 +47,7 @@ list<Constraint> infer_constraints_for_callable(
     return constraints
 
 
-list<Constraint> infer_constraints(Typ template, Typ actual, int direction):
+Constraint[] infer_constraints(Typ template, Typ actual, int direction):
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -95,7 +95,7 @@ class Constraint:
         self.target = target
 
 
-class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
+class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
     """Visitor class for inferring type constraints."""
     
     Typ actual # The type that is compared against a template
@@ -107,26 +107,26 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
     
     # Trivial leaf types
     
-    list<Constraint> visit_unbound_type(self, UnboundType template):
+    Constraint[] visit_unbound_type(self, UnboundType template):
         return []
     
-    list<Constraint> visit_any(self, Any template):
+    Constraint[] visit_any(self, Any template):
         return []
     
-    list<Constraint> visit_void(self, Void template):
+    Constraint[] visit_void(self, Void template):
         return []
     
-    list<Constraint> visit_none_type(self, NoneTyp template):
+    Constraint[] visit_none_type(self, NoneTyp template):
         return []
     
     # Non-trivial leaf type
     
-    list<Constraint> visit_type_var(self, TypeVar template):
+    Constraint[] visit_type_var(self, TypeVar template):
         return [Constraint(template.id, SUPERTYPE_OF, self.actual)]
     
     # Non-leaf types
     
-    list<Constraint> visit_instance(self, Instance template):
+    Constraint[] visit_instance(self, Instance template):
         actual = self.actual
         if isinstance(actual, Instance):
             res = <Constraint> []
@@ -160,12 +160,12 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
         else:
             return []
     
-    list<Constraint> visit_callable(self, Callable template):
+    Constraint[] visit_callable(self, Callable template):
         if isinstance(self.actual, Callable):
             cactual = (Callable)self.actual
             # FIX verify argument counts
             # FIX what if one of the functions is generic
-            list<Constraint> res = []
+            Constraint[] res = []
             for i in range(len(template.arg_types)):
                 # Negate constraints due function argument type contravariance.
                 res.extend(negate_constraints(infer_constraints(
@@ -183,11 +183,11 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
         else:
             return []
     
-    list<Constraint> visit_tuple_type(self, TupleType template):
+    Constraint[] visit_tuple_type(self, TupleType template):
         actual = self.actual
         if (isinstance(actual, TupleType) and
                 len(((TupleType)actual).items) == len(template.items)):
-            list<Constraint> res = []
+            Constraint[] res = []
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
                                              ((TupleType)actual).items[i],
@@ -198,15 +198,15 @@ class ConstraintBuilderVisitor(TypeVisitor<list<Constraint>>):
         else:
             return []
     
-    list<Constraint> infer_against_any(self, list<Typ> types):
-        list<Constraint> res = []
+    Constraint[] infer_against_any(self, Typ[] types):
+        Constraint[] res = []
         for t in types:
             res.extend(infer_constraints(t, Any(), self.direction))
         return res
 
 
-list<Constraint> negate_constraints(list<Constraint> constraints):
-    list<Constraint> res = []
+Constraint[] negate_constraints(Constraint[] constraints):
+    Constraint[] res = []
     for c in constraints:
         res.append(Constraint(c.type_var, neg_op(c.op), c.target))
     return res

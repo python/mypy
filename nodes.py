@@ -77,11 +77,11 @@ class MypyFile(Node, AccessorNode, SymNode):
     str _name         # Module name ('__main__' for initial file)
     str _full_name    # Qualified module name
     str path          # Path to the file (None if not known)
-    list<Node> defs   # Global definitions and statements
+    Node[] defs   # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
     
-    void __init__(self, list<Node> defs, bool is_bom=False):
+    void __init__(self, Node[] defs, bool is_bom=False):
         self.defs = defs
         self.line = 1  # Dummy line number
         self.is_bom = is_bom
@@ -140,10 +140,10 @@ class OverloadedFuncDef(FuncBase, SymNode):
     function. This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
     """
-    list<FuncDef> items
+    FuncDef[] items
     str _full_name
     
-    void __init__(self, list<FuncDef> items):
+    void __init__(self, FuncDef[] items):
         self.items = items
         self.set_line(items[0].line)
     
@@ -159,9 +159,9 @@ class OverloadedFuncDef(FuncBase, SymNode):
 
 class FuncItem(FuncBase):
     # Fixed argument names
-    list<Var> args
+    Var[] args
     # Initialization expessions for fixed args; None if no initialiser
-    list<AssignmentStmt> init
+    AssignmentStmt[] init
     int min_args           # Minimum number of arguments
     int max_pos            # Maximum number of positional arguments, -1 if
                            # no explicit limit
@@ -172,7 +172,7 @@ class FuncItem(FuncBase):
     bool is_overload    # Is this an overload variant of function with
                         # more than one overload variant?
     
-    void __init__(self, list<Var> args, list<Node> init, Var var_arg,
+    void __init__(self, Var[] args, Node[] init, Var var_arg,
                   Var dict_var_arg, int max_pos, Block body,
                   Annotation typ=None):
         self.args = args
@@ -184,7 +184,7 @@ class FuncItem(FuncBase):
         self.is_implicit = typ is None
         self.is_overload = False
         
-        list<AssignmentStmt> i2 = []
+        AssignmentStmt[] i2 = []
         self.min_args = 0
         for i in range(len(init)):
             if init[i] is not None:
@@ -214,8 +214,8 @@ class FuncItem(FuncBase):
             n.line = self.line
         return self
     
-    list<Node> init_expressions(self):
-        list<Node> res = []
+    Node[] init_expressions(self):
+        Node[] res = []
         for i in self.init:
             if i is not None:
                 res.append(i.rvalue)
@@ -227,7 +227,7 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem, SymNode):
     str _full_name      # Name with module prefix
     
-    void __init__(self, str name, list<Var> args, list<Node> init, Var var_arg,
+    void __init__(self, str name, Var[] args, Node[] init, Var var_arg,
                   Var dict_var_arg, int max_pos, Block body,
                   Annotation typ=None):
         super().__init__(args, init, var_arg, dict_var_arg, max_pos, body, typ)
@@ -292,13 +292,13 @@ class TypeDef(Node):
     Block defs
     mtypes.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
-    list<mtypes.Typ> base_types
+    mtypes.Typ[] base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
     void __init__(self, str name, Block defs,
                   mtypes.TypeVars type_vars=None,
-                  list<mtypes.Typ> base_types=None,
+                  mtypes.Typ[] base_types=None,
                   bool is_interface=False):
         if not base_types:
             base_types = []
@@ -350,9 +350,9 @@ class VarDef(Node):
 
 
 class GlobalDecl(Node):
-    list<str> names
+    str[] names
     
-    void __init__(self, list<str> names):
+    void __init__(self, str[] names):
         self.names = names
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -360,9 +360,9 @@ class GlobalDecl(Node):
 
 
 class Block(Node):
-    list<Node> body
+    Node[] body
     
-    void __init__(self, list<Node> body):
+    void __init__(self, Node[] body):
         self.body = body
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -383,10 +383,10 @@ class ExpressionStmt(Node):
 
 
 class AssignmentStmt(Node):
-    list<Node> lvalues
+    Node[] lvalues
     Node rvalue
     
-    void __init__(self, list<Node> lvalues, Node rvalue):
+    void __init__(self, Node[] lvalues, Node rvalue):
         self.lvalues = lvalues
         self.rvalue = rvalue
     
@@ -423,14 +423,14 @@ class WhileStmt(Node):
 
 
 class ForStmt(Node):
-    list<NameExpr> index   # Index variables
-    list<Annotation> types # Index variable types (each may be None)
+    NameExpr[] index   # Index variables
+    Annotation[] types # Index variable types (each may be None)
     Node expr              # Expression to iterate
     Block body
     Block else_body
     
-    void __init__(self, list<NameExpr> index, Node expr, Block body,
-                  Block else_body, list<Annotation> types=None):
+    void __init__(self, NameExpr[] index, Node expr, Block body,
+                  Block else_body, Annotation[] types=None):
         self.index = index
         self.expr = expr
         self.body = body
@@ -504,11 +504,11 @@ class PassStmt(Node):
 
 
 class IfStmt(Node):
-    list<Node> expr
-    list<Block> body
+    Node[] expr
+    Block[] body
     Block else_body
     
-    void __init__(self, list<Node> expr, list<Block> body, Block else_body):
+    void __init__(self, Node[] expr, Block[] body, Block else_body):
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -531,14 +531,14 @@ class RaiseStmt(Node):
 
 class TryStmt(Node):
     Block body                # Try body
-    list<Node> types          # Except type expressions
-    list<Var> vars            # Except variable names
-    list<Block> handlers      # Except bodies
+    Node[] types          # Except type expressions
+    Var[] vars            # Except variable names
+    Block[] handlers      # Except bodies
     Block else_body
     Block finally_body
     
-    void __init__(self, Block body, list<Var> vars, list<Node> types,
-                  list<Block> handlers, Block else_body, Block finally_body):
+    void __init__(self, Block body, Var[] vars, Node[] types,
+                  Block[] handlers, Block else_body, Block finally_body):
         self.body = body
         self.vars = vars
         self.types = types
@@ -551,11 +551,11 @@ class TryStmt(Node):
 
 
 class WithStmt(Node):
-    list<Node> expr
-    list<Var> name
+    Node[] expr
+    Var[] name
     Block body
     
-    void __init__(self, list<Node> expr, list<Var> name, Block body):
+    void __init__(self, Node[] expr, Var[] name, Block body):
         self.expr = expr
         self.name = name
         self.body = body
@@ -673,12 +673,12 @@ class MemberExpr(RefExpr):
 class CallExpr(Node):
     """Call expression"""
     Node callee
-    list<Node> args
+    Node[] args
     bool is_var_arg
     list<tuple<NameExpr, Node>> keyword_args
     Node dict_var_arg
     
-    void __init__(self, Node callee, list<Node> args, bool is_var_arg=False,
+    void __init__(self, Node callee, Node[] args, bool is_var_arg=False,
                   list<tuple<NameExpr, Node>> keyword_args=None,
                   Node dict_var_arg=None):
         if not keyword_args:
@@ -782,10 +782,10 @@ class FuncExpr(FuncItem):
 
 class ListExpr(Node):
     """List literal expression [...] or <type> [...]"""
-    list<Node> items 
+    Node[] items 
     mtypes.Typ typ # None if implicit type
     
-    void __init__(self, list<Node> items, mtypes.Typ typ=None):
+    void __init__(self, Node[] items, mtypes.Typ typ=None):
         self.items = items
         self.typ = typ
     
@@ -808,10 +808,10 @@ class DictExpr(Node):
 
 class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
-    list<Node> items
-    list<mtypes.Typ> types
+    Node[] items
+    mtypes.Typ[] types
     
-    void __init__(self, list<Node> items, list<mtypes.Typ> types=None):
+    void __init__(self, Node[] items, mtypes.Typ[] types=None):
         self.items = items
         self.types = types
     
@@ -821,9 +821,9 @@ class TupleExpr(Node):
 
 class SetExpr(Node):
     """Set literal expression {value, ...}."""
-    list<Node> items
+    Node[] items
     
-    void __init__(self, list<Node> items):
+    void __init__(self, Node[] items):
         self.items = items
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -835,11 +835,11 @@ class GeneratorExpr(Node):
     Node left_expr
     Node right_expr
     Node condition   # May be None
-    list<Var> index
-    list<Annotation> types
+    Var[] index
+    Annotation[] types
     
-    void __init__(self, Node left_expr, list<Var> index,
-                  list<Annotation> types, Node right_expr, Node condition):
+    void __init__(self, Node left_expr, Var[] index,
+                  Annotation[] types, Node right_expr, Node condition):
         self.left_expr = left_expr
         self.right_expr = right_expr
         self.condition = condition
@@ -887,7 +887,7 @@ class Annotation(Node):
 
 class TypeApplication(Node):
     any expr   # Node
-    any types  # list<mtypes.Typ>
+    any types  # mtypes.Typ[]
     
     def __init__(self, expr, types):
         self.expr = expr
@@ -973,20 +973,20 @@ class TypeInfo(Node, AccessorNode, SymNode):
     dict<str, FuncBase> methods
     
     # TypeInfos of base interfaces
-    list<TypeInfo> interfaces
+    TypeInfo[] interfaces
     
     # Information related to type annotations.
     
     # Generic type variable names
-    list<str> type_vars
+    str[] type_vars
     
     # Type variable bounds (each may be None)
     # TODO implement these
-    list<mtypes.Typ> bounds
+    mtypes.Typ[] bounds
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
-    list<mtypes.Typ> bases
+    mtypes.Typ[] bases
     
     
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
@@ -1019,7 +1019,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         """Is the type generic (i.e. does it have type variables)?"""
         return self.type_vars is not None and len(self.type_vars) > 0
     
-    void set_type_bounds(self, list<mtypes.TypeVarDef> a):
+    void set_type_bounds(self, mtypes.TypeVarDef[] a):
         for vd in a:
             self.bounds.append(vd.bound)
     
@@ -1110,7 +1110,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         """Add a base interface."""
         self.interfaces.append(base)
     
-    list<TypeInfo> all_directly_implemented_interfaces(self):
+    TypeInfo[] all_directly_implemented_interfaces(self):
         """Return a list of interfaces that are either directly
         implemented by the type or that are the supertypes of other
         interfaces in the array.
@@ -1118,7 +1118,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         # Interfaces never implement interfaces.
         if self.is_interface:
             return []
-        list<TypeInfo> a = []
+        TypeInfo[] a = []
         for i in range(len(self.interfaces)):
             iface = self.interfaces[i]
             if iface not in a:
@@ -1130,7 +1130,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
                     a.append(ifa)
         return a
     
-    list<TypeInfo> directly_implemented_interfaces(self):
+    TypeInfo[] directly_implemented_interfaces(self):
         """Return a directly implemented interfaces.
 
         Omit inherited interfaces.
@@ -1142,7 +1142,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         """Return a string representation of the type, which includes the most
         important information about the type.
         """
-        list<str> interfaces = []
+        str[] interfaces = []
         for i in self.interfaces:
             interfaces.append(i.full_name())
         str base = None
@@ -1162,7 +1162,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
 
 class SymbolTable(dict<str, SymbolTableNode>):
     str __str__(self):
-        list<str> a = []
+        str[] a = []
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
@@ -1251,7 +1251,7 @@ mtypes.FunctionLike method_type(FuncBase func):
         return method_callable((mtypes.Callable)t)
     else:
         o = (mtypes.Overloaded)t
-        list<mtypes.Callable> it = []
+        mtypes.Callable[] it = []
         for c in o.items():
             it.append(method_callable(c))
         return mtypes.Overloaded(it)

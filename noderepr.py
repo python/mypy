@@ -19,8 +19,8 @@ class MypyFileRepr:
 
 
 class ImportRepr:
-    void __init__(self, any import_tok, list<list<Token>> components,
-                  list<tuple<Token, Token>> as_names, list<Token> commas,
+    void __init__(self, any import_tok, list<Token[]> components,
+                  list<tuple<Token, Token>> as_names, Token[] commas,
                   any br):
         self.import_tok = import_tok
         self.components = components
@@ -32,10 +32,10 @@ class ImportRepr:
 class ImportFromRepr:
     void __init__(self,
                   any from_tok,
-                  list<Token> components,
+                  Token[] components,
                   any import_tok,
                   any lparen,
-                  list<tuple<list<Token>, Token>> names,
+                  list<tuple<Token[], Token>> names,
                   any rparen, any br):
         # Notes:
         # - lparen and rparen may be empty
@@ -110,7 +110,7 @@ class BlockRepr:
 
 
 class GlobalDeclRepr:
-    void __init__(self, any global_tok, list<Token> names, list<Token> commas,
+    void __init__(self, any global_tok, Token[] names, Token[] commas,
                   any br):
         self.global_tok = global_tok
         self.names = names
@@ -124,7 +124,7 @@ class ExpressionStmtRepr:
 
 
 class AssignmentStmtRepr:
-    void __init__(self, list<Token> assigns, any br):
+    void __init__(self, Token[] assigns, any br):
         self.assigns = assigns
         self.br = br
 
@@ -173,9 +173,9 @@ class RaiseStmtRepr:
 
 class TryStmtRepr:
     any try_tok
-    any except_toks  # list<Token>
-    any name_toks    # list<Token>, may be empty
-    any as_toks      # list<Token>, may be empty
+    any except_toks  # Token[]
+    any name_toks    # Token[], may be empty
+    any as_toks      # Token[], may be empty
     any else_tok
     any finally_tok
     
@@ -202,7 +202,7 @@ class IntExprRepr:
 
 
 class StrExprRepr:
-    void __init__(self, list<Token> string):
+    void __init__(self, Token[] string):
         self.string = string
 
 
@@ -229,8 +229,8 @@ class MemberExprRepr:
 
 
 class CallExprRepr:
-    void __init__(self, any lparen, list<Token> commas, any asterisk,
-                  list<Token> assigns, any rparen):
+    void __init__(self, any lparen, Token[] commas, any asterisk,
+                  Token[] assigns, any rparen):
         # Asterisk may be empty.
         self.lparen = lparen
         self.commas = commas
@@ -287,7 +287,7 @@ class SuperExprRepr:
 
 
 class ListExprRepr:
-    void __init__(self, any lbracket, list<Token> commas, any rbracket,
+    void __init__(self, any lbracket, Token[] commas, any rbracket,
                   any langle, any rangle):
         self.lbracket = lbracket
         self.commas = commas
@@ -297,7 +297,7 @@ class ListExprRepr:
 
 
 class TupleExprRepr:
-    void __init__(self, any lparen, list<Token> commas, any rparen):
+    void __init__(self, any lparen, Token[] commas, any rparen):
         # Note: lparen and rparen may be empty.
         self.lparen = lparen
         self.commas = commas
@@ -305,7 +305,7 @@ class TupleExprRepr:
 
 
 class DictExprRepr:
-    void __init__(self, any lbrace, list<Token> colons, list<Token> commas,
+    void __init__(self, any lbrace, Token[] colons, Token[] commas,
                   any rbrace, any langle, any type_comma, any rangle):
         self.lbrace = lbrace
         self.colons = colons

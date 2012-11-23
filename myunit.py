@@ -125,14 +125,14 @@ class Suite:
     void add_test(self, tuple<str, func<void>> test):
         self._test_cases.append(test)
     
-    list<any> cases(self):
+    any[] cases(self):
         return self._test_cases[:]
     
     void skip(self):
         raise SkipTestCaseException()
 
 
-void run_test(Suite t, list<str> args=None):
+void run_test(Suite t, str[] args=None):
     global patterns, is_verbose, is_quiet
     if not args:
         args = []
@@ -278,7 +278,7 @@ bool match_pattern(str s, str p):
         return s[0] == p[0] and match_pattern(s[1:], p[1:])
 
 
-list<str> clean_traceback(list<str> tb):
+str[] clean_traceback(str[] tb):
     # Remove clutter from the traceback.
     start = 0
     for i, s in enumerate(tb):

@@ -6,7 +6,7 @@ from meet import meet_types
 from subtypes import is_subtype
 
 
-list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints,
+Typ[] solve_constraints(int[] vars, Constraint[] constraints,
                             checker.BasicTypes basic):
     """Solve type constraints.
 
@@ -14,13 +14,13 @@ list<Typ> solve_constraints(list<int> vars, list<Constraint> constraints,
     not be solved.
     """
     # Collect a list of constraints for each type variable.
-    dict<int, list<Constraint>> cmap = {}
+    dict<int, Constraint[]> cmap = {}
     for con in constraints:
         a = cmap.get(con.type_var, [])
         a.append(con)
         cmap[con.type_var] = a
     
-    list<Typ> res = []
+    Typ[] res = []
     
     # Solve each type variable separately.
     for tvar in vars:

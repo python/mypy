@@ -76,7 +76,7 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
                         self.expand_bound_vars(t.bound_vars), t.line, t.repr)
     
     Typ visit_overloaded(self, Overloaded t):
-        list<Callable> items = []
+        Callable[] items = []
         for item in t.items():
             items.append((Callable)item.accept(self))
         return Overloaded(items)
@@ -84,8 +84,8 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
     Typ visit_tuple_type(self, TupleType t):
         return TupleType(self.expand_types(t.items), t.line, t.repr)
     
-    list<Typ> expand_types(self, list<Typ> types):
-        list<Typ> a = []
+    Typ[] expand_types(self, Typ[] types):
+        Typ[] a = []
         for t in types:
             a.append(t.accept(self))
         return a
@@ -110,7 +110,7 @@ Callable update_callable_implicit_bounds(Callable t,
                     arg_types, t.line, t.repr)
 
 
-tuple<list<Typ>, Typ> expand_caller_var_args(list<Typ> arg_types,
+tuple<Typ[], Typ> expand_caller_var_args(Typ[] arg_types,
                                              int fixed_argc):
     """Expand the caller argument types in a varargs call. Fixedargc
     is the maximum number of fixed arguments that the target function

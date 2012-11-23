@@ -76,7 +76,7 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
     Typ visit_tuple_type(self, TupleType t):
         if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
                                               t.length()):
-            list<Typ> items = []
+            Typ[] items = []
             for i in range(t.length()):
                 items.append(self.join(t.items[i],
                                        ((TupleType)self.s).items[i]))
@@ -109,7 +109,7 @@ Typ join_instances(Instance t, Instance s, bool allow_interfaces,
         # potentially different arguments).
         if is_subtype(t, s):
             # Compatible; combine type arguments.
-            list<Typ> args = []
+            Typ[] args = []
             for i in range(len(t.args)):
                 args.append(join_types(t.args[i], s.args[i], basic))
             return Instance(t.typ, args)
@@ -162,7 +162,7 @@ Typ join_instances_as_interface(Instance t, Instance s,
     t_ifaces = implemented_interfaces(t)
     s_ifaces = implemented_interfaces(s)
     
-    list<Instance> res = []
+    Instance[] res = []
     
     for ti in t_ifaces:
         for si in s_ifaces:
@@ -194,14 +194,14 @@ Typ join_instances_as_interface(Instance t, Instance s,
             return ErrorType()
 
 
-list<Typ> implemented_interfaces(Instance t):
+Typ[] implemented_interfaces(Instance t):
     """If t is a class instance, return all the directly implemented interface
     types by t and its supertypes, including mapped type arguments.
     """
     if t.typ.is_interface:
         return [t]
     else:
-        list<Typ> res = []
+        Typ[] res = []
         
         for iface in t.typ.interfaces:
             res.append(map_instance_to_supertype(t, iface))
@@ -223,7 +223,7 @@ bool is_similar_callables(Callable t, Callable s):
 
 Callable combine_similar_callables(Callable t, Callable s,
                                    checker.BasicTypes basic):
-    list<Typ> arg_types = []
+    Typ[] arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
     return Callable(arg_types,

@@ -25,9 +25,9 @@ class Typ(nodes.Context):
 class UnboundType(Typ):
     """Instance type that has not been bound during semantic analysis."""
     str name
-    list<Typ> args
+    Typ[] args
     
-    void __init__(self, str name, list<Typ> args=None, int line=-1,
+    void __init__(self, str name, Typ[] args=None, int line=-1,
                   any repr=None):
         if not args:
             args = []
@@ -91,10 +91,10 @@ class Instance(Typ):
     """An instance type of form C<T1, ..., Tn>. Type variables Tn may
     be empty"""
     nodes.TypeInfo typ
-    list<Typ> args
+    Typ[] args
     bool erased      # True if result of type variable substitution
     
-    void __init__(self, nodes.TypeInfo typ, list<Typ> args, int line=-1,
+    void __init__(self, nodes.TypeInfo typ, Typ[] args, int line=-1,
                   any repr=None, any erased=False):
         self.typ = typ
         self.args = args
@@ -141,7 +141,7 @@ class FunctionLike(Typ):
     bool is_type_obj(self):
         pass
     
-    list<Callable> items(self): # Abstract
+    Callable[] items(self): # Abstract
         pass
     
     Typ with_name(self, str name): # Abstract
@@ -150,7 +150,7 @@ class FunctionLike(Typ):
 
 class Callable(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
-    list<Typ> arg_types # Types of function arguments
+    Typ[] arg_types # Types of function arguments
     int min_args        # Minimum number of arguments
     bool is_var_arg     # Is it a varargs function?
     Typ ret_type        # Return value type
@@ -173,7 +173,7 @@ class Callable(FunctionLike):
     
     bool _is_type_obj # Does this represent a type object?
     
-    void __init__(self, list<Typ> arg_types, int min_args, bool is_var_arg,
+    void __init__(self, Typ[] arg_types, int min_args, bool is_var_arg,
                   Typ ret_type, bool is_type_obj, str name=None,
                   TypeVars variables=None,
                   list<tuple<int, Typ>> bound_vars=None,
@@ -220,14 +220,14 @@ class Callable(FunctionLike):
             n -= 1
         return n
     
-    list<Callable> items(self):
+    Callable[] items(self):
         return [self]
     
     bool is_generic(self):
         return self.variables.items != []
     
-    list<int> type_var_ids(self):
-        list<int> a = []
+    int[] type_var_ids(self):
+        int[] a = []
         for tv in self.variables.items:
             a.append(tv.id)
         return a
@@ -239,13 +239,13 @@ class Overloaded(FunctionLike):
     The variant to call is chosen based on runtime argument types; the first
     matching signature is the target.
     """
-    list<Callable> _items # Must not be empty
+    Callable[] _items # Must not be empty
     
-    void __init__(self, list<Callable> items):
+    void __init__(self, Callable[] items):
         self._items = items
         super().__init__(items[0].line, None)
     
-    list<Callable> items(self):
+    Callable[] items(self):
         return self._items
     
     str name(self):
@@ -257,7 +257,7 @@ class Overloaded(FunctionLike):
         return self._items[0].is_type_obj()
     
     Overloaded with_name(self, str name):
-        list<Callable> ni = []
+        Callable[] ni = []
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
@@ -268,9 +268,9 @@ class Overloaded(FunctionLike):
 
 class TupleType(Typ):
     """The tuple type tuple<T1, ..., Tn> (at least one type argument)."""
-    list<Typ> items
+    Typ[] items
     
-    void __init__(self, list<Typ> items, int line=-1, any repr=None):
+    void __init__(self, Typ[] items, int line=-1, any repr=None):
         self.items = items
         super().__init__(line, repr)
     
@@ -287,17 +287,17 @@ class TypeVars:
 
     TODO bounds are not supported, but they may be supported in future
     """    
-    list<TypeVarDef> items
+    TypeVarDef[] items
     any repr
     
-    void __init__(self, list<TypeVarDef> items, any repr=None):
+    void __init__(self, TypeVarDef[] items, any repr=None):
         self.items = items
         self.repr = repr
     
     str __repr__(self):
         if self.items == []:
             return ''
-        list<str> a = []
+        str[] a = []
         for v in self.items:
             a.append(str(v))
         return '<{}>'.format(', '.join(a))
@@ -429,8 +429,8 @@ class TypeTranslator(TypeVisitor<Typ>):
     Typ visit_tuple_type(self, TupleType t):
         return TupleType(self.translate_types(t.items), t.line, t.repr)
     
-    list<Typ> translate_types(self, list<Typ> types):
-        list<Typ> a = []
+    Typ[] translate_types(self, Typ[] types):
+        Typ[] a = []
         for t in types:
             a.append(t.accept(self))
         return a

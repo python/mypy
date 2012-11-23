@@ -188,7 +188,7 @@ Instance map_instance_to_direct_supertype(Instance instance,
     return Instance(typ.base, <Typ> [Any()] * len(typ.base.type_vars))
 
 
-dict<int, Typ> type_var_map(TypeInfo typ, list<Typ> args):
+dict<int, Typ> type_var_map(TypeInfo typ, Typ[] args):
     if not args:
         return None
     else:
@@ -198,7 +198,7 @@ dict<int, Typ> type_var_map(TypeInfo typ, list<Typ> args):
         return tvars
 
 
-list<Instance> map_instance_to_interface_supertypes(Instance instance,
+Instance[] map_instance_to_interface_supertypes(Instance instance,
                                                     TypeInfo supertype):
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
@@ -214,7 +214,7 @@ list<Instance> map_instance_to_interface_supertypes(Instance instance,
     return result
 
 
-list<list<TypeInfo>> interface_implementation_paths(TypeInfo typ,
+list<TypeInfo[]> interface_implementation_paths(TypeInfo typ,
                                                     TypeInfo supertype):
     """Return an array of non-empty paths of direct supertypes from
     type to supertype.  Return [] if no such path could be found.
@@ -225,7 +225,7 @@ list<list<TypeInfo>> interface_implementation_paths(TypeInfo typ,
     """
     # FIX: Currently we might only ever have a single path, so this could be
     #      simplified
-    list<list<TypeInfo>> result = []
+    list<TypeInfo[]> result = []
     
     if typ.base == supertype or supertype in typ.interfaces:
         # Direct supertype.
@@ -245,11 +245,11 @@ list<list<TypeInfo>> interface_implementation_paths(TypeInfo typ,
     return result
 
 
-list<Instance> map_instance_to_direct_supertypes(Instance instance,
+Instance[] map_instance_to_direct_supertypes(Instance instance,
                                                  TypeInfo supertype):
     # FIX: There should only be one supertypes, always.
     typ = instance.typ
-    list<Instance> result = []
+    Instance[] result = []
     
     for b in typ.bases:
         # The cast below cannot fail since we require that semantic analysis

@@ -22,7 +22,7 @@ program_path = '.'
 debug = False
 
 
-tuple<list<MypyFile>, dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
+tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
             build(str program_text, str program_file_name='main',
                   bool use_test_builtins=False, str alt_lib_path=None,
                   bool do_type_check=False):
@@ -85,10 +85,10 @@ tuple<list<MypyFile>, dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     return manager.process(UnprocessedFile(info, program_text))
 
 
-list<str> default_lib_path():
+str[] default_lib_path():
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
-    list<str> path = []
+    str[] path = []
     
     # Add MYPYPATH environment variable to library path, if defined.
     path_env = os.getenv('MYPYPATH')
@@ -111,7 +111,7 @@ class BuildManager:
     state objects that actually perform the build steps.
     """
     bool do_type_check    # Do we perform a type check?
-    list<str> lib_path    # Library path for looking up modules
+    str[] lib_path    # Library path for looking up modules
     SemanticAnal sem_anal # Semantic analyzer
     TypeChecker checker   # Type checker
     Errors errors         # For reporting all errors
@@ -120,12 +120,12 @@ class BuildManager:
     # build is always represented by a single state object (after it has been
     # encountered for the first time). This is the only location for storing
     # all the states.
-    list<State> states
+    State[] states
     # Map from module name to source file path. There is a 1:1 mapping between
     # modules and source files.
     dict<str, str> module_files
     
-    void __init__(self, list<str> lib_path, bool do_type_check):
+    void __init__(self, str[] lib_path, bool do_type_check):
         self.errors = Errors()
         self.lib_path = lib_path
         self.do_type_check = do_type_check
@@ -134,7 +134,7 @@ class BuildManager:
         self.states = []
         self.module_files = {}
     
-    tuple<list<MypyFile>, dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
+    tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
                 process(self, UnprocessedFile initial_state):
         """Perform a build. The argument is a state that represents
         tha main program file. This method should only be called once
@@ -170,7 +170,7 @@ class BuildManager:
                 raise RuntimeError('{} still unprocessed'.format(s.path))
         
         # Collect a list of all files.
-        list<MypyFile> trees = []
+        MypyFile[] trees = []
         for state in self.states:
             trees.append(((ParsedFile)state).tree)
         
@@ -313,7 +313,7 @@ class State:
     list<tuple<str, int>> import_context
     BuildManager manager
     # Modules that this file directly depends on (in no particular order).
-    list<str> dependencies
+    str[] dependencies
     
     void __init__(self, StateInfo info):
         self.path = info.path
@@ -443,7 +443,7 @@ class ParsedFile(State):
         super().__init__(info)
         self.tree = tree
         
-        list<str> imp = []
+        str[] imp = []
         for id, line in self.manager.all_imported_modules(tree):
             imp.append(id)
         if self.id != 'builtins':
@@ -495,7 +495,7 @@ def trace(s):
         print(s)
 
 
-tuple<str, str> module_source(str id, list<str> paths):
+tuple<str, str> module_source(str id, str[] paths):
     """Find and read the source file of a module. Return a pair
     (path, file contents). Return (None, None) if the module could not be
     imported.
@@ -518,7 +518,7 @@ tuple<str, str> module_source(str id, list<str> paths):
         return None, None
 
 
-str find_module(str id, list<str> paths):
+str find_module(str id, str[] paths):
     """Return that path of the module source file, or None if not found."""
     for libpath in paths:
         comp = id.split('.')
@@ -542,9 +542,9 @@ def verify_module(id, path):
     return True
 
 
-list<str> super_packages(str id):
+str[] super_packages(str id):
     c = id.split('.')
-    list<str> res = []
+    str[] res = []
     for i in range(1, len(c)):
         res.append('.'.join(c[:i]))
     return res

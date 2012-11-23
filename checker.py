@@ -74,11 +74,11 @@ class TypeChecker(NodeVisitor<Typ>):
     dict<Node, Typ> type_map  # Types of type checked nodes
     checkexpr.ExpressionChecker expr_checker
     
-    list<str> stack # Stack of local variable definitions
+    str[] stack # Stack of local variable definitions
                     # None separates nested functions
-    list<Typ> return_types   # Stack of function return types
-    list<Typ> type_context   # Type context for type inference
-    list<bool> dynamic_funcs # Flags; true for dynamically typed functions
+    Typ[] return_types   # Stack of function return types
+    Typ[] type_context   # Type context for type inference
+    bool[] dynamic_funcs # Flags; true for dynamically typed functions
     
     SymbolTable globals
     SymbolTable class_tvars
@@ -139,7 +139,7 @@ class TypeChecker(NodeVisitor<Typ>):
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
-                    list<Typ> lvt = []
+                    Typ[] lvt = []
                     for v, t in defn.items:
                         lvt.append(t)
                     self.check_multi_assignment(
@@ -151,7 +151,7 @@ class TypeChecker(NodeVisitor<Typ>):
                     # Infer local variable type if there is an initializer
                     # except if the# definition is at the top level (outside a
                     # function).
-                    list<Var> names = []
+                    Var[] names = []
                     for vv, tt in defn.items:
                         names.append(vv)
                     self.infer_local_variable_type(names, init_type, defn)
@@ -398,7 +398,7 @@ class TypeChecker(NodeVisitor<Typ>):
 
         self.check_assignments(self.expand_lvalues(s.lvalues[0]), s.rvalue)
 
-    void check_assignments(self, list<Node> lvalues, Node rvalue):        
+    void check_assignments(self, Node[] lvalues, Node rvalue):        
         # Collect lvalue types. Index lvalues require special consideration,
         # since we cannot typecheck them until we know the rvalue type.
         lvalue_types = <Typ> []    # May be None
@@ -442,7 +442,7 @@ class TypeChecker(NodeVisitor<Typ>):
         return ((isinstance(s, NameExpr) or isinstance(s, MemberExpr)) and
                 s.is_def)
     
-    list<Node> expand_lvalues(self, Node n):
+    Node[] expand_lvalues(self, Node n):
         if isinstance(n, TupleExpr):
             return self.expr_checker.unwrap_list(((TupleExpr)n).items)
         elif isinstance(n, ListExpr):
@@ -452,7 +452,7 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return [n]
     
-    void infer_variable_type(self, list<Var> names, Typ init_type,
+    void infer_variable_type(self, Var[] names, Typ init_type,
                              Context context):
         """Infer the type of initialized variables from the type of the
         initializer expression.
@@ -532,7 +532,7 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return typ
     
-    void check_multi_assignment(self, list<Typ> lvalue_types,
+    void check_multi_assignment(self, Typ[] lvalue_types,
                                 list<tuple<Typ, Node>> index_lvalue_types,
                                 Node rvalue,
                                 Context context,
@@ -546,7 +546,7 @@ class TypeChecker(NodeVisitor<Typ>):
         elif isinstance(rvalue_type, TupleType):
             # Rvalue with tuple type.
             trvalue = (TupleType)rvalue_type
-            list<Typ> items = []
+            Typ[] items = []
             for i in range(len(lvalue_types)):
                 if lvalue_types[i]:
                     items.append(lvalue_types[i])
@@ -721,7 +721,7 @@ class TypeChecker(NodeVisitor<Typ>):
                                            self.temp_node(item), s,
                                            messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
-            list<Typ> t = []
+            Typ[] t = []
             for ii in s.index:
                 v = (Var)ii.node
                 if v.typ:
@@ -873,7 +873,7 @@ class TypeChecker(NodeVisitor<Typ>):
         except KeyError:
             return UnboundType(name)
     
-    Instance named_generic_type(self, str name, list<Typ> args):
+    Instance named_generic_type(self, str name, Typ[] args):
         """Return an instance with the given name and type
         arguments. Assume that the number of arguments is correct.
         """
@@ -1008,7 +1008,7 @@ Typ map_type_from_supertype(Typ typ, TypeInfo sub_info, TypeInfo super_info):
     return expand_type_by_instance(typ, inst_type)
 
 
-T find_duplicate<T>(list<T> list):
+T find_duplicate<T>(T[] list):
     """If the list has duplicates, return one of the duplicates.
 
     Otherwise, return None.

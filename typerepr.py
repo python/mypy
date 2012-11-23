@@ -9,7 +9,7 @@ from lex import Token
 
 class CommonTypeRepr:
     """Representation of UnboundType, Instance and Callable."""
-    void __init__(self, list<Token> components,  langle, list<Token> commas,
+    void __init__(self, Token[] components,  langle, Token[] commas,
                   any rangle):
         # Note: langle and rangle may be empty.
         self.components = components
@@ -45,7 +45,7 @@ class TypeVarRepr:
 
 class TypeVarsRepr:
     """Representation of TypeVars."""
-    void __init__(self, any langle, list<Token> commas, any rangle):
+    void __init__(self, any langle, Token[] commas, any rangle):
         self.langle = langle
         self.commas = commas
         self.rangle = rangle

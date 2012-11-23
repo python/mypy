@@ -65,7 +65,7 @@ MypyFile parse(str s, str fnam=None, Errors errors=None):
 
 
 class Parser:
-    list<Token> tok
+    Token[] tok
     int ind
     Errors errors
     bool raise_on_error
@@ -118,8 +118,8 @@ class Parser:
     Import parse_import(self):
         import_tok = self.expect('import')
         list<tuple<str, str>> ids = []
-        list<list<Token>> id_toks = []
-        list<Token> commas = []
+        list<Token[]> id_toks = []
+        Token[] commas = []
         list<tuple<Token, Token>> as_names = []
         while True:
             id, components = self.parse_qualified_name()
@@ -146,7 +146,7 @@ class Parser:
         from_tok = self.expect('from')
         name, components = self.parse_qualified_name()
         import_tok = self.expect('import')
-        list<tuple<list<Token>, Token>> name_toks = []
+        list<tuple<Token[], Token>> name_toks = []
         Node node
         lparen = none
         rparen = none
@@ -175,7 +175,7 @@ class Parser:
             from_tok, components,import_tok, lparen, name_toks, rparen, br))
         return node
     
-    tuple<str, str, list<Token>> parse_import_name(self):
+    tuple<str, str, Token[]> parse_import_name(self):
         tok = self.expect_type(Name)
         name = tok.string
         tokens = [tok]
@@ -187,12 +187,12 @@ class Parser:
         else:
             return name, name, tokens
     
-    tuple<str, list<Token>> parse_qualified_name(self):
+    tuple<str, Token[]> parse_qualified_name(self):
         """Parse a name with an optional module qualifier. Return a
         tuple with the name as a string and a token array containing
         all the components of the name.
         """
-        list<Token> components = []
+        Token[] components = []
         tok = self.expect_type(Name)
         n = tok.string
         components.append(tok)
@@ -205,8 +205,8 @@ class Parser:
     
     # Parsing global definitions
     
-    list<Node> parse_defs(self):
-        list<Node> defs = []
+    Node[] parse_defs(self):
+        Node[] defs = []
         while not self.eof():
             try:
                 defn = self.parse_statement()
@@ -338,7 +338,7 @@ class Parser:
             self.errors.set_function(None)
             self.is_function = False
     
-    tuple<str, list<Var>, list<Node>, Var, Var, int, Annotation, bool, \
+    tuple<str, Var[], Node[], Var, Var, int, Annotation, bool, \
           tuple<Token, any>> \
               parse_function_header(self, Annotation ret_type):
         
@@ -363,7 +363,7 @@ class Parser:
         return (name, args, init, var_arg, dict_var_arg, max_pos, typ,
                 False, (name_tok, arg_repr))
     
-    tuple<list<Var>, list<Node>, Var, Var, int, Annotation, \
+    tuple<Var[], Node[], Var, Var, int, Annotation, \
           noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
         """Parse a function type signature, potentially prefixed with
         type variable specification within <...>.
@@ -391,7 +391,7 @@ class Parser:
                                       assigns, asterisk))
     
     Annotation build_func_annotation(self, Annotation ret_type,
-                                     list<Typ> arg_types, int min_args,
+                                     Typ[] arg_types, int min_args,
                                      Var var_arg, TypeVars type_vars,
                                      int line):
         # Are there any type annotations?
@@ -410,24 +410,24 @@ class Parser:
         else:
             return None
     
-    tuple<list<Var>, list<Node>, int, Var, Var, bool, int, list<Token>, \
-          list<Token>, Token, list<Token>, list<Typ>> parse_arg_list(self):
+    tuple<Var[], Node[], int, Var, Var, bool, int, Token[], \
+          Token[], Token, Token[], Typ[]> parse_arg_list(self):
         """Parse function definition argument list (everything between
         '(' and ')')."""
         
-        list<Var> args = []
-        list<Node> init = []
+        Var[] args = []
+        Node[] init = []
         min_args = 0
         Var var_arg = None
         Var dict_var_arg = None
         has_inits = False
         
-        list<Token> arg_names = []
-        list<Token> commas = []
+        Token[] arg_names = []
+        Token[] commas = []
         asterisk = none
-        list<Token> assigns = []
+        Token[] assigns = []
         
-        list<Typ> arg_types = []
+        Typ[] arg_types = []
         
         max_pos = -1
         
@@ -479,7 +479,7 @@ class Parser:
         return (args, init, min_args, var_arg, dict_var_arg, has_inits,
                 max_pos, arg_names, commas, asterisk, assigns, arg_types)
     
-    Callable construct_function_type(self, list<Typ> arg_types, int min_args,
+    Callable construct_function_type(self, Typ[] arg_types, int min_args,
                                      bool is_var_arg, Typ ret_type,
                                      TypeVars type_vars, int line):
         # Complete the type annotation by replacing omitted types with
@@ -572,7 +572,7 @@ class Parser:
             self.set_repr(node, noderepr.BlockRepr(colon, br, indent, dedent))
             return (Block)node
 
-    bool try_combine_overloads(self, Node s, list<Node> stmt):
+    bool try_combine_overloads(self, Node s, Node[] stmt):
         if isinstance(s, FuncDef) and stmt:
             fdef = (FuncDef)s
             n = fdef.name()
@@ -759,9 +759,9 @@ class Parser:
     
     GlobalDecl parse_global_decl(self):
         global_tok = self.expect('global')
-        list<str> names = []
-        list<Token> name_toks = []
-        list<Token> commas = []    
+        str[] names = []
+        Token[] name_toks = []
+        Token[] commas = []    
         while True:
             n = self.expect_type(Name)
             names.append(n.string)
@@ -815,7 +815,7 @@ class Parser:
                                                  else_tok))
         return node
     
-    tuple<list<NameExpr>, list<Annotation>, list<Token>> \
+    tuple<NameExpr[], Annotation[], Token[]> \
                               parse_for_index_variables(self):
         # Parse index variables of a 'for' statement.
         index = <NameExpr> []
@@ -843,7 +843,7 @@ class Parser:
         
         return index, types, commas
     
-    tuple<list<Var>, list<Annotation>> parse_index_variables(self):
+    tuple<Var[], Annotation[]> parse_index_variables(self):
         # Parse index variables.
         # TODO Do we need this and the above?
         index = <Var> []
@@ -876,7 +876,7 @@ class Parser:
         is_error = False
         
         if_tok = self.expect('if')
-        list<Node> expr = []
+        Node[] expr = []
         try:
             expr.append(self.parse_expression())
         except ParseError:
@@ -884,7 +884,7 @@ class Parser:
         
         body = [self.parse_block()]
         
-        list<Token> elif_toks = []
+        Token[] elif_toks = []
         while self.current_str() == 'elif':
             elif_toks.append(self.expect('elif'))
             try:
@@ -911,9 +911,9 @@ class Parser:
         try_tok = self.expect('try')
         body = self.parse_block()
         is_error = False
-        list<Var> vars = []
-        list<Node> types = []
-        list<Block> handlers = []
+        Var[] vars = []
+        Node[] types = []
+        Block[] handlers = []
         except_toks, name_toks, as_toks, except_brs = (<Token> [], <Token> [],
                                                        <Token> [], <Token> [])
         while self.current_str() == 'except':
@@ -964,10 +964,10 @@ class Parser:
     
     WithStmt parse_with_stmt(self):
         with_tok = self.expect('with')
-        list<Token> as_toks = []
-        list<Token> commas = []
-        list<Node> expr = []
-        list<Var> name = []
+        Token[] as_toks = []
+        Token[] commas = []
+        Node[] expr = []
+        Var[] name = []
         while True:
             e = self.parse_expression(precedence[','])
             Var v = None
@@ -1128,9 +1128,9 @@ class Parser:
         return node
     
     Node parse_list_expr(self):
-        list<Node> items = []
+        Node[] items = []
         lbracket = self.expect('[')
-        list<Token> commas = []
+        Token[] commas = []
         while self.current_str() != ']' and not self.eol():
             items.append(self.parse_expression(precedence[',']))
             if self.current_str() != ',':
@@ -1175,8 +1175,8 @@ class Parser:
     Node parse_dict_or_set_expr(self):
         list<tuple<Node, Node>> items = []
         lbrace = self.expect('{')
-        list<Token> colons = []
-        list<Token> commas = []
+        Token[] colons = []
+        Token[] commas = []
         while self.current_str() != '}' and not self.eol():
             key = self.parse_expression(precedence[','])
             if self.current_str() in [',', '}'] and items == []:
@@ -1207,7 +1207,7 @@ class Parser:
     
     TupleExpr parse_tuple_expr(self, Node expr, int prec=precedence[',']):
         items = [expr]
-        list<Token> commas = []
+        Token[] commas = []
         while True:
             commas.append(self.expect(','))
             if (self.current_str() in [')', ']', '='] or
@@ -1313,22 +1313,22 @@ class Parser:
                                                   rparen))
         return node
     
-    tuple<list<Node>, bool, Node, \
-          list<Token>, Token, \
+    tuple<Node[], bool, Node, \
+          Token[], Token, \
           list<tuple<NameExpr, Node>>, \
-          list<Token>> parse_arg_expr(self):
+          Token[]> parse_arg_expr(self):
         """Parse arguments in a call expression (within '(' and ')')."""
         
-        list<Node> args = []
+        Node[] args = []
         is_var_arg = False
         at = none
-        list<Token> commas = []
-        list<Token> assigns = []
+        Token[] commas = []
+        Token[] assigns = []
         list<tuple<NameExpr, Node>> kw_args = []
         Node dict_var_arg = None
         while self.current_str() != ')' and not self.eol():
             if isinstance(self.current(), Name) and self.peek().string == '=':
-                list<Token> c
+                Token[] c
                 kw_args, assigns, c = self.parse_keyword_args()
                 commas.extend(c)
                 break
@@ -1348,11 +1348,11 @@ class Parser:
         return args, is_var_arg, dict_var_arg, commas, at, kw_args, assigns
     
     tuple<list<tuple<NameExpr, Node>>, \
-          list<Token>, list<Token>> parse_keyword_args(self):
+          Token[], Token[]> parse_keyword_args(self):
         
         list<tuple<NameExpr, Node>> res = []
-        list<Token> assigns = []
-        list<Token> commas = []
+        Token[] assigns = []
+        Token[] commas = []
         while self.current_str() != ')':
             name = self.parse_name_expr()
             assigns.append(self.expect('='))
@@ -1475,8 +1475,8 @@ class Parser:
         except TypeParseError as e:
             self.parse_error_at(e.token)
     
-    tuple<list<Typ>, Token, \
-          Token, list<Token>> parse_type_list_in_angle_brackets(self):
+    tuple<Typ[], Token, \
+          Token, Token[]> parse_type_list_in_angle_brackets(self):
         types, langle, rangle, commas, i = parse_type_args(self.tok, self.ind)
         self.ind = i
         return types, langle, rangle, commas
@@ -1601,7 +1601,7 @@ class Parser:
     any repr(self, Node node):
         return node.repr
     
-    tuple<list<Token>, list<Token>> paren_repr(self, Node e):
+    tuple<Token[], Token[]> paren_repr(self, Node e):
         """If e is a ParenExpr, return an array of left-paren tokens
         (more that one if nested parens) and an array of corresponding
         right-paren tokens.  Otherwise, return [], [].

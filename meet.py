@@ -59,7 +59,7 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
                 if is_subtype(t, self.s):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    list<Typ> args = []
+                    Typ[] args = []
                     for i in range(len(t.args)):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.typ, args)
@@ -86,7 +86,7 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
     Typ visit_tuple_type(self, TupleType t):
         if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
                                               t.length()):
-            list<Typ> items = []
+            Typ[] items = []
             for i in range(t.length()):
                 items.append(self.meet(t.items[i],
                                        ((TupleType)self.s).items[i]))

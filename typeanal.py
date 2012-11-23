@@ -66,7 +66,7 @@ class TypeAnalyser(TypeVisitor<Typ>):
             return t
     
     Callable anal_function_type(self, UnboundType t):
-        list<Typ> a = []
+        Typ[] a = []
         for at in t.args[:-1]:
             a.append(at.accept(self))
         return Callable(a, len(a), False, t.args[-1].accept(self), False, None,
@@ -102,8 +102,8 @@ class TypeAnalyser(TypeVisitor<Typ>):
     Typ visit_tuple_type(self, TupleType t):
         return TupleType(self.anal_array(t.items), t.line, t.repr)
     
-    list<Typ> anal_array(self, list<Typ> a):
-        list<Typ> res = []
+    Typ[] anal_array(self, Typ[] a):
+        Typ[] res = []
         for t in a:
             res.append(t.accept(self))
         return res
@@ -115,7 +115,7 @@ class TypeAnalyser(TypeVisitor<Typ>):
         return res
     
     TypeVars anal_var_defs(self, TypeVars var_defs):
-        list<TypeVarDef> a = []
+        TypeVarDef[] a = []
         for vd in var_defs.items:
             Typ bound = None
             if vd.bound is not None:

@@ -18,15 +18,15 @@ str indent(str s, int n):
     return s
 
 
-list<str> array_repr<T>(list<T> a):
+str[] array_repr<T>(T[] a):
     """Return the items of an array converted to strings using Repr."""
-    list<str> aa = []
+    str[] aa = []
     for x in a:
         aa.append(repr(x))
     return aa
 
 
-str dump_tagged(list<any> nodes, str tag):
+str dump_tagged(any[] nodes, str tag):
     """Convert an array into a pretty-printed multiline string representation.
     The format is
       tag(
