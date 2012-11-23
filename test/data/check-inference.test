@@ -1,4 +1,5 @@
 -- Inferring locals/globals with simple types
+-- ------------------------------------------
 
 
 [case testInferSimpleGvarType]
@@ -492,6 +493,22 @@ T f<T>(T a, T b): pass
 class A: pass
 class B(A, I, J): pass
 class C(A, I, J): pass
+
+
+-- Generic function inference with function arguments
+-- --------------------------------------------------
+
+
+[case testNonOverloadedMapInference]
+bool b
+A f(bool x): pass
+list<s> mymap<t, s>(func<t, s> f, list<t> a): pass
+class A: pass
+
+l = mymap(f, [b])
+l = <A> []
+l = <bool> [] # E: Incompatible types in assignment
+[builtins fixtures/for.py]
 
 
 -- Literal expressions
