@@ -160,9 +160,9 @@ class BuildManager:
             self.errors.set_import_context(next.import_context)
             next.process()
         
-        # Raise exception if the build failed.
-        if self.errors.is_errors():
-            self.errors.raise_error()
+            # Raise exception if the build failed.
+            if self.errors.is_errors():
+                self.errors.raise_error()
         
         # If there were no errors, all files should have been fully processed.
         for s in self.states:

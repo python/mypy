@@ -76,13 +76,17 @@ main, line 4: Invalid type "__main__.x"
 class A: pass
 A x
 A x
+[out]
+main, line 3: Name 'x' already defined
+
+[case testMultipleVarDefinitions2]
+class A: pass
 def f():
   A x
   A x
 [out]
-main, line 3: Name 'x' already defined
 main: In function "f":
-main, line 6: Name 'x' already defined
+main, line 4: Name 'x' already defined
 
 [case testMultipleClassDefinitions]
 class A: pass
