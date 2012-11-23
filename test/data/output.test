@@ -280,6 +280,10 @@ c < d < e >> x
 int x , list < c > y
 int x, x y , foobar z = 123
 
+[case testListTypes]
+int[] foo
+tuple < x , y >  [ ]  [  ]   t
+
 [case testForStatement]
 for x in y: pass
 for x, y in z: pass

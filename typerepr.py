@@ -18,6 +18,13 @@ class CommonTypeRepr:
         self.rangle = rangle
 
 
+class ListTypeRepr:
+    """Representation of list type t[]."""
+    void __init__(self, lbracket, rbracket):
+        self.lbracket = lbracket
+        self.rbracket = rbracket
+
+
 class AnyRepr:
     """Representation of Any."""
     void __init__(self, any any_tok):

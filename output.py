@@ -3,6 +3,7 @@
 import re
 
 from visitor import NodeVisitor
+from typerepr import CommonTypeRepr
 
 
 class OutputVisitor(NodeVisitor):
@@ -510,11 +511,7 @@ class TypeOutputVisitor:
         return ''.join(self.result)
     
     def visit_unbound_type(self, t):
-        r = t.repr
-        self.tokens(r.components)
-        self.token(r.langle)
-        self.comma_list(t.args, r.commas)
-        self.token(r.rangle)
+        self.visit_instance(t)
     
     def visit_any(self, t):
         if t.repr:
@@ -526,10 +523,16 @@ class TypeOutputVisitor:
     
     def visit_instance(self, t):
         r = t.repr
-        self.tokens(r.components)
-        self.token(r.langle)
-        self.comma_list(t.args, r.commas)
-        self.token(r.rangle)
+        if isinstance(r, CommonTypeRepr):
+            self.tokens(r.components)
+            self.token(r.langle)
+            self.comma_list(t.args, r.commas)
+            self.token(r.rangle)
+        else:
+            # List type t[].
+            assert len(t.args) == 1
+            self.comma_list(t.args, [])
+            self.tokens([r.lbracket, r.rbracket])
     
     def visit_type_var(self, t):
         self.token(t.repr.name)

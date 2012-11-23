@@ -1,6 +1,7 @@
 from mtypes import Typ, TypeVars, TypeVarDef, Any, Void, UnboundType
 from typerepr import (
-    TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr
+    TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
+    ListTypeRepr
 )
 from lex import Token, Name
 
@@ -157,9 +158,10 @@ class TypeParser:
         while self.current_token_str() == '[':
             line = self.current_token().line
             # TODO representation
-            self.skip()
-            self.expect(']')
-            typ = UnboundType('__builtins__.list', [typ], line, None)
+            lbracket = self.skip()
+            rbracket = self.expect(']')
+            typ = UnboundType('__builtins__.list', [typ], line,
+                              ListTypeRepr(lbracket, rbracket))
         return typ
     
     # Helpers
