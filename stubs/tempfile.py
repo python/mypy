@@ -1,5 +1,5 @@
 # Stubs for tempfile
-# Ron Murawski
+# Ron Murawski <ron@horizonchess.com>
 
 # based on http://docs.python.org/3.3/library/tempfile.html
 

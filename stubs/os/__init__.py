@@ -1,5 +1,5 @@
 # Stubs for os
-# Ron Murawski
+# Ron Murawski <ron@horizonchess.com>
 
 # based on http://docs.python.org/3.2/library/os.html
 
