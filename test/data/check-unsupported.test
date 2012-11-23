@@ -71,4 +71,17 @@ main: In function "f":
 main, line 2: Nested functions not supported yet
 main, line 5: Nested functions not supported yet
 
-    
+[case testNestedClass]
+def f():
+    class A: pass    
+class B:
+    class C: pass
+    def f(self):
+        class D: pass
+[out]
+main: In function "f":
+main, line 2: Nested classes not supported yet
+main: At top level:
+main, line 4: Nested classes not supported yet
+main: In function "f":
+main, line 6: Nested classes not supported yet

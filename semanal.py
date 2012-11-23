@@ -257,6 +257,9 @@ class SemanticAnal(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
+        if self.locals is not None or self.typ:
+            self.fail('Nested classes not supported yet', defn)
+            return
         self.typ = defn.info
         self.add_class_type_variables_to_symbol_table(self.typ)
         has_base_class = False
