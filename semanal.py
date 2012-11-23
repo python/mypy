@@ -297,6 +297,8 @@ class SemanticAnal(NodeVisitor):
         ann.typ = self.anal_type(ann.typ)
     
     void visit_import(self, Import i):
+        if not self.check_import_at_toplevel(i):
+            return
         for id, as_id in i.ids:
             if as_id != id:
                 m = self.modules[id]
@@ -309,6 +311,8 @@ class SemanticAnal(NodeVisitor):
                                                      self.cur_mod_id)
     
     void visit_import_from(self, ImportFrom i):
+        if not self.check_import_at_toplevel(i):
+            return
         m = self.modules[i.id]
         for id, as_id in i.names:
             node = m.names.get(id, None)
@@ -319,19 +323,30 @@ class SemanticAnal(NodeVisitor):
                 self.fail("Module has no attribute '{}'".format(id), i)
     
     void visit_import_all(self, ImportAll i):
+        if not self.check_import_at_toplevel(i):
+            return
         m = self.modules[i.id]
         for name, node in m.names.items():
             if not name.startswith('_'):
                 self.globals[name] = SymbolTableNode(node.kind, node.node,
                                                      self.cur_mod_id)
+
+    bool check_import_at_toplevel(self, Context c):
+        if self.block_depth > 0:
+            self.fail("Imports within blocks not supported yet", c)
+            return False
+        else:
+            return True
     
     #
     # Statements
     #
     
     void visit_block(self, Block b):
+        self.block_depth += 1
         for s in b.body:
             s.accept(self)
+        self.block_depth -= 1
     
     void visit_block_maybe(self, Block b):
         if b:
