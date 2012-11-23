@@ -218,3 +218,10 @@ main: In function "f":
 main, line 6: Incompatible types in assignment
 main: At top level:
 main, line 8: Incompatible types in assignment
+
+[case testGlobalDefinedInBlockWithType]
+class A: pass
+while A:
+    A a
+    a = A()
+    a = object() # E: Incompatible types in assignment

@@ -644,3 +644,11 @@ a = x
 x = object()
 a = object() # E: Incompatible types in assignment
 class A: pass
+
+[case testInferGlobalDefinedInBlock]
+if A:
+    a = A()
+    a = A()
+    a = B() # E: Incompatible types in assignment
+class A: pass
+class B: pass
