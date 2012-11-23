@@ -392,7 +392,8 @@ class SemanticAnal(NodeVisitor):
                         bool add_defs=False):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
-            if add_defs and n.name not in self.globals:
+            nested_global = (self.locals is None and self.block_depth > 0)
+            if (add_defs or nested_global) and n.name not in self.globals:
                 v = Var(n.name)
                 v._full_name = self.qualified_name(n.name)
                 n.node = v

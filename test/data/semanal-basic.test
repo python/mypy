@@ -337,3 +337,27 @@ MypyFile:1(
           Lvalues(
             NameExpr(x [__main__.x]))
           NameExpr(self [l]))))))
+
+[case testGlobalDefinedInBlock]
+if object:
+    x = object()
+    x = x
+x
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      NameExpr(object [builtins.object]))
+    Then(
+      AssignmentStmt:2(
+        Lvalues(
+          NameExpr(x*))
+        CallExpr:2(
+          NameExpr(object [builtins.object])
+          Args()))
+      AssignmentStmt:3(
+        Lvalues(
+          NameExpr(x [__main__.x]))
+        NameExpr(x [__main__.x]))))
+  ExpressionStmt:4(
+    NameExpr(x [__main__.x])))

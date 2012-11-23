@@ -371,10 +371,8 @@ main, line 7: Incompatible types in assignment
 try: pass
 except BaseException: pass
 else:
-  None = object()
+  object(None) # E: Too many arguments for "object"
 [builtins fixtures/exception.py]
-[out]
-main, line 4: Incompatible types in assignment
 
 [case testMultipleExceptionTypes]
 try: pass
