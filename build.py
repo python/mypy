@@ -106,12 +106,14 @@ str[] default_lib_path():
 
 
 class BuildManager:
-    """This is the central class for building a mypy program. It coordinates
-    parsing, import processing, semantic analysis and type checking. It manages
-    state objects that actually perform the build steps.
+    """This is the central class for building a mypy program.
+
+    It coordinates parsing, import processing, semantic analysis and
+    type checking. It manages state objects that actually perform the
+    build steps.
     """
     bool do_type_check    # Do we perform a type check?
-    str[] lib_path    # Library path for looking up modules
+    str[] lib_path        # Library path for looking up modules
     SemanticAnal sem_anal # Semantic analyzer
     TypeChecker checker   # Type checker
     Errors errors         # For reporting all errors
@@ -136,10 +138,12 @@ class BuildManager:
     
     tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
                 process(self, UnprocessedFile initial_state):
-        """Perform a build. The argument is a state that represents
-        tha main program file. This method should only be called once
-        per a build manager object.  The return values are identical
-        to the return values of Build.
+        """Perform a build.
+
+        The argument is a state that represents tha main program
+        file. This method should only be called once per a build
+        manager object.  The return values are identical to the return
+        values of Build.
         """
         self.states.append(initial_state)
         
@@ -211,9 +215,9 @@ class BuildManager:
     
     list<tuple<str, int>> all_imported_modules(self, MypyFile file):
         """Return tuple (module id, line number of import) for all
-        modules imported in a file.  TODO also find imports not at the
-        top level of the file
+        modules imported in a file.
         """
+        # TODO also find imports not at the top level of the file
         list<tuple<str, int>> res = []
         for d in file.defs:
             if isinstance(d, Import):
@@ -246,8 +250,9 @@ str path_relative_to_program_path(str dir):
 
 
 str fix_path(str p):
-    """Remove current working directory prefix from p, if present. If
-    the result would be empty, return '.' instead.
+    """Remove current working directory prefix from p, if present.
+
+    If the result would be empty, return '.' instead.
     """
     cur = os.getcwd()
     # Add separator to the end of the path, unless one is already present.
