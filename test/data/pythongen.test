@@ -433,3 +433,18 @@ class A:
 class A(object):
     def __init__(self):
         super(A, self).__init__()
+
+[case testOverloadWithListType]
+def f(object[] o): pass
+def f(object o): pass
+[builtins fixtures/list.py]
+[out]
+def f(o):
+    def f1(o): pass
+    def f2(o): pass
+    if isinstance(o, __builtins__.list):
+        return f1(o)
+    elif isinstance(o, object):
+        return f2(o)
+    else:
+        raise TypeError("Invalid argument types")

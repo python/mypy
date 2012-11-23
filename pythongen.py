@@ -5,6 +5,7 @@ from mtypes import (
 from nodes import IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt
 from nodes import function_type
 from output import OutputVisitor
+from typerepr import ListTypeRepr
 
 
 # Names present in mypy but not in Python. Imports of these names are removed
@@ -138,11 +139,14 @@ class PythonGenerator(OutputVisitor):
     
     def erased_type(self, t):
         if isinstance(t, Instance) or isinstance(t, UnboundType):
-            a = []
-            if t.repr:
-                for tok in t.repr.components:
-                    a.append(tok.rep())
-            return ''.join(a)
+            if isinstance(t.repr, ListTypeRepr):
+                return '__builtins__.list'
+            else:
+                a = []
+                if t.repr:
+                    for tok in t.repr.components:
+                        a.append(tok.rep())
+                return ''.join(a)
         elif isinstance(t, TupleType):
             return 'tuple' # FIX: aliasing?
         else:
