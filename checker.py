@@ -394,7 +394,7 @@ class TypeChecker(NodeVisitor<Typ>):
         """
         # TODO support chained assignment x = y = z
         if len(s.lvalues) > 1:
-            self.fail('Chained assignment not supported yet', s)
+            self.msg.not_implemented('chained assignment', s)
 
         self.check_assignments(self.expand_lvalues(s.lvalues[0]), s.rvalue)
 

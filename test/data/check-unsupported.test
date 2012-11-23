@@ -85,3 +85,16 @@ main: At top level:
 main, line 4: Nested classes not supported yet
 main: In function "f":
 main, line 6: Nested classes not supported yet
+
+[case testChainedAssignment]
+x = y = object
+def f():
+    x = y = object
+class A:
+    x = y = object
+[out]
+main, line 1: Feature not implemented yet (chained assignment)
+main: In function "f":
+main, line 3: Feature not implemented yet (chained assignment)
+main: In class "A":
+main, line 5: Feature not implemented yet (chained assignment)
