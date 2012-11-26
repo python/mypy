@@ -151,11 +151,11 @@ class TypeOpsSuite(Suite):
     
     def test_erase_with_function_type(self):
         self.assert_erase(self.fx.callable(self.fx.a, self.fx.b),
-                          self.fx.std_function)
+                          self.fx.callable_type(self.fx.void))
     
     def test_erase_with_type_object(self):
         self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b),
-                          self.fx.std_function)
+                          self.fx.callable_type(self.fx.void))
     
     def assert_erase(self, orig, result):
         assert_equal(str(erase_type(orig, self.fx.basic)), str(result))

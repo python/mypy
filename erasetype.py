@@ -6,14 +6,16 @@ import checker
 
 
 Typ erase_type(Typ typ, checker.BasicTypes basic):
-    """Erase any type variables from a type. Also replace complex types (tuple,
-    function) with the corresponding concrete types.
+    """Erase any type variables from a type.
+
+    Also replace tuple types with the corresponding concrete types. Replace
+    callable types with empty callable types.
     
     Examples:
       A -> A
       B<X> -> B<any>
       tuple<A, B> -> tuple
-      func<...> -> function
+      func<...> -> func<void>
       """
     return typ.accept(EraseTypeVisitor(basic))
 
@@ -44,7 +46,9 @@ class EraseTypeVisitor(TypeVisitor<Typ>):
         return Any()
     
     Typ visit_callable(self, Callable t):
-        return self.basic.function
+        # We must preserve the type object flag for overload resolution to
+        # work.
+        return Callable([], 0, False, Void(), t.is_type_obj())
     
     Typ visit_tuple_type(self, TupleType t):
         return self.basic.tuple
