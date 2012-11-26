@@ -3,6 +3,8 @@
 # TODO functions and classes that work on bytes objects
 # TODO more functionality
 
+int MULTILINE
+
 class Pattern:
     Match match(self, str string, int pos=0, int endpos=-1): pass
     Match search(self, str string, int pos=0, int endpos=-1): pass
