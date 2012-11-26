@@ -212,3 +212,17 @@ f(B(), A)
 class A: pass
 class B: pass
 [builtins fixtures/function.py]
+
+[case testOverloadedInitAndTypeObjectInOverload]
+A f(type t): pass
+B f(A t): pass
+A a, B b
+a = f(A)
+b = f(a)
+b = f(A) # E: Incompatible types in assignment
+a = f(a) # E: Incompatible types in assignment
+class A:
+   void __init__(self): pass
+   void __init__(self, A a): pass
+class B:
+    pass

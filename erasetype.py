@@ -1,6 +1,6 @@
 from mtypes import (
     Typ, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
-    TypeVar, Callable, TupleType
+    TypeVar, Callable, TupleType, Overloaded
 )
 import checker
 
@@ -49,6 +49,9 @@ class EraseTypeVisitor(TypeVisitor<Typ>):
         # We must preserve the type object flag for overload resolution to
         # work.
         return Callable([], 0, False, Void(), t.is_type_obj())
+
+    Typ visit_overloaded(self, Overloaded t):
+        return t.items()[0].accept(self)
     
     Typ visit_tuple_type(self, TupleType t):
         return self.basic.tuple
