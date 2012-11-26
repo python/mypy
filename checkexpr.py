@@ -328,8 +328,9 @@ class ExpressionChecker:
     
     bool matches_signature(self, Typ[] arg_types, bool is_var_arg,
                            Callable typ):
-        """Determine whether argument types match the given
-        signature. If isVarArg is True, the caller uses varargs.
+        """Determine whether argument types match the signature.
+
+        If is_var_arg is True, the caller uses varargs.
         """
         if not is_valid_argc(len(arg_types), False, typ):
             return False
@@ -357,7 +358,7 @@ class ExpressionChecker:
         'def [int] (int) -> int'. Here '[int]' is an implicit bound type
         variable.
         
-        Note that each type can be nil; in this case, it will not be applied.
+        Note that each type can be None; in this case, it will not be applied.
         """
         TypeVarDef[] tvars = []
         for v in implicit_type_vars:
