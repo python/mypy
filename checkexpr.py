@@ -346,14 +346,13 @@ class ExpressionChecker:
         for i in range(min(len(arg_types), func_fixed)):
             if not is_subtype(self.erase(arg_types[i]),
                               self.erase(
-                                  replace_type_vars(callee.arg_types[i]))):
+                                  callee.arg_types[i])):
                 return False
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
                 if not is_subtype(self.erase(arg_types[i]),
-                                  self.erase(replace_type_vars(
-                                      callee.arg_types[func_fixed]))):
+                                  self.erase(callee.arg_types[func_fixed])):
                     return False
         return True
     
