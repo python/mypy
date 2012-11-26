@@ -4,8 +4,8 @@ from typerepr import AnyRepr
 
 
 Typ replace_type_vars(Typ typ, bool func_tvars=True):
-    """Replace type variable references in a type with the dynamic type. If
-    funcTvars is false, only replace instance type variables.
+    """Replace type variable references in a type with the any type. If
+    func_tvars is false, only replace instance type variables.
     """
     return typ.accept(ReplaceTypeVarsVisitor(func_tvars))
 
@@ -33,7 +33,7 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
 
 
 Typ replace_func_type_vars(Typ typ):
-    """Replace type variable references in a type with the nil (empty) type."""
+    """Replace type variables in a type with the None (empty) type."""
     return typ.accept(ReplaceFuncTypeVarsVisitor())
 
 
