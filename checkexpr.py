@@ -327,33 +327,33 @@ class ExpressionChecker:
             return match
     
     bool matches_signature(self, Typ[] arg_types, bool is_var_arg,
-                           Callable typ):
+                           Callable callee):
         """Determine whether argument types match the signature.
 
         If is_var_arg is True, the caller uses varargs.
         """
-        if not is_valid_argc(len(arg_types), False, typ):
+        if not is_valid_argc(len(arg_types), False, callee):
             return False
         
         if is_var_arg:
             if not self.is_valid_var_arg(arg_types[-1]):
                 return False
-            Typ rest
             arg_types, rest = expand_caller_var_args(arg_types,
-                                                     typ.max_fixed_args())
+                                                     callee.max_fixed_args())
 
         # Fixed function arguments.
-        func_fixed = typ.max_fixed_args()
+        func_fixed = callee.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
             if not is_subtype(self.erase(arg_types[i]),
-                              self.erase(replace_type_vars(typ.arg_types[i]))):
+                              self.erase(
+                                  replace_type_vars(callee.arg_types[i]))):
                 return False
         # Function varargs.
-        if typ.is_var_arg:
+        if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
                 if not is_subtype(self.erase(arg_types[i]),
                                   self.erase(replace_type_vars(
-                                      typ.arg_types[func_fixed]))):
+                                      callee.arg_types[func_fixed]))):
                     return False
         return True
     
