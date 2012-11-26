@@ -624,7 +624,18 @@ class UnicodeEncodeError(UnicodeError): pass
 class UnicodeTranslateError(UnicodeError): pass
 class ZeroDivisionError(ArithmeticError): pass
 
+class Warning(Exception): pass
+class UserWarning(Warning): pass
+class DeprecationWarning(Warning): pass
+class SyntaxWarning(Warning): pass
+class RuntimeWarning(Warning): pass
+class FutureWarning(Warning): pass
+class PendingDeprecationWarning(Warning): pass
+class ImportWarning(Warning): pass
+class UnicodeWarning(Warning): pass
+class BytesWarning(Warning): pass
+class ResourceWarning(Warning): pass
+
 # TODO
-#   warnings
 #   VMSError
 #   WindowsError
