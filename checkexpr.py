@@ -345,22 +345,16 @@ class ExpressionChecker:
         # Fixed function arguments.
         func_fixed = typ.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
-            if not is_subtype(erasetype.erase_type(arg_types[i],
-                                                   self.chk.basic_types()),
-                              erasetype.erase_type(
-                                  replace_type_vars(typ.arg_types[i]),
-                                  self.chk.basic_types())):
+            if not is_subtype(self.erase(arg_types[i]),
+                              self.erase(replace_type_vars(typ.arg_types[i]))):
                 return False
         # Function varargs.
         if typ.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
-                if not is_subtype(erasetype.erase_type(arg_types[i],
-                                                       self.chk.basic_types()),
-                                  erasetype.erase_type(
-                                      replace_type_vars(
-                                          typ.arg_types[func_fixed]),
-                                      self.chk.basic_types())):
-                    return False            
+                if not is_subtype(self.erase(arg_types[i]),
+                                  self.erase(replace_type_vars(
+                                      typ.arg_types[func_fixed]))):
+                    return False
         return True
     
     Typ apply_generic_arguments(self, Callable callable, Typ[] types,
@@ -791,6 +785,10 @@ class ExpressionChecker:
         for n in a:
             r.append(self.unwrap(n))
         return r
+
+    Typ erase(self, Typ type):
+        """Replace type variable types in type with any."""
+        return erasetype.erase_type(type, self.chk.basic_types())
 
 
 bool is_valid_argc(int nargs, bool is_var_arg, Callable callable):
