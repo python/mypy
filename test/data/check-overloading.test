@@ -179,3 +179,32 @@ void f(func<void> x): pass
 
 f(A())
 [builtins fixtures/function.py]
+
+
+-- Regression tests
+-- ----------------
+
+
+[case testVarArgsOverload]
+A f(A x, any *more): pass
+A f(B x, any *more): pass
+f(A())
+f(A(), A, A)
+f(B())
+f(B(), B)
+f(B(), B, B)
+f(object()) # E: No overload variant of "f" matches argument types
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+[case testVarArgsOverload2]
+A f(A x, B *more): pass
+A f(B x, A *more): pass
+f(A(), B())
+f(A(), B(), B())
+f(A(), A(), B()) # E: No overload variant of "f" matches argument types
+f(A(), B(), A()) # E: No overload variant of "f" matches argument types
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
