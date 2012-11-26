@@ -1,7 +1,8 @@
 class object:
-    def __init__(self): pass
+    void __init__(self): pass
 
-class type: pass
+class type:
+    def __init__(self, x): pass
 
 # Definition of None is implicit
 
