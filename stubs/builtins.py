@@ -307,21 +307,54 @@ class str(int_t, float_t, Sequence<str>):
     
 
 class bytes(int_t, float_t, Sequence<int>):
+    # TODO fromhex
+    # TODO maketrans
+    
     void __init__(self, Iterable<int> ints): pass
     void __init__(self, str string, str encoding, str errors='strict'): pass
     void __init__(self, int length): pass
     void __init__(self): pass
 
-    # TODO more methods
-    bytes strip(self): pass
-    bytes upper(self): pass
-    bytes lower(self): pass
-    # TODO keyword args
-    bytes replace(self, bytes old, bytes new, int count=-1): pass
-    bytes join(self, Iterable<bytes> iterable): pass
-    bytes[] split(self, bytes sep=None, int maxsplit=-1): pass
-    bool startswith(self, bytes prefix): pass
+    bytes capitalize(self): pass
+    bytes center(self, int width, bytes fillchar=b' '): pass
+    int count(self, bytes x): pass
+    str decode(self, str encoding='utf-8', str errors='strict'): pass
     bool endswith(self, bytes suffix): pass
+    bytes expandtabs(self, int tabsize=8): pass
+    int find(self, bytes sub, int start=0): pass
+    int find(self, bytes sub, int start, int end): pass
+    int index(self, bytes sub, int start=0): pass
+    int index(self, bytes sub, int start, int end): pass
+    bool isalnum(self): pass
+    bool isalpha(self): pass
+    bool isdigit(self): pass
+    bool islower(self): pass
+    bool isspace(self): pass
+    bool istitle(self): pass
+    bool isupper(self): pass
+    bytes join(self, Iterable<bytes> iterable): pass
+    bytes ljust(self, int width, bytes fillchar=b' '): pass
+    bytes lower(self): pass
+    bytes lstrip(self, bytes chars=None): pass
+    tuple<bytes, bytes, bytes> partition(self, bytes sep): pass
+    bytes replace(self, bytes old, bytes new, int count=-1): pass
+    int rfind(self, bytes sub, int start=0): pass
+    int rfind(self, bytes sub, int start, int end): pass
+    int rindex(self, bytes sub, int start=0): pass
+    int rindex(self, bytes sub, int start, int end): pass
+    bytes rjust(self, int width, bytes fillchar=b' '): pass
+    tuple<bytes, bytes, bytes> rpartition(self, bytes sep): pass
+    bytes[] rsplit(self, bytes sep=None, int maxsplit=-1): pass
+    bytes rstrip(self, bytes chars=None): pass
+    bytes[] split(self, bytes sep=None, int maxsplit=-1): pass
+    bytes[] splitlines(self, bool keepends=False): pass
+    bool startswith(self, bytes prefix): pass
+    bytes strip(self): pass
+    bytes swapcase(self): pass
+    bytes title(self): pass
+    bytes translate(self, dict<int, any> table): pass
+    bytes upper(self): pass
+    bytes zfill(self, int width): pass
     
     int __len__(self): pass
     Iterator<int> __iter__(self): pass
@@ -336,7 +369,6 @@ class bytes(int_t, float_t, Sequence<int>):
     bytes __add__(self, bytes s): pass    
     bytes __mul__(self, int n): pass
     bool __contains__(self, object o): pass
-    # TODO __contains__ with bytes argument
     
     bool __eq__(self, object x): pass
     bool __ne__(self, object x): pass
@@ -345,6 +377,44 @@ class bytes(int_t, float_t, Sequence<int>):
     bool __le__(self, object x): pass
     bool __gt__(self, object x): pass
     bool __ge__(self, object x): pass
+
+
+class bytearray(bytes):
+    void append(self, int i): pass
+    void extend(self, Iterable<int> iterable): pass
+    int pop(self): pass
+    void insert(self, int index, int object): pass
+    void remove(self, int object): pass
+    void reverse(self): pass
+
+    bytearray capitalize(self): pass
+    bytearray center(self, int width, bytes fillchar=b' '): pass
+    bytearray expandtabs(self, int tabsize=8): pass
+    bytearray join(self, Iterable<bytes> iterable): pass
+    bytearray ljust(self, int width, bytes fillchar=b' '): pass
+    bytearray lower(self): pass
+    bytearray lstrip(self, bytes chars=None): pass
+    tuple<bytearray, bytearray, bytearray> partition(self, bytes sep): pass
+    bytearray replace(self, bytes old, bytes new, int count=-1): pass
+    bytearray rjust(self, int width, bytes fillchar=b' '): pass
+    tuple<bytearray, bytearray, bytearray> rpartition(self, bytes sep): pass
+    # rpslit, split, splitlines return bytes[]
+    bytearray rstrip(self, bytes chars=None): pass
+    bytearray strip(self): pass
+    bytearray swapcase(self): pass
+    bytearray title(self): pass
+    bytearray translate(self, dict<int, any> table): pass
+    bytearray upper(self): pass
+    bytearray zfill(self, int width): pass
+
+    int __getitem__(self, int i): pass
+    bytearray __getitem__(self, slice s): pass
+    bytearray __add__(self, bytes s): pass    
+    bytearray __mul__(self, int n): pass
+    void __setitem__(self, int i, int x): pass
+    void __setitem__(self, slice s, Sequence<int> x): pass
+    void __delitem__(self, int i): pass
+    void __delitem__(self, slice s): pass
 
 
 class bool:
@@ -391,7 +461,9 @@ class list<t>(Sequence<t>):
     t __getitem__(self, int i): pass
     t[] __getitem__(self, slice s): pass    
     void __setitem__(self, int i, t o): pass
-    void __delitem__(self, int i): pass    
+    void __setitem__(self, slice s, Sequence<t> o): pass
+    void __delitem__(self, int i): pass
+    void __delitem__(self, slice s): pass
     t[] __add__(self, t[] x): pass
     t[] __mul__(self, int n): pass
     bool __contains__(self, object o): pass
@@ -486,9 +558,6 @@ class range(Sized, Iterable<int>):
     # TODO __reversed__
 
 
-# TODO bytearray
-
-
 True = 0 == 0
 False = 0 == 1
 
@@ -517,7 +586,6 @@ int hash(object o): pass
 str hex(int i): pass
 int id(object o): pass
 str input(str prompt=None): pass
-# TODO issubclass
 Iterator<t> iterable<t>(Iterable<t> iterable): pass
 Iterator<t> iterable<t>(func<t> function, t sentinel): pass
 bool isinstance(object o, type t): pass
