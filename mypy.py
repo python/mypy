@@ -1,3 +1,9 @@
+"""Mypy type checker and Python translator
+
+Type check and program, translate it to Python and run it. Note that you must
+use a mypy translator that has already been translated to run this program.
+"""
+
 import os
 import os.path
 import sys
@@ -86,5 +92,5 @@ def is_stub(path):
     return path.startswith('stubs/') or '/stubs/' in path
 
 
-# TODO if __name__ == '__main__'
-main()
+if __name__ == '__main__':
+    main()
