@@ -20,10 +20,36 @@ m.f(m.A())
 class A: pass
 void f(A a): pass
 
-[case AccessImportedDefinitions2]
+[case testAccessImportedDefinitions2]
 from m import f, A
 f(object()) # E: Argument 1 to "f" has incompatible type "object"
 f(A())
 [file m.py]
 class A: pass
 void f(A a): pass
+
+[case testImportedExceptionType]
+import m
+try: 
+    pass
+except m.Err:
+    pass
+except m.Bad: # E: Invalid exception type
+    pass
+[file m.py]
+class Err(BaseException): pass
+class Bad: pass
+[builtins fixtures/exception.py]
+
+[case testImportedExceptionType2]
+from m import Err, Bad
+try: 
+    pass
+except Err:
+    pass
+except Bad: # E: Invalid exception type
+    pass
+[file m.py]
+class Err(BaseException): pass
+class Bad: pass
+[builtins fixtures/exception.py]
