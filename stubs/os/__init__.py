@@ -11,7 +11,6 @@ int SEEK_SET = 0
 int SEEK_CUR = 1
 int SEEK_END = 2
 
-# TODO: need values for these constants
 int O_RDONLY
 int O_WRONLY
 int O_RDWR
@@ -40,7 +39,6 @@ int O_TRUNC
 #int O_NOFOLLOW  # Gnu extension if in C library
 #int O_NOATIME  # Gnu extension if in C library
 
-# TODO: need platform-specific values
 str curdir
 str pardir
 str sep
@@ -51,18 +49,18 @@ str defpath
 str linesep
 str devnull
 
-# TODO: need values for these access() modes
 int F_OK
 int R_OK
 int W_OK
 int X_OK
 
-# TODO need key/value pairs
+Mapping<str, str> environ
+Mapping<bytes, bytes> environb
+
 #dict<str, int> confstr_names  # Unix only
-#dict<str, int> pathconf_names  # Unix only
+#dict<str, int> pathconf_names # Unix only
 #dict<str, int> sysconf_names  # Unix only
 
-# TODO need values for _exit() codes
 #int EX_OK  # Unix only
 #int EX_USAGE  # Unix only
 #int EX_DATAERR  # Unix only
@@ -81,14 +79,13 @@ int X_OK
 #int EX_CONFIG  # Unix only
 #int EX_NOTFOUND  # Unix only
 
-# TODO need values for spawn modes
 int P_NOWAIT
 int P_NOWAITO
 int P_WAIT
 #int P_DETACH  # Windows only
 #int P_OVERLAY  # Windows only
 
-# TODO: need values for wait()/waitpid() options
+# wait()/waitpid() options
 #int WNOHANG  # Unix only
 #int WCONTINUED  # some Unix systems
 #int WUNTRACED  # Unix only
@@ -145,8 +142,6 @@ class stat_result:
 # ----- os function stubs -----
 OSError error(): pass
 str name(): pass
-Mapping<str, str> environ(): pass
-Mapping<bytes, bytes> environb(): pass
 bytes fsencode(str filename): pass
 str fsdecode(bytes filename): pass
 str[] get_exec_path(env=None) : pass
