@@ -93,6 +93,9 @@ interface IO:
     int write(self, bytes s)
     void writelines(self, bytes[] lines)
 
+    void __enter__(self): pass
+    void __exit__(self): pass
+
 interface TextIO:
     # TODO __enter__ etc.
     # TODO iteration
@@ -123,6 +126,9 @@ interface TextIO:
     # TODO buffer objects
     int write(self, str s)
     void writelines(self, str[] lines)
+
+    void __enter__(self): pass
+    void __exit__(self): pass
 
 
 # Classes
