@@ -1,4 +1,5 @@
--- Test cases for the type checker related to functions and function types.
+-- Test cases for the type checker related to functions, function types and 
+-- calls.
 
 -- See also check-varargs.test.
 
