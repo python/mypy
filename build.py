@@ -3,20 +3,16 @@ in the correct order (based on file dependencies), and collect the results."""
 
 import os
 import os.path
+import sys
+from os.path import dirname, basename
 
 from mtypes import Typ
 from nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
 from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnal
-from os.path import dirname, basename
-from sys import platform
 from checker import TypeChecker
 from errors import Errors
 from parse import parse
-
-
-# TODO determine program path precisely
-program_path = '.'
 
 
 debug = False
@@ -25,7 +21,7 @@ debug = False
 tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
             build(str program_text, str program_file_name='main',
                   bool use_test_builtins=False, str alt_lib_path=None,
-                  bool do_type_check=False):
+                  bool do_type_check=False, str mypy_base_dir=None):
     """Build a program represented as a string (program_text).
 
     A single call to build performs semantic analysis and optionally
@@ -49,17 +45,24 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
         (takes precedence over other directories)
       do_type_check: if True, also perform type checking; otherwise, only
         perform parsing and semantic analysis
+      mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
+        derived from sys.argv[0]
     
     Currently the final pass of the build (the compiler back end) is not
     implemented yet.
     """
+    if not mypy_base_dir:
+        # Determine location of the mypy installation.
+        mypy_base_dir = dirname(sys.argv[0])
+        if basename(mypy_base_dir) == '__mycache__':
+            mypy_base_dir = dirname(mypy_base_dir)
     # Determine the default module search path.
-    lib_path = default_lib_path()
+    lib_path = default_lib_path(mypy_base_dir)
     
     if use_test_builtins:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
-        lib_path.insert(0, path_relative_to_program_path('test/data/lib-stub'))
+        lib_path.insert(0, 'test/data/lib-stub')
     else:
         # Include directory of the program file in the module search path.
         lib_path.insert(0, fix_path(dirname(program_file_name)))
@@ -85,7 +88,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     return manager.process(UnprocessedFile(info, program_text))
 
 
-str[] default_lib_path():
+str[] default_lib_path(str mypy_base_dir):
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     str[] path = []
@@ -96,10 +99,10 @@ str[] default_lib_path():
         path.append(path_env)
     
     # Add library stubs directory.
-    path.append(path_relative_to_program_path('stubs'))
+    path.append(os.path.join(mypy_base_dir, 'stubs'))
     
     # Add fallback path that can be used if we have a broken installation.
-    if platform != 'windows':
+    if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
     
     return path
@@ -239,14 +242,6 @@ class BuildManager:
         """Is there a file in the file system corresponding to the
         given module?"""
         return find_module(id, self.lib_path) is not None
-
-
-str path_relative_to_program_path(str dir):
-    """Convert a path to a path relative to ProgramPath of the current program,
-    independent of the working directory.
-    """
-    base_path = dirname(program_path)
-    return fix_path(os.path.normpath(os.path.join(base_path, dir)))
 
 
 str fix_path(str p):
