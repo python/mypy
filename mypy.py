@@ -61,7 +61,7 @@ void main():
             # Run the translated program.
 
             a = <str> []
-            for arg in args[1:]:
+            for arg in args:
                 # TODO escape arguments etc.
                 a.append('"{}"'.format(arg))
 
