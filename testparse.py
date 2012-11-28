@@ -32,7 +32,7 @@ def test_parser(testcase):
 
 # The file name shown in test case output. This is displayed in error
 # messages, and must match the file name in the test case descriptions.
-INPUT_FILE_NAME = 'file.alo'
+INPUT_FILE_NAME = 'file'
 
 
 class ParseErrorSuite(Suite):
