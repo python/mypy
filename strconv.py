@@ -286,10 +286,10 @@ class StrConv(NodeVisitor<str>):
         a = [o.callee, ('Args', o.args)]
         if o.is_var_arg:
             a.append('VarArg')
-        if o.dict_var_arg:
-            a.append(('DictVarArg', [o.dict_var_arg]))
         for n, v in o.keyword_args:
             a.append(('KwArgs', [n, v]))
+        if o.dict_var_arg:
+            a.append(('DictVarArg', [o.dict_var_arg]))
         return self.dump(a, o)
     
     def visit_op_expr(self, o):

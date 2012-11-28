@@ -1326,9 +1326,9 @@ class Parser:
             if isinstance(self.current(), Name) and self.peek().string == '=':
                 kw_args, assigns, c = self.parse_keyword_args()
                 commas.extend(c)
-                break
+                continue
             if (self.current_str() == '*' and not is_var_arg
-                    and dict_var_arg is None):
+                    and dict_var_arg is None and not kw_args):
                 is_var_arg = True
                 at = self.expect('*')
                 args.append(self.parse_expression(precedence[',']))
@@ -1346,7 +1346,7 @@ class Parser:
         res = <tuple<NameExpr, Node>> []
         assigns = <Token> []
         commas = <Token> []
-        while self.current_str() != ')':
+        while self.current_str() != ')' and self.current_str() != '**':
             name = self.parse_name_expr()
             assigns.append(self.expect('='))
             value = self.parse_expression(precedence[','])

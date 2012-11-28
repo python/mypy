@@ -2498,3 +2498,17 @@ MypyFile:1(
   VarDef:4(
     Var(x)
     Type(__builtins__.list?<func?<a?, b?>>)))
+
+[case testKeywordAndDictArgs]
+f(x = y, **kwargs)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args()
+      KwArgs(
+        NameExpr(x)
+        NameExpr(y))
+      DictVarArg(
+        NameExpr(kwargs)))))
