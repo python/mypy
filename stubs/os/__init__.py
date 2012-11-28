@@ -162,7 +162,9 @@ int getppid(): pass
 int getuid(): pass  # Unix only
 str getenv(str key, str default=None): pass
 bytes getenvb(bytes key, bytes default=None): pass
+# TODO mixed str/bytes putenv arguments
 void putenv(str key, str value): pass
+void putenv(bytes key, bytes value): pass
 #void setegid(int egid): pass  # Unix only
 #void seteuid(int euid): pass  # Unix only
 #void setgid(int gid): pass  # Unix only
