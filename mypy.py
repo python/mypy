@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Mypy type checker and Python translator
 
 Type check and program, translate it to Python and run it. Note that you must
