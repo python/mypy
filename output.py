@@ -74,7 +74,7 @@ class OutputVisitor(NodeVisitor):
         self.node(o.defs)
     
     def type_vars(self, v):
-        # IDEA: Combine this with typeVars in outputtype.alo.
+        # IDEA: Combine this with type_vars in TypeOutputVisitor.
         if v and v.repr:
             r = v.repr
             self.token(r.langle)
