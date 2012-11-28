@@ -23,10 +23,14 @@ interpreter = 'python'
 
 void main():
     path, args = process_options()
-    
-    mainfile = open(path)
-    text = mainfile.read()
-    mainfile.close()
+
+    try:
+        mainfile = open(path)
+        text = mainfile.read()
+        mainfile.close()
+    except IOError as ioerr:
+        fail("mypy: can't read file '{}': {}".format(path,
+                                                     ioerr.strerror))
     
     try:
         outputdir = os.path.join(os.path.dirname(path), '__mycache__')
@@ -74,7 +78,7 @@ void main():
     except CompileError as e:
         for m in e.messages:
             print(m)
-        sys.exit(2)
+        sys.exit(1)
 
 
 tuple<str, str[]> process_options():
@@ -94,18 +98,23 @@ tuple<str, str[]> process_options():
             interpreter = args[1]
             args = args[2:]
         else:
-            fail('Invalid option {}'.format(args[0]))
+            usage('Invalid option {}'.format(args[0]))
     
     if not args:
-        fail()
+        usage()
     
     return args[0], args[1:]    
 
 
-void fail(str msg=None):
+void usage(str msg=None):
     if msg:
         sys.stderr.write('%s\n' % msg)
     sys.stderr.write('Usage: mypy.py [--verbose] PROGRAM\n')
+    sys.exit(2)
+
+
+void fail(str msg):
+    sys.stderr.write('%s\n' % msg)
     sys.exit(1)
 
 
