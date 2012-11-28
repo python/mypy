@@ -7,6 +7,8 @@ use a mypy translator that has already been translated to run this program.
 import os
 import os.path
 import sys
+import tempfile
+import shutil
 
 from build import build
 from pythongen import PythonGenerator
@@ -27,37 +29,48 @@ void main():
     mainfile.close()
     
     try:
-        # TODO determine directory more intelligently
-        # TODO make sure only the current user can access the directory
-        output_dir = '/tmp/mypy-xx'
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir, 0o777)
-        
-        # Parse and type check the program and dependencies.
-        trees, symtable, infos, types = build(text, path, False, None, True)
-        
-        # Translate each file in the program to Python.
-        # TODO support packages
-        for t in trees:
-            if not is_stub(t.path):
-                out_path = os.path.join(output_dir, os.path.basename(t.path))
-                log('translate {} to {}'.format(t.path, out_path))
-                v = PythonGenerator(pyversion)
-                t.accept(v)
-                outfile = open(out_path, 'w')
-                outfile.write(v.output())
-                outfile.close()
-        
-        # Run the translated program.
-        
-        a = <str> []
-        for arg in args[1:]:
-            # TODO escape arguments etc.
-            a.append('"{}"'.format(arg))
+        outputdir = os.path.join(os.path.dirname(path), '__mycache__')
+        tempdir = False
+        if not os.path.isdir(outputdir):
+            try:
+                os.mkdir(outputdir)
+            except OSError:
+                # Could not create a directory under program directory; must
+                # fall back to a temp directory. It will be removed later.
+                outputdir = tempfile.mkdtemp()
+                tempdir = True
 
-        os.system('{} "{}/{}" {}'.format(
-                             interpreter, output_dir, os.path.basename(path),
-                             ' '.join(a)))
+        try:
+            # Parse and type check the program and dependencies.
+            trees, symtable, infos, types = build(text, path, False, None,
+                                                  True)
+        
+            # Translate each file in the program to Python.
+            # TODO support packages
+            for t in trees:
+                if not is_stub(t.path):
+                    out_path = os.path.join(outputdir,
+                                            os.path.basename(t.path))
+                    log('translate {} to {}'.format(t.path, out_path))
+                    v = PythonGenerator(pyversion)
+                    t.accept(v)
+                    outfile = open(out_path, 'w')
+                    outfile.write(v.output())
+                    outfile.close()
+
+            # Run the translated program.
+
+            a = <str> []
+            for arg in args[1:]:
+                # TODO escape arguments etc.
+                a.append('"{}"'.format(arg))
+
+            os.system('{} "{}/{}" {}'.format(interpreter, outputdir,
+                                             os.path.basename(path),
+                                             ' '.join(a)))
+        finally:
+            if tempdir:
+                shutil.rmtree(outputdir)
     except CompileError as e:
         for m in e.messages:
             print(m)
