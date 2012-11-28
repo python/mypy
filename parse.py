@@ -118,7 +118,7 @@ class Parser:
     Import parse_import(self):
         import_tok = self.expect('import')
         list<tuple<str, str>> ids = []
-        list<Token[]> id_toks = []
+        Token[][] id_toks = []
         Token[] commas = []
         list<tuple<Token, Token>> as_names = []
         while True:
@@ -146,10 +146,10 @@ class Parser:
         from_tok = self.expect('from')
         name, components = self.parse_qualified_name()
         import_tok = self.expect('import')
-        list<tuple<Token[], Token>> name_toks = []
-        Node node
+        name_toks = <tuple<Token[], Token>> []
         lparen = none
         rparen = none
+        Node node
         if self.current_str() == '*':
             name_toks.append(([self.skip()], none))
             node = ImportAll(name)
@@ -157,7 +157,7 @@ class Parser:
             is_paren = self.current_str() == '('
             if is_paren:
                 lparen = self.expect('(')
-            list<tuple<str, str>> targets = []
+            targets = <tuple<str, str>> []
             while True:
                 id, as_id, toks = self.parse_import_name()
                 targets.append((id, as_id))
@@ -192,7 +192,7 @@ class Parser:
         tuple with the name as a string and a token array containing
         all the components of the name.
         """
-        Token[] components = []
+        components = <Token> []
         tok = self.expect_type(Name)
         n = tok.string
         components.append(tok)
@@ -206,7 +206,7 @@ class Parser:
     # Parsing global definitions
     
     Node[] parse_defs(self):
-        Node[] defs = []
+        defs = <Node> []
         while not self.eof():
             try:
                 defn = self.parse_statement()
@@ -315,7 +315,6 @@ class Parser:
              dict_var_arg, max_pos, typ,
              is_error, toks) = self.parse_function_header(ret_type)
             
-            Block body
             if is_in_interface and isinstance(self.current(), Break):
                 body = Block([])
                 br = self.expect_break()
@@ -415,19 +414,19 @@ class Parser:
         """Parse function definition argument list (everything between
         '(' and ')')."""
         
-        Var[] args = []
-        Node[] init = []
+        args = <Var> []
+        init = <Node> []
         min_args = 0
         Var var_arg = None
         Var dict_var_arg = None
         has_inits = False
         
-        Token[] arg_names = []
-        Token[] commas = []
+        arg_names = <Token> []
+        commas = <Token> []
         asterisk = none
-        Token[] assigns = []
+        assigns = <Token> []
         
-        Typ[] arg_types = []
+        arg_types = <Typ> []
         
         max_pos = -1
         
@@ -438,7 +437,6 @@ class Parser:
                     arg_type = self.parse_type().typ
                 arg_types.append(arg_type)
                 
-                Token name
                 if self.current_str() == '*' and self.peek().string == ',':
                     self.expect('*')
                     max_pos = len(args)
@@ -1313,22 +1311,19 @@ class Parser:
                                                   rparen))
         return node
     
-    tuple<Node[], bool, Node, \
-          Token[], Token, \
-          list<tuple<NameExpr, Node>>, \
+    tuple<Node[], bool, Node, Token[], Token, tuple<NameExpr, Node>[], \
           Token[]> parse_arg_expr(self):
         """Parse arguments in a call expression (within '(' and ')')."""
         
-        Node[] args = []
+        args = <Node> []
         is_var_arg = False
         at = none
-        Token[] commas = []
-        Token[] assigns = []
-        list<tuple<NameExpr, Node>> kw_args = []
+        commas = <Token> []
+        assigns = <Token> []
+        kw_args = <tuple<NameExpr, Node>> []
         Node dict_var_arg = None
         while self.current_str() != ')' and not self.eol():
             if isinstance(self.current(), Name) and self.peek().string == '=':
-                Token[] c
                 kw_args, assigns, c = self.parse_keyword_args()
                 commas.extend(c)
                 break
@@ -1347,12 +1342,10 @@ class Parser:
             commas.append(self.expect(','))
         return args, is_var_arg, dict_var_arg, commas, at, kw_args, assigns
     
-    tuple<list<tuple<NameExpr, Node>>, \
-          Token[], Token[]> parse_keyword_args(self):
-        
-        list<tuple<NameExpr, Node>> res = []
-        Token[] assigns = []
-        Token[] commas = []
+    tuple<tuple<NameExpr, Node>[], Token[], Token[]> parse_keyword_args(self):
+        res = <tuple<NameExpr, Node>> []
+        assigns = <Token> []
+        commas = <Token> []
         while self.current_str() != ')':
             name = self.parse_name_expr()
             assigns.append(self.expect('='))
@@ -1427,7 +1420,6 @@ class Parser:
     UnaryExpr parse_unary_expr(self):
         op_tok = self.skip()
         op = op_tok.string
-        int prec
         if op == '-' or op == '+':
             prec = precedence['-u']
         else:
