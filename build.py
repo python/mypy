@@ -26,7 +26,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
             build(str program_text, str program_file_name='main',
                   bool use_test_builtins=False, str alt_lib_path=None,
                   bool do_type_check=False):
-    """Build a program represented as a string (programText).
+    """Build a program represented as a string (program_text).
 
     A single call to build performs semantic analysis and optionally
     type checking of the program *and* all imported modules,
@@ -40,15 +40,15 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
       4. node type map (map from parse tree node to its inferred type)
     
     Arguments:
-      programText: the contents of the main (program) source file
-      programFileName: the file name of the main source file, used for error
+      program_text: the contents of the main (program) source file
+      program_file_name: the file name of the main source file, used for error
         reporting (the default value is used by test cases only)
-      useTestBuiltins: if False, use normal builtins (default); if True, use
+      use_test_builtins: if False, use normal builtins (default); if True, use
         minimal stub builtins (this is for test cases only)
-      altLibDir: an additional directory for looking up library modules (takes
-        precedence over other directories)
-      doTypeCheck: if True, also perform type checking; otherwise, only perform
-        parsing and semantic analysis
+      alt_lib_dir: an additional directory for looking up library modules
+        (takes precedence over other directories)
+      do_type_check: if True, also perform type checking; otherwise, only
+        perform parsing and semantic analysis
     
     Currently the final pass of the build (the compiler back end) is not
     implemented yet.
