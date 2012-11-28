@@ -1,18 +1,19 @@
 """Mypy type checker and Python translator
 
 Type check and program, translate it to Python and run it. Note that you must
-use a mypy translator that has already been translated to run this program.
+use a translated mypy translator to run this program.
 """
 
 import os
 import os.path
+import shutil
+import subprocess
 import sys
 import tempfile
-import shutil
 
 from build import build
-from pythongen import PythonGenerator
 from errors import CompileError
+from pythongen import PythonGenerator
 
 
 # Fallback options
@@ -63,15 +64,11 @@ void main():
                     outfile.close()
 
             # Run the translated program.
-
-            a = <str> []
-            for arg in args:
-                # TODO escape arguments etc.
-                a.append('"{}"'.format(arg))
-
-            os.system('{} "{}/{}" {}'.format(interpreter, outputdir,
-                                             os.path.basename(path),
-                                             ' '.join(a)))
+            status = subprocess.call(
+                [interpreter,
+                 '{}/{}'.format(outputdir,os.path.basename(path))] +
+                args)
+            sys.exit(status)
         finally:
             if tempdir:
                 shutil.rmtree(outputdir)
