@@ -123,3 +123,23 @@ file.alo, line 3: Expected a list, dictionary or non-empty tuple after <...>
 [out]
 file.alo, line 1: Expected a list, dictionary or non-empty tuple after <...>
 file.alo, line 2: Wrong number of types for a tuple literal
+
+[case testInvalidKeywordArguments1]
+f(x=y, z)
+[out]
+file.alo, line 1: Parse error before )
+
+[case testInvalidKeywordArguments2]
+f(**x, y=z)
+[out]
+file.alo, line 1: Parse error before "y"
+
+[case testInvalidKeywordArguments3]
+f(**x, y)
+[out]
+file.alo, line 1: Parse error before "y"
+
+[case testInvalidVarArgs]
+f(*x, y)
+[out]
+file.alo, line 1: Parse error before "y"
