@@ -15,7 +15,7 @@ from pythongen import PythonGenerator
 from errors import CompileError
 
 
-# Options
+# Fallback options
 verbose = False
 pyversion = 3
 interpreter = 'python'
