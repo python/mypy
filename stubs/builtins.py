@@ -666,7 +666,10 @@ class SystemExit(BaseException): pass
 # Base classes
 class Exception(BaseException): pass
 class ArithmeticError(Exception): pass
-class EnvironmentError(Exception): pass
+class EnvironmentError(Exception):
+    int errno
+    str strerror
+    str filename # TODO can this be bytes?
 class LookupError(Exception): pass
 class RuntimeError(Exception): pass
 class ValueError(Exception): pass
