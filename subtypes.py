@@ -22,7 +22,7 @@ class SubtypeVisitor(TypeVisitor<bool>):
     void __init__(self, Typ right):
         self.right = right
     
-    # visitX(left) means: is left (which is an instance of X) a subtype of
+    # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
     
     bool visit_unbound_type(self, UnboundType left):

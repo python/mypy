@@ -28,7 +28,7 @@ class SameTypeVisitor(TypeVisitor<bool>):
     void __init__(self, Typ right):
         self.right = right
     
-    # visitX(left) means: is left (which is an instance of X) the same type as
+    # visit_x(left) means: is left (which is an instance of X) the same type as
     # right?
     
     bool visit_unbound_type(self, UnboundType left):

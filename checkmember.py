@@ -13,8 +13,8 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
     different variations:
     
       1. lvalue or non-lvalue access (i.e. setter or getter access)
-      2. supertype access (when using the super keyword; isSuper == True and
-         overrideInfo should refer to the supertype)
+      2. supertype access (when using the super keyword; is_super == True and
+         override_info should refer to the supertype)
     
     Note that this function may return a RangeCallable type.
     """

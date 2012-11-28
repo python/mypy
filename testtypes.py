@@ -400,7 +400,7 @@ class JoinSuite(Suite):
         return Callable(a[:-1], len(a) - 1, False, a[-1], False)
     
     def type_callable(self, *a):
-        """typeCallable(a1, ..., an, r) constructs a callable with
+        """type_callable(a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r, and which
         represents a type.
         """

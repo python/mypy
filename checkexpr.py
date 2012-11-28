@@ -125,7 +125,7 @@ class ExpressionChecker:
             # hasn't done it for us.
             if check_arg_count:
                 # Checking the type and compatibility of the varargs argument
-                # type in a call is handled by the checkArgumentTypes call
+                # type in a call is handled by the check_argument_types call
                 # below.
                 if not is_valid_argc(len(args), is_var_arg, callable):
                     self.msg.invalid_argument_count(callable, len(args),
@@ -204,7 +204,7 @@ class ExpressionChecker:
                                            bool is_var_arg, Context context):
         """Infer the type arguments for a generic callee type. Return a derived
         callable type that has the arguments applied (and stored as implicit
-        type arguments). If isVarArg is True, the callee uses varargs.
+        type arguments). If is_var_arg is True, the callee uses varargs.
         """
         Typ[] inferred_args = infer_function_type_arguments(
             callee_type, arg_types, is_var_arg, self.chk.basic_types())
@@ -216,9 +216,9 @@ class ExpressionChecker:
                                       int[] implicit_type_vars,
                                       Context context):
         """Apply inferred values of type arguments to a generic
-        function. If implicitTypeVars are given, they correspond to
+        function. If implicit_type_vars are given, they correspond to
         the ids of the implicit instance type variables; they are
-        stored as the prefix of inferredArgs.  InferredArgs contains
+        stored as the prefix of inferred_args.  Inferred_args contains
         first the values of implicit instance type vars (if any), and
         then values of function type variables, concatenated together.
         """
@@ -242,7 +242,7 @@ class ExpressionChecker:
     
     void check_argument_types(self, Typ[] arg_types, bool is_var_arg,
                               Callable callee, Context context):
-        """Check argument types against a callable type. If isVarArg is True,
+        """Check argument types against a callable type. If is_var_arg is True,
         the caller uses varargs.
         """
         callee_num_args = callee.max_fixed_args()
@@ -299,11 +299,11 @@ class ExpressionChecker:
                              Overloaded overload, Context context):
         """Infer the correct overload item to call with the given argument
         types. The return value may be Callable or any (if an unique item
-        could not be determined). If isVarArg is True, the caller uses varargs.
-        
-        TODO for overlapping signatures we should try to get a more precise
-             result than 'any'
-             """
+        could not be determined). If is_var_arg is True, the caller uses
+        varargs.
+        """        
+        # TODO for overlapping signatures we should try to get a more precise
+        #      result than 'any'
         Typ match = None # Callable, Dynamic or nil
         for typ in overload.items():
             if self.matches_signature(arg_types, is_var_arg, typ):
@@ -481,7 +481,7 @@ class ExpressionChecker:
     
     void check_boolean_return_value(self, str method, Typ result_type,
                                     Context context):
-        """Check that resultType is compatible with Boolean. It is the
+        """Check that result_type is compatible with Boolean. It is the
         return value of the method with the given name (this is used
         for error message generation).
         """
@@ -537,7 +537,7 @@ class ExpressionChecker:
             return target_type
     
     bool is_valid_cast(self, Typ source_type, Typ target_type):
-        """Is a cast from sourceType to targetType valid (i.e. can succeed at
+        """Is a cast from source_type to target_type valid (i.e. can succeed at
         runtime)?
         """
         return (is_subtype(target_type, source_type) or

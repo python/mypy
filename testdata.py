@@ -227,7 +227,7 @@ str[] collapse_line_continuation(str[] l):
 str[] expand_includes(str[] a, str base_path):
     """Replace all lies starting with @include with the contents of
     the file name following the prefix. Look for the files in
-    basePath.
+    base_path.
     """
     str[] res = []
     for s in a:

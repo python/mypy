@@ -98,7 +98,7 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
 
 Typ join_instances(Instance t, Instance s, bool allow_interfaces,
                    checker.BasicTypes basic):
-    """Calculate the join of two instance types. If allowInterfaces is
+    """Calculate the join of two instance types. If allow_interfaces is
     True, also consider interface-type results for non-interface
     types.
     

@@ -144,22 +144,22 @@ class TypeFixture:
         return Callable(a[:-1], len(a) - 1, False, a[-1], False)
     
     def callable_type(self, *a):
-        """typeCallable(a1, ..., an, r) constructs a callable with
+        """callable_type(a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r, and which
         represents a type.
         """
         return Callable(a[:-1], len(a) - 1, False, a[-1], True)
     
     def callable_default(self, min_args, *a):
-        """callableDefault(minArgs, a1, ..., an, r) constructs a
+        """callable_default(min_args, a1, ..., an, r) constructs a
         callable with argument types a1, ... an and return type r,
-        with minArgs mandatory fixed arguments.
+        with min_args mandatory fixed arguments.
         """
         return Callable(a[:-1], min_args, False, a[-1], False)
     
     def callable_var_arg(self, min_args, *a):
-        """callableVarArg(minArgs, a1, ..., an, r) constructs a callable with
-        argument types a1, ... *an and return type r.
+        """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
+        with argument types a1, ... *an and return type r.
         """
         return Callable(a[:-1], min_args, True, a[-1], False)
 
