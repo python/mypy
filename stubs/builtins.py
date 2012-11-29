@@ -525,6 +525,9 @@ class set<t>(Sized, Iterable<t>):
     Iterator<t> __iter__(self): pass    
     str __str__(self): pass
 
+    set<t> __and__(self, set<t> s): pass
+    set<t> __or__(self, set<t> s): pass
+    set<t> __sub__(self, set<t> s): pass
     # TODO more set operations
 
 
