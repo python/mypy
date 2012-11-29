@@ -112,7 +112,6 @@ class ExpressionChecker:
         is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, Callable):
             callable = (Callable)callee
-            Typ[] arg_types
             
             if callable.is_generic():
                 callable = self.infer_function_type_arguments_using_context(
