@@ -31,7 +31,6 @@ file: At top level:
 file, line 2: Parse error before :
 file, line 3: Inconsistent indentation
 
-
 [case testMissingIndent]
 if x:
 1
@@ -127,7 +126,7 @@ file, line 2: Wrong number of types for a tuple literal
 [case testInvalidKeywordArguments1]
 f(x=y, z)
 [out]
-file, line 1: Parse error before )
+file, line 1: Parse error before "z"
 
 [case testInvalidKeywordArguments2]
 f(**x, y=z)
@@ -143,3 +142,30 @@ file, line 1: Parse error before "y"
 f(*x, y)
 [out]
 file, line 1: Parse error before "y"
+
+[case testInvalidFuncDefArgs1]
+def f(x = y, x): pass
+[out]
+file: In function "f":
+file, line 1: Invalid argument list
+
+[case testInvalidFuncDefArgs2]
+def f(*x, y): 
+    pass
+[out]
+file: In function "f":
+file, line 1: Invalid argument list
+
+[case testInvalidFuncDefArgs3]
+def f(**x, y): 
+   pass
+[out]
+file: In function "f":
+file, line 1: Invalid argument list
+
+[case testInvalidFuncDefArgs4]
+def f(**x, y=x): 
+    pass
+[out]
+file: In function "f":
+file, line 1: Invalid argument list

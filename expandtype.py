@@ -67,8 +67,8 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
     
     Typ visit_callable(self, Callable t):
         return Callable(self.expand_types(t.arg_types),
-                        t.min_args,
-                        t.is_var_arg,
+                        t.arg_kinds,
+                        t.arg_names,
                         t.ret_type.accept(self),
                         t.is_type_obj(),
                         t.name,
@@ -101,8 +101,8 @@ Callable update_callable_implicit_bounds(Callable t,
                                          list<tuple<int, Typ>> arg_types):
     # FIX what if there are existing bounds?
     return Callable(t.arg_types,
-                    t.min_args,
-                    t.is_var_arg,
+                    t.arg_kinds,
+                    t.arg_names,
                     t.ret_type,
                     t.is_type_obj(),
                     t.name,

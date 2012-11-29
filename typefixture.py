@@ -3,7 +3,7 @@ from mtypes import (
     TypeVars
 )
 from checker import BasicTypes
-from nodes import TypeInfo, TypeDef, Block
+from nodes import TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR
 
 
 BASE = 0
@@ -141,27 +141,39 @@ class TypeFixture:
         """callable(a1, ..., an, r) constructs a callable with argument types
         a1, ... an and return type r.
         """
-        return Callable(a[:-1], len(a) - 1, False, a[-1], False)
+        return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
+                        <str> [None] * (len(a) - 1), a[-1], False)
     
     def callable_type(self, *a):
         """callable_type(a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r, and which
         represents a type.
         """
-        return Callable(a[:-1], len(a) - 1, False, a[-1], True)
+        return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
+                        <str> [None] * (len(a) - 1), a[-1], True)
     
     def callable_default(self, min_args, *a):
         """callable_default(min_args, a1, ..., an, r) constructs a
         callable with argument types a1, ... an and return type r,
         with min_args mandatory fixed arguments.
         """
-        return Callable(a[:-1], min_args, False, a[-1], False)
+        n = len(a) - 1
+        return Callable(a[:-1],
+                        [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
+                        <str> [None]  * n,
+                        a[-1], False)
     
     def callable_var_arg(self, min_args, *a):
         """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
         with argument types a1, ... *an and return type r.
         """
-        return Callable(a[:-1], min_args, True, a[-1], False)
+        n = len(a) - 1
+        return Callable(a[:-1],
+                        [ARG_POS] * min_args +
+                        [ARG_OPT] * (n - 1 - min_args) +
+                        [ARG_STAR],
+                        <str> [None] * n,
+                        a[-1], False)
 
 
 class InterfaceTypeFixture(TypeFixture):

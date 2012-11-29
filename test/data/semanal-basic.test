@@ -226,7 +226,7 @@ MypyFile:1(
     Args(
       Var(x))
     VarArg(
-      Var:nil(y))
+      Var(y))
     Block:1(
       ExpressionStmt:2(
         TupleExpr:2(

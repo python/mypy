@@ -16,6 +16,7 @@ from nodes import (
     CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr, UnaryExpr,
     FuncExpr, TypeApplication
 )
+import nodes
 import noderepr
 from errors import Errors
 from mtypes import Void, Typ, TypeVars, Callable, Any
@@ -311,9 +312,8 @@ class Parser:
                                    bool is_in_interface=False):
         self.is_function = True
         try:
-            (name, args, init, var_arg,
-             dict_var_arg, max_pos, typ,
-             is_error, toks) = self.parse_function_header(ret_type)
+            (name, args, init, kinds,
+             typ, is_error, toks) = self.parse_function_header(ret_type)
             
             if is_in_interface and isinstance(self.current(), Break):
                 body = Block([])
@@ -327,8 +327,7 @@ class Parser:
             if is_error:
                 return None
             
-            node = FuncDef(name, args, init, var_arg, dict_var_arg, max_pos,
-                           body, typ)
+            node = FuncDef(name, args, kinds, init, body, typ)
             name_tok, arg_reprs = toks
             self.set_repr(node, noderepr.FuncRepr(def_tok, name_tok,
                                                   arg_reprs))
@@ -337,10 +336,19 @@ class Parser:
             self.errors.set_function(None)
             self.is_function = False
     
-    tuple<str, Var[], Node[], Var, Var, int, Annotation, bool, \
-          tuple<Token, any>> \
+    tuple<str, Var[], Node[], int[], Annotation, bool, tuple<Token, any>> \
               parse_function_header(self, Annotation ret_type):
-        
+        """Parse function header (a name followed by arguments)
+
+        Returns a 9-tuple with the following items:
+          name
+          arguments
+          initializers
+          kinds
+          signature (annotation)
+          error flag (True if error)
+          (name token, representation of arguments)
+        """        
         name_tok = none
         
         try:
@@ -349,20 +357,18 @@ class Parser:
             
             self.errors.set_function(name)
             
-            (args, init, var_arg, dict_var_arg,
-             max_pos, typ, arg_repr) = self.parse_args(ret_type)
+            (args, init, kinds, typ, arg_repr) = self.parse_args(ret_type)
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1 # Kludge: go back to the Break token
             # Resynchronise parsing by going back over :, if present.
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
-            return (name, [], [], None, None, 0, None, True, (name_tok, None))
+            return (name, [], [], [], None, True, (name_tok, None))
         
-        return (name, args, init, var_arg, dict_var_arg, max_pos, typ,
-                False, (name_tok, arg_repr))
+        return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
     
-    tuple<Var[], Node[], Var, Var, int, Annotation, \
+    tuple<Var[], Node[], int[], Annotation, \
           noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
         """Parse a function type signature, potentially prefixed with
         type variable specification within <...>.
@@ -373,25 +379,26 @@ class Parser:
         lparen = self.expect('(')
         
         # Parse the argument list (everything within '(' and ')').
-        (args, init, min_args,
-         var_arg, dict_var_arg,
-         has_inits, max_pos, arg_names,
+        (args, init, kinds,
+         has_inits, arg_names,
          commas, asterisk,
          assigns, arg_types) = self.parse_arg_list()
         
         rparen = self.expect(')')
+
+        self.verify_argument_kinds(kinds, lparen.line)
         
         # TODO dictionary varargs
         annotation = self.build_func_annotation(
-            ret_type, arg_types, min_args, var_arg, type_vars, lparen.line)
+            ret_type, arg_types, kinds, type_vars, lparen.line)
         
-        return (args, init, var_arg, dict_var_arg, max_pos, annotation,
+        return (args, init, kinds, annotation,
                 noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
                                       assigns, asterisk))
     
     Annotation build_func_annotation(self, Annotation ret_type,
-                                     Typ[] arg_types, int min_args,
-                                     Var var_arg, TypeVars type_vars,
+                                     Typ[] arg_types, int[] kinds,
+                                     TypeVars type_vars,
                                      int line):
         # Are there any type annotations?
         if (ret_type or arg_types != [None] * len(arg_types)
@@ -400,35 +407,36 @@ class Parser:
             Typ ret = None
             if ret_type is not None:
                 ret = ret_type.typ
-            typ = self.construct_function_type(arg_types, min_args,
-                                               var_arg is not None,
-                                               ret, type_vars, line)
+            typ = self.construct_function_type(arg_types, kinds, ret,
+                                               type_vars, line)
             annotation = Annotation(typ, line)
             self.set_repr(annotation, noderepr.AnnotationRepr())
             return annotation
         else:
             return None
     
-    tuple<Var[], Node[], int, Var, Var, bool, int, Token[], \
-          Token[], Token, Token[], Typ[]> parse_arg_list(self):
-        """Parse function definition argument list (everything between
-        '(' and ')')."""
-        
+    tuple<Var[], Node[], int[], bool, Token[], Token[], Token, Token[], Typ[]>\
+                     parse_arg_list(self):
+        """Parse function definition argument list.
+
+        This includes everything between '(' and ')').
+
+        Return a 9-tuple with these items:
+          arguments, initializers, kinds, has inits, arg name tokens,
+          comma tokens, asterisk token, assignment tokens, argument types
+        """
         args = <Var> []
+        kinds = <int> []
         init = <Node> []
-        min_args = 0
-        Var var_arg = None
-        Var dict_var_arg = None
         has_inits = False
+        arg_types = <Typ> []        
         
         arg_names = <Token> []
         commas = <Token> []
         asterisk = none
         assigns = <Token> []
         
-        arg_types = <Typ> []
-        
-        max_pos = -1
+        require_named = False
         
         if self.current_str() != ')' and self.current_str() != ':':
             while self.current_str() != ')':
@@ -439,19 +447,19 @@ class Parser:
                 
                 if self.current_str() == '*' and self.peek().string == ',':
                     self.expect('*')
-                    max_pos = len(args)
+                    require_named = True
                 elif self.current_str() in ['*', '**']:
                     asterisk = self.skip()
-                    dict = asterisk.string == '**'
+                    isdict = asterisk.string == '**'
                     name = self.expect_type(Name)
                     arg_names.append(name)
-                    if dict:
-                        dict_var_arg = Var(name.string)
-                        self.set_repr(dict_var_arg, noderepr.VarRepr(name,
-                                                                     none))
+                    var_arg = Var(name.string)
+                    self.set_repr(var_arg, noderepr.VarRepr(name, none))
+                    args.append(var_arg)
+                    if isdict:
+                        kinds.append(nodes.ARG_STAR2)
                     else:
-                        var_arg = Var(name.string)
-                        self.set_repr(var_arg, noderepr.VarRepr(name, none))
+                        kinds.append(nodes.ARG_STAR)
                 else:
                     name = self.expect_type(Name)
                     arg_names.append(name)
@@ -461,25 +469,40 @@ class Parser:
                         assigns.append(self.expect('='))
                         init.append(self.parse_expression(precedence[',']))
                         has_inits = True
+                        if require_named:
+                            kinds.append(nodes.ARG_NAMED)
+                        else:
+                            kinds.append(nodes.ARG_OPT)
                     else:
-                        # After the first default argument value all the rest
-                        # of the args must have initialisers.
-                        if has_inits:
+                        if require_named:
                             self.parse_error()
                         init.append(None)
                         assigns.append(none)
-                        min_args += 1
+                        kinds.append(nodes.ARG_POS)
                 
                 if self.current().string != ',':
                     break
                 commas.append(self.expect(','))
         
-        return (args, init, min_args, var_arg, dict_var_arg, has_inits,
-                max_pos, arg_names, commas, asterisk, assigns, arg_types)
+        return (args, init, kinds, has_inits, arg_names, commas, asterisk,
+                assigns, arg_types)
+
+    void verify_argument_kinds(self, int[] kinds, int line):
+        set<int> found = set()
+        for i, kind in enumerate(kinds):
+            if kind == nodes.ARG_POS and found & set([nodes.ARG_OPT,
+                                                      nodes.ARG_STAR,
+                                                      nodes.ARG_STAR2]):
+                self.fail('Invalid argument list', line)
+            elif kind == nodes.ARG_STAR and nodes.ARG_STAR in found:
+                self.fail('Invalid argument list', line)
+            elif kind == nodes.ARG_STAR2 and i != len(kinds) - 1:
+                self.fail('Invalid argument list', line)
+            found.add(kind)
     
-    Callable construct_function_type(self, Typ[] arg_types, int min_args,
-                                     bool is_var_arg, Typ ret_type,
-                                     TypeVars type_vars, int line):
+    Callable construct_function_type(self, Typ[] arg_types, int[] kinds,
+                                     Typ ret_type, TypeVars type_vars,
+                                     int line):
         # Complete the type annotation by replacing omitted types with
         # dynamic/void.
         arg_types = arg_types[:]
@@ -488,8 +511,9 @@ class Parser:
                 arg_types[i] = Any()
         if ret_type is None:
             ret_type = Any()
-        return Callable(arg_types, min_args, is_var_arg, ret_type, False, None,
-                        type_vars, [], line, None)
+        # TODO include names
+        return Callable(arg_types, kinds, <str> [None] * len(kinds), ret_type,
+                        False, None, type_vars, [], line, None)
     
     # Parsing statements
     
@@ -1303,59 +1327,67 @@ class Parser:
     
     CallExpr parse_call_expr(self, any callee):
         lparen = self.expect('(')
-        (args, is_var_arg, dict_var_arg,
-         commas, at, kw_args, assigns) = self.parse_arg_expr()
+        (args, kinds, names, commas, at, assigns) = self.parse_arg_expr()
         rparen = self.expect(')')
-        node = CallExpr(callee, args, is_var_arg, kw_args, dict_var_arg)
+        node = CallExpr(callee, args, kinds, names)
         self.set_repr(node, noderepr.CallExprRepr(lparen, commas, at, assigns,
                                                   rparen))
         return node
     
-    tuple<Node[], bool, Node, Token[], Token, tuple<NameExpr, Node>[], \
-          Token[]> parse_arg_expr(self):
-        """Parse arguments in a call expression (within '(' and ')')."""
-        
+    tuple<Node[], int[], str[], Token[], Token, Token[][]> \
+                      parse_arg_expr(self):
+        """Parse arguments in a call expression (within '(' and ')').
+
+        Return a tuple with these items:
+          argument expressions
+          argument kinds
+          argument names (for named arguments; None for ordinary args)
+          comma tokens
+          asterisk token
+          (assignment, name) tokens
+        """        
         args = <Node> []
-        is_var_arg = False
+        kinds = <int> []
+        names = <str> []
         at = none
         commas = <Token> []
-        assigns = <Token> []
-        kw_args = <tuple<NameExpr, Node>> []
-        Node dict_var_arg = None
-        while self.current_str() != ')' and not self.eol():
-            if (isinstance(self.current(), Name) and self.peek().string == '='
-                    and not dict_var_arg):
-                kw_args, assigns, c = self.parse_keyword_args()
-                commas.extend(c)
-                continue
-            if (self.current_str() == '*' and not is_var_arg
-                    and dict_var_arg is None and not kw_args):
-                is_var_arg = True
+        keywords = <Token[]> []
+        var_arg = False
+        dict_arg = False
+        named_args = False
+        while self.current_str() != ')' and not self.eol() and not dict_arg:
+            if isinstance(self.current(), Name) and self.peek().string == '=':
+                # Named argument
+                name = self.expect_type(Name)
+                assign = self.expect('=')
+                kinds.append(nodes.ARG_NAMED)
+                names.append(name.string)
+                keywords.append([name, assign])
+                named_args = True
+            elif (self.current_str() == '*' and not var_arg and not dict_arg
+                    and not named_args):
+                # *args
+                var_arg = True
                 at = self.expect('*')
-                args.append(self.parse_expression(precedence[',']))
-            elif self.current_str() == '**' and dict_var_arg is None:
+                kinds.append(nodes.ARG_STAR)
+                names.append(None)
+            elif self.current_str() == '**':
+                # **kwargs
                 self.expect('**')
-                dict_var_arg = self.parse_expression(precedence[','])
-            elif not is_var_arg and not dict_var_arg:
-                args.append(self.parse_expression(precedence[',']))
+                dict_arg = True
+                kinds.append(nodes.ARG_STAR2)
+                names.append(None)
+            elif not var_arg and not named_args:
+                # Ordinary argument
+                kinds.append(nodes.ARG_POS)
+                names.append(None)
+            else:
+                self.parse_error()
+            args.append(self.parse_expression(precedence[',']))
             if self.current_str() != ',':
                 break
             commas.append(self.expect(','))
-        return args, is_var_arg, dict_var_arg, commas, at, kw_args, assigns
-    
-    tuple<tuple<NameExpr, Node>[], Token[], Token[]> parse_keyword_args(self):
-        res = <tuple<NameExpr, Node>> []
-        assigns = <Token> []
-        commas = <Token> []
-        while self.current_str() != ')' and self.current_str() != '**':
-            name = self.parse_name_expr()
-            assigns.append(self.expect('='))
-            value = self.parse_expression(precedence[','])
-            res.append((name, value))
-            if self.current_str() != ',':
-                break
-            commas.append(self.expect(','))
-        return res, assigns, commas
+        return args, kinds, names, commas, at, keywords
     
     Node parse_member_expr(self, any expr):
         dot = self.expect('.')
@@ -1434,12 +1466,11 @@ class Parser:
         is_error = False
         lambda_tok = self.expect('lambda')
         
-        (args, init, min_args, var_arg,
-         dict_var_arg, has_inits, max_pos,
+        (args, init, kinds, has_inits,
          arg_names, commas, asterisk,
          assigns, arg_types) = self.parse_arg_list()
         
-        typ = self.build_func_annotation(None, arg_types, min_args, var_arg,
+        typ = self.build_func_annotation(None, arg_types, kinds,
                                          TypeVars([]), lambda_tok.line)
         
         colon = self.expect(':')
@@ -1449,7 +1480,7 @@ class Parser:
         body = Block([ExpressionStmt(expr)])
         body.set_line(colon)
         
-        node = FuncExpr(args, init, None, None, max_pos, body, typ)
+        node = FuncExpr(args, kinds, init, body, typ)
         self.set_repr(node,
                       noderepr.FuncExprRepr(
                           lambda_tok, colon,

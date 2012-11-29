@@ -158,27 +158,24 @@ class OverloadedFuncDef(FuncBase, SymNode):
 
 
 class FuncItem(FuncBase):
-    # Fixed argument names
-    Var[] args
+    Var[] args      # Argument names
+    int[] arg_kinds # Kinds of arguments (ARG_*)
+    
     # Initialization expessions for fixed args; None if no initialiser
     AssignmentStmt[] init
     int min_args           # Minimum number of arguments
     int max_pos            # Maximum number of positional arguments, -1 if
                            # no explicit limit
-    Var var_arg            # If not None, *x arg
-    Var dict_var_arg       # If not None, **x arg
     Block body
     bool is_implicit    # Implicit dynamic types?
     bool is_overload    # Is this an overload variant of function with
                         # more than one overload variant?
     
-    void __init__(self, Var[] args, Node[] init, Var var_arg,
-                  Var dict_var_arg, int max_pos, Block body,
-                  Annotation typ=None):
+    void __init__(self, Var[] args, int[] arg_kinds, Node[] init,
+                  Block body, Annotation typ=None):
         self.args = args
-        self.var_arg = var_arg
-        self.dict_var_arg = dict_var_arg
-        self.max_pos = max_pos
+        self.arg_kinds = arg_kinds
+        self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
         self.typ = typ
         self.is_implicit = typ is None
@@ -200,7 +197,7 @@ class FuncItem(FuncBase):
         self.init = i2
     
     int max_fixed_argc(self):
-        return len(self.args)
+        return self.max_pos
     
     Node set_line(self, Token tok):
         super().set_line(tok)
@@ -227,10 +224,9 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem, SymNode):
     str _full_name      # Name with module prefix
     
-    void __init__(self, str name, Var[] args, Node[] init, Var var_arg,
-                  Var dict_var_arg, int max_pos, Block body,
-                  Annotation typ=None):
-        super().__init__(args, init, var_arg, dict_var_arg, max_pos, body, typ)
+    void __init__(self, str name, Var[] args, int[] arg_kinds, Node[] init,
+                  Block body, Annotation typ=None):
+        super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
     str name(self):
@@ -670,24 +666,27 @@ class MemberExpr(RefExpr):
         return visitor.visit_member_expr(self)
 
 
+# Kinds of arguments
+ARG_POS = 0   # Positional argument
+ARG_OPT = 1   # Positional, optional argument (functions only, not calls)
+ARG_STAR = 2  # *arg argument
+ARG_NAMED = 3 # Keyword argument x=y in call, or keyword-only function arg
+ARG_STAR2 = 4 # **arg argument
+
+
 class CallExpr(Node):
     """Call expression"""
     Node callee
     Node[] args
-    bool is_var_arg
-    list<tuple<NameExpr, Node>> keyword_args
-    Node dict_var_arg
+    int[] arg_kinds # ARG_ constants
+    str[] arg_names # None if not a keyword argument
     
-    void __init__(self, Node callee, Node[] args, bool is_var_arg=False,
-                  list<tuple<NameExpr, Node>> keyword_args=None,
-                  Node dict_var_arg=None):
-        if not keyword_args:
-            keyword_args = []
+    void __init__(self, Node callee, Node[] args, int[] arg_kinds,
+                  str[] arg_names):
         self.callee = callee
         self.args = args
-        self.is_var_arg = is_var_arg
-        self.keyword_args = keyword_args
-        self.dict_var_arg = dict_var_arg
+        self.arg_kinds = arg_kinds
+        self.arg_names = arg_names
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_call_expr(self)
@@ -1236,9 +1235,12 @@ mtypes.FunctionLike function_type(FuncBase func):
         name = func.name()
         if name:
             name = '"{}"'.format(name)
+        names = <str> []
+        for arg in fdef.args:
+            names.append(arg.name())
         return mtypes.Callable(<mtypes.Typ> [mtypes.Any()] * len(fdef.args),
-                               fdef.min_args,
-                               fdef.var_arg is not None,
+                               fdef.arg_kinds,
+                               names,
                                mtypes.Any(),
                                False,
                                name)
@@ -1259,8 +1261,8 @@ mtypes.FunctionLike method_type(FuncBase func):
 
 mtypes.Callable method_callable(mtypes.Callable c):
     return mtypes.Callable(c.arg_types[1:],
-                           c.min_args - 1,
-                           c.is_var_arg,
+                           c.arg_kinds[1:],
+                           c.arg_names[1:],
                            c.ret_type,
                            c.is_type_obj(),
                            c.name,

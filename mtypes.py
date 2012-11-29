@@ -151,7 +151,9 @@ class FunctionLike(Typ):
 class Callable(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
     Typ[] arg_types # Types of function arguments
-    int min_args        # Minimum number of arguments
+    int[] arg_kinds # nodes.ARG_ constants
+    str[] arg_names # None if not a keyword argument
+    int minargs         # Minimum number of arguments
     bool is_var_arg     # Is it a varargs function?
     Typ ret_type        # Return value type
     str name            # Name (may be None; for error messages)
@@ -173,7 +175,7 @@ class Callable(FunctionLike):
     
     bool _is_type_obj # Does this represent a type object?
     
-    void __init__(self, Typ[] arg_types, int min_args, bool is_var_arg,
+    void __init__(self, Typ[] arg_types, int[] arg_kinds, str[] arg_names,
                   Typ ret_type, bool is_type_obj, str name=None,
                   TypeVars variables=None,
                   list<tuple<int, Typ>> bound_vars=None,
@@ -183,8 +185,10 @@ class Callable(FunctionLike):
         if not bound_vars:
             bound_vars = []
         self.arg_types = arg_types
-        self.min_args = min_args
-        self.is_var_arg = is_var_arg
+        self.arg_kinds = arg_kinds
+        self.arg_names = arg_names
+        self.min_args = arg_kinds.count(nodes.ARG_POS)
+        self.is_var_arg = nodes.ARG_STAR in arg_kinds
         self.ret_type = ret_type
         self._is_type_obj = is_type_obj
         assert not name or '<bound method' not in name
@@ -205,8 +209,8 @@ class Callable(FunctionLike):
         if isinstance(ret, Void):
             ret = ((Void)ret).with_source(name)
         return Callable(self.arg_types,
-                        self.min_args,
-                        self.is_var_arg,
+                        self.arg_kinds,
+                        self.arg_names,
                         ret,
                         self.is_type_obj(),
                         name,
@@ -417,8 +421,8 @@ class TypeTranslator(TypeVisitor<Typ>):
     
     Typ visit_callable(self, Callable t):
         return Callable(self.translate_types(t.arg_types),
-                        t.min_args,
-                        t.is_var_arg,
+                        t.arg_kinds,
+                        t.arg_names,
                         t.ret_type.accept(self),
                         t.is_type_obj(),
                         t.name,

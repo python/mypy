@@ -7,6 +7,7 @@ from mtypes import (
     UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Typ,
     Instance, NoneTyp, ErrorType
 )
+from nodes import ARG_POS, ARG_OPT, ARG_STAR
 from replacetvars import replace_type_vars
 from subtypes import is_subtype
 from typefixture import TypeFixture, InterfaceTypeFixture
@@ -33,27 +34,34 @@ class TypesSuite(Suite):
         assert_equal(str(Void(None)), 'void')
     
     def test_callable_type(self):
-        c = Callable([self.x, self.y], 2, False, Any(), False)
+        c = Callable([self.x, self.y],
+                     [ARG_POS, ARG_POS],
+                     [None, None],
+                     Any(), False)
         assert_equal(str(c), 'def (X?, Y?) -> any')
         
-        c2 = Callable([], 0, False, Void(None), False)
+        c2 = Callable([], [], [], Void(None), False)
         assert_equal(str(c2), 'def ()')
     
     def test_callable_type_with_default_args(self):
-        c = Callable([self.x, self.y], 1, False, Any(), False)
+        c = Callable([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
+                     Any(), False)
         assert_equal(str(c), 'def (X?, Y?=) -> any')
         
-        c2 = Callable([self.x, self.y], 0, False, Any(), False)
+        c2 = Callable([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
+                      Any(), False)
         assert_equal(str(c2), 'def (X?=, Y?=) -> any')
     
     def test_callable_type_with_var_args(self):
-        c = Callable([self.x], 0, True, Any(), False)
+        c = Callable([self.x], [ARG_STAR], [None], Any(), False)
         assert_equal(str(c), 'def (*X?) -> any')
         
-        c2 = Callable([self.x, self.y], 1, True, Any(), False)
+        c2 = Callable([self.x, self.y], [ARG_POS, ARG_STAR],
+                      [None, None], Any(), False)
         assert_equal(str(c2), 'def (X?, *Y?) -> any')
         
-        c3 = Callable([self.x, self.y], 0, True, Any(), False)
+        c3 = Callable([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
+                      Any(), False)
         assert_equal(str(c3), 'def (X?=, *Y?) -> any')
     
     def test_tuple_type(self):
@@ -66,13 +74,14 @@ class TypesSuite(Suite):
         assert_equal(str(TypeVarDef('X', 1, UnboundType('Y'))), 'X is Y?')
     
     def test_generic_function_type(self):
-        c = Callable([self.x, self.y], 2, False, self.y, False, None,
+        c = Callable([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
+                     self.y, False, None,
                      TypeVars([TypeVarDef('X', -1)]))
         assert_equal(str(c), 'def <X> (X?, Y?) -> Y?')
         
         v = TypeVars([TypeVarDef('Y', -1, UnboundType('X')),
                       TypeVarDef('X', -2)])
-        c2 = Callable([], 0, False, Void(None), False, None, v)
+        c2 = Callable([], [], [], Void(None), False, None, v)
         assert_equal(str(c2), 'def <Y is X?, X> ()')
 
 
@@ -165,18 +174,18 @@ class TypeOpsSuite(Suite):
     def tuple(self, *a):
         return TupleType(a)
     
-    def callable(self, vars, *a):
+    Callable callable(self, vars, *a):
         """callable(args, a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r and type arguments
         vars.
         """
-        tv = []
+        tv = <TypeVarDef> []
         n = -1
         for v in vars:
             tv.append(TypeVarDef(v, n))
             n -= 1
-        return Callable(a[:-1], len(a) - 1,
-                        False,
+        return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
+                        <str> [None] * (len(a) - 1),
                         a[-1],
                         False,
                         None,
@@ -397,14 +406,18 @@ class JoinSuite(Suite):
         """callable(a1, ..., an, r) constructs a callable with argument types
         a1, ... an and return type r.
         """
-        return Callable(a[:-1], len(a) - 1, False, a[-1], False)
+        n = len(a) - 1
+        return Callable(a[:-1], [ARG_POS] * n, <str> [None] * n,
+                        a[-1], False)
     
     def type_callable(self, *a):
         """type_callable(a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r, and which
         represents a type.
         """
-        return Callable(a[:-1], len(a) - 1, False, a[-1], True)
+        n = len(a) - 1
+        return Callable(a[:-1], [ARG_POS] * n, <str> [None] * n,
+                        a[-1], True)
 
 
 class MeetSuite(Suite):
@@ -596,4 +609,8 @@ class MeetSuite(Suite):
         """callable(a1, ..., an, r) constructs a callable with argument types
         a1, ... an and return type r.
         """
-        return Callable(a[:-1], len(a) - 1, False, a[-1], False)
+        n = len(a) - 1
+        return Callable(a[:-1],
+                        [ARG_POS] * n,
+                        <str> [None] * n,
+                        a[-1], False)

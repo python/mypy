@@ -4,6 +4,7 @@ import re
 
 from visitor import NodeVisitor
 from typerepr import CommonTypeRepr
+import nodes
 
 
 class OutputVisitor(NodeVisitor):
@@ -352,20 +353,16 @@ class OutputVisitor(NodeVisitor):
         self.node(o.callee)
         self.token(r.lparen)
         nargs = len(o.args)
+        nkeyword = 0
         for i in range(nargs):
-            if i == nargs - 1:
+            if o.arg_kinds[i] == nodes.ARG_STAR:
                 self.token(r.asterisk)
+            elif o.arg_kinds[i] == nodes.ARG_NAMED:
+                self.tokens(r.keywords[nkeyword])
+                nkeyword += 1
             self.node(o.args[i])
             if i < len(r.commas):
                 self.token(r.commas[i])
-        i = nargs
-        for n, v in o.keyword_args:
-            self.node(n)
-            self.token(r.assigns[i - nargs])
-            self.node(v)
-            if i < len(r.commas):
-                self.token(r.commas[i])
-            i += 1
         self.token(r.rparen)
     
     def visit_op_expr(self, o):

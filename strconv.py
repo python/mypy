@@ -33,21 +33,29 @@ class StrConv(NodeVisitor<str>):
         array with information specific to methods, global functions or
         anonymous functions.
         """
+        args = []
+        init = []
+        extra = []
+        for i, kind in enumerate(o.arg_kinds):
+            if kind == nodes.ARG_POS:
+                args.append(o.args[i])
+            elif kind in (nodes.ARG_OPT, nodes.ARG_NAMED):
+                args.append(o.args[i])
+                init.append(o.init[i])
+            elif kind == nodes.ARG_STAR:
+                extra.append(('VarArg', [o.args[i]]))
+            elif kind == nodes.ARG_STAR2:
+                extra.append(('DictVarArg', [o.args[i]]))
         a = []
-        if o.args != []:
-            a.append(('Args', o.args))
+        if args:
+            a.append(('Args', args))
         if o.typ:
             a.append(o.typ)
-        for i in o.init:
-            if i:
-                a.append(('Init', o.init))
-                break
-        if o.var_arg:
-            a.append(('VarArg', [o.var_arg]))
-        if o.dict_var_arg:
-            a.append(('DictVarArg', [o.dict_var_arg]))
+        if init:
+            a.append(('Init', init))
+        a.extend(extra)
         a.append(o.body)
-        return a
+        return a                    
     
     
     # Top-level structures
@@ -93,7 +101,7 @@ class StrConv(NodeVisitor<str>):
     def visit_func_def(self, o):
         a = self.func_helper(o)
         a.insert(0, o.name())
-        if o.max_pos != -1:
+        if nodes.ARG_NAMED in o.arg_kinds:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         return self.dump(a, o)
     
@@ -283,14 +291,21 @@ class StrConv(NodeVisitor<str>):
                                                    o.is_def)], o)
     
     def visit_call_expr(self, o):
-        a = [o.callee, ('Args', o.args)]
-        if o.is_var_arg:
-            a.append('VarArg')
-        for n, v in o.keyword_args:
-            a.append(('KwArgs', [n, v]))
-        if o.dict_var_arg:
-            a.append(('DictVarArg', [o.dict_var_arg]))
-        return self.dump(a, o)
+        args = []
+        extra = []
+        for i, kind in enumerate(o.arg_kinds):
+            if kind in [nodes.ARG_POS, nodes.ARG_STAR]:
+                args.append(o.args[i])
+                if kind == nodes.ARG_STAR:
+                    extra.append('VarArg')
+            elif kind == nodes.ARG_NAMED:
+                extra.append(('KwArgs', [o.arg_names[i], o.args[i]]))
+            elif kind == nodes.ARG_STAR2:
+                extra.append(('DictVarArg', [o.args[i]]))
+            else:
+                raise RuntimeError('unknown kind %d' % kind)
+
+        return self.dump([o.callee, ('Args', args)] + extra, o)
     
     def visit_op_expr(self, o):
         return self.dump([o.op, o.left, o.right], o)

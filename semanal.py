@@ -222,8 +222,6 @@ class SemanticAnal(NodeVisitor):
                 init.rvalue.accept(self)
         for v in defn.args:
             self.add_local(v, defn)
-        if defn.var_arg:
-            self.add_local(defn.var_arg, defn)
         for init_ in defn.init:
             if init_:
                 init_.lvalues[0].accept(self)
@@ -603,8 +601,6 @@ class SemanticAnal(NodeVisitor):
         expr.callee.accept(self)
         for a in expr.args:
             a.accept(self)
-        for n, v in expr.keyword_args:
-            v.accept(self)
     
     void visit_member_expr(self, MemberExpr expr):
         base = expr.expr

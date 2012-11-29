@@ -1837,7 +1837,7 @@ MypyFile:1(
       NameExpr(f)
       Args()
       KwArgs(
-        NameExpr(x)
+        x
         IntExpr(1)))))
 
 [case testComplexKeywordArgs]
@@ -1850,13 +1850,13 @@ MypyFile:1(
       Args(
         NameExpr(x))
       KwArgs(
-        NameExpr(y)
+        y
         OpExpr:1(
           or
           IntExpr(1)
           IntExpr(2)))
       KwArgs(
-        NameExpr(z)
+        z
         NameExpr(y)))))
 
 [case testChainedAssignment]
@@ -1879,7 +1879,7 @@ MypyFile:1(
     Args(
       Var(x))
     VarArg(
-      Var:nil(a))
+      Var(a))
     Block:1(
       PassStmt:1()))
   ExpressionStmt:2(
@@ -1900,7 +1900,7 @@ MypyFile:1(
       Var(x))
     Type:1(def (str?, *int?) -> any)
     VarArg(
-      Var:nil(a))
+      Var(a))
     Block:1(
       PassStmt:1())))
       
@@ -1913,7 +1913,7 @@ MypyFile:1(
     Args(
       Var(x))
     DictVarArg(
-      Var:nil(a))
+      Var(a))
     Block:1(
       PassStmt:1())))
 
@@ -1927,17 +1927,17 @@ MypyFile:1(
     Args(
       Var(x))
     VarArg(
-      Var:nil(a))
+      Var(a))
     DictVarArg(
-      Var:nil(b))
+      Var(b))
     Block:1(
       PassStmt:1()))
   FuncDef:2(
     g
     VarArg(
-      Var:nil(a))
+      Var(a))
     DictVarArg(
-      Var:nil(b))
+      Var(b))
     Block:2(
       PassStmt:2())))
 
@@ -2508,7 +2508,7 @@ MypyFile:1(
       NameExpr(f)
       Args()
       KwArgs(
-        NameExpr(x)
+        x
         NameExpr(y))
       DictVarArg(
         NameExpr(kwargs)))))

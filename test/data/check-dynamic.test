@@ -441,6 +441,7 @@ f() # E: Too few arguments for "f"
 f(o)
 f(o, o)
 f(o, o, o)
+[builtins fixtures/list.py]
 
 
 -- Implicit types for constructors

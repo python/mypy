@@ -11,6 +11,7 @@ from nodes import (
     DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context
 )
 from nodes import function_type, method_type
+import nodes
 import checker
 from sametypes import is_same_type
 from replacetvars import replace_func_type_vars, replace_type_vars
@@ -82,8 +83,8 @@ class ExpressionChecker:
     
     Typ visit_call_expr(self, CallExpr e):
         """Type check a call expression."""
-        if e.dict_var_arg or e.keyword_args:
-            return self.msg.not_implemented('keyword arguments', e)            
+        if nodes.ARG_STAR2 in e.arg_kinds or nodes.ARG_NAMED in e.arg_kinds:
+            return self.msg.not_implemented('keyword arguments', e)
         self.accept(e.callee)
         # Access callee type directly, since accept may return the any type
         # even if the type is known (in a dynamically typed function). This
@@ -96,7 +97,8 @@ class ExpressionChecker:
         """Type check call expression. The given callee type overrides
         the type of the callee expression.
         """        
-        return self.check_call(callee_type, e.args, e, e.is_var_arg)
+        return self.check_call(callee_type, e.args, e,
+                               nodes.ARG_STAR in e.arg_kinds)
     
     Typ check_call(self, Typ callee, Node[] args, Context context,
                    bool is_var_arg=False, bool check_arg_count=True):
@@ -392,8 +394,8 @@ class ExpressionChecker:
                 bound_vars.append((tv.id, map[tv.id]))
         
         return Callable(arg_types,
-                        callable.min_args,
-                        callable.is_var_arg,
+                        callable.arg_kinds,
+                        callable.arg_names,
                         expand_type(callable.ret_type, map),
                         callable.is_type_obj(),
                         callable.name,
@@ -564,8 +566,8 @@ class ExpressionChecker:
             # A list expression with an explicit item type; translate into type
             # checking a function call.
             constructor = Callable([e.typ],
-                                   0,
-                                   True,
+                                   [nodes.ARG_STAR],
+                                   [None],
                                    self.chk.named_generic_type('builtins.list',
                                                                [e.typ]),
                                    False,
@@ -575,8 +577,8 @@ class ExpressionChecker:
             # checking a generic function call.
             tv = TypeVar('T', -1)
             constructor = Callable([tv],
-                                   0,
-                                   True,
+                                   [nodes.ARG_STAR],
+                                   [None],
                                    self.chk.named_generic_type('builtins.list',
                                                                [tv]),
                                    False,
@@ -625,8 +627,8 @@ class ExpressionChecker:
             #
             #   dict<kt, vt> make_dict<kt, vt>(tuple<kt, vt> *v): ...
             constructor = Callable([TupleType([tv1, tv2])],
-                                   0,
-                                   True,
+                                   [nodes.ARG_STAR],
+                                   [None],
                                    self.chk.named_generic_type('builtins.dict',
                                                                [tv1, tv2]),
                                    False,
@@ -742,8 +744,8 @@ class ExpressionChecker:
         variables.extend(initvars)
         
         c = Callable(init_type.arg_types,
-                     init_type.min_args,
-                     init_type.is_var_arg,
+                     init_type.arg_kinds,
+                     init_type.arg_names,
                      self_type(info),
                      True,
                      None,

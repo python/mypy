@@ -48,7 +48,7 @@ class EraseTypeVisitor(TypeVisitor<Typ>):
     Typ visit_callable(self, Callable t):
         # We must preserve the type object flag for overload resolution to
         # work.
-        return Callable([], 0, False, Void(), t.is_type_obj())
+        return Callable([], [], [], Void(), t.is_type_obj())
 
     Typ visit_overloaded(self, Overloaded t):
         return t.items()[0].accept(self)

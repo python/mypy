@@ -226,9 +226,10 @@ Callable combine_similar_callables(Callable t, Callable s,
     Typ[] arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
+    # TODO kinds and argument names
     return Callable(arg_types,
-                    t.min_args,
-                    t.is_var_arg,
+                    t.arg_kinds,
+                    t.arg_names,
                     join_types(t.ret_type, s.ret_type, basic),
                     t.is_type_obj() and s.is_type_obj(),
                     None,
