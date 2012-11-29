@@ -33,4 +33,5 @@ class AllSuite(Suite):
         super().__init__()
 
 
-run_test(AllSuite(), sys.argv[1:])
+if __name__ == '__main__':
+    run_test(AllSuite(), sys.argv[1:])

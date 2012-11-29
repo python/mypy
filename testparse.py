@@ -1,6 +1,11 @@
-import os.path
+"""Tests for the mypy parser
 
-from myunit import Suite, AssertionFailure
+Test case descriptions are in files test/data/parse[-errors].test."""
+
+import os.path
+import sys
+
+from myunit import Suite, AssertionFailure, run_test
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
 import testconfig
@@ -55,3 +60,14 @@ def test_parse_error(testcase):
             testcase.output, e.messages,
             'Invalid compiler output ({}, line {})'.format(testcase.file,
                                                            testcase.line))
+
+
+class CombinedParserSuite(Suite):
+    def __init__(self):
+        self.test_parse = ParserSuite()
+        self.test_parse_errors = ParseErrorSuite()
+        super().__init__()
+
+
+if __name__ == '__main__':
+    run_test(CombinedParserSuite(), sys.argv[1:])

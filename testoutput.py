@@ -1,7 +1,12 @@
+"""Tests for parse tree pretty printing that preserves formatting
+
+Test case descriptions are in file test/data/output.test."""
+
 import os.path
 import re
+import sys
 
-from myunit import Suite
+from myunit import Suite, run_test
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
 from testconfig import test_data_prefix, test_temp_dir
@@ -79,3 +84,7 @@ def remove_prefix(path, prefix):
 
 def fix_path(path):
     return path.replace('\\', '/')
+
+
+if __name__ == '__main__':
+    run_test(OutputSuite(), sys.argv[1:])

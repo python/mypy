@@ -1,6 +1,7 @@
 import os.path
+import sys
 
-from myunit import Suite
+from myunit import Suite, run_test
 from testconfig import test_data_prefix, test_temp_dir
 from testdata import parse_test_cases
 from testhelpers import assert_string_arrays_equal
@@ -62,3 +63,7 @@ def test_python_generation(testcase):
     assert_string_arrays_equal(
         expected, a, 'Invalid source code output ({}, line {})'.format(
             testcase.file, testcase.line))
+
+
+if __name__ == '__main__':
+    run_test(PythonGenerationSuite(), sys.argv[1:])
