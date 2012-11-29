@@ -588,6 +588,7 @@ class TypeChecker(NodeVisitor<Typ>):
         method_type = self.expr_checker.analyse_external_member_access(
             '__setitem__', lvalue[0], context)
         return self.expr_checker.check_call(method_type, [lvalue[1], rvalue],
+                                            [nodes.ARG_POS, nodes.ARG_POS],
                                             context)
     
     Typ visit_expression_stmt(self, ExpressionStmt s):
@@ -707,10 +708,10 @@ class TypeChecker(NodeVisitor<Typ>):
         echk = self.expr_checker
         method = echk.analyse_external_member_access('__iter__', iterable,
                                                      s.expr)
-        iterator = echk.check_call(method, [], s.expr)
+        iterator = echk.check_call(method, [], [], s.expr)
         method = echk.analyse_external_member_access('__next__', iterator,
                                                      s.expr)
-        item = echk.check_call(method, [], s.expr)
+        item = echk.check_call(method, [], [], s.expr)
         
         if not s.is_annotated():
             # Create a temporary copy of variables with Node item type.

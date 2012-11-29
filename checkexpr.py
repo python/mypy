@@ -97,19 +97,19 @@ class ExpressionChecker:
         """Type check call expression. The given callee type overrides
         the type of the callee expression.
         """        
-        return self.check_call(callee_type, e.args, e,
-                               nodes.ARG_STAR in e.arg_kinds)
+        return self.check_call(callee_type, e.args, e.arg_kinds, e)
     
-    Typ check_call(self, Typ callee, Node[] args, Context context,
-                   bool is_var_arg=False, bool check_arg_count=True):
+    Typ check_call(self, Typ callee, Node[] args, int[] arg_kinds,
+                   Context context):
         """Type check a call.
 
-        Use the given callee and argument types. If is_var_arg is
-        True, the callee uses varargs. If check_arg_count is False, do
-        not report invalid number of arguments as an error (this is
-        used when the error has already been reported by the semantic
-        analyzer and we don't want duplicate error messages).
+        Arguments:
+          callee: type of the called value
+          args: actual argument expressions
+          arg_kinds: contains nodes.ARG_* constant for each argument in args
+            describing whether the argument is positional, *arg, etc.
         """
+        is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, Callable):
             callable = (Callable)callee
             Typ[] arg_types
@@ -122,16 +122,14 @@ class ExpressionChecker:
                     callable, arg_types, is_var_arg, context)
             
             arg_types = self.infer_arg_types_in_context(callable, args)
-            
-            # Check number of arguments, but only if the semantic analyzer
-            # hasn't done it for us.
-            if check_arg_count:
-                # Checking the type and compatibility of the varargs argument
-                # type in a call is handled by the check_argument_types call
-                # below.
-                if not is_valid_argc(len(args), is_var_arg, callable):
-                    self.msg.invalid_argument_count(callable, len(args),
-                                                    context)
+
+            # Check argument counts.
+            # Checking the type and compatibility of the varargs argument
+            # type in a call is handled by the check_argument_types call
+            # below.
+            if not is_valid_argc(len(args), is_var_arg, callable):
+                self.msg.invalid_argument_count(callable, len(args),
+                                                context)
             
             self.check_argument_types(arg_types, is_var_arg, callable, context)
             
@@ -144,8 +142,7 @@ class ExpressionChecker:
             
             target = self.overload_call_target(arg_types, is_var_arg,
                                                (Overloaded)callee, context)
-            return self.check_call(target, args, context, is_var_arg,
-                                   check_arg_count)
+            return self.check_call(target, args, arg_kinds, context)
         elif isinstance(callee, Any) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
             return Any()
@@ -469,7 +466,7 @@ class ExpressionChecker:
                 base_type, method, context)
         method_type = self.analyse_external_member_access(
             method, base_type, context)
-        return self.check_call(method_type, [arg], context, False, True)
+        return self.check_call(method_type, [arg], [nodes.ARG_POS], context)
     
     Typ check_boolean_op(self, str op, Typ left_type, Typ right_type,
                          Context context):
@@ -500,11 +497,11 @@ class ExpressionChecker:
         elif _x == '-':
             method_type = self.analyse_external_member_access('__neg__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], e)
+            return self.check_call(method_type, [], [], e)
         elif _x == '~':
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], e)
+            return self.check_call(method_type, [], [], e)
     
     Typ visit_index_expr(self, IndexExpr e):
         """Type check an index expression (base[index])."""
@@ -584,7 +581,9 @@ class ExpressionChecker:
                                    False,
                                    '<list>',
                                    TypeVars([TypeVarDef('T', -1)]))
-        return self.check_call(constructor, e.items, e)
+        return self.check_call(constructor,
+                               e.items,
+                               [nodes.ARG_POS] * len(e.items), e)
     
     Typ visit_tuple_expr(self, TupleExpr e):    
         """Type check a tuple expression."""
@@ -639,7 +638,9 @@ class ExpressionChecker:
             Node[] args = []
             for key, value in e.items:
                 args.append(TupleExpr([key, value]))
-            return self.check_call(constructor, args, e)
+            return self.check_call(constructor,
+                                   args,
+                                   [nodes.ARG_POS] * len(args), e)
         else:
             for key_, value_ in e.items:
                 kt = self.accept(key_)
