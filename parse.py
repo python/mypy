@@ -388,9 +388,12 @@ class Parser:
 
         self.verify_argument_kinds(kinds, lparen.line)
         
-        # TODO dictionary varargs
+        names = <str> []
+        for arg in args:
+            names.append(arg.name())
+        
         annotation = self.build_func_annotation(
-            ret_type, arg_types, kinds, type_vars, lparen.line)
+            ret_type, arg_types, kinds, names, type_vars, lparen.line)
         
         return (args, init, kinds, annotation,
                 noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
@@ -398,7 +401,7 @@ class Parser:
     
     Annotation build_func_annotation(self, Annotation ret_type,
                                      Typ[] arg_types, int[] kinds,
-                                     TypeVars type_vars,
+                                     str[] names, TypeVars type_vars,
                                      int line):
         # Are there any type annotations?
         if (ret_type or arg_types != [None] * len(arg_types)
@@ -407,8 +410,8 @@ class Parser:
             Typ ret = None
             if ret_type is not None:
                 ret = ret_type.typ
-            typ = self.construct_function_type(arg_types, kinds, ret,
-                                               type_vars, line)
+            typ = self.construct_function_type(arg_types, kinds, names,
+                                               ret, type_vars, line)
             annotation = Annotation(typ, line)
             self.set_repr(annotation, noderepr.AnnotationRepr())
             return annotation
@@ -427,6 +430,7 @@ class Parser:
         """
         args = <Var> []
         kinds = <int> []
+        names = <str> []
         init = <Node> []
         has_inits = False
         arg_types = <Typ> []        
@@ -453,6 +457,7 @@ class Parser:
                     isdict = asterisk.string == '**'
                     name = self.expect_type(Name)
                     arg_names.append(name)
+                    names.append(name.string)
                     var_arg = Var(name.string)
                     self.set_repr(var_arg, noderepr.VarRepr(name, none))
                     args.append(var_arg)
@@ -501,8 +506,8 @@ class Parser:
             found.add(kind)
     
     Callable construct_function_type(self, Typ[] arg_types, int[] kinds,
-                                     Typ ret_type, TypeVars type_vars,
-                                     int line):
+                                     str[] names, Typ ret_type,
+                                     TypeVars type_vars, int line):
         # Complete the type annotation by replacing omitted types with
         # dynamic/void.
         arg_types = arg_types[:]
@@ -511,9 +516,8 @@ class Parser:
                 arg_types[i] = Any()
         if ret_type is None:
             ret_type = Any()
-        # TODO include names
-        return Callable(arg_types, kinds, <str> [None] * len(kinds), ret_type,
-                        False, None, type_vars, [], line, None)
+        return Callable(arg_types, kinds, names, ret_type, False, None,
+                        type_vars, [], line, None)
     
     # Parsing statements
     
@@ -533,7 +537,7 @@ class Parser:
         self.set_repr(node, noderepr.VarDefRepr(assign_token, br))
         return node
     
-    list<tuple<Var, Typ>> parse_var_list(self, Typ first_type):
+    tuple<Var, Typ>[] parse_var_list(self, Typ first_type):
         """Parse a comma-separated list of variable names, potentially
         prefixed by type declarations.
         """
@@ -1469,8 +1473,12 @@ class Parser:
         (args, init, kinds, has_inits,
          arg_names, commas, asterisk,
          assigns, arg_types) = self.parse_arg_list()
+
+        names = <str> []
+        for arg in args:
+            names.append(arg.name())
         
-        typ = self.build_func_annotation(None, arg_types, kinds,
+        typ = self.build_func_annotation(None, arg_types, kinds, names,
                                          TypeVars([]), lambda_tok.line)
         
         colon = self.expect(':')

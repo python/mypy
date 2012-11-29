@@ -63,7 +63,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Type:2(def (__main__.A) -> __main__.A)
+    Type:2(def (__main__.A x) -> __main__.A)
     Block:2(
       PassStmt:2()))
   FuncDef:3(
@@ -71,7 +71,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    Type:3(def (any, __main__.A))
+    Type:3(def (any x, __main__.A y))
     Block:3(
       AssignmentStmt:4(
         Lvalues(
@@ -276,7 +276,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Type:1(def <t> (t`-1))
+    Type:1(def <t> (t`-1 x))
     Block:1(
       VarDef:2(
         Var(y)
@@ -291,7 +291,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    Type:1(def <t, u> (t`-1, u`-2))
+    Type:1(def <t, u> (t`-1 x, u`-2 y))
     Block:1(
       PassStmt:1())))
 
@@ -307,7 +307,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      Type:2(def (__main__.A, builtins.object))
+      Type:2(def (__main__.A self, builtins.object o))
       Block:2(
         PassStmt:2()))))
 
@@ -324,7 +324,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Type:2(def (__main__.c<t`1>) -> t`1)
+      Type:2(def (__main__.c<t`1> self) -> t`1)
       Block:2(
         PassStmt:2()))))
 
@@ -343,7 +343,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(x))
-      Type:2(def (__main__.c<t`1, s`2>, s`2) -> t`1)
+      Type:2(def (__main__.c<t`1, s`2> self, s`2 x) -> t`1)
       Block:2(
         PassStmt:2()))))
 
@@ -426,12 +426,12 @@ object f(any a): a
 [out]
 MypyFile:1(
   OverloadedFuncDef:1(
-    Type:1(Overload(def (builtins.object) -> any, def (any) -> builtins.object))
+    Type:1(Overload(def (builtins.object o) -> any, def (any a) -> builtins.object))
     FuncDef:1(
       f
       Args(
         Var(o))
-      Type:1(def (builtins.object) -> any)
+      Type:1(def (builtins.object o) -> any)
       Block:1(
         ExpressionStmt:1(
           NameExpr(o [l]))))
@@ -439,7 +439,7 @@ MypyFile:1(
       f
       Args(
         Var(a))
-      Type:2(def (any) -> builtins.object)
+      Type:2(def (any a) -> builtins.object)
       Block:2(
         ExpressionStmt:2(
           NameExpr(a [l]))))))
@@ -451,7 +451,7 @@ x = f
 [out]
 MypyFile:1(
   OverloadedFuncDef:1(
-    Type:1(Overload(def (), def (any)))
+    Type:1(Overload(def (), def (any x)))
     FuncDef:1(
       f
       Type:1(def ())
@@ -461,7 +461,7 @@ MypyFile:1(
       f
       Args(
         Var(x))
-      Type:2(def (any))
+      Type:2(def (any x))
       Block:2(
         PassStmt:2())))
   AssignmentStmt:3(

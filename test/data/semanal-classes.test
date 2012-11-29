@@ -201,12 +201,13 @@ MypyFile:1(
   TypeDef:1(
     A
     OverloadedFuncDef:2(
-      Type:2(Overload(def (__main__.A), def (__main__.A, __main__.A)))
+      Type:2(Overload(def (__main__.A self), \
+                      def (__main__.A self, __main__.A x)))
       FuncDef:2(
         f
         Args(
           Var(self))
-        Type:2(def (__main__.A))
+        Type:2(def (__main__.A self))
         Block:2(
           ExpressionStmt:2(
             NameExpr(self [l]))))
@@ -215,7 +216,7 @@ MypyFile:1(
         Args(
           Var(self)
           Var(x))
-        Type:3(def (__main__.A, __main__.A))
+        Type:3(def (__main__.A self, __main__.A x))
         Block:3(
           ExpressionStmt:3(
             NameExpr(self [l])))))))

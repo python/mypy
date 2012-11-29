@@ -501,21 +501,17 @@ class TypeStrVisitor(TypeVisitor<str>):
             return s
     
     def visit_callable(self, t):
-        s = self.list_str(t.arg_types[:t.min_args])
-        
-        opt = t.arg_types[t.min_args:]
-        if t.is_var_arg:
-            opt = opt[:-1]
-        
-        for o in opt:
+        s = ''
+        for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            s += str(o) + '='
-        
-        if t.is_var_arg:
-            if s != '':
-                s += ', '
-            s += '*' + str(t.arg_types[-1])
+            if t.arg_kinds[i] == nodes.ARG_STAR:
+                s += '*'
+            s += str(t.arg_types[i])
+            if t.arg_names[i]:
+                s += ' {}'.format(t.arg_names[i])
+            if t.arg_kinds[i] == nodes.ARG_OPT:
+                s += '='
         
         s = '({})'.format(s)
         
