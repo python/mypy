@@ -26,8 +26,9 @@ from semanal import self_type
 
 
 class ExpressionChecker:
-    """This class type checks expressions. It works closely together with
-    TypeChecker.
+    """Expression type checker.
+
+    This clas works closely together with checker.TypeChecker.
     """
     # Some services are provided by a TypeChecker instance.
     checker.TypeChecker chk
@@ -37,7 +38,7 @@ class ExpressionChecker:
     void __init__(self,
                   checker.TypeChecker chk,
                   MessageBuilder msg):
-        """Construct an expression checker."""
+        """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
     
@@ -103,6 +104,8 @@ class ExpressionChecker:
                    Context context):
         """Type check a call.
 
+        Also infer type arguments if the callee is a generic function.
+
         Arguments:
           callee: type of the called value
           args: actual argument expressions
@@ -150,6 +153,11 @@ class ExpressionChecker:
     
     Typ[] infer_arg_types_in_context(self, Callable callee,
                                      Node[] args):
+        """Infer argument expression types using a callable type as context.
+
+        For example, if callee argument 2 has type int[], infer the argument
+        exprsession with int[] type context.
+        """
         Typ[] res = []
         
         fixed = len(args)
@@ -173,6 +181,12 @@ class ExpressionChecker:
     
     Callable infer_function_type_arguments_using_context(self,
                                                          Callable callable):
+        """Unify callable return type to type context to infer type vars.
+
+        For example, if the return type is set<t> where 't' is a type variable
+        of callable, and if the context is set<int>, return callable modified
+        by substituting 't' with 'int'.
+        """
         ctx = self.chk.type_context[-1]
         if not ctx:
             return callable
@@ -200,9 +214,11 @@ class ExpressionChecker:
     Callable infer_function_type_arguments(self, Callable callee_type,
                                            Typ[] arg_types,
                                            bool is_var_arg, Context context):
-        """Infer the type arguments for a generic callee type. Return a derived
-        callable type that has the arguments applied (and stored as implicit
-        type arguments). If is_var_arg is True, the callee uses varargs.
+        """Infer the type arguments for a generic callee type.
+
+        Return a derived callable type that has the arguments applied (and
+        stored as implicit type arguments). If is_var_arg is True, the callee
+        uses varargs.
         """
         Typ[] inferred_args = infer_function_type_arguments(
             callee_type, arg_types, is_var_arg, self.chk.basic_types())
@@ -213,12 +229,13 @@ class ExpressionChecker:
                                       Typ[] inferred_args,
                                       int[] implicit_type_vars,
                                       Context context):
-        """Apply inferred values of type arguments to a generic
-        function. If implicit_type_vars are given, they correspond to
-        the ids of the implicit instance type variables; they are
-        stored as the prefix of inferred_args.  Inferred_args contains
-        first the values of implicit instance type vars (if any), and
-        then values of function type variables, concatenated together.
+        """Apply inferred values of type arguments to a generic function.
+
+        If implicit_type_vars are given, they correspond to the ids of
+        the implicit instance type variables; they are stored as the
+        prefix of inferred_args.  Inferred_args contains first the
+        values of implicit instance type vars (if any), and then
+        values of function type variables, concatenated together.
         """
         # Report error if some of the variables could not be solved. In that
         # case assume that all variables have type dynamic to avoid extra
@@ -240,8 +257,10 @@ class ExpressionChecker:
     
     void check_argument_types(self, Typ[] arg_types, bool is_var_arg,
                               Callable callee, Context context):
-        """Check argument types against a callable type. If is_var_arg is True,
-        the caller uses varargs.
+        """Check argument types against a callable type.
+
+        Report errors if the argument types are not compatible. If is_var_arg
+        is True, the caller uses varargs.
         """
         callee_num_args = callee.max_fixed_args()
         
@@ -295,11 +314,12 @@ class ExpressionChecker:
     
     Typ overload_call_target(self, Typ[] arg_types, bool is_var_arg,
                              Overloaded overload, Context context):
-        """Infer the correct overload item to call with the given argument
-        types. The return value may be Callable or any (if an unique item
-        could not be determined). If is_var_arg is True, the caller uses
-        varargs.
-        """        
+        """Infer the correct overload item to call with given argument types.
+
+        The return value may be Callable or any (if an unique item
+        could not be determined). If is_var_arg is True, the caller
+        uses varargs.
+        """
         # TODO for overlapping signatures we should try to get a more precise
         #      result than 'any'
         Typ match = None # Callable, Dynamic or nil
@@ -356,8 +376,9 @@ class ExpressionChecker:
     
     Typ apply_generic_arguments(self, Callable callable, Typ[] types,
                                 int[] implicit_type_vars, Context context):
-        """Apply generic type arguments to a callable type. For
-        example, applying int to 'def <T> (T) -> T' results in
+        """Apply generic type arguments to a callable type.
+
+        For example, applying int to 'def <T> (T) -> T' results in
         'def [int] (int) -> int'. Here '[int]' is an implicit bound type
         variable.
         
@@ -419,6 +440,7 @@ class ExpressionChecker:
         """Analyse member access that is external, i.e. it cannot
         refer to private definitions. Return the result type.
         """
+        # TODO remove; no private definitions in mypy
         return analyse_member_access(member, base_type, context, False, False,
                                      self.chk.tuple_type(), self.msg)
     
@@ -439,7 +461,7 @@ class ExpressionChecker:
         return self.named_type('builtins.float')
     
     Typ visit_op_expr(self, OpExpr e):
-        """Visit a binary operator expression."""
+        """Type check a binary operator expression."""
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
@@ -476,15 +498,6 @@ class ExpressionChecker:
         # TODO the result type should be the combination of left_type and
         #      right_type
         return self.chk.bool_type()
-    
-    void check_boolean_return_value(self, str method, Typ result_type,
-                                    Context context):
-        """Check that result_type is compatible with Boolean. It is the
-        return value of the method with the given name (this is used
-        for error message generation).
-        """
-        if not is_subtype(result_type, self.chk.bool_type()):
-            self.msg.boolean_return_value_expected(method, context)
     
     Typ visit_unary_expr(self, UnaryExpr e):
         """Type check an unary expression ("not", - or ~)."""
@@ -524,7 +537,7 @@ class ExpressionChecker:
             return self.check_op('__getitem__', left_type, e.index, e)
     
     Typ visit_cast_expr(self, CastExpr expr):
-        """Visit a cast expression."""
+        """Type check a cast expression."""
         source_type = self.accept(expr.expr)
         target_type = expr.typ
         if isinstance(target_type, Any):
