@@ -4,6 +4,7 @@ from myunit import Suite, run_test
 import testtypes
 import testsubtypes
 import testsolve
+import testinfer
 import testlex
 import testparse
 import testsemanal
@@ -20,6 +21,7 @@ class AllSuite(Suite):
         self.test_meet = testtypes.MeetSuite()
         self.test_subtypes = testsubtypes.SubtypingSuite()
         self.test_solve = testsolve.SolveSuite()
+        self.test_infer = testinfer.MapActualsToFormalsSuite()
         self.test_lex = testlex.LexerSuite()
         self.test_parse = testparse.ParserSuite()
         self.test_parse_errors = testparse.ParseErrorSuite()

@@ -850,3 +850,38 @@ class TvarTranslator(TypeTranslator):
             else:
                 items.append(v)
         return TypeVars(items)
+
+
+int[][] map_actuals_to_formals(int[] caller_kinds, int[] callee_kinds):
+    """Calculate mapping between actual (caller) args and formals.
+
+    The result contains a list of caller indexes mapping to to each callee
+    index, indexed by callee index.
+    """
+    ncallee = len(callee_kinds)
+    map = <int[]> [None] * ncallee
+    for i in range(ncallee):
+        map[i] = []
+    j = 0
+    for i, kind in enumerate(caller_kinds):
+        if kind == nodes.ARG_POS:
+            if j < ncallee:
+                if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT]:
+                    map[j].append(i)
+                    j += 1
+                elif callee_kinds[j] == nodes.ARG_STAR:
+                    map[j].append(i)
+                else:
+                    raise NotImplementedError()
+        elif kind == nodes.ARG_STAR:
+            while j < ncallee:
+                if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT]:
+                    map[j].append(i)
+                elif callee_kinds[j] == nodes.ARG_STAR:
+                    map[j].append(i)
+                else:
+                    raise NotImplementedError()
+                j += 1                
+        else:
+            raise NotImplementedError()
+    return map
