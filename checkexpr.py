@@ -85,7 +85,7 @@ class ExpressionChecker:
     
     Typ visit_call_expr(self, CallExpr e):
         """Type check a call expression."""
-        if nodes.ARG_STAR2 in e.arg_kinds or nodes.ARG_NAMED in e.arg_kinds:
+        if nodes.ARG_STAR2 in e.arg_kinds:
             return self.msg.not_implemented('keyword arguments', e)
         self.accept(e.callee)
         # Access callee type directly, since accept may return the any type
@@ -99,10 +99,11 @@ class ExpressionChecker:
         """Type check call expression. The given callee type overrides
         the type of the callee expression.
         """        
-        return self.check_call(callee_type, e.args, e.arg_kinds, e)
+        return self.check_call(callee_type, e.args, e.arg_kinds, e,
+                               e.arg_names)
     
     Typ check_call(self, Typ callee, Node[] args, int[] arg_kinds,
-                   Context context):
+                   Context context, str[] arg_names=None):
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
@@ -118,7 +119,9 @@ class ExpressionChecker:
             callable = (Callable)callee
             
             formal_to_actual = map_actuals_to_formals(
-                arg_kinds, callable.arg_kinds, lambda i: self.accept(args[i]))
+                arg_kinds, arg_names,
+                callable.arg_kinds, callable.arg_names,
+                lambda i: self.accept(args[i]))
             
             if callable.is_generic():
                 callable = self.infer_function_type_arguments_using_context(
@@ -146,7 +149,7 @@ class ExpressionChecker:
             
             target = self.overload_call_target(arg_types, is_var_arg,
                                                (Overloaded)callee, context)
-            return self.check_call(target, args, arg_kinds, context)
+            return self.check_call(target, args, arg_kinds, context, arg_names)
         elif isinstance(callee, Any) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
             return Any()
@@ -955,12 +958,15 @@ class TvarTranslator(TypeTranslator):
         return TypeVars(items)
 
 
-int[][] map_actuals_to_formals(int[] caller_kinds, int[] callee_kinds,
+int[][] map_actuals_to_formals(int[] caller_kinds,
+                               str[] caller_names,
+                               int[] callee_kinds,
+                               str[] callee_names,
                                func<int, Typ> caller_arg_type):
     """Calculate mapping between actual (caller) args and formals.
 
-    The result contains a list of caller indexes mapping to to each callee
-    index, indexed by callee index.
+    The result contains a list of caller argument indexes mapping to to each
+    callee argument index, indexed by callee index.
 
     The caller_arg_type argument should evaluate to the type of the actual
     argument type with the given index.
@@ -1002,6 +1008,10 @@ int[][] map_actuals_to_formals(int[] caller_kinds, int[] callee_kinds,
                     else:
                         raise NotImplementedError()
                     j += 1
+        elif kind == nodes.ARG_NAMED:
+            name = caller_names[i]
+            if name in callee_names:
+                map[callee_names.index(name)].append(i)                
         else:
             raise NotImplementedError()
     return map

@@ -1,0 +1,48 @@
+-- Test cases for keyword arguments.
+
+
+[case testTypeErrorInKeywordArgument]
+void f(object o): pass
+f(o=None()) # E: None not callable
+
+[case testSimpleKeywordArgument]
+void f(A a): pass
+f(a=A())
+f(a=object()) # E: Argument 1 to "f" has incompatible type "object"
+class A: pass
+
+[case testTwoKeywordArgumentsNotInOrder]
+void f(A a, B b): pass
+f(b=A(), a=A()) # E: Argument 1 to "f" has incompatible type "A"
+f(b=B(), a=B()) # E: Argument 2 to "f" has incompatible type "B"
+f(a=A(), b=B())
+f(b=B(), a=A())
+class A: pass
+class B: pass
+
+[case testOneOfSeveralOptionalKeywordArguments]
+void f(A a=None, B b=None, C c=None): pass
+f(a=A())
+f(b=B())
+f(c=C())
+f(b=B(), c=C())
+f(a=B()) # E: Argument 1 to "f" has incompatible type "B"
+f(b=A()) # E: Argument 1 to "f" has incompatible type "A"
+f(c=B()) # E: Argument 1 to "f" has incompatible type "B"
+f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"
+class A: pass
+class B: pass
+class C: pass
+
+[case testBothPositionalAndKeywordArguments]
+void f(A a, B b): pass
+f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"
+f(A(), b=B())
+class A: pass
+class B: pass
+
+[case testContextSensitiveTypeInferenceForKeywordArg]
+void f(A a, A[] b): pass
+f(b=[], a=A())
+class A: pass
+[builtins fixtures/list.py]

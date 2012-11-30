@@ -4,11 +4,13 @@ import sys
 
 from myunit import Suite, assert_equal, assert_true, run_test
 from checkexpr import map_actuals_to_formals
-from nodes import ARG_POS, ARG_OPT, ARG_STAR
+from nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED
 from mtypes import Any, TupleType
 
 
 class MapActualsToFormalsSuite(Suite):
+    """Test cases for checkexpr.map_actuals_to_formals."""
+    
     def test_basic(self):
         self.assert_map([], [], [])
 
@@ -84,16 +86,80 @@ class MapActualsToFormalsSuite(Suite):
             [[0], [0], []],
             TupleType([Any(), Any()]))
 
+    def test_named_args(self):
+        self.assert_map(
+            ['x'],
+            [(ARG_POS, 'x')],
+            [[0]])
+        self.assert_map(
+            ['y', 'x'],
+            [(ARG_POS, 'x'), (ARG_POS, 'y')],
+            [[1], [0]])
+
+    def test_some_named_args(self):
+        self.assert_map(
+            ['y'],
+            [(ARG_OPT, 'x'), (ARG_OPT, 'y'), (ARG_OPT, 'z')],
+            [[], [0], []])
+
+    def test_missing_named_arg(self):
+        self.assert_map(
+            ['y'],
+            [(ARG_OPT, 'x')],
+            [[]])
+
+    def test_duplicate_named_arg(self):
+        self.assert_map(
+            ['x', 'x'],
+            [(ARG_OPT, 'x')],
+            [[0, 1]])
+
     def assert_map(self, caller_kinds, callee_kinds, expected):
+        caller_kinds, caller_names = expand_caller_kinds(caller_kinds)
+        callee_kinds, callee_names = expand_callee_kinds(callee_kinds)
         result = map_actuals_to_formals(
-            caller_kinds, callee_kinds, lambda i: Any())
+            caller_kinds,
+            caller_names,
+            callee_kinds,
+            callee_names,
+            lambda i: Any())
         assert_equal(result, expected)
 
     def assert_vararg_map(self, caller_kinds, callee_kinds, expected,
                            vararg_type):
         result = map_actuals_to_formals(
-            caller_kinds, callee_kinds, lambda i: vararg_type)
+            caller_kinds,
+            [],
+            callee_kinds,
+            [],
+            lambda i: vararg_type)
         assert_equal(result, expected)
+
+
+def expand_caller_kinds(kinds_or_names):
+    kinds = []
+    names = []
+    for k in kinds_or_names:
+        if isinstance(k, str):
+            kinds.append(ARG_NAMED)
+            names.append(k)
+        else:
+            kinds.append(k)
+            names.append(None)
+    return kinds, names
+
+
+def expand_callee_kinds(kinds_and_names):
+    kinds = []
+    names = []
+    for v in kinds_and_names:
+        if isinstance(v, tuple):
+            kinds.append(v[0])
+            names.append(v[1])
+        else:
+            kinds.append(v)
+            names.append(None)
+    return kinds, names
 
 
 if __name__ == '__main__':
