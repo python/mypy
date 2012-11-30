@@ -23,6 +23,7 @@ from subtypes import is_subtype
 import erasetype
 from checkmember import analyse_member_access
 from semanal import self_type
+from constraints import get_actual_type
 
 
 class ExpressionChecker:
@@ -116,24 +117,25 @@ class ExpressionChecker:
         if isinstance(callee, Callable):
             callable = (Callable)callee
             
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds, callable.arg_kinds, lambda i: self.accept(args[i]))
+            
             if callable.is_generic():
                 callable = self.infer_function_type_arguments_using_context(
                     callable)
-                arg_types = self.infer_arg_types_in_context(callable, args)
+                arg_types = self.infer_arg_types_in_context2(
+                    callable, args, arg_kinds, formal_to_actual)
                 callable = self.infer_function_type_arguments(
-                    callable, arg_types, is_var_arg, context)
+                    callable, arg_types, arg_kinds, formal_to_actual, context)
             
-            arg_types = self.infer_arg_types_in_context(callable, args)
+            arg_types = self.infer_arg_types_in_context2(
+                callable, args, arg_kinds, formal_to_actual)
 
-            # Check argument counts.
-            # Checking the type and compatibility of the varargs argument
-            # type in a call is handled by the check_argument_types call
-            # below.
-            if not is_valid_argc(len(args), is_var_arg, callable):
-                self.msg.invalid_argument_count(callable, len(args),
-                                                context)
+            self.check_argument_count(callable, arg_types, arg_kinds,
+                                      formal_to_actual, context)
             
-            self.check_argument_types(arg_types, is_var_arg, callable, context)
+            self.check_argument_types2(arg_types, arg_kinds, callable,
+                                       formal_to_actual, context)
             
             return callable.ret_type
         elif isinstance(callee, Overloaded):
@@ -179,6 +181,31 @@ class ExpressionChecker:
         
         return res
     
+    Typ[] infer_arg_types_in_context2(self, Callable callee,
+                                      Node[] args,
+                                      int[] arg_kinds,
+                                      int[][] formal_to_actual):
+        """Infer argument expression types using a callable type as context.
+
+        For example, if callee argument 2 has type int[], infer the argument
+        exprsession with int[] type context.
+
+        Returns the inferred types of *actual arguments*.
+        """
+        Typ[] res = <Typ> [None] * len(args)
+
+        for i, actuals in enumerate(formal_to_actual):
+            for ai in actuals:
+                if arg_kinds[ai] != nodes.ARG_STAR:
+                    res[ai] = self.accept(args[ai], callee.arg_types[i])
+
+        # Fill in the rest of the argument types.
+        for i, t in enumerate(res):
+            if not t:
+                res[i] = self.accept(args[i])
+        
+        return res
+    
     Callable infer_function_type_arguments_using_context(self,
                                                          Callable callable):
         """Unify callable return type to type context to infer type vars.
@@ -213,7 +240,9 @@ class ExpressionChecker:
     
     Callable infer_function_type_arguments(self, Callable callee_type,
                                            Typ[] arg_types,
-                                           bool is_var_arg, Context context):
+                                           int[] arg_kinds,
+                                           int[][] formal_to_actual,
+                                           Context context):
         """Infer the type arguments for a generic callee type.
 
         Return a derived callable type that has the arguments applied (and
@@ -221,7 +250,8 @@ class ExpressionChecker:
         uses varargs.
         """
         Typ[] inferred_args = infer_function_type_arguments(
-            callee_type, arg_types, is_var_arg, self.chk.basic_types())
+            callee_type, arg_types, arg_kinds, formal_to_actual,
+            self.chk.basic_types())
         return self.apply_inferred_arguments(callee_type, inferred_args, [],
                                              context)
     
@@ -254,6 +284,39 @@ class ExpressionChecker:
         return (Callable)self.apply_generic_arguments(callee_type,
                                                       inferred_args,
                                                       implicit_type_vars, None)
+
+    void check_argument_count(self, Callable callee, Typ[] actual_types,
+                              int[] actual_kinds,  int[][] formal_to_actual,
+                              Context context):
+        formal_kinds = callee.arg_kinds
+
+        # Collect list of all actual arguments matched to formal arguments.
+        all_actuals = <int> []
+        for actuals in formal_to_actual:
+            all_actuals.extend(actuals)
+
+        for i, kind in enumerate(actual_kinds):
+            if i not in all_actuals and (
+                    kind != nodes.ARG_STAR or
+                    not is_empty_tuple(actual_types[i])):
+                # Extra actual: not matched by a formal argument.
+                self.msg.too_many_arguments(callee, context)
+            elif kind == nodes.ARG_STAR and (
+                    nodes.ARG_STAR not in formal_kinds):
+                actual_type = actual_types[i]
+                if isinstance(actual_type, TupleType):
+                    tuplet = (TupleType)actual_type
+                    if all_actuals.count(i) < len(tuplet.items):
+                        # Too many tuple items as some did not match.
+                        self.msg.too_many_arguments(callee, context)
+                elif self.is_valid_var_arg(actual_type):
+                    # If caller has non-tuple *arg, callee must also have *arg.
+                    self.msg.too_many_arguments(callee, context)
+
+        for i, kind in enumerate(formal_kinds):
+            if kind == nodes.ARG_POS and not formal_to_actual[i]:
+                # No actual for a mandatory positional formal.
+                self.msg.too_few_arguments(callee, context)
     
     void check_argument_types(self, Typ[] arg_types, bool is_var_arg,
                               Callable callee, Context context):
@@ -295,22 +358,62 @@ class ExpressionChecker:
         
         # Verify fixed argument types.
         for i in range(min(caller_num_args, callee_num_args)):
-            self.check_arg(arg_types[i], callee.arg_types[i], i + 1, callee,
-                           context)
+            self.check_arg(arg_types[i], arg_types[i], callee.arg_types[i],
+                           i + 1, callee, context)
         
         # Verify varargs.
         if callee.is_var_arg:
             for j in range(callee_num_args, caller_num_args):
-                self.check_arg(arg_types[j], callee.arg_types[-1], j + 1,
-                               callee, context)
+                self.check_arg(arg_types[j], arg_types[j],
+                               callee.arg_types[-1], j + 1, callee, context)
     
-    void check_arg(self, Typ caller_type, Typ callee_type, int n,
-                   Callable callee, Context context):
+    void check_argument_types2(self, Typ[] arg_types, int[] arg_kinds,
+                               Callable callee, int[][] formal_to_actual,
+                               Context context):
+        """Check argument types against a callable type.
+
+        Report errors if the argument types are not compatible.
+        """
+        # Keep track of consumed tuple *arg items.
+        tuple_counter = [0]
+        for i, actuals in enumerate(formal_to_actual):
+            for actual in actuals:
+                arg_type = arg_types[actual]
+                # Check that a *arg is valid as varargs.
+                if (arg_kinds[actual] == nodes.ARG_STAR and
+                        not self.is_valid_var_arg(arg_type)):
+                    self.msg.invalid_var_arg(arg_type, context)
+                # Get the type of an inidividual actual argument (for *args
+                # this is the item type, not the collection type).
+                actual_type = get_actual_type(arg_type, arg_kinds[actual],
+                                              tuple_counter)
+                self.check_arg(actual_type, arg_type,
+                               callee.arg_types[i],
+                               actual + 1, callee, context)
+                
+                # There may be some remaining tuple varargs items that haven't
+                # been checked yet. Handle them.
+                if (callee.arg_kinds[i] == nodes.ARG_STAR and
+                        arg_kinds[actual] == nodes.ARG_STAR and
+                        isinstance(arg_types[actual], TupleType)):
+                    tuplet = (TupleType)arg_types[actual]
+                    while tuple_counter[0] < len(tuplet.items):
+                        actual_type = get_actual_type(arg_type,
+                                                      arg_kinds[actual],
+                                                      tuple_counter)
+                        self.check_arg(actual_type, arg_type,
+                                       callee.arg_types[i],
+                                       actual + 1, callee, context)
+    
+    
+    void check_arg(self, Typ caller_type, Typ original_caller_type,
+                   Typ callee_type, int n, Callable callee, Context context):
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, Void):
             self.msg.does_not_return_value(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
-            self.msg.incompatible_argument(n, callee, caller_type, context)
+            self.msg.incompatible_argument(n, callee, original_caller_type,
+                                           context)
     
     Typ overload_call_target(self, Typ[] arg_types, bool is_var_arg,
                              Overloaded overload, Context context):
@@ -322,7 +425,7 @@ class ExpressionChecker:
         """
         # TODO for overlapping signatures we should try to get a more precise
         #      result than 'any'
-        Typ match = None # Callable, Dynamic or nil
+        Typ match = None # Callable, Any or None
         for typ in overload.items():
             if self.matches_signature(arg_types, is_var_arg, typ):
                 if match and (isinstance(match, Any) or
@@ -852,11 +955,15 @@ class TvarTranslator(TypeTranslator):
         return TypeVars(items)
 
 
-int[][] map_actuals_to_formals(int[] caller_kinds, int[] callee_kinds):
+int[][] map_actuals_to_formals(int[] caller_kinds, int[] callee_kinds,
+                               func<int, Typ> caller_arg_type):
     """Calculate mapping between actual (caller) args and formals.
 
     The result contains a list of caller indexes mapping to to each callee
     index, indexed by callee index.
+
+    The caller_arg_type argument should evaluate to the type of the actual
+    argument type with the given index.
     """
     ncallee = len(callee_kinds)
     map = <int[]> [None] * ncallee
@@ -874,14 +981,31 @@ int[][] map_actuals_to_formals(int[] caller_kinds, int[] callee_kinds):
                 else:
                     raise NotImplementedError()
         elif kind == nodes.ARG_STAR:
-            while j < ncallee:
-                if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT]:
-                    map[j].append(i)
-                elif callee_kinds[j] == nodes.ARG_STAR:
-                    map[j].append(i)
-                else:
-                    raise NotImplementedError()
-                j += 1                
+            # We need to to know the actual type to map varargs.
+            argt = caller_arg_type(i)
+            if isinstance(argt, TupleType):
+                # A tuple actual maps to a fixed number of formals.
+                tuplet = (TupleType)argt
+                for k in range(len(tuplet.items)):
+                    if j < ncallee:
+                        if callee_kinds[j] != nodes.ARG_STAR2:
+                            map[j].append(i)
+                        else:
+                            raise NotImplementedError()
+                        j += 1
+            else:
+                # Assume that it is an iterable (if it isn't, there will be
+                # an error later).
+                while j < ncallee:
+                    if callee_kinds[j] != nodes.ARG_STAR2:
+                        map[j].append(i)
+                    else:
+                        raise NotImplementedError()
+                    j += 1
         else:
             raise NotImplementedError()
     return map
+
+
+bool is_empty_tuple(Typ t):
+    return isinstance(t, TupleType) and not ((TupleType)t).items

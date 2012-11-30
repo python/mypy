@@ -4,47 +4,50 @@ from mtypes import (
 )
 from expandtype import expand_caller_var_args
 from subtypes import map_instance_to_supertype
+import nodes
 
 
 Constraint[] infer_constraints_for_callable(
-            Callable callee, Typ[] arg_types, bool is_var_arg):
-    """Infer type variable constraints for a callable and a list of
-    argument types.  Return a list of constraints.
+                 Callable callee, Typ[] arg_types, int[] arg_kinds,
+                 int[][] formal_to_actual):
+    """Infer type variable constraints for a callable and actual arguments.
+    
+    Return a list of constraints.
     """
-    # FIX check argument counts
-    
-    callee_num_args = callee.max_fixed_args()
-    
     Constraint[] constraints = []
+    tuple_counter = [0]
     
-    Typ caller_rest = None # Rest of types for varargs calls
-    if is_var_arg:
-        arg_types, caller_rest = expand_caller_var_args(arg_types,
-                                                        callee_num_args)
-        if arg_types is None:
-            # Invalid varargs arguments.
-            return []
-        
-        if caller_rest is not None and callee.is_var_arg:
-            c = infer_constraints(callee.arg_types[-1], caller_rest,
+    for i, actuals in enumerate(formal_to_actual):
+        for actual in actuals:
+            actual_type = get_actual_type(arg_types[actual], arg_kinds[actual],
+                                          tuple_counter)
+            c = infer_constraints(callee.arg_types[i], actual_type,
                                   SUPERTYPE_OF)
             constraints.extend(c)
-    
-    caller_num_args = len(arg_types)
-    
-    # Infer constraints for fixed arguments.
-    for i in range(min(callee_num_args, caller_num_args)):
-        c = infer_constraints(callee.arg_types[i], arg_types[i],
-                              SUPERTYPE_OF)
-        constraints.extend(c)
-    
-    # Infer constraints for varargs.
-    if callee.is_var_arg:
-        for j in range(callee_num_args, caller_num_args):
-            c = infer_constraints(callee.arg_types[-1], arg_types[j],
-                                  SUPERTYPE_OF)
-            constraints.extend(c)
+
     return constraints
+
+
+Typ get_actual_type(Typ arg_type, int kind, int[] tuple_counter):
+    """Return the type of an actual argument with the given kind.
+
+    If the argument is a *arg, return the individual argument item.
+    """
+    if kind == nodes.ARG_STAR:
+        if isinstance(arg_type, Instance) and (
+                ((Instance)arg_type).typ.full_name() == 'builtins.list'):
+            # List *arg. TODO any iterable
+            return ((Instance)arg_type).args[0]
+        elif isinstance(arg_type, TupleType):
+            # Get the next tuple item of a tuple *arg.
+            tuplet = (TupleType)arg_type
+            tuple_counter[0] += 1
+            return tuplet.items[tuple_counter[0] - 1]
+        else:
+            return Any()
+    else:
+        # No translation for other kinds.
+        return arg_type
 
 
 Constraint[] infer_constraints(Typ template, Typ actual, int direction):
