@@ -1,6 +1,7 @@
 import os.path
+import sys
 
-from myunit import Suite
+from myunit import Suite, run_test
 from testconfig import test_temp_dir, test_data_prefix
 from testdata import parse_test_cases
 from testhelpers import assert_string_arrays_equal
@@ -48,3 +49,7 @@ class TypeCheckSuite(Suite):
             testcase.output, a,
             'Invalid type checker output ({}, line {})'.format(
                 testcase.file, testcase.line))
+
+
+if __name__ == '__main__':
+    run_test(TypeCheckSuite(), sys.argv[1:])
