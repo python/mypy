@@ -137,8 +137,8 @@ class ExpressionChecker:
             self.check_argument_count(callable, arg_types, arg_kinds,
                                       formal_to_actual, context)
             
-            self.check_argument_types2(arg_types, arg_kinds, callable,
-                                       formal_to_actual, context)
+            self.check_argument_types(arg_types, arg_kinds, callable,
+                                      formal_to_actual, context)
             
             return callable.ret_type
         elif isinstance(callee, Overloaded):
@@ -321,56 +321,7 @@ class ExpressionChecker:
                 # No actual for a mandatory positional formal.
                 self.msg.too_few_arguments(callee, context)
     
-    void check_argument_types(self, Typ[] arg_types, bool is_var_arg,
-                              Callable callee, Context context):
-        """Check argument types against a callable type.
-
-        Report errors if the argument types are not compatible. If is_var_arg
-        is True, the caller uses varargs.
-        """
-        callee_num_args = callee.max_fixed_args()
-        
-        Typ caller_rest = None # Rest of types for varargs calls
-        if is_var_arg:
-            # Varargs call site.
-            
-            if not self.is_valid_var_arg(arg_types[-1]):
-                self.msg.invalid_var_arg(arg_types[-1], context)
-                return 
-            
-            arg_types, caller_rest = expand_caller_var_args(arg_types,
-                                                            callee_num_args)
-            
-            # Check vararg call argument count.
-            if len(arg_types) < callee.min_args:
-                self.msg.too_few_arguments(callee, context)
-            elif (len(arg_types) > len(callee.arg_types) and
-                      not callee.is_var_arg):
-                self.msg.too_many_arguments(callee, context)
-            elif (caller_rest and not callee.is_var_arg and
-                      not isinstance(arg_types[-1], Any)):
-                self.msg.too_many_arguments(callee, context)
-            
-            # Check vararg types.
-            if caller_rest and callee.is_var_arg:
-                self.chk.check_subtype(
-                    caller_rest, callee.arg_types[-1],
-                    context, messages.INCOMPATIBLE_ARRAY_VAR_ARGS)
-        
-        caller_num_args = len(arg_types)
-        
-        # Verify fixed argument types.
-        for i in range(min(caller_num_args, callee_num_args)):
-            self.check_arg(arg_types[i], arg_types[i], callee.arg_types[i],
-                           i + 1, callee, context)
-        
-        # Verify varargs.
-        if callee.is_var_arg:
-            for j in range(callee_num_args, caller_num_args):
-                self.check_arg(arg_types[j], arg_types[j],
-                               callee.arg_types[-1], j + 1, callee, context)
-    
-    void check_argument_types2(self, Typ[] arg_types, int[] arg_kinds,
+    void check_argument_types(self, Typ[] arg_types, int[] arg_kinds,
                                Callable callee, int[][] formal_to_actual,
                                Context context):
         """Check argument types against a callable type.
