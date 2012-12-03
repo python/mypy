@@ -129,6 +129,18 @@ class MapActualsToFormalsSuite(Suite):
             ['x'],
             [ARG_STAR2],
             [[0]])
+        self.assert_map(
+            ['x', ARG_STAR2],
+            [ARG_STAR2],
+            [[0, 1]])
+        self.assert_map(
+            ['x', ARG_STAR2],
+            [(ARG_POS, 'x'), ARG_STAR2],
+            [[0], [1]])
+        self.assert_map(
+            [ARG_POS, ARG_STAR2],
+            [(ARG_POS, 'x'), ARG_STAR2],
+            [[0], [1]])
 
     def assert_map(self, caller_kinds, callee_kinds, expected):
         caller_kinds, caller_names = expand_caller_kinds(caller_kinds)

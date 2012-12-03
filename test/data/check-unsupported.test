@@ -36,10 +36,6 @@ void f():
 main: In function "f":
 main, line 2: Feature not implemented yet (with statement)
 
-[case testKeywordArgsInCall]
-f(**None) # E: Feature not implemented yet (keyword arguments)
-def f(x): pass
-
 [case testNonTopLevelImport]
 def f():
     import x

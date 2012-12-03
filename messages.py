@@ -423,6 +423,14 @@ class MessageBuilder:
     void invalid_var_arg(self, Typ typ, Context context):
         self.fail('List or tuple expected as variable arguments', context)
     
+    void invalid_keyword_var_arg(self, Typ typ, Context context):
+        if isinstance(typ, Instance) and (
+                ((Instance)typ).typ.full_name() == 'builtins.dict'):
+            self.fail('Keywords must be strings', context)
+        else:
+            self.fail('Argument after ** must be a dictionary',
+                      context)
+    
     void incomplete_type_var_match(self, str member, Context context):
         self.fail('"{}" has incomplete match to supertype type variable'
                   .format(member), context)

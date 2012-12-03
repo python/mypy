@@ -85,8 +85,6 @@ class ExpressionChecker:
     
     Typ visit_call_expr(self, CallExpr e):
         """Type check a call expression."""
-        if nodes.ARG_STAR2 in e.arg_kinds:
-            return self.msg.not_implemented('keyword arguments', e)
         self.accept(e.callee)
         # Access callee type directly, since accept may return the any type
         # even if the type is known (in a dynamically typed function). This
@@ -206,7 +204,6 @@ class ExpressionChecker:
         for i, t in enumerate(res):
             if not t:
                 res[i] = self.accept(args[i])
-        
         return res
     
     Callable infer_function_type_arguments_using_context(self,
@@ -355,8 +352,11 @@ class ExpressionChecker:
                 if (arg_kinds[actual] == nodes.ARG_STAR and
                         not self.is_valid_var_arg(arg_type)):
                     self.msg.invalid_var_arg(arg_type, context)
+                if (arg_kinds[actual] == nodes.ARG_STAR2 and
+                        not self.is_valid_keyword_var_arg(arg_type)):
+                    self.msg.invalid_keyword_var_arg(arg_type, context)
                 # Get the type of an inidividual actual argument (for *args
-                # this is the item type, not the collection type).
+                # and **args this is the item type, not the collection type).
                 actual_type = get_actual_type(arg_type, arg_kinds[actual],
                                               tuple_counter)
                 self.check_arg(actual_type, arg_type,
@@ -842,9 +842,14 @@ class ExpressionChecker:
         return convert_class_tvars_to_func_tvars(c, len(initvars))
     
     bool is_valid_var_arg(self, Typ typ):
-        """Is a type valid as a vararg argument?"""
+        """Is a type valid as a *args argument?"""
         return (isinstance(typ, TupleType) or self.is_list_instance(typ) or
                     isinstance(typ, Any))
+    
+    bool is_valid_keyword_var_arg(self, Typ typ):    
+        """Is a type valid as a **kwargs argument?"""
+        return is_subtype(typ, self.chk.named_generic_type(
+            'builtins.dict', [self.named_type('builtins.str'), Any()]))
     
     bool is_list_instance(self, Typ t):
         """Is the argument an instance type ...[]?"""
@@ -985,7 +990,12 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
             elif nodes.ARG_STAR2 in callee_kinds:
                 map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
         else:
-            raise NotImplementedError()
+            assert kind == nodes.ARG_STAR2
+            while j < ncallee:
+                if (callee_names[j] and
+                       not map[j]) or callee_kinds[j] == nodes.ARG_STAR2:
+                    map[j].append(i)
+                j += 1
     return map
 
 
