@@ -93,3 +93,11 @@ main, line 2: Unexpected keyword argument "a"
 main, line 2: Unexpected keyword argument "b"
 main, line 3: Unexpected keyword argument "b"
 
+[case testKeywordOnlyArguments]
+void f(A a, *, B b=None): pass
+f(A(), b=B())
+f(b=B(), a=A())
+f(A())
+f(A(), B()) # E: Too many positional arguments for "f"
+class A: pass
+class B: pass

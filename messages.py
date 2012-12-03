@@ -303,6 +303,12 @@ class MessageBuilder:
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
+    
+    void too_many_positional_arguments(self, Callable callee, Context context):
+        msg = 'Too many positional arguments'
+        if callee.name:
+            msg += ' for {}'.format(callee.name)
+        self.fail(msg, context)
 
     void unexpected_keyword_argument(self, Callable callee, str name,
                                      Context context):

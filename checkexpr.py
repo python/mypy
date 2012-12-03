@@ -334,6 +334,10 @@ class ExpressionChecker:
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED] and len(formal_to_actual[i]) > 1:
                 self.msg.duplicate_argument_value(callee, i, context)
+            elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
+                  actual_kinds[formal_to_actual[i][0]] != nodes.ARG_NAMED):
+                # Positional argument when expecting a keyword argument.
+                self.msg.too_many_positional_arguments(callee, context)
     
     void check_argument_types(self, Typ[] arg_types, int[] arg_kinds,
                                Callable callee, int[][] formal_to_actual,
@@ -944,7 +948,8 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
     for i, kind in enumerate(caller_kinds):
         if kind == nodes.ARG_POS:
             if j < ncallee:
-                if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT]:
+                if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
+                                       nodes.ARG_NAMED]:
                     map[j].append(i)
                     j += 1
                 elif callee_kinds[j] == nodes.ARG_STAR:
