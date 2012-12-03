@@ -229,12 +229,13 @@ class MemberExprRepr:
 
 
 class CallExprRepr:
-    void __init__(self, any lparen, Token[] commas, any asterisk,
+    void __init__(self, any lparen, Token[] commas, any star, any star2,
                   Token[][] keywords, any rparen):
         # Asterisk may be empty.
         self.lparen = lparen
         self.commas = commas
-        self.asterisk = asterisk
+        self.star = star
+        self.star2 = star2
         self.keywords = keywords
         self.rparen = rparen
 

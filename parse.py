@@ -1333,14 +1333,15 @@ class Parser:
     
     CallExpr parse_call_expr(self, any callee):
         lparen = self.expect('(')
-        (args, kinds, names, commas, at, assigns) = self.parse_arg_expr()
+        (args, kinds, names,
+         commas, star, star2, assigns) = self.parse_arg_expr()
         rparen = self.expect(')')
         node = CallExpr(callee, args, kinds, names)
-        self.set_repr(node, noderepr.CallExprRepr(lparen, commas, at, assigns,
-                                                  rparen))
+        self.set_repr(node, noderepr.CallExprRepr(lparen, commas, star, star2,
+                                                  assigns, rparen))
         return node
     
-    tuple<Node[], int[], str[], Token[], Token, Token[][]> \
+    tuple<Node[], int[], str[], Token[], Token, Token, Token[][]> \
                       parse_arg_expr(self):
         """Parse arguments in a call expression (within '(' and ')').
 
@@ -1349,13 +1350,15 @@ class Parser:
           argument kinds
           argument names (for named arguments; None for ordinary args)
           comma tokens
-          asterisk token
+          * token (if any)
+          ** token (if any)
           (assignment, name) tokens
         """        
         args = <Node> []
         kinds = <int> []
         names = <str> []
-        at = none
+        star = none
+        star2 = none
         commas = <Token> []
         keywords = <Token[]> []
         var_arg = False
@@ -1374,12 +1377,12 @@ class Parser:
                     and not named_args):
                 # *args
                 var_arg = True
-                at = self.expect('*')
+                star = self.expect('*')
                 kinds.append(nodes.ARG_STAR)
                 names.append(None)
             elif self.current_str() == '**':
                 # **kwargs
-                self.expect('**')
+                star2 = self.expect('**')
                 dict_arg = True
                 kinds.append(nodes.ARG_STAR2)
                 names.append(None)
@@ -1393,7 +1396,7 @@ class Parser:
             if self.current_str() != ',':
                 break
             commas.append(self.expect(','))
-        return args, kinds, names, commas, at, keywords
+        return args, kinds, names, commas, star, star2, keywords
     
     Node parse_member_expr(self, any expr):
         dot = self.expect('.')

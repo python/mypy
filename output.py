@@ -356,7 +356,9 @@ class OutputVisitor(NodeVisitor):
         nkeyword = 0
         for i in range(nargs):
             if o.arg_kinds[i] == nodes.ARG_STAR:
-                self.token(r.asterisk)
+                self.token(r.star)
+            elif o.arg_kinds[i] == nodes.ARG_STAR2:
+                self.token(r.star2)
             elif o.arg_kinds[i] == nodes.ARG_NAMED:
                 self.tokens(r.keywords[nkeyword])
                 nkeyword += 1
