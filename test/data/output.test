@@ -464,3 +464,6 @@ g( None , ** d)
 g( None , ** d)
 class A: pass
 [builtins fixtures/dict.py]
+
+[case testFunctionDefinitionWithBothVarArgs]
+def f ( * x , ** y) : pass

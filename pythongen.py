@@ -71,7 +71,7 @@ class PythonGenerator(OutputVisitor):
             self.token(r.name)
         else:
             self.string(' ' + name_override)
-        self.function_header(o, r.args, None, True, True)
+        self.function_header(o, r.args, o.arg_kinds, None, True, True)
         if not o.body.body:
             self.string(': pass' + '\n')
         else:
@@ -160,7 +160,7 @@ class PythonGenerator(OutputVisitor):
     def visit_func_expr(self, o):
         r = o.repr
         self.token(r.lambda_tok)
-        self.function_header(o, r.args, None, True, False)
+        self.function_header(o, r.args, o.arg_kinds, None, True, False)
         self.token(r.colon)
         self.node(o.body.body[0].expr)
     

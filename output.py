@@ -99,7 +99,7 @@ class OutputVisitor(NodeVisitor):
         
         self.token(r.name)
         
-        self.function_header(o, r.args)
+        self.function_header(o, r.args, o.arg_kinds)
         
         self.node(o.body)
     
@@ -107,7 +107,7 @@ class OutputVisitor(NodeVisitor):
         for f in o.items:
             f.accept(self)
     
-    def function_header(self, o, arg_repr, pre_args_func=None,
+    def function_header(self, o, arg_repr, arg_kinds, pre_args_func=None,
                         erase_type=False, strip_space_before_first_arg=False):
         r = o.repr
         
@@ -123,12 +123,14 @@ class OutputVisitor(NodeVisitor):
         self.token(arg_repr.lseparator)
         if pre_args_func:
             pre_args_func()
+        asterisk = 0
         for i in range(len(arg_repr.arg_names)):
             if t:
                 if t.arg_types[i].repr:
                     self.typ(t.arg_types[i])
-            if i == len(arg_repr.arg_names) - 1:
-                self.token(arg_repr.asterisk)
+            if arg_kinds[i] in [nodes.ARG_STAR, nodes.ARG_STAR2]:
+                self.token(arg_repr.asterisk[asterisk])
+                asterisk += 1
             if not erase_type:
                 self.token(arg_repr.arg_names[i])
             else:
@@ -424,7 +426,7 @@ class OutputVisitor(NodeVisitor):
     def visit_func_expr(self, o):
         r = o.repr
         self.token(r.lambda_tok)
-        self.function_header(o, r.args)
+        self.function_header(o, r.args, o.arg_kinds)
         self.token(r.colon)
         self.node(o.body.body[0].expr)
     
