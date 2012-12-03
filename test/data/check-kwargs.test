@@ -82,3 +82,14 @@ any f
 # Postpone checking to runtime
 f(x=None, x=None)
 
+[case testKeywordArgumentWithFunctionObject]
+func<A, B, void> f
+f(a=A(), b=B())
+f(A(), b=B())
+class A: pass
+class B: pass
+[out]
+main, line 2: Unexpected keyword argument "a"
+main, line 2: Unexpected keyword argument "b"
+main, line 3: Unexpected keyword argument "b"
+
