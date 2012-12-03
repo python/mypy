@@ -452,6 +452,7 @@ class Parser:
                 if self.current_str() == '*' and self.peek().string == ',':
                     self.expect('*')
                     require_named = True
+                    arg_types.pop()
                 elif self.current_str() in ['*', '**']:
                     asterisk = self.skip()
                     isdict = asterisk.string == '**'
