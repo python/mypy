@@ -101,3 +101,18 @@ f(A())
 f(A(), B()) # E: Too many positional arguments for "f"
 class A: pass
 class B: pass
+
+[case testBareAsteriskWithVarArgs]
+void f(A *a, *, B b=None): pass
+f()
+f(A())
+f(A(), A())
+f(b=B())
+f(A(), b=B())
+f(A(), A(), b=B())
+f(B())      # E: Argument 1 to "f" has incompatible type "B"
+f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"
+f(b=A())    # E: Argument 1 to "f" has incompatible type "A"
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
