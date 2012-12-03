@@ -457,7 +457,7 @@ class list<t>(Sequence<t>):
     void insert(self, int index, t object): pass
     void remove(self, t object): pass
     void reverse(self): pass
-    void sort(self, func<t, any> key=None, bool reverse=False): pass
+    void sort(self, *, func<t, any> key=None, bool reverse=False): pass
     
     int __len__(self): pass
     Iterator<t> __iter__(self): pass
@@ -628,7 +628,8 @@ any open(int file, str mode='r', str encoding=None, str errors=None,
          str newline=None, bool closefd=True): pass
 int ord(str c): pass
 int ord(bytes c): pass
-void print(object *args): pass
+void print(object *values, *, str sep=' ', str end='\n',
+           TextIO file=None): pass # Actual default for file is sys.stdout
 # The return type can be int or float, depending on the value of y.
 any pow(int x, int y): pass
 any pow(int x, int y, int z): pass
@@ -643,10 +644,8 @@ str repr(object o): pass
 int round(float number): pass
 float round(float number, int ndigits): pass
 void setattr(any object, str name, any value): pass
-# TODO 'key' must be keyword argument
-t[] sorted<t>(Iterable<t> iterable, func<t, any> key=None,
-                  bool reverse=False): pass
-t[] sorted<t>(Iterable<t> iterable, bool reverse=False): pass
+t[] sorted<t>(Iterable<t> iterable, *, func<t, any> key=None,
+              bool reverse=False): pass
 t sum<t>(Iterable<t> iterable, t start=None): pass
 # TODO more than two iterables
 Iterator<tuple<t1>> zip<t1>(Iterable<t1> iter1): pass

@@ -4,11 +4,11 @@
 
 # TODO force keyword arguments
 # TODO more keyword arguments
-int call(Sequence<str> args, any stdin=None, any stdout=None, any stderr=None,
-         bool shell=False): pass
-int check_call(Sequence<str> args, any stdin=None, any stdout=None,
+int call(Sequence<str> args, *, any stdin=None, any stdout=None,
+         any stderr=None, bool shell=False): pass
+int check_call(Sequence<str> args, *, any stdin=None, any stdout=None,
                any stderr=None, bool shell=False): pass
-bytes check_output(Sequence<str> args, any stdin=None, any stderr=None,
+bytes check_output(Sequence<str> args, *, any stdin=None, any stderr=None,
                    bool shell=False, bool universal_newlines=False): pass
 
 # TODO types
