@@ -131,3 +131,11 @@ f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
+
+[case testCallingDynamicallyTypedFunctionWithKeywordArgs]
+def f(x, y=A()): pass
+f(x=A(), y=A())
+f(y=A(), x=A())
+f(y=A())      # E: Too few arguments for "f"
+f(A(), z=A()) # E: Unexpected keyword argument "z" for "f"
+class A: pass
