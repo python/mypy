@@ -38,6 +38,9 @@ class BytesIO(IO):
     bytes getvalue(self): pass
     str read1(self): pass
 
+    void __enter__(self): pass
+    void __exit__(self): pass
+
 class StringIO(TextIO):
     void __init__(self, str initial_value='', str newline=None): pass
     # TODO see comments in IO for missing functionality
@@ -58,3 +61,6 @@ class StringIO(TextIO):
     int write(self, str s): pass
     void writelines(self, str[] lines): pass
     str getvalue(self): pass
+
+    void __enter__(self): pass
+    void __exit__(self): pass
