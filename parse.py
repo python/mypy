@@ -462,6 +462,7 @@ class Parser:
                     var_arg = Var(name.string)
                     self.set_repr(var_arg, noderepr.VarRepr(name, none))
                     args.append(var_arg)
+                    init.append(None)
                     if isdict:
                         kinds.append(nodes.ARG_STAR2)
                     else:

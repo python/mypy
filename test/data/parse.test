@@ -2240,6 +2240,26 @@ MypyFile:1(
     Block:1(
       PassStmt:1())))
 
+[case testBareAsteriskAndVarArgs]
+void f(A *x, *, B y=1): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    MaxPos(0)
+    Args(
+      Var(y))
+    Type:1(def (*A? x, *, B? y))
+    Init(
+      AssignmentStmt:1(
+        Lvalues(
+          NameExpr(y))
+        IntExpr(1)))
+    VarArg(
+      Var(x))
+    Block:1(
+      PassStmt:1())))
+
 [case testListWithSimpleType]
 <t> []
 <any> [1, 2]

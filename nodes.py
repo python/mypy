@@ -165,7 +165,7 @@ class FuncItem(FuncBase):
     AssignmentStmt[] init
     int min_args           # Minimum number of arguments
     int max_pos            # Maximum number of positional arguments, -1 if
-                           # no explicit limit
+                           # no explicit limit (*args not included)
     Block body
     bool is_implicit    # Implicit dynamic types?
     bool is_overload    # Is this an overload variant of function with
