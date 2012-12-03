@@ -135,7 +135,7 @@ class ExpressionChecker:
                 callable, args, arg_kinds, formal_to_actual)
 
             self.check_argument_count(callable, arg_types, arg_kinds,
-                                      formal_to_actual, context)
+                                      arg_names, formal_to_actual, context)
             
             self.check_argument_types(arg_types, arg_kinds, callable,
                                       formal_to_actual, context)
@@ -289,8 +289,8 @@ class ExpressionChecker:
                                                       implicit_type_vars, None)
 
     void check_argument_count(self, Callable callee, Typ[] actual_types,
-                              int[] actual_kinds,  int[][] formal_to_actual,
-                              Context context):
+                              int[] actual_kinds,  str[] actual_names,
+                              int[][] formal_to_actual, Context context):
         """Check that the number of arguments to a function are valid.
 
         Also check that there are no duplicate values for arguments.
@@ -302,12 +302,18 @@ class ExpressionChecker:
         for actuals in formal_to_actual:
             all_actuals.extend(actuals)
 
+        is_error = False # Keep track of errors to avoid duplicate errors.
         for i, kind in enumerate(actual_kinds):
             if i not in all_actuals and (
                     kind != nodes.ARG_STAR or
                     not is_empty_tuple(actual_types[i])):
                 # Extra actual: not matched by a formal argument.
-                self.msg.too_many_arguments(callee, context)
+                if kind != nodes.ARG_NAMED:
+                    self.msg.too_many_arguments(callee, context)
+                else:
+                    self.msg.unexpected_keyword_argument(
+                        callee, actual_names[i], context)
+                    is_error = True
             elif kind == nodes.ARG_STAR and (
                     nodes.ARG_STAR not in formal_kinds):
                 actual_type = actual_types[i]
@@ -321,7 +327,8 @@ class ExpressionChecker:
                     self.msg.too_many_arguments(callee, context)
 
         for i, kind in enumerate(formal_kinds):
-            if kind == nodes.ARG_POS and not formal_to_actual[i]:
+            if kind == nodes.ARG_POS and (not formal_to_actual[i] and
+                                          not is_error):
                 # No actual for a mandatory positional formal.
                 self.msg.too_few_arguments(callee, context)
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,

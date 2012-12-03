@@ -49,20 +49,24 @@ class A: pass
 
 [case testGivingSameKeywordArgumentTwice]
 void f(A a, B b): pass
-f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument 'a' 
-f(b=B(), a=A(), b=B()) # E: "f" gets multiple values for keyword argument 'b'
+f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
+f(b=B(), a=A(), b=B()) # E: "f" gets multiple values for keyword argument "b"
 class A: pass
 class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg]
 void f(A a, B b=None): pass
-f(A(), a=A()) # E: "f" gets multiple values for keyword argument 'a'
+f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg2]
 void f(A a=None, B b=None): pass
-f(A(), a=A()) # E: "f" gets multiple values for keyword argument 'a'
+f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
+[case testInvalidKeywordArgument]
+void f(A a): pass
+f(b=object()) # E: Unexpected keyword argument "b" for "f"
+class A: pass
