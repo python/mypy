@@ -303,6 +303,14 @@ class MessageBuilder:
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
+
+    void duplicate_argument_value(self, Callable callee, int index,
+                                  Context context):
+        f = 'Function'
+        if callee.name:
+            f = '{}'.format(callee.name)
+        self.fail("{} gets multiple values for keyword argument '{}'".
+                  format(f, callee.arg_names[index]), context)
     
     void does_not_return_value(self, Typ void_type, Context context):
         """Report an error about a void type in a non-void

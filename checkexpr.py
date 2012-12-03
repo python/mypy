@@ -291,6 +291,10 @@ class ExpressionChecker:
     void check_argument_count(self, Callable callee, Typ[] actual_types,
                               int[] actual_kinds,  int[][] formal_to_actual,
                               Context context):
+        """Check that the number of arguments to a function are valid.
+
+        Also check that there are no duplicate values for arguments.
+        """
         formal_kinds = callee.arg_kinds
 
         # Collect list of all actual arguments matched to formal arguments.
@@ -320,6 +324,9 @@ class ExpressionChecker:
             if kind == nodes.ARG_POS and not formal_to_actual[i]:
                 # No actual for a mandatory positional formal.
                 self.msg.too_few_arguments(callee, context)
+            elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
+                          nodes.ARG_NAMED] and len(formal_to_actual[i]) > 1:
+                self.msg.duplicate_argument_value(callee, i, context)
     
     void check_argument_types(self, Typ[] arg_types, int[] arg_kinds,
                                Callable callee, int[][] formal_to_actual,
