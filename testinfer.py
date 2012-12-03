@@ -114,6 +114,16 @@ class MapActualsToFormalsSuite(Suite):
             [(ARG_OPT, 'x')],
             [[0, 1]])
 
+    def test_varargs_and_bare_asterisk(self):
+        self.assert_map(
+            [ARG_STAR],
+            [ARG_STAR, (ARG_NAMED, 'x')],
+            [[0], []])
+        self.assert_map(
+            [ARG_STAR, 'x'],
+            [ARG_STAR, (ARG_NAMED, 'x')],
+            [[0], [1]])
+
     def assert_map(self, caller_kinds, callee_kinds, expected):
         caller_kinds, caller_names = expand_caller_kinds(caller_kinds)
         callee_kinds, callee_names = expand_callee_kinds(callee_kinds)

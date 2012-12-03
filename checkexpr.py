@@ -973,7 +973,9 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while j < ncallee:
-                    if callee_kinds[j] != nodes.ARG_STAR2:
+                    if callee_kinds[j] == nodes.ARG_NAMED:
+                        break
+                    elif callee_kinds[j] != nodes.ARG_STAR2:
                         map[j].append(i)
                     else:
                         raise NotImplementedError()

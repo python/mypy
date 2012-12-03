@@ -116,3 +116,18 @@ f(b=A())    # E: Argument 1 to "f" has incompatible type "A"
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
+
+[case testBareAsteriskWithBothCallerAndCalleeVarArgs]
+void f(A *a, *, B b=None): pass
+A[] a
+f(*a)
+f(A(), *a)
+f(b=B())
+f(*a, b=B())
+f(A(), *a, b=B())
+f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"
+f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"
+f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
