@@ -502,9 +502,13 @@ class TypeStrVisitor(TypeVisitor<str>):
     
     def visit_callable(self, t):
         s = ''
+        bare_asterisk = False
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
+            if t.arg_kinds[i] == nodes.ARG_NAMED and not bare_asterisk:
+                s += '*, '
+                bare_asterisk = True
             if t.arg_kinds[i] == nodes.ARG_STAR:
                 s += '*'
             s += str(t.arg_types[i])
