@@ -70,3 +70,15 @@ class B: pass
 void f(A a): pass
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
+
+[case testKeywordArgumentsWithDynamicallyTypedCallable]
+any f
+f(x=f(), z=None()) # E: None not callable
+f(f, zz=None()) # E: None not callable
+f(x=None)
+
+[case testDuplicateKeywordArgumentWithDynamicallyTypedCallable]
+any f
+# Postpone checking to runtime
+f(x=None, x=None)
+
