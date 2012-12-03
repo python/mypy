@@ -40,9 +40,6 @@ main, line 2: Feature not implemented yet (with statement)
 f(**None) # E: Feature not implemented yet (keyword arguments)
 def f(x): pass
 
-[case testKeywordArgsInFunc]
-def f(**x): pass # E: Feature not implemented yet (keyword arguments)
-
 [case testNonTopLevelImport]
 def f():
     import x

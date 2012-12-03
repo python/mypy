@@ -6,3 +6,4 @@ class object:
 class type: pass
 
 class dict<kt, vt>: pass
+class str: pass # for keyword argument key type
