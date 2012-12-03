@@ -4,7 +4,7 @@ import sys
 
 from myunit import Suite, assert_equal, assert_true, run_test
 from checkexpr import map_actuals_to_formals
-from nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED
+from nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
 from mtypes import Any, TupleType
 
 
@@ -123,6 +123,12 @@ class MapActualsToFormalsSuite(Suite):
             [ARG_STAR, 'x'],
             [ARG_STAR, (ARG_NAMED, 'x')],
             [[0], [1]])
+
+    def test_keyword_varargs(self):
+        self.assert_map(
+            ['x'],
+            [ARG_STAR2],
+            [[0]])
 
     def assert_map(self, caller_kinds, callee_kinds, expected):
         caller_kinds, caller_names = expand_caller_kinds(caller_kinds)

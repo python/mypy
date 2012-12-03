@@ -159,3 +159,14 @@ class A: pass
 [builtins fixtures/dict.py]
 [out]
 main: In function "f":
+
+[case testCallingFunctionThatAcceptsVarKwargs]
+void f(A **kwargs): pass
+f(x=A())
+f(y=A(), z=A())
+f(x=B()) # E: Argument 1 to "f" has incompatible type "B"
+f(A())   # E: Too many arguments for "f"
+# Perhaps a better message would be "Too many *positional* arguments..."
+class A: pass
+class B: pass
+[builtins fixtures/dict.py]

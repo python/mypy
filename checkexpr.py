@@ -954,8 +954,6 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                     j += 1
                 elif callee_kinds[j] == nodes.ARG_STAR:
                     map[j].append(i)
-                else:
-                    raise NotImplementedError()
         elif kind == nodes.ARG_STAR:
             # We need to to know the actual type to map varargs.
             argt = caller_arg_type(i)
@@ -983,7 +981,9 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
         elif kind == nodes.ARG_NAMED:
             name = caller_names[i]
             if name in callee_names:
-                map[callee_names.index(name)].append(i)                
+                map[callee_names.index(name)].append(i)
+            elif nodes.ARG_STAR2 in callee_kinds:
+                map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
         else:
             raise NotImplementedError()
     return map
