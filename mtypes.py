@@ -512,8 +512,14 @@ class TypeStrVisitor(TypeVisitor<str>):
             if t.arg_kinds[i] == nodes.ARG_STAR:
                 s += '*'
             s += str(t.arg_types[i])
+            if t.arg_kinds[i] == nodes.ARG_STAR2:
+                s += '**'
             if t.arg_names[i]:
-                s += ' {}'.format(t.arg_names[i])
+                if s.endswith('**'):
+                    s = s[:-2] + ' **'
+                else:
+                    s += ' '
+                s += t.arg_names[i]
             if t.arg_kinds[i] == nodes.ARG_OPT:
                 s += '='
         

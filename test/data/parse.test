@@ -1940,6 +1940,20 @@ MypyFile:1(
       Var(b))
     Block:2(
       PassStmt:2())))
+      
+[case testDictVarArgsWithType]
+void f(X x, A **a): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Type:1(def (X? x, A? **a))
+    DictVarArg(
+      Var(a))
+    Block:1(
+      PassStmt:1())))
 
 [case testCallDictVarArgs]
 f(**x)

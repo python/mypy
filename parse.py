@@ -1667,7 +1667,7 @@ class Parser:
     bool is_at_sig_type(self):
         i, j = self.try_scan_type(self.ind)
         if j == 0 and i >= 0 and (isinstance(self.tok[i], Name)
-                                  or self.tok[i].string == '*'):
+                                  or self.tok[i].string in ['*', '**']):
             return True
         else:
             return self.is_at_type()
