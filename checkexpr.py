@@ -319,9 +319,8 @@ class ExpressionChecker:
                     if all_actuals.count(i) < len(tuplet.items):
                         # Too many tuple items as some did not match.
                         self.msg.too_many_arguments(callee, context)
-                elif self.is_valid_var_arg(actual_type):
-                    # If caller has non-tuple *arg, callee must also have *arg.
-                    self.msg.too_many_arguments(callee, context)
+                # *args can be applied even if the function takes a fixed
+                # number of positional arguments. This may succeed at runtime.
 
         for i, kind in enumerate(formal_kinds):
             if kind == nodes.ARG_POS and (not formal_to_actual[i] and
@@ -329,7 +328,9 @@ class ExpressionChecker:
                 # No actual for a mandatory positional formal.
                 self.msg.too_few_arguments(callee, context)
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
-                          nodes.ARG_NAMED] and len(formal_to_actual[i]) > 1:
+                          nodes.ARG_NAMED] and is_duplicate_mapping(
+                                                    formal_to_actual[i],
+                                                    actual_kinds):
                 self.msg.duplicate_argument_value(callee, i, context)
             elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] != nodes.ARG_NAMED):
@@ -991,13 +992,26 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                 map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
         else:
             assert kind == nodes.ARG_STAR2
-            while j < ncallee:
-                if (callee_names[j] and
-                       not map[j]) or callee_kinds[j] == nodes.ARG_STAR2:
+            for j in range(ncallee):
+                # TODO tuple varargs complicate this
+                no_certain_match = (
+                    not map[j] or caller_kinds[map[j][0]] == nodes.ARG_STAR)
+                if ((callee_names[j] and no_certain_match)
+                        or callee_kinds[j] == nodes.ARG_STAR2):
                     map[j].append(i)
-                j += 1
     return map
 
 
 bool is_empty_tuple(Typ t):
     return isinstance(t, TupleType) and not ((TupleType)t).items
+
+
+bool is_duplicate_mapping(int[] mapping, int[] actual_kinds):
+    # Multiple actuals can map to the same formal only if they both come from
+    # varargs (*args and **kwargs); in this case at runtime it is possible that
+    # there are no duplicates. We need to allow this, as the convention
+    # f(..., *args, **kwargs) is common enough.
+    return len(mapping) > 1 and not (
+        len(mapping) == 2 and
+        actual_kinds[mapping[0]] == nodes.ARG_STAR and
+        actual_kinds[mapping[1]] == nodes.ARG_STAR2)

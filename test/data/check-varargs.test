@@ -149,7 +149,7 @@ A a
 B b
 
 f(*aa)    # Fail
-f(a, *ab) # Fail
+f(a, *ab) # Ok
 f(a, b)
 ((any)f)(*aa)     # IDEA: Move to check-dynamic?
 ((any)f)(a, *ab)  # IDEA: Move to check-dynamic?
@@ -161,9 +161,7 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 6: Too many arguments for "f"
 main, line 6: Argument 1 to "f" has incompatible type A[]
-main, line 7: Too many arguments for "f"
 
 [case testCallingWithTupleVarArgs]
 A a
@@ -271,7 +269,7 @@ class CC(C): pass
 any d, A a
 f(a, a, *d) # Fail
 f(a, *d)    # Fail
-f(*d)       # Fail
+f(*d)       # Ok
 
 g(*d)
 g(a, *d)
@@ -284,7 +282,6 @@ class A: pass
 [out]
 main, line 2: Too many arguments for "f"
 main, line 3: Too many arguments for "f"
-main, line 4: Too many arguments for "f"
 
 [case testListVarArgsAndSubtyping]
 list<A> aa

@@ -201,3 +201,11 @@ f(**d2) # E: Argument 1 to "f" has incompatible type dict<str, A>
 class A: pass
 class B: pass
 [builtins fixtures/dict.py]
+
+[case testBothKindsOfVarArgs]
+void f(A a, A b): pass
+list<any> l
+dict<any, any> d
+f(*l, **d)
+class A: pass
+[builtins fixtures/dict.py]

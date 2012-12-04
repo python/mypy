@@ -7,3 +7,4 @@ class type: pass
 
 class dict<kt, vt>: pass
 class str: pass # for keyword argument key type
+class list<t>: pass # needed by some test cases
