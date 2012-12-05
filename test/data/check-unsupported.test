@@ -4,11 +4,6 @@
 [case testSetLiteral]
 {None} # E: Feature not implemented yet (set literal)
 
-[case testListComprehension]
-a = [x for x in None]
-[out]
-main, line 1: Feature not implemented yet (list comprehension) 
-
 [case testConditionalExpression]
 a = None if None else None
 [out]

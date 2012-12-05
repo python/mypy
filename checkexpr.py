@@ -8,7 +8,8 @@ from nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
     UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
-    DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context
+    DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
+    ListComprehension
 )
 from nodes import function_type, method_type
 import nodes
@@ -772,6 +773,28 @@ class ExpressionChecker:
                 self.chk.check_subtype(t, self.named_type('builtins.int'),
                                        index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
+
+    Typ visit_list_comprehension(self, ListComprehension e):
+        gen = e.generator
+        item_type = self.chk.analyse_iterable_item_type(gen.right_expr)
+        self.chk.analyse_index_variables(gen.index, False, item_type, e)
+
+        if gen.condition:
+            self.accept(gen.condition)
+        
+        # Infer the type of the list comprehension by using a synthetic generic
+        # callable type.
+        tv = TypeVar('T', -1)
+        constructor = Callable([tv],
+                               [nodes.ARG_POS],
+                               [None],
+                               self.chk.named_generic_type('builtins.list',
+                                                           [tv]),
+                               False,
+                               '<list-comprehension>',
+                               TypeVars([TypeVarDef('T', -1)]))
+        return self.check_call(constructor,
+                               [gen.left_expr], [nodes.ARG_POS], e)
     
     #
     # Helpers

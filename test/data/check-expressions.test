@@ -647,6 +647,42 @@ a[:None]
 func<object, object> f = lambda m: m
 
 
+-- List comprehensions
+-- -------------------
+
+
+[case testSimpleListComprehension]
+A[] a
+a = [x for x in a]
+B[] b = [x for x in a] # E: List comprehension has incompatible type A[]
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testListComprehensionWithNonDirectMapping]
+A[] a
+B[] b
+b = [f(x) for x in a]
+a = [f(x) for x in a] # E: List comprehension has incompatible type B[]
+([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"
+class A: pass
+class B: pass
+B f(A a): pass
+[builtins fixtures/for.py]
+
+[case testErrorInListComprehensionCondition]
+A[] a
+a = [x for x in a if x()] # E: "A" not callable
+class A: pass
+[builtins fixtures/for.py]
+
+[case testTypeInferenceOfListComprehension]
+A[] a
+object[] o = [x for x in a]
+class A: pass
+[builtins fixtures/for.py]
+
+
 -- Special cases
 -- -------------
 
