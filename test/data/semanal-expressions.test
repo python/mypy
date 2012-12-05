@@ -238,3 +238,17 @@ MypyFile:1(
         NameExpr(x* [l])
         NameExpr(a [__main__.a])
         NameExpr(x [l])))))
+
+[case testGeneratorExpression]
+any a
+x for x in a
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(a)
+    Type(any))
+  ExpressionStmt:2(
+    GeneratorExpr:2(
+      NameExpr(x [l])
+      NameExpr(x* [l])
+      NameExpr(a [__main__.a]))))
