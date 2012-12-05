@@ -695,30 +695,31 @@ class TypeChecker(NodeVisitor<Typ>):
 
     Typ visit_for_stmt(self, ForStmt s):
         """Type check a for statement."""
-        iterable = self.accept(s.expr)
+        item_type = self.analyse_iterable_item_type(s.expr)
+        self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
+        self.accept(s.body)
+
+    Typ analyse_iterable_item_type(self, Node expr):
+        """Analyse iterable expression and return iterator item type."""
+        iterable = self.accept(expr)
         
-        self.check_not_void(iterable, s.expr)
+        self.check_not_void(iterable, expr)
         self.check_subtype(iterable,
                            self.named_generic_type('builtins.Iterable',
                                                    [Any()]),
-                           s.expr, messages.ITERABLE_EXPECTED)
-        
-        Typ method
+                           expr, messages.ITERABLE_EXPECTED)
         
         echk = self.expr_checker
         method = echk.analyse_external_member_access('__iter__', iterable,
-                                                     s.expr)
-        iterator = echk.check_call(method, [], [], s.expr)
+                                                     expr)
+        iterator = echk.check_call(method, [], [], expr)
         method = echk.analyse_external_member_access('__next__', iterator,
-                                                     s.expr)
-        item_type = echk.check_call(method, [], [], s.expr)
-
-        self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
-        
-        self.accept(s.body)
+                                                     expr)
+        return echk.check_call(method, [], [], expr)
 
     void analyse_index_variables(self, NameExpr[] index, bool is_annotated,
                                  Typ item_type, Context context):
+        """Type check or infer for loop or list comprehension index vars."""
         if not is_annotated:
             # Create a temporary copy of variables with Node item type.
             # TODO this is ugly
