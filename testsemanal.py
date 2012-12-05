@@ -1,6 +1,7 @@
 import os.path
+import sys
 
-from myunit import Suite
+from myunit import Suite, run_test
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
 from build import build
@@ -153,3 +154,16 @@ class SemAnalTypeInfoSuite(Suite):
             testcase.output, a,
             'Invalid semantic analyzer output ({}, line {})'.format(
                 testcase.file, testcase.line))
+
+
+class CombinedSemAnalSuite(Suite):
+    def __init__(self):
+        self.test_semanal = SemAnalSuite()
+        self.test_semanal_errors = SemAnalErrorSuite()
+        self.test_semanal_symtable = SemAnalSymtableSuite()
+        self.test_semanal_typeinfos = SemAnalTypeInfoSuite()
+        super().__init__()
+
+
+if __name__ == '__main__':
+    run_test(CombinedSemAnalSuite(), sys.argv[1:])
