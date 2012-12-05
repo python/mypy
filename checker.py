@@ -509,7 +509,7 @@ class TypeChecker(NodeVisitor<Typ>):
         return True
     
     Typ strip_type(self, Typ typ):
-        """Remove a copy of type with all 'debugging information' (e.g. name of
+        """Return a copy of type with all 'debugging information' (e.g. name of
         function) removed.
         """
         if isinstance(typ, Callable):
