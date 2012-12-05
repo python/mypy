@@ -1341,6 +1341,21 @@ MypyFile:1(
           IntExpr(1)
           IntExpr(2))))))
 
+[case testListComprehension2]
+([x + 1 for x in a])
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ParenExpr:1(
+      ListComprehension:1(
+        GeneratorExpr:1(
+          OpExpr:1(
+            +
+            NameExpr(x)
+            IntExpr(1))
+          Var(x)
+          NameExpr(a))))))
+
 [case testSlices]
 x[1:2]
 x[:1]
