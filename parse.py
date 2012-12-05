@@ -873,35 +873,6 @@ class Parser:
         
         return index, types, commas
     
-    tuple<Var[], Annotation[]> parse_index_variables(self):
-        # Parse index variables.
-        # TODO Do we need this and the above?
-        index = <Var> []
-        types = <Annotation> []
-        
-        is_paren = self.current_str() == '('
-        if is_paren:
-            self.skip()
-        
-        while True:
-            Annotation ann = None
-            if self.is_at_type():
-                ann = self.parse_type()
-            tok = self.expect_type(Name)
-            v = Var(tok.string).set_line(tok)
-            index.append((Var)v)
-            types.append(ann)
-            if self.current_str() != ',':
-                self.set_repr(v, noderepr.VarRepr(tok, none))
-                break
-            comma = self.skip()
-            self.set_repr(v, noderepr.VarRepr(tok, comma))
-        
-        if is_paren:
-            self.expect(')')
-        
-        return index, types
-    
     IfStmt parse_if_stmt(self):
         is_error = False
         
@@ -1183,7 +1154,7 @@ class Parser:
     
     GeneratorExpr parse_generator_expr(self, Node left_expr):
         for_tok = self.expect('for')
-        index, types = self.parse_index_variables()
+        index, types, commas = self.parse_for_index_variables()
         self.expect('in')
         right_expr = self.parse_expression_list()
         Node cond = None

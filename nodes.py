@@ -834,10 +834,10 @@ class GeneratorExpr(Node):
     Node left_expr
     Node right_expr
     Node condition   # May be None
-    Var[] index
+    NameExpr[] index
     Annotation[] types
     
-    void __init__(self, Node left_expr, Var[] index,
+    void __init__(self, Node left_expr, NameExpr[] index,
                   Annotation[] types, Node right_expr, Node condition):
         self.left_expr = left_expr
         self.right_expr = right_expr

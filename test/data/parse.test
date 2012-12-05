@@ -1306,7 +1306,7 @@ MypyFile:1(
   ExpressionStmt:1(
     GeneratorExpr:1(
       NameExpr(x)
-      Var(y)
+      NameExpr(y)
       NameExpr(z))))
 
 [case testListComprehension]
@@ -1319,7 +1319,7 @@ MypyFile:1(
     ListComprehension:1(
       GeneratorExpr:1(
         NameExpr(x)
-        Var(y)
+        NameExpr(y)
         NameExpr(z)))))
       
 [case testComplexListComprehension]
@@ -1335,8 +1335,8 @@ MypyFile:1(
           TupleExpr:1(
             NameExpr(x)
             NameExpr(y)))
-        Var(y)
-        Var(z)
+        NameExpr(y)
+        NameExpr(z)
         TupleExpr:1(
           IntExpr(1)
           IntExpr(2))))))
@@ -1353,7 +1353,7 @@ MypyFile:1(
             +
             NameExpr(x)
             IntExpr(1))
-          Var(x)
+          NameExpr(x)
           NameExpr(a))))))
 
 [case testSlices]
@@ -1589,7 +1589,7 @@ MypyFile:1(
   ExpressionStmt:1(
     GeneratorExpr:1(
       NameExpr(x)
-      Var(y)
+      NameExpr(y)
       NameExpr(z)
       IntExpr(0))))
 
@@ -1601,7 +1601,7 @@ MypyFile:1(
     ListComprehension:1(
       GeneratorExpr:1(
         NameExpr(x)
-        Var(y)
+        NameExpr(y)
         NameExpr(z)
         IntExpr(0)))))
 
