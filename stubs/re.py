@@ -1,4 +1,5 @@
 # Stubs for re
+# Ron Murawski <ron@horizonchess.com>
 
 # based on: http://docs.python.org/3.2/library/re.html
 # and http://hg.python.org/cpython/file/618ea5612e83/Lib/re.py
