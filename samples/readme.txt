@@ -1,6 +1,8 @@
 Mypy Sample Programs
 --------------------
 
+The sample programs use static typing unless otherwise noted in comments.
+
 Original credits for sample programs:
 
   fib.py - Python Wiki [1]
@@ -14,6 +16,7 @@ Original credits for sample programs:
   files.py - Python Wiki [1]
   bottles.py - Python Wiki [1]
   class.py - Python Wiki [1]
+  guess.py - Python Wiki [1]
 
 The sample programs were ported to mypy by Jukka Lehtosalo.
 
