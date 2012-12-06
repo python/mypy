@@ -435,6 +435,20 @@ class OutputVisitor(NodeVisitor):
         self.token(o.repr.langle)
         self.type_list(o.types, o.repr.commas)
         self.token(o.repr.rangle)
+
+    def visit_generator_expr(self, o):
+        r = o.repr
+        self.node(o.left_expr)
+        self.token(r.for_tok)
+        for i in range(len(o.index)):
+            self.node(o.types[i])
+            self.node(o.index[i])
+            self.token(r.commas[i])
+        self.token(r.in_tok)
+        self.node(o.right_expr)
+        if o.condition:
+            self.token(r.if_tok)
+            self.node(o.condition)
     
     # Types
     

@@ -1155,14 +1155,17 @@ class Parser:
     GeneratorExpr parse_generator_expr(self, Node left_expr):
         for_tok = self.expect('for')
         index, types, commas = self.parse_for_index_variables()
-        self.expect('in')
+        in_tok = self.expect('in')
         right_expr = self.parse_expression_list()
         Node cond = None
+        if_tok = none
         if self.current_str() == 'if':
-            self.skip()
+            if_tok = self.skip()
             cond = self.parse_expression()
         gen = GeneratorExpr(left_expr, index, types, right_expr, cond)
         gen.set_line(for_tok)
+        self.set_repr(gen, noderepr.GeneratorExprRepr(for_tok, commas, in_tok,
+                                                      if_tok))
         return gen
     
     Node parse_expression_list(self):

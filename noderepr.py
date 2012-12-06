@@ -325,3 +325,11 @@ class TypeApplicationRepr:
         self.langle = langle
         self.commas = commas
         self.rangle = rangle
+
+
+class GeneratorExprRepr:
+    void __init__(self, any for_tok, any commas, any in_tok, any if_tok):
+        self.for_tok = for_tok
+        self.commas = commas
+        self.in_tok = in_tok
+        self.if_tok = if_tok
