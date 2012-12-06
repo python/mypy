@@ -404,3 +404,52 @@ del a[b] # E: "A" has no member "__delitem__"
 class B:
   def __delitem__(self, A index): pass
 class A: pass
+
+
+-- Yield statement
+-- ---------------
+
+
+[case testSimpleYield]
+Iterator<A> f():
+    yield A()
+    yield B() # E: Incompatible types
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+[out]
+main: In function "f":
+
+[case testYieldInFunctionReturningAny]
+any f():
+    yield object()
+[out]
+
+[case testYieldInFunctionReturningFunction]
+func<void()> f():
+    yield object() # E: Iterator function return type expected for "yield"
+[out]
+main: In function "f":
+
+[case testYieldInDynamicallyTypedFunction]
+def f():
+    yield f
+
+[case testWithInvalidInstanceReturnType]
+A f():
+    yield A() # E: Iterator function return type expected for "yield"
+class A: pass
+[builtins fixtures/for.py]
+[out]
+main: In function "f":
+
+[case testTypeInferenceContextAndYield]
+Iterator<A[]> f():
+    yield []
+    yield [object()] # E: List item 1 has incompatible type "object"
+class A: pass
+[builtins fixtures/for.py]
+[out]
+main: In function "f":
+
+-- TODO both return and yield

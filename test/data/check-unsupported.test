@@ -13,13 +13,6 @@ main, line 1: Feature not implemented yet (conditional expression)
 @f  # E: Feature not implemented yet (decorator)
 def f(x): pass
 
-[case testYield]
-any f():
-  yield None
-[out]
-main: In function "f":
-main, line 2: Feature not implemented yet (yield statement)
-
 [case testWith]
 void f():
   with None:

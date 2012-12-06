@@ -25,6 +25,8 @@ BOOLEAN_EXPECTED_FOR_WHILE = 'Boolean value expected for while condition'
 BOOLEAN_EXPECTED_FOR_UNTIL = 'Boolean value expected for until condition'
 BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
 INVALID_EXCEPTION_TYPE = 'Invalid exception type'
+INVALID_RETURN_TYPE_FOR_YIELD = \
+                         'Iterator function return type expected for "yield"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
