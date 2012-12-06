@@ -198,7 +198,7 @@ class Lexer:
     int enc = DEFAULT_ENCODING
     
     Token[] tok
-    list<func<void>> map
+    list<func<void()>> map
     
     int[] indents
     # Open ('s, ['s and {'s without matching closing bracket.

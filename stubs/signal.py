@@ -41,4 +41,4 @@ any getsignal(int signalnum): pass
 void set_wakeup_fd(int fd): pass
 void siginterrupt(int signalnum, bool flag): pass
 any signal(int signalnum,
-           func<int, any, void> handler): pass # TODO frame object
+           func<void(int, any)> handler): pass # TODO frame object

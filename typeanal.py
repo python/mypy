@@ -9,11 +9,11 @@ import nodes
 
 class TypeAnalyser(TypeVisitor<Typ>):
     """Semantic analyzer for types."""
-    func<str, Context, SymbolTableNode> lookup
-    func<str, Context, void> fail
+    func<SymbolTableNode(str, Context)> lookup
+    func<void(str, Context)> fail
     
-    void __init__(self, func<str, Context, SymbolTableNode> lookup_func,
-                  func<str, Context, void> fail_func):
+    void __init__(self, func<SymbolTableNode(str, Context)> lookup_func,
+                  func<void(str, Context)> fail_func):
         self.lookup = lookup_func
         self.fail = fail_func
     

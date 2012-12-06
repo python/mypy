@@ -969,7 +969,7 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                                str[] caller_names,
                                int[] callee_kinds,
                                str[] callee_names,
-                               func<int, Typ> caller_arg_type):
+                               func<Typ(int)> caller_arg_type):
     """Calculate mapping between actual (caller) args and formals.
 
     The result contains a list of caller argument indexes mapping to to each

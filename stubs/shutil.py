@@ -11,13 +11,13 @@ void copymode(str src, str dst): pass
 void copystat(str src, str dst): pass
 void copy(str src, str dst): pass
 void copy2(str src, str dst): pass
-func<str, str[], Iterable<str>> ignore_patterns(str *patterns): pass
+func<Iterable<str>(str, str[])> ignore_patterns(str *patterns): pass
 void copytree(str src, str dst, bool symlinks=False,
-              func<str, str[], Iterable<str>> ignore=None,
-              func<str, str, void> copy_function=copy2,
+              func<Iterable<str>(str, str[])> ignore=None,
+              func<void(str, str)> copy_function=copy2,
               bool ignore_dangling_symlinks=False): pass
 void rmtree(str path, bool ignore_errors=False,
-            func<any, str, tuple<type, any, any>> onerror=None): pass
+            func<tuple<type, any, any>(any, str)> onerror=None): pass
 void move(str src, str dst): pass
 
 class Error(Exception): pass

@@ -33,9 +33,9 @@ class Pattern:
     list<str> findall(self, str string, int pos=0, int endpos=-1): pass
     Iterator<Match> finditer(self, str string, int pos=0, int endpos=-1): pass
     str sub(self, str repl, str string, int count=0): pass
-    str sub(self, func<Match, str> repl, str string, int count=0): pass
+    str sub(self, func<str(Match)> repl, str string, int count=0): pass
     tuple<str, int> subn(self, str repl, str string, int count=0): pass
-    tuple<str, int> subn(self, func<Match, str> repl, str string,
+    tuple<str, int> subn(self, func<str(Match)> repl, str string,
                          int count=0): pass
 
 class Match:
@@ -74,11 +74,11 @@ list<str> findall(str pattern, str string, int flags=0): pass
 Iterator<Match> finditer(str pattern, str string, int flags=0): pass
 
 str sub(str pattern, str repl, str string, int count=0, int flags=0): pass
-str sub(str pattern, func<Match, str> repl, str string, int count=0,
+str sub(str pattern, func<str(Match)> repl, str string, int count=0,
         int flags=0): pass
 tuple<str, int> subn(str pattern, str repl, str string, int count=0, 
                      int flags=0): pass
-tuple<str, int> subn(str pattern, func<Match, str> repl, str string, 
+tuple<str, int> subn(str pattern, func<str(Match)> repl, str string, 
                      int count=0, int flags=0): pass
 str escape(str string): pass
 void purge(): pass

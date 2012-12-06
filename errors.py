@@ -264,7 +264,7 @@ class CompileError(Exception):
         self.messages = messages
 
 
-T[] stable_sort<T>(Sequence<T> a, func<T, any> key):
+T[] stable_sort<T>(Sequence<T> a, func<any(T)> key):
     """Perform a stable sort of a sequence, i.e. if the original sequence has
     a[n] == a[n+m] (when comparing using the comparison function f), in the
     sorted sequence item a[n] will be at an earlier index than a[n + m].

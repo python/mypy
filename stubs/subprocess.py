@@ -34,7 +34,7 @@ class Popen:
                   any stdin=None,
                   any stdout=None,
                   any stderr=None,
-                  func<any> preexec_fn=None,
+                  func<any()> preexec_fn=None,
                   bool close_fds=True,
                   bool shell=False,
                   str cwd=None,

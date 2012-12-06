@@ -79,7 +79,7 @@ void fail():
 
 
 class TestCase:
-    void __init__(self, str name, Suite suite=None, func<void> func=None):
+    void __init__(self, str name, Suite suite=None, func<void()> func=None):
         self.func = func
         self.name = name
         self.suite = suite
@@ -122,7 +122,7 @@ class Suite:
     void add_test(self, TestCase test):
         self._test_cases.append(test)
     
-    void add_test(self, tuple<str, func<void>> test):
+    void add_test(self, tuple<str, func<void()>> test):
         self._test_cases.append(test)
     
     any[] cases(self):

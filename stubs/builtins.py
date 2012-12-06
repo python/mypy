@@ -457,7 +457,7 @@ class list<t>(Sequence<t>):
     void insert(self, int index, t object): pass
     void remove(self, t object): pass
     void reverse(self): pass
-    void sort(self, *, func<t, any> key=None, bool reverse=False): pass
+    void sort(self, *, func<any(t)> key=None, bool reverse=False): pass
     
     int __len__(self): pass
     Iterator<t> __iter__(self): pass
@@ -585,7 +585,7 @@ str[] dir(): pass
 str[] dir(object o): pass
 tuple<int, int> divmod(int a, int b): pass
 tuple<float, float> divmod(float a, float b): pass
-Iterator<t> filter<t>(func<t, any> function, Iterable<t> iterable): pass
+Iterator<t> filter<t>(func<any(t)> function, Iterable<t> iterable): pass
 str format(object o, str format_spec=''): pass
 any getattr(any o, str name): pass
 any getattr(any o, str name, any default): pass
@@ -596,7 +596,7 @@ str hex(int i): pass
 int id(object o): pass
 str input(str prompt=None): pass
 Iterator<t> iterable<t>(Iterable<t> iterable): pass
-Iterator<t> iterable<t>(func<t> function, t sentinel): pass
+Iterator<t> iterable<t>(func<t()> function, t sentinel): pass
 bool isinstance(object o, type t): pass
 # TODO perhaps support this
 #bool isinstance(object o, Sequence<type> t): pass
@@ -605,8 +605,8 @@ bool issubclass(type cls, type classinfo): pass
 #bool issubclass(type cld, Sequence<type> classinfo): pass
 int len(Sized o): pass
 # TODO more than two iterables
-Iterator<s> map<t1, s>(func<t1, s> func, Iterable<t1> iter1): pass
-Iterator<s> map<t1, t2, s>(func<t1, t2, s> func,
+Iterator<s> map<t1, s>(func<s(t1)> func, Iterable<t1> iter1): pass
+Iterator<s> map<t1, t2, s>(func<s(t1, t2)> func,
                          Iterable<t1> iter1,
                          Iterable<t2> iter2): pass
 # TODO keyword argument key
@@ -644,7 +644,7 @@ str repr(object o): pass
 int round(float number): pass
 float round(float number, int ndigits): pass
 void setattr(any object, str name, any value): pass
-t[] sorted<t>(Iterable<t> iterable, *, func<t, any> key=None,
+t[] sorted<t>(Iterable<t> iterable, *, func<any(t)> key=None,
               bool reverse=False): pass
 t sum<t>(Iterable<t> iterable, t start=None): pass
 # TODO more than two iterables

@@ -46,8 +46,8 @@ class TestCase(Testable):
     str shortDescription(self): pass # May return None
 
 class FunctionTestCase(Testable):
-    void __init__(self, func<void> testFunc, func<void> setUp=None,
-                  func<void> tearDown=None, str description=None): pass
+    void __init__(self, func<void()> testFunc, func<void()> setUp=None,
+                  func<void()> tearDown=None, str description=None): pass
     void run(self, TestResult result): pass
     void debug(self): pass
     int countTestCases(self): pass

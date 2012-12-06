@@ -8,7 +8,7 @@ from myunit import TestCase, SkipTestCaseException
 
 DataDrivenTestCase[] parse_test_cases(
             str path,
-            func<DataDrivenTestCase, void> perform,
+            func<void(DataDrivenTestCase)> perform,
             str base_path='.',
             bool optional_out=False,
             str include_path=None):
@@ -79,7 +79,7 @@ class DataDrivenTestCase(TestCase):
     str[] output
     str file
     int line
-    func<DataDrivenTestCase, void> perform
+    func<void(DataDrivenTestCase)> perform
     list<tuple<str, str>> files
     list<tuple<bool, str>> clean_up
     

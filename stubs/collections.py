@@ -56,13 +56,13 @@ class OrderedDict<kt, vt>(dict<kt, vt>):
 
 
 class defaultdict<kt, vt>(dict<kt, vt>):
-    func<vt> default_factory
+    func<vt()> default_factory
     void __init__(self): pass
     void __init__(self, Mapping<kt, vt> map): pass
     void __init__(self, Iterable<tuple<kt, vt>> iterable): pass
-    void __init__(self, func<vt> default_factory): pass
-    void __init__(self, func<vt> default_factory, Mapping<kt, vt> map): pass
-    void __init__(self, func<vt> default_factory,
+    void __init__(self, func<vt()> default_factory): pass
+    void __init__(self, func<vt()> default_factory, Mapping<kt, vt> map): pass
+    void __init__(self, func<vt()> default_factory,
                   Iterable<tuple<kt, vt>> iterable): pass
     # TODO __init__ keyword args
     vt __missing__(self, kt key): pass

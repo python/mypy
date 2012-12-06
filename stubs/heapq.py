@@ -8,5 +8,5 @@ t heappushpop<t>(t[] heap, t item): pass
 void heapify<t>(t[] x): pass
 t heapreplace<t>(list <t> heap, t item): pass
 Iterable<t> merge<t>(Iterable<t> *iterables): pass
-t[] nlargest<t>(int n, Iterable<t> iterable, func<t, any> key=None): pass
-t[] nsmallest<t>(int n, Iterable<t> iterable, func<t, any> key=None): pass
+t[] nlargest<t>(int n, Iterable<t> iterable, func<any(t)> key=None): pass
+t[] nsmallest<t>(int n, Iterable<t> iterable, func<any(t)> key=None): pass
