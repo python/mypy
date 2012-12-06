@@ -143,6 +143,7 @@ class int(int_t, float_t):
     void __init__(self, str string, int base): pass
 
     # Operators
+    # TODO other __r* methods
     
     int __add__(self, int x): pass
     float __add__(self, float x): pass
@@ -163,6 +164,7 @@ class int(int_t, float_t):
     
     int __mod__(self, int x): pass
     float __mod__(self, float x): pass
+    int __rmod__(self, int x): pass
 
     # Return type can be int or float, depending on the value of x.
     any __pow__(self, int x): pass
