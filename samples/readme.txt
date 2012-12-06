@@ -11,5 +11,6 @@ Original credits for sample programs:
   regexp.py - Python Wiki [1]
   dict.py - Python Wiki [1]
   cmdline.py - Python Wiki [1]
+  files.py - Python Wiki [1]
 
 [1] http://wiki.python.org/moin/SimplePrograms
