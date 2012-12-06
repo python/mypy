@@ -405,8 +405,8 @@ MypyFile:1(
         IntExpr(2)))))
 
 [case testFunctionTypes]
-func<object, type, A> f
-func<void> g
+func<A(object, type)> f
+func<void()> g
 class A: pass
 [out]
 MypyFile:1(
