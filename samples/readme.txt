@@ -15,4 +15,6 @@ Original credits for sample programs:
   bottles.py - Python Wiki [1]
   class.py - Python Wiki [1]
 
+The sample programs were ported to mypy by Jukka Lehtosalo.
+
 [1] http://wiki.python.org/moin/SimplePrograms
