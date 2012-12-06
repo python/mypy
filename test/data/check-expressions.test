@@ -644,7 +644,7 @@ a[:None]
 
 
 [case testTrivialLambda]
-func<object, object> f = lambda m: m
+func<object(object)> f = lambda m: m
 
 
 -- List comprehensions

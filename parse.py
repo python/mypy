@@ -1687,12 +1687,16 @@ class Parser:
         return self.tok[i].string == '>' and self.tok[i + 1].string == '('
     
     tuple<int, int> try_scan_type(self, int i):
-        """Return the index of next token after type starting at token
-        index i as the first integer. The second integer is 1 if the
+        """Check if there seems to be a valid type at the token index.
+
+        Return the index of next token after type starting at token
+        index i as the first integer. The second integer is 1 if only the
         first > has been consumed from >>, 0 otherwise. Return -1 as
         the first integer if could not parse a type.
         """
         if isinstance(self.tok[i], Name):
+            if self.tok[i].string == 'func':
+                return self.try_scan_func_type(i + 1)
             while (self.tok[i + 1].string == '.'
                    and isinstance(self.tok[i + 2], Name)):
                 i += 2
@@ -1731,6 +1735,27 @@ class Parser:
                     return -1, 0
         else:
             return i, 0
+
+    tuple<int, int> try_scan_func_type(self, int i):
+        if self.tok[i].string == '<':
+            i, j = self.try_scan_type(i + 1)
+            if i >= 0:
+                if self.tok[i].string == '(':
+                    i += 1
+                    while self.tok[i].string != ')':
+                        i, j = self.try_scan_type(i)
+                        if j > 0:
+                            return -1, 0
+                        if self.tok[i].string != ',':
+                            break
+                        i += 1
+                    if self.tok[i].string == ')':
+                        i += 1
+                        if self.tok[i].string == '>':
+                            return self.try_scan_list_type(i + 1)
+                        elif self.tok[i].string == '>>':
+                            return i + 1, 1
+        return -1, 0
 
 
 class ParseError(Exception): pass

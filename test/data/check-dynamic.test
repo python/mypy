@@ -285,8 +285,8 @@ class A: pass
 [case testImplicitGlobalFunctionSignature]
 any x
 A a
-func<void> g
-func<A, void> h
+func<void()> g
+func<void(A)> h
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
@@ -301,9 +301,9 @@ def f(x): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDifferentArgCounts]
-func<void> g0
-func<A, void> g1
-func<A, A, void> g2
+func<void()> g0
+func<void(A)> g1
+func<void(A, A)> g2
 A a
 
 g1 = f0 # E: Incompatible types in assignment
@@ -325,11 +325,11 @@ class A: pass
 [case testImplicitGlobalFunctionSignatureWithDefaultArgs]
 A a, B b
 
-func<void> g0
-func<A, void> g1
-func<A, A, void> g2
-func<A, A, A, void> g3
-func<A, A, A, A, void> g4
+func<void()> g0
+func<void(A)> g1
+func<void(A, A)> g2
+func<void(A, A, A)> g3
+func<void(A, A, A, A)> g4
 
 f01(a, a)       # Fail
 f13()           # Fail
@@ -385,9 +385,9 @@ def g(x, y=a, z=a()):
 class A: pass
 
 [case testImplicitMethodSignature]
-func<void> g0
-func<A, void> g1
-func<A, A, void> g2
+func<void()> g0
+func<void(A)> g1
+func<void(A, A)> g2
 A a
 
 g0 = a.f # E: Incompatible types in assignment
@@ -411,8 +411,8 @@ class A:
         a()
 
 [case testImplicitInheritedMethod]
-func<void> g0
-func<A, void> g1
+func<void()> g0
+func<void(A)> g1
 A a
 
 g0 = a.f # E: Incompatible types in assignment
@@ -449,8 +449,8 @@ f(o, o, o)
 
 
 [case testInitMethodWithImplicitSignature]
-func<A, A> f1
-func<A, A, A> f2
+func<A(A)> f1
+func<A(A, A)> f2
 A a
 
 A(a)   # Fail
@@ -507,9 +507,9 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testFunctionTypeCompatibilityAndReturnTypes]
-func<any> f1
-func<A> f2
-func<void> f3
+func<any()> f1
+func<A()> f2
+func<void()> f3
 
 f2 = f3 # E: Incompatible types in assignment
 
@@ -521,9 +521,9 @@ f3 = f1
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentTypes]
-func<A, any, void> f1
-func<any, A, void> f2
-func<A, A, void> f3
+func<void(A, any)> f1
+func<void(any, A)> f2
+func<void(A, A)> f3
 
 f1 = f1
 f1 = f2
@@ -540,8 +540,8 @@ f3 = f3
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentCounts]
-func<any, void> f1
-func<any, any, void> f2
+func<void(any)> f1
+func<void(any, any)> f2
 
 f1 = f2 # E: Incompatible types in assignment
 

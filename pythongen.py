@@ -90,8 +90,10 @@ class PythonGenerator(OutputVisitor):
             return t.repr.void.pre
         elif isinstance(t, TypeVar):
             return t.repr.name.pre
-        elif isinstance(t, TupleType) or isinstance(t, Callable):
+        elif isinstance(t, TupleType):
             return t.repr.components[0].pre
+        elif isinstance(t, Callable):
+            return t.repr.func.pre
         else:
             raise RuntimeError('Unsupported type {}'.format(t))
     

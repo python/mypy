@@ -125,7 +125,7 @@ a = f # E: Incompatible types in assignment
 o = f
 
 void f(A a): pass
-void f(func<void> a): pass
+void f(func<void()> a): pass
 class A: pass
 
 [case testCompatibilityOfIntersectionTypeObjectWithStdType]
@@ -175,7 +175,7 @@ class A(I):
 [case testOverloadWithFunctionType]
 class A: pass
 void f(A x): pass
-void f(func<void> x): pass
+void f(func<void()> x): pass
 
 f(A())
 [builtins fixtures/function.py]

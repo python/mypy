@@ -502,7 +502,7 @@ class C(A, I, J): pass
 [case testNonOverloadedMapInference]
 bool b
 A f(bool x): pass
-list<s> mymap<t, s>(func<t, s> f, list<t> a): pass
+list<s> mymap<t, s>(func<s(t)> f, list<t> a): pass
 class A: pass
 
 l = mymap(f, [b])

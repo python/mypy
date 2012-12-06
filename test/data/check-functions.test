@@ -9,7 +9,7 @@
 
 
 [case testCallingVariableWithFunctionType]
-func<A, B> f
+func<B(A)> f
 A a, B b
 a = f(a)    # E: Incompatible types in assignment
 b = f(b)    # E: Argument 1 has incompatible type "B"
@@ -21,9 +21,9 @@ class A: pass
 class B: pass
 
 [case testSubtypingFunctionTypes]
-func<B, A> f
-func<A, A> g
-func<B, B> h  # subtype of f
+func<A(B)> f
+func<A(A)> g
+func<B(B)> h  # subtype of f
 g = f  # E: Incompatible types in assignment
 g = h  # E: Incompatible types in assignment
 h = f  # E: Incompatible types in assignment
@@ -38,7 +38,7 @@ class A: pass
 class B(A): pass
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
-func<void> f
+func<void()> f
 A a, object o
 a = f   # E: Incompatible types in assignment
 f = a   # E: Incompatible types in assignment
@@ -52,8 +52,8 @@ o = f
 class A: pass
 
 [case testFunctionSubtypingWithVoid]
-func<void> f
-func<object> g
+func<void()> f
+func<object()> g
 f = g  # E: Incompatible types in assignment
 g = f  # E: Incompatible types in assignment
 
@@ -61,9 +61,9 @@ f = f
 g = g
 
 [case testFunctionSubtypingWithMultipleArgs]
-func<A, A, void> f
-func<A, B, void> g
-func<B, B, void> h
+func<void(A, A)> f
+func<void(A, B)> g
+func<void(B, B)> h
 f = g  # E: Incompatible types in assignment
 f = h  # E: Incompatible types in assignment
 g = h  # E: Incompatible types in assignment
@@ -78,9 +78,9 @@ class A: pass
 class B(A): pass
 
 [case testFunctionTypesWithDifferentArgumentCounts]
-func<void> f
-func<A, void> g
-func<A, A, void> h
+func<void()> f
+func<void(A)> g
+func<void(A, A)> h
 
 f = g   # E: Incompatible types in assignment
 f = h   # E: Incompatible types in assignment
@@ -108,9 +108,9 @@ class A:
 void f(): pass
 
 [case testFunctionTypesWithOverloads]
-func<AA, A> f
-func<B, B> g
-func<A, AA> h
+func<A(AA)> f
+func<B(B)> g
+func<AA(A)> h
 
 h = i  # E: Incompatible types in assignment
 f = j  # E: Incompatible types in assignment
@@ -135,10 +135,10 @@ class AA(A): pass
 class B: pass
 
 [case testOverloadWithThreeItems]
-func<A, A> g1
-func<B, B> g2
-func<C, C> g3
-func<A, B> g4
+func<A(A)> g1
+func<B(B)> g2
+func<C(C)> g3
+func<B(A)> g4
 A a, B b, C c
 
 b = f(a)  # E: Incompatible types in assignment

@@ -2551,7 +2551,7 @@ MypyFile:1(
 a<b<c>>[] x
 any[] x
 tuple<a, b>[] x
-func<a, b>[] x
+func<void()>[] x
 [out]
 MypyFile:1(
   VarDef:1(
@@ -2565,7 +2565,7 @@ MypyFile:1(
     Type(__builtins__.list?<tuple?<a?, b?>>))
   VarDef:4(
     Var(x)
-    Type(__builtins__.list?<func?<a?, b?>>)))
+    Type(__builtins__.list?<def ()>)))
 
 [case testKeywordAndDictArgs]
 f(x = y, **kwargs)
@@ -2580,3 +2580,35 @@ MypyFile:1(
         NameExpr(y))
       DictVarArg(
         NameExpr(kwargs)))))
+
+[case testSimpleFunctionType]
+func<void()> f
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(f)
+    Type(def ())))
+
+[case testFunctionTypeWithArgument]
+func<int(str)> f
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(f)
+    Type(def (str?) -> int?)))
+
+[case testFunctionTypeWithArguments]
+func<int[](a<b>, x.y[])> f
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(f)
+    Type(def (a?<b?>, __builtins__.list?<x.y?>) -> __builtins__.list?<int?>)))
+
+[case testFunctionTypeWithDoubleAngleBrackets]
+a<func<a()>> f
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(f)
+    Type(a?<def () -> a?>)))

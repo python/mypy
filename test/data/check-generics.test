@@ -719,7 +719,7 @@ class A<S, T>: pass
 class B: pass
 
 [case testErrorWithShorterGenericTypeName2]
-A<object, func<void>> a
+A<object, func<void()>> a
 f(a) # E: Argument 1 to "f" has incompatible type A<object, function>
 
 void f(B a): pass

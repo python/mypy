@@ -83,7 +83,7 @@ any f
 f(x=None, x=None)
 
 [case testKeywordArgumentWithFunctionObject]
-func<A, B, void> f
+func<void(A, B)> f
 f(a=A(), b=B())
 f(A(), b=B())
 class A: pass

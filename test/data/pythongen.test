@@ -167,7 +167,7 @@ class B: pass
 
 [case testDifferentTypesInOverloads]
 void f(tuple<A, any> a): pass
-void f(func<A, void> a): pass
+void f(func<void(A)> a): pass
 class A: pass
 [builtins fixtures/tuple.py]
 [out]
@@ -257,7 +257,7 @@ class A:
     t d<t>(self): pass
     A e(self): pass
     tuple<A, A> f(self): pass
-    func<A> g(self): pass
+    func<A()> g(self): pass
 [builtins fixtures/tuple.py]
 [out]
 class A:

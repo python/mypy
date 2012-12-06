@@ -566,10 +566,11 @@ class TypeOutputVisitor:
     
     def visit_callable(self, t):
         r = t.repr
-        self.tokens(r.components)
-        self.token(r.langle)
-        self.comma_list(t.arg_types + [t.ret_type], r.commas)
-        self.token(r.rangle)
+        self.tokens([r.func, r.langle])
+        t.ret_type.accept(self)
+        self.token(r.lparen)
+        self.comma_list(t.arg_types, r.commas)
+        self.tokens([r.rparen, r.rangle])
     
     def type_vars(self, v):
         if v and v.repr:

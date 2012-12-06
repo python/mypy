@@ -1,9 +1,10 @@
-from mtypes import Typ, TypeVars, TypeVarDef, Any, Void, UnboundType
+from mtypes import Typ, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable
 from typerepr import (
     TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
-    ListTypeRepr
+    ListTypeRepr, CallableRepr
 )
 from lex import Token, Name
+import nodes
 
 
 none = Token('') # Empty token
@@ -60,6 +61,8 @@ class TypeParser:
             return self.parse_any_type()
         elif t.string == 'void':
             return self.parse_void_type()
+        elif t.string == 'func':
+            return self.parse_func_type()
         elif isinstance(t, Name):
             return self.parse_named_type()
         else:
@@ -123,6 +126,29 @@ class TypeParser:
         """Parse 'void' type."""
         tok = self.skip()
         return Void(None, tok.line, VoidRepr(tok))
+
+    Typ parse_func_type(self):
+        """Parse func<...> type."""
+        func_tok = self.skip()
+        langle = self.expect('<')
+        return_type = self.parse_type()
+        lparen = self.expect('(')
+        arg_types = <Typ> []
+        commas = <Token> []
+        while self.current_token_str() != ')':
+            arg_types.append(self.parse_type())
+            if self.current_token_str() != ',':
+                break
+            commas.append(self.expect(','))
+        rparen = self.expect(')')
+        rangle = self.expect('>')
+        typ = Callable(arg_types,
+                       [nodes.ARG_POS] * len(arg_types),
+                       <str> [None] * len(arg_types),
+                       return_type, is_type_obj=False,
+                       repr=CallableRepr(func_tok, langle, lparen, commas,
+                                         rparen, rangle))
+        return self.parse_optional_list_type(typ)
     
     Typ parse_named_type(self):
         line = self.current_token().line
