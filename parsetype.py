@@ -10,15 +10,19 @@ none = Token('') # Empty token
 
 
 tuple<Typ, int> parse_type(Token[] tok, int index):
-    """Parse a type. Return (type, index after type)."""
+    """Parse a type.
+
+    Return (type, index after type).
+    """
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
 
 
 tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
                                           bool is_func):
-    """Parse type variables and optional bounds (<...>). Return (bounds, index
-    after bounds).
+    """Parse type variables and optional bounds (<...>).
+
+    Return (bounds, index after bounds).
     """
     p = TypeParser(tok, index)
     return p.parse_type_variables(is_func), p.index()
@@ -26,8 +30,9 @@ tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
 
 tuple<Typ[], Token, Token, \
       Token[], int> parse_type_args(Token[] tok, int index):
-    """Parse type arguments within angle brackets (<...>). Return
-    (types, < token, > token, comma tokens, token index after >).
+    """Parse type arguments within angle brackets (<...>).
+
+    Return types, '<' token, '>' token, comma tokens, token index after '>').
     """
     p = TypeParser(tok, index)
     types, lparen, rparen, commas = p.parse_type_args()
