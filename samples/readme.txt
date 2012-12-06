@@ -9,5 +9,7 @@ Original credits for sample programs:
   hello.py - Python Wiki [1]
   input.py - Python Wiki [1]
   regexp.py - Python Wiki [1]
+  dict.py - Python Wiki [1]
+  cmdline.py - Python Wiki [1]
 
 [1] http://wiki.python.org/moin/SimplePrograms
