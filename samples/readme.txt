@@ -12,5 +12,7 @@ Original credits for sample programs:
   dict.py - Python Wiki [1]
   cmdline.py - Python Wiki [1]
   files.py - Python Wiki [1]
+  bottles.py - Python Wiki [1]
+  class.py - Python Wiki [1]
 
 [1] http://wiki.python.org/moin/SimplePrograms
