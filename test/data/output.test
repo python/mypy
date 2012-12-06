@@ -112,6 +112,10 @@ lambda x, *y: y
 x + 1 for x in z
 x for x in y if foo
 
+[case testListComprehension]
+a=[x + 1 for x in [1, 2, 3]]
+a=[x for x in y if z]
+
 
 -- Assignment
 -- ----------

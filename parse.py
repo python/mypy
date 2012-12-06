@@ -1145,12 +1145,15 @@ class Parser:
             items[0] = self.parse_generator_expr(items[0])            
         rbracket = self.expect(']')
         if len(items) == 1 and isinstance(items[0], GeneratorExpr):
-            return ListComprehension((GeneratorExpr)items[0])
+             list_comp = ListComprehension((GeneratorExpr)items[0])
+             self.set_repr(list_comp, noderepr.ListComprehensionRepr(lbracket,
+                                                                     rbracket))
+             return list_comp
         else:
-            node = ListExpr(items)
-            self.set_repr(node, noderepr.ListExprRepr(lbracket, commas,
+            expr = ListExpr(items)
+            self.set_repr(expr, noderepr.ListExprRepr(lbracket, commas,
                                                       rbracket, none, none))
-            return node
+            return expr
     
     GeneratorExpr parse_generator_expr(self, Node left_expr):
         for_tok = self.expect('for')

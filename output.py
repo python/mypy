@@ -449,6 +449,11 @@ class OutputVisitor(NodeVisitor):
         if o.condition:
             self.token(r.if_tok)
             self.node(o.condition)
+
+    def visit_list_comprehension(self, o):
+        self.token(o.repr.lbracket)
+        self.node(o.generator)
+        self.token(o.repr.rbracket)
     
     # Types
     

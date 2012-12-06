@@ -333,3 +333,9 @@ class GeneratorExprRepr:
         self.commas = commas
         self.in_tok = in_tok
         self.if_tok = if_tok
+
+
+class ListComprehensionRepr:
+    void __init__(self, any lbracket, any rbracket):
+        self.lbracket = lbracket
+        self.rbracket = rbracket
