@@ -683,6 +683,22 @@ class A: pass
 [builtins fixtures/for.py]
 
 
+-- Generator expressions
+-- ---------------------
+
+
+[case testSimpleGeneratorExpression]
+# The implementation is mostly identical to list comprehensions, so a single 
+# test case is ok.
+Iterator<A> a
+a = x for x in a
+Iterator<B> b
+b = x for x in a # E: Generator has incompatible item type "A"
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+
 -- Special cases
 -- -------------
 

@@ -278,6 +278,9 @@ class MessageBuilder:
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type {}[]'.format(
                                   strip_quotes(self.format_simple(arg_type)))
+        elif callee.name == '<generator>':
+            msg = 'Generator has incompatible item type {}'.format(
+                                              self.format_simple(arg_type))
         else:
             msg = 'Argument {} {}has incompatible type {}'.format(
                 n, target, self.format_simple(arg_type))

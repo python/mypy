@@ -822,6 +822,9 @@ class TypeChecker(NodeVisitor<Typ>):
     Typ visit_list_comprehension(self, ListComprehension e):
         return self.expr_checker.visit_list_comprehension(e)
 
+    Typ visit_generator_expr(self, GeneratorExpr e):
+        return self.expr_checker.visit_generator_expr(e)
+
     Typ visit_temp_node(self, TempNode e):
         return e.typ
 
@@ -834,9 +837,6 @@ class TypeChecker(NodeVisitor<Typ>):
 
     Typ visit_conditional_expr(self, ConditionalExpr e):
         return self.msg.not_implemented('conditional expression', e)
-
-    Typ visit_generator_expr(self, GeneratorExpr e):
-        return self.msg.not_implemented('generator expression', e)
 
     Typ visit_decorator(self, Decorator e):
         return self.msg.not_implemented('decorator', e)

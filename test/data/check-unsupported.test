@@ -9,9 +9,6 @@ a = None if None else None
 [out]
 main, line 1: Feature not implemented yet (conditional expression) 
 
-[case testGeneratorExpression]
-a = (x for x in None) # E: Feature not implemented yet (generator expression) 
-
 [case testDecorator]
 @f  # E: Feature not implemented yet (decorator)
 def f(x): pass

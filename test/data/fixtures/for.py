@@ -8,8 +8,7 @@ class bool: pass
 interface Iterable<t>:
     Iterator<t> __iter__(self)
 
-interface Iterator<t>:
-    Iterator<t> __iter__(self)
+interface Iterator<t>(Iterable<t>):
     t __next__(self)
 
 class list<t>(Iterable<t>):
