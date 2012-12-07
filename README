@@ -19,30 +19,42 @@ Mypy is work in progress; many features are missing and there are
 still bugs.  See 'Development status' below.
 
 
-Quick start
------------
+Requirements
+------------
 
 You need Python 3.x to run mypy.  You can have multiple Python
 versions (2.x and 3.x) installed on the same system without problems.
 
-In Ubuntu, you can install Python 3 like this:
+In Ubuntu, Mint and Debian you can install Python 3 like this:
 
-  $ apt-get install python3
+  $ sudo apt-get install python3
 
-In Windows, download an installer from http://www.python.org/.
+For OS X, Windows and other Linux flavours, packages are available at
 
-OS X: TODO
+  http://www.python.org/getit/
 
+
+Quick Start
+-----------
+  
 There is a separate repository that contains the mypy implementation
 translated to Python.  You need to clone it to actually run mypy:
 
-  $ TODO how to do this
+  $ git clone https://github.com/JukkaL/mypy-py.git
 
-Now you can run a mypy program:
+Now you can run mypy programs:
 
-  $ python3 <path-to-repo>/mypy.py PROGRAM
+  $ python3 <path-to-repo>/mypy-py/mypy.py PROGRAM
 
 Replace 'python3' with your Python 3 interpreter.
+
+The 'mypy-py' repository is only used for running mypy.  For mypy
+development, clone the 'mypy' repository:
+
+  $ git clone https://github.com/JukkaL/mypy.git
+
+Remember to keep the two repos in sync by pulling them both; otherwise
+you might get mysterious errors.
 
 
 Web site and documentation
@@ -51,6 +63,15 @@ Web site and documentation
 Documentation and additional information is available at the web site:
 
   http://www.mypy-lang.org/
+
+
+Running tests
+-------------
+
+To run tests, run the script 'tests.py' in the 'mypy' repository using
+the 'mypy.py' driver.  (We use the .py extension for mypy programs
+even though they are not typically valid Python.  This is handy since
+syntax highlighting in editors etc. typically just works.)
 
 
 Development status
@@ -79,6 +100,7 @@ supported, including these:
  - function overloading does not work properly in all cases, including
    some instances of method overriding
  - no 'dynamic' classes
+ - there is no way to use dynamic typing by default for top-level code
 
 The initial development focus is to support a useful subset of Python
 features.  The next main task is to implement an efficient native
@@ -92,7 +114,7 @@ Issue tracker
 Please report any bugs and enhancement ideas using the mypy issue
 tracker:
 
-  TODO url
+  https://github.com/JukkaL/mypy/issues
 
 
 Help wanted
@@ -107,4 +129,5 @@ There are tasks for contributors of all skill levels.
 License
 -------
 
-Mypy is licensed under the terms of the MIT license (see the file LICENSE).
+Mypy is licensed under the terms of the MIT license (see the file
+LICENSE).
