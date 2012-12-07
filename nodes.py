@@ -1154,8 +1154,8 @@ class TypeInfo(Node, AccessorNode, SymNode):
                             iface,
                             base,
                             ('Interfaces', interfaces),
-                            ('Vars', self.vars.keys()),
-                            ('Methods', self.methods.keys())],
+                            ('Vars', sorted(self.vars.keys())),
+                            ('Methods', sorted(self.methods.keys()))],
                            'TypeInfo')
 
 
