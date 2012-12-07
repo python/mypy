@@ -122,7 +122,7 @@ bool is_stub(str path):
     Currently check if there is a 'stubs' directory component somewhere
     in the path."""
     # TODO more precise check
-    if path == '':
+    if os.path.basename(path) == '':
         return False
     else:
         return os.path.basename(path) == 'stubs' or is_stub(
