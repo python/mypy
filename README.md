@@ -27,7 +27,7 @@ versions (2.x and 3.x) installed on the same system without problems.
 
 In Ubuntu, Mint and Debian you can install Python 3 like this:
 
-  $ sudo apt-get install python3
+    $ sudo apt-get install python3
 
 For OS X, Windows and other Linux flavours, packages are available at
 
@@ -40,18 +40,18 @@ Quick Start
 There is a separate repository that contains the mypy implementation
 translated to Python.  You need to clone it to actually run mypy:
 
-  $ git clone https://github.com/JukkaL/mypy-py.git
+    $ git clone https://github.com/JukkaL/mypy-py.git
 
 Now you can run mypy programs:
 
-  $ python3 <path-to-repo>/mypy-py/mypy.py PROGRAM
+    $ python3 <path-to-repo>/mypy-py/mypy.py PROGRAM
 
 Replace 'python3' with your Python 3 interpreter.
 
 The 'mypy-py' repository is only used for running mypy.  For mypy
 development, clone the 'mypy' repository:
 
-  $ git clone https://github.com/JukkaL/mypy.git
+    $ git clone https://github.com/JukkaL/mypy.git
 
 Remember to keep the two repos in sync by pulling them both; otherwise
 you might get mysterious errors.
