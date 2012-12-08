@@ -262,7 +262,10 @@ class PythonGenerator(OutputVisitor):
                 a.append(self.make_argument_check(
                     self.argument_ref(i, fixed_args, rest_args), t))
             i += 1
-        return ' and '.join(a)
+        if len(a) > 0:
+            return ' and '.join(a)
+        else:
+            return 'True'
     
     def make_argument_count_check(self, f, num_fixed, rest_args):
         return 'len({}) == {}'.format(rest_args, f.min_args - num_fixed)
