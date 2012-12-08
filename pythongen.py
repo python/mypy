@@ -189,7 +189,9 @@ class PythonGenerator(OutputVisitor):
         rest_args = None
         if is_more:
             rest_args = self.make_unique('args', fixed_args)
-            self.string(', *{}'.format(rest_args))
+            if len(fixed_args) > 0:
+                self.string(', ')
+            self.string('*{}'.format(rest_args))
         self.string('):\n' + indent)
         n = 1
         for f in o.items:
