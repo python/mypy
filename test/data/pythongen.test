@@ -456,3 +456,19 @@ class A:
 [out]
 class A:
     def f(self): pass
+
+[case testOverloadWithAnyType]
+class A: pass
+def f(A x): pass
+def f(x): pass
+[out]
+class A: pass
+def f(x):
+    def f1(x): pass
+    def f2(x): pass
+    if isinstance(x, A):
+        return f1(x)
+    elif True:
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
