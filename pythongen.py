@@ -189,7 +189,9 @@ class PythonGenerator(OutputVisitor):
         rest_args = None
         if is_more:
             rest_args = self.make_unique('args', fixed_args)
-            self.string(', *{}'.format(rest_args))
+            if len(fixed_args) > 0:
+                self.string(', ')
+            self.string('*{}'.format(rest_args))
         self.string('):\n' + indent)
         n = 1
         for f in o.items:
@@ -262,7 +264,10 @@ class PythonGenerator(OutputVisitor):
                 a.append(self.make_argument_check(
                     self.argument_ref(i, fixed_args, rest_args), t))
             i += 1
-        return ' and '.join(a)
+        if len(a) > 0:
+            return ' and '.join(a)
+        else:
+            return 'True'
     
     def make_argument_count_check(self, f, num_fixed, rest_args):
         return 'len({}) == {}'.format(rest_args, f.min_args - num_fixed)
