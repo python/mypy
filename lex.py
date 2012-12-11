@@ -633,3 +633,15 @@ class Lexer:
                     else:
                         type = NON_ASCII_CHARACTER_IN_COMMENT
                 self.add_token(LexError('', type))
+
+
+import sys
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print('Usage: lex.py FILE')
+        sys.exit(2)
+    fnam = sys.argv[1]
+    s = open(fnam).read()
+    for t in lex(s):
+        print(t)
