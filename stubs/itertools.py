@@ -1,4 +1,4 @@
-# Stubs for unittest
+# Stubs for itertools
 
 # Based on http://docs.python.org/3.2/library/itertools.html
 
