@@ -1,5 +1,8 @@
-"""Mypy parser. Constructs a parse tree based on a string representing a
-source file. Performs only minimal semantic checks."""
+"""Mypy parser.
+
+Constructs a parse tree (abstract syntax tree) based on a string
+representing a source file. Performs only minimal semantic checks.
+"""
 
 import lex
 from lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
@@ -18,7 +21,7 @@ from nodes import (
 )
 import nodes
 import noderepr
-from errors import Errors
+from errors import Errors, CompileError
 from mtypes import Void, Typ, TypeVars, Callable, Any
 from parsetype import (parse_type, parse_type_variables, parse_type_args,
                        TypeParseError)
@@ -1815,3 +1818,20 @@ Node unwrap_parens(Node node):
         return unwrap_parens(((ParenExpr)node).expr)
     else:
         return node
+
+
+import sys
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print('Usage: parse.py FILE')
+        sys.exit(2)
+    fnam = sys.argv[1]
+    s = open(fnam).read()
+    errors = Errors()
+    try:
+        tree = parse(s, fnam)
+        print(tree)
+    except CompileError as e:
+        for msg in e.messages:
+            print(msg)
