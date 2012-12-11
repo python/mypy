@@ -731,7 +731,7 @@ class B: pass
 -- --------------------
 
 
-[case testGenericArgumentInIntersectionType]
+[case testGenericArgumentInOverload]
 A a, B b
 
 b = f([a]) # E: Incompatible types in assignment
@@ -748,7 +748,7 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
-[case testGenericFunctionAsIntersectionItem]
+[case testGenericFunctionAsOverloadItem]
 A a, B b
 
 b = f([a]) # E: List item 1 has incompatible type "A"
