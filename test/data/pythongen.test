@@ -493,3 +493,19 @@ f<any>()
 [out]
 def f(x): pass
 f()
+
+[case testErasingTypeVariableInOverloadedFunction]
+class A: pass
+void f(A x): pass
+void f<t>(t x): pass
+[out]
+class A: pass
+def f(x):
+    def f1(x): pass
+    def f2(x): pass
+    if isinstance(x, A):
+        return f1(x)
+    elif isinstance(x, object):
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")

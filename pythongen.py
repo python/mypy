@@ -159,6 +159,8 @@ class PythonGenerator(OutputVisitor):
                 return ''.join(a)
         elif isinstance(t, TupleType):
             return 'tuple' # FIX: aliasing?
+        elif isinstance(t, TypeVar):
+            return 'object' # Type variables are erased to "object"
         else:
             raise RuntimeError('Cannot translate type {}'.format(t))
     
