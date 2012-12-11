@@ -149,12 +149,13 @@ STR_CONTEXT = 1
 COMMENT_CONTEXT = 2
 
 
-Token[] lex(str s):
-    """Analyze s and return an array of token objects, the last of
-    which is always Eof.
+Token[] lex(str string):
+    """Analyze string and return an array of token objects.
+
+    The last token is always Eof.
     """
     l = Lexer()
-    l.lex(s)
+    l.lex(string)
     return l.tok
 
 
