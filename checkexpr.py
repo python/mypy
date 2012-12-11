@@ -497,6 +497,19 @@ class ExpressionChecker:
                         callable.bound_vars + bound_vars,
                         callable.line, callable.repr)
     
+    Typ apply_generic_arguments2(self, Overloaded overload, Typ[] types,
+                                 int[] implicit_type_vars, Context context):
+        items = <Callable> []
+        for item in overload.items():
+            applied = self.apply_generic_arguments(
+                item, types, implicit_type_vars, context)
+            if isinstance(applied, Callable):
+                items.append((Callable)applied)
+            else:
+                # There was an error.
+                return Any()
+        return Overloaded(items)
+    
     Typ visit_member_expr(self, MemberExpr e):
         """Visit member expression (of form e.id)."""
         return self.analyse_ordinary_member_access(e, False)
@@ -641,6 +654,12 @@ class ExpressionChecker:
         if isinstance(expr_type, Callable):
             return self.apply_generic_arguments((Callable)expr_type,
                                                 tapp.types, [], tapp)
+        elif isinstance(expr_type, Overloaded):
+            overload = (Overloaded)expr_type
+            items = [c for c in overload.items()
+                     if len(c.variables.items) == len(tapp.types)]
+            return self.apply_generic_arguments2(Overloaded(items),
+                                                 tapp.types, [], tapp)
         else:
             self.chk.fail(messages.INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
             return Any()

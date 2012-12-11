@@ -766,6 +766,17 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
+[case testOverloadedGenericFunction]
+A f(A a): pass
+t f<t>(t a): pass
+A a, B b
+b = f<B>(b)
+a = f<B>(b) # E: Incompatible types in assignment
+f<B>(a) # E: No overload variant of "f" matches argument types
+
+class A: pass
+class B: pass
+
 
 -- For statements (without type inference)
 -- ---------------------------------------
