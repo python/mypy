@@ -114,6 +114,9 @@ class PythonGenerator(OutputVisitor):
     def visit_cast_expr(self, o):
         self.string(o.repr.lparen.pre)
         self.node(o.expr)
+
+    def visit_type_application(self, o):
+        self.node(o.expr)
     
     def visit_for_stmt(self, o):
         r = o.repr

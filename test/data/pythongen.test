@@ -486,3 +486,10 @@ def f(*args):
         return f2()
     else:
         raise TypeError("Invalid argument types")
+
+[case testTypeApplication]
+void f<t>(t x): pass
+f<any>()
+[out]
+def f(x): pass
+f()
