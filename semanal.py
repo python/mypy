@@ -11,7 +11,7 @@ from nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr
+    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr
 )
 from visitor import NodeVisitor
 from errors import Errors
@@ -662,6 +662,9 @@ class SemanticAnal(NodeVisitor):
 
         expr.left_expr.accept(self)
         self.leave()
+
+    void visit_func_expr(self, FuncExpr expr):
+        self.analyse_function(expr)
     
     #
     # Helpers

@@ -252,3 +252,33 @@ MypyFile:1(
       NameExpr(x [l])
       NameExpr(x* [l])
       NameExpr(a [__main__.a]))))
+
+[case testLambda]
+any x
+lambda: x
+[out]
+MypyFile:1(
+  VarDef:1(
+    Var(x)
+    Type(any))
+  ExpressionStmt:2(
+    FuncExpr:2(
+      Block:2(
+        ExpressionStmt:-1(
+          NameExpr(x [__main__.x]))))))
+
+[case testLambdaWithArguments]
+lambda x, y: x + y
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(x)
+        Var(y))
+      Block:1(
+        ExpressionStmt:-1(
+          OpExpr:1(
+            +
+            NameExpr(x [l])
+            NameExpr(y [l])))))))
