@@ -1,0 +1,571 @@
+-- Test cases for exporting node types from the type checker.
+--
+-- Each test case consists of at least two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the type
+-- checker.
+--
+-- The first line of input code should be a regexp in comment that describes
+-- the information to dump (prefix with ##). The regexp is matched against
+-- the following items:
+--
+--   * each name of an expression node
+--   * each type string of a node (e.g. OpExpr)
+--
+-- Lines starting with "--" in this file will be ignored.
+
+
+-- Expressions
+-- -----------
+
+
+[case testConstructorCall]
+A()
+B()
+class A: pass
+class B: pass
+[out]
+CallExpr(1) : A
+NameExpr(1) : def () -> A
+CallExpr(2) : B
+NameExpr(2) : def () -> B
+
+[case testLiterals]
+5
+2.3
+'foo'
+None
+[builtins fixtures/primitives.py]
+[out]
+IntExpr(1) : builtins.int
+FloatExpr(2) : builtins.float
+StrExpr(3) : builtins.str
+NameExpr(4) : None
+
+[case testNameExpression]
+A a
+a # node
+void f(A aa):
+  B b
+  aa # node
+  b  # node
+class A:
+  void g(self):
+    self # node
+  B c
+class B: pass
+[out]
+NameExpr(2) : A
+NameExpr(5) : A
+NameExpr(6) : B
+NameExpr(9) : A
+
+[case testMemberAccess]
+## MemberExpr|CallExpr
+A a
+a.m
+a.f
+a.f()
+class A:
+  A m
+  B f(self): pass
+class B: pass
+[out]
+MemberExpr(3) : A
+MemberExpr(4) : def () -> B
+CallExpr(5) : B
+MemberExpr(5) : def () -> B
+
+[case testCastExpression]
+## CastExpr|[a-z]
+any d
+B b
+(A)d
+(A)b
+(B)b
+class A: pass
+class B(A): pass
+[out]
+CastExpr(4) : A
+NameExpr(4) : any
+CastExpr(5) : A
+NameExpr(5) : B
+CastExpr(6) : B
+NameExpr(6) : B
+
+[case testArithmeticOps]
+## OpExpr
+a = 1 + 2
+1.2 * 3
+2.2 - 3
+1 / 2
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class int:
+  int __add__(self, int x): pass
+  float __truediv__(self, int x): pass
+class float:
+  float __mul__(self, int x): pass
+  float __sub__(self, int x): pass
+[out]
+OpExpr(2) : builtins.int
+OpExpr(3) : builtins.float
+OpExpr(4) : builtins.float
+OpExpr(5) : builtins.float
+
+[case testComparisonOps]
+## OpExpr
+1 == object()
+1 == 2
+2 < 3
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class int:
+  bool __eq__(self, object x): pass
+  bool __lt__(selef, int x): pass
+class bool: pass
+[out]
+OpExpr(2) : builtins.bool
+OpExpr(3) : builtins.bool
+OpExpr(4) : builtins.bool
+
+[case testBooleanOps]
+## OpExpr|UnaryExpr
+bool a
+a and a
+a or a
+not a
+[builtins fixtures/bool.py]
+[out]
+OpExpr(3) : builtins.bool
+OpExpr(4) : builtins.bool
+UnaryExpr(5) : builtins.bool
+
+[case testFunctionCall]
+## CallExpr
+f(
+  A(),
+  B())
+tuple<A, B> f(A a, B b): pass
+class A: pass
+class B: pass
+[builtins fixtures/tuple.py]
+[out]
+CallExpr(2) : tuple<A, B>
+CallExpr(3) : A
+CallExpr(4) : B
+
+
+-- Statements
+-- ----------
+
+
+[case testSimpleAssignment]
+A a
+any b = a
+b = a
+a = b
+
+class A: pass
+[out]
+NameExpr(2) : A
+NameExpr(3) : A
+NameExpr(3) : any
+NameExpr(4) : A
+NameExpr(4) : any
+
+[case testMemberAssignment]
+class A:
+  A a
+  any b
+  void f(self):
+    self.b = self.a
+    self.a.a = self.b
+[out]
+MemberExpr(5) : A
+MemberExpr(5) : any
+NameExpr(5) : A
+NameExpr(5) : A
+MemberExpr(6) : A
+MemberExpr(6) : A
+MemberExpr(6) : any
+NameExpr(6) : A
+NameExpr(6) : A
+
+[case testIf]
+bool a
+if a:
+  None
+elif not a:
+  None
+[builtins fixtures/bool.py]
+[out]
+NameExpr(2) : builtins.bool
+NameExpr(3) : None
+NameExpr(4) : builtins.bool
+UnaryExpr(4) : builtins.bool
+NameExpr(5) : None
+
+[case testWhile]
+bool a
+while a:
+  None
+[builtins fixtures/bool.py]
+[out]
+NameExpr(2) : builtins.bool
+NameExpr(3) : None
+
+
+-- Basic generics
+-- --------------
+
+
+[case testImplicitBoundTypeVarsForMethod]
+## MemberExpr
+class A<T>:
+  T f(self): pass
+class B: pass
+void g():
+  A<B> a
+  f = a.f
+[out]
+MemberExpr(7) : def [1:B] () -> B
+
+[case testImplicitBoundTypeVarsForConstructor]
+## CallExpr|TypeApplication|NameExpr
+A<B>()
+A<any>()
+class A<T>:
+  void __init__(self): pass
+class B: pass
+[out]
+CallExpr(2) : A<B>
+NameExpr(2) : def <T> () -> A<T`-1>
+TypeApplication(2) : def [-1:B] () -> A<B>
+CallExpr(3) : A<any>
+NameExpr(3) : def <T> () -> A<T`-1>
+TypeApplication(3) : def [-1:any] () -> A<any>
+
+[case testImplicitBoundTypeVarsForSelfMethodReference]
+class A<T>:
+  T f(self):
+    self.f()
+[out]
+CallExpr(3) : T`1
+MemberExpr(3) : def [1:T`1] () -> T`1
+NameExpr(3) : A<T`1>
+
+[case testGenericFunctionCallWithTypeApp]
+## CallExpr|TypeApplication|NameExpr
+f<A>(A())
+f<any>(A())
+tuple<T, T> f<T>(T a): pass
+class A: pass
+[builtins fixtures/tuple.py]
+[out]
+CallExpr(2) : A
+CallExpr(2) : tuple<A, A>
+NameExpr(2) : def () -> A
+NameExpr(2) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+TypeApplication(2) : def [-1:A] (A a) -> tuple<A, A>
+CallExpr(3) : A
+CallExpr(3) : tuple<any, any>
+NameExpr(3) : def () -> A
+NameExpr(3) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
+
+[case testGenericMethodCallWithTypeApp]
+## CallExpr|MemberExpr|TypeApplication
+a.f<A>(a)
+a.f<any>(a)
+class A:
+  tuple<T, T> f<T>(self, T a): pass
+A a
+[builtins fixtures/tuple.py]
+[out]
+CallExpr(2) : tuple<A, A>
+MemberExpr(2) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+TypeApplication(2) : def [-1:A] (A a) -> tuple<A, A>
+CallExpr(3) : tuple<any, any>
+MemberExpr(3) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
+
+[case testGenericMethodCallInGenericTypeWithTypeApp]
+## CallExpr|MemberExpr|TypeApplication
+a.f<B>(b)
+a.f<any>(b)
+class A<T>:
+  tuple<T, S> f<S>(self, S a): pass
+class B: pass
+class C: pass
+A<C> a
+B b
+[builtins fixtures/tuple.py]
+[out]
+CallExpr(2) : tuple<C, B>
+MemberExpr(2) : def [1:C] <S> (S`-1 a) -> tuple<C, S`-1>
+TypeApplication(2) : def [1:C, -1:B] (B a) -> tuple<C, B>
+CallExpr(3) : tuple<C, any>
+MemberExpr(3) : def [1:C] <S> (S`-1 a) -> tuple<C, S`-1>
+TypeApplication(3) : def [1:C, -1:any] (any a) -> tuple<C, any>
+
+[case testGenericFunctionWithTwoArgsAndTypeApp]
+## CallExpr|TypeApplication
+f<A, any>()
+tuple<S, T> f<S, T>(): pass
+class A: pass
+[builtins fixtures/tuple.py]
+[out]
+CallExpr(2) : tuple<A, any>
+TypeApplication(2) : def [-1:A, -2:any] () -> tuple<A, any>
+
+[case testGenericTypeVariableInference]
+A(A(B()))
+class A<T>:
+  void __init__(self, T a): pass
+class B: pass
+[out]
+CallExpr(1) : A<A<B>>
+CallExpr(1) : A<B>
+CallExpr(1) : B
+NameExpr(1) : def <T> (T`-1 a) -> A<T`-1>
+NameExpr(1) : def <T> (T`-1 a) -> A<T`-1>
+NameExpr(1) : def () -> B
+-- TODO export always bound type variables
+
+
+-- Generic inheritance
+-- -------------------
+
+
+[case testInheritedMethodReferenceWithGenericInheritance]
+class A<T>:
+  void f(self, T a): pass
+class B(A<C>):
+  void g(self, C c):
+    self.f(c)
+class C: pass
+[out]
+CallExpr(5) : void
+MemberExpr(5) : def [1:C] (C a)
+NameExpr(5) : C
+NameExpr(5) : B
+
+[case testInheritedMethodReferenceWithGenericSubclass]
+class A<S, T>:
+  void f(self, C a): pass
+class B<T>(A<C, T>):
+  void g(self, C c):
+    self.f(c)
+class C: pass
+[out]
+CallExpr(5) : void
+MemberExpr(5) : def [1:C, 2:T`1] (C a)
+NameExpr(5) : C
+NameExpr(5) : B<T`1>
+
+[case testExternalReferenceWithGenericInheritance]
+class A<T>:
+  void f(self, T a): pass
+class B(A<C>): pass
+class C: pass
+B b
+C c
+b.f(c)
+[out]
+CallExpr(7) : void
+MemberExpr(7) : def [1:C] (C a)
+NameExpr(7) : B
+NameExpr(7) : C
+
+
+-- Implicit dynamic types
+-- ----------------------
+
+
+[case testDynamicallyTypedFunction]
+def f(x):
+  y = x + o
+  z = o
+  z
+object o
+[out]
+NameExpr(2) : builtins.object
+NameExpr(2) : any
+OpExpr(2) : any
+NameExpr(3) : builtins.object
+NameExpr(4) : any
+
+[case testDynamicallyTypedMethod]
+class A:
+  def f(self, x):
+    y = o
+    x
+    y
+object o
+[out]
+NameExpr(3) : builtins.object
+NameExpr(4) : any
+NameExpr(5) : any
+
+[case testDynamicallyTypedConstructor]
+class A:
+  def __init__(self, x):
+    y = o
+    x
+    y
+object o
+[out]
+NameExpr(3) : builtins.object
+NameExpr(4) : any
+NameExpr(5) : any
+
+[case testCallInDynamicallyTypedFunction]
+def f():
+  g(o)
+object g(object a): pass
+object o
+[out]
+CallExpr(2) : builtins.object
+NameExpr(2) : def (builtins.object a) -> builtins.object
+NameExpr(2) : builtins.object
+
+[case testExpressionInDynamicallyTypedFn]
+def f():
+  x = None
+  x.f()
+[out]
+NameExpr(2) : None
+CallExpr(3) : any
+MemberExpr(3) : any
+NameExpr(3) : any
+
+[case testGenericCall-skip]
+void f():
+  A<B> a1 = A(b)
+  A<object> a2 = A(b)
+class A<T>:
+  void __init__(self, T a): pass
+class B: pass
+B b
+[out]
+CallExpr(2) : A<B>
+NameExpr(2) : def [1:B] (B a) -> A<B>
+NameExpr(2) : B
+CallExpr(3) : A<builtins.object>
+NameExpr(3) : def [1:builtins.object] (builtins.object a) -> A<builtins.object>
+NameExpr(3) : B
+
+[case testGenericCallInDynamicallyTypedFunction-skip]
+def f():
+  A()
+class A<T>: pass
+[out]
+CallExpr(2) : A<any>
+NameExpr(2) : def [1:any] () -> A<any>
+
+
+-- Generic types and type inference
+-- --------------------------------
+
+
+[case testInferenceInArgumentContext]
+## CallExpr
+f(g())
+f(h(b))
+f(h(c))
+
+B b
+C c
+
+void f(A<B> a): pass
+
+A<T> g<T>(): pass
+A<T> h<T>(T a): pass
+
+class A<T>: pass
+class B: pass
+class C(B): pass
+[out]
+CallExpr(2) : void
+CallExpr(2) : A<B>
+CallExpr(3) : void
+CallExpr(3) : A<B>
+CallExpr(4) : void
+CallExpr(4) : A<B>
+
+[case testInferGenericTypeForLocalVariable]
+void f():
+  a = A(b)
+  a
+  a2, a3 = A(b), A(c)
+  a2
+  a3
+
+B b
+C c
+class A<T>:
+  void __init__(self, T x): pass
+class B: pass
+class C: pass
+[out]
+CallExpr(2) : A<B>
+NameExpr(2) : def <T> (T`-1 x) -> A<T`-1>
+NameExpr(2) : B
+NameExpr(3) : A<B>
+CallExpr(4) : A<B>
+CallExpr(4) : A<C>
+NameExpr(4) : def <T> (T`-1 x) -> A<T`-1>
+NameExpr(4) : def <T> (T`-1 x) -> A<T`-1>
+NameExpr(4) : B
+NameExpr(4) : C
+TupleExpr(4) : tuple<A<B>, A<C>>
+NameExpr(5) : A<B>
+NameExpr(6) : A<C>
+
+[case testNestedGenericCalls]
+void h():
+  g(f(c))
+
+C c
+
+A<T> f<T>(T a): pass
+
+B<S> g<S>(S a): pass
+
+class A<T>: pass
+class B<T>: pass
+class C: pass
+[out]
+CallExpr(2) : A<C>
+CallExpr(2) : B<A<C>>
+NameExpr(2) : C
+NameExpr(2) : def <T> (T`-1 a) -> A<T`-1>
+NameExpr(2) : def <S> (S`-1 a) -> B<S`-1>
+
+
+-- TODO
+--
+-- test expressions
+--   list literal
+--   tuple literal
+--   unary minus
+--   indexing
+--   super expression
+--   lambda
+--   list comprehension
+--   generator expression
+--   type application
+--     with list
+--     with dict
+-- overloads
+-- other things
+--   type inference
+--   default argument value
+--   for loop variable
+--   exception variable
+--   varargs
+-- generics
+--   explicit types

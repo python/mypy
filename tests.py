@@ -9,6 +9,7 @@ import testlex
 import testparse
 import testsemanal
 import testcheck
+import testtypegen
 import testoutput
 import testpythongen
 
@@ -30,6 +31,7 @@ class AllSuite(Suite):
         self.test_semanal_symtable = testsemanal.SemAnalSymtableSuite()
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
         self.test_check = testcheck.TypeCheckSuite()
+        self.test_typegen = testtypegen.TypeExportSuite()
         self.test_output = testoutput.OutputSuite()
         self.test_pythongen = testpythongen.PythonGenerationSuite()
         super().__init__()
