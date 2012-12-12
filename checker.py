@@ -495,8 +495,9 @@ class TypeChecker(NodeVisitor<Typ>):
                     v.typ = Annotation(init_type, -1)
     
     bool is_valid_inferred_type(self, Typ typ):
-        """Is an inferred type invalid (e.g. the nil type or a type with a nil
-        component)?
+        """Is an inferred type invalid?
+
+        Examples include the None type or a type with a None component.
         """
         if is_same_type(typ, NoneTyp()):
             return False

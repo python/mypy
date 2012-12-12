@@ -124,8 +124,8 @@ class SubtypingSuite(Suite):
     #  * type variables
     #  * tuple types
     #  * void type
-    #  * nil type
-    #  * dynamic type
+    #  * None type
+    #  * any type
     #  * generic function types
     
     def assert_subtype(self, s, t):

@@ -143,7 +143,7 @@ class MessageBuilder:
         elif isinstance(typ, Any):
             return '"any"'
         elif typ is None:
-            raise RuntimeError('Type is nil')
+            raise RuntimeError('Type is None')
         else:
             # No simple representation for this type that would convey very
             # useful information. No need to mention the type explicitly in a

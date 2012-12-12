@@ -117,9 +117,9 @@ tuple<Typ[], Typ> expand_caller_var_args(Typ[] arg_types,
     accepts.
     
     Return (fixed argument types, type of the rest of the arguments). Return
-    (nil, nil) if the last (vararg) argument had an invalid type. If the vararg
-    argument was not an array (nor dynamic), the last item in the returned
-    tuple is nil.
+    (None, None) if the last (vararg) argument had an invalid type. If the
+    vararg argument was not an array (nor dynamic), the last item in the
+    returned tuple is None.
     """
     if isinstance(arg_types[-1], TupleType):
         return arg_types[:-1] + ((TupleType)arg_types[-1]).items, None

@@ -161,9 +161,9 @@ class Callable(FunctionLike):
     
     # Implicit bound values of type variables. These can be either for
     # class type variables or for generic function type variables.
-    # For example, the method 'append' of Array<Int> has implicit value Int for
-    # the Array type variable; the explicit method type is just
-    # 'def append(Int)', without any type variable. Implicit values are needed
+    # For example, the method 'append' of int[] has implicit value 'int' for
+    # the list type variable; the explicit method type is just
+    # 'void append(int)', without any type variable. Implicit values are needed
     # for runtime type checking, but they do not affect static type checking.
     #
     # All class type arguments must be stored first, ordered by id,

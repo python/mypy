@@ -251,8 +251,8 @@ class JoinSuite(Suite):
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.void, self.fx.err)
     
-    def test_nil(self):
-        # Any type t joined with nil results in t.
+    def test_none(self):
+        # Any type t joined with None results in t.
         for t in [NoneTyp(), self.fx.a, self.fx.o, UnboundType('x'),
                   self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b), self.fx.dyn]:
@@ -479,13 +479,13 @@ class MeetSuite(Suite):
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.void, self.fx.err)
     
-    def test_nil(self):
+    def test_none(self):
         self.assert_meet(NoneTyp(), NoneTyp(), NoneTyp())
         
         self.assert_meet(NoneTyp(), self.fx.dyn, self.fx.dyn)
         self.assert_meet(NoneTyp(), self.fx.void, self.fx.err)
         
-        # Any type t joined with nil results in nil, unless t is dynamic or
+        # Any type t joined with None results in None, unless t is any or
         # void.
         for t in [self.fx.a, self.fx.o, UnboundType('x'), self.fx.t,
                   self.tuple(), self.callable(self.fx.a, self.fx.b)]:

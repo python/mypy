@@ -456,7 +456,7 @@ class ExpressionChecker:
                                 int[] implicit_type_vars, Context context):
         """Apply generic type arguments to a callable type.
 
-        For example, applying int to 'def <T> (T) -> T' results in
+        For example, applying [int] to 'def <T> (T) -> T' results in
         'def [int] (int) -> int'. Here '[int]' is an implicit bound type
         variable.
         
@@ -464,7 +464,7 @@ class ExpressionChecker:
         """
         TypeVarDef[] tvars = []
         for v in implicit_type_vars:
-            # The name of type variable is not significant, so nil is fine.
+            # The name of type variable is not significant, so None is fine.
             tvars.append(TypeVarDef(None, v))
         tvars.extend(callable.variables.items)
         
@@ -473,7 +473,7 @@ class ExpressionChecker:
                                                    context)
             return Any()
         
-        # Create a map from type variable name to target type.
+        # Create a map from type variable id to target type.
         dict<int, Typ> map = {}
         for i in range(len(tvars)):
             if types[i]:
