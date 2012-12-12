@@ -1,6 +1,6 @@
 from mtypes import (
     Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
-    Instance, TupleType
+    Instance, TupleType, Overloaded
 )
 from expandtype import expand_caller_var_args
 from subtypes import map_instance_to_supertype
@@ -190,8 +190,22 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
             res.extend(infer_constraints(template.ret_type, Any(),
                                          self.direction))
             return res
+        elif isinstance(self.actual, Overloaded):
+            return self.infer_against_overloaded((Overloaded)self.actual,
+                                                 template)
         else:
             return []
+
+    Constraint[] infer_against_overloaded(self, Overloaded overloaded,
+                                          Callable template):
+        # Create constraints by matching an overloaded type against a template.
+        # This is tricky to do in general. We cheat by only matching against
+        # the first overload item, and by only matching the return type. This
+        # seems to work somewhat well, but we should really use a more
+        # reliable technique.
+        item = overloaded.items()[0]
+        return infer_constraints(template.ret_type, item.ret_type,
+                                 self.direction)
     
     Constraint[] visit_tuple_type(self, TupleType template):
         actual = self.actual

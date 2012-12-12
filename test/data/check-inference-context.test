@@ -548,3 +548,22 @@ main, line 1: Cannot infer type of lambda
 main, line 1: Incompatible types in assignment
 main, line 2: Cannot infer type of lambda
 main, line 2: Incompatible types in assignment
+
+
+-- Overloads + generic functions
+-- -----------------------------
+
+
+[case testMapWithOverloadedFunc]
+s[] map<t, s>(func<s(t)> f, t[] seq): pass
+
+B s(object o): pass
+B s(A o, any x=None): pass
+
+class A: pass
+class B: pass
+
+m = map(s, [A()])
+B[] b = m
+A[] a = m # E: Incompatible types in assignment
+[builtins fixtures/list.py]
