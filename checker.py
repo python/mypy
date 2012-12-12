@@ -129,7 +129,7 @@ class TypeChecker(NodeVisitor<Typ>):
     
     Typ visit_var_def(self, VarDef defn):
         """Type check a variable definition (of any kind: local,
-        member or local)."""
+        member or global)."""
         # Type check initializer.
         if defn.init:
             # There is an initializer.
@@ -575,7 +575,7 @@ class TypeChecker(NodeVisitor<Typ>):
                           Node rvalue, Context context,
                           str msg=messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT):
         if lvalue_type:
-            rvalue_type = self.accept(rvalue, lvalue_type)      
+            rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg)
         elif index_lvalue:
             self.check_indexed_assignment(index_lvalue, rvalue, context)
