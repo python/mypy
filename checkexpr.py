@@ -770,8 +770,9 @@ class ExpressionChecker:
             ret_type = self.chk.type_map[e.expr()]
             return replace_callable_return_type((Callable)e.typ.typ, ret_type)
         else:
-            # TODO perhaps we can infer a better type?
-            return Any()
+            # Use default type for lambda.
+            # TODO infer return type?
+            return function_type(e)
 
     Callable infer_lambda_type(self, FuncExpr e):
         """Try to infer lambda expression type using context.
@@ -789,8 +790,12 @@ class ExpressionChecker:
         
         callable_ctx = (Callable)ctx
         
+        if callable_ctx.arg_kinds != e.arg_kinds:
+            # Incompatible context; cannot use it to infer types.
+            self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
+            return None
+        
         if not e.typ:
-            # TODO check that the context is compatible 
             return callable_ctx
         else:
             # The lambda already has a type; only infer the return type.

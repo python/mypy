@@ -44,7 +44,8 @@ NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
 ITERABLE_EXPECTED = 'Iterable expected'
 INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
 INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
-INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  
+INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
+CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
 
 
 class MessageBuilder:

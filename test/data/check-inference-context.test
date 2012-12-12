@@ -538,3 +538,13 @@ f = lambda A x: [B()]  # E: List item 1 has incompatible type "B"
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
+
+[case testInvalidContextForLambda]
+func<A()> f = lambda x: A()
+func<A(A)> f2 = lambda: A()
+class A: pass
+[out]
+main, line 1: Cannot infer type of lambda
+main, line 1: Incompatible types in assignment
+main, line 2: Cannot infer type of lambda
+main, line 2: Incompatible types in assignment
