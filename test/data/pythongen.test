@@ -84,15 +84,17 @@ t f<t>(t x): return x
 def f(x): return x
 
 [case testLambda]
-lambda foo<bar> z: z
-lambda int n, str s: n * s
+lambda A<any> z: z
+lambda any n, object s: n * s
 lambda n: n
-lambda n, m: foo
+lambda n, m: object
+class A<t>: pass
 [out]
 lambda z: z
 lambda n, s: n * s
 lambda n: n
-lambda n, m: foo
+lambda n, m: object
+class A: pass
 
 [case testSimpleOverloadedFunction]
 void f(A a):

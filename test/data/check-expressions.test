@@ -639,12 +639,29 @@ a[:None]
 [builtins fixtures/slice.py]
 
 
--- Lambda
--- ------
+-- Lambdas
+-- -------
 
 
 [case testTrivialLambda]
 func<object(object)> f = lambda m: m
+
+[case testLambdaBodyWithExplicitArgumentType]
+lambda A a: a.x
+lambda object a: a.x # E: "object" has no member "x"
+class A:
+  object x
+
+[case testLambdaWithExplicitArgumentType]
+func<B(A)> f
+A a, B b
+f = lambda A a: b
+func<A(A)> f2
+func<B(B)> f3
+f2 = lambda A a: b # E: Incompatible return value type
+f3 = lambda A a: b # E: Incompatible types in assignment
+class A: pass
+class B: pass
 
 
 -- List comprehensions

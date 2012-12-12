@@ -1472,7 +1472,7 @@ class Parser:
         names = <str> []
         for arg in args:
             names.append(arg.name())
-        
+
         typ = self.build_func_annotation(None, arg_types, kinds, names,
                                          TypeVars([]), lambda_tok.line)
         
@@ -1480,7 +1480,7 @@ class Parser:
         
         expr = self.parse_expression(precedence[','])
         
-        body = Block([ExpressionStmt(expr)])
+        body = Block([ReturnStmt(expr).set_line(lambda_tok)])
         body.set_line(colon)
         
         node = FuncExpr(args, kinds, init, body, typ)

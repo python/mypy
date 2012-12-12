@@ -1509,14 +1509,14 @@ MypyFile:1(
   ExpressionStmt:1(
     FuncExpr:1(
       Block:1(
-        ExpressionStmt:-1(
+        ReturnStmt:1(
           IntExpr(1)))))
   ExpressionStmt:2(
     FuncExpr:2(
       Args(
         Var(x))
       Block:2(
-        ExpressionStmt:-1(
+        ReturnStmt:2(
           OpExpr:2(
             +
             NameExpr(y)
@@ -1527,7 +1527,7 @@ MypyFile:1(
         Var(x)
         Var(y))
       Block:3(
-        ExpressionStmt:-1(
+        ReturnStmt:3(
           IntExpr(1))))))
 
 [case testComplexLambda]
@@ -1545,7 +1545,7 @@ MypyFile:1(
             NameExpr(x))
           IntExpr(2)))
       Block:1(
-        ExpressionStmt:-1(
+        ReturnStmt:1(
           NameExpr(x)))))
   ExpressionStmt:2(
     FuncExpr:2(
@@ -1553,7 +1553,7 @@ MypyFile:1(
         Var(x))
       Type:2(def (int? x) -> any)
       Block:2(
-        ExpressionStmt:-1(
+        ReturnStmt:2(
           NameExpr(y))))))
 
 [case testLambdaPrecedence]
@@ -1566,7 +1566,7 @@ MypyFile:1(
         Args(
           Var(x))
         Block:1(
-          ExpressionStmt:-1(
+          ReturnStmt:1(
             IntExpr(1))))
       IntExpr(2))))
 

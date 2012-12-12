@@ -774,7 +774,13 @@ class SuperExpr(Node):
 
 
 class FuncExpr(FuncItem):
-    """Anonymous function expression"""
+    """Lambda expression"""
+    
+    Node expr(self):
+        """Return the expression (the body) of the lambda."""
+        ret = (ReturnStmt)self.body.body[0]
+        return ret.expr
+    
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_func_expr(self)
 

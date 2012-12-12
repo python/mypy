@@ -762,8 +762,33 @@ class ExpressionChecker:
     
     Typ visit_func_expr(self, FuncExpr e):
         """Type check lambda expression."""
-        # TODO implement properly
-        return Any()
+        inferred_type = self.infer_lambda_type(e)
+        self.chk.check_func_item(e, type_override=inferred_type)
+        if inferred_type:
+            return inferred_type
+        elif e.typ:
+            ret_type = self.chk.type_map[e.expr()]
+            return replace_callable_return_type((Callable)e.typ.typ, ret_type)
+        else:
+            # TODO perhaps we can infer a better type?
+            return Any()
+
+    Callable infer_lambda_type(self, FuncExpr e):
+        """Try to infer lambda expression type using context.
+
+        Return None if could not infer type.
+        """
+        ctx = self.chk.type_context[-1]
+        if not ctx or not isinstance(ctx, Callable):
+            return None
+        callable_ctx = (Callable)ctx
+        if not e.typ:
+            # TODO check that the context is compatible 
+            return callable_ctx
+        else:
+            # The lambda already has a type; only infer the return type.
+            return replace_callable_return_type((Callable)e.typ.typ,
+                                                callable_ctx.ret_type)
     
     Typ visit_super_expr(self, SuperExpr e):
         """Type check a super expression (non-lvalue)."""
@@ -1066,3 +1091,16 @@ bool is_duplicate_mapping(int[] mapping, int[] actual_kinds):
         len(mapping) == 2 and
         actual_kinds[mapping[0]] == nodes.ARG_STAR and
         actual_kinds[mapping[1]] == nodes.ARG_STAR2)
+
+
+Callable replace_callable_return_type(Callable c, Typ new_ret_type):
+    """Return a copy of a callable type with a different return type."""
+    return Callable(c.arg_types,
+                    c.arg_kinds,
+                    c.arg_names,
+                    new_ret_type,
+                    c.is_type_obj(),
+                    c.name,
+                    c.variables,
+                    c.bound_vars,
+                    c.line)

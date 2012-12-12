@@ -178,19 +178,21 @@ class TypeChecker(NodeVisitor<Typ>):
         if defn.info:
             self.check_method_override(defn)
     
-    Typ check_func_item(self, FuncItem defn):
+    Typ check_func_item(self, FuncItem defn, Callable type_override=None):
         # We may be checking a function definition or an anonymous function. In
         # the first case, set up another reference with the precise type.
         FuncDef fdef = None
         if isinstance(defn, FuncDef):
             fdef = (FuncDef)defn
         
-        self.dynamic_funcs.append(defn.typ is None)
+        self.dynamic_funcs.append(defn.typ is None and not type_override)
         
         if fdef:
             self.errors.set_function(fdef.name())
         
         typ = function_type(defn)
+        if type_override:
+            typ = type_override
         if isinstance(typ, Callable):
             self.check_func_def(defn, typ)
         else:
@@ -223,7 +225,7 @@ class TypeChecker(NodeVisitor<Typ>):
         # Push return type.
         self.return_types.append(((Callable)typ).ret_type)
         
-        # Add arguments to symbol table.
+        # Store argument types.
         ctype = (Callable)typ
         nargs = len(defn.args)
         for i in range(len(ctype.arg_types)):

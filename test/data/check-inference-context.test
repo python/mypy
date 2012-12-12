@@ -491,3 +491,24 @@ l = f<object>([]) # E: Incompatible types in assignment
 class set<t>: pass
 set<t> f<t>(Iterable<t> iterable): pass
 [builtins fixtures/for.py]
+
+
+-- Lambdas
+-- -------
+
+
+[case testInferLambdaArgumentTypeUsingContext]
+func<A(B)> f
+f = lambda x: x.o
+f = lambda x: x.x # E: "B" has no member "x"
+class A: pass
+class B:
+  A o
+
+[case testInferLambdaReturnTypeUsingContext]
+func<A[]()> f
+f = lambda: []
+f = lambda: [B()]  # E: List item 1 has incompatible type "B"
+class A: pass
+class B: pass
+[builtins fixtures/list.py]

@@ -264,7 +264,7 @@ MypyFile:1(
   ExpressionStmt:2(
     FuncExpr:2(
       Block:2(
-        ExpressionStmt:-1(
+        ReturnStmt:2(
           NameExpr(x [__main__.x]))))))
 
 [case testLambdaWithArguments]
@@ -277,8 +277,25 @@ MypyFile:1(
         Var(x)
         Var(y))
       Block:1(
-        ExpressionStmt:-1(
+        ReturnStmt:1(
           OpExpr:1(
             +
             NameExpr(x [l])
             NameExpr(y [l])))))))
+
+[case testLambdaWithSignature]
+lambda A x: x
+class A: pass
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(x))
+      Type:1(def (__main__.A x) -> any)
+      Block:1(
+        ReturnStmt:1(
+          NameExpr(x [l])))))
+  TypeDef:2(
+    A
+    PassStmt:2()))
