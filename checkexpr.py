@@ -653,17 +653,20 @@ class ExpressionChecker:
         """Type check a type application (expr<...>)."""
         expr_type = self.accept(tapp.expr)
         if isinstance(expr_type, Callable):
-            return self.apply_generic_arguments((Callable)expr_type,
-                                                tapp.types, [], tapp)
+            new_type = self.apply_generic_arguments((Callable)expr_type,
+                                                    tapp.types, [], tapp)
         elif isinstance(expr_type, Overloaded):
             overload = (Overloaded)expr_type
+            # Only target items with the right number of generic type args.
             items = [c for c in overload.items()
                      if len(c.variables.items) == len(tapp.types)]
-            return self.apply_generic_arguments2(Overloaded(items),
-                                                 tapp.types, [], tapp)
+            new_type = self.apply_generic_arguments2(Overloaded(items),
+                                                     tapp.types, [], tapp)
         else:
             self.chk.fail(messages.INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
-            return Any()
+            new_type = Any()
+        self.chk.type_map[tapp.expr] = new_type
+        return new_type
     
     Typ visit_list_expr(self, ListExpr e):
         """Type check a list expression [...] or <t> [...]."""

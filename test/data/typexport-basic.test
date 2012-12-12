@@ -242,10 +242,10 @@ class A<T>:
 class B: pass
 [out]
 CallExpr(2) : A<B>
-NameExpr(2) : def <T> () -> A<T`-1>
+NameExpr(2) : def [-1:B] () -> A<B>
 TypeApplication(2) : def [-1:B] () -> A<B>
 CallExpr(3) : A<any>
-NameExpr(3) : def <T> () -> A<T`-1>
+NameExpr(3) : def [-1:any] () -> A<any>
 TypeApplication(3) : def [-1:any] () -> A<any>
 
 [case testImplicitBoundTypeVarsForSelfMethodReference]
@@ -268,12 +268,12 @@ class A: pass
 CallExpr(2) : A
 CallExpr(2) : tuple<A, A>
 NameExpr(2) : def () -> A
-NameExpr(2) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+NameExpr(2) : def [-1:A] (A a) -> tuple<A, A>
 TypeApplication(2) : def [-1:A] (A a) -> tuple<A, A>
 CallExpr(3) : A
 CallExpr(3) : tuple<any, any>
 NameExpr(3) : def () -> A
-NameExpr(3) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+NameExpr(3) : def [-1:any] (any a) -> tuple<any, any>
 TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
 
 [case testGenericMethodCallWithTypeApp]
@@ -286,10 +286,10 @@ A a
 [builtins fixtures/tuple.py]
 [out]
 CallExpr(2) : tuple<A, A>
-MemberExpr(2) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+MemberExpr(2) : def [-1:A] (A a) -> tuple<A, A>
 TypeApplication(2) : def [-1:A] (A a) -> tuple<A, A>
 CallExpr(3) : tuple<any, any>
-MemberExpr(3) : def <T> (T`-1 a) -> tuple<T`-1, T`-1>
+MemberExpr(3) : def [-1:any] (any a) -> tuple<any, any>
 TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
 
 [case testGenericMethodCallInGenericTypeWithTypeApp]
@@ -305,10 +305,10 @@ B b
 [builtins fixtures/tuple.py]
 [out]
 CallExpr(2) : tuple<C, B>
-MemberExpr(2) : def [1:C] <S> (S`-1 a) -> tuple<C, S`-1>
+MemberExpr(2) : def [1:C, -1:B] (B a) -> tuple<C, B>
 TypeApplication(2) : def [1:C, -1:B] (B a) -> tuple<C, B>
 CallExpr(3) : tuple<C, any>
-MemberExpr(3) : def [1:C] <S> (S`-1 a) -> tuple<C, S`-1>
+MemberExpr(3) : def [1:C, -1:any] (any a) -> tuple<C, any>
 TypeApplication(3) : def [1:C, -1:any] (any a) -> tuple<C, any>
 
 [case testGenericFunctionWithTwoArgsAndTypeApp]
