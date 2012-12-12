@@ -43,7 +43,8 @@ class TypeExportSuite(Suite):
                                 and re.match(mask, k.name))):
                         keys.append(k)
             for key in sorted(keys,
-                              key=lambda n: (n.line, short_type(n), str(n))):
+                              key=lambda n: (n.line, short_type(n),
+                                             str(n) + str(map[n]))):
                 ts = str(map[key]).replace('*', '') # Remove erased tags
                 ts = ts.replace('__main__.', '')
                 a.append('{}({}) : {}'.format(short_type(key), key.line, ts))

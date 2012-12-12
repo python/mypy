@@ -91,18 +91,18 @@ class ExpressionChecker:
         # even if the type is known (in a dynamically typed function). This
         # way we get a more precise callee in dynamically typed functions.
         callee_type = self.chk.type_map[e.callee]
-        self.chk.store_type(e.callee, callee_type)
         return self.check_call_expr_with_callee_type(callee_type, e)
     
     Typ check_call_expr_with_callee_type(self, Typ callee_type, CallExpr e):
         """Type check call expression. The given callee type overrides
         the type of the callee expression.
-        """        
+        """
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
-                               e.arg_names)
+                               e.arg_names, callable_node=e.callee)
     
     Typ check_call(self, Typ callee, Node[] args, int[] arg_kinds,
-                   Context context, str[] arg_names=None):
+                   Context context, str[] arg_names=None,
+                   Node callable_node=None):
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
@@ -112,6 +112,9 @@ class ExpressionChecker:
           args: actual argument expressions
           arg_kinds: contains nodes.ARG_* constant for each argument in args
             describing whether the argument is positional, *arg, etc.
+          arg_names: names of arguments (optional)
+          callable_node: associate the inferred callable type to this node,
+            if specified
         """
         is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, Callable):
@@ -136,7 +139,9 @@ class ExpressionChecker:
             
             self.check_argument_types(arg_types, arg_kinds, callable,
                                       formal_to_actual, context)
-            
+            if callable_node:
+                # Store the inferred callable type.
+                self.chk.store_type(callable_node, callable)
             return callable.ret_type
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again

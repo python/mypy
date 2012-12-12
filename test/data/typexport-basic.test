@@ -330,10 +330,9 @@ class B: pass
 CallExpr(1) : A<A<B>>
 CallExpr(1) : A<B>
 CallExpr(1) : B
-NameExpr(1) : def <T> (T`-1 a) -> A<T`-1>
-NameExpr(1) : def <T> (T`-1 a) -> A<T`-1>
+NameExpr(1) : def [-1:A<B>] (A<B> a) -> A<A<B>>
+NameExpr(1) : def [-1:B] (B a) -> A<B>
 NameExpr(1) : def () -> B
--- TODO export always bound type variables
 
 
 -- Generic inheritance
@@ -442,7 +441,7 @@ CallExpr(3) : any
 MemberExpr(3) : any
 NameExpr(3) : any
 
-[case testGenericCall-skip]
+[case testGenericCall]
 void f():
   A<B> a1 = A(b)
   A<object> a2 = A(b)
@@ -452,10 +451,10 @@ class B: pass
 B b
 [out]
 CallExpr(2) : A<B>
-NameExpr(2) : def [1:B] (B a) -> A<B>
+NameExpr(2) : def [-1:B] (B a) -> A<B>
 NameExpr(2) : B
 CallExpr(3) : A<builtins.object>
-NameExpr(3) : def [1:builtins.object] (builtins.object a) -> A<builtins.object>
+NameExpr(3) : def [-1:builtins.object] (builtins.object a) -> A<builtins.object>
 NameExpr(3) : B
 
 [case testGenericCallInDynamicallyTypedFunction-skip]
@@ -512,13 +511,13 @@ class B: pass
 class C: pass
 [out]
 CallExpr(2) : A<B>
-NameExpr(2) : def <T> (T`-1 x) -> A<T`-1>
+NameExpr(2) : def [-1:B] (B x) -> A<B>
 NameExpr(2) : B
 NameExpr(3) : A<B>
 CallExpr(4) : A<B>
 CallExpr(4) : A<C>
-NameExpr(4) : def <T> (T`-1 x) -> A<T`-1>
-NameExpr(4) : def <T> (T`-1 x) -> A<T`-1>
+NameExpr(4) : def [-1:B] (B x) -> A<B>
+NameExpr(4) : def [-1:C] (C x) -> A<C>
 NameExpr(4) : B
 NameExpr(4) : C
 TupleExpr(4) : tuple<A<B>, A<C>>
@@ -542,8 +541,8 @@ class C: pass
 CallExpr(2) : A<C>
 CallExpr(2) : B<A<C>>
 NameExpr(2) : C
-NameExpr(2) : def <T> (T`-1 a) -> A<T`-1>
-NameExpr(2) : def <S> (S`-1 a) -> B<S`-1>
+NameExpr(2) : def [-1:C] (C a) -> A<C>
+NameExpr(2) : def [-1:A<C>] (A<C> a) -> B<A<C>>
 
 
 -- TODO
