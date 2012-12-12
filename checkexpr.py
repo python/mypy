@@ -125,10 +125,8 @@ class ExpressionChecker:
             if callable.is_generic():
                 callable = self.infer_function_type_arguments_using_context(
                     callable)
-                arg_types = self.infer_arg_types_in_context2(
-                    callable, args, arg_kinds, formal_to_actual)
                 callable = self.infer_function_type_arguments(
-                    callable, arg_types, arg_kinds, formal_to_actual, context)
+                    callable, args, arg_kinds, formal_to_actual, context)
             
             arg_types = self.infer_arg_types_in_context2(
                 callable, args, arg_kinds, formal_to_actual)
@@ -240,16 +238,19 @@ class ExpressionChecker:
         return (Callable)self.apply_generic_arguments(callable, args, [], None)
     
     Callable infer_function_type_arguments(self, Callable callee_type,
-                                           Typ[] arg_types,
+                                           Node[] args,
                                            int[] arg_kinds,
                                            int[][] formal_to_actual,
                                            Context context):
         """Infer the type arguments for a generic callee type.
 
+        Infer based on the types of arguments.
+
         Return a derived callable type that has the arguments applied (and
-        stored as implicit type arguments). If is_var_arg is True, the callee
-        uses varargs.
+        stored as implicit type arguments).
         """
+        arg_types = self.infer_arg_types_in_context2(
+            callee_type, args, arg_kinds, formal_to_actual)
         Typ[] inferred_args = infer_function_type_arguments(
             callee_type, arg_types, arg_kinds, formal_to_actual,
             self.chk.basic_types())
