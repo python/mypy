@@ -493,6 +493,17 @@ set<t> f<t>(Iterable<t> iterable): pass
 [builtins fixtures/for.py]
 
 
+-- Infer generic type in 'any' context
+-- -----------------------------------
+
+
+[case testInferGenericTypeInAnyContext]
+any x = []
+any y = C()
+class C<s, t>: pass
+[builtins fixtures/list.py]
+
+
 -- Lambdas
 -- -------
 
