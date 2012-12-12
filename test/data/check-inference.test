@@ -30,7 +30,7 @@ main: In function "f":
 main, line 4: Incompatible types in assignment
 main, line 6: Incompatible types in assignment
 
-[case testLvarInitializedToNilWithoutType]
+[case testLvarInitializedToNoneWithoutType]
 void f():
     a = None # E: Need type annotation for variable
     a.x()
@@ -112,7 +112,7 @@ class B: pass
 [out]
 main: In function "f":
 
-[case testInferringTupleTypeForLvarWithNils]
+[case testInferringTupleTypeForLvarWithNones]
 void f():
     a = A(), None # E: Need type annotation for variable
     b = None, A() # E: Need type annotation for variable
@@ -199,7 +199,7 @@ class B: pass
 [out]
 main: In function "f":
 
-[case testInferringLvarTypesInMultiDefWithNilTypes]
+[case testInferringLvarTypesInMultiDefWithNoneTypes]
 void f():
     a, b = A(), None # E: Need type annotation for variable
     c, d = None, A() # E: Need type annotation for variable

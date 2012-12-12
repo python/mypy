@@ -80,7 +80,7 @@ t2 = t1
 class A: pass
 [builtins fixtures/tuple.py]
 
-[case testTupleInitializationWithNil]
+[case testTupleInitializationWithNone]
 tuple<A, A> t = None
 t = None
 class A: pass

@@ -16,7 +16,7 @@ A a = None
 class A: pass
 [out]
 
-[case testNilAsArgument]
+[case testNoneAsArgument]
 void f(A x, B y): pass
 f(None, None)
 class A: pass
