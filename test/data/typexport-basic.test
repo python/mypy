@@ -544,6 +544,19 @@ NameExpr(2) : C
 NameExpr(2) : def [-1:C] (C a) -> A<C>
 NameExpr(2) : def [-1:A<C>] (A<C> a) -> B<A<C>>
 
+[case testInferListLiterals]
+A[] a = []
+class A: pass
+[builtins fixtures/list.py]
+[out]
+ListExpr(1) : builtins.list<A>
+
+[case testInferGenericTypeInTypeAnyContext]
+any a = []
+[builtins fixtures/list.py]
+[out]
+ListExpr(1) : builtins.list<any>
+
 
 -- TODO
 --
@@ -556,9 +569,6 @@ NameExpr(2) : def [-1:A<C>] (A<C> a) -> B<A<C>>
 --   lambda
 --   list comprehension
 --   generator expression
---   type application
---     with list
---     with dict
 -- overloads
 -- other things
 --   type inference
