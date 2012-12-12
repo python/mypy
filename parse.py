@@ -22,7 +22,7 @@ from nodes import (
 import nodes
 import noderepr
 from errors import Errors, CompileError
-from mtypes import Void, Typ, TypeVars, Callable, Any
+from mtypes import Void, Typ, TypeVars, Callable, Any, UnboundType
 from parsetype import (parse_type, parse_type_variables, parse_type_args,
                        TypeParseError)
 
@@ -407,9 +407,10 @@ class Parser:
     Annotation build_func_annotation(self, Annotation ret_type,
                                      Typ[] arg_types, int[] kinds,
                                      str[] names, TypeVars type_vars,
-                                     int line):
+                                     int line, bool is_default_ret=False):
         # Are there any type annotations?
-        if (ret_type or arg_types != [None] * len(arg_types)
+        if ((ret_type and not is_default_ret)
+                or arg_types != [None] * len(arg_types)
                 or type_vars.items):
             # Yes. Construct a type for the function signature.
             Typ ret = None
@@ -1473,8 +1474,13 @@ class Parser:
         for arg in args:
             names.append(arg.name())
 
-        typ = self.build_func_annotation(None, arg_types, kinds, names,
-                                         TypeVars([]), lambda_tok.line)
+        # Use 'object' as the placeholder return type; it will be inferred
+        # later. We can't use 'any' since it could make type inference results
+        # less precise.
+        ret_type = Annotation(UnboundType('__builtins__.object'))
+        typ = self.build_func_annotation(ret_type, arg_types, kinds, names,
+                                         TypeVars([]), lambda_tok.line,
+                                         is_default_ret=True)
         
         colon = self.expect(':')
         

@@ -527,4 +527,3 @@ f = lambda A x: [B()]  # E: List item 1 has incompatible type "B"
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
-

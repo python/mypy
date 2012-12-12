@@ -675,3 +675,19 @@ class A:
 class B: pass
 [out]
 main: In member "__init__" of class "A":
+
+
+-- Lambdas
+-- -------
+
+
+[case testInferLambdaType]
+l = lambda A x: [x.o]
+func<B[](A)> f1 = l
+func<A[](A)> f2 = l # E: Incompatible types in assignment
+func<B[](B)> f3 = l # E: Incompatible types in assignment
+
+class A:
+  B o
+class B: pass
+[builtins fixtures/list.py]

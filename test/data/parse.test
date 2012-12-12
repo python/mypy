@@ -1551,7 +1551,7 @@ MypyFile:1(
     FuncExpr:2(
       Args(
         Var(x))
-      Type:2(def (int? x) -> any)
+      Type:2(def (int? x) -> __builtins__.object?)
       Block:2(
         ReturnStmt:2(
           NameExpr(y))))))

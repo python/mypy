@@ -292,7 +292,7 @@ MypyFile:1(
     FuncExpr:1(
       Args(
         Var(x))
-      Type:1(def (__main__.A x) -> any)
+      Type:1(def (__main__.A x) -> builtins.object)
       Block:1(
         ReturnStmt:1(
           NameExpr(x [l])))))
