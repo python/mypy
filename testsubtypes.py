@@ -48,8 +48,8 @@ class SubtypingSuite(Suite):
         self.assert_equivalent(fx2.gfa, fx2.gfa)
     
     def test_basic_callable_subtyping(self):
-        self.assert_unrelated(self.fx.callable(self.fx.o, self.fx.d),
-                              self.fx.callable(self.fx.a, self.fx.d))
+        self.assert_proper_subtype(self.fx.callable(self.fx.o, self.fx.d),
+                                   self.fx.callable(self.fx.a, self.fx.d))
         self.assert_proper_subtype(self.fx.callable(self.fx.d, self.fx.b),
                                    self.fx.callable(self.fx.d, self.fx.a))
         
@@ -86,7 +86,7 @@ class SubtypingSuite(Suite):
             self.fx.callable(self.fx.a, self.fx.a, self.fx.a))
     
     def test_var_arg_callable_subtyping(self):
-        self.assert_unrelated(
+        self.assert_proper_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
             self.fx.callable_var_arg(0, self.fx.b, self.fx.a))
         

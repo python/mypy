@@ -118,6 +118,8 @@ class SubtypeVisitor(TypeVisitor<bool>):
 
 
 bool is_callable_subtype(Callable left, Callable right):
+    # TODO support named arguments, **args etc.
+    
     # Subtyping is not currently supported for generic functions.
     if left.variables.items or right.variables.items:
         return False
@@ -135,7 +137,7 @@ bool is_callable_subtype(Callable left, Callable right):
     if left.min_args > right.min_args:
         return False
     for i in range(len(right.arg_types)):
-        if not is_equivalent(right.arg_types[i], left.arg_types[i]):
+        if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
     
     if right.is_var_arg and not left.is_var_arg:

@@ -28,7 +28,7 @@ g = f  # E: Incompatible types in assignment
 g = h  # E: Incompatible types in assignment
 h = f  # E: Incompatible types in assignment
 h = g  # E: Incompatible types in assignment
-f = g  # E: Incompatible types in assignment
+f = g
 f = h
 f = f
 g = g
@@ -67,9 +67,9 @@ func<void(B, B)> h
 f = g  # E: Incompatible types in assignment
 f = h  # E: Incompatible types in assignment
 g = h  # E: Incompatible types in assignment
-g = f  # E: Incompatible types in assignment
-h = f  # E: Incompatible types in assignment
-h = g  # E: Incompatible types in assignment
+g = f
+h = f
+h = g
 f = f
 g = g
 h = h
@@ -113,7 +113,7 @@ func<B(B)> g
 func<AA(A)> h
 
 h = i  # E: Incompatible types in assignment
-f = j  # E: Incompatible types in assignment
+f = j
 
 f = i
 g = i
@@ -121,12 +121,11 @@ g = j
 
 A i(AA x):
     pass
-
 B i(B x):
     pass
+    
 B j(B x):
     pass
-
 AA j(A x):
     pass
 
