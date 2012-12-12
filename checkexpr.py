@@ -160,7 +160,7 @@ class ExpressionChecker:
         """Infer argument expression types using a callable type as context.
 
         For example, if callee argument 2 has type int[], infer the argument
-        exprsession with int[] type context.
+        expression with int[] type context.
         """
         Typ[] res = []
         
@@ -222,7 +222,7 @@ class ExpressionChecker:
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
         # None type. On the other hand, class type variables are valid results.
-        erased_ctx = replace_func_type_vars(ctx)
+        erased_ctx = replace_func_type_vars(ctx, NoneTyp())
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())
         # If all the inferred types are None types, do no type variable
@@ -781,7 +781,14 @@ class ExpressionChecker:
         ctx = self.chk.type_context[-1]
         if not ctx or not isinstance(ctx, Callable):
             return None
+        
+        # The context may have function type variables in it. We replace them
+        # since these are the type variables we are ultimately trying to infer;
+        # they must be considered as indeterminate.
+        ctx = replace_func_type_vars(ctx, Any())
+        
         callable_ctx = (Callable)ctx
+        
         if not e.typ:
             # TODO check that the context is compatible 
             return callable_ctx

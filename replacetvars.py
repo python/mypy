@@ -32,14 +32,17 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
             return t
 
 
-Typ replace_func_type_vars(Typ typ):
-    """Replace type variables in a type with the None (empty) type."""
-    return typ.accept(ReplaceFuncTypeVarsVisitor())
+Typ replace_func_type_vars(Typ typ, Typ target_type):
+    """Replace function type variables in a type with the target type."""
+    return typ.accept(ReplaceFuncTypeVarsVisitor(target_type))
 
 
 class ReplaceFuncTypeVarsVisitor(TypeTranslator):
+    void __init__(self, Typ target_type):
+        self.target_type = target_type
+    
     Typ visit_type_var(self, TypeVar t):
         if t.id < 0:
-            return NoneTyp()
+            return self.target_type
         else:
             return t

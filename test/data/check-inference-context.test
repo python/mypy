@@ -512,3 +512,19 @@ f = lambda: [B()]  # E: List item 1 has incompatible type "B"
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
+
+[case testInferLambdaAsGenericFunctionArgument]
+void f<t>(t[] a, func<any(t)> fn): pass
+f([A()], lambda a: a.x)
+class A:
+  A x
+[builtins fixtures/list.py]
+
+[case testLambdaTypeInferenceWithExplicitArgumentType]
+func<A[](A)> f
+f = lambda A x: []
+f = lambda A x: [B()]  # E: List item 1 has incompatible type "B"
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
