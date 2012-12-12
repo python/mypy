@@ -691,3 +691,12 @@ class A:
   B o
 class B: pass
 [builtins fixtures/list.py]
+
+[case testInferLambdaType2-skip]
+l = lambda: [B()]
+func<B[]()> f1 = l
+func<A[]()> f2 = l # E: Incompatible types in assignment
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
