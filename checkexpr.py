@@ -240,7 +240,7 @@ class ExpressionChecker:
                 some_not_none = True
         if not some_not_none:
             return callable
-        return (Callable)self.apply_generic_arguments(callable, args, [], None)
+        return (Callable)self.apply_generic_arguments(callable, args, None)
     
     Callable infer_function_type_arguments(self, Callable callee_type,
                                            Node[] args,
@@ -264,12 +264,11 @@ class ExpressionChecker:
             # In dynamically typed functions use implicit 'any' types for
             # type variables.
             inferred_args = <Typ> [Any()] * len(callee_type.variables.items)
-        return self.apply_inferred_arguments(callee_type, inferred_args, [],
+        return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
     
     Callable apply_inferred_arguments(self, Callable callee_type,
                                       Typ[] inferred_args,
-                                      int[] implicit_type_vars,
                                       Context context):
         """Apply inferred values of type arguments to a generic function.
 
@@ -287,15 +286,14 @@ class ExpressionChecker:
             if not inferred_type:
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
-                    callee_type, i + 1 - len(implicit_type_vars), context)
+                    callee_type, i + 1, context)
                 inferred_args = <Typ> [Any()] * len(inferred_args)
         
         # Apply the inferred types to the function type. In this case the
         # return type must be Callable, since we give the right number of type
         # arguments.
         return (Callable)self.apply_generic_arguments(callee_type,
-                                                      inferred_args,
-                                                      implicit_type_vars, None)
+                                                      inferred_args, None)
 
     void check_argument_count(self, Callable callee, Typ[] actual_types,
                               int[] actual_kinds,  str[] actual_names,
@@ -463,7 +461,7 @@ class ExpressionChecker:
         return True
     
     Typ apply_generic_arguments(self, Callable callable, Typ[] types,
-                                int[] implicit_type_vars, Context context):
+                                Context context):
         """Apply generic type arguments to a callable type.
 
         For example, applying [int] to 'def <T> (T) -> T' results in
@@ -472,12 +470,7 @@ class ExpressionChecker:
         
         Note that each type can be None; in this case, it will not be applied.
         """
-        TypeVarDef[] tvars = []
-        for v in implicit_type_vars:
-            # The name of type variable is not significant, so None is fine.
-            tvars.append(TypeVarDef(None, v))
-        tvars.extend(callable.variables.items)
-        
+        tvars = callable.variables.items        
         if len(tvars) != len(types):
             self.msg.incompatible_type_application(len(tvars), len(types),
                                                    context)
@@ -509,11 +502,10 @@ class ExpressionChecker:
                         callable.line, callable.repr)
     
     Typ apply_generic_arguments2(self, Overloaded overload, Typ[] types,
-                                 int[] implicit_type_vars, Context context):
+                                Context context):
         items = <Callable> []
         for item in overload.items():
-            applied = self.apply_generic_arguments(
-                item, types, implicit_type_vars, context)
+            applied = self.apply_generic_arguments(item, types, context)
             if isinstance(applied, Callable):
                 items.append((Callable)applied)
             else:
@@ -664,14 +656,14 @@ class ExpressionChecker:
         expr_type = self.accept(tapp.expr)
         if isinstance(expr_type, Callable):
             new_type = self.apply_generic_arguments((Callable)expr_type,
-                                                    tapp.types, [], tapp)
+                                                    tapp.types, tapp)
         elif isinstance(expr_type, Overloaded):
             overload = (Overloaded)expr_type
             # Only target items with the right number of generic type args.
             items = [c for c in overload.items()
                      if len(c.variables.items) == len(tapp.types)]
             new_type = self.apply_generic_arguments2(Overloaded(items),
-                                                     tapp.types, [], tapp)
+                                                     tapp.types, tapp)
         else:
             self.chk.fail(messages.INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
             new_type = Any()
