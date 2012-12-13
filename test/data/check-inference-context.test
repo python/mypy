@@ -149,9 +149,7 @@ class A<T>: pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 6: Argument 1 to "f" has incompatible type "B"
 main, line 6: Incompatible types in assignment
-main, line 7: Argument 1 to "f" has incompatible type "B"
 main, line 7: Incompatible types in assignment
 
 [case testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables]
@@ -177,13 +175,9 @@ class A<T>: pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 6: Argument 2 to "f" has incompatible type "B"
 main, line 6: Incompatible types in assignment
-main, line 7: Argument 1 to "g" has incompatible type "B"
 main, line 7: Incompatible types in assignment
-main, line 8: Argument 1 to "h" has incompatible type "B"
 main, line 8: Incompatible types in assignment
-main, line 9: Argument 2 to "h" has incompatible type "B"
 main, line 9: Incompatible types in assignment
 
 

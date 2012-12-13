@@ -478,9 +478,9 @@ class ExpressionChecker:
         
         # Create a map from type variable id to target type.
         id_to_type = <int, Typ> {}
-        for i in range(len(tvars)):
+        for i, tv in enumerate(tvars):
             if types[i]:
-                id_to_type[tvars[i].id] = types[i]
+                id_to_type[tv.id] = types[i]
 
         # Apply arguments to argument types.
         arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
@@ -488,6 +488,9 @@ class ExpressionChecker:
         bound_vars = [(tv.id, id_to_type[tv.id])
                       for tv in tvars
                       if tv.id in id_to_type]
+
+        # The callable may retain some type vars if only some were applied.
+        remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
         
         return Callable(arg_types,
                         callable.arg_kinds,
@@ -495,7 +498,7 @@ class ExpressionChecker:
                         expand_type(callable.ret_type, id_to_type),
                         callable.is_type_obj(),
                         callable.name,
-                        TypeVars([]),
+                        TypeVars(remaining_tvars),
                         callable.bound_vars + bound_vars,
                         callable.line, callable.repr)
     
