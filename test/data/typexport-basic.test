@@ -576,6 +576,57 @@ any a = []
 [out]
 ListExpr(1) : builtins.list<any>
 
+[case testHigherOrderFunction]
+map(
+    f, 
+    [A()])
+s[] map<t, s>(func<s(t)> f, t[] a): pass
+B f(A a): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+CallExpr(1) : builtins.list<B>
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+NameExpr(2) : def (A a) -> B
+CallExpr(3) : A
+ListExpr(3) : builtins.list<A>
+NameExpr(3) : def () -> A
+
+
+-- Lambdas
+-- -------
+
+
+[case testLambdaWithExplicitType]
+lambda A x: B()
+class A: pass
+class B: pass
+[out]
+CallExpr(1) : B
+FuncExpr(1) : def (A x) -> B
+NameExpr(1) : def () -> B
+
+[case testLambdaWithInferredType]
+func<A(B)> f = lambda x: x.a
+class A: pass
+class B:
+  A a
+[out]
+FuncExpr(1) : def (B) -> A
+MemberExpr(1) : A
+NameExpr(1) : B
+
+[case testLambdaWithInferredType2]
+func<A[](B)> f = lambda x: []
+class A: pass
+class B:
+  A a
+[builtins fixtures/list.py]
+[out]
+FuncExpr(1) : def (B) -> builtins.list<A>
+ListExpr(1) : builtins.list<A>
+
 
 -- TODO
 --
