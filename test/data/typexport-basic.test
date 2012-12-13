@@ -40,7 +40,7 @@ None
 IntExpr(1) : builtins.int
 FloatExpr(2) : builtins.float
 StrExpr(3) : builtins.str
-NameExpr(4) : None
+NameExpr(4) : 'None'
 
 [case testNameExpression]
 A a
@@ -203,10 +203,10 @@ elif not a:
 [builtins fixtures/bool.py]
 [out]
 NameExpr(2) : builtins.bool
-NameExpr(3) : None
+NameExpr(3) : 'None'
 NameExpr(4) : builtins.bool
 UnaryExpr(4) : builtins.bool
-NameExpr(5) : None
+NameExpr(5) : 'None'
 
 [case testWhile]
 bool a
@@ -215,7 +215,7 @@ while a:
 [builtins fixtures/bool.py]
 [out]
 NameExpr(2) : builtins.bool
-NameExpr(3) : None
+NameExpr(3) : 'None'
 
 
 -- Basic generics
@@ -436,7 +436,7 @@ def f():
   x = None
   x.f()
 [out]
-NameExpr(2) : None
+NameExpr(2) : 'None'
 CallExpr(3) : any
 MemberExpr(3) : any
 NameExpr(3) : any
@@ -481,7 +481,7 @@ def f():
 t g<t>(t x): pass
 [out]
 CallExpr(2) : any
-NameExpr(2) : None
+NameExpr(2) : 'None'
 NameExpr(2) : def [-1:any] (any x) -> any
 
 

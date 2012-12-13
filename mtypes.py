@@ -475,7 +475,8 @@ class TypeStrVisitor(TypeVisitor<str>):
         return 'void'
     
     def visit_none_type(self, t):
-        return 'None'
+        # Include quotes to make this distinct from the None value.
+        return "'None'"
     
     def visit_instance(self, t):
         s = t.typ.full_name()
