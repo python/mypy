@@ -561,3 +561,28 @@ m = map(s, [A()])
 B[] b = m
 A[] a = m # E: Incompatible types in assignment
 [builtins fixtures/list.py]
+
+
+-- Special cases
+-- -------------
+
+
+[case testSomeTypeVarsInferredFromContext]
+# Some type variables can be inferred using context, but not all of them.
+A[] a
+a = f(A(), B())
+a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"
+s[] f<t, s>(s a, t b): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+[case testSomeTypeVarsInferredFromContext2]
+# Like testSomeTypeVarsInferredFromContext, but tvars in different order.
+A[] a
+a = f(A(), B())
+a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"
+s[] f<s, t>(s a, t b): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]

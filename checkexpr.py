@@ -228,19 +228,17 @@ class ExpressionChecker:
         erased_ctx = replace_func_type_vars(ctx, NoneTyp())
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())
-        # If all the inferred types are None types, do no type variable
-        # substition.
-        # TODO This is not nearly general enough. If a type has a None type
-        #      component we should not use it. Also if some types are not-None
-        #      we should only substitute them. Finally, using None types for
-        #      this might not be optimal.
-        some_not_none = False
-        for i in range(len(args)):
-            if not isinstance(args[i], NoneTyp):
-                some_not_none = True
-        if not some_not_none:
-            return callable
-        return (Callable)self.apply_generic_arguments(callable, args, None)
+        # Only substite non-None types.
+        # TODO This might not be general enough. If a type has a None type
+        #      component we should not use it (but does this ever happen?).
+        #      Finally, using None types for this might not be optimal.
+        new_args = <Typ> []
+        for arg in args:
+            if isinstance(arg, NoneTyp):
+                new_args.append(None)
+            else:
+                new_args.append(arg)
+        return (Callable)self.apply_generic_arguments(callable, new_args, None)
     
     Callable infer_function_type_arguments(self, Callable callee_type,
                                            Node[] args,
