@@ -658,10 +658,14 @@ A a, B b
 f = lambda A a: b
 func<A(A)> f2
 func<B(B)> f3
-f2 = lambda A a: b # E: Incompatible return value type
-f3 = lambda A a: b # E: Incompatible types in assignment
+f2 = lambda A a: b
+f3 = lambda A a: b
 class A: pass
 class B: pass
+[out]
+main, line 6: Incompatible return value type
+main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 
 
 -- List comprehensions

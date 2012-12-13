@@ -1,6 +1,6 @@
 from mtypes import (
     Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
-    Instance, TupleType, Overloaded
+    Instance, TupleType, Overloaded, ErasedType
 )
 from expandtype import expand_caller_var_args
 from subtypes import map_instance_to_supertype
@@ -127,6 +127,9 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
         return []
     
     Constraint[] visit_none_type(self, NoneTyp template):
+        return []
+
+    Constraint[] visit_erased_type(self, ErasedType template):
         return []
     
     # Non-trivial leaf type

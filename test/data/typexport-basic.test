@@ -627,6 +627,24 @@ class B:
 FuncExpr(1) : def (B) -> builtins.list<A>
 ListExpr(1) : builtins.list<A>
 
+[case testLambdaAndHigherOrderFunction]
+map(
+  lambda x: f(x), 
+  <A> [])
+s[] map<t, s>(func<s(t)> f, t[] a): pass
+B f(A a): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+CallExpr(1) : builtins.list<B>
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+CallExpr(2) : B
+FuncExpr(2) : def (A) -> B
+NameExpr(2) : def (A a) -> B
+NameExpr(2) : A
+ListExpr(3) : builtins.list<A>
+
 
 -- TODO
 --
@@ -636,7 +654,7 @@ ListExpr(1) : builtins.list<A>
 --   unary minus
 --   indexing
 --   super expression
---   lambda
+--   more complex lambda (multiple arguments etc.)
 --   list comprehension
 --   generator expression
 -- overloads

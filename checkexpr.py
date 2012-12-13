@@ -230,13 +230,13 @@ class ExpressionChecker:
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())
-        # Only substite non-None types.
+        # Only substite non-None and non-erased types.
         # TODO This might not be general enough. If a type has a None type
         #      component we should not use it (but does this ever happen?).
         #      Finally, using None types for this might not be optimal.
         new_args = <Typ> []
         for arg in args:
-            if isinstance(arg, NoneTyp):
+            if isinstance(arg, NoneTyp) or isinstance(arg, ErasedType):
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -265,16 +265,88 @@ class ExpressionChecker:
                 callee_type, args, arg_kinds, formal_to_actual)
         
             self.msg.enable_errors()
+
+            arg_pass_nums = self.get_arg_infer_passes(
+                callee_type.arg_types, formal_to_actual, len(args))
+
+            pass1_args = <Typ> []
+            for i, arg in enumerate(arg_types):
+                if arg_pass_nums[i] > 1:
+                    pass1_args.append(None)
+                else:
+                    pass1_args.append(arg)
             
             Typ[] inferred_args = infer_function_type_arguments(
-                callee_type, arg_types, arg_kinds, formal_to_actual,
+                callee_type, pass1_args, arg_kinds, formal_to_actual,
                 self.chk.basic_types())
+
+            if 2 in arg_pass_nums:
+                # Second pass of type inference.
+                (callee_type,
+                 inferred_args) = self.infer_function_type_arguments_pass2(
+                    callee_type, args, arg_kinds, formal_to_actual,
+                    inferred_args, context)
         else:
             # In dynamically typed functions use implicit 'any' types for
             # type variables.
             inferred_args = <Typ> [Any()] * len(callee_type.variables.items)
         return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
+
+    tuple<Callable, Typ[]> infer_function_type_arguments_pass2(
+                                 self, Callable callee_type,
+                                 Node[] args,
+                                 int[] arg_kinds,
+                                 int[][] formal_to_actual,
+                                 Typ[] inferred_args,
+                                 Context context):
+        """Perform second pass of generic function type argument inference.
+
+        The second pass is needed for arguments with types such as func<s(t)>,
+        where both s and t are type variables, when the actual argument is a
+        lambda with inferred types.  The idea is to infer the type variable t
+        in the first pass.  This lets us infer the return type of the lambda
+        expression and thus also the type variable s in this second pass.
+
+        Return (the callee with type vars applied, inferred actual arg types).
+        """
+        # None or erased types in inferred types mean that there was not enough
+        # information to infer the argument. Replace them with None values so
+        # that they are not applied yet below.
+        for i, arg in enumerate(inferred_args):
+            if isinstance(arg, NoneTyp) or isinstance(arg, ErasedType):
+                inferred_args[i] = None
+
+        callee_type = (Callable)self.apply_generic_arguments(
+            callee_type, inferred_args, context)
+        arg_types = self.infer_arg_types_in_context2(
+            callee_type, args, arg_kinds, formal_to_actual)
+
+        inferred_args = infer_function_type_arguments(
+            callee_type, arg_types, arg_kinds, formal_to_actual,
+            self.chk.basic_types())
+
+        return callee_type, inferred_args
+
+    int[] get_arg_infer_passes(self, Typ[] arg_types,
+                               int[][] formal_to_actual,
+                               int num_actuals):
+        """Return pass numbers for args for two-pass argument type inference.
+
+        For each actual, the pass number is either 1 (first pass) or 2 (second
+        pass).
+
+        Two-pass argument type inference primarily lets us infer lambdas
+        better.
+        """
+        # TODO implement this properly; this is just a placeholder
+        res = [1] * num_actuals
+        for i, arg in enumerate(arg_types):
+            if (isinstance(arg, Callable) and
+                isinstance(((Callable)arg).ret_type, TypeVar)):
+                for j in formal_to_actual[i]:
+                    res[j] = 2
+        return res
     
     Callable apply_inferred_arguments(self, Callable callee_type,
                                       Typ[] inferred_args,
@@ -780,10 +852,10 @@ class ExpressionChecker:
         """Type check lambda expression."""
         inferred_type = self.infer_lambda_type(e)
         self.chk.check_func_item(e, type_override=inferred_type)
+        ret_type = self.chk.type_map[e.expr()]
         if inferred_type:
-            return inferred_type
+            return replace_callable_return_type(inferred_type, ret_type)
         elif e.typ:
-            ret_type = self.chk.type_map[e.expr()]
             return replace_callable_return_type((Callable)e.typ.typ, ret_type)
         else:
             # Use default type for lambda.
@@ -801,8 +873,8 @@ class ExpressionChecker:
         
         # The context may have function type variables in it. We replace them
         # since these are the type variables we are ultimately trying to infer;
-        # they must be considered as indeterminate. We use NoneTyp since it
-        # does not affect type inference results.
+        # they must be considered as indeterminate. We use ErasedType since it
+        # does not affect type inference results (it is for this purpose only).
         ctx = replace_func_type_vars(ctx, ErasedType())
         
         callable_ctx = (Callable)ctx

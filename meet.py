@@ -2,14 +2,14 @@ import checker
 from join import is_similar_callables, combine_similar_callables
 from mtypes import (
     Typ, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType
+    Instance, Callable, TupleType, ErasedType
 )
 from sametypes import is_same_type
 from subtypes import is_subtype
 
 
 Typ meet_types(Typ s, Typ t, checker.BasicTypes basic):
-    if isinstance(s, Any):
+    if isinstance(s, Any) or isinstance(s, ErasedType):
         return s
     
     return t.accept(TypeMeetVisitor(s, basic))
@@ -45,6 +45,9 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
             return t
         else:
             return ErrorType()
+
+    Typ visit_erased_type(self, ErasedType t):
+        return self.s
     
     Typ visit_type_var(self, TypeVar t):
         if isinstance(self.s, TypeVar) and ((TypeVar)self.s).id == t.id:

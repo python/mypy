@@ -1,6 +1,6 @@
 from mtypes import (
     Typ, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void,
-    NoneTyp, TypeVar, Overloaded, TupleType
+    NoneTyp, TypeVar, Overloaded, TupleType, ErasedType
 )
 
 
@@ -51,6 +51,10 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
     
     Typ visit_none_type(self, NoneTyp t):
         return t
+    
+    Typ visit_erased_type(self, ErasedType t):
+        # Should not get here.
+        raise RuntimeError()
     
     Typ visit_instance(self, Instance t):
         args = self.expand_types(t.args)
