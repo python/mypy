@@ -21,7 +21,7 @@ Typ[] solve_constraints(int[] vars, Constraint[] constraints,
         cmap[con.type_var] = a
     
     Typ[] res = []
-    
+
     # Solve each type variable separately.
     for tvar in vars:
         Typ bottom = None

@@ -457,13 +457,32 @@ CallExpr(3) : A<builtins.object>
 NameExpr(3) : def [-1:builtins.object] (builtins.object a) -> A<builtins.object>
 NameExpr(3) : B
 
-[case testGenericCallInDynamicallyTypedFunction-skip]
+[case testGenericCallInDynamicallyTypedFunction]
 def f():
   A()
 class A<T>: pass
 [out]
 CallExpr(2) : A<any>
-NameExpr(2) : def [1:any] () -> A<any>
+NameExpr(2) : def [-1:any] () -> A<any>
+
+[case testGenericCallInDynamicallyTypedFunction2]
+def f():
+  A(f)
+class A<T>: 
+    void __init__(self, T x): pass
+[out]
+CallExpr(2) : A<any>
+NameExpr(2) : def [-1:any] (any x) -> A<any>
+NameExpr(2) : def () -> any
+
+[case testGenericCallInDynamicallyTypedFunction2]
+def f():
+  g(None)
+t g<t>(t x): pass
+[out]
+CallExpr(2) : any
+NameExpr(2) : None
+NameExpr(2) : def [-1:any] (any x) -> any
 
 
 -- Generic types and type inference

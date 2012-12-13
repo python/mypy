@@ -254,11 +254,16 @@ class ExpressionChecker:
         Return a derived callable type that has the arguments applied (and
         stored as implicit type arguments).
         """
-        arg_types = self.infer_arg_types_in_context2(
-            callee_type, args, arg_kinds, formal_to_actual)
-        Typ[] inferred_args = infer_function_type_arguments(
-            callee_type, arg_types, arg_kinds, formal_to_actual,
-            self.chk.basic_types())
+        if not self.chk.is_dynamic_function():
+            arg_types = self.infer_arg_types_in_context2(
+                callee_type, args, arg_kinds, formal_to_actual)
+            Typ[] inferred_args = infer_function_type_arguments(
+                callee_type, arg_types, arg_kinds, formal_to_actual,
+                self.chk.basic_types())
+        else:
+            # In dynamically typed functions use implicit 'any' types for
+            # type variables.
+            inferred_args = <Typ> [Any()] * len(callee_type.variables.items)
         return self.apply_inferred_arguments(callee_type, inferred_args, [],
                                              context)
     
