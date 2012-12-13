@@ -87,6 +87,17 @@ class NoneTyp(Typ):
         return visitor.visit_none_type(self)
 
 
+class ErasedType(Typ):
+    """Placeholder for an erased type.
+
+    This is used during type inference. This has the special property that
+    it is ignored during type inference.
+    """
+    
+    T accept<T>(self, TypeVisitor<T> visitor):
+        return visitor.visit_erased_type(self)
+
+
 class Instance(Typ):
     """An instance type of form C<T1, ..., Tn>. Type variables Tn may
     be empty"""
@@ -375,6 +386,9 @@ class TypeVisitor<T>:
     T visit_none_type(self, NoneTyp t):
         pass
     
+    T visit_erased_type(self, ErasedType t):
+        pass
+    
     T visit_type_var(self, TypeVar t):
         pass
     
@@ -411,6 +425,9 @@ class TypeTranslator(TypeVisitor<Typ>):
         return t
     
     Typ visit_none_type(self, NoneTyp t):
+        return t
+    
+    Typ visit_erased_type(self, ErasedType t):
         return t
     
     Typ visit_instance(self, Instance t):
@@ -477,6 +494,9 @@ class TypeStrVisitor(TypeVisitor<str>):
     def visit_none_type(self, t):
         # Include quotes to make this distinct from the None value.
         return "'None'"
+    
+    def visit_erased_type(self, t):
+        return "<Erased>"
     
     def visit_instance(self, t):
         s = t.typ.full_name()

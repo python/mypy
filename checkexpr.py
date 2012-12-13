@@ -2,7 +2,7 @@
 
 from mtypes import (
     Typ, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
-    TupleType, Instance, TypeVar, TypeTranslator
+    TupleType, Instance, TypeVar, TypeTranslator, ErasedType
 )
 from nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -227,7 +227,7 @@ class ExpressionChecker:
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
         # None type. On the other hand, class type variables are valid results.
-        erased_ctx = replace_func_type_vars(ctx, NoneTyp())
+        erased_ctx = replace_func_type_vars(ctx, ErasedType())
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())
         # Only substite non-None types.
@@ -803,7 +803,7 @@ class ExpressionChecker:
         # since these are the type variables we are ultimately trying to infer;
         # they must be considered as indeterminate. We use NoneTyp since it
         # does not affect type inference results.
-        ctx = replace_func_type_vars(ctx, NoneTyp())
+        ctx = replace_func_type_vars(ctx, ErasedType())
         
         callable_ctx = (Callable)ctx
         

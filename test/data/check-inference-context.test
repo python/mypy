@@ -518,9 +518,9 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
-[case testInferLambdaAsGenericFunctionArgument-skip]
+[case testInferLambdaAsGenericFunctionArgument]
 void f<t>(t[] a, func<any(t)> fn): pass
-f([A()], lambda a: a.x)
+f(<A> [], lambda a: a.x)
 class A:
   A x
 [builtins fixtures/list.py]
