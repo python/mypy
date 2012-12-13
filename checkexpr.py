@@ -477,24 +477,22 @@ class ExpressionChecker:
             return Any()
         
         # Create a map from type variable id to target type.
-        dict<int, Typ> map = {}
+        id_to_type = <int, Typ> {}
         for i in range(len(tvars)):
             if types[i]:
-                map[tvars[i].id] = types[i]
+                id_to_type[tvars[i].id] = types[i]
+
+        # Apply arguments to argument types.
+        arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
         
-        Typ[] arg_types = []
-        for at in callable.arg_types:
-            arg_types.append(expand_type(at, map))
-        
-        list<tuple<int, Typ>> bound_vars = []
-        for tv in tvars:
-            if tv.id in map:
-                bound_vars.append((tv.id, map[tv.id]))
+        bound_vars = [(tv.id, id_to_type[tv.id])
+                      for tv in tvars
+                      if tv.id in id_to_type]
         
         return Callable(arg_types,
                         callable.arg_kinds,
                         callable.arg_names,
-                        expand_type(callable.ret_type, map),
+                        expand_type(callable.ret_type, id_to_type),
                         callable.is_type_obj(),
                         callable.name,
                         TypeVars([]),
