@@ -60,17 +60,27 @@ class MessageBuilder:
     # Report errors using this instance. It knows about the current file and
     # import context.
     Errors errors
+    # Number of times errors have been disabled.
+    int disable_count
     
     void __init__(self, Errors errors):
         self.errors = errors
+        self.disable_count = 0
 
     #
     # Helpers
     #
+
+    void disable_errors(self):
+        self.disable_count += 1
+
+    void enable_errors(self):
+        self.disable_count -= 1
     
     void fail(self, str msg, Context context):
-        """Report an error message."""
-        self.errors.report(context.get_line(), msg.strip())
+        """Report an error message (unless disabled)."""
+        if self.disable_count <= 0:
+            self.errors.report(context.get_line(), msg.strip())
     
     str format(self, Typ typ):
         """Convert a type to a relatively short string that is

@@ -147,7 +147,9 @@ class ExpressionChecker:
             # Type check arguments in empty context. They will be checked again
             # later in a context derived from the signature; these types are
             # only used to pick a signature variant.
+            self.msg.disable_errors()
             arg_types = self.infer_arg_types_in_context(None, args)
+            self.msg.enable_errors()
             
             target = self.overload_call_target(arg_types, is_var_arg,
                                                (Overloaded)callee, context)
@@ -253,8 +255,17 @@ class ExpressionChecker:
         stored as implicit type arguments).
         """
         if not self.chk.is_dynamic_function():
+            # Disable type errors during type inference. There may be errors
+            # due to partial available context information at this time, but
+            # these errors can be safely ignored as the arguments will be
+            # inferred again later.
+            self.msg.disable_errors()
+            
             arg_types = self.infer_arg_types_in_context2(
                 callee_type, args, arg_kinds, formal_to_actual)
+        
+            self.msg.enable_errors()
+            
             Typ[] inferred_args = infer_function_type_arguments(
                 callee_type, arg_types, arg_kinds, formal_to_actual,
                 self.chk.basic_types())
@@ -790,8 +801,9 @@ class ExpressionChecker:
         
         # The context may have function type variables in it. We replace them
         # since these are the type variables we are ultimately trying to infer;
-        # they must be considered as indeterminate.
-        ctx = replace_func_type_vars(ctx, Any())
+        # they must be considered as indeterminate. We use NoneTyp since it
+        # does not affect type inference results.
+        ctx = replace_func_type_vars(ctx, NoneTyp())
         
         callable_ctx = (Callable)ctx
         
