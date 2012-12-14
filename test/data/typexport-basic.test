@@ -680,6 +680,40 @@ ListExpr(2) : builtins.list<def (A) -> any>
 NameExpr(2) : A
 ListExpr(3) : builtins.list<A>
 
+[case testLambdaAndHigherOrderFunction3]
+map(
+  lambda x: x.b, 
+  <A> [])
+s[] map<t, s>(func<s(t)> f, t[] a): pass
+class A:
+  B b
+class B: pass
+[builtins fixtures/list.py]
+[out]
+CallExpr(1) : builtins.list<B>
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+FuncExpr(2) : def (A) -> B
+MemberExpr(2) : B
+NameExpr(2) : A
+ListExpr(3) : builtins.list<A>
+
+[case testLambdaAndHigherOrderFunctionAndKeywordArgs]
+map(
+  a=<A> [],
+  f=lambda x: x.b)
+s[] map<t, s>(func<s(t)> f, t[] a): pass
+class A:
+  B b
+class B: pass
+[builtins fixtures/list.py]
+[out]
+CallExpr(1) : builtins.list<B>
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+ListExpr(2) : builtins.list<A>
+FuncExpr(3) : def (A) -> B
+MemberExpr(3) : B
+NameExpr(3) : A
+
 
 -- TODO
 --
