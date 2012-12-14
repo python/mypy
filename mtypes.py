@@ -585,3 +585,82 @@ class TypeStrVisitor(TypeVisitor<str>):
             else:
                 res.append(str(t))
         return ', '.join(res)
+
+
+# These constants define the method used by TypeQuery to combine multiple
+# query results, e.g. for tuple types. The strategy is not used for empty
+# result lists; in that case the default value takes precedence.
+ANY_TYPE_STRATEGY = 0   # Return True if any of the results are True.
+ALL_TYPES_STRATEGY = 1  # Return True if all of the results are True.
+
+
+# Visitor for performing simple boolean queries of types. This class allows
+# defining the default value for leafs to simplify the implementation of many
+# queries.
+class TypeQuery(TypeVisitor<bool>):
+    bool default  # Default result
+    int strategy  # Strategy for combining multiple values
+    
+    # Construct a query visitor with the given default result and strategy for
+    # combining multiple results. The strategy must be either
+    # ANY_TYPE_STRATEGY or ALL_TYPES_STRATEGY.
+    void __init__(self, bool default, int strategy):
+        self.default = default
+        self.strategy = strategy
+    
+    bool visit_unbound_type(self, UnboundType t):
+        return self.default
+    
+    bool visit_error_type(self, ErrorType t):
+        return self.default
+    
+    bool visit_any(self, Any t):
+        return self.default
+    
+    bool visit_void(self, Void t):
+        return self.default
+    
+    bool visit_none_type(self, NoneTyp t):
+        return self.default
+    
+    bool visit_erased_type(self, ErasedType t):
+        return self.default
+    
+    bool visit_type_var(self, TypeVar t):
+        return self.default
+    
+    bool visit_instance(self, Instance t):
+        return self.query_types(t.args)
+    
+    bool visit_callable(self, Callable t):
+        # FIX generics
+        return self.query_types(t.arg_types + [t.ret_type])
+    
+    bool visit_tuple_type(self, TupleType t):
+        return self.query_types(t.items)
+    
+    bool visit_runtime_type_var(self, RuntimeTypeVar t):
+        return self.default
+    
+    # Perform a query for a list of types. Use the strategy constant to combine
+    # the results.
+    bool query_types(self, Typ[] types):
+        if types == []:
+            # Use default result for empty list.
+            return self.default
+        if self.strategy == ANY_TYPE_STRATEGY:
+            # Return True if at least one component is true.
+            res = False
+            for t in types:
+                res = res or t.accept(self)
+                if res:
+                    break
+            return res
+        else:
+            # Return True if all components are true.
+            res = True
+            for t in types:
+                res = res and t.accept(self)
+                if not res:
+                    break
+            return res
