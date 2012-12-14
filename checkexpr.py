@@ -14,6 +14,7 @@ from nodes import (
 from nodes import function_type, method_type
 import nodes
 import checker
+import mtypes
 from sametypes import is_same_type
 from replacetvars import replace_func_type_vars, replace_type_vars
 from messages import MessageBuilder
@@ -305,8 +306,9 @@ class ExpressionChecker:
         The second pass is needed for arguments with types such as func<s(t)>,
         where both s and t are type variables, when the actual argument is a
         lambda with inferred types.  The idea is to infer the type variable t
-        in the first pass.  This lets us infer the return type of the lambda
-        expression and thus also the type variable s in this second pass.
+        in the first pass (based on the types of other arguments).  This lets
+        us infer the argument and return type of the lambda expression and
+        thus also the type variable s in this second pass.
 
         Return (the callee with type vars applied, inferred actual arg types).
         """
@@ -339,11 +341,9 @@ class ExpressionChecker:
         Two-pass argument type inference primarily lets us infer lambdas
         better.
         """
-        # TODO implement this properly; this is just a placeholder
         res = [1] * num_actuals
         for i, arg in enumerate(arg_types):
-            if (isinstance(arg, Callable) and
-                isinstance(((Callable)arg).ret_type, TypeVar)):
+            if arg.accept(ArgInferSecondPassQuery()):
                 for j in formal_to_actual[i]:
                     res[j] = 2
         return res
@@ -1205,3 +1205,26 @@ Callable replace_callable_return_type(Callable c, Typ new_ret_type):
                     c.variables,
                     c.bound_vars,
                     c.line)
+
+
+class ArgInferSecondPassQuery(mtypes.TypeQuery):
+    """Query whether an argument type should be inferred in the second pass.
+
+    The result is True if the type has a type variable in a callable return
+    type anywhere. For example, the result for func<t()> is True if t is a
+    type variable.
+    """    
+    void __init__(self):
+        super().__init__(False, mtypes.ANY_TYPE_STRATEGY)
+
+    bool visit_callable(self, Callable t):
+        return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
+
+
+class HasTypeVarQuery(mtypes.TypeQuery):
+    """Visitor for querying whether a type has a type variable component."""
+    void __init__(self):
+        super().__init__(False, mtypes.ANY_TYPE_STRATEGY)
+
+    bool visit_type_var(self, TypeVar t):
+        return True

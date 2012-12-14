@@ -645,6 +645,42 @@ NameExpr(2) : def (A a) -> B
 NameExpr(2) : A
 ListExpr(3) : builtins.list<A>
 
+[case testLambdaAndHigherOrderFunction2]
+## FuncExpr|NameExpr|ListExpr
+map(
+  lambda x: [f(x)], 
+  <A> [])
+s[] map<t, s>(func<s[](t)> f, t[] a): pass
+B f(A a): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+NameExpr(2) : def [-1:A, -2:B] (def (A) -> builtins.list<B> f, builtins.list<A> a) -> builtins.list<B>
+FuncExpr(3) : def (A) -> builtins.list<B>
+ListExpr(3) : builtins.list<B>
+NameExpr(3) : def (A a) -> B
+NameExpr(3) : A
+ListExpr(4) : builtins.list<A>
+
+[case testLambdaAndHigherOrderFunction3-skip]
+## FuncExpr|NameExpr|ListExpr
+map(
+  [lambda x: f(x)], 
+  <A> [])
+s[] map<t, s>(func<s(t)>[] f, t[] a): pass
+B f(A a): pass
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+[out]
+NameExpr(2) : def [-1:A, -2:B] (builtins.list<def (A) -> B> f, builtins.list<A> a) -> builtins.list<B>
+FuncExpr(3) : def (A) -> B
+ListExpr(3) : builtins.list<def (A) -> B>
+NameExpr(3) : def (A a) -> B
+NameExpr(3) : A
+ListExpr(4) : builtins.list<A>
+
 
 -- TODO
 --
