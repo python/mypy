@@ -874,7 +874,8 @@ class ExpressionChecker:
         # The context may have function type variables in it. We replace them
         # since these are the type variables we are ultimately trying to infer;
         # they must be considered as indeterminate. We use ErasedType since it
-        # does not affect type inference results (it is for this purpose only).
+        # does not affect type inference results (it is for purposes like this
+        # only).
         ctx = replace_func_type_vars(ctx, ErasedType())
         
         callable_ctx = (Callable)ctx
