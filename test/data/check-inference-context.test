@@ -586,3 +586,12 @@ s[] f<s, t>(s a, t b): pass
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
+
+[case testLambdaInListAndHigherOrderFunction]
+map(
+  [lambda x: x], 
+  <A> [])
+s[] map<t, s>(func<s(t)>[] f, t[] a): pass
+class A: pass
+[builtins fixtures/list.py]
+[out]

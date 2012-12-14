@@ -232,12 +232,9 @@ class ExpressionChecker:
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())
         # Only substite non-None and non-erased types.
-        # TODO This might not be general enough. If a type has a None type
-        #      component we should not use it (but does this ever happen?).
-        #      Finally, using None types for this might not be optimal.
         new_args = <Typ> []
         for arg in args:
-            if isinstance(arg, NoneTyp) or isinstance(arg, ErasedType):
+            if isinstance(arg, NoneTyp) or has_erased_component(arg):
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -1229,3 +1226,17 @@ class HasTypeVarQuery(mtypes.TypeQuery):
 
     bool visit_type_var(self, TypeVar t):
         return True
+
+
+bool has_erased_component(Typ t):
+    return t is not None and t.accept(HasErasedComponentsQuery())
+
+
+class HasErasedComponentsQuery(mtypes.TypeQuery):
+    """Visitor for querying whether a type has an erased component."""
+    void __init__(self):
+        super().__init__(False, mtypes.ANY_TYPE_STRATEGY)
+
+    bool visit_erased_type(self, ErasedType t):
+        return True
+    

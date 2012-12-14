@@ -663,23 +663,22 @@ NameExpr(3) : def (A a) -> B
 NameExpr(3) : A
 ListExpr(4) : builtins.list<A>
 
-[case testLambdaAndHigherOrderFunction3-skip]
-## FuncExpr|NameExpr|ListExpr
+[case testLambdaInListAndHigherOrderFunction]
 map(
-  [lambda x: f(x)], 
+  [lambda x: x], 
   <A> [])
 s[] map<t, s>(func<s(t)>[] f, t[] a): pass
-B f(A a): pass
 class A: pass
-class B: pass
 [builtins fixtures/list.py]
 [out]
-NameExpr(2) : def [-1:A, -2:B] (builtins.list<def (A) -> B> f, builtins.list<A> a) -> builtins.list<B>
-FuncExpr(3) : def (A) -> B
-ListExpr(3) : builtins.list<def (A) -> B>
-NameExpr(3) : def (A a) -> B
-NameExpr(3) : A
-ListExpr(4) : builtins.list<A>
+-- TODO We probably should not silently infer 'any' types in statically typed 
+--      context. Perhaps just fail instead?
+CallExpr(1) : builtins.list<any>
+NameExpr(1) : def [-1:A, -2:any] (builtins.list<def (A) -> any> f, builtins.list<A> a) -> builtins.list<any>
+FuncExpr(2) : def (A) -> A
+ListExpr(2) : builtins.list<def (A) -> any>
+NameExpr(2) : A
+ListExpr(3) : builtins.list<A>
 
 
 -- TODO
