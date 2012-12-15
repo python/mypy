@@ -96,41 +96,41 @@ class SolveSuite(Suite):
     
     def test_simple_constraints_with_dynamic_type(self):
         self.assert_solve(['T'],
-                          [self.supc(self.fx.t, self.fx.dyn)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [self.supc(self.fx.t, self.fx.anyt)],
+                          [(self.fx.anyt, self.fx.anyt)])
         self.assert_solve(['T'],
-                          [self.supc(self.fx.t, self.fx.dyn),
-                           self.supc(self.fx.t, self.fx.dyn)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [self.supc(self.fx.t, self.fx.anyt),
+                           self.supc(self.fx.t, self.fx.anyt)],
+                          [(self.fx.anyt, self.fx.anyt)])
         self.assert_solve(['T'],
-                          [self.supc(self.fx.t, self.fx.dyn),
+                          [self.supc(self.fx.t, self.fx.anyt),
                            self.supc(self.fx.t, self.fx.a)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [(self.fx.anyt, self.fx.anyt)])
         
         self.assert_solve(['T'],
-                          [self.subc(self.fx.t, self.fx.dyn)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [self.subc(self.fx.t, self.fx.anyt)],
+                          [(self.fx.anyt, self.fx.anyt)])
         self.assert_solve(['T'],
-                          [self.subc(self.fx.t, self.fx.dyn),
-                           self.subc(self.fx.t, self.fx.dyn)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [self.subc(self.fx.t, self.fx.anyt),
+                           self.subc(self.fx.t, self.fx.anyt)],
+                          [(self.fx.anyt, self.fx.anyt)])
         self.assert_solve(['T'],
-                          [self.subc(self.fx.t, self.fx.dyn),
+                          [self.subc(self.fx.t, self.fx.anyt),
                            self.subc(self.fx.t, self.fx.a)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [(self.fx.anyt, self.fx.anyt)])
     
-    def test_both_normal_and_dynamic_types_in_results(self):
-        # If one of the bounds is dynamic, we promote the other bound to
-        # dynamic as well, since otherwise the type range does not make sense.
+    def test_both_normal_and_any_types_in_results(self):
+        # If one of the bounds is any, we promote the other bound to
+        # any as well, since otherwise the type range does not make sense.
         self.assert_solve(['T'],
                           [self.supc(self.fx.t, self.fx.a),
-                           self.subc(self.fx.t, self.fx.dyn)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                           self.subc(self.fx.t, self.fx.anyt)],
+                          [(self.fx.anyt, self.fx.anyt)])
         
         self.assert_solve(['T'],
-                          [self.supc(self.fx.t, self.fx.dyn),
+                          [self.supc(self.fx.t, self.fx.anyt),
                            self.subc(self.fx.t, self.fx.a)],
-                          [(self.fx.dyn, self.fx.dyn)])
+                          [(self.fx.anyt, self.fx.anyt)])
     
     def assert_solve(self, vars, constraints, results):
         res = []

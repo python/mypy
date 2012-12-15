@@ -36,7 +36,7 @@ class TypeFixture:
 
         # Simple types
 
-        self.dyn = Any()
+        self.anyt = Any()
         self.void = Void()
         self.err = ErrorType()
         self.nonet = NoneTyp()
@@ -120,7 +120,7 @@ class TypeFixture:
         self.gtf = Instance(self.gi, [self.tf])      # G<T`-1>
         self.gtf2 = Instance(self.gi, [self.tf2])    # G<T`-2>
         self.gs = Instance(self.gi, [self.s])        # G<S>
-        self.gdyn = Instance(self.gi, [self.dyn])    # G<any>
+        self.gdyn = Instance(self.gi, [self.anyt])    # G<any>
 
         self.g2a = Instance(self.g2i, [self.a])      # G2<A>
 
