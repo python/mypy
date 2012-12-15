@@ -273,7 +273,7 @@ class Lexer:
     Pattern name_char_exp = re.compile('[a-zA-Z0-9_]')
     
     void lex_number(self):
-        """Analyse an Int or Float literal. Assume that the current
+        """Analyse an int or float literal. Assume that the current
         location points to one of them.
         """
         s1 = self.match(self.number_exp1)

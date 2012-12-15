@@ -33,7 +33,7 @@ class TypeFixture:
         self.dyn = Any()
         self.void = Void()
         self.err = ErrorType()
-        self.nilt = NoneTyp()
+        self.nonet = NoneTyp()
 
         # Interface TypeInfos
 
@@ -43,7 +43,7 @@ class TypeFixture:
         # interface F2
         self.f2i = make_type_info('F2', (IS_INTERFACE, True))
 
-        # interface F3 is F
+        # interface F3(F)
         self.f3i = make_type_info('F3', (IS_INTERFACE, True), (BASE, self.fi))
 
         # Class TypeInfos
@@ -76,13 +76,13 @@ class TypeFixture:
         self.g2i = make_type_info('G2', (BASE, self.oi), (VARS, ['T']))
         # class H<S, T>
         self.hi = make_type_info('H', (BASE, self.oi), (VARS, ['S', 'T']))
-        # class GS<T, S> is G<S>
+        # class GS<T, S>(G<S>)
         self.gsi = make_type_info('GS', (BASE, self.gi), (VARS, ['T', 'S']),
                                   (BASE_DEFS, [Instance(self.gi, [self.s])]))
-        # class GS2<S> is G<S>
+        # class GS2<S>(G<S>)
         self.gs2i = make_type_info('GS2', (BASE, self.gi), (VARS, ['S']),
                                    (BASE_DEFS, [Instance(self.gi, [self.s1])]))
-        # class Array as <T>
+        # class list<T>
         self.std_listi = make_type_info('builtins.list', (BASE, self.oi),
                                         (VARS, ['T']))
 
@@ -109,12 +109,12 @@ class TypeFixture:
 
         self.ga = Instance(self.gi, [self.a])        # G<A>
         self.gb = Instance(self.gi, [self.b])        # G<B>
-        self.go = Instance(self.gi, [self.o])        # G<Object>
+        self.go = Instance(self.gi, [self.o])        # G<object>
         self.gt = Instance(self.gi, [self.t])        # G<T`1>
         self.gtf = Instance(self.gi, [self.tf])      # G<T`-1>
         self.gtf2 = Instance(self.gi, [self.tf2])    # G<T`-2>
         self.gs = Instance(self.gi, [self.s])        # G<S>
-        self.gdyn = Instance(self.gi, [self.dyn])    # G<dynamic>
+        self.gdyn = Instance(self.gi, [self.dyn])    # G<any>
 
         self.g2a = Instance(self.g2i, [self.a])      # G2<A>
 

@@ -561,7 +561,7 @@ class TypeChecker(NodeVisitor<Typ>):
                         self.temp_node(trvalue.items[j]), context, msg)
         elif (isinstance(rvalue_type, Instance) and
                 ((Instance)rvalue_type).typ.full_name() == 'builtins.list'):
-            # Rvalue with Array type.
+            # Rvalue with list type.
             item_type = ((Instance)rvalue_type).args[0]
             for k in range(len(lvalue_types)):
                 self.check_single_assignment(lvalue_types[k],

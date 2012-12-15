@@ -92,7 +92,7 @@ class TypeOpsSuite(Suite):
     # ExpandTypes
     
     def test_trivial_expand(self):
-        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nilt,
+        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nonet,
                   self.tuple(self.fx.a),
                   self.callable([], self.fx.a, self.fx.a), self.fx.dyn):
             self.assert_expand(t, [], t)
@@ -124,7 +124,7 @@ class TypeOpsSuite(Suite):
     # ReplaceTypeVars
     
     def test_trivial_replace(self):
-        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nilt,
+        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
                   self.tuple(self.fx.a),
                   self.callable([], self.fx.a, self.fx.a), self.fx.dyn,
                   self.fx.err):
@@ -143,7 +143,7 @@ class TypeOpsSuite(Suite):
     # EraseType
     
     def test_trivial_erase(self):
-        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nilt,
+        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
                   self.fx.dyn, self.fx.err):
             self.assert_erase(t, t)
     
@@ -299,7 +299,7 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.ga, self.fx.gb, self.fx.o)
         self.assert_join(self.fx.ga, self.fx.g2a, self.fx.o)
         
-        self.assert_join(self.fx.ga, self.fx.nilt, self.fx.ga)
+        self.assert_join(self.fx.ga, self.fx.nonet, self.fx.ga)
         self.assert_join(self.fx.ga, self.fx.dyn, self.fx.dyn)
         
         for t in [self.fx.a, self.fx.o, self.fx.t, self.tuple(),
@@ -523,28 +523,28 @@ class MeetSuite(Suite):
     def test_simple_generics(self):
         self.assert_meet(self.fx.ga, self.fx.ga, self.fx.ga)
         self.assert_meet(self.fx.ga, self.fx.o, self.fx.ga)
-        self.assert_meet(self.fx.ga, self.fx.gb, self.fx.nilt)
-        self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nilt)
+        self.assert_meet(self.fx.ga, self.fx.gb, self.fx.nonet)
+        self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nonet)
         
-        self.assert_meet(self.fx.ga, self.fx.nilt, self.fx.nilt)
+        self.assert_meet(self.fx.ga, self.fx.nonet, self.fx.nonet)
         self.assert_meet(self.fx.ga, self.fx.dyn, self.fx.dyn)
         
         for t in [self.fx.a, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
-            self.assert_meet(t, self.fx.ga, self.fx.nilt)
+            self.assert_meet(t, self.fx.ga, self.fx.nonet)
     
     def test_generics_with_multiple_args(self):
         self.assert_meet(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.nilt)
-        self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.nilt)
+        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.nonet)
+        self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.nonet)
     
     def test_generics_with_inheritance(self):
         self.assert_meet(self.fx.gsab, self.fx.gb, self.fx.gsab)
-        self.assert_meet(self.fx.gsba, self.fx.gb, self.fx.nilt)
+        self.assert_meet(self.fx.gsba, self.fx.gb, self.fx.nonet)
     
     def test_generics_with_inheritance_and_shared_supertype(self):
-        self.assert_meet(self.fx.gsba, self.fx.gs2a, self.fx.nilt)
-        self.assert_meet(self.fx.gsab, self.fx.gs2a, self.fx.nilt)
+        self.assert_meet(self.fx.gsba, self.fx.gs2a, self.fx.nonet)
+        self.assert_meet(self.fx.gsab, self.fx.gs2a, self.fx.nonet)
     
     def test_generic_types_and_dynamic(self):
         self.assert_meet(self.fx.gdyn, self.fx.ga, self.fx.gdyn)
@@ -559,20 +559,20 @@ class MeetSuite(Suite):
     
     def test_meet_interface_types(self):
         self.assert_meet(self.fx.f, self.fx.f, self.fx.f)
-        self.assert_meet(self.fx.f, self.fx.f2, self.fx.nilt)
+        self.assert_meet(self.fx.f, self.fx.f2, self.fx.nonet)
         self.assert_meet(self.fx.f, self.fx.f3, self.fx.f3)
     
     def test_join_interface_and_class_types(self):
         self.assert_meet(self.fx.o, self.fx.f, self.fx.f)
-        self.assert_meet(self.fx.a, self.fx.f, self.fx.nilt)
+        self.assert_meet(self.fx.a, self.fx.f, self.fx.nonet)
         
         self.assert_meet(self.fx.e, self.fx.f, self.fx.e)
     
     def test_join_class_types_with_shared_interfaces(self):
         # These have nothing special with respect to meets, unlike joins. These
         # are for completeness only.
-        self.assert_meet(self.fx.e, self.fx.e2, self.fx.nilt)
-        self.assert_meet(self.fx.e2, self.fx.e3, self.fx.nilt)
+        self.assert_meet(self.fx.e, self.fx.e2, self.fx.nonet)
+        self.assert_meet(self.fx.e2, self.fx.e3, self.fx.nonet)
     
     def test_meet_with_generic_interfaces(self):
         # TODO fix
@@ -581,7 +581,7 @@ class MeetSuite(Suite):
         fx = InterfaceTypeFixture()
         self.assert_meet(fx.gfa, fx.m1, fx.m1)
         self.assert_meet(fx.gfa, fx.gfa, fx.gfa)
-        self.assert_meet(fx.gfb, fx.m1, fx.nilt)
+        self.assert_meet(fx.gfb, fx.m1, fx.nonet)
     
     # FIX generic interfaces + ranges
     

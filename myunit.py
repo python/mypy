@@ -173,7 +173,7 @@ void run_test(Suite t, str[] args=None):
 
 tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
                                         int num_skip, str prefix, int depth):
-    """The first argument may be TestCase, Suite or (Str, Suite)."""
+    """The first argument may be TestCase, Suite or (str, Suite)."""
     if isinstance(test, TestCase):
         name = prefix + test.name
         for pattern in patterns:
