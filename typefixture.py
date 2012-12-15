@@ -1,3 +1,8 @@
+"""Fixture used in type-related test cases.
+
+It contains class and interface objects and Typ objects.
+"""
+
 from mtypes import (
     TypeVar, Any, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
     TypeVars
@@ -14,8 +19,9 @@ INTERFACES = 4
 
 
 class TypeFixture:
-    """Helper class that is used as a fixture in type-related unit tests. The
-    members are initialized to contain various type-related values.
+    """Helper class that is used as a fixture in type-related unit tests.
+
+    The members are initialized to contain various type-related values.
     """
     def __init__(self):
         # Type variables

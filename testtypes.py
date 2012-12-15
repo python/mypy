@@ -1,3 +1,5 @@
+"""Test cases for mypy types and type operations."""
+
 from myunit import Suite, assert_equal, assert_true
 from erasetype import erase_type
 from expandtype import expand_type

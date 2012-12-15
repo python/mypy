@@ -1,3 +1,5 @@
+"""Test cases for the constraint solver used in type inference."""
+
 from myunit import Suite, assert_equal
 from constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
 from solve import solve_constraints
