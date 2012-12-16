@@ -283,7 +283,7 @@ class str(int_t, float_t, Sequence<str>):
     str[] splitlines(self, bool keepends=False): pass
     # TODO tuple prefix; None value for int
     bool startswith(self, str prefix, int start=0, int end=None): pass
-    str strip(self): pass
+    str strip(self, str chars=None): pass
     str swapcase(self): pass
     str title(self): pass
     str translate(self, dict<int, any> table): pass
@@ -363,7 +363,7 @@ class bytes(int_t, float_t, Sequence<int>):
     bytes[] split(self, bytes sep=None, int maxsplit=-1): pass
     bytes[] splitlines(self, bool keepends=False): pass
     bool startswith(self, bytes prefix): pass
-    bytes strip(self): pass
+    bytes strip(self, bytes chars=None): pass
     bytes swapcase(self): pass
     bytes title(self): pass
     bytes translate(self, dict<int, any> table): pass
@@ -414,7 +414,7 @@ class bytearray(bytes):
     tuple<bytearray, bytearray, bytearray> rpartition(self, bytes sep): pass
     # rpslit, split, splitlines return bytes[]
     bytearray rstrip(self, bytes chars=None): pass
-    bytearray strip(self): pass
+    bytearray strip(self, bytes chars=None): pass
     bytearray swapcase(self): pass
     bytearray title(self): pass
     bytearray translate(self, dict<int, any> table): pass
