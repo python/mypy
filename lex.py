@@ -1,4 +1,10 @@
-"""Lexical analyzer for mypy. Translate a string to a list of tokens."""
+"""Lexical analyzer for mypy.
+
+Translate a string that represents a file or a compilation unit to a list of
+tokens.
+
+This module can be run as a script (lex.py FILE).
+"""
 
 import re
 from re import Match, Pattern
@@ -17,6 +23,7 @@ class Token:
         self.pre = pre
     
     str __repr__(self):
+        """The representation is of form Keyword('  if')."""
         t = short_type(self)
         return t + '(' + self.fix(self.pre) + self.fix(self.string) + ')'
     
@@ -24,106 +31,80 @@ class Token:
         return self.pre + self.string
     
     str fix(self, str s):
+        """Replace common non-printable chars with escape sequences.
+
+        Do not use repr() since we don't want do duplicate backslashes.
+        """
         return s.replace('\n', '\\n').replace('\t', '\\t').replace('\r', '\\r')
 
 
 # Token classes
 
+
 class Break(Token):
     """Statement break (line break or semicolon)"""
+
 
 class Indent(Token):
     """Increase block indent level."""
 
+
 class Dedent(Token):
     """Decrease block indent level."""
+
 
 class Eof(Token):
     """End of file"""
 
+
 class Keyword(Token):
-    """Reserved word (other than keyword operators; they use Op)"""
+    """Reserved word (other than keyword operators; they use Op).
+
+    Examples: if, class, while, def.
+    """
+
 
 class Name(Token):
     """An alphanumeric identifier"""
 
+
 class IntLit(Token):
     """Integer literal"""
+
 
 class StrLit(Token):
     """String literal"""
     str parsed(self):
         """Return the parsed contents of the literal."""
-        return _parsed(self.string)
+        return _parse_str_literal(self.string)
+
 
 class BytesLit(Token):
-    "Bytes literal"
+    """Bytes literal"""
     str parsed(self):
         """Return the parsed contents of the literal."""
-        return _parsed(self.string)
+        return _parse_str_literal(self.string)
 
-str_prefix_re = re.compile('[rRbB]*')
-
-escape_re = re.compile(
-    "\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
-
-str _parsed(str string):
-    prefix = str_prefix_re.match(string).group(0).lower()
-    s = string[len(prefix):]
-    if s.startswith("'''") or s.startswith('"""'):
-        return s[3:-3]
-    elif 'r' in prefix:
-        return s[1:-1].replace('\\' + s[0], s[0])
-    else:
-        return escape_re.sub(lambda m: escape_repl(m, prefix), s[1:-1])
-
-escape_map = {'a': '\u0007',
-              'b': '\u0008',
-              'f': '\u000c',
-              'n': '\u000a',
-              'r': '\u000d',
-              't': '\u0009',
-              'v': '\u000b',
-              '"': '"',
-              "'": "'"}
-
-str escape_repl(Match m, str prefix):
-    seq = m.group(1)
-    if len(seq) == 1 and seq in escape_map:
-        return escape_map[seq]
-    elif seq.startswith('x'):
-        return chr(int(seq[1:], 16))
-    elif seq.startswith('u'):
-        if 'b' not in prefix:
-            return chr(int(seq[1:], 16))
-        else:
-            return '\\' + seq
-    else:
-        # Octal sequence.
-        ord = int(seq, 8)
-        if 'b' in prefix:
-            # Make sure code is no larger than 255 for bytes literals.
-            ord = ord % 256
-        return chr(ord)
 
 class FloatLit(Token):
     """Float literal"""
-    pass
+
 
 class Punct(Token):
-    """Punctuator (e.g. comma or paranthesis)"""
-    pass
+    """Punctuator (e.g. comma, '(' or '=')"""
+
 
 class Colon(Token):
     pass
 
+
 class Op(Token):
-    """Operator (e.g. '+' or 'and')"""
-    pass
+    """Operator (e.g. '+' or 'in')"""
+
 
 class Bom(Token):
     """Byte order mark (at the start of a file)"""
-    pass
+
 
 class LexError(Token):
     """Lexer error token"""
@@ -190,19 +171,91 @@ LATIN1_ENCODING = 2
 UTF8_ENCODING = 3
 
 
+# Map single-character string escape sequences to corresponding characters.
+escape_map = {'a': '\x07',
+              'b': '\x08',
+              'f': '\x0c',
+              'n': '\x0a',
+              'r': '\x0d',
+              't': '\x09',
+              'v': '\x0b',
+              '"': '"',
+              "'": "'"}
+
+
+# Matches the optional prefix of a string literal, e.g. the 'r' in r"foo".
+str_prefix_re = re.compile('[rRbB]*')
+
+# Matches an escape sequence in a string, e.g. \n or \x4F.
+escape_re = re.compile(
+    "\\\\([abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[0-7]{1,3})")
+
+
+str _parse_str_literal(str string):
+    """Translate escape sequences in str literal to the corresponding chars.
+
+    For example, \t is translated to the tab character (ascii 9).
+
+    Return the translated contents of the literal.  Also handle raw and
+    triple-quoted string literals.
+    """
+    prefix = str_prefix_re.match(string).group(0).lower()
+    s = string[len(prefix):]
+    if s.startswith("'''") or s.startswith('"""'):
+        return s[3:-3]
+    elif 'r' in prefix:
+        return s[1:-1].replace('\\' + s[0], s[0])
+    else:
+        return escape_re.sub(lambda m: escape_repl(m, prefix), s[1:-1])
+
+
+str escape_repl(Match m, str prefix):
+    """Translate a string escape sequence, e.g. \t -> the tab character.
+
+    Assume that the Match object is from escape_re.
+    """
+    seq = m.group(1)
+    if len(seq) == 1 and seq in escape_map:
+        # Single-character escape sequence, e.g. \n.
+        return escape_map[seq]
+    elif seq.startswith('x'):
+        # Hexadecimal sequence \xNN.
+        return chr(int(seq[1:], 16))
+    elif seq.startswith('u'):
+        # Unicode sequence \uNNNN.
+        if 'b' not in prefix:
+            return chr(int(seq[1:], 16))
+        else:
+            return '\\' + seq
+    else:
+        # Octal sequence.
+        ord = int(seq, 8)
+        if 'b' in prefix:
+            # Make sure code is no larger than 255 for bytes literals.
+            ord = ord % 256
+        return chr(ord)
+
+
 class Lexer:
     """Lexical analyzer."""
-    int i
-    str s
-    int line
-    str pre = ''
-    int enc = DEFAULT_ENCODING
-    
+    int i     # Current string index (into s)
+    str s     # The string being analyzed
+    int line  # Current line number
+    str pre_whitespace = ''     # Whitespace and comments before the next token
+    int enc = DEFAULT_ENCODING  # Encoding TODO implement properly
+
+    # Generated tokens
     Token[] tok
-    list<func<void()>> map
     
+    # Table from byte character value to lexer method. E.g. entry at ord('0')
+    # contains the method lex_number().
+    func<void()>[] map
+
+    # Indent levels of currently open blocks, in spaces.
     int[] indents
-    # Open ('s, ['s and {'s without matching closing bracket.
+    
+    # Open ('s, ['s and {'s without matching closing bracket; used for ignoring
+    # newlines within parentheses/brackets.
     str[] open_brackets
     
     void __init__(self):
@@ -210,6 +263,7 @@ class Lexer:
         self.tok = []
         self.indents = [0]
         self.open_brackets = []
+        # Fill in the map from valid character codes to relevant lexer methods.
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
                             ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
                             ('0123456789', self.lex_number),
@@ -233,14 +287,24 @@ class Lexer:
         self.s = s
         self.i = 0
         self.line = 1    
-        
+
         if s.startswith('\xef\xbb\xbf'):
             self.add_token(Bom(s[0:3]))
+            
+        # Parse initial indent; otherwise first-line indent would not generate
+        # an error.
         self.lex_indent()
-        
+
+        # Make a local copy of map as a simple optimization.
         map = self.map
+        
+        # Lex the file. Repeatedly call the lexer method for the current char.
         while self.i < len(s):
+            # Get the character code of the next character to lex.
             c = ord(s[self.i])
+            # Dispatch to the relevant lexer method. This will consume some
+            # characters in the text, add a token to self.tok and increment
+            # self.i.
             map[c]()
         
         # Append a break if there is no statement/block terminator at the end
@@ -248,33 +312,42 @@ class Lexer:
         if len(self.tok) > 0 and (not isinstance(self.tok[-1], Break) and
                                   not isinstance(self.tok[-1], Dedent)):
             self.add_token(Break(''))
+
+        # Close remaining open blocks with Dedent tokens.
         self.lex_indent()
+        
         self.add_token(Eof(''))
     
     void lex_number_or_dot(self):
-        """Analyse a token starting with a dot (either the member
-        access operator or a Float literal).
+        """Analyse a token starting with a dot.
+
+        It can be the member access operator or a float literal such as '.123'.
         """
         if self.is_at_number():
             self.lex_number()
         else:
             self.lex_misc()
     
-    Pattern number_exp = re.compile('[0-9]|\\.[0-9]')
+    number_exp = re.compile(r'[0-9]|\.[0-9]')
     
     bool is_at_number(self):
         """Is the current location at a numeric literal?"""
         return self.match(self.number_exp) != ''
     
     # Regexps used by lex_number
-    Pattern number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
-    Pattern number_exp2 = re.compile(
-        '[0-9]*\\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
-    Pattern name_char_exp = re.compile('[a-zA-Z0-9_]')
+
+    # Decimal/hex/octal literal
+    number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
+    # Float literal, e.g. '1.23' or '12e+34'
+    number_exp2 = re.compile(
+        r'[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
+    # These characters must not appear after a number literal.
+    name_char_exp = re.compile('[a-zA-Z0-9_]')
     
     void lex_number(self):
-        """Analyse an int or float literal. Assume that the current
-        location points to one of them.
+        """Analyse an int or float literal.
+
+        Assume that the current location points to one of them.
         """
         s1 = self.match(self.number_exp1)
         s2 = self.match(self.number_exp2)
@@ -282,6 +355,7 @@ class Lexer:
         maxlen = max(len(s1), len(s2))
         if self.name_char_exp.match(
                     self.s[self.i + maxlen:self.i + maxlen + 1]) is not None:
+            # Error: alphanumeric character after number literal.
             s3 = self.match(re.compile('[0-9][0-9a-zA-Z_]*'))
             maxlen = max(maxlen, len(s3))
             self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
@@ -292,7 +366,7 @@ class Lexer:
             # Float literal.
             self.add_token(FloatLit(s2))
     
-    Pattern name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*')
+    name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*')
     
     void lex_name(self):
         """Analyse a name (an identifier, a keyword or an alphabetical
@@ -310,30 +384,38 @@ class Lexer:
             self.add_token(Name(s))
     
     # Regexps representing components of string literals
+
+    # Initial part of a single-quoted literal, e.g. b'foo' or b'foo\\\n
+    str_exp_single = re.compile(
+        r"[a-z]*'([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
+    # Non-initial part of a multiline single-quoted literal, e.g. foo'
+    str_exp_single_multi = re.compile(
+        r"([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
+    # Initial part of a single-quoted raw literal, e.g. r'foo' or r'foo\\\n
+    str_exp_raw_single = re.compile(
+        r"[a-z]*'([^'\r\n\\]|\\'|\\[^\n\r])*('|\\(\n|\r\n?))")
+    # Non-initial part of a raw multiline single-quoted literal, e.g. foo'
+    str_exp_raw_single_multi = re.compile(
+        r"([^'\r\n]|'')*('|\\(\n|\r\n?))")
+
+    # Start of a ''' literal, e.g. b'''
+    str_exp_single3 = re.compile("[a-z]*'''")
+    # End of a ''' literal, e.g. foo'''
+    str_exp_single3end = re.compile(r"[^\n\r]*?'''")
+
+    # The following are similar to above (but use double quotes).
     
-    Pattern str_exp_single = re.compile(
-        "[a-z]*'([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_single_multi = re.compile(
-        "([^'\\\\\\r\\n]|\\\\[^\\r\\n])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_raw_single = re.compile(
-        "[a-z]*'([^'\\r\\n\\\\]|\\\\'|\\\\[^\\n\\r])*('|\\\\(\\n|\\r\\n?))")
-    Pattern str_exp_raw_single_multi = re.compile(
-        "([^'\\r\\n]|'')*('|\\\\(\\n|\\r\\n?))")
+    str_exp_double = re.compile(
+        r'[a-z]*"([^"\\\r\n]|\\[^\r\n])*("|\\(\n|\r\n?))')
+    str_exp_double_multi = re.compile(
+        r'([^"\\\r\n]|\\[^\r\n])*("|\\(\n|\r\n?))')  
+    str_exp_raw_double = re.compile(
+        r'[a-z]*"([^"\r\n\\]|\\"|\\[^\n\r])*("|\\(\n|\r\n?))')
+    str_exp_raw_double_multi = re.compile(
+        r'([^"\r\n]|"")*("|\\(\n|\r\n?))')
     
-    Pattern str_exp_single3 = re.compile("[a-z]*'''")
-    Pattern str_exp_single3end = re.compile("[^\\n\\r]*?'''")
-    
-    Pattern str_exp_double = re.compile(
-        '[a-z]*"([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')
-    Pattern str_exp_double_multi = re.compile(
-        '([^"\\\\\\r\\n]|\\\\[^\\r\\n])*("|\\\\(\\n|\\r\\n?))')  
-    Pattern str_exp_raw_double = re.compile(
-        '[a-z]*"([^"\\r\\n\\\\]|\\\\"|\\\\[^\\n\\r])*("|\\\\(\\n|\\r\\n?))')
-    Pattern str_exp_raw_double_multi = re.compile(
-        '([^"\\r\\n]|"")*("|\\\\(\\n|\\r\\n?))')
-    
-    Pattern str_exp_double3 = re.compile('[a-z]*"""')
-    Pattern str_exp_double3end = re.compile('[^\\n\\r]*?"""')
+    str_exp_double3 = re.compile('[a-z]*"""')
+    str_exp_double3end = re.compile(r'[^\n\r]*?"""')
     
     void lex_str_single(self):
         """Analyse single-quoted string literal"""
@@ -381,7 +463,7 @@ class Lexer:
             s = self.match(regex)
             if s != '':
                 if s.endswith('\n') or s.endswith('\r'):
-                    self.lex_multiline_literal(re2, s)
+                    self.lex_multiline_string_literal(re2, s)
                 else:
                     self.verify_encoding(s, STR_CONTEXT)
                     if 'b' in prefix:
@@ -417,7 +499,11 @@ class Lexer:
             lit = StrLit(ss + m.group(0))
         self.add_special_token(lit, line, len(m.group(0)))
     
-    def lex_multiline_literal(self, re_end, prefix):
+    void lex_multiline_string_literal(self, Pattern re_end, str prefix):
+        """Analyze multiline single/double-quoted string literal.
+
+        Use explicit \ for line continuation.
+        """
         line = self.line
         self.i += len(prefix)
         ss = prefix
@@ -433,38 +519,43 @@ class Lexer:
             if not m.endswith('\n') and not m.endswith('\r'): break
         self.add_special_token(StrLit(ss), line, 0) # TODO bytes
     
-    Pattern comment_exp = re.compile('#[^\\n\\r]*')
+    comment_exp = re.compile(r'#[^\n\r]*')
     
     void lex_comment(self):
         """Analyse a comment."""
         s = self.match(self.comment_exp)
         self.verify_encoding(s, COMMENT_CONTEXT)
-        self.add_pre(s)
+        self.add_pre_whitespace(s)
     
-    Pattern backslash_exp = re.compile('\\\\(\\n|\\r\\n?)')
+    backslash_exp = re.compile(r'\\(\n|\r\n?)')
     
     void lex_backslash(self):
         s = self.match(self.backslash_exp)
         if s != '':
-            self.add_pre(s)
+            self.add_pre_whitespace(s)
             self.line += 1
         else:
             self.add_token(LexError('\\', INVALID_BACKSLASH))
     
-    Pattern space_exp = re.compile('[ \\t\x0c]*')
-    Pattern indent_exp = re.compile('[ \\t]*[#\\n\\r]?')
+    space_exp = re.compile(r'[ \t\x0c]*')
+    indent_exp = re.compile(r'[ \t]*[#\n\r]?')
     
     void lex_space(self):
-        """Analyse a run of whitespace characters."""
+        """Analyze a run of whitespace characters (within a line, not indents).
+
+        Only store them in self.pre_whitespace.
+        """
         s = self.match(self.space_exp)
-        self.add_pre(s)
+        self.add_pre_whitespace(s)
     
     str comment_or_newline = '#' + '\n' + '\r'
     
     void lex_indent(self):
+        """Analyze whitespace chars at the beginning of a line (indents)."""
         s = self.match(self.indent_exp)
         if s != '' and s[-1] in self.comment_or_newline:
-            self.add_pre(s[:-1])
+            # Empty line (whitespace only or comment only).
+            self.add_pre_whitespace(s[:-1])
             if s[-1] == '#':
                 self.lex_comment()
             else:
@@ -473,19 +564,23 @@ class Lexer:
             return 
         indent = self.calc_indent(s)
         if indent == self.indents[-1]:
-            self.add_pre(s)
+            # No change in indent: just whitespace.
+            self.add_pre_whitespace(s)
         elif indent > self.indents[-1]:
+            # An increased indent (new block).
             self.indents.append(indent)
             self.add_token(Indent(s))
         else:
-            pre = self.pre
-            self.pre = ''
+            # Decreased indent (end of one or more blocks).
+            pre = self.pre_whitespace
+            self.pre_whitespace = ''
             while indent < self.indents[-1]:
                 self.add_token(Dedent(''))
                 self.indents.pop()
-            self.pre = pre
-            self.add_pre(s)
+            self.pre_whitespace = pre
+            self.add_pre_whitespace(s)            
             if indent != self.indents[-1]:
+                # Error: indent level does not match a previous indent level.
                 self.add_token(LexError('', INVALID_DEDENT))
     
     int calc_indent(self, str s):
@@ -494,16 +589,17 @@ class Lexer:
             if ch == ' ':
                 indent += 1
             else:
+                # Tab: 8 spaces (rounded to a multiple of 8).
                 indent += 8 - indent % 8
         return indent
     
-    Pattern break_exp = re.compile('\\r\\n|\\r|\\n|;')
+    break_exp = re.compile(r'\r\n|\r|\n|;')
     
     void lex_break(self):
         """Analyse a line break."""
         s = self.match(self.break_exp)
         if self.ignore_break():
-            self.add_pre(s)
+            self.add_pre_whitespace(s)
             self.line += 1
         else:
             self.add_token(Break(s))
@@ -570,12 +666,16 @@ class Lexer:
         else:
             return ''
     
-    void add_pre(self, str s):
-        """Record string representing whitespace or comment after the previous.
-        The accumulated whitespace/comments will be associated with the next
-        token and then it will be cleared.
+    void add_pre_whitespace(self, str s):
+        """Record whitespace and comments before the next token.
+        
+        The accumulated whitespace/comments will be stored in the next token
+        and then it will be cleared.
+
+        This is needed for pretty-printing the original source code while
+        preserving comments, indentation, whitespace etc.
         """
-        self.pre += s
+        self.pre_whitespace += s
         self.i += len(s)
     
     void add_token(self, Token tok):
@@ -587,29 +687,32 @@ class Lexer:
                 and not isinstance(tok, LexError)
                 and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
-        tok.pre = self.pre
+        tok.pre = self.pre_whitespace
         tok.line = self.line
         self.tok.append(tok)
         self.i += len(tok.string)
-        self.pre = ''
+        self.pre_whitespace = ''
     
     void add_special_token(self, Token tok, int line, int skip):
+        """Like add_token, but caller sets the number of chars to skip."""
         if (tok.string == '' and not isinstance(tok, Eof)
                 and not isinstance(tok, Break)
                 and not isinstance(tok, LexError)
                 and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
-        tok.pre = self.pre
+        tok.pre = self.pre_whitespace
         tok.line = line
         self.tok.append(tok)
         self.i += skip
-        self.pre = ''
+        self.pre_whitespace = ''
     
     bool ignore_break(self):
         """If the next token is a break, can we ignore it?"""
         if len(self.open_brackets) > 0 or len(self.tok) == 0:
+            # Ignore break after open ( [ or { or at the beginning of file.
             return True
         else:
+            # Ignore break after another break or dedent.
             t = self.tok[-1]
             return isinstance(t, Break) or isinstance(t, Dedent)
     
