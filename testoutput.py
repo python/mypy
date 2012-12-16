@@ -43,7 +43,7 @@ def test_output(testcase):
         # Test case names with a special suffix get semantically analyzed. This
         # lets us test that semantic analysis does not break source code pretty
         # printing.
-        if testcase.name.endswith('_SemanticAnalysis'):
+        if testcase.name.endswith('_SemanticAnalyzer'):
             trees, symtable, infos, types = build(src, 'main', True,
                                                   test_temp_dir)
         else:

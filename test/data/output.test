@@ -441,10 +441,10 @@ def g(x):
 -- -----------------
 
 
-[case testFunctionType_SemanticAnalysis]
+[case testFunctionType_SemanticAnalyzer]
 void f( func < any ( object ) > x ): pass
 
-[case testTupleType_SemanticAnalysis]
+[case testTupleType_SemanticAnalyzer]
 void f ( tuple < object , any > x ): pass
 [builtins fixtures/tuple.py]
 
@@ -454,7 +454,7 @@ class B(A): pass
 interface I: pass
 class C(I): pass
     
-[case testMethodWithSignature_SemanticAnalysis]
+[case testMethodWithSignature_SemanticAnalyzer]
 class A:
     void __init__(self, A x):
         self.x = x

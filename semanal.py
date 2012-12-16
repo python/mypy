@@ -22,7 +22,7 @@ from nodes import function_type
 from typeanal import TypeAnalyser
 
 
-class SemanticAnal(NodeVisitor):
+class SemanticAnalyzer(NodeVisitor):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a

@@ -1,5 +1,13 @@
-""" High-level build logic. Parse and analyze the source files of a program
-in the correct order (based on file dependencies), and collect the results."""
+"""Facilities to build mypy programs and modules they depend on.
+
+Parse and analyze the source files of a program in the correct order (based on
+file dependencies), and collect the results.
+
+This module only directs a build, which is performed in multiple passes per
+file.  The individual passes are implemented in separate modules.
+
+The function build() is the main interface to this module.
+"""
 
 import os
 import os.path
@@ -9,7 +17,7 @@ from os.path import dirname, basename
 from mtypes import Typ
 from nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
 from nodes import SymbolTableNode
-from semanal import TypeInfoMap, SemanticAnal
+from semanal import TypeInfoMap, SemanticAnalyzer
 from checker import TypeChecker
 from errors import Errors
 from parse import parse
@@ -47,17 +55,21 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
         perform parsing and semantic analysis
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
         derived from sys.argv[0]
-    
-    Currently the final pass of the build (the compiler back end) is not
-    implemented yet.
     """
+    # TODO only return the module map and node type map; the others are not
+    #      necessary
+    
     if not mypy_base_dir:
         # Determine location of the mypy installation.
         mypy_base_dir = dirname(sys.argv[0])
         if basename(mypy_base_dir) == '__mycache__':
+            # If we have been translated to Python, the Python code is in the
+            # __mycache__ subdirectory of the actual directory. Strip off
+            # __mycache__.
             mypy_base_dir = dirname(mypy_base_dir)
+            
     # Determine the default module search path.
-    lib_path = default_lib_path(mypy_base_dir)
+    str[] lib_path = default_lib_path(mypy_base_dir)
     
     if use_test_builtins:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -65,7 +77,8 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
         lib_path.insert(0, 'test/data/lib-stub')
     else:
         # Include directory of the program file in the module search path.
-        lib_path.insert(0, fix_path(dirname(program_file_name)))
+        lib_path.insert(
+            0, remove_cwd_prefix_from_path(dirname(program_file_name)))
     
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
@@ -80,7 +93,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     manager.errors.set_ignore_prefix(os.getcwd())
     
     # Construct information that describes the initial file. __main__ is the
-    # implicit module id and there is no import context yet ([]).
+    # implicit module id and the import context is empty initially ([]).
     info = StateInfo(program_file_name, '__main__', [], manager)
     # Perform the build by sending the file as new file (UnprocessedFile is the
     # initial state of all files) to the manager. The manager will process the
@@ -98,7 +111,8 @@ str[] default_lib_path(str mypy_base_dir):
     if path_env is not None:
         path.append(path_env)
     
-    # Add library stubs directory.
+    # Add library stubs directory. By convention, they are stored in the stubs
+    # directory of the mypy implementation.
     path.append(os.path.join(mypy_base_dir, 'stubs'))
     
     # Add fallback path that can be used if we have a broken installation.
@@ -117,14 +131,14 @@ class BuildManager:
     """
     bool do_type_check    # Do we perform a type check?
     str[] lib_path        # Library path for looking up modules
-    SemanticAnal sem_anal # Semantic analyzer
-    TypeChecker checker   # Type checker
-    Errors errors         # For reporting all errors
+    SemanticAnalyzer sem_analyzer # Semantic analyzer
+    TypeChecker type_checker      # Type checker
+    Errors errors                 # For reporting all errors
     
     # States of all individual files that are being processed. Each file in a
     # build is always represented by a single state object (after it has been
-    # encountered for the first time). This is the only location for storing
-    # all the states.
+    # encountered for the first time). This is the only place where states are
+    # stored.
     State[] states
     # Map from module name to source file path. There is a 1:1 mapping between
     # modules and source files.
@@ -134,8 +148,8 @@ class BuildManager:
         self.errors = Errors()
         self.lib_path = lib_path
         self.do_type_check = do_type_check
-        self.sem_anal = SemanticAnal(lib_path, self.errors)
-        self.checker = TypeChecker(self.errors, self.sem_anal.modules)
+        self.sem_analyzer = SemanticAnalyzer(lib_path, self.errors)
+        self.type_checker = TypeChecker(self.errors, self.sem_analyzer.modules)
         self.states = []
         self.module_files = {}
     
@@ -143,10 +157,10 @@ class BuildManager:
                 process(self, UnprocessedFile initial_state):
         """Perform a build.
 
-        The argument is a state that represents tha main program
+        The argument is a state that represents the main program
         file. This method should only be called once per a build
         manager object.  The return values are identical to the return
-        values of Build.
+        values of the build function.
         """
         self.states.append(initial_state)
         
@@ -161,28 +175,30 @@ class BuildManager:
             # Potentially output some debug information.
             trace('next {} ({})'.format(next.path, next.state()))
             
-            # Set the import context for reporting error messages correctly and
-            # process the state. The process method is reponsible for adding a
-            # new state object representing the new state of the file.
+            # Set the import context for reporting error messages correctly.
             self.errors.set_import_context(next.import_context)
+            # Process the state. The process method is reponsible for adding a
+            # new state object representing the new state of the file.
             next.process()
         
-            # Raise exception if the build failed.
+            # Raise exception if the build failed. The build can fail for
+            # various reasons, such as parse error, semantic analysis error,
+            # etc.
             if self.errors.is_errors():
                 self.errors.raise_error()
         
         # If there were no errors, all files should have been fully processed.
         for s in self.states:
-            if s.state() != final_state:
-                raise RuntimeError('{} still unprocessed'.format(s.path))
+            assert s.state() == final_state, (
+                '{} still unprocessed'.format(s.path))
         
         # Collect a list of all files.
         MypyFile[] trees = []
         for state in self.states:
             trees.append(((ParsedFile)state).tree)
         
-        return (trees, self.sem_anal.modules, self.sem_anal.types,
-                self.checker.type_map)
+        return (trees, self.sem_analyzer.modules, self.sem_analyzer.types,
+                self.type_checker.type_map)
     
     State next_available_state(self):
         """Find a ready state (one that has all its dependencies met)."""
@@ -198,9 +214,12 @@ class BuildManager:
         return name in self.module_files
     
     int file_state(self, str path):
-        """Return the state of a file.
+        """Return the state of a source file.
 
-        This does not consider any dependencies.
+        In particular, return UNSEEN_STATE if the file has no associated
+        state.
+
+        This function does not consider any dependencies.
         """
         for s in self.states:
             if s.path == path:
@@ -209,6 +228,9 @@ class BuildManager:
     
     int module_state(self, str name):
         """Return the state of a module.
+
+        In particular, return UNSEEN_STATE if the file has no associated
+        state.
 
         This considers also module dependencies.
         """
@@ -220,7 +242,7 @@ class BuildManager:
             state = fs
         return state
     
-    list<tuple<str, int>> all_imported_modules(self, MypyFile file):
+    list<tuple<str, int>> all_imported_modules_in_file(self, MypyFile file):
         """Return tuple (module id, line number of import) for all
         modules imported in a file.
         """
@@ -248,7 +270,7 @@ class BuildManager:
         return find_module(id, self.lib_path) is not None
 
 
-str fix_path(str p):
+str remove_cwd_prefix_from_path(str p):
     """Remove current working directory prefix from p, if present.
 
     If the result would be empty, return '.' instead.
@@ -266,33 +288,33 @@ str fix_path(str p):
     return p
 
 
-# State ids.
+# State ids. These describe the states a source file / module can be in a
+# build.
+
+# We aren't processing this source file yet (no associated state object).
 UNSEEN_STATE = 0
+# The source file has a state object, but we haven't done anything with it yet.
 UNPROCESSED_STATE = 1
+# We've parsed the source file.
 PARSED_STATE = 2
+# We've semantically analyzed the source file.
 SEMANTICALLY_ANALYSED_STATE = 3
+# We've type checked the source file (and all its dependencies).
 TYPE_CHECKED_STATE = 4
 
 
 final_state = TYPE_CHECKED_STATE
 
 
-state_order = [UNSEEN_STATE,
-               UNPROCESSED_STATE,
-               PARSED_STATE,
-               SEMANTICALLY_ANALYSED_STATE,
-               TYPE_CHECKED_STATE]
-
-
 bool earlier_state(int s, int t):
-    return state_order.index(s) < state_order.index(t)
+    return s < t
 
 
 class StateInfo:
     """Description of a source file that is being built."""
     # Path to the file
     str path
-    # Module id (__main__ for the main program file)
+    # Module id, such as 'os.path' or '__main__' (for the main program file)
     str id
     # The import trail that caused this module to be imported (path, line)
     # tuples
@@ -309,9 +331,12 @@ class StateInfo:
 
 
 class State:
-    """Abstract base class for build states. There is always at most one  state
-    per source file.
+    """Abstract base class for build states.
+
+    There is always at most one state per source file.
     """
+
+    # The StateInfo attributes are duplicated here for convenience.
     str path
     str id   # Module id
     list<tuple<str, int>> import_context
@@ -333,8 +358,8 @@ class State:
         raise RuntimeError('Not implemented')
     
     bool is_ready(self):
-        """Dependencies are met if all dependencies are at least in
-        the same state as this object (but not in the initial state).
+        """Return True if all dependencies are at least in the same state
+        as this object (but not in the initial state).
         """
         for module_name in self.dependencies:
             state = self.manager.module_state(module_name)      
@@ -347,6 +372,10 @@ class State:
         raise RuntimeError('Not implemented')
     
     void switch_state(self, State state_object):
+        """Called by state objects to replace the state of the file.
+
+        Also notify the manager.
+        """
         for i in range(len(self.manager.states)):
             if self.manager.states[i].path == state_object.path:
                 self.manager.states[i] = state_object
@@ -356,13 +385,14 @@ class State:
     Errors errors(self):
         return self.manager.errors
     
-    SemanticAnal sem_anal(self):
-        return self.manager.sem_anal
+    SemanticAnalyzer sem_analyzer(self):
+        return self.manager.sem_analyzer
     
-    def checker(self):
-        return self.manager.checker
+    TypeChecker type_checker(self):
+        return self.manager.type_checker
     
     void fail(self, str path, int line, str msg):
+        """Report an error in the build (e.g. if could not find a module)."""
         self.errors().set_file(path)
         self.errors().report(line, msg)
 
@@ -378,28 +408,36 @@ class UnprocessedFile(State):
         # Add surrounding package(s) as dependencies.
         for p in super_packages(self.id):
             if not self.import_module(p):
+                # Could not find a module. Typically the reason is a misspelled
+                # module name, or the module has not been installed.
                 self.fail(self.path, 1, "No module named '{}'".format(p))
             self.dependencies.append(p)
     
     void process(self):
         """Parse the file, store global names and advance to the next state."""
         tree = self.parse(self.program_text, self.path)
-        self.manager.sem_anal.modules[self.id] = tree
+
+        # Store the parsed module in the shared module symbol table.
+        self.manager.sem_analyzer.modules[self.id] = tree
         
         if '.' in self.id:
             # Include module in the symbol table of the enclosing package.
             c = self.id.split('.')
             p = '.'.join(c[:-1])
-            self.manager.sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
+            sem_anal = self.manager.sem_analyzer
+            sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
                 MODULE_REF, tree, p)
         
         if self.id != 'builtins':
+            # The builtins module is imported implicitly in every program (it
+            # contains definitions of int, print etc.).
             trace('import builtins')
             if not self.import_module('builtins'):
                 self.fail(self.path, 1, 'Could not find builtins')
-        
-        for id, line in self.manager.all_imported_modules(tree):
-            bool res
+
+        # Add all directly imported modules to be processed (however they are
+        # not processed yet, just waiting to be processed).
+        for id, line in self.manager.all_imported_modules_in_file(tree):
             self.errors().push_import_context(self.path, line)
             try:
                 res = self.import_module(id)
@@ -407,18 +445,28 @@ class UnprocessedFile(State):
                 self.errors().pop_import_context()
             if not res:
                 self.fail(self.path, line, "No module named '{}'".format(id))
-        
-        self.sem_anal().anal_defs(tree.defs, self.path, self.id)
-        tree.names = self.sem_anal().globals
-        
+
+        # Do the first pass of semantic analysis: add top-level definitions in
+        # the file to the symbol table.
+        self.sem_analyzer().anal_defs(tree.defs, self.path, self.id)
+        # Initialize module symbol table, which was populated by the semantic
+        # analyzer.
+        tree.names = self.sem_analyzer().globals
+
+        # Replace this state object with a parsed state in BuildManager.
         self.switch_state(ParsedFile(self.info(), tree))
     
     bool import_module(self, str id):
-        # Do nothing if already compiled.
+        """Schedule a module to be processed.
+
+        Add an unprocessed state object corresponding to the module to the
+        manager, or do nothing if the module already has a state object.
+        """
         if self.manager.has_module(id):
+            # Do nothing:f already being compiled.
             return True
         
-        path, text = module_source(id, self.manager.lib_path)
+        path, text = read_module_source_from_file(id, self.manager.lib_path)
         if text is not None:
             info = StateInfo(path, id, self.errors().import_context(),
                              self.manager)
@@ -428,9 +476,13 @@ class UnprocessedFile(State):
         else:
             return False
     
-    MypyFile parse(self, str s, str fnam):
+    MypyFile parse(self, str source_text, str fnam):
+        """Parse the source of a file with the given name.
+
+        Raise CompileError if there is a parse error.
+        """
         num_errs = self.errors().num_messages()
-        tree = parse(s, fnam, self.errors())
+        tree = parse(source_text, fnam, self.errors())
         tree._full_name = self.id
         if self.errors().num_messages() != num_errs:
             self.errors().raise_error()
@@ -446,21 +498,25 @@ class ParsedFile(State):
     void __init__(self, StateInfo info, MypyFile tree):
         super().__init__(info)
         self.tree = tree
-        
+
+        # Build a list all directly imported moules (dependencies).
         str[] imp = []
-        for id, line in self.manager.all_imported_modules(tree):
+        for id, line in self.manager.all_imported_modules_in_file(tree):
             imp.append(id)
         if self.id != 'builtins':
             imp.append('builtins')
         
         if imp != []:
             trace('{} dependencies: {}'.format(info.path, imp))
-        
+
+        # Record the dependencies. Note that the dependencies list also
+        # contains any superpackages and we must preserve them (e.g. os for
+        # os.path).
         self.dependencies.extend(imp)
     
     void process(self):
         """Semantically analyze file and advance to the next state."""
-        self.sem_anal().visit_file(self.tree, self.tree.path)
+        self.sem_analyzer().visit_file(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalysedFile(self.info(), self.tree))
     
     int state(self):
@@ -471,7 +527,7 @@ class SemanticallyAnalysedFile(ParsedFile):
     void process(self):
         """Type check file and advance to the next state."""
         if self.manager.do_type_check:
-            self.checker().visit_file(self.tree, self.tree.path)
+            self.type_checker().visit_file(self.tree, self.tree.path)
         
         # FIX remove from active state list to speed up processing
         
@@ -499,14 +555,17 @@ def trace(s):
         print(s)
 
 
-tuple<str, str> module_source(str id, str[] paths):
-    """Find and read the source file of a module. Return a pair
-    (path, file contents). Return (None, None) if the module could not be
-    imported.
-    
-    id is a string of form "foo" or "foo.bar" (module name)
+tuple<str, str> read_module_source_from_file(str id, str[] lib_path):
+    """Find and read the source file of a module.
+
+    Return a pair (path, file contents). Return (None, None) if the module
+    could not be found or read.
+
+    Args:
+      id: module name, a string of form 'foo' or 'foo.bar'
+      lib_path: library search path
     """
-    path = find_module(id, paths)
+    path = find_module(id, lib_path)
     if path is not None:
         str text
         try:
@@ -522,21 +581,21 @@ tuple<str, str> module_source(str id, str[] paths):
         return None, None
 
 
-str find_module(str id, str[] paths):
-    """Return that path of the module source file, or None if not found."""
-    for libpath in paths:
+str find_module(str id, str[] lib_path):
+    """Return the path of the module source file, or None if not found."""
+    for pathitem in lib_path:
         comp = id.split('.')
-        path = os.path.join(libpath, os.sep.join(comp[:-1]), comp[-1] + '.py')
+        path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + '.py')
         str text
         if not os.path.isfile(path):
-            path = os.path.join(libpath, os.sep.join(comp), '__init__.py')
+            path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
         if os.path.isfile(path) and verify_module(id, path):
             return path
     return None
 
 
-def verify_module(id, path):
-    # Check that all packages containing id have a __init__ file.
+bool verify_module(str id, str path):
+    """Check that all packages containing id have a __init__ file."""
     if path.endswith('__init__.py'):
         path = dirname(path)
     for i in range(id.count('.')):
@@ -547,6 +606,7 @@ def verify_module(id, path):
 
 
 str[] super_packages(str id):
+    """Return the surrounding packages of a module, e.g. ['os'] for os.path."""
     c = id.split('.')
     str[] res = []
     for i in range(1, len(c)):
