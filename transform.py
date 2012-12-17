@@ -29,9 +29,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
     TypeTransformer type_tf
     
     # Stack of function return types
-    list<Typ> return_types
+    Typ[] return_types
     # Stack of dynamically typed function flags
-    list<bool> dynamic_funcs
+    bool[] dynamic_funcs
     
     # Associate a Node with its start end line numbers.
     dict<Node, tuple<int, int>> line_map
@@ -62,7 +62,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     # Transform an file.
     void visit_mypy_file(self, MypyFile o):
-        list<Node> res = []
+        Node[] res = []
         for d in o.defs:
             if isinstance(d, TypeDef):
                 self._type_context = ((TypeDef)d).info
@@ -105,7 +105,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     def prepend_generic_function_tvar_args(self, fdef):
         sig = (Callable)function_type(fdef)
-        list<TypeVarDef> tvars = sig.variables.items
+        TypeVarDef[] tvars = sig.variables.items
         if fdef.typ is None:
             fdef.typ = Annotation(sig)
         typ = fdef.typ
@@ -125,7 +125,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     # --------------------
     
     
-    void transform_block(self, list<Node> block):
+    void transform_block(self, Node[] block):
         for stmt in block:
             stmt.accept(self)
     
@@ -224,7 +224,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
                 for i in range(len(bound_vars)):
                     e.repr = prepend_call_arg_repr(e.repr, len(e.args) + i)
             
-            list<Node> args = []
+            Node[] args = []
             for i in range(len(bound_vars)):
                 args.append(TypeExpr(bound_vars[i][1]))
             e.args = args + e.args

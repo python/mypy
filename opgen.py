@@ -14,8 +14,8 @@ str generate_runtime_support(MypyFile f):
 
 
 str generate_slot_map(MypyFile f):
-    list<str> map = []
-    list<str> ops = []
+    str[] map = []
+    str[] ops = []
     map.append('def __InitSlotMap()')
     map.append('  __SlotMap = std::Map(')
     for d in f.defs:
@@ -77,8 +77,8 @@ def transform_type_to_runtime_repr(t):
 
 
 str generate_type_map(MypyFile f):
-    list<str> map = []
-    list<str> ops = []
+    str[] map = []
+    str[] ops = []
     map.append('def __InitTypeMap()')
     for alt, suffix in [(None, ''), (BOUND_VAR, 'B')]:
         map.append('  __TypeMap{} = std::Map('.format(suffix))

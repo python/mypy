@@ -20,7 +20,7 @@ from transutil import self_expr
 # Now we can query the access path to T (1) of B:
 #
 #   GetTvarAccessPath(<B>, 1) == [2, 1]  (slot 2, lookup type argument 1).
-list<int> get_tvar_access_path(TypeInfo typ, int tvindex):
+int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     if typ.base is None:
         return None
     
@@ -38,7 +38,7 @@ list<int> get_tvar_access_path(TypeInfo typ, int tvindex):
         base = ((Instance)typ.bases[0])
     
     # Go through all the supertype tvars to find a match.
-    list<int> mapping = None
+    int[] mapping = None
     for i in range(len(base.args)):
         mapping = find_tvar_mapping(base.args[i], tvindex)
         if mapping is not None:
@@ -66,7 +66,7 @@ list<int> get_tvar_access_path(TypeInfo typ, int tvindex):
 #   FindTvarMapping(A<B<X, T`2>, T`1>, 2) == [0, 1]
 #   FindTvarMapping(A<T`2>, T`1) == nil               (no T`1 within t)
 #   FindTvarMapping(A<T`1, T`1>, T`1) == [0]          (first match)
-list<int> find_tvar_mapping(Typ t, int index):
+int[] find_tvar_mapping(Typ t, int index):
     if isinstance(t, Instance) and ((Instance)t).args != []:
         inst = (Instance)t
         for argi in range(len(inst.args)):

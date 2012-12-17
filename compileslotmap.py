@@ -14,8 +14,8 @@ from maptypevar2 import num_slots, get_tvar_access_path
 #   class D<S> extends Object ...
 #
 # Now slot mappings for C is [E<S>, T] (S and T refer to type variables of C).
-list<Typ> compile_slot_mapping(TypeInfo typ):
-    list<Typ> exprs = []
+Typ[] compile_slot_mapping(TypeInfo typ):
+    Typ[] exprs = []
     
     for slot in range(num_slots(typ)):
         # Figure out the superclass which defines the slot; also figure out

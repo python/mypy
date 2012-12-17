@@ -33,8 +33,8 @@ class TypeTransformer:
     # Transform a type definition. The result may be one or two definitions.
     # The first is the transformation of the original TypeDef. The second
     # is a wrapper type, which is generated for generic types only.
-    list<TypeDef> transform_type_def(self, TypeDef tdef):
-        list<Node> defs = []
+    TypeDef[] transform_type_def(self, TypeDef tdef):
+        Node[] defs = []
         
         if tdef.info.type_vars != []:
             # This is a generic type. Insert type variable slots in the class
@@ -58,7 +58,7 @@ class TypeTransformer:
         if tdef.is_generic or tdef.info.base.is_generic:
             self.make_instance_tvar_initializer((FuncDef)tdef.info.methods['create'])
         
-        list<TypeDef> res
+        TypeDef[] res
         if not tdef.is_generic:
             res = [tdef]
         else:
@@ -85,7 +85,7 @@ class TypeTransformer:
     #     self.__tv = <std::Int>
     #     super.create(<std::Int>)
     #   end
-    list<Node> make_create_wrapper(self, TypeDef tdef):
+    Node[] make_create_wrapper(self, TypeDef tdef):
         # FIX intersection types / overloading
         # FIX default args / varargs
         
@@ -107,7 +107,7 @@ class TypeTransformer:
             super_create = (FuncDef)info.base.get_method('create')
             
             # Build argument list.
-            list<Var> args = []
+            Var[] args = []
             for i in range(len(super_create.args)):
                 args.append(Var(super_create.args[i].name))
                 args[-1].typ = Annotation(callee_type.arg_types[i])
@@ -156,7 +156,7 @@ class TypeTransformer:
         super_create = (FuncDef)info.base.get_method('create')
         
         # Add constructor arguments.
-        list<Node> args = []
+        Node[] args = []
         for n in range(callee_type.min_args):
             args.append(NameExpr(super_create.args[n].name))
             self.tf.set_type(args[-1], callee_type.arg_types[n])
@@ -169,8 +169,8 @@ class TypeTransformer:
     
     # Transform a member variable definition. The result may be one or more
     # definitions.
-    list<Node> transform_var_def(self, VarDef o):
-        list<Node> res = [o]
+    Node[] transform_var_def(self, VarDef o):
+        Node[] res = [o]
         
         self.tf.visit_var_def(o)
         
@@ -222,7 +222,7 @@ class TypeTransformer:
     TypeDef generic_class_wrapper(self, TypeDef tdef):
         # FIX semanal meta-info for nodes + TypeInfo
         
-        list<Node> defs = []
+        Node[] defs = []
         
         # Does the type have a superclass, other than std::Object?
         has_proper_superclass = tdef.info.base.full_name != 'std::Object'
@@ -278,8 +278,8 @@ class TypeTransformer:
     
     # Generate the member variable definition for the wrapped object (__o) for
     # a generic wrapper class.
-    list<Node> make_generic_wrapper_member_vars(self, TypeDef tdef):
-        list<Node> defs = [VarDef([(Var(self.object_member_name(tdef.info)), Any())], False, None)]
+    Node[] make_generic_wrapper_member_vars(self, TypeDef tdef):
+        Node[] defs = [VarDef([(Var(self.object_member_name(tdef.info)), Any())], False, None)]
         
         return defs
     
@@ -295,12 +295,12 @@ class TypeTransformer:
     FuncDef make_generic_wrapper_create(self, TypeInfo info):
         nslots = num_slots(info)
         
-        list<Node> cdefs = []
+        Node[] cdefs = []
         
         # Build superclass constructor call.
         if info.base.full_name != 'std::Object' and self.tf.is_java:
             s = SuperExpr('create')
-            list<Node> args = [NameExpr('__o')]
+            Node[] args = [NameExpr('__o')]
             for n in range(num_slots(info.base)):
                 args.append(NameExpr(tvar_arg_name(n + 1)))
             for n in range(num_slots(info.base)):
@@ -313,7 +313,7 @@ class TypeTransformer:
         
         # Build constructor arguments.
         args = [Var('__o')]
-        list<Node> init = [None]
+        Node[] init = [None]
         
         for alt in [False, BOUND_VAR]:
             for n in range(nslots):
@@ -330,8 +330,8 @@ class TypeTransformer:
     
     # Return type variable slot member definitions (of form
     # "var __tv* as dynamic"). Only include new slots defined in the type.
-    list<Node> make_tvar_representation(self, TypeInfo info, any is_alt=False):
-        list<Node> defs = []
+    Node[] make_tvar_representation(self, TypeInfo info, any is_alt=False):
+        Node[] defs = []
         base_slots = num_slots(info.base)
         for n in range(len(info.type_vars)):
             # Only include a type variable if it introduces a new slot.

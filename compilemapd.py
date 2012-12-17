@@ -69,9 +69,9 @@ class DefaultArg(MapExpr):
 #   numSubtypeTypeVars: number of type variables in subclass
 #   superType:          definition of supertype; this may contain type
 #                       variable references
-tuple<list<MapPremise>, list<MapExpr>> compile_subclass_mapping(int num_subtype_type_vars, Instance super_type):
+tuple<MapPremise[], MapExpr[]> compile_subclass_mapping(int num_subtype_type_vars, Instance super_type):
     premises = find_eq_premises(super_type, None)
-    list<MapExpr> exprs = []
+    MapExpr[] exprs = []
     
     for i in range(1, num_subtype_type_vars + 1):
         paths = find_all_paths(i, super_type, None)
@@ -87,12 +87,12 @@ tuple<list<MapPremise>, list<MapExpr>> compile_subclass_mapping(int num_subtype_
     return premises, exprs  
 
 
-list<MapExpr> find_all_paths(int tv, Typ typ, MapExpr expr):
+MapExpr[] find_all_paths(int tv, Typ typ, MapExpr expr):
     if isinstance(typ, TypeVar) and ((TypeVar)typ).id == tv:
         return [expr]
     elif isinstance(typ, Instance) and ((Instance)typ).args != []:
         inst = (Instance)typ
-        list<MapExpr> res = []
+        MapExpr[] res = []
         for i in range(len(inst.args)):
             MapExpr e
             if expr is None:
@@ -105,10 +105,10 @@ list<MapExpr> find_all_paths(int tv, Typ typ, MapExpr expr):
         return []
 
 
-list<MapPremise> find_eq_premises(Typ typ, MapExpr expr):
+MapPremise[] find_eq_premises(Typ typ, MapExpr expr):
     if isinstance(typ, Instance):
         inst = (Instance)typ
-        list<MapPremise> res = []
+        MapPremise[] res = []
         if expr is not None:
             res.append(AssertClass(expr, inst.typ))
         for i in range(len(inst.args)):

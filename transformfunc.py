@@ -36,11 +36,11 @@ class FuncTransformer:
         self.tf = tf
     
     # Transform a method. The result is one or more methods.
-    list<FuncDef> transform_method(self, FuncDef fdef):
+    FuncDef[] transform_method(self, FuncDef fdef):
         # Transform the body of the method.
         self.tf.transform_function_body(fdef)
         
-        list<FuncDef> res
+        FuncDef[] res
         
         if fdef.is_constructor():
             # The method is a constructor. Constructors are transformed to one
@@ -95,11 +95,11 @@ class FuncTransformer:
     
     # Prepend type variable argument for constructor of a generic type.
     # Return tuple (new args, new repr, new init).
-    tuple<list<Var>, FuncRepr, list<Node>> \
+    tuple<Var[], FuncRepr, Node[]> \
                      prepend_constructor_tvar_args(
                              self, FuncDef fdef, Annotation typ,
-                             list<Var> args, FuncRepr repr, list<Node> init):
-        list<Var> tv = []
+                             Var[] args, FuncRepr repr, Node[] init):
+        Var[] tv = []
         ntvars = len(fdef.info.type_vars)
         for n in range(ntvars):
             tv.append(Var(tvar_arg_name(n + 1)))
@@ -120,7 +120,7 @@ class FuncTransformer:
         return self.method_wrapper(fdef, fdef, True, False)
     
     # Construct wrapper class methods for a method of a generic class.
-    list<FuncDef> generic_method_wrappers(self, FuncDef fdef):
+    FuncDef[] generic_method_wrappers(self, FuncDef fdef):
         return [self.generic_static_method_wrapper(fdef), self.generic_dynamic_method_wrapper(fdef)]
     
     # Construct statically-typed wrapper class method.
@@ -227,8 +227,8 @@ class FuncTransformer:
     
     # Return the formal arguments of a wrapper method. These may include the
     # type variable argument.
-    list<Var> get_wrapper_args(self, FuncDef act_as_func_def, bool is_dynamic):
-        list<Var> args = []
+    Var[] get_wrapper_args(self, FuncDef act_as_func_def, bool is_dynamic):
+        Var[] args = []
         for a in act_as_func_def.args:
             args.append(Var(a.name()))
         return args
@@ -259,8 +259,8 @@ class FuncTransformer:
     
     # Construct the arguments of a wrapper call expression. Insert coercions as
     # needed.
-    list<Node> call_args(self, FuncDef fdef, Callable target_ann, Callable cur_ann, bool is_dynamic, bool is_wrapper_class, Callable bound_sig=None):
-        list<Node> args = []
+    Node[] call_args(self, FuncDef fdef, Callable target_ann, Callable cur_ann, bool is_dynamic, bool is_wrapper_class, Callable bound_sig=None):
+        Node[] args = []
         # Add type variable arguments for a generic function.
         for i in range(len(target_ann.variables.items)):
             # Non-dynamic wrapper method in a wrapper class passes generic function

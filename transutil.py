@@ -77,7 +77,7 @@ CallExprRepr prepend_call_arg_repr(CallExprRepr r, int argc):
     # Actually only add a comma token (if there are any original arguments)
     # since the representations of the argument expressions are stored with
     # the relevant expression nodes.
-    list<Token> commas = []
+    Token[] commas = []
     if argc > 0:
         commas = [Token(', ')] + r.commas
     return CallExprRepr(r.lparen, commas, r.star, r.star2,
