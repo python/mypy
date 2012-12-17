@@ -1,12 +1,16 @@
-import os.path
 import os
-from unittest import Suite
-from test.helpers import parse_test_cases, assert_string_arrays_equal_wildcards
+import os.path
+import shutil
+
 from build import build
-from dyncheck import DyncheckTransformVisitor, PrettyPrintVisitor
+from myunit import Suite
+from testhelpers import assert_string_arrays_equal_wildcards
+from testdata import parse_test_cases
+from testconfig import test_data_prefix, test_temp_dir
+from testoutput import remove_prefix
+from transform import DyncheckTransformVisitor
+from pprinter import PrettyPrintVisitor
 from errors import CompileError
-from os import make_dirs, is_link, remove, base_name
-from io import UNBUFFERED, OUTPUT
 
 
 # The std module stub used during transformation in test cases (note that
@@ -74,61 +78,21 @@ def remove_comment_lines(a):
 # alternative std module implementation in place before performing the test
 # case. Clean up after executing the test case.
 def std_wrapper(func, path):
-    return xxx_def (testcase):
-        dir = os.path.join(test_temp_dir, 'std')
-        new_dir = not os.path.isdir(dir)
-        make_dirs(dir)
-        try:
-            if new_dir:
-                copy_file(path, os.path.join(dir, 'std.alo'))
-            func(testcase)
-        finally:
-            # Note that if the test case used a custom std module, the std
-            # directory might be handled by the test case (setUp and tearDown).
-            # Therefore only remove the directory if we created it ourselves.
-            if new_dir:
-                remove_tree(dir)
-    
+    return lambda testcase: perform_test(func, path, testcase)
 
 
-# Remove a file or a directory recursively.
-def remove_tree(path):
-    errors = []
-    
+def perform_test(func, path, testcase):        
+    dir = os.path.join(test_temp_dir, 'std')
+    new_dir = not os.path.isdir(dir)
+    if new_dir:
+        os.makedirs(dir)
     try:
-        if os.path.isdir(path) and not is_link(path):
-            names = os.listdir(path)
-            for name in names:
-                name2 = os.path.join(path, name)
-                try:
-                    remove_tree(name2)
-                except IoError as e:
-                    errors.append((None, name2, e))
-            remove(path)
-        else:
-            remove(path)
-    except IoError as e:
-        errors.append((None, path, e))
-    
-    if errors != []:
-        raise IoError()
-
-
-# Copy a file.
-def copy_file(path, target):
-    if os.path.isdir(target):
-        target = os.path.join(target, base_name(path))
-    
-    src = file(path, UNBUFFERED)
-    try:
-        dst = file(target, OUTPUT, UNBUFFERED)
-        try:
-            while True:
-                block = src.read(32768)
-                if block == '':
-                    break
-                dst.write(block)
-        finally:
-            dst.close()
+        if new_dir:
+            shutil.copyfile(path, os.path.join(dir, 'std.alo'))
+        func(testcase)
     finally:
-        src.close()
+        # Note that if the test case used a custom std module, the std
+        # directory might be handled by the test case (setUp and tearDown).
+        # Therefore only remove the directory if we created it ourselves.
+        if new_dir:
+            shutil.rmtree(dir)
