@@ -1,0 +1,311 @@
+from nodes import TraverserVisitor, Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Annotation, Var, ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, MemberExprRepr, NameExpr, MDEF, NameExprRepr, CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF, SymbolTableNode
+from types import Typ, Any, Callable, TypeVarDef, Instance
+from checker import function_type
+from lex import Token
+
+
+# Parse tree Node visitor that transforms a parse tree to one that does
+# runtime type checking based on static types.
+#
+# This visitor modifies the parse tree in-place.
+class DyncheckTransformVisitor(TraverserVisitor):
+    dict<Node, Typ> type_map
+    dict<str, MypyFile> modules
+    bool is_pretty
+    TypeTransformer type_tf = TypeTransformer(self)
+    
+    # Stack of function return types
+    list<Typ> return_types = []
+    # Stack of dynamically typed function flags
+    list<bool> dynamic_funcs = [False]
+    
+    # Associate a Node with its start end line numbers.
+    dict<Node, tuple<int, int>> line_map = {}
+    
+    bool is_java
+    
+    # The current type context (or nil if not within a type).
+    TypeInfo _type_context = None
+    
+    @property
+    def type_context():
+        return self._type_context
+    
+    
+    void __init__(self, dict<Node, Typ> type_map, dict<str, MypyFile> modules, bool is_pretty, bool is_java=False):
+        self.type_map = type_map
+        self.modules = modules
+        self.is_pretty = is_pretty
+        self.is_java = is_java
+    
+    
+    # Transform definitions
+    # ---------------------
+    
+    
+    # Transform an file.
+    void visit_mypy_file(self, MypyFile o):
+        list<Node> res = []
+        for d in o.defs:
+            if isinstance(d, TypeDef):
+                self._type_context = ((TypeDef)d).info
+                # Implicit cast from Array<TypeDef> to Array<Node> is safe below.
+                res.extend((any)self.type_tf.transform_type_def((TypeDef)d))
+                self._type_context = None
+            else:
+                d.accept(self)
+                res.append(d)
+        o.defs = res
+    
+    # Transform a variable definition in-place. This is not suitable for member
+    # variable definitions; they are transformed in TypeTransformer.
+    void visit_var_def(self, VarDef o):
+        super().visit_var_def(o)
+        
+        if o.init is not None:
+            Typ t
+            if o.items[0][0].typ is not None:
+                t = o.items[0][0].typ.typ
+            else:
+                t = Any()
+            o.init = self.coerce(o.init, t, self.get_type(o.init), self.type_context)
+    
+    # Transform a function definition in-place. This is not suitable for
+    # methods; they are transformed in FuncTransformer.
+    void visit_func_def(self, FuncDef fdef):
+        self.prepend_generic_function_tvar_args(fdef)
+        self.transform_function_body(fdef)
+    
+    # Transform the body of a function.
+    void transform_function_body(self, FuncDef fdef):
+        self.dynamic_funcs.append(fdef.is_implicit)
+        # FIX intersection types
+        self.return_types.append(((Callable)function_type(fdef)).ret_type)
+        super().visit_func_def(fdef)
+        self.return_types.remove_at(-1)
+        self.dynamic_funcs.remove_at(-1)
+    
+    
+    def prepend_generic_function_tvar_args(self, fdef):
+        sig = (Callable)function_type(fdef)
+        list<TypeVarDef> tvars = sig.variables.items
+        if fdef.typ is None:
+            fdef.typ = Annotation(sig)
+        typ = fdef.typ
+        
+        tv = <Var> []
+        ntvars = len(tvars)
+        for n in range(ntvars):
+            tv.append(Var(tvar_arg_name(-1 - n)))
+            typ.typ = prepend_arg_type((Callable)typ.typ, Any())
+        fdef.args = tv + fdef.args
+        fdef.init = [None] * ntvars + fdef.init
+        for n in reversed(range(ntvars)):
+            fdef.repr = prepend_arg_repr(fdef.repr, tvar_arg_name(-1 - n))
+    
+    
+    # Transform statements
+    # --------------------
+    
+    
+    void transform_block(self, list<Node> block):
+        for stmt in block:
+            stmt.accept(self)
+    
+    void visit_return_stmt(self, ReturnStmt s):
+        super().visit_return_stmt(s)
+        s.expr = self.coerce(s.expr, self.return_types[-1], self.get_type(s.expr), self.type_context)
+    
+    void visit_assignment_stmt(self, AssignmentStmt s):
+        super().visit_assignment_stmt(s)
+        s.rvalue = self.coerce2(s.rvalue, self.get_type(s.lvalues[0]), self.get_type(s.rvalue), self.type_context)
+    
+    void visit_if_stmt(self, IfStmt s):
+        super().visit_if_stmt(s)
+        for i in range(len(s.expr)):
+            s.expr[i] = self.coerce(s.expr[i], self.named_type('std::Boolean'), self.get_type(s.expr[i]), self.type_context)
+    
+    void visit_while_stmt(self, WhileStmt s):
+        super().visit_while_stmt(s)
+        s.expr = self.coerce(s.expr, self.named_type('std::Boolean'), self.get_type(s.expr), self.type_context)
+    
+    
+    # Transform expressions
+    # ---------------------
+    
+    
+    void visit_member_expr(self, MemberExpr e):
+        super().visit_member_expr(e)
+        
+        typ = self.get_type(e.expr)
+        
+        if self.dynamic_funcs[-1]:
+            e.expr = self.coerce_to_dynamic(e.expr, typ, self.type_context)
+            typ = Any()
+        
+        str suffix
+        if isinstance(typ, Instance):
+            # Reference to a statically-typed method variant with the suffix
+            # derived from the base object type.
+            suffix = self.get_member_reference_suffix(e.name, ((Instance)typ).typ)
+        else:
+            # Reference to a dynamically-typed method variant.
+            suffix = self.dynamic_suffix()
+        e.name += suffix
+        e.repr = MemberExprRepr(Token('.'), Token(e.name))
+    
+    void visit_name_expr(self, NameExpr e):
+        super().visit_name_expr(e)
+        if e.kind == MDEF and isinstance(e.node, FuncDef):
+            # Translate reference to a method.
+            suffix = self.get_member_reference_suffix(e.name, e.info)
+            e.name += suffix
+            # Update representation to have the correct name.
+            prefix = e.repr.components[0].pre
+            e.repr = NameExprRepr([Token(prefix + e.name)])
+    
+    str get_member_reference_suffix(self, str name, TypeInfo info):
+        if info.has_method(name):
+            fdef = (FuncDef)info.get_method(name)
+            return self.type_suffix(fdef)
+        else:
+            return ''
+    
+    void visit_call_expr(self, CallExpr e):
+        super().visit_call_expr(e)
+        
+        # Do no coercions if this is a call to debugging facilities.
+        if self.is_debugging_call_expr(e):
+            return 
+        
+        # Get the type of the callable (type variables in the context of the
+        # enclosing class).
+        ctype = self.get_type(e.callee)
+        
+        for i in range(len(e.args)):
+            Typ arg_type = Any()
+            if isinstance(ctype, Callable):
+                arg_type = ((Callable)ctype).arg_types[i]
+            e.args[i] = self.coerce2(e.args[i], arg_type, self.get_type(e.args[i]), self.type_context)
+        
+        # Prepend type argument values to the call as needed.
+        if isinstance(ctype, Callable) and ((Callable)ctype).bound_vars != []:
+            bound_vars = ((Callable)ctype).bound_vars
+            
+            # If this is a constructor call (target is the constructor of a generic
+            # type or superclass create), include also instance type variables.
+            # Otherwise filter them away -- include only generic function type
+            # variables.
+            if not ((Callable)ctype).is_type_obj and not (isinstance(e.callee, SuperExpr) and ((SuperExpr)e.callee).name == 'create'):
+                list<tuple<int, Typ>> b = []
+                for id, t in bound_vars:
+                    if id < 0:
+                        b.append((id, t))
+                bound_vars = b
+            
+            if e.repr is not None:
+                for i in range(len(bound_vars)):
+                    e.repr = prepend_call_arg_repr(e.repr, len(e.args) + i)
+            
+            list<Node> args = []
+            for i in range(len(bound_vars)):
+                args.append(TypeExpr(bound_vars[i][1]))
+            e.args = args + e.args
+    
+    def is_debugging_call_expr(self, e):
+        return isinstance(e.callee, NameExpr) and e.callee.name in ['__Print']
+    
+    void visit_cast_expr(self, CastExpr e):
+        super().visit_cast_expr(e)
+        if isinstance(self.get_type(e), Any):
+            e.expr = self.coerce(e.expr, Any(), self.get_type(e.expr), self.type_context)
+    
+    void visit_op_expr(self, OpExpr e):
+        super().visit_op_expr(e)
+        if e.op in ('and', 'or'):
+            e.left = self.coerce(e.left, self.named_type('std::Boolean'), self.get_type(e.left), self.type_context)
+            e.right = self.coerce(e.right, self.named_type('std::Boolean'), self.get_type(e.right), self.type_context)
+        else:
+            if self.dynamic_funcs[-1]:
+                e.left = self.coerce_to_dynamic(e.left, self.get_type(e.left), self.type_context)
+                e.right = self.coerce(e.right, Any(), self.get_type(e.right), self.type_context)
+            elif e.op == '+':
+                e.left = self.coerce(e.left, self.named_type('std::Int'), self.get_type(e.left), self.type_context)
+                e.right = self.coerce(e.right, self.named_type('std::Int'), self.get_type(e.right), self.type_context)
+    
+    
+    # Helpers
+    # -------
+    
+    
+    # Return the type of a node as reported by the type checker.
+    Typ get_type(self, Node node):
+        return self.type_map[node]
+    
+    void set_type(self, Node node, Typ typ):
+        self.type_map[node] = typ
+    
+    # Return the suffix for a mangled name with optional type suffix for a
+    # function or method.
+    str type_suffix(self, FuncDef fdef, TypeInfo info=fdef.info):
+        # If info is nil, we have a global function => no suffix. Also if the
+        # method is not an override, we need no suffix.
+        if info is None or info.base is None or not info.base.has_method(fdef.name):
+            return ''
+        elif is_simple_override(fdef, info):
+            return self.type_suffix(fdef, info.base)
+        elif self.is_pretty:
+            return '`' + info.name
+        else:
+            return '__' + info.name
+    
+    # Return the suffix of the dynamic wrapper of a method, getter or class.
+    str dynamic_suffix(self):
+        return dynamic_suffix(self.is_pretty)
+    
+    Node coerce(self, Node expr, Typ target_type, Typ source_type, TypeInfo context, bool is_wrapper_class=False):
+        return coerce(expr, target_type, source_type, context, is_wrapper_class, self.is_java)
+    
+    # Create coercion from sourceType to targetType and also a middle coercion
+    # do dynamic if transforming a dynamically typed function.
+    Node coerce2(self, Node expr, Typ target_type, Typ source_type, TypeInfo context, bool is_wrapper_class=False):
+        if self.dynamic_funcs[-1]:
+            return self.coerce(self.coerce(expr, Any(), source_type, context, is_wrapper_class), target_type, Any(), context, is_wrapper_class)               
+        else:
+            return self.coerce(expr, target_type, source_type, context, is_wrapper_class)
+    
+    Node coerce_to_dynamic(self, Node expr, Typ source_type, TypeInfo context):
+        if isinstance(source_type, Any):
+            return expr
+        source_type = translate_runtime_type_vars_in_context(source_type, context, self.is_java)
+        return CoerceExpr(expr, Any(), source_type, False)
+    
+    # Add a line mapping for a wrapper. The node newNode has logically the same
+    # line numbers as origNode. The nodes should be FuncDef/TypeDef nodes.
+    void add_line_mapping(self, Node orig_node, Node new_node):
+        if orig_node.repr is not None:
+            start_line = orig_node.line
+            end_tok = orig_node.repr.endTok
+            end_line = end_tok.line + end_tok.string.count('\n')
+            self.line_map[new_node] = (start_line, end_line)
+    
+    # TODO combine with checker
+    Instance named_type(self, str name):
+        # Assume that the name refers to a type.
+        sym = self.lookup(name, GDEF)
+        return Instance((TypeInfo)sym.node, [])
+    
+    # TODO combine with checker
+    # TODO remove kind argument
+    SymbolTableNode lookup(self, str full_name, Constant kind):
+        parts = full_name.split('.')
+        n = self.modules[parts[0]]
+        for i in range(1, len(parts) - 1):
+            n = (MypyFile)((n.names.get(parts[i], None).node))
+        return n.names[parts[-1]]
+    
+    str object_member_name(self):
+        if self.is_java:
+            return '__o_{}'.format(self.type_context.name)
+        else:
+            return '__o'
