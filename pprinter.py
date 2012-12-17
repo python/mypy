@@ -1,7 +1,7 @@
 from output import OutputVisitor
 from nodes import Node
-from types import Void
-from string import is_word_char
+from mtypes import Void
+from maptypevar2 import num_slots
 
 
 # Class for converting transformed parse trees into source code. Pretty print
@@ -20,9 +20,7 @@ class PrettyPrintVisitor(OutputVisitor):
     
     
     def line_map(self):
-        return sorted(self.line_assoc, xxx_def (x, y):
-            return x[1] < y[1]
-        )
+        return sorted(self.line_assoc, key=lambda x: x[1])
     
     
     # Definitions
@@ -186,7 +184,7 @@ class PrettyPrintVisitor(OutputVisitor):
         # Coercions are always generated during trasnformation so they do not
         # have a representation. Thus always use automatic formatting.
         last = self.last_output_char()
-        if last in (',', '=') or is_word_char(last):
+        if last in (',', '=') or last.isalnum():
             self.string(' ')
         if self.is_pretty:
             self.string('{')
@@ -250,14 +248,14 @@ class PrettyPrintVisitor(OutputVisitor):
     
     # Pretty-print a type using original formatting.
     def typ(self, t):
-        if t is not None:
+        if t:
             v = TypePrettyPrintVisitor()
             t.accept(v)
             self.string(v.output())
     
     # Pretty-print a type using automatic formatting.
     def compact_type(self, t):
-        if t is not None:
+        if t:
             self.string(t.accept(PrettyTypeStrVisitor(self.is_pretty)))
     
     # Record a line mapping between the current output line and the line of
