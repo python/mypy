@@ -5,7 +5,7 @@ from nodes import FuncDef, TypeInfo, NameExpr, LDEF
 import nodes
 from noderepr import FuncRepr, FuncArgsRepr, CallExprRepr
 from lex import Token
-from checker import function_type
+from nodes import function_type
 from sametypes import is_same_type
 from parse import none
 
