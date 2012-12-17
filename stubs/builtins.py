@@ -575,8 +575,8 @@ class range(Sized, Iterable<int>):
     # TODO __reversed__
 
 
-True = 0 == 0
-False = 0 == 1
+bool True
+bool False
 
 class _NotImplementedType: pass # TODO name of the class
 _NotImplementedType NotImplemented
