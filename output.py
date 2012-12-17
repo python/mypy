@@ -2,9 +2,9 @@
 
 import re
 
+import nodes
 from visitor import NodeVisitor
 from typerepr import CommonTypeRepr
-import nodes
 
 
 class OutputVisitor(NodeVisitor):

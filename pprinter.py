@@ -2,6 +2,7 @@ from output import OutputVisitor, TypeOutputVisitor
 from nodes import Node
 from mtypes import Void, TypeStrVisitor
 from maptypevar2 import num_slots
+from transutil import tvar_arg_name
 
 
 # Class for converting transformed parse trees into source code. Pretty print
