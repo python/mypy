@@ -1,6 +1,6 @@
-from output import OutputVisitor
+from output import OutputVisitor, TypeOutputVisitor
 from nodes import Node
-from mtypes import Void
+from mtypes import Void, TypeStrVisitor
 from maptypevar2 import num_slots
 
 
@@ -268,3 +268,51 @@ class PrettyPrintVisitor(OutputVisitor):
             start2, stop2 = self.node_line_map[node]
             self.line_assoc.append((start2, start))
             self.line_assoc.append((stop2, stop))
+
+
+# Visitor for pretty-printing types using original formatting whenever
+# possible.
+class TypePrettyPrintVisitor(TypeOutputVisitor):
+    def visit_any(self, t):
+        # Any types do not always have explicit formatting.
+        if t.repr is None:
+            self.string(' dynamic')
+        else:
+            super().visit_any(t)
+
+
+# Translate a type to source code, with or without pretty printing. Always
+# use automatic formatting.
+class PrettyTypeStrVisitor(TypeStrVisitor):
+    # Pretty formatting is designed to be human-readable, while the default
+    # formatting is suitable for evaluation (it's valid Alore).
+    any is_pretty
+    
+    def __init__(self, is_pretty):
+        self.is_pretty = is_pretty
+        super().__init__()
+    
+    def visit_instance(self, t):
+        if t.args == [] or self.is_pretty:
+            return super().visit_instance(t)
+        else:
+            # Generate a type constructor for a generic instance type.
+            a = []
+            for at in t.args:
+                a.append(at.accept(self))
+            return '__Gen({}, [{}])'.format(t.typ.full_name, ', '.join(a))
+    
+    def visit_type_var(self, t):
+        # FIX __tv vs. self.__tv?
+        return tvar_arg_name(t.id)
+    
+    def visit_runtime_type_var(self, t):
+        v = PrettyPrintVisitor()
+        t.node.accept(v)
+        return v.output()
+    
+    def visit_any(self, t):
+        if self.is_pretty:
+            return 'dyn'
+        else:
+            return '__Dyn'
