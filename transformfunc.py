@@ -1,10 +1,25 @@
-from nodes import FuncDef, Annotation, Var, FuncRepr, Node, Block, TypeInfo, NameExpr, MemberExpr, CallExpr, ReturnStmt, ExpressionStmt, TypeExpr
-from checker import function_type, map_type_from_supertype
-from types import Callable, Any, replace_type_vars, Void, RuntimeTypeVar
+from nodes import (
+    FuncDef, Annotation, Var, Node, Block, TypeInfo, NameExpr, MemberExpr,
+    CallExpr, ReturnStmt, ExpressionStmt, TypeExpr, function_type
+)
+import nodes
+from noderepr import FuncRepr
+from checker import map_type_from_supertype
+from mtypes import Callable, Any, Void, RuntimeTypeVar
+from replacetvars import replace_type_vars
+import transform
+from transutil import (
+    is_simple_override, tvar_arg_name, self_expr, dynamic_sig, is_generic,
+    func_repr_with_name, prepend_arg_type, prepend_arg_repr,
+    translate_type_vars_to_bound_vars, translate_function_type_vars_to_dynamic,
+    replace_ret_type, translate_type_vars_to_wrapper_vars,
+    translate_type_vars_to_wrapped_object_vars
+)
+from erasetypes import erase_generic_types
 
 
 # TODO
-#  - intersection types
+#  - overloads
 #  - generate semantic analysis info during transform (e.g.
 #    transformMethodImplementation, Var constructors, NameExpr)
 
@@ -15,12 +30,10 @@ from types import Callable, Any, replace_type_vars, Void, RuntimeTypeVar
 # aggregated within these classes.
 class FuncTransformer:
     # Used for common transformation operations.
-    DyncheckTransformVisitor tf
+    transform.DyncheckTransformVisitor tf
     
-    
-    void __init__(self, DyncheckTransformVisitor tf):
+    void __init__(self, transform.DyncheckTransformVisitor tf):
         self.tf = tf
-    
     
     # Transform a method. The result is one or more methods.
     list<FuncDef> transform_method(self, FuncDef fdef):
@@ -32,16 +45,17 @@ class FuncTransformer:
         if fdef.is_constructor():
             # The method is a constructor. Constructors are transformed to one
             # method.
-            res = [self.transform_method_implementation(fdef, fdef.name)]
+            res = [self.transform_method_implementation(fdef, fdef.name())]
         else:
             # Normal methods are transformed to 1-3 variants. The first is the
             # main implementation of the method, and the second is the
             # dynamically-typed wrapper. The third variant is for method overrides,
             # and represents the overridden supertype method.
             
-            res = [self.transform_method_implementation(fdef, fdef.name + self.tf.type_suffix(fdef))]
+            res = [self.transform_method_implementation(
+                fdef, fdef.name() + self.tf.type_suffix(fdef))]
             
-            if fdef.info.base is not None and fdef.info.base.has_method(fdef.name):
+            if fdef.info.base and fdef.info.base.has_method(fdef.name()):
                 # Override.
                 
                 # Is is an override with a different signature? For trivial overrides
@@ -59,7 +73,6 @@ class FuncTransformer:
         
         return res
     
-    
     # Transform the main variant of the method, which contains the actual body
     # (implementation).
     FuncDef transform_method_implementation(self, FuncDef fdef, str name):
@@ -69,7 +82,7 @@ class FuncTransformer:
         typ = Annotation(function_type(fdef))
         init = fdef.init_expressions()
         
-        if fdef.name == 'create' and is_generic(fdef):
+        if fdef.name() == 'create' and is_generic(fdef):
             args, repr, init = self.prepend_constructor_tvar_args(fdef, typ, args, repr, init)
         
         fdef2 = FuncDef(name, args, init, None, None, len(args), fdef.body, typ)
@@ -80,10 +93,12 @@ class FuncTransformer:
         
         return fdef2
     
-    
     # Prepend type variable argument for constructor of a generic type.
     # Return tuple (new args, new repr, new init).
-    tuple<list<Var>, FuncRepr, list<Node>> prepend_constructor_tvar_args(self, FuncDef fdef, Annotation typ, list<Var> args, FuncRepr repr, list<Node> init):
+    tuple<list<Var>, FuncRepr, list<Node>> \
+                     prepend_constructor_tvar_args(
+                             self, FuncDef fdef, Annotation typ,
+                             list<Var> args, FuncRepr repr, list<Node> init):
         list<Var> tv = []
         ntvars = len(fdef.info.type_vars)
         for n in range(ntvars):
@@ -91,26 +106,22 @@ class FuncTransformer:
             typ.typ = prepend_arg_type((Callable)typ.typ, Any())
         args = tv + args
         init = <Node> [None] * ntvars + init
-        for n in reversed(range(ntvars)):
+        for n in reversed(list(range(ntvars))): # TODO remove list(...)
             repr = prepend_arg_repr(repr, tvar_arg_name(n + 1))
         return (args, repr, init)
     
-    
     # Construct a method wrapper for an overridden method.
     FuncDef override_method_wrapper(self, FuncDef fdef):
-        orig_fdef = fdef.info.base.get_method(fdef.name)
+        orig_fdef = fdef.info.base.get_method(fdef.name())
         return self.method_wrapper((FuncDef)orig_fdef, fdef, False, False)
-    
     
     # Construct a dynamically-typed method wrapper.
     FuncDef dynamic_method_wrapper(self, FuncDef fdef):
         return self.method_wrapper(fdef, fdef, True, False)
     
-    
     # Construct wrapper class methods for a method of a generic class.
     list<FuncDef> generic_method_wrappers(self, FuncDef fdef):
         return [self.generic_static_method_wrapper(fdef), self.generic_dynamic_method_wrapper(fdef)]
-    
     
     # Construct statically-typed wrapper class method.
     FuncDef generic_static_method_wrapper(self, FuncDef fdef):
@@ -119,7 +130,6 @@ class FuncTransformer:
     # Construct dynamically-typed wrapper class method.
     FuncDef generic_dynamic_method_wrapper(self, FuncDef fdef):
         return self.method_wrapper(fdef, fdef, True, True)
-    
     
     # Construct a method wrapper that acts as a specific method, coerces
     # arguments, calls the target method and finally coerces the return value.
@@ -142,7 +152,11 @@ class FuncTransformer:
         call_stmt = self.call_wrapper(act_as_func_def, is_dynamic, is_wrapper_class, target_sig, call_sig, target_suffix, bound_sig)
         
         wrapper_args = self.get_wrapper_args(act_as_func_def, is_dynamic)    
-        wrapper_func_def = FuncDef(act_as_func_def.name + wrapper_suffix, wrapper_args, <Node> [None] * len(wrapper_args), None, None, len(wrapper_args), Block([call_stmt]), Annotation(wrapper_sig))
+        wrapper_func_def = FuncDef(act_as_func_def.name() + wrapper_suffix,
+                                   wrapper_args,
+                                   <Node> [None] * len(wrapper_args),
+                                   None, None, len(wrapper_args),
+                                   Block([call_stmt]), Annotation(wrapper_sig))
         
         self.tf.add_line_mapping(target_func_def, wrapper_func_def)
         
@@ -150,7 +164,6 @@ class FuncTransformer:
             self.tf.prepend_generic_function_tvar_args(wrapper_func_def)
         
         return wrapper_func_def
-    
     
     # Return the target method signature for a method wrapper.
     Callable get_target_sig(self, FuncDef act_as_func_def, FuncDef target_func_def, bool is_dynamic, bool is_wrapper_class):
@@ -167,7 +180,6 @@ class FuncTransformer:
         else:
             return sig
     
-    
     # Return the signature of the wrapper method. The wrapper method signature
     # has an additional type variable argument (with type "dynamic"), and all
     # type variables have been erased.
@@ -179,7 +191,6 @@ class FuncTransformer:
             return (Callable)erase_generic_types(sig) # FIX REFACTOR?
         else:
             return sig
-    
     
     # Return the signature used for as the source signature in a wrapped call.
     # It has type variables replaced with "dynamic", but as an
@@ -214,37 +225,37 @@ class FuncTransformer:
         else:
             return sig
     
-    
     # Return the formal arguments of a wrapper method. These may include the
     # type variable argument.
     list<Var> get_wrapper_args(self, FuncDef act_as_func_def, bool is_dynamic):
         list<Var> args = []
         for a in act_as_func_def.args:
-            args.append(Var(a.name))
+            args.append(Var(a.name()))
         return args
-    
     
     # Return the body of wrapper method. The body contains only a call to the
     # wrapped method and a return statement (if the call returns a value).
     Node call_wrapper(self, FuncDef fdef, bool is_dynamic, bool is_wrapper_class, Callable target_ann, Callable cur_ann, str target_suffix, Callable bound_sig):
         Node callee
-        member = fdef.name + target_suffix
+        member = fdef.name() + target_suffix
         if not is_wrapper_class:
             callee = NameExpr(member)
         else:
             callee = MemberExpr(MemberExpr(self_expr(), self.tf.object_member_name()), member)
         args = self.call_args(fdef, target_ann, cur_ann, is_dynamic, is_wrapper_class, bound_sig)
-        Node call = CallExpr(callee, args)
+        Node call = CallExpr(callee,
+                             args,
+                             [nodes.ARG_POS] * len(args),
+                             <str> [None] * len(args))
         if bound_sig is not None:
-            call = self.tf.coerce(call, bound_sig.ret_type, target_ann.ret_type, self.tf.type_context, is_wrapper_class)
-            call = self.tf.coerce(call, cur_ann.ret_type, bound_sig.ret_type, self.tf.type_context, is_wrapper_class)
+            call = self.tf.coerce(call, bound_sig.ret_type, target_ann.ret_type, self.tf.type_context(), is_wrapper_class)
+            call = self.tf.coerce(call, cur_ann.ret_type, bound_sig.ret_type, self.tf.type_context(), is_wrapper_class)
         else:
-            call = self.tf.coerce(call, cur_ann.ret_type, target_ann.ret_type, self.tf.type_context, is_wrapper_class)
+            call = self.tf.coerce(call, cur_ann.ret_type, target_ann.ret_type, self.tf.type_context(), is_wrapper_class)
         if not isinstance(target_ann.ret_type, Void):
             return ReturnStmt(call)
         else:
             return ExpressionStmt(call)
-    
     
     # Construct the arguments of a wrapper call expression. Insert coercions as
     # needed.
@@ -260,14 +271,21 @@ class FuncTransformer:
                 args.append(TypeExpr(Any()))
         for i in range(len(fdef.args)):
             a = fdef.args[i]
-            name = NameExpr(a.name)
+            name = NameExpr(a.name())
             if bound_sig is None:
-                args.append(self.tf.coerce(name, target_ann.arg_types[i], cur_ann.arg_types[i], self.tf.type_context, is_wrapper_class))
+                args.append(self.tf.coerce(name, target_ann.arg_types[i],
+                                           cur_ann.arg_types[i],
+                                           self.tf.type_context(),
+                                           is_wrapper_class))
             else:
-                c = self.tf.coerce(name, bound_sig.arg_types[i], cur_ann.arg_types[i], self.tf.type_context, is_wrapper_class)
-                args.append(self.tf.coerce(c, target_ann.arg_types[i], bound_sig.arg_types[i], self.tf.type_context, is_wrapper_class))
+                c = self.tf.coerce(name, bound_sig.arg_types[i],
+                                   cur_ann.arg_types[i],
+                                   self.tf.type_context(), is_wrapper_class)
+                args.append(self.tf.coerce(c, target_ann.arg_types[i],
+                                           bound_sig.arg_types[i],
+                                           self.tf.type_context(),
+                                           is_wrapper_class))
         return args
-    
     
     str get_wrapper_suffix(self, FuncDef func_def, bool is_dynamic):
         if is_dynamic:

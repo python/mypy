@@ -1,5 +1,9 @@
 from nodes import MypyFile, TypeDef
-from types import Instance, TypeVar, BOUND_VAR
+from mtypes import Instance, TypeVar, BOUND_VAR
+import transform
+from maptypevar2 import num_slots, get_tvar_access_path
+from compileslotmap import compile_slot_mapping
+from transutil import dynamic_suffix, tvar_slot_name
 
 
 str generate_runtime_support(MypyFile f):
@@ -35,7 +39,9 @@ def add_slot_map_support_for_type_pair(map, ops, base, typ):
     op = '__{}TypeTo{}Slots'.format(base.name, typ.name)
     map.append('    ({}, {}) : {},'.format(base.name, typ.name, op))
     if typ.is_generic:
-        map.append('    ({}, {}) : {},'.format(base.name, typ.name + dynamic_suffix(False), op))
+        map.append('    ({}, {}) : {},'.format(base.name, typ.name +
+                                               transform.dynamic_suffix(False),
+                                               op))
     generate_slot_map_op(ops, op, base, typ)
 
 

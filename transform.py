@@ -1,7 +1,21 @@
-from nodes import TraverserVisitor, Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Annotation, Var, ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, MemberExprRepr, NameExpr, MDEF, NameExprRepr, CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF, SymbolTableNode
-from types import Typ, Any, Callable, TypeVarDef, Instance
+from nodes import (
+    Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Annotation, Var,
+    ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
+    CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
+    SymbolTableNode
+)
+from noderepr import MemberExprRepr, NameExprRepr
+from traverser import TraverserVisitor
+from mtypes import Typ, Any, Callable, TypeVarDef, Instance
 from checker import function_type
 from lex import Token
+from transformtype import TypeTransformer
+from transutil import (
+    prepend_arg_type, prepend_arg_repr, is_simple_override, tvar_arg_name,
+    dynamic_suffix, prepend_call_arg_repr
+)
+from coerce import coerce
+from rttypevars import translate_runtime_type_vars_in_context
 
 
 # Parse tree Node visitor that transforms a parse tree to one that does
@@ -12,27 +26,30 @@ class DyncheckTransformVisitor(TraverserVisitor):
     dict<Node, Typ> type_map
     dict<str, MypyFile> modules
     bool is_pretty
-    TypeTransformer type_tf = TypeTransformer(self)
+    TypeTransformer type_tf
     
     # Stack of function return types
-    list<Typ> return_types = []
+    list<Typ> return_types
     # Stack of dynamically typed function flags
-    list<bool> dynamic_funcs = [False]
+    list<bool> dynamic_funcs
     
     # Associate a Node with its start end line numbers.
-    dict<Node, tuple<int, int>> line_map = {}
+    dict<Node, tuple<int, int>> line_map
     
     bool is_java
     
     # The current type context (or nil if not within a type).
     TypeInfo _type_context = None
     
-    @property
-    def type_context():
+    TypeInfo type_context(self):
         return self._type_context
     
     
     void __init__(self, dict<Node, Typ> type_map, dict<str, MypyFile> modules, bool is_pretty, bool is_java=False):
+        self.type_tf = TypeTransformer(self)
+        self.return_types = []
+        self.dynamic_funcs = [False]
+        self.line_map = {}
         self.type_map = type_map
         self.modules = modules
         self.is_pretty = is_pretty
@@ -247,7 +264,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     # Return the suffix for a mangled name with optional type suffix for a
     # function or method.
-    str type_suffix(self, FuncDef fdef, TypeInfo info=fdef.info):
+    str type_suffix(self, FuncDef fdef, TypeInfo info=None):
+        if not info:
+            info = fdef.info
         # If info is nil, we have a global function => no suffix. Also if the
         # method is not an override, we need no suffix.
         if info is None or info.base is None or not info.base.has_method(fdef.name):
@@ -297,7 +316,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     # TODO combine with checker
     # TODO remove kind argument
-    SymbolTableNode lookup(self, str full_name, Constant kind):
+    SymbolTableNode lookup(self, str full_name, int kind):
         parts = full_name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):

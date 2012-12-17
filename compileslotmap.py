@@ -1,7 +1,7 @@
 from mtypes import Typ
 from nodes import TypeInfo
 from semanal import self_type
-from checker import map_instance_to_supertype
+from subtypes import map_instance_to_supertype
 from maptypevar2 import num_slots, get_tvar_access_path
 
 

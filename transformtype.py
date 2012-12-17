@@ -1,7 +1,18 @@
 from nodes import TypeDef, Node, FuncDef, VarDef, Block, Var, Annotation, ExpressionStmt, TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt, AssignmentStmt, TypeExpr
 from semanal import self_type
-from types import Callable, Instance, Typ, Any, BOUND_VAR, Void, RuntimeTypeVar
-from checker import analyse_member_access, map_instance_to_supertype
+from mtypes import (
+    Callable, Instance, Typ, Any, BOUND_VAR, Void, RuntimeTypeVar
+)
+from checkmember import analyse_member_access
+from subtypes import map_instance_to_supertype
+import transform
+from transformfunc import FuncTransformer
+from transutil import self_expr, tvar_slot_name, tvar_arg_name
+from rttypevars import translate_runtime_type_vars_locally
+from compileslotmap import find_slot_origin
+from subtypes import map_instance_to_supertype
+from coerce import coerce
+from maptypevar2 import num_slots, get_tvar_access_path
 
 
 # Class for transforming type definitions for runtime type checking. Transform
@@ -11,15 +22,13 @@ from checker import analyse_member_access, map_instance_to_supertype
 # that class.
 class TypeTransformer:
     # Used for common transformation operations.
-    DyncheckTransformVisitor tf
+    transform.DyncheckTransformVisitor tf
     # Used for transforming methods.
     FuncTransformer func_tf
     
-    
-    void __init__(self, DyncheckTransformVisitor tf):
+    void __init__(self, transform.DyncheckTransformVisitor tf):
         self.tf = tf
         self.func_tf = FuncTransformer(tf)
-    
     
     # Transform a type definition. The result may be one or two definitions.
     # The first is the transformation of the original TypeDef. The second

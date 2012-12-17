@@ -1,5 +1,5 @@
 from mtypes import Instance
-from checker import is_subtype
+from subtypes import is_subtype
 
 
 # Check if t is a proper subtype of s (no need to rely on compatibility due
