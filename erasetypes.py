@@ -1,6 +1,7 @@
 from lex import Token
 from nodes import Annotation
-from types import Typ, TypeTranslator, TypeVar, Any, Instance, CommonTypeRepr
+from mtypes import Typ, TypeTranslator, TypeVar, Any, Instance
+from typerepr import CommonTypeRepr
 
 
 Token none = Token('')
