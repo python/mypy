@@ -40,7 +40,7 @@ def add_slot_map_support_for_type_pair(map, ops, base, typ):
     map.append('    ({}, {}) : {},'.format(base.name, typ.name, op))
     if typ.is_generic:
         map.append('    ({}, {}) : {},'.format(base.name, typ.name +
-                                               transform.dynamic_suffix(False),
+                                               dynamic_suffix(False),
                                                op))
     generate_slot_map_op(ops, op, base, typ)
 

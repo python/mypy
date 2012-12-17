@@ -1,8 +1,16 @@
 import os.path
-from unittest import Suite
-from test.helpers import parse_test_cases, assert_string_arrays_equal_wildcards
+
 from build import build
-from dyncheck import DyncheckTransformVisitor, generate_runtime_support
+from myunit import Suite
+from testconfig import test_data_prefix, test_temp_dir
+from testhelpers import assert_string_arrays_equal_wildcards
+from testdata import parse_test_cases
+from testoutput import remove_prefix
+from testtransform import (
+    remove_comment_lines, std_wrapper, TRANSFORM_STD_MODULE
+)
+from transform import DyncheckTransformVisitor
+from opgen import generate_runtime_support
 from errors import CompileError
 
 
