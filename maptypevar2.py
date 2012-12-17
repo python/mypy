@@ -1,5 +1,6 @@
 from nodes import TypeInfo
-from types import Instance, Typ, TypeVar
+from mtypes import Instance, Typ, TypeVar
+from transutil import self_expr
 
 
 # Return a description of how to get to type variable value defined in a

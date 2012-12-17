@@ -1,5 +1,7 @@
-from types import Typ, TypeTranslator, TypeVar, RuntimeTypeVar
+from mtypes import Typ, TypeTranslator, TypeVar, RuntimeTypeVar
 from nodes import NameExpr, TypeInfo
+from transutil import tvar_arg_name
+from maptypevar import get_tvar_access_expression
 
 
 # Replace type variable references in a type with runtime type variable
@@ -28,8 +30,6 @@ Typ translate_runtime_type_vars_in_context(Typ typ, TypeInfo context, any is_jav
 
 # Reuse most of the implementation by inheriting TypeTranslator.
 class ContextualRuntimeTypeVarTranslator(TypeTranslator):
-    context, is_java
-    
     def __init__(self, context, is_java):
         self.context = context
         self.is_java = is_java

@@ -1,5 +1,10 @@
 from nodes import Node, TypeInfo, CoerceExpr, JavaCast
-from types import Typ, Instance, Void, is_same_type, NoneType, Any
+from mtypes import (
+    Typ, Instance, Void, NoneTyp, Any
+)
+from sametypes import is_same_type
+from propersubtype import is_proper_subtype
+from rttypevars import translate_runtime_type_vars_in_context
 
 
 # Build an expression that coerces expr from sourceType to targetType. Return
@@ -36,4 +41,4 @@ bool is_trivial_cast(Typ target_type, Typ source_type, bool is_java):
     if not is_java and isinstance(source_type, Instance) and ((Instance)source_type).typ.full_name in ['std::Int', 'std::Float', 'std::Boolean']:
         return False
     
-    return is_proper_subtype(source_type, target_type) or isinstance(source_type, NoneType) or isinstance(target_type, Any)
+    return is_proper_subtype(source_type, target_type) or isinstance(source_type, NoneTyp) or isinstance(target_type, Any)

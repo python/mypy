@@ -1,5 +1,7 @@
-from types import RuntimeTypeVar, OBJECT_VAR
+from mtypes import RuntimeTypeVar, OBJECT_VAR
 from nodes import TypeInfo, Node, MemberExpr, IndexExpr, IntExpr
+from maptypevar2 import get_tvar_access_path
+from transutil import self_expr, tvar_slot_name
 
 
 # Return a type expression that maps from runtime type variable slots

@@ -1,4 +1,4 @@
-from types import Instance
+from mtypes import Instance
 from checker import is_subtype
 
 

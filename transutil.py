@@ -1,38 +1,62 @@
-from types import Callable, Typ, Any, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR, is_same_type
-from nodes import FuncRepr, FuncArgsRepr, FuncDef, CallExprRepr, TypeInfo, NameExpr, LDEF
+from mtypes import (
+    Callable, Typ, Any, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR
+) 
+from nodes import FuncDef, TypeInfo, NameExpr, LDEF
+import nodes
+from noderepr import FuncRepr, FuncArgsRepr, CallExprRepr
 from lex import Token
 from checker import function_type
+from sametypes import is_same_type
+from parse import none
 
 
 # Prepend an argument with the given type to a callable type.
 Callable prepend_arg_type(Callable t, Typ arg_type):
-    return Callable([arg_type] + t.arg_types, t.min_args + 1, t.is_var_arg, t.ret_type, t.is_type_obj, t.name, t.variables, t.bound_vars, t.line, None)
+    return Callable([arg_type] + t.arg_types,
+                    [nodes.ARG_POS] + t.arg_kinds,
+                    <str> [None] + t.arg_names,
+                    t.ret_type,
+                    t.is_type_obj(),
+                    t.name,
+                    t.variables,
+                    t.bound_vars,
+                    t.line, None)
 
 
 # Return a copy of a callable type with a different return type.
 Callable replace_ret_type(Callable t, Typ ret_type):
-    return Callable(t.arg_types, t.min_args, t.is_var_arg, ret_type, t.is_type_obj, t.name, t.variables, t.bound_vars, t.line, None)
+    return Callable(t.arg_types,
+                    t.arg_kinds,
+                    t.arg_names,
+                    ret_type,
+                    t.is_type_obj(),
+                    t.name,
+                    t.variables,
+                    t.bound_vars,
+                    t.line, None)
 
 
 # Translate callable type to type erased (dynamically-typed) callable type
 # with the same number of arguments.
 Callable dynamic_sig(Callable sig):
-    return Callable(<Typ> [Any()] * len(sig.arg_types), sig.min_args, sig.is_var_arg, Any(), sig.is_type_obj)
+    return Callable(<Typ> [Any()] * len(sig.arg_types),
+                    sig.arg_kinds,
+                    sig.arg_names,
+                    Any(),
+                    sig.is_type_obj())
 
 
 # Prepend an argument with the given name to a representation of a function.
-# Or if frepr == nil, return nil.
+# Or if frepr == None, return None.
 FuncRepr prepend_arg_repr(FuncRepr frepr, str name):
     if frepr is None:
         return None
-    # Add the argument to all (intersection) items in the representation.
-    list<FuncArgsRepr> args = []
-    for ar in frepr.args:
-        # We may need to add a comma as well.
-        commas = [Token('')]
-        if len(ar.arg_names) > 0:
-            commas = [Token(', ')] + ar.commas
-        args.append(FuncArgsRepr(ar.lseparator, ar.rseparator, [Token(name)] + ar.arg_names, commas, [Token('')] + ar.assigns, ar.asterisk))
+    ar = frepr.args
+    # We may need to add a comma as well.
+    commas = [Token('')]
+    if len(ar.arg_names) > 0:
+        commas = [Token(', ')] + ar.commas
+    args = FuncArgsRepr(ar.lseparator, ar.rseparator, [Token(name)] + ar.arg_names, commas, [Token('')] + ar.assigns, ar.asterisk)
     r = frepr
     return FuncRepr(r.def_tok, r.name, args)
 
@@ -56,7 +80,8 @@ CallExprRepr prepend_call_arg_repr(CallExprRepr r, int argc):
     list<Token> commas = []
     if argc > 0:
         commas = [Token(', ')] + r.commas
-    return CallExprRepr(r.lparen, commas, r.asterisk, [none] + r.assigns, r.rparen)
+    return CallExprRepr(r.lparen, commas, r.star, r.star2,
+                        [[none]] + r.keywords, r.rparen)
 
 
 # Translate any instance type variables in a type into wrapper type variables
@@ -128,7 +153,7 @@ bool is_simple_override(FuncDef fdef, TypeInfo info):
     # lifted.
     if info.base is None or info.base.type_vars != []:
         return False
-    orig = info.base.get_method(fdef.name)
+    orig = info.base.get_method(fdef.name())
     return is_same_type(function_type(fdef), function_type(orig))
 
 
