@@ -48,10 +48,11 @@ class FuncTransformer:
             # method.
             res = [self.transform_method_implementation(fdef, fdef.name())]
         else:
-            # Normal methods are transformed to 1-3 variants. The first is the
-            # main implementation of the method, and the second is the
-            # dynamically-typed wrapper. The third variant is for method overrides,
-            # and represents the overridden supertype method.
+            # Normal methods are transformed to 1-3 variants. The
+            # first is the main implementation of the method, and the
+            # second is the dynamically-typed wrapper. The third
+            # variant is for method overrides, and represents the
+            # overridden supertype method.
             
             res = [self.transform_method_implementation(
                 fdef, fdef.name() + self.tf.type_suffix(fdef))]
@@ -59,8 +60,8 @@ class FuncTransformer:
             if fdef.info.base and fdef.info.base.has_method(fdef.name()):
                 # Override.
                 
-                # Is is an override with a different signature? For trivial overrides
-                # we can inherit wrappers.
+                # Is is an override with a different signature? For
+                # trivial overrides we can inherit wrappers.
                 if not is_simple_override(fdef, fdef.info):
                     # Create a wrapper for overridden superclass method.
                     res.append(self.override_method_wrapper(fdef))
@@ -125,7 +126,8 @@ class FuncTransformer:
     
     FuncDef[] generic_method_wrappers(self, FuncDef fdef):
         """Construct wrapper class methods for a method of a generic class."""
-        return [self.generic_static_method_wrapper(fdef), self.generic_dynamic_method_wrapper(fdef)]
+        return [self.generic_static_method_wrapper(fdef),
+                self.generic_dynamic_method_wrapper(fdef)]
     
     FuncDef generic_static_method_wrapper(self, FuncDef fdef):
         """Construct statically-typed wrapper class method."""
@@ -273,17 +275,23 @@ class FuncTransformer:
         if not is_wrapper_class:
             callee = NameExpr(member)
         else:
-            callee = MemberExpr(MemberExpr(self_expr(), self.tf.object_member_name()), member)
-        args = self.call_args(fdef, target_ann, cur_ann, is_dynamic, is_wrapper_class, bound_sig)
+            callee = MemberExpr(
+                MemberExpr(self_expr(), self.tf.object_member_name()), member)
+        args = self.call_args(fdef, target_ann, cur_ann, is_dynamic,
+                              is_wrapper_class, bound_sig)
         Node call = CallExpr(callee,
                              args,
                              [nodes.ARG_POS] * len(args),
                              <str> [None] * len(args))
         if bound_sig is not None:
-            call = self.tf.coerce(call, bound_sig.ret_type, target_ann.ret_type, self.tf.type_context(), is_wrapper_class)
-            call = self.tf.coerce(call, cur_ann.ret_type, bound_sig.ret_type, self.tf.type_context(), is_wrapper_class)
+            call = self.tf.coerce(call, bound_sig.ret_type,
+                                  target_ann.ret_type, self.tf.type_context(),
+                                  is_wrapper_class)
+            call = self.tf.coerce(call, cur_ann.ret_type, bound_sig.ret_type,
+                                  self.tf.type_context(), is_wrapper_class)
         else:
-            call = self.tf.coerce(call, cur_ann.ret_type, target_ann.ret_type, self.tf.type_context(), is_wrapper_class)
+            call = self.tf.coerce(call, cur_ann.ret_type, target_ann.ret_type,
+                                  self.tf.type_context(), is_wrapper_class)
         if not isinstance(target_ann.ret_type, Void):
             return ReturnStmt(call)
         else:
