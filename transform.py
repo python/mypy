@@ -19,11 +19,16 @@ from rttypevars import translate_runtime_type_vars_in_context
 
 
 class DyncheckTransformVisitor(TraverserVisitor):
-    """Parse tree Node visitor that transforms a parse tree to one that does
-    runtime type checking based on static types.
+    """Translate a parse tree to use runtime representation of generics.
+
+    Translate generic type variables to ordinary variables and all make
+    all non-trivial coercions explicit. Also generate generic wrapper classes
+    for coercions between generic types and wrapper methods for overrides
+    and for more efficient access from dynamically typed code.
     
     This visitor modifies the parse tree in-place.
     """
+
     dict<Node, Typ> type_map
     dict<str, MypyFile> modules
     bool is_pretty
@@ -44,7 +49,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     TypeInfo type_context(self):
         return self._type_context
-    
     
     void __init__(self, dict<Node, Typ> type_map, dict<str, MypyFile> modules,
                   bool is_pretty, bool is_java=False):
@@ -94,8 +98,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
                                  self.type_context())
     
     void visit_func_def(self, FuncDef fdef):
-        """Transform a function definition in-place. This is not suitable for
-        methods; they are transformed in FuncTransformer.
+        """Transform a global function definition in-place.
+
+        This is not suitable for methods; they are transformed in
+        FuncTransformer.
         """
         self.prepend_generic_function_tvar_args(fdef)
         self.transform_function_body(fdef)
@@ -103,7 +109,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     void transform_function_body(self, FuncDef fdef):
         """Transform the body of a function."""
         self.dynamic_funcs.append(fdef.is_implicit)
-        # FIX intersection types
+        # FIX overloads
         self.return_types.append(((Callable)function_type(fdef)).ret_type)
         super().visit_func_def(fdef)
         self.return_types.pop()
@@ -174,7 +180,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         if isinstance(typ, Instance):
             # Reference to a statically-typed method variant with the suffix
             # derived from the base object type.
-            suffix = self.get_member_reference_suffix(e.name, ((Instance)typ).typ)
+            suffix = self.get_member_reference_suffix(e.name,
+                                                      ((Instance)typ).typ)
         else:
             # Reference to a dynamically-typed method variant.
             suffix = self.dynamic_suffix()
@@ -221,11 +228,13 @@ class DyncheckTransformVisitor(TraverserVisitor):
         if isinstance(ctype, Callable) and ((Callable)ctype).bound_vars != []:
             bound_vars = ((Callable)ctype).bound_vars
             
-            # If this is a constructor call (target is the constructor of a generic
-            # type or superclass create), include also instance type variables.
-            # Otherwise filter them away -- include only generic function type
-            # variables.
-            if not ((Callable)ctype).is_type_obj and not (isinstance(e.callee, SuperExpr) and ((SuperExpr)e.callee).name == 'create'):
+            # If this is a constructor call (target is the constructor
+            # of a generic type or superclass create), include also
+            # instance type variables.  Otherwise filter them away --
+            # include only generic function type variables.
+            if (not ((Callable)ctype).is_type_obj and
+                    not (isinstance(e.callee, SuperExpr) and
+                         ((SuperExpr)e.callee).name == '__init__')):
                 list<tuple<int, Typ>> b = []
                 for id, t in bound_vars:
                     if id < 0:
@@ -242,7 +251,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             e.args = args + e.args
     
     def is_debugging_call_expr(self, e):
-        return isinstance(e.callee, NameExpr) and e.callee.name in ['__Print']
+        return isinstance(e.callee, NameExpr) and e.callee.name in ['__print']
     
     void visit_cast_expr(self, CastExpr e):
         super().visit_cast_expr(e)
@@ -283,8 +292,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
         self.type_map[node] = typ
     
     str type_suffix(self, FuncDef fdef, TypeInfo info=None):
-        """Return the suffix for a mangled name with optional type suffix for a
-        function or method.
+        """Return the suffix for a mangled name.
+
+        This includes an optional type suffix for a function or method.
         """
         if not info:
             info = fdef.info
@@ -300,30 +310,41 @@ class DyncheckTransformVisitor(TraverserVisitor):
             return '__' + info.name()
     
     str dynamic_suffix(self):
-        """Return the suffix of the dynamic wrapper of a method, getter or class."""
+        """Return the suffix of the dynamic wrapper of a method or class."""
         return dynamic_suffix(self.is_pretty)
     
-    Node coerce(self, Node expr, Typ target_type, Typ source_type, TypeInfo context, bool is_wrapper_class=False):
-        return coerce(expr, target_type, source_type, context, is_wrapper_class, self.is_java)
+    Node coerce(self, Node expr, Typ target_type, Typ source_type,
+                TypeInfo context, bool is_wrapper_class=False):
+        return coerce(expr, target_type, source_type, context,
+                      is_wrapper_class, self.is_java)
     
-    Node coerce2(self, Node expr, Typ target_type, Typ source_type, TypeInfo context, bool is_wrapper_class=False):
-        """Create coercion from sourceType to targetType and also a middle coercion
-        do dynamic if transforming a dynamically typed function.
+    Node coerce2(self, Node expr, Typ target_type, Typ source_type,
+                 TypeInfo context, bool is_wrapper_class=False):
+        """Create coercion from source_type to target_type.
+
+        Also include middle coercion do 'any' if transforming a dynamically
+        typed function.
         """
         if self.dynamic_funcs[-1]:
-            return self.coerce(self.coerce(expr, Any(), source_type, context, is_wrapper_class), target_type, Any(), context, is_wrapper_class)               
+            return self.coerce(self.coerce(expr, Any(), source_type, context,
+                                           is_wrapper_class),
+                               target_type, Any(), context, is_wrapper_class)
         else:
-            return self.coerce(expr, target_type, source_type, context, is_wrapper_class)
+            return self.coerce(expr, target_type, source_type, context,
+                               is_wrapper_class)
     
     Node coerce_to_dynamic(self, Node expr, Typ source_type, TypeInfo context):
         if isinstance(source_type, Any):
             return expr
-        source_type = translate_runtime_type_vars_in_context(source_type, context, self.is_java)
+        source_type = translate_runtime_type_vars_in_context(
+            source_type, context, self.is_java)
         return CoerceExpr(expr, Any(), source_type, False)
     
     void add_line_mapping(self, Node orig_node, Node new_node):
-        """Add a line mapping for a wrapper. The node newNode has logically the same
-        line numbers as origNode. The nodes should be FuncDef/TypeDef nodes.
+        """Add a line mapping for a wrapper.
+
+        The node new_node has logically the same line numbers as
+        orig_node. The nodes should be FuncDef/TypeDef nodes.
         """
         if orig_node.repr is not None:
             start_line = orig_node.line
@@ -332,15 +353,14 @@ class DyncheckTransformVisitor(TraverserVisitor):
             self.line_map[new_node] = (start_line, end_line)
     
     Instance named_type(self, str name):
-        """TODO combine with checker"""
+        # TODO combine with checker
         # Assume that the name refers to a type.
         sym = self.lookup(name, GDEF)
         return Instance((TypeInfo)sym.node, [])
     
     SymbolTableNode lookup(self, str full_name, int kind):
-        """TODO combine with checker
-        TODO remove kind argument
-        """
+        # TODO combine with checker
+        # TODO remove kind argument
         parts = full_name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):
