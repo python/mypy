@@ -224,8 +224,13 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem, SymNode):
     str _full_name      # Name with module prefix
     
-    void __init__(self, str name, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, Annotation typ=None):
+    void __init__(self,
+                  str name,          # Function name
+                  Var[] args,        # Argument names
+                  int[] arg_kinds,   # Arguments kinds (nodes.ARG_*)
+                  Node[] init,       # Initializers (each may be None)
+                  Block body,
+                  Annotation typ=None):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
