@@ -1,0 +1,1300 @@
+-- Test cases for runtime (dynamic) checking transformation.
+--
+-- Each test case consists of at least two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the
+-- transformation.
+
+-- Note that the test cases use a pretty-printed output syntax that is not
+-- valid Alore code.
+
+
+-- Empty method transformation, no inheritance
+-- -------------------------------------------
+
+
+[case testIdentityTransformation]
+class A: pass
+class B: pass
+[out]
+class A
+end
+class B
+end
+
+[case testSimpleMethod]
+class A:
+    void __init__(self):
+        pass
+    
+    int f(self):
+        pass
+[out]
+class A
+  def create() as void
+  end
+
+  def f() as Int
+  end
+  def f*() as dynamic
+    return {dyn <= std::Int | f()}
+  end
+end
+
+[case testMethodWithArguments]
+class A:
+    void __init__(self):
+        pass
+    
+    void f(self, A a):
+        pass
+[out]
+class A
+  def create() as void
+  end
+
+  def f(a as A) as void
+  end
+  def f*(a as dynamic) as dynamic
+    f({A <= dyn | a})
+  end
+end
+
+[case testMethodWithDynamicTypesInArguments]
+class A:
+    A f(self, any a, any b):
+        pass
+[out]
+class A
+  def f(a as dynamic, b as dynamic) as A
+  end
+  def f*(a as dynamic, b as dynamic) as dynamic
+    return f(a, b)
+  end
+end
+
+[case testMethodWithDynamicReturnType]
+class A:
+    any f(self, A a):
+        pass
+[out]
+class A
+  def f(a as A) as dynamic
+  end
+  def f*(a as dynamic) as dynamic
+    return f({A <= dyn | a})
+  end
+end
+
+
+-- Empty methods with inheritance
+-- ------------------------------
+
+
+[case testOverridingStaticWithDynamic]
+class A:
+    int f(self, float a):
+        pass
+class B(A):
+    any f(self, any a):
+        pass
+[out]
+class A
+  def f(a as Float) as Int
+  end
+  def f*(a as dynamic) as dynamic
+    return {dyn <= std::Int | f({std::Float <= dyn | a})}
+  end
+end
+class B is A
+  def f`B(a as dynamic) as dynamic
+  end
+  def f(a as Float) as Int
+    return {std::Int <= dyn | f`B({dyn <= std::Float | a})}
+  end
+  def f*(a as dynamic) as dynamic
+    return f`B(a)
+  end
+end
+
+[case testOverridingDynamicWithStatic]
+class A:
+    any f(self, any a):
+        pass
+class B(A):
+    int f(self, A a):
+        pass
+[out]
+class A
+  def f(a as dynamic) as dynamic
+  end
+  def f*(a as dynamic) as dynamic
+    return f(a)
+  end
+end
+class B is A
+  def f`B(a as A) as Int
+  end
+  def f(a as dynamic) as dynamic
+    return {dyn <= std::Int | f`B({A <= dyn | a})}
+  end
+  def f*(a as dynamic) as dynamic
+    return {dyn <= std::Int | f`B({A <= dyn | a})}
+  end
+end
+
+[case testNewMethodInSubclass]
+class A:
+    B f(self, A a):
+        pass
+class B(A):
+    A g(self, B b):
+        pass
+[out]
+class A
+  def f(a as A) as B
+  end
+  def f*(a as dynamic) as dynamic
+    return f({A <= dyn | a})
+  end
+end
+class B is A
+  def g(b as B) as A
+  end
+  def g*(b as dynamic) as dynamic
+    return g({B <= dyn | b})
+  end
+end
+
+[case testOverridingMethodInGrandparent]
+class A:
+    B f(self, int a):
+        pass
+class B(A): pass
+class C(B):
+    any f(self, any a):
+        pass
+[out]
+...
+class B is A
+end
+class C is B
+  def f`C(a as dynamic) as dynamic
+  end
+  def f(a as Int) as B
+    return {B <= dyn | f`C({dyn <= std::Int | a})}
+  end
+  def f*(a as dynamic) as dynamic
+    return f`C(a)
+  end
+end
+
+[case testOverridingMethodTwice]
+class A:
+    float f(self, int a):
+        pass
+class B(A):
+    float f(self, any a):
+        pass
+class C(B):
+    any f(self, int a):
+        pass
+[out]
+...
+class B is A
+  def f`B(a as dynamic) as Float
+  end
+  def f(a as Int) as Float
+    return f`B({dyn <= std::Int | a})
+  end
+  def f*(a as dynamic) as dynamic
+    return {dyn <= std::Float | f`B(a)}
+  end
+end
+class C is B
+  def f`C(a as Int) as dynamic
+  end
+  def f`B(a as dynamic) as Float
+    return {std::Float <= dyn | f`C({std::Int <= dyn | a})}
+  end
+  def f*(a as dynamic) as dynamic
+    return f`C({std::Int <= dyn | a})
+  end
+end
+
+[case testOverridingWithSameSig]
+class A:
+    B f(self, A a):
+        pass
+class B(A):
+    B f(self, A a):
+        return None
+[out]
+class A
+  def f(a as A) as B
+  end
+  def f*(a as dynamic) as dynamic
+    return f({A <= dyn | a})
+  end
+end
+class B is A
+  def f(a as A) as B
+    return nil
+  end
+end
+
+[case testOverridingDynamicWithDynamic]
+class A:
+    any f(self, any a):
+        pass
+class B(A):
+    any f(self, any a):
+        return None
+[out]
+...
+class B is A
+  def f(a as dynamic) as dynamic
+    return nil
+  end
+end
+
+[case testOverridingFirstWithDynamicAndThenWithSameSig]
+class A:
+    void f(self, int a):
+        self.f(a)
+class B(A):
+    void f(self, any a):
+        self.f(a)
+class C(B):
+    void f(self, any a):
+        self.f(a)
+[out]
+...
+class B is A
+  def f`B(a as dynamic)
+    self.f`B(a)
+  end
+  def f(a as Int)
+    f`B({dyn <= std::Int | a})
+  end
+  def f*(a as dynamic) as dynamic
+    f`B(a)
+  end
+end
+class C is B
+  def f`B(a as dynamic)
+    self.f`B(a)
+  end
+end
+
+
+-- Method calls
+-- ------------
+
+
+[case testCallStaticallyTypedMethod]
+class A:
+    A f(self, B b):
+        return b.g()
+class B:
+    A g(self):
+        pass
+[out]
+class A
+  def f(b as B) as A
+    return b.g()
+  end
+...
+
+[case testCallDynamicallyTypedMethod]
+class A:
+    any f(self, any b):
+        return b.g()
+class B:
+    A g(self):
+        pass
+[out]
+class A
+  def f(b as dynamic) as dynamic
+    return b.g*()
+  end
+...
+
+[case testStaticCallWithArguments]
+class A:
+    A f(self, B b):
+        return b.g(b, 1)
+class B:
+    A g(self, B b, any d):
+        pass
+[out]
+class A
+  def f(b as B) as A
+    return b.g(b, {dyn <= std::Int | 1})
+  end
+...
+
+[case testDynamicCallWithArguments]
+class A:
+    A f(self, any d, int i):
+        return d.g(d, i)
+[out]
+class A
+  def f(d as dynamic, i as Int) as A
+    return {A <= dyn | d.g*(d, {dyn <= std::Int | i})}
+  end
+...
+
+[case testMethodCallWithInheritance]
+class A:
+    A f1(self, B b):
+        return b.f1(b)
+    B f2(self, B b, A a):
+        return b.g(a)
+class B(A):
+    B g(self, A a):
+        pass
+[out]
+class A
+  def f1(b as B) as A
+    return b.f1(b)
+  end
+...
+  def f2(b as B, a as A) as B
+    return b.g(a)
+  end
+...
+
+[case testMethodCallWithOverride]
+class A:
+    A f(self, B b):
+        return b.f(b)
+    A f2(self, A a, B b):
+        return a.f(b)
+class B(A):
+    any f(self, B b):
+        pass
+[out]
+class A
+  def f(b as B) as A
+    return {A <= dyn | b.f`B(b)}
+  end
+...
+  def f2(a as A, b as B) as A
+    return a.f(b)
+  end
+...
+
+[case testNestedMethodCalls]
+class A:
+    any f(self, A a):
+        return a.g(a.g(1))
+    int g(self, any a):
+        pass
+[out]
+class A
+  def f(a as A) as dynamic
+    return {dyn <= std::Int | a.g({dyn <= std::Int | a.g({dyn <= std::Int | 1})})}
+  end
+...
+
+[case testMethodCallWithDirectReference]
+class A:
+    any f(self, int a):
+        return self.g(a)
+    int g(self, any a):
+        pass
+[out]
+class A
+  def f(a as Int) as dynamic
+    return {dyn <= std::Int | g({dyn <= std::Int | a})}
+  end
+...
+
+
+-- Statements
+-- ----------
+
+
+[case testReturnStatement1]
+class A:
+    any f(self, B b):
+        return b.g()
+class B:
+    A g(self):
+        pass
+[out]
+class A
+  def f(b as B) as dynamic
+    return b.g()
+  end
+  def f*(b as dynamic) as dynamic
+    return f({B <= dyn | b})
+  end
+end
+...
+
+[case testReturnStatement2]
+class A:
+    A f(self, B b):
+        return b.g()
+class B:
+    any g(self):
+        pass
+[out]
+class A
+  def f(b as B) as A
+    return {A <= dyn | b.g()}
+  end
+  def f*(b as dynamic) as dynamic
+    return f({B <= dyn | b})
+  end
+end
+...
+
+
+[case testIfStatement]
+bool b
+any d
+if b:
+    d = 1
+elif d:
+    d = 2
+else:
+    d = 3
+[builtins fixtures/ops.py]
+[out]
+...
+if b
+  d = {dyn <= std::Int | 1}
+elif {std::Boolean <= dyn | d}
+  d = {dyn <= std::Int | 2}
+else
+  d = {dyn <= std::Int | 3}
+end
+
+
+[case testWhileStatement]
+bool b
+any d
+while b:
+    while d:
+        d = 1
+[builtins fixtures/ops.py]
+[out]
+...
+while b
+  while {std::Boolean <= dyn | d}
+    d = {dyn <= std::Int | 1}
+  end
+end
+
+
+
+-- Cast insertion (or non-insertion) in specific cases
+-- ---------------------------------------------------
+
+
+[case testOmitSubtypeToSupertypeCast]
+class A:
+    A f(self, B b):
+        return b
+class B(A): pass
+[out]
+class A
+  def f(b as B) as A
+    return b
+  end
+...
+
+
+-- Constructor and object construction
+-- -----------------------------------
+
+
+[case testBasicConstructor]
+class A:
+    int a
+    any d
+    
+    void __init__(self, int a, any d):
+        self.a = a
+        self.d = d
+[out]
+class A
+...
+  def create(a as Int, d as dynamic)
+    self.a = a
+    self.d = d
+  end
+end
+
+[case testCreateInstanceWithExactTypes]
+class A:
+    void __init__(self, B b):
+        pass
+    
+    A f(self, B b):
+        return A(b)
+class B: pass
+[out]
+class A
+  def create(b as B)
+  end
+
+  def f(b as B) as A
+    return A(b)
+  end
+...
+
+[case testCreateInstanceWithTrivialReturnTypeCoercion]
+class A:
+    any f(self):
+        return A()
+[out]
+class A
+  def f() as dynamic
+    return A()
+  end
+...
+
+[case testCreateInstanceWithArgumentCasts]
+class A:
+    B f(self, int b, any d):
+        return B(b, d)
+class B:
+    void __init__(self, any d, A a):
+        pass
+[out]
+class A
+  def f(b as Int, d as dynamic) as B
+    return B({dyn <= std::Int | b}, {A <= dyn | d})
+  end
+...
+
+
+-- Self expressions
+-- ----------------
+
+
+[case testSelf]
+class A:
+    void f(self, any a):
+        self.f(self)
+[out]
+class A
+  def f(a as dynamic)
+    self.f(self)
+  end
+...
+
+
+-- Member variable access
+-- ----------------------
+
+
+[case testMemberVariableAccessors]
+class A:
+    int a
+    any d
+    
+    void __init__(self, int a, any d):
+        self.a = a
+        self.d = d
+[out]
+class A
+  var a as Int
+  def a* as dynamic
+    return {dyn <= std::Int | self.a}
+  end
+  def a* = __x as dynamic
+    self.a = {std::Int <= dyn | __x}
+  end
+  var d as dynamic
+  def d* as dynamic
+    return self.d
+  end
+  def d* = __x as dynamic
+    self.d = __x
+  end
+...
+
+[case testMemberVariableAccessViaStatic]
+class A:
+    int a
+    any d
+    int f(self):
+        return self.d
+    any g(self):
+        return self.a
+    
+    void __init__(self, int a, any d):
+        self.a = a
+        self.d = d
+[out]
+class A
+...
+  def f() as Int
+    return {std::Int <= dyn | self.d}
+  end
+...
+  def g() as dynamic
+    return {dyn <= std::Int | self.a}
+  end
+...
+
+[case testMemberVariableAccessViaDynamic]
+class A:
+    A f(self, any d):
+        return d.x
+[out]
+class A
+  def f(d as dynamic) as A
+    return {A <= dyn | d.x*}
+  end
+...
+
+[case testMemberVariableAssignmentViaDynamic]
+any d
+d.x = 1
+[out]
+...
+d.x* = {dyn <= std::Int | 1}
+
+
+-- Casts
+-- -----
+
+
+[case testCast]
+class A:
+    B f(self, A a):
+        return (B)a
+class B(A): pass
+[out]
+class A
+  def f(a as A) as B
+    return a as B
+  end
+...
+
+[case testDynamicCast]
+class A:
+    float f(self, int a):
+        return (any)a
+[out]
+class A
+  def f(a as Int) as Float
+    return {std::Float <= dyn | {dyn <= std::Int | a} as dynamic}
+  end
+...
+--    return {B <= dyn | {dyn <= A | a} as dynamic}
+
+
+-- Global expressions
+-- ------------------
+
+
+[case testGlobalExpression]
+class A:
+    void f(self, any a):
+        pass
+
+A().f(1)
+[out]
+...
+A().f({dyn <= std::Int | 1})
+
+
+-- Void type
+-- ---------
+
+
+[case testImplicitVoid]
+class A:
+    void f(self, any b):
+        pass
+class B(A):
+    void f(self, B b):
+        pass
+[out]
+class A
+  def f(b as dynamic)
+  end
+  def f*(b as dynamic) as dynamic
+    f(b)
+  end
+end
+class B is A
+  def f`B(b as B)
+  end
+  def f(b as dynamic)
+    f`B({B <= dyn | b})
+  end
+  def f*(b as dynamic) as dynamic
+    f`B({B <= dyn | b})
+  end
+end
+
+
+-- Function definition and call
+-- ----------------------------
+
+
+[case testFunctionDefinitionAndCall]
+int f(int a):
+    return (any)(1)
+any d
+d = f((any)(1))
+[out]
+def f(a as Int) as Int
+  return {std::Int <= dyn | {dyn <= std::Int | 1} as dynamic}
+end
+var d as dynamic
+d = {dyn <= std::Int | f({std::Int <= dyn | {dyn <= std::Int | 1} as dynamic})}
+
+
+-- Assignment and initialization
+-- -----------------------------
+
+
+[case testAssignmentToGlobal]
+int a
+any d
+a = a
+a = d
+d = a
+[out]
+var a as Int
+var d as dynamic
+a = a
+a = {std::Int <= dyn | d}
+d = {dyn <= std::Int | a}
+
+[case testGlobalInitialization]
+int a
+any d
+any dd = a
+int aa = a
+[out]
+var a as Int
+var d as dynamic
+var dd = {dyn <= std::Int | a} as dynamic
+var aa = a as Int
+
+[case testLocalVariableAssignmentAndInit]
+void f():
+    int a
+    any d = a
+    int aa = a
+    a = a
+    d = a
+[out]
+def f() as void
+  var a as Int
+  var d = {dyn <= std::Int | a} as dynamic
+  var aa = a as Int
+  a = a
+  d = {dyn <= std::Int | a}
+end
+
+[case testAssignmentToMemberUsingDot]
+A a
+any d
+a.m = d
+a.m = a
+
+class A:
+    A m
+    
+    void __init__(self, A m):
+        self.m = m
+[out]
+...
+a.m = {A <= dyn | d}
+a.m = a
+...
+
+[case testDirectAssignmentToMember]
+class A:
+    int m
+    any d
+    
+    void f(self):
+        self.m = self.m
+        self.d = self.d
+        self.m = self.d
+        self.d = self.m
+    
+    void __init__(self, int m, any d):
+        self.m = m
+        self.d = d
+[out]
+...
+  def f() as void
+    m = m
+    d = d
+    m = {std::Int <= dyn | d}
+    d = {dyn <= std::Int | m}
+  end
+...
+
+[case testMemberInitialization]
+class A:
+    int a
+    any d = self.a
+    int b = self.a
+    
+    void __init__(self, int a):
+        self.a = a
+[out]
+class A
+  var a as Int
+...
+  var d = {dyn <= std::Int | a} as dynamic
+...
+  var b = a as Int
+...
+
+
+-- nil
+-- ---
+
+
+[case testInitializationToNil]
+object a = None
+any d = None
+[out]
+var a = nil as Object
+var d = nil as dynamic
+
+[case testNilFunctionArgument]
+void f(A a):
+    pass
+f(None)
+class A: pass
+[out]
+...
+f(nil)
+...
+
+
+-- Private members
+-- ---------------
+
+
+[case testPrivateMemberVariable]
+class A:
+    A a
+    void __init__(self, any d):
+        self.a = d
+[out]
+class A
+  private var a as A
+  def create(d as dynamic)
+    self.a = {A <= dyn | d}
+  end
+end
+
+
+-- Displaying debugging information
+-- --------------------------------
+
+
+[case testSimplePrint]
+# The arguments to debugging functions are not coerced.
+__Print('hello')
+[out]
+__Print('hello')
+
+[case testComplexPrint]
+any f(any a):
+    pass
+int a
+__Print(a, f(a))
+[out]
+...
+var a as Int
+__Print(a, f({dyn <= std::Int | a}))
+
+
+-- Coercions from primitive types
+-- ------------------------------
+
+
+[case testCoercionFromPrimitiveToObject]
+object o
+int i
+float f
+A a
+o = i
+o = f
+o = a
+i = i
+class A: pass
+[out]
+...
+var a as A
+o = {std::Object <= std::Int | i}
+o = {std::Object <= std::Float | f}
+o = a
+i = i
+...
+
+
+-- Primitive operations
+-- --------------------
+
+
+[case testIntLiterals]
+int a = 1
+any d = 1
+[out]
+var a = 1 as Int
+var d = {dyn <= std::Int | 1} as dynamic
+
+
+[case testIntArithmetic]
+int i
+any d
+i = 1 + 2
+i = (1 - 2) * 2
+i = 1 % 2
+i = 1 // 2
+i = -i
+d = 1 + d
+d = 1 - d
+d = 1 * d
+d = 1 % d
+d = 1 // d
+d = -d + d - d * d
+d = d + 1
+d = d - 1
+d = d * 1
+d = d % d
+d = d // d
+[builtins fixtures/ops.py]
+[out]
+...
+i = 1 + 2
+-- TODO why the extra space?
+i = ( 1 - 2) * 2
+i = 1 mod 2
+i = 1 div 2
+i = -i
+d = {dyn <= std::Int | 1 + d}
+d = {dyn <= std::Int | 1 - d}
+d = {dyn <= std::Int | 1 * d}
+d = {dyn <= std::Int | 1 mod d}
+d = {dyn <= std::Int | 1 div d}
+d = -d + d - d * d
+d = d + 1
+d = d - 1
+d = d * 1
+d = d mod d
+d = d div d
+
+
+[case testBinaryOperationOperands]
+any d
+int i
+i = d.g() + d.f()
+i = d.g() * d.f()
+i = i + d.f()
+i = -d.g()
+[builtins fixtures/ops.py]
+[out]
+...
+i = {std::Int <= dyn | d.g*() + d.f*()}
+i = {std::Int <= dyn | d.g*() * d.f*()}
+i = i + d.f*()
+i = {std::Int <= dyn | -d.g*()}
+
+
+[case testBools]
+bool b
+any d
+b = True
+b = False
+d = True
+d = False
+b = b and b
+d = b or b
+b = not b
+d = not b
+b = b and d
+d = b or d
+b = d and b
+d = d or b
+b = d and d
+d = d or d
+b = not d
+[builtins fixtures/ops.py]
+[out]
+var b as Boolean
+var d as dynamic
+b = True
+b = False
+d = {dyn <= std::Boolean | True}
+d = {dyn <= std::Boolean | False}
+b = b and b
+d = {dyn <= std::Boolean | b or b}
+b = not b
+d = {dyn <= std::Boolean | not b}
+b = b and {std::Boolean <= dyn | d}
+d = {dyn <= std::Boolean | b or {std::Boolean <= dyn | d}}
+b = {std::Boolean <= dyn | d} and b
+d = {dyn <= std::Boolean | {std::Boolean <= dyn | d} or b}
+b = {std::Boolean <= dyn | d} and {std::Boolean <= dyn | d}
+d = {dyn <= std::Boolean | {std::Boolean <= dyn | d} or {std::Boolean <= dyn | d}}
+b = not d
+
+
+[case testIntComparisons]
+int i
+bool b
+any d
+b = 1 == 2
+d = 1 != 2
+b = 1 < 2
+b = 1 <= 2
+b = 1 > 2
+b = 1 >= 2
+b = d == d
+d = d == d
+b = d != 1
+b = 1 < d
+d = 1 > d
+[builtins fixtures/ops.py]
+[out]
+...
+b = 1 == 2
+d = {dyn <= std::Boolean | 1 != 2}
+b = 1 < 2
+b = 1 <= 2
+b = 1 > 2
+b = 1 >= 2
+b = d == d
+d = {dyn <= std::Boolean | d == d}
+b = d != 1
+b = 1 < d
+d = {dyn <= std::Boolean | 1 > d}
+
+
+[case testNilComparison]
+bool b
+C c
+b = b is None
+b = c is not None
+b = None == b
+b = None != c
+class C: pass
+[builtins fixtures/ops.py]
+[out]
+...
+b = b == nil
+b = c != nil
+b = nil == b
+b = nil != c
+...
+
+
+[case testStrLiterals]
+str s = 'foo'
+__Print(s)
+__Print('bar')
+[out]
+var s = 'foo' as Str
+__Print(s)
+__Print('bar')
+
+
+-- Implicit dynamic types
+-- ----------------------
+
+
+[case testImplicitGlobalVarType]
+any a
+object b = a
+c = b
+b = c
+[out]
+var a
+var b = {std::Object <= dyn | a} as Object
+var c = b
+b = {std::Object <= dyn | c}
+
+[case testImplicitPrivateMemberVarType]
+class A:
+    any a
+    c = None
+    
+    void f(self):
+        A b = self.a
+        b = self.c
+[out]
+class A
+...
+  def f() as void
+    var b = {A <= dyn | a} as A
+    b = {A <= dyn | c}
+  end
+...
+
+[case testImplicitPublicMemberVarType]
+class A:
+    any a
+    c = None
+    
+    void f(self):
+        A b = self.a
+        b = self.c
+    
+    void __init__(self, any a):
+        self.a = a
+[out]
+class A
+  var a
+  def a* as dynamic
+    return self.a
+  end
+  def a* = __x as dynamic
+    self.a = __x
+  end
+  var c = nil
+  def c* as dynamic
+    return self.c
+  end
+  def c* = __x as dynamic
+    self.c = __x
+  end
+
+  def f() as void
+    var b = {A <= dyn | a} as A
+    b = {A <= dyn | c}
+  end
+...
+
+[case testImplicitFunctionSig]
+def f(a, b):
+    pass
+void g():
+    int i = f(1, 2)
+[out]
+def f(a, b)
+end
+def g() as void
+  var i = {std::Int <= dyn | f({dyn <= std::Int | 1}, \
+                               {dyn <= std::Int | 2})} as Int
+end
+
+[case testImplicitMethodSig]
+class A:
+    def f(self, a):
+        pass
+    void g(self):
+        int i = self.f(1)
+        int j = self.f(1)
+[out]
+class A
+  def f(a)
+  end
+  def f*(a as dynamic) as dynamic
+    return f(a)
+  end
+  def g() as void
+    var i = {std::Int <= dyn | f({dyn <= std::Int | 1})} as Int
+    var j = {std::Int <= dyn | self.f({dyn <= std::Int | 1})} as Int
+  end
+...
+
+[case testImplicitMethodSigInGenericClass]
+class A<T>:
+    def f(self, a):
+        pass
+    void g(self):
+        int i = self.f(1)
+        int j = self.f(1)
+[out]
+...
+class A*
+...
+  def f(a as dynamic) as dynamic
+    return self.__o.f(a)
+  end
+  def f*(a as dynamic) as dynamic
+    return self.__o.f(a)
+  end
+...
+end
+
+[case testImplicitMethodSigAndOverride]
+class A:
+    def f(self, a):
+        pass
+    A g(self, A a):
+        pass
+class B(A):
+    def f(self, a):
+        pass
+    def g(self, a):
+        pass
+[out]
+...
+class B is A
+  def f(a)
+  end
+  def g`B(a)
+  end
+  def g(a as A) as A
+    return {A <= dyn | g`B(a)}
+  end
+  def g*(a as dynamic) as dynamic
+    return g`B(a)
+  end
+end
+
+[case testDynamicallyTypedFunctionBody]
+def f(x):
+    y = 1
+    i + y
+    o + o
+    x = g(o)
+int g(int x):
+    pass
+int i
+object o
+[out]
+def f(x)
+  var y = {dyn <= std::Int | 1}
+{dyn <= std::Int |  i} + y
+{dyn <= std::Object |  o} + o
+  x = {dyn <= std::Int | g({std::Int <= dyn | o})}
+end
+...
+
+[case testDynamicallyTypedMethodBody]
+class A:
+    int i
+    def f(self, x):
+        x = self.g(x)
+        x = self.z()
+        x = self.i
+        x.y()
+    int g(self, int x):
+        pass
+[out]
+class A
+  private var i as Int
+  def f(x)
+    x = {dyn <= std::Int | g({std::Int <= dyn | x})}
+    x = {dyn <= A | self}.z*()
+    x = {dyn <= std::Int | i}
+    x.y*()
+  end
+...
+
+
+-- additional basic features
+--   pretty-printing values
+--   void type

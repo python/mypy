@@ -1,0 +1,826 @@
+-- Test cases for runtime (dynamic) checking transformation and generic
+-- inheritance.
+--
+-- See dyncheck-trans-basic.test for an overview of the file format.
+
+
+-- Non-generic class inherits a generic class
+-- ------------------------------------------
+
+
+[case testInheritingGenericClass]
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<C>):
+    void g(self, C c):
+        self.f(c)
+class C: pass
+[out]
+...
+class B is A<C>
+  def g(c as C)
+    f(c)
+  end
+  def g*(c as dynamic) as dynamic
+    g({C <= dyn | c})
+  end
+...
+
+
+[case testInheritingGenericClassAndExternalAccess]
+B b
+C c
+b.f(c)
+b.g(c)
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<C>):
+    void g(self, C c):
+        self.f(c)
+class C: pass
+[out]
+var b as B
+var c as C
+b.f(c)
+b.g(c)
+...
+
+
+[case testInheritingGenericClassAndOverriding]
+A<C> a
+B b
+C c
+a.f(c)
+b.f(c)
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<C>):
+    void f(self, C c):
+        pass
+class C: pass
+[out]
+...
+a.f(c)
+b.f`B(c)
+...
+class B is A<C>
+  def f`B(c as C)
+  end
+  def f(t as dynamic)
+    f`B(t)
+  end
+  def f*(c as dynamic) as dynamic
+    f`B({C <= dyn | c})
+  end
+...
+
+
+[case testInheritGenericClassAndCallCreate]
+A<float>()
+B()
+class A<T>: pass
+class B(A<int>): pass
+[out]
+A(<std::Float>) as <Float>
+B()
+...
+
+
+[case testInheritingGenericClassAndOverriding2]
+class A<T>:
+    void f(self, C<T> a, D b):
+        pass
+class B(A<E>):
+    void f(self, C<E> a, D b):
+        pass
+class C<T>: pass
+class D: pass
+class E: pass
+[out]
+...
+class B is A<E>
+...
+  def f`B(a as C<E>, b as D)
+  end
+  def f(a as C, b as D)
+    f`B(a, b)
+  end
+  def f*(a as dynamic, b as dynamic) as dynamic
+    f`B({C<E> <= dyn | a}, {D <= dyn | b})
+  end
+...
+
+
+-- Generic class inherits a generic class; identical type variables
+-- ----------------------------------------------------------------
+
+
+[case testGenericInheritanceWithIdenticalTypeVars]
+# Single type variable
+class A<T>:
+    void f(self, T a, A<T> b):
+        pass
+class B<S>(A<S>):
+    void f(self, S a, A<S> b):
+        pass
+[out]
+...
+class B<S> is A<S>
+  def f`B(a as S, b as A<S>)
+  end
+  def f(a as dynamic, b as A)
+    f`B(a, b)
+  end
+  def f*(a as dynamic, b as dynamic) as dynamic
+    f`B({self.__tv <= dyn | a}, {A<self.__tv> <= dyn | b})
+  end
+...
+end
+class B* is A*
+...
+  def f`B(a as dynamic, b as A)
+    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= dyn | a}}, \
+          {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= A<dyn> | b}})
+  end
+  def f*(a as dynamic, b as dynamic) as dynamic
+    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= dyn | a}}, {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= dyn | b}})
+  end
+end
+
+
+[case testGenericInheritanceWithIdenticalTypeVars2]
+# Multiple type variables
+class A<T, S>:
+    void f(self, T a, A<S, T> b):
+        pass
+class B<T, S>(A<T, S>):
+    void f(self, T a, A<S, T> b):
+        pass
+[out]
+...
+class B<T, S> is A<T, S>
+...
+  def f`B(a as T, b as A<S, T>)
+  end
+  def f(a as dynamic, b as A)
+    f`B(a, b)
+  end
+  def f*(a as dynamic, b as dynamic) as dynamic
+    f`B({self.__tv <= dyn | a}, {A<self.__tv2, self.__tv> <= dyn | b})
+  end
+...
+
+
+[case testGenericInheritanceWithDifferentSig]
+# Override with dynamic
+class A<T>:
+    T f(self, T a, A<T> b, int i):
+        pass
+class B<S>(A<S>):
+    any f(self, any a, any b, any i):
+        return None
+[out]
+...
+class B<S> is A<S>
+  def f`B(a as dynamic, b as dynamic, i as dynamic) as dynamic
+    return nil
+  end
+  def f(a as dynamic, b as A, i as Int) as dynamic
+    return {self.__tv <= dyn | f`B(a, b, {dyn <= std::Int | i})}
+  end
+  def f*(a as dynamic, b as dynamic, i as dynamic) as dynamic
+    return f`B(a, b, i)
+  end
+...
+
+
+-- Generic class inherits a generic class; different type variables
+-- ----------------------------------------------------------------
+
+
+[case testGenericClassInheritsGenericsClassAndOverrides]
+class A<S, T>:
+    void f(self, S s, T t):
+        pass
+class B<S>(A<C, S>):
+    void f(self, C s, S t):
+        pass
+class C: pass
+[out]
+...
+class B<S> is A<C, S>
+  def f`B(s as C, t as S)
+  end
+  def f(s as dynamic, t as dynamic)
+    f`B(s, t)
+  end
+  def f*(s as dynamic, t as dynamic) as dynamic
+    f`B({C <= dyn | s}, {self.__tv2 <= dyn | t})
+  end
+...
+
+
+[case testNonGenericClassInheritsGenericClass]
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<int>):
+    void g(self, any d):
+        self.f(d)
+[out]
+...
+class B is A<Int>
+  def g(d as dynamic)
+    f({std::Int <= dyn | d})
+  end
+  def g*(d as dynamic) as dynamic
+    g(d)
+  end
+...
+
+
+[case testGenericInheritanceAndCoercionsWithArgShuffling]
+class A<T, S>:
+    void f(self, T t, S s):
+        pass
+class B<X, Y>(A<Y, X>):
+    void g(self, X x, Y y):
+        pass
+    void h(self, any d):
+        self.f(d, d)
+        self.g(d, d)
+[out]
+...
+class B<X, Y> is A<Y, X>
+  def g(x as X, y as Y)
+  end
+  def g*(x as dynamic, y as dynamic) as dynamic
+    g({self.__tv2 <= dyn | x}, {self.__tv <= dyn | y})
+  end
+  def h(d as dynamic)
+    f({self.__tv <= dyn | d}, {self.__tv2 <= dyn | d})
+    g({self.__tv2 <= dyn | d}, {self.__tv <= dyn | d})
+  end
+...
+class B* is A*
+...
+  def g(x as dynamic, y as dynamic)
+    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= dyn | x}}, \
+               {self.__o.__tv <= self.__btv | {self.__btv <= dyn | y}})
+  end
+  def g*(x as dynamic, y as dynamic) as dynamic
+    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= dyn | x}}, \
+               {self.__o.__tv <= self.__btv | {self.__btv <= dyn | y}})
+  end
+...
+
+[case testGenericInheritanceAndCoercionsWithNestedArg]
+class A<T>:
+    void f(self, T t):
+        pass
+class B<S>(A<A<S>>):
+    void f(self, A<S> s):
+        pass
+[out]
+...
+class B<S> is A<A<S>>
+  def f`B(s as A<S>)
+  end
+  def f(t as dynamic)
+    f`B(t)
+  end
+  def f*(s as dynamic) as dynamic
+    f`B({A<self.__tv.args[0]> <= dyn | s})
+  end
+...
+class B* is A*
+...
+  def f`B(s as A)
+    self.__o.f`B({A<self.__o.__tv.args[0]> <= A<self.__btv.args[0]> | \
+                   {A<self.__btv.args[0]> <= A<dyn> | s}})
+  end
+  def f*(s as dynamic) as dynamic
+    self.__o.f`B({A<self.__o.__tv.args[0]> <= A<self.__btv.args[0]> | \
+                    {A<self.__btv.args[0]> <= dyn | s}})
+  end
+end
+
+[case testGenericInheritanceWithNestedArgs2]
+# More complex path to subtype type variable
+class A<T>: pass
+class B<T>(A<C<X, A<T>>>):
+    void f(self, T a, any d):
+        a = d
+class C<S, T>: pass
+class X: pass
+[out]
+...
+class B<T> is A<C<X, A<T>>>
+...
+  def f(a as T, d as dynamic)
+    a = {self.__tv.args[1].args[0] <= dyn | d}
+  end
+...
+
+[case testGenericInheritanceMultipleLevels]
+# Two levels of inheritance
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<int>): pass
+class C<T>(B):
+    void g(self, T t, any d):
+        self.f(d)
+        t = d
+[out]
+...
+class C<T> is B
+...
+  def g(t as T, d as dynamic)
+    f({std::Int <= dyn | d})
+    t = {self.__tv2 <= dyn | d}
+  end
+...
+
+
+-- Constructors with generic inheritance
+-- -------------------------------------
+
+
+-- 1. Wrapper that calls superclass create
+
+
+[case testInheritingGenericClassWithDefaultConstructor]
+class A<T>: pass
+class B(A<int>): pass
+[out]
+...
+class B is A<Int>
+  def create()
+    self.__tv = <std::Int>
+    super.create(<std::Int>)
+  end
+end
+
+[case testInheritingGenericClassWithDefaultConstructor2]
+# Two type arguments
+class A<T, S>: pass
+class B(A<int, object>): pass
+[out]
+...
+class B is A<Int, Object>
+  def create()
+    self.__tv = <std::Int>
+    self.__tv2 = <std::Object>
+    super.create(<std::Int>, <std::Object>)
+  end
+end
+
+[case testInheritingGenericClassWithNonDefaultConstructor]
+class A<T>:
+    void __init__(self, object o):
+        pass
+class B(A<int>): pass
+[out]
+...
+class B is A<Int>
+  def create(o as Object)
+    self.__tv = <std::Int>
+    super.create(<std::Int>, o)
+  end
+end
+
+[case testInheritingGenericClassWithNonDefaultConstructor2]
+# Two arguments, one with tvar type
+class A<T>:
+    void __init__(self, T t, object o):
+        pass
+class B(A<int>): pass
+[out]
+...
+class B is A<Int>
+  def create(t as Int, o as Object)
+    self.__tv = <std::Int>
+    super.create(<std::Int>, t, o)
+  end
+end
+
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor]
+class A: pass
+class B<T>(A): pass
+[out]
+...
+class B<T> is A
+  var __tv as dynamic
+  def create(__tv as dynamic)
+    self.__tv = <__tv>
+    super.create()
+  end
+...
+
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor2]
+# Superclass defines a non-trivial constructor; two tvars
+class A:
+    void __init__(self, int n):
+        pass
+class B<T, S>(A): pass
+[out]
+...
+class B<T, S> is A
+  var __tv as dynamic
+  var __tv2 as dynamic
+  def create(__tv as dynamic, __tv2 as dynamic, n as Int)
+    self.__tv = <__tv>
+    self.__tv2 = <__tv2>
+    super.create(n)
+  end
+...
+
+[case testInheritingGenericClassFromGenericWithDefaultConstructor]
+class A<T, S>: pass
+class B<U>(A<int, C<U>>): pass
+class C<T>: pass
+[out]
+...
+class B<U> is A<Int, C<U>>
+  def create(__tv as dynamic)
+    self.__tv = <std::Int>
+    self.__tv2 = <C<__tv>>
+    super.create(<std::Int>, <C<__tv>>)
+  end
+...
+
+[case testCreateWrapperWithDeepHierarchy]
+class A<T>: pass
+class B(A<int>): pass
+class C<T>(B): pass
+[out]
+...
+class C<T> is B
+  var __tv2 as dynamic
+  def create(__tv as dynamic)
+    self.__tv = <std::Int>
+    self.__tv2 = <__tv>
+    super.create()
+  end
+...
+
+[case testCreateWrapperWithDeepHierarchy2]
+class A: pass
+class B(A): pass
+class C<T>(B): pass
+[out]
+...
+class C<T> is B
+  var __tv as dynamic
+  def create(__tv as dynamic)
+    self.__tv = <__tv>
+    super.create()
+  end
+...
+
+[case testCreateWrapperWithDefaultInitializer]
+class A:
+    int n
+    
+    void __init__(self, int n):
+        self.n = n
+class B<T>(A): pass
+[out]
+...
+class B<T> is A
+  var __tv as dynamic
+  def create(__tv as dynamic, n as Int)
+    self.__tv = <__tv>
+    super.create(n)
+  end
+...
+
+
+-- 2. Define new constructor in subclass
+
+
+[case testCreateWithGenericInheritance]
+class A<T, U>: pass
+class B<S>(A<int, S>):
+    void __init__(self, int n):
+        pass
+[out]
+...
+class B<S> is A<Int, S>
+  def create(__tv as dynamic, n as Int)
+    self.__tv = <std::Int>
+    self.__tv2 = <__tv>
+  end
+...
+
+
+-- Constructor in a wrapper class; generic inheritance
+-- ---------------------------------------------------
+
+
+[case testCreateInWrapperClassWithGenericInheritance]
+# Generic class inherits another generic class
+class A<T, S>: pass
+class B<U>(A<int, C<U>>): pass
+class C<T>: pass
+[out]
+...
+class B* is A*
+  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, __btv as dynamic, __btv2 as dynamic)
+    self.__tv = <__tv>
+    self.__tv2 = <__tv2>
+    self.__btv = <__btv>
+    self.__btv2 = <__btv2>
+    self.__o = __o
+  end
+...
+
+[case testCreateInWrapperClassWithInheritance2]
+# Original create has arguments; this does not affect the wrapper
+class A<T>:
+    void __init__(self, int n):
+        pass
+class B<T>(A<T>): pass
+class C<T>: pass
+[out]
+...
+class B* is A*
+  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
+...
+
+[case testCreateInWrapperClassWithInheritance3]
+# Multi-level inheritance hierarchy; note that there is no wrapper class
+# for B.
+class A<T>: pass
+class B(A<int>): pass
+class C<T, S>(B): pass
+[out]
+...
+class C* is A*
+  var __tv2 as dynamic
+  var __tv3 as dynamic
+  var __btv2 as dynamic
+  var __btv3 as dynamic
+  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
+                             __tv3 as dynamic, __btv as dynamic, \
+                             __btv2 as dynamic, __btv3 as dynamic)
+    self.__tv = <__tv>
+    self.__tv2 = <__tv2>
+    self.__tv3 = <__tv3>
+    self.__btv = <__btv>
+    self.__btv2 = <__btv2>
+    self.__btv3 = <__btv3>
+    self.__o = __o
+  end
+end
+
+
+-- Type variable definitions in subclasses; generic inheritance
+-- ------------------------------------------------------------
+
+
+[case testTvarDefinitionsWithGenericInheritance]
+# Generic class inherits generic class; no new type variables
+class A<T>: pass
+class B<T>(A<T>): pass
+[out]
+...
+class B<T> is A<T>
+  def create(__tv as dynamic)
+...
+class B* is A*
+  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
+...
+
+[case testTvarDefinitionsWithGenericInheritance]
+# Generic class inherits generic class; introduce new type variable
+class A<T>: pass
+class B<S, T>(A<T>): pass
+[out]
+...
+class B<S, T> is A<T>
+  var __tv2 as dynamic
+  def create(__tv as dynamic, __tv2 as dynamic)
+...
+class B* is A*
+  var __tv2 as dynamic
+  var __btv2 as dynamic
+  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
+                                          __btv as dynamic, __btv2 as dynamic)
+...
+
+
+-- Calling superclass create explicitly
+-- ------------------------------------
+
+
+[case testGenericInheritanceAndCallToSuperclassCreate]
+# Non-generic class inherits a generic class
+class A<T>:
+    void __init__(self, C n):
+        pass
+
+class C: pass
+
+class B(A<int>):
+    void __init__(self):
+        super().__init__(C())
+[out]
+...
+class B is A<Int>
+  def create() as void
+    self.__tv = <std::Int>
+    super.create(<std::Int>, C())
+  end
+end
+
+[case testGenericInheritanceAndCallToSuperclassCreate2]
+# Non-generic class inherits a generic class
+class A<T>: pass
+
+class B(A<int>):
+    void __init__(self):
+        super().__init__()
+[out]
+...
+class B is A<Int>
+  def create() as void
+    self.__tv = <std::Int>
+-- FIX should be    super.create(<std::Int>)
+    super.create()
+  end
+end
+
+
+[case testGenericInheritanceAndCallToSuperclassCreate]
+# Generic class inherits a generic class
+class A<T, S>:
+    void __init__(self, T t):
+        pass
+
+class B<T, S>(A<S, T>):
+    void __init__(self, S t):
+        super().__init__(t)
+[out]
+...
+class B<T, S> is A<S, T>
+  def create(__tv as dynamic, __tv2 as dynamic, t as S)
+    self.__tv = <__tv2>
+    self.__tv2 = <__tv>
+    super.create(<__tv2>, <__tv>, t)
+  end
+...
+
+
+-- Mixed generic inheritance
+-- -------------------------
+
+
+[case testMixedGenericInheritance]
+# Non-generic class extends generic
+class A<T>:
+    T f(self, T t):
+        pass
+class B(A<int>):
+    any f(self, any t):
+        pass
+[out]
+...
+class B is A<Int>
+  def f`B(t as dynamic) as dynamic
+  end
+  def f(t as dynamic) as dynamic
+    return {std::Int <= dyn | f`B({dyn <= std::Int | t})}
+  end
+  def f*(t as dynamic) as dynamic
+    return f`B(t)
+  end
+...
+
+[case testMixedGenericInheritance2]
+# Generic class extends generic
+class A<T>:
+    T f(self, T t):
+        pass
+class B<T, S>(A<S>):
+    any f(self, any t):
+        pass
+[out]
+...
+class B<T, S> is A<S>
+  var __tv2 as dynamic
+  def f`B(t as dynamic) as dynamic
+  end
+  def f(t as dynamic) as dynamic
+    return {self.__tv <= dyn | f`B(t)}
+  end
+  def f*(t as dynamic) as dynamic
+    return f`B(t)
+  end
+...
+class B* is A*
+...
+  def f`B(t as dynamic) as dynamic
+    return self.__o.f`B(t)
+  end
+  def f*(t as dynamic) as dynamic
+    return self.__o.f`B(t)
+  end
+end
+
+
+-- Generic inheritance with multiple ways of accessing subclass tvars
+-- ------------------------------------------------------------------
+
+
+-- Example: class C<T> is D<T, T> ...
+
+
+[case testAmbiguousTvarMappingAndGenericInheritance]
+class D<T, S>:
+    S f(self):
+        pass
+class C<T>(D<T, T>):
+    T f(self):
+        pass
+[out]
+...
+class C<T> is D<T, T>
+...
+  def create(__tv as dynamic)
+    self.__tv = <__tv>
+    self.__tv2 = <__tv>
+    super.create(<__tv>, <__tv>)
+  end
+end
+class C* is D*
+  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
+                                      __btv as dynamic, __btv2 as dynamic)
+    self.__tv = <__tv>
+    self.__tv2 = <__tv2>
+    self.__btv = <__btv>
+    self.__btv2 = <__btv2>
+    self.__o = __o
+  end
+  def f`C() as dynamic
+    return {self.__tv <= self.__btv | {self.__btv <= self.__o.__tv | self.__o.f`C()}}
+  end
+  def f*() as dynamic
+    return {self.__btv <= self.__o.__tv | self.__o.f`C()}
+  end
+end
+
+
+-- Generic inheritance + member variables
+-- --------------------------------------
+
+
+[case testMemberVarsAndGenericInheritance]
+class A<T>:
+    T x
+    void f(self, any a):
+        self.x = a
+        a = self.x
+class B<T>(A<C<T>>):
+    T y
+    void g(self, any a):
+        self.y = a
+        a = self.y
+
+class C<T>: pass
+[out]
+class A<T>
+  var __tv as dynamic
+  private var x as T
+  def f(a as dynamic)
+    x = {self.__tv <= dyn | a}
+    a = x
+  end
+...
+class A*
+  var __o as dynamic
+  var __tv as dynamic
+  var __btv as dynamic
+  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
+    self.__tv = <__tv>
+    self.__btv = <__btv>
+    self.__o = __o
+  end
+  def f(a as dynamic)
+    self.__o.f(a)
+  end
+  def f*(a as dynamic) as dynamic
+    self.__o.f(a)
+  end
+end
+class B<T> is A<C<T>>
+  private var y as T
+  def g(a as dynamic)
+    y = {self.__tv.args[0] <= dyn | a}
+    a = y
+  end
+...

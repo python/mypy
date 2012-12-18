@@ -1,0 +1,125 @@
+-- Test cases for generation of support code for runtime type opreations such 
+-- as coercions.
+--
+-- Each test case consists of at least two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the
+-- transformation.
+
+
+[case testEmptyFile]
+[out]
+def __InitSlotMap()
+  __SlotMap = std::Map(
+  )
+end
+  
+def __InitTypeMap()
+  __TypeMap = std::Map(
+  )
+  __TypeMapB = std::Map(
+  )
+end
+
+[case testNonGenericClass]
+class A
+end
+[out]
+def __InitSlotMap()
+  __SlotMap = std::Map(
+    (A, A) : __ATypeToASlots,
+    (Object, A) : __ObjectTypeToASlots,
+  )
+end
+def __ATypeToASlots(t)
+  return []
+end
+def __ObjectTypeToASlots(t)
+  return []
+end
+def __InitTypeMap()
+  __TypeMap = std::Map(
+    A : __AValueToType,
+  )
+  __TypeMapB = std::Map(
+    A : __AValueToTypeB,
+  )
+end
+def __AValueToType(v)
+  return []
+end
+def __AValueToTypeB(v)
+  return []
+end
+
+[case testSimpleGenericClass]
+class A<T>
+end
+[out]
+def __InitSlotMap()
+  __SlotMap = std::Map(
+    (A, A) : __ATypeToASlots,
+    (A, A___dyn) : __ATypeToASlots,
+    (Object, A) : __ObjectTypeToASlots,
+    (Object, A___dyn) : __ObjectTypeToASlots,
+  )
+end
+def __ATypeToASlots(t)
+  return [t.args[0]]
+end
+def __ObjectTypeToASlots(t)
+  return [__Dyn]
+end
+def __InitTypeMap()
+  __TypeMap = std::Map(
+    A : __AValueToType,
+    A___dyn : __AValueToType,
+  )
+  __TypeMapB = std::Map(
+    A : __AValueToTypeB,
+    A___dyn : __AValueToTypeB,
+  )
+end
+def __AValueToType(v)
+  return [v.__tv]
+end
+def __AValueToTypeB(v)
+  return [v.__btv]
+end
+
+[case testGenericInheritance]
+class A<T>
+end
+class B<T, S> is A<A<S>>
+end
+[out]
+...
+    (B, B) : __BTypeToBSlots,
+    (B, B___dyn) : __BTypeToBSlots,
+    (A, B) : __ATypeToBSlots,
+    (A, B___dyn) : __ATypeToBSlots,
+    (Object, B) : __ObjectTypeToBSlots,
+    (Object, B___dyn) : __ObjectTypeToBSlots,
+...
+def __BTypeToBSlots(t)
+  return [__Gen(A, [t.args[1]]), t.args[0]]
+end
+def __ATypeToBSlots(t)
+  return [t.args[0], __Dyn]
+end
+def __ObjectTypeToBSlots(t)
+  return [__Dyn, __Dyn]
+end
+...
+def __AValueToType(v)
+  return [v.__tv]
+end
+def __BValueToType(v)
+  return [v.__tv2, v.__tv.args[0]]
+end
+def __AValueToTypeB(v)
+  return [v.__btv]
+end
+def __BValueToTypeB(v)
+  return [v.__btv2, v.__btv.args[0]]
+end
