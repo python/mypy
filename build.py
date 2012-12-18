@@ -58,6 +58,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     """
     # TODO only return the module map and node type map; the others are not
     #      necessary
+    # TODO clean up arguments (do_type_check should be True by default, etc.)
     
     if not mypy_base_dir:
         # Determine location of the mypy installation.
@@ -82,7 +83,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
-    if alt_lib_path is not None:
+    if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
     
     # Construct a build manager object that performs all the stages of the
