@@ -111,9 +111,9 @@ class TypeTransformer:
             # wrapper that initializes type variable slots and calls
             # the superclass create method.
             
-            self_type = self_type(info)    
+            selftype = self_type(info)    
             callee_type = (Callable)analyse_member_access(
-                '__init__', self_type, None, False, True, None, None,
+                '__init__', selftype, None, False, True, None, None,
                 info.base)
             
             # Now the callee type may contain the type variables of a
@@ -121,7 +121,7 @@ class TypeTransformer:
             # type variables of the parent class. Explicitly set the
             # bound type variables.
             callee_type = self.fix_bound_create_tvars(callee_type,
-                map_instance_to_supertype(self_type, info.base))
+                map_instance_to_supertype(selftype, info.base))
             
             super_create = (FuncDef)info.base.get_method('__init__')
             
@@ -175,13 +175,13 @@ class TypeTransformer:
         # type variables from the current scope or perhaps require
         # explicit constructor in this case.
         
-        self_type = self_type(info)    
+        selftype = self_type(info)    
         
         # FIX intersection types / overloading
         # FIX default args / varargs
         
         # Map self type to the superclass context.
-        self_type = map_instance_to_supertype(self_type, info.base)
+        selftype = map_instance_to_supertype(selftype, info.base)
         
         super_create = (FuncDef)info.base.get_method('__init__')
         
@@ -426,9 +426,9 @@ class TypeTransformer:
         
         # Map self type to the superclass -> extract tvar with target index
         # (only contains subclass tvars?? PROBABLY NOT).
-        self_type = self_type(info)
-        self_type = map_instance_to_supertype(self_type, origin)
-        tvar = self_type.args[tv - 1]
+        selftype = self_type(info)
+        selftype = map_instance_to_supertype(selftype, origin)
+        tvar = selftype.args[tv - 1]
         
         # Map tvar to an expression; refer to local vars instead of member
         # vars always.

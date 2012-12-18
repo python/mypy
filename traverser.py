@@ -1,22 +1,27 @@
 from visitor import NodeVisitor
+from nodes import (
+    Block, MypyFile, VarDef
+)
 
 
-class TraverserVisitor(NodeVisitor):
-    """A parse tree visitor that traverses the parse tree during visiting, but does
-    not peform any actions outside the travelsal. Subclasses should override
-    visit methods to perform actions during travelsal. Calling the superclass
-    method allows reusing the travelsal implementation.
+class TraverserVisitor<T>(NodeVisitor<T>):
+    """A parse tree visitor that traverses the parse tree during visiting.
+
+    It does not peform any actions outside the travelsal. Subclasses
+    should override visit methods to perform actions during
+    travelsal. Calling the superclass method allows reusing the
+    travelsal implementation.
     """
     # Helper methods
     
-    def accept_block(self, block):
+    void accept_block(self, Block block):
         self.visit_block(block)
-        for s in block:
+        for s in block.body:
             s.accept(self)
     
     # Visit methods
     
-    def visit_mypy_file(self, o):
+    T visit_mypy_file(self, MypyFile o):
         for d in o.defs:
             d.accept(self)
     
@@ -43,10 +48,10 @@ class TraverserVisitor(NodeVisitor):
         o.func.accept(self)
         o.decorator.accept(self)
     
-    def visit_var_def(self, o):
+    T visit_var_def(self, VarDef o):
         if o.init is not None:
             o.init.accept(self)
-        for v in o.names:
+        for v, t in o.items:
             self.visit_var(v)
     
     def visit_expression_stmt(self, o):
