@@ -99,7 +99,7 @@ class TypeTransformer:
             super.create(<std::Int>)
           end
         """
-        # FIX intersection types / overloading
+        # FIX overloading
         # FIX default args / varargs
         
         info = tdef.info
@@ -132,7 +132,8 @@ class TypeTransformer:
                 args[-1].typ = Annotation(callee_type.arg_types[i])
             
             creat = FuncDef('__init__', args,
-                            <Node> [None] * len(args), None, None, len(args),
+                            super_create.arg_kinds,
+                            <Node> [None] * len(args),
                             Block([]))
             creat.info = tdef.info
             creat.typ = Annotation(callee_type, -1)
@@ -192,7 +193,7 @@ class TypeTransformer:
         
         self.tf.set_type(callee, callee_type)
         
-        call = CallExpr(callee, args)
+        call = CallExpr(callee, args, [nodes.ARG_POS] * len(args))
         return ExpressionStmt(call)
     
     Node[] transform_var_def(self, VarDef o):
@@ -232,7 +233,7 @@ class TypeTransformer:
         member_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
         ret = ReturnStmt(member_expr)
         
-        return FuncDef(name + self.tf.dynamic_suffix(), [], [], None, None, 0,
+        return FuncDef(name + self.tf.dynamic_suffix(), [], [], [],
                        Block([ret]), Annotation(Any()))
     
     FuncDef make_setter_wrapper(self, str name, Typ typ):
@@ -248,8 +249,11 @@ class TypeTransformer:
         rvalue = coerce(NameExpr('__x'), typ, Any(), self.tf.type_context())
         ret = AssignmentStmt([lvalue], rvalue)
         
-        return FuncDef(name + self.tf.dynamic_suffix(), [Var('__x')], [None],
-                       None, None, 1, Block([ret]), Annotation(Any()))
+        return FuncDef(name + self.tf.dynamic_suffix(),
+                       [Var('__x')],
+                       [nodes.ARG_POS],
+                       [None],
+                       Block([ret]), Annotation(Any()))
     
     TypeDef generic_class_wrapper(self, TypeDef tdef):
         """Construct a wrapper class for a generic type."""
@@ -330,16 +334,18 @@ class TypeTransformer:
         # Build superclass constructor call.
         if info.base.full_name() != 'builtins.object' and self.tf.is_java:
             s = SuperExpr('__init__')
-            Node[] args = [NameExpr('__o')]
+            Node[] cargs = [NameExpr('__o')]
             for n in range(num_slots(info.base)):
-                args.append(NameExpr(tvar_arg_name(n + 1)))
+                cargs.append(NameExpr(tvar_arg_name(n + 1)))
             for n in range(num_slots(info.base)):
-                args.append(NameExpr(tvar_arg_name(n + 1, BOUND_VAR)))
-            c = CallExpr(s, args)
+                cargs.append(NameExpr(tvar_arg_name(n + 1, BOUND_VAR)))
+            c = CallExpr(s, cargs, [nodes.ARG_POS] * len(cargs))
             cdefs.append(ExpressionStmt(c))
         
         # Create initialization of the wrapped object.
-        cdefs.append(AssignmentStmt([MemberExpr(self_expr(), self.object_member_name(info))], NameExpr('__o')))
+        cdefs.append(AssignmentStmt([MemberExpr(self_expr(),
+                                     self.object_member_name(info))],
+                                    NameExpr('__o')))
         
         # Build constructor arguments.
         args = [Var('__o')]
@@ -353,10 +359,8 @@ class TypeTransformer:
         nargs = nslots * 2 + 1
         fdef = FuncDef('__init__',
                        args,
+                       [nodes.ARG_POS] * nargs,
                        init,
-                       None,
-                       None,
-                       len(args),
                        Block(cdefs),
                        Annotation(Callable(<Typ> [Any()] * nargs,
                                   [nodes.ARG_POS] * nargs,
