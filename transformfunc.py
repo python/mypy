@@ -75,9 +75,7 @@ class FuncTransformer:
         return res
     
     FuncDef transform_method_implementation(self, FuncDef fdef, str name):
-        """Transform the main variant of the method, which contains the actual body
-        (implementation).
-        """
+        """Transform the implementation of a method (i.e. unwrapped)."""
         repr = func_repr_with_name(fdef, name)
         args = fdef.args
         
@@ -85,9 +83,11 @@ class FuncTransformer:
         init = fdef.init_expressions()
         
         if fdef.name() == 'create' and is_generic(fdef):
-            args, repr, init = self.prepend_constructor_tvar_args(fdef, typ, args, repr, init)
+            args, repr, init = self.prepend_constructor_tvar_args(
+                fdef, typ, args, repr, init)
         
-        fdef2 = FuncDef(name, args, init, None, None, len(args), fdef.body, typ)
+        fdef2 = FuncDef(name, args, init, None, None, len(args), fdef.body,
+                        typ)
         fdef2.repr = repr
         fdef2.info = fdef.info
         
@@ -100,7 +100,8 @@ class FuncTransformer:
                              self, FuncDef fdef, Annotation typ,
                              Var[] args, FuncRepr repr, Node[] init):
         """Prepend type variable argument for constructor of a generic type.
-        Return tuple (new args, new repr, new init).
+
+        Return tuple (new args, new repr, new inits).
         """
         Var[] tv = []
         ntvars = len(fdef.info.type_vars)
@@ -134,9 +135,12 @@ class FuncTransformer:
         """Construct dynamically-typed wrapper class method."""
         return self.method_wrapper(fdef, fdef, True, True)
     
-    FuncDef method_wrapper(self, FuncDef act_as_func_def, FuncDef target_func_def, bool is_dynamic, bool is_wrapper_class):
-        """Construct a method wrapper that acts as a specific method, coerces
-        arguments, calls the target method and finally coerces the return value.
+    FuncDef method_wrapper(self, FuncDef act_as_func_def,
+                           FuncDef target_func_def, bool is_dynamic,
+                           bool is_wrapper_class):
+        """Construct a method wrapper that acts as a specific method,
+        coerces arguments, calls the target method and finally coerces
+        the return value.
         """
         is_override = act_as_func_def.info != target_func_def.info
         
@@ -145,15 +149,19 @@ class FuncTransformer:
         wrapper_suffix = self.get_wrapper_suffix(act_as_func_def, is_dynamic)
         
         # Determine function signatures.
-        target_sig = self.get_target_sig(act_as_func_def, target_func_def, is_dynamic, is_wrapper_class)
+        target_sig = self.get_target_sig(act_as_func_def, target_func_def,
+                                         is_dynamic, is_wrapper_class)
         wrapper_sig = self.get_wrapper_sig(act_as_func_def, is_dynamic)
-        call_sig = self.get_call_sig(act_as_func_def, target_func_def.info, is_dynamic, is_wrapper_class, is_override)
+        call_sig = self.get_call_sig(act_as_func_def, target_func_def.info,
+                                     is_dynamic, is_wrapper_class, is_override)
         
         Callable bound_sig = None
         if is_wrapper_class:
             bound_sig = (Callable)translate_type_vars_to_bound_vars(target_sig)
         
-        call_stmt = self.call_wrapper(act_as_func_def, is_dynamic, is_wrapper_class, target_sig, call_sig, target_suffix, bound_sig)
+        call_stmt = self.call_wrapper(act_as_func_def, is_dynamic,
+                                      is_wrapper_class, target_sig, call_sig,
+                                      target_suffix, bound_sig)
         
         wrapper_args = self.get_wrapper_args(act_as_func_def, is_dynamic)    
         wrapper_func_def = FuncDef(act_as_func_def.name() + wrapper_suffix,
@@ -169,7 +177,9 @@ class FuncTransformer:
         
         return wrapper_func_def
     
-    Callable get_target_sig(self, FuncDef act_as_func_def, FuncDef target_func_def, bool is_dynamic, bool is_wrapper_class):
+    Callable get_target_sig(self, FuncDef act_as_func_def,
+                            FuncDef target_func_def,
+                            bool is_dynamic, bool is_wrapper_class):
         """Return the target method signature for a method wrapper."""
         sig = (Callable)function_type(target_func_def)
         if is_wrapper_class:
@@ -178,16 +188,18 @@ class FuncTransformer:
             return (Callable)translate_type_vars_to_wrapped_object_vars(sig)
         elif is_dynamic:
             if sig.is_generic():
-                return (Callable)translate_function_type_vars_to_dynamic(sig)        
+                return (Callable)translate_function_type_vars_to_dynamic(sig)
             else:
                 return sig
         else:
             return sig
     
     Callable get_wrapper_sig(self, FuncDef act_as_func_def, bool is_dynamic):
-        """Return the signature of the wrapper method. The wrapper method signature
-        has an additional type variable argument (with type "dynamic"), and all
-        type variables have been erased.
+        """Return the signature of the wrapper method.
+
+        The wrapper method signature has an additional type variable
+        argument (with type 'any'), and all type variables have been
+        erased.
         """
         sig = (Callable)function_type(act_as_func_def)
         if is_dynamic:
@@ -197,52 +209,64 @@ class FuncTransformer:
         else:
             return sig
     
-    Callable get_call_sig(self, FuncDef act_as_func_def, TypeInfo current_class, bool is_dynamic, bool is_wrapper_class, bool is_override):
-        """Return the signature used for as the source signature in a wrapped call.
-        It has type variables replaced with "dynamic", but as an
-        exception, type variables are intact in the return type in generic
-        wrapper classes. The exception allows omitting an extra return value
-        coercion, as the target return type and the source return type will be
-        the same.
+    Callable get_call_sig(self, FuncDef act_as_func_def,
+                          TypeInfo current_class, bool is_dynamic,
+                          bool is_wrapper_class, bool is_override):
+        """Return the source signature signature in a wrapped call.
+        
+        It has type variables replaced with 'any', but as an
+        exception, type variables are intact in the return type in
+        generic wrapper classes. The exception allows omitting an
+        extra return value coercion, as the target return type and the
+        source return type will be the same.
         """
         sig = (Callable)function_type(act_as_func_def)
         if is_dynamic:
             return dynamic_sig(sig)
         elif is_generic(act_as_func_def):
             call_sig = sig
-            # If this is an override wrapper, keep type variables intact. Otherwise
-            # replace them with dynamic to get desired coercions that check argument
-            # types.
+            # If this is an override wrapper, keep type variables
+            # intact. Otherwise replace them with dynamic to get
+            # desired coercions that check argument types.
             if not is_override or is_wrapper_class:
                 call_sig = ((Callable)replace_type_vars(call_sig, False))
             else:
-                call_sig = (Callable)map_type_from_supertype(call_sig, current_class, act_as_func_def.info)
+                call_sig = (Callable)map_type_from_supertype(
+                    call_sig, current_class, act_as_func_def.info)
             if is_wrapper_class:
-                # Replace return type with the original return within wrapper classes
-                # to get rid of an unnecessary coercion. There will still be a
-                # coercion due to the extra coercion generated for generic wrapper
-                # classes. However, function generic type variables still need to be
-                # replaced, as the wrapper does not affect them.
+                # Replace return type with the original return within
+                # wrapper classes to get rid of an unnecessary
+                # coercion. There will still be a coercion due to the
+                # extra coercion generated for generic wrapper
+                # classes. However, function generic type variables
+                # still need to be replaced, as the wrapper does not
+                # affect them.
                 ret = sig.ret_type
                 if is_dynamic:
                     ret = translate_function_type_vars_to_dynamic(ret)
-                call_sig = replace_ret_type(call_sig, translate_type_vars_to_wrapper_vars(ret))
+                call_sig = replace_ret_type(
+                    call_sig, translate_type_vars_to_wrapper_vars(ret))
             return call_sig
         else:
             return sig
     
     Var[] get_wrapper_args(self, FuncDef act_as_func_def, bool is_dynamic):
-        """Return the formal arguments of a wrapper method. These may include the
-        type variable argument.
+        """Return the formal arguments of a wrapper method.
+
+        These may include the type variable argument.
         """
         Var[] args = []
         for a in act_as_func_def.args:
             args.append(Var(a.name()))
         return args
     
-    Node call_wrapper(self, FuncDef fdef, bool is_dynamic, bool is_wrapper_class, Callable target_ann, Callable cur_ann, str target_suffix, Callable bound_sig):
-        """Return the body of wrapper method. The body contains only a call to the
-        wrapped method and a return statement (if the call returns a value).
+    Node call_wrapper(self, FuncDef fdef, bool is_dynamic,
+                      bool is_wrapper_class, Callable target_ann,
+                      Callable cur_ann, str target_suffix, Callable bound_sig):
+        """Return the body of wrapper method.
+
+        The body contains only a call to the wrapped method and a
+        return statement (if the call returns a value).
         """
         Node callee
         member = fdef.name() + target_suffix
@@ -265,17 +289,22 @@ class FuncTransformer:
         else:
             return ExpressionStmt(call)
     
-    Node[] call_args(self, FuncDef fdef, Callable target_ann, Callable cur_ann, bool is_dynamic, bool is_wrapper_class, Callable bound_sig=None):
-        """Construct the arguments of a wrapper call expression. Insert coercions as
-        needed.
+    Node[] call_args(self, FuncDef fdef, Callable target_ann, Callable cur_ann,
+                     bool is_dynamic, bool is_wrapper_class,
+                     Callable bound_sig=None):
+        """Construct the arguments of a wrapper call expression.
+
+        Insert coercions as needed.
         """
         Node[] args = []
         # Add type variable arguments for a generic function.
         for i in range(len(target_ann.variables.items)):
-            # Non-dynamic wrapper method in a wrapper class passes generic function
-            # type arguments to the target function; otherwise use dynamic types.
+            # Non-dynamic wrapper method in a wrapper class passes
+            # generic function type arguments to the target function;
+            # otherwise use dynamic types.
             if is_wrapper_class and not is_dynamic:
-                args.append(TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))
+                args.append(
+                    TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))
             else:
                 args.append(TypeExpr(Any()))
         for i in range(len(fdef.args)):
