@@ -147,13 +147,14 @@ class DyncheckTransformVisitor(TraverserVisitor):
     void visit_if_stmt(self, IfStmt s):
         super().visit_if_stmt(s)
         for i in range(len(s.expr)):
-            s.expr[i] = self.coerce(s.expr[i], self.named_type('std::Boolean'),
+            s.expr[i] = self.coerce(s.expr[i],
+                                    self.named_type('builtins.bool'),
                                     self.get_type(s.expr[i]),
                                     self.type_context())
     
     void visit_while_stmt(self, WhileStmt s):
         super().visit_while_stmt(s)
-        s.expr = self.coerce(s.expr, self.named_type('std::Boolean'),
+        s.expr = self.coerce(s.expr, self.named_type('builtins.bool'),
                              self.get_type(s.expr), self.type_context())
     
     #
@@ -252,9 +253,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
     void visit_op_expr(self, OpExpr e):
         super().visit_op_expr(e)
         if e.op in ['and', 'or']:
-            e.left = self.coerce(e.left, self.named_type('std::Boolean'),
+            e.left = self.coerce(e.left, self.named_type('builtins.bool'),
                                  self.get_type(e.left), self.type_context())
-            e.right = self.coerce(e.right, self.named_type('std::Boolean'),
+            e.right = self.coerce(e.right, self.named_type('builtins.bool'),
                                   self.get_type(e.right), self.type_context())
         else:
             if self.dynamic_funcs[-1]:
@@ -263,10 +264,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
                 e.right = self.coerce(e.right, Any(), self.get_type(e.right),
                                       self.type_context())
             elif e.op == '+':
-                e.left = self.coerce(e.left, self.named_type('std::Int'),
+                e.left = self.coerce(e.left, self.named_type('builtins.int'),
                                      self.get_type(e.left),
                                      self.type_context())
-                e.right = self.coerce(e.right, self.named_type('std::Int'),
+                e.right = self.coerce(e.right, self.named_type('builtins.int'),
                                       self.get_type(e.right),
                                       self.type_context())
     

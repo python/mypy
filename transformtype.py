@@ -95,8 +95,8 @@ class TypeTransformer:
         The constructor for B will be (equivalent to)
         
           def create()
-            self.__tv = <std::Int>
-            super.create(<std::Int>)
+            self.__tv = <int>
+            super.create(<int>)
           end
         """
         # FIX overloading
@@ -410,15 +410,15 @@ class TypeTransformer:
                 creat.body.body.insert(n, init)
     
     TypeExpr make_tvar_init_expression(self, TypeInfo info, int slot):
-        """Return the initializer for the given slot in the given type, i.e. the
-        type expression that initializes the given slot using the type arguments
-        given to the constructor.
+        """Return the initializer for the given slot in the given
+        type, i.e. the type expression that initializes the given slot
+        using the type arguments given to the constructor.
         
         Examples:
-          - In "class C<T> ...", the initializer for the slot 0 is
+          - In 'class C<T> ...', the initializer for the slot 0 is
             TypeExpr(RuntimeTypeVar(NameExpr('__tv'))).
-          - In "class D is C<Int> ...", the initializer for the slot 0 is
-            TypeExpr(<std::Int instance>).
+          - In 'class D(C<int>) ...', the initializer for the slot 0 is
+            TypeExpr(<int instance>).
             """
         # Figure out the superclass which defines the slot; also figure out
         # the tvar index that maps to the slot.
