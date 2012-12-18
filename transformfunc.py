@@ -79,16 +79,16 @@ class FuncTransformer:
         """Transform the implementation of a method (i.e. unwrapped)."""
         repr = func_repr_with_name(fdef, name)
         args = fdef.args
+        arg_kinds = fdef.arg_kinds
         
         typ = Annotation(function_type(fdef))
         init = fdef.init_expressions()
         
-        if fdef.name() == 'create' and is_generic(fdef):
-            args, repr, init = self.prepend_constructor_tvar_args(
-                fdef, typ, args, repr, init)
+        if fdef.name() == '__init__' and is_generic(fdef):
+            args, arg_kinds, repr, init = self.prepend_constructor_tvar_args(
+                fdef, typ, args, arg_kinds, repr, init)
         
-        fdef2 = FuncDef(name, args, init, None, None, len(args), fdef.body,
-                        typ)
+        fdef2 = FuncDef(name, args, arg_kinds, init, fdef.body, typ)
         fdef2.repr = repr
         fdef2.info = fdef.info
         
@@ -96,13 +96,14 @@ class FuncTransformer:
         
         return fdef2
     
-    tuple<Var[], FuncRepr, Node[]> \
+    tuple<Var[], int[], FuncRepr, Node[]> \
                      prepend_constructor_tvar_args(
                              self, FuncDef fdef, Annotation typ,
-                             Var[] args, FuncRepr repr, Node[] init):
-        """Prepend type variable argument for constructor of a generic type.
+                             Var[] args, int[] arg_kinds, FuncRepr repr,
+                             Node[] init):
+        """Prepend type variable arguments for __init__ of a generic type.
 
-        Return tuple (new args, new repr, new inits).
+        Return tuple (new args, new kinds, new repr, new inits).
         """
         Var[] tv = []
         ntvars = len(fdef.info.type_vars)
@@ -110,10 +111,11 @@ class FuncTransformer:
             tv.append(Var(tvar_arg_name(n + 1)))
             typ.typ = prepend_arg_type((Callable)typ.typ, Any())
         args = tv + args
+        arg_kinds = [nodes.ARG_POS] * ntvars + arg_kinds
         init = <Node> [None] * ntvars + init
         for n in reversed(list(range(ntvars))): # TODO remove list(...)
             repr = prepend_arg_repr(repr, tvar_arg_name(n + 1))
-        return (args, repr, init)
+        return (args, arg_kinds, repr, init)
     
     FuncDef override_method_wrapper(self, FuncDef fdef):
         """Construct a method wrapper for an overridden method."""
