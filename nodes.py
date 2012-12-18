@@ -687,7 +687,9 @@ class CallExpr(Node):
     str[] arg_names # None if not a keyword argument
     
     void __init__(self, Node callee, Node[] args, int[] arg_kinds,
-                  str[] arg_names):
+                  str[] arg_names=None):
+        if not arg_names:
+            arg_names = <str> [None] * len(args)
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
