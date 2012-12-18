@@ -86,7 +86,8 @@ str generate_type_map(MypyFile f):
             if isinstance(d, TypeDef):
                 td = (TypeDef)d
                 if td.info is not None:
-                    add_type_map_support_for_type(map, ops, td.info, alt, suffix)
+                    add_type_map_support_for_type(map, ops, td.info, alt,
+                                                  suffix)
         map.append('  )')
     map.append('end')
     return '\n'.join(map) + '\n' + '\n'.join(ops)

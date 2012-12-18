@@ -94,10 +94,9 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
 
 
 int[] find_tvar_mapping(Typ t, int index):
-    """Recursively search for a
-    type variable instance (with given index) within the type t, which
-    represents a supertype definition. Return the path to the first
-    found instance.
+    """Recursively search for a type variable instance (with given index)
+    within the type t, which represents a supertype definition. Return the
+    path to the first found instance.
     
      - If t is a bare type variable with correct index, return [] as the path.
      - If type variable is within instance arguments, return the indexing
@@ -109,7 +108,7 @@ int[] find_tvar_mapping(Typ t, int index):
       find_tvar_mapping(A<X, Y, T`1>, 1) == [2]
       find_tvar_mapping(A<B<X, T`2>, T`1>, 2) == [0, 1]
       find_tvar_mapping(A<T`2>, T`1) == None               (no T`1 within t)
-      find_tvar_mapping(A<T`1, T`1>, T`1) == [0]          (first match)
+      find_tvar_mapping(A<T`1, T`1>, T`1) == [0]           (first match)
     """
     if isinstance(t, Instance) and ((Instance)t).args != []:
         inst = (Instance)t

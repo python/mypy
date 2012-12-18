@@ -6,15 +6,17 @@ from maptypevar import num_slots, get_tvar_access_path
 
 
 Typ[] compile_slot_mapping(TypeInfo typ):
-    """Return types that represent values of type variable slots of a type in terms
-    of type variables of the type.
+    """Return types that represent values of type variable slots of a type.
+
+    The returned types are in terms of type variables of the type.
     
     For example, assume these definitions:
     
-      class C<T, S> extends D<E<S>> ...
-      class D<S> extends Object ...
+    . class C<T, S>(D<E<S>>): ...
+    . class D<S>(object): ...
     
-    Now slot mappings for C is [E<S>, T] (S and T refer to type variables of C).
+    Now slot mappings for C is [E<S>, T] (S and T refer to type variables of
+    C).
     """
     Typ[] exprs = []
     
@@ -36,14 +38,17 @@ Typ[] compile_slot_mapping(TypeInfo typ):
 
 
 tuple<TypeInfo, int> find_slot_origin(TypeInfo info, int slot):
-    """Determine the class and the index of type variable in this class which is
-    mapped directly to the given type variable slot.
-    
+    """Determine class and type variable index that directly maps to the slot.
+
+    The result defines which class in inheritance hierarchy of info introduced
+    the slot. All subclasses inherit this slot. The result TypeInfo always
+    refers to one of the base classes of info (or info itself).
+
     Examples:
-      - In "class C<T> ...", the type var 1 (T) in C is mapped to slot 0.
-      - In "class D<S, U> is C<U> ...", the type var 1 (S) in D is mapped to
-        slot 1; the type var 1 (T) in C is mapped to slot 0.
-        """
+      - In 'class C<T>: ...', the slot 0 in C is mapped to type var 1 (T) in C.
+      - In 'class D<S, U>(C<U>): ...', the slot 0 in D is mapped to type var
+        1 (T) in C; the slot 1 of D is mapped to type variable 1 of D.
+    """
     base = info.base
     super_slots = num_slots(base)
     if slot < super_slots:
