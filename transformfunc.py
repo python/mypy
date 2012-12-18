@@ -142,9 +142,11 @@ class FuncTransformer:
     FuncDef method_wrapper(self, FuncDef act_as_func_def,
                            FuncDef target_func_def, bool is_dynamic,
                            bool is_wrapper_class):
-        """Construct a method wrapper that acts as a specific method,
-        coerces arguments, calls the target method and finally coerces
-        the return value.
+        """Construct a method wrapper.
+
+        It acts as a specific method (with the same signature), coerces
+        arguments, calls the target method and finally coerces the return
+        value.
         """
         is_override = act_as_func_def.info != target_func_def.info
         
@@ -159,9 +161,10 @@ class FuncTransformer:
         call_sig = self.get_call_sig(act_as_func_def, target_func_def.info,
                                      is_dynamic, is_wrapper_class, is_override)
         
-        Callable bound_sig = None
         if is_wrapper_class:
             bound_sig = (Callable)translate_type_vars_to_bound_vars(target_sig)
+        else:
+            bound_sig = None
         
         call_stmt = self.call_wrapper(act_as_func_def, is_dynamic,
                                       is_wrapper_class, target_sig, call_sig,
@@ -170,9 +173,10 @@ class FuncTransformer:
         wrapper_args = self.get_wrapper_args(act_as_func_def, is_dynamic)    
         wrapper_func_def = FuncDef(act_as_func_def.name() + wrapper_suffix,
                                    wrapper_args,
+                                   act_as_func_def.arg_kinds,
                                    <Node> [None] * len(wrapper_args),
-                                   None, None, len(wrapper_args),
-                                   Block([call_stmt]), Annotation(wrapper_sig))
+                                   Block([call_stmt]),
+                                   Annotation(wrapper_sig))
         
         self.tf.add_line_mapping(target_func_def, wrapper_func_def)
         
