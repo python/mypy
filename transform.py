@@ -46,7 +46,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         return self._type_context
     
     
-    void __init__(self, dict<Node, Typ> type_map, dict<str, MypyFile> modules, bool is_pretty, bool is_java=False):
+    void __init__(self, dict<Node, Typ> type_map, dict<str, MypyFile> modules,
+                  bool is_pretty, bool is_java=False):
         self.type_tf = TypeTransformer(self)
         self.return_types = []
         self.dynamic_funcs = [False]
@@ -56,10 +57,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
         self.is_pretty = is_pretty
         self.is_java = is_java
     
-    
+    #
     # Transform definitions
-    # ---------------------
-    
+    #
     
     void visit_mypy_file(self, MypyFile o):
         """Transform an file."""
@@ -67,7 +67,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         for d in o.defs:
             if isinstance(d, TypeDef):
                 self._type_context = ((TypeDef)d).info
-                # Implicit cast from Array<TypeDef> to Array<Node> is safe below.
+                # Implicit cast from Array<TypeDef> to Array<Node> is
+                # safe below.
                 res.extend((any)self.type_tf.transform_type_def((TypeDef)d))
                 self._type_context = None
             else:
@@ -76,8 +77,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
         o.defs = res
     
     void visit_var_def(self, VarDef o):
-        """Transform a variable definition in-place. This is not suitable for member
-        variable definitions; they are transformed in TypeTransformer.
+        """Transform a variable definition in-place.
+
+        This is not suitable for member variable definitions; they are
+        transformed in TypeTransformer.
         """
         super().visit_var_def(o)
         
@@ -87,7 +90,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
                 t = o.items[0][0].typ.typ
             else:
                 t = Any()
-            o.init = self.coerce(o.init, t, self.get_type(o.init), self.type_context)
+            o.init = self.coerce(o.init, t, self.get_type(o.init),
+                                 self.type_context())
     
     void visit_func_def(self, FuncDef fdef):
         """Transform a function definition in-place. This is not suitable for
@@ -102,9 +106,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         # FIX intersection types
         self.return_types.append(((Callable)function_type(fdef)).ret_type)
         super().visit_func_def(fdef)
-        self.return_types.remove_at(-1)
-        self.dynamic_funcs.remove_at(-1)
-    
+        self.return_types.pop()
+        self.dynamic_funcs.pop()
     
     def prepend_generic_function_tvar_args(self, fdef):
         sig = (Callable)function_type(fdef)
@@ -123,10 +126,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
         for n in reversed(range(ntvars)):
             fdef.repr = prepend_arg_repr(fdef.repr, tvar_arg_name(-1 - n))
     
-    
+    #
     # Transform statements
-    # --------------------
-    
+    #    
     
     void transform_block(self, Node[] block):
         for stmt in block:
@@ -134,25 +136,29 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     void visit_return_stmt(self, ReturnStmt s):
         super().visit_return_stmt(s)
-        s.expr = self.coerce(s.expr, self.return_types[-1], self.get_type(s.expr), self.type_context)
+        s.expr = self.coerce(s.expr, self.return_types[-1],
+                             self.get_type(s.expr), self.type_context())
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         super().visit_assignment_stmt(s)
-        s.rvalue = self.coerce2(s.rvalue, self.get_type(s.lvalues[0]), self.get_type(s.rvalue), self.type_context)
+        s.rvalue = self.coerce2(s.rvalue, self.get_type(s.lvalues[0]),
+                                self.get_type(s.rvalue), self.type_context())
     
     void visit_if_stmt(self, IfStmt s):
         super().visit_if_stmt(s)
         for i in range(len(s.expr)):
-            s.expr[i] = self.coerce(s.expr[i], self.named_type('std::Boolean'), self.get_type(s.expr[i]), self.type_context)
+            s.expr[i] = self.coerce(s.expr[i], self.named_type('std::Boolean'),
+                                    self.get_type(s.expr[i]),
+                                    self.type_context())
     
     void visit_while_stmt(self, WhileStmt s):
         super().visit_while_stmt(s)
-        s.expr = self.coerce(s.expr, self.named_type('std::Boolean'), self.get_type(s.expr), self.type_context)
+        s.expr = self.coerce(s.expr, self.named_type('std::Boolean'),
+                             self.get_type(s.expr), self.type_context())
     
-    
+    #
     # Transform expressions
-    # ---------------------
-    
+    #
     
     void visit_member_expr(self, MemberExpr e):
         super().visit_member_expr(e)
@@ -160,7 +166,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         typ = self.get_type(e.expr)
         
         if self.dynamic_funcs[-1]:
-            e.expr = self.coerce_to_dynamic(e.expr, typ, self.type_context)
+            e.expr = self.coerce_to_dynamic(e.expr, typ, self.type_context())
             typ = Any()
         
         str suffix
@@ -206,7 +212,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
             Typ arg_type = Any()
             if isinstance(ctype, Callable):
                 arg_type = ((Callable)ctype).arg_types[i]
-            e.args[i] = self.coerce2(e.args[i], arg_type, self.get_type(e.args[i]), self.type_context)
+            e.args[i] = self.coerce2(e.args[i], arg_type,
+                                     self.get_type(e.args[i]),
+                                     self.type_context())
         
         # Prepend type argument values to the call as needed.
         if isinstance(ctype, Callable) and ((Callable)ctype).bound_vars != []:
@@ -238,25 +246,33 @@ class DyncheckTransformVisitor(TraverserVisitor):
     void visit_cast_expr(self, CastExpr e):
         super().visit_cast_expr(e)
         if isinstance(self.get_type(e), Any):
-            e.expr = self.coerce(e.expr, Any(), self.get_type(e.expr), self.type_context)
+            e.expr = self.coerce(e.expr, Any(), self.get_type(e.expr),
+                                 self.type_context())
     
     void visit_op_expr(self, OpExpr e):
         super().visit_op_expr(e)
-        if e.op in ('and', 'or'):
-            e.left = self.coerce(e.left, self.named_type('std::Boolean'), self.get_type(e.left), self.type_context)
-            e.right = self.coerce(e.right, self.named_type('std::Boolean'), self.get_type(e.right), self.type_context)
+        if e.op in ['and', 'or']:
+            e.left = self.coerce(e.left, self.named_type('std::Boolean'),
+                                 self.get_type(e.left), self.type_context())
+            e.right = self.coerce(e.right, self.named_type('std::Boolean'),
+                                  self.get_type(e.right), self.type_context())
         else:
             if self.dynamic_funcs[-1]:
-                e.left = self.coerce_to_dynamic(e.left, self.get_type(e.left), self.type_context)
-                e.right = self.coerce(e.right, Any(), self.get_type(e.right), self.type_context)
+                e.left = self.coerce_to_dynamic(e.left, self.get_type(e.left),
+                                                self.type_context())
+                e.right = self.coerce(e.right, Any(), self.get_type(e.right),
+                                      self.type_context())
             elif e.op == '+':
-                e.left = self.coerce(e.left, self.named_type('std::Int'), self.get_type(e.left), self.type_context)
-                e.right = self.coerce(e.right, self.named_type('std::Int'), self.get_type(e.right), self.type_context)
+                e.left = self.coerce(e.left, self.named_type('std::Int'),
+                                     self.get_type(e.left),
+                                     self.type_context())
+                e.right = self.coerce(e.right, self.named_type('std::Int'),
+                                      self.get_type(e.right),
+                                      self.type_context())
     
-    
+    #
     # Helpers
-    # -------
-    
+    #    
     
     Typ get_type(self, Node node):
         """Return the type of a node as reported by the type checker."""
@@ -273,14 +289,14 @@ class DyncheckTransformVisitor(TraverserVisitor):
             info = fdef.info
         # If info is nil, we have a global function => no suffix. Also if the
         # method is not an override, we need no suffix.
-        if info is None or info.base is None or not info.base.has_method(fdef.name):
+        if not info or not info.base or not info.base.has_method(fdef.name()):
             return ''
         elif is_simple_override(fdef, info):
             return self.type_suffix(fdef, info.base)
         elif self.is_pretty:
-            return '`' + info.name
+            return '`' + info.name()
         else:
-            return '__' + info.name
+            return '__' + info.name()
     
     str dynamic_suffix(self):
         """Return the suffix of the dynamic wrapper of a method, getter or class."""
@@ -332,6 +348,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     str object_member_name(self):
         if self.is_java:
-            return '__o_{}'.format(self.type_context.name)
+            return '__o_{}'.format(self.type_context().name())
         else:
             return '__o'
