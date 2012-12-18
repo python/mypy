@@ -15,7 +15,7 @@ from transutil import (
     replace_ret_type, translate_type_vars_to_wrapper_vars,
     translate_type_vars_to_wrapped_object_vars
 )
-from erasetypes import erase_generic_types
+from erasetype import erase_generic_types
 
 
 # TODO
