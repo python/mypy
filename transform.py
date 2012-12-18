@@ -18,11 +18,12 @@ from coerce import coerce
 from rttypevars import translate_runtime_type_vars_in_context
 
 
-# Parse tree Node visitor that transforms a parse tree to one that does
-# runtime type checking based on static types.
-#
-# This visitor modifies the parse tree in-place.
 class DyncheckTransformVisitor(TraverserVisitor):
+    """Parse tree Node visitor that transforms a parse tree to one that does
+    runtime type checking based on static types.
+    
+    This visitor modifies the parse tree in-place.
+    """
     dict<Node, Typ> type_map
     dict<str, MypyFile> modules
     bool is_pretty
@@ -60,8 +61,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
     # ---------------------
     
     
-    # Transform an file.
     void visit_mypy_file(self, MypyFile o):
+        """Transform an file."""
         Node[] res = []
         for d in o.defs:
             if isinstance(d, TypeDef):
@@ -74,9 +75,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
                 res.append(d)
         o.defs = res
     
-    # Transform a variable definition in-place. This is not suitable for member
-    # variable definitions; they are transformed in TypeTransformer.
     void visit_var_def(self, VarDef o):
+        """Transform a variable definition in-place. This is not suitable for member
+        variable definitions; they are transformed in TypeTransformer.
+        """
         super().visit_var_def(o)
         
         if o.init is not None:
@@ -87,14 +89,15 @@ class DyncheckTransformVisitor(TraverserVisitor):
                 t = Any()
             o.init = self.coerce(o.init, t, self.get_type(o.init), self.type_context)
     
-    # Transform a function definition in-place. This is not suitable for
-    # methods; they are transformed in FuncTransformer.
     void visit_func_def(self, FuncDef fdef):
+        """Transform a function definition in-place. This is not suitable for
+        methods; they are transformed in FuncTransformer.
+        """
         self.prepend_generic_function_tvar_args(fdef)
         self.transform_function_body(fdef)
     
-    # Transform the body of a function.
     void transform_function_body(self, FuncDef fdef):
+        """Transform the body of a function."""
         self.dynamic_funcs.append(fdef.is_implicit)
         # FIX intersection types
         self.return_types.append(((Callable)function_type(fdef)).ret_type)
@@ -255,16 +258,17 @@ class DyncheckTransformVisitor(TraverserVisitor):
     # -------
     
     
-    # Return the type of a node as reported by the type checker.
     Typ get_type(self, Node node):
+        """Return the type of a node as reported by the type checker."""
         return self.type_map[node]
     
     void set_type(self, Node node, Typ typ):
         self.type_map[node] = typ
     
-    # Return the suffix for a mangled name with optional type suffix for a
-    # function or method.
     str type_suffix(self, FuncDef fdef, TypeInfo info=None):
+        """Return the suffix for a mangled name with optional type suffix for a
+        function or method.
+        """
         if not info:
             info = fdef.info
         # If info is nil, we have a global function => no suffix. Also if the
@@ -278,16 +282,17 @@ class DyncheckTransformVisitor(TraverserVisitor):
         else:
             return '__' + info.name
     
-    # Return the suffix of the dynamic wrapper of a method, getter or class.
     str dynamic_suffix(self):
+        """Return the suffix of the dynamic wrapper of a method, getter or class."""
         return dynamic_suffix(self.is_pretty)
     
     Node coerce(self, Node expr, Typ target_type, Typ source_type, TypeInfo context, bool is_wrapper_class=False):
         return coerce(expr, target_type, source_type, context, is_wrapper_class, self.is_java)
     
-    # Create coercion from sourceType to targetType and also a middle coercion
-    # do dynamic if transforming a dynamically typed function.
     Node coerce2(self, Node expr, Typ target_type, Typ source_type, TypeInfo context, bool is_wrapper_class=False):
+        """Create coercion from sourceType to targetType and also a middle coercion
+        do dynamic if transforming a dynamically typed function.
+        """
         if self.dynamic_funcs[-1]:
             return self.coerce(self.coerce(expr, Any(), source_type, context, is_wrapper_class), target_type, Any(), context, is_wrapper_class)               
         else:
@@ -299,24 +304,26 @@ class DyncheckTransformVisitor(TraverserVisitor):
         source_type = translate_runtime_type_vars_in_context(source_type, context, self.is_java)
         return CoerceExpr(expr, Any(), source_type, False)
     
-    # Add a line mapping for a wrapper. The node newNode has logically the same
-    # line numbers as origNode. The nodes should be FuncDef/TypeDef nodes.
     void add_line_mapping(self, Node orig_node, Node new_node):
+        """Add a line mapping for a wrapper. The node newNode has logically the same
+        line numbers as origNode. The nodes should be FuncDef/TypeDef nodes.
+        """
         if orig_node.repr is not None:
             start_line = orig_node.line
             end_tok = orig_node.repr.endTok
             end_line = end_tok.line + end_tok.string.count('\n')
             self.line_map[new_node] = (start_line, end_line)
     
-    # TODO combine with checker
     Instance named_type(self, str name):
+        """TODO combine with checker"""
         # Assume that the name refers to a type.
         sym = self.lookup(name, GDEF)
         return Instance((TypeInfo)sym.node, [])
     
-    # TODO combine with checker
-    # TODO remove kind argument
     SymbolTableNode lookup(self, str full_name, int kind):
+        """TODO combine with checker
+        TODO remove kind argument
+        """
         parts = full_name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):

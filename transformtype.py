@@ -15,12 +15,13 @@ from coerce import coerce
 from maptypevar2 import num_slots, get_tvar_access_path
 
 
-# Class for transforming type definitions for runtime type checking. Transform
-# a type definition by modifying it in-place.
-#
-# This is used by DyncheckTransformVisitor and is logically aggregated within
-# that class.
 class TypeTransformer:
+    """Class for transforming type definitions for runtime type checking. Transform
+    a type definition by modifying it in-place.
+    
+    This is used by DyncheckTransformVisitor and is logically aggregated within
+    that class.
+    """
     # Used for common transformation operations.
     transform.DyncheckTransformVisitor tf
     # Used for transforming methods.
@@ -30,10 +31,11 @@ class TypeTransformer:
         self.tf = tf
         self.func_tf = FuncTransformer(tf)
     
-    # Transform a type definition. The result may be one or two definitions.
-    # The first is the transformation of the original TypeDef. The second
-    # is a wrapper type, which is generated for generic types only.
     TypeDef[] transform_type_def(self, TypeDef tdef):
+        """Transform a type definition. The result may be one or two definitions.
+        The first is the transformation of the original TypeDef. The second
+        is a wrapper type, which is generated for generic types only.
+        """
         Node[] defs = []
         
         if tdef.info.type_vars != []:
@@ -68,24 +70,25 @@ class TypeTransformer:
         return res
     
     
-    # Make and return an implicit create if class needs it; otherwise, return
-    # an empty array. We include an implicit create if the class is generic or
-    # if it extends a generic class and if it does not define create.
-    #
-    # The create of a generic class requires one or more extra type variable
-    # arguments. The inherited create may not accept these.
-    #
-    # For example, assume these definitions:
-    #   class A<T>; end
-    #   class B is A<Int>; end
-    #
-    # The constructor for B will be (equivalent to)
-    #
-    #   def create()
-    #     self.__tv = <std::Int>
-    #     super.create(<std::Int>)
-    #   end
     Node[] make_create_wrapper(self, TypeDef tdef):
+        """Make and return an implicit create if class needs it; otherwise, return
+        an empty array. We include an implicit create if the class is generic or
+        if it extends a generic class and if it does not define create.
+        
+        The create of a generic class requires one or more extra type variable
+        arguments. The inherited create may not accept these.
+        
+        For example, assume these definitions:
+          class A<T>; end
+          class B is A<Int>; end
+        
+        The constructor for B will be (equivalent to)
+        
+          def create()
+            self.__tv = <std::Int>
+            super.create(<std::Int>)
+          end
+          """
         # FIX intersection types / overloading
         # FIX default args / varargs
         
@@ -128,16 +131,17 @@ class TypeTransformer:
         else:
             return []
     
-    # Replace the bound type variables of callable with the type arguments
-    # of the instance type.
     Callable fix_bound_create_tvars(self, Callable callable, Instance typ):
+        """Replace the bound type variables of callable with the type arguments
+        of the instance type.
+        """
         list<tuple<int, Typ>> a = []
         for i in range(len(typ.args)):
             a.append((i + 1, typ.args[i]))
         return Callable(callable.arg_types, callable.min_args, callable.is_var_arg, callable.ret_type, callable.is_type_obj, callable.name, callable.variables, a)
     
-    # Construct a statement that calls the superclass constructor.
     ExpressionStmt make_superclass_constructor_call(self, TypeInfo info, Callable callee_type):
+        """Construct a statement that calls the superclass constructor."""
         callee = SuperExpr('create')
         callee.info = info
         
@@ -167,9 +171,10 @@ class TypeTransformer:
         return ExpressionStmt(call)
     
     
-    # Transform a member variable definition. The result may be one or more
-    # definitions.
     Node[] transform_var_def(self, VarDef o):
+        """Transform a member variable definition. The result may be one or more
+        definitions.
+        """
         Node[] res = [o]
         
         self.tf.visit_var_def(o)
@@ -190,13 +195,14 @@ class TypeTransformer:
         return res
     
     
-    # Create a dynamically-typed getter wrapper for a member. The getter
-    # will be like this:
-    #
-    #   def name* as dynamic
-    #     return {dyn <= type | self.name}
-    #   end
     FuncDef make_getter_wrapper(self, str name, Typ typ):
+        """Create a dynamically-typed getter wrapper for a member. The getter
+        will be like this:
+        
+          def name* as dynamic
+            return {dyn <= type | self.name}
+          end
+          """
         Node member_expr = MemberExpr(self_expr(), name)
         member_expr = coerce(member_expr, Any(), typ, self.tf.type_context)
         ret = ReturnStmt(member_expr)
@@ -204,13 +210,14 @@ class TypeTransformer:
         return FuncDef(name + self.tf.dynamic_suffix(), [], [], None, None, 0, Block([ret]), Annotation(Any()))
     
     
-    # Create a dynamically-typed setter wrapper for a member. The setter will
-    # be like this:
-    #
-    #   def name* = __x as dynamic
-    #     self.name = {type <= dyn | __x}
-    #   end
     FuncDef make_setter_wrapper(self, str name, Typ typ):
+        """Create a dynamically-typed setter wrapper for a member. The setter will
+        be like this:
+        
+          def name* = __x as dynamic
+            self.name = {type <= dyn | __x}
+          end
+          """
         Node lvalue = MemberExpr(self_expr(), name)
         rvalue = coerce(NameExpr('__x'), typ, Any(), self.tf.type_context)
         ret = AssignmentStmt([lvalue], rvalue)
@@ -218,8 +225,8 @@ class TypeTransformer:
         return FuncDef(name + self.tf.dynamic_suffix(), [Var('__x')], [None], None, None, 1, Block([ret]), Annotation(Any()))
     
     
-    # Construct a wrapper class for a generic type.
     TypeDef generic_class_wrapper(self, TypeDef tdef):
+        """Construct a wrapper class for a generic type."""
         # FIX semanal meta-info for nodes + TypeInfo
         
         Node[] defs = []
@@ -276,9 +283,10 @@ class TypeTransformer:
             base = base.base
     
     
-    # Generate the member variable definition for the wrapped object (__o) for
-    # a generic wrapper class.
     Node[] make_generic_wrapper_member_vars(self, TypeDef tdef):
+        """Generate the member variable definition for the wrapped object (__o) for
+        a generic wrapper class.
+        """
         Node[] defs = [VarDef([(Var(self.object_member_name(tdef.info)), Any())], False, None)]
         
         return defs
@@ -291,8 +299,8 @@ class TypeTransformer:
             return '__o'
     
     
-    # Build constructor of a generic wrapper class.
     FuncDef make_generic_wrapper_create(self, TypeInfo info):
+        """Build constructor of a generic wrapper class."""
         nslots = num_slots(info)
         
         Node[] cdefs = []
@@ -328,9 +336,10 @@ class TypeTransformer:
         return fdef
     
     
-    # Return type variable slot member definitions (of form
-    # "var __tv* as dynamic"). Only include new slots defined in the type.
     Node[] make_tvar_representation(self, TypeInfo info, any is_alt=False):
+        """Return type variable slot member definitions (of form
+        "var __tv* as dynamic"). Only include new slots defined in the type.
+        """
         Node[] defs = []
         base_slots = num_slots(info.base)
         for n in range(len(info.type_vars)):
@@ -340,9 +349,10 @@ class TypeTransformer:
                 defs.append(VarDef([(Var(tvar_slot_name(slot, is_alt)), Any())], False, None))
         return defs
     
-    # Add type variable member initialization code to the constructor of a
-    # class. Modify the constructor body directly.
     void make_instance_tvar_initializer(self, FuncDef creat):
+        """Add type variable member initialization code to the constructor of a
+        class. Modify the constructor body directly.
+        """
         for n in range(num_slots(creat.info)):
             rvalue = self.make_tvar_init_expression(creat.info, n)
             init = AssignmentStmt([MemberExpr(self_expr(), tvar_slot_name(n))], rvalue)
@@ -350,9 +360,10 @@ class TypeTransformer:
             self.tf.set_type(init.rvalue, Any())
             creat.body.body.insert(n, init)
     
-    # Add type variable member initialization code to the constructor of a
-    # generic wrapper class. Modify the constructor body directly.
     void make_wrapper_slot_initializer(self, FuncDef creat):
+        """Add type variable member initialization code to the constructor of a
+        generic wrapper class. Modify the constructor body directly.
+        """
         for alt in [BOUND_VAR, False]:
             for n in range(num_slots(creat.info)):
                 rvalue = TypeExpr(RuntimeTypeVar(NameExpr(tvar_slot_name(n, alt))))
@@ -361,16 +372,17 @@ class TypeTransformer:
                 self.tf.set_type(init.rvalue, Any())
                 creat.body.body.insert(n, init)
     
-    # Return the initializer for the given slot in the given type, i.e. the
-    # type expression that initializes the given slot using the type arguments
-    # given to the constructor.
-    #
-    # Examples:
-    #   - In "class C<T> ...", the initializer for the slot 0 is
-    #     TypeExpr(RuntimeTypeVar(NameExpr('__tv'))).
-    #   - In "class D is C<Int> ...", the initializer for the slot 0 is
-    #     TypeExpr(<std::Int instance>).
     TypeExpr make_tvar_init_expression(self, TypeInfo info, int slot):
+        """Return the initializer for the given slot in the given type, i.e. the
+        type expression that initializes the given slot using the type arguments
+        given to the constructor.
+        
+        Examples:
+          - In "class C<T> ...", the initializer for the slot 0 is
+            TypeExpr(RuntimeTypeVar(NameExpr('__tv'))).
+          - In "class D is C<Int> ...", the initializer for the slot 0 is
+            TypeExpr(<std::Int instance>).
+            """
         # Figure out the superclass which defines the slot; also figure out
         # the tvar index that maps to the slot.
         origin, tv = find_slot_origin(info, slot)

@@ -4,32 +4,34 @@ from transutil import tvar_arg_name
 from maptypevar import get_tvar_access_expression
 
 
-# Replace type variable references in a type with runtime type variable
-# references that refer to a runtime local variable (tv*).
 Typ translate_runtime_type_vars_locally(Typ typ):
+    """Replace type variable references in a type with runtime type variable
+    references that refer to a runtime local variable (tv*).
+    """
     return typ.accept(TranslateRuntimeTypeVarsLocallyVisitor())
 
 
-# Reuse most of the implementation by inheriting TypeTranslator.
 class TranslateRuntimeTypeVarsLocallyVisitor(TypeTranslator):
+    """Reuse most of the implementation by inheriting TypeTranslator."""
     Typ visit_type_var(self, TypeVar t):
         # FIX function type variables
         return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))
 
 
-# Replace type variable types within a type with runtime type variable
-# references in the context of the given type.
-#
-# For example, assume class A<T, S> ... and class B<U> is A<X, Y<U>> ...:
-#
-#   TranslateRuntimeTypeVarsInContext(C<U`1>, <B>) ==
-#     C<RuntimeTypeVar(<self.__tv2.args[0]>)>  (<...> uses node repr.)
 Typ translate_runtime_type_vars_in_context(Typ typ, TypeInfo context, any is_java):
+    """Replace type variable types within a type with runtime type variable
+    references in the context of the given type.
+    
+    For example, assume class A<T, S> ... and class B<U> is A<X, Y<U>> ...:
+    
+      TranslateRuntimeTypeVarsInContext(C<U`1>, <B>) ==
+        C<RuntimeTypeVar(<self.__tv2.args[0]>)>  (<...> uses node repr.)
+        """
     return typ.accept(ContextualRuntimeTypeVarTranslator(context, is_java))
 
 
-# Reuse most of the implementation by inheriting TypeTranslator.
 class ContextualRuntimeTypeVarTranslator(TypeTranslator):
+    """Reuse most of the implementation by inheriting TypeTranslator."""
     def __init__(self, context, is_java):
         self.context = context
         self.is_java = is_java

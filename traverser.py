@@ -1,11 +1,12 @@
 from visitor import NodeVisitor
 
 
-# A parse tree visitor that traverses the parse tree during visiting, but does
-# not peform any actions outside the travelsal. Subclasses should override
-# visit methods to perform actions during travelsal. Calling the superclass
-# method allows reusing the travelsal implementation.
 class TraverserVisitor(NodeVisitor):
+    """A parse tree visitor that traverses the parse tree during visiting, but does
+    not peform any actions outside the travelsal. Subclasses should override
+    visit methods to perform actions during travelsal. Calling the superclass
+    method allows reusing the travelsal implementation.
+    """
     # Helper methods
     
     def accept_block(self, block):
@@ -198,7 +199,8 @@ class TraverserVisitor(NodeVisitor):
     def visit_func_expr(self, o):
         self.visit_func(o)
     
-    # These are for convenience. These node types are not defined in the parser
-    # module.
     def visit_filter_node(self, o):
+        """These are for convenience. These node types are not defined in the parser
+        module.
+        """
         pass

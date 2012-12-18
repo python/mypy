@@ -28,8 +28,8 @@ class DyncheckTransformSuite(Suite):
         return c
 
 
-# Perform a runtime checking transformation test case.
 def test_transform(testcase):
+    """Perform a runtime checking transformation test case."""
     any a
     expected = remove_comment_lines(testcase.output)
     try:
@@ -62,9 +62,10 @@ def test_transform(testcase):
     assert_string_arrays_equal_wildcards(expected, a, 'Invalid source code output ({}, line {})'.format(testcase.file, testcase.line))
 
 
-# Return a copy of array with comment lines starting with '--' (but not with
-# '---') removed.
 def remove_comment_lines(a):
+    """Return a copy of array with comment lines starting with '--' (but not with
+    '---') removed.
+    """
     r = []
     for s in a:
         if s.strip().startswith('--') and not s.strip().startswith('---'):
@@ -74,10 +75,11 @@ def remove_comment_lines(a):
     return r
 
 
-# Decorate a function that implements a data-driven test case to copy an
-# alternative std module implementation in place before performing the test
-# case. Clean up after executing the test case.
 def std_wrapper(func, path):
+    """Decorate a function that implements a data-driven test case to copy an
+    alternative std module implementation in place before performing the test
+    case. Clean up after executing the test case.
+    """
     return lambda testcase: perform_test(func, path, testcase)
 
 

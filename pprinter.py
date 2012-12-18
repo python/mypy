@@ -5,10 +5,11 @@ from maptypevar2 import num_slots
 from transutil import tvar_arg_name
 
 
-# Class for converting transformed parse trees into source code. Pretty print
-# nodes created in transformation using default formatting, as these nodes may
-# not have representations.
 class PrettyPrintVisitor(OutputVisitor):
+    """Class for converting transformed parse trees into source code. Pretty print
+    nodes created in transformation using default formatting, as these nodes may
+    not have representations.
+    """
     any is_pretty
     list<tuple<int, int>> line_assoc = []
     dict<Node, tuple<int, int>> node_line_map
@@ -247,21 +248,22 @@ class PrettyPrintVisitor(OutputVisitor):
     # -------
     
     
-    # Pretty-print a type using original formatting.
     def typ(self, t):
+        """Pretty-print a type using original formatting."""
         if t:
             v = TypePrettyPrintVisitor()
             t.accept(v)
             self.string(v.output())
     
-    # Pretty-print a type using automatic formatting.
     def compact_type(self, t):
+        """Pretty-print a type using automatic formatting."""
         if t:
             self.string(t.accept(PrettyTypeStrVisitor(self.is_pretty)))
     
-    # Record a line mapping between the current output line and the line of
-    # the token.
     def add_line_mapping(self, token):
+        """Record a line mapping between the current output line and the line of
+        the token.
+        """
         self.line_assoc.append((token.line + token.string.count('\n'), self.line()))
     
     def add_node_line_mapping(self, node, start, stop):
@@ -271,9 +273,10 @@ class PrettyPrintVisitor(OutputVisitor):
             self.line_assoc.append((stop2, stop))
 
 
-# Visitor for pretty-printing types using original formatting whenever
-# possible.
 class TypePrettyPrintVisitor(TypeOutputVisitor):
+    """Visitor for pretty-printing types using original formatting whenever
+    possible.
+    """
     def visit_any(self, t):
         # Any types do not always have explicit formatting.
         if t.repr is None:
@@ -282,9 +285,10 @@ class TypePrettyPrintVisitor(TypeOutputVisitor):
             super().visit_any(t)
 
 
-# Translate a type to source code, with or without pretty printing. Always
-# use automatic formatting.
 class PrettyTypeStrVisitor(TypeStrVisitor):
+    """Translate a type to source code, with or without pretty printing. Always
+    use automatic formatting.
+    """
     # Pretty formatting is designed to be human-readable, while the default
     # formatting is suitable for evaluation (it's valid Alore).
     any is_pretty

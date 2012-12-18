@@ -24,8 +24,8 @@ class DyncheckOpGenSuite(Suite):
         return c
 
 
-# Perform a type operation support data and code genereation test case.
 def test_op_gen(testcase):
+    """Perform a type operation support data and code genereation test case."""
     any a
     expected = remove_comment_lines(testcase.output)
     try:

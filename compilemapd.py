@@ -64,12 +64,13 @@ class DefaultArg(MapExpr):
         return 'd'
 
 
-# Compile mapping from superclass to subclass type variables.
-#
-#   numSubtypeTypeVars: number of type variables in subclass
-#   superType:          definition of supertype; this may contain type
-#                       variable references
 tuple<MapPremise[], MapExpr[]> compile_subclass_mapping(int num_subtype_type_vars, Instance super_type):
+    """Compile mapping from superclass to subclass type variables.
+    
+      numSubtypeTypeVars: number of type variables in subclass
+      superType:          definition of supertype; this may contain type
+                          variable references
+                          """
     premises = find_eq_premises(super_type, None)
     MapExpr[] exprs = []
     

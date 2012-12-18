@@ -3,24 +3,25 @@ from mtypes import Instance, Typ, TypeVar
 from transutil import self_expr
 
 
-# Return a description of how to get to type variable value defined in a
-# specific type from type variable slot values embedded in an instance. The
-# indexing is 1-based.
-#
-#  - If tvar slot x maps directly to tvar subtvindex in the type, return [x].
-#  - If argument y of x maps to tvar subtvindex, return [x, y]. For argument z
-#    of argument y of x return [x, y, z], etc.
-#  - If there is no relation, return nil.
-#
-# For example, assume these definitions:
-#
-#   class A<S, U> ...
-#   class B<T> is A<X, Y<T>> ...
-#
-# Now we can query the access path to T (1) of B:
-#
-#   GetTvarAccessPath(<B>, 1) == [2, 1]  (slot 2, lookup type argument 1).
 int[] get_tvar_access_path(TypeInfo typ, int tvindex):
+    """Return a description of how to get to type variable value defined in a
+    specific type from type variable slot values embedded in an instance. The
+    indexing is 1-based.
+    
+     - If tvar slot x maps directly to tvar subtvindex in the type, return [x].
+     - If argument y of x maps to tvar subtvindex, return [x, y]. For argument z
+       of argument y of x return [x, y, z], etc.
+     - If there is no relation, return nil.
+    
+    For example, assume these definitions:
+    
+      class A<S, U> ...
+      class B<T> is A<X, Y<T>> ...
+    
+    Now we can query the access path to T (1) of B:
+    
+      GetTvarAccessPath(<B>, 1) == [2, 1]  (slot 2, lookup type argument 1).
+      """
     if typ.base is None:
         return None
     
@@ -51,22 +52,23 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     return [tvar_slot_index(typ, tvindex)]
 
 
-# Recursively search for a type variable instance (with given index) within
-# the type t, which represents a supertype definition. Return the path to the
-# first found instance.
-#
-#  - If t is a bare type variable with correct index, return [] as the path.
-#  - If type variable is within instance arguments, return the indexing
-#    operations required to get it.
-#  - If no result could be found, return nil.
-#
-# Examples:
-#   FindTvarMapping(T`1, 1) == []
-#   FindTvarMapping(A<X, Y, T`1>, 1) == [2]
-#   FindTvarMapping(A<B<X, T`2>, T`1>, 2) == [0, 1]
-#   FindTvarMapping(A<T`2>, T`1) == nil               (no T`1 within t)
-#   FindTvarMapping(A<T`1, T`1>, T`1) == [0]          (first match)
 int[] find_tvar_mapping(Typ t, int index):
+    """Recursively search for a type variable instance (with given index) within
+    the type t, which represents a supertype definition. Return the path to the
+    first found instance.
+    
+     - If t is a bare type variable with correct index, return [] as the path.
+     - If type variable is within instance arguments, return the indexing
+       operations required to get it.
+     - If no result could be found, return nil.
+    
+    Examples:
+      FindTvarMapping(T`1, 1) == []
+      FindTvarMapping(A<X, Y, T`1>, 1) == [2]
+      FindTvarMapping(A<B<X, T`2>, T`1>, 2) == [0, 1]
+      FindTvarMapping(A<T`2>, T`1) == nil               (no T`1 within t)
+      FindTvarMapping(A<T`1, T`1>, T`1) == [0]          (first match)
+      """
     if isinstance(t, Instance) and ((Instance)t).args != []:
         inst = (Instance)t
         for argi in range(len(inst.args)):
@@ -80,9 +82,10 @@ int[] find_tvar_mapping(Typ t, int index):
         return None
 
 
-# If the specified type variable was introduced as a new variable in type,
-# return the slot index (1 = first type varible slot) of the type variable.
 int tvar_slot_index(TypeInfo typ, int tvindex):
+    """If the specified type variable was introduced as a new variable in type,
+    return the slot index (1 = first type varible slot) of the type variable.
+    """
     base_slots = num_slots(typ.base)
     
     for i in range(1, tvindex):
@@ -92,9 +95,10 @@ int tvar_slot_index(TypeInfo typ, int tvindex):
     return base_slots + 1  
 
 
-# Return the number of type variable slots used by a type. If type == nil,
-# the result is 0.
 int num_slots(TypeInfo typ):
+    """Return the number of type variable slots used by a type. If type == nil,
+    the result is 0.
+    """
     if typ is None:
         return 0
     slots = num_slots(typ.base)

@@ -4,14 +4,15 @@ from maptypevar2 import get_tvar_access_path
 from transutil import self_expr, tvar_slot_name
 
 
-# Return a type expression that maps from runtime type variable slots
-# to the type variable in the given class with the given index.
-#
-# For example, assume class A<T, S> ... and class B<U> is A<X, Y<U>> ...:
-#
-#   GetTvarAccessExpression(<B>, 1) ==
-#     RuntimeTypeVar(<self.__tv2.args[0]>)  (with <...> represented as nodes)
 RuntimeTypeVar get_tvar_access_expression(TypeInfo typ, int tvindex, any alt, any is_java):
+    """Return a type expression that maps from runtime type variable slots
+    to the type variable in the given class with the given index.
+    
+    For example, assume class A<T, S> ... and class B<U> is A<X, Y<U>> ...:
+    
+      GetTvarAccessExpression(<B>, 1) ==
+        RuntimeTypeVar(<self.__tv2.args[0]>)  (with <...> represented as nodes)
+        """
     # First get the description of how to get from supertype type variables to
     # a subtype type variable.
     mapping = get_tvar_access_path(typ, tvindex)
