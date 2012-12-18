@@ -3,7 +3,7 @@ from mtypes import (
     Typ, Instance, Void, NoneTyp, Any
 )
 from sametypes import is_same_type
-from propersubtype import is_proper_subtype
+from subtypes import is_proper_subtype
 from rttypevars import translate_runtime_type_vars_in_context
 
 

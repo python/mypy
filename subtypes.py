@@ -275,3 +275,14 @@ Instance[] map_instance_to_direct_supertypes(Instance instance,
 bool is_named_instance(Typ t, str full_name):
     return isinstance(t,
                       Instance) and ((Instance)t).typ.full_name() == full_name
+
+
+def is_proper_subtype(t, s):
+    """Check if t is a proper subtype of s?
+
+    For proper subtypes, there's no need to rely on compatibility due to
+    any types.
+    """
+    # FIX support generic types, tuple types etc.
+    return (isinstance(t, Instance) and isinstance(s, Instance)
+            and t.args == [] and s.args == [] and is_subtype(t, s))
