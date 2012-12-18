@@ -17,7 +17,7 @@ from rttypevars import translate_runtime_type_vars_locally
 from compileslotmap import find_slot_origin
 from subtypes import map_instance_to_supertype
 from coerce import coerce
-from maptypevar2 import num_slots, get_tvar_access_path
+from maptypevar import num_slots, get_tvar_access_path
 
 
 class TypeTransformer:

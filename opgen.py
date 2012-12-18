@@ -1,7 +1,7 @@
 from nodes import MypyFile, TypeDef
 from mtypes import Instance, TypeVar, BOUND_VAR
 import transform
-from maptypevar2 import num_slots, get_tvar_access_path
+from maptypevar import num_slots, get_tvar_access_path
 from compileslotmap import compile_slot_mapping
 from transutil import dynamic_suffix, tvar_slot_name
 

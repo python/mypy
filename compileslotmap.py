@@ -2,7 +2,7 @@ from mtypes import Typ
 from nodes import TypeInfo
 from semanal import self_type
 from subtypes import map_instance_to_supertype
-from maptypevar2 import num_slots, get_tvar_access_path
+from maptypevar import num_slots, get_tvar_access_path
 
 
 Typ[] compile_slot_mapping(TypeInfo typ):
