@@ -6,36 +6,36 @@ from transutil import tvar_arg_name
 
 
 class PrettyPrintVisitor(OutputVisitor):
-    """Class for converting transformed parse trees into source code. Pretty print
-    nodes created in transformation using default formatting, as these nodes may
-    not have representations.
+    """Class for converting transformed parse trees into source code.
+
+    Pretty print nodes created in transformation using default
+    formatting, as these nodes may not have representations.
     """
-    any is_pretty
-    list<tuple<int, int>> line_assoc = []
+
+    bool is_pretty
+    tuple<int, int>[] line_assoc
     dict<Node, tuple<int, int>> node_line_map
     
-    
-    def __init__(self, is_pretty=True, node_line_map={}):
+    void __init__(self, bool is_pretty=True, node_line_map={}):
         self.is_pretty = is_pretty
+        self.line_assoc = []
         self.node_line_map = node_line_map
         super().__init__()
-    
     
     def line_map(self):
         return sorted(self.line_assoc, key=lambda x: x[1])
     
-    
+    #
     # Definitions
-    # -----------
-    
+    #
     
     def visit_type_def(self, tdef):
-        if tdef.repr is not None:
+        if tdef.repr:
             super().visit_type_def(tdef)
             self.add_line_mapping(tdef.repr.endBr)
         else:
-            # The type does not have an explicit representation: it must have been
-            # created during the transformation.
+            # The type does not have an explicit representation: it
+            # must have been created during the transformation.
             
             # FIX implements etc.
             if self.last_output_char() != '\n':
@@ -55,13 +55,14 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string('end' + '\n')
     
     def visit_func_def(self, fdef):
-        if fdef.repr is not None:
+        if fdef.repr:
             self.add_line_mapping(fdef.repr.def_tok)
-        if fdef.repr is not None or (fdef.is_constructor() and num_slots(fdef.info) == 0):
+        if fdef.repr or (fdef.is_constructor() and num_slots(fdef.info) == 0):
             super().visit_func_def(fdef)
         else:
-            # The function does not have an explicit representation. It must have
-            # been created during the transformation.
+            # The function does not have an explicit
+            # representation. It must have been created during the
+            # transformation.
             
             # FIX private, varargs, default args etc.
             start = self.line()
@@ -95,10 +96,11 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string('  end' + '\n')
     
     def visit_var_def(self, vdef):
-        if vdef.repr is not None:
+        if vdef.repr:
             super().visit_var_def(vdef)
         else:
-            # No explicit representation. It node was created during transformation.
+            # No explicit representation. It node was created during
+            # transformation.
             self.string('  ')       
             if vdef.isPrivate:
                 self.string('private ')
@@ -111,13 +113,12 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string(str(vdef.typ.typ))
             self.string('\n')
     
-    
+    #
     # Statements
-    # ----------
-    
+    #
     
     def visit_return_stmt(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_return_stmt(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -127,7 +128,7 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string('\n')
     
     def visit_expression_stmt(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_expression_stmt(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -137,7 +138,7 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string('\n')
     
     def visit_assignment_stmt(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_assignment_stmt(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -148,13 +149,12 @@ class PrettyPrintVisitor(OutputVisitor):
             self.node(o.rvalue)
             self.string('\n')      
     
-    
+    #
     # Expressions
-    # -----------
-    
+    #
     
     def visit_call_expr(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_call_expr(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -168,7 +168,7 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string(')')
     
     def visit_member_expr(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_member_expr(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -176,7 +176,7 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string('.' + o.name)
     
     def visit_name_expr(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_name_expr(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -221,7 +221,7 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string('>')
     
     def visit_index_expr(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_index_expr(o)
         else:
             # No explicit representation. Use automatic formatting.
@@ -237,16 +237,15 @@ class PrettyPrintVisitor(OutputVisitor):
         self.string(str(o.value))
     
     def visit_super_expr(self, o):
-        if o.repr is not None:
+        if o.repr:
             super().visit_super_expr(o)
         else:
             self.string('super.')
             self.string(o.name)
     
-    
+    #
     # Helpers
-    # -------
-    
+    #
     
     def typ(self, t):
         """Pretty-print a type using original formatting."""
@@ -261,10 +260,9 @@ class PrettyPrintVisitor(OutputVisitor):
             self.string(t.accept(PrettyTypeStrVisitor(self.is_pretty)))
     
     def add_line_mapping(self, token):
-        """Record a line mapping between the current output line and the line of
-        the token.
-        """
-        self.line_assoc.append((token.line + token.string.count('\n'), self.line()))
+        """Record mapping between current output line and the token line."""
+        self.line_assoc.append((token.line + token.string.count('\n'),
+                                self.line()))
     
     def add_node_line_mapping(self, node, start, stop):
         if self.node_line_map.has_key(node):
@@ -274,9 +272,8 @@ class PrettyPrintVisitor(OutputVisitor):
 
 
 class TypePrettyPrintVisitor(TypeOutputVisitor):
-    """Visitor for pretty-printing types using original formatting whenever
-    possible.
-    """
+    """Pretty-print types with original formatting (when possible)."""
+    
     def visit_any(self, t):
         # Any types do not always have explicit formatting.
         if t.repr is None:
@@ -286,8 +283,9 @@ class TypePrettyPrintVisitor(TypeOutputVisitor):
 
 
 class PrettyTypeStrVisitor(TypeStrVisitor):
-    """Translate a type to source code, with or without pretty printing. Always
-    use automatic formatting.
+    """Translate a type to source code, with or without pretty printing.
+
+    Always use automatic formatting.
     """
     # Pretty formatting is designed to be human-readable, while the default
     # formatting is suitable for evaluation (it's valid Alore).
