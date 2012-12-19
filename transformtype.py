@@ -1,7 +1,7 @@
 from nodes import (
     TypeDef, Node, FuncDef, VarDef, Block, Var, Annotation, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
-    AssignmentStmt, TypeExpr
+    AssignmentStmt, TypeExpr, PassStmt
 )
 import nodes
 from semanal import self_type
@@ -77,12 +77,11 @@ class TypeTransformer:
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
         
-        if tdef.is_generic or tdef.info.base.is_generic:
+        if tdef.is_generic() or tdef.info.base.is_generic():
             self.make_instance_tvar_initializer(
                 (FuncDef)tdef.info.methods['__init__'])
         
-        TypeDef[] res
-        if not tdef.is_generic:
+        if not tdef.is_generic():
             res = [tdef]
         else:
             res = [tdef, self.generic_class_wrapper(tdef)]
@@ -112,13 +111,12 @@ class TypeTransformer:
         .   super().__init__(<int>)
         """
         
-        # FIX overloading
-        # FIX default args / varargs
+        # FIX overloading, default args / varargs, keyword args
 
         info = tdef.info
         
-        if '__init__' not in info.methods and (tdef.is_generic or
-                                               info.base.is_generic):
+        if '__init__' not in info.methods and (tdef.is_generic() or
+                                               info.base.is_generic()):
             # Generic class with no explicit __init__ method
             # (i.e. __init__ inherited from superclass). Generate a
             # wrapper that initializes type variable slots and calls
@@ -139,10 +137,10 @@ class TypeTransformer:
             super_init = (FuncDef)info.base.get_method('__init__')
             
             # Build argument list.
-            Var[] args = []
-            for i in range(len(super_init.args)):
+            args = [Var('self')]
+            for i in range(1, len(super_init.args)):
                 args.append(Var(super_init.args[i].name()))
-                args[-1].typ = Annotation(callee_type.arg_types[i])
+                args[-1].typ = Annotation(callee_type.arg_types[i - 1])
             
             creat = FuncDef('__init__', args,
                             super_init.arg_kinds,
@@ -289,19 +287,18 @@ class TypeTransformer:
         
         # Generate method wrappers.
         for d in tdef.defs.body:
-            # The dynamic cast below is safe since a class only contains
+            # The cast to any below is safe since a class only contains
             # definitions that provide isPrivate.
-            if not ((any)d).isPrivate:
-                if isinstance(d, FuncDef):
-                    if not ((FuncDef)d).is_constructor():
-                        # The dynamic cast from FuncDef[] to Node[] below is
-                        # safe since the result is passed to extend.
-                        defs.extend((any)self.func_tf.generic_method_wrappers(
-                            (FuncDef)d))
-                else:
-                    raise RuntimeError(
-                        'Definition {} at line {} not supported'.format(
-                            type(d), d.line))
+            if isinstance(d, FuncDef):
+                if not ((FuncDef)d).is_constructor():
+                    # The dynamic cast from FuncDef[] to Node[] below is
+                    # safe since the result is passed to extend.
+                    defs.extend((any)self.func_tf.generic_method_wrappers(
+                        (FuncDef)d))
+            elif not isinstance(d, PassStmt):
+                raise RuntimeError(
+                    'Definition {} at line {} not supported'.format(
+                        type(d), d.line))
         
         Typ base_type = None
         # Inherit superclass wrapper if there is one. A superclass

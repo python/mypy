@@ -17,10 +17,10 @@
 class A: pass
 class B: pass
 [out]
-class A
-end
-class B
-end
+class A:
+    pass
+class B:
+    pass
 
 [case testSimpleMethod]
 class A:

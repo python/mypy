@@ -345,10 +345,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
         The node new_node has logically the same line numbers as
         orig_node. The nodes should be FuncDef/TypeDef nodes.
         """
-        if orig_node.repr is not None:
+        if orig_node.repr:
             start_line = orig_node.line
-            end_tok = orig_node.repr.endTok
-            end_line = end_tok.line + end_tok.string.count('\n')
+            end_line = start_line # TODO use real end line
             self.line_map[new_node] = (start_line, end_line)
     
     Instance named_type(self, str name):

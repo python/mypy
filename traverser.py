@@ -1,6 +1,6 @@
 from visitor import NodeVisitor
 from nodes import (
-    Block, MypyFile, VarDef
+    Block, MypyFile, VarDef, FuncItem
 )
 
 
@@ -12,6 +12,9 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     travelsal. Calling the superclass method allows reusing the
     travelsal implementation.
     """
+
+    # TODO add static types everywhere
+    
     # Helper methods
     
     void accept_block(self, Block block):
@@ -25,16 +28,12 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         for d in o.defs:
             d.accept(self)
     
-    def visit_func(self, o):
+    T visit_func(self, FuncItem o):
         for i in o.init:
             if i is not None:
                 i.accept(self)
         for v in o.args:
             self.visit_var(v)
-        if o.var_arg is not None:
-            self.visit_var(o.var_arg)
-        if o.dict_var_arg is not None:
-            self.visit_var(o.dict_var_arg)
         self.accept_block(o.body)
     
     def visit_func_def(self, o):
@@ -205,7 +204,6 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         self.visit_func(o)
     
     def visit_filter_node(self, o):
-        """These are for convenience. These node types are not defined in the parser
-        module.
-        """
+        # These are for convenience. These node types are not defined in the
+        # parser module.
         pass
