@@ -63,8 +63,8 @@ class TypeTransformer:
             else:
                 defs.append(d)
         
-        # For generic classes, add an implicit create wrapper.
-        defs.extend(self.make_create_wrapper(tdef))
+        # For generic classes, add an implicit __init__ wrapper.
+        defs.extend(self.make_init_wrapper(tdef))
         
         if tdef.is_generic or tdef.info.base.is_generic:
             self.make_instance_tvar_initializer(
@@ -79,15 +79,15 @@ class TypeTransformer:
         
         return res
     
-    Node[] make_create_wrapper(self, TypeDef tdef):
-        """Make and return an implicit create if class needs it;
+    Node[] make_init_wrapper(self, TypeDef tdef):
+        """Make and return an implicit __init__ if class needs it;
         otherwise, return an empty array. We include an implicit
-        create if the class is generic or if it extends a generic class
-        and if it does not define create.
+        __init__ if the class is generic or if it extends a generic class
+        and if it does not define __init__.
         
-        The create of a generic class requires one or more extra type
+        The __init__ of a generic class requires one or more extra type
         variable
-        arguments. The inherited create may not accept these.
+        arguments. The inherited __init__ may not accept these.
 
         For example, assume these definitions:
         . class A<T>: pass
@@ -95,9 +95,9 @@ class TypeTransformer:
         
         The constructor for B will be (equivalent to)
         
-        . def __init__():
+        . def __init__(self):
         .   self.__tv = <int>
-        .   super.create(<int>)
+        .   super().__init__(<int>)
         """
         
         # FIX overloading
@@ -107,10 +107,10 @@ class TypeTransformer:
         
         if '__init__' not in info.methods and (tdef.is_generic or
                                                info.base.is_generic):
-            # Generic class with no explicit create method
-            # (i.e. create inherited from superclass). Generate a
+            # Generic class with no explicit __init__ method
+            # (i.e. __init__ inherited from superclass). Generate a
             # wrapper that initializes type variable slots and calls
-            # the superclass create method.
+            # the superclass __init__ method.
             
             selftype = self_type(info)    
             callee_type = (Callable)analyse_member_access(
@@ -121,19 +121,19 @@ class TypeTransformer:
             # grandparent as bound type variables, but we want the
             # type variables of the parent class. Explicitly set the
             # bound type variables.
-            callee_type = self.fix_bound_create_tvars(callee_type,
+            callee_type = self.fix_bound_init_tvars(callee_type,
                 map_instance_to_supertype(selftype, info.base))
             
-            super_create = (FuncDef)info.base.get_method('__init__')
+            super_init = (FuncDef)info.base.get_method('__init__')
             
             # Build argument list.
             Var[] args = []
-            for i in range(len(super_create.args)):
-                args.append(Var(super_create.args[i].name()))
+            for i in range(len(super_init.args)):
+                args.append(Var(super_init.args[i].name()))
                 args[-1].typ = Annotation(callee_type.arg_types[i])
             
             creat = FuncDef('__init__', args,
-                            super_create.arg_kinds,
+                            super_init.arg_kinds,
                             <Node> [None] * len(args),
                             Block([]))
             creat.info = tdef.info
@@ -154,7 +154,7 @@ class TypeTransformer:
         else:
             return []
     
-    Callable fix_bound_create_tvars(self, Callable callable, Instance typ):
+    Callable fix_bound_init_tvars(self, Callable callable, Instance typ):
         """Replace the bound type variables of callable with the type arguments
         of the instance type.
         """
@@ -184,12 +184,12 @@ class TypeTransformer:
         # Map self type to the superclass context.
         selftype = map_instance_to_supertype(selftype, info.base)
         
-        super_create = (FuncDef)info.base.get_method('__init__')
+        super_init = (FuncDef)info.base.get_method('__init__')
         
         # Add constructor arguments.
         Node[] args = []
         for n in range(callee_type.min_args):
-            args.append(NameExpr(super_create.args[n].name()))
+            args.append(NameExpr(super_init.args[n].name()))
             self.tf.set_type(args[-1], callee_type.arg_types[n])
         
         self.tf.set_type(callee, callee_type)
@@ -273,7 +273,7 @@ class TypeTransformer:
             defs.extend(self.make_tvar_representation(tdef.info, alt))
         
         # Generate constructor.
-        defs.append(self.make_generic_wrapper_create(tdef.info))
+        defs.append(self.make_generic_wrapper_init(tdef.info))
         
         # Generate method wrappers.
         for d in tdef.defs.body:
@@ -334,7 +334,7 @@ class TypeTransformer:
         else:
             return '__o'
     
-    FuncDef make_generic_wrapper_create(self, TypeInfo info):
+    FuncDef make_generic_wrapper_init(self, TypeInfo info):
         """Build constructor of a generic wrapper class."""
         nslots = num_slots(info)
         

@@ -229,7 +229,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             bound_vars = ((Callable)ctype).bound_vars
             
             # If this is a constructor call (target is the constructor
-            # of a generic type or superclass create), include also
+            # of a generic type or superclass __init__), include also
             # instance type variables.  Otherwise filter them away --
             # include only generic function type variables.
             if (not ((Callable)ctype).is_type_obj and
