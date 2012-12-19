@@ -77,7 +77,7 @@ class MypyFile(Node, AccessorNode, SymNode):
     str _name         # Module name ('__main__' for initial file)
     str _full_name    # Qualified module name
     str path          # Path to the file (None if not known)
-    Node[] defs   # Global definitions and statements
+    Node[] defs       # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
     
