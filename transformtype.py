@@ -24,10 +24,22 @@ class TypeTransformer:
     """Class for transforming type definitions for runtime type checking.
 
     Transform a type definition by modifying it in-place.
+
+    The following transformations are performed:
+
+      * Represent generic type variables explicitly as attributes.
+      * Create generic wrapper classes used by coercions to different type
+        args.
+      * Create wrapper methods needed when overriding methods with different
+        signatures.
+      * Create wrapper methods for calling methods in dynamically typed code.
+        These perform the necessary coercions for arguments and return values
+        to/from 'any'.
     
     This is used by DyncheckTransformVisitor and is logically aggregated within
     that class.
     """
+    
     # Used for common transformation operations.
     transform.DyncheckTransformVisitor tf
     # Used for transforming methods.
@@ -44,9 +56,9 @@ class TypeTransformer:
         transformation of the original TypeDef. The second is a
         wrapper type, which is generated for generic types only.
         """
-        Node[] defs = []
+        defs = <Node> []
         
-        if tdef.info.type_vars != []:
+        if tdef.info.type_vars:
             # This is a generic type. Insert type variable slots in
             # the class definition for new type variables, i.e. type
             # variables not mapped to superclass type variables.
@@ -55,8 +67,7 @@ class TypeTransformer:
         # Iterate over definitions and transform each of them.
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
-                # Implicit cast from Array<FuncDef> to Array<Node> is
-                # safe below.
+                # Implicit cast from FuncDef[] to Node[] is safe below.
                 defs.extend((any)self.func_tf.transform_method((FuncDef)d))
             elif isinstance(d, VarDef):
                 defs.extend(self.transform_var_def((VarDef)d))
@@ -90,6 +101,7 @@ class TypeTransformer:
         arguments. The inherited __init__ may not accept these.
 
         For example, assume these definitions:
+        
         . class A<T>: pass
         . class B(A<Int>): pass
         
@@ -149,7 +161,7 @@ class TypeTransformer:
                     self.make_superclass_constructor_call(tdef.info,
                                                           callee_type))
             
-            # Implicit cast from Array<FuncDef> to Array<Node> is safe below.
+            # Implicit cast from FuncDef[] to Node[] is safe below.
             return (any)self.func_tf.transform_method(creat)
         else:
             return []
