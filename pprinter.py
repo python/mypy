@@ -1,6 +1,8 @@
 from output import TypeOutputVisitor
-from nodes import Node, VarDef, TypeDef, FuncDef, NodeVisitor, MypyFile
-from mtypes import Void, TypeStrVisitor, Callable, Instance
+from nodes import (
+    Node, VarDef, TypeDef, FuncDef, NodeVisitor, MypyFile, CoerceExpr, TypeExpr
+)
+from mtypes import Void, TypeVisitor, Callable, Instance, Typ
 from maptypevar import num_slots
 from transutil import tvar_arg_name
 
@@ -44,24 +46,22 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_func_def(self, FuncDef fdef):
         # FIX varargs, default args, keyword args etc.
-        self.string('def ')
+        ftyp = (Callable)fdef.typ.typ
+        self.typ(ftyp.ret_type)
+        self.string(' ')
         self.string(fdef.name())
         self.string('(')
-        ftyp = (Callable)fdef.typ.typ
         for i in range(len(fdef.args)):
             a = fdef.args[i]
-            self.string(a.name())
-            self.string(' as ')
             if i < len(ftyp.arg_types):
                 self.typ(ftyp.arg_types[i])
+                self.string(' ')
             else:
-                self.string('xxx')
+                self.string('xxx ')
+            self.string(a.name())
             if i < len(fdef.args) - 1:
                 self.string(', ')
         self.string(')')
-        if not isinstance(ftyp.ret_type, Void):
-            self.string(' as ')
-            self.typ(ftyp.ret_type)
         self.string(':\n')
         fdef.body.accept(self)
         self.dedent()
@@ -121,43 +121,21 @@ class PrettyPrintVisitor(NodeVisitor):
     def visit_name_expr(self, o):
         self.string(o.name)
     
-    def visit_coerce_expr(self, o):
-        # Coercions are always generated during trasnformation so they do not
-        # have a representation. Thus always use automatic formatting.
-        last = self.last_output_char()
-        if last in (',', '=') or last.isalnum():
-            self.string(' ')
-        if self.is_pretty:
-            self.string('{')
-            self.omit_next_space = True
-            self.compact_type(o.target_type)
-            self.string(' <= ')
-            self.omit_next_space = True
-            self.compact_type(o.source_type)
-            self.string(' | ')
-            self.omit_next_space = True
-            self.node(o.expr)
-            self.string('}')
-        else:
-            self.string('__Cast(')
-            self.omit_next_space = True
-            self.compact_type(o.target_type)
-            self.string(', ')
-            self.omit_next_space = True
-            self.compact_type(o.source_type)
-            self.string(', ')
-            self.omit_next_space = True
-            self.node(o.expr)
-            self.string(')')
+    void visit_coerce_expr(self, CoerceExpr o):
+        self.string('{')
+        self.compact_type(o.target_type)
+        self.string(' <= ')
+        self.compact_type(o.source_type)
+        self.string(' | ')
+        self.node(o.expr)
+        self.string('}')
     
-    def visit_type_expr(self, o):
+    void visit_type_expr(self, TypeExpr o):
         # Type expressions are only generated during transformation, so we must
         # use automatic formatting.
-        if self.is_pretty:
-            self.string('<')
+        self.string('<')
         self.compact_type(o.typ)
-        if self.is_pretty:
-            self.string('>')
+        self.string('>')
     
     def visit_index_expr(self, o):
         self.node(o.base)
@@ -200,47 +178,25 @@ class PrettyPrintVisitor(NodeVisitor):
         """Pretty-print a type using original formatting."""
         if t:
             v = TypePrettyPrintVisitor()
-            t.accept(v)
-            self.string(v.output())
+            self.string(t.accept(v))
     
-    def compact_type(self, t):
+    void compact_type(self, Typ t):
         """Pretty-print a type using automatic formatting."""
         if t:
-            self.string(t.accept(PrettyTypeStrVisitor(self.is_pretty)))
+            self.string(t.accept(TypePrettyPrintVisitor()))
 
 
-class TypePrettyPrintVisitor(TypeOutputVisitor):
+class TypePrettyPrintVisitor(TypeVisitor<str>):
     """Pretty-print types."""
     
     def visit_any(self, t):
-        self.string('any')
+        return 'any'
+    
+    def visit_void(self, t):
+        return 'void'
     
     def visit_instance(self, t):
-        self.string(t.typ.name())
-
-
-class PrettyTypeStrVisitor(TypeStrVisitor):
-    """Translate a type to source code, with or without pretty printing.
-
-    Always use automatic formatting.
-    """
-    # Pretty formatting is designed to be human-readable, while the default
-    # formatting is suitable for evaluation.
-    any is_pretty
-    
-    def __init__(self, is_pretty):
-        self.is_pretty = is_pretty
-        super().__init__()
-    
-    def visit_instance(self, t):
-        if t.args == [] or self.is_pretty:
-            return super().visit_instance(t)
-        else:
-            # Generate a type constructor for a generic instance type.
-            a = []
-            for at in t.args:
-                a.append(at.accept(self))
-            return '__Gen({}, [{}])'.format(t.typ.full_name, ', '.join(a))
+        return t.typ.name()
     
     def visit_type_var(self, t):
         # FIX __tv vs. self.__tv?
@@ -250,9 +206,3 @@ class PrettyTypeStrVisitor(TypeStrVisitor):
         v = PrettyPrintVisitor()
         t.node.accept(v)
         return v.output()
-    
-    def visit_any(self, t):
-        if self.is_pretty:
-            return 'dyn'
-        else:
-            return '__Dyn'

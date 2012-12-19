@@ -49,16 +49,13 @@ class A:
     void f(self, A a):
         pass
 [out]
-class A
-  def create() as void
-  end
-
-  def f(a as A) as void
-  end
-  def f*(a as dynamic) as dynamic
-    f({A <= dyn | a})
-  end
-end
+class A:
+    void __init__(A self):
+        pass
+    void f(A self, A a):
+        pass
+    any f*(any self, any a):
+        f({A <= any | self}, {A <= any | a})
 
 [case testMethodWithDynamicTypesInArguments]
 class A:
