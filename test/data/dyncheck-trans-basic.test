@@ -6,7 +6,7 @@
 -- transformation.
 
 -- Note that the test cases use a pretty-printed output syntax that is not
--- valid Alore code.
+-- valid mypy code.
 
 
 -- Empty method transformation, no inheritance
@@ -62,26 +62,22 @@ class A:
     A f(self, any a, any b):
         pass
 [out]
-class A
-  def f(a as dynamic, b as dynamic) as A
-  end
-  def f*(a as dynamic, b as dynamic) as dynamic
-    return f(a, b)
-  end
-end
+class A:
+    A f(A self, any a, any b):
+        pass
+    any f*(any self, any a, any b):
+        return f({A <= any | self}, a, b)
 
 [case testMethodWithDynamicReturnType]
 class A:
     any f(self, A a):
         pass
 [out]
-class A
-  def f(a as A) as dynamic
-  end
-  def f*(a as dynamic) as dynamic
-    return f({A <= dyn | a})
-  end
-end
+class A:
+    any f(A self, A a):
+        pass
+    any f*(any self, any a):
+        return f({A <= any | self}, {A <= any | a})
 
 
 -- Empty methods with inheritance
