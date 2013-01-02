@@ -82,26 +82,28 @@ class TypeTransformer:
                 (FuncDef)tdef.info.methods['__init__'])
 
         tdef.defs = Block(defs)
+
+        dyn_wrapper = self.make_type_object_wrapper(tdef)
         
         if not tdef.is_generic():
-            return [tdef]
+            return [tdef, dyn_wrapper]
         else:
-            return [tdef, self.generic_class_wrapper(tdef)]
+            return [tdef, dyn_wrapper, self.generic_class_wrapper(tdef)]
     
     Node[] make_init_wrapper(self, TypeDef tdef):
-        """Make and return an implicit __init__ if class needs it;
-        otherwise, return an empty array. We include an implicit
+        """Make and return an implicit __init__ if class needs it.
+        
+        Otherwise, return an empty list. We include an implicit
         __init__ if the class is generic or if it extends a generic class
         and if it does not define __init__.
         
         The __init__ of a generic class requires one or more extra type
-        variable
-        arguments. The inherited __init__ may not accept these.
+        variable arguments. The inherited __init__ may not accept these.
 
         For example, assume these definitions:
         
         . class A<T>: pass
-        . class B(A<Int>): pass
+        . class B(A<int>): pass
         
         The constructor for B will be (equivalent to)
         
@@ -187,7 +189,7 @@ class TypeTransformer:
         
         selftype = self_type(info)    
         
-        # FIX intersection types / overloading
+        # FIX overloading
         # FIX default args / varargs
         
         # Map self type to the superclass context.
@@ -322,7 +324,7 @@ class TypeTransformer:
     
     TypeInfo find_generic_base_class(self, TypeInfo info):
         base = info.base
-        while base is not None:
+        while base:
             if base.type_vars != []:
                 return base
             base = base.base
@@ -457,3 +459,24 @@ class TypeTransformer:
         
         # Build the rvalue (initializer) expression
         return TypeExpr(tvar)
+
+    FuncDef make_type_object_wrapper(self, TypeDef tdef):
+        """Construct dynamically typed wrapper function for a class.
+
+        It simple calls the type object and returns the result.
+        """
+        
+        # TODO arguments
+        # TODO overloads
+        
+        init = tdef.info.get_method('__init__')
+        
+        n = NameExpr(tdef.name) # TODO full name
+        call = CallExpr(n, [], [])
+        ret = ReturnStmt(call)
+        
+        fdef = FuncDef(tdef.name + self.tf.dynamic_suffix(),
+                       [], [], [], Block([ret]))
+        sig = Callable([], [], [], Any(), False)
+        fdef.typ = Annotation(sig)
+        return fdef

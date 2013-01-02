@@ -13,14 +13,18 @@
 -- -------------------------------------------
 
 
-[case testIdentityTransformation]
+[case testEmptyClass]
 class A: pass
 class B: pass
 [out]
 class A:
     pass
+any A*():
+    return A()
 class B:
     pass
+any B*():
+    return B()
 
 [case testSimpleMethod]
 class A:
@@ -37,6 +41,8 @@ class A:
         pass
     any f*(any self):
         return {A self}.f()
+any A*():
+    return A()
 
 [case testMethodWithArguments]
 class A:
@@ -53,6 +59,8 @@ class A:
         pass
     any f*(any self, any a):
         {A self}.f({A a})
+any A*():
+    return A()
 
 [case testMethodWithDynamicTypesInArguments]
 class A:
@@ -64,6 +72,8 @@ class A:
         pass
     any f*(any self, any a, any b):
         return {A self}.f(a, b)
+any A*():
+    return A()
 
 [case testMethodWithDynamicReturnType]
 class A:
@@ -75,6 +85,8 @@ class A:
         pass
     any f*(any self, any a):
         return {A self}.f({A a})
+any A*():
+    return A()
 
 
 -- Empty methods with inheritance
