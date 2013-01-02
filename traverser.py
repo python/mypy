@@ -1,6 +1,6 @@
 from visitor import NodeVisitor
 from nodes import (
-    Block, MypyFile, VarDef, FuncItem
+    Block, MypyFile, VarDef, FuncItem, CallExpr
 )
 
 
@@ -132,14 +132,9 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     def visit_member_expr(self, o):
         o.expr.accept(self)
     
-    def visit_call_expr(self, o):
+    T visit_call_expr(self, CallExpr o):
         for a in o.args:
             a.accept(self)
-        for n, e in o.keyword_args:
-            n.accept(self)
-            e.accept(self)
-        if o.dict_var_arg is not None:
-            o.dict_var_arg.accept(self)
         o.callee.accept(self)
     
     def visit_op_expr(self, o):
