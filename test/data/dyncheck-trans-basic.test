@@ -748,13 +748,12 @@ void f():
     a = a
     d = a
 [out]
-def f() as void
-  var a as Int
-  var d = {dyn <= std::Int | a} as dynamic
-  var aa = a as Int
-  a = a
-  d = {dyn <= std::Int | a}
-end
+void f():
+    int a
+    any d = {any <= int a}
+    int aa = a
+    a = a
+    d = {any <= int a}
 
 [case testAssignmentToMemberUsingDot]
 A a
@@ -815,25 +814,25 @@ class A
 ...
 
 
--- nil
--- ---
+-- None
+-- ----
 
 
-[case testInitializationToNil]
+[case testInitializationToNone]
 object a = None
 any d = None
 [out]
-var a = nil as Object
-var d = nil as dynamic
+object a = None
+any d = None
 
-[case testNilFunctionArgument]
+[case testNoneAsFunctionArgument]
 void f(A a):
     pass
 f(None)
 class A: pass
 [out]
 ...
-f(nil)
+f(None)
 ...
 
 
@@ -874,9 +873,9 @@ i = i
 class A: pass
 [out]
 ...
-var a as A
-o = {std::Object <= std::Int | i}
-o = {std::Object <= std::Float | f}
+A a
+o = {object <= int i}
+o = {object <= float f}
 o = a
 i = i
 ...
