@@ -36,6 +36,22 @@ Callable replace_ret_type(Callable t, Typ ret_type):
                     t.line, None)
 
 
+Callable replace_self_type(Callable t, Typ self_type):
+    """Return a copy of a callable type with a different self argument type.
+
+    Assume that the callable is the signature of a method.
+    """
+    return Callable([self_type] + t.arg_types[1:],
+                    t.arg_kinds,
+                    t.arg_names,
+                    t.ret_type,
+                    t.is_type_obj(),
+                    t.name,
+                    t.variables,
+                    t.bound_vars,
+                    t.line, None)
+
+
 Callable dynamic_sig(Callable sig):
     """Translate callable type to type erased (dynamically-typed) callable.
 
@@ -122,9 +138,16 @@ bool is_simple_override(FuncDef fdef, TypeInfo info):
     # type variables between types; in the future this restriction can be
     # lifted.
     if info.base is None or info.base.type_vars != []:
+        print('no')
         return False
     orig = info.base.get_method(fdef.name())
-    return is_same_type(function_type(fdef), function_type(orig))
+    # Ignore the first argument (self) when determining type sameness.
+    # TODO overloads
+    newtype = (Callable)function_type(fdef)
+    newtype = replace_self_type(newtype, Any())
+    origtype = (Callable)function_type(orig)
+    origtype = replace_self_type(origtype, Any())
+    return is_same_type(newtype, origtype)
 
 
 str tvar_slot_name(int n, any is_alt=False):

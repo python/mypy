@@ -221,18 +221,12 @@ class B(A):
     B f(self, A a):
         return None
 [out]
-class A
-  def f(a as A) as B
-  end
-  def f*(a as dynamic) as dynamic
-    return f({A <= dyn | a})
-  end
-end
-class B is A
-  def f(a as A) as B
-    return nil
-  end
-end
+...
+class B(__main__.A):
+    B f(B self, A a):
+        return None
+any B*():
+...
 
 [case testOverridingDynamicWithDynamic]
 class A:
