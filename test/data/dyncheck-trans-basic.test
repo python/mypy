@@ -461,10 +461,9 @@ class A:
         return b
 class B(A): pass
 [out]
-class A
-  def f(b as B) as A
-    return b
-  end
+class A:
+    A f(A self, B b):
+        return b
 ...
 
 
@@ -542,10 +541,9 @@ class A:
     void f(self, any a):
         self.f(self)
 [out]
-class A
-  def f(a as dynamic)
-    self.f(self)
-  end
+class A:
+    void f(A self, any a):
+        self.f(self)
 ...
 
 
@@ -837,24 +835,6 @@ class A: pass
 ...
 f(nil)
 ...
-
-
--- Private members
--- ---------------
-
-
-[case testPrivateMemberVariable]
-class A:
-    A a
-    void __init__(self, any d):
-        self.a = d
-[out]
-class A
-  private var a as A
-  def create(d as dynamic)
-    self.a = {A <= dyn | d}
-  end
-end
 
 
 -- Displaying debugging information
