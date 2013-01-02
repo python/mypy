@@ -25,10 +25,10 @@ from erasetype import erase_generic_types
 
 
 class FuncTransformer:
-    """Class for transforming methods for runtime type checking.
+    """Transform methods for runtime type checking.
     
     This is used by DyncheckTransformVisitor and TypeTransformer is logically
-    aggregated within these classes.
+    forms a single unit with these classes.
     """
     # Used for common transformation operations.
     transform.DyncheckTransformVisitor tf
@@ -37,7 +37,10 @@ class FuncTransformer:
         self.tf = tf
     
     FuncDef[] transform_method(self, FuncDef fdef):
-        """Transform a method. The result is one or more methods."""
+        """Transform a method.
+
+        The result is one or more methods.
+        """
         # Transform the body of the method.
         self.tf.transform_function_body(fdef)
         
@@ -123,7 +126,7 @@ class FuncTransformer:
         return self.method_wrapper((FuncDef)orig_fdef, fdef, False, False)
     
     FuncDef dynamic_method_wrapper(self, FuncDef fdef):
-        """Construct a dynamically-typed method wrapper."""
+        """Construct a dynamically typed method wrapper."""
         return self.method_wrapper(fdef, fdef, True, False)
     
     FuncDef[] generic_method_wrappers(self, FuncDef fdef):
@@ -132,7 +135,7 @@ class FuncTransformer:
                 self.generic_dynamic_method_wrapper(fdef)]
     
     FuncDef generic_static_method_wrapper(self, FuncDef fdef):
-        """Construct statically-typed wrapper class method."""
+        """Construct statically typed wrapper class method."""
         return self.method_wrapper(fdef, fdef, False, True)
     
     FuncDef generic_dynamic_method_wrapper(self, FuncDef fdef):
@@ -220,7 +223,7 @@ class FuncTransformer:
     Callable get_call_sig(self, FuncDef act_as_func_def,
                           TypeInfo current_class, bool is_dynamic,
                           bool is_wrapper_class, bool is_override):
-        """Return the source signature signature in a wrapped call.
+        """Return the source signature in a wrapped call.
         
         It has type variables replaced with 'any', but as an
         exception, type variables are intact in the return type in
@@ -276,8 +279,7 @@ class FuncTransformer:
         The body contains only a call to the wrapped method and a
         return statement (if the call returns a value). Arguments are coerced
         to the target signature.
-        """
-        
+        """        
         args = self.call_args(fdef, target_ann, cur_ann, is_dynamic,
                               is_wrapper_class, bound_sig)
         selfarg = args[0]
@@ -294,7 +296,7 @@ class FuncTransformer:
                              args,
                              [nodes.ARG_POS] * len(args),
                              <str> [None] * len(args))
-        if bound_sig is not None:
+        if bound_sig:
             call = self.tf.coerce(call, bound_sig.ret_type,
                                   target_ann.ret_type, self.tf.type_context(),
                                   is_wrapper_class)
