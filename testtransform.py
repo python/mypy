@@ -14,9 +14,8 @@ from pprinter import PrettyPrintVisitor
 from errors import CompileError
 
 
-# The std module stub used during transformation in test cases (note that
-# evaluation uses the full std module).
-TRANSFORM_STD_MODULE = 'fixtures/transform.py'
+# The builtins stub used during transformation in test cases.
+TRANSFORM_BUILTINS = 'fixtures/transform.py'
 
 
 class DyncheckTransformSuite(Suite):
@@ -29,16 +28,15 @@ class DyncheckTransformSuite(Suite):
         for f in self.test_case_files:
             c += parse_test_cases(
                 os.path.join(test_data_prefix, f),
-                std_wrapper(test_transform,
-                            os.path.join(test_data_prefix,
-                                         TRANSFORM_STD_MODULE)),
+                builtins_wrapper(test_transform,
+                                 os.path.join(test_data_prefix,
+                                              TRANSFORM_BUILTINS)),
                 test_temp_dir, True)
         return c
 
 
 def test_transform(testcase):
     """Perform a runtime checking transformation test case."""
-    any a
     expected = remove_comment_lines(testcase.output)
     try:
         # Construct input as a single single.
@@ -53,7 +51,7 @@ def test_transform(testcase):
         first = True
         # Transform each file separately.
         for t in trees:
-            # Skip the std module and files with '-skip.' in the path.
+            # Skip the builtins module and files with '_skip.' in the path.
             if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
                 if not first:
                     # Display path for files other than the first.
@@ -92,7 +90,7 @@ def remove_comment_lines(a):
     return r
 
 
-def std_wrapper(func, path):
+def builtins_wrapper(func, path):
     """Decorate a function that implements a data-driven test case to copy an
     alternative builtins module implementation in place before performing the
     test case. Clean up after executing the test case.

@@ -7,7 +7,7 @@ from testhelpers import assert_string_arrays_equal_wildcards
 from testdata import parse_test_cases
 from testoutput import remove_prefix
 from testtransform import (
-    remove_comment_lines, std_wrapper, TRANSFORM_STD_MODULE
+    remove_comment_lines, builtins_wrapper, TRANSFORM_BUILTINS
 )
 from transform import DyncheckTransformVisitor
 from opgen import generate_runtime_support
@@ -22,9 +22,9 @@ class DyncheckOpGenSuite(Suite):
         for f in self.test_case_files:
             c += parse_test_cases(
                 os.path.join(test_data_prefix, f),
-                std_wrapper(test_op_gen,
-                            os.path.join(test_data_prefix,
-                                         TRANSFORM_STD_MODULE)),
+                builtins_wrapper(test_op_gen,
+                                 os.path.join(test_data_prefix,
+                                              TRANSFORM_BUILTINS)),
                 test_temp_dir, True)
         return c
 
@@ -42,7 +42,7 @@ def test_op_gen(testcase):
         first = True
         # Transform each file separately.
         for t in trees:
-            # Skip the std module and files with '-skip.' in the path.
+            # Skip the builtins module and files with '_skip.' in the path.
             if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
                 if not first:
                     # Display path for files other than the first.
