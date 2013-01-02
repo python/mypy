@@ -1,3 +1,16 @@
+"""Transform program to include explicit coercions and wrappers.
+
+The transform performs these main changes:
+
+ - add explicit coercions to/from any (or more generally, between different
+   levels of typing precision)
+ - add wrapper methods and functions for calling statically typed functions
+   in dynamically typed code
+ - add wrapper methods for overrides with a different signature
+ - add generic wrapper classes for coercions between generic types (e.g.
+   from any[] to str[])
+"""
+
 from nodes import (
     Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Annotation, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
