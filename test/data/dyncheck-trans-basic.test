@@ -126,23 +126,20 @@ class B(A):
     int f(self, A a):
         pass
 [out]
-class A
-  def f(a as dynamic) as dynamic
-  end
-  def f*(a as dynamic) as dynamic
-    return f(a)
-  end
-end
-class B is A
-  def f`B(a as A) as Int
-  end
-  def f(a as dynamic) as dynamic
-    return {dyn <= std::Int | f`B({A <= dyn | a})}
-  end
-  def f*(a as dynamic) as dynamic
-    return {dyn <= std::Int | f`B({A <= dyn | a})}
-  end
-end
+class A:
+    any f(A self, any a):
+        pass
+    any f*(any self, any a):
+        return {A self}.f(a)
+...
+class B(__main__.A):
+    int f`B(B self, A a):
+        pass
+    any f(A self, any a):
+        return {any <= int {B self}.f`B({A a})}
+    any f*(any self, any a):
+        return {any <= int {B self}.f`B({A a})}
+...
 
 [case testNewMethodInSubclass]
 class A:
@@ -152,20 +149,18 @@ class B(A):
     A g(self, B b):
         pass
 [out]
-class A
-  def f(a as A) as B
-  end
-  def f*(a as dynamic) as dynamic
-    return f({A <= dyn | a})
-  end
-end
-class B is A
-  def g(b as B) as A
-  end
-  def g*(b as dynamic) as dynamic
-    return g({B <= dyn | b})
-  end
-end
+class A:
+    B f(A self, A a):
+        pass
+    any f*(any self, any a):
+        return {A self}.f({A a})
+...
+class B(__main__.A):
+    A g(B self, B b):
+        pass
+    any g*(any self, any b):
+        return {B self}.g({B b})
+...
 
 [case testOverridingMethodInGrandparent]
 class A:
@@ -177,18 +172,17 @@ class C(B):
         pass
 [out]
 ...
-class B is A
-end
-class C is B
-  def f`C(a as dynamic) as dynamic
-  end
-  def f(a as Int) as B
-    return {B <= dyn | f`C({dyn <= std::Int | a})}
-  end
-  def f*(a as dynamic) as dynamic
-    return f`C(a)
-  end
-end
+class B(__main__.A):
+    pass
+...
+class C(__main__.B):
+    any f`C(C self, any a):
+        pass
+    B f(A self, int a):
+        return {B {C self}.f`C({any <= int a})}
+    any f*(any self, any a):
+        return {C self}.f`C(a)
+...
 
 [case testOverridingMethodTwice]
 class A:
@@ -202,26 +196,22 @@ class C(B):
         pass
 [out]
 ...
-class B is A
-  def f`B(a as dynamic) as Float
-  end
-  def f(a as Int) as Float
-    return f`B({dyn <= std::Int | a})
-  end
-  def f*(a as dynamic) as dynamic
-    return {dyn <= std::Float | f`B(a)}
-  end
-end
-class C is B
-  def f`C(a as Int) as dynamic
-  end
-  def f`B(a as dynamic) as Float
-    return {std::Float <= dyn | f`C({std::Int <= dyn | a})}
-  end
-  def f*(a as dynamic) as dynamic
-    return f`C({std::Int <= dyn | a})
-  end
-end
+class B(__main__.A):
+    float f`B(B self, any a):
+        pass
+    float f(A self, int a):
+        return {B self}.f`B({any <= int a})
+    any f*(any self, any a):
+        return {any <= float {B self}.f`B(a)}
+...
+class C(__main__.B):
+    any f`C(C self, int a):
+        pass
+    float f`B(B self, any a):
+        return {float {C self}.f`C({int a})}
+    any f*(any self, any a):
+        return {C self}.f`C({int a})
+...
 
 [case testOverridingWithSameSig]
 class A:
