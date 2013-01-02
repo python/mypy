@@ -630,10 +630,9 @@ class A:
         return (B)a
 class B(A): pass
 [out]
-class A
-  def f(a as A) as B
-    return a as B
-  end
+class A:
+    B f(A self, A a):
+        return (B)a
 ...
 
 [case testDynamicCast]
@@ -641,12 +640,15 @@ class A:
     float f(self, int a):
         return (any)a
 [out]
-class A
-  def f(a as Int) as Float
-    return {std::Float <= dyn | {dyn <= std::Int | a} as dynamic}
-  end
+class A:
+    float f(A self, int a):
+        return {float (any){any <= int a}}
 ...
---    return {B <= dyn | {dyn <= A | a} as dynamic}
+
+[case testNestedCasts]
+(int)(any)1
+[out]
+(int)(any){any <= int 1}
 
 
 -- Global expressions
