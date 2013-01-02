@@ -663,14 +663,14 @@ class A:
 A().f(1)
 [out]
 ...
-A().f({dyn <= std::Int | 1})
+A().f({any <= int 1})
 
 
 -- Void type
 -- ---------
 
 
-[case testImplicitVoid]
+[case testVoidReturn]
 class A:
     void f(self, any b):
         pass
@@ -678,23 +678,22 @@ class B(A):
     void f(self, B b):
         pass
 [out]
-class A
-  def f(b as dynamic)
-  end
-  def f*(b as dynamic) as dynamic
-    f(b)
-  end
-end
-class B is A
-  def f`B(b as B)
-  end
-  def f(b as dynamic)
-    f`B({B <= dyn | b})
-  end
-  def f*(b as dynamic) as dynamic
-    f`B({B <= dyn | b})
-  end
-end
+class A:
+    void f(A self, any b):
+        pass
+    any f*(any self, any b):
+        {A self}.f(b)
+any A*():
+    return A()
+class B(__main__.A):
+    void f`B(B self, B b):
+        pass
+    void f(A self, any b):
+        {B self}.f`B({B b})
+    any f*(any self, any b):
+        {B self}.f`B({B b})
+any B*():
+    return B()
 
 
 -- Function definition and call
@@ -703,15 +702,14 @@ end
 
 [case testFunctionDefinitionAndCall]
 int f(int a):
-    return (any)(1)
+    return (any)1
 any d
-d = f((any)(1))
+d = f((any)1)
 [out]
-def f(a as Int) as Int
-  return {std::Int <= dyn | {dyn <= std::Int | 1} as dynamic}
-end
-var d as dynamic
-d = {dyn <= std::Int | f({std::Int <= dyn | {dyn <= std::Int | 1} as dynamic})}
+int f(int a):
+    return {int (any){any <= int 1}}
+any d
+d = {any <= int f({int (any){any <= int 1}})}
 
 
 -- Assignment and initialization
@@ -725,11 +723,11 @@ a = a
 a = d
 d = a
 [out]
-var a as Int
-var d as dynamic
+int a
+any d
 a = a
-a = {std::Int <= dyn | d}
-d = {dyn <= std::Int | a}
+a = {int d}
+d = {any <= int a}
 
 [case testGlobalInitialization]
 int a
