@@ -99,8 +99,13 @@ def builtins_wrapper(func, path):
 
 
 def perform_test(func, path, testcase):
-    builtins = os.path.join(test_temp_dir, 'builtins.py')
-    shutil.copyfile(path, builtins)
+    for path, _ in testcase.files:
+        if os.path.basename(path) == 'builtins.py':
+            break
+    else:
+        # Use default builtins.
+        builtins = os.path.join(test_temp_dir, 'builtins.py')
+        shutil.copyfile(path, builtins)
     func(testcase)
 
 
