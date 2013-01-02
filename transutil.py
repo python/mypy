@@ -37,8 +37,9 @@ Callable replace_ret_type(Callable t, Typ ret_type):
 
 
 Callable dynamic_sig(Callable sig):
-    """Translate callable type to type erased (dynamically-typed) callable type
-    with the same number of arguments.
+    """Translate callable type to type erased (dynamically-typed) callable.
+
+    Preserve the number and kinds of arguments.
     """
     return Callable(<Typ> [Any()] * len(sig.arg_types),
                     sig.arg_kinds,
