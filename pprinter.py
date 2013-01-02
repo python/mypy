@@ -71,6 +71,9 @@ class PrettyPrintVisitor(NodeVisitor):
             self.typ(vdef.items[0][1])
             self.string(' ')
             self.string(vdef.items[0][0].name())
+            if vdef.init:
+                self.string(' = ')
+                self.node(vdef.init)
             self.string('\n')
     
     #

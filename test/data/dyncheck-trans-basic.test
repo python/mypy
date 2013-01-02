@@ -735,10 +735,10 @@ any d
 any dd = a
 int aa = a
 [out]
-var a as Int
-var d as dynamic
-var dd = {dyn <= std::Int | a} as dynamic
-var aa = a as Int
+int a
+any d
+any dd = {any <= int a}
+int aa = a
 
 [case testLocalVariableAssignmentAndInit]
 void f():
