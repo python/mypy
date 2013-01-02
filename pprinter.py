@@ -5,12 +5,13 @@ from nodes import (
 from mtypes import Void, TypeVisitor, Callable, Instance, Typ
 from maptypevar import num_slots
 from transutil import tvar_arg_name
+import coerce
 
 
 class PrettyPrintVisitor(NodeVisitor):
-    """Class for converting transformed parse trees into formatted source code.
+    """Convert transformed parse trees into formatted source code.
 
-    Use default formatting (i.e. omit original formatting).
+    Use automatic formatting (i.e. omit original formatting).
     """
 
     void __init__(self):
@@ -124,9 +125,11 @@ class PrettyPrintVisitor(NodeVisitor):
     void visit_coerce_expr(self, CoerceExpr o):
         self.string('{')
         self.compact_type(o.target_type)
-        self.string(' <= ')
-        self.compact_type(o.source_type)
-        self.string(' | ')
+        if (coerce.is_special_primitive(o.source_type) or
+                coerce.is_special_primitive(o.target_type)):
+            self.string(' <= ')
+            self.compact_type(o.source_type)
+        self.string(' ')
         self.node(o.expr)
         self.string('}')
     

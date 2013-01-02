@@ -36,7 +36,7 @@ class A:
     int f(A self):
         pass
     any f*(any self):
-        return {A <= any | self}.f()
+        return {A self}.f()
 
 [case testMethodWithArguments]
 class A:
@@ -52,7 +52,7 @@ class A:
     void f(A self, A a):
         pass
     any f*(any self, any a):
-        {A <= any | self}.f({A <= any | a})
+        {A self}.f({A a})
 
 [case testMethodWithDynamicTypesInArguments]
 class A:
@@ -63,7 +63,7 @@ class A:
     A f(A self, any a, any b):
         pass
     any f*(any self, any a, any b):
-        return {A <= any | self}.f(a, b)
+        return {A self}.f(a, b)
 
 [case testMethodWithDynamicReturnType]
 class A:
@@ -74,7 +74,7 @@ class A:
     any f(A self, A a):
         pass
     any f*(any self, any a):
-        return {A <= any | self}.f({A <= any | a})
+        return {A self}.f({A a})
 
 
 -- Empty methods with inheritance
