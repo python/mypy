@@ -237,11 +237,11 @@ class B(A):
         return None
 [out]
 ...
-class B is A
-  def f(a as dynamic) as dynamic
-    return nil
-  end
-end
+class B(__main__.A):
+    any f(B self, any a):
+        return None
+any B*():
+...
 
 [case testOverridingFirstWithDynamicAndThenWithSameSig]
 class A:
@@ -255,22 +255,19 @@ class C(B):
         self.f(a)
 [out]
 ...
-class B is A
-  def f`B(a as dynamic)
-    self.f`B(a)
-  end
-  def f(a as Int)
-    f`B({dyn <= std::Int | a})
-  end
-  def f*(a as dynamic) as dynamic
-    f`B(a)
-  end
-end
-class C is B
-  def f`B(a as dynamic)
-    self.f`B(a)
-  end
-end
+class B(__main__.A):
+    void f`B(B self, any a):
+        self.f`B(a)
+    void f(A self, int a):
+        {B self}.f`B({any <= int a})
+    any f*(any self, any a):
+        {B self}.f`B(a)
+...
+class C(__main__.B):
+    void f`B(C self, any a):
+        self.f`B(a)
+any C*():
+...
 
 
 -- Method calls
@@ -285,10 +282,9 @@ class B:
     A g(self):
         pass
 [out]
-class A
-  def f(b as B) as A
-    return b.g()
-  end
+class A:
+    A f(A self, B b):
+        return b.g()
 ...
 
 [case testCallDynamicallyTypedMethod]
@@ -299,10 +295,9 @@ class B:
     A g(self):
         pass
 [out]
-class A
-  def f(b as dynamic) as dynamic
-    return b.g*()
-  end
+class A:
+    any f(A self, any b):
+        return b.g*()
 ...
 
 [case testStaticCallWithArguments]
@@ -313,10 +308,9 @@ class B:
     A g(self, B b, any d):
         pass
 [out]
-class A
-  def f(b as B) as A
-    return b.g(b, {dyn <= std::Int | 1})
-  end
+class A:
+    A f(A self, B b):
+        return b.g(b, {any <= int 1})
 ...
 
 [case testDynamicCallWithArguments]
@@ -324,10 +318,9 @@ class A:
     A f(self, any d, int i):
         return d.g(d, i)
 [out]
-class A
-  def f(d as dynamic, i as Int) as A
-    return {A <= dyn | d.g*(d, {dyn <= std::Int | i})}
-  end
+class A:
+    A f(A self, any d, int i):
+        return {A d.g*(d, {any <= int i})}
 ...
 
 [case testMethodCallWithInheritance]
@@ -340,14 +333,12 @@ class B(A):
     B g(self, A a):
         pass
 [out]
-class A
-  def f1(b as B) as A
-    return b.f1(b)
-  end
+class A:
+    A f1(A self, B b):
+        return b.f1(b)
 ...
-  def f2(b as B, a as A) as B
-    return b.g(a)
-  end
+    B f2(A self, B b, A a):
+        return b.g(a)
 ...
 
 [case testMethodCallWithOverride]
@@ -360,14 +351,12 @@ class B(A):
     any f(self, B b):
         pass
 [out]
-class A
-  def f(b as B) as A
-    return {A <= dyn | b.f`B(b)}
-  end
+class A:
+    A f(A self, B b):
+        return {A b.f`B(b)}
 ...
-  def f2(a as A, b as B) as A
-    return a.f(b)
-  end
+    A f2(A self, A a, B b):
+        return a.f(b)
 ...
 
 [case testNestedMethodCalls]
@@ -377,23 +366,21 @@ class A:
     int g(self, any a):
         pass
 [out]
-class A
-  def f(a as A) as dynamic
-    return {dyn <= std::Int | a.g({dyn <= std::Int | a.g({dyn <= std::Int | 1})})}
-  end
+class A:
+    any f(A self, A a):
+        return {any <= int a.g({any <= int a.g({any <= int 1})})}
 ...
 
-[case testMethodCallWithDirectReference]
+[case testMethodCallViaSelf]
 class A:
     any f(self, int a):
         return self.g(a)
     int g(self, any a):
         pass
 [out]
-class A
-  def f(a as Int) as dynamic
-    return {dyn <= std::Int | g({dyn <= std::Int | a})}
-  end
+class A:
+    any f(A self, int a):
+        return {any <= int self.g({any <= int a})}
 ...
 
 
@@ -409,14 +396,11 @@ class B:
     A g(self):
         pass
 [out]
-class A
-  def f(b as B) as dynamic
-    return b.g()
-  end
-  def f*(b as dynamic) as dynamic
-    return f({B <= dyn | b})
-  end
-end
+class A:
+    any f(A self, B b):
+        return b.g()
+    any f*(any self, any b):
+        return {A self}.f({B b})
 ...
 
 [case testReturnStatement2]
@@ -427,16 +411,12 @@ class B:
     any g(self):
         pass
 [out]
-class A
-  def f(b as B) as A
-    return {A <= dyn | b.g()}
-  end
-  def f*(b as dynamic) as dynamic
-    return f({B <= dyn | b})
-  end
-end
+class A:
+    A f(A self, B b):
+        return {A b.g()}
+    any f*(any self, any b):
+        return {A self}.f({B b})
 ...
-
 
 [case testIfStatement]
 bool b
@@ -457,7 +437,6 @@ elif {std::Boolean <= dyn | d}
 else
   d = {dyn <= std::Int | 3}
 end
-
 
 [case testWhileStatement]
 bool b
