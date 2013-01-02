@@ -430,13 +430,12 @@ else:
 [builtins fixtures/ops.py]
 [out]
 ...
-if b
-  d = {dyn <= std::Int | 1}
-elif {std::Boolean <= dyn | d}
-  d = {dyn <= std::Int | 2}
-else
-  d = {dyn <= std::Int | 3}
-end
+if b:
+    d = {any <= int 1}
+elif d:
+    d = {any <= int 2}
+else:
+    d = {any <= int 3}
 
 [case testWhileStatement]
 bool b

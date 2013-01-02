@@ -157,19 +157,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
         s.rvalue = self.coerce2(s.rvalue, self.get_type(s.lvalues[0]),
                                 self.get_type(s.rvalue), self.type_context())
     
-    void visit_if_stmt(self, IfStmt s):
-        super().visit_if_stmt(s)
-        for i in range(len(s.expr)):
-            s.expr[i] = self.coerce(s.expr[i],
-                                    self.named_type('builtins.bool'),
-                                    self.get_type(s.expr[i]),
-                                    self.type_context())
-    
-    void visit_while_stmt(self, WhileStmt s):
-        super().visit_while_stmt(s)
-        s.expr = self.coerce(s.expr, self.named_type('builtins.bool'),
-                             self.get_type(s.expr), self.type_context())
-    
     #
     # Transform expressions
     #

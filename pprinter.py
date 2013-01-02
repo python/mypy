@@ -64,13 +64,11 @@ class PrettyPrintVisitor(NodeVisitor):
             if i < len(fdef.args) - 1:
                 self.string(', ')
         self.string(')')
-        self.string(':\n')
         fdef.body.accept(self)
-        self.dedent()
     
     void visit_var_def(self, VarDef vdef):
         if vdef.items[0][0].name() != '__name__':
-            self.string(str(vdef.items[0][1]))
+            self.typ(vdef.items[0][1])
             self.string(' ')
             self.string(vdef.items[0][0].name())
             self.string('\n')
@@ -80,9 +78,10 @@ class PrettyPrintVisitor(NodeVisitor):
     #
 
     def visit_block(self, b):
-        str(':\n')
+        self.string(':\n')
         for s in b.body:
             s.accept(self)
+        self.dedent()
 
     def visit_pass_stmt(self, o):
         self.string('pass\n')
@@ -101,7 +100,19 @@ class PrettyPrintVisitor(NodeVisitor):
         self.node(o.lvalues[0]) # FIX multiple lvalues
         self.string(' = ')
         self.node(o.rvalue)
-        self.string('\n')      
+        self.string('\n')
+
+    def visit_if_stmt(self, o):
+        self.string('if ')
+        self.node(o.expr[0])
+        self.node(o.body[0])
+        for e, b in zip(o.expr[1:], o.body[1:]):
+            self.string('elif ')
+            self.node(e)
+            self.node(b)
+        if o.else_body:
+            self.string('else')
+            self.node(o.else_body)
     
     #
     # Expressions
@@ -126,10 +137,10 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_coerce_expr(self, CoerceExpr o):
         self.string('{')
-        self.compact_type(o.target_type)
+        self.typ(o.target_type)
         if coerce.is_special_primitive(o.source_type):
             self.string(' <= ')
-            self.compact_type(o.source_type)
+            self.typ(o.source_type)
         self.string(' ')
         self.node(o.expr)
         self.string('}')
@@ -138,7 +149,7 @@ class PrettyPrintVisitor(NodeVisitor):
         # Type expressions are only generated during transformation, so we must
         # use automatic formatting.
         self.string('<')
-        self.compact_type(o.typ)
+        self.typ(o.typ)
         self.string('>')
     
     def visit_index_expr(self, o):
@@ -179,15 +190,10 @@ class PrettyPrintVisitor(NodeVisitor):
         return ''
     
     def typ(self, t):
-        """Pretty-print a type using original formatting."""
+        """Pretty-print a type."""
         if t:
             v = TypePrettyPrintVisitor()
             self.string(t.accept(v))
-    
-    void compact_type(self, Typ t):
-        """Pretty-print a type using automatic formatting."""
-        if t:
-            self.string(t.accept(TypePrettyPrintVisitor()))
 
 
 class TypePrettyPrintVisitor(TypeVisitor<str>):
