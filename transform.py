@@ -4,15 +4,13 @@ from nodes import (
     CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
     SymbolTableNode
 )
-from noderepr import MemberExprRepr, NameExprRepr
 from traverser import TraverserVisitor
 from mtypes import Typ, Any, Callable, TypeVarDef, Instance
 from checker import function_type
 from lex import Token
 from transformtype import TypeTransformer
 from transutil import (
-    prepend_arg_type, prepend_arg_repr, is_simple_override, tvar_arg_name,
-    dynamic_suffix, prepend_call_arg_repr
+    prepend_arg_type, is_simple_override, tvar_arg_name, dynamic_suffix
 )
 from coerce import coerce
 from rttypevars import translate_runtime_type_vars_in_context
@@ -128,8 +126,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
             typ.typ = prepend_arg_type((Callable)typ.typ, Any())
         fdef.args = tv + fdef.args
         fdef.init = [None] * ntvars + fdef.init
-        for n in reversed(range(ntvars)):
-            fdef.repr = prepend_arg_repr(fdef.repr, tvar_arg_name(-1 - n))
     
     #
     # Transform statements
@@ -185,7 +181,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # Reference to a dynamically-typed method variant.
             suffix = self.dynamic_suffix()
         e.name += suffix
-        e.repr = MemberExprRepr(Token('.'), Token(e.name))
     
     void visit_name_expr(self, NameExpr e):
         super().visit_name_expr(e)
@@ -195,7 +190,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
             e.name += suffix
             # Update representation to have the correct name.
             prefix = e.repr.components[0].pre
-            e.repr = NameExprRepr([Token(prefix + e.name)])
     
     str get_member_reference_suffix(self, str name, TypeInfo info):
         if info.has_method(name):
@@ -239,10 +233,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
                     if id < 0:
                         b.append((id, t))
                 bound_vars = b
-            
-            if e.repr is not None:
-                for i in range(len(bound_vars)):
-                    e.repr = prepend_call_arg_repr(e.repr, len(e.args) + i)
             
             Node[] args = []
             for i in range(len(bound_vars)):

@@ -3,16 +3,15 @@ from nodes import (
     CallExpr, ReturnStmt, ExpressionStmt, TypeExpr, function_type
 )
 import nodes
-from noderepr import FuncRepr
 from checker import map_type_from_supertype
 from mtypes import Callable, Any, Void, RuntimeTypeVar
 from replacetvars import replace_type_vars
 import transform
 from transutil import (
     is_simple_override, tvar_arg_name, self_expr, dynamic_sig, is_generic,
-    func_repr_with_name, prepend_arg_type, prepend_arg_repr,
-    translate_type_vars_to_bound_vars, translate_function_type_vars_to_dynamic,
-    replace_ret_type, translate_type_vars_to_wrapper_vars,
+    prepend_arg_type, translate_type_vars_to_bound_vars,
+    translate_function_type_vars_to_dynamic, replace_ret_type,
+    translate_type_vars_to_wrapper_vars,
     translate_type_vars_to_wrapped_object_vars
 )
 from erasetype import erase_generic_types
@@ -80,7 +79,6 @@ class FuncTransformer:
     
     FuncDef transform_method_implementation(self, FuncDef fdef, str name):
         """Transform the implementation of a method (i.e. unwrapped)."""
-        repr = func_repr_with_name(fdef, name)
         args = fdef.args
         arg_kinds = fdef.arg_kinds
         
@@ -88,25 +86,24 @@ class FuncTransformer:
         init = fdef.init_expressions()
         
         if fdef.name() == '__init__' and is_generic(fdef):
-            args, arg_kinds, repr, init = self.prepend_constructor_tvar_args(
-                fdef, typ, args, arg_kinds, repr, init)
+            args, arg_kinds, init = self.prepend_constructor_tvar_args(
+                fdef, typ, args, arg_kinds, init)
         
         fdef2 = FuncDef(name, args, arg_kinds, init, fdef.body, typ)
-        fdef2.repr = repr
         fdef2.info = fdef.info
         
         self.tf.prepend_generic_function_tvar_args(fdef2)
         
         return fdef2
     
-    tuple<Var[], int[], FuncRepr, Node[]> \
+    tuple<Var[], int[], Node[]> \
                      prepend_constructor_tvar_args(
                              self, FuncDef fdef, Annotation typ,
-                             Var[] args, int[] arg_kinds, FuncRepr repr,
+                             Var[] args, int[] arg_kinds, 
                              Node[] init):
         """Prepend type variable arguments for __init__ of a generic type.
 
-        Return tuple (new args, new kinds, new repr, new inits).
+        Return tuple (new args, new kinds, new inits).
         """
         Var[] tv = []
         ntvars = len(fdef.info.type_vars)
@@ -116,9 +113,7 @@ class FuncTransformer:
         args = tv + args
         arg_kinds = [nodes.ARG_POS] * ntvars + arg_kinds
         init = <Node> [None] * ntvars + init
-        for n in reversed(list(range(ntvars))): # TODO remove list(...)
-            repr = prepend_arg_repr(repr, tvar_arg_name(n + 1))
-        return (args, arg_kinds, repr, init)
+        return (args, arg_kinds, init)
     
     FuncDef override_method_wrapper(self, FuncDef fdef):
         """Construct a method wrapper for an overridden method."""

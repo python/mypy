@@ -47,51 +47,11 @@ Callable dynamic_sig(Callable sig):
                     sig.is_type_obj())
 
 
-FuncRepr prepend_arg_repr(FuncRepr frepr, str name):
-    """Prepend an argument with the given name to a representation of a function.
-    Or if frepr == None, return None.
-    """
-    if frepr is None:
-        return None
-    ar = frepr.args
-    # We may need to add a comma as well.
-    commas = [Token('')]
-    if len(ar.arg_names) > 0:
-        commas = [Token(', ')] + ar.commas
-    args = FuncArgsRepr(ar.lseparator, ar.rseparator, [Token(name)] + ar.arg_names, commas, [Token('')] + ar.assigns, ar.asterisk)
-    r = frepr
-    return FuncRepr(r.def_tok, r.name, args)
-
-
-FuncRepr func_repr_with_name(FuncDef fdef, str name):
-    """If fdef has a representation, return a copy of the representation with the
-    given name substituted for the original name. Otherwise, return nil.
-    """
-    r = fdef.repr
-    if r is None:
-        return r
-    else:
-        return FuncRepr(r.def_tok, Token(name, r.name.pre), r.args)
-
-
-CallExprRepr prepend_call_arg_repr(CallExprRepr r, int argc):
-    """Prepend an argument to the representation of a call expression with the
-    given number of arguments.
-    """
-    # Actually only add a comma token (if there are any original arguments)
-    # since the representations of the argument expressions are stored with
-    # the relevant expression nodes.
-    Token[] commas = []
-    if argc > 0:
-        commas = [Token(', ')] + r.commas
-    return CallExprRepr(r.lparen, commas, r.star, r.star2,
-                        [[none]] + r.keywords, r.rparen)
-
-
 Typ translate_type_vars_to_wrapper_vars(Typ typ):
-    """Translate any instance type variables in a type into wrapper type variables
-    (i.e. into type variables that refer to values stored in a generic class
-    wrapper).
+    """Translate any instance type variables in a type into wrapper tvars.
+    
+    (Wrapper tvars are type variables that refer to values stored in a generic
+    class wrapper).
     """
     return typ.accept(TranslateTypeVarsToWrapperVarsVisitor())
 
@@ -130,7 +90,7 @@ class TranslateTypeVarsToWrappedObjectVarsVisitor(TypeTranslator):
 
 
 Typ translate_function_type_vars_to_dynamic(Typ typ):
-    """Translate any function type variables in a type into type "dynamic"."""
+    """Translate any function type variables in a type into type 'any'."""
     return typ.accept(TranslateFunctionTypeVarsToDynamicVisitor())
 
 
@@ -144,15 +104,17 @@ class TranslateFunctionTypeVarsToDynamicVisitor(TypeTranslator):
 
 
 bool is_generic(FuncDef fdef):
-    """Is a function a method of a generic type? (Note that this may return False
-    even if the function itself is generic.)
+    """Is a function a method of a generic type?
+
+    (Note that this may return False even if the function itself is generic.)
     """
     return fdef.info is not None and fdef.info.type_vars != []
 
 
 bool is_simple_override(FuncDef fdef, TypeInfo info):
-    """Is the function an override with the same type precision as the original
-    method in the superclass of "info"?
+    """Is function an override with the same type precision as the original?
+    
+    Compare to the original method in the superclass of info.
     """
     # If this is not an override, this can't be a simple override either.
     # Generic inheritance is not currently supported, since we need to map
@@ -182,9 +144,9 @@ str tvar_slot_name(int n, any is_alt=False):
 
 
 str tvar_arg_name(int n, any is_alt=False):
-    """Return the name of the implicit function/constructor argument that contains
-    the runtime value of a type variable. n is 1, 2, ... for instance type
-    variables and -1, -2, ... for function type variables.
+    """Return the name of the implicit function/constructor argument that
+    contains the runtime value of a type variable. n is 1, 2, ... for instance
+    type variables and -1, -2, ... for function type variables.
     """
     if is_alt != BOUND_VAR:
         if n > 0:
@@ -205,7 +167,7 @@ str tvar_arg_name(int n, any is_alt=False):
 
 
 str dynamic_suffix(bool is_pretty):
-    """Return the suffix of the dynamic wrapper of a method, getter or class."""
+    """Return the suffix of the dynamic wrapper of a method or class."""
     if is_pretty:
         return '*'
     else:
