@@ -446,11 +446,9 @@ while b:
 [builtins fixtures/ops.py]
 [out]
 ...
-while b
-  while {std::Boolean <= dyn | d}
-    d = {dyn <= std::Int | 1}
-  end
-end
+while b:
+    while d:
+        d = {any <= int 1}
 
 
 -- Cast insertion (or non-insertion) in specific cases

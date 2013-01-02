@@ -113,6 +113,14 @@ class PrettyPrintVisitor(NodeVisitor):
         if o.else_body:
             self.string('else')
             self.node(o.else_body)
+
+    def visit_while_stmt(self, o):
+        self.string('while ')
+        self.node(o.expr)
+        self.node(o.body)
+        if o.else_body:
+            self.string('else')
+            self.node(o.else_body)
     
     #
     # Expressions
