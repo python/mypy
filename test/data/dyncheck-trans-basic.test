@@ -40,7 +40,7 @@ class A:
     int f(A self):
         pass
     any f*(any self):
-        return {A self}.f()
+        return {any <= int {A self}.f()}
 any A*():
     return A()
 
@@ -101,23 +101,22 @@ class B(A):
     any f(self, any a):
         pass
 [out]
-class A
-  def f(a as Float) as Int
-  end
-  def f*(a as dynamic) as dynamic
-    return {dyn <= std::Int | f({std::Float <= dyn | a})}
-  end
-end
-class B is A
-  def f`B(a as dynamic) as dynamic
-  end
-  def f(a as Float) as Int
-    return {std::Int <= dyn | f`B({dyn <= std::Float | a})}
-  end
-  def f*(a as dynamic) as dynamic
-    return f`B(a)
-  end
-end
+class A:
+    int f(A self, float a):
+        pass
+    any f*(any self, any a):
+        return {any <= int {A self}.f({float a})}
+any A*():
+    return A()
+class B(__main__.A):
+    any f`B(B self, any a):
+        pass
+    int f(A self, float a):
+        return {int {B self}.f`B({any <= float a})}
+    any f*(any self, any a):
+        return {B self}.f`B(a)
+any B*():
+    return B()
 
 [case testOverridingDynamicWithStatic]
 class A:
@@ -490,7 +489,6 @@ while b
     d = {dyn <= std::Int | 1}
   end
 end
-
 
 
 -- Cast insertion (or non-insertion) in specific cases

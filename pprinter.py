@@ -126,8 +126,7 @@ class PrettyPrintVisitor(NodeVisitor):
     void visit_coerce_expr(self, CoerceExpr o):
         self.string('{')
         self.compact_type(o.target_type)
-        if (coerce.is_special_primitive(o.source_type) or
-                coerce.is_special_primitive(o.target_type)):
+        if coerce.is_special_primitive(o.source_type):
             self.string(' <= ')
             self.compact_type(o.source_type)
         self.string(' ')
