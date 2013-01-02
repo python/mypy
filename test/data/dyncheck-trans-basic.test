@@ -30,16 +30,13 @@ class A:
     int f(self):
         pass
 [out]
-class A
-  def create() as void
-  end
-
-  def f() as Int
-  end
-  def f*() as dynamic
-    return {dyn <= std::Int | f()}
-  end
-end
+class A:
+    void __init__(A self):
+        pass
+    int f(A self):
+        pass
+    any f*(any self):
+        return {A <= any | self}.f()
 
 [case testMethodWithArguments]
 class A:
@@ -55,7 +52,7 @@ class A:
     void f(A self, A a):
         pass
     any f*(any self, any a):
-        f({A <= any | self}, {A <= any | a})
+        {A <= any | self}.f({A <= any | a})
 
 [case testMethodWithDynamicTypesInArguments]
 class A:
@@ -66,7 +63,7 @@ class A:
     A f(A self, any a, any b):
         pass
     any f*(any self, any a, any b):
-        return f({A <= any | self}, a, b)
+        return {A <= any | self}.f(a, b)
 
 [case testMethodWithDynamicReturnType]
 class A:
@@ -77,7 +74,7 @@ class A:
     any f(A self, A a):
         pass
     any f*(any self, any a):
-        return f({A <= any | self}, {A <= any | a})
+        return {A <= any | self}.f({A <= any | a})
 
 
 -- Empty methods with inheritance

@@ -274,17 +274,22 @@ class FuncTransformer:
         """Return the body of wrapper method.
 
         The body contains only a call to the wrapped method and a
-        return statement (if the call returns a value).
+        return statement (if the call returns a value). Arguments are coerced
+        to the target signature.
         """
-        Node callee
+        
+        args = self.call_args(fdef, target_ann, cur_ann, is_dynamic,
+                              is_wrapper_class, bound_sig)
+        selfarg = args[0]
+        args = args[1:]
+        
         member = fdef.name() + target_suffix
         if not is_wrapper_class:
-            callee = NameExpr(member)
+            callee = MemberExpr(selfarg, member)
         else:
             callee = MemberExpr(
                 MemberExpr(self_expr(), self.tf.object_member_name()), member)
-        args = self.call_args(fdef, target_ann, cur_ann, is_dynamic,
-                              is_wrapper_class, bound_sig)
+        
         Node call = CallExpr(callee,
                              args,
                              [nodes.ARG_POS] * len(args),
