@@ -49,7 +49,7 @@ class TypeTransformer:
         self.tf = tf
         self.func_tf = FuncTransformer(tf)
     
-    TypeDef[] transform_type_def(self, TypeDef tdef):        
+    Node[] transform_type_def(self, TypeDef tdef):        
         """Transform a type definition.
 
         The result may be one or two definitions.  The first is the
@@ -80,14 +80,13 @@ class TypeTransformer:
         if tdef.is_generic() or tdef.info.base.is_generic():
             self.make_instance_tvar_initializer(
                 (FuncDef)tdef.info.methods['__init__'])
-        
-        if not tdef.is_generic():
-            res = [tdef]
-        else:
-            res = [tdef, self.generic_class_wrapper(tdef)]
+
         tdef.defs = Block(defs)
         
-        return res
+        if not tdef.is_generic():
+            return [tdef]
+        else:
+            return [tdef, self.generic_class_wrapper(tdef)]
     
     Node[] make_init_wrapper(self, TypeDef tdef):
         """Make and return an implicit __init__ if class needs it;

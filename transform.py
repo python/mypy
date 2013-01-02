@@ -69,8 +69,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         for d in o.defs:
             if isinstance(d, TypeDef):
                 self._type_context = ((TypeDef)d).info
-                # Implicit cast from TypeDef[] to Node[] is safe below.
-                res.extend((any)self.type_tf.transform_type_def((TypeDef)d))
+                res.extend(self.type_tf.transform_type_def((TypeDef)d))
                 self._type_context = None
             else:
                 d.accept(self)
