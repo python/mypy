@@ -88,7 +88,8 @@ class PrettyPrintVisitor(NodeVisitor):
     
     def visit_return_stmt(self, o):
         self.string('return ')
-        self.node(o.expr)
+        if o.expr:
+            self.node(o.expr)
         self.string('\n')
     
     def visit_expression_stmt(self, o):
