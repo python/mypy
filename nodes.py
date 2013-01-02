@@ -317,14 +317,14 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
-    list<tuple<Var, mtypes.Typ>> items
+    tuple<Var, mtypes.Typ>[] items
     int kind          # Ldef/Gdef/Mdef/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
     
-    void __init__(self, list<tuple<Var, mtypes.Typ>> items,
+    void __init__(self, tuple<Var, mtypes.Typ>[] items,
                   bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
