@@ -71,7 +71,7 @@ class ExpressionChecker:
             result = o.typ.typ
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = self.type_object_type((TypeInfo)node)
+            result = type_object_type((TypeInfo)node, self.chk.type_type)
         else:
             # Unknown reference; use dynamic type implicitly to avoid
             # generating extra type errors.
@@ -970,53 +970,6 @@ class ExpressionChecker:
         """
         return self.chk.named_type(name)
     
-    Typ type_object_type(self, TypeInfo info):
-        """Return the type of a type object.
-        
-        For a generic type G with type variables T and S the type is of form
-        
-          def <T, S>(...) as G<T, S>,
-        
-        where ... are argument types for the __init__ method.
-        """
-        if info.is_interface:
-            return self.chk.type_type()
-        init_method = info.get_method('__init__')
-        if not init_method:
-            # Must be an invalid class definition.
-            return Any()
-        else:
-            # Construct callable type based on signature of __init__. Adjust
-            # return type and insert type arguments.
-            init_type = method_type(init_method)
-            if isinstance(init_type, Callable):
-                return self.class_callable((Callable)init_type, info)
-            else:
-                # Overloaded __init__.
-                Callable[] items = []
-                for it in ((Overloaded)init_type).items():
-                    items.append(self.class_callable(it, info))
-                return Overloaded(items)
-    
-    Callable class_callable(self, Callable init_type, TypeInfo info):
-        """Create a type object type based on the signature of __init__."""
-        variables = <TypeVarDef> []
-        for i in range(len(info.type_vars)): # TODO bounds
-            variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
-
-        initvars = init_type.variables.items
-        variables.extend(initvars)
-        
-        c = Callable(init_type.arg_types,
-                     init_type.arg_kinds,
-                     init_type.arg_names,
-                     self_type(info),
-                     True,
-                     None,
-                     TypeVars(variables)).with_name(
-                                          '"{}"'.format(info.name()))
-        return convert_class_tvars_to_func_tvars(c, len(initvars))
-    
     bool is_valid_var_arg(self, Typ typ):
         """Is a type valid as a *args argument?"""
         return (isinstance(typ, TupleType) or self.is_list_instance(typ) or
@@ -1239,4 +1192,52 @@ class HasErasedComponentsQuery(mtypes.TypeQuery):
 
     bool visit_erased_type(self, ErasedType t):
         return True
+
+
+Typ type_object_type(TypeInfo info, func<Typ()> type_type):
+    """Return the type of a type object.
+
+    For a generic type G with type variables T and S the type is of form
+
+      def <T, S>(...) as G<T, S>,
+
+    where ... are argument types for the __init__ method.
+    """
+    if info.is_interface:
+        return type_type()
+    init_method = info.get_method('__init__')
+    if not init_method:
+        # Must be an invalid class definition.
+        return Any()
+    else:
+        # Construct callable type based on signature of __init__. Adjust
+        # return type and insert type arguments.
+        init_type = method_type(init_method)
+        if isinstance(init_type, Callable):
+            return class_callable((Callable)init_type, info)
+        else:
+            # Overloaded __init__.
+            Callable[] items = []
+            for it in ((Overloaded)init_type).items():
+                items.append(class_callable(it, info))
+            return Overloaded(items)
     
+
+Callable class_callable(Callable init_type, TypeInfo info):
+    """Create a type object type based on the signature of __init__."""
+    variables = <TypeVarDef> []
+    for i in range(len(info.type_vars)): # TODO bounds
+        variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
+
+    initvars = init_type.variables.items
+    variables.extend(initvars)
+
+    c = Callable(init_type.arg_types,
+                 init_type.arg_kinds,
+                 init_type.arg_names,
+                 self_type(info),
+                 True,
+                 None,
+                 TypeVars(variables)).with_name(
+                                      '"{}"'.format(info.name()))
+    return convert_class_tvars_to_func_tvars(c, len(initvars))
