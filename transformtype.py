@@ -217,55 +217,109 @@ class TypeTransformer:
         
         self.tf.visit_var_def(o)
         
-        # Add x* accessor wrappers for member variables that are used to access
-        # them via dynamically-typed references (but only for public member
-        # variables).
-        if o.kind == MDEF:
-            for n, vt in o.items:
-                Typ t
-                if n.typ is not None:
-                    t = n.typ.typ
-                else:
-                    t = Any()
-                res.append(self.make_getter_wrapper(n.name(), t))
-                res.append(self.make_setter_wrapper(n.name(), t))
+        # Add $x and set$x accessor wrappers for data attributes. These let
+        # derived classes redefine a data attribute as a property.
+        for n, vt in o.items:
+            if n.typ:
+                t = n.typ.typ
+            else:
+                t = Any()
+            res.append(self.make_getter_wrapper(n.name(), t))
+            res.append(self.make_setter_wrapper(n.name(), t))
+            res.append(self.make_dynamic_getter_wrapper(n.name(), t))
+            res.append(self.make_dynamic_setter_wrapper(n.name(), t))
         
         return res
     
     FuncDef make_getter_wrapper(self, str name, Typ typ):
-        """Create a dynamically-typed getter wrapper for a member.
+        """Create a getter wrapper for a data attribute.
 
-        The getter will be like this:
+        The getter will be of this form:
         
-        . def name* as dynamic
-        .   return {dyn <= type | self.name}
-        . end
+        . int $name*(C self):
+        .     return self.name
         """
-        Node member_expr = MemberExpr(self_expr(), name)
-        member_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
+        member_expr = MemberExpr(self_expr(), name)
         ret = ReturnStmt(member_expr)
-        
-        return FuncDef(name + self.tf.dynamic_suffix(), [], [], [],
-                       Block([ret]), Annotation(Any()))
-    
-    FuncDef make_setter_wrapper(self, str name, Typ typ):
-        """Create a dynamically-typed setter wrapper for a member.
 
-        The setter will be like this:
-        
-        . def name* = __x as dynamic
-        .   self.name = {type <= dyn | __x}
-        . end
-        """
-        Node lvalue = MemberExpr(self_expr(), name)
-        rvalue = coerce(NameExpr('__x'), typ, Any(), self.tf.type_context())
-        ret = AssignmentStmt([lvalue], rvalue)
-        
-        return FuncDef(name + self.tf.dynamic_suffix(),
-                       [Var('__x')],
+        wrapper_name = '$' + name
+        selft = self_type(self.tf.type_context())            
+        sig = Callable([selft], [nodes.ARG_POS], [None], typ, False)
+        return FuncDef(wrapper_name,
+                       [Var('self')],
                        [nodes.ARG_POS],
                        [None],
-                       Block([ret]), Annotation(Any()))
+                       Block([ret]), Annotation(sig))
+    
+    FuncDef make_dynamic_getter_wrapper(self, str name, Typ typ):
+        """Create a dynamically-typed getter wrapper for a data attribute.
+
+        The getter will be of this form:
+        
+        . any $name*(C self):
+        .     return {any <= typ self.name}
+        """
+        member_expr = MemberExpr(self_expr(), name)
+        coerce_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
+        ret = ReturnStmt(coerce_expr)
+
+        wrapper_name = '$' + name + self.tf.dynamic_suffix()
+        selft = self_type(self.tf.type_context())            
+        sig = Callable([selft], [nodes.ARG_POS], [None], Any(), False)
+        return FuncDef(wrapper_name,
+                       [Var('self')],
+                       [nodes.ARG_POS],
+                       [None],
+                       Block([ret]), Annotation(sig))
+    
+    FuncDef make_setter_wrapper(self, str name, Typ typ):
+        """Create a setter wrapper for a data attribute.
+
+        The setter will be of this form (if is_dynamic is True):
+        
+        . void set$name(C self, typ name):
+        .     self.name = name
+        """
+        lvalue = MemberExpr(self_expr(), name)
+        rvalue = NameExpr(name)
+        ret = AssignmentStmt([lvalue], rvalue)
+
+        wrapper_name = 'set$' + name
+        selft = self_type(self.tf.type_context())            
+        sig = Callable([selft, typ],
+                       [nodes.ARG_POS, nodes.ARG_POS],
+                       [None, None],
+                       Void(), False)
+        return FuncDef(wrapper_name,
+                       [Var('self'), Var(name)],
+                       [nodes.ARG_POS, nodes.ARG_POS],
+                       [None, None],
+                       Block([ret]), Annotation(sig))
+    
+    FuncDef make_dynamic_setter_wrapper(self, str name, Typ typ):
+        """Create a dynamically-typed setter wrapper for a data attribute.
+
+        The setter will be of this form (if is_dynamic is True):
+        
+        . void set$name*(C self, any name):
+        .     self.name = {typ name}
+        """
+        lvalue = MemberExpr(self_expr(), name)
+        name_expr = NameExpr(name)
+        rvalue = coerce(name_expr, typ, Any(), self.tf.type_context())
+        ret = AssignmentStmt([lvalue], rvalue)
+
+        wrapper_name = 'set$' + name + self.tf.dynamic_suffix()
+        selft = self_type(self.tf.type_context())            
+        sig = Callable([selft, Any()],
+                       [nodes.ARG_POS, nodes.ARG_POS],
+                       [None, None],
+                       Void(), False)
+        return FuncDef(wrapper_name,
+                       [Var('self'), Var(name)],
+                       [nodes.ARG_POS, nodes.ARG_POS],
+                       [None, None],
+                       Block([ret]), Annotation(sig))
     
     TypeDef generic_class_wrapper(self, TypeDef tdef):
         """Construct a wrapper class for a generic type."""

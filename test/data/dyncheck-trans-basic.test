@@ -471,23 +471,6 @@ class A:
 -- -----------------------------------
 
 
-[case testBasicConstructor]
-class A:
-    int a
-    any d
-    
-    void __init__(self, int a, any d):
-        self.a = a
-        self.d = d
-[out]
-class A
-...
-  def create(a as Int, d as dynamic)
-    self.a = a
-    self.d = d
-  end
-end
-
 [case testCreateInstanceWithExactTypes]
 class A:
     void __init__(self, B b):
@@ -497,13 +480,11 @@ class A:
         return A(b)
 class B: pass
 [out]
-class A
-  def create(b as B)
-  end
-
-  def f(b as B) as A
-    return A(b)
-  end
+class A:
+    void __init__(A self, B b):
+        pass
+    A f(A self, B b):
+        return A(b)
 ...
 
 [case testCreateInstanceWithTrivialReturnTypeCoercion]
@@ -511,10 +492,9 @@ class A:
     any f(self):
         return A()
 [out]
-class A
-  def f() as dynamic
-    return A()
-  end
+class A:
+    any f(A self):
+        return A()
 ...
 
 [case testCreateInstanceWithArgumentCasts]
@@ -525,10 +505,9 @@ class B:
     void __init__(self, any d, A a):
         pass
 [out]
-class A
-  def f(b as Int, d as dynamic) as B
-    return B({dyn <= std::Int | b}, {A <= dyn | d})
-  end
+class A:
+    B f(A self, int b, any d):
+        return B({any <= int b}, {A d})
 ...
 
 
@@ -547,37 +526,28 @@ class A:
 ...
 
 
--- Member variable access
--- ----------------------
+-- Data attributes
+-- ---------------
 
 
-[case testMemberVariableAccessors]
+[case testDataAttributeAccessors]
 class A:
-    int a
-    any d
-    
-    void __init__(self, int a, any d):
-        self.a = a
-        self.d = d
+    int i
 [out]
-class A
-  var a as Int
-  def a* as dynamic
-    return {dyn <= std::Int | self.a}
-  end
-  def a* = __x as dynamic
-    self.a = {std::Int <= dyn | __x}
-  end
-  var d as dynamic
-  def d* as dynamic
-    return self.d
-  end
-  def d* = __x as dynamic
-    self.d = __x
-  end
-...
+class A:
+    int i
+    int $i(A self):
+        return self.i
+    void set$i(A self, int i):
+        self.i = i
+    any $i*(A self):
+        return {any <= int self.i}
+    void set$i*(A self, any i):
+        self.i = {int i}
+any A*():
+    return A()
 
-[case testMemberVariableAccessViaStatic]
+[case testMemberVariableAccessViaInstanceType]
 class A:
     int a
     any d
@@ -585,10 +555,6 @@ class A:
         return self.d
     any g(self):
         return self.a
-    
-    void __init__(self, int a, any d):
-        self.a = a
-        self.d = d
 [out]
 class A
 ...
@@ -601,15 +567,28 @@ class A
   end
 ...
 
-[case testMemberVariableAccessViaDynamic]
+[case testMemberVariableAssignmentViaInstanceType]
+class A:
+    int a
+    any d
+    void __init__(self, any d):
+        self.a = d
+        self.d = d
+[out]
+...
+    void __init__(A self, any d):
+        self.set$a({int d})
+        self.set$d(d)
+...
+
+[case testMemberVariableAccessViaAny]
 class A:
     A f(self, any d):
         return d.x
 [out]
-class A
-  def f(d as dynamic) as A
-    return {A <= dyn | d.x*}
-  end
+class A:
+    A f(A self, any d):
+      return {A | d.$x()}
 ...
 
 [case testMemberVariableAssignmentViaDynamic]
@@ -617,7 +596,7 @@ any d
 d.x = 1
 [out]
 ...
-d.x* = {dyn <= std::Int | 1}
+d.set$x*({any <= int | 1})
 
 
 -- Casts
