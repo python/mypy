@@ -55,7 +55,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     bool is_java
     
-    # The current type context (or nil if not within a type).
+    # The current type context (or None if not within a type).
     TypeInfo _type_context = None
     
     TypeInfo type_context(self):
@@ -286,7 +286,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """
         if not info:
             info = fdef.info
-        # If info is nil, we have a global function => no suffix. Also if the
+        # If info is None, we have a global function => no suffix. Also if the
         # method is not an override, we need no suffix.
         if not info or not info.base or not info.base.has_method(fdef.name()):
             return ''

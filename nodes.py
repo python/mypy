@@ -318,7 +318,7 @@ class TypeDef(Node):
 
 class VarDef(Node):
     tuple<Var, mtypes.Typ>[] items
-    int kind          # Ldef/Gdef/Mdef/...
+    int kind          # LDEF/GDEF/MDEF/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
