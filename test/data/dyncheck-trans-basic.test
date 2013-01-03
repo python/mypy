@@ -471,7 +471,7 @@ class A:
 -- -----------------------------------
 
 
-[case testCreateInstanceWithExactTypes]
+[case testConstructInstanceWithPreciseTypes]
 class A:
     void __init__(self, B b):
         pass
@@ -486,6 +486,17 @@ class A:
     A f(A self, B b):
         return A(b)
 ...
+any A*(any b):
+    return A({B b})
+...
+
+[case testClassWrapperWithTwoArguments]
+class A:
+    void __init__(self, any a, int i): pass
+[out]
+...
+any A*(any a, any i):
+    return A(a, {int i})
 
 [case testCreateInstanceWithTrivialReturnTypeCoercion]
 class A:

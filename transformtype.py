@@ -9,6 +9,7 @@ from mtypes import (
     Callable, Instance, Typ, Any, BOUND_VAR, Void, RuntimeTypeVar
 )
 from checkmember import analyse_member_access
+from checkexpr import type_object_type
 from subtypes import map_instance_to_supertype
 import transform
 from transformfunc import FuncTransformer
@@ -520,17 +521,35 @@ class TypeTransformer:
         It simple calls the type object and returns the result.
         """
         
-        # TODO arguments
+        # TODO keyword args, default args and varargs
         # TODO overloads
+
+        type_sig = (Callable)type_object_type(tdef.info, None)
         
-        init = tdef.info.get_method('__init__')
+        init = (FuncDef)tdef.info.get_method('__init__')
+        arg_kinds = type_sig.arg_kinds
+
+        # The wrapper function has a dynamically typed signature.
+        wrapper_sig = Callable(<Typ> [Any()] * len(arg_kinds),
+                               arg_kinds,
+                               <str> [None] * len(arg_kinds),
+                               Any(), False)
         
         n = NameExpr(tdef.name) # TODO full name
-        call = CallExpr(n, [], [])
+        args = self.func_tf.call_args(
+            init.args[1:],
+            type_sig,
+            wrapper_sig,
+            True, False)
+        call = CallExpr(n, args, arg_kinds)
         ret = ReturnStmt(call)
         
+
         fdef = FuncDef(tdef.name + self.tf.dynamic_suffix(),
-                       [], [], [], Block([ret]))
-        sig = Callable([], [], [], Any(), False)
-        fdef.typ = Annotation(sig)
+                       init.args[1:],
+                       arg_kinds,
+                       <Node> [None] * len(arg_kinds),
+                       Block([ret]))
+        
+        fdef.typ = Annotation(wrapper_sig)
         return fdef
