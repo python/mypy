@@ -275,7 +275,7 @@ class FuncTransformer:
         return statement (if the call returns a value). Arguments are coerced
         to the target signature.
         """        
-        args = self.call_args(fdef, target_ann, cur_ann, is_dynamic,
+        args = self.call_args(fdef.args, target_ann, cur_ann, is_dynamic,
                               is_wrapper_class, bound_sig)
         selfarg = args[0]
         args = args[1:]
@@ -305,14 +305,14 @@ class FuncTransformer:
         else:
             return ExpressionStmt(call)
     
-    Node[] call_args(self, FuncDef fdef, Callable target_ann, Callable cur_ann,
+    Node[] call_args(self, Var[] vars, Callable target_ann, Callable cur_ann,
                      bool is_dynamic, bool is_wrapper_class,
                      Callable bound_sig=None):
         """Construct the arguments of a wrapper call expression.
 
         Insert coercions as needed.
         """
-        Node[] args = []
+        args = <Node> []
         # Add type variable arguments for a generic function.
         for i in range(len(target_ann.variables.items)):
             # Non-dynamic wrapper method in a wrapper class passes
@@ -323,8 +323,8 @@ class FuncTransformer:
                     TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))
             else:
                 args.append(TypeExpr(Any()))
-        for i in range(len(fdef.args)):
-            a = fdef.args[i]
+        for i in range(len(vars)):
+            a = vars[i]
             name = NameExpr(a.name())
             if bound_sig is None:
                 args.append(self.tf.coerce(name, target_ann.arg_types[i],
