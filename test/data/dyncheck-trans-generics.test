@@ -694,3 +694,23 @@ class P*
   end
 end
 class Name; end
+
+[case testImplicitMethodSigInGenericClass]
+class A<T>:
+    def f(self, a):
+        pass
+    void g(self):
+        int i = self.f(1)
+        int j = self.f(1)
+[out]
+...
+class A*
+...
+  def f(a as dynamic) as dynamic
+    return self.__o.f(a)
+  end
+  def f*(a as dynamic) as dynamic
+    return self.__o.f(a)
+  end
+...
+end
