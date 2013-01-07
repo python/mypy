@@ -997,12 +997,10 @@ def f(a, b):
 void g():
     int i = f(1, 2)
 [out]
-def f(a, b)
-end
-def g() as void
-  var i = {int <= dyn | f({any <= int | 1}, \
-                               {any <= int | 2})} as Int
-end
+any f(any a, any b):
+    pass
+void g():
+    int i = {int f({any <= int 1}, {any <= int 2})}
 
 [case testImplicitMethodSig]
 class A:
@@ -1012,16 +1010,16 @@ class A:
         int i = self.f(1)
         int j = self.f(1)
 [out]
-class A
-  def f(a)
-  end
-  def f*(a as dynamic) as dynamic
-    return f(a)
-  end
-  def g() as void
-    var i = {int <= dyn | f({any <= int | 1})} as Int
-    var j = {int <= dyn | self.f({any <= int | 1})} as Int
-  end
+class A:
+    any f(any self, any a):
+        pass
+    any f*(any self, any a):
+        return self.f(a)
+    void g(A self):
+        int i = {int self.f({any <= int 1})}
+        int j = {int self.f({any <= int 1})}
+    any g*(any self):
+        {A self}.g()
 ...
 
 [case testImplicitMethodSigAndOverride]
@@ -1037,18 +1035,16 @@ class B(A):
         pass
 [out]
 ...
-class B is A
-  def f(a)
-  end
-  def g`B(a)
-  end
-  def g(a as A) as A
-    return {A <= dyn | g`B(a)}
-  end
-  def g*(a as dynamic) as dynamic
-    return g`B(a)
-  end
-end
+class B(__main__.A):
+    any f(any self, any a):
+        pass
+    any g`B(any self, any a):
+        pass
+    A g(A self, A a):
+        return {A self.g`B(a)}
+    any g*(any self, any a):
+        return self.g`B(a)
+...
 
 [case testDynamicallyTypedFunctionBody]
 def f(x):
@@ -1080,12 +1076,11 @@ class A:
     int g(self, int x):
         pass
 [out]
-class A
-  private var i as Int
-  def f(x)
-    x = {any <= int | g({int <= dyn | x})}
-    x = {any <= A | self}.z*()
-    x = {any <= int | i}
-    x.y*()
-  end
+class A:
+...
+    any f(any self, any x):
+        x = self.g*(x)
+        x = self.z*()
+        x = self.i*
+        x.y*()
 ...
