@@ -743,62 +743,20 @@ void f():
     a = a
     d = {any <= int a}
 
-[case testAssignmentToMemberUsingDot]
-A a
-any d
-a.m = d
-a.m = a
-
-class A:
-    A m
-    
-    void __init__(self, A m):
-        self.m = m
-[out]
-...
-a.m = {A <= dyn | d}
-a.m = a
-...
-
-[case testDirectAssignmentToMember]
-class A:
-    int m
-    any d
-    
-    void f(self):
-        self.m = self.m
-        self.d = self.d
-        self.m = self.d
-        self.d = self.m
-    
-    void __init__(self, int m, any d):
-        self.m = m
-        self.d = d
-[out]
-...
-  def f() as void
-    m = m
-    d = d
-    m = {std::Int <= dyn | d}
-    d = {dyn <= std::Int | m}
-  end
-...
-
 [case testMemberInitialization]
 class A:
     int a
-    any d = self.a
-    int b = self.a
+    any d = 1
+    int b = 1
     
     void __init__(self, int a):
         self.a = a
 [out]
-class A
-  var a as Int
+class A:
 ...
-  var d = {dyn <= std::Int | a} as dynamic
+    any d = {any <= int 1}
 ...
-  var b = a as Int
+    int b = 1
 ...
 
 
