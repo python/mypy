@@ -78,7 +78,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     void visit_mypy_file(self, MypyFile o):
         """Transform an file."""
-        Node[] res = []
+        res = <Node> []
         for d in o.defs:
             if isinstance(d, TypeDef):
                 self._type_context = ((TypeDef)d).info
@@ -98,8 +98,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         super().visit_var_def(o)
         
         if o.init is not None:
-            Typ t
-            if o.items[0][0].typ is not None:
+            if o.items[0][0].typ:
                 t = o.items[0][0].typ.typ
             else:
                 t = Any()
@@ -127,7 +126,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     def prepend_generic_function_tvar_args(self, fdef):
         sig = (Callable)function_type(fdef)
         TypeVarDef[] tvars = sig.variables.items
-        if fdef.typ is None:
+        if not fdef.typ:
             fdef.typ = Annotation(sig)
         typ = fdef.typ
         
@@ -170,7 +169,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
             e.expr = self.coerce_to_dynamic(e.expr, typ, self.type_context())
             typ = Any()
         
-        str suffix
         if isinstance(typ, Instance):
             # Reference to a statically-typed method variant with the suffix
             # derived from the base object type.
@@ -227,13 +225,13 @@ class DyncheckTransformVisitor(TraverserVisitor):
             if (not ((Callable)ctype).is_type_obj and
                     not (isinstance(e.callee, SuperExpr) and
                          ((SuperExpr)e.callee).name == '__init__')):
-                list<tuple<int, Typ>> b = []
+                b = <tuple<int, Typ>> []
                 for id, t in bound_vars:
                     if id < 0:
                         b.append((id, t))
                 bound_vars = b
             
-            Node[] args = []
+            args = <Node> []
             for i in range(len(bound_vars)):
                 args.append(TypeExpr(bound_vars[i][1]))
             e.args = args + e.args
