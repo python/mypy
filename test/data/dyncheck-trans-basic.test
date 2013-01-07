@@ -1069,12 +1069,11 @@ int g(int x):
 int i
 object o
 [out]
-def f(x)
-  var y = {any <= int | 1}
-{any <= int |  i} + y
-{any <= std::Object |  o} + o
-  x = {any <= int | g({int <= dyn | o})}
-end
+any f(any x):
+    y = {any <= int 1}
+    {any <= int i} + y
+    {any o} + o
+    x = {any <= int g({int o})}
 ...
 
 [case testDynamicallyTypedMethodBody]
