@@ -788,19 +788,18 @@ f(None)
 
 [case testSimplePrint]
 # The arguments to debugging functions are not coerced.
-__Print('hello')
+__print('hello')
 [out]
-__Print('hello')
+__print('hello')
 
 [case testComplexPrint]
-any f(any a):
-    pass
+def f(a): pass
 int a
-__Print(a, f(a))
+__print(a, f(a))
 [out]
 ...
-var a as Int
-__Print(a, f({dyn <= std::Int | a}))
+int a
+__print(a, f({any <= int a}))
 
 
 -- Coercions from primitive types
@@ -986,12 +985,12 @@ b = nil != c
 
 [case testStrLiterals]
 str s = 'foo'
-__Print(s)
-__Print('bar')
+__print(s)
+__print('bar')
 [out]
-var s = 'foo' as Str
-__Print(s)
-__Print('bar')
+str s = 'foo'
+__print(s)
+__print('bar')
 
 
 -- Implicit dynamic types
@@ -1178,8 +1177,3 @@ class A
     x.y*()
   end
 ...
-
-
--- additional basic features
---   pretty-printing values
---   void type
