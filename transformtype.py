@@ -21,6 +21,7 @@ from compileslotmap import find_slot_origin
 from subtypes import map_instance_to_supertype
 from coerce import coerce
 from maptypevar import num_slots, get_tvar_access_path
+import erasetype
 
 
 class TypeTransformer:
@@ -85,6 +86,9 @@ class TypeTransformer:
         if not defs:
             defs.append(PassStmt())
 
+        if tdef.is_generic():
+            gen_wrapper = self.generic_class_wrapper(tdef)
+
         tdef.defs = Block(defs)
 
         dyn_wrapper = self.make_type_object_wrapper(tdef)
@@ -92,7 +96,7 @@ class TypeTransformer:
         if not tdef.is_generic():
             return [tdef, dyn_wrapper]
         else:
-            return [tdef, dyn_wrapper, self.generic_class_wrapper(tdef)]
+            return [tdef, dyn_wrapper, gen_wrapper]
     
     Node[] make_init_wrapper(self, TypeDef tdef):
         """Make and return an implicit __init__ if class needs it.
@@ -220,7 +224,7 @@ class TypeTransformer:
 
         The result may be one or more definitions.
         """
-        Node[] res = [o]
+        res = <Node> [o]
         
         self.tf.visit_var_def(o)
         
@@ -328,6 +332,19 @@ class TypeTransformer:
                        [None, None],
                        Block([ret]), Annotation(sig))
     
+    Node[] generic_accessor_wrappers(self, VarDef vdef):
+        """Construct wrapper class methods for attribute accessors."""
+        res = <Node> []
+        for n, vt in vdef.items:
+            if n.typ:
+                t = n.typ.typ
+            else:
+                t = Any()
+            for fd in [self.make_getter_wrapper(n.name(), t),
+                      self.make_setter_wrapper(n.name(), t)]:
+                res.extend(self.func_tf.generic_method_wrappers(fd))
+        return res
+    
     TypeDef generic_class_wrapper(self, TypeDef tdef):
         """Construct a wrapper class for a generic type."""
         # FIX semanal meta-info for nodes + TypeInfo
@@ -351,12 +368,10 @@ class TypeTransformer:
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
                 if not ((FuncDef)d).is_constructor():
-                    # The dynamic cast from FuncDef[] to Node[] below is
-                    # safe since the result is passed to extend.
-                    defs.extend((any)self.func_tf.generic_method_wrappers(
+                    defs.extend(self.func_tf.generic_method_wrappers(
                         (FuncDef)d))
             elif isinstance(d, VarDef):
-                pass # TODO what's this?
+                defs.extend(self.generic_accessor_wrappers((VarDef)d))
             elif not isinstance(d, PassStmt):
                 raise RuntimeError(
                     'Definition {} at line {} not supported'.format(
@@ -535,6 +550,7 @@ class TypeTransformer:
         # TODO overloads
 
         type_sig = (Callable)type_object_type(tdef.info, None)
+        type_sig = (Callable)erasetype.erase_typevars(type_sig)
         
         init = (FuncDef)tdef.info.get_method('__init__')
         arg_kinds = type_sig.arg_kinds

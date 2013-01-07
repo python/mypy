@@ -247,8 +247,7 @@ class TypePrettyPrintVisitor(TypeVisitor<str>):
         return t.typ.name()
     
     def visit_type_var(self, t):
-        # FIX __tv vs. self.__tv?
-        return tvar_arg_name(t.id)
+        return 'any*'
     
     def visit_runtime_type_var(self, t):
         v = PrettyPrintVisitor()

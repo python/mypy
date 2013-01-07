@@ -1,6 +1,6 @@
 from nodes import (
     FuncDef, Annotation, Var, Node, Block, TypeInfo, NameExpr, MemberExpr,
-    CallExpr, ReturnStmt, ExpressionStmt, TypeExpr, function_type
+    CallExpr, ReturnStmt, ExpressionStmt, TypeExpr, function_type, VarDef
 )
 import nodes
 from checker import map_type_from_supertype
@@ -125,7 +125,7 @@ class FuncTransformer:
         """Construct a dynamically typed method wrapper."""
         return self.method_wrapper(fdef, fdef, True, False)
     
-    FuncDef[] generic_method_wrappers(self, FuncDef fdef):
+    Node[] generic_method_wrappers(self, FuncDef fdef):
         """Construct wrapper class methods for a method of a generic class."""
         return [self.generic_static_method_wrapper(fdef),
                 self.generic_dynamic_method_wrapper(fdef)]

@@ -41,49 +41,54 @@ class C<T>:
     int num(self):
         return 1
 [out]
-class C<T>
-  var __tv as dynamic
-  private var o as T
-  def create(__tv as dynamic, o as T)
-    self.__tv = <__tv>
-    self.o = o
-  end
-  def get() as T
-    return self.o
-  end
-  def get*() as dynamic
-    return get()
-  end
-  def num() as Int
-    return 1
-  end
-  def num*() as dynamic
-    return {dyn <= std::Int | num()}
-  end
-end
-class C*
-  var __o as dynamic
-  var __tv as dynamic
-  var __btv as dynamic
-  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
-    self.__tv = <__tv>
-    self.__btv = <__btv>
-    self.__o = __o
-  end
-  def get() as dynamic
-    return {self.__tv <= self.__btv | {self.__btv <= self.__o.__tv | \
-                                                        self.__o.get()}}
-  end
-  def get*() as dynamic
-    return {self.__btv <= self.__o.__tv | self.__o.get()} 
-  end
-  def num() as Int
-    return self.__o.num()
-  end
-  def num*() as dynamic
-    return {dyn <= std::Int | self.__o.num()}
-  end
-end
+class C:
+    any __tv
+    any* o
+    any* $o(C self):
+        return self.o!
+    void set$o(C self, any* o):
+        self.o! = o
+    any $o*(C self):
+        return self.o!
+    void set$o*(C self, any o):
+        self.o! = {self.__tv o}
+    void __init__(C self, any __tv, any* o):
+        self.__tv! = <__tv>
+        self.o = o
+    any* get(C self):
+        return self.o
+    any get*(any self):
+        return {C self}.get()
+    int num(C self):
+        return 1
+    any num*(any self):
+        return {any <= int {C self}.num()}
+any C*(any o):
+    return C(<any>, o)
+class C**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+    any* $o(C self):
+        return {self.__tv {self.__btv self.__o.$o()}}
+    any $o*(any self):
+        return {self.__btv self.__o.$o()}
+    void set$o(C self, any* o):
+        self.__o.set$o({self.__o.__tv {self.__btv o}})
+    any set$o*(any self, any o):
+        self.__o.set$o({self.__o.__tv {self.__btv o}})
+    any get(C self):
+        return {self.__tv {self.__btv self.__o.get()}}
+    any get*(any self):
+        return {self.__btv self.__o.get()}
+    int num(C self):
+        return self.__o.num()
+    any num*(any self):
+        return {any <= int self.__o.num()}
 
 [case testGenericMethodWithArguments]
 class C<T>:
@@ -91,27 +96,20 @@ class C<T>:
         pass
 class A: pass
 [out]
-class C<T>
-  var __tv as dynamic
-  def f(a as A, t as T)
-  end
-  def f*(a as dynamic, t as dynamic) as dynamic
-    f({A <= dyn | a}, {self.__tv <= dyn | t})
-  end
-  def create(__tv as dynamic)
-    self.__tv = <__tv>
-  end
-end
-class C*
+class C:
+    any __tv
+    void f(C self, A a, any* t):
+        pass
+    any f*(any self, any a, any t):
+        {C self}.f({A a}, {self.__tv t})
 ...
-  def f(a as A, t as dynamic)
-    self.__o.f(a, {self.__o.__tv <= self.__btv | {self.__btv <= dyn | t}})
-  end
-  def f*(a as dynamic, t as dynamic) as dynamic
-    self.__o.f({A <= dyn | a}, {self.__o.__tv <= self.__btv | {self.__btv <= dyn | t}})  
-  end
-end
-class A; end
+class C**:
+...
+    void f(C self, A a, any t):
+        self.__o.f(a, {self.__o.__tv {self.__btv t}})
+    any f*(any self, any a, any t):
+        self.__o.f({A a}, {self.__o.__tv {self.__btv t}})
+...
 
 [case testAccessingGenericMethodInTypedContext]
 class A: pass

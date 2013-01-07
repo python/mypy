@@ -3,7 +3,6 @@ from mtypes import (
     TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator
 )
 import checker
-from typerepr import CommonTypeRepr
 from nodes import Annotation
 from lex import Token
 
@@ -69,7 +68,7 @@ none = Token('')
 
 void erase_annotation(Annotation a):
     """Remove generic type arguments and type variables from an annotation."""
-    if a is not None:
+    if a:
         a.typ = erase_generic_types(a.typ)
 
 
@@ -93,6 +92,16 @@ class GenericTypeEraser(TypeTranslator):
         return Any()
     
     Typ visit_instance(self, Instance t):
-        # IDEA: Retain all whitespace in the representation.
-        repr = CommonTypeRepr(t.repr.components, none, [], none)
-        return Instance(t.typ, [], t.line, repr)
+        return Instance(t.typ, [], t.line)
+
+
+Typ erase_typevars(Typ t):
+    """Replace all type variables in a type with any."""
+    return t.accept(TypeVarEraser())
+
+
+class TypeVarEraser(TypeTranslator):
+    """Implementation of type erasure"""
+    
+    Typ visit_type_var(self, TypeVar t):
+        return Any()
