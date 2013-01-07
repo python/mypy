@@ -663,12 +663,12 @@ class MemberExpr(RefExpr):
     # The variable node related to a definition.
     Var def_var = None
     # Is this direct assignment to a data member (bypassing accessors)?
-    bool is_direct
+    bool direct
     
-    void __init__(self, Node expr, str name, bool is_direct=False):
+    void __init__(self, Node expr, str name, bool direct=False):
         self.expr = expr
         self.name = name
-        self.is_direct = is_direct
+        self.direct = direct
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_member_expr(self)

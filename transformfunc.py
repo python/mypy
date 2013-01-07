@@ -9,7 +9,8 @@ from replacetvars import replace_type_vars
 import transform
 from transutil import (
     is_simple_override, tvar_arg_name, self_expr, dynamic_sig, is_generic,
-    prepend_arg_type, translate_type_vars_to_bound_vars,
+    prepend_arg_type, add_arg_type_after_self,
+    translate_type_vars_to_bound_vars,
     translate_function_type_vars_to_dynamic, replace_ret_type,
     translate_type_vars_to_wrapper_vars,
     translate_type_vars_to_wrapped_object_vars
@@ -86,7 +87,7 @@ class FuncTransformer:
         init = fdef.init_expressions()
         
         if fdef.name() == '__init__' and is_generic(fdef):
-            args, arg_kinds, init = self.prepend_constructor_tvar_args(
+            args, arg_kinds, init = self.add_constructor_tvar_args(
                 fdef, typ, args, arg_kinds, init)
         
         fdef2 = FuncDef(name, args, arg_kinds, init, fdef.body, typ)
@@ -97,11 +98,11 @@ class FuncTransformer:
         return fdef2
     
     tuple<Var[], int[], Node[]> \
-                     prepend_constructor_tvar_args(
+                     add_constructor_tvar_args(
                              self, FuncDef fdef, Annotation typ,
                              Var[] args, int[] arg_kinds, 
                              Node[] init):
-        """Prepend type variable arguments for __init__ of a generic type.
+        """Add type variable arguments for __init__ of a generic type.
 
         Return tuple (new args, new kinds, new inits).
         """
@@ -109,9 +110,9 @@ class FuncTransformer:
         ntvars = len(fdef.info.type_vars)
         for n in range(ntvars):
             tv.append(Var(tvar_arg_name(n + 1)))
-            typ.typ = prepend_arg_type((Callable)typ.typ, Any())
-        args = tv + args
-        arg_kinds = [nodes.ARG_POS] * ntvars + arg_kinds
+            typ.typ = add_arg_type_after_self((Callable)typ.typ, Any())
+        args = [args[0]] + tv + args[1:]
+        arg_kinds = [arg_kinds[0]] + [nodes.ARG_POS] * ntvars + arg_kinds[1:]
         init = <Node> [None] * ntvars + init
         return (args, arg_kinds, init)
     

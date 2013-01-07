@@ -16,22 +16,20 @@
 [case testSimplestGenericClass]
 class C<T>: pass
 [out]
-class C<T>
-  var __tv as dynamic
-  def create(__tv as dynamic)
-    self.__tv = <__tv>
-  end
-end
-class C*
-  var __o as dynamic
-  var __tv as dynamic
-  var __btv as dynamic
-  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
-    self.__tv = <__tv>
-    self.__btv = <__btv>
-    self.__o = __o
-  end
-end
+class C:
+    any __tv
+    void __init__(C self, any __tv):
+        self.__tv! = <__tv>
+any C*():
+    return C(<any>)
+class C**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
 
 [case testSimpleGenericClass]
 class C<T>:

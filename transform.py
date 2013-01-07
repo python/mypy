@@ -299,6 +299,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """Return the suffix of the dynamic wrapper of a method or class."""
         return dynamic_suffix(self.is_pretty)
     
+    str wrapper_class_suffix(self):
+        """Return the suffix of a generic wrapper class."""
+        return '**'
+    
     Node coerce(self, Node expr, Typ target_type, Typ source_type,
                 TypeInfo context, bool is_wrapper_class=False):
         return coerce(expr, target_type, source_type, context,

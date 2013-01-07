@@ -13,7 +13,9 @@ from checkexpr import type_object_type
 from subtypes import map_instance_to_supertype
 import transform
 from transformfunc import FuncTransformer
-from transutil import self_expr, tvar_slot_name, tvar_arg_name
+from transutil import (
+    self_expr, tvar_slot_name, tvar_arg_name, prepend_arg_type
+)
 from rttypevars import translate_runtime_type_vars_locally
 from compileslotmap import find_slot_origin
 from subtypes import map_instance_to_supertype
@@ -72,8 +74,6 @@ class TypeTransformer:
                 defs.extend((any)self.func_tf.transform_method((FuncDef)d))
             elif isinstance(d, VarDef):
                 defs.extend(self.transform_var_def((VarDef)d))
-            else:
-                defs.append(d)
         
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
@@ -81,6 +81,9 @@ class TypeTransformer:
         if tdef.is_generic() or tdef.info.base.is_generic():
             self.make_instance_tvar_initializer(
                 (FuncDef)tdef.info.methods['__init__'])
+
+        if not defs:
+            defs.append(PassStmt())
 
         tdef.defs = Block(defs)
 
@@ -108,7 +111,7 @@ class TypeTransformer:
         
         The constructor for B will be (equivalent to)
         
-        . def __init__(self):
+        . void __init__(B self):
         .   self.__tv = <int>
         .   super().__init__(<int>)
         """
@@ -143,6 +146,9 @@ class TypeTransformer:
             for i in range(1, len(super_init.args)):
                 args.append(Var(super_init.args[i].name()))
                 args[-1].typ = Annotation(callee_type.arg_types[i - 1])
+
+            selft = self_type(self.tf.type_context())
+            callee_type = prepend_arg_type(callee_type, selft)
             
             creat = FuncDef('__init__', args,
                             super_init.arg_kinds,
@@ -240,7 +246,7 @@ class TypeTransformer:
         . int $name*(C self):
         .     return self.name!
         """
-        member_expr = MemberExpr(self_expr(), name, is_direct=True)
+        member_expr = MemberExpr(self_expr(), name, direct=True)
         ret = ReturnStmt(member_expr)
 
         wrapper_name = '$' + name
@@ -260,7 +266,7 @@ class TypeTransformer:
         . any $name*(C self):
         .     return {any <= typ self.name!}
         """
-        member_expr = MemberExpr(self_expr(), name, is_direct=True)
+        member_expr = MemberExpr(self_expr(), name, direct=True)
         coerce_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
         ret = ReturnStmt(coerce_expr)
 
@@ -281,7 +287,7 @@ class TypeTransformer:
         . void set$name(C self, typ name):
         .     self.name! = name
         """
-        lvalue = MemberExpr(self_expr(), name, is_direct=True)
+        lvalue = MemberExpr(self_expr(), name, direct=True)
         rvalue = NameExpr(name)
         ret = AssignmentStmt([lvalue], rvalue)
 
@@ -305,7 +311,7 @@ class TypeTransformer:
         . void set$name*(C self, any name):
         .     self.name! = {typ name}
         """
-        lvalue = MemberExpr(self_expr(), name, is_direct=True)
+        lvalue = MemberExpr(self_expr(), name, direct=True)
         name_expr = NameExpr(name)
         rvalue = coerce(name_expr, typ, Any(), self.tf.type_context())
         ret = AssignmentStmt([lvalue], rvalue)
@@ -343,28 +349,28 @@ class TypeTransformer:
         
         # Generate method wrappers.
         for d in tdef.defs.body:
-            # The cast to any below is safe since a class only contains
-            # definitions that provide isPrivate.
             if isinstance(d, FuncDef):
                 if not ((FuncDef)d).is_constructor():
                     # The dynamic cast from FuncDef[] to Node[] below is
                     # safe since the result is passed to extend.
                     defs.extend((any)self.func_tf.generic_method_wrappers(
                         (FuncDef)d))
+            elif isinstance(d, VarDef):
+                pass # TODO what's this?
             elif not isinstance(d, PassStmt):
                 raise RuntimeError(
                     'Definition {} at line {} not supported'.format(
                         type(d), d.line))
         
-        Typ base_type = None
+        Typ base_type = self.tf.named_type('builtins.object')
         # Inherit superclass wrapper if there is one.
         if has_proper_superclass:
             base = self.find_generic_base_class(tdef.info)
-            if base is not None:
+            if base:
                 base_type = None # TODO base.defn.name + tf.dynamicSuffix())
         
         # Build the type definition.
-        wrapper = TypeDef(tdef.name + self.tf.dynamic_suffix(),
+        wrapper = TypeDef(tdef.name + self.tf.wrapper_class_suffix(),
                           Block(defs),
                           None,
                           [base_type],
@@ -415,20 +421,22 @@ class TypeTransformer:
             cdefs.append(ExpressionStmt(c))
         
         # Create initialization of the wrapped object.
-        cdefs.append(AssignmentStmt([MemberExpr(self_expr(),
-                                     self.object_member_name(info))],
+        cdefs.append(AssignmentStmt([MemberExpr(
+                                         self_expr(),
+                                         self.object_member_name(info),
+                                         direct=True)],
                                     NameExpr('__o')))
         
         # Build constructor arguments.
-        args = [Var('__o')]
-        Node[] init = [None]
+        args = [Var('self'), Var('__o')]
+        Node[] init = [None, None]
         
         for alt in [False, BOUND_VAR]:
             for n in range(nslots):
                 args.append(Var(tvar_arg_name(n + 1, alt)))
                 init.append(None)
 
-        nargs = nslots * 2 + 1
+        nargs = nslots * 2 + 2
         fdef = FuncDef('__init__',
                        args,
                        [nodes.ARG_POS] * nargs,
@@ -465,7 +473,9 @@ class TypeTransformer:
         """
         for n in range(num_slots(creat.info)):
             rvalue = self.make_tvar_init_expression(creat.info, n)
-            init = AssignmentStmt([MemberExpr(self_expr(), tvar_slot_name(n))],
+            init = AssignmentStmt([MemberExpr(self_expr(),
+                                              tvar_slot_name(n),
+                                              direct=True)],
                                   rvalue)
             self.tf.set_type(init.lvalues[0], Any())
             self.tf.set_type(init.rvalue, Any())
@@ -480,7 +490,9 @@ class TypeTransformer:
                 rvalue = TypeExpr(
                     RuntimeTypeVar(NameExpr(tvar_slot_name(n, alt))))
                 init = AssignmentStmt(
-                    [MemberExpr(self_expr(), tvar_slot_name(n, alt))], rvalue)
+                    [MemberExpr(self_expr(),
+                                tvar_slot_name(n, alt), direct=True)],
+                    rvalue)
                 self.tf.set_type(init.lvalues[0], Any())
                 self.tf.set_type(init.rvalue, Any())
                 creat.body.body.insert(n, init)

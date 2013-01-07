@@ -23,6 +23,19 @@ Callable prepend_arg_type(Callable t, Typ arg_type):
                     t.line, None)
 
 
+Callable add_arg_type_after_self(Callable t, Typ arg_type):
+    """Add an argument with the given type to a callable type after 'self'."""
+    return Callable([t.arg_types[0], arg_type] + t.arg_types[1:],
+                    [t.arg_kinds[0], nodes.ARG_POS] + t.arg_kinds[1:],
+                    [t.arg_names[0], None] + t.arg_names[1:],
+                    t.ret_type,
+                    t.is_type_obj(),
+                    t.name,
+                    t.variables,
+                    t.bound_vars,
+                    t.line, None)
+
+
 Callable replace_ret_type(Callable t, Typ ret_type):
     """Return a copy of a callable type with a different return type."""
     return Callable(t.arg_types,
