@@ -270,8 +270,10 @@ class SemanticAnalyzer(NodeVisitor):
         # Add 'object' as implicit base if there is no other base class.
         if (not defn.is_interface and not has_base_class and
                 defn.full_name != 'builtins.object'):
-            defn.base_types.insert(0, self.object_type())
-        if defn.base_types != []:
+            obj = self.object_type()
+            defn.base_types.insert(0, obj)
+            self.typ.bases.append(obj)
+        if defn.base_types:
             bt = defn.base_types
             if isinstance(bt[0], Instance):
                 defn.info.base = ((Instance)bt[0]).typ
