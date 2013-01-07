@@ -142,6 +142,8 @@ class PrettyPrintVisitor(NodeVisitor):
     def visit_member_expr(self, o):
         self.node(o.expr)
         self.string('.' + o.name)
+        if o.is_direct:
+            self.string('!')
     
     def visit_name_expr(self, o):
         self.string(o.name)

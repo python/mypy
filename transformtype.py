@@ -238,9 +238,9 @@ class TypeTransformer:
         The getter will be of this form:
         
         . int $name*(C self):
-        .     return self.name
+        .     return self.name!
         """
-        member_expr = MemberExpr(self_expr(), name)
+        member_expr = MemberExpr(self_expr(), name, is_direct=True)
         ret = ReturnStmt(member_expr)
 
         wrapper_name = '$' + name
@@ -258,9 +258,9 @@ class TypeTransformer:
         The getter will be of this form:
         
         . any $name*(C self):
-        .     return {any <= typ self.name}
+        .     return {any <= typ self.name!}
         """
-        member_expr = MemberExpr(self_expr(), name)
+        member_expr = MemberExpr(self_expr(), name, is_direct=True)
         coerce_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
         ret = ReturnStmt(coerce_expr)
 
@@ -276,12 +276,12 @@ class TypeTransformer:
     FuncDef make_setter_wrapper(self, str name, Typ typ):
         """Create a setter wrapper for a data attribute.
 
-        The setter will be of this form (if is_dynamic is True):
+        The setter will be of this form:
         
         . void set$name(C self, typ name):
-        .     self.name = name
+        .     self.name! = name
         """
-        lvalue = MemberExpr(self_expr(), name)
+        lvalue = MemberExpr(self_expr(), name, is_direct=True)
         rvalue = NameExpr(name)
         ret = AssignmentStmt([lvalue], rvalue)
 
@@ -300,12 +300,12 @@ class TypeTransformer:
     FuncDef make_dynamic_setter_wrapper(self, str name, Typ typ):
         """Create a dynamically-typed setter wrapper for a data attribute.
 
-        The setter will be of this form (if is_dynamic is True):
+        The setter will be of this form:
         
         . void set$name*(C self, any name):
-        .     self.name = {typ name}
+        .     self.name! = {typ name}
         """
-        lvalue = MemberExpr(self_expr(), name)
+        lvalue = MemberExpr(self_expr(), name, is_direct=True)
         name_expr = NameExpr(name)
         rvalue = coerce(name_expr, typ, Any(), self.tf.type_context())
         ret = AssignmentStmt([lvalue], rvalue)

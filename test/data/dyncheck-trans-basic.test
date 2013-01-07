@@ -467,8 +467,8 @@ class A:
 ...
 
 
--- Constructor and object construction
--- -----------------------------------
+-- __init__ and object construction
+-- --------------------------------
 
 
 [case testConstructInstanceWithPreciseTypes]
@@ -548,13 +548,13 @@ class A:
 class A:
     int i
     int $i(A self):
-        return self.i
+        return self.i!
     void set$i(A self, int i):
-        self.i = i
+        self.i! = i
     any $i*(A self):
-        return {any <= int self.i}
+        return {any <= int self.i!}
     void set$i*(A self, any i):
-        self.i = {int i}
+        self.i! = {int i}
 any A*():
     return A()
 
@@ -567,15 +567,13 @@ class A:
     any g(self):
         return self.a
 [out]
-class A
+class A:
 ...
-  def f() as Int
-    return {std::Int <= dyn | self.d}
-  end
+    int f(A self):
+        return {int self.d}
 ...
-  def g() as dynamic
-    return {dyn <= std::Int | self.a}
-  end
+    any g(A self):
+        return {any <= int self.a}
 ...
 
 [case testMemberVariableAssignmentViaInstanceType]
@@ -588,8 +586,8 @@ class A:
 [out]
 ...
     void __init__(A self, any d):
-        self.set$a({int d})
-        self.set$d(d)
+        self.a = {int d}
+        self.d = d
 ...
 
 [case testMemberVariableAccessViaAny]
@@ -599,7 +597,7 @@ class A:
 [out]
 class A:
     A f(A self, any d):
-      return {A | d.$x()}
+        return {A d.x*}
 ...
 
 [case testMemberVariableAssignmentViaDynamic]
@@ -607,7 +605,7 @@ any d
 d.x = 1
 [out]
 ...
-d.set$x*({any <= int | 1})
+d.x* = {any <= int 1}
 
 
 -- Casts
