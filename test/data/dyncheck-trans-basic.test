@@ -834,9 +834,8 @@ i = i
 int a = 1
 any d = 1
 [out]
-var a = 1 as Int
-var d = {dyn <= std::Int | 1} as dynamic
-
+int a = 1
+any d = {any <= int 1}
 
 [case testIntArithmetic]
 int i
@@ -861,23 +860,22 @@ d = d // d
 [out]
 ...
 i = 1 + 2
--- TODO why the extra space?
-i = ( 1 - 2) * 2
-i = 1 mod 2
-i = 1 div 2
+i = (1 - 2) * 2
+i = 1 % 2
+i = 1 // 2
 i = -i
-d = {dyn <= std::Int | 1 + d}
-d = {dyn <= std::Int | 1 - d}
-d = {dyn <= std::Int | 1 * d}
-d = {dyn <= std::Int | 1 mod d}
-d = {dyn <= std::Int | 1 div d}
-d = -d + d - d * d
-d = d + 1
+-- TODO the coercions to int are somewhat arbitrary
+d = {any <= int 1 + {int d}}
+d = {any <= int 1 - d}
+d = {any <= int 1 * d}
+d = {any <= int 1 % d}
+d = {any <= int 1 // d}
+d = {int -d} + {int d} - d * d
+d = {int d} + 1
 d = d - 1
 d = d * 1
-d = d mod d
-d = d div d
-
+d = d % d
+d = d // d
 
 [case testBinaryOperationOperands]
 any d
@@ -889,11 +887,10 @@ i = -d.g()
 [builtins fixtures/ops.py]
 [out]
 ...
-i = {std::Int <= dyn | d.g*() + d.f*()}
-i = {std::Int <= dyn | d.g*() * d.f*()}
-i = i + d.f*()
-i = {std::Int <= dyn | -d.g*()}
-
+i = {int {int d.g*()} + {int d.f*()}}
+i = {int d.g*() * d.f*()}
+i = i + {int d.f*()}
+i = {int -d.g*()}
 
 [case testBools]
 bool b
@@ -933,7 +930,6 @@ b = {std::Boolean <= dyn | d} and {std::Boolean <= dyn | d}
 d = {dyn <= std::Boolean | {std::Boolean <= dyn | d} or {std::Boolean <= dyn | d}}
 b = not d
 
-
 [case testIntComparisons]
 int i
 bool b
@@ -964,7 +960,6 @@ b = d != 1
 b = 1 < d
 d = {dyn <= std::Boolean | 1 > d}
 
-
 [case testNilComparison]
 bool b
 C c
@@ -981,7 +976,6 @@ b = c != nil
 b = nil == b
 b = nil != c
 ...
-
 
 [case testStrLiterals]
 str s = 'foo'
@@ -1068,8 +1062,8 @@ void g():
 def f(a, b)
 end
 def g() as void
-  var i = {std::Int <= dyn | f({dyn <= std::Int | 1}, \
-                               {dyn <= std::Int | 2})} as Int
+  var i = {int <= dyn | f({dyn <= int | 1}, \
+                               {dyn <= int | 2})} as Int
 end
 
 [case testImplicitMethodSig]
@@ -1087,8 +1081,8 @@ class A
     return f(a)
   end
   def g() as void
-    var i = {std::Int <= dyn | f({dyn <= std::Int | 1})} as Int
-    var j = {std::Int <= dyn | self.f({dyn <= std::Int | 1})} as Int
+    var i = {int <= dyn | f({dyn <= int | 1})} as Int
+    var j = {int <= dyn | self.f({dyn <= int | 1})} as Int
   end
 ...
 
@@ -1150,10 +1144,10 @@ int i
 object o
 [out]
 def f(x)
-  var y = {dyn <= std::Int | 1}
-{dyn <= std::Int |  i} + y
+  var y = {dyn <= int | 1}
+{dyn <= int |  i} + y
 {dyn <= std::Object |  o} + o
-  x = {dyn <= std::Int | g({std::Int <= dyn | o})}
+  x = {dyn <= int | g({int <= dyn | o})}
 end
 ...
 
@@ -1171,9 +1165,9 @@ class A:
 class A
   private var i as Int
   def f(x)
-    x = {dyn <= std::Int | g({std::Int <= dyn | x})}
+    x = {dyn <= int | g({int <= dyn | x})}
     x = {dyn <= A | self}.z*()
-    x = {dyn <= std::Int | i}
+    x = {dyn <= int | i}
     x.y*()
   end
 ...

@@ -14,7 +14,7 @@ class int:
     int __sub__(self, int x): pass
     int __mul__(self, int x): pass
     int __mod__(self, int x): pass
-    int __idiv__(self, int x): pass
+    int __floordiv__(self, int x): pass
     int __neg__(self): pass
     bool __eq__(self, int x): pass
     bool __lt__(self, int x): pass

@@ -176,6 +176,22 @@ class PrettyPrintVisitor(NodeVisitor):
     
     def visit_str_expr(self, o):
         self.string(repr(o.value))
+
+    def visit_op_expr(self, o):
+        self.node(o.left)
+        self.string(' %s ' % o.op)
+        self.node(o.right)
+
+    def visit_unary_expr(self, o):
+        self.string(o.op)
+        if o.op == 'not':
+            self.string(' ')
+        self.node(o.expr)
+
+    def visit_paren_expr(self, o):
+        self.string('(')
+        self.node(o.expr)
+        self.string(')')
     
     def visit_super_expr(self, o):
         self.string('super().')
