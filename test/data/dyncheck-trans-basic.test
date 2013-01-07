@@ -987,6 +987,18 @@ __print(s)
 __print('bar')
 
 
+-- Type inference
+-- --------------
+
+
+[case testSimpleTypeInference]
+y = 1
+any a = y
+[out]
+y = 1
+any a = {any <= int y}
+
+
 -- Implicit any types
 -- ------------------
 
