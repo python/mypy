@@ -357,9 +357,7 @@ class TypeTransformer:
                         type(d), d.line))
         
         Typ base_type = None
-        # Inherit superclass wrapper if there is one. A superclass
-        # always exists when inheriting a class other Object, since
-        # generic classes cannot inherit non-generic ones.
+        # Inherit superclass wrapper if there is one.
         if has_proper_superclass:
             base = self.find_generic_base_class(tdef.info)
             if base is not None:
