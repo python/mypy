@@ -138,7 +138,6 @@ bool is_simple_override(FuncDef fdef, TypeInfo info):
     # type variables between types; in the future this restriction can be
     # lifted.
     if info.base is None or info.base.type_vars != []:
-        print('no')
         return False
     orig = info.base.get_method(fdef.name())
     # Ignore the first argument (self) when determining type sameness.
