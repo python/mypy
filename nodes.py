@@ -1001,8 +1001,8 @@ class TypeInfo(Node, AccessorNode, SymNode):
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
+    # TODO comment may not be accurate; also why generics should be special?
     mtypes.Typ[] bases
-    
     
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
                   TypeDef defn):
@@ -1019,7 +1019,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         self.vars = vars
         self.methods = methods
         self.defn = defn
-        if defn.type_vars is not None:
+        if defn.type_vars:
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
     
@@ -1094,7 +1094,6 @@ class TypeInfo(Node, AccessorNode, SymNode):
         else:
             return None
     
-    
     void set_base(self, TypeInfo base):
         """Set the base class."""
         self.base = base
@@ -1119,7 +1118,6 @@ class TypeInfo(Node, AccessorNode, SymNode):
             for t in subt.all_subtypes():
                 set.add(t)
         return set
-    
     
     void add_interface(self, TypeInfo base):
         """Add a base interface."""
@@ -1151,7 +1149,6 @@ class TypeInfo(Node, AccessorNode, SymNode):
         Omit inherited interfaces.
         """
         return self.interfaces[:]
-    
     
     str __str__(self):
         """Return a string representation of the type, which includes the most

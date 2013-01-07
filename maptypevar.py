@@ -44,13 +44,14 @@ RuntimeTypeVar get_tvar_access_expression(TypeInfo typ, int tvindex, any alt,
 
 
 int[] get_tvar_access_path(TypeInfo typ, int tvindex):
-    """Return a description of how to get to type variable value defined in a
-    specific type from type variable slot values embedded in an instance. The
-    indexing is 1-based.
+    """Determine how to calculate the value of a type variable of a type.
     
-     - If tvar slot x maps directly to tvar subtvindex in the type, return [x].
-     - If argument y of x maps to tvar subtvindex, return [x, y]. For argument
-       z of argument y of x return [x, y, z], etc.
+    The description is based on operations on type variable slot values
+    embedded in an instance. The type variable and slot indexing is 1-based.
+    
+     - If tvar slot x maps directly to tvar tvindex in the type, return [x].
+     - If argument y of slot x maps to tvar tvindex, return [x, y]. For
+       argument z of argument y of x return [x, y, z], etc.
      - If there is no relation, return None.
     
     For example, assume these definitions:
@@ -58,9 +59,9 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
       class A<S, U>: ...
       class B<T>(A<X, Y<T>>): ...
     
-    Now we can query the access path to T (1) of B:
+    Now we can query the access path to type variable 1 (T) of B:
     
-      get_tvar_access_path(<B>, 1) == [2, 1]  (slot 2, lookup type argument 1).
+      get_tvar_access_path(<B>, 1) == [2, 1] (slot 2, lookup type argument 1).
     """
     if not typ.base:
         return None
@@ -72,7 +73,7 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     
     # Figure out the superclass instance type.
     Instance base
-    if typ.bases[0] is None:
+    if not typ.bases[0]:
         # Non-generic superclass.
         base = Instance(typ.base, [])
     else:
