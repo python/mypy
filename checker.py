@@ -430,7 +430,8 @@ class TypeChecker(NodeVisitor<Typ>):
             self.check_multi_assignment(lvalue_types, index_lvalue_types,
                                         rvalue, rvalue)
         if is_inferred:
-            self.infer_variable_type(inferred, self.accept(rvalue), rvalue)
+            self.infer_variable_type(inferred, lvalues, self.accept(rvalue),
+                                     rvalue)
     
     def is_definition(self, s):
         return ((isinstance(s, NameExpr) or isinstance(s, MemberExpr)) and
@@ -446,7 +447,7 @@ class TypeChecker(NodeVisitor<Typ>):
         else:
             return [n]
     
-    void infer_variable_type(self, Var[] names, Typ init_type,
+    void infer_variable_type(self, Var[] names, Node[] lvalues, Typ init_type,
                              Context context):
         """Infer the type of initialized variables from the type of the
         initializer expression.
@@ -469,9 +470,8 @@ class TypeChecker(NodeVisitor<Typ>):
                     # Initializer with a tuple type.
                     if len(tinit_type.items) == len(names):
                         for i in range(len(names)):
-                            if names[i]:
-                                names[i].typ = Annotation(tinit_type.items[i],
-                                                          -1)
+                            self.set_inferred_type(names[i], lvalues[i],
+                                                   tinit_type.items[i])
                     else:
                         self.msg.incompatible_value_count_in_assignment(
                             len(names), len(tinit_type.items), context)
@@ -480,19 +480,27 @@ class TypeChecker(NodeVisitor<Typ>):
                             'builtins.list'):
                     # Initializer with an array type.
                     item_type = ((Instance)init_type).args[0]
-                    for j in range(len(names)):
-                        if names[j]:
-                            names[j].typ = Annotation(item_type, -1)
+                    for i in range(len(names)):
+                        self.set_inferred_type(names[i], lvalues[i], item_type)
                 elif isinstance(init_type, Any):
-                    for k in range(len(names)):
-                        if names[k]:
-                            names[k].typ = Annotation(Any(), -1)
+                    for i in range(len(names)):
+                        self.set_inferred_type(names[i], lvalues[i], Any())
                 else:
                     self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                               context)
             else:
                 for v in names:
-                    v.typ = Annotation(init_type, -1)
+                    self.set_inferred_type(v, lvalues[0], init_type)
+
+    void set_inferred_type(self, Var var, Node lvalue, Typ type):
+        """Store inferred variable type.
+
+        Store the type to both the variable node and the expression node that
+        refers to the variable (lvalue). If var is None, do nothing.
+        """
+        if var:
+            var.typ = Annotation(type, -1)
+            self.store_type(lvalue, type)
     
     bool is_valid_inferred_type(self, Typ typ):
         """Is an inferred type invalid?
