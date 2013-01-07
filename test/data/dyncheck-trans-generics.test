@@ -85,7 +85,6 @@ class C*
   end
 end
 
-
 [case testGenericMethodWithArguments]
 class C<T>:
     void f(self, A a, T t):
@@ -114,7 +113,6 @@ class C*
 end
 class A; end
 
-
 [case testAccessingGenericMethodInTypedContext]
 class A: pass
 class B: pass
@@ -130,7 +128,6 @@ c.f((any)A())
 var c as C<B>
 c.f({A <= dyn | A() as dynamic})
 
-
 [case testAccessingMethodInGenericClassAndTypedContextViaSelf]
 class A: pass
 class C<T>:
@@ -142,20 +139,6 @@ class C<T>:
     self.f(a)
   end
 ...
-
-
-[case testAccessingMethodInGenericClassDirectly]
-class A: pass
-class C<T>:
-    void f(self, A a):
-        self.f(a)
-[out]
-...
-  def f(a as A)
-    f(a)
-  end
-...
-
 
 [case testConstructingGenericInstance]
 class C<T>:
@@ -170,7 +153,6 @@ class A; end
 var a = C(<A>) as <A> as C<A>
 var d = C(<dyn>) as <dynamic> as C<dynamic>
 
-
 [case testAssignmentWithCoercion]
 int n
 any d
@@ -181,7 +163,6 @@ var n as Int
 var d as dynamic
 d = {dyn <= std::Int | n}
 n = {std::Int <= dyn | d}
-
 
 [case testCastFromDynamicToGenericType]
 class A<T>:
@@ -206,7 +187,6 @@ b = {B <= dyn | d.f*()}          -- Ok
 var aa = {A<C> <= dyn | d} as A<C> -- Ok
 aa.f()             -- Fail
 
-
 [case testCastWithDynamicAndTypedArguments]
 class A<T>: pass
 class B: pass
@@ -219,7 +199,6 @@ d = a
 var d as A<dynamic>
 a = {A<B> <= A<dyn> | d}
 d = {A<dyn> <= A<B> | a}
-
 
 [case testNestedGenerics]
 class A<T>:
@@ -237,7 +216,6 @@ var d as A<dynamic>
 d = {A<dyn> <= A<A<B>> | a}
 a.f()
 d.f()
-
 
 [case testGenericWrapperWithNonGenericTypesInSignatures]
 class A<T>:
@@ -328,7 +306,6 @@ class A*
 var a as A<B, C>
 a.f()
 
-
 [case testAccessingMultipleTypeArguments]
 class A<T, S>:
     T x
@@ -350,7 +327,6 @@ class A*
                           {self.__btv2 <= dyn | y}})}
   end
 ...
-
 
 [case testAccessingGenericMethodInTypedContextViaSelfAndMultipleArgs]
 class A: pass
@@ -393,7 +369,6 @@ class A<T, S>:
   end
 ...
 
-
 [case testTypeVarCoercionsWithGenericTypes]
 class A<T>:
     A<T> a
@@ -409,7 +384,6 @@ class A<T>:
     a = {A<self.__tv> <= dyn | d}
   end
 ...
-
 
 [case testConstructGenericInstanceBasedOnTypeVar]
 class A<T>:
@@ -463,7 +437,6 @@ def f<T>(__ftv as dynamic, x as T) as T
   return x
 end
 
-
 [case testGenericFunctionWithTwoTvars]
 T f<T, S>(T x):
     return x
@@ -471,7 +444,6 @@ T f<T, S>(T x):
 def f<T, S>(__ftv as dynamic, __ftv2 as dynamic, x as T) as T
   return x
 end
-
 
 [case testCallingSimpleGenericFunction]
 T f<T>(T x):
@@ -495,7 +467,6 @@ def g() as void
   c = {C <= dyn | f(<dyn>, c) as <dynamic>}
 end
 ...
-
 
 [case testTypeVarReferenceInGenericFunction]
 C<T> f<T>(any x):
@@ -531,7 +502,6 @@ class A
   end
 end
 
-
 [case testGenericMethodInGenericClass]
 class A<T>:
     S f<S>(self, S x):
@@ -566,7 +536,6 @@ class A*
   end
 end
 
-
 [case testCalllingGenericMethod]
 class A:
     T f<T>(self):
@@ -583,7 +552,6 @@ class C: pass
 ...
 var c = A().f(<C>) as <C> as C
 ...
-
 
 [case testCalllingGenericMethod2]
 class A<S>:
@@ -602,7 +570,6 @@ class D: pass
 ...
 var c = (A(<D>) as <D>).f(<C>) as <C> as C
 ...
-
 
 [case testAccessingGenericMethodTvars]
 class A<S>:
@@ -654,8 +621,7 @@ class A*
 
 
 [case testPairExample]
-# This test case is adapted from an example program in a paper describing
-# the transformation process.
+# This test case is adapted from an early example program.
 class P<H, T>:
     H head
     T tail
