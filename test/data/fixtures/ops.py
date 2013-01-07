@@ -2,6 +2,8 @@
 
 class object:
     void __init__(self): pass
+    bool __eq__(self, object o): pass
+    bool __ne__(self, object o): pass
 
 class type: pass
 
@@ -16,9 +18,12 @@ class int:
     int __mod__(self, int x): pass
     int __floordiv__(self, int x): pass
     int __neg__(self): pass
-    bool __eq__(self, int x): pass
+    bool __eq__(self, object x): pass
+    bool __ne__(self, object x): pass
     bool __lt__(self, int x): pass
+    bool __le__(self, int x): pass
     bool __gt__(self, int x): pass
+    bool __ge__(self, int x): pass
 
 class float: pass
 

@@ -912,22 +912,22 @@ d = d or d
 b = not d
 [builtins fixtures/ops.py]
 [out]
-var b as Boolean
-var d as dynamic
+bool b
+any d
 b = True
 b = False
-d = {dyn <= std::Boolean | True}
-d = {dyn <= std::Boolean | False}
+d = {any <= bool True}
+d = {any <= bool False}
 b = b and b
-d = {dyn <= std::Boolean | b or b}
+d = {any <= bool b or b}
 b = not b
-d = {dyn <= std::Boolean | not b}
-b = b and {std::Boolean <= dyn | d}
-d = {dyn <= std::Boolean | b or {std::Boolean <= dyn | d}}
-b = {std::Boolean <= dyn | d} and b
-d = {dyn <= std::Boolean | {std::Boolean <= dyn | d} or b}
-b = {std::Boolean <= dyn | d} and {std::Boolean <= dyn | d}
-d = {dyn <= std::Boolean | {std::Boolean <= dyn | d} or {std::Boolean <= dyn | d}}
+d = {any <= bool not b}
+b = b and {bool d}
+d = {any <= bool b or {bool d}}
+b = {bool d} and b
+d = {any <= bool {bool d} or b}
+b = {bool d} and {bool d}
+d = {any <= bool {bool d} or {bool d}}
 b = not d
 
 [case testIntComparisons]
@@ -949,32 +949,32 @@ d = 1 > d
 [out]
 ...
 b = 1 == 2
-d = {dyn <= std::Boolean | 1 != 2}
+d = {any <= bool 1 != 2}
 b = 1 < 2
 b = 1 <= 2
 b = 1 > 2
 b = 1 >= 2
-b = d == d
-d = {dyn <= std::Boolean | d == d}
-b = d != 1
+b = {bool d == d}
+d = d == d
+b = {bool d != 1}
 b = 1 < d
-d = {dyn <= std::Boolean | 1 > d}
+d = {any <= bool 1 > d}
 
-[case testNilComparison]
+[case testNoneComparison]
 bool b
 C c
 b = b is None
 b = c is not None
-b = None == b
-b = None != c
+b = b == None
+b = c == None
 class C: pass
 [builtins fixtures/ops.py]
 [out]
 ...
-b = b == nil
-b = c != nil
-b = nil == b
-b = nil != c
+b = b is None
+b = c is not None
+b = b == None
+b = c == None
 ...
 
 [case testStrLiterals]
@@ -987,8 +987,8 @@ __print(s)
 __print('bar')
 
 
--- Implicit dynamic types
--- ----------------------
+-- Implicit any types
+-- ------------------
 
 
 [case testImplicitGlobalVarType]
@@ -1062,8 +1062,8 @@ void g():
 def f(a, b)
 end
 def g() as void
-  var i = {int <= dyn | f({dyn <= int | 1}, \
-                               {dyn <= int | 2})} as Int
+  var i = {int <= dyn | f({any <= int | 1}, \
+                               {any <= int | 2})} as Int
 end
 
 [case testImplicitMethodSig]
@@ -1081,8 +1081,8 @@ class A
     return f(a)
   end
   def g() as void
-    var i = {int <= dyn | f({dyn <= int | 1})} as Int
-    var j = {int <= dyn | self.f({dyn <= int | 1})} as Int
+    var i = {int <= dyn | f({any <= int | 1})} as Int
+    var j = {int <= dyn | self.f({any <= int | 1})} as Int
   end
 ...
 
@@ -1144,10 +1144,10 @@ int i
 object o
 [out]
 def f(x)
-  var y = {dyn <= int | 1}
-{dyn <= int |  i} + y
-{dyn <= std::Object |  o} + o
-  x = {dyn <= int | g({int <= dyn | o})}
+  var y = {any <= int | 1}
+{any <= int |  i} + y
+{any <= std::Object |  o} + o
+  x = {any <= int | g({int <= dyn | o})}
 end
 ...
 
@@ -1165,9 +1165,9 @@ class A:
 class A
   private var i as Int
   def f(x)
-    x = {dyn <= int | g({int <= dyn | x})}
-    x = {dyn <= A | self}.z*()
-    x = {dyn <= int | i}
+    x = {any <= int | g({int <= dyn | x})}
+    x = {any <= A | self}.z*()
+    x = {any <= int | i}
     x.y*()
   end
 ...
