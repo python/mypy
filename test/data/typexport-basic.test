@@ -715,6 +715,31 @@ MemberExpr(3) : B
 NameExpr(3) : A
 
 
+-- Boolean operations
+-- ------------------
+
+
+[case testBooleanOr]
+A[] a
+a or []
+a = a or []
+a = [] or a
+class A: pass
+[builtins fixtures/list.py]
+[out]
+ListExpr(2) : builtins.list<A>
+NameExpr(2) : builtins.list<A>
+OpExpr(2) : builtins.list<A>
+ListExpr(3) : builtins.list<A>
+NameExpr(3) : builtins.list<A>
+NameExpr(3) : builtins.list<A>
+OpExpr(3) : builtins.list<A>
+ListExpr(4) : builtins.list<A>
+NameExpr(4) : builtins.list<A>
+NameExpr(4) : builtins.list<A>
+OpExpr(4) : builtins.list<A>
+
+
 -- TODO
 --
 -- test expressions

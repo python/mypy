@@ -20,6 +20,7 @@ from replacetvars import replace_func_type_vars, replace_type_vars
 from messages import MessageBuilder
 import messages
 from infer import infer_type_arguments, infer_function_type_arguments
+import join
 from expandtype import expand_type, expand_caller_var_args
 from subtypes import is_subtype
 import erasetype
@@ -634,6 +635,8 @@ class ExpressionChecker:
     
     Typ visit_op_expr(self, OpExpr e):
         """Type check a binary operator expression."""
+        if e.op == 'and' or e.op == 'or':
+            return self.check_boolean_op(e, e)
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
@@ -645,8 +648,6 @@ class ExpressionChecker:
         elif e.op in checker.op_methods:
             method = checker.op_methods[e.op]
             return self.check_op(method, left_type, e.right, e)
-        elif e.op == 'and' or e.op == 'or':
-            return self.check_boolean_op(e.op, left_type, right_type, e)
         elif e.op == 'is' or e.op == 'is not':
             return self.chk.bool_type()
         else:
@@ -661,15 +662,24 @@ class ExpressionChecker:
             method, base_type, context)
         return self.check_call(method_type, [arg], [nodes.ARG_POS], context)
     
-    Typ check_boolean_op(self, str op, Typ left_type, Typ right_type,
-                         Context context):
-        """Type check a boolean operation ("and" or "or")."""
-        # Any non-void value is valid in a boolean context.
+    Typ check_boolean_op(self, OpExpr e, Context context):
+        """Type check a boolean operation ('and' or 'or')."""
+
+        # A boolean operation can evaluate to either of the operands.
+        
+        # We use the current type context to guide the type inference of of
+        # the left operand. We also use the left operand type to guide the type
+        # inference of the right operand so that expressions such as
+        # '[1] or []' are inferred correctly.
+        ctx = self.chk.type_context[-1]
+        left_type = self.accept(e.left, ctx)
+        right_type = self.accept(e.right, left_type)
+        
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
-        # TODO the result type should be the combination of left_type and
-        #      right_type
-        return self.chk.bool_type()
+
+        return join.join_types(left_type, right_type,
+                               self.chk.basic_types())
     
     Typ visit_unary_expr(self, UnaryExpr e):
         """Type check an unary operation ('not', '-' or '~')."""

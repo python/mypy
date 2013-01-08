@@ -563,6 +563,24 @@ A[] a = m # E: Incompatible types in assignment
 [builtins fixtures/list.py]
 
 
+-- Boolean operators
+-- -----------------
+
+
+[case testOrOperationInferredFromContext]
+A[] a, B[] b, C[] c
+a = a or []
+a = [] or a
+b = b or [C()]
+a = a or b # E: Incompatible types in assignment
+b = b or c # E: Incompatible types in assignment
+
+class A: pass
+class B: pass
+class C(B): pass
+[builtins fixtures/list.py]
+
+
 -- Special cases
 -- -------------
 
