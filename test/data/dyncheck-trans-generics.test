@@ -152,17 +152,6 @@ class A:
 C a = C(<A>)
 C d = C(<any>)
 
-[case testAssignmentWithCoercion]
-int n
-any d
-d = n
-n = d
-[out]
-var n as Int
-var d as dynamic
-d = {dyn <= std::Int | n}
-n = {std::Int <= dyn | d}
-
 [case testCastFromDynamicToGenericType]
 class A<T>:
     T a
