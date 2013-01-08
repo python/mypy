@@ -147,9 +147,10 @@ C<A> a = C<A>()
 C<any> d = C<any>()
 [out]
 ...
-class A; end
-var a = C(<A>) as <A> as C<A>
-var d = C(<dyn>) as <dynamic> as C<dynamic>
+class A:
+...
+C a = C(<A>)
+C d = C(<any>)
 
 [case testAssignmentWithCoercion]
 int n

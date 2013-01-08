@@ -202,6 +202,10 @@ class PrettyPrintVisitor(NodeVisitor):
         self.typ(o.typ)
         self.string(')')
         self.node(o.expr)
+
+    def visit_type_application(self, o):
+        # Type arguments are erased in transformation.
+        self.node(o.expr)
     
     #
     # Helpers
