@@ -993,7 +993,6 @@ class TypeInfo(Node, AccessorNode, SymNode):
     # is the superclass, and the rest are interfaces.
     mtypes.Typ[] bases
     
-    
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
                   TypeDef defn):
         """Construct a TypeInfo."""
@@ -1028,7 +1027,6 @@ class TypeInfo(Node, AccessorNode, SymNode):
         for vd in a:
             self.bounds.append(vd.bound)
     
-    
     # IDEA: Refactor the has* methods to be more consistent and document
     #       them.
     
@@ -1036,7 +1034,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         return self.has_var(name) or self.has_method(name)
     
     bool has_writable_member(self, str name):
-        return self.has_var(name) or self.has_setter(name)
+        return self.has_var(name)
     
     bool has_var(self, str name):
         return self.get_var(name) is not None
@@ -1045,15 +1043,10 @@ class TypeInfo(Node, AccessorNode, SymNode):
         return name in self.methods or (self.base is not None
                                         and self.base.has_method(name))
     
-    def has_setter(self, name):
-        # FIX implement
-        return False
-    
-    
     Var get_var(self, str name):
         if name in self.vars:
             return self.vars[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_var(name)
         else:
             return None
@@ -1062,7 +1055,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         # TODO getter
         if name in self.vars:
             return self.vars[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_var_or_getter(name)
         else:
             return None
@@ -1071,7 +1064,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         # TODO setter
         if name in self.vars:
             return self.vars[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_var_or_setter(name)
         else:
             return None
@@ -1079,11 +1072,10 @@ class TypeInfo(Node, AccessorNode, SymNode):
     FuncBase get_method(self, str name):
         if name in self.methods:
             return self.methods[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_method(name)
         else:
             return None
-    
     
     void set_base(self, TypeInfo base):
         """Set the base class."""
@@ -1091,8 +1083,9 @@ class TypeInfo(Node, AccessorNode, SymNode):
         base.subtypes.add(self)
     
     bool has_base(self, str full_name):
-        """Return True if type has a basetype with the specified name,
-        either via extension or via implementation.
+        """Return True if type has a base type with the specified name.
+
+        This can be either via extension or via implementation.
         """
         if self.full_name() == full_name or (self.base is not None and
                                              self.base.has_base(full_name)):
@@ -1110,15 +1103,15 @@ class TypeInfo(Node, AccessorNode, SymNode):
                 set.add(t)
         return set
     
-    
     void add_interface(self, TypeInfo base):
         """Add a base interface."""
         self.interfaces.append(base)
     
     TypeInfo[] all_directly_implemented_interfaces(self):
-        """Return a list of interfaces that are either directly
-        implemented by the type or that are the supertypes of other
-        interfaces in the array.
+        """Return a list of interfaces that the type implements.
+
+        This includes interfaces that are directly implemented by the type and
+        that are implemented by base types.
         """
         # Interfaces never implement interfaces.
         if self.is_interface:
@@ -1142,10 +1135,10 @@ class TypeInfo(Node, AccessorNode, SymNode):
         """
         return self.interfaces[:]
     
-    
     str __str__(self):
-        """Return a string representation of the type, which includes the most
-        important information about the type.
+        """Return a string representation of the type.
+
+        This includes the most important information about the type.
         """
         str[] interfaces = []
         for i in self.interfaces:
