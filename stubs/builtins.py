@@ -16,7 +16,7 @@ class object:
 # Interfacess
 
 
-# TODO Hashable, Container, Set etc.
+# TODO Container etc.
 
 
 interface int_t: # TODO rename
@@ -60,9 +60,19 @@ interface Mapping<kt, vt>(Sized, Iterable<kt>):
     void update(self, Iterable<tuple<kt, vt>> m)
     
     # TODO use views for the return values instead
-    kt[] keys(self)
-    vt[] values(self)
-    list<tuple<kt, vt>> items(self)
+    Set<kt> keys(self)
+    Set<vt> values(self)
+    Set<tuple<kt, vt>> items(self)
+    
+interface Set<t>(Sized, Iterable<t>):
+    bool __contains__(self, object x)
+    # TODO __le__, __lt__, __gt__, __ge__
+    Set<t> __and__(self, Set<t> s)
+    Set<t> __or__(self, Set<t> s)
+    Set<t> __sub__(self, Set<t> s)
+    Set<t> __xor__(self, Set<t> s)
+    # TODO argument can be any container?
+    bool isdisjoint(self, Set<t> s)
 
 interface IO:    
     # TODO __enter__ etc.
@@ -604,23 +614,11 @@ class dict<kt, vt>(Mapping<kt, vt>):
     void update(self, Mapping<kt, vt> m): pass
     void update(self, Iterable<tuple<kt, vt>> m): pass
 
-    # TODO use views for the return values instead
-    kt[] keys(self): pass
-    vt[] values(self): pass
-    list<tuple<kt, vt>> items(self): pass
+    Set<kt> keys(self): pass
+    Set<vt> values(self): pass
+    Set<tuple<kt, vt>> items(self): pass
 
     str __str__(self): pass
-
-
-interface Set<t>(Sized, Iterable<t>):
-    bool __contains__(self, object x)
-    # TODO __le__, __lt__, __gt__, __ge__
-    Set<t> __and__(self, Set<t> s)
-    Set<t> __or__(self, Set<t> s)
-    Set<t> __sub__(self, Set<t> s)
-    Set<t> __xor__(self, Set<t> s)
-    # TODO argument can be any container?
-    bool isdisjoint(self, Set<t> s)
 
 
 class set<t>(Set<t>):
