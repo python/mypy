@@ -672,17 +672,17 @@ class ExpressionChecker:
         return self.chk.bool_type()
     
     Typ visit_unary_expr(self, UnaryExpr e):
-        """Type check an unary expression ("not", - or ~)."""
+        """Type check an unary operation ('not', '-' or '~')."""
         operand_type = self.accept(e.expr)
-        _x = e.op
-        if _x == 'not':
+        op = e.op
+        if op == 'not':
             self.check_not_void(operand_type, e)
             return self.chk.bool_type()
-        elif _x == '-':
+        elif op == '-':
             method_type = self.analyse_external_member_access('__neg__',
                                                               operand_type, e)
             return self.check_call(method_type, [], [], e)
-        elif _x == '~':
+        elif op == '~':
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
             return self.check_call(method_type, [], [], e)
