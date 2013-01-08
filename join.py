@@ -1,3 +1,5 @@
+"""Calculation of the least upper bound types (joins)."""
+
 import checker
 from mtypes import (
     Typ, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
@@ -7,6 +9,12 @@ from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
 Typ join_types(Typ s, Typ t, checker.BasicTypes basic):
+    """Return the least upper bound of s and t.
+
+    For example, the join of 'int' and 'object' is 'object'.
+
+    If the join does not exist, return an ErrorType instance.
+    """
     if isinstance(s, Any):
         return s
     
@@ -15,11 +23,13 @@ Typ join_types(Typ s, Typ t, checker.BasicTypes basic):
 
     if isinstance(s, ErasedType):
         return t
-    
+
+    # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s, basic))
 
 
 class TypeJoinVisitor(TypeVisitor<Typ>):
+    """Implementation of the least upper bound algorithm."""
     void __init__(self, Typ s, checker.BasicTypes basic):
         self.s = s
         self.basic = basic
@@ -104,9 +114,10 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
 
 Typ join_instances(Instance t, Instance s, bool allow_interfaces,
                    checker.BasicTypes basic):
-    """Calculate the join of two instance types. If allow_interfaces is
-    True, also consider interface-type results for non-interface
-    types.
+    """Calculate the join of two instance types.
+
+    If allow_interfaces is True, also consider interface-type results for
+    non-interface types.
     
     Return ErrorType if the result is ambiguous.
     """
