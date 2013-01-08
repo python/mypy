@@ -612,33 +612,53 @@ class dict<kt, vt>(Mapping<kt, vt>):
     str __str__(self): pass
 
 
-class set<t>(Sized, Iterable<t>):
+interface Set<t>(Sized, Iterable<t>):
+    bool __contains__(self, object x)
+    # TODO __le__, __lt__, __gt__, __ge__
+    Set<t> __and__(self, Set<t> s)
+    Set<t> __or__(self, Set<t> s)
+    Set<t> __sub__(self, Set<t> s)
+    Set<t> __xor__(self, Set<t> s)
+    # TODO argument can be any container?
+    bool isdisjoint(self, Set<t> s)
+
+
+class set<t>(Set<t>):
     void __init__(self): pass
     void __init__(self, Iterable<t> iterable): pass
     
     void add(self, t element): pass
     void remove(self, t element): pass
+    set<t> copy(self): pass
+    bool isdisjoint(self, Set<t> s): pass
     
     int __len__(self): pass
     bool __contains__(self, object o): pass
     Iterator<t> __iter__(self): pass    
     str __str__(self): pass
 
-    set<t> __and__(self, set<t> s): pass
-    set<t> __or__(self, set<t> s): pass
-    set<t> __sub__(self, set<t> s): pass
+    set<t> __and__(self, Set<t> s): pass
+    set<t> __or__(self, Set<t> s): pass
+    set<t> __sub__(self, Set<t> s): pass
+    set<t> __xor__(self, Set<t> s): pass
     # TODO more set operations
 
 
-class frozenset<t>(Sized, Iterable<t>):
+class frozenset<t>(Set<t>):
     void __init__(self): pass
     void __init__(self, Iterable<t> iterable): pass
+
+    bool isdisjoint(self, Set<t> s): pass
     
     int __len__(self): pass
     bool __contains__(self, object o): pass
     Iterator<t> __iter__(self): pass    
     str __str__(self): pass
 
+    frozenset<t> __and__(self, Set<t> s): pass
+    frozenset<t> __or__(self, Set<t> s): pass
+    frozenset<t> __sub__(self, Set<t> s): pass
+    frozenset<t> __xor__(self, Set<t> s): pass
     # TODO more set operations
 
 
