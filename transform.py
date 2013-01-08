@@ -218,6 +218,11 @@ class DyncheckTransformVisitor(TraverserVisitor):
         # Prepend type argument values to the call as needed.
         if isinstance(ctype, Callable) and ((Callable)ctype).bound_vars != []:
             bound_vars = ((Callable)ctype).bound_vars
+
+            # Only pass generic *function* type variables. Class type variables
+            # are stored within the instance and are available via self, so no
+            # need to pass them explicitly.
+            bound_vars = [(id, t) for id, t in bound_vars if id < 0]
             
             # If this is a constructor call (target is the constructor
             # of a generic type or superclass __init__), include also

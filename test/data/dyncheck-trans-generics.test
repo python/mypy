@@ -111,7 +111,7 @@ class C**:
         self.__o.f({A a}, {self.__o.__tv {self.__btv t}})
 ...
 
-[case testAccessingGenericMethodInTypedContext]
+[case testAccessingGenericClassMethodInTypedContext]
 class A: pass
 class B: pass
 class C<T>:
@@ -123,8 +123,8 @@ C<B> c
 c.f((any)A())
 [out]
 ...
-var c as C<B>
-c.f({A <= dyn | A() as dynamic})
+C c
+c.f({A (any)A()})
 
 [case testAccessingMethodInGenericClassAndTypedContextViaSelf]
 class A: pass
