@@ -34,6 +34,7 @@ class BytesIO(IO):
     int truncate(self, int size=None): pass
     bool writable(self): pass
     int write(self, bytes s): pass
+    int write(self, bytearray s): pass
     void writelines(self, bytes[] lines): pass
     bytes getvalue(self): pass
     str read1(self): pass
