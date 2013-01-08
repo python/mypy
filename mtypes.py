@@ -182,14 +182,14 @@ class Callable(FunctionLike):
     # (absolute value this time).
     #
     # Stored as tuples (id, type).
-    list<tuple<int, Typ>> bound_vars
+    tuple<int, Typ>[] bound_vars
     
     bool _is_type_obj # Does this represent a type object?
     
     void __init__(self, Typ[] arg_types, int[] arg_kinds, str[] arg_names,
                   Typ ret_type, bool is_type_obj, str name=None,
                   TypeVars variables=None,
-                  list<tuple<int, Typ>> bound_vars=None,
+                  tuple<int, Typ>[] bound_vars=None,
                   int line=-1, any repr=None):
         if not variables:
             variables = TypeVars([])

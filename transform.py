@@ -205,7 +205,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         # Get the type of the callable (type variables in the context of the
         # enclosing class).
         ctype = self.get_type(e.callee)
-        
+
+        # Add coercions for the arguments.
         for i in range(len(e.args)):
             Typ arg_type = Any()
             if isinstance(ctype, Callable):
