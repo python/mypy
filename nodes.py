@@ -1073,9 +1073,17 @@ class TypeInfo(Node, AccessorNode, SymNode):
         if name in self.methods:
             return self.methods[name]
         elif self.base:
-            return self.base.get_method(name)
-        else:
-            return None
+            # Lookup via base type.
+            result = self.base.get_method(name)
+            if result:
+                return result
+        # Finally lookup via all implemented interfaces.
+        for iface in self.interfaces:
+            result = iface.get_method(name)
+            if result:
+                return result
+        # Give up; could not find it.
+        return None
     
     void set_base(self, TypeInfo base):
         """Set the base class."""

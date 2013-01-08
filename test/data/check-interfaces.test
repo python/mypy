@@ -267,3 +267,12 @@ interface B:
   void g(self): pass
 interface C(A, B):
   void h(self): pass
+
+[case testMemberAccessWithMultipleBaseInterfaces]
+interface A: pass
+interface B:
+    void f(self): pass
+interface C(A, B): pass
+C x
+x.f()
+x.f(x) # E: Too many arguments for "f" of "B"
