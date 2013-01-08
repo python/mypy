@@ -150,7 +150,8 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_coerce_expr(self, CoerceExpr o):
         self.string('{')
-        self.typ(o.target_type)
+        v = TypePrettyPrintVisitor()
+        self.string(o.target_type.accept(v))
         if coerce.is_special_primitive(o.source_type):
             self.string(' <= ')
             self.typ(o.source_type)
@@ -234,12 +235,18 @@ class PrettyPrintVisitor(NodeVisitor):
     def typ(self, t):
         """Pretty-print a type."""
         if t:
-            v = TypePrettyPrintVisitor()
+            v = TypeErasedPrettyPrintVisitor()
             self.string(t.accept(v))
 
 
-class TypePrettyPrintVisitor(TypeVisitor<str>):
-    """Pretty-print types."""
+class TypeErasedPrettyPrintVisitor(TypeVisitor<str>):
+    """Pretty-print types.
+
+    Omit type variables (e.g. C instead of C<int>).
+
+    Note that the translation does not preserve all information about the
+    types, but this is fine since this is only used in test case output.
+    """
     
     def visit_any(self, t):
         return 'any'
@@ -249,6 +256,37 @@ class TypePrettyPrintVisitor(TypeVisitor<str>):
     
     def visit_instance(self, t):
         return t.typ.name()
+    
+    def visit_type_var(self, t):
+        return 'any*'
+    
+    def visit_runtime_type_var(self, t):
+        v = PrettyPrintVisitor()
+        t.node.accept(v)
+        return v.output()
+
+
+class TypePrettyPrintVisitor(TypeVisitor<str>):
+    """Pretty-print types.
+
+    Include type variables.
+    
+    Note that the translation does not preserve all information about the
+    types, but this is fine since this is only used in test case output.
+    """
+    
+    def visit_any(self, t):
+        return 'any'
+    
+    def visit_void(self, t):
+        return 'void'
+    
+    def visit_instance(self, t):
+        s = t.typ.name()
+        if t.args:
+            argstr = ', '.join([a.accept(self) for a in t.args])
+            s += '<%s>' % argstr
+        return s
     
     def visit_type_var(self, t):
         return 'any*'

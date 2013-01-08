@@ -58,11 +58,11 @@ class C:
     any* get(C self):
         return self.o
     any get*(any self):
-        return {C self}.get()
+        return {C<self.__tv> self}.get()
     int num(C self):
         return 1
     any num*(any self):
-        return {any <= int {C self}.num()}
+        return {any <= int {C<self.__tv> self}.num()}
 any C*(any o):
     return C(<any>, o)
 class C**:
@@ -101,7 +101,7 @@ class C:
     void f(C self, A a, any* t):
         pass
     any f*(any self, any a, any t):
-        {C self}.f({A a}, {self.__tv t})
+        {C<self.__tv> self}.f({A a}, {self.__tv t})
 ...
 class C**:
 ...
@@ -133,9 +133,8 @@ class C<T>:
         self.f(a)
 [out]
 ...
-  def f(a as A)
-    self.f(a)
-  end
+    void f(C self, A a):
+        self.f(a)
 ...
 
 [case testConstructingGenericInstance]
@@ -152,7 +151,7 @@ class A:
 C a = C(<A>)
 C d = C(<any>)
 
-[case testCastFromDynamicToGenericType]
+[case testCastFromAnyToGenericType]
 class A<T>:
     T a
     void __init__(self, T a):
@@ -163,17 +162,16 @@ class B: pass
 class C: pass
 any d = A<any>(B())
 B b
-b = d.f()          # Ok
-A<C> aa = d # Ok
-aa.f()             # Fail
+b = d.f()
+A<C> aa = d
+aa.f()             # Failure at runtime
 [out]
 ...
-class C; end
-var d = A(<dyn>, B()) as <dynamic> as dynamic
-var b as B
-b = {B <= dyn | d.f*()}          -- Ok
-var aa = {A<C> <= dyn | d} as A<C> -- Ok
-aa.f()             -- Fail
+any d = A(<any>, B())
+B b
+b = {B d.f*()}
+A aa = {A<C> d}
+aa.f()
 
 [case testCastWithDynamicAndTypedArguments]
 class A<T>: pass
@@ -184,9 +182,9 @@ a = d
 d = a
 [out]
 ...
-var d as A<dynamic>
-a = {A<B> <= A<dyn> | d}
-d = {A<dyn> <= A<B> | a}
+A d
+a = {A<B> d}
+d = {A<any> a}
 
 [case testNestedGenerics]
 class A<T>:
@@ -196,12 +194,14 @@ class B: pass
 A<A<B>> a
 A<any> d
 d = a
+a = d
 a.f()
 d.f()
 [out]
 ...
-var d as A<dynamic>
-d = {A<dyn> <= A<A<B>> | a}
+A d
+d = {A<any> a}
+a = {A<A<B>> d}
 a.f()
 d.f()
 
@@ -214,15 +214,13 @@ class A<T>:
 class B: pass
 [out]
 ...
-class A*
+class A**:
 ...
-  def f*(b as dynamic, ab as dynamic) as dynamic
-    return self.__o.f({B <= dyn | b}, {A<B> <= dyn | ab})
-  end
+    any f*(any self, any b, any ab):
+        return self.__o.f({B b}, {A<B> ab})
 ...
-  def g*() as dynamic
-    return self.__o.g()
-  end
+    any g*(any self):
+        return self.__o.g()
 ...
 
 
