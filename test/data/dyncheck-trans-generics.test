@@ -459,7 +459,7 @@ class A:
         return x
 [out]
 class A:
-    any* f(any __ftv, A self, any* x):
+    any* f(A self, any __ftv, any* x):
         return x
     any f*(any self, any x):
         return {A self}.f(<any>, x)
