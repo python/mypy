@@ -9,8 +9,7 @@ from replacetvars import replace_type_vars
 import transform
 from transutil import (
     is_simple_override, tvar_arg_name, self_expr, dynamic_sig, is_generic,
-    prepend_arg_type, add_arg_type_after_self,
-    translate_type_vars_to_bound_vars,
+    add_arg_type_after_self, translate_type_vars_to_bound_vars,
     translate_function_type_vars_to_dynamic, replace_ret_type,
     translate_type_vars_to_wrapper_vars,
     translate_type_vars_to_wrapped_object_vars
