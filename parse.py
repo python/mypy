@@ -27,11 +27,9 @@ from parsetype import (parse_type, parse_type_variables, parse_type_args,
                        TypeParseError)
 
 
-int HIGHEST_PREC = 14
-
 precedence = {
     '**': 15,
-    '-u': 14, '+u': 14, '~': 14,
+    '-u': 14, '+u': 14, '~': 14,   # unary operators (-, + and ~)
     '<cast>': 13,
     '*': 12, '/': 12, '//': 12, '%': 12,
     '+': 11, '-': 11,
