@@ -23,7 +23,8 @@ from checker import function_type
 from lex import Token
 from transformtype import TypeTransformer
 from transutil import (
-    prepend_arg_type, is_simple_override, tvar_arg_name, dynamic_suffix
+    prepend_arg_type, is_simple_override, tvar_arg_name, dynamic_suffix,
+    add_arg_type_after_self
 )
 from coerce import coerce
 from rttypevars import translate_runtime_type_vars_in_context
@@ -124,6 +125,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         self.dynamic_funcs.pop()
     
     void prepend_generic_function_tvar_args(self, FuncDef fdef):
+        """Add implicit function type variable arguments if fdef is generic."""
         sig = (Callable)function_type(fdef)
         TypeVarDef[] tvars = sig.variables.items
         if not fdef.typ:
@@ -132,10 +134,18 @@ class DyncheckTransformVisitor(TraverserVisitor):
         
         tv = <Var> []
         ntvars = len(tvars)
-        for n in range(ntvars):
-            tv.append(Var(tvar_arg_name(-1 - n)))
-            typ.typ = prepend_arg_type((Callable)typ.typ, Any())
-        fdef.args = tv + fdef.args
+        if fdef.is_method():
+            # For methods, add type variable arguments after the self arg.
+            for n in range(ntvars):
+                tv.append(Var(tvar_arg_name(-1 - n)))
+                typ.typ = add_arg_type_after_self((Callable)typ.typ, Any())
+            fdef.args = [fdef.args[0]] + tv + fdef.args[1:]
+        else:
+            # For ordinary functions, prepend type variable arguments.
+            for n in range(ntvars):
+                tv.append(Var(tvar_arg_name(-1 - n)))
+                typ.typ = prepend_arg_type((Callable)typ.typ, Any())
+            fdef.args = tv + fdef.args
         fdef.init = <AssignmentStmt> [None] * ntvars + fdef.init
     
     #
