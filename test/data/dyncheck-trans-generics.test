@@ -231,29 +231,26 @@ class A**:
 [case testSimplestClassWithTwoTypeArguments]
 class A<T, S>: pass
 [out]
-class A<T, S>
-  var __tv as dynamic
-  var __tv2 as dynamic
-  def create(__tv as dynamic, __tv2 as dynamic)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv2>
-  end
-end
-class A*
-  var __o as dynamic
-  var __tv as dynamic
-  var __tv2 as dynamic
-  var __btv as dynamic
-  var __btv2 as dynamic
-  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
-                             __btv as dynamic, __btv2 as dynamic)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv2>
-    self.__btv = <__btv>
-    self.__btv2 = <__btv2>
-    self.__o = __o
-  end
-end
+class A:
+    any __tv
+    any __tv2
+    void __init__(A self, any __tv, any __tv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+any A*():
+    return A(<any>, <any>)
+class A**:
+    any __o
+    any __tv
+    any __tv2
+    any __btv
+    any __btv2
+    void __init__(any self, any __o, any __tv, any __tv2, any __btv, any __btv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__o! = __o
 
 [case testConstructingInstanceWithTwoTypeArguments]
 class A<T, S>: pass
@@ -261,8 +258,8 @@ A<int, float> a
 a = A<int, float>()
 [out]
 ...
-var a as A<Int, Float>
-a = A(<std::Int>, <std::Float>) as <Int, Float>
+A a
+a = A(<int>, <float>)
 
 [case testCallingEmptyMethodWithTwoTypeArguments]
 class A<T, S>:
@@ -275,21 +272,17 @@ A<B, C> a
 a.f()
 [out]
 ...
-  def f*() as dynamic
-    f()
-  end
+    any f*(any self):
+        {A<self.__tv, self.__tv2> self}.f()
 ...
-class A*
-  var __o as dynamic
+class A**:
 ...
-  def f()
-    self.__o.f()
-  end
-  def f*() as dynamic
-    self.__o.f()
-  end
+    void f(A self):
+        self.__o.f()
+    any f*(any self):
+        self.__o.f()
 ...
-var a as A<B, C>
+A a
 a.f()
 
 [case testAccessingMultipleTypeArguments]
@@ -299,19 +292,13 @@ class A<T, S>:
         return self.x
 [out]
 ...
-class A*
+class A**:
 ...
-  def f(y as dynamic) as dynamic
-    return {self.__tv <= self.__btv | \
-             {self.__btv <= self.__o.__tv | \
-               self.__o.f({self.__o.__tv2 <= self.__btv2 | \
-                            {self.__btv2 <= dyn | y}})}}
-  end
-  def f*(y as dynamic) as dynamic
-    return {self.__btv <= self.__o.__tv | \
-             self.__o.f({self.__o.__tv2 <= self.__btv2 | \
-                          {self.__btv2 <= dyn | y}})}
-  end
+    any f(A self, any y):
+        return {self.__tv {self.__btv self.__o.f(\
+                                    {self.__o.__tv2 {self.__btv2 y}})}}
+    any f*(any self, any y):
+        return {self.__btv self.__o.f({self.__o.__tv2 {self.__btv2 y}})}
 ...
 
 [case testAccessingGenericMethodInTypedContextViaSelfAndMultipleArgs]
@@ -322,9 +309,8 @@ class C<T, S>:
         self.f(a)
 [out]
 ...
-  def f(a as A)
-    self.f(a)
-  end
+    void f(C self, A a):
+        self.f(a)
 ...
 
 
@@ -347,12 +333,11 @@ class A<T, S>:
         self.s = d
 [out]
 ...
-  def f() as void
-    var d as dynamic
-    d = t
-    t = {self.__tv <= dyn | d}
-    s = {self.__tv2 <= dyn | d}
-  end
+    void f(A self):
+        any d
+        d = self.t
+        self.t = {self.__tv d}
+        self.s = {self.__tv2 d}
 ...
 
 [case testTypeVarCoercionsWithGenericTypes]
@@ -364,11 +349,10 @@ class A<T>:
         self.a = d
 [out]
 ...
-  def f() as void
-    var d as dynamic
-    d = a
-    a = {A<self.__tv> <= dyn | d}
-  end
+    void f(A self):
+        any d
+        d = self.a
+        self.a = {A<self.__tv> d}
 ...
 
 [case testConstructGenericInstanceBasedOnTypeVar]
@@ -379,11 +363,10 @@ class A<T>:
         a = d
 [out]
 ...
-  def f() as void
-    var a = A(<__tv>) as <T>
-    var d as dynamic
-    a = {A<self.__tv> <= dyn | d}
-  end
+    void f(A self):
+        a = A(<any*>)
+        any d
+        a = {A<self.__tv> d}
 ...
 
 
@@ -400,15 +383,15 @@ A<B> f():
     pass
 [out]
 ...
-class B
-  def m(a as A<B>)
-  end
-  def m*(a as dynamic) as dynamic
-    m({A<B> <= dyn | a})
-  end
-end
-def f() as A<B>
-end
+class B:
+    void m(B self, A a):
+        pass
+    any m*(any self, any a):
+        {B self}.m({A<B> a})
+any B*():
+    return B()
+A f():
+    pass
 
 
 -- Generic functions
@@ -419,17 +402,15 @@ end
 T f<T>(T x):
     return x
 [out]
-def f<T>(__ftv as dynamic, x as T) as T
-  return x
-end
+any* f(any __ftv, any* x):
+    return x
 
 [case testGenericFunctionWithTwoTvars]
 T f<T, S>(T x):
     return x
 [out]
-def f<T, S>(__ftv as dynamic, __ftv2 as dynamic, x as T) as T
-  return x
-end
+any* f(any __ftv, any __ftv2, any* x):
+    return x
 
 [case testCallingSimpleGenericFunction]
 T f<T>(T x):
@@ -445,16 +426,15 @@ class C: pass
 class D: pass
 [out]
 ...
-def g() as void
-  var c = C() as C
-  c = f(<C>, c) as <C>
-  var d = c as dynamic
-  d = f(<C>, {C <= dyn | d}) as <C>
-  c = {C <= dyn | f(<dyn>, c) as <dynamic>}
-end
+void g():
+    C c = C()
+    c = f(<C>, c)
+    any d = c
+    d = f(<C>, {C d})
+    c = {C f(<any>, c)}
 ...
 
-[case testTypeVarReferenceInGenericFunction]
+[case testTypeVarReferenceInGenericFunction-skip]
 C<T> f<T>(any x):
     a = C<T>()
     f<T>(x)
@@ -462,11 +442,10 @@ C<T> f<T>(any x):
 
 class C<T>: pass
 [out]
-def f<T>(__ftv as dynamic, x as dynamic) as C<T>
-  var a = C(<__ftv>) as <T>
-  f(<__ftv>, x) as <T>
-  return {C<__ftv> <= dyn | x}
-end
+C f(any __ftv, any x):
+    a = C(<__ftv>)
+    f(<__ftv>, x)
+    return {C<__ftv> x}
 ...
 
 
@@ -479,14 +458,12 @@ class A:
     T f<T>(self, T x):
         return x
 [out]
-class A
-  def f<T>(__ftv as dynamic, x as T) as T
-    return x
-  end
-  def f*(x as dynamic) as dynamic
-    return f(<dyn>, x)
-  end
-end
+class A:
+    any* f(any __ftv, A self, any* x):
+        return x
+    any f*(any self, any x):
+        return {A self}.f(<any>, x)
+...
 
 [case testGenericMethodInGenericClass]
 class A<T>:
@@ -505,7 +482,7 @@ class A<T>
     self.__tv = <__tv>
   end
 end
-class A*
+class A**:
   var __o as dynamic
   var __tv as dynamic
   var __btv as dynamic
@@ -571,7 +548,7 @@ class C<T, S, U>: pass
     return f(<dyn>, <dyn>)
   end
 ...
-class A*
+class A**:
 ...
   def f(__ftv as dynamic, __ftv2 as dynamic) as C
     return {C<__ftv, __ftv2, self.__tv> <= C<__ftv, __ftv2, self.__btv> | \
@@ -654,7 +631,7 @@ class A<T>:
         int j = self.f(1)
 [out]
 ...
-class A*
+class A**:
 ...
   def f(a as dynamic) as dynamic
     return self.__o.f(a)
