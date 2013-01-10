@@ -8,7 +8,7 @@
 -- ------------------------------------------
 
 
-[case testInheritingGenericClass]
+[case testInheritingGenericClass-skip]
 class A<T>:
     void f(self, T t):
         pass
@@ -28,7 +28,7 @@ class B is A<C>
 ...
 
 
-[case testInheritingGenericClassAndExternalAccess]
+[case testInheritingGenericClassAndExternalAccess-skip]
 B b
 C c
 b.f(c)
@@ -48,7 +48,7 @@ b.g(c)
 ...
 
 
-[case testInheritingGenericClassAndOverriding]
+[case testInheritingGenericClassAndOverriding-skip]
 A<C> a
 B b
 C c
@@ -78,7 +78,7 @@ class B is A<C>
 ...
 
 
-[case testInheritGenericClassAndCallCreate]
+[case testInheritGenericClassAndCallCreate-skip]
 A<float>()
 B()
 class A<T>: pass
@@ -89,7 +89,7 @@ B()
 ...
 
 
-[case testInheritingGenericClassAndOverriding2]
+[case testInheritingGenericClassAndOverriding2-skip]
 class A<T>:
     void f(self, C<T> a, D b):
         pass
@@ -118,7 +118,7 @@ class B is A<E>
 -- ----------------------------------------------------------------
 
 
-[case testGenericInheritanceWithIdenticalTypeVars]
+[case testGenericInheritanceWithIdenticalTypeVars-skip]
 # Single type variable
 class A<T>:
     void f(self, T a, A<T> b):
@@ -151,7 +151,7 @@ class B* is A*
 end
 
 
-[case testGenericInheritanceWithIdenticalTypeVars2]
+[case testGenericInheritanceWithIdenticalTypeVars2-skip]
 # Multiple type variables
 class A<T, S>:
     void f(self, T a, A<S, T> b):
@@ -174,7 +174,7 @@ class B<T, S> is A<T, S>
 ...
 
 
-[case testGenericInheritanceWithDifferentSig]
+[case testGenericInheritanceWithDifferentSig-skip]
 # Override with dynamic
 class A<T>:
     T f(self, T a, A<T> b, int i):
@@ -201,7 +201,7 @@ class B<S> is A<S>
 -- ----------------------------------------------------------------
 
 
-[case testGenericClassInheritsGenericsClassAndOverrides]
+[case testGenericClassInheritsGenericsClassAndOverrides-skip]
 class A<S, T>:
     void f(self, S s, T t):
         pass
@@ -223,7 +223,7 @@ class B<S> is A<C, S>
 ...
 
 
-[case testNonGenericClassInheritsGenericClass]
+[case testNonGenericClassInheritsGenericClass-skip]
 class A<T>:
     void f(self, T t):
         pass
@@ -242,7 +242,7 @@ class B is A<Int>
 ...
 
 
-[case testGenericInheritanceAndCoercionsWithArgShuffling]
+[case testGenericInheritanceAndCoercionsWithArgShuffling-skip]
 class A<T, S>:
     void f(self, T t, S s):
         pass
@@ -277,7 +277,7 @@ class B* is A*
   end
 ...
 
-[case testGenericInheritanceAndCoercionsWithNestedArg]
+[case testGenericInheritanceAndCoercionsWithNestedArg-skip]
 class A<T>:
     void f(self, T t):
         pass
@@ -308,7 +308,7 @@ class B* is A*
   end
 end
 
-[case testGenericInheritanceWithNestedArgs2]
+[case testGenericInheritanceWithNestedArgs2-skip]
 # More complex path to subtype type variable
 class A<T>: pass
 class B<T>(A<C<X, A<T>>>):
@@ -325,7 +325,7 @@ class B<T> is A<C<X, A<T>>>
   end
 ...
 
-[case testGenericInheritanceMultipleLevels]
+[case testGenericInheritanceMultipleLevels-skip]
 # Two levels of inheritance
 class A<T>:
     void f(self, T t):
@@ -353,7 +353,7 @@ class C<T> is B
 -- 1. Wrapper that calls superclass create
 
 
-[case testInheritingGenericClassWithDefaultConstructor]
+[case testInheritingGenericClassWithDefaultConstructor-skip]
 class A<T>: pass
 class B(A<int>): pass
 [out]
@@ -365,7 +365,7 @@ class B is A<Int>
   end
 end
 
-[case testInheritingGenericClassWithDefaultConstructor2]
+[case testInheritingGenericClassWithDefaultConstructor2-skip]
 # Two type arguments
 class A<T, S>: pass
 class B(A<int, object>): pass
@@ -379,7 +379,7 @@ class B is A<Int, Object>
   end
 end
 
-[case testInheritingGenericClassWithNonDefaultConstructor]
+[case testInheritingGenericClassWithNonDefaultConstructor-skip]
 class A<T>:
     void __init__(self, object o):
         pass
@@ -393,7 +393,7 @@ class B is A<Int>
   end
 end
 
-[case testInheritingGenericClassWithNonDefaultConstructor2]
+[case testInheritingGenericClassWithNonDefaultConstructor2-skip]
 # Two arguments, one with tvar type
 class A<T>:
     void __init__(self, T t, object o):
@@ -408,7 +408,7 @@ class B is A<Int>
   end
 end
 
-[case testInheritingGenericClassFromNonGenericWithDefaultConstructor]
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor-skip]
 class A: pass
 class B<T>(A): pass
 [out]
@@ -421,7 +421,7 @@ class B<T> is A
   end
 ...
 
-[case testInheritingGenericClassFromNonGenericWithDefaultConstructor2]
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor2-skip]
 # Superclass defines a non-trivial constructor; two tvars
 class A:
     void __init__(self, int n):
@@ -439,7 +439,7 @@ class B<T, S> is A
   end
 ...
 
-[case testInheritingGenericClassFromGenericWithDefaultConstructor]
+[case testInheritingGenericClassFromGenericWithDefaultConstructor-skip]
 class A<T, S>: pass
 class B<U>(A<int, C<U>>): pass
 class C<T>: pass
@@ -453,7 +453,7 @@ class B<U> is A<Int, C<U>>
   end
 ...
 
-[case testCreateWrapperWithDeepHierarchy]
+[case testCreateWrapperWithDeepHierarchy-skip]
 class A<T>: pass
 class B(A<int>): pass
 class C<T>(B): pass
@@ -468,7 +468,7 @@ class C<T> is B
   end
 ...
 
-[case testCreateWrapperWithDeepHierarchy2]
+[case testCreateWrapperWithDeepHierarchy2-skip]
 class A: pass
 class B(A): pass
 class C<T>(B): pass
@@ -482,7 +482,7 @@ class C<T> is B
   end
 ...
 
-[case testCreateWrapperWithDefaultInitializer]
+[case testCreateWrapperWithDefaultInitializer-skip]
 class A:
     int n
     
@@ -503,7 +503,7 @@ class B<T> is A
 -- 2. Define new constructor in subclass
 
 
-[case testCreateWithGenericInheritance]
+[case testCreateWithGenericInheritance-skip]
 class A<T, U>: pass
 class B<S>(A<int, S>):
     void __init__(self, int n):
@@ -522,7 +522,7 @@ class B<S> is A<Int, S>
 -- ---------------------------------------------------
 
 
-[case testCreateInWrapperClassWithGenericInheritance]
+[case testCreateInWrapperClassWithGenericInheritance-skip]
 # Generic class inherits another generic class
 class A<T, S>: pass
 class B<U>(A<int, C<U>>): pass
@@ -539,7 +539,7 @@ class B* is A*
   end
 ...
 
-[case testCreateInWrapperClassWithInheritance2]
+[case testCreateInWrapperClassWithInheritance2-skip]
 # Original create has arguments; this does not affect the wrapper
 class A<T>:
     void __init__(self, int n):
@@ -552,7 +552,7 @@ class B* is A*
   def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
 ...
 
-[case testCreateInWrapperClassWithInheritance3]
+[case testCreateInWrapperClassWithInheritance3-skip]
 # Multi-level inheritance hierarchy; note that there is no wrapper class
 # for B.
 class A<T>: pass
@@ -583,7 +583,7 @@ end
 -- ------------------------------------------------------------
 
 
-[case testTvarDefinitionsWithGenericInheritance]
+[case testTvarDefinitionsWithGenericInheritance-skip]
 # Generic class inherits generic class; no new type variables
 class A<T>: pass
 class B<T>(A<T>): pass
@@ -596,7 +596,7 @@ class B* is A*
   def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
 ...
 
-[case testTvarDefinitionsWithGenericInheritance]
+[case testTvarDefinitionsWithGenericInheritance-skip]
 # Generic class inherits generic class; introduce new type variable
 class A<T>: pass
 class B<S, T>(A<T>): pass
@@ -618,7 +618,7 @@ class B* is A*
 -- ------------------------------------
 
 
-[case testGenericInheritanceAndCallToSuperclassCreate]
+[case testGenericInheritanceAndCallToSuperclassCreate-skip]
 # Non-generic class inherits a generic class
 class A<T>:
     void __init__(self, C n):
@@ -638,7 +638,7 @@ class B is A<Int>
   end
 end
 
-[case testGenericInheritanceAndCallToSuperclassCreate2]
+[case testGenericInheritanceAndCallToSuperclassCreate2-skip]
 # Non-generic class inherits a generic class
 class A<T>: pass
 
@@ -656,7 +656,7 @@ class B is A<Int>
 end
 
 
-[case testGenericInheritanceAndCallToSuperclassCreate]
+[case testGenericInheritanceAndCallToSuperclassCreate-skip]
 # Generic class inherits a generic class
 class A<T, S>:
     void __init__(self, T t):
@@ -680,7 +680,7 @@ class B<T, S> is A<S, T>
 -- -------------------------
 
 
-[case testMixedGenericInheritance]
+[case testMixedGenericInheritance-skip]
 # Non-generic class extends generic
 class A<T>:
     T f(self, T t):
@@ -701,7 +701,7 @@ class B is A<Int>
   end
 ...
 
-[case testMixedGenericInheritance2]
+[case testMixedGenericInheritance2-skip]
 # Generic class extends generic
 class A<T>:
     T f(self, T t):
@@ -737,10 +737,10 @@ end
 -- ------------------------------------------------------------------
 
 
--- Example: class C<T> is D<T, T> ...
+-- Example: class C<T>(D<T, T>) ...
 
 
-[case testAmbiguousTvarMappingAndGenericInheritance]
+[case testAmbiguousTvarMappingAndGenericInheritance-skip]
 class D<T, S>:
     S f(self):
         pass
@@ -779,7 +779,7 @@ end
 -- --------------------------------------
 
 
-[case testMemberVarsAndGenericInheritance]
+[case testMemberVarsAndGenericInheritance-skip]
 class A<T>:
     T x
     void f(self, any a):
