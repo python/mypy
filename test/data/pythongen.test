@@ -511,3 +511,12 @@ def f(x):
         return f2(x)
     else:
         raise TypeError("Invalid argument types")
+
+
+-- Special cases
+-- -------------
+
+
+[case testOptionalArgAfterAsteriskArg]
+# Issue #12
+def f(*x, y = 1): pass

@@ -342,7 +342,7 @@ class Parser:
               parse_function_header(self, Annotation ret_type):
         """Parse function header (a name followed by arguments)
 
-        Returns a 9-tuple with the following items:
+        Returns a 7-tuple with the following items:
           name
           arguments
           initializers
@@ -467,6 +467,7 @@ class Parser:
                     self.set_repr(var_arg, noderepr.VarRepr(name, none))
                     args.append(var_arg)
                     init.append(None)
+                    assigns.append(none)
                     if isdict:
                         kinds.append(nodes.ARG_STAR2)
                     else:
