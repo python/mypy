@@ -30,6 +30,19 @@ renamed_types = {'builtins.Sized': 'collections.Sized',
                  're.Pattern': 're._pattern_type'}
 
 
+# Some names need more complex logic to translate them. This dictionary maps
+# qualified names to (initcode, newname) tuples. The initcode string is
+# added to the module prolog.
+#
+# We use __ prefixes to avoid name clashes. Names starting with __ but not
+# ending with _ are reserved for the implementation.
+special_renamings = {
+    're.Match': (['import re as __re\n',
+                  'import builtins as __builtins\n',
+                  '__re_Match = __builtins.type(__re.match("", ""))\n'],
+                 '__re_Match')}
+
+
 class PythonGenerator(OutputVisitor):
     """Python backend.
 
@@ -132,11 +145,10 @@ class PythonGenerator(OutputVisitor):
 
     def visit_name_expr(self, o):
         # Rename some type references (e.g. Iterable -> collections.Iterable).
-        renamed = renamed_types.get(o.full_name)
+        renamed = self.get_renaming(o.full_name)
         if renamed:
             self.string(o.repr.id.pre)
-            self.string('__' + renamed)
-            self.generate_import_from_name(renamed)
+            self.string(renamed)
         else:
             super().visit_name_expr(o)
     
@@ -192,11 +204,10 @@ class PythonGenerator(OutputVisitor):
                 return '__builtins.list'
             else:
                 # Some types need to be translated (e.g. Iterable).
-                renamed = renamed_types.get(t.typ.full_name())
+                renamed = self.get_renaming(t.typ.full_name())
                 if renamed:
-                    self.generate_import_from_name(renamed)
                     pre = t.repr.components[0].pre
-                    return pre + '__' + renamed
+                    return pre + renamed
                 else:
                     a = []
                     if t.repr:
@@ -390,3 +401,29 @@ class PythonGenerator(OutputVisitor):
         """Add a line to the file prolog unless it already exists."""
         if not string in self.prolog:
             self.prolog.append(string)
+
+    def get_renaming(self, fullname):
+        """Determine the renaming target name of a qualified mypy name.
+
+        Return None if the name needs no renaming; otherwise return the new
+        name as a string.
+
+        Also add any required imports, etc. to the file prolog.
+        """
+        renamed = renamed_types.get(fullname)
+        if renamed:
+            # Ordinary renaming. Import a module that defines the name and
+            # rename the reference.
+            self.generate_import_from_name(renamed)
+            return '__' + renamed
+        else:
+            special = special_renamings.get(fullname)
+            if special:
+                # Special renaming. Add custom code to prolog and rename the
+                # reference.
+                prolog, renamed = special
+                for line in prolog:
+                    self.add_to_prolog(line)
+                return renamed
+            else:
+                return None
