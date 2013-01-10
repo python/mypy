@@ -180,7 +180,7 @@ class TypeTransformer:
         """Replace the bound type variables of callable with the type arguments
         of the instance type.
         """
-        list<tuple<int, Typ>> a = []
+        a = <tuple<int, Typ>> []
         for i in range(len(typ.args)):
             a.append((i + 1, typ.args[i]))
         return Callable(callable.arg_types, callable.arg_kinds,
