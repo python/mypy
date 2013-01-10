@@ -780,6 +780,18 @@ MypyFile:1(
         -
         IntExpr(1)))))
 
+[case testTypeApplicationWithGenericTypeArg]
+C<C<A>>()
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      TypeApplication:1(
+        NameExpr(C)
+        Types(
+          C?<A?>))
+      Args())))
+
 [case testOperatorPrecedence]
 a | b ^ c
 a & b << c
