@@ -16,7 +16,7 @@ from typerepr import ListTypeRepr
 #      these names are used in a non-erased context (e.g. isinstance test or
 #      overloaded method signature), we should change the reference to the
 #      Python alternative
-removed_names = {'re': ['Pattern', 'Match']}
+removed_import_names = {'re': ['Pattern', 'Match']}
 
 
 # Some names defined in mypy builtins are defined in a different module in
@@ -51,7 +51,7 @@ class PythonGenerator(OutputVisitor):
         return ''.join(self.prolog) + super().output()
     
     def visit_import_from(self, o):
-        if o.id in removed_names:
+        if o.id in removed_import_names:
             r = o.repr
             
             # Filter out any names not defined in Python from a
@@ -60,7 +60,7 @@ class PythonGenerator(OutputVisitor):
             toks = []
             comma = none
             for i in range(len(o.names)):
-                if o.names[i][0] not in removed_names[o.id]:
+                if o.names[i][0] not in removed_import_names[o.id]:
                     toks.append(comma)
                     toks.extend(r.names[i][0])
                     comma = r.names[i][1]
