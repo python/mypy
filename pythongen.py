@@ -26,7 +26,8 @@ renamed_types = {'builtins.Sized': 'collections.Sized',
                  'builtins.Iterator': 'collections.Iterator',
                  'builtins.Sequence': 'collections.Sequence',
                  'builtins.Mapping': 'collections.Mapping',
-                 'builtins.Set': 'collections.Set'}
+                 'builtins.Set': 'collections.Set',
+                 're.Pattern': 're._pattern_type'}
 
 
 class PythonGenerator(OutputVisitor):
