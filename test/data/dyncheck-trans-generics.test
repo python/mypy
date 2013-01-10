@@ -470,34 +470,28 @@ class A<T>:
     S f<S>(self, S x):
         return x
 [out]
-class A<T>
-  var __tv as dynamic
-  def f<S>(__ftv as dynamic, x as S) as S
-    return x
-  end
-  def f*(x as dynamic) as dynamic
-    return f(<dyn>, x)
-  end
-  def create(__tv as dynamic)
-    self.__tv = <__tv>
-  end
-end
+class A:
+    any __tv
+    any* f(A self, any __ftv, any* x):
+        return x
+    any f*(any self, any x):
+        return {A<self.__tv> self}.f(<any>, x)
+    void __init__(A self, any __tv):
+        self.__tv! = <__tv>
+any A*():
+    return A(<any>)
 class A**:
-  var __o as dynamic
-  var __tv as dynamic
-  var __btv as dynamic
-  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
-    self.__tv = <__tv>
-    self.__btv = <__btv>
-    self.__o = __o
-  end
-  def f(__ftv as dynamic, x as dynamic) as dynamic
-    return self.__o.f(<__ftv>, x)
-  end
-  def f*(x as dynamic) as dynamic
-    return self.__o.f(<dyn>, x)
-  end
-end
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+    any f(any __ftv, A self, any x):
+        return self.__o.f(<__ftv>, x)
+    any f*(any self, any x):
+        return self.__o.f(<any>, x)
 
 [case testCalllingGenericMethod]
 class A:
@@ -509,14 +503,13 @@ C c = A().f<C>()
 class C: pass
 [out]
 ...
-  def g() as C
-    return f(<C>) as <C>
-  end
+    C g(A self):
+        return self.f(<C>)
 ...
-var c = A().f(<C>) as <C> as C
+C c = A().f(<C>)
 ...
 
-[case testCalllingGenericMethod2]
+[case testCalllingGenericMethod2-skip]
 class A<S>:
     T f<T>(self):
         pass
@@ -527,38 +520,31 @@ class C: pass
 class D: pass
 [out]
 ...
-  def g() as S
-    return f(<__tv>) as <S>
-  end
+    any* g(A self):
+        return self.f(<self.__tv>)
 ...
-var c = (A(<D>) as <D>).f(<C>) as <C> as C
+C c = (A(<D>)).f(<C>)
 ...
 
-[case testAccessingGenericMethodTvars]
+[case testAccessingGenericMethodTvars-skip]
 class A<S>:
     C<T, U, S> f<T, U>(self):
         return C<T, U, S>()
 class C<T, S, U>: pass
 [out]
 ...
-  def f<T, U>(__ftv as dynamic, __ftv2 as dynamic) as C<T, U, S>
-    return C(<__ftv>, <__ftv2>, <__tv>) as <T, U, S>
-  end
-  def f*() as dynamic
-    return f(<dyn>, <dyn>)
-  end
+    C f(A self, any __ftv, any __ftv2):
+        return C(<__ftv>, <__ftv2>, <self.__tv>)
+    any f*(any self):
+        return {A<self.__tv> self}.f(<any>, <any>)
 ...
 class A**:
 ...
-  def f(__ftv as dynamic, __ftv2 as dynamic) as C
-    return {C<__ftv, __ftv2, self.__tv> <= C<__ftv, __ftv2, self.__btv> | \
-           {C<__ftv, __ftv2, self.__btv> <= C<__ftv, __ftv2, self.__o.__tv> | \
-              self.__o.f(<__ftv>, <__ftv2>)}}  
-  end
-  def f*() as dynamic
-    return {C<dyn, dyn, self.__btv> <= C<dyn, dyn, self.__o.__tv> | \
-                self.__o.f(<dyn>, <dyn>)}
-  end
+    C f(any __ftv, any __ftv2, A self):
+        return {C<__ftv, __ftv2, self.__tv> {C<__ftv, __ftv2, self.__btv> \
+                                               self.__o.f(<__ftv>, <__ftv2>)}}
+    any f*(any self):
+        return {C<any, any, self.__btv> self.__o.f(<any>, <any>)}
 ...
 
 
@@ -583,7 +569,7 @@ class A**:
 -- ---------------
 
 
-[case testPairExample]
+[case testPairExample-skip]
 # This test case is adapted from an early example program.
 class P<H, T>:
     H head
@@ -597,30 +583,27 @@ class P<H, T>:
         return P<H, T>(new_head, self.tail, new_name)
 class Name: pass
 [out]
-class P<H, T>
+class P:
 ...
-  def setHead(newHead as H, newName as Name) as P<H, T>
-    return P(<__tv>, <__tv2>, newHead, self.tail, newName) as <H, T>
-  end
-  def setHead*(newHead as dynamic, newName as dynamic) as dynamic
-    return setHead({self.__tv <= dyn | newHead}, {Name <= dyn | newName})
-  end
-end
-class P*
+    P set_head(P self, any* new_head, Name new_name):
+        return P(<__tv>, <__tv2>, new_head, self.tail, new_name)
+    any set_head*(any self, any new_head, any new_name):
+        return {P<self.__tv, self.__tv2> self}.set_head(\
+                                  {self.__tv new_head}, {Name new_name})
+any P*(any head, any tail, any name):
+    return P(<any>, <any>, head, tail, {Name name})
+class P**:
 ...
-  def setHead(newHead as dynamic, newName as Name) as P
-    return {P<self.__tv, self.__tv2> <= P<self.__btv, self.__btv2> | \
-           {P<self.__btv, self.__btv2> <= P<self.__o.__tv, self.__o.__tv2> | \
-           self.__o.setHead({self.__o.__tv <= self.__btv | \
-           {self.__btv <= dyn | newHead}}, newName)}}
-  end
-  def setHead*(newHead as dynamic, newName as dynamic) as dynamic
-    return {P<self.__btv, self.__btv2> <= P<self.__o.__tv, self.__o.__tv2> | \
-        self.__o.setHead({self.__o.__tv <= self.__btv | \
-          {self.__btv <= dyn | newHead}}, {Name <= dyn | newName})}
-  end
-end
-class Name; end
+    P set_head(P self, any new_head, Name new_name):
+        return {P<self.__tv, self.__tv2> \
+                 {P<self.__btv, self.__btv2> self.__o.set_head(\
+                         {self.__o.__tv {self.__btv new_head}}, new_name)}}
+    any set_head*(any self, any new_head, any new_name):
+        return {P<self.__btv, self.__btv2> self.__o.set_head(\
+                       {self.__o.__tv {self.__btv new_head}}, {Name new_name})}
+class Name:
+    pass
+...
 
 [case testImplicitMethodSigInGenericClass]
 class A<T>:
@@ -633,11 +616,8 @@ class A<T>:
 ...
 class A**:
 ...
-  def f(a as dynamic) as dynamic
-    return self.__o.f(a)
-  end
-  def f*(a as dynamic) as dynamic
-    return self.__o.f(a)
-  end
+    any f(any self, any a):
+        return self.__o.f(a)
+    any f*(any self, any a):
+        return self.__o.f(a)
 ...
-end
