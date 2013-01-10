@@ -712,8 +712,8 @@ int hash(object o): pass
 str hex(int i): pass
 int id(object o): pass
 str input(str prompt=None): pass
-Iterator<t> iterable<t>(Iterable<t> iterable): pass
-Iterator<t> iterable<t>(func<t()> function, t sentinel): pass
+Iterator<t> iter<t>(Iterable<t> iterable): pass
+Iterator<t> iter<t>(func<t()> function, t sentinel): pass
 bool isinstance(object o, type t): pass
 # TODO perhaps support this
 #bool isinstance(object o, Sequence<type> t): pass
