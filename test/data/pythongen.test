@@ -514,6 +514,36 @@ def f(x):
     else:
         raise TypeError("Invalid argument types")
 
+[case testReferenceToBuiltinInterface]
+s = Sized
+[builtins fixtures/sized.py]
+[out]
+import collections as __collections
+s = __collections.Sized
+
+[case testBuiltinInterfaceAsBase]
+class A( Sized ): pass
+[builtins fixtures/sized.py]
+[out]
+import collections as __collections
+class A( __collections.Sized ): pass
+
+[case testOverloadWithBuiltinInterface]
+void f(Sized x): pass
+void f(any x): pass
+[builtins fixtures/sized.py]
+[out]
+import collections as __collections
+def f(x):
+    def f1(x): pass
+    def f2(x): pass
+    if isinstance(x, __collections.Sized):
+        return f1(x)
+    elif True:
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
+
 
 -- Special cases
 -- -------------

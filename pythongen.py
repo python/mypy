@@ -19,6 +19,16 @@ from typerepr import ListTypeRepr
 removed_names = {'re': ['Pattern', 'Match']}
 
 
+# Some names defined in mypy builtins are defined in a different module in
+# Python. We translate references to these names.
+renamed_types = {'builtins.Sized': 'collections.Sized',
+                 'builtins.Iterable': 'collections.Iterable',
+                 'builtins.Iterator': 'collections.Iterator',
+                 'builtins.Sequence': 'collections.Sequence',
+                 'builtins.Mapping': 'collections.Mapping',
+                 'builtins.Set': 'collections.Set'}
+
+
 class PythonGenerator(OutputVisitor):
     """Python backend.
 
@@ -118,8 +128,19 @@ class PythonGenerator(OutputVisitor):
             else:
                 self.string(' = {}'.format(', '.join(['None'] * len(o.items))))
             self.token(r.br)
+
+    def visit_name_expr(self, o):
+        # Rename some type references (e.g. Iterable -> collections.Iterable).
+        renamed = renamed_types.get(o.full_name)
+        if renamed:
+            self.string(o.repr.id.pre)
+            self.string('__' + renamed)
+            self.generate_import_from_name(renamed)
+        else:
+            super().visit_name_expr(o)
     
     def visit_cast_expr(self, o):
+        # Erase cast.
         self.string(o.repr.lparen.pre)
         self.node(o.expr)
 
@@ -156,16 +177,31 @@ class PythonGenerator(OutputVisitor):
         self.node(o.defs)
     
     def erased_type(self, t):
+        """Return Python representation of a type (as string).
+
+        Examples:
+          - C -> 'C'
+          - foo.Bar -> 'foo.Bar'
+          - dict<x, y> -> 'dict'
+          - Iterable<x> -> '__collections.Iterable' (also add import)
+        """
         if isinstance(t, Instance) or isinstance(t, UnboundType):
             if isinstance(t.repr, ListTypeRepr):
                 self.generate_import('builtins')
                 return '__builtins.list'
             else:
-                a = []
-                if t.repr:
-                    for tok in t.repr.components:
-                        a.append(tok.rep())
-                return ''.join(a)
+                # Some types need to be translated (e.g. Iterable).
+                renamed = renamed_types.get(t.typ.full_name())
+                if renamed:
+                    self.generate_import_from_name(renamed)
+                    pre = t.repr.components[0].pre
+                    return pre + '__' + renamed
+                else:
+                    a = []
+                    if t.repr:
+                        for tok in t.repr.components:
+                            a.append(tok.rep())
+                    return ''.join(a)
         elif isinstance(t, TupleType):
             return 'tuple' # FIX: aliasing?
         elif isinstance(t, TypeVar):
@@ -343,6 +379,11 @@ class PythonGenerator(OutputVisitor):
         # TODO make sure that there is no name clash
         last_component = modid.split('.')[-1]
         self.add_to_prolog('import {} as __{}\n'.format(modid, last_component))
+
+    def generate_import_from_name(self, fullname):
+        """Use module portion of a qualified name to generate an import."""
+        modid = fullname[:fullname.rfind('.')]
+        self.generate_import(modid)
 
     def add_to_prolog(self, string):
         """Add a line to the file prolog unless it already exists."""
