@@ -441,10 +441,12 @@ def f(object[] o): pass
 def f(object o): pass
 [builtins fixtures/list.py]
 [out]
+-- Issue #26
+import builtins as __builtins
 def f(o):
     def f1(o): pass
     def f2(o): pass
-    if isinstance(o, __builtins__.list):
+    if isinstance(o, __builtins.list):
         return f1(o)
     elif isinstance(o, object):
         return f2(o)
@@ -518,5 +520,33 @@ def f(x):
 
 
 [case testOptionalArgAfterAsteriskArg]
-# Issue #12
+-- Issue #12
 def f(*x, y = 1): pass
+
+[case testMultipleOverloadsWithListType]
+void f(object[] x): pass
+void f(any x): pass
+void g(object[] x): pass
+void g(any x): pass
+[builtins fixtures/list.py]
+[out]
+import builtins as __builtins
+def f(x):
+    def f1(x): pass
+    def f2(x): pass
+
+    if isinstance(x, __builtins.list):
+        return f1(x)
+    elif True:
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
+def g(x):
+    def g1(x): pass
+    def g2(x): pass
+    if isinstance(x, __builtins.list):
+        return g1(x)
+    elif True:
+        return g2(x)
+    else:
+        raise TypeError("Invalid argument types")

@@ -27,9 +27,17 @@ class PythonGenerator(OutputVisitor):
     in OutputVisitor.
     """
 
+    str[] prolog
+
     def __init__(self, pyversion=3):
         super().__init__()
         self.pyversion = pyversion
+        self.prolog = []
+
+    def output(self):
+        """Return a string representation of the output."""
+        # TODO add the prolog after the first comment and docstring
+        return ''.join(self.prolog) + super().output()
     
     def visit_import_from(self, o):
         if o.id in removed_names:
@@ -150,7 +158,8 @@ class PythonGenerator(OutputVisitor):
     def erased_type(self, t):
         if isinstance(t, Instance) or isinstance(t, UnboundType):
             if isinstance(t.repr, ListTypeRepr):
-                return '__builtins__.list'
+                self.generate_import('builtins')
+                return '__builtins.list'
             else:
                 a = []
                 if t.repr:
@@ -324,4 +333,18 @@ class PythonGenerator(OutputVisitor):
             # TODO do not hard code 'self'
             self.string('%s, self' % o.info.name())
             self.tokens([r.rparen, r.dot, r.name])
-            
+
+    def generate_import(self, modid):
+        """Generate an import in the file prolog.
+
+        When importing, the module is given a '__' prefix. For example, an
+        import of module 'foo' is generated as 'import foo as __foo'.
+        """
+        # TODO make sure that there is no name clash
+        last_component = modid.split('.')[-1]
+        self.add_to_prolog('import {} as __{}\n'.format(modid, last_component))
+
+    def add_to_prolog(self, string):
+        """Add a line to the file prolog unless it already exists."""
+        if not string in self.prolog:
+            self.prolog.append(string)
