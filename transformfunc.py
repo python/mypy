@@ -276,7 +276,8 @@ class FuncTransformer:
         to the target signature.
         """        
         args = self.call_args(fdef.args, target_ann, cur_ann, is_dynamic,
-                              is_wrapper_class, bound_sig)
+                              is_wrapper_class, bound_sig,
+                              ismethod=fdef.is_method())
         selfarg = args[0]
         args = args[1:]
         
@@ -307,22 +308,13 @@ class FuncTransformer:
     
     Node[] call_args(self, Var[] vars, Callable target_ann, Callable cur_ann,
                      bool is_dynamic, bool is_wrapper_class,
-                     Callable bound_sig=None):
+                     Callable bound_sig=None, bool ismethod=False):
         """Construct the arguments of a wrapper call expression.
 
         Insert coercions as needed.
         """
         args = <Node> []
-        # Add type variable arguments for a generic function.
-        for i in range(len(target_ann.variables.items)):
-            # Non-dynamic wrapper method in a wrapper class passes
-            # generic function type arguments to the target function;
-            # otherwise use dynamic types.
-            if is_wrapper_class and not is_dynamic:
-                args.append(
-                    TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))
-            else:
-                args.append(TypeExpr(Any()))
+        # Add ordinary arguments, including self (for methods).
         for i in range(len(vars)):
             a = vars[i]
             name = NameExpr(a.name())
@@ -339,6 +331,19 @@ class FuncTransformer:
                                            bound_sig.arg_types[i],
                                            self.tf.type_context(),
                                            is_wrapper_class))
+        # Add type variable arguments for a generic function.
+        for i in range(len(target_ann.variables.items)):
+            # Non-dynamic wrapper method in a wrapper class passes
+            # generic function type arguments to the target function;
+            # otherwise use dynamic types.
+            index = 0
+            if ismethod:
+                index = 1
+            if is_wrapper_class and not is_dynamic:
+                args.insert(index,
+                    TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))
+            else:
+                args.insert(index, TypeExpr(Any()))
         return args
     
     str get_wrapper_suffix(self, FuncDef func_def, bool is_dynamic):
