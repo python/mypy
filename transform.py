@@ -123,7 +123,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         self.return_types.pop()
         self.dynamic_funcs.pop()
     
-    def prepend_generic_function_tvar_args(self, fdef):
+    void prepend_generic_function_tvar_args(self, FuncDef fdef):
         sig = (Callable)function_type(fdef)
         TypeVarDef[] tvars = sig.variables.items
         if not fdef.typ:
@@ -136,7 +136,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             tv.append(Var(tvar_arg_name(-1 - n)))
             typ.typ = prepend_arg_type((Callable)typ.typ, Any())
         fdef.args = tv + fdef.args
-        fdef.init = [None] * ntvars + fdef.init
+        fdef.init = <AssignmentStmt> [None] * ntvars + fdef.init
     
     #
     # Transform statements
