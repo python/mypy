@@ -133,6 +133,8 @@ class FuncBase(Node, AccessorNode):
     TypeInfo info    # If method, reference to TypeInfo
     def name(self):
         pass
+    bool is_method(self):
+        return bool(self.info)
 
 
 class OverloadedFuncDef(FuncBase, SymNode):
