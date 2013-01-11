@@ -19,11 +19,15 @@ class object:
 # TODO Container etc.
 
 
-interface int_t: # TODO rename
+interface int_t: # TODO rename?
     int __int__(self)
     
-interface float_t: # TODO rename
+interface float_t: # TODO rename?
     float __float__(self)
+
+interface reversed_t<t>: # TODO rename?
+    Iterator<t> __reversed__(self)
+
 
 interface Sized:
     int __len__(self)
@@ -554,7 +558,7 @@ class function:
     pass
 
 
-class list<t>(Sequence<t>):
+class list<t>(Sequence<t>, reversed_t<t>):
     void __init__(self): pass
     void __init__(self, Iterable<t> iterable): pass
     
@@ -582,6 +586,7 @@ class list<t>(Sequence<t>):
     t[] __add__(self, t[] x): pass
     t[] __mul__(self, int n): pass
     bool __contains__(self, object o): pass
+    Iterator<t> __reversed__(self): pass
 
 
 class dict<kt, vt>(Mapping<kt, vt>):
@@ -667,7 +672,7 @@ class enumerate<t>(Iterator<tuple<int, t>>):
     # TODO __getattribute__
 
 
-class range(Sized, Iterable<int>, Sequence<int>):
+class range(Sized, Iterable<int>, Sequence<int>, reversed_t<int>):
     void __init__(self, int stop): pass
     void __init__(self, int start, int stop, int step=1): pass
     
@@ -681,7 +686,7 @@ class range(Sized, Iterable<int>, Sequence<int>):
     int __getitem__(self, int i): pass
     range __getitem__(self, slice s): pass
     str __repr__(self): pass
-    # TODO __reversed__
+    Iterator<int> __reversed__(self): pass
 
 
 bool True
@@ -754,8 +759,8 @@ any pow(int x, int y, int z): pass
 float pow(float x, float y): pass
 float pow(float x, float y, float z): pass
 # TODO property
-# TODO support __reversed__ method
-Iterator<t> reversed<t>(Sequence<t> seq): pass
+Iterator<t> reversed<t>(reversed_t<t> object): pass
+Iterator<t> reversed<t>(Sequence<t> object): pass
 str repr(object o): pass
 # Always return a float if ndigits is present.
 # TODO support __round__ method
