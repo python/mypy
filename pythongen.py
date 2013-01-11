@@ -30,6 +30,15 @@ renamed_types = {'builtins.Sized': 'collections.Sized',
                  're.Pattern': 're._pattern_type'}
 
 
+# These types are erased during translation. If they are used in overloads,
+# a hasattr check is used instead of an isinstance check (the value if the name
+# of the attribute).
+erased_duck_types = {
+    'builtins.int_t': '__int__',
+    'builtins.float_t': '__float__'
+}
+
+
 # Some names need more complex logic to translate them. This dictionary maps
 # qualified names to (initcode, newname) tuples. The initcode string is
 # added to the module prolog.
@@ -179,12 +188,26 @@ class PythonGenerator(OutputVisitor):
         self.string(r.class_tok.pre)
         self.string('class')
         self.token(r.name)
-        self.token(r.lparen)
-        for i in range(len(o.base_types)):
-            self.string(self.erased_type(o.base_types[i]))
-            if i < len(r.commas):
-                self.token(r.commas[i])
-        self.token(r.rparen)
+
+        # Erase references to base types such as int_t which do not exist in
+        # Python.
+        commas = []
+        bases = []
+        for i, base in enumerate(o.base_types):
+            if (base.typ.full_name() not in erased_duck_types
+                    and base.repr):
+                bases.append(base)
+                if i < len(r.commas):
+                    commas.append(r.commas[i])
+
+        if bases:
+            # Generate base types within parentheses.
+            self.token(r.lparen)
+            for i, base in enumerate(bases):
+                self.string(self.erased_type(base))
+                if i < len(bases) - 1:
+                    self.token(commas[i])
+            self.token(r.rparen)
         if not r.lparen.string and self.pyversion == 2:
             self.string('(object)')
         self.node(o.defs)

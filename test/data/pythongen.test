@@ -543,6 +543,26 @@ def f(x):
         return f2(x)
     else:
         raise TypeError("Invalid argument types")
+        
+[case testSpecialInterfaceAsBaseType]
+class A(int_t):
+    pass
+class B(object, int_t):
+    pass
+class C(int_t, object):
+    pass
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class type: pass
+interface int_t: pass
+[out]
+class A:
+    pass
+class B(object):
+    pass
+class C( object):
+    pass
 
 
 -- Special cases
