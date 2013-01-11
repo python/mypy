@@ -31,6 +31,9 @@ interface reversed_t<t>: # TODO rename?
 interface abs_t<t>: # TODO rename?
     t __abs__(self)
 
+interface round_t<t>: # TODO rename?
+    t __round__(self, int ndigits=0)
+
 
 interface Sized:
     int __len__(self)
@@ -767,9 +770,10 @@ Iterator<t> reversed<t>(reversed_t<t> object): pass
 Iterator<t> reversed<t>(Sequence<t> object): pass
 str repr(object o): pass
 # Always return a float if ndigits is present.
-# TODO support __round__ method
 int round(float number): pass
 float round(float number, int ndigits): pass
+t round<t>(round_t<t> number): pass
+t round<t>(round_t<t> number, int ndigits): pass
 void setattr(any object, str name, any value): pass
 t[] sorted<t>(Iterable<t> iterable, *, func<any(t)> key=None,
               bool reverse=False): pass
