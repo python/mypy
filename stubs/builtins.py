@@ -667,7 +667,7 @@ class enumerate<t>(Iterator<tuple<int, t>>):
     # TODO __getattribute__
 
 
-class range(Sized, Iterable<int>):
+class range(Sized, Iterable<int>, Sequence<int>):
     void __init__(self, int stop): pass
     void __init__(self, int start, int stop, int step=1): pass
     
