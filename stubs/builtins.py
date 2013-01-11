@@ -28,6 +28,9 @@ interface float_t: # TODO rename?
 interface reversed_t<t>: # TODO rename?
     Iterator<t> __reversed__(self)
 
+interface abs_t<t>: # TODO rename?
+    t __abs__(self)
+
 
 interface Sized:
     int __len__(self)
@@ -698,6 +701,7 @@ _NotImplementedType NotImplemented
 
 int abs(int n): pass
 float abs(float n): pass
+t abs<t>(abs_t<t> n): pass
 bool all(Iterable i): pass
 # TODO name clash with 'any' type
 #bool any(Iterable i): pass

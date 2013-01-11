@@ -36,7 +36,8 @@ renamed_types = {'builtins.Sized': 'collections.Sized',
 erased_duck_types = {
     'builtins.int_t': '__int__',
     'builtins.float_t': '__float__',
-    'builtins.reversed_t': '__reversed__'
+    'builtins.reversed_t': '__reversed__',
+    'builtins.abs_t': '__abs__'
 }
 
 
