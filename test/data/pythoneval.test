@@ -1,0 +1,54 @@
+-- Test cases for running mypy programs with the Python back end.
+
+
+[case testHello]
+print('hello, world')
+[out]
+hello, world
+
+[case testCheckTypesOfSpecialInterfaces]
+import re
+
+def check(o, t):
+    rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
+    print(rep, t, isinstance(o, t))
+
+def f():
+    check('x', Sized)
+    check([1], Sequence)
+    check({1:3}, Sequence)
+    check(iter('x'), Iterator)
+    check('x', Iterable)
+    check({}, Mapping)
+    check(set([1]), Set)
+
+f()
+[out]
+'x' <class '_abcoll.Sized'> True
+[1] <class '_abcoll.Sequence'> True
+{1: 3} <class '_abcoll.Sequence'> False
+<str_iterator object at 0x...> <class '_abcoll.Iterator'> True
+'x' <class '_abcoll.Iterable'> True
+{} <class '_abcoll.Mapping'> True
+{1} <class '_abcoll.Set'> True
+
+[case testOverloadUsingMatchAndPattern]
+import re
+
+void f(re.Match x): print('match')
+void f(any x): print('something else')
+
+f(1)
+f(re.match('x', 'x'))
+
+void g(re.Pattern x): print('pattern')
+void g(any x): print('something else')
+
+g(1)
+g(re.compile(''))
+[out]
+something else
+match
+something else
+pattern
+
