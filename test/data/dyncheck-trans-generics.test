@@ -521,7 +521,7 @@ class C: pass
 C c = A().f(<C>)
 ...
 
-[case testCalllingGenericMethod2-skip]
+[case testCalllingGenericMethod2]
 class A<S>:
     T f<T>(self):
         pass
