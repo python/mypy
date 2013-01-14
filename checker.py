@@ -11,7 +11,7 @@ from nodes import (
     BytesExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, AccessorNode, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr
+    Decorator, SetExpr, PassStmt
 )
 from nodes import function_type, method_type
 import nodes
@@ -343,6 +343,7 @@ class TypeChecker(NodeVisitor<Typ>):
         self.check_unique_interface_implementations((TypeInfo)typ)
         self.check_interface_errors((TypeInfo)typ)
         self.accept(defn.defs)
+        self.report_error_if_statements_in_class_body(defn.defs)
         self.errors.set_type(None, False)
     
     void check_unique_interface_implementations(self, TypeInfo typ):
@@ -373,6 +374,12 @@ class TypeChecker(NodeVisitor<Typ>):
             for n in iface.methods.keys():
                 if not typ.has_method(n):
                     self.msg.interface_member_not_implemented(typ, iface, n)
+
+    void report_error_if_statements_in_class_body(self, Block defs):
+        for b in defs.body:
+            if type(b) not in [AssignmentStmt, VarDef, FuncDef,
+                               OverloadedFuncDef, PassStmt]:
+                self.msg.not_implemented('statement in class body', b)
     
     #
     # Statements
