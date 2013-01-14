@@ -377,6 +377,10 @@ class TypeChecker(NodeVisitor<Typ>):
 
     void report_error_if_statements_in_class_body(self, Block defs):
         for b in defs.body:
+            if (isinstance(b, ExpressionStmt) and
+                    isinstance(((ExpressionStmt)b).expr, StrExpr)):
+                # Just a string literal (probably a doc string); ok.
+                continue
             if type(b) not in [AssignmentStmt, VarDef, FuncDef,
                                OverloadedFuncDef, PassStmt]:
                 self.msg.not_implemented('statement in class body', b)

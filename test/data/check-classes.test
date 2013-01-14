@@ -356,6 +356,14 @@ class A: pass
 [out]
 main, line 3: Name 'A' already defined
 
+[case testDocstringInClass]
+class A:
+    """Foo"""
+class B:
+    'x'
+    y = B()
+[builtins fixtures/primitives.py]
+
 
 -- TODO
 --   attribute inherited from superclass; assign in __init__
