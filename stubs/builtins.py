@@ -161,7 +161,12 @@ class type:
 
 class int(int_t, float_t):
     void __init__(self, int_t x): pass
+    void __init__(self, str x): pass
+    void __init__(self, bytes x): pass
+    void __init__(self, bytearray x): pass
     void __init__(self, str string, int base): pass
+    void __init__(self, bytes string, int base): pass
+    void __init__(self, bytearray string, int base): pass
 
     # Operators
     # TODO other __r* methods
@@ -219,6 +224,9 @@ class int(int_t, float_t):
     
 class float(float_t, int_t):
     void __init__(self, float_t x): pass
+    void __init__(self, str x): pass
+    void __init__(self, bytes x): pass
+    void __init__(self, bytearray x): pass
 
     # Operators
     
@@ -256,7 +264,7 @@ class float(float_t, int_t):
     int __hash__(self): pass
     
 
-class str(int_t, float_t, Sequence<str>):
+class str(Sequence<str>):
     # TODO maketrans
     
     void __init__(self, object o): pass
@@ -343,7 +351,7 @@ class str(int_t, float_t, Sequence<str>):
     int __hash__(self): pass
     
 
-class bytes(int_t, float_t, Sequence<int>):
+class bytes(Sequence<int>):
     # TODO fromhex
     # TODO maketrans
     
@@ -440,7 +448,7 @@ class bytes(int_t, float_t, Sequence<int>):
     bool __ge__(self, object x): pass
 
 
-class bytearray(int_t, float_t, Sequence<int>):
+class bytearray(Sequence<int>):
     # TODO fromhex
     # TODO maketrans
     
