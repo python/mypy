@@ -4,6 +4,9 @@ Each test cases translates a mypy program to Python and then runs it. The
 output (stdout) of the program is compared to expected output. The translation
 uses full builtins.
 
+Note: Currently python interpreter and mypy implementation paths are hard coded
+      (see python_path and mypy_path below).
+
 Note: These test cases are *not* included in the main test suite, as running
       this suite is slow would slow down the suite too much. The slowness is
       due to translating the mypy implementation in each test case.
@@ -21,6 +24,11 @@ from testhelpers import assert_string_arrays_equal
 
 # Files which contain test case descriptions.
 python_eval_files = ['pythoneval.test']
+
+# Path to Python 3 interpreter
+python_path = 'python3'
+# Path to mypy implementation translated to Python.
+mypy_path = '~/mypy-py/mypy.py'
 
 
 class PythonEvaluationSuite(Suite):
@@ -41,8 +49,8 @@ def test_python_evaluation(testcase):
         f.write('{}\n'.format(s))
     f.close()
     # Run the program.
-    outb = subprocess.check_output(['python3',
-                                    os.path.expanduser('~/mypy-py/mypy.py'),
+    outb = subprocess.check_output([python_path,
+                                    os.path.expanduser(mypy_path),
                                     'mypy.py',
                                     program])
     # Split output into lines.
