@@ -238,7 +238,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # of a generic type or superclass __init__), include also
             # instance type variables.  Otherwise filter them away --
             # include only generic function type variables.
-            if (not ((Callable)ctype).is_type_obj and
+            if (not ((Callable)ctype).is_type_obj() and
                     not (isinstance(e.callee, SuperExpr) and
                          ((SuperExpr)e.callee).name == '__init__')):
                 b = <tuple<int, Typ>> []
