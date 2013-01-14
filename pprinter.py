@@ -150,8 +150,7 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_coerce_expr(self, CoerceExpr o):
         self.string('{')
-        v = TypePrettyPrintVisitor()
-        self.string(o.target_type.accept(v))
+        self.full_type(o.target_type)
         if coerce.is_special_primitive(o.source_type):
             self.string(' <= ')
             self.typ(o.source_type)
@@ -163,7 +162,7 @@ class PrettyPrintVisitor(NodeVisitor):
         # Type expressions are only generated during transformation, so we must
         # use automatic formatting.
         self.string('<')
-        self.typ(o.typ)
+        self.full_type(o.typ)
         self.string('>')
     
     def visit_index_expr(self, o):
@@ -233,9 +232,15 @@ class PrettyPrintVisitor(NodeVisitor):
         return ''
     
     def typ(self, t):
-        """Pretty-print a type."""
+        """Pretty-print a type with erased type arguments."""
         if t:
             v = TypeErasedPrettyPrintVisitor()
+            self.string(t.accept(v))
+    
+    def full_type(self, t):
+        """Pretty-print a type, includingn type arguments."""
+        if t:
+            v = TypePrettyPrintVisitor()
             self.string(t.accept(v))
 
 

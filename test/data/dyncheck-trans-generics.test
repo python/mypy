@@ -151,6 +151,18 @@ class A:
 C a = C(<A>)
 C d = C(<any>)
 
+[case testConstructingGenericInstanceWithGenericArg]
+class C<T>:
+    void __init__(self):
+        pass
+class A: pass
+C<C<A>> a = C<C<A>>()
+[out]
+...
+class A:
+...
+C a = C(<C<A>>)
+
 [case testCastFromAnyToGenericType]
 class A<T>:
     T a
