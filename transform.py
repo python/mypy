@@ -249,7 +249,12 @@ class DyncheckTransformVisitor(TraverserVisitor):
             
             args = <Node> []
             for i in range(len(bound_vars)):
-                args.append(TypeExpr(bound_vars[i][1]))
+                # Compile type variables to runtime type variable expressions.
+                tv = translate_runtime_type_vars_in_context(
+                    bound_vars[i][1],
+                    self.type_context(),
+                    self.is_java)
+                args.append(TypeExpr(tv))
             e.args = args + e.args
     
     def is_debugging_call_expr(self, e):

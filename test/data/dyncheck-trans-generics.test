@@ -364,7 +364,7 @@ class A<T>:
 [out]
 ...
     void f(A self):
-        a = A(<any*>)
+        a = A(<self.__tv>)
         any d
         a = {A<self.__tv> d}
 ...
@@ -434,7 +434,7 @@ void g():
     c = {C f(<any>, c)}
 ...
 
-[case testTypeVarReferenceInGenericFunction-skip]
+[case testTypeVarReferenceInGenericFunction]
 C<T> f<T>(any x):
     a = C<T>()
     f<T>(x)
