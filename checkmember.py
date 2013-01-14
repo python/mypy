@@ -1,4 +1,4 @@
-from mtypes import Typ, Instance, Any, TupleType
+from mtypes import Typ, Instance, Any, TupleType, Callable
 from nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
 from messages import MessageBuilder
 from subtypes import map_instance_to_supertype
@@ -46,6 +46,9 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
         # Actually look up from the tuple type.
         return analyse_member_access(name, tuple_type, node, is_lvalue,
                                      is_super, tuple_type, msg)
+    elif isinstance(typ, Callable) and ((Callable)typ).is_type_obj():
+        # Class attribute access.
+        return msg.not_implemented('class attributes', node)
     else:
         # The base object has an unsupported type.
         return msg.has_no_member(typ, name, node)

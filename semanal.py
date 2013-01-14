@@ -691,6 +691,11 @@ class SemanticAnalyzer(NodeVisitor):
                 table = ((MypyFile)b.node).names
                 if name in table:
                     return table[name]
+            if self.typ and (not self.locals and
+                             self.typ.has_readable_member(name)):
+                self.fail('Feature not implemented yet (class attributes)',
+                          ctx)
+                return None
             self.name_not_defined(name, ctx)
             return None
     
@@ -702,6 +707,11 @@ class SemanticAnalyzer(NodeVisitor):
             SymbolTableNode n = self.lookup(parts[0], ctx)
             if n:
                 for i in range(1, len(parts)):
+                    if isinstance(n.node, TypeInfo):
+                        self.fail(
+                            'Feature not implemented yet (class attributes)',
+                            ctx)
+                        return None
                     n = ((MypyFile)n.node).names.get(parts[i], None)
                     if not n:
                         self.name_not_defined(name, ctx)
