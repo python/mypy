@@ -369,7 +369,7 @@ class JoinSuite(Suite):
         t2 = self.type_callable(self.fx.b, self.fx.b)
         
         self.assert_join(t1, t1, t1)
-        assert_true(join_types(t1, t1, self.fx.basic).is_type_obj)
+        assert_true(join_types(t1, t1, self.fx.basic).is_type_obj())
         
         self.assert_join(t1, t2, self.fx.std_type)
         self.assert_join(t1, self.fx.std_type, self.fx.std_type)
