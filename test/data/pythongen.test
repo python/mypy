@@ -563,6 +563,25 @@ class B(object):
     pass
 class C( object):
     pass
+    
+[case testOverloadsWithSpecialInterfaces]
+void f(int_t i): pass
+void f(object o): pass
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class type: pass
+interface int_t: pass
+[out]
+def f(i):
+    def f1(i): pass
+    def f2(o): pass
+    if hasattr(i, '__int__'):
+        return f1(i)
+    elif isinstance(i, object):
+        return f2(i)
+    else:
+        raise TypeError("Invalid argument types")
 
 
 -- Special cases

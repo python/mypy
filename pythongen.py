@@ -363,6 +363,10 @@ class PythonGenerator(OutputVisitor):
     def make_argument_check(self, name, typ):
         if isinstance(typ, Callable):
             return 'callable({})'.format(name)
+        if (isinstance(typ, Instance) and
+                typ.typ.full_name() in erased_duck_types):
+            return "hasattr({}, '{}')".format(
+                                name, erased_duck_types[typ.typ.full_name()])
         else:
             cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
             return cond.replace('  ', ' ')
