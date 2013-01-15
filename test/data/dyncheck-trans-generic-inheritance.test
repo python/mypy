@@ -433,23 +433,6 @@ class C(B):
         super().__init__()
 ...
 
-[case testInitWrapperWithDefaultInitializer-skip]
-class A:
-    int n
-    
-    void __init__(self, int n):
-        self.n = n
-class B<T>(A): pass
-[out]
-...
-class B<T> is A
-  var __tv as dynamic
-  def create(__tv as dynamic, n as Int)
-    self.__tv = <__tv>
-    super.create(n)
-  end
-...
-
 
 -- 2. Define new constructor in subclass
 
