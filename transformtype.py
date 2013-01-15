@@ -1,3 +1,5 @@
+"""Transform classes for runtime type checking."""
+
 from nodes import (
     TypeDef, Node, FuncDef, VarDef, Block, Var, Annotation, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
@@ -177,9 +179,7 @@ class TypeTransformer:
             return []
     
     Callable fix_bound_init_tvars(self, Callable callable, Instance typ):
-        """Replace the bound type variables of callable with the type arguments
-        of the instance type.
-        """
+        """Replace bound type vars of callable with args from instance type."""
         a = <tuple<int, Typ>> []
         for i in range(len(typ.args)):
             a.append((i + 1, typ.args[i]))
@@ -353,7 +353,7 @@ class TypeTransformer:
         """Construct a wrapper class for a generic type."""
         # FIX semanal meta-info for nodes + TypeInfo
         
-        Node[] defs = []
+        defs = <Node> []
         
         # Does the type have a superclass, other than builtins.object?
         has_proper_superclass = tdef.info.base.full_name() != 'builtins.object'
@@ -410,13 +410,13 @@ class TypeTransformer:
             base = base.base
     
     Node[] make_generic_wrapper_member_vars(self, TypeDef tdef):
-        """Generate the member variable definition for the wrapped
-        object (__o) for a generic wrapper class.
-        """
-        Node[] defs = [VarDef([(Var(self.object_member_name(tdef.info)),
-                                Any())], False, None)]
+        """Generate member variable definition for wrapped object (__o).
         
-        return defs
+        This is added to a generic wrapper class.
+        """
+        # The type is 'any' since it should behave covariantly in subclasses.
+        return [VarDef([(Var(self.object_member_name(tdef.info)),
+                         Any())], False, None)]
     
     str object_member_name(self, TypeInfo info):
         if self.tf.is_java:
@@ -428,12 +428,12 @@ class TypeTransformer:
         """Build constructor of a generic wrapper class."""
         nslots = num_slots(info)
         
-        Node[] cdefs = []
+        cdefs = <Node> []
         
         # Build superclass constructor call.
         if info.base.full_name() != 'builtins.object' and self.tf.is_java:
             s = SuperExpr('__init__')
-            Node[] cargs = [NameExpr('__o')]
+            cargs = <Node> [NameExpr('__o')]
             for n in range(num_slots(info.base)):
                 cargs.append(NameExpr(tvar_arg_name(n + 1)))
             for n in range(num_slots(info.base)):
@@ -475,8 +475,10 @@ class TypeTransformer:
         return fdef
     
     Node[] make_tvar_representation(self, TypeInfo info, any is_alt=False):
-        """Return type variable slot member definitions (of form
-        'var __tv* as dynamic'). Only include new slots defined in the type.
+        """Return type variable slot member definitions.
+
+        There are of form 'any __tv*'. Only include new slots defined in the
+        type.
         """
         Node[] defs = []
         base_slots = num_slots(info.base)
@@ -489,8 +491,9 @@ class TypeTransformer:
         return defs
     
     void make_instance_tvar_initializer(self, FuncDef creat):
-        """Add type variable member initialization code to the constructor of
-        a class. Modify the constructor body directly.
+        """Add type variable member initialization code to a constructor.
+
+        Modify the constructor body directly.
         """
         for n in range(num_slots(creat.info)):
             rvalue = self.make_tvar_init_expression(creat.info, n)
@@ -503,8 +506,10 @@ class TypeTransformer:
             creat.body.body.insert(n, init)
     
     void make_wrapper_slot_initializer(self, FuncDef creat):
-        """Add type variable member initialization code to the constructor of a
-        generic wrapper class. Modify the constructor body directly.
+        """Add type variable member initializations to a wrapper constructor.
+
+        The function must be a constructor of a generic wrapper class. Modify
+        the constructor body directly.
         """
         for alt in [BOUND_VAR, False]:
             for n in range(num_slots(creat.info)):
@@ -519,8 +524,9 @@ class TypeTransformer:
                 creat.body.body.insert(n, init)
     
     TypeExpr make_tvar_init_expression(self, TypeInfo info, int slot):
-        """Return the initializer for the given slot in the given
-        type, i.e. the type expression that initializes the given slot
+        """Return the initializer for the given slot in the given type.
+        
+        This is the type expression that initializes the given slot
         using the type arguments given to the constructor.
         
         Examples:
@@ -528,7 +534,7 @@ class TypeTransformer:
             TypeExpr(RuntimeTypeVar(NameExpr('__tv'))).
           - In 'class D(C<int>) ...', the initializer for the slot 0 is
             TypeExpr(<int instance>).
-            """
+        """
         # Figure out the superclass which defines the slot; also figure out
         # the tvar index that maps to the slot.
         origin, tv = find_slot_origin(info, slot)
