@@ -10,7 +10,7 @@ from lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
                  LexError)
 from nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
-    TypeDef, Decorator, Annotation, Block, Var, VarDef, OperatorAssignmentStmt,
+    TypeDef, Decorator, Block, Var, VarDef, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr, ParenExpr,
@@ -276,9 +276,9 @@ class Parser:
             self.errors.set_type(None, False)
             self.is_type = False
     
-    def parse_super_type(self):
+    Type parse_super_type(self):
         if (isinstance(self.current(), Name) and self.current_str() != 'void'):
-            return self.parse_type().type
+            return self.parse_type()
         else:
             self.parse_error()
     
@@ -295,7 +295,7 @@ class Parser:
         if self.peek().string in ['(', '<'] or isinstance(typ, Void):
             return self.parse_function_at_name(typ, None)
         else:
-            return self.parse_var_def(typ.type)
+            return self.parse_var_def(typ)
     
     Node parse_decorated_function(self):
         at = self.expect('@')
@@ -310,7 +310,7 @@ class Parser:
         self.set_repr(node, noderepr.DecoratorRepr(at, br))
         return node
     
-    FuncDef parse_function_at_name(self, Annotation ret_type, Token def_tok,
+    FuncDef parse_function_at_name(self, Type ret_type, Token def_tok,
                                    bool is_in_interface=False):
         self.is_function = True
         try:
@@ -338,8 +338,8 @@ class Parser:
             self.errors.set_function(None)
             self.is_function = False
     
-    tuple<str, Var[], Node[], int[], Annotation, bool, tuple<Token, any>> \
-              parse_function_header(self, Annotation ret_type):
+    tuple<str, Var[], Node[], int[], Type, bool, tuple<Token, any>> \
+              parse_function_header(self, Type ret_type):
         """Parse function header (a name followed by arguments)
 
         Returns a 7-tuple with the following items:
@@ -370,8 +370,8 @@ class Parser:
         
         return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
     
-    tuple<Var[], Node[], int[], Annotation, \
-          noderepr.FuncArgsRepr> parse_args(self, Annotation ret_type):
+    tuple<Var[], Node[], int[], Type, \
+          noderepr.FuncArgsRepr> parse_args(self, Type ret_type):
         """Parse a function type signature.
 
         It is potentially prefixed with type variable specification within
@@ -402,23 +402,17 @@ class Parser:
                 noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
                                       assigns, asterisk))
     
-    Annotation build_func_annotation(self, Annotation ret_type,
-                                     Type[] arg_types, int[] kinds,
-                                     str[] names, TypeVars type_vars,
-                                     int line, bool is_default_ret=False):
+    Type build_func_annotation(self, Type ret_type,
+                               Type[] arg_types, int[] kinds,
+                               str[] names, TypeVars type_vars,
+                               int line, bool is_default_ret=False):
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
                 or arg_types != [None] * len(arg_types)
                 or type_vars.items):
             # Yes. Construct a type for the function signature.
-            Type ret = None
-            if ret_type is not None:
-                ret = ret_type.type
-            typ = self.construct_function_type(arg_types, kinds, names,
-                                               ret, type_vars, line)
-            annotation = Annotation(typ, line)
-            self.set_repr(annotation, noderepr.AnnotationRepr())
-            return annotation
+            return self.construct_function_type(arg_types, kinds, names,
+                                                ret_type, type_vars, line)
         else:
             return None
     
@@ -450,7 +444,7 @@ class Parser:
             while self.current_str() != ')':
                 Type arg_type = None
                 if self.is_at_sig_type():
-                    arg_type = self.parse_type().type
+                    arg_type = self.parse_type()
                 arg_types.append(arg_type)
                 
                 if self.current_str() == '*' and self.peek().string == ',':
@@ -557,7 +551,7 @@ class Parser:
             
             Type t = None
             if self.is_at_type():
-                t = self.parse_type().type
+                t = self.parse_type()
             tok = self.expect_type(Name)
             n.append((Var(tok.string), t))
             r.append(noderepr.VarRepr(tok, none))
@@ -848,11 +842,10 @@ class Parser:
                                                  else_tok))
         return node
     
-    tuple<NameExpr[], Annotation[], Token[]> \
-                              parse_for_index_variables(self):
+    tuple<NameExpr[], Type[], Token[]> parse_for_index_variables(self):
         # Parse index variables of a 'for' statement.
         index = <NameExpr> []
-        types = <Annotation> []
+        types = <Type> []
         commas = <Token> []
         
         is_paren = self.current_str() == '('
@@ -860,7 +853,7 @@ class Parser:
             self.skip()
         
         while True:
-            Annotation ann = None
+            Type ann = None
             if self.is_at_type():
                 ann = self.parse_type()
             v = self.parse_name_expr()
@@ -1115,7 +1108,7 @@ class Parser:
             typ = self.parse_type()
             rparen = self.expect(')')
             expr = self.parse_expression(precedence['<cast>'])
-            expr = CastExpr(expr, typ.type)
+            expr = CastExpr(expr, typ)
             self.set_repr(expr, noderepr.CastExprRepr(lparen, rparen))
         elif self.current_str() == ')':
             # Empty tuple ().
@@ -1476,7 +1469,7 @@ class Parser:
         # Use 'object' as the placeholder return type; it will be inferred
         # later. We can't use 'any' since it could make type inference results
         # less precise.
-        ret_type = Annotation(UnboundType('__builtins__.object'))
+        ret_type = UnboundType('__builtins__.object')
         typ = self.build_func_annotation(ret_type, arg_types, kinds, names,
                                          TypeVars([]), lambda_tok.line,
                                          is_default_ret=True)
@@ -1603,13 +1596,13 @@ class Parser:
     
     # Type annotation related functionality
     
-    Annotation parse_type(self):
+    Type parse_type(self):
         line = self.current().line
         try:
             typ, self.ind = parse_type(self.tok, self.ind)
         except TypeParseError as e:
             self.parse_error_at(e.token)
-        return Annotation(typ, line)
+        return typ
     
     TypeVars parse_type_vars(self):
         """Note: For type variables of generic functions only."""

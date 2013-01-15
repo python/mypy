@@ -95,7 +95,7 @@ class OutputVisitor(NodeVisitor):
         if r.def_tok:
             self.token(r.def_tok)
         else:
-            self.type(o.type.type.items()[0].ret_type)
+            self.type(o.type.items()[0].ret_type)
         
         self.token(r.name)
         
@@ -113,7 +113,7 @@ class OutputVisitor(NodeVisitor):
         
         t = None
         if o.type and not erase_type:
-            t = o.type.type
+            t = o.type
         
         init = o.init
         
@@ -257,7 +257,7 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         self.token(r.for_tok)
         for i in range(len(o.index)):
-            self.node(o.types[i])
+            self.type(o.types[i])
             self.node(o.index[i])
             self.token(r.commas[i])
         self.token(r.in_tok)
@@ -454,11 +454,6 @@ class OutputVisitor(NodeVisitor):
         self.token(o.repr.lbracket)
         self.node(o.generator)
         self.token(o.repr.rbracket)
-    
-    # Types
-    
-    def visit_annotation(self, o):
-        self.type(o.type)
     
     # Helpers
     

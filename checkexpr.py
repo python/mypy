@@ -62,14 +62,14 @@ class ExpressionChecker:
                 result = Any()
             else:
                 # Local or global variable.
-                result = v.type.type
+                result = v.type
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             f = (FuncDef)node
             result = function_type(f)
         elif isinstance(node, OverloadedFuncDef):
             o = (OverloadedFuncDef)node
-            result = o.type.type
+            result = o.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type((TypeInfo)node, self.chk.type_type)
@@ -863,7 +863,7 @@ class ExpressionChecker:
         if inferred_type:
             return replace_callable_return_type(inferred_type, ret_type)
         elif e.type:
-            return replace_callable_return_type((Callable)e.type.type, ret_type)
+            return replace_callable_return_type((Callable)e.type, ret_type)
         else:
             # Use default type for lambda.
             # TODO infer return type?
@@ -896,7 +896,7 @@ class ExpressionChecker:
             return callable_ctx
         else:
             # The lambda already has a type; only infer the return type.
-            return replace_callable_return_type((Callable)e.type.type,
+            return replace_callable_return_type((Callable)e.type,
                                                 callable_ctx.ret_type)
     
     Type visit_super_expr(self, SuperExpr e):

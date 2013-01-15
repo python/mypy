@@ -3,7 +3,7 @@
 from errors import Errors
 from nodes import (
     SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
-    OverloadedFuncDef, FuncDef, FuncItem, Annotation, FuncBase, TypeInfo,
+    OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     TypeDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ParenExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, YieldStmt, WithStmt, AssertStmt,
@@ -235,7 +235,7 @@ class TypeChecker(NodeVisitor<Type>):
             elif ctype.arg_kinds[i] == nodes.ARG_STAR2:
                 arg_type = self.named_generic_type('builtins.dict',
                                                    [self.str_type(), arg_type])
-            defn.args[i].type = Annotation(arg_type)
+            defn.args[i].type = arg_type
         
         # Type check initialization expressions.
         for j in range(len(defn.init)):
@@ -510,7 +510,7 @@ class TypeChecker(NodeVisitor<Type>):
         refers to the variable (lvalue). If var is None, do nothing.
         """
         if var:
-            var.type = Annotation(type, -1)
+            var.type = type
             self.store_type(lvalue, type)
     
     bool is_valid_inferred_type(self, Type typ):
@@ -701,7 +701,7 @@ class TypeChecker(NodeVisitor<Type>):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
-                    s.vars[i].type = Annotation(t)
+                    s.vars[i].type = t
             self.accept(s.handlers[i])
         if s.finally_body:
             self.accept(s.finally_body)
@@ -769,7 +769,7 @@ class TypeChecker(NodeVisitor<Type>):
         elif len(index) == 1:
             v = (Var)index[0].node
             if v.type:
-                self.check_single_assignment(v.type.type, None,
+                self.check_single_assignment(v.type, None,
                                            self.temp_node(item_type), context,
                                            messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
@@ -777,7 +777,7 @@ class TypeChecker(NodeVisitor<Type>):
             for ii in index:
                 v = (Var)ii.node
                 if v.type:
-                    t.append(v.type.type)
+                    t.append(v.type)
                 else:
                     t.append(Any())
             self.check_multi_assignment(

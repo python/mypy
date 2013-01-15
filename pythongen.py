@@ -109,7 +109,7 @@ class PythonGenerator(OutputVisitor):
         if r.def_tok and r.def_tok.string:
             self.token(r.def_tok)
         else:
-            self.string(self.get_pre_whitespace(o.type.type.ret_type) + 'def')
+            self.string(self.get_pre_whitespace(o.type.ret_type) + 'def')
         
         if name_override is None:
             self.token(r.name)
@@ -268,7 +268,7 @@ class PythonGenerator(OutputVisitor):
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
-            self.string(self.get_pre_whitespace(first.type.type.ret_type) +
+            self.string(self.get_pre_whitespace(first.type.ret_type) +
                         'def')
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4

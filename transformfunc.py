@@ -1,12 +1,12 @@
 """Transform functions for runtime type checking."""
 
 from nodes import (
-    FuncDef, Annotation, Var, Node, Block, TypeInfo, NameExpr, MemberExpr,
+    FuncDef, Var, Node, Block, TypeInfo, NameExpr, MemberExpr,
     CallExpr, ReturnStmt, ExpressionStmt, TypeExpr, function_type, VarDef
 )
 import nodes
 from checker import map_type_from_supertype
-from mtypes import Callable, Any, Void, RuntimeTypeVar
+from mtypes import Callable, Any, Void, RuntimeTypeVar, Type
 from replacetvars import replace_type_vars
 import transform
 from transutil import (
@@ -84,11 +84,11 @@ class FuncTransformer:
         args = fdef.args
         arg_kinds = fdef.arg_kinds
         
-        typ = Annotation(function_type(fdef))
+        Type typ = function_type(fdef)
         init = fdef.init_expressions()
         
         if fdef.name() == '__init__' and is_generic(fdef):
-            args, arg_kinds, init = self.add_constructor_tvar_args(
+            args, arg_kinds, init, typ = self.add_constructor_tvar_args(
                 fdef, typ, args, arg_kinds, init)
         
         fdef2 = FuncDef(name, args, arg_kinds, init, fdef.body, typ)
@@ -98,9 +98,9 @@ class FuncTransformer:
         
         return fdef2
     
-    tuple<Var[], int[], Node[]> \
+    tuple<Var[], int[], Node[], Type> \
                      add_constructor_tvar_args(
-                             self, FuncDef fdef, Annotation typ,
+                             self, FuncDef fdef, Type typ,
                              Var[] args, int[] arg_kinds, 
                              Node[] init):
         """Add type variable arguments for __init__ of a generic type.
@@ -111,11 +111,11 @@ class FuncTransformer:
         ntvars = len(fdef.info.type_vars)
         for n in range(ntvars):
             tv.append(Var(tvar_arg_name(n + 1)))
-            typ.type = add_arg_type_after_self((Callable)typ.type, Any())
+            typ = add_arg_type_after_self((Callable)typ, Any())
         args = [args[0]] + tv + args[1:]
         arg_kinds = [arg_kinds[0]] + [nodes.ARG_POS] * ntvars + arg_kinds[1:]
         init = <Node> [None] * ntvars + init
-        return (args, arg_kinds, init)
+        return (args, arg_kinds, init, typ)
     
     FuncDef override_method_wrapper(self, FuncDef fdef):
         """Construct a method wrapper for an overridden method."""
@@ -176,7 +176,7 @@ class FuncTransformer:
                                    act_as_func_def.arg_kinds,
                                    <Node> [None] * len(wrapper_args),
                                    Block([call_stmt]),
-                                   Annotation(wrapper_sig))
+                                   wrapper_sig)
         
         self.tf.add_line_mapping(target_func_def, wrapper_func_def)
         

@@ -4,7 +4,7 @@ parsing."""
 
 from nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
-    TypeDef, VarDef, Var, GDEF, MODULE_REF, Annotation, FuncItem, Import,
+    TypeDef, VarDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, ParenExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
@@ -195,8 +195,8 @@ class SemanticAnalyzer(NodeVisitor):
             f.is_overload = True
             f.accept(self)
             t.append((Callable)function_type(f))
-        defn.type = Annotation(Overloaded(t))
-        defn.type.set_line(defn.line)
+        defn.type = Overloaded(t)
+        defn.type.line = defn.line
         
         if self.type:
             self.type.methods[defn.name()] = defn
@@ -206,17 +206,17 @@ class SemanticAnalyzer(NodeVisitor):
         self.enter()
         self.add_func_type_variables_to_symbol_table(defn)
         if defn.type:
-            defn.type.accept(self)
+            defn.type = self.anal_type(defn.type)
             if isinstance(defn, FuncDef):
                 fdef = (FuncDef)defn
                 if self.type:
-                    defn.type.type = ((Callable)defn.type.type).with_name(
+                    defn.type = ((Callable)defn.type).with_name(
                         '"{}" of "{}"'.format(fdef.name(), self.type.name()))
                 else:
-                    defn.type.type = ((Callable)defn.type.type).with_name(
+                    defn.type = ((Callable)defn.type).with_name(
                         '"{}"'.format(fdef.name()))
-                if self.type and ((Callable)defn.type.type).arg_types != []:
-                    ((Callable)defn.type.type).arg_types[0] = self_type(
+                if self.type and ((Callable)defn.type).arg_types != []:
+                    ((Callable)defn.type).arg_types[0] = self_type(
                         fdef.info)
         for init in defn.init:
             if init:
@@ -236,7 +236,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     void add_func_type_variables_to_symbol_table(self, FuncItem defn):
         if defn.type:
-            tt = defn.type.type
+            tt = defn.type
             names = self.type_var_names()
             items = ((Callable)tt).variables.items
             for i in range(len(items)):
@@ -297,9 +297,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.class_tvars = SymbolTable()
             for i in range(len(vars)):
                 self.add_type_var(self.class_tvars, vars[i], i + 1)
-    
-    void visit_annotation(self, Annotation ann):
-        ann.type = self.anal_type(ann.type)
     
     void visit_import(self, Import i):
         if not self.check_import_at_toplevel(i):
@@ -362,7 +359,7 @@ class SemanticAnalyzer(NodeVisitor):
             defn.items[i] = (defn.items[i][0],
                              self.anal_type(defn.items[i][1]))
             if defn.items[i][1]:
-                defn.items[i][0].type = Annotation(defn.items[i][1])
+                defn.items[i][0].type = defn.items[i][1]
         
         for v, t in defn.items:
             if self.locals:
@@ -500,10 +497,10 @@ class SemanticAnalyzer(NodeVisitor):
         for i in range(len(s.types)):
             t = s.types[i]
             if t:
-                t.accept(self)
+                s.types[i] = self.anal_type(t)
                 v = (Var)s.index[i].node
                 # TODO check if redefinition
-                v.type = t
+                v.type = s.types[i]
         
         # Report error if only some of the loop variables have annotations.
         if s.types != [None] * len(s.types) and None in s.types:

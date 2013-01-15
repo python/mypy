@@ -53,7 +53,7 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_func_def(self, FuncDef fdef):
         # FIX varargs, default args, keyword args etc.
-        ftyp = (Callable)fdef.type.type
+        ftyp = (Callable)fdef.type
         self.type(ftyp.ret_type)
         self.string(' ')
         self.string(fdef.name())

@@ -12,7 +12,7 @@ The transform performs these main changes:
 """
 
 from nodes import (
-    Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Annotation, Var,
+    Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
     CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
     SymbolTableNode
@@ -100,7 +100,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         
         if o.init is not None:
             if o.items[0][0].type:
-                t = o.items[0][0].type.type
+                t = o.items[0][0].type
             else:
                 t = Any()
             o.init = self.coerce(o.init, t, self.get_type(o.init),
@@ -129,8 +129,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         sig = (Callable)function_type(fdef)
         TypeVarDef[] tvars = sig.variables.items
         if not fdef.type:
-            fdef.type = Annotation(sig)
-        typ = fdef.type
+            fdef.type = sig
         
         tv = <Var> []
         ntvars = len(tvars)
@@ -138,13 +137,13 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # For methods, add type variable arguments after the self arg.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                typ.type = add_arg_type_after_self((Callable)typ.type, Any())
+                fdef.type = add_arg_type_after_self((Callable)fdef.type, Any())
             fdef.args = [fdef.args[0]] + tv + fdef.args[1:]
         else:
             # For ordinary functions, prepend type variable arguments.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                typ.type = prepend_arg_type((Callable)typ.type, Any())
+                fdef.type = prepend_arg_type((Callable)fdef.type, Any())
             fdef.args = tv + fdef.args
         fdef.init = <AssignmentStmt> [None] * ntvars + fdef.init
     

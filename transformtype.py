@@ -1,7 +1,7 @@
 """Transform classes for runtime type checking."""
 
 from nodes import (
-    TypeDef, Node, FuncDef, VarDef, Block, Var, Annotation, ExpressionStmt,
+    TypeDef, Node, FuncDef, VarDef, Block, Var, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
     AssignmentStmt, TypeExpr, PassStmt
 )
@@ -151,7 +151,7 @@ class TypeTransformer:
             args = [Var('self')]
             for i in range(1, len(super_init.args)):
                 args.append(Var(super_init.args[i].name()))
-                args[-1].type = Annotation(callee_type.arg_types[i - 1])
+                args[-1].type = callee_type.arg_types[i - 1]
 
             selft = self_type(self.tf.type_context())
             callee_type = prepend_arg_type(callee_type, selft)
@@ -161,7 +161,7 @@ class TypeTransformer:
                             <Node> [None] * len(args),
                             Block([]))
             creat.info = tdef.info
-            creat.type = Annotation(callee_type, -1)
+            creat.type = callee_type
             creat.is_implicit = False
             tdef.info.methods['__init__'] = creat
             
@@ -236,7 +236,7 @@ class TypeTransformer:
         # derived classes redefine a data attribute as a property.
         for n, vt in o.items:
             if n.type:
-                t = n.type.type
+                t = n.type
             else:
                 t = Any()
             res.append(self.make_getter_wrapper(n.name(), t))
@@ -264,7 +264,7 @@ class TypeTransformer:
                        [Var('self')],
                        [nodes.ARG_POS],
                        [None],
-                       Block([ret]), Annotation(sig))
+                       Block([ret]), sig)
     
     FuncDef make_dynamic_getter_wrapper(self, str name, Type typ):
         """Create a dynamically-typed getter wrapper for a data attribute.
@@ -285,7 +285,7 @@ class TypeTransformer:
                        [Var('self')],
                        [nodes.ARG_POS],
                        [None],
-                       Block([ret]), Annotation(sig))
+                       Block([ret]), sig)
     
     FuncDef make_setter_wrapper(self, str name, Type typ):
         """Create a setter wrapper for a data attribute.
@@ -309,7 +309,7 @@ class TypeTransformer:
                        [Var('self'), Var(name)],
                        [nodes.ARG_POS, nodes.ARG_POS],
                        [None, None],
-                       Block([ret]), Annotation(sig))
+                       Block([ret]), sig)
     
     FuncDef make_dynamic_setter_wrapper(self, str name, Type typ):
         """Create a dynamically-typed setter wrapper for a data attribute.
@@ -334,14 +334,14 @@ class TypeTransformer:
                        [Var('self'), Var(name)],
                        [nodes.ARG_POS, nodes.ARG_POS],
                        [None, None],
-                       Block([ret]), Annotation(sig))
+                       Block([ret]), sig)
     
     Node[] generic_accessor_wrappers(self, VarDef vdef):
         """Construct wrapper class methods for attribute accessors."""
         res = <Node> []
         for n, vt in vdef.items:
             if n.type:
-                t = n.type.type
+                t = n.type
             else:
                 t = Any()
             for fd in [self.make_getter_wrapper(n.name(), t),
@@ -463,11 +463,11 @@ class TypeTransformer:
                        [nodes.ARG_POS] * nargs,
                        init,
                        Block(cdefs),
-                       Annotation(Callable(<Type> [Any()] * nargs,
-                                  [nodes.ARG_POS] * nargs,
-                                  <str> [None] * nargs,
-                                  Void(),
-                                  is_type_obj=False)))
+                       Callable(<Type> [Any()] * nargs,
+                                [nodes.ARG_POS] * nargs,
+                                <str> [None] * nargs,
+                                Void(),
+                                is_type_obj=False))
         fdef.info = info
         
         self.make_wrapper_slot_initializer(fdef)
@@ -589,5 +589,5 @@ class TypeTransformer:
                        <Node> [None] * len(arg_kinds),
                        Block([ret]))
         
-        fdef.type = Annotation(wrapper_sig)
+        fdef.type = wrapper_sig
         return fdef

@@ -39,9 +39,6 @@ class NodeVisitor<T>:
     T visit_var(self, nodes.Var o):
         pass
     
-    T visit_annotation(self, nodes.Annotation o):
-        pass
-    
     # Statements
     
     T visit_block(self, nodes.Block o):

@@ -454,7 +454,7 @@ MypyFile:1(
     f
     Args(
       Var(y))
-    Type:1(def (str? y) -> int?)
+    def (str? y) -> int?
     Block:1(
       ReturnStmt:2()))
   TypeDef:3(
@@ -465,14 +465,14 @@ MypyFile:1(
         Var(self)
         Var(a)
         Var(b))
-      Type:4(def (any self, int? a, any b) -> x?)
+      def (any self, int? a, any b) -> x?
       Block:4(
         PassStmt:5()))
     FuncDef:6(
       g
       Args(
         Var(self))
-      Type:6(def (any self) -> any)
+      def (any self) -> any
       Block:6(
         PassStmt:7()))))
 
@@ -483,7 +483,7 @@ void f():
 MypyFile:1(
   FuncDef:1(
     f
-    Type:1(def ())
+    def ()
     Block:1(
       PassStmt:2())))
 
@@ -509,7 +509,7 @@ MypyFile:1(
     f
     Args(
       Var(y))
-    Type:1(def (t?<any, x?> y) -> a?<b?<c?>, d?>)
+    def (t?<any, x?> y) -> a?<b?<c?>, d?>
     Block:1(
       PassStmt:2())))
 
@@ -888,7 +888,7 @@ MypyFile:1(
       PassStmt:3()))
   FuncDef:4(
     g
-    Type:4(def () -> int?)
+    def () -> int?
     Block:4(
       ReturnStmt:4(
         IntExpr(1)))))
@@ -922,15 +922,15 @@ for c<x> f, any g in [z]:
 MypyFile:1(
   ForStmt:1(
     NameExpr(x)
-    Type:1(int?)
+    int?
     NameExpr(y)
     Block:1(
       PassStmt:2()))
   ForStmt:3(
     NameExpr(f)
     NameExpr(g)
-    Type:3(c?<x?>)
-    Type:3(any)
+    c?<x?>
+    any
     ListExpr:3(
       NameExpr(z))
     Block:3(
@@ -1009,7 +1009,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Type:1(def <T> (T? x) -> T?)
+    def <T> (T? x) -> T?
     Block:1(
       ReturnStmt:2(
         NameExpr(x)))))
@@ -1024,7 +1024,7 @@ MypyFile:1(
     Args(
       Var(t)
       Var(s))
-    Type:1(def <T, S> (any t, any s) -> any)
+    def <T, S> (any t, any s) -> any
     Block:1(
       PassStmt:2())))
 
@@ -1563,7 +1563,7 @@ MypyFile:1(
     FuncExpr:2(
       Args(
         Var(x))
-      Type:2(def (int? x) -> __builtins__.object?)
+      def (int? x) -> __builtins__.object?
       Block:2(
         ReturnStmt:2(
           NameExpr(y))))))
@@ -1782,11 +1782,11 @@ MypyFile:1(
           PassStmt:3()))))
   FuncDef:4(
     h
-    Type:4(def () -> int?)
+    def () -> int?
     Block:4(
       FuncDef:5(
         g
-        Type:5(def () -> int?)
+        def () -> int?
         Block:5(
           PassStmt:6())))))
 
@@ -1851,7 +1851,7 @@ MypyFile:1(
       NameExpr(zar)
       FuncDef:-1(
         f
-        Type:3(def () -> int?)
+        def () -> int?
         Block:3(
           PassStmt:4())))))
 
@@ -1925,7 +1925,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Type:1(def (str? x, *int? a) -> any)
+    def (str? x, *int? a) -> any
     VarArg(
       Var(a))
     Block:1(
@@ -1976,7 +1976,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Type:1(def (X? x, A? **a))
+    def (X? x, A? **a)
     DictVarArg(
       Var(a))
     Block:1(
@@ -2272,7 +2272,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    Type:1(def (A? x, *, B? y))
+    def (A? x, *, B? y)
     Init(
       AssignmentStmt:1(
         Lvalues(
@@ -2290,7 +2290,7 @@ MypyFile:1(
     MaxPos(0)
     Args(
       Var(y))
-    Type:1(def (*A? x, *, B? y))
+    def (*A? x, *, B? y)
     Init(
       AssignmentStmt:1(
         Lvalues(
@@ -2368,14 +2368,14 @@ MypyFile:1(
   OverloadedFuncDef:1(
     FuncDef:1(
       f
-      Type:1(def () -> object?)
+      def () -> object?
       Block:1(
         PassStmt:1()))
     FuncDef:2(
       f
       Args(
         Var(x))
-      Type:2(def (object? x))
+      def (object? x)
       Block:2(
         PassStmt:2()))
     FuncDef:3(
@@ -2383,7 +2383,7 @@ MypyFile:1(
       Args(
         Var(a)
         Var(b))
-      Type:3(def (A? a, A? b) -> A?)
+      def (A? a, A? b) -> A?
       Block:3(
         PassStmt:3())))
   TypeDef:4(
@@ -2411,7 +2411,7 @@ MypyFile:1(
         Args(
           Var(self)
           Var(a))
-        Type:3(def (any self, any a) -> any)
+        def (any self, any a) -> any
         Block:3(
           PassStmt:3()))
       FuncDef:4(
@@ -2419,7 +2419,7 @@ MypyFile:1(
         Args(
           Var(self)
           Var(o))
-        Type:4(def (any self, object? o) -> any)
+        def (any self, object? o) -> any
         Block:4(
           PassStmt:4())))))
 
@@ -2445,7 +2445,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      Type:2(def (any self, object? o))
+      def (any self, object? o)
       Block:-1())))
 
 [case testInterfaceWithTwoMethods]
@@ -2462,13 +2462,13 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      Type:2(def (any self, object? o))
+      def (any self, object? o)
       Block:-1())
     FuncDef:3(
       g
       Args(
         Var(self))
-      Type:3(def (any self) -> A?)
+      def (any self) -> A?
       Block:-1())))
 
 [case testInterfaceWithDefaultMethodBody]
@@ -2483,7 +2483,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Type:2(def (any self) -> A?)
+      def (any self) -> A?
       Block:2(
         ReturnStmt:2(
           NameExpr(None))))))

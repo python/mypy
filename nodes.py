@@ -129,9 +129,9 @@ class ImportAll(Node):
 
 
 class FuncBase(Node, AccessorNode):
-    Annotation type  # Type signature (Callable or Overloaded)
+    mtypes.Type type # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
-    def name(self):
+    str name(self):
         pass
     bool is_method(self):
         return bool(self.info)
@@ -174,7 +174,7 @@ class FuncItem(FuncBase):
                         # more than one overload variant?
     
     void __init__(self, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, Annotation typ=None):
+                  Block body, mtypes.Type typ=None):
         self.args = args
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
@@ -232,7 +232,7 @@ class FuncDef(FuncItem, SymNode):
                   int[] arg_kinds,   # Arguments kinds (nodes.ARG_*)
                   Node[] init,       # Initializers (each may be None)
                   Block body,
-                  Annotation typ=None):
+                  mtypes.Type typ=None):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
@@ -266,13 +266,13 @@ class Decorator(Node):
 
 
 class Var(Node, AccessorNode, SymNode):
-    str _name       # Name without module prefix
-    str _full_name  # Name with module prefix
-    bool is_init    # Is is initialized?
-    TypeInfo info   # Defining class (for member variables)
-    Annotation type # Declared type, or None if none
-    bool is_self    # Is this the first argument to an ordinary method
-                    # (usually "self")?
+    str _name        # Name without module prefix
+    str _full_name   # Name with module prefix
+    bool is_init     # Is is initialized?
+    TypeInfo info    # Defining class (for member variables)
+    mtypes.Type type # Declared type, or None if none
+    bool is_self     # Is this the first argument to an ordinary method
+                     # (usually "self")?
     
     void __init__(self, str name):
         self._name = name
@@ -427,13 +427,13 @@ class WhileStmt(Node):
 
 class ForStmt(Node):
     NameExpr[] index   # Index variables
-    Annotation[] types # Index variable types (each may be None)
+    mtypes.Type[] types    # Index variable types (each may be None)
     Node expr              # Expression to iterate
     Block body
     Block else_body
     
     void __init__(self, NameExpr[] index, Node expr, Block body,
-                  Block else_body, Annotation[] types=None):
+                  Block else_body, mtypes.Type[] types=None):
         self.index = index
         self.expr = expr
         self.body = body
@@ -853,10 +853,10 @@ class GeneratorExpr(Node):
     Node right_expr
     Node condition   # May be None
     NameExpr[] index
-    Annotation[] types
+    mtypes.Type[] types
     
     void __init__(self, Node left_expr, NameExpr[] index,
-                  Annotation[] types, Node right_expr, Node condition):
+                  mtypes.Type[] types, Node right_expr, Node condition):
         self.left_expr = left_expr
         self.right_expr = right_expr
         self.condition = condition
@@ -889,17 +889,6 @@ class ConditionalExpr(Node):
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_conditional_expr(self)
-
-
-class Annotation(Node):
-    mtypes.Type type
-    
-    void __init__(self, mtypes.Type typ, int line=-1):
-        self.type = typ
-        self.line = line
-    
-    T accept<T>(self, NodeVisitor<T> visitor):
-        return visitor.visit_annotation(self)
 
 
 class TypeApplication(Node):
@@ -1246,7 +1235,7 @@ str clean_up(str s):
 
 mtypes.FunctionLike function_type(FuncBase func):
     if func.type:
-        return (mtypes.FunctionLike)func.type.type
+        return (mtypes.FunctionLike)func.type
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an

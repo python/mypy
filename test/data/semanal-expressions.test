@@ -212,7 +212,7 @@ MypyFile:1(
     f
     Args(
       Var(a))
-    Type:1(def (any a))
+    def (any a)
     Block:1(
       ExpressionStmt:2(
         ListComprehension:2(
@@ -292,7 +292,7 @@ MypyFile:1(
     FuncExpr:1(
       Args(
         Var(x))
-      Type:1(def (__main__.A x) -> builtins.object)
+      def (__main__.A x) -> builtins.object
       Block:1(
         ReturnStmt:1(
           NameExpr(x [l])))))

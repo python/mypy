@@ -3,7 +3,6 @@ from mtypes import (
     TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator
 )
 import checker
-from nodes import Annotation
 from lex import Token
 
 
@@ -64,12 +63,6 @@ class EraseTypeVisitor(TypeVisitor<Type>):
 
 
 none = Token('')
-
-
-void erase_annotation(Annotation a):
-    """Remove generic type arguments and type variables from an annotation."""
-    if a:
-        a.type = erase_generic_types(a.type)
 
 
 Type erase_generic_types(Type t):
