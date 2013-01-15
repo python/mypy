@@ -101,12 +101,20 @@ def builtins_wrapper(func, path):
 def perform_test(func, path, testcase):
     for path, _ in testcase.files:
         if os.path.basename(path) == 'builtins.py':
+            default_builtins = False
             break
     else:
         # Use default builtins.
         builtins = os.path.join(test_temp_dir, 'builtins.py')
         shutil.copyfile(path, builtins)
+        default_builtins = True
+
+    # Actually peform the test case.
     func(testcase)
+    
+    if default_builtins:
+        # Clean up.
+        os.remove(builtins)
 
 
 if __name__ == '__main__':
