@@ -922,12 +922,12 @@ b = b and b
 d = {any <= bool b or b}
 b = not b
 d = {any <= bool not b}
-b = b and {bool d}
-d = {any <= bool b or {bool d}}
-b = {bool d} and b
-d = {any <= bool {bool d} or b}
-b = {bool d} and {bool d}
-d = {any <= bool {bool d} or {bool d}}
+b = {bool {any <= bool b} and d}
+d = {any <= bool b} or d
+b = {bool d and {any <= bool b}}
+d = d or {any <= bool b}
+b = {bool d and d}
+d = d or d
 b = not d
 
 [case testIntComparisons]

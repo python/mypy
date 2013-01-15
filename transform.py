@@ -261,9 +261,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
     void visit_op_expr(self, OpExpr e):
         super().visit_op_expr(e)
         if e.op in ['and', 'or']:
-            e.left = self.coerce(e.left, self.named_type('builtins.bool'),
+            target = self.get_type(e)
+            e.left = self.coerce(e.left, target,
                                  self.get_type(e.left), self.type_context())
-            e.right = self.coerce(e.right, self.named_type('builtins.bool'),
+            e.right = self.coerce(e.right, target,
                                   self.get_type(e.right), self.type_context())
         else:
             if self.dynamic_funcs[-1]:
