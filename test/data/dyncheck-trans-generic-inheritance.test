@@ -473,20 +473,19 @@ class B**(A**):
         self.__o! = __o
 ...
 
-[case testInitInWrapperClassWithInheritance2-skip]
+[case testInitInWrapperClassWithInheritance2]
 # Original create has arguments; this does not affect the wrapper
 class A<T>:
     void __init__(self, int n):
         pass
 class B<T>(A<T>): pass
-class C<T>: pass
 [out]
 ...
-class B* is A*
-  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
+class B**(A**):
+    void __init__(any self, any __o, any __tv, any __btv):
 ...
 
-[case testInitInWrapperClassWithInheritance3-skip]
+[case testInitInWrapperClassWithInheritance3]
 # Multi-level inheritance hierarchy; note that there is no wrapper class
 # for B.
 class A<T>: pass
@@ -494,23 +493,20 @@ class B(A<int>): pass
 class C<T, S>(B): pass
 [out]
 ...
-class C* is A*
-  var __tv2 as dynamic
-  var __tv3 as dynamic
-  var __btv2 as dynamic
-  var __btv3 as dynamic
-  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
-                             __tv3 as dynamic, __btv as dynamic, \
-                             __btv2 as dynamic, __btv3 as dynamic)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv2>
-    self.__tv3 = <__tv3>
-    self.__btv = <__btv>
-    self.__btv2 = <__btv2>
-    self.__btv3 = <__btv3>
-    self.__o = __o
-  end
-end
+class C**(A**):
+    any __tv2
+    any __tv3
+    any __btv2
+    any __btv3
+    void __init__(any self, any __o, any __tv, any __tv2, any __tv3, \
+                  any __btv, any __btv2, any __btv3):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__tv3! = <__tv3>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__btv3! = <__btv3>
+        self.__o! = __o
 
 
 -- Type variable definitions in subclasses; generic inheritance
@@ -530,21 +526,21 @@ class B**(A**):
     void __init__(any self, any __o, any __tv, any __btv):
 ...
 
-[case testTvarDefinitionsWithGenericInheritance-skip]
+[case testTvarDefinitionsWithGenericInheritance]
 # Generic class inherits generic class; introduce new type variable
 class A<T>: pass
 class B<S, T>(A<T>): pass
 [out]
 ...
-class B<S, T> is A<T>
-  var __tv2 as dynamic
-  def create(__tv as dynamic, __tv2 as dynamic)
+class B(A):
+    any __tv2
+    void __init__(B self, any __tv, any __tv2):
 ...
-class B* is A*
-  var __tv2 as dynamic
-  var __btv2 as dynamic
-  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
-                                          __btv as dynamic, __btv2 as dynamic)
+class B**(A**):
+    any __tv2
+    any __btv2
+    void __init__(any self, any __o, any __tv, any __tv2, \
+                  any __btv, any __btv2):
 ...
 
 
@@ -586,7 +582,7 @@ class B(A):
         super().__init__(<int>)
 ...
 
-[case testGenericInheritanceAndCallToSuperclassInit-skip]
+[case testGenericInheritanceAndCallToSuperclassInit]
 # Generic class inherits a generic class
 class A<T, S>:
     void __init__(self, T t):
@@ -597,12 +593,11 @@ class B<T, S>(A<S, T>):
         super().__init__(t)
 [out]
 ...
-class B<T, S> is A<S, T>
-  def create(__tv as dynamic, __tv2 as dynamic, t as S)
-    self.__tv = <__tv2>
-    self.__tv2 = <__tv>
-    super.create(<__tv2>, <__tv>, t)
-  end
+class B(A):
+    void __init__(B self, any __tv, any __tv2, any* t):
+        self.__tv! = <__tv2>
+        self.__tv2! = <__tv>
+        super().__init__(<self.__tv>, <self.__tv2>, t)
 ...
 
 
@@ -630,7 +625,7 @@ class B(A):
         return {B self}.f`B(t)
 ...
 
-[case testMixedGenericInheritance2-skip]
+[case testMixedGenericInheritance2]
 # Generic class extends generic
 class A<T>:
     T f(self, T t):
@@ -640,26 +635,21 @@ class B<T, S>(A<S>):
         pass
 [out]
 ...
-class B<T, S> is A<S>
-  var __tv2 as dynamic
-  def f`B(t as dynamic) as dynamic
-  end
-  def f(t as dynamic) as dynamic
-    return {self.__tv <= any | f`B(t)}
-  end
-  def f*(t as dynamic) as dynamic
-    return f`B(t)
-  end
+class B(A):
+    any __tv2
+    any f`B(B self, any t):
+        pass
+    any f(A self, any t):
+        return {self.__tv {B<self.__tv2, self.__tv> self}.f`B(t)}
+    any f*(any self, any t):
+        return {B<self.__tv2, self.__tv> self}.f`B(t)
 ...
-class B* is A*
+class B**(A**):
 ...
-  def f`B(t as dynamic) as dynamic
-    return self.__o.f`B(t)
-  end
-  def f*(t as dynamic) as dynamic
-    return self.__o.f`B(t)
-  end
-end
+    any f`B(B self, any t):
+        return self.__o.f`B(t)
+    any f*(any self, any t):
+        return self.__o.f`B(t)
 
 
 -- Generic inheritance with multiple ways of accessing subclass tvars
