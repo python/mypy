@@ -48,7 +48,7 @@ class SemanticAnalyzer(NodeVisitor):
     TypeInfoMap types
     
     str[] stack         # Function local/type variable stack TODO remove
-    TypeInfo typ        # TypeInfo of enclosing class (or None)
+    TypeInfo type       # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
     int block_depth     # Depth of nested blocks
@@ -64,7 +64,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.stack = [None]
         self.locals = []
         self.imports = set()
-        self.typ = None
+        self.type = None
         self.block_depth = 0
         self.loop_depth = 0
         self.types = TypeInfoMap()
@@ -173,12 +173,12 @@ class SemanticAnalyzer(NodeVisitor):
         if self.locals:
             self.fail('Nested functions not supported yet', defn)
             return
-        if self.typ:
-            defn.info = self.typ
+        if self.type:
+            defn.info = self.type
             if not defn.is_overload:
-                if defn.name() in self.typ.methods:
+                if defn.name() in self.type.methods:
                     self.name_already_defined(defn.name(), defn)
-                self.typ.methods[defn.name()] = defn
+                self.type.methods[defn.name()] = defn
             if defn.name() == '__init__':
                 self.is_init_method = True
             if defn.args == []:
@@ -195,28 +195,28 @@ class SemanticAnalyzer(NodeVisitor):
             f.is_overload = True
             f.accept(self)
             t.append((Callable)function_type(f))
-        defn.typ = Annotation(Overloaded(t))
-        defn.typ.set_line(defn.line)
+        defn.type = Annotation(Overloaded(t))
+        defn.type.set_line(defn.line)
         
-        if self.typ:
-            self.typ.methods[defn.name()] = defn
-            defn.info = self.typ
+        if self.type:
+            self.type.methods[defn.name()] = defn
+            defn.info = self.type
     
     void analyse_function(self, FuncItem defn):
         self.enter()
         self.add_func_type_variables_to_symbol_table(defn)
-        if defn.typ:
-            defn.typ.accept(self)
+        if defn.type:
+            defn.type.accept(self)
             if isinstance(defn, FuncDef):
                 fdef = (FuncDef)defn
-                if self.typ:
-                    defn.typ.typ = ((Callable)defn.typ.typ).with_name(
-                        '"{}" of "{}"'.format(fdef.name(), self.typ.name()))
+                if self.type:
+                    defn.type.type = ((Callable)defn.type.type).with_name(
+                        '"{}" of "{}"'.format(fdef.name(), self.type.name()))
                 else:
-                    defn.typ.typ = ((Callable)defn.typ.typ).with_name(
+                    defn.type.type = ((Callable)defn.type.type).with_name(
                         '"{}"'.format(fdef.name()))
-                if self.typ and ((Callable)defn.typ.typ).arg_types != []:
-                    ((Callable)defn.typ.typ).arg_types[0] = self_type(
+                if self.type and ((Callable)defn.type.type).arg_types != []:
+                    ((Callable)defn.type.type).arg_types[0] = self_type(
                         fdef.info)
         for init in defn.init:
             if init:
@@ -228,15 +228,15 @@ class SemanticAnalyzer(NodeVisitor):
                 init_.lvalues[0].accept(self)
         
         # The first argument of a method is self.
-        if self.typ and defn.args:
+        if self.type and defn.args:
             defn.args[0].is_self = True
         
         defn.body.accept(self)
         self.leave()
     
     void add_func_type_variables_to_symbol_table(self, FuncItem defn):
-        if defn.typ:
-            tt = defn.typ.typ
+        if defn.type:
+            tt = defn.type.type
             names = self.type_var_names()
             items = ((Callable)tt).variables.items
             for i in range(len(items)):
@@ -247,24 +247,24 @@ class SemanticAnalyzer(NodeVisitor):
                 names.add(name)
     
     set<str> type_var_names(self):
-        if not self.typ:
+        if not self.type:
             return set()
         else:
-            return set(self.typ.type_vars)
+            return set(self.type.type_vars)
     
     void add_type_var(self, SymbolTable scope, str name, int id):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
-        if self.locals or self.typ:
+        if self.locals or self.type:
             self.fail('Nested classes not supported yet', defn)
             return
-        self.typ = defn.info
-        self.add_class_type_variables_to_symbol_table(self.typ)
+        self.type = defn.info
+        self.add_class_type_variables_to_symbol_table(self.type)
         has_base_class = False
         for i in range(len(defn.base_types)):
             defn.base_types[i] = self.anal_type(defn.base_types[i])
-            self.typ.bases.append(defn.base_types[i])
+            self.type.bases.append(defn.base_types[i])
             has_base_class = has_base_class or self.is_instance_type(
                                                         defn.base_types[i])
         # Add 'object' as implicit base if there is no other base class.
@@ -272,24 +272,24 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.full_name != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
-            self.typ.bases.append(obj)
+            self.type.bases.append(obj)
         if defn.base_types:
             bt = defn.base_types
             if isinstance(bt[0], Instance):
-                defn.info.base = ((Instance)bt[0]).typ
+                defn.info.base = ((Instance)bt[0]).type
             for t in bt[1:]:
                 if isinstance(t, Instance):
-                    defn.info.add_interface(((Instance)t).typ)
+                    defn.info.add_interface(((Instance)t).type)
         defn.defs.accept(self)
         self.class_tvars = None
-        self.typ = None
+        self.type = None
     
     Type object_type(self):
         sym = self.lookup_qualified('__builtins__.object', None)
         return Instance((TypeInfo)sym.node, [])
     
     bool is_instance_type(self, Type t):
-        return isinstance(t, Instance) and not ((Instance)t).typ.is_interface
+        return isinstance(t, Instance) and not ((Instance)t).type.is_interface
     
     void add_class_type_variables_to_symbol_table(self, TypeInfo info):
         vars = info.type_vars
@@ -299,7 +299,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_type_var(self.class_tvars, vars[i], i + 1)
     
     void visit_annotation(self, Annotation ann):
-        ann.typ = self.anal_type(ann.typ)
+        ann.type = self.anal_type(ann.type)
     
     void visit_import(self, Import i):
         if not self.check_import_at_toplevel(i):
@@ -362,15 +362,15 @@ class SemanticAnalyzer(NodeVisitor):
             defn.items[i] = (defn.items[i][0],
                              self.anal_type(defn.items[i][1]))
             if defn.items[i][1]:
-                defn.items[i][0].typ = Annotation(defn.items[i][1])
+                defn.items[i][0].type = Annotation(defn.items[i][1])
         
         for v, t in defn.items:
             if self.locals:
                 defn.kind = LDEF
                 self.add_local(v, defn)
-            elif self.typ:
-                v.info = self.typ
-                self.typ.vars[v.name()] = v
+            elif self.type:
+                v.info = self.type
+                self.type.vars[v.name()] = v
             elif v.name not in self.globals:
                 defn.kind = GDEF
                 self.add_var(v, defn)
@@ -395,7 +395,7 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
             nested_global = (not self.locals and self.block_depth > 0 and
-                             not self.typ)
+                             not self.type)
             if (add_defs or nested_global) and n.name not in self.globals:
                 # Define new global name.
                 v = Var(n.name)
@@ -416,14 +416,14 @@ class SemanticAnalyzer(NodeVisitor):
                 n.is_def = True
                 n.kind = LDEF
                 self.add_local(v, n)
-            elif not self.locals and (self.typ and
-                                      n.name not in self.typ.vars):
+            elif not self.locals and (self.type and
+                                      n.name not in self.type.vars):
                 # Define a new attribute.
                 v = Var(n.name)
-                v.info = self.typ
+                v.info = self.type
                 n.node = v
                 n.is_def = True
-                self.typ.vars[n.name] = v
+                self.type.vars[n.name] = v
             else:
                 # Bind to an existing name.
                 lval.accept(self)
@@ -448,12 +448,12 @@ class SemanticAnalyzer(NodeVisitor):
         if self.is_init_method and isinstance(lval.expr, NameExpr):
             node = ((NameExpr)lval.expr).node
             if (isinstance(node, Var) and ((Var)node).is_self and
-                    lval.name not in self.typ.vars):
+                    lval.name not in self.type.vars):
                 lval.is_def = True
                 v = Var(lval.name)
-                v.info = self.typ
+                v.info = self.type
                 lval.def_var = v
-                self.typ.vars[lval.name] = v
+                self.type.vars[lval.name] = v
     
     void visit_expression_stmt(self, ExpressionStmt s):
         s.expr.accept(self)
@@ -503,7 +503,7 @@ class SemanticAnalyzer(NodeVisitor):
                 t.accept(self)
                 v = (Var)s.index[i].node
                 # TODO check if redefinition
-                v.typ = t
+                v.type = t
         
         # Report error if only some of the loop variables have annotations.
         if s.types != [None] * len(s.types) and None in s.types:
@@ -573,10 +573,10 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.full_name = n.full_name()
     
     void visit_super_expr(self, SuperExpr expr):
-        if not self.typ:
+        if not self.type:
             self.fail('"super" used outside class', expr)
             return 
-        expr.info = self.typ
+        expr.info = self.type
     
     void visit_tuple_expr(self, TupleExpr expr):
         for item in expr.items:
@@ -588,7 +588,7 @@ class SemanticAnalyzer(NodeVisitor):
     void visit_list_expr(self, ListExpr expr):
         for item in expr.items:
             item.accept(self)
-        expr.typ = self.anal_type(expr.typ)
+        expr.type = self.anal_type(expr.type)
     
     void visit_dict_expr(self, DictExpr expr):
         for key, value in expr.items:
@@ -641,7 +641,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_cast_expr(self, CastExpr expr):
         expr.expr.accept(self)
-        expr.typ = self.anal_type(expr.typ)
+        expr.type = self.anal_type(expr.type)
     
     void visit_type_application(self, TypeApplication expr):
         expr.expr.accept(self)
@@ -693,8 +693,8 @@ class SemanticAnalyzer(NodeVisitor):
                 table = ((MypyFile)b.node).names
                 if name in table:
                     return table[name]
-            if self.typ and (not self.locals and
-                             self.typ.has_readable_member(name)):
+            if self.type and (not self.locals and
+                             self.type.has_readable_member(name)):
                 self.fail('Feature not implemented yet (class attributes)',
                           ctx)
                 return None

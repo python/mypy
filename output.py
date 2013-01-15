@@ -68,7 +68,7 @@ class OutputVisitor(NodeVisitor):
         self.token(r.lparen)
         for i in range(len(o.base_types)):
             if o.base_types[i].repr:
-                self.typ(o.base_types[i])
+                self.type(o.base_types[i])
             if i < len(r.commas):
                 self.token(r.commas[i])
         self.token(r.rparen)
@@ -84,7 +84,7 @@ class OutputVisitor(NodeVisitor):
                 self.token(d.repr.name)
                 self.token(d.repr.is_tok)
                 if d.bound:
-                    self.typ(d.bound)
+                    self.type(d.bound)
                 if i < len(r.commas):
                     self.token(r.commas[i])
             self.token(r.rangle)
@@ -95,7 +95,7 @@ class OutputVisitor(NodeVisitor):
         if r.def_tok:
             self.token(r.def_tok)
         else:
-            self.typ(o.typ.typ.items()[0].ret_type)
+            self.type(o.type.type.items()[0].ret_type)
         
         self.token(r.name)
         
@@ -112,8 +112,8 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         
         t = None
-        if o.typ and not erase_type:
-            t = o.typ.typ
+        if o.type and not erase_type:
+            t = o.type.type
         
         init = o.init
         
@@ -127,7 +127,7 @@ class OutputVisitor(NodeVisitor):
         for i in range(len(arg_repr.arg_names)):
             if t:
                 if t.arg_types[i].repr:
-                    self.typ(t.arg_types[i])
+                    self.type(t.arg_types[i])
             if arg_kinds[i] in [nodes.ARG_STAR, nodes.ARG_STAR2]:
                 self.token(arg_repr.asterisk[asterisk])
                 asterisk += 1
@@ -153,7 +153,7 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         if r:
             for v, t in o.items:
-                self.typ(t)
+                self.type(t)
                 self.node(v)
             self.token(r.assign)
             self.node(o.init)
@@ -376,7 +376,7 @@ class OutputVisitor(NodeVisitor):
     
     def visit_cast_expr(self, o):
         self.token(o.repr.lparen)
-        self.typ(o.typ)
+        self.type(o.type)
         self.token(o.repr.rparen)
         self.node(o.expr)
     
@@ -390,9 +390,9 @@ class OutputVisitor(NodeVisitor):
     
     def visit_list_expr(self, o):
         r = o.repr
-        if o.typ:
+        if o.type:
             self.token(r.langle)
-            self.typ(o.typ)
+            self.type(o.type)
             self.token(r.rangle)
         self.token(r.lbracket)
         self.comma_list(o.items, r.commas)
@@ -408,9 +408,9 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         if o.key_type:
             self.token(r.langle)
-            self.typ(o.key_type)
+            self.type(o.key_type)
             self.token(r.type_comma)
-            self.typ(o.value_type)
+            self.type(o.value_type)
             self.token(r.rangle)
         self.token(r.lbrace)
         i = 0
@@ -458,7 +458,7 @@ class OutputVisitor(NodeVisitor):
     # Types
     
     def visit_annotation(self, o):
-        self.typ(o.typ)
+        self.type(o.type)
     
     # Helpers
     
@@ -502,11 +502,11 @@ class OutputVisitor(NodeVisitor):
     
     def type_list(self, items, commas):
         for i in range(len(items)):
-            self.typ(items[i])
+            self.type(items[i])
             if i < len(commas):
                 self.token(commas[i])
     
-    def typ(self, t):
+    def type(self, t):
         """Output a type."""
         if t:
             v = TypeOutputVisitor()
@@ -581,7 +581,7 @@ class TypeOutputVisitor:
                 self.token(d.repr.name)
                 self.token(d.repr.is_tok)
                 if d.bound:
-                    self.typ(d.bound)
+                    self.type(d.bound)
                 if i < len(r.commas):
                     self.token(r.commas[i])
             self.token(r.rangle)
@@ -601,12 +601,12 @@ class TypeOutputVisitor:
         for t in a:
             self.token(t)
     
-    def typ(self, n):
+    def type(self, n):
         """Output a type."""
         if n: n.accept(self)
     
     def comma_list(self, items, commas):
         for i in range(len(items)):
-            self.typ(items[i])
+            self.type(items[i])
             if i < len(commas):
                 self.token(commas[i])

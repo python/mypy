@@ -46,7 +46,7 @@ class EraseTypeVisitor(TypeVisitor<Type>):
         raise RuntimeError()
     
     Type visit_instance(self, Instance t):
-        return Instance(t.typ, <Type> [Any()] * len(t.args), t.line, t.repr)
+        return Instance(t.type, <Type> [Any()] * len(t.args), t.line, t.repr)
     
     Type visit_type_var(self, TypeVar t):
         return Any()
@@ -69,7 +69,7 @@ none = Token('')
 void erase_annotation(Annotation a):
     """Remove generic type arguments and type variables from an annotation."""
     if a:
-        a.typ = erase_generic_types(a.typ)
+        a.type = erase_generic_types(a.type)
 
 
 Type erase_generic_types(Type t):
@@ -92,7 +92,7 @@ class GenericTypeEraser(TypeTranslator):
         return Any()
     
     Type visit_instance(self, Instance t):
-        return Instance(t.typ, [], t.line)
+        return Instance(t.type, [], t.line)
 
 
 Type erase_typevars(Type t):

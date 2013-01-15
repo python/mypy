@@ -52,7 +52,7 @@ class SameTypeVisitor(TypeVisitor<bool>):
     
     bool visit_instance(self, Instance left):
         return (isinstance(self.right, Instance) and
-                left.typ == ((Instance)self.right).typ and
+                left.type == ((Instance)self.right).type and
                 is_same_types(left.args, ((Instance)self.right).args))
     
     bool visit_type_var(self, TypeVar left):

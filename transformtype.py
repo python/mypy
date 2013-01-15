@@ -151,7 +151,7 @@ class TypeTransformer:
             args = [Var('self')]
             for i in range(1, len(super_init.args)):
                 args.append(Var(super_init.args[i].name()))
-                args[-1].typ = Annotation(callee_type.arg_types[i - 1])
+                args[-1].type = Annotation(callee_type.arg_types[i - 1])
 
             selft = self_type(self.tf.type_context())
             callee_type = prepend_arg_type(callee_type, selft)
@@ -161,7 +161,7 @@ class TypeTransformer:
                             <Node> [None] * len(args),
                             Block([]))
             creat.info = tdef.info
-            creat.typ = Annotation(callee_type, -1)
+            creat.type = Annotation(callee_type, -1)
             creat.is_implicit = False
             tdef.info.methods['__init__'] = creat
             
@@ -235,8 +235,8 @@ class TypeTransformer:
         # Add $x and set$x accessor wrappers for data attributes. These let
         # derived classes redefine a data attribute as a property.
         for n, vt in o.items:
-            if n.typ:
-                t = n.typ.typ
+            if n.type:
+                t = n.type.type
             else:
                 t = Any()
             res.append(self.make_getter_wrapper(n.name(), t))
@@ -340,8 +340,8 @@ class TypeTransformer:
         """Construct wrapper class methods for attribute accessors."""
         res = <Node> []
         for n, vt in vdef.items:
-            if n.typ:
-                t = n.typ.typ
+            if n.type:
+                t = n.type.type
             else:
                 t = Any()
             for fd in [self.make_getter_wrapper(n.name(), t),
@@ -589,5 +589,5 @@ class TypeTransformer:
                        <Node> [None] * len(arg_kinds),
                        Block([ret]))
         
-        fdef.typ = Annotation(wrapper_sig)
+        fdef.type = Annotation(wrapper_sig)
         return fdef

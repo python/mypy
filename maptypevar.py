@@ -85,8 +85,8 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     for i in range(len(base.args)):
         mapping = find_tvar_mapping(base.args[i], tvindex)
         if mapping is not None:
-            if base.typ.base:
-                return get_tvar_access_path(base.typ, i + 1) + mapping
+            if base.type.base:
+                return get_tvar_access_path(base.type, i + 1) + mapping
             else:
                 return [i + 1] + mapping
     
@@ -116,7 +116,7 @@ int[] find_tvar_mapping(Type t, int index):
         for argi in range(len(inst.args)):
             mapping = find_tvar_mapping(inst.args[argi], index)
             if mapping is not None:
-                return get_tvar_access_path(inst.typ, argi + 1) + mapping
+                return get_tvar_access_path(inst.type, argi + 1) + mapping
         return None
     elif isinstance(t, TypeVar) and ((TypeVar)t).id == index:
         return []

@@ -57,19 +57,19 @@ class ExpressionChecker:
         if isinstance(node, Var):
             # Variable or constant reference.
             v = (Var)node
-            if not v.typ:
+            if not v.type:
                 # Implicit dynamic type.
                 result = Any()
             else:
                 # Local or global variable.
-                result = v.typ.typ
+                result = v.type.type
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             f = (FuncDef)node
             result = function_type(f)
         elif isinstance(node, OverloadedFuncDef):
             o = (OverloadedFuncDef)node
-            result = o.typ.typ
+            result = o.type.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type((TypeInfo)node, self.chk.type_type)
@@ -721,7 +721,7 @@ class ExpressionChecker:
     Type visit_cast_expr(self, CastExpr expr):
         """Type check a cast expression."""
         source_type = self.accept(expr.expr)
-        target_type = expr.typ
+        target_type = expr.type
         if isinstance(target_type, Any):
             return Any()
         else:
@@ -736,9 +736,9 @@ class ExpressionChecker:
         return (is_subtype(target_type, source_type) or
                 is_subtype(source_type, target_type) or
                 (isinstance(target_type, Instance) and
-                     ((Instance)target_type).typ.is_interface) or
+                     ((Instance)target_type).type.is_interface) or
                 (isinstance(source_type, Instance) and
-                     ((Instance)source_type).typ.is_interface))
+                     ((Instance)source_type).type.is_interface))
     
     Type visit_type_application(self, TypeApplication tapp):
         """Type check a type application (expr<...>)."""
@@ -762,14 +762,14 @@ class ExpressionChecker:
     Type visit_list_expr(self, ListExpr e):
         """Type check a list expression [...] or <t> [...]."""
         Callable constructor
-        if e.typ:
+        if e.type:
             # A list expression with an explicit item type; translate into type
             # checking a function call.
-            constructor = Callable([e.typ],
+            constructor = Callable([e.type],
                                    [nodes.ARG_STAR],
                                    [None],
                                    self.chk.named_generic_type('builtins.list',
-                                                               [e.typ]),
+                                                               [e.type]),
                                    False,
                                    '<list>')
         else:
@@ -862,8 +862,8 @@ class ExpressionChecker:
         ret_type = self.chk.type_map[e.expr()]
         if inferred_type:
             return replace_callable_return_type(inferred_type, ret_type)
-        elif e.typ:
-            return replace_callable_return_type((Callable)e.typ.typ, ret_type)
+        elif e.type:
+            return replace_callable_return_type((Callable)e.type.type, ret_type)
         else:
             # Use default type for lambda.
             # TODO infer return type?
@@ -892,11 +892,11 @@ class ExpressionChecker:
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
             return None
         
-        if not e.typ:
+        if not e.type:
             return callable_ctx
         else:
             # The lambda already has a type; only infer the return type.
-            return replace_callable_return_type((Callable)e.typ.typ,
+            return replace_callable_return_type((Callable)e.type.type,
                                                 callable_ctx.ret_type)
     
     Type visit_super_expr(self, SuperExpr e):
@@ -993,15 +993,15 @@ class ExpressionChecker:
     bool is_list_instance(self, Type t):
         """Is the argument an instance type ...[]?"""
         return (isinstance(t, Instance) and
-                ((Instance)t).typ.full_name() == 'builtins.list')
+                ((Instance)t).type.full_name() == 'builtins.list')
     
     bool has_non_method(self, Type typ, str member):
         """Does a type have a member variable or an accessor with the given
         name?"""
         if isinstance(typ, Instance):
             itype = (Instance)typ
-            return (not itype.typ.has_method(member) and
-                        itype.typ.has_readable_member(member))
+            return (not itype.type.has_method(member) and
+                        itype.type.has_readable_member(member))
         else:
             return False
     

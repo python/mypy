@@ -129,7 +129,7 @@ class ImportAll(Node):
 
 
 class FuncBase(Node, AccessorNode):
-    Annotation typ   # Type signature (Callable or Overloaded)
+    Annotation type  # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
     def name(self):
         pass
@@ -179,7 +179,7 @@ class FuncItem(FuncBase):
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
-        self.typ = typ
+        self.type = typ
         self.is_implicit = typ is None
         self.is_overload = False
         
@@ -270,7 +270,7 @@ class Var(Node, AccessorNode, SymNode):
     str _full_name  # Name with module prefix
     bool is_init    # Is is initialized?
     TypeInfo info   # Defining class (for member variables)
-    Annotation typ  # Declared type, or None if none
+    Annotation type # Declared type, or None if none
     bool is_self    # Is this the first argument to an ordinary method
                     # (usually "self")?
     
@@ -764,11 +764,11 @@ class SliceExpr(Node):
 
 class CastExpr(Node):
     Node expr
-    mtypes.Type typ
+    mtypes.Type type
     
     void __init__(self, Node expr, mtypes.Type typ):
         self.expr = expr
-        self.typ = typ
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_cast_expr(self)
@@ -800,11 +800,11 @@ class FuncExpr(FuncItem):
 class ListExpr(Node):
     """List literal expression [...] or <type> [...]"""
     Node[] items 
-    mtypes.Type typ # None if implicit type
+    mtypes.Type type # None if implicit type
     
     void __init__(self, Node[] items, mtypes.Type typ=None):
         self.items = items
-        self.typ = typ
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_list_expr(self)
@@ -892,10 +892,10 @@ class ConditionalExpr(Node):
 
 
 class Annotation(Node):
-    mtypes.Type typ
+    mtypes.Type type
     
     void __init__(self, mtypes.Type typ, int line=-1):
-        self.typ = typ
+        self.type = typ
         self.line = line
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -951,10 +951,10 @@ class TypeExpr(Node):
     used only for runtime type checking. This node is always generated only
     after type checking.
     """
-    mtypes.Type typ
+    mtypes.Type type
     
     void __init__(self, mtypes.Type typ):
-        self.typ = typ
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_type_expr(self)
@@ -965,10 +965,10 @@ class TempNode(Node):
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
-    mtypes.Type typ
+    mtypes.Type type
     
     void __init__(self, mtypes.Type typ):
-        self.typ = typ
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_temp_node(self)
@@ -1219,14 +1219,14 @@ class SymbolTableNode:
         else:
             return None
     
-    mtypes.Type typ(self):
+    mtypes.Type type(self):
         # IDEA: Get rid of the any type.
         any node = self.node
         if self.type_override is not None:
             return self.type_override
         elif ((isinstance(node, Var) or isinstance(node, FuncDef))
-              and node.typ is not None):
-            return node.typ.typ
+              and node.type is not None):
+            return node.type.type
         else:
             return None
     
@@ -1235,8 +1235,8 @@ class SymbolTableNode:
         if self.mod_id is not None:
             s += ' ({})'.format(self.mod_id)
         # Include declared type of variables and functions.
-        if self.typ() is not None:
-            s += ' : {}'.format(self.typ())
+        if self.type() is not None:
+            s += ' : {}'.format(self.type())
         return s
 
 
@@ -1245,8 +1245,8 @@ str clean_up(str s):
         
 
 mtypes.FunctionLike function_type(FuncBase func):
-    if func.typ:
-        return (mtypes.FunctionLike)func.typ.typ
+    if func.type:
+        return (mtypes.FunctionLike)func.type.type
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an

@@ -109,7 +109,7 @@ class PythonGenerator(OutputVisitor):
         if r.def_tok and r.def_tok.string:
             self.token(r.def_tok)
         else:
-            self.string(self.get_pre_whitespace(o.typ.typ.ret_type) + 'def')
+            self.string(self.get_pre_whitespace(o.type.type.ret_type) + 'def')
         
         if name_override is None:
             self.token(r.name)
@@ -197,7 +197,7 @@ class PythonGenerator(OutputVisitor):
         commas = []
         bases = []
         for i, base in enumerate(o.base_types):
-            if (base.typ.full_name() not in erased_duck_types
+            if (base.type.full_name() not in erased_duck_types
                     and base.repr):
                 bases.append(base)
                 if i < len(r.commas):
@@ -230,7 +230,7 @@ class PythonGenerator(OutputVisitor):
                 return '__builtins.list'
             else:
                 # Some types need to be translated (e.g. Iterable).
-                renamed = self.get_renaming(t.typ.full_name())
+                renamed = self.get_renaming(t.type.full_name())
                 if renamed:
                     pre = t.repr.components[0].pre
                     return pre + renamed
@@ -268,7 +268,7 @@ class PythonGenerator(OutputVisitor):
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
-            self.string(self.get_pre_whitespace(first.typ.typ.ret_type) +
+            self.string(self.get_pre_whitespace(first.type.type.ret_type) +
                         'def')
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
@@ -364,9 +364,9 @@ class PythonGenerator(OutputVisitor):
         if isinstance(typ, Callable):
             return 'callable({})'.format(name)
         if (isinstance(typ, Instance) and
-                typ.typ.full_name() in erased_duck_types):
+                typ.type.full_name() in erased_duck_types):
             return "hasattr({}, '{}')".format(
-                                name, erased_duck_types[typ.typ.full_name()])
+                                name, erased_duck_types[typ.type.full_name()])
         else:
             cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
             return cond.replace('  ', ' ')

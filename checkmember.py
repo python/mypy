@@ -21,7 +21,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         # The base object has an instance type.
         itype = (Instance)typ
         
-        info = itype.typ
+        info = itype.type
         if override_info:
             info = override_info
         
@@ -70,8 +70,8 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         var = (Var)v
         itype = map_instance_to_supertype(itype, var.info)
         # FIX what if more than one?
-        if var.typ:
-            return expand_type_by_instance(var.typ.typ, itype)
+        if var.type:
+            return expand_type_by_instance(var.type.type, itype)
         else:
             # Implicit dynamic type.
             return Any()

@@ -113,13 +113,13 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = (Instance)typ
             # Get the short name of the type.
-            base_str = itype.typ.name()
+            base_str = itype.type.name()
             if itype.args == []:
                 # No type arguments. Place the type name in quotes to avoid
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
-            elif itype.typ.full_name() == 'builtins.list':
+            elif itype.type.full_name() == 'builtins.list':
                 return '{}[]'.format(strip_quotes(self.format(itype.args[0])))
             else:
                 # There are type arguments. Convert the arguments to strings
@@ -175,7 +175,7 @@ class MessageBuilder:
         messages. Return type Any.
         """
         if (isinstance(typ, Instance) and
-                ((Instance)typ).typ.has_readable_member(member)):
+                ((Instance)typ).type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
         elif isinstance(typ, Void):
             self.check_void(typ, context)
@@ -444,7 +444,7 @@ class MessageBuilder:
     
     void invalid_keyword_var_arg(self, Type typ, Context context):
         if isinstance(typ, Instance) and (
-                ((Instance)typ).typ.full_name() == 'builtins.dict'):
+                ((Instance)typ).type.full_name() == 'builtins.dict'):
             self.fail('Keywords must be strings', context)
         else:
             self.fail('Argument after ** must be a dictionary',

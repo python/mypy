@@ -58,14 +58,14 @@ class ExpandTypeVisitor(TypeVisitor<Type>):
     
     Type visit_instance(self, Instance t):
         args = self.expand_types(t.args)
-        return Instance(t.typ, args, t.line, t.repr)
+        return Instance(t.type, args, t.line, t.repr)
     
     Type visit_type_var(self, TypeVar t):
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
             inst = (Instance)repl
             # Return copy of instance with type erasure flag on.
-            return Instance(inst.typ, inst.args, inst.line, inst.repr, True)
+            return Instance(inst.type, inst.args, inst.line, inst.repr, True)
         else:
             return repl
     
@@ -132,7 +132,7 @@ tuple<Type[], Type> expand_caller_var_args(Type[] arg_types,
         if isinstance(arg_types[-1], Any):
             item_type = Any()
         elif isinstance(arg_types[-1], Instance) and (
-                ((Instance)arg_types[-1]).typ.full_name() == 'builtins.list'):
+                ((Instance)arg_types[-1]).type.full_name() == 'builtins.list'):
             # List.
             item_type = ((Instance)arg_types[-1]).args[0]
         else:

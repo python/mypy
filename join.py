@@ -71,7 +71,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
     Type visit_instance(self, Instance t):
         if isinstance(self.s, Instance):
             return join_instances(t, (Instance)self.s, True, self.basic)
-        elif t.typ == self.basic.std_type.typ and is_subtype(self.s, t):
+        elif t.type == self.basic.std_type.type and is_subtype(self.s, t):
             return t
         else:
             return self.default(self.s)
@@ -83,7 +83,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
         elif t.is_type_obj() and is_subtype(self.s, self.basic.std_type):
             return self.basic.std_type
         elif (isinstance(self.s, Instance) and
-                  ((Instance)self.s).typ == self.basic.std_type.typ and
+                  ((Instance)self.s).type == self.basic.std_type.type and
                   t.is_type_obj()):
             return self.basic.std_type
         else:
@@ -121,7 +121,7 @@ Type join_instances(Instance t, Instance s, bool allow_interfaces,
     
     Return ErrorType if the result is ambiguous.
     """
-    if t.typ == s.typ:
+    if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
         if is_subtype(t, s):
@@ -129,17 +129,17 @@ Type join_instances(Instance t, Instance s, bool allow_interfaces,
             Type[] args = []
             for i in range(len(t.args)):
                 args.append(join_types(t.args[i], s.args[i], basic))
-            return Instance(t.typ, args)
+            return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
             return basic.object
-    elif t.typ.is_interface != s.typ.is_interface:
+    elif t.type.is_interface != s.type.is_interface:
         return join_instances_as_interface(t, s, basic)
-    elif t.typ.base is not None and is_subtype(t, s):
+    elif t.type.base is not None and is_subtype(t, s):
         return join_instances_via_supertype(t, s, allow_interfaces, basic)
-    elif s.typ.base is not None:
+    elif s.type.base is not None:
         return join_instances_via_supertype(s, t, allow_interfaces, basic)
-    elif allow_interfaces and not t.typ.is_interface:
+    elif allow_interfaces and not t.type.is_interface:
         return join_instances_as_interface(t, s, basic)
     else:
         return basic.object
@@ -149,7 +149,7 @@ Type join_instances_via_supertype(Instance t, Instance s,
                                  bool allow_interfaces,
                                  checker.BasicTypes basic):
     res = s
-    mapped = map_instance_to_supertype(t, t.typ.base)
+    mapped = map_instance_to_supertype(t, t.type.base)
     join = join_instances(mapped, res, False, basic)
     # If the join failed, fail. This is a defensive measure (this might
     # never happen).
@@ -158,7 +158,7 @@ Type join_instances_via_supertype(Instance t, Instance s,
     # Now the result must be an Instance, so the cast below cannot fail.
     res = (Instance)join
     
-    if (res.typ == basic.object.typ and not t.typ.is_interface and
+    if (res.type == basic.object.type and not t.type.is_interface and
             allow_interfaces):
         return join_instances_as_interface(t, s, basic)
     else:
@@ -186,7 +186,7 @@ Type join_instances_as_interface(Instance t, Instance s,
             # Join of two interface types is always an Instance type (either
             # another interface type or object), so the cast below is safe.
             j = (Instance)join_types(ti, si, basic)
-            if j.typ != basic.object.typ:
+            if j.type != basic.object.type:
                 res.append(j)
     
     if len(res) == 1:
@@ -205,7 +205,7 @@ Type join_instances_as_interface(Instance t, Instance s,
             # As above, the join of two interface types is always an Instance
             # type. The cast below is thus safe.
             j = (Instance)join_types(j, res[i], basic)
-        if j.typ != basic.object.typ:
+        if j.type != basic.object.type:
             return j
         else:
             return ErrorType()
@@ -215,16 +215,16 @@ Type[] implemented_interfaces(Instance t):
     """If t is a class instance, return all the directly implemented interface
     types by t and its supertypes, including mapped type arguments.
     """
-    if t.typ.is_interface:
+    if t.type.is_interface:
         return [t]
     else:
         Type[] res = []
         
-        for iface in t.typ.interfaces:
+        for iface in t.type.interfaces:
             res.append(map_instance_to_supertype(t, iface))
         
-        if t.typ.base is not None:
-            tt = map_instance_to_supertype(t, t.typ.base)
+        if t.type.base is not None:
+            tt = map_instance_to_supertype(t, t.type.base)
             res.extend(implemented_interfaces(tt))
         
         return res

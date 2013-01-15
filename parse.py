@@ -278,7 +278,7 @@ class Parser:
     
     def parse_super_type(self):
         if (isinstance(self.current(), Name) and self.current_str() != 'void'):
-            return self.parse_type().typ
+            return self.parse_type().type
         else:
             self.parse_error()
     
@@ -295,7 +295,7 @@ class Parser:
         if self.peek().string in ['(', '<'] or isinstance(typ, Void):
             return self.parse_function_at_name(typ, None)
         else:
-            return self.parse_var_def(typ.typ)
+            return self.parse_var_def(typ.type)
     
     Node parse_decorated_function(self):
         at = self.expect('@')
@@ -413,7 +413,7 @@ class Parser:
             # Yes. Construct a type for the function signature.
             Type ret = None
             if ret_type is not None:
-                ret = ret_type.typ
+                ret = ret_type.type
             typ = self.construct_function_type(arg_types, kinds, names,
                                                ret, type_vars, line)
             annotation = Annotation(typ, line)
@@ -450,7 +450,7 @@ class Parser:
             while self.current_str() != ')':
                 Type arg_type = None
                 if self.is_at_sig_type():
-                    arg_type = self.parse_type().typ
+                    arg_type = self.parse_type().type
                 arg_types.append(arg_type)
                 
                 if self.current_str() == '*' and self.peek().string == ',':
@@ -557,7 +557,7 @@ class Parser:
             
             Type t = None
             if self.is_at_type():
-                t = self.parse_type().typ
+                t = self.parse_type().type
             tok = self.expect_type(Name)
             n.append((Var(tok.string), t))
             r.append(noderepr.VarRepr(tok, none))
@@ -1115,7 +1115,7 @@ class Parser:
             typ = self.parse_type()
             rparen = self.expect(')')
             expr = self.parse_expression(precedence['<cast>'])
-            expr = CastExpr(expr, typ.typ)
+            expr = CastExpr(expr, typ.type)
             self.set_repr(expr, noderepr.CastExprRepr(lparen, rparen))
         elif self.current_str() == ')':
             # Empty tuple ().
@@ -1245,7 +1245,7 @@ class Parser:
             if len(types) != 1:
                 self.fail('Expected a single type before list literal', e.line)
             else:
-                ((ListExpr)e).typ = types[0]
+                ((ListExpr)e).type = types[0]
                 e.repr = noderepr.ListExprRepr(e.repr.lbracket, e.repr.commas,
                                                e.repr.rbracket, langle, rangle)
         elif (isinstance(e, ParenExpr) and
@@ -1604,7 +1604,6 @@ class Parser:
     # Type annotation related functionality
     
     Annotation parse_type(self):
-        Type typ
         line = self.current().line
         try:
             typ, self.ind = parse_type(self.tok, self.ind)

@@ -49,8 +49,8 @@ class StrConv(NodeVisitor<str>):
         a = []
         if args:
             a.append(('Args', args))
-        if o.typ:
-            a.append(o.typ)
+        if o.type:
+            a.append(o.type)
         if init:
             a.append(('Init', init))
         a.extend(extra)
@@ -107,8 +107,8 @@ class StrConv(NodeVisitor<str>):
     
     def visit_overloaded_func_def(self, o):
         a = o.items[:]
-        if o.typ:
-            a.insert(0, o.typ)
+        if o.type:
+            a.insert(0, o.type)
         return self.dump(a, o)
     
     def visit_type_def(self, o):
@@ -148,7 +148,7 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.decorator, o.func], o)
     
     def visit_annotation(self, o):
-        return 'Type:{}({})'.format(o.line, o.typ)
+        return 'Type:{}({})'.format(o.line, o.type)
     
     
     # Statements
@@ -311,15 +311,15 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.op, o.left, o.right], o)
     
     def visit_cast_expr(self, o):
-        return self.dump([o.expr, o.typ], o)
+        return self.dump([o.expr, o.type], o)
     
     def visit_unary_expr(self, o):
         return self.dump([o.op, o.expr], o)
     
     def visit_list_expr(self, o):
         a = o.items[:]
-        if o.typ:
-            a.insert(0, ('Type', [o.typ]))
+        if o.type:
+            a.insert(0, ('Type', [o.type]))
         return self.dump(a, o)
     
     def visit_dict_expr(self, o):
@@ -376,7 +376,7 @@ class StrConv(NodeVisitor<str>):
                          o)
     
     def visit_type_expr(self, o):
-        return self.dump([str(o.typ)], o)
+        return self.dump([str(o.type)], o)
     
     def visit_filter_node(self, o):
         # These are for convenience. These node types are not defined in the

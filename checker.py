@@ -185,7 +185,7 @@ class TypeChecker(NodeVisitor<Type>):
         if isinstance(defn, FuncDef):
             fdef = (FuncDef)defn
         
-        self.dynamic_funcs.append(defn.typ is None and not type_override)
+        self.dynamic_funcs.append(defn.type is None and not type_override)
         
         if fdef:
             self.errors.set_function(fdef.name())
@@ -220,7 +220,7 @@ class TypeChecker(NodeVisitor<Type>):
             if (fdef.info and fdef.name() == '__init__' and
                     not isinstance(((Callable)typ).ret_type, Void) and
                     not self.dynamic_funcs[-1]):
-                self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE, defn.typ)
+                self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE, defn.type)
         
         # Push return type.
         self.return_types.append(((Callable)typ).ret_type)
@@ -235,7 +235,7 @@ class TypeChecker(NodeVisitor<Type>):
             elif ctype.arg_kinds[i] == nodes.ARG_STAR2:
                 arg_type = self.named_generic_type('builtins.dict',
                                                    [self.str_type(), arg_type])
-            defn.args[i].typ = Annotation(arg_type)
+            defn.args[i].type = Annotation(arg_type)
         
         # Type check initialization expressions.
         for j in range(len(defn.init)):
@@ -487,7 +487,7 @@ class TypeChecker(NodeVisitor<Type>):
                         self.msg.incompatible_value_count_in_assignment(
                             len(names), len(tinit_type.items), context)
                 elif (isinstance(init_type, Instance) and
-                        ((Instance)init_type).typ.full_name() ==
+                        ((Instance)init_type).type.full_name() ==
                             'builtins.list'):
                     # Initializer with an array type.
                     item_type = ((Instance)init_type).args[0]
@@ -510,7 +510,7 @@ class TypeChecker(NodeVisitor<Type>):
         refers to the variable (lvalue). If var is None, do nothing.
         """
         if var:
-            var.typ = Annotation(type, -1)
+            var.type = Annotation(type, -1)
             self.store_type(lvalue, type)
     
     bool is_valid_inferred_type(self, Type typ):
@@ -579,7 +579,7 @@ class TypeChecker(NodeVisitor<Type>):
                         lvalue_types[j], index_lvalue_types[j],
                         self.temp_node(trvalue.items[j]), context, msg)
         elif (isinstance(rvalue_type, Instance) and
-                ((Instance)rvalue_type).typ.full_name() == 'builtins.list'):
+                ((Instance)rvalue_type).type.full_name() == 'builtins.list'):
             # Rvalue with list type.
             item_type = ((Instance)rvalue_type).args[0]
             for k in range(len(lvalue_types)):
@@ -640,7 +640,7 @@ class TypeChecker(NodeVisitor<Type>):
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):
             inst = (Instance)return_type
-            if inst.typ.full_name() != 'builtins.Iterator':
+            if inst.type.full_name() != 'builtins.Iterator':
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
             expected_item_type = inst.args[0]
@@ -701,7 +701,7 @@ class TypeChecker(NodeVisitor<Type>):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
-                    s.vars[i].typ = Annotation(t)
+                    s.vars[i].type = Annotation(t)
             self.accept(s.handlers[i])
         if s.finally_body:
             self.accept(s.finally_body)
@@ -768,16 +768,16 @@ class TypeChecker(NodeVisitor<Type>):
                                    self.temp_node(item_type, context))
         elif len(index) == 1:
             v = (Var)index[0].node
-            if v.typ:
-                self.check_single_assignment(v.typ.typ, None,
+            if v.type:
+                self.check_single_assignment(v.type.type, None,
                                            self.temp_node(item_type), context,
                                            messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
             Type[] t = []
             for ii in index:
                 v = (Var)ii.node
-                if v.typ:
-                    t.append(v.typ.typ)
+                if v.type:
+                    t.append(v.type.type)
                 else:
                     t.append(Any())
             self.check_multi_assignment(
@@ -864,7 +864,7 @@ class TypeChecker(NodeVisitor<Type>):
         return self.expr_checker.visit_generator_expr(e)
 
     Type visit_temp_node(self, TempNode e):
-        return e.typ
+        return e.type
 
     #
     # Currently unsupported features

@@ -35,7 +35,7 @@ Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
     """
     if kind == nodes.ARG_STAR:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).typ.full_name() == 'builtins.list'):
+                ((Instance)arg_type).type.full_name() == 'builtins.list'):
             # List *arg. TODO any iterable
             return ((Instance)arg_type).args[0]
         elif isinstance(arg_type, TupleType):
@@ -47,7 +47,7 @@ Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
             return Any()
     elif kind == nodes.ARG_STAR2:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).typ.full_name() == 'builtins.dict'):
+                ((Instance)arg_type).type.full_name() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
             return ((Instance)arg_type).args[1]
         else:
@@ -145,8 +145,8 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
             res = <Constraint> []
             instance = (Instance)actual
             if (self.direction == SUBTYPE_OF and
-                    template.typ.has_base(instance.typ.full_name())):
-                mapped = map_instance_to_supertype(template, instance.typ)
+                    template.type.has_base(instance.type.full_name())):
+                mapped = map_instance_to_supertype(template, instance.type)
                 for i in range(len(instance.args)):
                     # The constraints for generic type parameters are
                     # invariant. Include the default constraint and its
@@ -157,8 +157,8 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
                     res.extend(negate_constraints(cb))
                 return res
             elif (self.direction == SUPERTYPE_OF and
-                    instance.typ.has_base(template.typ.full_name())):
-                mapped = map_instance_to_supertype(instance, template.typ)
+                    instance.type.has_base(template.type.full_name())):
+                mapped = map_instance_to_supertype(instance, template.type)
                 for j in range(len(template.args)):
                     # The constraints for generic type parameters are
                     # invariant.

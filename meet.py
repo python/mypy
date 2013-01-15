@@ -58,14 +58,14 @@ class TypeMeetVisitor(TypeVisitor<Type>):
     Type visit_instance(self, Instance t):
         if isinstance(self.s, Instance):
             si = (Instance)self.s
-            if t.typ == si.typ:
+            if t.type == si.type:
                 if is_subtype(t, self.s):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     Type[] args = []
                     for i in range(len(t.args)):
                         args.append(self.meet(t.args[i], si.args[i]))
-                    return Instance(t.typ, args)
+                    return Instance(t.type, args)
                 else:
                     return NoneTyp()
             else:

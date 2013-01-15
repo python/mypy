@@ -41,7 +41,7 @@ class PrettyPrintVisitor(NodeVisitor):
                     continue
                 elif isinstance(bt, UnboundType):
                     b.append(((UnboundType)bt).name)
-                elif ((Instance)bt).typ.full_name() != 'builtins.object':
+                elif ((Instance)bt).type.full_name() != 'builtins.object':
                     typestr = bt.accept(TypeErasedPrettyPrintVisitor())
                     b.append(typestr)
             if b:
@@ -53,15 +53,15 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_func_def(self, FuncDef fdef):
         # FIX varargs, default args, keyword args etc.
-        ftyp = (Callable)fdef.typ.typ
-        self.typ(ftyp.ret_type)
+        ftyp = (Callable)fdef.type.type
+        self.type(ftyp.ret_type)
         self.string(' ')
         self.string(fdef.name())
         self.string('(')
         for i in range(len(fdef.args)):
             a = fdef.args[i]
             if i < len(ftyp.arg_types):
-                self.typ(ftyp.arg_types[i])
+                self.type(ftyp.arg_types[i])
                 self.string(' ')
             else:
                 self.string('xxx ')
@@ -73,7 +73,7 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_var_def(self, VarDef vdef):
         if vdef.items[0][0].name() != '__name__':
-            self.typ(vdef.items[0][1])
+            self.type(vdef.items[0][1])
             self.string(' ')
             self.string(vdef.items[0][0].name())
             if vdef.init:
@@ -158,7 +158,7 @@ class PrettyPrintVisitor(NodeVisitor):
         self.full_type(o.target_type)
         if coerce.is_special_primitive(o.source_type):
             self.string(' <= ')
-            self.typ(o.source_type)
+            self.type(o.source_type)
         self.string(' ')
         self.node(o.expr)
         self.string('}')
@@ -167,7 +167,7 @@ class PrettyPrintVisitor(NodeVisitor):
         # Type expressions are only generated during transformation, so we must
         # use automatic formatting.
         self.string('<')
-        self.full_type(o.typ)
+        self.full_type(o.type)
         self.string('>')
     
     def visit_index_expr(self, o):
@@ -204,7 +204,7 @@ class PrettyPrintVisitor(NodeVisitor):
 
     def visit_cast_expr(self, o):
         self.string('(')
-        self.typ(o.typ)
+        self.type(o.type)
         self.string(')')
         self.node(o.expr)
 
@@ -236,7 +236,7 @@ class PrettyPrintVisitor(NodeVisitor):
             return self.result[-1][-1]
         return ''
     
-    def typ(self, t):
+    def type(self, t):
         """Pretty-print a type with erased type arguments."""
         if t:
             v = TypeErasedPrettyPrintVisitor()
@@ -265,7 +265,7 @@ class TypeErasedPrettyPrintVisitor(TypeVisitor<str>):
         return 'void'
     
     def visit_instance(self, t):
-        return t.typ.name()
+        return t.type.name()
     
     def visit_type_var(self, t):
         return 'any*'
@@ -292,7 +292,7 @@ class TypePrettyPrintVisitor(TypeVisitor<str>):
         return 'void'
     
     def visit_instance(self, t):
-        s = t.typ.name()
+        s = t.type.name()
         if t.args:
             argstr = ', '.join([a.accept(self) for a in t.args])
             s += '<%s>' % argstr

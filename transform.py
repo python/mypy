@@ -99,8 +99,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         super().visit_var_def(o)
         
         if o.init is not None:
-            if o.items[0][0].typ:
-                t = o.items[0][0].typ.typ
+            if o.items[0][0].type:
+                t = o.items[0][0].type.type
             else:
                 t = Any()
             o.init = self.coerce(o.init, t, self.get_type(o.init),
@@ -128,9 +128,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """Add implicit function type variable arguments if fdef is generic."""
         sig = (Callable)function_type(fdef)
         TypeVarDef[] tvars = sig.variables.items
-        if not fdef.typ:
-            fdef.typ = Annotation(sig)
-        typ = fdef.typ
+        if not fdef.type:
+            fdef.type = Annotation(sig)
+        typ = fdef.type
         
         tv = <Var> []
         ntvars = len(tvars)
@@ -138,13 +138,13 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # For methods, add type variable arguments after the self arg.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                typ.typ = add_arg_type_after_self((Callable)typ.typ, Any())
+                typ.type = add_arg_type_after_self((Callable)typ.type, Any())
             fdef.args = [fdef.args[0]] + tv + fdef.args[1:]
         else:
             # For ordinary functions, prepend type variable arguments.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                typ.typ = prepend_arg_type((Callable)typ.typ, Any())
+                typ.type = prepend_arg_type((Callable)typ.type, Any())
             fdef.args = tv + fdef.args
         fdef.init = <AssignmentStmt> [None] * ntvars + fdef.init
     
@@ -183,7 +183,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # Reference to a statically-typed method variant with the suffix
             # derived from the base object type.
             suffix = self.get_member_reference_suffix(e.name,
-                                                      ((Instance)typ).typ)
+                                                      ((Instance)typ).type)
         else:
             # Reference to a dynamically-typed method variant.
             suffix = self.dynamic_suffix()

@@ -101,13 +101,13 @@ class ErasedType(Type):
 class Instance(Type):
     """An instance type of form C<T1, ..., Tn>. Type variables Tn may
     be empty"""
-    nodes.TypeInfo typ
+    nodes.TypeInfo type
     Type[] args
     bool erased      # True if result of type variable substitution
     
     void __init__(self, nodes.TypeInfo typ, Type[] args, int line=-1,
                   any repr=None, any erased=False):
-        self.typ = typ
+        self.type = typ
         self.args = args
         self.erased = erased
         super().__init__(line, repr)
@@ -431,7 +431,7 @@ class TypeTranslator(TypeVisitor<Type>):
         return t
     
     Type visit_instance(self, Instance t):
-        return Instance(t.typ, self.translate_types(t.args), t.line, t.repr)
+        return Instance(t.type, self.translate_types(t.args), t.line, t.repr)
     
     Type visit_type_var(self, TypeVar t):
         return t
@@ -499,7 +499,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         return "<Erased>"
     
     def visit_instance(self, t):
-        s = t.typ.full_name()
+        s = t.type.full_name()
         if t.erased:
             s += '*'
         if t.args != []:

@@ -111,7 +111,7 @@ class FuncTransformer:
         ntvars = len(fdef.info.type_vars)
         for n in range(ntvars):
             tv.append(Var(tvar_arg_name(n + 1)))
-            typ.typ = add_arg_type_after_self((Callable)typ.typ, Any())
+            typ.type = add_arg_type_after_self((Callable)typ.type, Any())
         args = [args[0]] + tv + args[1:]
         arg_kinds = [arg_kinds[0]] + [nodes.ARG_POS] * ntvars + arg_kinds[1:]
         init = <Node> [None] * ntvars + init

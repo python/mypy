@@ -65,12 +65,12 @@ str transform_type_to_runtime_repr(Type t):
     if isinstance(t, Instance):
         inst = (Instance)t
         if inst.args == []:
-            return inst.typ.name()
+            return inst.type.name()
         else:
             args = <str> []
             for a in inst.args:
                 args.append(transform_type_to_runtime_repr(a))
-            return '__Gen({}, [{}])'.format(inst.typ.name(), ', '.join(args))
+            return '__Gen({}, [{}])'.format(inst.type.name(), ', '.join(args))
     elif isinstance(t, TypeVar):
         tv = (TypeVar)t
         return 't.args[{}]'.format(tv.id - 1)

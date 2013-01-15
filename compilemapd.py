@@ -118,7 +118,7 @@ MapPremise[] find_eq_premises(Type typ, MapExpr expr):
         inst = (Instance)typ
         MapPremise[] res = []
         if expr:
-            res.append(AssertClass(expr, inst.typ))
+            res.append(AssertClass(expr, inst.type))
         for i in range(len(inst.args)):
             MapExpr e
             if not expr:
