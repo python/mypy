@@ -44,7 +44,6 @@ b.f(c)
 b.g(c)
 ...
 
-
 [case testInheritingGenericClassAndOverriding-skip]
 A<C> a
 B b
@@ -74,7 +73,6 @@ class B is A<C>
   end
 ...
 
-
 [case testInheritGenericClassAndCallCreate-skip]
 A<float>()
 B()
@@ -84,7 +82,6 @@ class B(A<int>): pass
 A(<std::Float>) as <Float>
 B()
 ...
-
 
 [case testInheritingGenericClassAndOverriding2-skip]
 class A<T>:
@@ -147,7 +144,6 @@ class B* is A*
   end
 end
 
-
 [case testGenericInheritanceWithIdenticalTypeVars2-skip]
 # Multiple type variables
 class A<T, S>:
@@ -169,7 +165,6 @@ class B<T, S> is A<T, S>
     f`B({self.__tv <= dyn | a}, {A<self.__tv2, self.__tv> <= dyn | b})
   end
 ...
-
 
 [case testGenericInheritanceWithDifferentSig-skip]
 # Override with dynamic
@@ -219,7 +214,6 @@ class B<S> is A<C, S>
   end
 ...
 
-
 [case testNonGenericClassInheritsGenericClass-skip]
 class A<T>:
     void f(self, T t):
@@ -237,7 +231,6 @@ class B is A<Int>
     g(d)
   end
 ...
-
 
 [case testGenericInheritanceAndCoercionsWithArgShuffling-skip]
 class A<T, S>:
