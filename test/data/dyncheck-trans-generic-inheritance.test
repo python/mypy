@@ -71,7 +71,7 @@ class B(A):
         {B self}.f`B({C c})
 ...
 
-[case testInheritGenericClassAndCallCreate]
+[case testInheritGenericClassAndConstructInstance]
 A<float>()
 B()
 class A<T>: pass
@@ -335,7 +335,7 @@ class C<T> is B
 -- -------------------------------------
 
 
--- 1. Wrapper that calls superclass create
+-- 1. Wrapper that calls superclass __init__
 
 
 [case testInheritingGenericClassWithDefaultConstructor-skip]
@@ -438,7 +438,7 @@ class B<U> is A<Int, C<U>>
   end
 ...
 
-[case testCreateWrapperWithDeepHierarchy-skip]
+[case testInitWrapperWithDeepHierarchy-skip]
 class A<T>: pass
 class B(A<int>): pass
 class C<T>(B): pass
@@ -453,7 +453,7 @@ class C<T> is B
   end
 ...
 
-[case testCreateWrapperWithDeepHierarchy2-skip]
+[case testInitWrapperWithDeepHierarchy2-skip]
 class A: pass
 class B(A): pass
 class C<T>(B): pass
@@ -467,7 +467,7 @@ class C<T> is B
   end
 ...
 
-[case testCreateWrapperWithDefaultInitializer-skip]
+[case testInitWrapperWithDefaultInitializer-skip]
 class A:
     int n
     
@@ -488,7 +488,7 @@ class B<T> is A
 -- 2. Define new constructor in subclass
 
 
-[case testCreateWithGenericInheritance-skip]
+[case testInitWithGenericInheritance-skip]
 class A<T, U>: pass
 class B<S>(A<int, S>):
     void __init__(self, int n):
@@ -507,7 +507,7 @@ class B<S> is A<Int, S>
 -- ---------------------------------------------------
 
 
-[case testCreateInWrapperClassWithGenericInheritance-skip]
+[case testInitInWrapperClassWithGenericInheritance-skip]
 # Generic class inherits another generic class
 class A<T, S>: pass
 class B<U>(A<int, C<U>>): pass
@@ -524,7 +524,7 @@ class B* is A*
   end
 ...
 
-[case testCreateInWrapperClassWithInheritance2-skip]
+[case testInitInWrapperClassWithInheritance2-skip]
 # Original create has arguments; this does not affect the wrapper
 class A<T>:
     void __init__(self, int n):
@@ -537,7 +537,7 @@ class B* is A*
   def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
 ...
 
-[case testCreateInWrapperClassWithInheritance3-skip]
+[case testInitInWrapperClassWithInheritance3-skip]
 # Multi-level inheritance hierarchy; note that there is no wrapper class
 # for B.
 class A<T>: pass
@@ -603,7 +603,7 @@ class B* is A*
 -- ------------------------------------
 
 
-[case testGenericInheritanceAndCallToSuperclassCreate-skip]
+[case testGenericInheritanceAndCallToSuperclassInit-skip]
 # Non-generic class inherits a generic class
 class A<T>:
     void __init__(self, C n):
@@ -623,7 +623,7 @@ class B is A<Int>
   end
 end
 
-[case testGenericInheritanceAndCallToSuperclassCreate2-skip]
+[case testGenericInheritanceAndCallToSuperclassInit2-skip]
 # Non-generic class inherits a generic class
 class A<T>: pass
 
@@ -641,7 +641,7 @@ class B is A<Int>
 end
 
 
-[case testGenericInheritanceAndCallToSuperclassCreate-skip]
+[case testGenericInheritanceAndCallToSuperclassInit-skip]
 # Generic class inherits a generic class
 class A<T, S>:
     void __init__(self, T t):
