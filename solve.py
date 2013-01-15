@@ -1,4 +1,4 @@
-from mtypes import Typ, Void, NoneTyp, Any, ErrorType
+from mtypes import Type, Void, NoneTyp, Any, ErrorType
 from constraints import Constraint, SUPERTYPE_OF
 import checker
 from join import join_types
@@ -6,7 +6,7 @@ from meet import meet_types
 from subtypes import is_subtype
 
 
-Typ[] solve_constraints(int[] vars, Constraint[] constraints,
+Type[] solve_constraints(int[] vars, Constraint[] constraints,
                             checker.BasicTypes basic):
     """Solve type constraints.
 
@@ -20,12 +20,12 @@ Typ[] solve_constraints(int[] vars, Constraint[] constraints,
         a.append(con)
         cmap[con.type_var] = a
     
-    Typ[] res = []
+    Type[] res = []
 
     # Solve each type variable separately.
     for tvar in vars:
-        Typ bottom = None
-        Typ top = None
+        Type bottom = None
+        Type top = None
         
         # Process each contraint separely, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the contraint

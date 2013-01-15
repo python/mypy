@@ -3,7 +3,7 @@ from nodes import (
     Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr
 )
 from visitor import NodeVisitor
-from mtypes import Void, TypeVisitor, Callable, Instance, Typ, UnboundType
+from mtypes import Void, TypeVisitor, Callable, Instance, Type, UnboundType
 from maptypevar import num_slots
 from transutil import tvar_arg_name
 import coerce

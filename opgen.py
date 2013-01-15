@@ -1,7 +1,7 @@
 """Alore code generation for runtime type operations (OBSOLETE)."""
 
 from nodes import MypyFile, TypeDef, TypeInfo
-from mtypes import Instance, TypeVar, BOUND_VAR, Typ
+from mtypes import Instance, TypeVar, BOUND_VAR, Type
 import transform
 from maptypevar import num_slots, get_tvar_access_path
 from compileslotmap import compile_slot_mapping
@@ -61,7 +61,7 @@ void generate_slot_map_op(str[] ops, str op, TypeInfo base, TypeInfo typ):
     ops.append('end')
 
 
-str transform_type_to_runtime_repr(Typ t):
+str transform_type_to_runtime_repr(Type t):
     if isinstance(t, Instance):
         inst = (Instance)t
         if inst.args == []:

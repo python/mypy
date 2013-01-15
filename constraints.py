@@ -1,5 +1,5 @@
 from mtypes import (
-    Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
+    Callable, Type, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
     Instance, TupleType, Overloaded, ErasedType
 )
 from expandtype import expand_caller_var_args
@@ -8,7 +8,7 @@ import nodes
 
 
 Constraint[] infer_constraints_for_callable(
-                 Callable callee, Typ[] arg_types, int[] arg_kinds,
+                 Callable callee, Type[] arg_types, int[] arg_kinds,
                  int[][] formal_to_actual):
     """Infer type variable constraints for a callable and actual arguments.
     
@@ -28,7 +28,7 @@ Constraint[] infer_constraints_for_callable(
     return constraints
 
 
-Typ get_actual_type(Typ arg_type, int kind, int[] tuple_counter):
+Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
     """Return the type of an actual argument with the given kind.
 
     If the argument is a *arg, return the individual argument item.
@@ -57,7 +57,7 @@ Typ get_actual_type(Typ arg_type, int kind, int[] tuple_counter):
         return arg_type
 
 
-Constraint[] infer_constraints(Typ template, Typ actual, int direction):
+Constraint[] infer_constraints(Type template, Type actual, int direction):
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -91,7 +91,7 @@ class Constraint:
     """
     int type_var   # Type variable id
     int op         # SUBTYPE_OF or SUPERTYPE_OF
-    Typ target
+    Type target
     
     str __repr__(self):
         op_str = '<:'
@@ -99,7 +99,7 @@ class Constraint:
             op_str = ':>'
         return '{} {} {}'.format(self.type_var, op_str, self.target)
     
-    void __init__(self, int type_var, int op, Typ target):
+    void __init__(self, int type_var, int op, Type target):
         self.type_var = type_var
         self.op = op
         self.target = target
@@ -108,9 +108,9 @@ class Constraint:
 class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
     """Visitor class for inferring type constraints."""
     
-    Typ actual # The type that is compared against a template
+    Type actual # The type that is compared against a template
     
-    void __init__(self, Typ actual, int direction):
+    void __init__(self, Type actual, int direction):
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -225,7 +225,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
         else:
             return []
     
-    Constraint[] infer_against_any(self, Typ[] types):
+    Constraint[] infer_against_any(self, Type[] types):
         Constraint[] res = []
         for t in types:
             res.extend(infer_constraints(t, Any(), self.direction))

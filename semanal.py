@@ -16,7 +16,7 @@ from nodes import (
 from visitor import NodeVisitor
 from errors import Errors
 from mtypes import (
-    NoneTyp, Callable, Overloaded, Instance, Typ, TypeVar, Any
+    NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any
 )
 from nodes import function_type
 from typeanal import TypeAnalyser
@@ -284,11 +284,11 @@ class SemanticAnalyzer(NodeVisitor):
         self.class_tvars = None
         self.typ = None
     
-    Typ object_type(self):
+    Type object_type(self):
         sym = self.lookup_qualified('__builtins__.object', None)
         return Instance((TypeInfo)sym.node, [])
     
-    bool is_instance_type(self, Typ t):
+    bool is_instance_type(self, Type t):
         return isinstance(t, Instance) and not ((Instance)t).typ.is_interface
     
     void add_class_type_variables_to_symbol_table(self, TypeInfo info):
@@ -378,7 +378,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.init:
             defn.init.accept(self)
     
-    Typ anal_type(self, Typ t):
+    Type anal_type(self, Type t):
         if t:
             a = TypeAnalyser(self.lookup_qualified, self.fail)
             return t.accept(a)
@@ -765,7 +765,7 @@ Instance self_type(TypeInfo typ):
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G<T1, ..., Tn>.
     """
-    Typ[] tv = []
+    Type[] tv = []
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1))
     return Instance(typ, tv)

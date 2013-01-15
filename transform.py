@@ -18,7 +18,7 @@ from nodes import (
     SymbolTableNode
 )
 from traverser import TraverserVisitor
-from mtypes import Typ, Any, Callable, TypeVarDef, Instance
+from mtypes import Type, Any, Callable, TypeVarDef, Instance
 from checker import function_type
 from lex import Token
 from transformtype import TypeTransformer
@@ -41,13 +41,13 @@ class DyncheckTransformVisitor(TraverserVisitor):
     This visitor modifies the parse tree in-place.
     """
 
-    dict<Node, Typ> type_map
+    dict<Node, Type> type_map
     dict<str, MypyFile> modules
     bool is_pretty
     TypeTransformer type_tf
     
     # Stack of function return types
-    Typ[] return_types
+    Type[] return_types
     # Stack of dynamically typed function flags
     bool[] dynamic_funcs
     
@@ -62,7 +62,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     TypeInfo type_context(self):
         return self._type_context
     
-    void __init__(self, dict<Node, Typ> type_map, dict<str, MypyFile> modules,
+    void __init__(self, dict<Node, Type> type_map, dict<str, MypyFile> modules,
                   bool is_pretty, bool is_java=False):
         self.type_tf = TypeTransformer(self)
         self.return_types = []
@@ -218,7 +218,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
 
         # Add coercions for the arguments.
         for i in range(len(e.args)):
-            Typ arg_type = Any()
+            Type arg_type = Any()
             if isinstance(ctype, Callable):
                 arg_type = ((Callable)ctype).arg_types[i]
             e.args[i] = self.coerce2(e.args[i], arg_type,
@@ -284,11 +284,11 @@ class DyncheckTransformVisitor(TraverserVisitor):
     # Helpers
     #    
     
-    Typ get_type(self, Node node):
+    Type get_type(self, Node node):
         """Return the type of a node as reported by the type checker."""
         return self.type_map[node]
     
-    void set_type(self, Node node, Typ typ):
+    void set_type(self, Node node, Type typ):
         self.type_map[node] = typ
     
     str type_suffix(self, FuncDef fdef, TypeInfo info=None):
@@ -317,12 +317,12 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """Return the suffix of a generic wrapper class."""
         return '**'
     
-    Node coerce(self, Node expr, Typ target_type, Typ source_type,
+    Node coerce(self, Node expr, Type target_type, Type source_type,
                 TypeInfo context, bool is_wrapper_class=False):
         return coerce(expr, target_type, source_type, context,
                       is_wrapper_class, self.is_java)
     
-    Node coerce2(self, Node expr, Typ target_type, Typ source_type,
+    Node coerce2(self, Node expr, Type target_type, Type source_type,
                  TypeInfo context, bool is_wrapper_class=False):
         """Create coercion from source_type to target_type.
 
@@ -337,7 +337,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             return self.coerce(expr, target_type, source_type, context,
                                is_wrapper_class)
     
-    Node coerce_to_dynamic(self, Node expr, Typ source_type, TypeInfo context):
+    Node coerce_to_dynamic(self, Node expr, Type source_type, TypeInfo context):
         if isinstance(source_type, Any):
             return expr
         source_type = translate_runtime_type_vars_in_context(

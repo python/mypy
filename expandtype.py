@@ -1,28 +1,28 @@
 from mtypes import (
-    Typ, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void,
+    Type, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void,
     NoneTyp, TypeVar, Overloaded, TupleType, ErasedType
 )
 
 
-Typ expand_type(Typ typ, dict<int, Typ> map):
+Type expand_type(Type typ, dict<int, Type> map):
     """Expand any type variable references in a type with the actual values of
     type variables in an instance.
     """
     return typ.accept(ExpandTypeVisitor(map))
 
 
-Typ expand_type_by_instance(Typ typ, Instance instance):
+Type expand_type_by_instance(Type typ, Instance instance):
     """Expand type variables in type using type variable values in an
     instance."""
     if instance.args == []:
         return typ
     else:
-        dict<int, Typ> variables = {}
+        dict<int, Type> variables = {}
         for i in range(len(instance.args)):
             variables[i + 1] = instance.args[i]
         typ = expand_type(typ, variables)
         if isinstance(typ, Callable):
-            list<tuple<int, Typ>> bounds = []
+            list<tuple<int, Type>> bounds = []
             for j in range(len(instance.args)):
                 bounds.append((j + 1, instance.args[j]))
             typ = update_callable_implicit_bounds((Callable)typ, bounds)
@@ -31,36 +31,36 @@ Typ expand_type_by_instance(Typ typ, Instance instance):
         return typ
 
 
-class ExpandTypeVisitor(TypeVisitor<Typ>):
-    dict<int, Typ> variables  # Lower bounds
+class ExpandTypeVisitor(TypeVisitor<Type>):
+    dict<int, Type> variables  # Lower bounds
     
-    void __init__(self, dict<int, Typ> variables):
+    void __init__(self, dict<int, Type> variables):
         self.variables = variables
     
-    Typ visit_unbound_type(self, UnboundType t):
+    Type visit_unbound_type(self, UnboundType t):
         return t
     
-    Typ visit_error_type(self, ErrorType t):
+    Type visit_error_type(self, ErrorType t):
         return t
     
-    Typ visit_any(self, Any t):
+    Type visit_any(self, Any t):
         return t
     
-    Typ visit_void(self, Void t):
+    Type visit_void(self, Void t):
         return t
     
-    Typ visit_none_type(self, NoneTyp t):
+    Type visit_none_type(self, NoneTyp t):
         return t
     
-    Typ visit_erased_type(self, ErasedType t):
+    Type visit_erased_type(self, ErasedType t):
         # Should not get here.
         raise RuntimeError()
     
-    Typ visit_instance(self, Instance t):
+    Type visit_instance(self, Instance t):
         args = self.expand_types(t.args)
         return Instance(t.typ, args, t.line, t.repr)
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
             inst = (Instance)repl
@@ -69,7 +69,7 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
         else:
             return repl
     
-    Typ visit_callable(self, Callable t):
+    Type visit_callable(self, Callable t):
         return Callable(self.expand_types(t.arg_types),
                         t.arg_kinds,
                         t.arg_names,
@@ -79,30 +79,30 @@ class ExpandTypeVisitor(TypeVisitor<Typ>):
                         t.variables,
                         self.expand_bound_vars(t.bound_vars), t.line, t.repr)
     
-    Typ visit_overloaded(self, Overloaded t):
+    Type visit_overloaded(self, Overloaded t):
         Callable[] items = []
         for item in t.items():
             items.append((Callable)item.accept(self))
         return Overloaded(items)
     
-    Typ visit_tuple_type(self, TupleType t):
+    Type visit_tuple_type(self, TupleType t):
         return TupleType(self.expand_types(t.items), t.line, t.repr)
     
-    Typ[] expand_types(self, Typ[] types):
-        Typ[] a = []
+    Type[] expand_types(self, Type[] types):
+        Type[] a = []
         for t in types:
             a.append(t.accept(self))
         return a
     
-    list<tuple<int, Typ>> expand_bound_vars(self, list<tuple<int, Typ>> types):
-        list<tuple<int, Typ>> a = []
+    list<tuple<int, Type>> expand_bound_vars(self, list<tuple<int, Type>> types):
+        list<tuple<int, Type>> a = []
         for id, t in types:
             a.append((id, t.accept(self)))
         return a
 
 
 Callable update_callable_implicit_bounds(Callable t,
-                                         list<tuple<int, Typ>> arg_types):
+                                         list<tuple<int, Type>> arg_types):
     # FIX what if there are existing bounds?
     return Callable(t.arg_types,
                     t.arg_kinds,
@@ -114,7 +114,7 @@ Callable update_callable_implicit_bounds(Callable t,
                     arg_types, t.line, t.repr)
 
 
-tuple<Typ[], Typ> expand_caller_var_args(Typ[] arg_types,
+tuple<Type[], Type> expand_caller_var_args(Type[] arg_types,
                                              int fixed_argc):
     """Expand the caller argument types in a varargs call. Fixedargc
     is the maximum number of fixed arguments that the target function
@@ -128,7 +128,7 @@ tuple<Typ[], Typ> expand_caller_var_args(Typ[] arg_types,
     if isinstance(arg_types[-1], TupleType):
         return arg_types[:-1] + ((TupleType)arg_types[-1]).items, None
     else:
-        Typ item_type
+        Type item_type
         if isinstance(arg_types[-1], Any):
             item_type = Any()
         elif isinstance(arg_types[-1], Instance) and (

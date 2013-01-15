@@ -14,7 +14,7 @@ import os.path
 import sys
 from os.path import dirname, basename
 
-from mtypes import Typ
+from mtypes import Type
 from nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
 from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnalyzer
@@ -26,7 +26,7 @@ from parse import parse
 debug = False
 
 
-tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
+tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
             build(str program_text, str program_file_name='main',
                   bool use_test_builtins=False, str alt_lib_path=None,
                   bool do_type_check=False, str mypy_base_dir=None):
@@ -154,7 +154,7 @@ class BuildManager:
         self.states = []
         self.module_files = {}
     
-    tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
+    tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
                 process(self, UnprocessedFile initial_state):
         """Perform a build.
 

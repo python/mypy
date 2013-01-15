@@ -1,5 +1,5 @@
 from nodes import TypeInfo
-from mtypes import Instance, Typ, TypeVar, Any
+from mtypes import Instance, Type, TypeVar, Any
 
 
 interface MapPremise: pass
@@ -95,7 +95,7 @@ tuple<MapPremise[], MapExpr[]> compile_subclass_mapping(
     return premises, exprs  
 
 
-MapExpr[] find_all_paths(int tv, Typ typ, MapExpr expr):
+MapExpr[] find_all_paths(int tv, Type typ, MapExpr expr):
     if isinstance(typ, TypeVar) and ((TypeVar)typ).id == tv:
         return [expr]
     elif isinstance(typ, Instance) and ((Instance)typ).args != []:
@@ -113,7 +113,7 @@ MapExpr[] find_all_paths(int tv, Typ typ, MapExpr expr):
         return []
 
 
-MapPremise[] find_eq_premises(Typ typ, MapExpr expr):
+MapPremise[] find_eq_premises(Type typ, MapExpr expr):
     if isinstance(typ, Instance):
         inst = (Instance)typ
         MapPremise[] res = []

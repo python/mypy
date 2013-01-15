@@ -1,4 +1,4 @@
-from mtypes import RuntimeTypeVar, OBJECT_VAR, Instance, Typ, TypeVar
+from mtypes import RuntimeTypeVar, OBJECT_VAR, Instance, Type, TypeVar
 from nodes import TypeInfo, Node, MemberExpr, IndexExpr, IntExpr
 from transutil import self_expr, tvar_slot_name
 
@@ -94,7 +94,7 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     return [tvar_slot_index(typ, tvindex)]
 
 
-int[] find_tvar_mapping(Typ t, int index):
+int[] find_tvar_mapping(Type t, int index):
     """Recursively search for a type variable instance (with given index)
     within the type t, which represents a supertype definition. Return the
     path to the first found instance.

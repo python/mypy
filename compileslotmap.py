@@ -1,11 +1,11 @@
-from mtypes import Typ
+from mtypes import Type
 from nodes import TypeInfo
 from semanal import self_type
 from subtypes import map_instance_to_supertype
 from maptypevar import num_slots, get_tvar_access_path
 
 
-Typ[] compile_slot_mapping(TypeInfo typ):
+Type[] compile_slot_mapping(TypeInfo typ):
     """Return types that represent values of type variable slots of a type.
 
     The returned types are in terms of type variables of the type.
@@ -18,7 +18,7 @@ Typ[] compile_slot_mapping(TypeInfo typ):
     Now slot mappings for C is [E<S>, T] (S and T refer to type variables of
     C).
     """
-    Typ[] exprs = []
+    Type[] exprs = []
     
     for slot in range(num_slots(typ)):
         # Figure out the superclass which defines the slot; also figure out

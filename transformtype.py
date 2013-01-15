@@ -8,7 +8,7 @@ from nodes import (
 import nodes
 from semanal import self_type
 from mtypes import (
-    Callable, Instance, Typ, Any, BOUND_VAR, Void, RuntimeTypeVar, UnboundType
+    Callable, Instance, Type, Any, BOUND_VAR, Void, RuntimeTypeVar, UnboundType
 )
 from checkmember import analyse_member_access
 from checkexpr import type_object_type
@@ -180,7 +180,7 @@ class TypeTransformer:
     
     Callable fix_bound_init_tvars(self, Callable callable, Instance typ):
         """Replace bound type vars of callable with args from instance type."""
-        a = <tuple<int, Typ>> []
+        a = <tuple<int, Type>> []
         for i in range(len(typ.args)):
             a.append((i + 1, typ.args[i]))
         return Callable(callable.arg_types, callable.arg_kinds,
@@ -246,7 +246,7 @@ class TypeTransformer:
         
         return res
     
-    FuncDef make_getter_wrapper(self, str name, Typ typ):
+    FuncDef make_getter_wrapper(self, str name, Type typ):
         """Create a getter wrapper for a data attribute.
 
         The getter will be of this form:
@@ -266,7 +266,7 @@ class TypeTransformer:
                        [None],
                        Block([ret]), Annotation(sig))
     
-    FuncDef make_dynamic_getter_wrapper(self, str name, Typ typ):
+    FuncDef make_dynamic_getter_wrapper(self, str name, Type typ):
         """Create a dynamically-typed getter wrapper for a data attribute.
 
         The getter will be of this form:
@@ -287,7 +287,7 @@ class TypeTransformer:
                        [None],
                        Block([ret]), Annotation(sig))
     
-    FuncDef make_setter_wrapper(self, str name, Typ typ):
+    FuncDef make_setter_wrapper(self, str name, Type typ):
         """Create a setter wrapper for a data attribute.
 
         The setter will be of this form:
@@ -311,7 +311,7 @@ class TypeTransformer:
                        [None, None],
                        Block([ret]), Annotation(sig))
     
-    FuncDef make_dynamic_setter_wrapper(self, str name, Typ typ):
+    FuncDef make_dynamic_setter_wrapper(self, str name, Type typ):
         """Create a dynamically-typed setter wrapper for a data attribute.
 
         The setter will be of this form:
@@ -381,7 +381,7 @@ class TypeTransformer:
                     'Definition {} at line {} not supported'.format(
                         type(d), d.line))
         
-        Typ base_type = self.tf.named_type('builtins.object')
+        Type base_type = self.tf.named_type('builtins.object')
         # Inherit superclass wrapper if there is one.
         if has_proper_superclass:
             base = self.find_generic_base_class(tdef.info)
@@ -463,7 +463,7 @@ class TypeTransformer:
                        [nodes.ARG_POS] * nargs,
                        init,
                        Block(cdefs),
-                       Annotation(Callable(<Typ> [Any()] * nargs,
+                       Annotation(Callable(<Type> [Any()] * nargs,
                                   [nodes.ARG_POS] * nargs,
                                   <str> [None] * nargs,
                                   Void(),
@@ -568,7 +568,7 @@ class TypeTransformer:
         arg_kinds = type_sig.arg_kinds
 
         # The wrapper function has a dynamically typed signature.
-        wrapper_sig = Callable(<Typ> [Any()] * len(arg_kinds),
+        wrapper_sig = Callable(<Type> [Any()] * len(arg_kinds),
                                arg_kinds,
                                <str> [None] * len(arg_kinds),
                                Any(), False)

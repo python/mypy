@@ -1,12 +1,12 @@
 from mtypes import (
-    Typ, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
+    Type, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
     TypeVar, Callable, TupleType, Overloaded, ErasedType
 )
 from nodes import TypeInfo
 from expandtype import expand_type
 
 
-bool is_subtype(Typ left, Typ right):
+bool is_subtype(Type left, Type right):
     """Is 'left' subtype of 'right'?"""
     if (isinstance(right, Any) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
@@ -15,12 +15,12 @@ bool is_subtype(Typ left, Typ right):
         return left.accept(SubtypeVisitor(right))
 
 
-bool is_equivalent(Typ a, Typ b):
+bool is_equivalent(Type a, Type b):
     return is_subtype(a, b) and is_subtype(b, a)
 
 
 class SubtypeVisitor(TypeVisitor<bool>):
-    void __init__(self, Typ right):
+    void __init__(self, Type right):
         self.right = right
     
     # visit_x(left) means: is left (which is an instance of X) a subtype of
@@ -191,14 +191,14 @@ Instance map_instance_to_direct_supertype(Instance instance,
     
     # Relationship with the supertype not specified explicitly. Use dynamic
     # type arguments implicitly.
-    return Instance(typ.base, <Typ> [Any()] * len(typ.base.type_vars))
+    return Instance(typ.base, <Type> [Any()] * len(typ.base.type_vars))
 
 
-dict<int, Typ> type_var_map(TypeInfo typ, Typ[] args):
+dict<int, Type> type_var_map(TypeInfo typ, Type[] args):
     if not args:
         return None
     else:
-        tvars = <int, Typ> {}
+        tvars = <int, Type> {}
         for i in range(len(args)):
             tvars[i + 1] = args[i]
         return tvars
@@ -269,10 +269,10 @@ Instance[] map_instance_to_direct_supertypes(Instance instance,
     else:
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
-        return [Instance(supertype, <Typ> [Any()] * len(supertype.type_vars))]
+        return [Instance(supertype, <Type> [Any()] * len(supertype.type_vars))]
 
 
-bool is_named_instance(Typ t, str full_name):
+bool is_named_instance(Type t, str full_name):
     return isinstance(t,
                       Instance) and ((Instance)t).typ.full_name() == full_name
 

@@ -295,13 +295,13 @@ class TypeDef(Node):
     Block defs
     mtypes.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
-    mtypes.Typ[] base_types
+    mtypes.Type[] base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
     void __init__(self, str name, Block defs,
                   mtypes.TypeVars type_vars=None,
-                  mtypes.Typ[] base_types=None,
+                  mtypes.Type[] base_types=None,
                   bool is_interface=False):
         if not base_types:
             base_types = []
@@ -319,14 +319,14 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
-    tuple<Var, mtypes.Typ>[] items
+    tuple<Var, mtypes.Type>[] items
     int kind          # LDEF/GDEF/MDEF/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
     
-    void __init__(self, tuple<Var, mtypes.Typ>[] items,
+    void __init__(self, tuple<Var, mtypes.Type>[] items,
                   bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
@@ -764,9 +764,9 @@ class SliceExpr(Node):
 
 class CastExpr(Node):
     Node expr
-    mtypes.Typ typ
+    mtypes.Type typ
     
-    void __init__(self, Node expr, mtypes.Typ typ):
+    void __init__(self, Node expr, mtypes.Type typ):
         self.expr = expr
         self.typ = typ
     
@@ -800,9 +800,9 @@ class FuncExpr(FuncItem):
 class ListExpr(Node):
     """List literal expression [...] or <type> [...]"""
     Node[] items 
-    mtypes.Typ typ # None if implicit type
+    mtypes.Type typ # None if implicit type
     
-    void __init__(self, Node[] items, mtypes.Typ typ=None):
+    void __init__(self, Node[] items, mtypes.Type typ=None):
         self.items = items
         self.typ = typ
     
@@ -813,8 +813,8 @@ class ListExpr(Node):
 class DictExpr(Node):
     """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
     list<tuple<Node, Node>> items
-    mtypes.Typ key_type    # None if implicit type
-    mtypes.Typ value_type  # None if implicit type
+    mtypes.Type key_type    # None if implicit type
+    mtypes.Type value_type  # None if implicit type
     
     void __init__(self, list<tuple<Node, Node>> items):
         self.items = items
@@ -826,9 +826,9 @@ class DictExpr(Node):
 class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
     Node[] items
-    mtypes.Typ[] types
+    mtypes.Type[] types
     
-    void __init__(self, Node[] items, mtypes.Typ[] types=None):
+    void __init__(self, Node[] items, mtypes.Type[] types=None):
         self.items = items
         self.types = types
     
@@ -892,9 +892,9 @@ class ConditionalExpr(Node):
 
 
 class Annotation(Node):
-    mtypes.Typ typ
+    mtypes.Type typ
     
-    void __init__(self, mtypes.Typ typ, int line=-1):
+    void __init__(self, mtypes.Type typ, int line=-1):
         self.typ = typ
         self.line = line
     
@@ -904,7 +904,7 @@ class Annotation(Node):
 
 class TypeApplication(Node):
     any expr   # Node
-    any types  # mtypes.Typ[]
+    any types  # mtypes.Type[]
     
     def __init__(self, expr, types):
         self.expr = expr
@@ -919,12 +919,12 @@ class CoerceExpr(Node):
     inserted after type checking).
     """
     Node expr
-    mtypes.Typ target_type
-    mtypes.Typ source_type
+    mtypes.Type target_type
+    mtypes.Type source_type
     bool is_wrapper_class
     
-    void __init__(self, Node expr, mtypes.Typ target_type,
-                  mtypes.Typ source_type, bool is_wrapper_class):
+    void __init__(self, Node expr, mtypes.Type target_type,
+                  mtypes.Type source_type, bool is_wrapper_class):
         self.expr = expr
         self.target_type = target_type
         self.source_type = source_type
@@ -936,9 +936,9 @@ class CoerceExpr(Node):
 
 class JavaCast(Node):
     Node expr
-    mtypes.Typ target
+    mtypes.Type target
     
-    void __init__(self, Node expr, mtypes.Typ target):
+    void __init__(self, Node expr, mtypes.Type target):
         self.expr = expr
         self.target = target
     
@@ -951,9 +951,9 @@ class TypeExpr(Node):
     used only for runtime type checking. This node is always generated only
     after type checking.
     """
-    mtypes.Typ typ
+    mtypes.Type typ
     
-    void __init__(self, mtypes.Typ typ):
+    void __init__(self, mtypes.Type typ):
         self.typ = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -965,9 +965,9 @@ class TempNode(Node):
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
-    mtypes.Typ typ
+    mtypes.Type typ
     
-    void __init__(self, mtypes.Typ typ):
+    void __init__(self, mtypes.Type typ):
         self.typ = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -999,12 +999,12 @@ class TypeInfo(Node, AccessorNode, SymNode):
     
     # Type variable bounds (each may be None)
     # TODO implement these
-    mtypes.Typ[] bounds
+    mtypes.Type[] bounds
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
     # TODO comment may not be accurate; also why generics should be special?
-    mtypes.Typ[] bases
+    mtypes.Type[] bases
     
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
                   TypeDef defn):
@@ -1203,10 +1203,10 @@ class SymbolTableNode:
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
-    mtypes.Typ type_override  # If None, fall back to type of node
+    mtypes.Type type_override  # If None, fall back to type of node
     
     void __init__(self, int kind, SymNode node, str mod_id=None,
-                  mtypes.Typ typ=None, int tvar_id=0):
+                  mtypes.Type typ=None, int tvar_id=0):
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -1219,7 +1219,7 @@ class SymbolTableNode:
         else:
             return None
     
-    mtypes.Typ typ(self):
+    mtypes.Type typ(self):
         # IDEA: Get rid of the any type.
         any node = self.node
         if self.type_override is not None:
@@ -1258,7 +1258,7 @@ mtypes.FunctionLike function_type(FuncBase func):
         names = <str> []
         for arg in fdef.args:
             names.append(arg.name())
-        return mtypes.Callable(<mtypes.Typ> [mtypes.Any()] * len(fdef.args),
+        return mtypes.Callable(<mtypes.Type> [mtypes.Any()] * len(fdef.args),
                                fdef.arg_kinds,
                                names,
                                mtypes.Any(),

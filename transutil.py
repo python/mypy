@@ -1,5 +1,5 @@
 from mtypes import (
-    Callable, Typ, Any, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR
+    Callable, Type, Any, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR
 ) 
 from nodes import FuncDef, TypeInfo, NameExpr, LDEF
 import nodes
@@ -10,7 +10,7 @@ from sametypes import is_same_type
 from parse import none
 
 
-Callable prepend_arg_type(Callable t, Typ arg_type):
+Callable prepend_arg_type(Callable t, Type arg_type):
     """Prepend an argument with the given type to a callable type."""
     return Callable([arg_type] + t.arg_types,
                     [nodes.ARG_POS] + t.arg_kinds,
@@ -23,7 +23,7 @@ Callable prepend_arg_type(Callable t, Typ arg_type):
                     t.line, None)
 
 
-Callable add_arg_type_after_self(Callable t, Typ arg_type):
+Callable add_arg_type_after_self(Callable t, Type arg_type):
     """Add an argument with the given type to a callable type after 'self'."""
     return Callable([t.arg_types[0], arg_type] + t.arg_types[1:],
                     [t.arg_kinds[0], nodes.ARG_POS] + t.arg_kinds[1:],
@@ -36,7 +36,7 @@ Callable add_arg_type_after_self(Callable t, Typ arg_type):
                     t.line, None)
 
 
-Callable replace_ret_type(Callable t, Typ ret_type):
+Callable replace_ret_type(Callable t, Type ret_type):
     """Return a copy of a callable type with a different return type."""
     return Callable(t.arg_types,
                     t.arg_kinds,
@@ -49,7 +49,7 @@ Callable replace_ret_type(Callable t, Typ ret_type):
                     t.line, None)
 
 
-Callable replace_self_type(Callable t, Typ self_type):
+Callable replace_self_type(Callable t, Type self_type):
     """Return a copy of a callable type with a different self argument type.
 
     Assume that the callable is the signature of a method.
@@ -70,14 +70,14 @@ Callable dynamic_sig(Callable sig):
 
     Preserve the number and kinds of arguments.
     """
-    return Callable(<Typ> [Any()] * len(sig.arg_types),
+    return Callable(<Type> [Any()] * len(sig.arg_types),
                     sig.arg_kinds,
                     sig.arg_names,
                     Any(),
                     sig.is_type_obj())
 
 
-Typ translate_type_vars_to_wrapper_vars(Typ typ):
+Type translate_type_vars_to_wrapper_vars(Type typ):
     """Translate any instance type variables in a type into wrapper tvars.
     
     (Wrapper tvars are type variables that refer to values stored in a generic
@@ -88,45 +88,45 @@ Typ translate_type_vars_to_wrapper_vars(Typ typ):
 
 class TranslateTypeVarsToWrapperVarsVisitor(TypeTranslator):
     """Visitor that implements TranslateTypeVarsToWrapperVarsVisitor."""
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id > 0:
             return TypeVar(t.name, t.id, True, t.line, t.repr)
         else:
             return t
 
 
-Typ translate_type_vars_to_bound_vars(Typ typ):
+Type translate_type_vars_to_bound_vars(Type typ):
     return typ.accept(TranslateTypeVarsToBoundVarsVisitor())
 
 
 class TranslateTypeVarsToBoundVarsVisitor(TypeTranslator):
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id > 0:
             return TypeVar(t.name, t.id, BOUND_VAR, t.line, t.repr)
         else:
             return t
 
 
-Typ translate_type_vars_to_wrapped_object_vars(Typ typ):
+Type translate_type_vars_to_wrapped_object_vars(Type typ):
     return typ.accept(TranslateTypeVarsToWrappedObjectVarsVisitor())
 
 
 class TranslateTypeVarsToWrappedObjectVarsVisitor(TypeTranslator):
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id > 0:
             return TypeVar(t.name, t.id, OBJECT_VAR, t.line, t.repr)
         else:
             return t
 
 
-Typ translate_function_type_vars_to_dynamic(Typ typ):
+Type translate_function_type_vars_to_dynamic(Type typ):
     """Translate any function type variables in a type into type 'any'."""
     return typ.accept(TranslateFunctionTypeVarsToDynamicVisitor())
 
 
 class TranslateFunctionTypeVarsToDynamicVisitor(TypeTranslator):
     """Visitor that implements TranslateTypeVarsToWrapperVarsVisitor."""
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id < 0:
             return Any()
         else:

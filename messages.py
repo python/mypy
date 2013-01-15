@@ -7,7 +7,7 @@ import re
 
 from errors import Errors
 from mtypes import (
-    Typ, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any, Overloaded
+    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any, Overloaded
 )
 from nodes import TypeInfo, Context
 import checker
@@ -82,7 +82,7 @@ class MessageBuilder:
         if self.disable_count <= 0:
             self.errors.report(context.get_line(), msg.strip())
     
-    str format(self, Typ typ):
+    str format(self, Type typ):
         """Convert a type to a relatively short string that is
         suitable for error messages. Mostly behave like format_simple
         below, but never return an empty string.
@@ -99,7 +99,7 @@ class MessageBuilder:
             # Default case; we simply have to return something meaningful here.
             return 'object'
     
-    str format_simple(self, Typ typ):
+    str format_simple(self, Type typ):
         """Convert simple types to string that is suitable for error messages,
         otherwise return "". Try to keep the length of the result relatively
         short to avoid overly long error messages.
@@ -168,7 +168,7 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
     
-    Typ has_no_member(self, Typ typ, str member, Context context):
+    Type has_no_member(self, Type typ, str member, Context context):
         """Report a missing or non-accessible member.  The type
         argument is the base type. If member corresponds to an
         operator, use the corresponding operator name in the
@@ -211,7 +211,7 @@ class MessageBuilder:
     void unsupported_operand_types(self, str op, any left_type, any right_type,
                                    Context context):
         """Report unsupported operand types for a binary operation.
-        Types can be Typ objects or strings.
+        Types can be Type objects or strings.
         """
         if isinstance(left_type, Void) or isinstance(right_type, Void):
             self.check_void(left_type, context)
@@ -234,7 +234,7 @@ class MessageBuilder:
                                                     op, left_str, right_str)
         self.fail(msg, context)
     
-    void unsupported_left_operand(self, str op, Typ typ, Context context):
+    void unsupported_left_operand(self, str op, Type typ, Context context):
         if not self.check_void(typ, context):
             self.fail('Unsupported left operand type for {} ({})'.format(
                 op, self.format(typ)), context)
@@ -242,11 +242,11 @@ class MessageBuilder:
     void type_expected_as_right_operand_of_is(self, Context context):
         self.fail('Type expected as right operand of "is"', context)
     
-    Typ not_callable(self, Typ typ, Context context):
+    Type not_callable(self, Type typ, Context context):
         self.fail('{} not callable'.format(self.format(typ)), context)
         return Any()
     
-    void incompatible_argument(self, int n, Callable callee, Typ arg_type,
+    void incompatible_argument(self, int n, Callable callee, Type arg_type,
                                Context context):
         """Report an error about an incompatible type arg_type for
         argument n when calling a value with type callee. If the
@@ -299,7 +299,7 @@ class MessageBuilder:
                 n, target, self.format_simple(arg_type))
         self.fail(msg, context)
     
-    void invalid_index_type(self, Typ index_type, str base_str,
+    void invalid_index_type(self, Type index_type, str base_str,
                             Context context):
         self.fail('Invalid index type {} for {}'.format(
             self.format(index_type), base_str), context)
@@ -344,7 +344,7 @@ class MessageBuilder:
         self.fail('{} gets multiple values for keyword argument "{}"'.
                   format(f, callee.arg_names[index]), context)
     
-    void does_not_return_value(self, Typ void_type, Context context):
+    void does_not_return_value(self, Type void_type, Context context):
         """Report an error about a void type in a non-void
         context. The first argument must be a void type. If the void
         type has a source in it, report it in the error message. This
@@ -368,7 +368,7 @@ class MessageBuilder:
         self.fail('Function signature variants {} and {} overlap'.format(
             n1 + 1, n2 + 1), context)
     
-    void invalid_cast(self, Typ target_type, Typ source_type, Context context):
+    void invalid_cast(self, Type target_type, Type source_type, Context context):
         if not self.check_void(source_type, context):
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
@@ -405,7 +405,7 @@ class MessageBuilder:
         self.fail('Return type of "{}" incompatible with supertype "{}"'
                   .format(name, supertype), context)
     
-    void method_expected_as_operator_implementation(self, Typ typ, str member,
+    void method_expected_as_operator_implementation(self, Type typ, str member,
                                                     Context context):
         self.fail('Expected operator method "{}" in {}'.format(
             member, self.format(typ)), context)
@@ -426,7 +426,7 @@ class MessageBuilder:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
     
-    void incompatible_array_item_type(self, Typ typ, int index,
+    void incompatible_array_item_type(self, Type typ, int index,
                                       Context context):
         self.fail('Array item {} has incompatible type {}'.format(
             index, self.format(typ)), context)
@@ -439,10 +439,10 @@ class MessageBuilder:
         else:
             self.fail('Cannot infer function type argument', context)
     
-    void invalid_var_arg(self, Typ typ, Context context):
+    void invalid_var_arg(self, Type typ, Context context):
         self.fail('List or tuple expected as variable arguments', context)
     
-    void invalid_keyword_var_arg(self, Typ typ, Context context):
+    void invalid_keyword_var_arg(self, Type typ, Context context):
         if isinstance(typ, Instance) and (
                 ((Instance)typ).typ.full_name() == 'builtins.dict'):
             self.fail('Keywords must be strings', context)
@@ -458,7 +458,7 @@ class MessageBuilder:
         self.fail('Class "{}" implements interface "{}" more than once'
                   .format(typ.name(), iface.name()), typ)
     
-    Typ not_implemented(self, str msg, Context context):
+    Type not_implemented(self, str msg, Context context):
         self.fail('Feature not implemented yet ({})'.format(msg), context)
         return Any()
     
@@ -470,7 +470,7 @@ class MessageBuilder:
     void undefined_in_superclass(self, str member, Context context):
         self.fail('"{}" undefined in superclass'.format(member), context)
     
-    bool check_void(self, Typ typ, Context context):
+    bool check_void(self, Type typ, Context context):
         """If type is void, report an error such as '.. does not
         return a value' and return True. Otherwise, return False.
         """

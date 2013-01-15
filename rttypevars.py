@@ -5,13 +5,13 @@ in instancse or local variables that contain the runtime values of type
 variables.
 """
 
-from mtypes import Typ, TypeTranslator, TypeVar, RuntimeTypeVar
+from mtypes import Type, TypeTranslator, TypeVar, RuntimeTypeVar
 from nodes import NameExpr, TypeInfo
 from transutil import tvar_arg_name
 from maptypevar import get_tvar_access_expression
 
 
-Typ translate_runtime_type_vars_locally(Typ typ):
+Type translate_runtime_type_vars_locally(Type typ):
     """Replace type variable references in a type with runtime type variables.
 
     The type variable references refer to runtime local variables (__tv* etc.),
@@ -22,12 +22,12 @@ Typ translate_runtime_type_vars_locally(Typ typ):
 
 class TranslateRuntimeTypeVarsLocallyVisitor(TypeTranslator):
     """Reuse most of the implementation by inheriting TypeTranslator."""
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         # FIX function type variables
         return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))
 
 
-Typ translate_runtime_type_vars_in_context(Typ typ, TypeInfo context,
+Type translate_runtime_type_vars_in_context(Type typ, TypeInfo context,
                                            any is_java):
     """Replace type variable types within a type with runtime type variables.
 
@@ -47,7 +47,7 @@ class ContextualRuntimeTypeVarTranslator(TypeTranslator):
         self.context = context
         self.is_java = is_java
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id < 0:
             # Generic function type variable; always in a local variable.
             return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))

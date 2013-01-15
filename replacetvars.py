@@ -1,9 +1,9 @@
 from lex import Token
-from mtypes import Typ, Any, NoneTyp, TypeTranslator, TypeVar
+from mtypes import Type, Any, NoneTyp, TypeTranslator, TypeVar
 from typerepr import AnyRepr
 
 
-Typ replace_type_vars(Typ typ, bool func_tvars=True):
+Type replace_type_vars(Type typ, bool func_tvars=True):
     """Replace type variable references in a type with the any type. If
     func_tvars is false, only replace instance type variables.
     """
@@ -19,7 +19,7 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
     void __init__(self, bool func_tvars):
         self.func_tvars = func_tvars
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id > 0 or self.func_tvars:
             if t.repr is not None:
                 # Give a representation for the dynamic type.
@@ -32,16 +32,16 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
             return t
 
 
-Typ replace_func_type_vars(Typ typ, Typ target_type):
+Type replace_func_type_vars(Type typ, Type target_type):
     """Replace function type variables in a type with the target type."""
     return typ.accept(ReplaceFuncTypeVarsVisitor(target_type))
 
 
 class ReplaceFuncTypeVarsVisitor(TypeTranslator):
-    void __init__(self, Typ target_type):
+    void __init__(self, Type target_type):
         self.target_type = target_type
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id < 0:
             return self.target_type
         else:

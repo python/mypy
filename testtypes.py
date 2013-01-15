@@ -6,7 +6,7 @@ from expandtype import expand_type
 from join import join_types
 from meet import meet_types
 from mtypes import (
-    UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Typ,
+    UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Type,
     Instance, NoneTyp, ErrorType
 )
 from nodes import ARG_POS, ARG_OPT, ARG_STAR

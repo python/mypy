@@ -1,4 +1,4 @@
-from mtypes import Typ, Instance, Any, TupleType, Callable
+from mtypes import Type, Instance, Any, TupleType, Callable
 from nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
 from messages import MessageBuilder
 from subtypes import map_instance_to_supertype
@@ -6,8 +6,8 @@ from expandtype import expand_type_by_instance
 from nodes import method_type
 
 
-Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
-                          bool is_super, Typ tuple_type, MessageBuilder msg,
+Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
+                          bool is_super, Type tuple_type, MessageBuilder msg,
                           TypeInfo override_info=None):
     """Analyse member access.
 
@@ -54,7 +54,7 @@ Typ analyse_member_access(str name, Typ typ, Context node, bool is_lvalue,
         return msg.has_no_member(typ, name, node)
 
 
-Typ analyse_member_var_access(str name, Instance itype, TypeInfo info,
+Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
                               Context node, bool is_lvalue, bool is_super,
                               MessageBuilder msg):
     """Analyse member access that does not target a method.

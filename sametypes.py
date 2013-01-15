@@ -1,10 +1,10 @@
 from mtypes import (
-    Typ, UnboundType, ErrorType, Any, NoneTyp, Void, TupleType, Callable,
+    Type, UnboundType, ErrorType, Any, NoneTyp, Void, TupleType, Callable,
     TypeVar, Instance, TypeVisitor, ErasedType
 )
 
 
-bool is_same_type(Typ left, Typ right):
+bool is_same_type(Type left, Type right):
     """Is 'left' the same type as 'right'?"""
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
@@ -14,7 +14,7 @@ bool is_same_type(Typ left, Typ right):
         return left.accept(SameTypeVisitor(right))
 
 
-bool is_same_types(Typ[] a1, Typ[] a2):
+bool is_same_types(Type[] a1, Type[] a2):
     if len(a1) != len(a2):
         return False
     for i in range(len(a1)):
@@ -25,7 +25,7 @@ bool is_same_types(Typ[] a1, Typ[] a2):
 
 class SameTypeVisitor(TypeVisitor<bool>):
     """Visitor for checking whether two types are the 'same' type."""
-    void __init__(self, Typ right):
+    void __init__(self, Type right):
         self.right = right
     
     # visit_x(left) means: is left (which is an instance of X) the same type as

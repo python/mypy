@@ -3,7 +3,7 @@
 import nodes
 
 
-class Typ(nodes.Context):
+class Type(nodes.Context):
     """Abstract base class for all types."""
     int line
     any repr
@@ -22,12 +22,12 @@ class Typ(nodes.Context):
         return self.accept(TypeStrVisitor())
 
 
-class UnboundType(Typ):
+class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
     str name
-    Typ[] args
+    Type[] args
     
-    void __init__(self, str name, Typ[] args=None, int line=-1,
+    void __init__(self, str name, Type[] args=None, int line=-1,
                   any repr=None):
         if not args:
             args = []
@@ -39,7 +39,7 @@ class UnboundType(Typ):
         return visitor.visit_unbound_type(self)
 
 
-class ErrorType(Typ):
+class ErrorType(Type):
     """The error type is only used as a result of join and meet
     operations, when the result is undefined.
     """
@@ -47,13 +47,13 @@ class ErrorType(Typ):
         return visitor.visit_error_type(self)
 
 
-class Any(Typ):
+class Any(Type):
     """The type "any"."""
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_any(self)
 
 
-class Void(Typ):
+class Void(Type):
     """The return type 'void'. This can only be used as the return type in a
     callable type and as the result type of calling such callable.
     """
@@ -70,7 +70,7 @@ class Void(Typ):
         return Void(source, self.line, self.repr)
 
 
-class NoneTyp(Typ):
+class NoneTyp(Type):
     """The type of 'None'. This is only used internally during type
     inference.  Programs cannot declare a variable of this type, and
     the type checker refuses to infer this type for a
@@ -87,7 +87,7 @@ class NoneTyp(Typ):
         return visitor.visit_none_type(self)
 
 
-class ErasedType(Typ):
+class ErasedType(Type):
     """Placeholder for an erased type.
 
     This is used during type inference. This has the special property that
@@ -98,14 +98,14 @@ class ErasedType(Typ):
         return visitor.visit_erased_type(self)
 
 
-class Instance(Typ):
+class Instance(Type):
     """An instance type of form C<T1, ..., Tn>. Type variables Tn may
     be empty"""
     nodes.TypeInfo typ
-    Typ[] args
+    Type[] args
     bool erased      # True if result of type variable substitution
     
-    void __init__(self, nodes.TypeInfo typ, Typ[] args, int line=-1,
+    void __init__(self, nodes.TypeInfo typ, Type[] args, int line=-1,
                   any repr=None, any erased=False):
         self.typ = typ
         self.args = args
@@ -120,7 +120,7 @@ BOUND_VAR = 2
 OBJECT_VAR = 3
 
 
-class TypeVar(Typ):
+class TypeVar(Type):
     """A type variable type. This refers to either a class type variable
     (id > 0) or a function type variable (id < 0).
     """
@@ -146,7 +146,7 @@ class TypeVar(Typ):
         return visitor.visit_type_var(self)
 
 
-class FunctionLike(Typ):
+class FunctionLike(Type):
     """Abstract base class for function types (Callable and
     OverloadedCallable)."""
     bool is_type_obj(self):
@@ -155,18 +155,18 @@ class FunctionLike(Typ):
     Callable[] items(self): # Abstract
         pass
     
-    Typ with_name(self, str name): # Abstract
+    Type with_name(self, str name): # Abstract
         pass
 
 
 class Callable(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
-    Typ[] arg_types # Types of function arguments
+    Type[] arg_types # Types of function arguments
     int[] arg_kinds # nodes.ARG_ constants
     str[] arg_names # None if not a keyword argument
     int minargs         # Minimum number of arguments
     bool is_var_arg     # Is it a varargs function?
-    Typ ret_type        # Return value type
+    Type ret_type        # Return value type
     str name            # Name (may be None; for error messages)
     TypeVars variables  # Type variables for a generic function
     
@@ -182,14 +182,14 @@ class Callable(FunctionLike):
     # (absolute value this time).
     #
     # Stored as tuples (id, type).
-    tuple<int, Typ>[] bound_vars
+    tuple<int, Type>[] bound_vars
     
     bool _is_type_obj # Does this represent a type object?
     
-    void __init__(self, Typ[] arg_types, int[] arg_kinds, str[] arg_names,
-                  Typ ret_type, bool is_type_obj, str name=None,
+    void __init__(self, Type[] arg_types, int[] arg_kinds, str[] arg_names,
+                  Type ret_type, bool is_type_obj, str name=None,
                   TypeVars variables=None,
-                  tuple<int, Typ>[] bound_vars=None,
+                  tuple<int, Type>[] bound_vars=None,
                   int line=-1, any repr=None):
         if not variables:
             variables = TypeVars([])
@@ -281,11 +281,11 @@ class Overloaded(FunctionLike):
         return visitor.visit_overloaded(self)
 
 
-class TupleType(Typ):
+class TupleType(Type):
     """The tuple type tuple<T1, ..., Tn> (at least one type argument)."""
-    Typ[] items
+    Type[] items
     
-    void __init__(self, Typ[] items, int line=-1, any repr=None):
+    void __init__(self, Type[] items, int line=-1, any repr=None):
         self.items = items
         super().__init__(line, repr)
     
@@ -324,11 +324,11 @@ class TypeVarDef(nodes.Context):
     """
     str name
     int id
-    Typ bound  # May be None
+    Type bound  # May be None
     int line
     any repr
     
-    void __init__(self, str name, int id, Typ bound=None, int line=-1,
+    void __init__(self, str name, int id, Type bound=None, int line=-1,
                   any repr=None):
         self.name = name
         self.id = id
@@ -346,7 +346,7 @@ class TypeVarDef(nodes.Context):
             return '{} is {}'.format(self.name, self.bound)
 
 
-class RuntimeTypeVar(Typ):
+class RuntimeTypeVar(Type):
     """Reference to a runtime variable that represents the value of a type
     variable. The reference can must be a expression node, but only some
     node types are properly supported (NameExpr, MemberExpr and IndexExpr
@@ -368,7 +368,7 @@ class RuntimeTypeVar(Typ):
 
 
 class TypeVisitor<T>:
-    """Visitor class for types (Typ subclasses). The parameter T is the return
+    """Visitor class for types (Type subclasses). The parameter T is the return
     type of the visit methods.
     """
     T visit_unbound_type(self, UnboundType t):
@@ -408,35 +408,35 @@ class TypeVisitor<T>:
         pass
 
 
-class TypeTranslator(TypeVisitor<Typ>):
+class TypeTranslator(TypeVisitor<Type>):
     """Identity type transformation. Subclass this and override some methods to
     implement a non-trivial transformation.
     """
-    Typ visit_unbound_type(self, UnboundType t):
+    Type visit_unbound_type(self, UnboundType t):
         return t
     
-    Typ visit_error_type(self, ErrorType t):
+    Type visit_error_type(self, ErrorType t):
         return t
     
-    Typ visit_any(self, Any t):
+    Type visit_any(self, Any t):
         return t
     
-    Typ visit_void(self, Void t):
+    Type visit_void(self, Void t):
         return t
     
-    Typ visit_none_type(self, NoneTyp t):
+    Type visit_none_type(self, NoneTyp t):
         return t
     
-    Typ visit_erased_type(self, ErasedType t):
+    Type visit_erased_type(self, ErasedType t):
         return t
     
-    Typ visit_instance(self, Instance t):
+    Type visit_instance(self, Instance t):
         return Instance(t.typ, self.translate_types(t.args), t.line, t.repr)
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         return t
     
-    Typ visit_callable(self, Callable t):
+    Type visit_callable(self, Callable t):
         return Callable(self.translate_types(t.arg_types),
                         t.arg_kinds,
                         t.arg_names,
@@ -447,18 +447,18 @@ class TypeTranslator(TypeVisitor<Typ>):
                         self.translate_bound_vars(t.bound_vars),
                         t.line, t.repr)
     
-    Typ visit_tuple_type(self, TupleType t):
+    Type visit_tuple_type(self, TupleType t):
         return TupleType(self.translate_types(t.items), t.line, t.repr)
     
-    Typ[] translate_types(self, Typ[] types):
-        Typ[] a = []
+    Type[] translate_types(self, Type[] types):
+        Type[] a = []
         for t in types:
             a.append(t.accept(self))
         return a
     
-    list<tuple<int, Typ>> translate_bound_vars(self,
-                                               list<tuple<int, Typ>> types):
-        list<tuple<int, Typ>> a = []
+    list<tuple<int, Type>> translate_bound_vars(self,
+                                               list<tuple<int, Type>> types):
+        list<tuple<int, Type>> a = []
         for id, t in types:
             a.append((id, t.accept(self)))
         return a
@@ -580,7 +580,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         """
         res = []
         for t in a:
-            if isinstance(t, Typ):
+            if isinstance(t, Type):
                 res.append(t.accept(self))
             else:
                 res.append(str(t))
@@ -644,7 +644,7 @@ class TypeQuery(TypeVisitor<bool>):
     
     # Perform a query for a list of types. Use the strategy constant to combine
     # the results.
-    bool query_types(self, Typ[] types):
+    bool query_types(self, Type[] types):
         if types == []:
             # Use default result for empty list.
             return self.default

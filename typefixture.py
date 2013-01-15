@@ -1,6 +1,6 @@
 """Fixture used in type-related test cases.
 
-It contains class and interface objects and Typ objects.
+It contains class and interface objects and Type objects.
 """
 
 from mtypes import (

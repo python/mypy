@@ -22,7 +22,7 @@ from nodes import (
 import nodes
 import noderepr
 from errors import Errors, CompileError
-from mtypes import Void, Typ, TypeVars, Callable, Any, UnboundType
+from mtypes import Void, Type, TypeVars, Callable, Any, UnboundType
 from parsetype import (parse_type, parse_type_variables, parse_type_args,
                        TypeParseError)
 
@@ -403,7 +403,7 @@ class Parser:
                                       assigns, asterisk))
     
     Annotation build_func_annotation(self, Annotation ret_type,
-                                     Typ[] arg_types, int[] kinds,
+                                     Type[] arg_types, int[] kinds,
                                      str[] names, TypeVars type_vars,
                                      int line, bool is_default_ret=False):
         # Are there any type annotations?
@@ -411,7 +411,7 @@ class Parser:
                 or arg_types != [None] * len(arg_types)
                 or type_vars.items):
             # Yes. Construct a type for the function signature.
-            Typ ret = None
+            Type ret = None
             if ret_type is not None:
                 ret = ret_type.typ
             typ = self.construct_function_type(arg_types, kinds, names,
@@ -423,7 +423,7 @@ class Parser:
             return None
     
     tuple<Var[], Node[], int[], bool, Token[], Token[], Token[], Token[], \
-                     Typ[]> parse_arg_list(self):
+                     Type[]> parse_arg_list(self):
         """Parse function definition argument list.
 
         This includes everything between '(' and ')').
@@ -437,7 +437,7 @@ class Parser:
         names = <str> []
         init = <Node> []
         has_inits = False
-        arg_types = <Typ> []        
+        arg_types = <Type> []        
         
         arg_names = <Token> []
         commas = <Token> []
@@ -448,7 +448,7 @@ class Parser:
         
         if self.current_str() != ')' and self.current_str() != ':':
             while self.current_str() != ')':
-                Typ arg_type = None
+                Type arg_type = None
                 if self.is_at_sig_type():
                     arg_type = self.parse_type().typ
                 arg_types.append(arg_type)
@@ -512,8 +512,8 @@ class Parser:
                 self.fail('Invalid argument list', line)
             found.add(kind)
     
-    Callable construct_function_type(self, Typ[] arg_types, int[] kinds,
-                                     str[] names, Typ ret_type,
+    Callable construct_function_type(self, Type[] arg_types, int[] kinds,
+                                     str[] names, Type ret_type,
                                      TypeVars type_vars, int line):
         # Complete the type annotation by replacing omitted types with
         # dynamic/void.
@@ -528,7 +528,7 @@ class Parser:
     
     # Parsing statements
     
-    VarDef parse_var_def(self, Typ typ):
+    VarDef parse_var_def(self, Type typ):
         """Parse variable definition with explicit types."""
         n = self.parse_var_list(typ)
         Node init = None
@@ -544,7 +544,7 @@ class Parser:
         self.set_repr(node, noderepr.VarDefRepr(assign_token, br))
         return node
     
-    tuple<Var, Typ>[] parse_var_list(self, Typ first_type):
+    tuple<Var, Type>[] parse_var_list(self, Type first_type):
         """Parse a comma-separated list of variable names, potentially
         prefixed by type declarations.
         """
@@ -555,7 +555,7 @@ class Parser:
             tok = self.expect(',')
             r[-1] = noderepr.VarRepr(r[-1].name, tok)
             
-            Typ t = None
+            Type t = None
             if self.is_at_type():
                 t = self.parse_type().typ
             tok = self.expect_type(Name)
@@ -1507,7 +1507,7 @@ class Parser:
         except TypeParseError as e:
             self.parse_error_at(e.token)
     
-    tuple<Typ[], Token, \
+    tuple<Type[], Token, \
           Token, Token[]> parse_type_list_in_angle_brackets(self):
         types, langle, rangle, commas, i = parse_type_args(self.tok, self.ind)
         self.ind = i
@@ -1604,7 +1604,7 @@ class Parser:
     # Type annotation related functionality
     
     Annotation parse_type(self):
-        Typ typ
+        Type typ
         line = self.current().line
         try:
             typ, self.ind = parse_type(self.tok, self.ind)
