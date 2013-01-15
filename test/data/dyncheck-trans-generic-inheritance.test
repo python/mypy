@@ -135,7 +135,7 @@ class B**(A**):
                      {A<self.__o.__tv> {A<self.__btv> b}})
 ...
 
-[case testGenericInheritanceWithIdenticalTypeVars2-skip]
+[case testGenericInheritanceWithIdenticalTypeVars2]
 # Multiple type variables
 class A<T, S>:
     void f(self, T a, A<S, T> b):
@@ -145,19 +145,18 @@ class B<T, S>(A<T, S>):
         pass
 [out]
 ...
-class B<T, S> is A<T, S>
+class B(A):
 ...
-  def f`B(a as T, b as A<S, T>)
-  end
-  def f(a as dynamic, b as A)
-    f`B(a, b)
-  end
-  def f*(a as dynamic, b as dynamic) as dynamic
-    f`B({self.__tv <= any | a}, {A<self.__tv2, self.__tv> <= any | b})
-  end
+    void f`B(B self, any* a, A b):
+        pass
+    void f(A self, any a, A b):
+        {B<self.__tv, self.__tv2> self}.f`B(a, b)
+    any f*(any self, any a, any b):
+        {B<self.__tv, self.__tv2> self}.f`B({self.__tv a}, \
+                                            {A<self.__tv2, self.__tv> b})
 ...
 
-[case testGenericInheritanceWithDifferentSig-skip]
+[case testGenericInheritanceWithDifferentSig]
 # Override with dynamic
 class A<T>:
     T f(self, T a, A<T> b, int i):
@@ -167,16 +166,13 @@ class B<S>(A<S>):
         return None
 [out]
 ...
-class B<S> is A<S>
-  def f`B(a as dynamic, b as dynamic, i as dynamic) as dynamic
-    return nil
-  end
-  def f(a as dynamic, b as A, i as Int) as dynamic
-    return {self.__tv <= any | f`B(a, b, {any <= int | i})}
-  end
-  def f*(a as dynamic, b as dynamic, i as dynamic) as dynamic
-    return f`B(a, b, i)
-  end
+class B(A):
+    any f`B(B self, any a, any b, any i):
+        return None
+    any f(A self, any a, A b, int i):
+        return {self.__tv {B<self.__tv> self}.f`B(a, b, {any <= int i})}
+    any f*(any self, any a, any b, any i):
+        return {B<self.__tv> self}.f`B(a, b, i)
 ...
 
 
@@ -184,7 +180,7 @@ class B<S> is A<S>
 -- ----------------------------------------------------------------
 
 
-[case testGenericClassInheritsGenericsClassAndOverrides-skip]
+[case testGenericClassInheritsGenericsClassAndOverrides]
 class A<S, T>:
     void f(self, S s, T t):
         pass
@@ -194,18 +190,16 @@ class B<S>(A<C, S>):
 class C: pass
 [out]
 ...
-class B<S> is A<C, S>
-  def f`B(s as C, t as S)
-  end
-  def f(s as dynamic, t as dynamic)
-    f`B(s, t)
-  end
-  def f*(s as dynamic, t as dynamic) as dynamic
-    f`B({C <= any | s}, {self.__tv2 <= any | t})
-  end
+class B(A):
+    void f`B(B self, C s, any* t):
+        pass
+    void f(A self, any s, any t):
+        {B<self.__tv2> self}.f`B(s, t)
+    any f*(any self, any s, any t):
+        {B<self.__tv2> self}.f`B({C s}, {self.__tv2 t})
 ...
 
-[case testNonGenericClassInheritsGenericClass-skip]
+[case testNonGenericClassInheritsGenericClass]
 class A<T>:
     void f(self, T t):
         pass
@@ -214,16 +208,14 @@ class B(A<int>):
         self.f(d)
 [out]
 ...
-class B is A<Int>
-  def g(d as dynamic)
-    f({int <= any | d})
-  end
-  def g*(d as dynamic) as dynamic
-    g(d)
-  end
+class B(A):
+    void g(B self, any d):
+        self.f({int d})
+    any g*(any self, any d):
+        {B self}.g(d)
 ...
 
-[case testGenericInheritanceAndCoercionsWithArgShuffling-skip]
+[case testGenericInheritanceAndCoercionsWithArgShuffling]
 class A<T, S>:
     void f(self, T t, S s):
         pass
@@ -235,30 +227,26 @@ class B<X, Y>(A<Y, X>):
         self.g(d, d)
 [out]
 ...
-class B<X, Y> is A<Y, X>
-  def g(x as X, y as Y)
-  end
-  def g*(x as dynamic, y as dynamic) as dynamic
-    g({self.__tv2 <= any | x}, {self.__tv <= any | y})
-  end
-  def h(d as dynamic)
-    f({self.__tv <= any | d}, {self.__tv2 <= any | d})
-    g({self.__tv2 <= any | d}, {self.__tv <= any | d})
-  end
+class B(A):
+    void g(B self, any* x, any* y):
+        pass
+    any g*(any self, any x, any y):
+        {B<self.__tv2, self.__tv> self}.g({self.__tv2 x}, {self.__tv y})
+    void h(B self, any d):
+        self.f({self.__tv d}, {self.__tv2 d})
+        self.g({self.__tv2 d}, {self.__tv d})
 ...
-class B* is A*
+class B**(A**):
 ...
-  def g(x as dynamic, y as dynamic)
-    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= any | x}}, \
-               {self.__o.__tv <= self.__btv | {self.__btv <= any | y}})
-  end
-  def g*(x as dynamic, y as dynamic) as dynamic
-    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= any | x}}, \
-               {self.__o.__tv <= self.__btv | {self.__btv <= any | y}})
-  end
+    void g(B self, any x, any y):
+        self.__o.g({self.__o.__tv2 {self.__btv2 x}}, \
+                   {self.__o.__tv {self.__btv y}})
+    any g*(any self, any x, any y):
+        self.__o.g({self.__o.__tv2 {self.__btv2 x}}, \
+                   {self.__o.__tv {self.__btv y}})
 ...
 
-[case testGenericInheritanceAndCoercionsWithNestedArg-skip]
+[case testGenericInheritanceAndCoercionsWithNestedArg]
 class A<T>:
     void f(self, T t):
         pass
@@ -267,29 +255,22 @@ class B<S>(A<A<S>>):
         pass
 [out]
 ...
-class B<S> is A<A<S>>
-  def f`B(s as A<S>)
-  end
-  def f(t as dynamic)
-    f`B(t)
-  end
-  def f*(s as dynamic) as dynamic
-    f`B({A<self.__tv.args[0]> <= any | s})
-  end
+class B(A):
+    void f`B(B self, A s):
+        pass
+    void f(A self, any t):
+        {B<self.__tv.args[0]> self}.f`B(t)
+    any f*(any self, any s):
+        {B<self.__tv.args[0]> self}.f`B({A<self.__tv.args[0]> s})
 ...
-class B* is A*
+class B**(A**):
 ...
-  def f`B(s as A)
-    self.__o.f`B({A<self.__o.__tv.args[0]> <= A<self.__btv.args[0]> | \
-                   {A<self.__btv.args[0]> <= A<dyn> | s}})
-  end
-  def f*(s as dynamic) as dynamic
-    self.__o.f`B({A<self.__o.__tv.args[0]> <= A<self.__btv.args[0]> | \
-                    {A<self.__btv.args[0]> <= any | s}})
-  end
-end
+    void f`B(B self, A s):
+        self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
+    any f*(any self, any s):
+        self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
 
-[case testGenericInheritanceWithNestedArgs2-skip]
+[case testGenericInheritanceWithNestedArgs2]
 # More complex path to subtype type variable
 class A<T>: pass
 class B<T>(A<C<X, A<T>>>):
@@ -299,14 +280,13 @@ class C<S, T>: pass
 class X: pass
 [out]
 ...
-class B<T> is A<C<X, A<T>>>
+class B(A):
 ...
-  def f(a as T, d as dynamic)
-    a = {self.__tv.args[1].args[0] <= any | d}
-  end
+    void f(B self, any* a, any d):
+        a = {self.__tv.args[1].args[0] d}
 ...
 
-[case testGenericInheritanceMultipleLevels-skip]
+[case testGenericInheritanceMultipleLevels]
 # Two levels of inheritance
 class A<T>:
     void f(self, T t):
@@ -318,12 +298,11 @@ class C<T>(B):
         t = d
 [out]
 ...
-class C<T> is B
+class C(B):
 ...
-  def g(t as T, d as dynamic)
-    f({int <= any | d})
-    t = {self.__tv2 <= any | d}
-  end
+    void g(C self, any* t, any d):
+        self.f({int d})
+        t = {self.__tv2 d}
 ...
 
 
@@ -598,7 +577,7 @@ class B* is A*
 -- ------------------------------------
 
 
-[case testGenericInheritanceAndCallToSuperclassInit-skip]
+[case testGenericInheritanceAndCallToSuperclassInit]
 # Non-generic class inherits a generic class
 class A<T>:
     void __init__(self, C n):
@@ -611,12 +590,11 @@ class B(A<int>):
         super().__init__(C())
 [out]
 ...
-class B is A<Int>
-  def create() as void
-    self.__tv = <int>
-    super.create(<int>, C())
-  end
-end
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        super().__init__(<int>, C())
+...
 
 [case testGenericInheritanceAndCallToSuperclassInit2-skip]
 # Non-generic class inherits a generic class
