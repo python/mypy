@@ -350,7 +350,7 @@ class B(A):
         super().__init__(<int>, o)
 ...
 
-[case testInheritingGenericClassWithNonDefaultConstructor2-skip]
+[case testInheritingGenericClassWithNonDefaultConstructor2]
 # Two arguments, one with tvar type
 class A<T>:
     void __init__(self, T t, object o):
@@ -358,27 +358,25 @@ class A<T>:
 class B(A<int>): pass
 [out]
 ...
-class B is A<Int>
-  def create(t as Int, o as Object)
-    self.__tv = <int>
-    super.create(<int>, t, o)
-  end
-end
+class B(A):
+    void __init__(B self, int t, object o):
+        self.__tv! = <int>
+        super().__init__(<int>, t, o)
+...
 
-[case testInheritingGenericClassFromNonGenericWithDefaultConstructor-skip]
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor]
 class A: pass
 class B<T>(A): pass
 [out]
 ...
-class B<T> is A
-  var __tv as dynamic
-  def create(__tv as dynamic)
-    self.__tv = <__tv>
-    super.create()
-  end
+class B(A):
+    any __tv
+    void __init__(B self, any __tv):
+        self.__tv! = <__tv>
+        super().__init__()
 ...
 
-[case testInheritingGenericClassFromNonGenericWithDefaultConstructor2-skip]
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor2]
 # Superclass defines a non-trivial constructor; two tvars
 class A:
     void __init__(self, int n):
@@ -386,57 +384,53 @@ class A:
 class B<T, S>(A): pass
 [out]
 ...
-class B<T, S> is A
-  var __tv as dynamic
-  var __tv2 as dynamic
-  def create(__tv as dynamic, __tv2 as dynamic, n as Int)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv2>
-    super.create(n)
-  end
+class B(A):
+    any __tv
+    any __tv2
+    void __init__(B self, any __tv, any __tv2, int n):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        super().__init__(n)
 ...
 
-[case testInheritingGenericClassFromGenericWithDefaultConstructor-skip]
+[case testInheritingGenericClassFromGenericWithDefaultConstructor]
 class A<T, S>: pass
 class B<U>(A<int, C<U>>): pass
 class C<T>: pass
 [out]
 ...
-class B<U> is A<Int, C<U>>
-  def create(__tv as dynamic)
-    self.__tv = <int>
-    self.__tv2 = <C<__tv>>
-    super.create(<int>, <C<__tv>>)
-  end
+class B(A):
+    void __init__(B self, any __tv):
+        self.__tv! = <int>
+        self.__tv2! = <C<__tv>>
+        super().__init__(<int>, <C<self.__tv2.args[0]>>)
 ...
 
-[case testInitWrapperWithDeepHierarchy-skip]
+[case testInitWrapperWithDeepHierarchy]
 class A<T>: pass
 class B(A<int>): pass
 class C<T>(B): pass
 [out]
 ...
-class C<T> is B
-  var __tv2 as dynamic
-  def create(__tv as dynamic)
-    self.__tv = <int>
-    self.__tv2 = <__tv>
-    super.create()
-  end
+class C(B):
+    any __tv2
+    void __init__(C self, any __tv):
+        self.__tv! = <int>
+        self.__tv2! = <__tv>
+        super().__init__()
 ...
 
-[case testInitWrapperWithDeepHierarchy2-skip]
+[case testInitWrapperWithDeepHierarchy2]
 class A: pass
 class B(A): pass
 class C<T>(B): pass
 [out]
 ...
-class C<T> is B
-  var __tv as dynamic
-  def create(__tv as dynamic)
-    self.__tv = <__tv>
-    super.create()
-  end
+class C(B):
+    any __tv
+    void __init__(C self, any __tv):
+        self.__tv! = <__tv>
+        super().__init__()
 ...
 
 [case testInitWrapperWithDefaultInitializer-skip]
@@ -460,18 +454,18 @@ class B<T> is A
 -- 2. Define new constructor in subclass
 
 
-[case testInitWithGenericInheritance-skip]
+[case testInitWithGenericInheritance]
 class A<T, U>: pass
 class B<S>(A<int, S>):
     void __init__(self, int n):
         pass
 [out]
 ...
-class B<S> is A<Int, S>
-  def create(__tv as dynamic, n as Int)
-    self.__tv = <int>
-    self.__tv2 = <__tv>
-  end
+class B(A):
+    void __init__(B self, any __tv, int n):
+        self.__tv! = <int>
+        self.__tv2! = <__tv>
+        pass
 ...
 
 
@@ -479,21 +473,21 @@ class B<S> is A<Int, S>
 -- ---------------------------------------------------
 
 
-[case testInitInWrapperClassWithGenericInheritance-skip]
+[case testInitInWrapperClassWithGenericInheritance]
 # Generic class inherits another generic class
 class A<T, S>: pass
 class B<U>(A<int, C<U>>): pass
 class C<T>: pass
 [out]
 ...
-class B* is A*
-  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, __btv as dynamic, __btv2 as dynamic)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv2>
-    self.__btv = <__btv>
-    self.__btv2 = <__btv2>
-    self.__o = __o
-  end
+class B**(A**):
+    void __init__(any self, any __o, any __tv, any __tv2, \
+                  any __btv, any __btv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__o! = __o
 ...
 
 [case testInitInWrapperClassWithInheritance2-skip]
@@ -540,17 +534,17 @@ end
 -- ------------------------------------------------------------
 
 
-[case testTvarDefinitionsWithGenericInheritance-skip]
+[case testTvarDefinitionsWithGenericInheritance]
 # Generic class inherits generic class; no new type variables
 class A<T>: pass
 class B<T>(A<T>): pass
 [out]
 ...
-class B<T> is A<T>
-  def create(__tv as dynamic)
+class B(A):
+    void __init__(B self, any __tv):
 ...
-class B* is A*
-  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
+class B**(A**):
+    void __init__(any self, any __o, any __tv, any __btv):
 ...
 
 [case testTvarDefinitionsWithGenericInheritance-skip]
@@ -603,14 +597,11 @@ class B(A<int>):
         super().__init__()
 [out]
 ...
-class B is A<Int>
-  def create() as void
-    self.__tv = <int>
--- FIX should be    super.create(<int>)
-    super.create()
-  end
-end
-
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        super().__init__(<int>)
+...
 
 [case testGenericInheritanceAndCallToSuperclassInit-skip]
 # Generic class inherits a generic class
@@ -646,15 +637,14 @@ class B(A<int>):
         pass
 [out]
 ...
-class B is A<Int>
-  def f`B(t as dynamic) as dynamic
-  end
-  def f(t as dynamic) as dynamic
-    return {int <= any | f`B({any <= int | t})}
-  end
-  def f*(t as dynamic) as dynamic
-    return f`B(t)
-  end
+class B(A):
+    any f`B(B self, any t):
+        pass
+    any f(A self, any t):
+-- TODO not sure about the coercions...
+        return {any <= int {int {B self}.f`B({any <= int t})}}
+    any f*(any self, any t):
+        return {B self}.f`B(t)
 ...
 
 [case testMixedGenericInheritance2-skip]
@@ -693,10 +683,10 @@ end
 -- ------------------------------------------------------------------
 
 
--- Example: class C<T>(D<T, T>) ...
+-- Example: class C<t>(D<t, t>): ...
 
 
-[case testAmbiguousTvarMappingAndGenericInheritance-skip]
+[case testAmbiguousTvarMappingAndGenericInheritance]
 class D<T, S>:
     S f(self):
         pass
@@ -705,37 +695,76 @@ class C<T>(D<T, T>):
         pass
 [out]
 ...
-class C<T> is D<T, T>
+class C(D):
 ...
-  def create(__tv as dynamic)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv>
-    super.create(<__tv>, <__tv>)
-  end
-end
-class C* is D*
-  def create(__o as dynamic, __tv as dynamic, __tv2 as dynamic, \
-                                      __btv as dynamic, __btv2 as dynamic)
-    self.__tv = <__tv>
-    self.__tv2 = <__tv2>
-    self.__btv = <__btv>
-    self.__btv2 = <__btv2>
-    self.__o = __o
-  end
-  def f`C() as dynamic
-    return {self.__tv <= self.__btv | {self.__btv <= self.__o.__tv | self.__o.f`C()}}
-  end
-  def f*() as dynamic
-    return {self.__btv <= self.__o.__tv | self.__o.f`C()}
-  end
-end
+    void __init__(C self, any __tv):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv>
+        super().__init__(<self.__tv>, <self.__tv>)
+...
+class C**(D**):
+    void __init__(any self, any __o, any __tv, any __tv2, \
+                  any __btv, any __btv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__o! = __o
+    any f`C(C self):
+        return {self.__tv {self.__btv self.__o.f`C()}}
+    any f*(any self):
+        return {self.__btv self.__o.f`C()}
 
 
 -- Generic inheritance + member variables
 -- --------------------------------------
 
 
-[case testMemberVarsAndGenericInheritance-skip]
+[case testMemberVarsAndGenericClass]
+class A<T>:
+    T x
+    void f(self, any a):
+        self.x = a
+        a = self.x
+[out]
+class A:
+    any __tv
+    any* x
+    any* $x(A self):
+        return self.x!
+    void set$x(A self, any* x):
+        self.x! = x
+    any $x*(A self):
+        return self.x!
+    void set$x*(A self, any x):
+        self.x! = {self.__tv x}
+    void f(A self, any a):
+        self.x = {self.__tv a}
+        a = self.x
+...
+class A**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+    any* $x(A self):
+        return {self.__tv {self.__btv self.__o.$x()}}
+    any $x*(any self):
+        return {self.__btv self.__o.$x()}
+    void set$x(A self, any* x):
+        self.__o.set$x({self.__o.__tv {self.__btv x}})
+    any set$x*(any self, any x):
+        self.__o.set$x({self.__o.__tv {self.__btv x}})
+    void f(A self, any a):
+        self.__o.f(a)
+    any f*(any self, any a):
+        self.__o.f(a)
+...
+
+[case testMemberVarsAndGenericInheritance]
 class A<T>:
     T x
     void f(self, any a):
@@ -746,37 +775,20 @@ class B<T>(A<C<T>>):
     void g(self, any a):
         self.y = a
         a = self.y
-
 class C<T>: pass
 [out]
-class A<T>
-  var __tv as dynamic
-  private var x as T
-  def f(a as dynamic)
-    x = {self.__tv <= any | a}
-    a = x
-  end
 ...
-class A*
-  var __o as dynamic
-  var __tv as dynamic
-  var __btv as dynamic
-  def create(__o as dynamic, __tv as dynamic, __btv as dynamic)
-    self.__tv = <__tv>
-    self.__btv = <__btv>
-    self.__o = __o
-  end
-  def f(a as dynamic)
-    self.__o.f(a)
-  end
-  def f*(a as dynamic) as dynamic
-    self.__o.f(a)
-  end
-end
-class B<T> is A<C<T>>
-  private var y as T
-  def g(a as dynamic)
-    y = {self.__tv.args[0] <= any | a}
-    a = y
-  end
+class B(A):
+    any* y
+    any* $y(B self):
+        return self.y!
+    void set$y(B self, any* y):
+        self.y! = y
+    any $y*(B self):
+        return self.y!
+    void set$y*(B self, any y):
+        self.y! = {self.__tv.args[0] y}
+    void g(B self, any a):
+        self.y = {self.__tv.args[0] a}
+        a = self.y
 ...
