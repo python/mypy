@@ -339,12 +339,11 @@ class A<T>: pass
 class B(A<int>): pass
 [out]
 ...
-class B is A<Int>
-  def create()
-    self.__tv = <int>
-    super.create(<int>)
-  end
-end
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        super().__init__(<int>)
+...
 
 [case testInheritingGenericClassWithDefaultConstructor2-skip]
 # Two type arguments
