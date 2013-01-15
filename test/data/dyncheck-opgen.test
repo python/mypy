@@ -22,19 +22,18 @@ def __InitTypeMap()
 end
 
 [case testNonGenericClass]
-class A
-end
+class A: pass
 [out]
 def __InitSlotMap()
   __SlotMap = std::Map(
     (A, A) : __ATypeToASlots,
-    (Object, A) : __ObjectTypeToASlots,
+    (object, A) : __objectTypeToASlots,
   )
 end
 def __ATypeToASlots(t)
   return []
 end
-def __ObjectTypeToASlots(t)
+def __objectTypeToASlots(t)
   return []
 end
 def __InitTypeMap()
@@ -53,21 +52,20 @@ def __AValueToTypeB(v)
 end
 
 [case testSimpleGenericClass]
-class A<T>
-end
+class A<T>: pass
 [out]
 def __InitSlotMap()
   __SlotMap = std::Map(
     (A, A) : __ATypeToASlots,
     (A, A___dyn) : __ATypeToASlots,
-    (Object, A) : __ObjectTypeToASlots,
-    (Object, A___dyn) : __ObjectTypeToASlots,
+    (object, A) : __objectTypeToASlots,
+    (object, A___dyn) : __objectTypeToASlots,
   )
 end
 def __ATypeToASlots(t)
   return [t.args[0]]
 end
-def __ObjectTypeToASlots(t)
+def __objectTypeToASlots(t)
   return [__Dyn]
 end
 def __InitTypeMap()
@@ -88,18 +86,16 @@ def __AValueToTypeB(v)
 end
 
 [case testGenericInheritance]
-class A<T>
-end
-class B<T, S> is A<A<S>>
-end
+class A<T>: pass
+class B<T, S>(A<A<S>>): pass
 [out]
 ...
     (B, B) : __BTypeToBSlots,
     (B, B___dyn) : __BTypeToBSlots,
     (A, B) : __ATypeToBSlots,
     (A, B___dyn) : __ATypeToBSlots,
-    (Object, B) : __ObjectTypeToBSlots,
-    (Object, B___dyn) : __ObjectTypeToBSlots,
+    (object, B) : __objectTypeToBSlots,
+    (object, B___dyn) : __objectTypeToBSlots,
 ...
 def __BTypeToBSlots(t)
   return [__Gen(A, [t.args[1]]), t.args[0]]
@@ -107,7 +103,7 @@ end
 def __ATypeToBSlots(t)
   return [t.args[0], __Dyn]
 end
-def __ObjectTypeToBSlots(t)
+def __objectTypeToBSlots(t)
   return [__Dyn, __Dyn]
 end
 ...

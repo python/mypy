@@ -27,9 +27,9 @@ Typ[] compile_slot_mapping(TypeInfo typ):
         
         # Map self type to the superclass -> extract tvar with target index
         # (only contains subclass tvars?? PROBABLY NOT).
-        self_type = self_type(typ)
-        self_type = map_instance_to_supertype(self_type, origin)
-        tvar = self_type.args[tv - 1]
+        selftype = self_type(typ)
+        selftype = map_instance_to_supertype(selftype, origin)
+        tvar = selftype.args[tv - 1]
         
         # tvar is the representation of the slot in terms of type arguments.
         exprs.append(tvar)

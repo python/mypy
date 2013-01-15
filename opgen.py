@@ -1,5 +1,5 @@
-from nodes import MypyFile, TypeDef
-from mtypes import Instance, TypeVar, BOUND_VAR
+from nodes import MypyFile, TypeDef, TypeInfo
+from mtypes import Instance, TypeVar, BOUND_VAR, Typ
 import transform
 from maptypevar import num_slots, get_tvar_access_path
 from compileslotmap import compile_slot_mapping
@@ -21,35 +21,36 @@ str generate_slot_map(MypyFile f):
     for d in f.defs:
         if isinstance(d, TypeDef):
             td = (TypeDef)d
-            if td.info is not None:
+            if td.info:
                 add_slot_map_data(map, ops, td.info)
     map.append('  )')
     map.append('end')
     return '\n'.join(map) + '\n' + '\n'.join(ops)
 
 
-def add_slot_map_data(map, ops, typ):
+void add_slot_map_data(str[] map, str[] ops, TypeInfo typ):
     base = typ
-    while base is not None:
+    while base:
         add_slot_map_support_for_type_pair(map, ops, base, typ)
         base = base.base
 
 
-def add_slot_map_support_for_type_pair(map, ops, base, typ):
-    op = '__{}TypeTo{}Slots'.format(base.name, typ.name)
-    map.append('    ({}, {}) : {},'.format(base.name, typ.name, op))
-    if typ.is_generic:
-        map.append('    ({}, {}) : {},'.format(base.name, typ.name +
+void add_slot_map_support_for_type_pair(str[] map, str[] ops, TypeInfo base,
+                                        TypeInfo typ):
+    op = '__{}TypeTo{}Slots'.format(base.name(), typ.name())
+    map.append('    ({}, {}) : {},'.format(base.name(), typ.name(), op))
+    if typ.is_generic():
+        map.append('    ({}, {}) : {},'.format(base.name(), typ.name() +
                                                dynamic_suffix(False),
                                                op))
     generate_slot_map_op(ops, op, base, typ)
 
 
-def generate_slot_map_op(ops, op, base, typ):
+void generate_slot_map_op(str[] ops, str op, TypeInfo base, TypeInfo typ):
     ops.append('def {}(t)'.format(op))
     nslots = num_slots(typ)
     slots = compile_slot_mapping(base)
-    a = []
+    a = <str> []
     for t in slots:
         a.append(transform_type_to_runtime_repr(t))
     for i in range(len(slots), nslots):
@@ -58,17 +59,19 @@ def generate_slot_map_op(ops, op, base, typ):
     ops.append('end')
 
 
-def transform_type_to_runtime_repr(t):
+str transform_type_to_runtime_repr(Typ t):
     if isinstance(t, Instance):
-        if t.args == []:
-            return t.typ.name
+        inst = (Instance)t
+        if inst.args == []:
+            return inst.typ.name()
         else:
-            args = []
-            for a in t.args:
+            args = <str> []
+            for a in inst.args:
                 args.append(transform_type_to_runtime_repr(a))
-            return '__Gen({}, [{}])'.format(t.typ.name, ', '.join(args))
+            return '__Gen({}, [{}])'.format(inst.typ.name(), ', '.join(args))
     elif isinstance(t, TypeVar):
-        return 't.args[{}]'.format(t.id - 1)
+        tv = (TypeVar)t
+        return 't.args[{}]'.format(tv.id - 1)
     else:
         raise TypeError('{} not supported'.format(t))
 
@@ -93,17 +96,19 @@ str generate_type_map(MypyFile f):
     return '\n'.join(map) + '\n' + '\n'.join(ops)
 
 
-def add_type_map_support_for_type(map, ops, typ, alt, suffix):
-    op = '__{}ValueToType{}'.format(typ.name, suffix)
-    map.append('    {} : {},'.format(typ.name, op))
-    if typ.is_generic:
-        map.append('    {} : {},'.format(typ.name + dynamic_suffix(False), op))
+void add_type_map_support_for_type(str[] map, str[] ops, TypeInfo typ, alt,
+                                   str suffix):
+    op = '__{}ValueToType{}'.format(typ.name(), suffix)
+    map.append('    {} : {},'.format(typ.name(), op))
+    if typ.is_generic():
+        map.append('    {} : {},'.format(typ.name() + dynamic_suffix(False),
+                                         op))
     generate_type_map_op(ops, op, typ, alt)
 
 
-def generate_type_map_op(ops, op, typ, alt):
+void generate_type_map_op(str[] ops, str op, typ, alt):
     ops.append('def {}(v)'.format(op))
-    a = []
+    a = <str> []
     for i in range(len(typ.type_vars)):
         p = get_tvar_access_path(typ, i + 1)
         expr = 'v.' + tvar_slot_name(p[0] - 1, alt)

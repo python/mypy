@@ -1,7 +1,8 @@
 import os.path
+import sys
 
 from build import build
-from myunit import Suite
+from myunit import Suite, run_test
 from testconfig import test_data_prefix, test_temp_dir
 from testhelpers import assert_string_arrays_equal_wildcards
 from testdata import parse_test_cases
@@ -64,3 +65,7 @@ def test_op_gen(testcase):
         expected, a,
         'Invalid source code output ({}, line {})'.format(testcase.file,
                                                           testcase.line))
+
+    
+if __name__ == '__main__':
+    run_test(DyncheckOpGenSuite(), sys.argv[1:])
