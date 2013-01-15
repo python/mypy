@@ -564,17 +564,15 @@ class A**:
 -- ---------------------------
 
 
---[case testCallGenericTypeInDynamicallyTypedFunction]
---def f()
---  A()
---end
---class A<T>
---end
---[out]
---def f()
---  A() as <dynamic>
---end
---...
+[case testCallGenericTypeInDynamicallyTypedFunction]
+def f():
+    A()
+class A<T>:
+    pass
+[out]
+any f():
+    A(<any>)
+...
 
 
 -- Misc test cases
