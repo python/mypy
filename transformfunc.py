@@ -1,3 +1,5 @@
+"""Transform functions for runtime type checking."""
+
 from nodes import (
     FuncDef, Annotation, Var, Node, Block, TypeInfo, NameExpr, MemberExpr,
     CallExpr, ReturnStmt, ExpressionStmt, TypeExpr, function_type, VarDef
