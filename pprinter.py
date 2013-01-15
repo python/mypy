@@ -38,7 +38,8 @@ class PrettyPrintVisitor(NodeVisitor):
             b = <str> []
             for bt in tdef.base_types:
                 if ((Instance)bt).typ.full_name() != 'builtins.object':
-                    b.append(str(bt))
+                    typestr = bt.accept(TypeErasedPrettyPrintVisitor())
+                    b.append(typestr)
             if b:
                 self.string('({})'.format(', '.join(b)))
         self.string(':\n')

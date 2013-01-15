@@ -108,7 +108,7 @@ class A:
         return {any <= int {A self}.f({float a})}
 any A*():
     return A()
-class B(__main__.A):
+class B(A):
     any f`B(B self, any a):
         pass
     int f(A self, float a):
@@ -132,7 +132,7 @@ class A:
     any f*(any self, any a):
         return {A self}.f(a)
 ...
-class B(__main__.A):
+class B(A):
     int f`B(B self, A a):
         pass
     any f(A self, any a):
@@ -155,7 +155,7 @@ class A:
     any f*(any self, any a):
         return {A self}.f({A a})
 ...
-class B(__main__.A):
+class B(A):
     A g(B self, B b):
         pass
     any g*(any self, any b):
@@ -172,10 +172,10 @@ class C(B):
         pass
 [out]
 ...
-class B(__main__.A):
+class B(A):
     pass
 ...
-class C(__main__.B):
+class C(B):
     any f`C(C self, any a):
         pass
     B f(A self, int a):
@@ -196,7 +196,7 @@ class C(B):
         pass
 [out]
 ...
-class B(__main__.A):
+class B(A):
     float f`B(B self, any a):
         pass
     float f(A self, int a):
@@ -204,7 +204,7 @@ class B(__main__.A):
     any f*(any self, any a):
         return {any <= float {B self}.f`B(a)}
 ...
-class C(__main__.B):
+class C(B):
     any f`C(C self, int a):
         pass
     float f`B(B self, any a):
@@ -222,7 +222,7 @@ class B(A):
         return None
 [out]
 ...
-class B(__main__.A):
+class B(A):
     B f(B self, A a):
         return None
 any B*():
@@ -237,7 +237,7 @@ class B(A):
         return None
 [out]
 ...
-class B(__main__.A):
+class B(A):
     any f(B self, any a):
         return None
 any B*():
@@ -255,7 +255,7 @@ class C(B):
         self.f(a)
 [out]
 ...
-class B(__main__.A):
+class B(A):
     void f`B(B self, any a):
         self.f`B(a)
     void f(A self, int a):
@@ -263,7 +263,7 @@ class B(__main__.A):
     any f*(any self, any a):
         {B self}.f`B(a)
 ...
-class C(__main__.B):
+class C(B):
     void f`B(C self, any a):
         self.f`B(a)
 any C*():
@@ -673,7 +673,7 @@ class A:
         {A self}.f(b)
 any A*():
     return A()
-class B(__main__.A):
+class B(A):
     void f`B(B self, B b):
         pass
     void f(A self, any b):
@@ -1047,7 +1047,7 @@ class B(A):
         pass
 [out]
 ...
-class B(__main__.A):
+class B(A):
     any f(any self, any a):
         pass
     any g`B(any self, any a):
