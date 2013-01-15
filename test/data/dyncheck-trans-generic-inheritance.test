@@ -107,7 +107,7 @@ class B(A):
 -- ----------------------------------------------------------------
 
 
-[case testGenericInheritanceWithIdenticalTypeVars-skip]
+[case testGenericInheritanceWithIdenticalTypeVars]
 # Single type variable
 class A<T>:
     void f(self, T a, A<T> b):
@@ -117,27 +117,23 @@ class B<S>(A<S>):
         pass
 [out]
 ...
-class B<S> is A<S>
-  def f`B(a as S, b as A<S>)
-  end
-  def f(a as dynamic, b as A)
-    f`B(a, b)
-  end
-  def f*(a as dynamic, b as dynamic) as dynamic
-    f`B({self.__tv <= any | a}, {A<self.__tv> <= any | b})
-  end
+class B(A):
+    void f`B(B self, any* a, A b):
+        pass
+    void f(A self, any a, A b):
+        {B<self.__tv> self}.f`B(a, b)
+    any f*(any self, any a, any b):
+        {B<self.__tv> self}.f`B({self.__tv a}, {A<self.__tv> b})
 ...
-end
-class B* is A*
+class B**(A**):
 ...
-  def f`B(a as dynamic, b as A)
-    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= any | a}}, \
-          {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= A<dyn> | b}})
-  end
-  def f*(a as dynamic, b as dynamic) as dynamic
-    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= any | a}}, {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= any | b}})
-  end
-end
+    void f`B(B self, any a, A b):
+        self.__o.f`B({self.__o.__tv {self.__btv a}}, \
+                     {A<self.__o.__tv> {A<self.__btv> b}})
+    any f*(any self, any a, any b):
+        self.__o.f`B({self.__o.__tv {self.__btv a}}, \
+                     {A<self.__o.__tv> {A<self.__btv> b}})
+...
 
 [case testGenericInheritanceWithIdenticalTypeVars2-skip]
 # Multiple type variables

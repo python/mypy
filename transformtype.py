@@ -6,7 +6,7 @@ from nodes import (
 import nodes
 from semanal import self_type
 from mtypes import (
-    Callable, Instance, Typ, Any, BOUND_VAR, Void, RuntimeTypeVar
+    Callable, Instance, Typ, Any, BOUND_VAR, Void, RuntimeTypeVar, UnboundType
 )
 from checkmember import analyse_member_access
 from checkexpr import type_object_type
@@ -382,7 +382,9 @@ class TypeTransformer:
         if has_proper_superclass:
             base = self.find_generic_base_class(tdef.info)
             if base:
-                base_type = None # TODO base.defn.name + tf.dynamicSuffix())
+                # TODO bind the type somewhere
+                base_type = UnboundType(base.defn.name +
+                                        self.tf.wrapper_class_suffix())
         
         # Build the type definition.
         wrapper = TypeDef(tdef.name + self.tf.wrapper_class_suffix(),

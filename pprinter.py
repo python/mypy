@@ -3,7 +3,7 @@ from nodes import (
     Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr
 )
 from visitor import NodeVisitor
-from mtypes import Void, TypeVisitor, Callable, Instance, Typ
+from mtypes import Void, TypeVisitor, Callable, Instance, Typ, UnboundType
 from maptypevar import num_slots
 from transutil import tvar_arg_name
 import coerce
@@ -37,7 +37,11 @@ class PrettyPrintVisitor(NodeVisitor):
         if tdef.base_types:
             b = <str> []
             for bt in tdef.base_types:
-                if ((Instance)bt).typ.full_name() != 'builtins.object':
+                if not bt:
+                    continue
+                elif isinstance(bt, UnboundType):
+                    b.append(((UnboundType)bt).name)
+                elif ((Instance)bt).typ.full_name() != 'builtins.object':
                     typestr = bt.accept(TypeErasedPrettyPrintVisitor())
                     b.append(typestr)
             if b:
