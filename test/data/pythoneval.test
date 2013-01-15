@@ -1,0 +1,154 @@
+-- Test cases for running mypy programs with the Python back end.
+--
+-- These are mostly regression tests.
+
+
+[case testHello]
+print('hello, world')
+[out]
+hello, world
+
+[case testCheckTypesOfSpecialInterfaces]
+import re
+
+def check(o, t):
+    rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
+    print(rep, t, isinstance(o, t))
+
+def f():
+    check('x', Sized)
+    check([1], Sequence)
+    check({1:3}, Sequence)
+    check(iter('x'), Iterator)
+    check('x', Iterable)
+    check({}, Mapping)
+    check(set([1]), Set)
+
+f()
+[out]
+'x' <class '_abcoll.Sized'> True
+[1] <class '_abcoll.Sequence'> True
+{1: 3} <class '_abcoll.Sequence'> False
+<str_iterator object at 0x...> <class '_abcoll.Iterator'> True
+'x' <class '_abcoll.Iterable'> True
+{} <class '_abcoll.Mapping'> True
+{1} <class '_abcoll.Set'> True
+
+[case testSpecialInterfaceAsBase]
+class A(Sized):
+    def __len__(self): return 5
+print(len(A()))
+[out]
+5
+
+[case testSpecialInterfaceInOverload]
+class A(Sized):
+    def __len__(self): return 5
+class B:
+    def __len__(self): return 6
+void f(Sized s): print('sized')
+void f(s): print('other')
+f('x')
+f(A())
+f(1)
+f(B())  # Python: implicit base class Sized
+[out]
+sized
+sized
+other
+sized
+
+[case testOverloadUsingMatchAndPattern]
+import re
+
+void f(re.Match x): print('match')
+void f(any x): print('something else')
+
+f(1)
+f(re.match('x', 'x'))
+
+void g(re.Pattern x): print('pattern')
+void g(any x): print('something else')
+
+g(1)
+g(re.compile(''))
+[out]
+something else
+match
+something else
+pattern
+
+[case testReversed]
+class A(reversed_t):
+    def __reversed__(self): return iter('foo')
+
+print(list(reversed(range(5))))
+print(list(reversed([1,2,3])))
+print(list(reversed('abc')))
+print(list(reversed(A())))
+[out]
+-- Duplicate [ at line beginning.
+[[4, 3, 2, 1, 0]
+[[3, 2, 1]
+[['c', 'b', 'a']
+[['f', 'o', 'o']
+
+[case testIntAndFloatConversion]
+class A(int_t):
+    def __int__(self): return 5
+
+class B(float_t):
+    def __float__(self): return 1.2
+
+print(int(1))
+print(int(6.2))
+print(int('3'))
+print(int(b'4'))
+print(int(A()))
+print(float(-9))
+print(float(B()))
+[out]
+1
+6
+3
+4
+5
+-9.0
+1.2
+
+[case testAbs]
+class A(abs_t<float>):
+    float __abs__(self): return 5.5
+    
+print(abs(-1))
+print(abs(-1.2))
+print(abs<float>(A())) # TODO fix type inference
+[out]
+1
+1.2
+5.5
+
+[case testRound]
+class A(round_t):
+    def __round__(self, ndigits=0): return 'x%d' % ndigits
+
+print(round(1.6))
+print(round(A()))
+print(round(A(), 2))
+[out]
+2
+x0
+x2
+
+[case testOverloadUsingIntT]
+void f(int_t i): print('int_t')
+void f(i): print('other')
+f(1.2)
+f(3)
+f('x')
+f([2])
+[out]
+int_t
+int_t
+other
+other

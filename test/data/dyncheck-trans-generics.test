@@ -1,0 +1,633 @@
+-- Test cases for runtime (dynamic) checking transformation.
+--
+-- Each test case consists of at least two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the
+-- transformation.
+
+-- Note that the test cases use a pretty-printed output syntax that is not
+-- valid Alore code.
+
+
+-- Generics basics
+-- ---------------
+
+
+[case testSimplestGenericClass]
+class C<T>: pass
+[out]
+class C:
+    any __tv
+    void __init__(C self, any __tv):
+        self.__tv! = <__tv>
+any C*():
+    return C(<any>)
+class C**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+
+[case testSimpleGenericClass]
+class C<T>:
+    T o
+    void __init__(self, T o):
+        self.o = o
+    T get(self):
+        return self.o
+    int num(self):
+        return 1
+[out]
+class C:
+    any __tv
+    any* o
+    any* $o(C self):
+        return self.o!
+    void set$o(C self, any* o):
+        self.o! = o
+    any $o*(C self):
+        return self.o!
+    void set$o*(C self, any o):
+        self.o! = {self.__tv o}
+    void __init__(C self, any __tv, any* o):
+        self.__tv! = <__tv>
+        self.o = o
+    any* get(C self):
+        return self.o
+    any get*(any self):
+        return {C<self.__tv> self}.get()
+    int num(C self):
+        return 1
+    any num*(any self):
+        return {any <= int {C<self.__tv> self}.num()}
+any C*(any o):
+    return C(<any>, o)
+class C**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+    any* $o(C self):
+        return {self.__tv {self.__btv self.__o.$o()}}
+    any $o*(any self):
+        return {self.__btv self.__o.$o()}
+    void set$o(C self, any* o):
+        self.__o.set$o({self.__o.__tv {self.__btv o}})
+    any set$o*(any self, any o):
+        self.__o.set$o({self.__o.__tv {self.__btv o}})
+    any get(C self):
+        return {self.__tv {self.__btv self.__o.get()}}
+    any get*(any self):
+        return {self.__btv self.__o.get()}
+    int num(C self):
+        return self.__o.num()
+    any num*(any self):
+        return {any <= int self.__o.num()}
+
+[case testGenericMethodWithArguments]
+class C<T>:
+    void f(self, A a, T t):
+        pass
+class A: pass
+[out]
+class C:
+    any __tv
+    void f(C self, A a, any* t):
+        pass
+    any f*(any self, any a, any t):
+        {C<self.__tv> self}.f({A a}, {self.__tv t})
+...
+class C**:
+...
+    void f(C self, A a, any t):
+        self.__o.f(a, {self.__o.__tv {self.__btv t}})
+    any f*(any self, any a, any t):
+        self.__o.f({A a}, {self.__o.__tv {self.__btv t}})
+...
+
+[case testAccessingGenericClassMethodInTypedContext]
+class A: pass
+class B: pass
+class C<T>:
+    void __init__(self):
+        pass
+    void f(self, A a):
+        pass
+C<B> c
+c.f((any)A())
+[out]
+...
+C c
+c.f({A (any)A()})
+
+[case testAccessingMethodInGenericClassAndTypedContextViaSelf]
+class A: pass
+class C<T>:
+    void f(self, A a):
+        self.f(a)
+[out]
+...
+    void f(C self, A a):
+        self.f(a)
+...
+
+[case testConstructingGenericInstance]
+class C<T>:
+    void __init__(self):
+        pass
+class A: pass
+C<A> a = C<A>()
+C<any> d = C<any>()
+[out]
+...
+class A:
+...
+C a = C(<A>)
+C d = C(<any>)
+
+[case testConstructingGenericInstanceWithGenericArg]
+class C<T>:
+    void __init__(self):
+        pass
+class A: pass
+C<C<A>> a = C<C<A>>()
+[out]
+...
+class A:
+...
+C a = C(<C<A>>)
+
+[case testCastFromAnyToGenericType]
+class A<T>:
+    T a
+    void __init__(self, T a):
+        self.a = a
+    T f(self):
+        return self.a
+class B: pass
+class C: pass
+any d = A<any>(B())
+B b
+b = d.f()
+A<C> aa = d
+aa.f()             # Failure at runtime
+[out]
+...
+any d = A(<any>, B())
+B b
+b = {B d.f*()}
+A aa = {A<C> d}
+aa.f()
+
+[case testCastWithDynamicAndTypedArguments]
+class A<T>: pass
+class B: pass
+A<B> a
+A<any> d
+a = d
+d = a
+[out]
+...
+A d
+a = {A<B> d}
+d = {A<any> a}
+
+[case testNestedGenerics]
+class A<T>:
+    void f(self):
+        pass
+class B: pass
+A<A<B>> a
+A<any> d
+d = a
+a = d
+a.f()
+d.f()
+[out]
+...
+A d
+d = {A<any> a}
+a = {A<A<B>> d}
+a.f()
+d.f()
+
+[case testGenericWrapperWithNonGenericTypesInSignatures]
+class A<T>:
+    A<B> f(self, B b, A<B> ab):
+        pass
+    B g(self):
+        pass
+class B: pass
+[out]
+...
+class A**:
+...
+    any f*(any self, any b, any ab):
+        return self.__o.f({B b}, {A<B> ab})
+...
+    any g*(any self):
+        return self.__o.g()
+...
+
+
+-- Multiple type arguments
+-- -----------------------
+
+
+[case testSimplestClassWithTwoTypeArguments]
+class A<T, S>: pass
+[out]
+class A:
+    any __tv
+    any __tv2
+    void __init__(A self, any __tv, any __tv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+any A*():
+    return A(<any>, <any>)
+class A**:
+    any __o
+    any __tv
+    any __tv2
+    any __btv
+    any __btv2
+    void __init__(any self, any __o, any __tv, any __tv2, any __btv, any __btv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__o! = __o
+
+[case testConstructingInstanceWithTwoTypeArguments]
+class A<T, S>: pass
+A<int, float> a
+a = A<int, float>()
+[out]
+...
+A a
+a = A(<int>, <float>)
+
+[case testCallingEmptyMethodWithTwoTypeArguments]
+class A<T, S>:
+    void f(self):
+        pass
+class B: pass
+class C: pass
+
+A<B, C> a
+a.f()
+[out]
+...
+    any f*(any self):
+        {A<self.__tv, self.__tv2> self}.f()
+...
+class A**:
+...
+    void f(A self):
+        self.__o.f()
+    any f*(any self):
+        self.__o.f()
+...
+A a
+a.f()
+
+[case testAccessingMultipleTypeArguments]
+class A<T, S>:
+    T x
+    T f(self, S y):
+        return self.x
+[out]
+...
+class A**:
+...
+    any f(A self, any y):
+        return {self.__tv {self.__btv self.__o.f(\
+                                    {self.__o.__tv2 {self.__btv2 y}})}}
+    any f*(any self, any y):
+        return {self.__btv self.__o.f({self.__o.__tv2 {self.__btv2 y}})}
+...
+
+[case testAccessingGenericMethodInTypedContextViaSelfAndMultipleArgs]
+class A: pass
+class B: pass
+class C<T, S>:
+    void f(self, A a):
+        self.f(a)
+[out]
+...
+    void f(C self, A a):
+        self.f(a)
+...
+
+
+-- Coercions involving type variables
+-- ----------------------------------
+
+
+-- NOTE: Some of the wrapper test cases above also coerce to/from type
+--       variables.
+
+
+[case testSimpleTypeVarCoercionWithMultipleTypeVariables]
+class A<T, S>:
+    T t
+    S s
+    void f(self):
+        any d
+        d = self.t
+        self.t = d
+        self.s = d
+[out]
+...
+    void f(A self):
+        any d
+        d = self.t
+        self.t = {self.__tv d}
+        self.s = {self.__tv2 d}
+...
+
+[case testTypeVarCoercionsWithGenericTypes]
+class A<T>:
+    A<T> a
+    void f(self):
+        any d
+        d = self.a
+        self.a = d
+[out]
+...
+    void f(A self):
+        any d
+        d = self.a
+        self.a = {A<self.__tv> d}
+...
+
+[case testConstructGenericInstanceBasedOnTypeVar]
+class A<T>:
+    void f(self):
+        a = A<T>()
+        any d
+        a = d
+[out]
+...
+    void f(A self):
+        a = A(<self.__tv>)
+        any d
+        a = {A<self.__tv> d}
+...
+
+
+-- Type erasure
+-- ------------
+
+
+[case testTypeErasureOfFunctionSignatures]
+class A<T>: pass
+class B:
+    void m(self, A<B> a):
+        pass
+A<B> f():
+    pass
+[out]
+...
+class B:
+    void m(B self, A a):
+        pass
+    any m*(any self, any a):
+        {B self}.m({A<B> a})
+any B*():
+    return B()
+A f():
+    pass
+
+
+-- Generic functions
+-- -----------------
+
+
+[case testSimpleGenericFunction]
+T f<T>(T x):
+    return x
+[out]
+any* f(any __ftv, any* x):
+    return x
+
+[case testGenericFunctionWithTwoTvars]
+T f<T, S>(T x):
+    return x
+[out]
+any* f(any __ftv, any __ftv2, any* x):
+    return x
+
+[case testCallingSimpleGenericFunction]
+T f<T>(T x):
+    return x
+void g():
+    C c = C()
+    c = f<C>(c)
+    any d = c
+    d = f<C>(d)
+    c = f<any>(c)
+
+class C: pass
+class D: pass
+[out]
+...
+void g():
+    C c = C()
+    c = f(<C>, c)
+    any d = c
+    d = f(<C>, {C d})
+    c = {C f(<any>, c)}
+...
+
+[case testTypeVarReferenceInGenericFunction]
+C<T> f<T>(any x):
+    a = C<T>()
+    f<T>(x)
+    return x
+
+class C<T>: pass
+[out]
+C f(any __ftv, any x):
+    a = C(<__ftv>)
+    f(<__ftv>, x)
+    return {C<__ftv> x}
+...
+
+
+-- Generic methods
+-- ---------------
+
+
+[case testSimpleGenericMethod]
+class A:
+    T f<T>(self, T x):
+        return x
+[out]
+class A:
+    any* f(A self, any __ftv, any* x):
+        return x
+    any f*(any self, any x):
+        return {A self}.f(<any>, x)
+...
+
+[case testGenericMethodInGenericClass]
+class A<T>:
+    S f<S>(self, S x):
+        return x
+[out]
+class A:
+    any __tv
+    any* f(A self, any __ftv, any* x):
+        return x
+    any f*(any self, any x):
+        return {A<self.__tv> self}.f(<any>, x)
+    void __init__(A self, any __tv):
+        self.__tv! = <__tv>
+any A*():
+    return A(<any>)
+class A**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+    any f(any __ftv, A self, any x):
+        return self.__o.f(<__ftv>, x)
+    any f*(any self, any x):
+        return self.__o.f(<any>, x)
+
+[case testCalllingGenericMethod]
+class A:
+    T f<T>(self):
+        pass
+    C g(self):
+        return self.f<C>()
+C c = A().f<C>()
+class C: pass
+[out]
+...
+    C g(A self):
+        return self.f(<C>)
+...
+C c = A().f(<C>)
+...
+
+[case testCalllingGenericMethod2]
+class A<S>:
+    T f<T>(self):
+        pass
+    S g(self):
+        return self.f<S>()
+C c = (A<D>()).f<C>()
+class C: pass
+class D: pass
+[out]
+...
+    any* g(A self):
+        return self.f(<self.__tv>)
+...
+C c = (A(<D>)).f(<C>)
+...
+
+[case testAccessingGenericMethodTvars]
+class A<S>:
+    C<T, U, S> f<T, U>(self):
+        return C<T, U, S>()
+class C<T, S, U>: pass
+[out]
+...
+    C f(A self, any __ftv, any __ftv2):
+        return C(<__ftv>, <__ftv2>, <self.__tv>)
+    any f*(any self):
+        return {A<self.__tv> self}.f(<any>, <any>)
+...
+class A**:
+...
+    C f(any __ftv, any __ftv2, A self):
+        return {C<__ftv, __ftv2, self.__tv> {C<__ftv, __ftv2, self.__btv> \
+                                               self.__o.f(<__ftv>, <__ftv2>)}}
+    any f*(any self):
+        return {C<any, any, self.__btv> self.__o.f(<any>, <any>)}
+...
+
+
+-- Dynamically typed functions
+-- ---------------------------
+
+
+[case testCallGenericTypeInDynamicallyTypedFunction]
+def f():
+    A()
+class A<T>:
+    pass
+[out]
+any f():
+    A(<any>)
+...
+
+
+-- Misc test cases
+-- ---------------
+
+
+[case testPairExample]
+# This test case is adapted from an early example program.
+class P<H, T>:
+    H head
+    T tail
+    Name name
+    void __init__(self, H head, T tail, Name name):
+        self.head = head
+        self.tail = tail
+        self.name = name
+    P<H, T> set_head(self, H new_head, Name new_name):
+        return P<H, T>(new_head, self.tail, new_name)
+class Name: pass
+[out]
+class P:
+...
+    P set_head(P self, any* new_head, Name new_name):
+        return P(<self.__tv>, <self.__tv2>, new_head, self.tail, new_name)
+    any set_head*(any self, any new_head, any new_name):
+        return {P<self.__tv, self.__tv2> self}.set_head(\
+                                  {self.__tv new_head}, {Name new_name})
+any P*(any head, any tail, any name):
+    return P(<any>, <any>, head, tail, {Name name})
+class P**:
+...
+    P set_head(P self, any new_head, Name new_name):
+        return {P<self.__tv, self.__tv2> \
+                 {P<self.__btv, self.__btv2> self.__o.set_head(\
+                         {self.__o.__tv {self.__btv new_head}}, new_name)}}
+    any set_head*(any self, any new_head, any new_name):
+        return {P<self.__btv, self.__btv2> self.__o.set_head(\
+                       {self.__o.__tv {self.__btv new_head}}, {Name new_name})}
+class Name:
+    pass
+...
+
+[case testImplicitMethodSigInGenericClass]
+class A<T>:
+    def f(self, a):
+        pass
+    void g(self):
+        int i = self.f(1)
+        int j = self.f(1)
+[out]
+...
+class A**:
+...
+    any f(any self, any a):
+        return self.__o.f(a)
+    any f*(any self, any a):
+        return self.__o.f(a)
+...

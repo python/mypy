@@ -1,12 +1,20 @@
+"""Calculation of the least upper bound types (joins)."""
+
 import checker
 from mtypes import (
-    Typ, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
+    Type, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
     TypeVar, Callable, TupleType, ErasedType
 )
 from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
-Typ join_types(Typ s, Typ t, checker.BasicTypes basic):
+Type join_types(Type s, Type t, checker.BasicTypes basic):
+    """Return the least upper bound of s and t.
+
+    For example, the join of 'int' and 'object' is 'object'.
+
+    If the join does not exist, return an ErrorType instance.
+    """
     if isinstance(s, Any):
         return s
     
@@ -15,74 +23,76 @@ Typ join_types(Typ s, Typ t, checker.BasicTypes basic):
 
     if isinstance(s, ErasedType):
         return t
-    
+
+    # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s, basic))
 
 
-class TypeJoinVisitor(TypeVisitor<Typ>):
-    void __init__(self, Typ s, checker.BasicTypes basic):
+class TypeJoinVisitor(TypeVisitor<Type>):
+    """Implementation of the least upper bound algorithm."""
+    void __init__(self, Type s, checker.BasicTypes basic):
         self.s = s
         self.basic = basic
         self.object = basic.object
     
-    Typ visit_unbound_type(self, UnboundType t):
+    Type visit_unbound_type(self, UnboundType t):
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
         else:
             return Any()
     
-    Typ visit_error_type(self, ErrorType t):
+    Type visit_error_type(self, ErrorType t):
         return t
     
-    Typ visit_any(self, Any t):
+    Type visit_any(self, Any t):
         return t
     
-    Typ visit_void(self, Void t):
+    Type visit_void(self, Void t):
         if isinstance(self.s, Void):
             return t
         else:
             return ErrorType()
     
-    Typ visit_none_type(self, NoneTyp t):
+    Type visit_none_type(self, NoneTyp t):
         if not isinstance(self.s, Void):
             return self.s
         else:
             return self.default(self.s)
     
-    Typ visit_erased_type(self, ErasedType t):
+    Type visit_erased_type(self, ErasedType t):
         return self.s
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if isinstance(self.s, TypeVar) and ((TypeVar)self.s).id == t.id:
             return self.s
         else:
             return self.default(self.s)
     
-    Typ visit_instance(self, Instance t):
+    Type visit_instance(self, Instance t):
         if isinstance(self.s, Instance):
             return join_instances(t, (Instance)self.s, True, self.basic)
-        elif t.typ == self.basic.std_type.typ and is_subtype(self.s, t):
+        elif t.type == self.basic.std_type.type and is_subtype(self.s, t):
             return t
         else:
             return self.default(self.s)
     
-    Typ visit_callable(self, Callable t):
+    Type visit_callable(self, Callable t):
         if isinstance(self.s, Callable) and is_similar_callables(
                                                     t, (Callable)self.s):
             return combine_similar_callables(t, (Callable)self.s, self.basic)
         elif t.is_type_obj() and is_subtype(self.s, self.basic.std_type):
             return self.basic.std_type
         elif (isinstance(self.s, Instance) and
-                  ((Instance)self.s).typ == self.basic.std_type.typ and
+                  ((Instance)self.s).type == self.basic.std_type.type and
                   t.is_type_obj()):
             return self.basic.std_type
         else:
             return self.default(self.s)
     
-    Typ visit_tuple_type(self, TupleType t):
+    Type visit_tuple_type(self, TupleType t):
         if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
                                               t.length()):
-            Typ[] items = []
+            Type[] items = []
             for i in range(t.length()):
                 items.append(self.join(t.items[i],
                                        ((TupleType)self.s).items[i]))
@@ -90,10 +100,10 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
         else:
             return self.default(self.s)
     
-    Typ join(self, Typ s, Typ t):
+    Type join(self, Type s, Type t):
         return join_types(s, t, self.basic)
     
-    Typ default(self, Typ typ):
+    Type default(self, Type typ):
         if isinstance(typ, UnboundType):
             return Any()
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
@@ -102,43 +112,44 @@ class TypeJoinVisitor(TypeVisitor<Typ>):
             return self.object
 
 
-Typ join_instances(Instance t, Instance s, bool allow_interfaces,
+Type join_instances(Instance t, Instance s, bool allow_interfaces,
                    checker.BasicTypes basic):
-    """Calculate the join of two instance types. If allow_interfaces is
-    True, also consider interface-type results for non-interface
-    types.
+    """Calculate the join of two instance types.
+
+    If allow_interfaces is True, also consider interface-type results for
+    non-interface types.
     
     Return ErrorType if the result is ambiguous.
     """
-    if t.typ == s.typ:
+    if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
         if is_subtype(t, s):
             # Compatible; combine type arguments.
-            Typ[] args = []
+            Type[] args = []
             for i in range(len(t.args)):
                 args.append(join_types(t.args[i], s.args[i], basic))
-            return Instance(t.typ, args)
+            return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
             return basic.object
-    elif t.typ.is_interface != s.typ.is_interface:
+    elif t.type.is_interface != s.type.is_interface:
         return join_instances_as_interface(t, s, basic)
-    elif t.typ.base is not None and is_subtype(t, s):
+    elif t.type.base is not None and is_subtype(t, s):
         return join_instances_via_supertype(t, s, allow_interfaces, basic)
-    elif s.typ.base is not None:
+    elif s.type.base is not None:
         return join_instances_via_supertype(s, t, allow_interfaces, basic)
-    elif allow_interfaces and not t.typ.is_interface:
+    elif allow_interfaces and not t.type.is_interface:
         return join_instances_as_interface(t, s, basic)
     else:
         return basic.object
 
 
-Typ join_instances_via_supertype(Instance t, Instance s,
+Type join_instances_via_supertype(Instance t, Instance s,
                                  bool allow_interfaces,
                                  checker.BasicTypes basic):
     res = s
-    mapped = map_instance_to_supertype(t, t.typ.base)
+    mapped = map_instance_to_supertype(t, t.type.base)
     join = join_instances(mapped, res, False, basic)
     # If the join failed, fail. This is a defensive measure (this might
     # never happen).
@@ -147,14 +158,14 @@ Typ join_instances_via_supertype(Instance t, Instance s,
     # Now the result must be an Instance, so the cast below cannot fail.
     res = (Instance)join
     
-    if (res.typ == basic.object.typ and not t.typ.is_interface and
+    if (res.type == basic.object.type and not t.type.is_interface and
             allow_interfaces):
         return join_instances_as_interface(t, s, basic)
     else:
         return res
 
 
-Typ join_instances_as_interface(Instance t, Instance s,
+Type join_instances_as_interface(Instance t, Instance s,
                                 checker.BasicTypes basic):
     """Compute join of two instances with a preference to an interface
     type result.  Return object if no common interface type is found
@@ -175,7 +186,7 @@ Typ join_instances_as_interface(Instance t, Instance s,
             # Join of two interface types is always an Instance type (either
             # another interface type or object), so the cast below is safe.
             j = (Instance)join_types(ti, si, basic)
-            if j.typ != basic.object.typ:
+            if j.type != basic.object.type:
                 res.append(j)
     
     if len(res) == 1:
@@ -194,26 +205,26 @@ Typ join_instances_as_interface(Instance t, Instance s,
             # As above, the join of two interface types is always an Instance
             # type. The cast below is thus safe.
             j = (Instance)join_types(j, res[i], basic)
-        if j.typ != basic.object.typ:
+        if j.type != basic.object.type:
             return j
         else:
             return ErrorType()
 
 
-Typ[] implemented_interfaces(Instance t):
+Type[] implemented_interfaces(Instance t):
     """If t is a class instance, return all the directly implemented interface
     types by t and its supertypes, including mapped type arguments.
     """
-    if t.typ.is_interface:
+    if t.type.is_interface:
         return [t]
     else:
-        Typ[] res = []
+        Type[] res = []
         
-        for iface in t.typ.interfaces:
+        for iface in t.type.interfaces:
             res.append(map_instance_to_supertype(t, iface))
         
-        if t.typ.base is not None:
-            tt = map_instance_to_supertype(t, t.typ.base)
+        if t.type.base is not None:
+            tt = map_instance_to_supertype(t, t.type.base)
             res.extend(implemented_interfaces(tt))
         
         return res
@@ -229,7 +240,7 @@ bool is_similar_callables(Callable t, Callable s):
 
 Callable combine_similar_callables(Callable t, Callable s,
                                    checker.BasicTypes basic):
-    Typ[] arg_types = []
+    Type[] arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
     # TODO kinds and argument names

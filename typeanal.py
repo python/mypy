@@ -1,5 +1,5 @@
 from mtypes import (
-    Typ, UnboundType, TypeVar, TupleType, Instance, Any, Callable, TypeVars,
+    Type, UnboundType, TypeVar, TupleType, Instance, Any, Callable, TypeVars,
     Void, NoneTyp, TypeVarDef, TypeVisitor
 )
 from typerepr import TypeVarRepr
@@ -7,7 +7,7 @@ from nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
 import nodes
 
 
-class TypeAnalyser(TypeVisitor<Typ>):
+class TypeAnalyser(TypeVisitor<Type>):
     """Semantic analyzer for types."""
     func<SymbolTableNode(str, Context)> lookup
     func<void(str, Context)> fail
@@ -17,7 +17,7 @@ class TypeAnalyser(TypeVisitor<Typ>):
         self.lookup = lookup_func
         self.fail = fail_func
     
-    Typ visit_unbound_type(self, UnboundType t):
+    Type visit_unbound_type(self, UnboundType t):
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.kind == TVAR:
@@ -38,9 +38,9 @@ class TypeAnalyser(TypeVisitor<Typ>):
             elif len(t.args) != len(info.type_vars):
                 if len(t.args) == 0:
                     # Implicit 'any' type arguments.
-                    # TODO remove <Typ> below
+                    # TODO remove <Type> below
                     return Instance((TypeInfo)sym.node,
-                                    <Typ> [Any()] * len(info.type_vars),
+                                    <Type> [Any()] * len(info.type_vars),
                                     t.line, t.repr)
                 # Invalid number of type parameters.
                 n = len(((TypeInfo)sym.node).type_vars)
@@ -64,22 +64,22 @@ class TypeAnalyser(TypeVisitor<Typ>):
         else:
             return t
     
-    Typ visit_any(self, Any t):
+    Type visit_any(self, Any t):
         return t
     
-    Typ visit_void(self, Void t):
+    Type visit_void(self, Void t):
         return t
     
-    Typ visit_none_type(self, NoneTyp t):
+    Type visit_none_type(self, NoneTyp t):
         return t
     
-    Typ visit_instance(self, Instance t):
+    Type visit_instance(self, Instance t):
         raise RuntimeError('Instance is already analysed')
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         raise RuntimeError('TypeVar is already analysed')
     
-    Typ visit_callable(self, Callable t):
+    Type visit_callable(self, Callable t):
         res = Callable(self.anal_array(t.arg_types),
                        t.arg_kinds,
                        t.arg_names,
@@ -91,17 +91,17 @@ class TypeAnalyser(TypeVisitor<Typ>):
         
         return res
     
-    Typ visit_tuple_type(self, TupleType t):
+    Type visit_tuple_type(self, TupleType t):
         return TupleType(self.anal_array(t.items), t.line, t.repr)
     
-    Typ[] anal_array(self, Typ[] a):
-        Typ[] res = []
+    Type[] anal_array(self, Type[] a):
+        Type[] res = []
         for t in a:
             res.append(t.accept(self))
         return res
     
-    list<tuple<int, Typ>> anal_bound_vars(self, list<tuple<int, Typ>> a):
-        list<tuple<int, Typ>> res = []
+    list<tuple<int, Type>> anal_bound_vars(self, list<tuple<int, Type>> a):
+        list<tuple<int, Type>> res = []
         for id, t in a:
             res.append((id, t.accept(self)))
         return res
@@ -109,7 +109,7 @@ class TypeAnalyser(TypeVisitor<Typ>):
     TypeVars anal_var_defs(self, TypeVars var_defs):
         TypeVarDef[] a = []
         for vd in var_defs.items:
-            Typ bound = None
+            Type bound = None
             if vd.bound is not None:
                 bound = vd.bound.accept(self)
             a.append(TypeVarDef(vd.name, vd.id, bound, vd.line, vd.repr))

@@ -1,5 +1,5 @@
 from mtypes import (
-    Callable, Typ, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
+    Callable, Type, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
     Instance, TupleType, Overloaded, ErasedType
 )
 from expandtype import expand_caller_var_args
@@ -8,7 +8,7 @@ import nodes
 
 
 Constraint[] infer_constraints_for_callable(
-                 Callable callee, Typ[] arg_types, int[] arg_kinds,
+                 Callable callee, Type[] arg_types, int[] arg_kinds,
                  int[][] formal_to_actual):
     """Infer type variable constraints for a callable and actual arguments.
     
@@ -28,14 +28,14 @@ Constraint[] infer_constraints_for_callable(
     return constraints
 
 
-Typ get_actual_type(Typ arg_type, int kind, int[] tuple_counter):
+Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
     """Return the type of an actual argument with the given kind.
 
     If the argument is a *arg, return the individual argument item.
     """
     if kind == nodes.ARG_STAR:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).typ.full_name() == 'builtins.list'):
+                ((Instance)arg_type).type.full_name() == 'builtins.list'):
             # List *arg. TODO any iterable
             return ((Instance)arg_type).args[0]
         elif isinstance(arg_type, TupleType):
@@ -47,7 +47,7 @@ Typ get_actual_type(Typ arg_type, int kind, int[] tuple_counter):
             return Any()
     elif kind == nodes.ARG_STAR2:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).typ.full_name() == 'builtins.dict'):
+                ((Instance)arg_type).type.full_name() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
             return ((Instance)arg_type).args[1]
         else:
@@ -57,7 +57,7 @@ Typ get_actual_type(Typ arg_type, int kind, int[] tuple_counter):
         return arg_type
 
 
-Constraint[] infer_constraints(Typ template, Typ actual, int direction):
+Constraint[] infer_constraints(Type template, Type actual, int direction):
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -91,7 +91,7 @@ class Constraint:
     """
     int type_var   # Type variable id
     int op         # SUBTYPE_OF or SUPERTYPE_OF
-    Typ target
+    Type target
     
     str __repr__(self):
         op_str = '<:'
@@ -99,7 +99,7 @@ class Constraint:
             op_str = ':>'
         return '{} {} {}'.format(self.type_var, op_str, self.target)
     
-    void __init__(self, int type_var, int op, Typ target):
+    void __init__(self, int type_var, int op, Type target):
         self.type_var = type_var
         self.op = op
         self.target = target
@@ -108,9 +108,9 @@ class Constraint:
 class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
     """Visitor class for inferring type constraints."""
     
-    Typ actual # The type that is compared against a template
+    Type actual # The type that is compared against a template
     
-    void __init__(self, Typ actual, int direction):
+    void __init__(self, Type actual, int direction):
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -145,8 +145,8 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
             res = <Constraint> []
             instance = (Instance)actual
             if (self.direction == SUBTYPE_OF and
-                    template.typ.has_base(instance.typ.full_name())):
-                mapped = map_instance_to_supertype(template, instance.typ)
+                    template.type.has_base(instance.type.full_name())):
+                mapped = map_instance_to_supertype(template, instance.type)
                 for i in range(len(instance.args)):
                     # The constraints for generic type parameters are
                     # invariant. Include the default constraint and its
@@ -157,8 +157,8 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
                     res.extend(negate_constraints(cb))
                 return res
             elif (self.direction == SUPERTYPE_OF and
-                    instance.typ.has_base(template.typ.full_name())):
-                mapped = map_instance_to_supertype(instance, template.typ)
+                    instance.type.has_base(template.type.full_name())):
+                mapped = map_instance_to_supertype(instance, template.type)
                 for j in range(len(template.args)):
                     # The constraints for generic type parameters are
                     # invariant.
@@ -225,7 +225,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
         else:
             return []
     
-    Constraint[] infer_against_any(self, Typ[] types):
+    Constraint[] infer_against_any(self, Type[] types):
         Constraint[] res = []
         for t in types:
             res.extend(infer_constraints(t, Any(), self.direction))

@@ -1,12 +1,12 @@
 from mtypes import (
-    Typ, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
+    Type, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
     TypeVar, Callable, TupleType, Overloaded, ErasedType
 )
 from nodes import TypeInfo
 from expandtype import expand_type
 
 
-bool is_subtype(Typ left, Typ right):
+bool is_subtype(Type left, Type right):
     """Is 'left' subtype of 'right'?"""
     if (isinstance(right, Any) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
@@ -15,12 +15,12 @@ bool is_subtype(Typ left, Typ right):
         return left.accept(SubtypeVisitor(right))
 
 
-bool is_equivalent(Typ a, Typ b):
+bool is_equivalent(Type a, Type b):
     return is_subtype(a, b) and is_subtype(b, a)
 
 
 class SubtypeVisitor(TypeVisitor<bool>):
-    void __init__(self, Typ right):
+    void __init__(self, Type right):
         self.right = right
     
     # visit_x(left) means: is left (which is an instance of X) a subtype of
@@ -47,12 +47,12 @@ class SubtypeVisitor(TypeVisitor<bool>):
     bool visit_instance(self, Instance left):
         if isinstance(self.right, Instance):
             right = (Instance)self.right
-            rname = right.typ.full_name()
-            if not left.typ.has_base(rname) and rname != 'builtins.object':
+            rname = right.type.full_name()
+            if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
             
             # Map left type to corresponding right instances.
-            t = map_instance_to_supertype(left, right.typ)
+            t = map_instance_to_supertype(left, right.type)
             result = True
             for i in range(len(right.args)):
                 if not is_equivalent(t.args[i], right.args[i]):
@@ -160,7 +160,7 @@ Instance map_instance_to_supertype(Instance instance, TypeInfo supertype):
     
     Assume that supertype is a supertype of instance.type.
     """
-    if instance.typ == supertype:
+    if instance.type == supertype:
         return instance
     
     # Strip type variables away if the supertype has none.
@@ -172,33 +172,33 @@ Instance map_instance_to_supertype(Instance instance, TypeInfo supertype):
     
     while True:
         instance = map_instance_to_direct_supertype(instance,
-                                                    instance.typ.base)
-        if instance.typ == supertype: break
+                                                    instance.type.base)
+        if instance.type == supertype: break
     
     return instance
 
 
 Instance map_instance_to_direct_supertype(Instance instance,
                                           TypeInfo supertype):
-    typ = instance.typ
+    typ = instance.type
     
     for b in typ.bases:
         # The cast below cannot fail since we require that semantic analysis
         # was successful, so bases cannot contain unbound types.
-        if b and ((Instance)b).typ == supertype:
+        if b and ((Instance)b).type == supertype:
             map = type_var_map(typ, instance.args)
             return (Instance)expand_type(b, map)
     
     # Relationship with the supertype not specified explicitly. Use dynamic
     # type arguments implicitly.
-    return Instance(typ.base, <Typ> [Any()] * len(typ.base.type_vars))
+    return Instance(typ.base, <Type> [Any()] * len(typ.base.type_vars))
 
 
-dict<int, Typ> type_var_map(TypeInfo typ, Typ[] args):
+dict<int, Type> type_var_map(TypeInfo typ, Type[] args):
     if not args:
         return None
     else:
-        tvars = <int, Typ> {}
+        tvars = <int, Type> {}
         for i in range(len(args)):
             tvars[i + 1] = args[i]
         return tvars
@@ -209,7 +209,7 @@ Instance[] map_instance_to_interface_supertypes(Instance instance,
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
     result = <Instance> []
-    for path in interface_implementation_paths(instance.typ, supertype):
+    for path in interface_implementation_paths(instance.type, supertype):
         types = [instance]
         for sup in path:
             a = <Instance> []
@@ -254,13 +254,13 @@ list<TypeInfo[]> interface_implementation_paths(TypeInfo typ,
 Instance[] map_instance_to_direct_supertypes(Instance instance,
                                                  TypeInfo supertype):
     # FIX: There should only be one supertypes, always.
-    typ = instance.typ
+    typ = instance.type
     Instance[] result = []
     
     for b in typ.bases:
         # The cast below cannot fail since we require that semantic analysis
         # was successful, so bases cannot contain unbound types.
-        if b and ((Instance)b).typ == supertype:
+        if b and ((Instance)b).type == supertype:
             map = type_var_map(typ, instance.args)
             result.append((Instance)expand_type(b, map))
     
@@ -269,9 +269,20 @@ Instance[] map_instance_to_direct_supertypes(Instance instance,
     else:
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
-        return [Instance(supertype, <Typ> [Any()] * len(supertype.type_vars))]
+        return [Instance(supertype, <Type> [Any()] * len(supertype.type_vars))]
 
 
-bool is_named_instance(Typ t, str full_name):
+bool is_named_instance(Type t, str full_name):
     return isinstance(t,
-                      Instance) and ((Instance)t).typ.full_name() == full_name
+                      Instance) and ((Instance)t).type.full_name() == full_name
+
+
+def is_proper_subtype(t, s):
+    """Check if t is a proper subtype of s?
+
+    For proper subtypes, there's no need to rely on compatibility due to
+    any types.
+    """
+    # FIX support generic types, tuple types etc.
+    return (isinstance(t, Instance) and isinstance(s, Instance)
+            and t.args == [] and s.args == [] and is_subtype(t, s))

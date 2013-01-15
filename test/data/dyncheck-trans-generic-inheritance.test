@@ -1,0 +1,767 @@
+-- Test cases for runtime (dynamic) checking transformation and generic
+-- inheritance.
+--
+-- See dyncheck-trans-basic.test for an overview of the file format.
+
+
+-- Non-generic class inherits a generic class
+-- ------------------------------------------
+
+
+[case testInheritingGenericClass]
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<C>):
+    void g(self, C c):
+        self.f(c)
+class C: pass
+[out]
+...
+class B(A):
+    void g(B self, C c):
+        self.f(c)
+    any g*(any self, any c):
+        {B self}.g({C c})
+...
+
+[case testInheritingGenericClassAndExternalAccess]
+B b
+C c
+b.f(c)
+b.g(c)
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<C>):
+    void g(self, C c):
+        self.f(c)
+class C: pass
+[out]
+B b
+C c
+b.f(c)
+b.g(c)
+...
+
+[case testInheritingGenericClassAndOverriding]
+A<C> a
+B b
+C c
+a.f(c)
+b.f(c)
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<C>):
+    void f(self, C c):
+        pass
+class C: pass
+[out]
+...
+a.f(c)
+b.f`B(c)
+...
+class B(A):
+    void f`B(B self, C c):
+        pass
+    void f(A self, any t):
+        {B self}.f`B(t)
+    any f*(any self, any c):
+        {B self}.f`B({C c})
+...
+
+[case testInheritGenericClassAndConstructInstance]
+A<float>()
+B()
+class A<T>: pass
+class B(A<int>): pass
+[out]
+A(<float>)
+B()
+...
+
+[case testInheritingGenericClassAndOverriding2]
+class A<T>:
+    void f(self, C<T> a, D b):
+        pass
+class B(A<E>):
+    void f(self, C<E> a, D b):
+        pass
+class C<T>: pass
+class D: pass
+class E: pass
+[out]
+...
+class B(A):
+    void f`B(B self, C a, D b):
+        pass
+    void f(A self, C a, D b):
+        {B self}.f`B(a, b)
+    any f*(any self, any a, any b):
+        {B self}.f`B({C<E> a}, {D b})
+...
+
+
+-- Generic class inherits a generic class; identical type variables
+-- ----------------------------------------------------------------
+
+
+[case testGenericInheritanceWithIdenticalTypeVars]
+# Single type variable
+class A<T>:
+    void f(self, T a, A<T> b):
+        pass
+class B<S>(A<S>):
+    void f(self, S a, A<S> b):
+        pass
+[out]
+...
+class B(A):
+    void f`B(B self, any* a, A b):
+        pass
+    void f(A self, any a, A b):
+        {B<self.__tv> self}.f`B(a, b)
+    any f*(any self, any a, any b):
+        {B<self.__tv> self}.f`B({self.__tv a}, {A<self.__tv> b})
+...
+class B**(A**):
+...
+    void f`B(B self, any a, A b):
+        self.__o.f`B({self.__o.__tv {self.__btv a}}, \
+                     {A<self.__o.__tv> {A<self.__btv> b}})
+    any f*(any self, any a, any b):
+        self.__o.f`B({self.__o.__tv {self.__btv a}}, \
+                     {A<self.__o.__tv> {A<self.__btv> b}})
+...
+
+[case testGenericInheritanceWithIdenticalTypeVars2]
+# Multiple type variables
+class A<T, S>:
+    void f(self, T a, A<S, T> b):
+        pass
+class B<T, S>(A<T, S>):
+    void f(self, T a, A<S, T> b):
+        pass
+[out]
+...
+class B(A):
+...
+    void f`B(B self, any* a, A b):
+        pass
+    void f(A self, any a, A b):
+        {B<self.__tv, self.__tv2> self}.f`B(a, b)
+    any f*(any self, any a, any b):
+        {B<self.__tv, self.__tv2> self}.f`B({self.__tv a}, \
+                                            {A<self.__tv2, self.__tv> b})
+...
+
+[case testGenericInheritanceWithDifferentSig]
+# Override with dynamic
+class A<T>:
+    T f(self, T a, A<T> b, int i):
+        pass
+class B<S>(A<S>):
+    any f(self, any a, any b, any i):
+        return None
+[out]
+...
+class B(A):
+    any f`B(B self, any a, any b, any i):
+        return None
+    any f(A self, any a, A b, int i):
+        return {self.__tv {B<self.__tv> self}.f`B(a, b, {any <= int i})}
+    any f*(any self, any a, any b, any i):
+        return {B<self.__tv> self}.f`B(a, b, i)
+...
+
+
+-- Generic class inherits a generic class; different type variables
+-- ----------------------------------------------------------------
+
+
+[case testGenericClassInheritsGenericsClassAndOverrides]
+class A<S, T>:
+    void f(self, S s, T t):
+        pass
+class B<S>(A<C, S>):
+    void f(self, C s, S t):
+        pass
+class C: pass
+[out]
+...
+class B(A):
+    void f`B(B self, C s, any* t):
+        pass
+    void f(A self, any s, any t):
+        {B<self.__tv2> self}.f`B(s, t)
+    any f*(any self, any s, any t):
+        {B<self.__tv2> self}.f`B({C s}, {self.__tv2 t})
+...
+
+[case testNonGenericClassInheritsGenericClass]
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<int>):
+    void g(self, any d):
+        self.f(d)
+[out]
+...
+class B(A):
+    void g(B self, any d):
+        self.f({int d})
+    any g*(any self, any d):
+        {B self}.g(d)
+...
+
+[case testGenericInheritanceAndCoercionsWithArgShuffling]
+class A<T, S>:
+    void f(self, T t, S s):
+        pass
+class B<X, Y>(A<Y, X>):
+    void g(self, X x, Y y):
+        pass
+    void h(self, any d):
+        self.f(d, d)
+        self.g(d, d)
+[out]
+...
+class B(A):
+    void g(B self, any* x, any* y):
+        pass
+    any g*(any self, any x, any y):
+        {B<self.__tv2, self.__tv> self}.g({self.__tv2 x}, {self.__tv y})
+    void h(B self, any d):
+        self.f({self.__tv d}, {self.__tv2 d})
+        self.g({self.__tv2 d}, {self.__tv d})
+...
+class B**(A**):
+...
+    void g(B self, any x, any y):
+        self.__o.g({self.__o.__tv2 {self.__btv2 x}}, \
+                   {self.__o.__tv {self.__btv y}})
+    any g*(any self, any x, any y):
+        self.__o.g({self.__o.__tv2 {self.__btv2 x}}, \
+                   {self.__o.__tv {self.__btv y}})
+...
+
+[case testGenericInheritanceAndCoercionsWithNestedArg]
+class A<T>:
+    void f(self, T t):
+        pass
+class B<S>(A<A<S>>):
+    void f(self, A<S> s):
+        pass
+[out]
+...
+class B(A):
+    void f`B(B self, A s):
+        pass
+    void f(A self, any t):
+        {B<self.__tv.args[0]> self}.f`B(t)
+    any f*(any self, any s):
+        {B<self.__tv.args[0]> self}.f`B({A<self.__tv.args[0]> s})
+...
+class B**(A**):
+...
+    void f`B(B self, A s):
+        self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
+    any f*(any self, any s):
+        self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
+
+[case testGenericInheritanceWithNestedArgs2]
+# More complex path to subtype type variable
+class A<T>: pass
+class B<T>(A<C<X, A<T>>>):
+    void f(self, T a, any d):
+        a = d
+class C<S, T>: pass
+class X: pass
+[out]
+...
+class B(A):
+...
+    void f(B self, any* a, any d):
+        a = {self.__tv.args[1].args[0] d}
+...
+
+[case testGenericInheritanceMultipleLevels]
+# Two levels of inheritance
+class A<T>:
+    void f(self, T t):
+        pass
+class B(A<int>): pass
+class C<T>(B):
+    void g(self, T t, any d):
+        self.f(d)
+        t = d
+[out]
+...
+class C(B):
+...
+    void g(C self, any* t, any d):
+        self.f({int d})
+        t = {self.__tv2 d}
+...
+
+
+-- Constructors with generic inheritance
+-- -------------------------------------
+
+
+-- 1. Wrapper that calls superclass __init__
+
+
+[case testInheritingGenericClassWithDefaultConstructor]
+class A<T>: pass
+class B(A<int>): pass
+[out]
+...
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        super().__init__(<int>)
+...
+
+[case testInheritingGenericClassWithDefaultConstructor2]
+# Two type arguments
+class A<T, S>: pass
+class B(A<int, object>): pass
+[out]
+...
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        self.__tv2! = <object>
+        super().__init__(<int>, <object>)
+...
+
+[case testInheritingGenericClassWithNonDefaultConstructor]
+class A<T>:
+    void __init__(self, object o):
+        pass
+class B(A<int>): pass
+[out]
+...
+class B(A):
+    void __init__(B self, object o):
+        self.__tv! = <int>
+        super().__init__(<int>, o)
+...
+
+[case testInheritingGenericClassWithNonDefaultConstructor2]
+# Two arguments, one with tvar type
+class A<T>:
+    void __init__(self, T t, object o):
+        pass
+class B(A<int>): pass
+[out]
+...
+class B(A):
+    void __init__(B self, int t, object o):
+        self.__tv! = <int>
+        super().__init__(<int>, t, o)
+...
+
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor]
+class A: pass
+class B<T>(A): pass
+[out]
+...
+class B(A):
+    any __tv
+    void __init__(B self, any __tv):
+        self.__tv! = <__tv>
+        super().__init__()
+...
+
+[case testInheritingGenericClassFromNonGenericWithDefaultConstructor2]
+# Superclass defines a non-trivial constructor; two tvars
+class A:
+    void __init__(self, int n):
+        pass
+class B<T, S>(A): pass
+[out]
+...
+class B(A):
+    any __tv
+    any __tv2
+    void __init__(B self, any __tv, any __tv2, int n):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        super().__init__(n)
+...
+
+[case testInheritingGenericClassFromGenericWithDefaultConstructor]
+class A<T, S>: pass
+class B<U>(A<int, C<U>>): pass
+class C<T>: pass
+[out]
+...
+class B(A):
+    void __init__(B self, any __tv):
+        self.__tv! = <int>
+        self.__tv2! = <C<__tv>>
+        super().__init__(<int>, <C<self.__tv2.args[0]>>)
+...
+
+[case testInitWrapperWithDeepHierarchy]
+class A<T>: pass
+class B(A<int>): pass
+class C<T>(B): pass
+[out]
+...
+class C(B):
+    any __tv2
+    void __init__(C self, any __tv):
+        self.__tv! = <int>
+        self.__tv2! = <__tv>
+        super().__init__()
+...
+
+[case testInitWrapperWithDeepHierarchy2]
+class A: pass
+class B(A): pass
+class C<T>(B): pass
+[out]
+...
+class C(B):
+    any __tv
+    void __init__(C self, any __tv):
+        self.__tv! = <__tv>
+        super().__init__()
+...
+
+
+-- 2. Define new constructor in subclass
+
+
+[case testInitWithGenericInheritance]
+class A<T, U>: pass
+class B<S>(A<int, S>):
+    void __init__(self, int n):
+        pass
+[out]
+...
+class B(A):
+    void __init__(B self, any __tv, int n):
+        self.__tv! = <int>
+        self.__tv2! = <__tv>
+        pass
+...
+
+
+-- Constructor in a wrapper class; generic inheritance
+-- ---------------------------------------------------
+
+
+[case testInitInWrapperClassWithGenericInheritance]
+# Generic class inherits another generic class
+class A<T, S>: pass
+class B<U>(A<int, C<U>>): pass
+class C<T>: pass
+[out]
+...
+class B**(A**):
+    void __init__(any self, any __o, any __tv, any __tv2, \
+                  any __btv, any __btv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__o! = __o
+...
+
+[case testInitInWrapperClassWithInheritance2]
+# Original create has arguments; this does not affect the wrapper
+class A<T>:
+    void __init__(self, int n):
+        pass
+class B<T>(A<T>): pass
+[out]
+...
+class B**(A**):
+    void __init__(any self, any __o, any __tv, any __btv):
+...
+
+[case testInitInWrapperClassWithInheritance3]
+# Multi-level inheritance hierarchy; note that there is no wrapper class
+# for B.
+class A<T>: pass
+class B(A<int>): pass
+class C<T, S>(B): pass
+[out]
+...
+class C**(A**):
+    any __tv2
+    any __tv3
+    any __btv2
+    any __btv3
+    void __init__(any self, any __o, any __tv, any __tv2, any __tv3, \
+                  any __btv, any __btv2, any __btv3):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__tv3! = <__tv3>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__btv3! = <__btv3>
+        self.__o! = __o
+
+
+-- Type variable definitions in subclasses; generic inheritance
+-- ------------------------------------------------------------
+
+
+[case testTvarDefinitionsWithGenericInheritance]
+# Generic class inherits generic class; no new type variables
+class A<T>: pass
+class B<T>(A<T>): pass
+[out]
+...
+class B(A):
+    void __init__(B self, any __tv):
+...
+class B**(A**):
+    void __init__(any self, any __o, any __tv, any __btv):
+...
+
+[case testTvarDefinitionsWithGenericInheritance]
+# Generic class inherits generic class; introduce new type variable
+class A<T>: pass
+class B<S, T>(A<T>): pass
+[out]
+...
+class B(A):
+    any __tv2
+    void __init__(B self, any __tv, any __tv2):
+...
+class B**(A**):
+    any __tv2
+    any __btv2
+    void __init__(any self, any __o, any __tv, any __tv2, \
+                  any __btv, any __btv2):
+...
+
+
+-- Calling superclass create explicitly
+-- ------------------------------------
+
+
+[case testGenericInheritanceAndCallToSuperclassInit]
+# Non-generic class inherits a generic class
+class A<T>:
+    void __init__(self, C n):
+        pass
+
+class C: pass
+
+class B(A<int>):
+    void __init__(self):
+        super().__init__(C())
+[out]
+...
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        super().__init__(<int>, C())
+...
+
+[case testGenericInheritanceAndCallToSuperclassInit2-skip]
+# Non-generic class inherits a generic class
+class A<T>: pass
+
+class B(A<int>):
+    void __init__(self):
+        super().__init__()
+[out]
+...
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        super().__init__(<int>)
+...
+
+[case testGenericInheritanceAndCallToSuperclassInit]
+# Generic class inherits a generic class
+class A<T, S>:
+    void __init__(self, T t):
+        pass
+
+class B<T, S>(A<S, T>):
+    void __init__(self, S t):
+        super().__init__(t)
+[out]
+...
+class B(A):
+    void __init__(B self, any __tv, any __tv2, any* t):
+        self.__tv! = <__tv2>
+        self.__tv2! = <__tv>
+        super().__init__(<self.__tv>, <self.__tv2>, t)
+...
+
+
+-- Mixed generic inheritance
+-- -------------------------
+
+
+[case testMixedGenericInheritance-skip]
+# Non-generic class extends generic
+class A<T>:
+    T f(self, T t):
+        pass
+class B(A<int>):
+    any f(self, any t):
+        pass
+[out]
+...
+class B(A):
+    any f`B(B self, any t):
+        pass
+    any f(A self, any t):
+-- TODO not sure about the coercions...
+        return {any <= int {int {B self}.f`B({any <= int t})}}
+    any f*(any self, any t):
+        return {B self}.f`B(t)
+...
+
+[case testMixedGenericInheritance2]
+# Generic class extends generic
+class A<T>:
+    T f(self, T t):
+        pass
+class B<T, S>(A<S>):
+    any f(self, any t):
+        pass
+[out]
+...
+class B(A):
+    any __tv2
+    any f`B(B self, any t):
+        pass
+    any f(A self, any t):
+        return {self.__tv {B<self.__tv2, self.__tv> self}.f`B(t)}
+    any f*(any self, any t):
+        return {B<self.__tv2, self.__tv> self}.f`B(t)
+...
+class B**(A**):
+...
+    any f`B(B self, any t):
+        return self.__o.f`B(t)
+    any f*(any self, any t):
+        return self.__o.f`B(t)
+
+
+-- Generic inheritance with multiple ways of accessing subclass tvars
+-- ------------------------------------------------------------------
+
+
+-- Example: class C<t>(D<t, t>): ...
+
+
+[case testAmbiguousTvarMappingAndGenericInheritance]
+class D<T, S>:
+    S f(self):
+        pass
+class C<T>(D<T, T>):
+    T f(self):
+        pass
+[out]
+...
+class C(D):
+...
+    void __init__(C self, any __tv):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv>
+        super().__init__(<self.__tv>, <self.__tv>)
+...
+class C**(D**):
+    void __init__(any self, any __o, any __tv, any __tv2, \
+                  any __btv, any __btv2):
+        self.__tv! = <__tv>
+        self.__tv2! = <__tv2>
+        self.__btv! = <__btv>
+        self.__btv2! = <__btv2>
+        self.__o! = __o
+    any f`C(C self):
+        return {self.__tv {self.__btv self.__o.f`C()}}
+    any f*(any self):
+        return {self.__btv self.__o.f`C()}
+
+
+-- Generic inheritance + member variables
+-- --------------------------------------
+
+
+[case testMemberVarsAndGenericClass]
+class A<T>:
+    T x
+    void f(self, any a):
+        self.x = a
+        a = self.x
+[out]
+class A:
+    any __tv
+    any* x
+    any* $x(A self):
+        return self.x!
+    void set$x(A self, any* x):
+        self.x! = x
+    any $x*(A self):
+        return self.x!
+    void set$x*(A self, any x):
+        self.x! = {self.__tv x}
+    void f(A self, any a):
+        self.x = {self.__tv a}
+        a = self.x
+...
+class A**:
+    any __o
+    any __tv
+    any __btv
+    void __init__(any self, any __o, any __tv, any __btv):
+        self.__tv! = <__tv>
+        self.__btv! = <__btv>
+        self.__o! = __o
+    any* $x(A self):
+        return {self.__tv {self.__btv self.__o.$x()}}
+    any $x*(any self):
+        return {self.__btv self.__o.$x()}
+    void set$x(A self, any* x):
+        self.__o.set$x({self.__o.__tv {self.__btv x}})
+    any set$x*(any self, any x):
+        self.__o.set$x({self.__o.__tv {self.__btv x}})
+    void f(A self, any a):
+        self.__o.f(a)
+    any f*(any self, any a):
+        self.__o.f(a)
+...
+
+[case testMemberVarsAndGenericInheritance]
+class A<T>:
+    T x
+    void f(self, any a):
+        self.x = a
+        a = self.x
+class B<T>(A<C<T>>):
+    T y
+    void g(self, any a):
+        self.y = a
+        a = self.y
+class C<T>: pass
+[out]
+...
+class B(A):
+    any* y
+    any* $y(B self):
+        return self.y!
+    void set$y(B self, any* y):
+        self.y! = y
+    any $y*(B self):
+        return self.y!
+    void set$y*(B self, any y):
+        self.y! = {self.__tv.args[0] y}
+    void g(B self, any a):
+        self.y = {self.__tv.args[0] a}
+        a = self.y
+...

@@ -16,7 +16,43 @@ from typerepr import ListTypeRepr
 #      these names are used in a non-erased context (e.g. isinstance test or
 #      overloaded method signature), we should change the reference to the
 #      Python alternative
-removed_names = {'re': ['Pattern', 'Match']}
+removed_import_names = {'re': ['Pattern', 'Match']}
+
+
+# Some names defined in mypy builtins are defined in a different module in
+# Python. We translate references to these names.
+renamed_types = {'builtins.Sized': 'collections.Sized',
+                 'builtins.Iterable': 'collections.Iterable',
+                 'builtins.Iterator': 'collections.Iterator',
+                 'builtins.Sequence': 'collections.Sequence',
+                 'builtins.Mapping': 'collections.Mapping',
+                 'builtins.Set': 'collections.Set',
+                 're.Pattern': 're._pattern_type'}
+
+
+# These types are erased during translation. If they are used in overloads,
+# a hasattr check is used instead of an isinstance check (the value if the name
+# of the attribute).
+erased_duck_types = {
+    'builtins.int_t': '__int__',
+    'builtins.float_t': '__float__',
+    'builtins.reversed_t': '__reversed__',
+    'builtins.abs_t': '__abs__',
+    'builtins.round_t': '__round__'
+}
+
+
+# Some names need more complex logic to translate them. This dictionary maps
+# qualified names to (initcode, newname) tuples. The initcode string is
+# added to the module prolog.
+#
+# We use __ prefixes to avoid name clashes. Names starting with __ but not
+# ending with _ are reserved for the implementation.
+special_renamings = {
+    're.Match': (['import re as __re\n',
+                  'import builtins as __builtins\n',
+                  '__re_Match = __builtins.type(__re.match("", ""))\n'],
+                 '__re_Match')}
 
 
 class PythonGenerator(OutputVisitor):
@@ -27,12 +63,20 @@ class PythonGenerator(OutputVisitor):
     in OutputVisitor.
     """
 
+    str[] prolog
+
     def __init__(self, pyversion=3):
         super().__init__()
         self.pyversion = pyversion
+        self.prolog = []
+
+    def output(self):
+        """Return a string representation of the output."""
+        # TODO add the prolog after the first comment and docstring
+        return ''.join(self.prolog) + super().output()
     
     def visit_import_from(self, o):
-        if o.id in removed_names:
+        if o.id in removed_import_names:
             r = o.repr
             
             # Filter out any names not defined in Python from a
@@ -41,7 +85,7 @@ class PythonGenerator(OutputVisitor):
             toks = []
             comma = none
             for i in range(len(o.names)):
-                if o.names[i][0] not in removed_names[o.id]:
+                if o.names[i][0] not in removed_import_names[o.id]:
                     toks.append(comma)
                     toks.extend(r.names[i][0])
                     comma = r.names[i][1]
@@ -65,7 +109,7 @@ class PythonGenerator(OutputVisitor):
         if r.def_tok and r.def_tok.string:
             self.token(r.def_tok)
         else:
-            self.string(self.get_pre_whitespace(o.typ.typ.ret_type) + 'def')
+            self.string(self.get_pre_whitespace(o.type.ret_type) + 'def')
         
         if name_override is None:
             self.token(r.name)
@@ -110,8 +154,18 @@ class PythonGenerator(OutputVisitor):
             else:
                 self.string(' = {}'.format(', '.join(['None'] * len(o.items))))
             self.token(r.br)
+
+    def visit_name_expr(self, o):
+        # Rename some type references (e.g. Iterable -> collections.Iterable).
+        renamed = self.get_renaming(o.full_name)
+        if renamed:
+            self.string(o.repr.id.pre)
+            self.string(renamed)
+        else:
+            super().visit_name_expr(o)
     
     def visit_cast_expr(self, o):
+        # Erase cast.
         self.string(o.repr.lparen.pre)
         self.node(o.expr)
 
@@ -137,26 +191,55 @@ class PythonGenerator(OutputVisitor):
         self.string(r.class_tok.pre)
         self.string('class')
         self.token(r.name)
-        self.token(r.lparen)
-        for i in range(len(o.base_types)):
-            self.string(self.erased_type(o.base_types[i]))
-            if i < len(r.commas):
-                self.token(r.commas[i])
-        self.token(r.rparen)
+
+        # Erase references to base types such as int_t which do not exist in
+        # Python.
+        commas = []
+        bases = []
+        for i, base in enumerate(o.base_types):
+            if (base.type.full_name() not in erased_duck_types
+                    and base.repr):
+                bases.append(base)
+                if i < len(r.commas):
+                    commas.append(r.commas[i])
+
+        if bases:
+            # Generate base types within parentheses.
+            self.token(r.lparen)
+            for i, base in enumerate(bases):
+                self.string(self.erased_type(base))
+                if i < len(bases) - 1:
+                    self.token(commas[i])
+            self.token(r.rparen)
         if not r.lparen.string and self.pyversion == 2:
             self.string('(object)')
         self.node(o.defs)
     
     def erased_type(self, t):
+        """Return Python representation of a type (as string).
+
+        Examples:
+          - C -> 'C'
+          - foo.Bar -> 'foo.Bar'
+          - dict<x, y> -> 'dict'
+          - Iterable<x> -> '__collections.Iterable' (also add import)
+        """
         if isinstance(t, Instance) or isinstance(t, UnboundType):
             if isinstance(t.repr, ListTypeRepr):
-                return '__builtins__.list'
+                self.generate_import('builtins')
+                return '__builtins.list'
             else:
-                a = []
-                if t.repr:
-                    for tok in t.repr.components:
-                        a.append(tok.rep())
-                return ''.join(a)
+                # Some types need to be translated (e.g. Iterable).
+                renamed = self.get_renaming(t.type.full_name())
+                if renamed:
+                    pre = t.repr.components[0].pre
+                    return pre + renamed
+                else:
+                    a = []
+                    if t.repr:
+                        for tok in t.repr.components:
+                            a.append(tok.rep())
+                    return ''.join(a)
         elif isinstance(t, TupleType):
             return 'tuple' # FIX: aliasing?
         elif isinstance(t, TypeVar):
@@ -185,7 +268,7 @@ class PythonGenerator(OutputVisitor):
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
-            self.string(self.get_pre_whitespace(first.typ.typ.ret_type) +
+            self.string(self.get_pre_whitespace(first.type.ret_type) +
                         'def')
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
@@ -280,6 +363,10 @@ class PythonGenerator(OutputVisitor):
     def make_argument_check(self, name, typ):
         if isinstance(typ, Callable):
             return 'callable({})'.format(name)
+        if (isinstance(typ, Instance) and
+                typ.type.full_name() in erased_duck_types):
+            return "hasattr({}, '{}')".format(
+                                name, erased_duck_types[typ.type.full_name()])
         else:
             cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
             return cond.replace('  ', ' ')
@@ -324,4 +411,49 @@ class PythonGenerator(OutputVisitor):
             # TODO do not hard code 'self'
             self.string('%s, self' % o.info.name())
             self.tokens([r.rparen, r.dot, r.name])
-            
+
+    def generate_import(self, modid):
+        """Generate an import in the file prolog.
+
+        When importing, the module is given a '__' prefix. For example, an
+        import of module 'foo' is generated as 'import foo as __foo'.
+        """
+        # TODO make sure that there is no name clash
+        last_component = modid.split('.')[-1]
+        self.add_to_prolog('import {} as __{}\n'.format(modid, last_component))
+
+    def generate_import_from_name(self, fullname):
+        """Use module portion of a qualified name to generate an import."""
+        modid = fullname[:fullname.rfind('.')]
+        self.generate_import(modid)
+
+    def add_to_prolog(self, string):
+        """Add a line to the file prolog unless it already exists."""
+        if not string in self.prolog:
+            self.prolog.append(string)
+
+    def get_renaming(self, fullname):
+        """Determine the renaming target name of a qualified mypy name.
+
+        Return None if the name needs no renaming; otherwise return the new
+        name as a string.
+
+        Also add any required imports, etc. to the file prolog.
+        """
+        renamed = renamed_types.get(fullname)
+        if renamed:
+            # Ordinary renaming. Import a module that defines the name and
+            # rename the reference.
+            self.generate_import_from_name(renamed)
+            return '__' + renamed
+        else:
+            special = special_renamings.get(fullname)
+            if special:
+                # Special renaming. Add custom code to prolog and rename the
+                # reference.
+                prolog, renamed = special
+                for line in prolog:
+                    self.add_to_prolog(line)
+                return renamed
+            else:
+                return None

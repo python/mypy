@@ -441,10 +441,12 @@ def f(object[] o): pass
 def f(object o): pass
 [builtins fixtures/list.py]
 [out]
+-- Issue #26
+import builtins as __builtins
 def f(o):
     def f1(o): pass
     def f2(o): pass
-    if isinstance(o, __builtins__.list):
+    if isinstance(o, __builtins.list):
         return f1(o)
     elif isinstance(o, object):
         return f2(o)
@@ -509,5 +511,111 @@ def f(x):
         return f1(x)
     elif isinstance(x, object):
         return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
+
+[case testReferenceToBuiltinInterface]
+s = Sized
+[builtins fixtures/sized.py]
+[out]
+import collections as __collections
+s = __collections.Sized
+
+[case testBuiltinInterfaceAsBase]
+class A( Sized ): pass
+[builtins fixtures/sized.py]
+[out]
+import collections as __collections
+class A( __collections.Sized ): pass
+
+[case testOverloadWithBuiltinInterface]
+void f(Sized x): pass
+void f(any x): pass
+[builtins fixtures/sized.py]
+[out]
+import collections as __collections
+def f(x):
+    def f1(x): pass
+    def f2(x): pass
+    if isinstance(x, __collections.Sized):
+        return f1(x)
+    elif True:
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
+        
+[case testSpecialInterfaceAsBaseType]
+class A(int_t):
+    pass
+class B(object, int_t):
+    pass
+class C(int_t, object):
+    pass
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class type: pass
+interface int_t: pass
+[out]
+class A:
+    pass
+class B(object):
+    pass
+class C( object):
+    pass
+    
+[case testOverloadsWithSpecialInterfaces]
+void f(int_t i): pass
+void f(object o): pass
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class type: pass
+interface int_t: pass
+[out]
+def f(i):
+    def f1(i): pass
+    def f2(o): pass
+    if hasattr(i, '__int__'):
+        return f1(i)
+    elif isinstance(i, object):
+        return f2(i)
+    else:
+        raise TypeError("Invalid argument types")
+
+
+-- Special cases
+-- -------------
+
+
+[case testOptionalArgAfterAsteriskArg]
+-- Issue #12
+def f(*x, y = 1): pass
+
+[case testMultipleOverloadsWithListType]
+void f(object[] x): pass
+void f(any x): pass
+void g(object[] x): pass
+void g(any x): pass
+[builtins fixtures/list.py]
+[out]
+import builtins as __builtins
+def f(x):
+    def f1(x): pass
+    def f2(x): pass
+
+    if isinstance(x, __builtins.list):
+        return f1(x)
+    elif True:
+        return f2(x)
+    else:
+        raise TypeError("Invalid argument types")
+def g(x):
+    def g1(x): pass
+    def g2(x): pass
+    if isinstance(x, __builtins.list):
+        return g1(x)
+    elif True:
+        return g2(x)
     else:
         raise TypeError("Invalid argument types")

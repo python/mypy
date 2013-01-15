@@ -1,7 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from mtypes import (
-    Typ, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
+    Type, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
     TupleType, Instance, TypeVar, TypeTranslator, ErasedType
 )
 from nodes import (
@@ -20,6 +20,7 @@ from replacetvars import replace_func_type_vars, replace_type_vars
 from messages import MessageBuilder
 import messages
 from infer import infer_type_arguments, infer_function_type_arguments
+import join
 from expandtype import expand_type, expand_caller_var_args
 from subtypes import is_subtype
 import erasetype
@@ -45,47 +46,47 @@ class ExpressionChecker:
         self.chk = chk
         self.msg = msg
     
-    Typ visit_name_expr(self, NameExpr e):
+    Type visit_name_expr(self, NameExpr e):
         """Type check a name expression (of any kind: local, member or
         global)."""
         return self.analyse_ref_expr(e)
     
-    Typ analyse_ref_expr(self, RefExpr e):
-        Typ result
+    Type analyse_ref_expr(self, RefExpr e):
+        Type result
         node = e.node
         if isinstance(node, Var):
             # Variable or constant reference.
             v = (Var)node
-            if not v.typ:
+            if not v.type:
                 # Implicit dynamic type.
                 result = Any()
             else:
                 # Local or global variable.
-                result = v.typ.typ
+                result = v.type
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             f = (FuncDef)node
             result = function_type(f)
         elif isinstance(node, OverloadedFuncDef):
             o = (OverloadedFuncDef)node
-            result = o.typ.typ
+            result = o.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = self.type_object_type((TypeInfo)node)
+            result = type_object_type((TypeInfo)node, self.chk.type_type)
         else:
             # Unknown reference; use dynamic type implicitly to avoid
             # generating extra type errors.
             result = Any()
         return result
     
-    Typ analyse_direct_member_access(self, str name, TypeInfo info,
+    Type analyse_direct_member_access(self, str name, TypeInfo info,
                                      bool is_lvalue, Context context):
         """Analyse direct member access via a name expression
         (implicit self). This can access private definitions.
         """
         raise RuntimeError('Not implemented')
     
-    Typ visit_call_expr(self, CallExpr e):
+    Type visit_call_expr(self, CallExpr e):
         """Type check a call expression."""
         self.accept(e.callee)
         # Access callee type directly, since accept may return the any type
@@ -94,14 +95,14 @@ class ExpressionChecker:
         callee_type = self.chk.type_map[e.callee]
         return self.check_call_expr_with_callee_type(callee_type, e)
     
-    Typ check_call_expr_with_callee_type(self, Typ callee_type, CallExpr e):
+    Type check_call_expr_with_callee_type(self, Type callee_type, CallExpr e):
         """Type check call expression. The given callee type overrides
         the type of the callee expression.
         """
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee)
     
-    Typ check_call(self, Typ callee, Node[] args, int[] arg_kinds,
+    Type check_call(self, Type callee, Node[] args, int[] arg_kinds,
                    Context context, str[] arg_names=None,
                    Node callable_node=None):
         """Type check a call.
@@ -161,14 +162,14 @@ class ExpressionChecker:
         else:
             return self.msg.not_callable(callee, context)
     
-    Typ[] infer_arg_types_in_context(self, Callable callee,
+    Type[] infer_arg_types_in_context(self, Callable callee,
                                      Node[] args):
         """Infer argument expression types using a callable type as context.
 
         For example, if callee argument 2 has type int[], infer the argument
         expression with int[] type context.
         """
-        Typ[] res = []
+        Type[] res = []
         
         fixed = len(args)
         if callee:
@@ -176,7 +177,7 @@ class ExpressionChecker:
         
         for i in range(fixed):
             arg = args[i]#FIX refactor
-            Typ ctx = None
+            Type ctx = None
             if callee and i < len(callee.arg_types):
                 ctx = callee.arg_types[i]
             res.append(self.accept(arg, ctx))
@@ -189,7 +190,7 @@ class ExpressionChecker:
         
         return res
     
-    Typ[] infer_arg_types_in_context2(self, Callable callee,
+    Type[] infer_arg_types_in_context2(self, Callable callee,
                                       Node[] args,
                                       int[] arg_kinds,
                                       int[][] formal_to_actual):
@@ -200,7 +201,7 @@ class ExpressionChecker:
 
         Returns the inferred types of *actual arguments*.
         """
-        Typ[] res = <Typ> [None] * len(args)
+        Type[] res = <Type> [None] * len(args)
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
@@ -232,7 +233,7 @@ class ExpressionChecker:
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())
         # Only substite non-None and non-erased types.
-        new_args = <Typ> []
+        new_args = <Type> []
         for arg in args:
             if isinstance(arg, NoneTyp) or has_erased_component(arg):
                 new_args.append(None)
@@ -267,14 +268,14 @@ class ExpressionChecker:
             arg_pass_nums = self.get_arg_infer_passes(
                 callee_type.arg_types, formal_to_actual, len(args))
 
-            pass1_args = <Typ> []
+            pass1_args = <Type> []
             for i, arg in enumerate(arg_types):
                 if arg_pass_nums[i] > 1:
                     pass1_args.append(None)
                 else:
                     pass1_args.append(arg)
             
-            Typ[] inferred_args = infer_function_type_arguments(
+            Type[] inferred_args = infer_function_type_arguments(
                 callee_type, pass1_args, arg_kinds, formal_to_actual,
                 self.chk.basic_types())
 
@@ -287,16 +288,16 @@ class ExpressionChecker:
         else:
             # In dynamically typed functions use implicit 'any' types for
             # type variables.
-            inferred_args = <Typ> [Any()] * len(callee_type.variables.items)
+            inferred_args = <Type> [Any()] * len(callee_type.variables.items)
         return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
 
-    tuple<Callable, Typ[]> infer_function_type_arguments_pass2(
+    tuple<Callable, Type[]> infer_function_type_arguments_pass2(
                                  self, Callable callee_type,
                                  Node[] args,
                                  int[] arg_kinds,
                                  int[][] formal_to_actual,
-                                 Typ[] inferred_args,
+                                 Type[] inferred_args,
                                  Context context):
         """Perform second pass of generic function type argument inference.
 
@@ -327,7 +328,7 @@ class ExpressionChecker:
 
         return callee_type, inferred_args
 
-    int[] get_arg_infer_passes(self, Typ[] arg_types,
+    int[] get_arg_infer_passes(self, Type[] arg_types,
                                int[][] formal_to_actual,
                                int num_actuals):
         """Return pass numbers for args for two-pass argument type inference.
@@ -346,7 +347,7 @@ class ExpressionChecker:
         return res
     
     Callable apply_inferred_arguments(self, Callable callee_type,
-                                      Typ[] inferred_args,
+                                      Type[] inferred_args,
                                       Context context):
         """Apply inferred values of type arguments to a generic function.
 
@@ -365,7 +366,7 @@ class ExpressionChecker:
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1, context)
-                inferred_args = <Typ> [Any()] * len(inferred_args)
+                inferred_args = <Type> [Any()] * len(inferred_args)
         
         # Apply the inferred types to the function type. In this case the
         # return type must be Callable, since we give the right number of type
@@ -373,7 +374,7 @@ class ExpressionChecker:
         return (Callable)self.apply_generic_arguments(callee_type,
                                                       inferred_args, None)
 
-    void check_argument_count(self, Callable callee, Typ[] actual_types,
+    void check_argument_count(self, Callable callee, Type[] actual_types,
                               int[] actual_kinds,  str[] actual_names,
                               int[][] formal_to_actual, Context context):
         """Check that the number of arguments to a function are valid.
@@ -425,7 +426,7 @@ class ExpressionChecker:
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
     
-    void check_argument_types(self, Typ[] arg_types, int[] arg_kinds,
+    void check_argument_types(self, Type[] arg_types, int[] arg_kinds,
                                Callable callee, int[][] formal_to_actual,
                                Context context):
         """Check argument types against a callable type.
@@ -467,8 +468,8 @@ class ExpressionChecker:
                                        actual + 1, callee, context)
     
     
-    void check_arg(self, Typ caller_type, Typ original_caller_type,
-                   Typ callee_type, int n, Callable callee, Context context):
+    void check_arg(self, Type caller_type, Type original_caller_type,
+                   Type callee_type, int n, Callable callee, Context context):
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, Void):
             self.msg.does_not_return_value(caller_type, context)
@@ -476,7 +477,7 @@ class ExpressionChecker:
             self.msg.incompatible_argument(n, callee, original_caller_type,
                                            context)
     
-    Typ overload_call_target(self, Typ[] arg_types, bool is_var_arg,
+    Type overload_call_target(self, Type[] arg_types, bool is_var_arg,
                              Overloaded overload, Context context):
         """Infer the correct overload item to call with given argument types.
 
@@ -486,7 +487,7 @@ class ExpressionChecker:
         """
         # TODO for overlapping signatures we should try to get a more precise
         #      result than 'any'
-        Typ match = None # Callable, Any or None
+        Type match = None # Callable, Any or None
         for typ in overload.items():
             if self.matches_signature(arg_types, is_var_arg, typ):
                 if match and (isinstance(match, Any) or
@@ -508,7 +509,7 @@ class ExpressionChecker:
         else:
             return match
     
-    bool matches_signature(self, Typ[] arg_types, bool is_var_arg,
+    bool matches_signature(self, Type[] arg_types, bool is_var_arg,
                            Callable callee):
         """Determine whether argument types match the signature.
 
@@ -538,7 +539,7 @@ class ExpressionChecker:
                     return False
         return True
     
-    Typ apply_generic_arguments(self, Callable callable, Typ[] types,
+    Type apply_generic_arguments(self, Callable callable, Type[] types,
                                 Context context):
         """Apply generic type arguments to a callable type.
 
@@ -555,7 +556,7 @@ class ExpressionChecker:
             return Any()
         
         # Create a map from type variable id to target type.
-        id_to_type = <int, Typ> {}
+        id_to_type = <int, Type> {}
         for i, tv in enumerate(tvars):
             if types[i]:
                 id_to_type[tv.id] = types[i]
@@ -580,7 +581,7 @@ class ExpressionChecker:
                         callable.bound_vars + bound_vars,
                         callable.line, callable.repr)
     
-    Typ apply_generic_arguments2(self, Overloaded overload, Typ[] types,
+    Type apply_generic_arguments2(self, Overloaded overload, Type[] types,
                                 Context context):
         items = <Callable> []
         for item in overload.items():
@@ -592,11 +593,11 @@ class ExpressionChecker:
                 return Any()
         return Overloaded(items)
     
-    Typ visit_member_expr(self, MemberExpr e):
+    Type visit_member_expr(self, MemberExpr e):
         """Visit member expression (of form e.id)."""
         return self.analyse_ordinary_member_access(e, False)
     
-    Typ analyse_ordinary_member_access(self, MemberExpr e, bool is_lvalue):
+    Type analyse_ordinary_member_access(self, MemberExpr e, bool is_lvalue):
         """Analyse member expression or member lvalue."""
         if e.kind is not None:
             # This is a reference to a module attribute.
@@ -607,7 +608,7 @@ class ExpressionChecker:
                                          is_lvalue, False,
                                          self.chk.tuple_type(), self.msg)
     
-    Typ analyse_external_member_access(self, str member, Typ base_type,
+    Type analyse_external_member_access(self, str member, Type base_type,
                                        Context context):
         """Analyse member access that is external, i.e. it cannot
         refer to private definitions. Return the result type.
@@ -616,24 +617,26 @@ class ExpressionChecker:
         return analyse_member_access(member, base_type, context, False, False,
                                      self.chk.tuple_type(), self.msg)
     
-    Typ visit_int_expr(self, IntExpr e):
+    Type visit_int_expr(self, IntExpr e):
         """Type check an integer literal (trivial)."""
         return self.named_type('builtins.int')
     
-    Typ visit_str_expr(self, StrExpr e):
+    Type visit_str_expr(self, StrExpr e):
         """Type check a string literal (trivial)."""
         return self.named_type('builtins.str')
     
-    Typ visit_bytes_expr(self, BytesExpr e):
+    Type visit_bytes_expr(self, BytesExpr e):
         """Type check a bytes literal (trivial)."""
         return self.named_type('builtins.bytes')
     
-    Typ visit_float_expr(self, FloatExpr e):
+    Type visit_float_expr(self, FloatExpr e):
         """Type check a float literal (trivial)."""
         return self.named_type('builtins.float')
     
-    Typ visit_op_expr(self, OpExpr e):
+    Type visit_op_expr(self, OpExpr e):
         """Type check a binary operator expression."""
+        if e.op == 'and' or e.op == 'or':
+            return self.check_boolean_op(e, e)
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
@@ -645,14 +648,12 @@ class ExpressionChecker:
         elif e.op in checker.op_methods:
             method = checker.op_methods[e.op]
             return self.check_op(method, left_type, e.right, e)
-        elif e.op == 'and' or e.op == 'or':
-            return self.check_boolean_op(e.op, left_type, right_type, e)
         elif e.op == 'is' or e.op == 'is not':
             return self.chk.bool_type()
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
     
-    Typ check_op(self, str method, Typ base_type, Node arg, Context context):
+    Type check_op(self, str method, Type base_type, Node arg, Context context):
         """Type check a binary operation which maps to a method call."""
         if self.has_non_method(base_type, method):
             self.msg.method_expected_as_operator_implementation(
@@ -661,33 +662,42 @@ class ExpressionChecker:
             method, base_type, context)
         return self.check_call(method_type, [arg], [nodes.ARG_POS], context)
     
-    Typ check_boolean_op(self, str op, Typ left_type, Typ right_type,
-                         Context context):
-        """Type check a boolean operation ("and" or "or")."""
-        # Any non-void value is valid in a boolean context.
+    Type check_boolean_op(self, OpExpr e, Context context):
+        """Type check a boolean operation ('and' or 'or')."""
+
+        # A boolean operation can evaluate to either of the operands.
+        
+        # We use the current type context to guide the type inference of of
+        # the left operand. We also use the left operand type to guide the type
+        # inference of the right operand so that expressions such as
+        # '[1] or []' are inferred correctly.
+        ctx = self.chk.type_context[-1]
+        left_type = self.accept(e.left, ctx)
+        right_type = self.accept(e.right, left_type)
+        
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
-        # TODO the result type should be the combination of left_type and
-        #      right_type
-        return self.chk.bool_type()
+
+        return join.join_types(left_type, right_type,
+                               self.chk.basic_types())
     
-    Typ visit_unary_expr(self, UnaryExpr e):
-        """Type check an unary expression ("not", - or ~)."""
+    Type visit_unary_expr(self, UnaryExpr e):
+        """Type check an unary operation ('not', '-' or '~')."""
         operand_type = self.accept(e.expr)
-        _x = e.op
-        if _x == 'not':
+        op = e.op
+        if op == 'not':
             self.check_not_void(operand_type, e)
             return self.chk.bool_type()
-        elif _x == '-':
+        elif op == '-':
             method_type = self.analyse_external_member_access('__neg__',
                                                               operand_type, e)
             return self.check_call(method_type, [], [], e)
-        elif _x == '~':
+        elif op == '~':
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
             return self.check_call(method_type, [], [], e)
     
-    Typ visit_index_expr(self, IndexExpr e):
+    Type visit_index_expr(self, IndexExpr e):
         """Type check an index expression (base[index])."""
         left_type = self.accept(e.base)
         if isinstance(left_type, TupleType):
@@ -708,10 +718,10 @@ class ExpressionChecker:
         else:
             return self.check_op('__getitem__', left_type, e.index, e)
     
-    Typ visit_cast_expr(self, CastExpr expr):
+    Type visit_cast_expr(self, CastExpr expr):
         """Type check a cast expression."""
         source_type = self.accept(expr.expr)
-        target_type = expr.typ
+        target_type = expr.type
         if isinstance(target_type, Any):
             return Any()
         else:
@@ -719,18 +729,18 @@ class ExpressionChecker:
                 self.msg.invalid_cast(target_type, source_type, expr)
             return target_type
     
-    bool is_valid_cast(self, Typ source_type, Typ target_type):
+    bool is_valid_cast(self, Type source_type, Type target_type):
         """Is a cast from source_type to target_type valid (i.e. can succeed at
         runtime)?
         """
         return (is_subtype(target_type, source_type) or
                 is_subtype(source_type, target_type) or
                 (isinstance(target_type, Instance) and
-                     ((Instance)target_type).typ.is_interface) or
+                     ((Instance)target_type).type.is_interface) or
                 (isinstance(source_type, Instance) and
-                     ((Instance)source_type).typ.is_interface))
+                     ((Instance)source_type).type.is_interface))
     
-    Typ visit_type_application(self, TypeApplication tapp):
+    Type visit_type_application(self, TypeApplication tapp):
         """Type check a type application (expr<...>)."""
         expr_type = self.accept(tapp.expr)
         if isinstance(expr_type, Callable):
@@ -749,17 +759,17 @@ class ExpressionChecker:
         self.chk.type_map[tapp.expr] = new_type
         return new_type
     
-    Typ visit_list_expr(self, ListExpr e):
+    Type visit_list_expr(self, ListExpr e):
         """Type check a list expression [...] or <t> [...]."""
         Callable constructor
-        if e.typ:
+        if e.type:
             # A list expression with an explicit item type; translate into type
             # checking a function call.
-            constructor = Callable([e.typ],
+            constructor = Callable([e.type],
                                    [nodes.ARG_STAR],
                                    [None],
                                    self.chk.named_generic_type('builtins.list',
-                                                               [e.typ]),
+                                                               [e.type]),
                                    False,
                                    '<list>')
         else:
@@ -778,7 +788,7 @@ class ExpressionChecker:
                                e.items,
                                [nodes.ARG_POS] * len(e.items), e)
     
-    Typ visit_tuple_expr(self, TupleExpr e):    
+    Type visit_tuple_expr(self, TupleExpr e):    
         """Type check a tuple expression."""
         if e.types is None:
             TupleType ctx = None
@@ -788,10 +798,10 @@ class ExpressionChecker:
                 if len(t.items) == len(e.items):
                     ctx = t
             # Infer item types.
-            Typ[] items = []
+            Type[] items = []
             for i in range(len(e.items)):
                 item = e.items[i]
-                Typ tt
+                Type tt
                 if not ctx:
                     tt = self.accept(item)
                 else:
@@ -808,7 +818,7 @@ class ExpressionChecker:
                                        messages.INCOMPATIBLE_TUPLE_ITEM_TYPE)
             return TupleType(e.types)
     
-    Typ visit_dict_expr(self, DictExpr e):
+    Type visit_dict_expr(self, DictExpr e):
         if not e.key_type:
             # A dict expression without an explicit type; translate into type
             # checking a generic function call.
@@ -845,15 +855,15 @@ class ExpressionChecker:
             return self.chk.named_generic_type('builtins.dict', [e.key_type,
                                                                  e.value_type])
     
-    Typ visit_func_expr(self, FuncExpr e):
+    Type visit_func_expr(self, FuncExpr e):
         """Type check lambda expression."""
         inferred_type = self.infer_lambda_type(e)
         self.chk.check_func_item(e, type_override=inferred_type)
         ret_type = self.chk.type_map[e.expr()]
         if inferred_type:
             return replace_callable_return_type(inferred_type, ret_type)
-        elif e.typ:
-            return replace_callable_return_type((Callable)e.typ.typ, ret_type)
+        elif e.type:
+            return replace_callable_return_type((Callable)e.type, ret_type)
         else:
             # Use default type for lambda.
             # TODO infer return type?
@@ -882,19 +892,19 @@ class ExpressionChecker:
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
             return None
         
-        if not e.typ:
+        if not e.type:
             return callable_ctx
         else:
             # The lambda already has a type; only infer the return type.
-            return replace_callable_return_type((Callable)e.typ.typ,
+            return replace_callable_return_type((Callable)e.type,
                                                 callable_ctx.ret_type)
     
-    Typ visit_super_expr(self, SuperExpr e):
+    Type visit_super_expr(self, SuperExpr e):
         """Type check a super expression (non-lvalue)."""
         t = self.analyse_super(e, False)
         return t
     
-    Typ analyse_super(self, SuperExpr e, bool is_lvalue):
+    Type analyse_super(self, SuperExpr e, bool is_lvalue):
         """Type check a super expression."""
         if e.info and e.info.base:
             return analyse_member_access(e.name, self_type(e.info), e,
@@ -905,11 +915,11 @@ class ExpressionChecker:
             # Invalid super. This has been reported by the semantic analyser.
             return Any()
     
-    Typ visit_paren_expr(self, ParenExpr e):
+    Type visit_paren_expr(self, ParenExpr e):
         """Type check a parenthesised expression."""
         return self.accept(e.expr, self.chk.type_context[-1])
     
-    Typ visit_slice_expr(self, SliceExpr e):
+    Type visit_slice_expr(self, SliceExpr e):
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
@@ -917,15 +927,15 @@ class ExpressionChecker:
                                        index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
 
-    Typ visit_list_comprehension(self, ListComprehension e):
+    Type visit_list_comprehension(self, ListComprehension e):
         return self.check_generator_or_comprehension(
             e.generator, 'builtins.list', '<list-comprehension>')
 
-    Typ visit_generator_expr(self, GeneratorExpr e):
+    Type visit_generator_expr(self, GeneratorExpr e):
         return self.check_generator_or_comprehension(e, 'builtins.Iterator',
                                                      '<generator>')
     
-    Typ check_generator_or_comprehension(self, GeneratorExpr gen,
+    Type check_generator_or_comprehension(self, GeneratorExpr gen,
                                          str type_name, str id_for_messages):
         """Type check a generator expression or a list comprehension."""
         
@@ -952,15 +962,15 @@ class ExpressionChecker:
     # Helpers
     #
     
-    Typ accept(self, Node node, Typ context=None):
+    Type accept(self, Node node, Type context=None):
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
     
-    void check_not_void(self, Typ typ, Context context):
+    void check_not_void(self, Type typ, Context context):
         """Generate an error if type is Void."""
         self.chk.check_not_void(typ, context)
     
-    bool is_boolean(self, Typ typ):
+    bool is_boolean(self, Type typ):
         """Is type compatible with bool?"""
         return is_subtype(typ, self.chk.bool_type())
     
@@ -970,75 +980,28 @@ class ExpressionChecker:
         """
         return self.chk.named_type(name)
     
-    Typ type_object_type(self, TypeInfo info):
-        """Return the type of a type object.
-        
-        For a generic type G with type variables T and S the type is of form
-        
-          def <T, S>(...) as G<T, S>,
-        
-        where ... are argument types for the __init__ method.
-        """
-        if info.is_interface:
-            return self.chk.type_type()
-        init_method = info.get_method('__init__')
-        if not init_method:
-            # Must be an invalid class definition.
-            return Any()
-        else:
-            # Construct callable type based on signature of __init__. Adjust
-            # return type and insert type arguments.
-            init_type = method_type(init_method)
-            if isinstance(init_type, Callable):
-                return self.class_callable((Callable)init_type, info)
-            else:
-                # Overloaded __init__.
-                Callable[] items = []
-                for it in ((Overloaded)init_type).items():
-                    items.append(self.class_callable(it, info))
-                return Overloaded(items)
-    
-    Callable class_callable(self, Callable init_type, TypeInfo info):
-        """Create a type object type based on the signature of __init__."""
-        variables = <TypeVarDef> []
-        for i in range(len(info.type_vars)): # TODO bounds
-            variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
-
-        initvars = init_type.variables.items
-        variables.extend(initvars)
-        
-        c = Callable(init_type.arg_types,
-                     init_type.arg_kinds,
-                     init_type.arg_names,
-                     self_type(info),
-                     True,
-                     None,
-                     TypeVars(variables)).with_name(
-                                          '"{}"'.format(info.name()))
-        return convert_class_tvars_to_func_tvars(c, len(initvars))
-    
-    bool is_valid_var_arg(self, Typ typ):
+    bool is_valid_var_arg(self, Type typ):
         """Is a type valid as a *args argument?"""
         return (isinstance(typ, TupleType) or self.is_list_instance(typ) or
                     isinstance(typ, Any))
     
-    bool is_valid_keyword_var_arg(self, Typ typ):    
+    bool is_valid_keyword_var_arg(self, Type typ):    
         """Is a type valid as a **kwargs argument?"""
         return is_subtype(typ, self.chk.named_generic_type(
             'builtins.dict', [self.named_type('builtins.str'), Any()]))
     
-    bool is_list_instance(self, Typ t):
+    bool is_list_instance(self, Type t):
         """Is the argument an instance type ...[]?"""
         return (isinstance(t, Instance) and
-                ((Instance)t).typ.full_name() == 'builtins.list')
+                ((Instance)t).type.full_name() == 'builtins.list')
     
-    bool has_non_method(self, Typ typ, str member):
+    bool has_non_method(self, Type typ, str member):
         """Does a type have a member variable or an accessor with the given
         name?"""
         if isinstance(typ, Instance):
             itype = (Instance)typ
-            return (not itype.typ.has_method(member) and
-                        itype.typ.has_readable_member(member))
+            return (not itype.type.has_method(member) and
+                        itype.type.has_readable_member(member))
         else:
             return False
     
@@ -1056,7 +1019,7 @@ class ExpressionChecker:
             r.append(self.unwrap(n))
         return r
 
-    Typ erase(self, Typ type):
+    Type erase(self, Type type):
         """Replace type variable types in type with any."""
         return erasetype.erase_type(type, self.chk.basic_types())
 
@@ -1088,7 +1051,7 @@ class TvarTranslator(TypeTranslator):
         super().__init__()
         self.num_func_tvars = num_func_tvars
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if t.id < 0:
             return t
         else:
@@ -1112,7 +1075,7 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                                str[] caller_names,
                                int[] callee_kinds,
                                str[] callee_names,
-                               func<Typ(int)> caller_arg_type):
+                               func<Type(int)> caller_arg_type):
     """Calculate mapping between actual (caller) args and formals.
 
     The result contains a list of caller argument indexes mapping to to each
@@ -1177,7 +1140,7 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
     return map
 
 
-bool is_empty_tuple(Typ t):
+bool is_empty_tuple(Type t):
     return isinstance(t, TupleType) and not ((TupleType)t).items
 
 
@@ -1192,7 +1155,7 @@ bool is_duplicate_mapping(int[] mapping, int[] actual_kinds):
         actual_kinds[mapping[1]] == nodes.ARG_STAR2)
 
 
-Callable replace_callable_return_type(Callable c, Typ new_ret_type):
+Callable replace_callable_return_type(Callable c, Type new_ret_type):
     """Return a copy of a callable type with a different return type."""
     return Callable(c.arg_types,
                     c.arg_kinds,
@@ -1228,7 +1191,7 @@ class HasTypeVarQuery(mtypes.TypeQuery):
         return True
 
 
-bool has_erased_component(Typ t):
+bool has_erased_component(Type t):
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
@@ -1239,4 +1202,52 @@ class HasErasedComponentsQuery(mtypes.TypeQuery):
 
     bool visit_erased_type(self, ErasedType t):
         return True
+
+
+Type type_object_type(TypeInfo info, func<Type()> type_type):
+    """Return the type of a type object.
+
+    For a generic type G with type variables T and S the type is of form
+
+      def <T, S>(...) as G<T, S>,
+
+    where ... are argument types for the __init__ method.
+    """
+    if info.is_interface:
+        return type_type()
+    init_method = info.get_method('__init__')
+    if not init_method:
+        # Must be an invalid class definition.
+        return Any()
+    else:
+        # Construct callable type based on signature of __init__. Adjust
+        # return type and insert type arguments.
+        init_type = method_type(init_method)
+        if isinstance(init_type, Callable):
+            return class_callable((Callable)init_type, info)
+        else:
+            # Overloaded __init__.
+            Callable[] items = []
+            for it in ((Overloaded)init_type).items():
+                items.append(class_callable(it, info))
+            return Overloaded(items)
     
+
+Callable class_callable(Callable init_type, TypeInfo info):
+    """Create a type object type based on the signature of __init__."""
+    variables = <TypeVarDef> []
+    for i in range(len(info.type_vars)): # TODO bounds
+        variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
+
+    initvars = init_type.variables.items
+    variables.extend(initvars)
+
+    c = Callable(init_type.arg_types,
+                 init_type.arg_kinds,
+                 init_type.arg_names,
+                 self_type(info),
+                 True,
+                 None,
+                 TypeVars(variables)).with_name(
+                                      '"{}"'.format(info.name()))
+    return convert_class_tvars_to_func_tvars(c, len(initvars))

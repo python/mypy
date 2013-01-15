@@ -241,7 +241,7 @@ void handle_failure(name, exc_type, exc_value, exc_traceback):
         sys.stderr.write('\n\n')
     str msg
     if exc_value.args and exc_value.args[0]:
-        msg = ': ' + exc_value.args[0]
+        msg = ': ' + str(exc_value)
     else:
         msg = ''
     sys.stderr.write('Traceback (most recent call last):\n')

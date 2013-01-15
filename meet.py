@@ -1,26 +1,26 @@
 import checker
 from join import is_similar_callables, combine_similar_callables
 from mtypes import (
-    Typ, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
+    Type, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
     Instance, Callable, TupleType, ErasedType
 )
 from sametypes import is_same_type
 from subtypes import is_subtype
 
 
-Typ meet_types(Typ s, Typ t, checker.BasicTypes basic):
+Type meet_types(Type s, Type t, checker.BasicTypes basic):
     if isinstance(s, Any) or isinstance(s, ErasedType):
         return s
     
     return t.accept(TypeMeetVisitor(s, basic))
 
 
-class TypeMeetVisitor(TypeVisitor<Typ>):
-    void __init__(self, Typ s, checker.BasicTypes basic):
+class TypeMeetVisitor(TypeVisitor<Type>):
+    void __init__(self, Type s, checker.BasicTypes basic):
         self.s = s
         self.basic = basic
     
-    Typ visit_unbound_type(self, UnboundType t):
+    Type visit_unbound_type(self, UnboundType t):
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
         elif isinstance(self.s, NoneTyp):
@@ -28,44 +28,44 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
         else:
             return Any()
     
-    Typ visit_error_type(self, ErrorType t):
+    Type visit_error_type(self, ErrorType t):
         return t
     
-    Typ visit_any(self, Any t):
+    Type visit_any(self, Any t):
         return t
     
-    Typ visit_void(self, Void t):
+    Type visit_void(self, Void t):
         if isinstance(self.s, Void):
             return t
         else:
             return ErrorType()
     
-    Typ visit_none_type(self, NoneTyp t):
+    Type visit_none_type(self, NoneTyp t):
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             return t
         else:
             return ErrorType()
 
-    Typ visit_erased_type(self, ErasedType t):
+    Type visit_erased_type(self, ErasedType t):
         return self.s
     
-    Typ visit_type_var(self, TypeVar t):
+    Type visit_type_var(self, TypeVar t):
         if isinstance(self.s, TypeVar) and ((TypeVar)self.s).id == t.id:
             return self.s
         else:
             return self.default(self.s)
     
-    Typ visit_instance(self, Instance t):
+    Type visit_instance(self, Instance t):
         if isinstance(self.s, Instance):
             si = (Instance)self.s
-            if t.typ == si.typ:
+            if t.type == si.type:
                 if is_subtype(t, self.s):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    Typ[] args = []
+                    Type[] args = []
                     for i in range(len(t.args)):
                         args.append(self.meet(t.args[i], si.args[i]))
-                    return Instance(t.typ, args)
+                    return Instance(t.type, args)
                 else:
                     return NoneTyp()
             else:
@@ -79,17 +79,17 @@ class TypeMeetVisitor(TypeVisitor<Typ>):
         else:
             return self.default(self.s)
     
-    Typ visit_callable(self, Callable t):
+    Type visit_callable(self, Callable t):
         if isinstance(self.s, Callable) and is_similar_callables(
                                                         t, (Callable)self.s):
             return combine_similar_callables(t, (Callable)self.s, self.basic)
         else:
             return self.default(self.s)
     
-    Typ visit_tuple_type(self, TupleType t):
+    Type visit_tuple_type(self, TupleType t):
         if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
                                               t.length()):
-            Typ[] items = []
+            Type[] items = []
             for i in range(t.length()):
                 items.append(self.meet(t.items[i],
                                        ((TupleType)self.s).items[i]))

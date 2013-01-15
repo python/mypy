@@ -1,4 +1,4 @@
-"""Representation classes for Typ subclasses and TypeVars.
+"""Representation classes for Type subclasses and TypeVars.
 
 These are used for source-source transformation that preserves original
 formatting and comments.

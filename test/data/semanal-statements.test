@@ -133,8 +133,8 @@ MypyFile:1(
   ForStmt:2(
     NameExpr(x*)
     NameExpr(y*)
-    Type:2(builtins.object)
-    Type:2(__main__.c)
+    builtins.object
+    __main__.c
     ListExpr:2()
     Block:2(
       ExpressionStmt:3(

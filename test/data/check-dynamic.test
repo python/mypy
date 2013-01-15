@@ -76,8 +76,8 @@ int n
 d in a  # E: Unsupported right operand type for in ("A")
 d and a
 d or a
-c = d and b # E: Incompatible types in assignment
-c = d or b  # E: Incompatible types in assignment
+c = d and b # Unintuitive type inference?
+c = d or b  # Unintuitive type inference?
 
 c = d + a
 c = d - a
@@ -105,6 +105,7 @@ class object:
   def __init__(self): pass
 class bool: pass
 class int: pass
+class type: pass
 
 [case testBinaryOperationsWithDynamicAsRightOperand]
 -- TODO: relational operations
@@ -117,8 +118,8 @@ int n
 a and d
 a or d
 c = a in d
-c = b and d # E: Incompatible types in assignment
-c = b or d  # E: Incompatible types in assignment
+c = b and d # Unintuitive type inference?
+c = b or d  # Unintuitive type inference?
 b = a + d   # E: Incompatible types in assignment
 b = a / d   # E: Incompatible types in assignment
 
@@ -159,6 +160,7 @@ class object:
   def __init__(self): pass
 class bool: pass
 class int: pass
+class type: pass
 
 [case testDynamicWithUnaryExpressions]
 any d

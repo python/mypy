@@ -9,7 +9,7 @@ class ErrorInfo:
     # The source file that was the source of this error.
     str file
     # The name of the type in which this error is located at.
-    str typ     # Unqualified, may be None
+    str type     # Unqualified, may be None
     # It the error located within an interface?
     bool is_interface
     # The name of the function or member in which this error is located at.
@@ -33,7 +33,7 @@ class ErrorInfo:
                   str message):
         self.import_ctx = import_ctx
         self.file = file
-        self.typ = typ
+        self.type = typ
         self.is_interface = is_interface
         self.function_or_member = function_or_member
         self.line = line
@@ -180,15 +180,15 @@ class Errors:
             
             # Report context within a source file.
             if (e.function_or_member != prev_function_or_member or
-                    e.typ != prev_type):
+                    e.type != prev_type):
                 if e.function_or_member is None:
-                    if e.typ is None:
+                    if e.type is None:
                         result.append((e.file, -1, 'At top level:'))
                     else:
                         result.append((e.file, -1, 'In {} "{}":'.format(
-                            e.type_id(), e.typ)))
+                            e.type_id(), e.type)))
                 else:
-                    if e.typ is None:
+                    if e.type is None:
                         result.append((e.file, -1,
                                        'In function "{}":'.format(
                                            e.function_or_member)))
@@ -196,19 +196,19 @@ class Errors:
                         result.append((e.file, -1,
                                        'In member "{}" of {} "{}":'.format(
                                            e.function_or_member, e.type_id(),
-                                           e.typ)))
-            elif e.typ != prev_type:
-                if e.typ is None:
+                                           e.type)))
+            elif e.type != prev_type:
+                if e.type is None:
                     result.append((e.file, -1, 'At top level:'))
                 else:
                     result.append((e.file, -1,
-                                   'In {} "{}":'.format(e.type_id(), e.typ)))
+                                   'In {} "{}":'.format(e.type_id(), e.type)))
             
             result.append((e.file, e.line, e.message))
             
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
-            prev_type = e.typ
+            prev_type = e.type
         
         return result
     

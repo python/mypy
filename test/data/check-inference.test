@@ -700,3 +700,17 @@ func<A[]()> f2 = l # E: Incompatible types in assignment
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
+
+
+-- Boolean operators
+-- -----------------
+
+
+[case testOrOperationWithGenericOperands]
+A[] a
+object[] o
+a2 = a or []
+a = a2
+a2 = o # E: Incompatible types in assignment
+class A: pass
+[builtins fixtures/list.py]

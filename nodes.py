@@ -77,7 +77,7 @@ class MypyFile(Node, AccessorNode, SymNode):
     str _name         # Module name ('__main__' for initial file)
     str _full_name    # Qualified module name
     str path          # Path to the file (None if not known)
-    Node[] defs   # Global definitions and statements
+    Node[] defs       # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
     
@@ -129,10 +129,12 @@ class ImportAll(Node):
 
 
 class FuncBase(Node, AccessorNode):
-    Annotation typ   # Type signature (Callable or Overloaded)
+    mtypes.Type type # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
-    def name(self):
+    str name(self):
         pass
+    bool is_method(self):
+        return bool(self.info)
 
 
 class OverloadedFuncDef(FuncBase, SymNode):
@@ -172,12 +174,12 @@ class FuncItem(FuncBase):
                         # more than one overload variant?
     
     void __init__(self, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, Annotation typ=None):
+                  Block body, mtypes.Type typ=None):
         self.args = args
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
-        self.typ = typ
+        self.type = typ
         self.is_implicit = typ is None
         self.is_overload = False
         
@@ -224,8 +226,13 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem, SymNode):
     str _full_name      # Name with module prefix
     
-    void __init__(self, str name, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, Annotation typ=None):
+    void __init__(self,
+                  str name,          # Function name
+                  Var[] args,        # Argument names
+                  int[] arg_kinds,   # Arguments kinds (nodes.ARG_*)
+                  Node[] init,       # Initializers (each may be None)
+                  Block body,
+                  mtypes.Type typ=None):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
@@ -259,13 +266,13 @@ class Decorator(Node):
 
 
 class Var(Node, AccessorNode, SymNode):
-    str _name       # Name without module prefix
-    str _full_name  # Name with module prefix
-    bool is_init    # Is is initialized?
-    TypeInfo info   # Defining class (for member variables)
-    Annotation typ  # Declared type, or None if none
-    bool is_self    # Is this the first argument to an ordinary method
-                    # (usually "self")?
+    str _name        # Name without module prefix
+    str _full_name   # Name with module prefix
+    bool is_init     # Is is initialized?
+    TypeInfo info    # Defining class (for member variables)
+    mtypes.Type type # Declared type, or None if none
+    bool is_self     # Is this the first argument to an ordinary method
+                     # (usually "self")?
     
     void __init__(self, str name):
         self._name = name
@@ -288,13 +295,13 @@ class TypeDef(Node):
     Block defs
     mtypes.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
-    mtypes.Typ[] base_types
+    mtypes.Type[] base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
     void __init__(self, str name, Block defs,
                   mtypes.TypeVars type_vars=None,
-                  mtypes.Typ[] base_types=None,
+                  mtypes.Type[] base_types=None,
                   bool is_interface=False):
         if not base_types:
             base_types = []
@@ -312,14 +319,14 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
-    list<tuple<Var, mtypes.Typ>> items
-    int kind          # Ldef/Gdef/Mdef/...
+    tuple<Var, mtypes.Type>[] items
+    int kind          # LDEF/GDEF/MDEF/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
     
-    void __init__(self, list<tuple<Var, mtypes.Typ>> items,
+    void __init__(self, tuple<Var, mtypes.Type>[] items,
                   bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
@@ -420,13 +427,13 @@ class WhileStmt(Node):
 
 class ForStmt(Node):
     NameExpr[] index   # Index variables
-    Annotation[] types # Index variable types (each may be None)
+    mtypes.Type[] types    # Index variable types (each may be None)
     Node expr              # Expression to iterate
     Block body
     Block else_body
     
     void __init__(self, NameExpr[] index, Node expr, Block body,
-                  Block else_body, Annotation[] types=None):
+                  Block else_body, mtypes.Type[] types=None):
         self.index = index
         self.expr = expr
         self.body = body
@@ -657,10 +664,13 @@ class MemberExpr(RefExpr):
     bool is_def = False
     # The variable node related to a definition.
     Var def_var = None
+    # Is this direct assignment to a data member (bypassing accessors)?
+    bool direct
     
-    void __init__(self, Node expr, str name):
+    void __init__(self, Node expr, str name, bool direct=False):
         self.expr = expr
         self.name = name
+        self.direct = direct
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_member_expr(self)
@@ -682,7 +692,9 @@ class CallExpr(Node):
     str[] arg_names # None if not a keyword argument
     
     void __init__(self, Node callee, Node[] args, int[] arg_kinds,
-                  str[] arg_names):
+                  str[] arg_names=None):
+        if not arg_names:
+            arg_names = <str> [None] * len(args)
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
@@ -752,11 +764,11 @@ class SliceExpr(Node):
 
 class CastExpr(Node):
     Node expr
-    mtypes.Typ typ
+    mtypes.Type type
     
-    void __init__(self, Node expr, mtypes.Typ typ):
+    void __init__(self, Node expr, mtypes.Type typ):
         self.expr = expr
-        self.typ = typ
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_cast_expr(self)
@@ -788,11 +800,11 @@ class FuncExpr(FuncItem):
 class ListExpr(Node):
     """List literal expression [...] or <type> [...]"""
     Node[] items 
-    mtypes.Typ typ # None if implicit type
+    mtypes.Type type # None if implicit type
     
-    void __init__(self, Node[] items, mtypes.Typ typ=None):
+    void __init__(self, Node[] items, mtypes.Type typ=None):
         self.items = items
-        self.typ = typ
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_list_expr(self)
@@ -801,8 +813,8 @@ class ListExpr(Node):
 class DictExpr(Node):
     """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
     list<tuple<Node, Node>> items
-    mtypes.Typ key_type    # None if implicit type
-    mtypes.Typ value_type  # None if implicit type
+    mtypes.Type key_type    # None if implicit type
+    mtypes.Type value_type  # None if implicit type
     
     void __init__(self, list<tuple<Node, Node>> items):
         self.items = items
@@ -814,9 +826,9 @@ class DictExpr(Node):
 class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
     Node[] items
-    mtypes.Typ[] types
+    mtypes.Type[] types
     
-    void __init__(self, Node[] items, mtypes.Typ[] types=None):
+    void __init__(self, Node[] items, mtypes.Type[] types=None):
         self.items = items
         self.types = types
     
@@ -841,10 +853,10 @@ class GeneratorExpr(Node):
     Node right_expr
     Node condition   # May be None
     NameExpr[] index
-    Annotation[] types
+    mtypes.Type[] types
     
     void __init__(self, Node left_expr, NameExpr[] index,
-                  Annotation[] types, Node right_expr, Node condition):
+                  mtypes.Type[] types, Node right_expr, Node condition):
         self.left_expr = left_expr
         self.right_expr = right_expr
         self.condition = condition
@@ -879,20 +891,9 @@ class ConditionalExpr(Node):
         return visitor.visit_conditional_expr(self)
 
 
-class Annotation(Node):
-    mtypes.Typ typ
-    
-    void __init__(self, mtypes.Typ typ, int line=-1):
-        self.typ = typ
-        self.line = line
-    
-    T accept<T>(self, NodeVisitor<T> visitor):
-        return visitor.visit_annotation(self)
-
-
 class TypeApplication(Node):
     any expr   # Node
-    any types  # mtypes.Typ[]
+    any types  # mtypes.Type[]
     
     def __init__(self, expr, types):
         self.expr = expr
@@ -907,12 +908,12 @@ class CoerceExpr(Node):
     inserted after type checking).
     """
     Node expr
-    mtypes.Typ target_type
-    mtypes.Typ source_type
+    mtypes.Type target_type
+    mtypes.Type source_type
     bool is_wrapper_class
     
-    void __init__(self, Node expr, mtypes.Typ target_type,
-                  mtypes.Typ source_type, bool is_wrapper_class):
+    void __init__(self, Node expr, mtypes.Type target_type,
+                  mtypes.Type source_type, bool is_wrapper_class):
         self.expr = expr
         self.target_type = target_type
         self.source_type = source_type
@@ -924,9 +925,9 @@ class CoerceExpr(Node):
 
 class JavaCast(Node):
     Node expr
-    mtypes.Typ target
+    mtypes.Type target
     
-    void __init__(self, Node expr, mtypes.Typ target):
+    void __init__(self, Node expr, mtypes.Type target):
         self.expr = expr
         self.target = target
     
@@ -939,10 +940,10 @@ class TypeExpr(Node):
     used only for runtime type checking. This node is always generated only
     after type checking.
     """
-    mtypes.Typ typ
+    mtypes.Type type
     
-    void __init__(self, mtypes.Typ typ):
-        self.typ = typ
+    void __init__(self, mtypes.Type typ):
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_type_expr(self)
@@ -953,10 +954,10 @@ class TempNode(Node):
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
-    mtypes.Typ typ
+    mtypes.Type type
     
-    void __init__(self, mtypes.Typ typ):
-        self.typ = typ
+    void __init__(self, mtypes.Type typ):
+        self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_temp_node(self)
@@ -987,12 +988,12 @@ class TypeInfo(Node, AccessorNode, SymNode):
     
     # Type variable bounds (each may be None)
     # TODO implement these
-    mtypes.Typ[] bounds
+    mtypes.Type[] bounds
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
-    mtypes.Typ[] bases
-    
+    # TODO comment may not be accurate; also why generics should be special?
+    mtypes.Type[] bases
     
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
                   TypeDef defn):
@@ -1009,7 +1010,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         self.vars = vars
         self.methods = methods
         self.defn = defn
-        if defn.type_vars is not None:
+        if defn.type_vars:
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
     
@@ -1028,7 +1029,6 @@ class TypeInfo(Node, AccessorNode, SymNode):
         for vd in a:
             self.bounds.append(vd.bound)
     
-    
     # IDEA: Refactor the has* methods to be more consistent and document
     #       them.
     
@@ -1036,7 +1036,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         return self.has_var(name) or self.has_method(name)
     
     bool has_writable_member(self, str name):
-        return self.has_var(name) or self.has_setter(name)
+        return self.has_var(name)
     
     bool has_var(self, str name):
         return self.get_var(name) is not None
@@ -1045,15 +1045,10 @@ class TypeInfo(Node, AccessorNode, SymNode):
         return name in self.methods or (self.base is not None
                                         and self.base.has_method(name))
     
-    def has_setter(self, name):
-        # FIX implement
-        return False
-    
-    
     Var get_var(self, str name):
         if name in self.vars:
             return self.vars[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_var(name)
         else:
             return None
@@ -1062,7 +1057,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         # TODO getter
         if name in self.vars:
             return self.vars[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_var_or_getter(name)
         else:
             return None
@@ -1071,7 +1066,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         # TODO setter
         if name in self.vars:
             return self.vars[name]
-        elif self.base is not None:
+        elif self.base:
             return self.base.get_var_or_setter(name)
         else:
             return None
@@ -1079,11 +1074,18 @@ class TypeInfo(Node, AccessorNode, SymNode):
     FuncBase get_method(self, str name):
         if name in self.methods:
             return self.methods[name]
-        elif self.base is not None:
-            return self.base.get_method(name)
-        else:
-            return None
-    
+        elif self.base:
+            # Lookup via base type.
+            result = self.base.get_method(name)
+            if result:
+                return result
+        # Finally lookup via all implemented interfaces.
+        for iface in self.interfaces:
+            result = iface.get_method(name)
+            if result:
+                return result
+        # Give up; could not find it.
+        return None
     
     void set_base(self, TypeInfo base):
         """Set the base class."""
@@ -1091,8 +1093,9 @@ class TypeInfo(Node, AccessorNode, SymNode):
         base.subtypes.add(self)
     
     bool has_base(self, str full_name):
-        """Return True if type has a basetype with the specified name,
-        either via extension or via implementation.
+        """Return True if type has a base type with the specified name.
+
+        This can be either via extension or via implementation.
         """
         if self.full_name() == full_name or (self.base is not None and
                                              self.base.has_base(full_name)):
@@ -1110,15 +1113,15 @@ class TypeInfo(Node, AccessorNode, SymNode):
                 set.add(t)
         return set
     
-    
     void add_interface(self, TypeInfo base):
         """Add a base interface."""
         self.interfaces.append(base)
     
     TypeInfo[] all_directly_implemented_interfaces(self):
-        """Return a list of interfaces that are either directly
-        implemented by the type or that are the supertypes of other
-        interfaces in the array.
+        """Return a list of interfaces that the type implements.
+
+        This includes interfaces that are directly implemented by the type and
+        that are implemented by base types.
         """
         # Interfaces never implement interfaces.
         if self.is_interface:
@@ -1142,10 +1145,10 @@ class TypeInfo(Node, AccessorNode, SymNode):
         """
         return self.interfaces[:]
     
-    
     str __str__(self):
-        """Return a string representation of the type, which includes the most
-        important information about the type.
+        """Return a string representation of the type.
+
+        This includes the most important information about the type.
         """
         str[] interfaces = []
         for i in self.interfaces:
@@ -1189,10 +1192,10 @@ class SymbolTableNode:
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
-    mtypes.Typ type_override  # If None, fall back to type of node
+    mtypes.Type type_override  # If None, fall back to type of node
     
     void __init__(self, int kind, SymNode node, str mod_id=None,
-                  mtypes.Typ typ=None, int tvar_id=0):
+                  mtypes.Type typ=None, int tvar_id=0):
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -1205,14 +1208,14 @@ class SymbolTableNode:
         else:
             return None
     
-    mtypes.Typ typ(self):
+    mtypes.Type type(self):
         # IDEA: Get rid of the any type.
         any node = self.node
         if self.type_override is not None:
             return self.type_override
         elif ((isinstance(node, Var) or isinstance(node, FuncDef))
-              and node.typ is not None):
-            return node.typ.typ
+              and node.type is not None):
+            return node.type.type
         else:
             return None
     
@@ -1221,8 +1224,8 @@ class SymbolTableNode:
         if self.mod_id is not None:
             s += ' ({})'.format(self.mod_id)
         # Include declared type of variables and functions.
-        if self.typ() is not None:
-            s += ' : {}'.format(self.typ())
+        if self.type() is not None:
+            s += ' : {}'.format(self.type())
         return s
 
 
@@ -1231,8 +1234,8 @@ str clean_up(str s):
         
 
 mtypes.FunctionLike function_type(FuncBase func):
-    if func.typ:
-        return (mtypes.FunctionLike)func.typ.typ
+    if func.type:
+        return (mtypes.FunctionLike)func.type
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an
@@ -1244,7 +1247,7 @@ mtypes.FunctionLike function_type(FuncBase func):
         names = <str> []
         for arg in fdef.args:
             names.append(arg.name())
-        return mtypes.Callable(<mtypes.Typ> [mtypes.Any()] * len(fdef.args),
+        return mtypes.Callable(<mtypes.Type> [mtypes.Any()] * len(fdef.args),
                                fdef.arg_kinds,
                                names,
                                mtypes.Any(),
@@ -1272,4 +1275,5 @@ mtypes.Callable method_callable(mtypes.Callable c):
                            c.ret_type,
                            c.is_type_obj(),
                            c.name,
-                           c.variables)
+                           c.variables,
+                           c.bound_vars)

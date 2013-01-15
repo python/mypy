@@ -1,3 +1,10 @@
+"""Test cases for mypy-to-Python translation.
+
+Each test case translates a fragment of mypy to Python and checks that
+the generated Python code is as expected. The test cases use minimal builtins
+stubs to speed up running.
+"""
+
 import os.path
 import sys
 
@@ -50,6 +57,7 @@ def test_python_generation(testcase):
                         fix_path(remove_prefix(t.path, test_temp_dir))))
 
                 ver = 3
+                # Generate Python 2 instead of 3?
                 if '-2' in testcase.name:
                     ver = 2
                 v = PythonGenerator(ver)

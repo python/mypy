@@ -317,9 +317,6 @@ class DictExprRepr:
         self.rangle = rangle
 
 
-class AnnotationRepr: pass
-
-
 class TypeApplicationRepr:
     void __init__(self, any langle, any commas, any rangle):
         self.langle = langle

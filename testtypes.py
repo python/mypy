@@ -6,7 +6,7 @@ from expandtype import expand_type
 from join import join_types
 from meet import meet_types
 from mtypes import (
-    UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Typ,
+    UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Type,
     Instance, NoneTyp, ErrorType
 )
 from nodes import ARG_POS, ARG_OPT, ARG_STAR
@@ -369,7 +369,7 @@ class JoinSuite(Suite):
         t2 = self.type_callable(self.fx.b, self.fx.b)
         
         self.assert_join(t1, t1, t1)
-        assert_true(join_types(t1, t1, self.fx.basic).is_type_obj)
+        assert_true(join_types(t1, t1, self.fx.basic).is_type_obj())
         
         self.assert_join(t1, t2, self.fx.std_type)
         self.assert_join(t1, self.fx.std_type, self.fx.std_type)

@@ -1,0 +1,1097 @@
+-- Test cases for runtime (dynamic) checking transformation.
+--
+-- Each test case consists of at least two sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the
+-- transformation.
+
+-- Note that the test cases use a pretty-printed output syntax that is not
+-- valid mypy code.
+
+
+-- Empty method transformation, no inheritance
+-- -------------------------------------------
+
+
+[case testEmptyClass]
+class A: pass
+class B: pass
+[out]
+class A:
+    pass
+any A*():
+    return A()
+class B:
+    pass
+any B*():
+    return B()
+
+[case testSimpleMethod]
+class A:
+    void __init__(self):
+        pass
+    
+    int f(self):
+        pass
+[out]
+class A:
+    void __init__(A self):
+        pass
+    int f(A self):
+        pass
+    any f*(any self):
+        return {any <= int {A self}.f()}
+any A*():
+    return A()
+
+[case testMethodWithArguments]
+class A:
+    void __init__(self):
+        pass
+    
+    void f(self, A a):
+        pass
+[out]
+class A:
+    void __init__(A self):
+        pass
+    void f(A self, A a):
+        pass
+    any f*(any self, any a):
+        {A self}.f({A a})
+any A*():
+    return A()
+
+[case testMethodWithDynamicTypesInArguments]
+class A:
+    A f(self, any a, any b):
+        pass
+[out]
+class A:
+    A f(A self, any a, any b):
+        pass
+    any f*(any self, any a, any b):
+        return {A self}.f(a, b)
+any A*():
+    return A()
+
+[case testMethodWithDynamicReturnType]
+class A:
+    any f(self, A a):
+        pass
+[out]
+class A:
+    any f(A self, A a):
+        pass
+    any f*(any self, any a):
+        return {A self}.f({A a})
+any A*():
+    return A()
+
+
+-- Empty methods with inheritance
+-- ------------------------------
+
+
+[case testOverridingStaticWithDynamic]
+class A:
+    int f(self, float a):
+        pass
+class B(A):
+    any f(self, any a):
+        pass
+[out]
+class A:
+    int f(A self, float a):
+        pass
+    any f*(any self, any a):
+        return {any <= int {A self}.f({float a})}
+any A*():
+    return A()
+class B(A):
+    any f`B(B self, any a):
+        pass
+    int f(A self, float a):
+        return {int {B self}.f`B({any <= float a})}
+    any f*(any self, any a):
+        return {B self}.f`B(a)
+any B*():
+    return B()
+
+[case testOverridingDynamicWithStatic]
+class A:
+    any f(self, any a):
+        pass
+class B(A):
+    int f(self, A a):
+        pass
+[out]
+class A:
+    any f(A self, any a):
+        pass
+    any f*(any self, any a):
+        return {A self}.f(a)
+...
+class B(A):
+    int f`B(B self, A a):
+        pass
+    any f(A self, any a):
+        return {any <= int {B self}.f`B({A a})}
+    any f*(any self, any a):
+        return {any <= int {B self}.f`B({A a})}
+...
+
+[case testNewMethodInSubclass]
+class A:
+    B f(self, A a):
+        pass
+class B(A):
+    A g(self, B b):
+        pass
+[out]
+class A:
+    B f(A self, A a):
+        pass
+    any f*(any self, any a):
+        return {A self}.f({A a})
+...
+class B(A):
+    A g(B self, B b):
+        pass
+    any g*(any self, any b):
+        return {B self}.g({B b})
+...
+
+[case testOverridingMethodInGrandparent]
+class A:
+    B f(self, int a):
+        pass
+class B(A): pass
+class C(B):
+    any f(self, any a):
+        pass
+[out]
+...
+class B(A):
+    pass
+...
+class C(B):
+    any f`C(C self, any a):
+        pass
+    B f(A self, int a):
+        return {B {C self}.f`C({any <= int a})}
+    any f*(any self, any a):
+        return {C self}.f`C(a)
+...
+
+[case testOverridingMethodTwice]
+class A:
+    float f(self, int a):
+        pass
+class B(A):
+    float f(self, any a):
+        pass
+class C(B):
+    any f(self, int a):
+        pass
+[out]
+...
+class B(A):
+    float f`B(B self, any a):
+        pass
+    float f(A self, int a):
+        return {B self}.f`B({any <= int a})
+    any f*(any self, any a):
+        return {any <= float {B self}.f`B(a)}
+...
+class C(B):
+    any f`C(C self, int a):
+        pass
+    float f`B(B self, any a):
+        return {float {C self}.f`C({int a})}
+    any f*(any self, any a):
+        return {C self}.f`C({int a})
+...
+
+[case testOverridingWithSameSig]
+class A:
+    B f(self, A a):
+        pass
+class B(A):
+    B f(self, A a):
+        return None
+[out]
+...
+class B(A):
+    B f(B self, A a):
+        return None
+any B*():
+...
+
+[case testOverridingDynamicWithDynamic]
+class A:
+    any f(self, any a):
+        pass
+class B(A):
+    any f(self, any a):
+        return None
+[out]
+...
+class B(A):
+    any f(B self, any a):
+        return None
+any B*():
+...
+
+[case testOverridingFirstWithDynamicAndThenWithSameSig]
+class A:
+    void f(self, int a):
+        self.f(a)
+class B(A):
+    void f(self, any a):
+        self.f(a)
+class C(B):
+    void f(self, any a):
+        self.f(a)
+[out]
+...
+class B(A):
+    void f`B(B self, any a):
+        self.f`B(a)
+    void f(A self, int a):
+        {B self}.f`B({any <= int a})
+    any f*(any self, any a):
+        {B self}.f`B(a)
+...
+class C(B):
+    void f`B(C self, any a):
+        self.f`B(a)
+any C*():
+...
+
+
+-- Method calls
+-- ------------
+
+
+[case testCallStaticallyTypedMethod]
+class A:
+    A f(self, B b):
+        return b.g()
+class B:
+    A g(self):
+        pass
+[out]
+class A:
+    A f(A self, B b):
+        return b.g()
+...
+
+[case testCallDynamicallyTypedMethod]
+class A:
+    any f(self, any b):
+        return b.g()
+class B:
+    A g(self):
+        pass
+[out]
+class A:
+    any f(A self, any b):
+        return b.g*()
+...
+
+[case testStaticCallWithArguments]
+class A:
+    A f(self, B b):
+        return b.g(b, 1)
+class B:
+    A g(self, B b, any d):
+        pass
+[out]
+class A:
+    A f(A self, B b):
+        return b.g(b, {any <= int 1})
+...
+
+[case testDynamicCallWithArguments]
+class A:
+    A f(self, any d, int i):
+        return d.g(d, i)
+[out]
+class A:
+    A f(A self, any d, int i):
+        return {A d.g*(d, {any <= int i})}
+...
+
+[case testMethodCallWithInheritance]
+class A:
+    A f1(self, B b):
+        return b.f1(b)
+    B f2(self, B b, A a):
+        return b.g(a)
+class B(A):
+    B g(self, A a):
+        pass
+[out]
+class A:
+    A f1(A self, B b):
+        return b.f1(b)
+...
+    B f2(A self, B b, A a):
+        return b.g(a)
+...
+
+[case testMethodCallWithOverride]
+class A:
+    A f(self, B b):
+        return b.f(b)
+    A f2(self, A a, B b):
+        return a.f(b)
+class B(A):
+    any f(self, B b):
+        pass
+[out]
+class A:
+    A f(A self, B b):
+        return {A b.f`B(b)}
+...
+    A f2(A self, A a, B b):
+        return a.f(b)
+...
+
+[case testNestedMethodCalls]
+class A:
+    any f(self, A a):
+        return a.g(a.g(1))
+    int g(self, any a):
+        pass
+[out]
+class A:
+    any f(A self, A a):
+        return {any <= int a.g({any <= int a.g({any <= int 1})})}
+...
+
+[case testMethodCallViaSelf]
+class A:
+    any f(self, int a):
+        return self.g(a)
+    int g(self, any a):
+        pass
+[out]
+class A:
+    any f(A self, int a):
+        return {any <= int self.g({any <= int a})}
+...
+
+
+-- Statements
+-- ----------
+
+
+[case testReturnStatement1]
+class A:
+    any f(self, B b):
+        return b.g()
+class B:
+    A g(self):
+        pass
+[out]
+class A:
+    any f(A self, B b):
+        return b.g()
+    any f*(any self, any b):
+        return {A self}.f({B b})
+...
+
+[case testReturnStatement2]
+class A:
+    A f(self, B b):
+        return b.g()
+class B:
+    any g(self):
+        pass
+[out]
+class A:
+    A f(A self, B b):
+        return {A b.g()}
+    any f*(any self, any b):
+        return {A self}.f({B b})
+...
+
+[case testIfStatement]
+bool b
+any d
+if b:
+    d = 1
+elif d:
+    d = 2
+else:
+    d = 3
+[builtins fixtures/ops.py]
+[out]
+...
+if b:
+    d = {any <= int 1}
+elif d:
+    d = {any <= int 2}
+else:
+    d = {any <= int 3}
+
+[case testWhileStatement]
+bool b
+any d
+while b:
+    while d:
+        d = 1
+[builtins fixtures/ops.py]
+[out]
+...
+while b:
+    while d:
+        d = {any <= int 1}
+
+
+-- Cast insertion (or non-insertion) in specific cases
+-- ---------------------------------------------------
+
+
+[case testOmitSubtypeToSupertypeCast]
+class A:
+    A f(self, B b):
+        return b
+class B(A): pass
+[out]
+class A:
+    A f(A self, B b):
+        return b
+...
+
+
+-- __init__ and object construction
+-- --------------------------------
+
+
+[case testConstructInstanceWithPreciseTypes]
+class A:
+    void __init__(self, B b):
+        pass
+    
+    A f(self, B b):
+        return A(b)
+class B: pass
+[out]
+class A:
+    void __init__(A self, B b):
+        pass
+    A f(A self, B b):
+        return A(b)
+...
+any A*(any b):
+    return A({B b})
+...
+
+[case testClassWrapperWithTwoArguments]
+class A:
+    void __init__(self, any a, int i): pass
+[out]
+...
+any A*(any a, any i):
+    return A(a, {int i})
+
+[case testCreateInstanceWithTrivialReturnTypeCoercion]
+class A:
+    any f(self):
+        return A()
+[out]
+class A:
+    any f(A self):
+        return A()
+...
+
+[case testCreateInstanceWithArgumentCasts]
+class A:
+    B f(self, int b, any d):
+        return B(b, d)
+class B:
+    void __init__(self, any d, A a):
+        pass
+[out]
+class A:
+    B f(A self, int b, any d):
+        return B({any <= int b}, {A d})
+...
+
+
+-- Self expressions
+-- ----------------
+
+
+[case testSelf]
+class A:
+    void f(self, any a):
+        self.f(self)
+[out]
+class A:
+    void f(A self, any a):
+        self.f(self)
+...
+
+
+-- Data attributes
+-- ---------------
+
+
+[case testDataAttributeAccessors]
+class A:
+    int i
+[out]
+class A:
+    int i
+    int $i(A self):
+        return self.i!
+    void set$i(A self, int i):
+        self.i! = i
+    any $i*(A self):
+        return {any <= int self.i!}
+    void set$i*(A self, any i):
+        self.i! = {int i}
+any A*():
+    return A()
+
+[case testMemberVariableAccessViaInstanceType]
+class A:
+    int a
+    any d
+    int f(self):
+        return self.d
+    any g(self):
+        return self.a
+[out]
+class A:
+...
+    int f(A self):
+        return {int self.d}
+...
+    any g(A self):
+        return {any <= int self.a}
+...
+
+[case testMemberVariableAssignmentViaInstanceType]
+class A:
+    int a
+    any d
+    void __init__(self, any d):
+        self.a = d
+        self.d = d
+[out]
+...
+    void __init__(A self, any d):
+        self.a = {int d}
+        self.d = d
+...
+
+[case testMemberVariableAccessViaAny]
+class A:
+    A f(self, any d):
+        return d.x
+[out]
+class A:
+    A f(A self, any d):
+        return {A d.x*}
+...
+
+[case testMemberVariableAssignmentViaDynamic]
+any d
+d.x = 1
+[out]
+...
+d.x* = {any <= int 1}
+
+
+-- Casts
+-- -----
+
+
+[case testCast]
+class A:
+    B f(self, A a):
+        return (B)a
+class B(A): pass
+[out]
+class A:
+    B f(A self, A a):
+        return (B)a
+...
+
+[case testDynamicCast]
+class A:
+    float f(self, int a):
+        return (any)a
+[out]
+class A:
+    float f(A self, int a):
+        return {float (any){any <= int a}}
+...
+
+[case testNestedCasts]
+(int)(any)1
+[out]
+(int)(any){any <= int 1}
+
+
+-- Global expressions
+-- ------------------
+
+
+[case testGlobalExpression]
+class A:
+    void f(self, any a):
+        pass
+
+A().f(1)
+[out]
+...
+A().f({any <= int 1})
+
+
+-- Void type
+-- ---------
+
+
+[case testVoidReturn]
+class A:
+    void f(self, any b):
+        pass
+class B(A):
+    void f(self, B b):
+        pass
+[out]
+class A:
+    void f(A self, any b):
+        pass
+    any f*(any self, any b):
+        {A self}.f(b)
+any A*():
+    return A()
+class B(A):
+    void f`B(B self, B b):
+        pass
+    void f(A self, any b):
+        {B self}.f`B({B b})
+    any f*(any self, any b):
+        {B self}.f`B({B b})
+any B*():
+    return B()
+
+
+-- Function definition and call
+-- ----------------------------
+
+
+[case testFunctionDefinitionAndCall]
+int f(int a):
+    return (any)1
+any d
+d = f((any)1)
+[out]
+int f(int a):
+    return {int (any){any <= int 1}}
+any d
+d = {any <= int f({int (any){any <= int 1}})}
+
+
+-- Assignment and initialization
+-- -----------------------------
+
+
+[case testAssignmentToGlobal]
+int a
+any d
+a = a
+a = d
+d = a
+[out]
+int a
+any d
+a = a
+a = {int d}
+d = {any <= int a}
+
+[case testGlobalInitialization]
+int a
+any d
+any dd = a
+int aa = a
+[out]
+int a
+any d
+any dd = {any <= int a}
+int aa = a
+
+[case testLocalVariableAssignmentAndInit]
+void f():
+    int a
+    any d = a
+    int aa = a
+    a = a
+    d = a
+[out]
+void f():
+    int a
+    any d = {any <= int a}
+    int aa = a
+    a = a
+    d = {any <= int a}
+
+[case testMemberInitialization]
+class A:
+    int a
+    any d = 1
+    int b = 1
+    
+    void __init__(self, int a):
+        self.a = a
+[out]
+class A:
+...
+    any d = {any <= int 1}
+...
+    int b = 1
+...
+
+
+-- None
+-- ----
+
+
+[case testInitializationToNone]
+object a = None
+any d = None
+[out]
+object a = None
+any d = None
+
+[case testNoneAsFunctionArgument]
+void f(A a):
+    pass
+f(None)
+class A: pass
+[out]
+...
+f(None)
+...
+
+
+-- Displaying debugging information
+-- --------------------------------
+
+
+[case testSimplePrint]
+# The arguments to debugging functions are not coerced.
+__print('hello')
+[out]
+__print('hello')
+
+[case testComplexPrint]
+def f(a): pass
+int a
+__print(a, f(a))
+[out]
+...
+int a
+__print(a, f({any <= int a}))
+
+
+-- Coercions from primitive types
+-- ------------------------------
+
+
+[case testCoercionFromPrimitiveToObject]
+object o
+int i
+float f
+A a
+o = i
+o = f
+o = a
+i = i
+class A: pass
+[out]
+...
+A a
+o = {object <= int i}
+o = {object <= float f}
+o = a
+i = i
+...
+
+
+-- Primitive operations
+-- --------------------
+
+
+[case testIntLiterals]
+int a = 1
+any d = 1
+[out]
+int a = 1
+any d = {any <= int 1}
+
+[case testIntArithmetic]
+int i
+any d
+i = 1 + 2
+i = (1 - 2) * 2
+i = 1 % 2
+i = 1 // 2
+i = -i
+d = 1 + d
+d = 1 - d
+d = 1 * d
+d = 1 % d
+d = 1 // d
+d = -d + d - d * d
+d = d + 1
+d = d - 1
+d = d * 1
+d = d % d
+d = d // d
+[builtins fixtures/ops.py]
+[out]
+...
+i = 1 + 2
+i = (1 - 2) * 2
+i = 1 % 2
+i = 1 // 2
+i = -i
+-- TODO the coercions to int are somewhat arbitrary
+d = {any <= int 1 + {int d}}
+d = {any <= int 1 - d}
+d = {any <= int 1 * d}
+d = {any <= int 1 % d}
+d = {any <= int 1 // d}
+d = {int -d} + {int d} - d * d
+d = {int d} + 1
+d = d - 1
+d = d * 1
+d = d % d
+d = d // d
+
+[case testBinaryOperationOperands]
+any d
+int i
+i = d.g() + d.f()
+i = d.g() * d.f()
+i = i + d.f()
+i = -d.g()
+[builtins fixtures/ops.py]
+[out]
+...
+i = {int {int d.g*()} + {int d.f*()}}
+i = {int d.g*() * d.f*()}
+i = i + {int d.f*()}
+i = {int -d.g*()}
+
+[case testBools]
+bool b
+any d
+b = True
+b = False
+d = True
+d = False
+b = b and b
+d = b or b
+b = not b
+d = not b
+b = b and d
+d = b or d
+b = d and b
+d = d or b
+b = d and d
+d = d or d
+b = not d
+[builtins fixtures/ops.py]
+[out]
+bool b
+any d
+b = True
+b = False
+d = {any <= bool True}
+d = {any <= bool False}
+b = b and b
+d = {any <= bool b or b}
+b = not b
+d = {any <= bool not b}
+b = {bool {any <= bool b} and d}
+d = {any <= bool b} or d
+b = {bool d and {any <= bool b}}
+d = d or {any <= bool b}
+b = {bool d and d}
+d = d or d
+b = not d
+
+[case testIntComparisons]
+int i
+bool b
+any d
+b = 1 == 2
+d = 1 != 2
+b = 1 < 2
+b = 1 <= 2
+b = 1 > 2
+b = 1 >= 2
+b = d == d
+d = d == d
+b = d != 1
+b = 1 < d
+d = 1 > d
+[builtins fixtures/ops.py]
+[out]
+...
+b = 1 == 2
+d = {any <= bool 1 != 2}
+b = 1 < 2
+b = 1 <= 2
+b = 1 > 2
+b = 1 >= 2
+b = {bool d == d}
+d = d == d
+b = {bool d != 1}
+b = 1 < d
+d = {any <= bool 1 > d}
+
+[case testNoneComparison]
+bool b
+C c
+b = b is None
+b = c is not None
+b = b == None
+b = c == None
+class C: pass
+[builtins fixtures/ops.py]
+[out]
+...
+b = b is None
+b = c is not None
+b = b == None
+b = c == None
+...
+
+[case testStrLiterals]
+str s = 'foo'
+__print(s)
+__print('bar')
+[out]
+str s = 'foo'
+__print(s)
+__print('bar')
+
+
+-- Type inference
+-- --------------
+
+
+[case testSimpleTypeInference]
+y = 1
+any a = y
+[out]
+y = 1
+any a = {any <= int y}
+
+
+-- Implicit any types
+-- ------------------
+
+
+[case testImplicitFunctionSig]
+def f(a, b):
+    pass
+void g():
+    int i = f(1, 2)
+[out]
+any f(any a, any b):
+    pass
+void g():
+    int i = {int f({any <= int 1}, {any <= int 2})}
+
+[case testImplicitMethodSig]
+class A:
+    def f(self, a):
+        pass
+    void g(self):
+        int i = self.f(1)
+        int j = self.f(1)
+[out]
+class A:
+    any f(any self, any a):
+        pass
+    any f*(any self, any a):
+        return self.f(a)
+    void g(A self):
+        int i = {int self.f({any <= int 1})}
+        int j = {int self.f({any <= int 1})}
+    any g*(any self):
+        {A self}.g()
+...
+
+[case testImplicitMethodSigAndOverride]
+class A:
+    def f(self, a):
+        pass
+    A g(self, A a):
+        pass
+class B(A):
+    def f(self, a):
+        pass
+    def g(self, a):
+        pass
+[out]
+...
+class B(A):
+    any f(any self, any a):
+        pass
+    any g`B(any self, any a):
+        pass
+    A g(A self, A a):
+        return {A self.g`B(a)}
+    any g*(any self, any a):
+        return self.g`B(a)
+...
+
+[case testDynamicallyTypedFunctionBody]
+def f(x):
+    y = 1
+    i + y
+    o + o
+    x = g(o)
+int g(int x):
+    pass
+int i
+object o
+[out]
+any f(any x):
+    y = {any <= int 1}
+    {any <= int i} + y
+    {any o} + o
+    x = {any <= int g({int o})}
+...
+
+[case testDynamicallyTypedMethodBody]
+class A:
+    int i
+    def f(self, x):
+        x = self.g(x)
+        x = self.z()
+        x = self.i
+        x.y()
+    int g(self, int x):
+        pass
+[out]
+class A:
+...
+    any f(any self, any x):
+        x = self.g*(x)
+        x = self.z*()
+        x = self.i*
+        x.y*()
+...

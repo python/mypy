@@ -14,7 +14,7 @@ import os.path
 import sys
 from os.path import dirname, basename
 
-from mtypes import Typ
+from mtypes import Type
 from nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
 from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnalyzer
@@ -26,7 +26,7 @@ from parse import parse
 debug = False
 
 
-tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
+tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
             build(str program_text, str program_file_name='main',
                   bool use_test_builtins=False, str alt_lib_path=None,
                   bool do_type_check=False, str mypy_base_dir=None):
@@ -58,6 +58,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     """
     # TODO only return the module map and node type map; the others are not
     #      necessary
+    # TODO clean up arguments (do_type_check should be True by default, etc.)
     
     if not mypy_base_dir:
         # Determine location of the mypy installation.
@@ -82,7 +83,7 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
     
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
-    if alt_lib_path is not None:
+    if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
     
     # Construct a build manager object that performs all the stages of the
@@ -153,7 +154,7 @@ class BuildManager:
         self.states = []
         self.module_files = {}
     
-    tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Typ>> \
+    tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
                 process(self, UnprocessedFile initial_state):
         """Perform a build.
 
