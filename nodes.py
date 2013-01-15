@@ -1281,4 +1281,5 @@ mtypes.Callable method_callable(mtypes.Callable c):
                            c.ret_type,
                            c.is_type_obj(),
                            c.name,
-                           c.variables)
+                           c.variables,
+                           c.bound_vars)

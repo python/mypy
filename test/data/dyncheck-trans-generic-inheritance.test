@@ -337,7 +337,7 @@ class B(A):
         super().__init__(<int>, <object>)
 ...
 
-[case testInheritingGenericClassWithNonDefaultConstructor-skip]
+[case testInheritingGenericClassWithNonDefaultConstructor]
 class A<T>:
     void __init__(self, object o):
         pass
