@@ -218,6 +218,35 @@ NameExpr(2) : builtins.bool
 NameExpr(3) : 'None'
 
 
+-- Simple type inference
+-- ---------------------
+
+
+[case testInferSingleType]
+x = 1
+[builtins fixtures/primitives.py]
+[out]
+IntExpr(1) : builtins.int
+NameExpr(1) : builtins.int
+
+[case testInferTwoTypes]
+## NameExpr
+s, \ 
+i = 'x', 1
+[builtins fixtures/primitives.py]
+[out]
+NameExpr(2) : builtins.str
+NameExpr(3) : builtins.int
+
+[case testInferSingleLocalVarType]
+void f():
+    x = 1
+[builtins fixtures/primitives.py]
+[out]
+IntExpr(2) : builtins.int
+NameExpr(2) : builtins.int
+
+
 -- Basic generics
 -- --------------
 
@@ -393,21 +422,26 @@ object o
 [out]
 NameExpr(2) : builtins.object
 NameExpr(2) : any
+NameExpr(2) : any
 OpExpr(2) : any
 NameExpr(3) : builtins.object
+NameExpr(3) : any
 NameExpr(4) : any
 
 [case testDynamicallyTypedMethod]
 class A:
   def f(self, x):
-    y = o
+    y = (
+         o)  # Place y and o on separate lines
     x
     y
 object o
 [out]
-NameExpr(3) : builtins.object
-NameExpr(4) : any
+NameExpr(3) : any
+ParenExpr(3) : any
+NameExpr(4) : builtins.object
 NameExpr(5) : any
+NameExpr(6) : any
 
 [case testDynamicallyTypedConstructor]
 class A:
@@ -418,6 +452,7 @@ class A:
 object o
 [out]
 NameExpr(3) : builtins.object
+NameExpr(3) : any
 NameExpr(4) : any
 NameExpr(5) : any
 
@@ -437,6 +472,7 @@ def f():
   x.f()
 [out]
 NameExpr(2) : 'None'
+NameExpr(2) : any
 CallExpr(3) : any
 MemberExpr(3) : any
 NameExpr(3) : any
@@ -531,12 +567,15 @@ class C: pass
 [out]
 CallExpr(2) : A<B>
 NameExpr(2) : def [-1:B] (B x) -> A<B>
+NameExpr(2) : A<B>
 NameExpr(2) : B
 NameExpr(3) : A<B>
 CallExpr(4) : A<B>
 CallExpr(4) : A<C>
 NameExpr(4) : def [-1:B] (B x) -> A<B>
 NameExpr(4) : def [-1:C] (C x) -> A<C>
+NameExpr(4) : A<B>
+NameExpr(4) : A<C>
 NameExpr(4) : B
 NameExpr(4) : C
 TupleExpr(4) : tuple<A<B>, A<C>>

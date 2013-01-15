@@ -1,8 +1,10 @@
 from mtypes import (
     Typ, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
-    TypeVar, Callable, TupleType, Overloaded, ErasedType
+    TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator
 )
 import checker
+from nodes import Annotation
+from lex import Token
 
 
 Typ erase_type(Typ typ, checker.BasicTypes basic):
@@ -59,3 +61,47 @@ class EraseTypeVisitor(TypeVisitor<Typ>):
     
     Typ visit_tuple_type(self, TupleType t):
         return self.basic.tuple
+
+
+none = Token('')
+
+
+void erase_annotation(Annotation a):
+    """Remove generic type arguments and type variables from an annotation."""
+    if a:
+        a.typ = erase_generic_types(a.typ)
+
+
+Typ erase_generic_types(Typ t):
+    """Remove generic type arguments and type variables from a type.
+
+    Replace all types A<...> with simply A, and all type variables
+    with 'any'.
+    """
+    if t:
+        return t.accept(GenericTypeEraser())
+    else:
+        return None
+
+
+class GenericTypeEraser(TypeTranslator):
+    """Implementation of type erasure"""
+    # FIX: What about generic function types?
+    
+    Typ visit_type_var(self, TypeVar t):
+        return Any()
+    
+    Typ visit_instance(self, Instance t):
+        return Instance(t.typ, [], t.line)
+
+
+Typ erase_typevars(Typ t):
+    """Replace all type variables in a type with any."""
+    return t.accept(TypeVarEraser())
+
+
+class TypeVarEraser(TypeTranslator):
+    """Implementation of type erasure"""
+    
+    Typ visit_type_var(self, TypeVar t):
+        return Any()

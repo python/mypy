@@ -1681,14 +1681,18 @@ class Parser:
                     or t.string in ['(', '[', '{', 'lambda'])
     
     bool is_at_type_application(self):
+        """Does the token index point to a type application '<t, ...>('?"""
         if self.current_str() != '<':
             return False
         i = self.ind + 1
         while True:
             int j
             i, j = self.try_scan_type(i)
-            if i < 0 or j == 1:
+            if i < 0:
                 return False
+            if j == 1 and self.tok[i].string == '(':
+                # The closing > is the final part of >>.
+                return True
             if self.tok[i].string != ',':
                 break
             i += 1

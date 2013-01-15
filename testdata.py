@@ -80,8 +80,8 @@ class DataDrivenTestCase(TestCase):
     str file
     int line
     func<void(DataDrivenTestCase)> perform
-    list<tuple<str, str>> files
-    list<tuple<bool, str>> clean_up
+    tuple<str, str>[] files # Tuples (file path, file content)
+    tuple<bool, str>[] clean_up
     
     def __init__(self, name, input, output, file, line, perform, files):
         super().__init__(name)
@@ -154,11 +154,11 @@ class TestItem:
 
 TestItem[] parse_test_data(str[] l, str fnam):
     """Parse a list of lines that represent a sequence of test items."""
-    TestItem[] ret = []
+    ret = <TestItem> []
+    data = <str> []
     
     str id = None
     str arg = None
-    str[] data = []
     
     i = 0
     i0 = 0
@@ -212,7 +212,7 @@ str[] strip_list(str[] l):
 
 
 str[] collapse_line_continuation(str[] l):
-    str[] r = []
+    r = <str> []
     cont = False
     for s in l:
         ss = re.sub(r'\\$', '', s)
@@ -229,7 +229,7 @@ str[] expand_includes(str[] a, str base_path):
     the file name following the prefix. Look for the files in
     base_path.
     """
-    str[] res = []
+    res = <str> []
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()

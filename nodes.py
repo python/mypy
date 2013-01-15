@@ -77,7 +77,7 @@ class MypyFile(Node, AccessorNode, SymNode):
     str _name         # Module name ('__main__' for initial file)
     str _full_name    # Qualified module name
     str path          # Path to the file (None if not known)
-    Node[] defs   # Global definitions and statements
+    Node[] defs       # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
     
@@ -133,6 +133,8 @@ class FuncBase(Node, AccessorNode):
     TypeInfo info    # If method, reference to TypeInfo
     def name(self):
         pass
+    bool is_method(self):
+        return bool(self.info)
 
 
 class OverloadedFuncDef(FuncBase, SymNode):
@@ -224,8 +226,13 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem, SymNode):
     str _full_name      # Name with module prefix
     
-    void __init__(self, str name, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, Annotation typ=None):
+    void __init__(self,
+                  str name,          # Function name
+                  Var[] args,        # Argument names
+                  int[] arg_kinds,   # Arguments kinds (nodes.ARG_*)
+                  Node[] init,       # Initializers (each may be None)
+                  Block body,
+                  Annotation typ=None):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
@@ -312,14 +319,14 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
-    list<tuple<Var, mtypes.Typ>> items
-    int kind          # Ldef/Gdef/Mdef/...
+    tuple<Var, mtypes.Typ>[] items
+    int kind          # LDEF/GDEF/MDEF/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
     
-    void __init__(self, list<tuple<Var, mtypes.Typ>> items,
+    void __init__(self, tuple<Var, mtypes.Typ>[] items,
                   bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
@@ -657,10 +664,13 @@ class MemberExpr(RefExpr):
     bool is_def = False
     # The variable node related to a definition.
     Var def_var = None
+    # Is this direct assignment to a data member (bypassing accessors)?
+    bool direct
     
-    void __init__(self, Node expr, str name):
+    void __init__(self, Node expr, str name, bool direct=False):
         self.expr = expr
         self.name = name
+        self.direct = direct
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_member_expr(self)
@@ -682,7 +692,9 @@ class CallExpr(Node):
     str[] arg_names # None if not a keyword argument
     
     void __init__(self, Node callee, Node[] args, int[] arg_kinds,
-                  str[] arg_names):
+                  str[] arg_names=None):
+        if not arg_names:
+            arg_names = <str> [None] * len(args)
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
@@ -991,6 +1003,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
+    # TODO comment may not be accurate; also why generics should be special?
     mtypes.Typ[] bases
     
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
@@ -1008,7 +1021,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         self.vars = vars
         self.methods = methods
         self.defn = defn
-        if defn.type_vars is not None:
+        if defn.type_vars:
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
     
@@ -1273,4 +1286,5 @@ mtypes.Callable method_callable(mtypes.Callable c):
                            c.ret_type,
                            c.is_type_obj(),
                            c.name,
-                           c.variables)
+                           c.variables,
+                           c.bound_vars)
