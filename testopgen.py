@@ -1,3 +1,5 @@
+"""Test Alore type operation generation (OBSOLETE)."""
+
 import os.path
 import sys
 

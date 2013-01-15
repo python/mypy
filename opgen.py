@@ -1,3 +1,5 @@
+"""Alore code generation for runtime type operations (OBSOLETE)."""
+
 from nodes import MypyFile, TypeDef, TypeInfo
 from mtypes import Instance, TypeVar, BOUND_VAR, Typ
 import transform

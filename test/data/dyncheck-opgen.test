@@ -1,10 +1,8 @@
 -- Test cases for generation of support code for runtime type opreations such 
 -- as coercions.
 --
--- Each test case consists of at least two sections.
--- The first section contains [case NAME] followed by the input code, while
--- the second section contains [out] followed by the output from the
--- transformation.
+-- NOTE: This is mostly obsolete. These are only interesting as higher-level 
+--       test cases for underlying functionality.
 
 
 [case testEmptyFile]
