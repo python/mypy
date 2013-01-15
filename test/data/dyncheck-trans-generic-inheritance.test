@@ -69,7 +69,7 @@ class B is A<C>
     f`B(t)
   end
   def f*(c as dynamic) as dynamic
-    f`B({C <= dyn | c})
+    f`B({C <= any | c})
   end
 ...
 
@@ -79,7 +79,7 @@ B()
 class A<T>: pass
 class B(A<int>): pass
 [out]
-A(<std::Float>) as <Float>
+A(<float>) as <Float>
 B()
 ...
 
@@ -103,7 +103,7 @@ class B is A<E>
     f`B(a, b)
   end
   def f*(a as dynamic, b as dynamic) as dynamic
-    f`B({C<E> <= dyn | a}, {D <= dyn | b})
+    f`B({C<E> <= any | a}, {D <= any | b})
   end
 ...
 
@@ -129,18 +129,18 @@ class B<S> is A<S>
     f`B(a, b)
   end
   def f*(a as dynamic, b as dynamic) as dynamic
-    f`B({self.__tv <= dyn | a}, {A<self.__tv> <= dyn | b})
+    f`B({self.__tv <= any | a}, {A<self.__tv> <= any | b})
   end
 ...
 end
 class B* is A*
 ...
   def f`B(a as dynamic, b as A)
-    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= dyn | a}}, \
+    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= any | a}}, \
           {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= A<dyn> | b}})
   end
   def f*(a as dynamic, b as dynamic) as dynamic
-    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= dyn | a}}, {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= dyn | b}})
+    self.__o.f`B({self.__o.__tv <= self.__btv | {self.__btv <= any | a}}, {A<self.__o.__tv> <= A<self.__btv> | {A<self.__btv> <= any | b}})
   end
 end
 
@@ -162,7 +162,7 @@ class B<T, S> is A<T, S>
     f`B(a, b)
   end
   def f*(a as dynamic, b as dynamic) as dynamic
-    f`B({self.__tv <= dyn | a}, {A<self.__tv2, self.__tv> <= dyn | b})
+    f`B({self.__tv <= any | a}, {A<self.__tv2, self.__tv> <= any | b})
   end
 ...
 
@@ -181,7 +181,7 @@ class B<S> is A<S>
     return nil
   end
   def f(a as dynamic, b as A, i as Int) as dynamic
-    return {self.__tv <= dyn | f`B(a, b, {dyn <= std::Int | i})}
+    return {self.__tv <= any | f`B(a, b, {any <= int | i})}
   end
   def f*(a as dynamic, b as dynamic, i as dynamic) as dynamic
     return f`B(a, b, i)
@@ -210,7 +210,7 @@ class B<S> is A<C, S>
     f`B(s, t)
   end
   def f*(s as dynamic, t as dynamic) as dynamic
-    f`B({C <= dyn | s}, {self.__tv2 <= dyn | t})
+    f`B({C <= any | s}, {self.__tv2 <= any | t})
   end
 ...
 
@@ -225,7 +225,7 @@ class B(A<int>):
 ...
 class B is A<Int>
   def g(d as dynamic)
-    f({std::Int <= dyn | d})
+    f({int <= any | d})
   end
   def g*(d as dynamic) as dynamic
     g(d)
@@ -248,22 +248,22 @@ class B<X, Y> is A<Y, X>
   def g(x as X, y as Y)
   end
   def g*(x as dynamic, y as dynamic) as dynamic
-    g({self.__tv2 <= dyn | x}, {self.__tv <= dyn | y})
+    g({self.__tv2 <= any | x}, {self.__tv <= any | y})
   end
   def h(d as dynamic)
-    f({self.__tv <= dyn | d}, {self.__tv2 <= dyn | d})
-    g({self.__tv2 <= dyn | d}, {self.__tv <= dyn | d})
+    f({self.__tv <= any | d}, {self.__tv2 <= any | d})
+    g({self.__tv2 <= any | d}, {self.__tv <= any | d})
   end
 ...
 class B* is A*
 ...
   def g(x as dynamic, y as dynamic)
-    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= dyn | x}}, \
-               {self.__o.__tv <= self.__btv | {self.__btv <= dyn | y}})
+    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= any | x}}, \
+               {self.__o.__tv <= self.__btv | {self.__btv <= any | y}})
   end
   def g*(x as dynamic, y as dynamic) as dynamic
-    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= dyn | x}}, \
-               {self.__o.__tv <= self.__btv | {self.__btv <= dyn | y}})
+    self.__o.g({self.__o.__tv2 <= self.__btv2 | {self.__btv2 <= any | x}}, \
+               {self.__o.__tv <= self.__btv | {self.__btv <= any | y}})
   end
 ...
 
@@ -283,7 +283,7 @@ class B<S> is A<A<S>>
     f`B(t)
   end
   def f*(s as dynamic) as dynamic
-    f`B({A<self.__tv.args[0]> <= dyn | s})
+    f`B({A<self.__tv.args[0]> <= any | s})
   end
 ...
 class B* is A*
@@ -294,7 +294,7 @@ class B* is A*
   end
   def f*(s as dynamic) as dynamic
     self.__o.f`B({A<self.__o.__tv.args[0]> <= A<self.__btv.args[0]> | \
-                    {A<self.__btv.args[0]> <= dyn | s}})
+                    {A<self.__btv.args[0]> <= any | s}})
   end
 end
 
@@ -311,7 +311,7 @@ class X: pass
 class B<T> is A<C<X, A<T>>>
 ...
   def f(a as T, d as dynamic)
-    a = {self.__tv.args[1].args[0] <= dyn | d}
+    a = {self.__tv.args[1].args[0] <= any | d}
   end
 ...
 
@@ -330,8 +330,8 @@ class C<T>(B):
 class C<T> is B
 ...
   def g(t as T, d as dynamic)
-    f({std::Int <= dyn | d})
-    t = {self.__tv2 <= dyn | d}
+    f({int <= any | d})
+    t = {self.__tv2 <= any | d}
   end
 ...
 
@@ -350,8 +350,8 @@ class B(A<int>): pass
 ...
 class B is A<Int>
   def create()
-    self.__tv = <std::Int>
-    super.create(<std::Int>)
+    self.__tv = <int>
+    super.create(<int>)
   end
 end
 
@@ -363,9 +363,9 @@ class B(A<int, object>): pass
 ...
 class B is A<Int, Object>
   def create()
-    self.__tv = <std::Int>
+    self.__tv = <int>
     self.__tv2 = <std::Object>
-    super.create(<std::Int>, <std::Object>)
+    super.create(<int>, <std::Object>)
   end
 end
 
@@ -378,8 +378,8 @@ class B(A<int>): pass
 ...
 class B is A<Int>
   def create(o as Object)
-    self.__tv = <std::Int>
-    super.create(<std::Int>, o)
+    self.__tv = <int>
+    super.create(<int>, o)
   end
 end
 
@@ -393,8 +393,8 @@ class B(A<int>): pass
 ...
 class B is A<Int>
   def create(t as Int, o as Object)
-    self.__tv = <std::Int>
-    super.create(<std::Int>, t, o)
+    self.__tv = <int>
+    super.create(<int>, t, o)
   end
 end
 
@@ -437,9 +437,9 @@ class C<T>: pass
 ...
 class B<U> is A<Int, C<U>>
   def create(__tv as dynamic)
-    self.__tv = <std::Int>
+    self.__tv = <int>
     self.__tv2 = <C<__tv>>
-    super.create(<std::Int>, <C<__tv>>)
+    super.create(<int>, <C<__tv>>)
   end
 ...
 
@@ -452,7 +452,7 @@ class C<T>(B): pass
 class C<T> is B
   var __tv2 as dynamic
   def create(__tv as dynamic)
-    self.__tv = <std::Int>
+    self.__tv = <int>
     self.__tv2 = <__tv>
     super.create()
   end
@@ -502,7 +502,7 @@ class B<S>(A<int, S>):
 ...
 class B<S> is A<Int, S>
   def create(__tv as dynamic, n as Int)
-    self.__tv = <std::Int>
+    self.__tv = <int>
     self.__tv2 = <__tv>
   end
 ...
@@ -623,8 +623,8 @@ class B(A<int>):
 ...
 class B is A<Int>
   def create() as void
-    self.__tv = <std::Int>
-    super.create(<std::Int>, C())
+    self.__tv = <int>
+    super.create(<int>, C())
   end
 end
 
@@ -639,8 +639,8 @@ class B(A<int>):
 ...
 class B is A<Int>
   def create() as void
-    self.__tv = <std::Int>
--- FIX should be    super.create(<std::Int>)
+    self.__tv = <int>
+-- FIX should be    super.create(<int>)
     super.create()
   end
 end
@@ -684,7 +684,7 @@ class B is A<Int>
   def f`B(t as dynamic) as dynamic
   end
   def f(t as dynamic) as dynamic
-    return {std::Int <= dyn | f`B({dyn <= std::Int | t})}
+    return {int <= any | f`B({any <= int | t})}
   end
   def f*(t as dynamic) as dynamic
     return f`B(t)
@@ -706,7 +706,7 @@ class B<T, S> is A<S>
   def f`B(t as dynamic) as dynamic
   end
   def f(t as dynamic) as dynamic
-    return {self.__tv <= dyn | f`B(t)}
+    return {self.__tv <= any | f`B(t)}
   end
   def f*(t as dynamic) as dynamic
     return f`B(t)
@@ -787,7 +787,7 @@ class A<T>
   var __tv as dynamic
   private var x as T
   def f(a as dynamic)
-    x = {self.__tv <= dyn | a}
+    x = {self.__tv <= any | a}
     a = x
   end
 ...
@@ -810,7 +810,7 @@ end
 class B<T> is A<C<T>>
   private var y as T
   def g(a as dynamic)
-    y = {self.__tv.args[0] <= dyn | a}
+    y = {self.__tv.args[0] <= any | a}
     a = y
   end
 ...
