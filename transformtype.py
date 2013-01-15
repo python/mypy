@@ -216,7 +216,8 @@ class TypeTransformer:
         for n in range(1, callee_type.min_args):            
             args.append(NameExpr(super_init.args[n].name()))
             self.tf.set_type(args[-1], callee_type.arg_types[n])
-        
+
+        # Store callee type after stripping away the 'self' type.
         self.tf.set_type(callee, nodes.method_callable(callee_type))
         
         call = CallExpr(callee, args, [nodes.ARG_POS] * len(args))
