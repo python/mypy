@@ -25,7 +25,7 @@ class B(A):
         {B self}.g({C c})
 ...
 
-[case testInheritingGenericClassAndExternalAccess-skip]
+[case testInheritingGenericClassAndExternalAccess]
 B b
 C c
 b.f(c)
@@ -38,8 +38,8 @@ class B(A<C>):
         self.f(c)
 class C: pass
 [out]
-var b as B
-var c as C
+B b
+C c
 b.f(c)
 b.g(c)
 ...
