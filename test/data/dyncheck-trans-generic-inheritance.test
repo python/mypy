@@ -334,7 +334,7 @@ class C<T> is B
 -- 1. Wrapper that calls superclass __init__
 
 
-[case testInheritingGenericClassWithDefaultConstructor-skip]
+[case testInheritingGenericClassWithDefaultConstructor]
 class A<T>: pass
 class B(A<int>): pass
 [out]

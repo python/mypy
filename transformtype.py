@@ -212,8 +212,8 @@ class TypeTransformer:
         super_init = (FuncDef)info.base.get_method('__init__')
         
         # Add constructor arguments.
-        Node[] args = []
-        for n in range(callee_type.min_args):
+        args = <Node> []
+        for n in range(1, callee_type.min_args):
             args.append(NameExpr(super_init.args[n].name()))
             self.tf.set_type(args[-1], callee_type.arg_types[n])
         

@@ -229,11 +229,6 @@ class DyncheckTransformVisitor(TraverserVisitor):
         if isinstance(ctype, Callable) and ((Callable)ctype).bound_vars != []:
             bound_vars = ((Callable)ctype).bound_vars
 
-            # Only pass generic *function* type variables. Class type variables
-            # are stored within the instance and are available via self, so no
-            # need to pass them explicitly.
-            bound_vars = [(id, t) for id, t in bound_vars if id < 0]
-            
             # If this is a constructor call (target is the constructor
             # of a generic type or superclass __init__), include also
             # instance type variables.  Otherwise filter them away --
@@ -241,11 +236,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
             if (not ((Callable)ctype).is_type_obj() and
                     not (isinstance(e.callee, SuperExpr) and
                          ((SuperExpr)e.callee).name == '__init__')):
-                b = <tuple<int, Typ>> []
-                for id, t in bound_vars:
-                    if id < 0:
-                        b.append((id, t))
-                bound_vars = b
+                # Filter instance type variables; only include function tvars.
+                bound_vars = [(id, t) for id, t in bound_vars if id < 0]
             
             args = <Node> []
             for i in range(len(bound_vars)):
