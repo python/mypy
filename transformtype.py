@@ -116,8 +116,8 @@ class TypeTransformer:
         The constructor for B will be (equivalent to)
         
         . void __init__(B self):
-        .   self.__tv = <int>
-        .   super().__init__(<int>)
+        .     self.__tv = <int>
+        .     super().__init__(<int>)
         """
         
         # FIX overloading, default args / varargs, keyword args
@@ -190,7 +190,10 @@ class TypeTransformer:
     
     ExpressionStmt make_superclass_constructor_call(self, TypeInfo info,
                                                     Callable callee_type):
-        """Construct a statement that calls the superclass constructor."""
+        """Construct a statement that calls the superclass constructor.
+
+        In particular, it passes any type variables arguments as needed.
+        """
         callee = SuperExpr('__init__')
         callee.info = info
         
