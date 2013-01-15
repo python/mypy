@@ -8,7 +8,7 @@
 -- ------------------------------------------
 
 
-[case testInheritingGenericClass-skip]
+[case testInheritingGenericClass]
 class A<T>:
     void f(self, T t):
         pass
@@ -18,15 +18,12 @@ class B(A<C>):
 class C: pass
 [out]
 ...
-class B is A<C>
-  def g(c as C)
-    f(c)
-  end
-  def g*(c as dynamic) as dynamic
-    g({C <= dyn | c})
-  end
+class B(A):
+    void g(B self, C c):
+        self.f(c)
+    any g*(any self, any c):
+        {B self}.g({C c})
 ...
-
 
 [case testInheritingGenericClassAndExternalAccess-skip]
 B b
