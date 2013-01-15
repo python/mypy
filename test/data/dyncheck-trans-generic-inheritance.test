@@ -324,19 +324,18 @@ class B(A):
         super().__init__(<int>)
 ...
 
-[case testInheritingGenericClassWithDefaultConstructor2-skip]
+[case testInheritingGenericClassWithDefaultConstructor2]
 # Two type arguments
 class A<T, S>: pass
 class B(A<int, object>): pass
 [out]
 ...
-class B is A<Int, Object>
-  def create()
-    self.__tv = <int>
-    self.__tv2 = <std::Object>
-    super.create(<int>, <std::Object>)
-  end
-end
+class B(A):
+    void __init__(B self):
+        self.__tv! = <int>
+        self.__tv2! = <object>
+        super().__init__(<int>, <object>)
+...
 
 [case testInheritingGenericClassWithNonDefaultConstructor-skip]
 class A<T>:
@@ -345,12 +344,11 @@ class A<T>:
 class B(A<int>): pass
 [out]
 ...
-class B is A<Int>
-  def create(o as Object)
-    self.__tv = <int>
-    super.create(<int>, o)
-  end
-end
+class B(A):
+    void __init__(B self, object o):
+        self.__tv! = <int>
+        super().__init__(<int>, o)
+...
 
 [case testInheritingGenericClassWithNonDefaultConstructor2-skip]
 # Two arguments, one with tvar type
