@@ -581,7 +581,7 @@ class A**:
 -- ---------------
 
 
-[case testPairExample-skip]
+[case testPairExample]
 # This test case is adapted from an early example program.
 class P<H, T>:
     H head
@@ -598,7 +598,7 @@ class Name: pass
 class P:
 ...
     P set_head(P self, any* new_head, Name new_name):
-        return P(<__tv>, <__tv2>, new_head, self.tail, new_name)
+        return P(<self.__tv>, <self.__tv2>, new_head, self.tail, new_name)
     any set_head*(any self, any new_head, any new_name):
         return {P<self.__tv, self.__tv2> self}.set_head(\
                                   {self.__tv new_head}, {Name new_name})
