@@ -44,7 +44,7 @@ b.f(c)
 b.g(c)
 ...
 
-[case testInheritingGenericClassAndOverriding-skip]
+[case testInheritingGenericClassAndOverriding]
 A<C> a
 B b
 C c
@@ -62,28 +62,26 @@ class C: pass
 a.f(c)
 b.f`B(c)
 ...
-class B is A<C>
-  def f`B(c as C)
-  end
-  def f(t as dynamic)
-    f`B(t)
-  end
-  def f*(c as dynamic) as dynamic
-    f`B({C <= any | c})
-  end
+class B(A):
+    void f`B(B self, C c):
+        pass
+    void f(A self, any t):
+        {B self}.f`B(t)
+    any f*(any self, any c):
+        {B self}.f`B({C c})
 ...
 
-[case testInheritGenericClassAndCallCreate-skip]
+[case testInheritGenericClassAndCallCreate]
 A<float>()
 B()
 class A<T>: pass
 class B(A<int>): pass
 [out]
-A(<float>) as <Float>
+A(<float>)
 B()
 ...
 
-[case testInheritingGenericClassAndOverriding2-skip]
+[case testInheritingGenericClassAndOverriding2]
 class A<T>:
     void f(self, C<T> a, D b):
         pass
@@ -95,16 +93,13 @@ class D: pass
 class E: pass
 [out]
 ...
-class B is A<E>
-...
-  def f`B(a as C<E>, b as D)
-  end
-  def f(a as C, b as D)
-    f`B(a, b)
-  end
-  def f*(a as dynamic, b as dynamic) as dynamic
-    f`B({C<E> <= any | a}, {D <= any | b})
-  end
+class B(A):
+    void f`B(B self, C a, D b):
+        pass
+    void f(A self, C a, D b):
+        {B self}.f`B(a, b)
+    any f*(any self, any a, any b):
+        {B self}.f`B({C<E> a}, {D b})
 ...
 
 
