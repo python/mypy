@@ -336,9 +336,9 @@ class FuncTransformer:
             # Non-dynamic wrapper method in a wrapper class passes
             # generic function type arguments to the target function;
             # otherwise use dynamic types.
-            index = 0
+            index = i
             if ismethod:
-                index = 1
+                index += 1
             if is_wrapper_class and not is_dynamic:
                 args.insert(index,
                     TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))

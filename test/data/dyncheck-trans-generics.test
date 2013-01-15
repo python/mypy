@@ -538,7 +538,7 @@ class D: pass
 C c = (A(<D>)).f(<C>)
 ...
 
-[case testAccessingGenericMethodTvars-skip]
+[case testAccessingGenericMethodTvars]
 class A<S>:
     C<T, U, S> f<T, U>(self):
         return C<T, U, S>()
