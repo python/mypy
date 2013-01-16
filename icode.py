@@ -1,6 +1,6 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from nodes import FuncDef, MypyFile, NodeVisitor
+from nodes import FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt
 
 
 class BasicBlock:
@@ -34,6 +34,9 @@ class SetRI(Opcode):
         self.target = target
         self.intval = intval
 
+    str __str__(self):
+        return 'r%d = %d' % (self.target, self.intval)
+
 
 class SetRNone(Opcode):
     """Assign None to register (rN = None)."""
@@ -56,6 +59,18 @@ class SetRG(Opcode):
     void __init__(self, int target, int source):
         self.target = target
         self.source = source
+
+
+class InvokeDirect(Opcode):
+    """Invoke directly a global function (rN = g(rN, ...))."""
+    void __init__(self, int target, str func, int[] args):
+        self.target = target
+        self.func = func
+        self.args = args
+
+    str __str__(self):
+        args = ', '.join(['r%d' % arg for arg in self.args])
+        return 'r%d = %s(%s)' % (self.target, self.func, args)
 
 
 class Return(Opcode):
@@ -93,24 +108,48 @@ class BinOp(Opcode):
         self.op = op
 
 
-class IcodeBuilder(NodeVisitor<void>):
+class IcodeBuilder(NodeVisitor<int>):
     """Generate icode from a parse tree."""
 
     dict<str, BasicBlock> generated
+    BasicBlock current
 
     void __init__(self):
         self.generated = {}
 
-    void visit_mypy_file(self, MypyFile mfile):
+    int visit_mypy_file(self, MypyFile mfile):
         for d in mfile.defs:
             d.accept(self)
+        return -1
 
-    void visit_func_def(self, FuncDef fdef):
-        b = BasicBlock()
-        b.ops.append(SetRNone(0))
-        b.ops.append(Return(0))
-        self.generated[fdef.name()] = b
-        
+    int visit_func_def(self, FuncDef fdef):
+        self.current = BasicBlock()
+        for s in fdef.body.body:
+            s.accept(self)
+        if not self.current.ops or not isinstance(self.current.ops[-1],
+                                                  Return):
+            self.current.ops.append(SetRNone(0))
+            self.current.ops.append(Return(0))
+        self.generated[fdef.name()] = self.current
+        return -1
+
+    #
+    # Statements
+    #
+
+    int visit_return_stmt(self, ReturnStmt s):
+        retval = s.expr.accept(self)
+        self.current.ops.append(Return(retval))
+        return -1
+
+    #
+    # Expressions
+    #
+
+    int visit_int_expr(self, IntExpr e):
+        self.current.ops.append(SetRI(0, e.value))
+        return 0    
+
 
 def render(block):
     return [str(op) for op in block.ops]
