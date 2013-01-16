@@ -1,0 +1,48 @@
+-- Test cases for intermediate representation (icode) generation.
+--
+-- Only functions mentioned in the [out] section are checked; others are 
+-- ignored.
+--
+-- There is no register sharing. Each temporary value is given a new register.
+
+[case testEmptyFunction]
+void f(): pass
+[out]
+def f():
+    r0 = None
+    return r0
+
+[case testCallFunctionAtTopLevel]
+void f(): pass
+f()
+[out]
+def __init():
+    r0 = f()
+    r1 = None
+    return r1
+
+[case testReturnIntLiteral]
+int f():
+    return 2
+[out]
+def f():
+    r0 = 2
+    return r0
+
+[case testSimpleWhileLoop]
+void f():
+    i = 0
+    while i < 100:
+        i = i + 1
+[out]
+def f():
+    r0 = 0
+    r1 = 100
+    if r0 >= r1 goto L2
+L1:
+    r2 = 1
+    r0 = r0 + r2 [int]
+    goto L1
+    r3 = None
+    return r3
+
