@@ -1,6 +1,9 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from nodes import FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt
+from nodes import (
+    FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
+    AssignmentStmt
+)
 
 
 class BasicBlock:
@@ -113,9 +116,11 @@ class IcodeBuilder(NodeVisitor<int>):
 
     dict<str, BasicBlock> generated
     BasicBlock current
+    int num_registers
 
     void __init__(self):
         self.generated = {}
+        self.num_registers = 0
 
     int visit_mypy_file(self, MypyFile mfile):
         for d in mfile.defs:
@@ -123,14 +128,15 @@ class IcodeBuilder(NodeVisitor<int>):
         return -1
 
     int visit_func_def(self, FuncDef fdef):
-        self.current = BasicBlock()
+        initial = self.new_block()
         for s in fdef.body.body:
             s.accept(self)
         if not self.current.ops or not isinstance(self.current.ops[-1],
                                                   Return):
-            self.current.ops.append(SetRNone(0))
-            self.current.ops.append(Return(0))
-        self.generated[fdef.name()] = self.current
+            r = self.alloc_register()
+            self.add(SetRNone(r))
+            self.add(Return(r))
+        self.generated[fdef.name()] = initial
         return -1
 
     #
@@ -139,16 +145,45 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_return_stmt(self, ReturnStmt s):
         retval = s.expr.accept(self)
-        self.current.ops.append(Return(retval))
+        self.add(Return(retval))
         return -1
+
+    int visit_assignment_stmt(self, AssignmentStmt s):
+        # TODO
+        pass
+
+    int visit_while_stmt(self, WhileStmt s):
+        # TODO
+        pass
 
     #
     # Expressions
     #
 
     int visit_int_expr(self, IntExpr e):
-        self.current.ops.append(SetRI(0, e.value))
-        return 0    
+        r = self.alloc_register()
+        self.add(SetRI(r, e.value))
+        return r
+
+    int visit_name_expr(self, NameExpr e):
+        # TODO
+        pass
+
+    #
+    # Helpers
+    #
+
+    BasicBlock new_block(self):
+        self.current = BasicBlock()
+        return self.current
+
+    void add(self, Opcode op):
+        self.current.ops.append(op)
+
+    int alloc_register(self):
+        n = self.num_registers
+        self.num_registers += 1
+        return n
 
 
 def render(block):
