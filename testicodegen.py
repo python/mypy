@@ -76,6 +76,8 @@ def test_transform(testcase):
 
 def get_func_name(expected):
     m = re.match(r'def ([_a-zA-Z]+)', expected[0])
+    if not m:
+        raise RuntimeError('No function name in test case output')
     return m.group(1)
 
 
