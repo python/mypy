@@ -12,6 +12,37 @@ def f():
     r0 = None
     return r0
 
+[case testReturnIntLiteral]
+int f():
+    return 2
+[out]
+def f():
+    r0 = 2
+    return r0
+    
+[case testAssignAndReturnLocalVar]
+int f():
+    i = 2
+    return i
+[out]
+def f():
+    r0 = 2
+    r1 = r0
+    return r1
+    
+[case testAssignTwice]
+int f():
+    i = 2
+    i = 3
+    return i
+[out]
+def f():
+    r0 = 2
+    r1 = r0
+    r2 = 3
+    r1 = r2
+    return r1
+
 [case testCallFunctionAtTopLevel]
 void f(): pass
 f()
@@ -20,14 +51,6 @@ def __init():
     r0 = f()
     r1 = None
     return r1
-
-[case testReturnIntLiteral]
-int f():
-    return 2
-[out]
-def f():
-    r0 = 2
-    return r0
 
 [case testSimpleWhileLoop]
 void f():

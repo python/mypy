@@ -2,7 +2,7 @@
 
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
-    AssignmentStmt
+    AssignmentStmt, Node, Var
 )
 
 
@@ -117,6 +117,8 @@ class IcodeBuilder(NodeVisitor<int>):
     dict<str, BasicBlock> generated
     BasicBlock current
     int num_registers
+    # Map local variable to allocated register
+    dict<Node, int> lvar_regs
 
     void __init__(self):
         self.generated = {}
@@ -128,6 +130,7 @@ class IcodeBuilder(NodeVisitor<int>):
         return -1
 
     int visit_func_def(self, FuncDef fdef):
+        self.lvar_regs = {}
         initial = self.new_block()
         for s in fdef.body.body:
             s.accept(self)
@@ -149,8 +152,21 @@ class IcodeBuilder(NodeVisitor<int>):
         return -1
 
     int visit_assignment_stmt(self, AssignmentStmt s):
-        # TODO
-        pass
+        assert len(s.lvalues) == 1
+        assert isinstance(s.lvalues[0], NameExpr)
+
+        # TODO handle non-locals, attributes etc.
+
+        rvalue = s.rvalue.accept(self)
+        
+        lval = (NameExpr)s.lvalues[0]
+        if lval.is_def:
+            reg = self.alloc_register()
+            self.lvar_regs[lval.node] = reg
+        else:
+            reg = self.lvar_regs[lval.node]
+
+        self.add(SetRR(reg, rvalue))
 
     int visit_while_stmt(self, WhileStmt s):
         # TODO
@@ -166,7 +182,19 @@ class IcodeBuilder(NodeVisitor<int>):
         return r
 
     int visit_name_expr(self, NameExpr e):
-        # TODO
+        # TODO other names than locals
+        return self.lvar_regs[e.node]
+
+    #
+    # Conditional expressions
+    #
+
+    Branch[] process_conditional(self, BinOp e):
+        # Return branches that need to be bound. The true and false parts
+        # are always tweaked to be correctly.
+        pass
+
+    Branch[] process_conditional(self, Node e):
         pass
 
     #
