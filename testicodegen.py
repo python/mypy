@@ -64,7 +64,7 @@ def test_transform(testcase):
 
         for fn in [func_name]:
             a.append('def {}():'.format(fn))
-            code = ['    ' + s for s in icode.render(builder.generated[fn])]
+            code = icode.render(builder.generated[fn])
             a.extend(code)
     except CompileError as e:
         a = e.messages

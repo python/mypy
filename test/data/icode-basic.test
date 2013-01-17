@@ -43,15 +43,6 @@ def f():
     r1 = r2
     return r1
 
-[case testCallFunctionAtTopLevel]
-void f(): pass
-f()
-[out]
-def __init():
-    r0 = f()
-    r1 = None
-    return r1
-
 [case testSimpleWhileLoop]
 void f():
     i = 0
@@ -60,12 +51,25 @@ void f():
 [out]
 def f():
     r0 = 0
-    r1 = 100
-    if r0 >= r1 goto L2
+    r1 = r0
 L1:
-    r2 = 1
-    r0 = r0 + r2 [int]
+    r2 = 100
+    if r1 < r2 goto L2 else goto L3
+L2:
+    r3 = 1
+    r4 = r1 + r3 [int]
+    r1 = r4
     goto L1
-    r3 = None
-    return r3
+L3:
+    r5 = None
+    return r5
+
+[case testCallFunctionAtTopLevel]
+void f(): pass
+f()
+[out]
+def __init():
+    r0 = f()
+    r1 = None
+    return r1
 

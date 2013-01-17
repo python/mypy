@@ -2,7 +2,7 @@
 
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
-    AssignmentStmt, Node, Var
+    AssignmentStmt, Node, Var, OpExpr, Block
 )
 
 
@@ -12,13 +12,16 @@ class BasicBlock:
     Only the last instruction exits the block. Exceptions are not considered
     as exits.
     """
-    void __init__(self):
+    void __init__(self, int label):
         self.ops = <Opcode> []
+        self.label = label
 
 
 class Opcode:
     """Abstract base class for all icode opcodes."""
-    pass
+    bool is_exit(self):
+        """Does this opcode exit the block?"""
+        return False
 
 
 class SetRR(Opcode):
@@ -80,26 +83,61 @@ class Return(Opcode):
     """Return from function (return rN)."""
     void __init__(self, int retval):
         self.retval = retval
+        
+    bool is_exit(self):
+        return True
 
     str __str__(self):
         return 'return r%d' % self.retval
 
 
 class Branch(Opcode):
-    """Conditional branch (e.g. if r0 < r1 goto L2 else got L3)."""
-    void __init__(self, int left, int right, str op, BasicBlock true,
-                  BasicBlock false):
+    """Abstract base class for branch opcode."""  
+    BasicBlock true_block
+    BasicBlock false_block
+    bool inverted
+        
+    bool is_exit(self):
+        return True
+
+
+class IfOp(Branch):
+    """Conditional operator branch (e.g. if r0 < r1 goto L2 else goto L3)."""
+    void __init__(self, int left, int right, str op, BasicBlock true_block,
+                  BasicBlock false_block):
         self.left = left
         self.right = right
         self.op = op
-        self.true = true
-        self.false = false
+        self.true_block = true_block
+        self.false_block = false_block
+        self.inverted = False
+
+    str __str__(self):
+        return 'if r%d %s r%d goto L%d else goto L%d' % (
+            self.left, self.op, self.right,
+            self.true_block.label, self.false_block.label)
+
+
+class IfR(Branch):
+    """Conditional value branch (if rN goto LN else goto LN). """
+    void __init__(self, int value,
+                  BasicBlock true_block, BasicBlock false_block):
+        self.value = value
+        self.true_block = true_block
+        self.false_block = false_block
+        self.inverted = False
 
 
 class Goto(Opcode):
     """Unconditional jump (goto LN)."""
-    void __init__(self, BasicBlock target):
-        self.target = target
+    void __init__(self, BasicBlock next_block):
+        self.next_block = next_block
+        
+    bool is_exit(self):
+        return True
+
+    str __str__(self):
+        return 'goto L%d' % self.next_block.label
 
 
 class BinOp(Opcode):
@@ -110,12 +148,21 @@ class BinOp(Opcode):
         self.right = right
         self.op = op
 
+    str __str__(self):
+        return 'r%d = r%d %s r%d [int]' % (self.target, self.left,
+                                           self.op, self.right)
+
 
 class IcodeBuilder(NodeVisitor<int>):
     """Generate icode from a parse tree."""
 
-    dict<str, BasicBlock> generated
+    dict<str, BasicBlock[]> generated
+    
+    # List of generated blocks in the current scope
+    BasicBlock[] blocks
+    # Current basic block
     BasicBlock current
+    # Number of registers allocated in the current scope
     int num_registers
     # Map local variable to allocated register
     dict<Node, int> lvar_regs
@@ -130,8 +177,10 @@ class IcodeBuilder(NodeVisitor<int>):
         return -1
 
     int visit_func_def(self, FuncDef fdef):
+        # TODO enter scope / leave scope
         self.lvar_regs = {}
-        initial = self.new_block()
+        self.blocks = []
+        self.new_block()
         for s in fdef.body.body:
             s.accept(self)
         if not self.current.ops or not isinstance(self.current.ops[-1],
@@ -139,12 +188,17 @@ class IcodeBuilder(NodeVisitor<int>):
             r = self.alloc_register()
             self.add(SetRNone(r))
             self.add(Return(r))
-        self.generated[fdef.name()] = initial
+        self.generated[fdef.name()] = self.blocks
         return -1
 
     #
     # Statements
     #
+
+    int visit_block(self, Block b):
+        for stmt in b.body:
+            stmt.accept(self)
+        return -1
 
     int visit_return_stmt(self, ReturnStmt s):
         retval = s.expr.accept(self)
@@ -169,8 +223,18 @@ class IcodeBuilder(NodeVisitor<int>):
         self.add(SetRR(reg, rvalue))
 
     int visit_while_stmt(self, WhileStmt s):
-        # TODO
-        pass
+        # Split block so that we get a handle to the top of the loop.
+        top = self.new_block()
+        branches = self.process_conditional(s.expr)
+        body = self.new_block()
+        # Bind "true" branches to the body block.
+        self.set_branches(branches, True, body)
+        s.body.accept(self)
+        # Add branch to the top at the end of the body.
+        self.add(Goto(top))
+        next = self.new_block()
+        # Bind "false" branches to the new block.
+        self.set_branches(branches, False, next)
 
     #
     # Expressions
@@ -185,25 +249,53 @@ class IcodeBuilder(NodeVisitor<int>):
         # TODO other names than locals
         return self.lvar_regs[e.node]
 
+    int visit_op_expr(self, OpExpr e):
+        # TODO arbitrary operand types
+        left = e.left.accept(self)
+        right = e.right.accept(self)
+        target = self.alloc_register()
+        self.add(BinOp(target, left, right, e.op))
+        return target
+
     #
     # Conditional expressions
     #
 
-    Branch[] process_conditional(self, BinOp e):
+    Branch[] process_conditional(self, OpExpr e):
         # Return branches that need to be bound. The true and false parts
         # are always tweaked to be correctly.
-        pass
+        if e.op in ['==', '!=', '<', '<=', '>', '>=']:
+            # TODO check that operand types are as expected
+            left = e.left.accept(self)
+            right = e.right.accept(self)
+            branch = IfOp(left, right, e.op, None, None)
+            self.add(branch)
+            return [branch]
+        else:
+            raise NotImplementedError()
 
     Branch[] process_conditional(self, Node e):
-        pass
+        """Catch-all variant for value expressions.
+
+        Generate opcode of form 'if rN goto ...'.
+        """
+        value = e.accept(self)
+        branch = IfR(value, None, None)
+        self.add(branch)
+        return [branch]
 
     #
     # Helpers
     #
 
     BasicBlock new_block(self):
-        self.current = BasicBlock()
-        return self.current
+        new = BasicBlock(len(self.blocks))
+        self.blocks.append(new)
+        if self.current:
+            if self.current.ops and not self.current.ops[-1].is_exit():
+                self.add(Goto(new))
+        self.current = new
+        return new
 
     void add(self, Opcode op):
         self.current.ops.append(op)
@@ -213,6 +305,33 @@ class IcodeBuilder(NodeVisitor<int>):
         self.num_registers += 1
         return n
 
+    void set_branches(self, Branch[] branches, bool condition,
+                      BasicBlock target):
+        for b in branches:
+            if condition:
+                b.true_block = target
+            else:
+                b.false_block = target
 
-def render(block):
-    return [str(op) for op in block.ops]
+
+def render(blocks):
+    res = []
+    for b in blocks:
+        if res:
+            res.append('L%d:' % b.label)
+        res.extend(['    ' + str(op) for op in b.ops])
+
+    return filter_out_trivial_gotos(res)
+
+
+str[] filter_out_trivial_gotos(str[] disasm):
+    """Filter out gotos to the next opcode (they are no-ops)."""
+    res = <str> []
+    for i, s in enumerate(disasm):
+        if s.startswith('    goto '):
+            label = s.split()[1]
+            if i + 1 < len(disasm) and disasm[i+1].startswith('%s:' % label):
+                # Omit goto
+                continue
+        res.append(s)
+    return res
