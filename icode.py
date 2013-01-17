@@ -139,7 +139,9 @@ class IfR(Branch):
         self.negated = False
 
     void invert(self):
-        # This is tricky; not sure if this works *all* the time.
+        # This is tricky; not sure if this works all the time.
+        # This was implemented by trial and error and testing indicates that
+        # it *seems* to work.
         self.negated = not self.negated
         self.true_block, self.false_block = self.false_block, self.true_block
 
