@@ -189,6 +189,62 @@ L2:
 L3:
     r6 = None
     return r6
+    
+[case testSimpleBooleanNot]
+void f():
+    if not 1 == 2:
+        i = 1
+[out]
+def f():
+    r0 = 1
+    r1 = 2
+    if r0 != r1 goto L1 else goto L2
+L1:
+    r2 = 1
+    r3 = r2
+L2:
+    r4 = None
+    return r4
+    
+[case testNotAnd]
+void f():
+    if not (1 == 2 and 3 == 4):
+        i = 1
+[out]
+def f():
+    r0 = 1
+    r1 = 2
+    if r0 != r1 goto L2 else goto L1
+L1:
+    r2 = 3
+    r3 = 4
+    if r2 != r3 goto L2 else goto L3
+L2:
+    r4 = 1
+    r5 = r4
+L3:
+    r6 = None
+    return r6
+      
+[case testNotOr]
+void f():
+    if not (1 == 2 or 3 == 4):
+        i = 1
+[out]
+def f():
+    r0 = 1
+    r1 = 2
+    if r0 != r1 goto L1 else goto L3
+L1:
+    r2 = 3
+    r3 = 4
+    if r2 != r3 goto L2 else goto L3
+L2:
+    r4 = 1
+    r5 = r4
+L3:
+    r6 = None
+    return r6
 
 
 -- Calls

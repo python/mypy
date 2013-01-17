@@ -96,13 +96,18 @@ class Branch(Opcode):
     """Abstract base class for branch opcode."""  
     BasicBlock true_block
     BasicBlock false_block
-    bool inverted
         
     bool is_exit(self):
         return True
 
+    void invert(self):
+        pass
+
 
 class IfOp(Branch):
+    inversion = {'==': '!=', '!=': '==',
+                 '<': '>=', '<=': '>', '>': '<=', '>=': '<'}
+    
     """Conditional operator branch (e.g. if r0 < r1 goto L2 else goto L3)."""
     void __init__(self, int left, int right, str op, BasicBlock true_block,
                   BasicBlock false_block):
@@ -111,7 +116,10 @@ class IfOp(Branch):
         self.op = op
         self.true_block = true_block
         self.false_block = false_block
-        self.inverted = False
+
+    void invert(self):
+        self.true_block, self.false_block = self.false_block, self.true_block
+        self.op = self.inversion[self.op]
 
     str __str__(self):
         return 'if r%d %s r%d goto L%d else goto L%d' % (
@@ -121,12 +129,19 @@ class IfOp(Branch):
 
 class IfR(Branch):
     """Conditional value branch (if rN goto LN else goto LN). """
+    bool negated
+    
     void __init__(self, int value,
                   BasicBlock true_block, BasicBlock false_block):
         self.value = value
         self.true_block = true_block
         self.false_block = false_block
-        self.inverted = False
+        self.negated = False
+
+    void invert(self):
+        # This is tricky; not sure if this works *all* the time.
+        self.negated = not self.negated
+        self.true_block, self.false_block = self.false_block, self.true_block
 
 
 class Goto(Opcode):
@@ -341,6 +356,18 @@ class IcodeBuilder(NodeVisitor<int>):
             return lbranches + rbraches
         else:
             raise NotImplementedError()
+
+    Branch[] process_conditional(self, UnaryExpr e):
+        if e.op == 'not':
+            branches = self.process_conditional(e.expr)
+            for b in branches:
+                b.invert()
+            return branches
+        else:
+            raise NotImplementedError()
+
+    Branch[] process_conditional(self, ParenExpr e):
+        return self.process_conditional(e.expr)
 
     Branch[] process_conditional(self, Node e):
         """Catch-all variant for value expressions.
