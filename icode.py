@@ -3,7 +3,7 @@
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr
+    UnaryExpr, ExpressionStmt
 )
 
 
@@ -209,6 +209,10 @@ class IcodeBuilder(NodeVisitor<int>):
         # TODO enter scope / leave scope
         self.lvar_regs = {}
         self.blocks = []
+
+        for arg in fdef.args:
+            self.add_local(arg)
+        
         self.new_block()
         for s in fdef.body.body:
             s.accept(self)
@@ -229,6 +233,10 @@ class IcodeBuilder(NodeVisitor<int>):
             stmt.accept(self)
         return -1
 
+    int visit_expression_stmt(self, ExpressionStmt s):
+        s.expr.accept(self)
+        return -1
+
     int visit_return_stmt(self, ReturnStmt s):
         retval = s.expr.accept(self)
         self.add(Return(retval))
@@ -244,8 +252,7 @@ class IcodeBuilder(NodeVisitor<int>):
         
         lval = (NameExpr)s.lvalues[0]
         if lval.is_def:
-            reg = self.alloc_register()
-            self.lvar_regs[lval.node] = reg
+            reg = self.add_local(lval.node)
         else:
             reg = self.lvar_regs[lval.node]
 
@@ -317,8 +324,11 @@ class IcodeBuilder(NodeVisitor<int>):
     int visit_call_expr(self, CallExpr e):
         if isinstance(e.callee, NameExpr):
             callee = (NameExpr)e.callee
+            args = <int> []
+            for arg in e.args:
+                args.append(arg.accept(self))
             target = self.alloc_register()
-            self.add(CallDirect(target, callee.name, []))
+            self.add(CallDirect(target, callee.name, args))
             return target
         else:
             raise NotImplementedError()
@@ -402,6 +412,11 @@ class IcodeBuilder(NodeVisitor<int>):
         self.num_registers += 1
         return n
 
+    int add_local(self, Node node):
+        reg = self.alloc_register()
+        self.lvar_regs[node] = reg
+        return reg
+    
     void set_branches(self, Branch[] branches, bool condition,
                       BasicBlock target):
         """Set branch targets for the given condition (True or False).
