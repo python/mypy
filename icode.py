@@ -2,7 +2,7 @@
 
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
-    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr
+    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt
 )
 
 
@@ -235,6 +235,28 @@ class IcodeBuilder(NodeVisitor<int>):
         next = self.new_block()
         # Bind "false" branches to the new block.
         self.set_branches(branches, False, next)
+        return -1
+
+    int visit_if_stmt(self, IfStmt s):
+        # If condition + body.
+        branches = self.process_conditional(s.expr[0])
+        if_body = self.new_block()
+        self.set_branches(branches, True, if_body)
+        s.body[0].accept(self)
+        if s.else_body:
+            # Else block.
+            goto = Goto(None)
+            self.add(goto)
+            else_body = self.new_block()
+            self.set_branches(branches, False, else_body)
+            s.else_body.accept(self)
+            next = self.new_block()
+            goto.next_block = next
+        else:
+            # No else block.
+            next = self.new_block()
+            self.set_branches(branches, False, next)
+        return -1
 
     #
     # Expressions (values)
