@@ -64,12 +64,25 @@ L3:
     r5 = None
     return r5
 
-[case testCallFunctionAtTopLevel]
-void f(): pass
+[case testCallFunctionWithoutArgs]
+int f():
+    return f()
+[out]
+def f():
+    r0 = f()
+    return r0
+
+[case testTopLevel-skip]
+f()
+int f():
+    return 1
 f()
 [out]
 def __init():
     r0 = f()
-    r1 = None
-    return r1
-
+    r1 = f()
+    r2 = None
+    return r2
+def f():
+    r0 = 1
+    return r0

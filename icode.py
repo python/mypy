@@ -2,7 +2,7 @@
 
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
-    AssignmentStmt, Node, Var, OpExpr, Block
+    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr
 )
 
 
@@ -67,8 +67,8 @@ class SetRG(Opcode):
         self.source = source
 
 
-class InvokeDirect(Opcode):
-    """Invoke directly a global function (rN = g(rN, ...))."""
+class CallDirect(Opcode):
+    """Call directly a global function (rN = g(rN, ...))."""
     void __init__(self, int target, str func, int[] args):
         self.target = target
         self.func = func
@@ -237,7 +237,7 @@ class IcodeBuilder(NodeVisitor<int>):
         self.set_branches(branches, False, next)
 
     #
-    # Expressions
+    # Expressions (values)
     #
 
     int visit_int_expr(self, IntExpr e):
@@ -256,6 +256,15 @@ class IcodeBuilder(NodeVisitor<int>):
         target = self.alloc_register()
         self.add(BinOp(target, left, right, e.op))
         return target
+
+    int visit_call_expr(self, CallExpr e):
+        if isinstance(e.callee, NameExpr):
+            callee = (NameExpr)e.callee
+            target = self.alloc_register()
+            self.add(CallDirect(target, callee.name, []))
+            return target
+        else:
+            raise NotImplementedError()
 
     #
     # Conditional expressions
