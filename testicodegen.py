@@ -63,7 +63,7 @@ def test_transform(testcase):
                 t.accept(builder)
 
         for fn in [func_name]:
-            a.append('def {}():'.format(fn))
+            a.append('def {}:'.format(fn))
             code = icode.render(builder.generated[fn])
             a.extend(code)
     except CompileError as e:
@@ -75,7 +75,7 @@ def test_transform(testcase):
 
 
 def get_func_name(expected):
-    m = re.match(r'def ([_a-zA-Z]+)', expected[0])
+    m = re.match(r'def ([_a-zA-Z]+):', expected[0])
     if not m:
         raise RuntimeError('No function name in test case output')
     return m.group(1)
