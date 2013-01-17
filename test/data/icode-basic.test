@@ -5,6 +5,11 @@
 --
 -- There is no register sharing. Each temporary value is given a new register.
 
+
+-- The very basics
+-- ---------------
+
+
 [case testEmptyFunction]
 void f(): pass
 [out]
@@ -42,6 +47,11 @@ def f():
     r2 = 3
     r1 = r2
     return r1
+
+
+-- Conditionals and loops
+-- ----------------------
+
 
 [case testSimpleWhileLoop]
 void f():
@@ -102,6 +112,30 @@ L3:
     r5 = None
     return r5
 
+
+-- Arithmetic expressions
+-- ----------------------
+
+
+[case testComplexArithmeticExpression]
+int f():
+    return 3 * (1 + 2) - 4
+[out]
+def f():
+    r0 = 3
+    r1 = 1
+    r2 = 2
+    r3 = r1 + r2 [int]
+    r4 = r0 * r3 [int]
+    r5 = 4
+    r6 = r4 - r5 [int]
+    return r6
+
+
+-- Calls
+-- -----
+
+
 [case testCallFunctionWithoutArgs]
 int f():
     return f()
@@ -109,6 +143,11 @@ int f():
 def f():
     r0 = f()
     return r0
+
+
+-- Top level
+-- ---------
+
 
 [case testTopLevel-skip]
 f()

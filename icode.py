@@ -2,7 +2,7 @@
 
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
-    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt
+    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr
 )
 
 
@@ -287,6 +287,9 @@ class IcodeBuilder(NodeVisitor<int>):
             return target
         else:
             raise NotImplementedError()
+
+    int visit_paren_expr(self, ParenExpr e):
+        return e.expr.accept(self)
 
     #
     # Conditional expressions
