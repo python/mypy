@@ -2,7 +2,8 @@
 
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
-    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr
+    AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
+    UnaryExpr
 )
 
 
@@ -153,6 +154,17 @@ class BinOp(Opcode):
                                            self.op, self.right)
 
 
+class UnaryOp(Opcode):
+    """Primitive unary operation (e.g. r0 = -r1 [int])."""
+    void __init__(self, int target, int operand, str op):
+        self.target = target
+        self.operand = operand
+        self.op = op
+
+    str __str__(self):
+        return 'r%d = %sr%d [int]' % (self.target, self.op, self.operand)
+
+
 class IcodeBuilder(NodeVisitor<int>):
     """Generate icode from a parse tree."""
 
@@ -277,6 +289,12 @@ class IcodeBuilder(NodeVisitor<int>):
         right = e.right.accept(self)
         target = self.alloc_register()
         self.add(BinOp(target, left, right, e.op))
+        return target
+
+    int visit_unary_expr(self, UnaryExpr e):
+        operand = e.expr.accept(self)
+        target = self.alloc_register()
+        self.add(UnaryOp(target, operand, e.op))
         return target
 
     int visit_call_expr(self, CallExpr e):

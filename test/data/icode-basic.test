@@ -130,6 +130,20 @@ def f():
     r5 = 4
     r6 = r4 - r5 [int]
     return r6
+    
+[case testUnaryExpression]
+int f():
+    return -1 + -(2 + 3)
+[out]
+def f():
+    r0 = 1
+    r1 = -r0 [int]
+    r2 = 2
+    r3 = 3
+    r4 = r2 + r3 [int]
+    r5 = -r4 [int]
+    r6 = r1 + r5 [int]
+    return r6
 
 
 -- Calls
