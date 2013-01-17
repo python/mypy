@@ -323,6 +323,22 @@ class IcodeBuilder(NodeVisitor<int>):
             branch = IfOp(left, right, e.op, None, None)
             self.add(branch)
             return [branch]
+        elif e.op == 'and':
+            # Short circuit 'and'.
+            # TODO non-bool operands
+            lbranches = self.process_conditional(e.left)
+            new = self.new_block()
+            self.set_branches(lbranches, True, new)
+            rbraches = self.process_conditional(e.right)
+            return lbranches + rbraches
+        elif e.op == 'or':
+            # Short circuit 'or'.
+            # TODO non-bool operands
+            lbranches = self.process_conditional(e.left)
+            new = self.new_block()
+            self.set_branches(lbranches, False, new)
+            rbraches = self.process_conditional(e.right)
+            return lbranches + rbraches
         else:
             raise NotImplementedError()
 
@@ -359,11 +375,17 @@ class IcodeBuilder(NodeVisitor<int>):
 
     void set_branches(self, Branch[] branches, bool condition,
                       BasicBlock target):
+        """Set branch targets for the given condition (True or False).
+
+        If the target has already been set for a branch, skip the branch.
+        """
         for b in branches:
             if condition:
-                b.true_block = target
+                if not b.true_block:
+                    b.true_block = target
             else:
-                b.false_block = target
+                if not b.false_block:
+                    b.false_block = target
 
 
 def render(blocks):
