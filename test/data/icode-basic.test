@@ -297,7 +297,7 @@ def f:
 -- ---------
 
 
-[case testTopLevel-skip]
+[case testTopLevel]
 f()
 int f():
     return 1

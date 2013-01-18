@@ -196,33 +196,42 @@ class IcodeBuilder(NodeVisitor<int>):
     # Map local variable to allocated register
     dict<Node, int> lvar_regs
 
+    # Stack of inactive scopes
+    tuple<BasicBlock[], int, dict<Node, int>>[] scopes
+
     void __init__(self):
         self.generated = {}
-        self.num_registers = 0
+        self.scopes = []
 
     int visit_mypy_file(self, MypyFile mfile):
+        self.enter()
         for d in mfile.defs:
             d.accept(self)
+        self.add_implicit_return()
+        self.generated['__init'] = self.blocks
+        # TODO leave?
         return -1
 
     int visit_func_def(self, FuncDef fdef):
-        # TODO enter scope / leave scope
-        self.lvar_regs = {}
-        self.blocks = []
+        self.enter()
 
         for arg in fdef.args:
             self.add_local(arg)
+        fdef.body.accept(self)
+        self.add_implicit_return()
         
-        self.new_block()
-        for s in fdef.body.body:
-            s.accept(self)
+        self.generated[fdef.name()] = self.blocks
+
+        self.leave()
+        
+        return -1
+
+    void add_implicit_return(self):
         if not self.current.ops or not isinstance(self.current.ops[-1],
                                                   Return):
             r = self.alloc_register()
             self.add(SetRNone(r))
             self.add(Return(r))
-        self.generated[fdef.name()] = self.blocks
-        return -1
 
     #
     # Statements
@@ -394,6 +403,23 @@ class IcodeBuilder(NodeVisitor<int>):
     #
     # Helpers
     #
+
+    void enter(self):
+        """Enter a new scope.
+
+        Each function and the file top level is a separate scope.
+        """
+        self.scopes.append((self.blocks, self.num_registers, self.lvar_regs))
+        self.blocks = []
+        self.num_registers = 0
+        self.lvar_regs = {}
+        self.current = None
+        self.new_block()
+
+    void leave(self):
+        """Leave a scope."""
+        self.blocks, self.num_registers, self.lvar_regs = self.scopes.pop()
+        self.current = self.blocks[-1]
 
     BasicBlock new_block(self):
         new = BasicBlock(len(self.blocks))

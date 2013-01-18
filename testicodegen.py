@@ -39,7 +39,7 @@ def test_transform(testcase):
     """Perform a runtime checking transformation test case."""
     expected = remove_comment_lines(testcase.output)
 
-    func_name = get_func_name(expected)
+    func_names = get_func_names(expected)
 
     builder = icode.IcodeBuilder()
     
@@ -62,7 +62,7 @@ def test_transform(testcase):
                 t.accept(transform)
                 t.accept(builder)
 
-        for fn in [func_name]:
+        for fn in func_names:
             a.append('def {}:'.format(fn))
             code = icode.render(builder.generated[fn])
             a.extend(code)
@@ -74,11 +74,15 @@ def test_transform(testcase):
                                                           testcase.line))
 
 
-def get_func_name(expected):
-    m = re.match(r'def ([_a-zA-Z]+):', expected[0])
-    if not m:
+def get_func_names(expected):
+    res = []
+    for s in expected:
+        m = re.match(r'def ([_a-zA-Z]+):', s)
+        if m:
+            res.append(m.group(1))
+    if not res:
         raise RuntimeError('No function name in test case output')
-    return m.group(1)
+    return res
 
 
 if __name__ == '__main__':
