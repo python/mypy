@@ -7,6 +7,11 @@ from nodes import (
 )
 
 
+# Operand kinds
+REG_KIND = 0 # Register
+INT_KIND = 1 # Integer literal
+
+
 class BasicBlock:
     """An icode basic block.
 
@@ -109,10 +114,15 @@ class IfOp(Branch):
                  '<': '>=', '<=': '>', '>': '<=', '>=': '<'}
     
     """Conditional operator branch (e.g. if r0 < r1 goto L2 else goto L3)."""
-    void __init__(self, int left, int right, str op, BasicBlock true_block,
+    void __init__(self,
+                  int left, int left_kind,
+                  int right, int right_kind,
+                  str op, BasicBlock true_block,
                   BasicBlock false_block):
         self.left = left
+        self.left_kind = left_kind
         self.right = right
+        self.right_kind = right_kind
         self.op = op
         self.true_block = true_block
         self.false_block = false_block
@@ -122,8 +132,9 @@ class IfOp(Branch):
         self.op = self.inversion[self.op]
 
     str __str__(self):
-        return 'if r%d %s r%d goto L%d else goto L%d' % (
-            self.left, self.op, self.right,
+        return 'if %s %s %s goto L%d else goto L%d' % (
+            operand(self.left, self.left_kind), self.op,
+            operand(self.right, self.right_kind),
             self.true_block.label, self.false_block.label)
 
 
@@ -160,15 +171,22 @@ class Goto(Opcode):
 
 class BinOp(Opcode):
     """Primitive binary operation (e.g. r0 = r1 + r2 [int])."""
-    void __init__(self, int target, int left, int right, str op):
+    void __init__(self, int target,
+                  int left, int left_kind,
+                  int right, int right_kind,
+                  str op):
         self.target = target
         self.left = left
+        self.left_kind = left_kind
         self.right = right
+        self.right_kind = right_kind
         self.op = op
 
     str __str__(self):
-        return 'r%d = r%d %s r%d [int]' % (self.target, self.left,
-                                           self.op, self.right)
+        return 'r%d = %s %s %s [int]' % (self.target,
+                                         operand(self.left, self.left_kind),
+                                         self.op,
+                                         operand(self.right, self.right_kind))
 
 
 class UnaryOp(Opcode):
@@ -318,11 +336,17 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_op_expr(self, OpExpr e):
         # TODO arbitrary operand types
-        left = e.left.accept(self)
-        right = e.right.accept(self)
+        left, left_kind = self.get_operand(e.left)
+        right, right_kind = self.get_operand(e.right)
         target = self.alloc_register()
-        self.add(BinOp(target, left, right, e.op))
+        self.add(BinOp(target, left, left_kind, right, right_kind, e.op))
         return target
+
+    tuple<int, int> get_operand(self, Node n):
+        if isinstance(n, IntExpr):
+            return ((IntExpr)n).value, INT_KIND
+        else:
+            return n.accept(self), REG_KIND
 
     int visit_unary_expr(self, UnaryExpr e):
         operand = e.expr.accept(self)
@@ -354,9 +378,9 @@ class IcodeBuilder(NodeVisitor<int>):
         # are always tweaked to be correctly.
         if e.op in ['==', '!=', '<', '<=', '>', '>=']:
             # TODO check that operand types are as expected
-            left = e.left.accept(self)
-            right = e.right.accept(self)
-            branch = IfOp(left, right, e.op, None, None)
+            left, left_kind = self.get_operand(e.left)
+            right, right_kind = self.get_operand(e.right)
+            branch = IfOp(left, left_kind, right, right_kind, e.op, None, None)
             self.add(branch)
             return [branch]
         elif e.op == 'and':
@@ -479,3 +503,10 @@ str[] filter_out_trivial_gotos(str[] disasm):
                 continue
         res.append(s)
     return res
+
+
+str operand(int n, int kind):
+    if kind == INT_KIND:
+        return str(n)
+    else:
+        return 'r%d' % n
