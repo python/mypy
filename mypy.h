@@ -5,30 +5,35 @@
 
 typedef unsigned long MValue;
 typedef long MSignedValue;
+typedef int MBool;
 
 typedef struct {
     MValue *frame;
 } MEnv;
 
-#define MNone 0x1L
+#define MNone  0x1L
+#define MError 0x3L
 
 #define MIsShort(v) (((v) & 1) == 0)
 
-static inline int MIsAddOverflow(MValue sum, MValue left, MValue right) {
+MBool MIntLt(MValue left, MValue right);
+MValue MIntAdd(MEnv *e, MValue x, MValue y);
+
+static inline MBool MIsAddOverflow(MValue sum, MValue left, MValue right) {
     return ((MSignedValue)(sum ^ left) < 0 &&
             (MSignedValue)(sum ^ right) < 0);
 }
 
-static inline int MIsSubOverflow(MValue diff, MValue left, MValue right) {
+static inline MBool MIsSubOverflow(MValue diff, MValue left, MValue right) {
     return ((MSignedValue)(diff ^ left) < 0 && 
             (MSignedValue)(diff ^ right) >= 0);
 }
 
-static inline int MIntLt(MValue left, MValue right) {
+static inline MBool MShortLt(MValue left, MValue right) {
     if (MIsShort(left) && MIsShort(right))
         return (MSignedValue)left < (MSignedValue)right;
     else
-        abort();
+        return MIntLt(left, right);
 }
 
 #endif

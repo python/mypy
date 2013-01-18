@@ -35,7 +35,7 @@ class CGenerator:
         self.emit('}')
 
     int_conditionals = {
-        '<': 'MIntLt'
+        '<': 'MShortLt'
     }
 
     void opcode(self, SetRI opcode):
@@ -58,10 +58,15 @@ class CGenerator:
     void opcode(self, BinOp opcode):
         self.emit('%s = %s %s %s;' % (reg(opcode.target), reg(opcode.left),
                                       opcode.op, reg(opcode.right)))
-        self.emit('if (MIsAddOverflow(%s, %s, %s))' % (reg(opcode.target),
-                                                       reg(opcode.left),
-                                                       reg(opcode.right)))
-        self.emit('    abort();')
+        self.emit('if (MIsAddOverflow(%s, %s, %s)) {' % (reg(opcode.target),
+                                                         reg(opcode.left),
+                                                         reg(opcode.right)))
+        self.emit('%s = MIntAdd(e, %s, %s);' % (reg(opcode.target),
+                                                    reg(opcode.left),
+                                                    reg(opcode.right)))
+        self.emit('if (%s == MError)' % reg(opcode.target))
+        self.emit('    return MError;')
+        self.emit('}')
 
     void opcode(self, Goto opcode):
         self.emit('goto %s;' % label(opcode.next_block.label))
@@ -71,6 +76,7 @@ class CGenerator:
 
     void opcode(self, CallDirect opcode):
         self.emit('%s = M%s(e);' % (reg(opcode.target), opcode.func))
+        # TODO check error
 
     void opcode(self, Opcode opcode):
         """Default case."""
@@ -142,4 +148,4 @@ int main(int argc, char **argv) {
     
     out.close()
 
-    os.system('gcc -O2 _out.c')
+    os.system('gcc -O2 _out.c runtime.c')
