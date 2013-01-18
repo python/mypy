@@ -34,6 +34,10 @@ class CGenerator:
 
         self.emit('}')
 
+    int_conditionals = {
+        '<': 'MIntLt'
+    }
+
     void opcode(self, SetRI opcode):
         self.emit('%s = %d;' % (reg(opcode.target), 2 * opcode.intval))
 
@@ -44,8 +48,9 @@ class CGenerator:
         self.emit('%s = MNone;' % reg(opcode.target))
 
     void opcode(self, IfOp opcode):
-        self.emit('if (%s %s %s)' % (reg(opcode.left), opcode.op,
-                                     reg(opcode.right)))
+        op = self.int_conditionals[opcode.op]
+        self.emit('if (%s(%s, %s))' % (op, reg(opcode.left),
+                                       reg(opcode.right)))
         self.emit('    goto %s;' % (label(opcode.true_block.label)))
         self.emit('else')
         self.emit('    goto %s;' % (label(opcode.false_block.label)))
@@ -53,6 +58,10 @@ class CGenerator:
     void opcode(self, BinOp opcode):
         self.emit('%s = %s %s %s;' % (reg(opcode.target), reg(opcode.left),
                                       opcode.op, reg(opcode.right)))
+        self.emit('if (MIsAddOverflow(%s, %s, %s))' % (reg(opcode.target),
+                                                       reg(opcode.left),
+                                                       reg(opcode.right)))
+        self.emit('    abort();')
 
     void opcode(self, Goto opcode):
         self.emit('goto %s;' % label(opcode.next_block.label))
