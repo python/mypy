@@ -49,23 +49,22 @@ class CGenerator:
         self.emit('%s = MNone;' % reg(opcode.target))
 
     void opcode(self, IfOp opcode):
+        left = operand(opcode.left, opcode.left_kind)
+        right = operand(opcode.right, opcode.right_kind)
         op = self.int_conditionals[opcode.op]
-        self.emit('if (%s(%s, %s))' % (op, reg(opcode.left),
-                                       reg(opcode.right)))
+        self.emit('if (%s(%s, %s))' % (op, left, right))
         self.emit('    goto %s;' % (label(opcode.true_block.label)))
         self.emit('else')
         self.emit('    goto %s;' % (label(opcode.false_block.label)))
 
     void opcode(self, BinOp opcode):
-        self.emit('%s = %s %s %s;' % (reg(opcode.target), reg(opcode.left),
-                                      opcode.op, reg(opcode.right)))
-        self.emit('if (MIsAddOverflow(%s, %s, %s)) {' % (reg(opcode.target),
-                                                         reg(opcode.left),
-                                                         reg(opcode.right)))
-        self.emit('%s = MIntAdd(e, %s, %s);' % (reg(opcode.target),
-                                                    reg(opcode.left),
-                                                    reg(opcode.right)))
-        self.emit('if (%s == MError)' % reg(opcode.target))
+        target = reg(opcode.target)
+        left = operand(opcode.left, opcode.left_kind)
+        right = operand(opcode.right, opcode.right_kind)
+        self.emit('%s = %s %s %s;' % (target, left, opcode.op, right))
+        self.emit('if (MIsAddOverflow(%s, %s, %s)) {' % (target, left, right))
+        self.emit('%s = MIntAdd(e, %s, %s);' % (target, left, right))
+        self.emit('if (%s == MError)' % target)
         self.emit('    return MError;')
         self.emit('}')
 
@@ -103,6 +102,12 @@ str reg(int n):
 
 str label(int n):
     return 'L%d' % n
+
+str operand(int n, int kind):
+    if kind == icode.INT_KIND:
+        return str(n * 2)
+    else:
+        return reg(n)
 
 
 if __name__ == '__main__':
