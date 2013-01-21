@@ -41,6 +41,9 @@ class CGenerator:
         self.emit('MValue *frame = e->frame;')
         self.emit('e->frame = frame + %d;' % self.frame_size)
 
+        for i in range(func.num_args, self.frame_size):
+            self.emit('frame[%d] = 0;' % i)
+
         for b in func.blocks:
             self.emit('%s:' % label(b.label))
             for op in b.ops:

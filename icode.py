@@ -15,7 +15,8 @@ INT_KIND = 1 # Integer literal
 class FuncIcode:
     """Icode and related information for a function."""
 
-    void __init__(self, BasicBlock[] blocks, int num_registers):
+    void __init__(self, int num_args, BasicBlock[] blocks, int num_registers):
+        self.num_args = num_args
         self.blocks = blocks
         self.num_registers = num_registers
 
@@ -237,7 +238,8 @@ class IcodeBuilder(NodeVisitor<int>):
         for d in mfile.defs:
             d.accept(self)
         self.add_implicit_return()
-        self.generated['__init'] = FuncIcode(self.blocks, self.num_registers)
+        self.generated['__init'] = FuncIcode(0, self.blocks,
+                                             self.num_registers)
         # TODO leave?
         return -1
 
@@ -249,7 +251,7 @@ class IcodeBuilder(NodeVisitor<int>):
         fdef.body.accept(self)
         self.add_implicit_return()
         
-        self.generated[fdef.name()] = FuncIcode(self.blocks,
+        self.generated[fdef.name()] = FuncIcode(len(fdef.args), self.blocks,
                                                 self.num_registers)
 
         self.leave()
