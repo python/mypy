@@ -107,8 +107,11 @@ class CGenerator:
     void opcode(self, CallDirect opcode):
         for i, arg in enumerate(opcode.args):
             self.emit('%s = %s;' % (reg(self.frame_size + i), reg(arg)))
-        self.emit('%s = M%s(e);' % (reg(opcode.target), opcode.func))
-        # TODO check error
+        target = reg(opcode.target)
+        self.emit('t = M%s(e);' % opcode.func)
+        self.emit('if (t == MError)')
+        self.emit('    return MError;')
+        self.emit('%s = t;' % target)
 
     void opcode(self, Opcode opcode):
         """Default case."""
