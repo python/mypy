@@ -17,7 +17,9 @@ typedef struct {
 #define MIsShort(v) (((v) & 1) == 0)
 
 MBool MIntLt(MValue left, MValue right);
+MBool MIntLe(MValue left, MValue right);
 MValue MIntAdd(MEnv *e, MValue x, MValue y);
+MValue MIntSub(MEnv *e, MValue x, MValue y);
 
 static inline MBool MIsAddOverflow(MValue sum, MValue left, MValue right) {
     return ((MSignedValue)(sum ^ left) < 0 &&
@@ -34,6 +36,13 @@ static inline MBool MShortLt(MValue left, MValue right) {
         return (MSignedValue)left < (MSignedValue)right;
     else
         return MIntLt(left, right);
+}
+
+static inline MBool MShortLe(MValue left, MValue right) {
+    if (MIsShort(left) && MIsShort(right))
+        return (MSignedValue)left <= (MSignedValue)right;
+    else
+        return MIntLe(left, right);
 }
 
 #endif

@@ -17,23 +17,26 @@ INDENT = 4
 
 
 class CGenerator:
+    """Translate icode to C."""
+    
     FuncIcode func
     
     void __init__(self):
         self.out = <str> []
         self.prolog = ['#include "mypy.h"\n']
         self.indent = 0
+        self.frame_size = 0
     
     void generate_function(self, str name, FuncIcode func):
         self.func = func
+        self.frame_size = func.num_registers
         header = 'MValue %s(MEnv *e)' % name
         self.prolog.append('%s;\n' % header)
         self.emit(header)
         self.emit('{')
         self.emit('MValue t;')
         self.emit('MValue *frame = e->frame;')
-        self.emit('frame += %d;' % func.num_registers)
-        self.emit('e->frame = frame;')
+        self.emit('e->frame = frame + %d;' % self.frame_size)
 
         for b in func.blocks:
             self.emit('%s:' % label(b.label))
@@ -43,7 +46,13 @@ class CGenerator:
         self.emit('}')
 
     int_conditionals = {
-        '<': 'MShortLt'
+        '<': 'MShortLt',
+        '<=': 'MShortLe'
+    }
+
+    int_arithmetic = {
+        '+': ('MIsAddOverflow', 'MIntAdd'),
+        '-': ('MIsSubOverflow', 'MIntSub')
     }
 
     void opcode(self, SetRI opcode):
@@ -68,9 +77,10 @@ class CGenerator:
         target = reg(opcode.target)
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
+        overflow, op = self.int_arithmetic[opcode.op]
         self.emit('t = %s %s %s;' % (left, opcode.op, right))
-        self.emit('if (MIsAddOverflow(t, %s, %s)) {' % (left, right))
-        self.emit('t = MIntAdd(e, %s, %s);' % (left, right))
+        self.emit('if (%s(t, %s, %s)) {' % (overflow, left, right))
+        self.emit('t = %s(e, %s, %s);' % (op, left, right))
         self.emit('if (t == MError) {')
         self.emit_return('MError')
         self.emit('}')
@@ -84,6 +94,8 @@ class CGenerator:
         self.emit_return(reg(opcode.retval))
 
     void opcode(self, CallDirect opcode):
+        for i, arg in enumerate(opcode.args):
+            self.emit('%s = %s;' % (reg(self.frame_size + i), reg(arg)))
         self.emit('%s = M%s(e);' % (reg(opcode.target), opcode.func))
         # TODO check error
 
@@ -106,13 +118,8 @@ class CGenerator:
             self.indent += INDENT
 
     void emit_return(self, str retval):
-        if retval != 'MError':
-            self.emit('t = %s;' % retval)
-        self.emit('e->frame = frame - %d;' % self.func.num_registers)
-        if retval != 'MError':
-            self.emit('return t;')
-        else:
-            self.emit('return %s;' % retval)
+        self.emit('e->frame = frame;')
+        self.emit('return %s;' % retval)
 
 
 str reg(int n):
