@@ -13,23 +13,23 @@ tuple<str, str> tzname
 
 
 # ----- classes/methods -----
-class struct_time():
+class struct_time:
     # this is supposed to be a namedtuple object 
     # namedtuple is not yet implemented (see file: mypy/stubs/collections.py)
     # see: http://docs.python.org/3.2/library/time.html#time.struct_time
     # see: http://nullege.com/codes/search/time.struct_time
     # TODO: namedtuple() object problem
-    #namedtuple __init__(self, int, int, int, int, int, int, int, int, int): pass
-    #int tm_year
-    #int tm_mon
-    #int tm_mday
-    #int tm_hour
-    #int tm_min
-    #int tm_sec
-    #int tm_wday
-    #int tm_yday
-    #int tm_isdst
-    pass
+    #namedtuple __init__(self, int, int, int, int, int, int, int, int, int):
+    #    pass
+    int tm_year
+    int tm_mon
+    int tm_mday
+    int tm_hour
+    int tm_min
+    int tm_sec
+    int tm_wday
+    int tm_yday
+    int tm_isdst
 
 
 # ----- functions -----
@@ -47,9 +47,8 @@ float mktime(struct_time t): pass
 void sleep(float secs): pass
 void sleep(int secs): pass
 str strftime(str format): pass  # return current time
-str strftime(str format, struct_time t]): pass
+str strftime(str format, struct_time t): pass
 str strftime(str format, tuple<str, int> t): pass
 struct_time strptime(str string, str format="%a %b %d %H:%M:%S %Y"): pass
 float time(): pass
 void tzset(): pass  # Unix only
-
