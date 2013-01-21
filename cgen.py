@@ -26,6 +26,7 @@ class CGenerator:
         self.prolog.append('%s;\n' % header)
         self.emit(header)
         self.emit('{')
+        self.emit('MValue *frame = e->frame;')
 
         for b in blocks:
             self.emit('%s:' % label(b.label))
@@ -98,7 +99,7 @@ class CGenerator:
 
 
 str reg(int n):
-    return 'e->frame[%d]' % n
+    return 'frame[%d]' % n
 
 str label(int n):
     return 'L%d' % n
