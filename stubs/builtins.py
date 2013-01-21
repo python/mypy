@@ -766,7 +766,7 @@ any open(int file, str mode='r', str encoding=None, str errors=None,
 int ord(str c): pass
 int ord(bytes c): pass
 int ord(bytearray c): pass
-void print(object *values, *, str sep=' ', str end='\n',
+void print(any *values, *, str sep=' ', str end='\n',
            TextIO file=None): pass # Actual default for file is sys.stdout
 # The return type can be int or float, depending on the value of y.
 any pow(int x, int y): pass
