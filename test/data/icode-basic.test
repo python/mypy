@@ -277,3 +277,17 @@ def __init:
 def f:
     r0 = 1
     return r0
+
+
+-- Print function
+-- --------------
+
+
+[case testPrintInt]
+print(5)
+[out]
+def __init:
+    r0 = 5
+    r1 = print(r0)
+    r2 = None
+    return r2

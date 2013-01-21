@@ -1,10 +1,12 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
+from mtypes import Any
 from nodes import (
     FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr, ExpressionStmt
+    UnaryExpr, ExpressionStmt, CoerceExpr
 )
+from subtypes import is_named_instance
 
 
 # Operand kinds
@@ -386,6 +388,16 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_paren_expr(self, ParenExpr e):
         return e.expr.accept(self)
+
+    int visit_coerce_expr(self, CoerceExpr e):
+        if (is_named_instance(e.source_type, 'builtins.int') and
+            isinstance(e.target_type, Any)):
+            # This is a no-op currently.
+            # TODO perhaps should do boxing in some cases...
+            return e.expr.accept(self)
+        else:
+            # Non-trivial coercions not supported yet.
+            raise NotImplementedError()
 
     #
     # Conditional expressions

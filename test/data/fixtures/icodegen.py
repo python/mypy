@@ -23,3 +23,7 @@ class int:
 
 class float: pass
 class bool: pass
+
+class list<t>: pass
+
+void print(*object): pass
