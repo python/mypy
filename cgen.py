@@ -27,6 +27,7 @@ class CGenerator:
         self.emit(header)
         self.emit('{')
         self.emit('MValue *frame = e->frame;')
+        self.emit('MValue t;')
 
         for b in blocks:
             self.emit('%s:' % label(b.label))
@@ -61,12 +62,13 @@ class CGenerator:
         target = reg(opcode.target)
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
-        self.emit('%s = %s %s %s;' % (target, left, opcode.op, right))
-        self.emit('if (MIsAddOverflow(%s, %s, %s)) {' % (target, left, right))
-        self.emit('%s = MIntAdd(e, %s, %s);' % (target, left, right))
-        self.emit('if (%s == MError)' % target)
+        self.emit('t = %s %s %s;' % (left, opcode.op, right))
+        self.emit('if (MIsAddOverflow(t, %s, %s)) {' % (left, right))
+        self.emit('t = MIntAdd(e, %s, %s);' % (left, right))
+        self.emit('if (t == MError)')
         self.emit('    return MError;')
         self.emit('}')
+        self.emit('%s = t;' % target)
 
     void opcode(self, Goto opcode):
         self.emit('goto %s;' % label(opcode.next_block.label))
