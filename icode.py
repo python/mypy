@@ -213,6 +213,8 @@ class IcodeBuilder(NodeVisitor<int>):
     int num_registers
     # Map local variable to allocated register
     dict<Node, int> lvar_regs
+    # Stack of operations target registers (-1 => create new register)
+    int[] targets
 
     # Stack of inactive scopes
     tuple<BasicBlock[], int, dict<Node, int>>[] scopes
@@ -220,6 +222,7 @@ class IcodeBuilder(NodeVisitor<int>):
     void __init__(self):
         self.generated = {}
         self.scopes = []
+        self.targets = []
 
     int visit_mypy_file(self, MypyFile mfile):
         self.enter()
@@ -261,11 +264,11 @@ class IcodeBuilder(NodeVisitor<int>):
         return -1
 
     int visit_expression_stmt(self, ExpressionStmt s):
-        s.expr.accept(self)
+        self.accept(s.expr)
         return -1
 
     int visit_return_stmt(self, ReturnStmt s):
-        retval = s.expr.accept(self)
+        retval = self.accept(s.expr)
         self.add(Return(retval))
         return -1
 
@@ -275,15 +278,13 @@ class IcodeBuilder(NodeVisitor<int>):
 
         # TODO handle non-locals, attributes etc.
 
-        rvalue = s.rvalue.accept(self)
-        
         lval = (NameExpr)s.lvalues[0]
         if lval.is_def:
             reg = self.add_local(lval.node)
         else:
             reg = self.lvar_regs[lval.node]
 
-        self.add(SetRR(reg, rvalue))
+        self.accept(s.rvalue, reg)
 
     int visit_while_stmt(self, WhileStmt s):
         # Split block so that we get a handle to the top of the loop.
@@ -326,19 +327,25 @@ class IcodeBuilder(NodeVisitor<int>):
     #
 
     int visit_int_expr(self, IntExpr e):
-        r = self.alloc_register()
+        r = self.target_register()
         self.add(SetRI(r, e.value))
         return r
 
     int visit_name_expr(self, NameExpr e):
         # TODO other names than locals
-        return self.lvar_regs[e.node]
+        target = self.targets[-1]
+        source = self.lvar_regs[e.node]
+        if target < 0:
+            return source
+        else:
+            self.add(SetRR(target, source))
+            return target
 
     int visit_op_expr(self, OpExpr e):
         # TODO arbitrary operand types
         left, left_kind = self.get_operand(e.left)
         right, right_kind = self.get_operand(e.right)
-        target = self.alloc_register()
+        target = self.target_register()
         self.add(BinOp(target, left, left_kind, right, right_kind, e.op))
         return target
 
@@ -346,11 +353,11 @@ class IcodeBuilder(NodeVisitor<int>):
         if isinstance(n, IntExpr):
             return ((IntExpr)n).value, INT_KIND
         else:
-            return n.accept(self), REG_KIND
+            return self.accept(n), REG_KIND
 
     int visit_unary_expr(self, UnaryExpr e):
-        operand = e.expr.accept(self)
-        target = self.alloc_register()
+        operand = self.accept(e.expr)
+        target = self.target_register()
         self.add(UnaryOp(target, operand, e.op))
         return target
 
@@ -359,8 +366,8 @@ class IcodeBuilder(NodeVisitor<int>):
             callee = (NameExpr)e.callee
             args = <int> []
             for arg in e.args:
-                args.append(arg.accept(self))
-            target = self.alloc_register()
+                args.append(self.accept(arg))
+            target = self.target_register()
             self.add(CallDirect(target, callee.name, args))
             return target
         else:
@@ -419,7 +426,7 @@ class IcodeBuilder(NodeVisitor<int>):
 
         Generate opcode of form 'if rN goto ...'.
         """
-        value = e.accept(self)
+        value = self.accept(e)
         branch = IfR(value, None, None)
         self.add(branch)
         return [branch]
@@ -457,10 +464,22 @@ class IcodeBuilder(NodeVisitor<int>):
     void add(self, Opcode op):
         self.current.ops.append(op)
 
+    int accept(self, Node n, int target=-1):
+        self.targets.append(target)
+        actual = n.accept(self)
+        self.targets.pop()
+        return actual
+
     int alloc_register(self):
         n = self.num_registers
         self.num_registers += 1
         return n
+
+    int target_register(self):
+        if self.targets[-1] < 0:
+            return self.alloc_register()
+        else:
+            return self.targets[-1]
 
     int add_local(self, Node node):
         reg = self.alloc_register()

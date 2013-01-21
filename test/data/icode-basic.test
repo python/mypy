@@ -32,8 +32,7 @@ int f():
 [out]
 def f:
     r0 = 2
-    r1 = r0
-    return r1
+    return r0
     
 [case testAssignTwice]
 int f():
@@ -43,9 +42,18 @@ int f():
 [out]
 def f:
     r0 = 2
+    r0 = 3
+    return r0
+    
+[case testAssignLocalToLocal]
+int f():
+    i = 2
+    j = i
+    return j
+[out]
+def f:
+    r0 = 2
     r1 = r0
-    r2 = 3
-    r1 = r2
     return r1
     
 [case testFunctionArgs]
@@ -72,16 +80,14 @@ void f():
 [out]
 def f:
     r0 = 0
-    r1 = r0
 L1:
-    if r1 < 100 goto L2 else goto L3
+    if r0 < 100 goto L2 else goto L3
 L2:
-    r2 = r1 + 1 [int]
-    r1 = r2
+    r0 = r0 + 1 [int]
     goto L1
 L3:
-    r3 = None
-    return r3
+    r1 = None
+    return r1
 
 [case testIfWithoutElse]
 void f():
@@ -92,10 +98,9 @@ def f:
     if 2 < 3 goto L1 else goto L2
 L1:
     r0 = 1
-    r1 = r0
 L2:
-    r2 = None
-    return r2
+    r1 = None
+    return r1
 
 [case testIfWithElse]
 int f():
@@ -108,14 +113,12 @@ def f:
     if 2 < 3 goto L1 else goto L2
 L1:
     r0 = 1
-    r1 = r0
     goto L3
 L2:
-    r2 = 2
-    r1 = r2
+    r0 = 2
 L3:
-    r3 = None
-    return r3
+    r1 = None
+    return r1
 
 
 -- Arithmetic expressions
@@ -160,10 +163,9 @@ L1:
     if 3 > 4 goto L2 else goto L3
 L2:
     r0 = 1
-    r1 = r0
 L3:
-    r2 = None
-    return r2
+    r1 = None
+    return r1
     
 [case testBooleanOr]
 void f():
@@ -176,10 +178,9 @@ L1:
     if 3 > 4 goto L2 else goto L3
 L2:
     r0 = 1
-    r1 = r0
 L3:
-    r2 = None
-    return r2
+    r1 = None
+    return r1
     
 [case testSimpleBooleanNot]
 void f():
@@ -190,10 +191,9 @@ def f:
     if 1 != 2 goto L1 else goto L2
 L1:
     r0 = 1
-    r1 = r0
 L2:
-    r2 = None
-    return r2
+    r1 = None
+    return r1
     
 [case testNotAnd]
 void f():
@@ -206,10 +206,9 @@ L1:
     if 3 != 4 goto L2 else goto L3
 L2:
     r0 = 1
-    r1 = r0
 L3:
-    r2 = None
-    return r2
+    r1 = None
+    return r1
 
 [case testNotOr]
 void f():
@@ -222,10 +221,9 @@ L1:
     if 3 != 4 goto L2 else goto L3
 L2:
     r0 = 1
-    r1 = r0
 L3:
-    r2 = None
-    return r2
+    r1 = None
+    return r1
 
 
 -- Calls
