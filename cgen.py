@@ -16,18 +16,23 @@ INDENT = 4
 
 
 class CGenerator:
+    FuncIcode func
+    
     void __init__(self):
         self.out = <str> []
         self.prolog = ['#include "mypy.h"\n']
         self.indent = 0
     
     void generate_function(self, str name, FuncIcode func):
+        self.func = func
         header = 'MValue %s(MEnv *e)' % name
         self.prolog.append('%s;\n' % header)
         self.emit(header)
         self.emit('{')
-        self.emit('MValue *frame = e->frame;')
         self.emit('MValue t;')
+        self.emit('MValue *frame = e->frame;')
+        self.emit('frame += %d;' % func.num_registers)
+        self.emit('e->frame = frame;')
 
         for b in func.blocks:
             self.emit('%s:' % label(b.label))
@@ -65,8 +70,9 @@ class CGenerator:
         self.emit('t = %s %s %s;' % (left, opcode.op, right))
         self.emit('if (MIsAddOverflow(t, %s, %s)) {' % (left, right))
         self.emit('t = MIntAdd(e, %s, %s);' % (left, right))
-        self.emit('if (t == MError)')
-        self.emit('    return MError;')
+        self.emit('if (t == MError) {')
+        self.emit_return('MError')
+        self.emit('}')
         self.emit('}')
         self.emit('%s = t;' % target)
 
@@ -74,7 +80,7 @@ class CGenerator:
         self.emit('goto %s;' % label(opcode.next_block.label))
 
     void opcode(self, Return opcode):
-        self.emit('return %s;' % reg(opcode.retval))
+        self.emit_return(reg(opcode.retval))
 
     void opcode(self, CallDirect opcode):
         self.emit('%s = M%s(e);' % (reg(opcode.target), opcode.func))
@@ -97,6 +103,15 @@ class CGenerator:
         self.out.append(' ' * indent + s + '\n')
         if '{' in s:
             self.indent += INDENT
+
+    void emit_return(self, str retval):
+        if retval != 'MError':
+            self.emit('t = %s;' % retval)
+        self.emit('e->frame = frame - %d;' % self.func.num_registers)
+        if retval != 'MError':
+            self.emit('return t;')
+        else:
+            self.emit('return %s;' % retval)
 
 
 str reg(int n):
