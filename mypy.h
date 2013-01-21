@@ -9,6 +9,7 @@ typedef int MBool;
 
 typedef struct {
     MValue *frame;
+    MValue *stack_top;
 } MEnv;
 
 #define MNone  0x1L

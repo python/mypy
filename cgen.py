@@ -30,20 +30,32 @@ class CGenerator:
         self.num_labels = 0
     
     void generate_function(self, str name, FuncIcode func):
+        # Initialize function-specific state information.
         self.func = func
         self.num_labels = 0
         self.frame_size = func.num_registers
+
+        # Add function definition and opening brace.
         header = 'MValue %s(MEnv *e)' % name
-        self.prolog.append('%s;\n' % header)
         self.emit(header)
         self.emit('{')
+
+        # Add function declaration.
+        self.prolog.append('%s;\n' % header)
+
+        # Generate code that updates and checks the stack pointer.
         self.emit('MValue t;')
         self.emit('MValue *frame = e->frame;')
         self.emit('e->frame = frame + %d;' % self.frame_size)
+        self.emit('if (e->frame >= e->stack_top)')
+        self.emit('    abort();') # Dummy handler; should raise an exception
 
+        # Geneate code that initializes the stack frame. The gc must not see
+        # uninitialized values.
         for i in range(func.num_args, self.frame_size):
             self.emit('frame[%d] = 0;' % i)
 
+        # Translate function body, one basic block at a time.
         for b in func.blocks:
             self.emit('%s:' % label(b.label))
             for op in b.ops:
@@ -199,6 +211,7 @@ int main(int argc, char **argv) {
     MValue stack[1024];
     MEnv env;
     env.frame = stack;
+    env.stack_top = stack + 1024 - 16; // Reserve 16 entries for arguments
     M__init(&env);
     return 0;
 }
