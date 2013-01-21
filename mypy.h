@@ -22,6 +22,9 @@ MBool MIntLe(MValue left, MValue right);
 MValue MIntAdd(MEnv *e, MValue x, MValue y);
 MValue MIntSub(MEnv *e, MValue x, MValue y);
 
+/* TODO this is just a trivial dummy print placeholder for test cases */
+MValue Mprint(MEnv *e);
+
 static inline MBool MIsAddOverflow(MValue sum, MValue left, MValue right) {
     return ((MSignedValue)(sum ^ left) < 0 &&
             (MSignedValue)(sum ^ right) < 0);
