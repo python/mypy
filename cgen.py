@@ -7,7 +7,7 @@ from build import build
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
-    CallDirect
+    CallDirect, FuncIcode
 )
 import transform
 
@@ -21,7 +21,7 @@ class CGenerator:
         self.prolog = ['#include "mypy.h"\n']
         self.indent = 0
     
-    void generate_function(self, str name, BasicBlock[] blocks):
+    void generate_function(self, str name, FuncIcode func):
         header = 'MValue %s(MEnv *e)' % name
         self.prolog.append('%s;\n' % header)
         self.emit(header)
@@ -29,7 +29,7 @@ class CGenerator:
         self.emit('MValue *frame = e->frame;')
         self.emit('MValue t;')
 
-        for b in blocks:
+        for b in func.blocks:
             self.emit('%s:' % label(b.label))
             for op in b.ops:
                 self.opcode(op)

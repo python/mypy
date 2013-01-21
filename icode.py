@@ -12,6 +12,14 @@ REG_KIND = 0 # Register
 INT_KIND = 1 # Integer literal
 
 
+class FuncIcode:
+    """Icode and related information for a function."""
+
+    void __init__(self, BasicBlock[] blocks, int num_registers):
+        self.blocks = blocks
+        self.num_registers = num_registers
+
+
 class BasicBlock:
     """An icode basic block.
 
@@ -203,7 +211,7 @@ class UnaryOp(Opcode):
 class IcodeBuilder(NodeVisitor<int>):
     """Generate icode from a parse tree."""
 
-    dict<str, BasicBlock[]> generated
+    dict<str, FuncIcode> generated
     
     # List of generated blocks in the current scope
     BasicBlock[] blocks
@@ -229,7 +237,7 @@ class IcodeBuilder(NodeVisitor<int>):
         for d in mfile.defs:
             d.accept(self)
         self.add_implicit_return()
-        self.generated['__init'] = self.blocks
+        self.generated['__init'] = FuncIcode(self.blocks, self.num_registers)
         # TODO leave?
         return -1
 
@@ -241,7 +249,8 @@ class IcodeBuilder(NodeVisitor<int>):
         fdef.body.accept(self)
         self.add_implicit_return()
         
-        self.generated[fdef.name()] = self.blocks
+        self.generated[fdef.name()] = FuncIcode(self.blocks,
+                                                self.num_registers)
 
         self.leave()
         
@@ -501,9 +510,9 @@ class IcodeBuilder(NodeVisitor<int>):
                     b.false_block = target
 
 
-def render(blocks):
+def render(func):
     res = []
-    for b in blocks:
+    for b in func.blocks:
         if res:
             res.append('L%d:' % b.label)
         res.extend(['    ' + str(op) for op in b.ops])
