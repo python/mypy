@@ -26,9 +26,12 @@ class CGenerator:
         self.prolog = ['#include "mypy.h"\n']
         self.indent = 0
         self.frame_size = 0
+        # Count temp labels.
+        self.num_labels = 0
     
     void generate_function(self, str name, FuncIcode func):
         self.func = func
+        self.num_labels = 0
         self.frame_size = func.num_registers
         header = 'MValue %s(MEnv *e)' % name
         self.prolog.append('%s;\n' % header)
@@ -77,13 +80,18 @@ class CGenerator:
         target = reg(opcode.target)
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
+        label = self.label()
         overflow, op = self.int_arithmetic[opcode.op]
-        self.emit('t = %s %s %s;' % (left, opcode.op, right))
-        self.emit('if (%s(t, %s, %s)) {' % (overflow, left, right))
-        self.emit('t = %s(e, %s, %s);' % (op, left, right))
-        self.emit('if (t == MError) {')
+        self.emit('if (MIsShort(%s) && MIsShort(%s)) {' % (left, right))
+        self.emit(  't = %s %s %s;' % (left, opcode.op, right))
+        self.emit(  'if (%s(t, %s, %s))' % (overflow, left, right))
+        self.emit(  '    goto %s;' % label)
+        self.emit('} else {')
+        self.emit('%s:' % label)
+        self.emit(  't = %s(e, %s, %s);' % (op, left, right))
+        self.emit(  'if (t == MError) {')
         self.emit_return('MError')
-        self.emit('}')
+        self.emit(  '}')                  
         self.emit('}')
         self.emit('%s = t;' % target)
 
@@ -120,6 +128,11 @@ class CGenerator:
     void emit_return(self, str retval):
         self.emit('e->frame = frame;')
         self.emit('return %s;' % retval)
+
+    str label(self):
+        n = self.num_labels
+        self.num_labels = n + 1
+        return 'T%d' % n
 
 
 str reg(int n):
