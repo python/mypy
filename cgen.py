@@ -4,6 +4,7 @@ import os
 import sys
 
 from build import build
+from errors import CompileError
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
@@ -129,12 +130,20 @@ str operand(int n, int kind):
 
 if __name__ == '__main__':
     # Construct input as a single single.
-    text = open('t.py').read()
+    program = sys.argv[1]
+    text = open(program).read()
+    
     # Parse and type check the input program.
-    trees, symtable, infos, types = build(program_text=text,
-                                          program_file_name='t.py',
-                                          use_test_builtins=False,
-                                          do_type_check=True)
+    try:
+        trees, symtable, infos, types = build(program_text=text,
+                                              program_file_name=program,
+                                              use_test_builtins=False,
+                                              do_type_check=True)
+    except CompileError as e:
+        for s in e.messages:
+            sys.stderr.write(s + '\n')
+        sys.exit(1)
+        
     builder = icode.IcodeBuilder()
     # Transform each file separately.
     for t in trees:
@@ -147,7 +156,7 @@ if __name__ == '__main__':
             t.accept(builder)
 
     cgen = CGenerator()
-    for fn in ['__init', 'f']:
+    for fn in builder.generated.keys():
         cgen.generate_function('M' + fn, builder.generated[fn])
 
     out = open('_out.c', 'w')
