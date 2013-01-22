@@ -4,8 +4,8 @@ import os.path
 import re
 import sys
 
+import build
 import icode
-from build import build
 from myunit import Suite, run_test
 from testhelpers import assert_string_arrays_equal_wildcards
 from testdata import parse_test_cases
@@ -47,10 +47,9 @@ def test_transform(testcase):
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
-        files, infos, types = build(program_text=src,
-                                    program_path='main',
-                                    alt_lib_path=test_temp_dir,
-                                    do_type_check=True)
+        files, infos, types = build.build(src, program_path='main',
+                                          target=build.TYPE_CHECK,
+                                          alt_lib_path=test_temp_dir)
         a = []
         # Transform each file separately.
         for t in files.values():

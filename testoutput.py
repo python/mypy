@@ -6,11 +6,11 @@ import os.path
 import re
 import sys
 
+import build
 from myunit import Suite, run_test
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
 from testconfig import test_data_prefix, test_temp_dir
-from build import build
 from parse import parse
 from output import OutputVisitor
 from errors import CompileError
@@ -44,7 +44,10 @@ def test_output(testcase):
         # lets us test that semantic analysis does not break source code pretty
         # printing.
         if testcase.name.endswith('_SemanticAnalyzer'):
-            files, infos, types = build(src, 'main', True, test_temp_dir)
+            files, infos, types = build.build(src, 'main',
+                                              target=build.SEMANTIC_ANALYSIS,
+                                              test_builtins=True,
+                                              alt_lib_path=test_temp_dir)
         else:
             files = {'main': parse(src, 'main')}
         a = []

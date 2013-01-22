@@ -8,12 +8,12 @@ stubs to speed up running.
 import os.path
 import sys
 
+import build
 from myunit import Suite, run_test
 from testconfig import test_data_prefix, test_temp_dir
 from testdata import parse_test_cases
 from testhelpers import assert_string_arrays_equal
 from testoutput import fix_path, remove_prefix
-from build import build
 from pythongen import PythonGenerator
 from errors import CompileError
 
@@ -42,7 +42,10 @@ def test_python_generation(testcase):
     try:
         src = '\n'.join(testcase.input)
         # Parse and semantically analyze the source program.
-        files, infos, types = build(src, 'main', True, test_temp_dir)
+        files, infos, types = build.build(src, 'main',
+                                          target=build.SEMANTIC_ANALYSIS,
+                                          test_builtins=True,
+                                          alt_lib_path=test_temp_dir)
         a = []
         first = True
         # Produce an output containing the pretty-printed forms (with original

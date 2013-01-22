@@ -3,8 +3,8 @@
 import os
 import sys
 
-from build import build
-from errors import CompileError
+import build
+import errors
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
@@ -173,10 +173,10 @@ if __name__ == '__main__':
     
     # Parse and type check the input program.
     try:
-        files, infos, types = build(program_text=text,
-                                    program_path=program,
-                                    do_type_check=True)
-    except CompileError as e:
+        files, infos, types = build.build(program_text=text,
+                                          program_path=program,
+                                          target=build.TYPE_CHECK)
+    except errors.CompileError as e:
         for s in e.messages:
             sys.stderr.write(s + '\n')
         sys.exit(1)

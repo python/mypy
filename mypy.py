@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 
-from build import build
+import build
 from errors import CompileError
 from pythongen import PythonGenerator
 
@@ -48,7 +48,8 @@ void main():
 
         try:
             # Parse and type check the program and dependencies.
-            files, infos, types = build(text, path, False, None, True)
+            files, infos, types = build.build(text, path,
+                                              target=build.TYPE_CHECK)
         
             # Translate each file in the program to Python.
             # TODO support packages

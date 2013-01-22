@@ -26,37 +26,48 @@ from parse import parse
 debug = False
 
 
+# Build targets
+SEMANTIC_ANALYSIS = 0   # Semantic analysis only
+TYPE_CHECK = 1          # Type check
+# TODO implement these
+PYTHON = 2              # Type check and generate Python
+TRANSFORM = 3           # Type check and transform for runtime type checking
+ICODE = 4               # All TRANSFORM steps + generate icode
+C = 5                   # All ICODE steps + generate C and compile it
+
+
 tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
             build(str program_text,
                   str program_path,
+                  int target,
                   bool test_builtins=False,
                   str alt_lib_path=None,
-                  bool do_type_check=False,
                   str mypy_base_dir=None):
     """Build a program represented as a string (program_text).
 
-    A single call to build performs semantic analysis and optionally
-    type checking of the program *and* all imported modules,
-    recursively. Return a 3-tuple containing the following items:
+    A single call to build performs parsing, semantic analysis and optionally
+    type checking and other build passes for the program *and* all imported
+    modules, recursively.
+
+    Return a 3-tuple containing the following items:
     
-      1. file/module map (map from module name to related MypyFile node)
-      2. the type info map (map from qualified type name to related TypeInfo;
+      1. file/module map (map from module name to related MypyFile AST node)
+      2. type info map (map from qualified type name to related TypeInfo;
          includes each class and interface defined in the files)
       3. node type map (map from parse tree node to its inferred type)
     
     Arguments:
       program_text: the contents of the main (program) source file
       program_path: the path to the main source file, for error reporting
+      target: select passes to perform (a build target constant, e.g. C)
+    Optional arguments:
       test_builtins: if False, use normal builtins (default); if True, use
         minimal stub builtins (this is for test cases only)
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
-      do_type_check: if True, also perform type checking; otherwise, only
-        perform parsing and semantic analysis
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
         derived from sys.argv[0]
     """
-    # TODO clean up arguments (do_type_check should be True by default, etc.)
     
     if not mypy_base_dir:
         # Determine location of the mypy installation.
@@ -86,7 +97,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
-    manager = BuildManager(lib_path, do_type_check)
+    manager = BuildManager(lib_path, target)
     
     # Ignore current directory prefix in error messages.
     manager.errors.set_ignore_prefix(os.getcwd())
@@ -128,7 +139,7 @@ class BuildManager:
     type checking. It manages state objects that actually perform the
     build steps.
     """
-    bool do_type_check    # Do we perform a type check?
+    int target            # Build target; selects which passes to perform
     str[] lib_path        # Library path for looking up modules
     SemanticAnalyzer sem_analyzer # Semantic analyzer
     TypeChecker type_checker      # Type checker
@@ -143,10 +154,10 @@ class BuildManager:
     # modules and source files.
     dict<str, str> module_files
     
-    void __init__(self, str[] lib_path, bool do_type_check):
+    void __init__(self, str[] lib_path, int target):
         self.errors = Errors()
         self.lib_path = lib_path
-        self.do_type_check = do_type_check
+        self.target = target
         self.sem_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.type_checker = TypeChecker(self.errors, self.sem_analyzer.modules)
         self.states = []
@@ -525,7 +536,7 @@ class ParsedFile(State):
 class SemanticallyAnalysedFile(ParsedFile):
     void process(self):
         """Type check file and advance to the next state."""
-        if self.manager.do_type_check:
+        if self.manager.target >= TYPE_CHECK:
             self.type_checker().visit_file(self.tree, self.tree.path)
         
         # FIX remove from active state list to speed up processing

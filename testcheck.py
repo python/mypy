@@ -1,11 +1,11 @@
 import os.path
 import sys
 
+import build
 from myunit import Suite, run_test
 from testconfig import test_temp_dir, test_data_prefix
 from testdata import parse_test_cases
 from testhelpers import assert_string_arrays_equal
-from build import build
 from errors import CompileError
 from testsemanal import normalize_error_messages
 
@@ -43,7 +43,10 @@ class TypeCheckSuite(Suite):
         a = []
         try:
             src = '\n'.join(testcase.input)
-            build(src, 'main', True, test_temp_dir, True)
+            build.build(src, 'main',
+                        target=build.TYPE_CHECK,
+                        test_builtins=True,
+                        alt_lib_path=test_temp_dir)
         except CompileError as e:
             a = normalize_error_messages(e.messages)
         assert_string_arrays_equal(

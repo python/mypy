@@ -3,11 +3,11 @@
 import os.path
 import re
 
+import build
 from myunit import Suite, run_test
 import testconfig
 from testdata import parse_test_cases
 from testhelpers import assert_string_arrays_equal
-from build import build
 from util import short_type
 from nodes import NameExpr
 from errors import CompileError
@@ -33,7 +33,10 @@ class TypeExportSuite(Suite):
                 mask = '(' + line[2:].strip() + ')$'
             
             src = '\n'.join(testcase.input)
-            map = build(src, 'main', True, testconfig.test_temp_dir, True)[2]
+            map = build.build(src, 'main',
+                              target=build.TYPE_CHECK,
+                              test_builtins=True,
+                              alt_lib_path=testconfig.test_temp_dir)[2]
             kk = map.keys()
             keys = []
             for k in kk:

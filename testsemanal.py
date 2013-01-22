@@ -1,10 +1,10 @@
 import os.path
 import sys
 
+import build
 from myunit import Suite, run_test
 from testhelpers import assert_string_arrays_equal
 from testdata import parse_test_cases
-from build import build
 from errors import CompileError
 from testconfig import test_data_prefix, test_temp_dir
 
@@ -34,7 +34,10 @@ def test_semanal(testcase):
     """
     try:
         src = '\n'.join(testcase.input)
-        files, infos, types = build(src, 'main', True, test_temp_dir)
+        files, infos, types = build.build(src, 'main',
+                                          target=build.SEMANTIC_ANALYSIS,
+                                          test_builtins=True,
+                                          alt_lib_path=test_temp_dir)
         a = []
         # Include string representations of the source files in the actual
         # output.
@@ -73,7 +76,10 @@ def test_semanal_error(testcase):
     """Perform a test case."""
     try:
         src = '\n'.join(testcase.input)
-        build(src, 'main', True, test_temp_dir)
+        build.build(src, 'main',
+                    target=build.SEMANTIC_ANALYSIS,
+                    test_builtins=True,
+                    alt_lib_path=test_temp_dir)
         raise AssertionError('No errors reported in {}, line {}'.format(
             testcase.file, testcase.line))
     except CompileError as e:
@@ -110,7 +116,10 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            files, infos, types = build(src, 'main', True, test_temp_dir)
+            files, infos, types = build.build(src, 'main',
+                                              target=build.SEMANTIC_ANALYSIS,
+                                              test_builtins=True,
+                                              alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = []      
             for f in sorted(files.keys()):
@@ -144,7 +153,10 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            files, infos, types = build(src, 'main', True, test_temp_dir)
+            files, infos, types = build.build(src, 'main',
+                                              target=build.SEMANTIC_ANALYSIS,
+                                              test_builtins=True,
+                                              alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = str(infos).split('\n')
         except CompileError as e:
