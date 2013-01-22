@@ -8,8 +8,8 @@ Note: Currently python interpreter and mypy implementation paths are hard coded
       (see python_path and mypy_path below).
 
 Note: These test cases are *not* included in the main test suite, as running
-      this suite is slow would slow down the suite too much. The slowness is
-      due to translating the mypy implementation in each test case.
+      this suite is slow and it would slow down the main suite too much. The
+      slowness is due to translating the mypy implementation in each test case.
 """
 
 import os.path
