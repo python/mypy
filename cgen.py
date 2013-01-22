@@ -171,25 +171,22 @@ if __name__ == '__main__':
     program = sys.argv[1]
     text = open(program).read()
     
-    # Parse and type check the input program.
+    # Parse, type check and transform the input program.
     try:
         result = build.build(program_text=text,
                              program_path=program,
-                             target=build.TYPE_CHECK)
+                             target=build.TRANSFORM,
+                             alt_lib_path='lib')
     except errors.CompileError as e:
         for s in e.messages:
             sys.stderr.write(s + '\n')
         sys.exit(1)
         
     builder = icode.IcodeBuilder()
-    # Transform each file separately.
+    # Build icode for each file separately.
     for t in result.files.values():
         # Skip the builtins module and files with '_skip.' in the path.
         if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
-            # Transform parse tree and produce pretty-printed output.
-            transform = transform.DyncheckTransformVisitor(result.types,
-                                                           result.files, True)
-            t.accept(transform)
             t.accept(builder)
 
     cgen = CGenerator()
