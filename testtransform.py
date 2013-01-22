@@ -42,28 +42,29 @@ def test_transform(testcase):
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
-        trees, symtable, infos, types = build(program_text=src,
-                                              program_file_name='main',
-                                              use_test_builtins=False,
-                                              alt_lib_path=test_temp_dir,
-                                              do_type_check=True)
+        files, infos, types = build(program_text=src,
+                                    program_file_name='main',
+                                    use_test_builtins=False,
+                                    alt_lib_path=test_temp_dir,
+                                    do_type_check=True)
         a = []
         first = True
         # Transform each file separately.
-        for t in trees:
+        for fnam in sorted(files.keys()):
+            f = files[fnam]
             # Skip the builtins module and files with '_skip.' in the path.
-            if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
+            if not f.path.endswith('/builtins.py') and '_skip.' not in f.path:
                 if not first:
                     # Display path for files other than the first.
-                    a.append('{}:'.format(remove_prefix(t.path,
+                    a.append('{}:'.format(remove_prefix(f.path,
                                                         test_temp_dir)))
                 
                 # Transform parse tree and produce pretty-printed output.
-                v = DyncheckTransformVisitor(types, symtable, True)
-                t.accept(v)
+                v = DyncheckTransformVisitor(types, files, True)
+                f.accept(v)
                 # Pretty print the transformed tree.
                 v2 = PrettyPrintVisitor()
-                t.accept(v2)
+                f.accept(v2)
                 s = v2.output()
                 if s != '':
                     a += s.split('\n')

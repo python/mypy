@@ -44,25 +44,25 @@ def test_output(testcase):
         # lets us test that semantic analysis does not break source code pretty
         # printing.
         if testcase.name.endswith('_SemanticAnalyzer'):
-            trees, symtable, infos, types = build(src, 'main', True,
-                                                  test_temp_dir)
+            files, infos, types = build(src, 'main', True, test_temp_dir)
         else:
-            trees = [parse(src, 'main')]
+            files = {'main': parse(src, 'main')}
         a = []
         first = True
         # Produce an output containing the pretty-printed forms (with original
         # formatting) of all the relevant source files.
-        for t in trees:
+        for fnam in sorted(files.keys()):
+            f = files[fnam]
             # Omit the builtins and files marked for omission.
-            if (not t.path.endswith(os.sep + 'builtins.py') and
-                    '-skip.' not in t.path):
+            if (not f.path.endswith(os.sep + 'builtins.py') and
+                    '-skip.' not in f.path):
                 # Add file name + colon for files other than the first.
                 if not first:
                     a.append('{}:'.format(fix_path(remove_prefix(
-                        t.path, test_temp_dir))))
+                        f.path, test_temp_dir))))
                 
                 v = OutputVisitor()
-                t.accept(v)
+                f.accept(v)
                 s = v.output()
                 if s != '':
                     a += s.split('\n')

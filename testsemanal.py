@@ -34,19 +34,20 @@ def test_semanal(testcase):
     """
     try:
         src = '\n'.join(testcase.input)
-        trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+        files, infos, types = build(src, 'main', True, test_temp_dir)
         a = []
         # Include string representations of the source files in the actual
         # output.
-        for t in trees:
+        for fnam in sorted(files.keys()):
+            f = files[fnam]
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
-            if (not t.path.endswith(os.sep + 'builtins.py')
-                    and not os.path.basename(t.path).startswith('_')
+            if (not f.path.endswith(os.sep + 'builtins.py')
+                    and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
-                        os.path.basename(t.path))[0].endswith('_')):
-                a += str(t).split('\n')
+                        os.path.basename(f.path))[0].endswith('_')):
+                a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
     assert_string_arrays_equal(
@@ -109,14 +110,13 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            trees, symtable, infos, types = build(src, 'main', True,
-                                                  test_temp_dir)
+            files, infos, types = build(src, 'main', True, test_temp_dir)
             # The output is the symbol table converted into a string.
             a = []      
-            for f in sorted(symtable.keys()):
+            for f in sorted(files.keys()):
                 if f != 'builtins':
                     a.append('{}:'.format(f))
-                    for s in str(symtable[f].names).split('\n'):
+                    for s in str(files[f].names).split('\n'):
                         a.append('  ' + s)
         except CompileError as e:
             a = e.messages
@@ -144,8 +144,7 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            trees, symtable, infos, types = build(src, 'main', True,
-                                                  test_temp_dir)
+            files, infos, types = build(src, 'main', True, test_temp_dir)
             # The output is the symbol table converted into a string.
             a = str(infos).split('\n')
         except CompileError as e:

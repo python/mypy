@@ -173,10 +173,10 @@ if __name__ == '__main__':
     
     # Parse and type check the input program.
     try:
-        trees, symtable, infos, types = build(program_text=text,
-                                              program_file_name=program,
-                                              use_test_builtins=False,
-                                              do_type_check=True)
+        files, infos, types = build(program_text=text,
+                                    program_file_name=program,
+                                    use_test_builtins=False,
+                                    do_type_check=True)
     except CompileError as e:
         for s in e.messages:
             sys.stderr.write(s + '\n')
@@ -184,12 +184,11 @@ if __name__ == '__main__':
         
     builder = icode.IcodeBuilder()
     # Transform each file separately.
-    for t in trees:
+    for t in files.values():
         # Skip the builtins module and files with '_skip.' in the path.
         if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
             # Transform parse tree and produce pretty-printed output.
-            transform = transform.DyncheckTransformVisitor(types, symtable,
-                                                           True)
+            transform = transform.DyncheckTransformVisitor(types, files, True)
             t.accept(transform)
             t.accept(builder)
 

@@ -42,26 +42,27 @@ def test_python_generation(testcase):
     try:
         src = '\n'.join(testcase.input)
         # Parse and semantically analyze the source program.
-        trees, symtable, infos, types = build(src, 'main', True, test_temp_dir)
+        files, infos, types = build(src, 'main', True, test_temp_dir)
         a = []
         first = True
         # Produce an output containing the pretty-printed forms (with original
         # formatting) of all the relevant source files.
-        for t in trees:
+        for fnam in sorted(files.keys()):
+            f = files[fnam]
             # Omit the builtins module and files marked for omission.
-            if not t.path.endswith(os.sep +
-                                   'builtins.py') and '-skip.' not in t.path:
+            if not f.path.endswith(os.sep +
+                                   'builtins.py') and '-skip.' not in f.path:
                 # Add file name + colon for files other than the first.
                 if not first:
                     a.append('{}:'.format(
-                        fix_path(remove_prefix(t.path, test_temp_dir))))
+                        fix_path(remove_prefix(f.path, test_temp_dir))))
 
                 ver = 3
                 # Generate Python 2 instead of 3?
                 if '-2' in testcase.name:
                     ver = 2
                 v = PythonGenerator(ver)
-                t.accept(v)
+                f.accept(v)
                 s = v.output()
                 if s != '':
                     a += s.split('\n')

@@ -26,7 +26,7 @@ from parse import parse
 debug = False
 
 
-tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
+tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
             build(str program_text, str program_file_name='main',
                   bool use_test_builtins=False, str alt_lib_path=None,
                   bool do_type_check=False, str mypy_base_dir=None):
@@ -34,14 +34,12 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
 
     A single call to build performs semantic analysis and optionally
     type checking of the program *and* all imported modules,
-    recursively. Return a 4-tuple containing the following items:
+    recursively. Return a 3-tuple containing the following items:
     
-      1. the annotated parse trees (one per file) of the program and dependant
-         modules
-      2. module map (map from module name to related MypyFile node)
-      3. the type info map (map from qualified type name to related TypeInfo;
+      1. file/module map (map from module name to related MypyFile node)
+      2. the type info map (map from qualified type name to related TypeInfo;
          includes each class and interface defined in the files)
-      4. node type map (map from parse tree node to its inferred type)
+      3. node type map (map from parse tree node to its inferred type)
     
     Arguments:
       program_text: the contents of the main (program) source file
@@ -56,8 +54,6 @@ tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
         derived from sys.argv[0]
     """
-    # TODO only return the module map and node type map; the others are not
-    #      necessary
     # TODO clean up arguments (do_type_check should be True by default, etc.)
     
     if not mypy_base_dir:
@@ -154,7 +150,7 @@ class BuildManager:
         self.states = []
         self.module_files = {}
     
-    tuple<MypyFile[], dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
+    tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
                 process(self, UnprocessedFile initial_state):
         """Perform a build.
 
@@ -198,7 +194,7 @@ class BuildManager:
         for state in self.states:
             trees.append(((ParsedFile)state).tree)
         
-        return (trees, self.sem_analyzer.modules, self.sem_analyzer.types,
+        return (self.sem_analyzer.modules, self.sem_analyzer.types,
                 self.type_checker.type_map)
     
     State next_available_state(self):

@@ -33,7 +33,7 @@ class TypeExportSuite(Suite):
                 mask = '(' + line[2:].strip() + ')$'
             
             src = '\n'.join(testcase.input)
-            map = build(src, 'main', True, testconfig.test_temp_dir, True)[3]
+            map = build(src, 'main', True, testconfig.test_temp_dir, True)[2]
             kk = map.keys()
             keys = []
             for k in kk:

@@ -48,12 +48,11 @@ void main():
 
         try:
             # Parse and type check the program and dependencies.
-            trees, symtable, infos, types = build(text, path, False, None,
-                                                  True)
+            files, infos, types = build(text, path, False, None, True)
         
             # Translate each file in the program to Python.
             # TODO support packages
-            for t in trees:
+            for t in files.values():
                 if not is_stub(t.path):
                     out_path = os.path.join(outputdir,
                                             os.path.basename(t.path))
