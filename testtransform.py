@@ -41,10 +41,11 @@ def test_transform(testcase):
     try:
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
-        # Parse and type check the input program.
+        # Parse and type check the input program. Perform transform manually
+        # so that we can skip some files.
         result = build.build(program_text=src,
                              program_path='main',
-                             target=build.TYPE_CHECK,
+                             target=build.TRANSFORM,
                              alt_lib_path=test_temp_dir)
         a = []
         first = True
@@ -58,9 +59,6 @@ def test_transform(testcase):
                     a.append('{}:'.format(remove_prefix(f.path,
                                                         test_temp_dir)))
                 
-                # Transform parse tree and produce pretty-printed output.
-                v = DyncheckTransformVisitor(result.types, result.files, True)
-                f.accept(v)
                 # Pretty print the transformed tree.
                 v2 = PrettyPrintVisitor()
                 f.accept(v2)

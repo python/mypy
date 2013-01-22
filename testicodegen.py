@@ -48,17 +48,14 @@ def test_transform(testcase):
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
         result = build.build(src, program_path='main',
-                             target=build.TYPE_CHECK,
+                             target=build.TRANSFORM,
                              alt_lib_path=test_temp_dir)
         a = []
         # Transform each file separately.
         for t in result.files.values():
             # Skip the builtins module and files with '_skip.' in the path.
             if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
-                # Transform parse tree and produce pretty-printed output.
-                transform = DyncheckTransformVisitor(result.types,
-                                                     result.files, True)
-                t.accept(transform)
+                # Build icode.
                 t.accept(builder)
 
         for fn in func_names:

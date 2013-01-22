@@ -22,6 +22,7 @@ from checker import TypeChecker
 from errors import Errors
 import parse
 import pythongen
+import transform
 
 
 debug = False
@@ -316,9 +317,10 @@ class BuildManager:
         """Perform the code generation passes for type checked files."""
         if self.target == PYTHON:
             self.generate_python(files)
+        elif self.target == TRANSFORM:
+            self.transform(files)
         elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
-            # Nothing to do.
-            pass
+            pass # Nothing to do.
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
@@ -336,6 +338,15 @@ class BuildManager:
                 outfile = open(out_path, 'w')
                 outfile.write(v.output())
                 outfile.close()
+
+    void transform(self, MypyFile[] files):
+        for f in files:
+            # Transform parse tree and produce pretty-printed output.
+            v = transform.DyncheckTransformVisitor(
+                self.type_checker.type_map,
+                self.semantic_analyzer.modules,
+                is_pretty=True)
+            f.accept(v)
 
 
 str remove_cwd_prefix_from_path(str p):
