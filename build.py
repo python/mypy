@@ -29,7 +29,7 @@ debug = False
 tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
             build(str program_text,
                   str program_path,
-                  bool use_test_builtins=False,
+                  bool test_builtins=False,
                   str alt_lib_path=None,
                   bool do_type_check=False,
                   str mypy_base_dir=None):
@@ -47,7 +47,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     Arguments:
       program_text: the contents of the main (program) source file
       program_path: the path to the main source file, for error reporting
-      use_test_builtins: if False, use normal builtins (default); if True, use
+      test_builtins: if False, use normal builtins (default); if True, use
         minimal stub builtins (this is for test cases only)
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
@@ -70,7 +70,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     # Determine the default module search path.
     str[] lib_path = default_lib_path(mypy_base_dir)
     
-    if use_test_builtins:
+    if test_builtins:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
         lib_path.insert(0, 'test/data/lib-stub')

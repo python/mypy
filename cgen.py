@@ -175,7 +175,6 @@ if __name__ == '__main__':
     try:
         files, infos, types = build(program_text=text,
                                     program_path=program,
-                                    use_test_builtins=False,
                                     do_type_check=True)
     except CompileError as e:
         for s in e.messages:

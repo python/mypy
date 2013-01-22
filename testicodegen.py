@@ -49,7 +49,6 @@ def test_transform(testcase):
         # Parse and type check the input program.
         files, infos, types = build(program_text=src,
                                     program_path='main',
-                                    use_test_builtins=False,
                                     alt_lib_path=test_temp_dir,
                                     do_type_check=True)
         a = []
