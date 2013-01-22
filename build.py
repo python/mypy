@@ -20,7 +20,8 @@ from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnalyzer
 from checker import TypeChecker
 from errors import Errors
-from parse import parse
+import parse
+import pythongen
 
 
 debug = False
@@ -42,7 +43,9 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
                   int target,
                   bool test_builtins=False,
                   str alt_lib_path=None,
-                  str mypy_base_dir=None):
+                  str mypy_base_dir=None,
+                  str output_dir=None,
+                  int python_version=3):
     """Build a program represented as a string (program_text).
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -67,7 +70,12 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
         (takes precedence over other directories)
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
         derived from sys.argv[0]
+      output_dir: directory where the output (Python) is stored
+      python_version: version of Python to generate (for Python target only)
     """
+
+    if target == PYTHON and not output_dir:
+        raise RuntimeError('output_dir must be set for Python target')
     
     if not mypy_base_dir:
         # Determine location of the mypy installation.
@@ -97,7 +105,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
-    manager = BuildManager(lib_path, target)
+    manager = BuildManager(lib_path, target, output_dir, python_version)
     
     # Ignore current directory prefix in error messages.
     manager.errors.set_ignore_prefix(os.getcwd())
@@ -144,6 +152,8 @@ class BuildManager:
     SemanticAnalyzer semantic_analyzer # Semantic analyzer
     TypeChecker type_checker      # Type checker
     Errors errors                 # For reporting all errors
+    str output_dir                # Store output files here
+    int python_version            # Target Python version (2 or 3)
     
     # States of all individual files that are being processed. Each file in a
     # build is always represented by a single state object (after it has been
@@ -154,10 +164,13 @@ class BuildManager:
     # modules and source files.
     dict<str, str> module_files
     
-    void __init__(self, str[] lib_path, int target):
+    void __init__(self, str[] lib_path, int target, str output_dir,
+                  int python_version):
         self.errors = Errors()
         self.lib_path = lib_path
         self.target = target
+        self.output_dir = output_dir
+        self.python_version = python_version
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules)
@@ -175,7 +188,11 @@ class BuildManager:
         """
         self.states.append(initial_state)
         
-        # Process states in a loop until all files (states) are finished.
+        # Process states in a loop until all files (states) have been
+        # semantically analyzer or type checked (depending on target).
+        #
+        # We type check all files before the rest of the passes so that we can
+        # report errors and fail as quickly as possible.
         while True:
             # Find the next state that has all its dependencies met.
             next = self.next_available_state()
@@ -207,6 +224,9 @@ class BuildManager:
         MypyFile[] trees = []
         for state in self.states:
             trees.append(((ParsedFile)state).tree)
+
+        # Perform any additional passes after type checking for all the files.
+        self.final_passes(trees)
         
         return (self.semantic_analyzer.modules, self.semantic_analyzer.types,
                 self.type_checker.type_map)
@@ -253,12 +273,14 @@ class BuildManager:
             state = fs
         return state
     
-    list<tuple<str, int>> all_imported_modules_in_file(self, MypyFile file):
-        """Return tuple (module id, line number of import) for all
-        modules imported in a file.
+    tuple<str, int>[] all_imported_modules_in_file(self, MypyFile file):
+        """Find all import statements in a file.
+
+        Return list of tuples (module id, import line number) for all modules
+        imported in file.
         """
         # TODO also find imports not at the top level of the file
-        list<tuple<str, int>> res = []
+        res = <tuple<str, int>> []
         for d in file.defs:
             if isinstance(d, Import):
                 for id, _ in ((Import)d).ids:
@@ -276,9 +298,33 @@ class BuildManager:
         return res
     
     bool is_module(self, str id):
-        """Is there a file in the file system corresponding to the
-        given module?"""
+        """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
+
+    void final_passes(self, MypyFile[] files):
+        """Perform the code generation passes for type checked files."""
+        if self.target == PYTHON:
+            self.generate_python(files)
+        elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
+            # Nothing to do.
+            pass
+        else:
+            raise RuntimeError('Unsupported target %d' % self.target)
+
+    void generate_python(self, MypyFile[] files):
+        """Translate each file to Python."""
+        # TODO support packages
+        for f in files:
+            if not is_stub(f.path):
+                out_path = os.path.join(self.output_dir,
+                                        os.path.basename(f.path))
+                # TODO log translation of f.path to out_path
+                # TODO report compile error if failed
+                v = pythongen.PythonGenerator(self.python_version)
+                f.accept(v)
+                outfile = open(out_path, 'w')
+                outfile.write(v.output())
+                outfile.close()
 
 
 str remove_cwd_prefix_from_path(str p):
@@ -297,6 +343,19 @@ str remove_cwd_prefix_from_path(str p):
     if p == '':
         p = '.'
     return p
+
+
+bool is_stub(str path):
+    """Does path refer to a stubs file?
+
+    Currently check if there is a 'stubs' directory component somewhere
+    in the path."""
+    # TODO more precise check
+    if os.path.basename(path) == '':
+        return False
+    else:
+        return os.path.basename(path) == 'stubs' or is_stub(
+            os.path.dirname(path))
 
 
 # State ids. These describe the states a source file / module can be in a
@@ -493,7 +552,7 @@ class UnprocessedFile(State):
         Raise CompileError if there is a parse error.
         """
         num_errs = self.errors().num_messages()
-        tree = parse(source_text, fnam, self.errors())
+        tree = parse.parse(source_text, fnam, self.errors())
         tree._full_name = self.id
         if self.errors().num_messages() != num_errs:
             self.errors().raise_error()

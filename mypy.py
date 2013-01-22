@@ -47,23 +47,12 @@ void main():
                 tempdir = True
 
         try:
-            # Parse and type check the program and dependencies.
+            # Type check the program and dependencies and translate to Python.
             files, infos, types = build.build(text, path,
-                                              target=build.TYPE_CHECK)
-        
-            # Translate each file in the program to Python.
-            # TODO support packages
-            for t in files.values():
-                if not is_stub(t.path):
-                    out_path = os.path.join(outputdir,
-                                            os.path.basename(t.path))
-                    log('translate {} to {}'.format(t.path, out_path))
-                    v = PythonGenerator(pyversion)
-                    t.accept(v)
-                    outfile = open(out_path, 'w')
-                    outfile.write(v.output())
-                    outfile.close()
-
+                                              target=build.PYTHON,
+                                              output_dir=outputdir,
+                                              python_version=pyversion)
+            
             # Run the translated program.
             status = subprocess.call(
                 [interpreter,
@@ -114,19 +103,6 @@ void usage(str msg=None):
 void fail(str msg):
     sys.stderr.write('%s\n' % msg)
     sys.exit(1)
-
-
-bool is_stub(str path):
-    """Does path refer to a stubs file?
-
-    Currently check if there is a 'stubs' directory component somewhere
-    in the path."""
-    # TODO more precise check
-    if os.path.basename(path) == '':
-        return False
-    else:
-        return os.path.basename(path) == 'stubs' or is_stub(
-            os.path.dirname(path))
 
 
 void log(str message):
