@@ -175,23 +175,16 @@ if __name__ == '__main__':
     try:
         result = build.build(program_text=text,
                              program_path=program,
-                             target=build.TRANSFORM,
+                             target=build.ICODE,
                              alt_lib_path='lib')
     except errors.CompileError as e:
         for s in e.messages:
             sys.stderr.write(s + '\n')
         sys.exit(1)
         
-    builder = icode.IcodeBuilder()
-    # Build icode for each file separately.
-    for t in result.files.values():
-        # Skip the builtins module and files with '_skip.' in the path.
-        if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
-            t.accept(builder)
-
     cgen = CGenerator()
-    for fn in builder.generated.keys():
-        cgen.generate_function('M' + fn, builder.generated[fn])
+    for fn, icode in result.icode.items():
+        cgen.generate_function('M' + fn, icode)
 
     out = open('_out.c', 'w')
     

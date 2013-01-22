@@ -41,26 +41,17 @@ def test_transform(testcase):
 
     func_names = get_func_names(expected)
 
-    builder = icode.IcodeBuilder()
-    
     try:
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
         result = build.build(src, program_path='main',
-                             target=build.TRANSFORM,
+                             target=build.ICODE,
                              alt_lib_path=test_temp_dir)
         a = []
-        # Transform each file separately.
-        for t in result.files.values():
-            # Skip the builtins module and files with '_skip.' in the path.
-            if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
-                # Build icode.
-                t.accept(builder)
-
         for fn in func_names:
             a.append('def {}:'.format(fn))
-            code = icode.render(builder.generated[fn])
+            code = icode.render(result.icode[fn])
             a.extend(code)
     except CompileError as e:
         a = e.messages

@@ -20,6 +20,8 @@ from nodes import SymbolTableNode
 from semanal import TypeInfoMap, SemanticAnalyzer
 from checker import TypeChecker
 from errors import Errors
+from icode import FuncIcode
+import icode
 import parse
 import pythongen
 import transform
@@ -31,10 +33,10 @@ debug = False
 # Build targets (for selecting compiler passes)
 SEMANTIC_ANALYSIS = 0   # Semantic analysis only
 TYPE_CHECK = 1          # Type check
-# TODO implement these
 PYTHON = 2              # Type check and generate Python
 TRANSFORM = 3           # Type check and transform for runtime type checking
 ICODE = 4               # All TRANSFORM passes + generate icode
+# TODO implement this
 C = 5                   # All ICODE passes + generate C and compile it
 
 
@@ -47,12 +49,15 @@ class BuildResult:
     TypeInfoMap typeinfos
     # Map parse tree node to its inferred type.
     dict<Node, Type> types
+    # Icode for functions
+    dict<str, FuncIcode> icode
 
     void __init__(self, dict<str, MypyFile> files, TypeInfoMap typeinfos,
-                  dict<Node, Type> types):
+                  dict<Node, Type> types, dict<str, FuncIcode> icode):
         self.files = files
         self.typeinfos = typeinfos
         self.types = types
+        self.icode = icode
 
 
 BuildResult build(str program_text,
@@ -176,6 +181,8 @@ class BuildManager:
     # modules and source files.
     dict<str, str> module_files
     
+    dict<str, FuncIcode> icode
+    
     void __init__(self, str[] lib_path, int target, str output_dir,
                   int python_version):
         self.errors = Errors()
@@ -188,6 +195,7 @@ class BuildManager:
                                         self.semantic_analyzer.modules)
         self.states = []
         self.module_files = {}
+        self.icode = None
     
     BuildResult process(self, UnprocessedFile initial_state):
         """Perform a build.
@@ -241,7 +249,8 @@ class BuildManager:
         
         return BuildResult(self.semantic_analyzer.modules,
                            self.semantic_analyzer.types,
-                           self.type_checker.type_map)
+                           self.type_checker.type_map,
+                           self.icode)
     
     State next_available_state(self):
         """Find a ready state (one that has all its dependencies met)."""
@@ -319,6 +328,9 @@ class BuildManager:
             self.generate_python(files)
         elif self.target == TRANSFORM:
             self.transform(files)
+        elif self.target == ICODE:
+            self.transform(files)
+            self.generate_icode(files)
         elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
             pass # Nothing to do.
         else:
@@ -347,6 +359,14 @@ class BuildManager:
                 self.semantic_analyzer.modules,
                 is_pretty=True)
             f.accept(v)
+
+    void generate_icode(self, MypyFile[] files):
+        builder = icode.IcodeBuilder()
+        for f in files:
+            # TODO remove ugly builtins hack
+            if not f.path.endswith('/builtins.py'):
+                f.accept(builder)
+        self.icode = builder.generated
 
 
 str remove_cwd_prefix_from_path(str p):
