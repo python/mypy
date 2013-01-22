@@ -1,0 +1,62 @@
+-- Test cases for the C back end. 
+--
+-- Each test case compiles a program to a binary via C and runs it. The output
+-- of the program is compared with the expected output.
+
+[case testPrintOnly]
+print(5)
+[out]
+5
+
+[case testCallWithoutArgs]
+void f():
+    print(3)
+f()
+[out]
+3
+
+[case testCallWithArgs]
+void f(int a, int b):
+    print(a)
+    print(b)
+f(3, 5)
+[out]
+3
+5
+
+[case testLoop]
+void f():
+    i = 0
+    while i < 3:
+        print(i)
+        i = i + 1
+f()
+[out]
+0
+1
+2
+
+[case testReturnValue]
+int f():
+    return 5
+print(f())
+[out]
+5
+
+[case testIf]
+void f(int n):
+    if n < 1:
+        print(0)
+    else:
+        print(1)
+f(0)
+f(1)
+f(2)
+[out]
+0
+1
+1
+
+-- TODO
+--   recursion
+--   basic int arithmetic
