@@ -224,7 +224,7 @@ class IcodeBuilder(NodeVisitor<int>):
     int num_registers
     # Map local variable to allocated register
     dict<Node, int> lvar_regs
-    # Stack of operations target registers (-1 => create new register)
+    # Stack of expression target registers (-1 => create new register)
     int[] targets
 
     # Stack of inactive scopes
