@@ -2,10 +2,11 @@
 
 from mtypes import Any
 from nodes import (
-    FuncDef, IntExpr, MypyFile, NodeVisitor, ReturnStmt, NameExpr, WhileStmt,
+    FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
     UnaryExpr, ExpressionStmt, CoerceExpr
 )
+from visitor import NodeVisitor
 from subtypes import is_named_instance
 
 

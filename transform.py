@@ -15,11 +15,10 @@ from nodes import (
     Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
     CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
-    SymbolTableNode
+    SymbolTableNode, function_type
 )
 from traverser import TraverserVisitor
 from mtypes import Type, Any, Callable, TypeVarDef, Instance
-from checker import function_type
 from lex import Token
 from transformtype import TypeTransformer
 from transutil import (
