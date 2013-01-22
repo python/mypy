@@ -44,10 +44,11 @@ def test_output(testcase):
         # lets us test that semantic analysis does not break source code pretty
         # printing.
         if testcase.name.endswith('_SemanticAnalyzer'):
-            files, infos, types = build.build(src, 'main',
-                                              target=build.SEMANTIC_ANALYSIS,
-                                              test_builtins=True,
-                                              alt_lib_path=test_temp_dir)
+            result = build.build(src, 'main',
+                                 target=build.SEMANTIC_ANALYSIS,
+                                 test_builtins=True,
+                                 alt_lib_path=test_temp_dir)
+            files = result.files
         else:
             files = {'main': parse(src, 'main')}
         a = []

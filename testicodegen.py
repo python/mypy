@@ -47,16 +47,17 @@ def test_transform(testcase):
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
-        files, infos, types = build.build(src, program_path='main',
-                                          target=build.TYPE_CHECK,
-                                          alt_lib_path=test_temp_dir)
+        result = build.build(src, program_path='main',
+                             target=build.TYPE_CHECK,
+                             alt_lib_path=test_temp_dir)
         a = []
         # Transform each file separately.
-        for t in files.values():
+        for t in result.files.values():
             # Skip the builtins module and files with '_skip.' in the path.
             if not t.path.endswith('/builtins.py') and '_skip.' not in t.path:
                 # Transform parse tree and produce pretty-printed output.
-                transform = DyncheckTransformVisitor(types, files, True)
+                transform = DyncheckTransformVisitor(result.types,
+                                                     result.files, True)
                 t.accept(transform)
                 t.accept(builder)
 

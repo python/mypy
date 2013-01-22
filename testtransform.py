@@ -42,15 +42,15 @@ def test_transform(testcase):
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
-        files, infos, types = build.build(program_text=src,
-                                          program_path='main',
-                                          target=build.TYPE_CHECK,
-                                          alt_lib_path=test_temp_dir)
+        result = build.build(program_text=src,
+                             program_path='main',
+                             target=build.TYPE_CHECK,
+                             alt_lib_path=test_temp_dir)
         a = []
         first = True
         # Transform each file separately.
-        for fnam in sorted(files.keys()):
-            f = files[fnam]
+        for fnam in sorted(result.files.keys()):
+            f = result.files[fnam]
             # Skip the builtins module and files with '_skip.' in the path.
             if not f.path.endswith('/builtins.py') and '_skip.' not in f.path:
                 if not first:
@@ -59,7 +59,7 @@ def test_transform(testcase):
                                                         test_temp_dir)))
                 
                 # Transform parse tree and produce pretty-printed output.
-                v = DyncheckTransformVisitor(types, files, True)
+                v = DyncheckTransformVisitor(result.types, result.files, True)
                 f.accept(v)
                 # Pretty print the transformed tree.
                 v2 = PrettyPrintVisitor()

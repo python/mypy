@@ -42,16 +42,16 @@ def test_python_generation(testcase):
     try:
         src = '\n'.join(testcase.input)
         # Parse and semantically analyze the source program.
-        files, infos, types = build.build(src, 'main',
-                                          target=build.SEMANTIC_ANALYSIS,
-                                          test_builtins=True,
-                                          alt_lib_path=test_temp_dir)
+        result = build.build(src, 'main',
+                             target=build.SEMANTIC_ANALYSIS,
+                             test_builtins=True,
+                             alt_lib_path=test_temp_dir)
         a = []
         first = True
         # Produce an output containing the pretty-printed forms (with original
         # formatting) of all the relevant source files.
-        for fnam in sorted(files.keys()):
-            f = files[fnam]
+        for fnam in sorted(result.files.keys()):
+            f = result.files[fnam]
             # Omit the builtins module and files marked for omission.
             if not f.path.endswith(os.sep +
                                    'builtins.py') and '-skip.' not in f.path:

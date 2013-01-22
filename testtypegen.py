@@ -33,10 +33,11 @@ class TypeExportSuite(Suite):
                 mask = '(' + line[2:].strip() + ')$'
             
             src = '\n'.join(testcase.input)
-            map = build.build(src, 'main',
-                              target=build.TYPE_CHECK,
-                              test_builtins=True,
-                              alt_lib_path=testconfig.test_temp_dir)[2]
+            result = build.build(src, 'main',
+                                 target=build.TYPE_CHECK,
+                                 test_builtins=True,
+                                 alt_lib_path=testconfig.test_temp_dir)
+            map = result.types
             kk = map.keys()
             keys = []
             for k in kk:

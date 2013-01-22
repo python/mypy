@@ -1,7 +1,7 @@
 """Facilities to build mypy programs and modules they depend on.
 
-Parse and analyze the source files of a program in the correct order (based on
-file dependencies), and collect the results.
+Parse, analyze and translate the source files of a program in the correct
+order (based on file dependencies), and collect the results.
 
 This module only directs a build, which is performed in multiple passes per
 file.  The individual passes are implemented in separate modules.
@@ -27,18 +27,34 @@ import pythongen
 debug = False
 
 
-# Build targets
+# Build targets (for selecting compiler passes)
 SEMANTIC_ANALYSIS = 0   # Semantic analysis only
 TYPE_CHECK = 1          # Type check
 # TODO implement these
 PYTHON = 2              # Type check and generate Python
 TRANSFORM = 3           # Type check and transform for runtime type checking
-ICODE = 4               # All TRANSFORM steps + generate icode
-C = 5                   # All ICODE steps + generate C and compile it
+ICODE = 4               # All TRANSFORM passes + generate icode
+C = 5                   # All ICODE passes + generate C and compile it
 
 
-tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
-            build(str program_text,
+class BuildResult:
+    """The result of a successful build."""
+    # Map module name to related AST node.
+    dict<str, MypyFile> files
+    # Map qualified type name to related TypeInfo; includes each class and
+    # interface defined in all the built files.
+    TypeInfoMap typeinfos
+    # Map parse tree node to its inferred type.
+    dict<Node, Type> types
+
+    void __init__(self, dict<str, MypyFile> files, TypeInfoMap typeinfos,
+                  dict<Node, Type> types):
+        self.files = files
+        self.typeinfos = typeinfos
+        self.types = types
+
+
+BuildResult build(str program_text,
                   str program_path,
                   int target,
                   bool test_builtins=False,
@@ -52,12 +68,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     type checking and other build passes for the program *and* all imported
     modules, recursively.
 
-    Return a 3-tuple containing the following items:
-    
-      1. file/module map (map from module name to related MypyFile AST node)
-      2. type info map (map from qualified type name to related TypeInfo;
-         includes each class and interface defined in the files)
-      3. node type map (map from parse tree node to its inferred type)
+    Return BuildResult if successful; otherwise raise CompileError.
     
     Arguments:
       program_text: the contents of the main (program) source file
@@ -177,8 +188,7 @@ class BuildManager:
         self.states = []
         self.module_files = {}
     
-    tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
-                process(self, UnprocessedFile initial_state):
+    BuildResult process(self, UnprocessedFile initial_state):
         """Perform a build.
 
         The argument is a state that represents the main program
@@ -228,8 +238,9 @@ class BuildManager:
         # Perform any additional passes after type checking for all the files.
         self.final_passes(trees)
         
-        return (self.semantic_analyzer.modules, self.semantic_analyzer.types,
-                self.type_checker.type_map)
+        return BuildResult(self.semantic_analyzer.modules,
+                           self.semantic_analyzer.types,
+                           self.type_checker.type_map)
     
     State next_available_state(self):
         """Find a ready state (one that has all its dependencies met)."""

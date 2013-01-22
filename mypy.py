@@ -48,10 +48,10 @@ void main():
 
         try:
             # Type check the program and dependencies and translate to Python.
-            files, infos, types = build.build(text, path,
-                                              target=build.PYTHON,
-                                              output_dir=outputdir,
-                                              python_version=pyversion)
+            build.build(text, path,
+                        target=build.PYTHON,
+                        output_dir=outputdir,
+                        python_version=pyversion)
             
             # Run the translated program.
             status = subprocess.call(

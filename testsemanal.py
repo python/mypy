@@ -34,15 +34,15 @@ def test_semanal(testcase):
     """
     try:
         src = '\n'.join(testcase.input)
-        files, infos, types = build.build(src, 'main',
-                                          target=build.SEMANTIC_ANALYSIS,
-                                          test_builtins=True,
-                                          alt_lib_path=test_temp_dir)
+        result = build.build(src, 'main',
+                             target=build.SEMANTIC_ANALYSIS,
+                             test_builtins=True,
+                             alt_lib_path=test_temp_dir)
         a = []
         # Include string representations of the source files in the actual
         # output.
-        for fnam in sorted(files.keys()):
-            f = files[fnam]
+        for fnam in sorted(result.files.keys()):
+            f = result.files[fnam]
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
@@ -116,16 +116,16 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            files, infos, types = build.build(src, 'main',
-                                              target=build.SEMANTIC_ANALYSIS,
-                                              test_builtins=True,
-                                              alt_lib_path=test_temp_dir)
+            result = build.build(src, 'main',
+                                 target=build.SEMANTIC_ANALYSIS,
+                                 test_builtins=True,
+                                 alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = []      
-            for f in sorted(files.keys()):
+            for f in sorted(result.files.keys()):
                 if f != 'builtins':
                     a.append('{}:'.format(f))
-                    for s in str(files[f].names).split('\n'):
+                    for s in str(result.files[f].names).split('\n'):
                         a.append('  ' + s)
         except CompileError as e:
             a = e.messages
@@ -153,12 +153,12 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            files, infos, types = build.build(src, 'main',
-                                              target=build.SEMANTIC_ANALYSIS,
-                                              test_builtins=True,
-                                              alt_lib_path=test_temp_dir)
+            result = build.build(src, 'main',
+                                 target=build.SEMANTIC_ANALYSIS,
+                                 test_builtins=True,
+                                 alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
-            a = str(infos).split('\n')
+            a = str(result.typeinfos).split('\n')
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
