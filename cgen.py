@@ -156,8 +156,10 @@ class CGenerator:
 str reg(int n):
     return 'frame[%d]' % n
 
+
 str label(int n):
     return 'L%d' % n
+
 
 str operand(int n, int kind):
     if kind == icode.INT_KIND:
@@ -166,36 +168,7 @@ str operand(int n, int kind):
         return reg(n)
 
 
-if __name__ == '__main__':
-    # Construct input as a single single.
-    program = sys.argv[1]
-    text = open(program).read()
-    
-    # Parse, type check and transform the input program.
-    try:
-        result = build.build(program_text=text,
-                             program_path=program,
-                             target=build.ICODE,
-                             alt_lib_path='lib')
-    except errors.CompileError as e:
-        for s in e.messages:
-            sys.stderr.write(s + '\n')
-        sys.exit(1)
-        
-    cgen = CGenerator()
-    for fn, icode in result.icode.items():
-        cgen.generate_function('M' + fn, icode)
-
-    out = open('_out.c', 'w')
-    
-    for s in cgen.prolog:
-        out.write(s)
-    out.write('\n')
-    for s in cgen.out:
-        out.write(s)
-
-    out.write(
-'''
+MAIN_FRAGMENT = '''
 int main(int argc, char **argv) {
     MValue stack[1024];
     MEnv env;
@@ -204,8 +177,20 @@ int main(int argc, char **argv) {
     M__init(&env);
     return 0;
 }
-''')
-    
-    out.close()
+'''
 
-    os.system('gcc -O2 _out.c runtime.c')
+
+if __name__ == '__main__':
+    program = sys.argv[1]
+    text = open(program).read()
+    
+    try:
+        # Compile the input program to a binary via C.
+        result = build.build(program_text=text,
+                             program_path=program,
+                             target=build.C,
+                             alt_lib_path='lib')
+    except errors.CompileError as e:
+        for s in e.messages:
+            sys.stderr.write(s + '\n')
+        sys.exit(1)

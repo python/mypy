@@ -21,6 +21,7 @@ from semanal import TypeInfoMap, SemanticAnalyzer
 from checker import TypeChecker
 from errors import Errors
 from icode import FuncIcode
+import cgen
 import icode
 import parse
 import pythongen
@@ -36,7 +37,6 @@ TYPE_CHECK = 1          # Type check
 PYTHON = 2              # Type check and generate Python
 TRANSFORM = 3           # Type check and transform for runtime type checking
 ICODE = 4               # All TRANSFORM passes + generate icode
-# TODO implement this
 C = 5                   # All ICODE passes + generate C and compile it
 
 
@@ -331,6 +331,10 @@ class BuildManager:
         elif self.target == ICODE:
             self.transform(files)
             self.generate_icode(files)
+        elif self.target == C:
+            self.transform(files)
+            self.generate_icode(files)
+            self.generate_c_and_compile(files)
         elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
             pass # Nothing to do.
         else:
@@ -367,6 +371,28 @@ class BuildManager:
             if not f.path.endswith('/builtins.py'):
                 f.accept(builder)
         self.icode = builder.generated
+
+    void generate_c_and_compile(self, MypyFile[] files):
+        gen = cgen.CGenerator()
+        
+        for fn, icode in self.icode.items():
+            gen.generate_function('M' + fn, icode)
+
+        # TODO derive c file name from source file
+        out = open('_out.c', 'w')
+
+        for s in gen.prolog:
+            out.write(s)
+        out.write('\n')
+        for s in gen.out:
+            out.write(s)
+        out.write(cgen.MAIN_FRAGMENT)
+
+        out.close()
+
+        # TODO derive name of binary from source file
+        os.system('gcc -O2 _out.c runtime.c')
+        # TODO remove C file
 
 
 str remove_cwd_prefix_from_path(str p):
