@@ -141,7 +141,7 @@ class BuildManager:
     """
     int target            # Build target; selects which passes to perform
     str[] lib_path        # Library path for looking up modules
-    SemanticAnalyzer sem_analyzer # Semantic analyzer
+    SemanticAnalyzer semantic_analyzer # Semantic analyzer
     TypeChecker type_checker      # Type checker
     Errors errors                 # For reporting all errors
     
@@ -158,8 +158,9 @@ class BuildManager:
         self.errors = Errors()
         self.lib_path = lib_path
         self.target = target
-        self.sem_analyzer = SemanticAnalyzer(lib_path, self.errors)
-        self.type_checker = TypeChecker(self.errors, self.sem_analyzer.modules)
+        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
+        self.type_checker = TypeChecker(self.errors,
+                                        self.semantic_analyzer.modules)
         self.states = []
         self.module_files = {}
     
@@ -207,7 +208,7 @@ class BuildManager:
         for state in self.states:
             trees.append(((ParsedFile)state).tree)
         
-        return (self.sem_analyzer.modules, self.sem_analyzer.types,
+        return (self.semantic_analyzer.modules, self.semantic_analyzer.types,
                 self.type_checker.type_map)
     
     State next_available_state(self):
@@ -395,8 +396,8 @@ class State:
     Errors errors(self):
         return self.manager.errors
     
-    SemanticAnalyzer sem_analyzer(self):
-        return self.manager.sem_analyzer
+    SemanticAnalyzer semantic_analyzer(self):
+        return self.manager.semantic_analyzer
     
     TypeChecker type_checker(self):
         return self.manager.type_checker
@@ -428,13 +429,13 @@ class UnprocessedFile(State):
         tree = self.parse(self.program_text, self.path)
 
         # Store the parsed module in the shared module symbol table.
-        self.manager.sem_analyzer.modules[self.id] = tree
+        self.manager.semantic_analyzer.modules[self.id] = tree
         
         if '.' in self.id:
             # Include module in the symbol table of the enclosing package.
             c = self.id.split('.')
             p = '.'.join(c[:-1])
-            sem_anal = self.manager.sem_analyzer
+            sem_anal = self.manager.semantic_analyzer
             sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
                 MODULE_REF, tree, p)
         
@@ -458,10 +459,10 @@ class UnprocessedFile(State):
 
         # Do the first pass of semantic analysis: add top-level definitions in
         # the file to the symbol table.
-        self.sem_analyzer().anal_defs(tree.defs, self.path, self.id)
+        self.semantic_analyzer().anal_defs(tree.defs, self.path, self.id)
         # Initialize module symbol table, which was populated by the semantic
         # analyzer.
-        tree.names = self.sem_analyzer().globals
+        tree.names = self.semantic_analyzer().globals
 
         # Replace this state object with a parsed state in BuildManager.
         self.switch_state(ParsedFile(self.info(), tree))
@@ -526,14 +527,14 @@ class ParsedFile(State):
     
     void process(self):
         """Semantically analyze file and advance to the next state."""
-        self.sem_analyzer().visit_file(self.tree, self.tree.path)
-        self.switch_state(SemanticallyAnalysedFile(self.info(), self.tree))
+        self.semantic_analyzer().visit_file(self.tree, self.tree.path)
+        self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
     
     int state(self):
         return PARSED_STATE
 
 
-class SemanticallyAnalysedFile(ParsedFile):
+class SemanticallyAnalyzedFile(ParsedFile):
     void process(self):
         """Type check file and advance to the next state."""
         if self.manager.target >= TYPE_CHECK:
@@ -547,7 +548,7 @@ class SemanticallyAnalysedFile(ParsedFile):
         return SEMANTICALLY_ANALYSED_STATE
 
 
-class TypeCheckedFile(SemanticallyAnalysedFile):
+class TypeCheckedFile(SemanticallyAnalyzedFile):
     void process(self):
         """Finished, so cannot process."""
         raise RuntimeError('Cannot process TypeCheckedFile')
