@@ -81,7 +81,8 @@ class TypeTransformer:
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
         
-        if tdef.is_generic() or tdef.info.base.is_generic():
+        if tdef.is_generic() or (tdef.info.base and
+                                 tdef.info.base.is_generic()):
             self.make_instance_tvar_initializer(
                 (FuncDef)tdef.info.methods['__init__'])
 
@@ -126,8 +127,8 @@ class TypeTransformer:
 
         info = tdef.info
         
-        if '__init__' not in info.methods and (tdef.is_generic() or
-                                               info.base.is_generic()):
+        if '__init__' not in info.methods and (
+                tdef.is_generic() or (info.base and info.base.is_generic())):
             # Generic class with no explicit __init__ method
             # (i.e. __init__ inherited from superclass). Generate a
             # wrapper that initializes type variable slots and calls
