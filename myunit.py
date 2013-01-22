@@ -209,6 +209,7 @@ tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
 tuple<bool, bool> run_single_test(str name, any test):
     if is_verbose:
         sys.stderr.write(name)
+        sys.stderr.flush()
 
     time0 = time.time()
     test.set_up() # FIX: check exceptions
