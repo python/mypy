@@ -35,7 +35,7 @@ class struct_time:
 # ----- functions -----
 str asctime(): pass  # return current time
 str asctime(struct_time t): pass
-str asctime(tuple<str, int> t): pass
+str asctime(tuple<int, int, int, int, int, int, int, int, int> t): pass
 float clock(): pass
 str ctime(): pass  # return current time
 str ctime(float secs): pass
@@ -44,11 +44,13 @@ struct_time gmtime(float secs): pass
 struct_time localtime(): pass  # return current time
 struct_time localtime(float secs): pass
 float mktime(struct_time t): pass
-void sleep(float secs): pass
+float mktime(tuple<int, int, int, int, int, int, int, int, int> t): pass
 void sleep(int secs): pass
+void sleep(float secs): pass
 str strftime(str format): pass  # return current time
 str strftime(str format, struct_time t): pass
-str strftime(str format, tuple<str, int> t): pass
+str strftime(str format, tuple<int, int, int, int, int, int, int, int, int> t):
+    pass
 struct_time strptime(str string, str format="%a %b %d %H:%M:%S %Y"): pass
 float time(): pass
 void tzset(): pass  # Unix only
