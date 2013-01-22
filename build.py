@@ -27,9 +27,12 @@ debug = False
 
 
 tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
-            build(str program_text, str program_file_name='main',
-                  bool use_test_builtins=False, str alt_lib_path=None,
-                  bool do_type_check=False, str mypy_base_dir=None):
+            build(str program_text,
+                  str program_path,
+                  bool use_test_builtins=False,
+                  str alt_lib_path=None,
+                  bool do_type_check=False,
+                  str mypy_base_dir=None):
     """Build a program represented as a string (program_text).
 
     A single call to build performs semantic analysis and optionally
@@ -43,8 +46,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     
     Arguments:
       program_text: the contents of the main (program) source file
-      program_file_name: the file name of the main source file, used for error
-        reporting (the default value is used by test cases only)
+      program_path: the path to the main source file, for error reporting
       use_test_builtins: if False, use normal builtins (default); if True, use
         minimal stub builtins (this is for test cases only)
       alt_lib_dir: an additional directory for looking up library modules
@@ -75,7 +77,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     else:
         # Include directory of the program file in the module search path.
         lib_path.insert(
-            0, remove_cwd_prefix_from_path(dirname(program_file_name)))
+            0, remove_cwd_prefix_from_path(dirname(program_path)))
     
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
@@ -91,7 +93,7 @@ tuple<dict<str, MypyFile>, TypeInfoMap, dict<Node, Type>> \
     
     # Construct information that describes the initial file. __main__ is the
     # implicit module id and the import context is empty initially ([]).
-    info = StateInfo(program_file_name, '__main__', [], manager)
+    info = StateInfo(program_path, '__main__', [], manager)
     # Perform the build by sending the file as new file (UnprocessedFile is the
     # initial state of all files) to the manager. The manager will process the
     # file and all dependant modules recursively.
