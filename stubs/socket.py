@@ -247,15 +247,27 @@ int TIPC_WAIT_FOREVER
 int TIPC_WITHDRAWN
 int TIPC_ZONE_SCOPE
 
-# --- variables ---
-# socket.error class is a subclass of IOError
+
+# ----- exceptions -----
 class error(IOError):
-    int herror(self, tuple<int, str> address): pass
-    int herror(self, tuple<str, int, int, int> address): pass
-    int gaierror(self, tuple<int, str> address): pass
-    int gaierror(self, tuple<str, int, int, int> address): pass
-    int timeout(self, str message=''): pass
-        
+    pass
+
+class herror(error):
+    void __init__(self, int herror, str string): pass
+
+class gaierror(error):
+    void __init__(self, int error, str string): pass
+
+class timeout(error):
+    pass
+
+
+# Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
+# AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
+
+# TODO AF_PACKET and AF_BLUETOOTH address objects
+
+
 # ----- classes -----
 class socket:
     int family
@@ -266,21 +278,19 @@ class socket:
                   int proto=0, int fileno=None): pass
     
     # --- methods ---
-    tuple<socket, int> accept(self): pass
-    # TODO other tuple types for addresses
-    void bind(self, tuple<str, int> address): pass
+    # second tuple item is an address
+    tuple<socket, any> accept(self): pass
+    void bind(self, tuple address): pass
+    void bind(self, str address): pass
     void close(self): pass
-    void connect(self, tuple<str, int> address): pass  # AF_INET or AF_UNIX
-    # TODO support all address types:
-    #void connect(self, tuple<str, int, int, int> address): pass  # AF_INET6
-    int connect_ex(self, tuple<str, int> address): pass  # AF_INET or AF_UNIX
-    # TODO support all address types:
-    #int connect_ex(self, tuple<str, int, int, int> address): pass  # AF_INET6
+    void connect(self, tuple address): pass
+    void connect(self, str address): pass
+    int connect_ex(self, tuple address): pass
+    int connect_ex(self, str address): pass
     int detach(self): pass
     int fileno(self): pass
     
-    # return type is tuple<str, int> if AF_INET/AF_UNIX
-    # and tuple<str, int, int, int> if AF_INET6
+    # return value is an address
     any getpeername(self): pass
     any getsockname(self): pass
     
@@ -295,8 +305,7 @@ class socket:
         pass
     bytes recv(self, int bufsize, int flags=0): pass
     
-    # return type is tuple<str, int> if AF_INET/AF_UNIX
-    # and tuple<str, int, int, int> if AF_INET6
+    # return type is an address
     any recvfrom(self, int bufsize, int flags=0): pass
     any recvfrom_into(self, bytes buffer, int nbytes, int flags=0): pass
     any recv_into(self, bytes buffer, int nbytes, int flags=0): pass
@@ -304,12 +313,10 @@ class socket:
     int send(self, bytes data, flags=0): pass
     any sendall(self, bytes data, flags=0): pass  # rettype: None on success
     
-    int sendto(self, bytes data, tuple<str, int> address, int flags=0): pass
-    # TODO support all address types:
-    #int sendto(self, bytes data, tuple<str, int, int, int> address, 
-    #           int flags=0): pass
+    int sendto(self, bytes data, tuple address, int flags=0): pass
+    int sendto(self, bytes data, str address, int flags=0): pass
     void setblocking(self, bool flag): pass
-    # TODO None valid for value argument
+    # TODO None valid for the value argument
     void settimeout(self, float value): pass
     void setsockopt(self, int level, str optname, int value): pass
     void setsockopt(self, int level, str optname, bytes value): pass
@@ -320,33 +327,24 @@ class socket:
 socket create_connection(tuple<str, int> address, 
                          float timeout=_GLOBAL_DEFAULT_TIMEOUT,
                          tuple<str, int> source_address=None): pass
-# TODO support all address types:
-#socket create_connection(tuple<str, int, int, int> address, 
-#                         float timeout=_GLOBAL_DEFAULT_TIMEOUT,
-#                         tuple<str, int> source_address=None): pass
 
-# return type is different for AF_INET/AF_UNIX or AF_INET6
-any getaddrinfo(str host, int port, int family=0, int type=0, int proto=0, 
-                int flags=0): pass
-# 5th tuple in return type is sockaddr, a tuple describing a socket address, 
-# whose format depends on the returned family (a (address, port) 2-tuple for 
-# AF_INET, ie: tuple<int, int, int, str, tuple<str, int>> and
-# a (address, port, flow info, scope id) 4-tuple for AF_INET6)
-# ie: tuple<int, int, int, str, tuple<str, int, int, int>>
-# ret object is meant to be passed to the socket.connect() method.
+# the 5th tuple item is an address
+tuple<int, int, int, str, tuple>[] getaddrinfo(
+    str host, int port, int family=0, int type=0, int proto=0, int flags=0):
+    pass
 
-str getfqdn(str name= ''): pass
+str getfqdn(str name=''): pass
 str gethostbyname(str hostname): pass
 tuple<str, str[], str[]> gethostbyname_ex(str hostname): pass
 str gethostname(): pass
-tuple<str, str[]>, str[]> gethostbyaddr(str ip_address): pass
-tuple<str, int> getnameinfo(object sockaddr, int flags): pass
+tuple<str, str[], str[]> gethostbyaddr(str ip_address): pass
+tuple<str, int> getnameinfo(tuple sockaddr, int flags): pass
 int getprotobyname(str protocolname): pass
-int getservbyname(str servicename, str protocolname='tcp'): pass
-str getservbyport(int port, str protocolname='tcp'): pass
+int getservbyname(str servicename, str protocolname=None): pass
+str getservbyport(int port, str protocolname=None): pass
 tuple<socket, socket> socketpair(int family=AF_INET,
                                  int type=SOCK_STREAM, int proto=0): pass
-socket fromfd(int fd, family, int type, int proto=0): pass
+socket fromfd(int fd, int family, int type, int proto=0): pass
 int ntohl(int x): pass  # param & ret val are 32-bit ints
 int ntohs(int x): pass  # param & ret val are 16-bit ints
 int htonl(int x): pass  # param & ret val are 32-bit ints
@@ -355,5 +353,6 @@ bytes inet_aton(str ip_string): pass  # ret val 4 bytes in length
 str inet_ntoa(bytes packed_ip): pass
 bytes inet_pton(int address_family, str ip_string): pass
 str inet_ntop(int address_family, bytes packed_ip): pass
+# TODO the timeout may be None
 float getdefaulttimeout(): pass
 void setdefaulttimeout(float timeout): pass
