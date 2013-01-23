@@ -2,6 +2,18 @@
 #include "mypy.h"
 
 
+MBool MIntEq(MValue left, MValue right)
+{
+    abort();
+}
+
+
+MBool MIntNe(MValue left, MValue right)
+{
+    abort();
+}
+
+
 MBool MIntLt(MValue left, MValue right)
 {
     abort();
@@ -9,6 +21,18 @@ MBool MIntLt(MValue left, MValue right)
 
 
 MBool MIntLe(MValue left, MValue right)
+{
+    abort();
+}
+
+
+MBool MIntGt(MValue left, MValue right)
+{
+    abort();
+}
+
+
+MBool MIntGe(MValue left, MValue right)
 {
     abort();
 }

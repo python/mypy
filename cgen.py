@@ -70,8 +70,12 @@ class CGenerator:
         self.emit('}')
 
     int_conditionals = {
+        '==': 'MShortEq',
+        '!=': 'MShortNe',
         '<': 'MShortLt',
-        '<=': 'MShortLe'
+        '<=': 'MShortLe',
+        '>': 'MShortGt',
+        '>=': 'MShortGe'
     }
 
     int_arithmetic = {

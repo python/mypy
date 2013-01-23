@@ -77,6 +77,24 @@ static inline MBool MIsShrOverflow(MValue n, MValue s) {
     return s >= M_VALUE_BITS || (MSignedValue)s < 0;
 }
 
+static inline MBool MShortEq(MValue left, MValue right) {
+    if (left == right)
+        return 1;
+    else if (MIsShort(left))
+        return 0;
+    else
+        return MIntEq(left, right);
+}
+
+static inline MBool MShortNe(MValue left, MValue right) {
+    if (left == right)
+        return 0;
+    else if (MIsShort(left))
+        return 1;
+    else
+        return MIntNe(left, right);
+}
+
 static inline MBool MShortLt(MValue left, MValue right) {
     if (MIsShort(left) && MIsShort(right))
         return (MSignedValue)left < (MSignedValue)right;
@@ -89,6 +107,20 @@ static inline MBool MShortLe(MValue left, MValue right) {
         return (MSignedValue)left <= (MSignedValue)right;
     else
         return MIntLe(left, right);
+}
+
+static inline MBool MShortGt(MValue left, MValue right) {
+    if (MIsShort(left) && MIsShort(right))
+        return (MSignedValue)left > (MSignedValue)right;
+    else
+        return MIntGt(left, right);
+}
+
+static inline MBool MShortGe(MValue left, MValue right) {
+    if (MIsShort(left) && MIsShort(right))
+        return (MSignedValue)left >= (MSignedValue)right;
+    else
+        return MIntGe(left, right);
 }
 
 #endif
