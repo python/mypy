@@ -2,6 +2,9 @@
 --
 -- Each test case compiles a program to a binary via C and runs it. The output
 -- of the program is compared with the expected output.
+--
+-- Comments that start after a space (including line end comments) are added
+-- to the expected output.
 
 [case testPrintOnly]
 print(5)
@@ -11,9 +14,8 @@ print(5)
 [case testCallWithoutArgs]
 void f():
     print(3)
-f()
-[out]
-3
+# The comment below adds the line '3' to the expected output.
+f() # 3
 
 [case testCallWithArgs]
 void f(int a, int b):
@@ -39,9 +41,7 @@ f()
 [case testReturnValue]
 int f():
     return 5
-print(f())
-[out]
-5
+print(f()) # 5
 
 [case testIf]
 void f(int n):
@@ -49,13 +49,9 @@ void f(int n):
         print(0)
     else:
         print(1)
-f(0)
-f(1)
-f(2)
-[out]
-0
-1
-1
+f(0) # 0
+f(1) # 1
+f(2) # 1
 
 [case testRecursion]
 int f(int n):
@@ -64,13 +60,9 @@ int f(int n):
     else:
         return f(n - 1) + n
         
-print(f(0))
-print(f(1))
-print(f(5))
-[out]
-3
-4
-18
+print(f(0)) # 3
+print(f(1)) # 4
+print(f(5)) # 18
 
 
 -- TODO

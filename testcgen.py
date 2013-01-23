@@ -8,6 +8,7 @@ Note: These test cases are not included in the main test suite yet.
 """
 
 import os.path
+import re
 import subprocess
 import sys
 
@@ -44,6 +45,13 @@ def test_cgen(testcase):
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
     os.remove(outfile)
+    # Include line-end comments in the expected output.
+    # Note: # characters in string literals can confuse this.
+    for s in testcase.input:
+        m = re.search(' #(.*)', s)
+        if m:
+            testcase.output.append(m.group(1).strip())
+    # Verify output.
     assert_string_arrays_equal(testcase.output, out,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
