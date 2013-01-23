@@ -57,6 +57,23 @@ f(2)
 1
 1
 
+[case testRecursion]
+int f(int n):
+    if n <= 0:
+        return 3
+    else:
+        return f(n - 1) + n
+        
+print(f(0))
+print(f(1))
+print(f(5))
+[out]
+3
+4
+18
+
+
 -- TODO
---   recursion
---   basic int arithmetic
+--   basic int arithmetic and comparisons
+--   integer overflows and underflows
+--   stack overflow
