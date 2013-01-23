@@ -27,3 +27,10 @@ p(-1, -4) # 3
 p(-2, 3)  # -5
 p(3, -4)  # 7
 
+[case testIntMul]
+void p(int x, int y):
+    print(x * y)
+p(0, 0)   # 0
+p(2, 1)   # 2
+p(3, 5)   # 15
+# Negative operands currently not supported

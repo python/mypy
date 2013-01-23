@@ -25,6 +25,7 @@ MBool MIntLt(MValue left, MValue right);
 MBool MIntLe(MValue left, MValue right);
 MValue MIntAdd(MEnv *e, MValue x, MValue y);
 MValue MIntSub(MEnv *e, MValue x, MValue y);
+MValue MIntMul(MEnv *e, MValue x, MValue y);
 
 /* TODO this is just a trivial dummy print placeholder for test cases */
 MValue Mprint(MEnv *e);
@@ -37,6 +38,14 @@ static inline MBool MIsAddOverflow(MValue sum, MValue left, MValue right) {
 static inline MBool MIsSubOverflow(MValue diff, MValue left, MValue right) {
     return ((MSignedValue)(diff ^ left) < 0 && 
             (MSignedValue)(diff ^ right) >= 0);
+}
+
+/* The multiplication of two non-negative values no larger than this constant
+   always fits in a short int. */
+#define M_SAFE_MUL (0x80000000L * 2)
+
+static inline MBool MIsPotentialMulOverflow(MValue left, MValue right) {
+    return left > M_SAFE_MUL || right > M_SAFE_MUL;
 }
 
 static inline MBool MShortLt(MValue left, MValue right) {
