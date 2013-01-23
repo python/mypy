@@ -8,7 +8,7 @@ import errors
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
-    CallDirect, FuncIcode
+    CallDirect, FuncIcode, UnaryOp
 )
 import transform
 
@@ -104,11 +104,23 @@ class CGenerator:
         self.emit('} else {')
         self.emit('%s:' % label)
         self.emit(  't = %s(e, %s, %s);' % (op, left, right))
-        self.emit(  'if (t == MError) {')
-        self.emit_return('MError')
-        self.emit(  '}')                  
+        self.emit_error_check('t')
         self.emit('}')
         self.emit('%s = t;' % target)
+
+    void opcode(self, UnaryOp opcode):
+        if opcode.op == '-':
+            target = reg(opcode.target)
+            operand = reg(opcode.operand)
+            self.emit('if (MIsShort(%s) && %s != M_SHORT_MIN)' % (
+                operand, operand))
+            self.emit('    %s = -%s;' % (target, operand))
+            self.emit('else {')
+            self.emit('    %s = MIntUnaryMinus(e, %s);' % (target, operand))
+            self.emit_error_check(target)
+            self.emit('}')
+        else:
+            raise NotImplementedError('UnaryOp %s' % opcode.op)
 
     void opcode(self, Goto opcode):
         self.emit('goto %s;' % label(opcode.next_block.label))
@@ -146,6 +158,11 @@ class CGenerator:
     void emit_return(self, str retval):
         self.emit('e->frame = frame;')
         self.emit('return %s;' % retval)
+
+    void emit_error_check(self, str value):
+        self.emit('if (%s == MError) {' % value)
+        self.emit_return('MError')
+        self.emit('}')
 
     str label(self):
         n = self.num_labels

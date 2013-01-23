@@ -26,10 +26,17 @@ MValue MIntSub(MEnv *e, MValue x, MValue y)
 }
 
 
+MValue MIntUnaryMinus(MEnv *e, MValue x)
+{
+    abort();
+}
+
+
 MValue Mprint(MEnv *e)
 {
     /* TODO implement properly */
     /* TODO don't use blindly assume that the argument is a short int */
-    printf("%ld\n", e->frame[0] >> 1);
+    /* Integer division truncates in C99 (but not necessarily in C89). */
+    printf("%ld\n", (MSignedValue)e->frame[0] / 2);
     return 0;
 }

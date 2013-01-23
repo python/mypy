@@ -15,6 +15,10 @@ typedef struct {
 #define MNone  0x1L
 #define MError 0x3L
 
+/* TODO do not assume 64-bit values */
+#define M_SHORT_MIN (-0x8000000000000001L - 1)
+
+/* Short ints have the lowest bit unset. */
 #define MIsShort(v) (((v) & 1) == 0)
 
 MBool MIntLt(MValue left, MValue right);

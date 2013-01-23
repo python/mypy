@@ -21,7 +21,8 @@ from testhelpers import assert_string_arrays_equal
 
 
 # Files which contain test case descriptions.
-cgen_files = ['cgen-basic.test']
+cgen_files = ['cgen-basic.test',
+              'cgen-intops.test']
 
 
 class CGenSuite(Suite):

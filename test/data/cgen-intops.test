@@ -1,0 +1,11 @@
+-- Integer operation test cases for the C back end. 
+--
+-- See comment on top of cgen-basic.test for more information.
+
+[case testIntUnaryMinus]
+void p(int n):
+    print(-n)
+p(0)  # 0
+p(3)  # -3
+p(-1) # 1
+
