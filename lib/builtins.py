@@ -20,6 +20,8 @@ class int:
     int __and__(self, int n): pass
     int __or__(self, int n): pass
     int __xor__(self, int n): pass
+    int __lshift__(self, int n): pass
+    int __rshift__(self, int n): pass
     bool __eq__(self, int n): pass
     bool __ne__(self, int n): pass
     bool __lt__(self, int n): pass

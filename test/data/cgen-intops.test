@@ -92,3 +92,13 @@ p(1, 1) # 0
 p(3, 6) # 5
 p(3, 3) # 0
 p(-13, 47) # -36
+
+[case testIntShiftLeft]
+void p(int x, int y):
+    print(x << y)
+p(0, 0) # 0
+p(1, 0) # 1
+p(3, 2) # 12
+p(1, 1) # 2
+p(3, 6) # 192
+# Negative operands currently not supported

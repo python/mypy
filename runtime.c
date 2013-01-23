@@ -71,6 +71,12 @@ MValue MIntXor(MEnv *e, MValue x, MValue y)
 }
 
 
+MValue MIntShl(MEnv *e, MValue x, MValue y)
+{
+    abort();
+}
+
+
 MValue Mprint(MEnv *e)
 {
     /* TODO implement properly */

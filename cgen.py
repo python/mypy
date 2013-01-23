@@ -83,7 +83,8 @@ class CGenerator:
         '%': ('%', 'MIsPotentialModOverflow', 'MIntMod', 0),
         '&': ('&', None, 'MIntAnd', 0),
         '|': ('|', None, 'MIntAnd', 0),
-        '^': ('^', None, 'MIntAnd', 0)
+        '^': ('^', None, 'MIntAnd', 0),
+        '<<': ('<<', 'MIsShlOverflow', 'MIntShl', SHR_OPERAND)
     }
 
     void opcode(self, SetRI opcode):

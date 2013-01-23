@@ -7,6 +7,9 @@ typedef unsigned long MValue;
 typedef long MSignedValue;
 typedef int MBool;
 
+/* TODO do not assume 64 */
+#define M_VALUE_BITS 64
+
 typedef struct {
     MValue *frame;
     MValue *stack_top;
@@ -31,6 +34,7 @@ MValue MIntMod(MEnv *e, MValue x, MValue y);
 MValue MIntAnd(MEnv *e, MValue x, MValue y);
 MValue MIntOr(MEnv *e, MValue x, MValue y);
 MValue MIntXor(MEnv *e, MValue x, MValue y);
+MValue MIntShl(MEnv *e, MValue x, MValue y);
 
 /* TODO this is just a trivial dummy print placeholder for test cases */
 MValue Mprint(MEnv *e);
@@ -59,6 +63,10 @@ static inline MBool MIsPotentialFloorDivOverflow(MValue left, MValue right) {
 
 static inline MBool MIsPotentialModOverflow(MValue left, MValue right) {
     return (MSignedValue)left < 0 || (MSignedValue)right <= 0;
+}
+
+static inline MBool MIsShlOverflow(MValue n, MValue s) {
+    return s >= M_VALUE_BITS || ((n << s) >> s) != n;
 }
 
 static inline MBool MShortLt(MValue left, MValue right) {
