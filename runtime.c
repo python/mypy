@@ -83,6 +83,12 @@ MValue MIntShr(MEnv *e, MValue x, MValue y)
 }
 
 
+MValue MIntInvert(MEnv *e, MValue v)
+{
+    abort();
+}
+
+
 MValue Mprint(MEnv *e)
 {
     /* TODO implement properly */

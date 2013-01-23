@@ -114,3 +114,11 @@ p(3, 1) # 1
 p(192, 6) # 3
 p(30, 2)  # 7
 # Negative operands currently not supported
+
+[case testBitwiseNegation]
+void p(int x):
+    print(~x)
+p(0)  # -1
+p(-1) # 0
+p(6)  # -7
+p(-5) # 4

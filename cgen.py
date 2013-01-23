@@ -149,14 +149,21 @@ class CGenerator:
             self.emit('}')
 
     void opcode(self, UnaryOp opcode):
+        target = reg(opcode.target)
+        operand = reg(opcode.operand)
         if opcode.op == '-':
-            target = reg(opcode.target)
-            operand = reg(opcode.operand)
             self.emit('if (MIsShort(%s) && %s != M_SHORT_MIN)' % (
                 operand, operand))
             self.emit('    %s = -%s;' % (target, operand))
             self.emit('else {')
             self.emit('    %s = MIntUnaryMinus(e, %s);' % (target, operand))
+            self.emit_error_check(target)
+            self.emit('}')
+        elif opcode.op == '~':
+            self.emit('if (MIsShort(%s))' % operand)
+            self.emit('    %s = ~%s & ~1;' % (target, operand))
+            self.emit('else {')
+            self.emit('    %s = MIntInvert(e, %s);' % (target, operand))
             self.emit_error_check(target)
             self.emit('}')
         else:

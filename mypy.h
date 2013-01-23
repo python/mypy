@@ -37,6 +37,9 @@ MValue MIntXor(MEnv *e, MValue x, MValue y);
 MValue MIntShl(MEnv *e, MValue x, MValue y);
 MValue MIntShr(MEnv *e, MValue x, MValue y);
 
+MValue MIntUnaryMinus(MEnv *e, MValue x);
+MValue MIntInvert(MEnv *e, MValue x);
+
 /* TODO this is just a trivial dummy print placeholder for test cases */
 MValue Mprint(MEnv *e);
 
