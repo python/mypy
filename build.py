@@ -11,6 +11,7 @@ The function build() is the main interface to this module.
 
 import os
 import os.path
+import subprocess
 import sys
 from os.path import dirname, basename
 
@@ -104,7 +105,7 @@ BuildResult build(str program_text,
             mypy_base_dir = dirname(mypy_base_dir)
             
     # Determine the default module search path.
-    str[] lib_path = default_lib_path(mypy_base_dir)
+    str[] lib_path = default_lib_path(mypy_base_dir, target)
     
     if test_builtins:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -122,7 +123,8 @@ BuildResult build(str program_text,
     
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
-    manager = BuildManager(lib_path, target, output_dir, python_version)
+    manager = BuildManager(mypy_base_dir, lib_path, target, output_dir,
+                           python_version)
     
     # Ignore current directory prefix in error messages.
     manager.errors.set_ignore_prefix(os.getcwd())
@@ -136,7 +138,7 @@ BuildResult build(str program_text,
     return manager.process(UnprocessedFile(info, program_text))
 
 
-str[] default_lib_path(str mypy_base_dir):
+str[] default_lib_path(str mypy_base_dir, int target):
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     str[] path = []
@@ -145,10 +147,14 @@ str[] default_lib_path(str mypy_base_dir):
     path_env = os.getenv('MYPYPATH')
     if path_env is not None:
         path.append(path_env)
-    
-    # Add library stubs directory. By convention, they are stored in the stubs
-    # directory of the mypy implementation.
-    path.append(os.path.join(mypy_base_dir, 'stubs'))
+
+    if target in [ICODE, C]:
+        # Add C back end library directory.
+        path.append(os.path.join(mypy_base_dir, 'lib'))
+    else:
+        # Add library stubs directory. By convention, they are stored in the
+        # stubs directory of the mypy implementation.
+        path.append(os.path.join(mypy_base_dir, 'stubs'))
     
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -164,6 +170,7 @@ class BuildManager:
     type checking. It manages state objects that actually perform the
     build steps.
     """
+    str mypy_base_dir     # Mypy installation directory (contains mypy.py)
     int target            # Build target; selects which passes to perform
     str[] lib_path        # Library path for looking up modules
     SemanticAnalyzer semantic_analyzer # Semantic analyzer
@@ -183,8 +190,9 @@ class BuildManager:
     
     dict<str, FuncIcode> icode
     
-    void __init__(self, str[] lib_path, int target, str output_dir,
-                  int python_version):
+    void __init__(self, str mypy_base_dir, str[] lib_path, int target,
+                  str output_dir, int python_version):
+        self.mypy_base_dir = mypy_base_dir
         self.errors = Errors()
         self.lib_path = lib_path
         self.target = target
@@ -391,7 +399,13 @@ class BuildManager:
         out.close()
 
         # TODO derive name of binary from source file
-        os.system('gcc -O2 -Ivm _out.c vm/runtime.c')
+        base_dir = self.mypy_base_dir
+        vm_dir = os.path.join(base_dir, 'vm')
+        status = subprocess.call(['gcc', '-O2',
+                                  '-I%s' % vm_dir,
+                                  '_out.c',
+                                  os.path.join(vm_dir, 'runtime.c')])
+        # TODO check status
         # TODO remove C file
 
 

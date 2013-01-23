@@ -83,7 +83,7 @@ void compile_to_python(str program_text, str path, str[] args):
 
 void compile_to_c(str program_text, str path):
     # Compile the progam to C.
-    build.build(program_text, path, target=build.C, alt_lib_path='lib')
+    build.build(program_text, path, target=build.C)
 
     # Run the translated program.
     # TODO command line arguments

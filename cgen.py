@@ -256,8 +256,7 @@ if __name__ == '__main__':
         # Compile the input program to a binary via C.
         result = build.build(program_text=text,
                              program_path=program,
-                             target=build.C,
-                             alt_lib_path='lib')
+                             target=build.C)
     except errors.CompileError as e:
         for s in e.messages:
             sys.stderr.write(s + '\n')
