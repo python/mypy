@@ -391,7 +391,7 @@ class BuildManager:
         out.close()
 
         # TODO derive name of binary from source file
-        os.system('gcc -O2 _out.c runtime.c')
+        os.system('gcc -O2 -Ivm _out.c vm/runtime.c')
         # TODO remove C file
 
 
