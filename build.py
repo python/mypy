@@ -176,7 +176,7 @@ class BuildManager:
     SemanticAnalyzer semantic_analyzer # Semantic analyzer
     TypeChecker type_checker      # Type checker
     Errors errors                 # For reporting all errors
-    str output_dir                # Store output files here
+    str output_dir                # Store output files here (Python)
     int python_version            # Target Python version (2 or 3)
     
     # States of all individual files that are being processed. Each file in a
@@ -386,8 +386,11 @@ class BuildManager:
         for fn, icode in self.icode.items():
             gen.generate_function('M' + fn, icode)
 
+        program_name = os.path.splitext(os.path.basename(files[0].path))[0]
+        c_file = '%s.c' % program_name
+
         # TODO derive c file name from source file
-        out = open('_out.c', 'w')
+        out = open(c_file, 'w')
 
         for s in gen.prolog:
             out.write(s)
@@ -403,10 +406,11 @@ class BuildManager:
         vm_dir = os.path.join(base_dir, 'vm')
         status = subprocess.call(['gcc', '-O2',
                                   '-I%s' % vm_dir,
-                                  '_out.c',
+                                  '-o%s' % program_name,
+                                  c_file,
                                   os.path.join(vm_dir, 'runtime.c')])
         # TODO check status
-        # TODO remove C file
+        os.remove(c_file)
 
 
 str remove_cwd_prefix_from_path(str p):
