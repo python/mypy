@@ -38,14 +38,17 @@ def test_cgen(testcase):
     # Build the program.
     text = '\n'.join(testcase.input)
     program = '_program.py'
-    build.build(text, program, target=build.C, alt_lib_path='lib')
-    # Run the program.
-    outfile = './a.out'
-    outb = subprocess.check_output([outfile], stderr=subprocess.STDOUT)
-    # Split output into lines.
-    out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
-    # Remove temp file.
-    os.remove(outfile)
+    try:
+        build.build(text, program, target=build.C, alt_lib_path='lib')
+        # Run the program.
+        outfile = './a.out'
+        outb = subprocess.check_output([outfile], stderr=subprocess.STDOUT)
+        # Split output into lines.
+        out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+        # Remove temp file.
+        os.remove(outfile)
+    except errors.CompileError as e:
+        out = e.messages
     # Include line-end comments in the expected output.
     # Note: # characters in string literals can confuse this.
     for s in testcase.input:
