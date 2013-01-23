@@ -26,6 +26,7 @@ MBool MIntLe(MValue left, MValue right);
 MValue MIntAdd(MEnv *e, MValue x, MValue y);
 MValue MIntSub(MEnv *e, MValue x, MValue y);
 MValue MIntMul(MEnv *e, MValue x, MValue y);
+MValue MIntDiv(MEnv *e, MValue x, MValue y);
 
 /* TODO this is just a trivial dummy print placeholder for test cases */
 MValue Mprint(MEnv *e);
@@ -46,6 +47,10 @@ static inline MBool MIsSubOverflow(MValue diff, MValue left, MValue right) {
 
 static inline MBool MIsPotentialMulOverflow(MValue left, MValue right) {
     return left > M_SAFE_MUL || right > M_SAFE_MUL;
+}
+
+static inline MBool MIsPotentialFloorDivOverflow(MValue left, MValue right) {
+    return (MSignedValue)left < 0 || (MSignedValue)right <= 0;
 }
 
 static inline MBool MShortLt(MValue left, MValue right) {

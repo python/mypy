@@ -19,6 +19,7 @@ INDENT = 4
 # Operator flags
 OVERFLOW_CHECK_3_ARGS = 1
 SHR_OPERAND = 2
+CLEAR_LSB = 4
 
 
 class CGenerator:
@@ -74,9 +75,11 @@ class CGenerator:
     }
 
     int_arithmetic = {
-        '+': ('MIsAddOverflow', 'MIntAdd', OVERFLOW_CHECK_3_ARGS),
-        '-': ('MIsSubOverflow', 'MIntSub', OVERFLOW_CHECK_3_ARGS),
-        '*': ('MIsPotentialMulOverflow', 'MIntMul', SHR_OPERAND)
+        '+': ('+', 'MIsAddOverflow', 'MIntAdd', OVERFLOW_CHECK_3_ARGS),
+        '-': ('-', 'MIsSubOverflow', 'MIntSub', OVERFLOW_CHECK_3_ARGS),
+        '*': ('*', 'MIsPotentialMulOverflow', 'MIntMul', SHR_OPERAND),
+        '//': ('/', 'MIsPotentialFloorDivOverflow', 'MIntFloorDiv',
+               SHR_OPERAND | CLEAR_LSB)
     }
 
     void opcode(self, SetRI opcode):
@@ -101,17 +104,17 @@ class CGenerator:
         target = reg(opcode.target)
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
-        overflow, op, flags = self.int_arithmetic[opcode.op]
+        op, overflow, opfn, flags = self.int_arithmetic[opcode.op]
         if flags & OVERFLOW_CHECK_3_ARGS:
             # Overflow check needs third argument (operation result).
             label = self.label()
             self.emit('if (MIsShort(%s) && MIsShort(%s)) {' % (left, right))
-            self.emit(  't = %s %s %s;' % (left, opcode.op, right))
+            self.emit(  't = %s %s %s;' % (left, op, right))
             self.emit(  'if (%s(t, %s, %s))' % (overflow, left, right))
             self.emit(  '    goto %s;' % label)
             self.emit('} else {')
             self.emit('%s:' % label)
-            self.emit(  't = %s(e, %s, %s);' % (op, left, right))
+            self.emit(  't = %s(e, %s, %s);' % (opfn, left, right))
             self.emit_error_check('t')
             self.emit('}')
             self.emit('%s = t;' % target)
@@ -121,9 +124,13 @@ class CGenerator:
                       (left, right, overflow, left, right))
             if flags & SHR_OPERAND:
                 right = '(%s >> 1)' % right
-            self.emit('    %s = %s %s %s;' % (target, left, opcode.op, right))
+            if flags & CLEAR_LSB:
+                self.emit('    %s = (%s %s %s) & ~1;' % (target, left, op,
+                                                         right))
+            else:
+                self.emit('    %s = %s %s %s;' % (target, left, op, right))
             self.emit('else {')
-            self.emit(  '%s = %s(e, %s, %s);' % (target, op, left, right))
+            self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
             self.emit_error_check(target)
             self.emit('}')
 

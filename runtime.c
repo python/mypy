@@ -33,6 +33,13 @@ MValue MIntMul(MEnv *e, MValue x, MValue y)
 }
 
 
+MValue MIntFloorDiv(MEnv *e, MValue x, MValue y)
+{
+    /* TODO handle at least divisions that fit within a short int */
+    abort();
+}
+
+
 MValue MIntUnaryMinus(MEnv *e, MValue x)
 {
     abort();
@@ -44,6 +51,10 @@ MValue Mprint(MEnv *e)
     /* TODO implement properly */
     /* TODO don't use blindly assume that the argument is a short int */
     /* Integer division truncates in C99 (but not necessarily in C89). */
-    printf("%ld\n", (MSignedValue)e->frame[0] / 2);
+    MSignedValue arg = e->frame[0];
+    if (!MIsShort(arg))
+        printf("<object>\n");
+    else
+        printf("%ld\n", arg / 2);
     return 0;
 }
