@@ -47,3 +47,14 @@ p(12, 2)  # 6
 p(13, 2)  # 6
 p(30, 4)  # 7
 # Negative operands currently not supported
+
+[case testIntMod]
+void p(int x, int y):
+    print(x % y)
+p(0, 1)   # 0
+p(1, 7)   # 1
+p(6, 7)   # 6
+p(7, 7)   # 0
+p(8, 7)   # 1
+p(37, 13) # 11
+# Negative operands currently not supported

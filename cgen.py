@@ -79,7 +79,8 @@ class CGenerator:
         '-': ('-', 'MIsSubOverflow', 'MIntSub', OVERFLOW_CHECK_3_ARGS),
         '*': ('*', 'MIsPotentialMulOverflow', 'MIntMul', SHR_OPERAND),
         '//': ('/', 'MIsPotentialFloorDivOverflow', 'MIntFloorDiv',
-               SHR_OPERAND | CLEAR_LSB)
+               SHR_OPERAND | CLEAR_LSB),
+        '%': ('%', 'MIsPotentialModOverflow', 'MIntMod', 0)
     }
 
     void opcode(self, SetRI opcode):

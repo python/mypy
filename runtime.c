@@ -40,6 +40,13 @@ MValue MIntFloorDiv(MEnv *e, MValue x, MValue y)
 }
 
 
+MValue MIntMod(MEnv *e, MValue x, MValue y)
+{
+    /* TODO handle at least mod operations that fit within a short int */
+    abort();
+}
+
+
 MValue MIntUnaryMinus(MEnv *e, MValue x)
 {
     abort();
