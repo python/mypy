@@ -1,4 +1,4 @@
--- Test cases for the C back end. 
+-- Basic test cases for the C back end. 
 --
 -- Each test case compiles a program to a binary via C and runs it. The output
 -- of the program is compared with the expected output.
