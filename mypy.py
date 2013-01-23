@@ -23,7 +23,7 @@ from pythongen import PythonGenerator
 # Fallback options
 verbose = False
 target = build.PYTHON
-pyversion = 3
+build_flags = <str> []
 interpreter = 'python'
 
 
@@ -68,7 +68,7 @@ void compile_to_python(str program_text, str path, str[] args):
         build.build(program_text, path,
                     target=build.PYTHON,
                     output_dir=outputdir,
-                    python_version=pyversion)
+                    flags=build_flags)
 
         # Run the translated program.
         status = subprocess.call(
@@ -82,13 +82,14 @@ void compile_to_python(str program_text, str path, str[] args):
 
 
 void compile_to_c(str program_text, str path):
-    # Compile the progam to C.
-    build.build(program_text, path, target=build.C)
+    # Compile the program to C (also generate binary by default).
+    build.build(program_text, path, target=build.C, flags=build_flags)
 
-    # Run the translated program.
-    # TODO command line arguments
-    status = subprocess.call(['./a.out'])
-    sys.exit(status)
+    if build.COMPILE_ONLY not in build_flags:
+        # Run the translated program.
+        # TODO command line arguments
+        status = subprocess.call(['./a.out'])
+        sys.exit(status)
 
 
 tuple<str, str[]> process_options():
@@ -103,13 +104,15 @@ tuple<str, str[]> process_options():
             args = args[1:]
         elif args[0] == '--py2' and args[1:]:
             # Generate Python 2 (but this is very buggy).
-            global pyversion
-            pyversion = 2
+            build_flags.append(build.PYTHON2)
             interpreter = args[1]
             args = args[2:]
         elif args[0] == '-c':
             global target
             target = build.C
+            args = args[1:]
+        elif args[0] == '-S':
+            build_flags.append(build.COMPILE_ONLY)
             args = args[1:]
         else:
             usage('Invalid option {}'.format(args[0]))

@@ -41,6 +41,11 @@ ICODE = 4               # All TRANSFORM passes + generate icode
 C = 5                   # All ICODE passes + generate C and compile it
 
 
+# Build flags
+PYTHON2 = 'python2'           # Generate Python 2
+COMPILE_ONLY = 'compile-only' # Compile only to C, do not generate binary
+
+
 class BuildResult:
     """The result of a successful build."""
     # Map module name to related AST node.
@@ -68,7 +73,7 @@ BuildResult build(str program_text,
                   str alt_lib_path=None,
                   str mypy_base_dir=None,
                   str output_dir=None,
-                  int python_version=3):
+                  str[] flags=None):
     """Build a program represented as a string (program_text).
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -89,12 +94,12 @@ BuildResult build(str program_text,
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
         derived from sys.argv[0]
       output_dir: directory where the output (Python) is stored
-      python_version: version of Python to generate (for Python target only)
+      flags: list of build options (e.g. COMPILE_ONLY)
     """
 
     if target == PYTHON and not output_dir:
         raise RuntimeError('output_dir must be set for Python target')
-    
+
     if not mypy_base_dir:
         # Determine location of the mypy installation.
         mypy_base_dir = dirname(sys.argv[0])
@@ -124,7 +129,7 @@ BuildResult build(str program_text,
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
     manager = BuildManager(mypy_base_dir, lib_path, target, output_dir,
-                           python_version)
+                           flags or [])
     
     # Ignore current directory prefix in error messages.
     manager.errors.set_ignore_prefix(os.getcwd())
@@ -177,7 +182,7 @@ class BuildManager:
     TypeChecker type_checker      # Type checker
     Errors errors                 # For reporting all errors
     str output_dir                # Store output files here (Python)
-    int python_version            # Target Python version (2 or 3)
+    str[] flags                   # Build options
     
     # States of all individual files that are being processed. Each file in a
     # build is always represented by a single state object (after it has been
@@ -191,13 +196,13 @@ class BuildManager:
     dict<str, FuncIcode> icode
     
     void __init__(self, str mypy_base_dir, str[] lib_path, int target,
-                  str output_dir, int python_version):
+                  str output_dir, str[] flags):
         self.mypy_base_dir = mypy_base_dir
         self.errors = Errors()
         self.lib_path = lib_path
         self.target = target
         self.output_dir = output_dir
-        self.python_version = python_version
+        self.flags = flags
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules)
@@ -357,7 +362,10 @@ class BuildManager:
                                         os.path.basename(f.path))
                 # TODO log translation of f.path to out_path
                 # TODO report compile error if failed
-                v = pythongen.PythonGenerator(self.python_version)
+                ver = 3
+                if PYTHON2 in self.flags:
+                    ver = 2
+                v = pythongen.PythonGenerator(ver)
                 f.accept(v)
                 outfile = open(out_path, 'w')
                 outfile.write(v.output())
@@ -389,28 +397,27 @@ class BuildManager:
         program_name = os.path.splitext(os.path.basename(files[0].path))[0]
         c_file = '%s.c' % program_name
 
-        # TODO derive c file name from source file
+        # Write C file.
         out = open(c_file, 'w')
-
         for s in gen.prolog:
             out.write(s)
         out.write('\n')
         for s in gen.out:
             out.write(s)
         out.write(cgen.MAIN_FRAGMENT)
-
         out.close()
 
-        # TODO derive name of binary from source file
-        base_dir = self.mypy_base_dir
-        vm_dir = os.path.join(base_dir, 'vm')
-        status = subprocess.call(['gcc', '-O2',
-                                  '-I%s' % vm_dir,
-                                  '-o%s' % program_name,
-                                  c_file,
-                                  os.path.join(vm_dir, 'runtime.c')])
-        # TODO check status
-        os.remove(c_file)
+        if COMPILE_ONLY not in self.flags:
+            # Generate binary file.
+            base_dir = self.mypy_base_dir
+            vm_dir = os.path.join(base_dir, 'vm')
+            status = subprocess.call(['gcc', '-O2',
+                                      '-I%s' % vm_dir,
+                                      '-o%s' % program_name,
+                                      c_file,
+                                      os.path.join(vm_dir, 'runtime.c')])
+            # TODO check status
+            os.remove(c_file)
 
 
 str remove_cwd_prefix_from_path(str p):
