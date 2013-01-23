@@ -40,7 +40,7 @@ def test_cgen(testcase):
     build.build(text, program, target=build.C, alt_lib_path='lib')
     # Run the program.
     outfile = './a.out'
-    outb = subprocess.check_output([outfile])
+    outb = subprocess.check_output([outfile], stderr=subprocess.STDOUT)
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
