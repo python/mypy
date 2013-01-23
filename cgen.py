@@ -80,7 +80,10 @@ class CGenerator:
         '*': ('*', 'MIsPotentialMulOverflow', 'MIntMul', SHR_OPERAND),
         '//': ('/', 'MIsPotentialFloorDivOverflow', 'MIntFloorDiv',
                SHR_OPERAND | CLEAR_LSB),
-        '%': ('%', 'MIsPotentialModOverflow', 'MIntMod', 0)
+        '%': ('%', 'MIsPotentialModOverflow', 'MIntMod', 0),
+        '&': ('&', None, 'MIntAnd', 0),
+        '|': ('|', None, 'MIntAnd', 0),
+        '^': ('^', None, 'MIntAnd', 0)
     }
 
     void opcode(self, SetRI opcode):
@@ -119,7 +122,7 @@ class CGenerator:
             self.emit_error_check('t')
             self.emit('}')
             self.emit('%s = t;' % target)
-        else:
+        elif overflow:
             # Overflow check needs only 2 operands.
             self.emit('if (MIsShort(%s) && MIsShort(%s) && !%s(%s, %s))' %
                       (left, right, overflow, left, right))
@@ -130,6 +133,14 @@ class CGenerator:
                                                          right))
             else:
                 self.emit('    %s = %s %s %s;' % (target, left, op, right))
+            self.emit('else {')
+            self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
+            self.emit_error_check(target)
+            self.emit('}')
+        else:
+            # No overflow check needed.
+            self.emit('if (MIsShort(%s) && MIsShort(%s))' % (left, right))
+            self.emit('    %s = %s %s %s;' % (target, left, op, right))
             self.emit('else {')
             self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
             self.emit_error_check(target)

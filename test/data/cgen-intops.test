@@ -58,3 +58,37 @@ p(7, 7)   # 0
 p(8, 7)   # 1
 p(37, 13) # 11
 # Negative operands currently not supported
+
+[case testBitwiseAnd]
+void p(int x, int y):
+    print(x & y)
+p(0, 0) # 0
+p(1, 0) # 0
+p(2, 4) # 0
+p(1, 1) # 1
+p(3, 6) # 2
+p(3, 3) # 3
+p(-1, -1) # -1
+p(-13, 47) # 35
+
+[case testBitwiseOr]
+void p(int x, int y):
+    print(x | y)
+p(0, 0) # 0
+p(1, 0) # 1
+p(2, 4) # 6
+p(1, 1) # 1
+p(3, 6) # 7
+p(3, 3) # 3
+p(-13, 47) # -1
+
+[case testBitwiseXor]
+void p(int x, int y):
+    print(x ^ y)
+p(0, 0) # 0
+p(1, 0) # 1
+p(2, 4) # 6
+p(1, 1) # 0
+p(3, 6) # 5
+p(3, 3) # 0
+p(-13, 47) # -36

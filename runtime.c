@@ -53,6 +53,24 @@ MValue MIntUnaryMinus(MEnv *e, MValue x)
 }
 
 
+MValue MIntAnd(MEnv *e, MValue x, MValue y)
+{
+    abort();
+}
+
+
+MValue MIntOr(MEnv *e, MValue x, MValue y)
+{
+    abort();
+}
+
+
+MValue MIntXor(MEnv *e, MValue x, MValue y)
+{
+    abort();
+}
+
+
 MValue Mprint(MEnv *e)
 {
     /* TODO implement properly */

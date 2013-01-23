@@ -28,6 +28,9 @@ MValue MIntSub(MEnv *e, MValue x, MValue y);
 MValue MIntMul(MEnv *e, MValue x, MValue y);
 MValue MIntDiv(MEnv *e, MValue x, MValue y);
 MValue MIntMod(MEnv *e, MValue x, MValue y);
+MValue MIntAnd(MEnv *e, MValue x, MValue y);
+MValue MIntOr(MEnv *e, MValue x, MValue y);
+MValue MIntXor(MEnv *e, MValue x, MValue y);
 
 /* TODO this is just a trivial dummy print placeholder for test cases */
 MValue Mprint(MEnv *e);
