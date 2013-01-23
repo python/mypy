@@ -35,6 +35,7 @@ MValue MIntAnd(MEnv *e, MValue x, MValue y);
 MValue MIntOr(MEnv *e, MValue x, MValue y);
 MValue MIntXor(MEnv *e, MValue x, MValue y);
 MValue MIntShl(MEnv *e, MValue x, MValue y);
+MValue MIntShr(MEnv *e, MValue x, MValue y);
 
 /* TODO this is just a trivial dummy print placeholder for test cases */
 MValue Mprint(MEnv *e);
@@ -67,6 +68,10 @@ static inline MBool MIsPotentialModOverflow(MValue left, MValue right) {
 
 static inline MBool MIsShlOverflow(MValue n, MValue s) {
     return s >= M_VALUE_BITS || ((n << s) >> s) != n;
+}
+
+static inline MBool MIsShrOverflow(MValue n, MValue s) {
+    return s >= M_VALUE_BITS || (MSignedValue)s < 0;
 }
 
 static inline MBool MShortLt(MValue left, MValue right) {

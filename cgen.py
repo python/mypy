@@ -84,7 +84,8 @@ class CGenerator:
         '&': ('&', None, 'MIntAnd', 0),
         '|': ('|', None, 'MIntAnd', 0),
         '^': ('^', None, 'MIntAnd', 0),
-        '<<': ('<<', 'MIsShlOverflow', 'MIntShl', SHR_OPERAND)
+        '<<': ('<<', 'MIsShlOverflow', 'MIntShl', SHR_OPERAND),
+        '>>': ('>>', 'MIsShrOverflow', 'MIntShr', SHR_OPERAND | CLEAR_LSB)
     }
 
     void opcode(self, SetRI opcode):
@@ -110,11 +111,17 @@ class CGenerator:
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
         op, overflow, opfn, flags = self.int_arithmetic[opcode.op]
+        if flags & SHR_OPERAND:
+            operation = '%s %s (%s >> 1)' % (left, op, right)
+        else:
+            operation = '%s %s %s' % (left, op, right)
+        if flags & CLEAR_LSB:
+            operation = '(%s) & ~1' % operation
         if flags & OVERFLOW_CHECK_3_ARGS:
             # Overflow check needs third argument (operation result).
             label = self.label()
             self.emit('if (MIsShort(%s) && MIsShort(%s)) {' % (left, right))
-            self.emit(  't = %s %s %s;' % (left, op, right))
+            self.emit(  't = %s;' % operation)
             self.emit(  'if (%s(t, %s, %s))' % (overflow, left, right))
             self.emit(  '    goto %s;' % label)
             self.emit('} else {')
@@ -127,13 +134,7 @@ class CGenerator:
             # Overflow check needs only 2 operands.
             self.emit('if (MIsShort(%s) && MIsShort(%s) && !%s(%s, %s))' %
                       (left, right, overflow, left, right))
-            if flags & SHR_OPERAND:
-                right = '(%s >> 1)' % right
-            if flags & CLEAR_LSB:
-                self.emit('    %s = (%s %s %s) & ~1;' % (target, left, op,
-                                                         right))
-            else:
-                self.emit('    %s = %s %s %s;' % (target, left, op, right))
+            self.emit('    %s = %s;' % (target, operation))
             self.emit('else {')
             self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
             self.emit_error_check(target)
@@ -141,7 +142,7 @@ class CGenerator:
         else:
             # No overflow check needed.
             self.emit('if (MIsShort(%s) && MIsShort(%s))' % (left, right))
-            self.emit('    %s = %s %s %s;' % (target, left, op, right))
+            self.emit('    %s = %s;' % (target, operation))
             self.emit('else {')
             self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
             self.emit_error_check(target)
