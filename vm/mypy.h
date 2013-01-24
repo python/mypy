@@ -24,12 +24,16 @@ typedef struct {
 /* Short ints have the lowest bit unset. */
 #define MIsShort(v) (((v) & 1) == 0)
 
-MBool MIntLt(MValue left, MValue right);
+MBool MIntEq(MValue left, MValue right);
+MBool MIntNe(MValue left, MValue right);
 MBool MIntLe(MValue left, MValue right);
+MBool MIntLt(MValue left, MValue right);
+MBool MIntGe(MValue left, MValue right);
+MBool MIntGt(MValue left, MValue right);
 MValue MIntAdd(MEnv *e, MValue x, MValue y);
 MValue MIntSub(MEnv *e, MValue x, MValue y);
 MValue MIntMul(MEnv *e, MValue x, MValue y);
-MValue MIntDiv(MEnv *e, MValue x, MValue y);
+MValue MIntFloorDiv(MEnv *e, MValue x, MValue y);
 MValue MIntMod(MEnv *e, MValue x, MValue y);
 MValue MIntAnd(MEnv *e, MValue x, MValue y);
 MValue MIntOr(MEnv *e, MValue x, MValue y);
