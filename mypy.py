@@ -21,7 +21,6 @@ from pythongen import PythonGenerator
 
 
 # Fallback options
-verbose = False
 target = build.PYTHON
 build_flags = <str> []
 interpreter = 'python'
@@ -100,8 +99,7 @@ tuple<str, str[]> process_options():
     args = sys.argv[1:]
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
-            global verbose
-            verbose = True
+            build_flags.append(build.VERBOSE)
             args = args[1:]
         elif args[0] == '--py2' and args[1:]:
             # Generate Python 2 (but this is very buggy).
@@ -146,11 +144,6 @@ Environment variables:
 void fail(str msg):
     sys.stderr.write('%s\n' % msg)
     sys.exit(1)
-
-
-void log(str message):
-    if verbose:
-        print('LOG: {}'.format(message))
 
 
 if __name__ == '__main__':

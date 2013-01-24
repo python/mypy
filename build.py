@@ -45,6 +45,7 @@ C = 5                   # All ICODE passes + generate C and compile it
 # Build flags
 PYTHON2 = 'python2'           # Generate Python 2
 COMPILE_ONLY = 'compile-only' # Compile only to C, do not generate binary
+VERBOSE = 'verbose'           # More verbose messages (for troubleshooting)
 
 
 class BuildResult:
@@ -373,6 +374,7 @@ class BuildManager:
                     ver = 2
                 v = pythongen.PythonGenerator(ver)
                 f.accept(v)
+                self.log('translate %s to %s' % (f.path, out_path))
                 outfile = open(out_path, 'w')
                 outfile.write(v.output())
                 outfile.close()
@@ -404,6 +406,7 @@ class BuildManager:
         c_file = '%s.c' % program_name
 
         # Write C file.
+        self.log('writing %s' % c_file)
         out = open(c_file, 'w')
         for s in gen.prolog:
             out.write(s)
@@ -411,7 +414,7 @@ class BuildManager:
         for s in gen.out:
             out.write(s)
         out.write(cgen.MAIN_FRAGMENT)
-        out.close()
+        out.close()        
 
         if COMPILE_ONLY not in self.flags:
             # Generate binary file.
@@ -419,14 +422,20 @@ class BuildManager:
             vm_dir = os.path.join(base_dir, 'vm')
             cc = os.getenv('CC', 'gcc')
             cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
-            status = subprocess.call([cc] + cflags +
-                                     ['-I%s' % vm_dir,
+            cmdline = [cc] + cflags +['-I%s' % vm_dir,
                                       '-o%s' % program_name,
                                       c_file,
-                                      os.path.join(vm_dir, 'runtime.c')])
+                                      os.path.join(vm_dir, 'runtime.c')]
+            self.log(' '.join(cmdline))
+            status = subprocess.call(cmdline)
             # TODO check status
+            self.log('removing %s' % c_file)
             os.remove(c_file)
             self.binary_path = os.path.join('.', program_name)
+
+    void log(self, str message):
+        if VERBOSE in self.flags:
+            print('LOG: %s' % message)
 
 
 str remove_cwd_prefix_from_path(str p):
