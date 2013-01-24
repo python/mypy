@@ -70,12 +70,13 @@ void compile_to_python(str program_text, str path, str[] args):
                     output_dir=outputdir,
                     flags=build_flags)
 
-        # Run the translated program.
-        status = subprocess.call(
-            [interpreter,
-             '{}/{}'.format(outputdir,os.path.basename(path))] +
-            args)
-        sys.exit(status)
+        if build.COMPILE_ONLY not in build_flags:
+            # Run the translated program.
+            status = subprocess.call(
+                [interpreter,
+                 '{}/{}'.format(outputdir,os.path.basename(path))] +
+                args)
+            sys.exit(status)
     finally:
         if tempdir:
             shutil.rmtree(outputdir)
