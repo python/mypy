@@ -87,7 +87,7 @@ void compile_to_c(str program_text, str path):
     result = build.build(program_text, path, target=build.C, flags=build_flags)
 
     if build.COMPILE_ONLY not in build_flags:
-        # Run the translated program.
+        # Run the compiled program.
         # TODO command line arguments
         status = subprocess.call([result.binary_path])
         sys.exit(status)
