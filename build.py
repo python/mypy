@@ -57,13 +57,17 @@ class BuildResult:
     dict<Node, Type> types
     # Icode for functions
     dict<str, FuncIcode> icode
+    # Path of generated binary file (for the C back end, None otherwise)
+    str binary_path
 
     void __init__(self, dict<str, MypyFile> files, TypeInfoMap typeinfos,
-                  dict<Node, Type> types, dict<str, FuncIcode> icode):
+                  dict<Node, Type> types, dict<str, FuncIcode> icode,
+                  str binary_path):
         self.files = files
         self.typeinfos = typeinfos
         self.types = types
         self.icode = icode
+        self.binary_path = binary_path
 
 
 BuildResult build(str program_text,
@@ -194,6 +198,7 @@ class BuildManager:
     dict<str, str> module_files
     
     dict<str, FuncIcode> icode
+    str binary_path
     
     void __init__(self, str mypy_base_dir, str[] lib_path, int target,
                   str output_dir, str[] flags):
@@ -209,6 +214,7 @@ class BuildManager:
         self.states = []
         self.module_files = {}
         self.icode = None
+        self.binary_path = None
     
     BuildResult process(self, UnprocessedFile initial_state):
         """Perform a build.
@@ -263,7 +269,7 @@ class BuildManager:
         return BuildResult(self.semantic_analyzer.modules,
                            self.semantic_analyzer.types,
                            self.type_checker.type_map,
-                           self.icode)
+                           self.icode, self.binary_path)
     
     State next_available_state(self):
         """Find a ready state (one that has all its dependencies met)."""
@@ -411,13 +417,16 @@ class BuildManager:
             # Generate binary file.
             base_dir = self.mypy_base_dir
             vm_dir = os.path.join(base_dir, 'vm')
-            status = subprocess.call(['gcc', '-O2',
+            cc = os.getenv('CC', 'gcc')
+            cflags = os.getenv('CFLAGS', '-O2')            
+            status = subprocess.call([cc, cflags,
                                       '-I%s' % vm_dir,
                                       '-o%s' % program_name,
                                       c_file,
                                       os.path.join(vm_dir, 'runtime.c')])
             # TODO check status
             os.remove(c_file)
+            self.binary_path = os.path.join('.', program_name)
 
 
 str remove_cwd_prefix_from_path(str p):

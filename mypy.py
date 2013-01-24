@@ -83,12 +83,12 @@ void compile_to_python(str program_text, str path, str[] args):
 
 void compile_to_c(str program_text, str path):
     # Compile the program to C (also generate binary by default).
-    build.build(program_text, path, target=build.C, flags=build_flags)
+    result = build.build(program_text, path, target=build.C, flags=build_flags)
 
     if build.COMPILE_ONLY not in build_flags:
         # Run the translated program.
         # TODO command line arguments
-        status = subprocess.call(['./a.out'])
+        status = subprocess.call([result.binary_path])
         sys.exit(status)
 
 
