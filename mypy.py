@@ -127,7 +127,19 @@ tuple<str, str[]> process_options():
 void usage(str msg=None):
     if msg:
         sys.stderr.write('%s\n' % msg)
-    sys.stderr.write('Usage: mypy.py [--verbose] [-c] PROGRAM\n')
+    sys.stderr.write(
+'''Usage: mypy.py [options] file [args]
+
+Options:
+  -c          compile to native code (EXPERIMENTAL)
+  -S          compile only to C or Python; do not run or generate a binary
+  --verbose   more verbose messages
+  
+Environment variables:
+  MYPYPATH    additional module search path
+  CC          the C compiler (used with -c)
+  CFLAGS      command line options to the C compiler (used with -c)
+''')
     sys.exit(2)
 
 
