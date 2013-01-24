@@ -11,6 +11,7 @@ The function build() is the main interface to this module.
 
 import os
 import os.path
+import shlex
 import subprocess
 import sys
 from os.path import dirname, basename
@@ -417,9 +418,9 @@ class BuildManager:
             base_dir = self.mypy_base_dir
             vm_dir = os.path.join(base_dir, 'vm')
             cc = os.getenv('CC', 'gcc')
-            cflags = os.getenv('CFLAGS', '-O2')            
-            status = subprocess.call([cc, cflags,
-                                      '-I%s' % vm_dir,
+            cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
+            status = subprocess.call([cc] + cflags +
+                                     ['-I%s' % vm_dir,
                                       '-o%s' % program_name,
                                       c_file,
                                       os.path.join(vm_dir, 'runtime.c')])
