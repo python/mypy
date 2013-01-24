@@ -364,8 +364,7 @@ class BuildManager:
         # TODO support packages
         for f in files:
             if not is_stub(f.path):
-                out_path = os.path.join(self.output_dir,
-                                        os.path.basename(f.path))
+                out_path = os.path.join(self.output_dir, basename(f.path))
                 # TODO log translation of f.path to out_path
                 # TODO report compile error if failed
                 ver = 3
@@ -400,7 +399,7 @@ class BuildManager:
         for fn, icode in self.icode.items():
             gen.generate_function('M' + fn, icode)
 
-        program_name = os.path.splitext(os.path.basename(files[0].path))[0]
+        program_name = os.path.splitext(basename(files[0].path))[0]
         c_file = '%s.c' % program_name
 
         # Write C file.
