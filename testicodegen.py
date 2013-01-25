@@ -52,7 +52,12 @@ def test_transform(testcase):
         a = []
         for fn in func_names:
             a.append('def {}:'.format(fn))
-            code = icode.render(result.icode[fn])
+            try:
+                funccode = result.icode[fn]
+            except KeyError:
+                raise RuntimeError('no icode for %s (%s)' % (
+                    fn, list(result.icode.keys())))
+            code = icode.render(funccode)
             a.extend(code)
     except CompileError as e:
         a = e.messages
@@ -65,7 +70,7 @@ def test_transform(testcase):
 def get_func_names(expected):
     res = []
     for s in expected:
-        m = re.match(r'def ([_a-zA-Z.0-9]+):', s)
+        m = re.match(r'def ([_a-zA-Z0-9.*$]+):', s)
         if m:
             res.append(m.group(1))
     if not res:

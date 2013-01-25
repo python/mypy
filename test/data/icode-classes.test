@@ -80,27 +80,27 @@ def A:
 -- ----------
 
 
-[case testAttributeAccessors-skip]
+[case testAttributeAccessors]
 class A:
     int x
     int y
 [out]
-def A.x$get:
-    r1 = r0.s0
+def A.$x:
+    r1 = r0.x [A]
     return r1
-def A.x$set:
-    r0.s0 = r1
+def A.set$x:
+    r0.x = r1 [A]
     r2 = None
     return r2
-def A.y$get:
-    r1 = r0.s1
+def A.$y:
+    r1 = r0.y [A]
     return r1
-def A.y$set:
-    r0.s1 = r1
+def A.set$y:
+    r0.y = r1 [A]
     r2 = None
     return r2
 
-[case testSetAndQueryAttribute-skip]
+[case testSetAndQueryAttribute]
 class A:
     int x
     int y
@@ -108,7 +108,7 @@ void f(A a):
     a.x = a.y
 [out]
 def f:
-    r1 = r0.y$get() [A]
-    r2 = r1.x$set(r1) [A]
+    r1 = r0.$y() [A]
+    r2 = r0.set$x(r1) [A]
     r3 = None
     return r3

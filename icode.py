@@ -85,6 +85,32 @@ class SetRG(Opcode):
         self.source = source
 
 
+class GetAttr(Opcode):
+    """Look up an attribute directly (rN = rN.x [C])."""
+    void __init__(self, int target, int object, str attr, TypeInfo type):
+        self.target = target
+        self.object = object
+        self.attr = attr
+        self.type = type
+
+    str __str__(self):
+        return 'r%d = r%d.%s [%s]' % (self.target, self.object, self.attr,
+                                      self.type.name())
+
+
+class SetAttr(Opcode):
+    """Assign to an attribute directly (rN.x = rN [C])."""
+    void __init__(self, int object, str attr, int source, TypeInfo type):
+        self.object = object
+        self.attr = attr
+        self.source = source
+        self.type = type
+
+    str __str__(self):
+        return 'r%d.%s = r%d [%s]' % (self.object, self.attr, self.source,
+                                      self.type.name())
+
+
 class CallDirect(Opcode):
     """Call directly a global function (rN = g(rN, ...))."""
     void __init__(self, int target, str func, int[] args):
@@ -98,18 +124,18 @@ class CallDirect(Opcode):
 
 
 class CallMethod(Opcode):
-    """Call a method (rN = rN.m(rN, ...))."""
-    void __init__(self, int target, int receiver, str method, TypeInfo type,
+    """Call a method (rN = rN.m(rN, ...) [C])."""
+    void __init__(self, int target, int object, str method, TypeInfo type,
                   int[] args):
         self.target = target
-        self.receiver = receiver
+        self.object = object
         self.method = method
         self.type = type
         self.args = args
 
     str __str__(self):
         args = ', '.join(['r%d' % arg for arg in self.args])
-        return 'r%d = r%d.%s(%s) [%s]' % (self.target, self.receiver,
+        return 'r%d = r%d.%s(%s) [%s]' % (self.target, self.object,
                                           self.method, args, self.type.name())
 
 
@@ -319,17 +345,31 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_assignment_stmt(self, AssignmentStmt s):
         assert len(s.lvalues) == 1
-        assert isinstance(s.lvalues[0], NameExpr)
+        lvalue = s.lvalues[0]
 
-        # TODO handle non-locals, attributes etc.
-
-        lval = (NameExpr)s.lvalues[0]
-        if lval.is_def:
-            reg = self.add_local(lval.node)
+        if isinstance(lvalue, NameExpr):
+            name = (NameExpr)lvalue
+            if name.is_def:
+                reg = self.add_local(name.node)
+            else:
+                reg = self.lvar_regs[name.node]
+            self.accept(s.rvalue, reg)
+        elif isinstance(lvalue, MemberExpr):
+            member = (MemberExpr)lvalue
+            obj = self.accept(member.expr)
+            obj_type = self.types[member.expr]
+            assert isinstance(obj_type, Instance) # TODO more flexible
+            typeinfo = ((Instance)obj_type).type
+            source = self.accept(s.rvalue)
+            if member.direct:
+                self.add(SetAttr(obj, member.name, source, typeinfo))
+            else:
+                temp = self.alloc_register()
+                # TODO do not hard code set$ prefix
+                self.add(CallMethod(temp, obj, 'set$' + member.name, typeinfo,
+                                    [source]))
         else:
-            reg = self.lvar_regs[lval.node]
-
-        self.accept(s.rvalue, reg)
+            pass # TODO globals etc.
 
     int visit_while_stmt(self, WhileStmt s):
         # Split block so that we get a handle to the top of the loop.
@@ -385,6 +425,19 @@ class IcodeBuilder(NodeVisitor<int>):
         else:
             self.add(SetRR(target, source))
             return target
+
+    int visit_member_expr(self, MemberExpr e):
+        obj = self.accept(e.expr)
+        obj_type = self.types[e.expr]
+        assert isinstance(obj_type, Instance) # TODO more flexible
+        typeinfo = ((Instance)obj_type).type
+        target = self.target_register()
+        if e.direct:
+            self.add(GetAttr(target, obj, e.name, typeinfo))
+        else:
+            # TODO do not hard code '$' + ...
+            self.add(CallMethod(target, obj, '$' + e.name, typeinfo, []))
+        return target
 
     int visit_op_expr(self, OpExpr e):
         # TODO arbitrary operand types
