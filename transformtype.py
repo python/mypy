@@ -255,17 +255,22 @@ class TypeTransformer:
         . int $name*(C self):
         .     return self.name!
         """
-        member_expr = MemberExpr(self_expr(), name, direct=True)
+        scope = self.make_scope()
+        selft = self.self_type()
+        selfv = scope.add('self', selft)
+        
+        member_expr = MemberExpr(scope.name_expr('self'), name, direct=True)
         ret = ReturnStmt(member_expr)
 
         wrapper_name = '$' + name
-        selft = self_type(self.tf.type_context())            
         sig = Callable([selft], [nodes.ARG_POS], [None], typ, False)
-        return FuncDef(wrapper_name,
-                       [Var('self')],
+        fdef = FuncDef(wrapper_name,
+                       [selfv],
                        [nodes.ARG_POS],
                        [None],
                        Block([ret]), sig)
+        fdef.info = self.tf.type_context()
+        return fdef
     
     FuncDef make_dynamic_getter_wrapper(self, str name, Type typ):
         """Create a dynamically-typed getter wrapper for a data attribute.
@@ -275,15 +280,18 @@ class TypeTransformer:
         . any $name*(C self):
         .     return {any <= typ self.name!}
         """
-        member_expr = MemberExpr(self_expr(), name, direct=True)
+        scope = self.make_scope()
+        selft = self.self_type()
+        selfv = scope.add('self', selft)
+        
+        member_expr = MemberExpr(scope.name_expr('self'), name, direct=True)
         coerce_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
         ret = ReturnStmt(coerce_expr)
 
         wrapper_name = '$' + name + self.tf.dynamic_suffix()
-        selft = self_type(self.tf.type_context())            
         sig = Callable([selft], [nodes.ARG_POS], [None], Any(), False)
         return FuncDef(wrapper_name,
-                       [Var('self')],
+                       [selfv],
                        [nodes.ARG_POS],
                        [None],
                        Block([ret]), sig)
@@ -296,21 +304,27 @@ class TypeTransformer:
         . void set$name(C self, typ name):
         .     self.name! = name
         """
-        lvalue = MemberExpr(self_expr(), name, direct=True)
-        rvalue = NameExpr(name)
+        scope = self.make_scope()
+        selft = self.self_type()
+        selfv = scope.add('self', selft)
+        namev = scope.add(name, typ)
+        
+        lvalue = MemberExpr(scope.name_expr('self'), name, direct=True)
+        rvalue = scope.name_expr(name)
         ret = AssignmentStmt([lvalue], rvalue)
 
         wrapper_name = 'set$' + name
-        selft = self_type(self.tf.type_context())            
         sig = Callable([selft, typ],
                        [nodes.ARG_POS, nodes.ARG_POS],
                        [None, None],
                        Void(), False)
-        return FuncDef(wrapper_name,
-                       [Var('self'), Var(name)],
+        fdef = FuncDef(wrapper_name,
+                       [selfv, namev],
                        [nodes.ARG_POS, nodes.ARG_POS],
                        [None, None],
                        Block([ret]), sig)
+        fdef.info = self.tf.type_context()
+        return fdef
     
     FuncDef make_dynamic_setter_wrapper(self, str name, Type typ):
         """Create a dynamically-typed setter wrapper for a data attribute.
@@ -592,3 +606,30 @@ class TypeTransformer:
         
         fdef.type = wrapper_sig
         return fdef
+
+    Instance self_type(self):
+        return self_type(self.tf.type_context())
+
+    Scope make_scope(self):
+        return Scope(self.tf.type_map)
+        
+
+class Scope:
+    """Maintain a temporary local scope during transformation."""
+    void __init__(self, dict<Node, Type> type_map):
+        self.names = <str, Var> {}
+        self.type_map = type_map
+
+    Var add(self, str name, Type type):
+        v = Var(name)
+        v.type = type
+        self.names[name] = v
+        return v
+
+    NameExpr name_expr(self, str name):
+        nexpr = NameExpr(name)
+        nexpr.kind = nodes.LDEF
+        node = self.names[name]
+        nexpr.node = node
+        self.type_map[nexpr] = node.type
+        return nexpr

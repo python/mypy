@@ -723,11 +723,11 @@ class A**:
         self.__tv! = <__tv>
         self.__btv! = <__btv>
         self.__o! = __o
-    any* $x(A self):
+    any $x(A self):
         return {self.__tv {self.__btv self.__o.$x()}}
     any $x*(any self):
         return {self.__btv self.__o.$x()}
-    void set$x(A self, any* x):
+    void set$x(A self, any x):
         self.__o.set$x({self.__o.__tv {self.__btv x}})
     any set$x*(any self, any x):
         self.__o.set$x({self.__o.__tv {self.__btv x}})
