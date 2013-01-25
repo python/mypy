@@ -336,16 +336,30 @@ class IcodeBuilder(NodeVisitor<int>):
         tdef.defs.accept(self)
 
         # Generate icode for the function that constructs an instance.
-        # TODO __init__, arguments
+        self.make_class_constructor(tdef)
+        
+        return -1
+
+    void make_class_constructor(self, TypeDef tdef):
+        # Do we have a non-empty __init__?
+        init = (FuncDef)tdef.info.get_method('__init__')
+        if init.info.full_name() == 'builtins.object':
+            init = None
+        
         self.enter()
+        if init:
+            args = <int> []
+            for arg in init.args[1:]:
+                args.append(self.add_local(arg))
         target = self.alloc_register()
         self.add(Construct(target, tdef.info))
+        if init:
+            self.add(CallMethod(self.alloc_register(), target, '__init__',
+                                tdef.info, args))
         self.add(Return(target))
         self.generated[tdef.name] = FuncIcode(0, self.blocks,
                                               self.num_registers)
         self.leave()
-
-        return -1
 
     #
     # Statements
