@@ -356,6 +356,15 @@ class IcodeBuilder(NodeVisitor<int>):
         if init:
             self.add(CallMethod(self.alloc_register(), target, '__init__',
                                 tdef.info, args))
+        # Inititalize data attributes to default values.
+        for var in sorted(tdef.info.vars.keys()):
+            temp = self.alloc_register()
+            vtype = tdef.info.vars[var].type
+            if is_named_instance(vtype, 'builtins.int'):
+                self.add(SetRI(temp, 0))
+            else:
+                self.add(SetRNone(temp))
+            self.add(SetAttr(0, var, temp, tdef.info))
         self.add(Return(target))
         self.generated[tdef.name] = FuncIcode(0, self.blocks,
                                               self.num_registers)

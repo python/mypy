@@ -132,3 +132,16 @@ def A.__init__:
     r1 = 2
     r2 = None
     return r2
+
+[case testInitializeAttributesWhenConstructing]
+class A:
+    int x
+    A a
+[out]
+def A:
+    r0 = <construct A>
+    r1 = None
+    r0.a = r1 [A]
+    r2 = 0
+    r0.x = r2 [A]
+    return r0
