@@ -21,7 +21,8 @@ ICODE_GEN_BUILTINS = 'fixtures/icodegen.py'
 
 
 class IcodeGenerationSuite(Suite):
-    test_case_files = ['icode-basic.test']
+    test_case_files = ['icode-basic.test',
+                       'icode-classes.test']
     
     def cases(self):
         c = []
@@ -64,7 +65,7 @@ def test_transform(testcase):
 def get_func_names(expected):
     res = []
     for s in expected:
-        m = re.match(r'def ([_a-zA-Z]+):', s)
+        m = re.match(r'def ([_a-zA-Z.0-9]+):', s)
         if m:
             res.append(m.group(1))
     if not res:

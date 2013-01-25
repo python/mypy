@@ -1,0 +1,114 @@
+-- Test cases for intermediate representation (icode) generation.
+--
+-- These test cases are related to simple (non-generic) classes.
+
+
+-- Methods
+-- -------
+
+
+[case testEmptyMethod]
+class A:
+    void f(self): pass
+[out]
+def A.f:
+    r1 = None
+    return r1
+
+[case testMethodWithArguments-skip]
+class A:
+    int f(self, int x, int y):
+        return x + y
+[out]
+def A.f:
+    r3 = r1 + r2 [int]
+    return r3
+    
+[case testCallMethodWithoutArguments-skip]
+class A:
+    void f(self): pass
+void g(A a):
+    a.f()
+[out]
+def g:
+    r1 = r0.f() [A]
+    r2 = None
+    return r2
+    
+[case testCallMethodWithArguments-skip]
+class A:
+    int f(self, int x, int y): return 1
+int g(A a):
+    return a.f(1, 2)
+[out]
+def g:
+    r1 = 1
+    r2 = 3
+    r4 = r0.f(r1, r2)
+    return r4
+    
+[case testCallMethodViaSelf-skip]
+class A:
+    void f(self):
+        self.f()
+[out]
+def A.f:
+    r1 = r0.f()
+    r2 = None
+    return r2
+
+
+-- Constructing instances, default constructor
+-- -------------------------------------------
+
+
+[case testConstructInstanceWithDefaultConstructor-skip]
+class A:
+    pass
+A()
+[out]
+def __init:
+    r0 = A()
+    r1 = None
+    return r1
+def A:
+    r0 = <construct A>
+    return r0
+
+
+-- Attributes
+-- ----------
+
+
+[case testAttributeAccessors-skip]
+class A:
+    int x
+    int y
+[out]
+def A.x$get:
+    r1 = r0.s0
+    return r1
+def A.x$set:
+    r0.s0 = r1
+    r2 = None
+    return r2
+def A.y$get:
+    r1 = r0.s1
+    return r1
+def A.y$set:
+    r0.s1 = r1
+    r2 = None
+    return r2
+
+[case testSetAndQueryAttribute-skip]
+class A:
+    int x
+    int y
+void f(A a):
+    a.x = a.y
+[out]
+def f:
+    r1 = r0.y$get() [A]
+    r2 = r1.x$set(r1) [A]
+    r3 = None
+    return r3

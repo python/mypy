@@ -4,7 +4,7 @@ from mtypes import Any
 from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr, ExpressionStmt, CoerceExpr
+    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef
 )
 from visitor import NodeVisitor
 from subtypes import is_named_instance
@@ -247,15 +247,24 @@ class IcodeBuilder(NodeVisitor<int>):
         return -1
 
     int visit_func_def(self, FuncDef fdef):
+        if fdef.name().endswith('*'):
+            # Wrapper functions are not supported yet.
+            return -1
+        
         self.enter()
 
         for arg in fdef.args:
             self.add_local(arg)
         fdef.body.accept(self)
         self.add_implicit_return()
+
+        if fdef.info:
+            name = '%s.%s' % (fdef.info.name(), fdef.name())
+        else:
+            name = fdef.name()
         
-        self.generated[fdef.name()] = FuncIcode(len(fdef.args), self.blocks,
-                                                self.num_registers)
+        self.generated[name] = FuncIcode(len(fdef.args), self.blocks,
+                                         self.num_registers)
 
         self.leave()
         
@@ -267,6 +276,11 @@ class IcodeBuilder(NodeVisitor<int>):
             r = self.alloc_register()
             self.add(SetRNone(r))
             self.add(Return(r))
+
+    int visit_type_def(self, TypeDef tdef):
+        # TODO assignments in the body
+        # TODO interfaces
+        tdef.defs.accept(self)
 
     #
     # Statements
