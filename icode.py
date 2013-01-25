@@ -6,6 +6,7 @@ from nodes import (
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
     UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo
 )
+import nodes
 from visitor import NodeVisitor
 from subtypes import is_named_instance
 
@@ -73,16 +74,22 @@ class SetRNone(Opcode):
 
 class SetGR(Opcode):
     """Assign register to global (g = rN)."""
-    void __init__(self, int target, int source):
+    void __init__(self, str target, int source):
         self.target = target
         self.source = source
+
+    str __str__(self):
+        return '%s = r%d' % (self.target, self.source)
 
 
 class SetRG(Opcode):
     """Assign global to register (rN = g)."""
-    void __init__(self, int target, int source):
+    void __init__(self, int target, str source):
         self.target = target
         self.source = source
+
+    str __str__(self):
+        return 'r%d = %s' % (self.target, self.source)
 
 
 class GetAttr(Opcode):
@@ -394,11 +401,20 @@ class IcodeBuilder(NodeVisitor<int>):
 
         if isinstance(lvalue, NameExpr):
             name = (NameExpr)lvalue
-            if name.is_def:
-                reg = self.add_local(name.node)
+            if name.kind == nodes.LDEF:
+                if name.is_def:
+                    reg = self.add_local(name.node)
+                else:
+                    reg = self.lvar_regs[name.node]
+                self.accept(s.rvalue, reg)
+            elif name.kind == nodes.GDEF:
+                assert isinstance(name.node, Var)
+                var = (Var)name.node
+                rvalue = self.accept(s.rvalue)
+                self.add(SetGR(var.full_name(), rvalue))
             else:
-                reg = self.lvar_regs[name.node]
-            self.accept(s.rvalue, reg)
+                print(name, name.kind)
+                raise NotImplementedError()
         elif isinstance(lvalue, MemberExpr):
             member = (MemberExpr)lvalue
             obj = self.accept(member.expr)
@@ -463,13 +479,22 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_name_expr(self, NameExpr e):
         # TODO other names than locals
-        target = self.targets[-1]
-        source = self.lvar_regs[e.node]
-        if target < 0:
-            return source
-        else:
-            self.add(SetRR(target, source))
+        if e.kind == nodes.LDEF:
+            target = self.targets[-1]
+            source = self.lvar_regs[e.node]
+            if target < 0:
+                return source
+            else:
+                self.add(SetRR(target, source))
+                return target
+        elif e.kind == nodes.GDEF:
+            target = self.target_register()
+            assert isinstance(e.node, Var) # TODO more flexible
+            var = (Var)e.node
+            self.add(SetRG(target, var.full_name()))
             return target
+        else:
+            raise NotImplementedError('unsupported kind %d' % e.kind)
 
     int visit_member_expr(self, MemberExpr e):
         obj = self.accept(e.expr)

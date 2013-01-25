@@ -291,3 +291,26 @@ def __init:
     r1 = print(r0)
     r2 = None
     return r2
+
+
+-- Global variables
+-- ----------------
+
+
+[case testGlobalVariable]
+x = 1
+y = x + 1
+int f():
+    return y
+[out]
+def __init:
+    r0 = 1
+    __main__.x = r0
+    r1 = __main__.x
+    r2 = r1 + 1 [int]
+    __main__.y = r2
+    r3 = None
+    return r3
+def f:
+    r0 = __main__.y
+    return r0
