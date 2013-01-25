@@ -64,8 +64,15 @@ print(f(0)) # 3
 print(f(1)) # 4
 print(f(5)) # 18
 
+[case testGlobalVariables-skip]
+x = 1
+y = 2
+print(x) # 1
+int f():
+    return x + y
+y = y + 1
+print(f()) # 4
 
 -- TODO
---   basic int arithmetic and comparisons
 --   integer overflows and underflows
 --   stack overflow
