@@ -58,44 +58,6 @@ def A.f:
     return r2
 
 
--- Constructing instances
--- ----------------------
-
-
-[case testConstructInstanceWithDefaultConstructor]
-class A:
-    pass
-A()
-[out]
-def __init:
-    r0 = A()
-    r1 = None
-    return r1
-def A:
-    r0 = <construct A>
-    return r0
-    
-[case testNonDefaultInit]
-class A:
-    void __init__(self, int x):
-        x = 2
-A(2)
-[out]
-def __init:
-    r0 = 2
-    r1 = A(r0)
-    r2 = None
-    return r2
-def A:
-    r1 = <construct A>
-    r2 = r1.__init__(r0) [A]
-    return r1
-def A.__init__:
-    r1 = 2
-    r2 = None
-    return r2
-
-
 -- Attributes
 -- ----------
 
@@ -132,3 +94,41 @@ def f:
     r2 = r0.set$x(r1) [A]
     r3 = None
     return r3
+
+
+-- Constructing instances
+-- ----------------------
+
+
+[case testConstructInstanceWithDefaultConstructor]
+class A:
+    pass
+A()
+[out]
+def __init:
+    r0 = A()
+    r1 = None
+    return r1
+def A:
+    r0 = <construct A>
+    return r0
+    
+[case testNonDefaultInit]
+class A:
+    void __init__(self, int x):
+        x = 2
+A(2)
+[out]
+def __init:
+    r0 = 2
+    r1 = A(r0)
+    r2 = None
+    return r2
+def A:
+    r1 = <construct A>
+    r2 = r1.__init__(r0) [A]
+    return r1
+def A.__init__:
+    r1 = 2
+    r2 = None
+    return r2
