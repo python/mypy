@@ -16,7 +16,7 @@ x.y
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   ExpressionStmt:2(
     MemberExpr:2(
@@ -30,8 +30,8 @@ x[y]
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   ExpressionStmt:2(
     IndexExpr:2(
@@ -48,8 +48,8 @@ x == y
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   ExpressionStmt:2(
     OpExpr:2(
@@ -82,7 +82,7 @@ not x
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   ExpressionStmt:2(
     UnaryExpr:2(
@@ -110,9 +110,9 @@ x[:y]
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*)
-      NameExpr(z*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y])
+      NameExpr(z* [__main__.z]))
     IntExpr(1))
   ExpressionStmt:2(
     IndexExpr:2(
@@ -141,8 +141,8 @@ x, y
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   ExpressionStmt:2(
     TupleExpr:2(
@@ -156,8 +156,8 @@ x = y = 1
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   ExpressionStmt:2(
     ParenExpr:2(
@@ -174,8 +174,8 @@ x = y = 1
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   ExpressionStmt:2(
     DictExpr:2(

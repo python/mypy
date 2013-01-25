@@ -17,7 +17,7 @@ MypyFile:1(
   tmp/x.py
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [x.y]))
     IntExpr(1)))
 
 [case testImportedNameInType]
@@ -47,13 +47,13 @@ MypyFile:1(
   ImportFrom:1(m, [y : y])
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     NameExpr(y [m.y])))
 MypyFile:1(
   tmp/m.py
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [m.y]))
     IntExpr(1)))
 
 [case testImportFromType]
@@ -141,7 +141,7 @@ MypyFile:1(
   ImportFrom:1(m, [x : x])
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [__main__.y]))
     NameExpr(x [_n.x])))
 MypyFile:1(
   tmp/m.py
@@ -159,7 +159,7 @@ MypyFile:1(
   Import:1(_m : _m)
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [__main__.y]))
     MemberExpr:2(
       NameExpr(_m)
       x [_n.x])))
@@ -340,7 +340,7 @@ MypyFile:1(
   tmp/m/n.py
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [m.n.x]))
     IntExpr(1)))
 
 [case testImportFromSubmodule]
@@ -445,7 +445,7 @@ MypyFile:1(
   tmp/m/n/k.py
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [m.n.k.x]))
     IntExpr(1)))
 
 [case testImportInSubmodule]
@@ -461,7 +461,7 @@ MypyFile:1(
   Import:1(m._n : m._n)
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [__main__.y]))
     MemberExpr:2(
       MemberExpr:2(
         NameExpr(m)

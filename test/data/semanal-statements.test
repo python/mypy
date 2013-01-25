@@ -49,8 +49,8 @@ y |= x
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   OperatorAssignmentStmt:2(
     +
@@ -69,8 +69,8 @@ while x:
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   WhileStmt:2(
     NameExpr(x [__main__.x])
@@ -84,7 +84,7 @@ for x in object:
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x*)
+    NameExpr(x* [__main__.x])
     NameExpr(object [builtins.object])
     Block:1(
       ExpressionStmt:2(
@@ -112,8 +112,8 @@ for x, y in []:
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x*)
-    NameExpr(y*)
+    NameExpr(x* [__main__.x])
+    NameExpr(y* [__main__.y])
     ListExpr:1()
     Block:1(
       ExpressionStmt:2(
@@ -131,8 +131,8 @@ MypyFile:1(
     c
     PassStmt:1())
   ForStmt:2(
-    NameExpr(x*)
-    NameExpr(y*)
+    NameExpr(x* [__main__.x])
+    NameExpr(y* [__main__.y])
     builtins.object
     __main__.c
     ListExpr:2()
@@ -149,7 +149,7 @@ x
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x*)
+    NameExpr(x* [__main__.x])
     ListExpr:1()
     Block:1(
       PassStmt:2()))
@@ -182,7 +182,7 @@ for x in None:
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x*)
+    NameExpr(x* [__main__.x])
     NameExpr(None [builtins.None])
     Block:1(
       PassStmt:2()))
@@ -226,7 +226,7 @@ else:
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x*)
+    NameExpr(x* [__main__.x])
     ListExpr:1()
     Block:1(
       PassStmt:2())
@@ -253,7 +253,7 @@ MypyFile:1(
     Block:1(
       BreakStmt:2()))
   ForStmt:3(
-    NameExpr(x*)
+    NameExpr(x* [__main__.x])
     ListExpr:3()
     Block:3(
       BreakStmt:4())))
@@ -270,7 +270,7 @@ MypyFile:1(
     Block:1(
       ContinueStmt:2()))
   ForStmt:3(
-    NameExpr(x*)
+    NameExpr(x* [__main__.x])
     ListExpr:3()
     Block:3(
       ContinueStmt:4())))
@@ -289,7 +289,7 @@ else:
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   IfStmt:2(
     If(
@@ -335,8 +335,8 @@ x, y = 1
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
     Lvalues(
@@ -382,8 +382,8 @@ MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
       TupleExpr:1(
-        NameExpr(x*)
-        NameExpr(y*)))
+        NameExpr(x* [__main__.x])
+        NameExpr(y* [__main__.y])))
     IntExpr(1))
   AssignmentStmt:2(
     Lvalues(
@@ -400,13 +400,13 @@ MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
       ParenExpr:1(
-        NameExpr(x*)))
+        NameExpr(x* [__main__.x])))
     IntExpr(1))
   AssignmentStmt:2(
     Lvalues(
       ParenExpr:2(
         ListExpr:2(
-          NameExpr(y*))))
+          NameExpr(y* [__main__.y]))))
     IntExpr(2)))
 
 [case testLocalComplexDefinition]
@@ -433,12 +433,12 @@ y, x = 1
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   AssignmentStmt:2(
     Lvalues(
       TupleExpr:2(
-        NameExpr(y*)
+        NameExpr(y* [__main__.y])
         NameExpr(x [__main__.x])))
     IntExpr(1)))
 
@@ -449,8 +449,8 @@ del x[y]
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   DelStmt:2(
     IndexExpr:2(
@@ -734,7 +734,7 @@ MypyFile:1(
   AssignmentStmt:2(
     Lvalues(
       TupleExpr:2(
-        NameExpr(x*)
+        NameExpr(x* [__main__.x])
         NameExpr(o [__main__.o])))
     TupleExpr:2(
       NameExpr(o [__main__.o])

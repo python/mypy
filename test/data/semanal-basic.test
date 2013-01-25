@@ -10,7 +10,7 @@ x
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   ExpressionStmt:2(
     NameExpr(x [__main__.x])))
@@ -23,12 +23,12 @@ z = 3
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*)
-      NameExpr(y*))
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(2))
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(z*))
+      NameExpr(z* [__main__.z]))
     IntExpr(3))
   ExpressionStmt:3(
     ParenExpr:3(
@@ -66,7 +66,7 @@ MypyFile:1(
       Args()))
   AssignmentStmt:3(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   FuncDef:4(
     f
@@ -125,7 +125,7 @@ MypyFile:1(
           Args()))))
   AssignmentStmt:4(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   FuncDef:5(
     g
@@ -143,7 +143,7 @@ def f(y):
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   AssignmentStmt:2(
     Lvalues(
@@ -177,7 +177,7 @@ x
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   FuncDef:2(
     f
@@ -244,7 +244,7 @@ class A: pass
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     NameExpr(None [builtins.None]))
   FuncDef:2(
     f
@@ -271,8 +271,8 @@ MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
       TupleExpr:1(
-        NameExpr(x*)
-        NameExpr(y*)))
+        NameExpr(x* [__main__.x])
+        NameExpr(y* [__main__.y])))
     TupleExpr:1(
       NameExpr(None [builtins.None])
       NameExpr(None [builtins.None])))
@@ -297,7 +297,7 @@ def g():
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     NameExpr(None [builtins.None]))
   FuncDef:2(
     f
@@ -322,7 +322,7 @@ class A:
 MypyFile:1(
   AssignmentStmt:1(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     NameExpr(None [builtins.None]))
   TypeDef:2(
     A
@@ -351,7 +351,7 @@ MypyFile:1(
     Then(
       AssignmentStmt:2(
         Lvalues(
-          NameExpr(x*))
+          NameExpr(x* [__main__.x]))
         CallExpr:2(
           NameExpr(object [builtins.object])
           Args()))

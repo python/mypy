@@ -12,7 +12,7 @@ MypyFile:1(
     Type(__main__.A))
   AssignmentStmt:3(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [__main__.y]))
     NameExpr(x [__main__.x])))
 
 [case testLocalVarWithType]
@@ -46,7 +46,7 @@ MypyFile:1(
     Type(any))
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(y*))
+      NameExpr(y* [__main__.y]))
     NameExpr(x [__main__.x])))
 
 [case testFunctionSig]
@@ -105,7 +105,7 @@ MypyFile:1(
     PassStmt:1())
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   VarDef:3(
     Var(a)
@@ -132,7 +132,7 @@ MypyFile:1(
     Type(__main__.B))
   AssignmentStmt:4(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     TupleExpr:4(
       NameExpr(a [__main__.a])
       NameExpr(b [__main__.b]))))
@@ -249,7 +249,7 @@ MypyFile:1(
     PassStmt:1())
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(f*))
+      NameExpr(f* [__main__.f]))
     IntExpr(0))
   ExpressionStmt:3(
     CallExpr:3(
@@ -466,7 +466,7 @@ MypyFile:1(
         PassStmt:2())))
   AssignmentStmt:3(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     NameExpr(f [__main__.f])))
 
 [case testImplicitGenericType]

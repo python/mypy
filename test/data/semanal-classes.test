@@ -10,7 +10,7 @@ MypyFile:1(
     PassStmt:1())
   AssignmentStmt:2(
     Lvalues(
-      NameExpr(x*))
+      NameExpr(x* [__main__.x]))
     NameExpr(A [__main__.A])))
 
 [case testMethods]

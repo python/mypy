@@ -399,6 +399,8 @@ class SemanticAnalyzer(NodeVisitor):
                 v._full_name = self.qualified_name(n.name)
                 n.node = v
                 n.is_def = True
+                n.kind = GDEF
+                n.full_name = v._full_name
                 self.globals[n.name] = SymbolTableNode(GDEF, v,
                                                        self.cur_mod_id)
             elif isinstance(n.node, Var) and n.is_def:
