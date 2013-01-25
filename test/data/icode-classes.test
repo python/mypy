@@ -62,7 +62,7 @@ def A.f:
 -- -------------------------------------------
 
 
-[case testConstructInstanceWithDefaultConstructor-skip]
+[case testConstructInstanceWithDefaultConstructor]
 class A:
     pass
 A()

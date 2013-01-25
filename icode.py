@@ -139,6 +139,16 @@ class CallMethod(Opcode):
                                           self.method, args, self.type.name())
 
 
+class Construct(Opcode):
+    """Construct an uninitialized class instance (rN = <construct C>)."""
+    void __init__(self, int target, TypeInfo type):
+        self.target = target
+        self.type = type
+
+    str __str__(self):
+        return 'r%d = <construct %s>' % (self.target, self.type.name())
+
+
 class Return(Opcode):
     """Return from function (return rN)."""
     void __init__(self, int retval):
@@ -324,6 +334,18 @@ class IcodeBuilder(NodeVisitor<int>):
         # TODO assignments in the body
         # TODO interfaces
         tdef.defs.accept(self)
+
+        # Generate icode for the function that constructs an instance.
+        # TODO __init__, arguments
+        self.enter()
+        target = self.alloc_register()
+        self.add(Construct(target, tdef.info))
+        self.add(Return(target))
+        self.generated[tdef.name] = FuncIcode(0, self.blocks,
+                                              self.num_registers)
+        self.leave()
+
+        return -1
 
     #
     # Statements
