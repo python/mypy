@@ -266,7 +266,7 @@ class BuildManager:
             trees.append(((ParsedFile)state).tree)
 
         # Perform any additional passes after type checking for all the files.
-        self.final_passes(trees)
+        self.final_passes(trees, self.type_checker.type_map)
         
         return BuildResult(self.semantic_analyzer.modules,
                            self.semantic_analyzer.types,
@@ -343,7 +343,7 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
-    void final_passes(self, MypyFile[] files):
+    void final_passes(self, MypyFile[] files, dict<Node, Type> types):
         """Perform the code generation passes for type checked files."""
         if self.target == PYTHON:
             self.generate_python(files)
@@ -351,10 +351,10 @@ class BuildManager:
             self.transform(files)
         elif self.target == ICODE:
             self.transform(files)
-            self.generate_icode(files)
+            self.generate_icode(files, types)
         elif self.target == C:
             self.transform(files)
-            self.generate_icode(files)
+            self.generate_icode(files, types)
             self.generate_c_and_compile(files)
         elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
             pass # Nothing to do.
@@ -388,8 +388,8 @@ class BuildManager:
                 is_pretty=True)
             f.accept(v)
 
-    void generate_icode(self, MypyFile[] files):
-        builder = icode.IcodeBuilder()
+    void generate_icode(self, MypyFile[] files, dict<Node, Type> types):
+        builder = icode.IcodeBuilder(types)
         for f in files:
             # TODO remove ugly builtins hack
             if not f.path.endswith('/builtins.py'):

@@ -1,10 +1,10 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from mtypes import Any
+from mtypes import Any, Instance, Type
 from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef
+    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo
 )
 from visitor import NodeVisitor
 from subtypes import is_named_instance
@@ -95,6 +95,22 @@ class CallDirect(Opcode):
     str __str__(self):
         args = ', '.join(['r%d' % arg for arg in self.args])
         return 'r%d = %s(%s)' % (self.target, self.func, args)
+
+
+class CallMethod(Opcode):
+    """Call a method (rN = rN.m(rN, ...))."""
+    void __init__(self, int target, int receiver, str method, TypeInfo type,
+                  int[] args):
+        self.target = target
+        self.receiver = receiver
+        self.method = method
+        self.type = type
+        self.args = args
+
+    str __str__(self):
+        args = ', '.join(['r%d' % arg for arg in self.args])
+        return 'r%d = r%d.%s(%s) [%s]' % (self.target, self.receiver,
+                                          self.method, args, self.type.name())
 
 
 class Return(Opcode):
@@ -231,10 +247,11 @@ class IcodeBuilder(NodeVisitor<int>):
     # Stack of inactive scopes
     tuple<BasicBlock[], int, dict<Node, int>>[] scopes
 
-    void __init__(self):
+    void __init__(self, dict<Node, Type> types):
         self.generated = {}
         self.scopes = []
         self.targets = []
+        self.types = types
 
     int visit_mypy_file(self, MypyFile mfile):
         self.enter()
@@ -390,16 +407,24 @@ class IcodeBuilder(NodeVisitor<int>):
         return target
 
     int visit_call_expr(self, CallExpr e):
+        args = <int> []
+        for arg in e.args:
+            args.append(self.accept(arg))
         if isinstance(e.callee, NameExpr):
-            callee = (NameExpr)e.callee
-            args = <int> []
-            for arg in e.args:
-                args.append(self.accept(arg))
+            name = (NameExpr)e.callee
             target = self.target_register()
-            self.add(CallDirect(target, callee.name, args))
-            return target
+            self.add(CallDirect(target, name.name, args))
+        elif isinstance(e.callee, MemberExpr):
+            member = (MemberExpr)e.callee
+            receiver = self.accept(member.expr)
+            target = self.target_register()
+            receiver_type = self.types[member.expr]
+            assert isinstance(receiver_type, Instance) # TODO more flexible
+            typeinfo = ((Instance)receiver_type).type
+            self.add(CallMethod(target, receiver, member.name, typeinfo, args))
         else:
-            raise NotImplementedError()
+            raise NotImplementedError('call target %s' % type(e.callee))
+        return target
 
     int visit_paren_expr(self, ParenExpr e):
         return e.expr.accept(self)

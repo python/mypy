@@ -15,7 +15,7 @@ def A.f:
     r1 = None
     return r1
 
-[case testMethodWithArguments-skip]
+[case testMethodWithArguments]
 class A:
     int f(self, int x, int y):
         return x + y
@@ -24,7 +24,7 @@ def A.f:
     r3 = r1 + r2 [int]
     return r3
     
-[case testCallMethodWithoutArguments-skip]
+[case testCallMethodWithoutArguments]
 class A:
     void f(self): pass
 void g(A a):
@@ -35,25 +35,25 @@ def g:
     r2 = None
     return r2
     
-[case testCallMethodWithArguments-skip]
+[case testCallMethodWithArguments]
 class A:
     int f(self, int x, int y): return 1
 int g(A a):
-    return a.f(1, 2)
+    return a.f(1, 3)
 [out]
 def g:
     r1 = 1
     r2 = 3
-    r4 = r0.f(r1, r2)
-    return r4
+    r3 = r0.f(r1, r2) [A]
+    return r3
     
-[case testCallMethodViaSelf-skip]
+[case testCallMethodViaSelf]
 class A:
     void f(self):
         self.f()
 [out]
 def A.f:
-    r1 = r0.f()
+    r1 = r0.f() [A]
     r2 = None
     return r2
 
