@@ -408,13 +408,8 @@ class BuildManager:
         # Write C file.
         self.log('writing %s' % c_file)
         out = open(c_file, 'w')
-        for s in gen.prolog:
-            out.write(s)
-        out.write('\n')
-        for s in gen.out:
-            out.write(s)
-        out.write(cgen.MAIN_FRAGMENT)
-        out.close()        
+        out.writelines(gen.output())
+        out.close()
 
         if COMPILE_ONLY not in self.flags:
             # Generate binary file.

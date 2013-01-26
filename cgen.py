@@ -34,6 +34,13 @@ class CGenerator:
         self.frame_size = 0
         # Count temp labels.
         self.num_labels = 0
+
+    str[] output(self):
+        result = self.prolog[:]
+        result.append('\n')
+        result.extend(self.out)
+        result.append(MAIN_FRAGMENT)
+        return result
     
     void generate_function(self, str name, FuncIcode func):
         # Initialize function-specific state information.
