@@ -361,12 +361,21 @@ class BuildManager:
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
+    def get_python_out_path(self, MypyFile f):
+        components = f.full_name().split('.')
+        if os.path.basename(f.path) == '__init__.py':
+            components.append('__init__.py')
+        else:
+            components[-1] += '.py'
+        return os.path.join(self.output_dir, *components)
+
     void generate_python(self, MypyFile[] files):
         """Translate each file to Python."""
         # TODO support packages
         for f in files:
             if not is_stub(f.path):
-                out_path = os.path.join(self.output_dir, basename(f.path))
+                out_path = self.get_python_out_path(f)
+                make_parent_dirs(out_path)
                 # TODO log translation of f.path to out_path
                 # TODO report compile error if failed
                 ver = 3
@@ -788,3 +797,10 @@ str[] super_packages(str id):
     for i in range(1, len(c)):
         res.append('.'.join(c[:i]))
     return res
+
+def make_parent_dirs( path):
+    parent = os.path.dirname(path)
+    try:
+        os.makedirs(parent)
+    except OSError:
+        pass
