@@ -64,7 +64,7 @@ print(f(0)) # 3
 print(f(1)) # 4
 print(f(5)) # 18
 
-[case testGlobalVariables-skip]
+[case testGlobalVariables]
 x = 1
 y = 2
 print(x) # 1
@@ -72,6 +72,12 @@ int f():
     return x + y
 y = y + 1
 print(f()) # 4
+
+[case testUninitializedGlobalVar]
+if 1 > 2:
+    x = 1
+print(x) # 0
+
 
 -- TODO
 --   integer overflows and underflows

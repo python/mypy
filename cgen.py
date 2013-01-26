@@ -8,7 +8,7 @@ import errors
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
-    CallDirect, FuncIcode, UnaryOp
+    CallDirect, FuncIcode, UnaryOp, SetGR, SetRG
 )
 import transform
 
@@ -32,11 +32,13 @@ class CGenerator:
         self.prolog = ['#include "mypy.h"\n']
         self.indent = 0
         self.frame_size = 0
+        self.global_vars = <str, int> {}
         # Count temp labels.
         self.num_labels = 0
 
     str[] output(self):
         result = self.prolog[:]
+        result.append('MValue Mglobals[%d];' % max(len(self.global_vars), 1))
         result.append('\n')
         result.extend(self.out)
         result.append(MAIN_FRAGMENT)
@@ -107,6 +109,14 @@ class CGenerator:
 
     void opcode(self, SetRNone opcode):
         self.emit('%s = MNone;' % reg(opcode.target))
+
+    void opcode(self, SetGR opcode):
+        self.emit('%s = %s;' % (self.globalvar(opcode.target),
+                                reg(opcode.source)))
+
+    void opcode(self, SetRG opcode):
+        self.emit('%s = %s;' % (reg(opcode.target),
+                                self.globalvar(opcode.source)))
 
     void opcode(self, IfOp opcode):
         left = operand(opcode.left, opcode.left_kind)
@@ -226,6 +236,13 @@ class CGenerator:
         n = self.num_labels
         self.num_labels = n + 1
         return 'T%d' % n
+
+    str globalvar(self, str name):
+        num = self.global_vars.get(name, -1)
+        if num < 0:
+            num = len(self.global_vars)
+            self.global_vars[name] = num
+        return 'Mglobals[%d]' % num
 
 
 str reg(int n):
