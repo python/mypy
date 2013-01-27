@@ -73,7 +73,7 @@ void compile_to_python(str program_text, str path, str[] args):
             # Run the translated program.
             status = subprocess.call(
                 [interpreter,
-                 '{}/{}'.format(outputdir,os.path.basename(path))] +
+                 '{}/__main__.py'.format(outputdir)] +
                 args)
             sys.exit(status)
     finally:
