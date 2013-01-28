@@ -8,8 +8,9 @@ import errors
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
-    CallDirect, FuncIcode, UnaryOp, SetGR, SetRG
+    CallDirect, FuncIcode, UnaryOp, SetGR, SetRG, Construct
 )
+from nodes import TypeInfo
 import transform
 
 
@@ -26,13 +27,14 @@ class CGenerator:
     """Translate icode to C."""
     
     FuncIcode func
-    
+
     void __init__(self):
         self.out = <str> []
         self.prolog = ['#include "mypy.h"\n']
         self.indent = 0
         self.frame_size = 0
         self.global_vars = <str, int> {}
+        self.classes = <TypeInfo, ClassRepresentation> {}
         # Count temp labels.
         self.num_labels = 0
 
@@ -205,9 +207,26 @@ class CGenerator:
         self.emit('    return MError;')
         self.emit('%s = t;' % target)
 
+    void opcode(self, Construct opcode):
+        self.emit('t = MAlloc(e, sizeof(MInstanceHeader));')
+        name = self.get_class_representation(opcode.type)
+        self.emit('MInitInstance(t, &%s);' % name)
+        self.emit('%s = t;' % reg(opcode.target))
+
     void opcode(self, Opcode opcode):
         """Default case."""
         raise NotImplementedError(type(opcode))
+
+    str get_class_representation(self, TypeInfo cls):
+        name = 'MR_%s' % cls.name()
+        if cls not in self.classes:
+            rep = ClassRepresentation(cls.full_name())
+            self.classes[cls] = rep
+
+            self.prolog.append('MTypeRepr %s = {\n' % name)
+            self.prolog.append('    "%s"\n' % cls.full_name())
+            self.prolog.append('};\n')
+        return name
 
     #
     # Helpers
@@ -270,6 +289,20 @@ int main(int argc, char **argv) {
     return 0;
 }
 '''
+
+
+class ClassRepresentation:
+    """Description of the runtime representation of a mypy class."""
+    # TODO add methods
+    # TODO add base class
+
+    str full_name
+    # Map data attribute name to slot index.
+    dict<str, int> slot_map
+
+    void __init__(self, str full_name):
+        self.full_name = full_name
+        self.slot_map = {}
 
 
 if __name__ == '__main__':

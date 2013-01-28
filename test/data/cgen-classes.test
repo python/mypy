@@ -1,0 +1,18 @@
+-- Test cases for the C back end that define and use simple classes. 
+--
+-- See also description at the top of cgen-basic.test
+
+[case testConstructTrivialInstance]
+class A: pass
+class B: pass
+a = A()
+print(A())  # <__main__.A object>
+b = B()
+print(B())  # <__main__.B object>
+
+[case testTrivialAttributeAccess-skip]
+class A:
+    int x
+a = A()
+a.x = 5
+print(a.x + 1) # 6

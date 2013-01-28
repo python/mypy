@@ -119,9 +119,14 @@ MValue Mprint(MEnv *e)
     /* TODO don't use blindly assume that the argument is a short int */
     /* Integer division truncates in C99 (but not necessarily in C89). */
     MSignedValue arg = e->frame[0];
-    if (!MIsShort(arg))
-        printf("<object>\n");
-    else
+    if (!MIsShort(arg)) {
+        if (arg == MNone)
+            printf("None\n");
+        else {
+            MInstanceHeader *h = MHeader(arg);
+            printf("<%s object>\n", h->type->full_name);
+        }
+    } else
         printf("%ld\n", arg / 2);
     return 0;
 }

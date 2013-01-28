@@ -15,8 +15,37 @@ typedef struct {
     MValue *stack_top;
 } MEnv;
 
+typedef struct {
+    const char *full_name;
+    /* TODO
+         add info about fields
+         add vtable
+         etc.
+    */
+} MTypeRepr;
+
+typedef struct {
+    MTypeRepr *type;
+    MValue gcinfo; /* TODO this is just a placeholder */
+} MInstanceHeader;
+
 #define MNone  0x1L
 #define MError 0x3L
+
+static inline MValue MAlloc(MEnv *e, size_t size) {
+    // TODO use garbage collector heap
+    return (MValue)malloc(size) | 1;
+}
+
+static inline MInstanceHeader *MHeader(MValue instance) {
+    return (MInstanceHeader *)(instance & ~1L);
+}
+
+static inline void MInitInstance(MValue instance, MTypeRepr *type) {
+    MInstanceHeader *h = MHeader(instance);
+    h->type = type;
+    h->gcinfo = 0;
+}
 
 /* TODO do not assume 64-bit values */
 #define M_SHORT_MIN (-0x8000000000000001L - 1)
