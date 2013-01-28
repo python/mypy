@@ -1,0 +1,13 @@
+-- Test cases that compile a program and perform checks on the generated C.
+--
+-- Note: Try to avoid test cases whose output is easily affected by the
+--   implementation details of the code generator (e.g. register assignment).
+--
+-- The runner is testcgen.CGenCompileSuite.
+
+[case testTypeRepr]
+class A: pass
+[out]
+...
+MTypeRepr MR_A = {
+...
