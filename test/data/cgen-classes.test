@@ -10,6 +10,27 @@ print(A())  # <__main__.A object>
 b = B()
 print(B())  # <__main__.B object>
 
+[case testSimpleMethodCall]
+class A:
+    int inc(self, int x):
+        return x + 1
+print(A().inc(3)) # 4
+print(A().inc(5)) # 6
+
+[case testThreeMethods]
+# Verify that vtables with more than one method work.
+class A:
+    int inc(self, int x):
+        return x + 1
+    void twice(self, int y):
+        print(y * 2)
+    int add(self, int x, int y):
+        return x + y
+a = A()
+print(a.inc(3))    # 4
+a.twice(5)         # 10
+print(a.add(4, 7)) # 11
+
 [case testTrivialAttributeAccess-skip]
 class A:
     int x

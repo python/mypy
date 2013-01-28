@@ -2,6 +2,12 @@
 #include "mypy.h"
 
 
+MValue MAbort(MEnv *e)
+{
+    abort();
+}
+
+
 MBool MIntEq(MValue left, MValue right)
 {
     abort();

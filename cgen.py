@@ -8,7 +8,7 @@ import errors
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
-    CallDirect, FuncIcode, UnaryOp, SetGR, SetRG, Construct
+    CallDirect, CallMethod, FuncIcode, UnaryOp, SetGR, SetRG, Construct
 )
 from nodes import TypeInfo
 import transform
@@ -29,8 +29,9 @@ class CGenerator:
     FuncIcode func
 
     void __init__(self):
-        self.out = <str> []
         self.prolog = ['#include "mypy.h"\n']
+        self.types = <str> []
+        self.out = <str> []
         self.indent = 0
         self.frame_size = 0
         self.global_vars = <str, int> {}
@@ -42,6 +43,7 @@ class CGenerator:
         result = self.prolog[:]
         result.append('MValue Mglobals[%d];' % max(len(self.global_vars), 1))
         result.append('\n')
+        result.extend(self.types)
         result.extend(self.out)
         result.append(MAIN_FRAGMENT)
         return result
@@ -52,13 +54,16 @@ class CGenerator:
         self.num_labels = 0
         self.frame_size = func.num_registers
 
+        # Simplistic name mangling.
+        name = name.replace('.', '_')
+        
         # Add function definition and opening brace.
         header = 'MValue %s(MEnv *e)' % name
         self.emit(header)
         self.emit('{')
 
         # Add function declaration.
-        self.prolog.append('%s;\n' % header)
+        self.emit_prolog('%s;\n' % header)
 
         # Generate code that updates and checks the stack pointer.
         self.emit('MValue t;')
@@ -207,6 +212,20 @@ class CGenerator:
         self.emit('    return MError;')
         self.emit('%s = t;' % target)
 
+    void opcode(self, CallMethod opcode):
+        recv = reg(opcode.object)
+        self.emit('%s = %s;' % (reg(self.frame_size), recv))
+        for i, arg in enumerate(opcode.args):
+            self.emit('%s = %s;' % (reg(self.frame_size + 1 + i), reg(arg)))
+        target = reg(opcode.target)
+        self.get_class_representation(opcode.type)
+        rep = self.classes[opcode.type]
+        vtable_index = rep.vtable_index[opcode.method]
+        self.emit('t = MInvokeVirtual(e, %s, %d);' % (recv, vtable_index))
+        self.emit('if (t == MError)')
+        self.emit('    return MError;')
+        self.emit('%s = t;' % reg(opcode.target))
+
     void opcode(self, Construct opcode):
         self.emit('t = MAlloc(e, sizeof(MInstanceHeader));')
         name = self.get_class_representation(opcode.type)
@@ -220,12 +239,22 @@ class CGenerator:
     str get_class_representation(self, TypeInfo cls):
         name = 'MR_%s' % cls.name()
         if cls not in self.classes:
-            rep = ClassRepresentation(cls.full_name())
+            rep = ClassRepresentation(cls)
             self.classes[cls] = rep
 
-            self.prolog.append('MTypeRepr %s = {\n' % name)
-            self.prolog.append('    "%s"\n' % cls.full_name())
-            self.prolog.append('};\n')
+            # Emit vtable.
+            vtable = 'MVT_%s' % cls.name()
+            self.emit_types('MFunction %s[] = {' % vtable)
+            for m in rep.vtable_methods:
+                self.emit_types('    M%s_%s,' % (cls.name(), m))
+            self.emit_types('}; /* %s */' % vtable)
+
+            # Emit type runtime info.
+            self.emit_types('MTypeRepr %s = {' % name)
+            self.emit_types('    %s,' % vtable)
+            self.emit_types('    0,')
+            self.emit_types('    "%s"' % cls.full_name())
+            self.emit_types('};\n')
         return name
 
     #
@@ -250,6 +279,12 @@ class CGenerator:
         self.emit('if (%s == MError) {' % value)
         self.emit_return('MError')
         self.emit('}')
+
+    void emit_prolog(self, str s):
+        self.prolog.append(s + '\n')
+
+    void emit_types(self, str s):
+        self.types.append(s + '\n')
 
     str label(self):
         n = self.num_labels
@@ -297,12 +332,19 @@ class ClassRepresentation:
     # TODO add base class
 
     str full_name
-    # Map data attribute name to slot index.
     dict<str, int> slot_map
+    # Map method name to/from vtable index
+    dict<str, int> vtable_index
+    str[] vtable_methods
 
-    void __init__(self, str full_name):
-        self.full_name = full_name
+    void __init__(self, TypeInfo type):
+        self.full_name = type.full_name()
         self.slot_map = {}
+        self.vtable_index = {}
+        self.vtable_methods = []
+        for m in type.methods.keys():
+            self.vtable_index[m] = len(self.vtable_methods)
+            self.vtable_methods.append(m)
 
 
 if __name__ == '__main__':

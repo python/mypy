@@ -15,13 +15,13 @@ typedef struct {
     MValue *stack_top;
 } MEnv;
 
+typedef MValue (*MFunction)(MEnv *e);
+
 typedef struct {
+    MFunction *vtable;
+    int num_slots;
     const char *full_name;
-    /* TODO
-         add info about fields
-         add vtable
-         etc.
-    */
+    /* TODO add more information */
 } MTypeRepr;
 
 typedef struct {
@@ -31,6 +31,9 @@ typedef struct {
 
 #define MNone  0x1L
 #define MError 0x3L
+
+/* Dummy error handler; used instead of raising an exception for now */
+MValue MAbort(MEnv *e);
 
 static inline MValue MAlloc(MEnv *e, size_t size) {
     // TODO use garbage collector heap
@@ -45,6 +48,14 @@ static inline void MInitInstance(MValue instance, MTypeRepr *type) {
     MInstanceHeader *h = MHeader(instance);
     h->type = type;
     h->gcinfo = 0;
+}
+
+static inline MValue MInvokeVirtual(MEnv *e, MValue receiver,
+                                    int vtable_index) {
+    if (receiver == MNone)
+        return MAbort(e);
+    MInstanceHeader *h = MHeader(receiver);
+    return h->type->vtable[vtable_index](e);
 }
 
 /* TODO do not assume 64-bit values */
