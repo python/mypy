@@ -368,6 +368,7 @@ class IcodeBuilder(NodeVisitor<int>):
     void make_class_constructor(self, TypeDef tdef):
         # Do we have a non-empty __init__?
         init = (FuncDef)tdef.info.get_method('__init__')
+        init_argc = len(init.args) - 1
         if init.info.full_name() == 'builtins.object':
             init = None
         
@@ -378,9 +379,6 @@ class IcodeBuilder(NodeVisitor<int>):
                 args.append(self.add_local(arg))
         target = self.alloc_register()
         self.add(Construct(target, tdef.info))
-        if init:
-            self.add(CallMethod(self.alloc_register(), target, '__init__',
-                                tdef.info, args))
         # Inititalize data attributes to default values.
         for var in sorted(tdef.info.vars.keys()):
             temp = self.alloc_register()
@@ -389,9 +387,12 @@ class IcodeBuilder(NodeVisitor<int>):
                 self.add(SetRI(temp, 0))
             else:
                 self.add(SetRNone(temp))
-            self.add(SetAttr(0, var, temp, tdef.info))
+            self.add(SetAttr(target, var, temp, tdef.info))
+        if init:
+            self.add(CallMethod(self.alloc_register(), target, '__init__',
+                                tdef.info, args))
         self.add(Return(target))
-        self.generated[tdef.name] = FuncIcode(0, self.blocks,
+        self.generated[tdef.name] = FuncIcode(init_argc, self.blocks,
                                               self.num_registers)
         self.leave()
 

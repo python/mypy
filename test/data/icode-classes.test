@@ -145,6 +145,18 @@ def A:
     r2 = 0
     r0.x = r2 [A]
     return r0
+    
+[case testAttributesAndInit]
+class A:
+    int x
+    void __init__(self, int y): pass
+[out]
+def A:
+    r1 = <construct A>
+    r2 = 0
+    r1.x = r2 [A]
+    r3 = r1.__init__(r0) [A]
+    return r1
 
 
 -- None values
