@@ -338,13 +338,22 @@ class TypeChecker(NodeVisitor<Type>):
     
     Type visit_type_def(self, TypeDef defn):
         """Type check a type definition (class or interface)."""
-        typ = self.lookup(defn.name, GDEF).node
+        typ = (TypeInfo)self.lookup(defn.name, GDEF).node
         self.errors.set_type(defn.name, defn.is_interface)
-        self.check_unique_interface_implementations((TypeInfo)typ)
-        self.check_interface_errors((TypeInfo)typ)
+        self.check_unique_interface_implementations(typ)
+        self.check_interface_errors(typ)
+        self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.report_error_if_statements_in_class_body(defn.defs)
         self.errors.set_type(None, False)
+
+    void check_no_constructor_if_interface(self, TypeInfo typ):
+        if not typ.is_interface:
+            return
+        ctor = typ.get_method('__init__')
+        if ctor is None:
+            return
+        self.msg.interface_has_constructor(ctor)
     
     void check_unique_interface_implementations(self, TypeInfo typ):
         """Check that each interface is implemented only once."""
