@@ -329,3 +329,31 @@ def __init:
     __main__.a = r2
     r3 = None
     return r3
+
+[case testValueConditionalCheck]
+class A: pass
+void f(A a):
+    if a:
+        a = A()
+[out]
+def f:
+    if r0 goto L1 else goto L2
+L1:
+    r0 = A()
+L2:
+    r1 = None
+    return r1
+
+[case testNegatedValueConditionalCheck]
+class A: pass
+void f(A a):
+    if not a:
+        a = A()
+[out]
+def f:
+    if not r0 goto L1 else goto L2
+L1:
+    r0 = A()
+L2:
+    r1 = None
+    return r1

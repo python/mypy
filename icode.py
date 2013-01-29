@@ -227,6 +227,13 @@ class IfR(Branch):
         self.negated = not self.negated
         self.true_block, self.false_block = self.false_block, self.true_block
 
+    str __str__(self):
+        prefix = ''
+        if self.negated:
+            prefix = 'not '
+        return 'if %sr%d goto L%d else goto L%d' % (
+            prefix, self.value, self.true_block.label, self.false_block.label)
+
 
 class Goto(Opcode):
     """Unconditional jump (goto LN)."""
