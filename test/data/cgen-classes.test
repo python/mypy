@@ -77,3 +77,10 @@ print(a) # None
 print(x) # 0
 print(b) # None
 print(y) # 0
+
+[case testNoneValue]
+class A: pass
+a = A()
+print(a) # <__main__.A object>
+a = None
+print(a) # None

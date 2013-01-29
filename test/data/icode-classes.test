@@ -145,3 +145,19 @@ def A:
     r2 = 0
     r0.x = r2 [A]
     return r0
+
+
+-- None values
+-- -----------
+
+
+[case testNoneExpression]
+class A: pass
+void f(A a):
+    a = None
+[out]
+def f:
+    r0 = None
+    r1 = None
+    return r1
+

@@ -502,7 +502,10 @@ class IcodeBuilder(NodeVisitor<int>):
             target = self.target_register()
             assert isinstance(e.node, Var) # TODO more flexible
             var = (Var)e.node
-            self.add(SetRG(target, var.full_name()))
+            if var.full_name() == 'builtins.None':
+                self.add(SetRNone(target)) # Special opcode for None
+            else:
+                self.add(SetRG(target, var.full_name()))
             return target
         else:
             raise NotImplementedError('unsupported kind %d' % e.kind)
