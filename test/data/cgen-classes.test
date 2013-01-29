@@ -51,3 +51,11 @@ b = B()
 b.y = 3
 print(a.x + a.y) # 11
 print(b.y)       # 3
+
+[case testDefaultAttributeValues]
+class A:
+    A a
+    int n
+a = A()
+print(a.a) # None
+print(a.n) # 0
