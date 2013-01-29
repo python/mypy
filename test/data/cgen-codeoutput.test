@@ -36,3 +36,37 @@ MValue MA_f(MEnv *e);
 MValue MA_f(MEnv *e)
 {
 ...
+
+[case testAttributeAccessorInVtable]
+class A:
+    int x
+[out]
+...
+MFunction MVT_A[] = {
+...
+    MA__x,
+    MA_set_x,
+}; /* MVT_A */
+...
+
+[case testAttributeGetterDeclarationAndDefinition]
+class A:
+    int x
+[out]
+...
+MValue MA__x(MEnv *e);
+...
+MValue MA__x(MEnv *e)
+{
+...
+
+[case testAttributeSetterDeclarationAndDefinition]
+class A:
+    int x
+[out]
+...
+MValue MA_set_x(MEnv *e);
+...
+MValue MA_set_x(MEnv *e)
+{
+...

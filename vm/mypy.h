@@ -53,6 +53,22 @@ static inline void MInitInstance(MValue instance, MTypeRepr *type)
     h->gcinfo = 0;
 }
 
+static inline MValue *MSlotPtr(MValue object, int index)
+{
+    return (MValue *)(MHeader(object) + 1) + index;
+}
+
+/* Assume object != MNone */
+static inline MValue MGetSlot(MValue object, int index) {
+    return *MSlotPtr(object, index);
+}
+
+/* Assume object != MNone */
+static inline void MSetSlot(MValue object, int index, MValue value) {
+    /* TODO use write barrier */
+    *MSlotPtr(object, index)  = value;
+}
+
 static inline MValue MInvokeVirtual(MEnv *e, MValue receiver,
                                     int vtable_index)
 {

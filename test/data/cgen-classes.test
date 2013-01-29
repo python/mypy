@@ -31,9 +31,23 @@ print(a.inc(3))    # 4
 a.twice(5)         # 10
 print(a.add(4, 7)) # 11
 
-[case testTrivialAttributeAccess-skip]
+[case testSimpleAttributeAccess]
 class A:
     int x
 a = A()
 a.x = 5
 print(a.x + 1) # 6
+
+[case testMultipleAttributes]
+class A:
+    int x
+    int y
+class B:
+    int y
+a = A()
+a.x = 5
+a.y = 6
+b = B()
+b.y = 3
+print(a.x + a.y) # 11
+print(b.y)       # 3

@@ -8,7 +8,8 @@ import errors
 import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
-    CallDirect, CallMethod, FuncIcode, UnaryOp, SetGR, SetRG, Construct
+    CallDirect, CallMethod, FuncIcode, UnaryOp, SetGR, SetRG, Construct,
+    SetAttr, GetAttr
 )
 from nodes import TypeInfo
 import transform
@@ -56,6 +57,7 @@ class CGenerator:
 
         # Simplistic name mangling.
         name = name.replace('.', '_')
+        name = name.replace('$', '_')
         
         # Add function definition and opening brace.
         header = 'MValue %s(MEnv *e)' % name
@@ -220,25 +222,39 @@ class CGenerator:
         target = reg(opcode.target)
         self.get_class_representation(opcode.type)
         rep = self.classes[opcode.type]
-        vtable_index = rep.vtable_index[opcode.method]
+        method = opcode.method.replace('$', '_') # Simple name mangling.
+        vtable_index = rep.vtable_index[method]
         self.emit('t = MInvokeVirtual(e, %s, %d);' % (recv, vtable_index))
         self.emit('if (t == MError)')
         self.emit('    return MError;')
         self.emit('%s = t;' % reg(opcode.target))
 
     void opcode(self, Construct opcode):
-        self.emit('t = MAlloc(e, sizeof(MInstanceHeader));')
-        name = self.get_class_representation(opcode.type)
-        self.emit('MInitInstance(t, &%s);' % name)
+        rep = self.get_class_representation(opcode.type)
+        self.emit('t = MAlloc(e, sizeof(MInstanceHeader) + '
+                  '%d * sizeof(MValue));' % len(rep.slotmap))
+        self.emit('MInitInstance(t, &%s);' % rep.cname)
         self.emit('%s = t;' % reg(opcode.target))
+
+    void opcode(self, SetAttr opcode):
+        rep = self.get_class_representation(opcode.type)
+        slot = rep.slotmap[opcode.attr]
+        self.emit('MSetSlot(%s, %d, %s);' % (reg(opcode.object),
+                                             slot, reg(opcode.source)))
+
+    void opcode(self, GetAttr opcode):
+        rep = self.get_class_representation(opcode.type)
+        slot = rep.slotmap[opcode.attr]
+        self.emit('%s = MGetSlot(%s, %d);' % (reg(opcode.target),
+                                              reg(opcode.object), slot))
 
     void opcode(self, Opcode opcode):
         """Default case."""
         raise NotImplementedError(type(opcode))
 
-    str get_class_representation(self, TypeInfo cls):
-        name = 'MR_%s' % cls.name()
-        if cls not in self.classes:
+    ClassRepresentation get_class_representation(self, TypeInfo cls):
+        rep = self.classes.get(cls)
+        if not rep:
             rep = ClassRepresentation(cls)
             self.classes[cls] = rep
 
@@ -250,12 +266,12 @@ class CGenerator:
             self.emit_types('}; /* %s */' % vtable)
 
             # Emit type runtime info.
-            self.emit_types('MTypeRepr %s = {' % name)
+            self.emit_types('MTypeRepr %s = {' % rep.cname)
             self.emit_types('    %s,' % vtable)
             self.emit_types('    0,')
             self.emit_types('    "%s"' % cls.full_name())
             self.emit_types('};\n')
-        return name
+        return rep
 
     #
     # Helpers
@@ -331,20 +347,29 @@ class ClassRepresentation:
     # TODO add methods
     # TODO add base class
 
+    str cname
     str full_name
-    dict<str, int> slot_map
+    dict<str, int> slotmap
     # Map method name to/from vtable index
     dict<str, int> vtable_index
     str[] vtable_methods
 
     void __init__(self, TypeInfo type):
+        self.cname = 'MR_%s' % type.name()
         self.full_name = type.full_name()
-        self.slot_map = {}
+        self.slotmap = {}
         self.vtable_index = {}
         self.vtable_methods = []
         for m in type.methods.keys():
-            self.vtable_index[m] = len(self.vtable_methods)
-            self.vtable_methods.append(m)
+            self.add_method(m)
+        for v in type.vars.keys():
+            self.slotmap[v] = len(self.slotmap)
+            self.add_method('_' + v) # Getter TODO refactor
+            self.add_method('set_' + v) # Setter # TODO refactor
+
+    void add_method(self, str method):
+        self.vtable_index[method] = len(self.vtable_methods)
+        self.vtable_methods.append(method)
 
 
 if __name__ == '__main__':
