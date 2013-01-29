@@ -78,6 +78,19 @@ if 1 > 2:
     x = 1
 print(x) # 0
 
+[case testInstanceCondition]
+class A: pass
+a = A()
+if a:
+    print(1) # 1
+if not a:
+    print(2)
+a = None
+if a:
+    print(3)
+if not a:
+    print(4) # 4
+
 
 -- TODO
 --   integer overflows and underflows

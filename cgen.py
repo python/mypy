@@ -9,7 +9,7 @@ import icode
 from icode import (
     BasicBlock, SetRI, SetRR, SetRNone, IfOp, BinOp, Goto, Return, Opcode,
     CallDirect, CallMethod, FuncIcode, UnaryOp, SetGR, SetRG, Construct,
-    SetAttr, GetAttr
+    SetAttr, GetAttr, IfR
 )
 from nodes import TypeInfo
 import transform
@@ -132,6 +132,15 @@ class CGenerator:
         right = operand(opcode.right, opcode.right_kind)
         op = self.int_conditionals[opcode.op]
         self.emit('if (%s(%s, %s))' % (op, left, right))
+        self.emit('    goto %s;' % (label(opcode.true_block.label)))
+        self.emit('else')
+        self.emit('    goto %s;' % (label(opcode.false_block.label)))
+
+    void opcode(self, IfR opcode):
+        op = '!='
+        if opcode.negated:
+            op = '=='
+        self.emit('if (%s %s MNone)' % (reg(opcode.value), op))
         self.emit('    goto %s;' % (label(opcode.true_block.label)))
         self.emit('else')
         self.emit('    goto %s;' % (label(opcode.false_block.label)))
