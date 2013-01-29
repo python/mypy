@@ -43,7 +43,7 @@ static inline MValue MAlloc(MEnv *e, size_t size)
 
 static inline MInstanceHeader *MHeader(MValue instance)
 {
-    return (MInstanceHeader *)(instance & ~1L);
+    return (MInstanceHeader *)(instance - 1L);
 }
 
 static inline void MInitInstance(MValue instance, MTypeRepr *type)
