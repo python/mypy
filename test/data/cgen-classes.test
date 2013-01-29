@@ -59,3 +59,21 @@ class A:
 a = A()
 print(a.a) # None
 print(a.n) # 0
+
+[case testInitializeGlobalToNone]
+class A: pass
+if 1 > 2:
+    a = A()
+print(a) # None
+
+[case testInitializeMultipleGlobals]
+class A: pass
+if 1 > 2:
+    a = A()
+    x = 1
+    b = A()
+    y = 2
+print(a) # None
+print(x) # 0
+print(b) # None
+print(y) # 0

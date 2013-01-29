@@ -298,6 +298,17 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_mypy_file(self, MypyFile mfile):
         self.enter()
+        
+        # Initialize non-int global variables.
+        for name in sorted(mfile.names):
+            node = mfile.names[name].node
+            if isinstance(node, Var) and name != '__name__':
+                v = (Var)node
+                if not is_named_instance(v.type, 'builtins.int'):
+                    tmp = self.alloc_register()
+                    self.add(SetRNone(tmp))
+                    self.add(SetGR(v.full_name(), tmp))
+        
         for d in mfile.defs:
             d.accept(self)
         self.add_implicit_return()

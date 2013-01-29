@@ -314,3 +314,18 @@ def __init:
 def f:
     r0 = __main__.y
     return r0
+
+[case testGlobalVariableInitialize]
+class A: pass
+n = 1
+a = A()
+[out]
+def __init:
+    r0 = None
+    __main__.a = r0
+    r1 = 1
+    __main__.n = r1
+    r2 = A()
+    __main__.a = r2
+    r3 = None
+    return r3
