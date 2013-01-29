@@ -84,3 +84,24 @@ a = A()
 print(a) # <__main__.A object>
 a = None
 print(a) # None
+
+[case testInitMethod]
+class A:
+    int x
+    void __init__(self, int x):
+        self.x = x
+a = A(5)
+print(a.x) # 5
+a = A(3)
+print(a.x) # 3
+
+[case testInitMethodWithTwoArguments]
+class A:
+    int x
+    A a
+    void __init__(self, int x, A a):
+        self.x = x
+        self.a = a
+a = A(5, None)
+print(a.x) # 5
+print(a.a) # None

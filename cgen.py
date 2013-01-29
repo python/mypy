@@ -217,11 +217,7 @@ class CGenerator:
     void opcode(self, CallDirect opcode):
         for i, arg in enumerate(opcode.args):
             self.emit('%s = %s;' % (reg(self.frame_size + i), reg(arg)))
-        target = reg(opcode.target)
-        self.emit('t = M%s(e);' % opcode.func)
-        self.emit('if (t == MError)')
-        self.emit('    return MError;')
-        self.emit('%s = t;' % target)
+        self.direct_call(opcode.target, opcode.func)
 
     void opcode(self, CallMethod opcode):
         recv = reg(opcode.object)
@@ -232,11 +228,15 @@ class CGenerator:
         self.get_class_representation(opcode.type)
         rep = self.classes[opcode.type]
         method = opcode.method.replace('$', '_') # Simple name mangling.
-        vtable_index = rep.vtable_index[method]
-        self.emit('t = MInvokeVirtual(e, %s, %d);' % (recv, vtable_index))
-        self.emit('if (t == MError)')
-        self.emit('    return MError;')
-        self.emit('%s = t;' % reg(opcode.target))
+        if method == '__init__':
+            self.direct_call(opcode.target, '%s_%s' % (opcode.type.name(),
+                                                       method))
+        else:
+            vtable_index = rep.vtable_index[method]
+            self.emit('t = MInvokeVirtual(e, %s, %d);' % (recv, vtable_index))
+            self.emit('if (t == MError)')
+            self.emit('    return MError;')
+            self.emit('%s = t;' % reg(opcode.target))
 
     void opcode(self, Construct opcode):
         rep = self.get_class_representation(opcode.type)
@@ -261,6 +261,10 @@ class CGenerator:
         """Default case."""
         raise NotImplementedError(type(opcode))
 
+    #
+    # Helpers
+    #
+
     ClassRepresentation get_class_representation(self, TypeInfo cls):
         rep = self.classes.get(cls)
         if not rep:
@@ -282,9 +286,11 @@ class CGenerator:
             self.emit_types('};\n')
         return rep
 
-    #
-    # Helpers
-    #
+    void direct_call(self, int target, str funcname):
+        self.emit('t = M%s(e);' % funcname)
+        self.emit('if (t == MError)')
+        self.emit('    return MError;')
+        self.emit('%s = t;' % reg(target))
 
     void emit(self, str s):
         if '}' in s:
