@@ -105,3 +105,12 @@ class A:
 a = A(5, None)
 print(a.x) # 5
 print(a.a) # None
+    
+[case testImplicitAttribute]
+class A:
+    void __init__(self, int x):
+        self.x = x
+        self.y = 2
+a = A(3)
+print(a.x) # 3
+print(a.y) # 2

@@ -616,6 +616,14 @@ class A:
     void __init__(A self):
         self.x = 0
 ...
+    int $x(A self):
+        return self.x!
+    void set$x(A self, int x):
+        self.x! = x
+    any $x*(A self):
+...
+    void set$x*(A self, any x):
+...
 
 
 -- Casts

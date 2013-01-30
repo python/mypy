@@ -71,12 +71,21 @@ class TypeTransformer:
             defs.extend(self.make_tvar_representation(tdef.info))
         
         # Iterate over definitions and transform each of them.
+        vars = set<Var>()
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
                 # Implicit cast from FuncDef[] to Node[] is safe below.
                 defs.extend((any)self.func_tf.transform_method((FuncDef)d))
             elif isinstance(d, VarDef):
-                defs.extend(self.transform_var_def((VarDef)d))
+                vdef = (VarDef)d
+                defs.extend(self.transform_var_def(vdef))
+                for n, vt in vdef.items:
+                    vars.add(n)
+
+        # Add accessors for implicitly defined attributes.
+        for v in tdef.info.vars.values():
+            if v.info == tdef.info and v not in vars:
+                defs.extend(self.make_accessors(v))
         
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
@@ -236,16 +245,19 @@ class TypeTransformer:
         # Add $x and set$x accessor wrappers for data attributes. These let
         # derived classes redefine a data attribute as a property.
         for n, vt in o.items:
-            if n.type:
-                t = n.type
-            else:
-                t = Any()
-            res.append(self.make_getter_wrapper(n.name(), t))
-            res.append(self.make_setter_wrapper(n.name(), t))
-            res.append(self.make_dynamic_getter_wrapper(n.name(), t))
-            res.append(self.make_dynamic_setter_wrapper(n.name(), t))
+            res.extend(self.make_accessors(n))
         
         return res
+
+    Node[] make_accessors(self, Var n):
+        if n.type:
+            t = n.type
+        else:
+            t = Any()
+        return [self.make_getter_wrapper(n.name(), t),
+                self.make_setter_wrapper(n.name(), t),
+                self.make_dynamic_getter_wrapper(n.name(), t),
+                self.make_dynamic_setter_wrapper(n.name(), t)]
     
     FuncDef make_getter_wrapper(self, str name, Type typ):
         """Create a getter wrapper for a data attribute.
