@@ -77,7 +77,10 @@ class CGenerator:
         # Geneate code that initializes the stack frame. The gc must not see
         # uninitialized values.
         for i in range(func.num_args, self.frame_size):
-            self.emit('frame[%d] = 0;' % i)
+            if func.register_types[i] == icode.INT:
+                self.emit('frame[%d] = 0;' % i)
+            else:
+                self.emit('frame[%d] = MNone;' % i)
 
         # Translate function body, one basic block at a time.
         for b in func.blocks:

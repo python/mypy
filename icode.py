@@ -19,10 +19,12 @@ INT_KIND = 1 # Integer literal
 class FuncIcode:
     """Icode and related information for a function."""
 
-    void __init__(self, int num_args, BasicBlock[] blocks, int num_registers):
+    void __init__(self, int num_args, BasicBlock[] blocks,
+                  int[] register_types):
         self.num_args = num_args
         self.blocks = blocks
-        self.num_registers = num_registers
+        self.num_registers = len(register_types)
+        self.register_types = register_types
 
 
 class BasicBlock:
@@ -278,6 +280,11 @@ class UnaryOp(Opcode):
         return 'r%d = %sr%d [int]' % (self.target, self.op, self.operand)
 
 
+# Types of registers
+INT = 0 # int, initialized to 0
+REF = 1 # Arbitrary reference, initialized to None
+
+
 class IcodeBuilder(NodeVisitor<int>):
     """Generate icode from a parse tree."""
 
@@ -293,6 +300,8 @@ class IcodeBuilder(NodeVisitor<int>):
     dict<Node, int> lvar_regs
     # Stack of expression target registers (-1 => create new register)
     int[] targets
+    # Storage type for each register (REG_* values)
+    int[] register_types
 
     # Stack of inactive scopes
     tuple<BasicBlock[], int, dict<Node, int>>[] scopes
@@ -320,7 +329,7 @@ class IcodeBuilder(NodeVisitor<int>):
             d.accept(self)
         self.add_implicit_return()
         self.generated['__init'] = FuncIcode(0, self.blocks,
-                                             self.num_registers)
+                                             self.register_types)
         # TODO leave?
         return -1
 
@@ -342,7 +351,7 @@ class IcodeBuilder(NodeVisitor<int>):
             name = fdef.name()
         
         self.generated[name] = FuncIcode(len(fdef.args), self.blocks,
-                                         self.num_registers)
+                                         self.register_types)
 
         self.leave()
         
@@ -393,7 +402,7 @@ class IcodeBuilder(NodeVisitor<int>):
                                 tdef.info, args))
         self.add(Return(target))
         self.generated[tdef.name] = FuncIcode(init_argc, self.blocks,
-                                              self.num_registers)
+                                              self.register_types)
         self.leave()
 
     #
@@ -422,7 +431,7 @@ class IcodeBuilder(NodeVisitor<int>):
             name = (NameExpr)lvalue
             if name.kind == nodes.LDEF:
                 if name.is_def:
-                    reg = self.add_local(name.node)
+                    reg = self.add_local((Var)name.node)
                 else:
                     reg = self.lvar_regs[name.node]
                 self.accept(s.rvalue, reg)
@@ -651,6 +660,7 @@ class IcodeBuilder(NodeVisitor<int>):
         self.scopes.append((self.blocks, self.num_registers, self.lvar_regs))
         self.blocks = []
         self.num_registers = 0
+        self.register_types= []
         self.lvar_regs = {}
         self.current = None
         self.new_block()
@@ -678,9 +688,11 @@ class IcodeBuilder(NodeVisitor<int>):
         self.targets.pop()
         return actual
 
-    int alloc_register(self):
+    int alloc_register(self, int type=REF):
+        # Temps are always set before access, so type does not matter for them.
         n = self.num_registers
         self.num_registers += 1
+        self.register_types.append(type)
         return n
 
     int target_register(self):
@@ -689,8 +701,11 @@ class IcodeBuilder(NodeVisitor<int>):
         else:
             return self.targets[-1]
 
-    int add_local(self, Node node):
-        reg = self.alloc_register()
+    int add_local(self, Var node):
+        type = REF
+        if is_named_instance(node.type, 'builtins.int'):
+            type = INT
+        reg = self.alloc_register(type)
         self.lvar_regs[node] = reg
         return reg
     
