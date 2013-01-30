@@ -97,12 +97,17 @@ class A(I): pass
 class B: pass
 
 [case testConstructingInterface]
-I() # E: "type" not callable
-J() # E: "type" not callable
+I()
+J()
 
 interface I: pass
 interface J:
     def __init__(self)
+[out]
+main, line 1: "type" not callable
+main, line 2: "type" not callable
+main: In interface "J":
+main, line 6: An interface must not define a constructor
 
 
 -- Implementing interface methods
