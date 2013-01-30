@@ -420,6 +420,7 @@ class TypeChecker(NodeVisitor<Type>):
                     inferred.append(((Var)n.node))
                 else:
                     m = (MemberExpr)lv
+                    self.accept(m.expr)
                     inferred.append(m.def_var)
                 lvalue_types.append(None)
                 index_lvalue_types.append(None)

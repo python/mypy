@@ -779,6 +779,21 @@ NameExpr(4) : builtins.list<A>
 OpExpr(4) : builtins.list<A>
 
 
+-- Special cases
+-- -------------
+
+
+[case testImplicitDataAttributeInit]
+## NameExpr
+class A:
+    void __init__(self):
+        self.x = (
+                  A())
+[out]
+NameExpr(4) : A
+NameExpr(5) : def () -> A
+
+
 -- TODO
 --
 -- test expressions

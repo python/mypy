@@ -607,6 +607,16 @@ d.x = 1
 ...
 d.x* = {any <= int 1}
 
+[case testDataAttributeWithImplicitDefinition]
+class A:
+    void __init__(self):
+        self.x = 0
+[out]
+...
+    void __init__(A self):
+        self.x = 0
+...
+
 
 -- Casts
 -- -----
