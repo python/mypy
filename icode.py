@@ -1,6 +1,6 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from mtypes import Any, Instance, Type
+from mtypes import Any, Instance, Type, Callable, FunctionLike
 from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
@@ -344,7 +344,7 @@ class IcodeBuilder(NodeVisitor<int>):
         for arg in fdef.args:
             self.add_local(arg)
         fdef.body.accept(self)
-        self.add_implicit_return()
+        self.add_implicit_return((Callable)fdef.type)
 
         if fdef.info:
             name = '%s.%s' % (fdef.info.name(), fdef.name())
@@ -358,11 +358,15 @@ class IcodeBuilder(NodeVisitor<int>):
         
         return -1
 
-    void add_implicit_return(self):
+    void add_implicit_return(self, FunctionLike sig=None):
         if not self.current.ops or not isinstance(self.current.ops[-1],
                                                   Return):
             r = self.alloc_register()
-            self.add(SetRNone(r))
+            if sig and is_named_instance(((Callable)sig).ret_type,
+                                         'builtins.int'):
+                self.add(SetRI(r, 0))
+            else:
+                self.add(SetRNone(r))
             self.add(Return(r))
 
     int visit_type_def(self, TypeDef tdef):

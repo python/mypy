@@ -103,7 +103,7 @@ L2:
     return r1
 
 [case testIfWithElse]
-int f():
+void f():
     if 2 < 3:
         i = 1
     else:
@@ -383,3 +383,10 @@ def __init:
     __main__.y = r1
     r2 = None
     return r2
+
+[case testImplicitZeroReturn]
+int f(): pass
+[out]
+def f:
+    r0 = 0
+    return r0
