@@ -200,4 +200,6 @@ static inline MBool MShortGe(MValue left, MValue right)
         return MIntGe(left, right);
 }
 
+MValue Mobject___init__(MEnv *e);
+
 #endif

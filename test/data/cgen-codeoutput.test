@@ -70,3 +70,20 @@ MValue MA_set_x(MEnv *e);
 MValue MA_set_x(MEnv *e)
 {
 ...
+
+[case testVtableWhenOverridingAndAddingMethod]
+class A:
+    void f(self): pass
+    void g(self): pass
+class B(A):
+    void f(self): pass
+    void h(self): pass
+[out]
+...
+MFunction MVT_B[] = {
+...
+    MB_f,
+    MA_g,
+    MB_h,
+}; /* MVT_B */
+...

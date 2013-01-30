@@ -114,3 +114,41 @@ class A:
 a = A(3)
 print(a.x) # 3
 print(a.y) # 2
+
+[case testSimpleInheritance]
+class A:
+    void f(self):
+        print(1)
+class B(A):
+    void a(self):
+        print(3)
+    void f(self):
+        print(2)
+a = A()
+a.f()   # 1
+a = B()
+a.f()   # 2
+B().a() # 3
+
+[case testSimpleInheritance2]
+class A:
+    int x
+    int y
+    void f(self):
+        print(self.x)
+    void g(self):
+        print(self.y)
+class B(A):
+    int z
+    void f(self):
+        print(self.x + 1)
+    void h(self):
+        print(self.z)
+A a = B()
+a.x = 3
+a.y = 5
+a.f()   # 4
+a.g()   # 5
+b = B()
+b.z = 8
+b.h()   # 8

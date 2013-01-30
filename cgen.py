@@ -271,14 +271,19 @@ class CGenerator:
     ClassRepresentation get_class_representation(self, TypeInfo cls):
         rep = self.classes.get(cls)
         if not rep:
-            rep = ClassRepresentation(cls)
+            if cls.base:
+                baserep = self.get_class_representation(cls.base)
+            else:
+                baserep = None
+            rep = ClassRepresentation(cls, baserep)
             self.classes[cls] = rep
 
             # Emit vtable.
             vtable = 'MVT_%s' % cls.name()
             self.emit_types('MFunction %s[] = {' % vtable)
             for m in rep.vtable_methods:
-                self.emit_types('    M%s_%s,' % (cls.name(), m))
+                defining_class = rep.defining_class[m]
+                self.emit_types('    M%s_%s,' % (defining_class, m))
             self.emit_types('}; /* %s */' % vtable)
 
             # Emit type runtime info.
@@ -370,24 +375,40 @@ class ClassRepresentation:
     dict<str, int> slotmap
     # Map method name to/from vtable index
     dict<str, int> vtable_index
+    dict<str, str> defining_class
     str[] vtable_methods
 
-    void __init__(self, TypeInfo type):
+    void __init__(self, TypeInfo type, ClassRepresentation base):
         self.cname = 'MR_%s' % type.name()
         self.full_name = type.full_name()
         self.slotmap = {}
         self.vtable_index = {}
+        self.defining_class = {}
         self.vtable_methods = []
-        for m in type.methods.keys():
-            self.add_method(m)
+        if base:
+            self.inherit_from_base(base)
+        for m in sorted(type.methods):
+            self.add_method(m, type)
         for v in type.vars.keys():
             self.slotmap[v] = len(self.slotmap)
-            self.add_method('_' + v) # Getter TODO refactor
-            self.add_method('set_' + v) # Setter # TODO refactor
+            self.add_method('_' + v, type)    # Getter TODO refactor
+            self.add_method('set_' + v, type) # Setter # TODO refactor
 
-    void add_method(self, str method):
-        self.vtable_index[method] = len(self.vtable_methods)
-        self.vtable_methods.append(method)
+    void add_method(self, str method, TypeInfo defining_class):
+        self.defining_class[method] = defining_class.name()
+        if method not in self.vtable_index:
+            self.vtable_index[method] = len(self.vtable_methods)
+            self.vtable_methods.append(method)
+
+    void inherit_from_base(self, ClassRepresentation base):
+        # TODO use dict.update
+        for k, v in base.vtable_index.items():
+            self.vtable_index[k] = v
+        self.vtable_methods.extend(base.vtable_methods)
+        for k, v in base.slotmap.items():
+            self.slotmap[k] = v
+        for k, n in base.defining_class.items():
+            self.defining_class[k] = n
 
 
 if __name__ == '__main__':

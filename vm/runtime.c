@@ -136,3 +136,10 @@ MValue Mprint(MEnv *e)
         printf("%ld\n", arg / 2);
     return 0;
 }
+
+
+
+MValue Mobject___init__(MEnv *e)
+{
+    return MNone;
+}
