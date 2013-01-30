@@ -4,7 +4,8 @@ from mtypes import Any, Instance, Type
 from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo
+    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo,
+    VarDef
 )
 import nodes
 from visitor import NodeVisitor
@@ -412,6 +413,18 @@ class IcodeBuilder(NodeVisitor<int>):
     int visit_block(self, Block b):
         for stmt in b.body:
             stmt.accept(self)
+        return -1
+
+    int visit_var_def(self, VarDef d):
+        assert len(d.items) == 1
+        var = d.items[0][0]
+        if d.kind == nodes.LDEF:
+            reg = self.add_local(var)
+            if d.init:
+                self.accept(d.init, reg)
+        elif d.kind == nodes.GDEF and d.init:
+            init = self.accept(d.init)
+            self.add(SetGR(var.full_name(), init))
         return -1
 
     int visit_expression_stmt(self, ExpressionStmt s):

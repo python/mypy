@@ -357,3 +357,30 @@ L1:
 L2:
     r1 = None
     return r1
+
+[case testLocalWithExplicitType]
+void f():
+    int x = 2
+    int y
+    y = 3
+    A a
+[out]
+def f:
+    r0 = 2
+    r1 = 3
+    r2 = None
+    return r2
+
+[case testGlobalWithExplicitType]
+class A: pass
+int x = 2
+int y
+y = 3
+[out]
+def __init:
+    r0 = 2
+    __main__.x = r0
+    r1 = 3
+    __main__.y = r1
+    r2 = None
+    return r2

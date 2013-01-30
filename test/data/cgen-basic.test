@@ -105,6 +105,30 @@ void f():
     print(j)  # 0
 f()
 
+[case testLocalWithExplicitType]
+class A: pass
+void f():
+    int x = 2
+    print(x) # 2
+    int y
+    print(y) # 0
+    y = 3
+    print(y) # 3
+    A a
+    print(a) # None
+f()
+
+[case testGlobalWithExplicitType]
+class A: pass
+int x = 2
+print(x) # 2
+int y
+print(y) # 0
+y = 3
+print(y) # 3
+A a
+print(a) # None
+
 -- TODO
 --   integer overflows and underflows
 --   stack overflow
