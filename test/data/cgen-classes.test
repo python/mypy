@@ -152,3 +152,42 @@ a.g()   # 5
 b = B()
 b.z = 8
 b.h()   # 8
+
+[case testMultipleSubclassesForBase]
+class A:
+    void f2(self): print(2)
+    void f3(self): print(3)
+    void f4(self): print(4)
+class B(A):
+    void f3(self): print(33)
+class C(A):
+    void f2(self): print(22)
+    void f3(self): print(333)
+A a
+a = A()
+a.f2() # 2
+a.f3() # 3
+a.f4() # 4
+a = B()
+a.f2() # 2
+a.f3() # 33
+a.f4() # 4
+a = C()
+a.f2() # 22
+a.f3() # 333
+a.f4() # 4
+
+[case testDeepInheritanceHierarchy]
+class A:
+    void f2(self): print(2)
+    void f3(self): print(3)
+    void f4(self): print(4)
+class B(A):
+    void f2(self): print(22)
+    void f4(self): print(44)
+class C(B):
+    void f2(self): print(222)
+A a = C()
+a.f2() # 222
+a.f3() # 3
+a.f4() # 44
