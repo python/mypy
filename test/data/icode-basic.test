@@ -363,7 +363,6 @@ void f():
     int x = 2
     int y
     y = 3
-    A a
 [out]
 def f:
     r0 = 2
