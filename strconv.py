@@ -64,7 +64,7 @@ class StrConv(NodeVisitor<str>):
     def visit_mypy_file(self, o):
         # Skip implicit definition of __name__.
         if (o.defs and isinstance(o.defs[0], nodes.VarDef) and
-                o.defs[0].items[0][0].name() == '__name__'):
+                o.defs[0].items[0].name() == '__name__'):
             a = [o.defs[1:]]
         else:
             a = [o.defs]
@@ -126,9 +126,9 @@ class StrConv(NodeVisitor<str>):
     
     def visit_var_def(self, o):
         a = []
-        for n, t in o.items:
+        for n in o.items:
             a.append('Var({})'.format(n.name()))
-            a.append('Type({})'.format(t))
+            a.append('Type({})'.format(n.type))
         if o.init:
             a.append(o.init)
         return self.dump(a, o)

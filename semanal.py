@@ -92,7 +92,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.global_decls = [set()]
         
         # Add implicit definition of '__name__'.
-        name_def = VarDef([(Var('__name__'), Any())], True)
+        name_def = VarDef([Var('__name__', Any())], True)
         defs.insert(0, name_def)
         
         for d in defs:
@@ -111,7 +111,7 @@ class SemanticAnalyzer(NodeVisitor):
         # Add implicit definition of 'None' to builtins, as we cannot define a
         # variable with a None type explicitly.
         if mod_id == 'builtins':
-            none_def = VarDef([(Var('None'), NoneTyp())], True)
+            none_def = VarDef([Var('None', NoneTyp())], True)
             defs.append(none_def)
             self.anal_var_def(none_def)
     
@@ -139,7 +139,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.globals[d.name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
     
     void anal_var_def(self, VarDef d):
-        for v, t in d.items:
+        for v in d.items:
             self.check_no_global(v.name(), d)
             v._full_name = self.qualified_name(v.name())
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
@@ -356,12 +356,9 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_var_def(self, VarDef defn):
         for i in range(len(defn.items)):
-            defn.items[i] = (defn.items[i][0],
-                             self.anal_type(defn.items[i][1]))
-            if defn.items[i][1]:
-                defn.items[i][0].type = defn.items[i][1]
+            defn.items[i].type = self.anal_type(defn.items[i].type)
         
-        for v, t in defn.items:
+        for v in defn.items:
             if self.locals:
                 defn.kind = LDEF
                 self.add_local(v, defn)

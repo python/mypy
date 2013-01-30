@@ -50,7 +50,7 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     T visit_var_def(self, VarDef o):
         if o.init is not None:
             o.init.accept(self)
-        for v, t in o.items:
+        for v in o.items:
             self.visit_var(v)
     
     def visit_expression_stmt(self, o):

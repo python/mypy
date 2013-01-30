@@ -274,8 +274,9 @@ class Var(Node, AccessorNode, SymNode):
     bool is_self     # Is this the first argument to an ordinary method
                      # (usually "self")?
     
-    void __init__(self, str name):
+    void __init__(self, str name, mtypes.Type type=None):
         self._name = name
+        self.type = type
         self.is_init = False
         self.is_self = False
 
@@ -319,32 +320,31 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
-    tuple<Var, mtypes.Type>[] items
+    Var[] items
     int kind          # LDEF/GDEF/MDEF/...
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
     bool is_init
     
-    void __init__(self, tuple<Var, mtypes.Type>[] items,
-                  bool is_top_level, Node init=None):
+    void __init__(self, Var[] items, bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
         self.init = init
         self.is_init = init is not None
     
     TypeInfo info(self):
-        return self.items[0][0].info
+        return self.items[0].info
     
     Node set_line(self, Token tok):
         super().set_line(tok)
-        for n, t in self.items:
+        for n in self.items:
             n.line = self.line
         return self
     
     Node set_line(self, int tok):
         super().set_line(tok)
-        for n, t in self.items:
+        for n in self.items:
             n.line = self.line
         return self
     

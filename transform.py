@@ -98,8 +98,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         super().visit_var_def(o)
         
         if o.init is not None:
-            if o.items[0][0].type:
-                t = o.items[0][0].type
+            if o.items[0].type:
+                t = o.items[0].type
             else:
                 t = Any()
             o.init = self.coerce(o.init, t, self.get_type(o.init),

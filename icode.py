@@ -421,7 +421,7 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_var_def(self, VarDef d):
         assert len(d.items) == 1
-        var = d.items[0][0]
+        var = d.items[0]
         if d.kind == nodes.LDEF:
             reg = self.add_local(var)
             if d.init:

@@ -79,7 +79,7 @@ class TypeTransformer:
             elif isinstance(d, VarDef):
                 vdef = (VarDef)d
                 defs.extend(self.transform_var_def(vdef))
-                for n, vt in vdef.items:
+                for n in vdef.items:
                     vars.add(n)
 
         # Add accessors for implicitly defined attributes.
@@ -244,7 +244,7 @@ class TypeTransformer:
         
         # Add $x and set$x accessor wrappers for data attributes. These let
         # derived classes redefine a data attribute as a property.
-        for n, vt in o.items:
+        for n in o.items:
             res.extend(self.make_accessors(n))
         
         return res
@@ -366,7 +366,7 @@ class TypeTransformer:
     Node[] generic_accessor_wrappers(self, VarDef vdef):
         """Construct wrapper class methods for attribute accessors."""
         res = <Node> []
-        for n, vt in vdef.items:
+        for n in vdef.items:
             if n.type:
                 t = n.type
             else:
@@ -442,8 +442,8 @@ class TypeTransformer:
         This is added to a generic wrapper class.
         """
         # The type is 'any' since it should behave covariantly in subclasses.
-        return [VarDef([(Var(self.object_member_name(tdef.info)),
-                         Any())], False, None)]
+        return [VarDef([Var(self.object_member_name(tdef.info),
+                            Any())], False, None)]
     
     str object_member_name(self, TypeInfo info):
         if self.tf.is_java:
@@ -513,8 +513,8 @@ class TypeTransformer:
             # Only include a type variable if it introduces a new slot.
             slot = get_tvar_access_path(info, n + 1)[0] - 1
             if slot >= base_slots:
-                defs.append(VarDef([(Var(tvar_slot_name(slot, is_alt)),
-                                     Any())], False, None))
+                defs.append(VarDef([Var(tvar_slot_name(slot, is_alt),
+                                        Any())], False, None))
         return defs
     
     void make_instance_tvar_initializer(self, FuncDef creat):

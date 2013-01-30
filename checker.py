@@ -133,16 +133,16 @@ class TypeChecker(NodeVisitor<Type>):
         # Type check initializer.
         if defn.init:
             # There is an initializer.
-            if defn.items[0][1]:
+            if defn.items[0].type:
                 # Explicit types.
                 if len(defn.items) == 1:
-                    self.check_single_assignment(defn.items[0][1], None,
+                    self.check_single_assignment(defn.items[0].type, None,
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
                     Type[] lvt = []
-                    for v, t in defn.items:
-                        lvt.append(t)
+                    for v in defn.items:
+                        lvt.append(v.type)
                     self.check_multi_assignment(
                         lvt, <tuple<Type, Node>> [None] * len(lvt),
                         defn.init, defn.init)
@@ -152,13 +152,10 @@ class TypeChecker(NodeVisitor<Type>):
                     # Infer local variable type if there is an initializer
                     # except if the# definition is at the top level (outside a
                     # function).
-                    Var[] names = []
-                    for vv, tt in defn.items:
-                        names.append(vv)
-                    self.infer_local_variable_type(names, init_type, defn)
+                    self.infer_local_variable_type(defn.items, init_type, defn)
         else:
             # No initializer
-            if (defn.kind == LDEF and not defn.items[0][1] and
+            if (defn.kind == LDEF and not defn.items[0].type and
                     not defn.is_top_level and not self.is_dynamic_function()):
                 self.fail(messages.NEED_ANNOTATION_FOR_VAR, defn)
     
