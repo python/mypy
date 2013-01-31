@@ -134,19 +134,32 @@ class CallDirect(Opcode):
 
 
 class CallMethod(Opcode):
-    """Call a method (rN = rN.m(rN, ...) [C])."""
+    """Call a method (rN = rN.m(rN, ...) [C]).
+
+    Attributes:
+      target: lvalue for the result (register)
+      object: receiver (register)
+      method: method name
+      type: vtable to use
+      args: arguments (registers)
+      static: resolve method statically (be default, at runtime)
+    """
     void __init__(self, int target, int object, str method, TypeInfo type,
-                  int[] args):
+                  int[] args, bool static=False):
         self.target = target
         self.object = object
         self.method = method
         self.type = type
         self.args = args
+        self.static = static
 
     str __str__(self):
         args = ', '.join(['r%d' % arg for arg in self.args])
+        cls = self.type.name()
+        if self.static:
+            cls = 'static ' + cls
         return 'r%d = r%d.%s(%s) [%s]' % (self.target, self.object,
-                                          self.method, args, self.type.name())
+                                          self.method, args, cls)
 
 
 class Construct(Opcode):
@@ -404,7 +417,7 @@ class IcodeBuilder(NodeVisitor<int>):
             self.add(SetAttr(target, var, temp, tdef.info))
         if init:
             self.add(CallMethod(self.alloc_register(), target, '__init__',
-                                init.info, args))
+                                init.info, args, static=True))
         self.add(Return(target))
         self.generated[tdef.name] = FuncIcode(init_argc, self.blocks,
                                               self.register_types)
@@ -597,7 +610,7 @@ class IcodeBuilder(NodeVisitor<int>):
             superexpr = (SuperExpr)e.callee
             target = self.target_register()
             self.add(CallMethod(target, 0, superexpr.name, superexpr.info.base,
-                                args))
+                                args, static=True))
         else:
             raise NotImplementedError('call target %s' % type(e.callee))
         return target

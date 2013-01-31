@@ -233,3 +233,14 @@ class C(A):
     void __init__(self, int x, int y):
         super().__init__(y)
 C(5, 6) # 6
+
+[case testCallSuperMethod]
+class A:
+    int f(self, int x): 
+        print(x)
+        return 5
+class B(A):
+    int f(self, int x):
+        return super().f(x + 1) + 2
+n = B().f(3) # 4
+print(n)     # 7

@@ -231,7 +231,7 @@ class CGenerator:
         self.get_class_representation(opcode.type)
         rep = self.classes[opcode.type]
         method = opcode.method.replace('$', '_') # Simple name mangling.
-        if method == '__init__':
+        if opcode.static:
             self.direct_call(opcode.target, '%s_%s' % (opcode.type.name(),
                                                        method))
         else:
