@@ -157,6 +157,17 @@ def A:
     r1.x = r2 [A]
     r3 = r1.__init__(r0) [A]
     return r1
+    
+[case testInheritedInit]
+class A:
+    void __init__(self, int x):
+        self.x = 2
+class B(A): pass
+[out]
+def B:
+    r1 = <construct B>
+    r2 = r1.__init__(r0) [A]
+    return r1
 
 
 -- None values

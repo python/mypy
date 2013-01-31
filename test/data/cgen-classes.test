@@ -204,7 +204,7 @@ b = B(4, 6)
 print(b.x) # 5
 print(b.y) # 6
 
-[case testInheritInit-skip]
+[case testInheritInit]
 class A:
     void __init__(self, int x):
         self.x = x

@@ -404,7 +404,7 @@ class IcodeBuilder(NodeVisitor<int>):
             self.add(SetAttr(target, var, temp, tdef.info))
         if init:
             self.add(CallMethod(self.alloc_register(), target, '__init__',
-                                tdef.info, args))
+                                init.info, args))
         self.add(Return(target))
         self.generated[tdef.name] = FuncIcode(init_argc, self.blocks,
                                               self.register_types)
