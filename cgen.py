@@ -271,27 +271,32 @@ class CGenerator:
     ClassRepresentation get_class_representation(self, TypeInfo cls):
         rep = self.classes.get(cls)
         if not rep:
-            if cls.base:
-                baserep = self.get_class_representation(cls.base)
-            else:
-                baserep = None
-            rep = ClassRepresentation(cls, baserep)
-            self.classes[cls] = rep
+            rep = self.generate_class(cls)
+        return rep
 
-            # Emit vtable.
-            vtable = 'MVT_%s' % cls.name()
-            self.emit_types('MFunction %s[] = {' % vtable)
-            for m in rep.vtable_methods:
-                defining_class = rep.defining_class[m]
-                self.emit_types('    M%s_%s,' % (defining_class, m))
-            self.emit_types('}; /* %s */' % vtable)
+    ClassRepresentation generate_class(self, TypeInfo cls):
+        if cls.base:
+            baserep = self.get_class_representation(cls.base)
+        else:
+            baserep = None
+        rep = ClassRepresentation(cls, baserep)
+        self.classes[cls] = rep
 
-            # Emit type runtime info.
-            self.emit_types('MTypeRepr %s = {' % rep.cname)
-            self.emit_types('    %s,' % vtable)
-            self.emit_types('    0,')
-            self.emit_types('    "%s"' % cls.full_name())
-            self.emit_types('};\n')
+        # Emit vtable.
+        vtable = 'MVT_%s' % cls.name()
+        self.emit_types('MFunction %s[] = {' % vtable)
+        for m in rep.vtable_methods:
+            defining_class = rep.defining_class[m]
+            self.emit_types('    M%s_%s,' % (defining_class, m))
+        self.emit_types('}; /* %s */' % vtable)
+
+        # Emit type runtime info.
+        self.emit_types('MTypeRepr %s = {' % rep.cname)
+        self.emit_types('    %s,' % vtable)
+        self.emit_types('    0,')
+        self.emit_types('    "%s"' % cls.full_name())
+        self.emit_types('};\n')
+        
         return rep
 
     void direct_call(self, int target, str funcname):
