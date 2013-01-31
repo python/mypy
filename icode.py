@@ -602,6 +602,7 @@ class IcodeBuilder(NodeVisitor<int>):
             method = op_methods[e.op]
             if e.op == 'in':
                 left, right = right, left
+                inst = (Instance)right_type
             self.add(CallMethod(target, left, method, inst.type, [right]))
         return target
 
