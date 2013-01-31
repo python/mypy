@@ -191,3 +191,26 @@ A a = C()
 a.f2() # 222
 a.f3() # 3
 a.f4() # 44
+
+[case testDefineInitWithInheritance]
+class A:
+    void __init__(self, int x):
+        self.x = x
+class B:
+    void __init__(self, int x, int y):
+        self.x = x + 1
+        self.y = y
+b = B(4, 6)
+print(b.x) # 5
+print(b.y) # 6
+
+[case testInheritInit-skip]
+class A:
+    void __init__(self, int x):
+        self.x = x
+class B(A): 
+    int y
+b = B(4)
+b.y = 5
+print(b.x) # 4
+print(b.y) # 5
