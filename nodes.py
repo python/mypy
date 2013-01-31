@@ -97,6 +97,7 @@ class MypyFile(Node, AccessorNode, SymNode):
 
 
 class Import(Node):
+    """import m [as n]"""    
     list<tuple<str, str>> ids     # (module id, as id)
     
     void __init__(self, list<tuple<str, str>> ids):
@@ -107,10 +108,11 @@ class Import(Node):
 
 
 class ImportFrom(Node):
+    """from m import x, ..."""
     str id
-    list<tuple<str, str>> names  
+    tuple<str, str>[] names # Tuples (name, as name)
     
-    void __init__(self, str id, list<tuple<str, str>> names):
+    void __init__(self, str id, tuple<str, str>[] names):
         self.id = id
         self.names = names
     
@@ -119,6 +121,7 @@ class ImportFrom(Node):
 
 
 class ImportAll(Node):
+    """from m import *"""
     str id
     
     void __init__(self, str id):
@@ -129,6 +132,7 @@ class ImportAll(Node):
 
 
 class FuncBase(Node, AccessorNode):
+    """Abstract base class for function-like nodes"""
     mtypes.Type type # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
     str name(self):
@@ -138,8 +142,9 @@ class FuncBase(Node, AccessorNode):
 
 
 class OverloadedFuncDef(FuncBase, SymNode):
-    """A logical node representing all the overload variants of an overloaded
-    function. This node has no explicit representation in the source program.
+    """A logical node representing all the variants of an overloaded function.
+
+    This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
     """
     FuncDef[] items
@@ -266,6 +271,10 @@ class Decorator(Node):
 
 
 class Var(Node, AccessorNode, SymNode):
+    """A variable.
+
+    It can refer to global/local variable or a data attribute.
+    """
     str _name        # Name without module prefix
     str _full_name   # Name with module prefix
     bool is_init     # Is is initialized?
@@ -291,6 +300,7 @@ class Var(Node, AccessorNode, SymNode):
 
 
 class TypeDef(Node):
+    """Class or interface definition"""
     str name        # Name of the class without module prefix
     str full_name   # Fully qualified name of the class
     Block defs
@@ -320,6 +330,7 @@ class TypeDef(Node):
 
 
 class VarDef(Node):
+    """Variable definition with explicit types"""
     Var[] items
     int kind          # LDEF/GDEF/MDEF/...
     Node init         # Expression or None
@@ -353,6 +364,7 @@ class VarDef(Node):
 
 
 class GlobalDecl(Node):
+    """Declaration global x, y, ..."""
     str[] names
     
     void __init__(self, str[] names):
@@ -376,6 +388,7 @@ class Block(Node):
 
 
 class ExpressionStmt(Node):
+    """An expression as a statament, such as print(s)."""
     Node expr
     
     void __init__(self, Node expr):
@@ -386,6 +399,15 @@ class ExpressionStmt(Node):
 
 
 class AssignmentStmt(Node):
+    """Assignment statement
+
+    The same node is used for single assignment, multiple assignment
+    (e.g. x, y = z) and chained assignment (e.g. x = y = z) and assignments
+    that define new names.
+
+    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr or
+    ParenExpr.
+    """
     Node[] lvalues
     Node rvalue
     
@@ -398,6 +420,7 @@ class AssignmentStmt(Node):
 
 
 class OperatorAssignmentStmt(Node):
+    """Operator assignment statement such as x += 1"""
     str op
     Node lvalue
     Node rvalue
@@ -626,7 +649,7 @@ class ParenExpr(Node):
 
 
 class RefExpr(Node):
-    """Abstract base class"""
+    """Abstract base class for name-like constructs"""
     int kind      # Ldef/Gdef/Mdef/... (None if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
 
@@ -746,8 +769,9 @@ class OpExpr(Node):
 
 
 class SliceExpr(Node):
-    """Slice expression (e.g. 'x:y', 'x:', '::2' or ':'); only valid
-    as index in index expressions.
+    """Slice expression (e.g. 'x:y', 'x:', '::2' or ':').
+
+    This is only valid as index in index expressions.
     """
     Node begin_index  # May be None
     Node end_index    # May be None
@@ -763,6 +787,7 @@ class SliceExpr(Node):
 
 
 class CastExpr(Node):
+    """Cast expression (type)expr"""
     Node expr
     mtypes.Type type
     
@@ -775,6 +800,7 @@ class CastExpr(Node):
 
 
 class SuperExpr(Node):
+    """Expression super().name"""
     str name
     TypeInfo info # Type that contains this super expression
     
@@ -868,6 +894,7 @@ class GeneratorExpr(Node):
 
 
 class ListComprehension(Node):
+    """List comprehension (e.g. [x + 1 for x in a])"""
     GeneratorExpr generator
     
     void __init__(self, GeneratorExpr generator):
@@ -878,6 +905,7 @@ class ListComprehension(Node):
 
 
 class ConditionalExpr(Node):
+    """Conditional expression (e.g. x if y else z)"""
     Node cond
     Node if_expr
     Node else_expr
@@ -892,6 +920,7 @@ class ConditionalExpr(Node):
 
 
 class TypeApplication(Node):
+    """Type application expr<type, ...>"""
     any expr   # Node
     any types  # mtypes.Type[]
     
@@ -924,6 +953,7 @@ class CoerceExpr(Node):
 
 
 class JavaCast(Node):
+    # TODO obsolete; remove
     Node expr
     mtypes.Type target
     
@@ -936,9 +966,10 @@ class JavaCast(Node):
 
 
 class TypeExpr(Node):
-    """Expression that evaluates to a runtime representation of a type. This is
-    used only for runtime type checking. This node is always generated only
-    after type checking.
+    """Expression that evaluates to a runtime representation of a type.
+
+    This is used only for runtime type checking. This node is always generated
+    only after type checking.
     """
     mtypes.Type type
     
@@ -950,7 +981,9 @@ class TypeExpr(Node):
 
 
 class TempNode(Node):
-    """This node is not present in the original program; it is just an artifact
+    """Temporary dummy node used during type checking.
+
+    This node is not present in the original program; it is just an artifact
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
