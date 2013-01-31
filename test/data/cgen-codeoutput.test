@@ -1,0 +1,89 @@
+-- Test cases that compile a program and perform checks on the generated C.
+--
+-- Note: Try to avoid test cases whose output is easily affected by the
+--   implementation details of the code generator (e.g. register assignment).
+--
+-- The runner is testcgen.CGenCompileSuite.
+
+[case testTypeRepr]
+class A: pass
+[out]
+...
+MTypeRepr MR_A = {
+...
+
+[case testMethodInVtable]
+class A:
+    void f(self): pass
+[out]
+...
+MFunction MVT_A[] = {
+...
+    MA_f,
+}; /* MVT_A */
+...
+MTypeRepr MR_A = {
+    MVT_A,
+...
+
+[case testMethodDeclarationAndDefinition]
+class A:
+    void f(self): pass
+[out]
+...
+MValue MA_f(MEnv *e);
+...
+MValue MA_f(MEnv *e)
+{
+...
+
+[case testAttributeAccessorInVtable]
+class A:
+    int x
+[out]
+...
+MFunction MVT_A[] = {
+...
+    MA__x,
+    MA_set_x,
+}; /* MVT_A */
+...
+
+[case testAttributeGetterDeclarationAndDefinition]
+class A:
+    int x
+[out]
+...
+MValue MA__x(MEnv *e);
+...
+MValue MA__x(MEnv *e)
+{
+...
+
+[case testAttributeSetterDeclarationAndDefinition]
+class A:
+    int x
+[out]
+...
+MValue MA_set_x(MEnv *e);
+...
+MValue MA_set_x(MEnv *e)
+{
+...
+
+[case testVtableWhenOverridingAndAddingMethod]
+class A:
+    void f(self): pass
+    void g(self): pass
+class B(A):
+    void f(self): pass
+    void h(self): pass
+[out]
+...
+MFunction MVT_B[] = {
+...
+    MB_f,
+    MA_g,
+    MB_h,
+}; /* MVT_B */
+...

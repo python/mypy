@@ -480,6 +480,9 @@ class MessageBuilder:
         else:
             return False
 
+    void interface_has_constructor(self, Context context):
+        self.fail('An interface must not define a constructor', context)
+
 
 str capitalize(str s):
     """Capitalize the first character of a string."""

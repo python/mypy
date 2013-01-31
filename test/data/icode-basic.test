@@ -103,7 +103,7 @@ L2:
     return r1
 
 [case testIfWithElse]
-int f():
+void f():
     if 2 < 3:
         i = 1
     else:
@@ -121,8 +121,8 @@ L3:
     return r1
 
 
--- Arithmetic expressions
--- ----------------------
+-- Primitive arithmetic expressions
+-- --------------------------------
 
 
 [case testComplexArithmeticExpression]
@@ -314,3 +314,157 @@ def __init:
 def f:
     r0 = __main__.y
     return r0
+
+[case testGlobalVariableInitialize]
+class A: pass
+n = 1
+a = A()
+[out]
+def __init:
+    r0 = None
+    __main__.a = r0
+    r1 = 1
+    __main__.n = r1
+    r2 = A()
+    __main__.a = r2
+    r3 = None
+    return r3
+
+[case testValueConditionalCheck]
+class A: pass
+void f(A a):
+    if a:
+        a = A()
+[out]
+def f:
+    if r0 goto L1 else goto L2
+L1:
+    r0 = A()
+L2:
+    r1 = None
+    return r1
+
+[case testNegatedValueConditionalCheck]
+class A: pass
+void f(A a):
+    if not a:
+        a = A()
+[out]
+def f:
+    if not r0 goto L1 else goto L2
+L1:
+    r0 = A()
+L2:
+    r1 = None
+    return r1
+
+[case testLocalWithExplicitType]
+void f():
+    int x = 2
+    int y
+    y = 3
+[out]
+def f:
+    r0 = 2
+    r1 = 3
+    r2 = None
+    return r2
+
+[case testGlobalWithExplicitType]
+class A: pass
+int x = 2
+int y
+y = 3
+[out]
+def __init:
+    r0 = 2
+    __main__.x = r0
+    r1 = 3
+    __main__.y = r1
+    r2 = None
+    return r2
+
+[case testImplicitZeroReturn]
+int f(): pass
+[out]
+def f:
+    r0 = 0
+    return r0
+
+
+-- Operator overloading
+-- --------------------
+
+
+[case testOverloadedAdd]
+class A:
+    int __add__(self, int x): pass
+int f():
+    return A() + 2
+[out]
+def f:
+    r0 = A()
+    r1 = 2
+    r2 = r0.__add__(r1) [A]
+    return r2
+
+[case testOverloadedMul]
+class A:
+    int __mul__(self, int x): pass
+int f():
+    return A() * 2
+[out]
+def f:
+    r0 = A()
+    r1 = 2
+    r2 = r0.__mul__(r1) [A]
+    return r2
+
+[case testOverloadedIn]
+class A:
+    int __contains__(self, int x): pass
+int f():
+    return 2 in A()
+[out]
+def f:
+    r0 = 2
+    r1 = A()
+    r2 = r1.__contains__(r0) [A]
+    return r2
+
+[case testIndexedGet]
+class A:
+    int __getitem__(self, int x): pass
+int f(A a, int n):
+    return a[n]
+[out]
+def f:
+    r2 = r0.__getitem__(r1) [A]
+    return r2
+
+[case testIndexedSet]
+class A:
+    void __setitem__(self, int x, int y): pass
+void f(A a, int n, int m):
+    a[m] = n
+[out]
+def f:
+    r3 = r0.__setitem__(r2, r1) [A]
+    r4 = None
+    return r4
+
+[case testOverloadedUnaryOps]
+class A:
+    int __neg__(self): pass
+    int __invert__(self): pass
+int f(A a):
+    return -a
+int g(A a):
+    return ~a
+[out]
+def f:
+    r1 = r0.__neg__() [A]
+    return r1
+def g:
+    r1 = r0.__invert__() [A]
+    return r1

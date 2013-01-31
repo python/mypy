@@ -78,6 +78,56 @@ if 1 > 2:
     x = 1
 print(x) # 0
 
+[case testInstanceCondition]
+class A: pass
+a = A()
+if a:
+    print(1) # 1
+if not a:
+    print(2)
+a = None
+if a:
+    print(3)
+if not a:
+    print(4) # 4
+
+[case testLocalInitialization]
+class A: pass
+void f():
+    if 1 > 2:
+        a = A()
+        i = 1
+        aa = A()
+        j = 2
+    print(a)  # None
+    print(i)  # 0
+    print(aa) # None
+    print(j)  # 0
+f()
+
+[case testLocalWithExplicitType]
+class A: pass
+void f():
+    int x = 2
+    print(x) # 2
+    int y
+    print(y) # 0
+    y = 3
+    print(y) # 3
+    A a
+    print(a) # None
+f()
+
+[case testGlobalWithExplicitType]
+class A: pass
+int x = 2
+print(x) # 2
+int y
+print(y) # 0
+y = 3
+print(y) # 3
+A a
+print(a) # None
 
 -- TODO
 --   integer overflows and underflows

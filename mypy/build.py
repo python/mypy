@@ -166,6 +166,7 @@ str[] default_lib_path(str mypy_base_dir, int target):
         # Add library stubs directory. By convention, they are stored in the
         # stubs directory of the mypy implementation.
         path.append(os.path.join(mypy_base_dir, 'stubs'))
+        path.append(os.path.join(mypy_base_dir, 'stubs-auto'))
     
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -466,11 +467,12 @@ bool is_stub(str path):
     Currently check if there is a 'stubs' directory component somewhere
     in the path."""
     # TODO more precise check
-    if os.path.basename(path) == '':
+    dirname, basename = os.path.split(path)
+    if basename == '':
         return False
     else:
-        return os.path.basename(path) == 'stubs' or is_stub(
-            os.path.dirname(path))
+        stubnames = ['stubs', 'stubs-auto']
+        return (basename in stubnames) or is_stub(dirname)
 
 
 # State ids. These describe the states a source file / module can be in a

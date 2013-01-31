@@ -1,10 +1,12 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from mypy.mtypes import Any, Instance, Type
+from mypy.checker import op_methods
+from mypy.mtypes import Any, Instance, Type, Callable, FunctionLike
 from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo
+    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo,
+    VarDef, SuperExpr, IndexExpr
 )
 from mypy import nodes
 from mypy.visitor import NodeVisitor
@@ -19,10 +21,12 @@ INT_KIND = 1 # Integer literal
 class FuncIcode:
     """Icode and related information for a function."""
 
-    void __init__(self, int num_args, BasicBlock[] blocks, int num_registers):
+    void __init__(self, int num_args, BasicBlock[] blocks,
+                  int[] register_types):
         self.num_args = num_args
         self.blocks = blocks
-        self.num_registers = num_registers
+        self.num_registers = len(register_types)
+        self.register_types = register_types
 
 
 class BasicBlock:
@@ -131,19 +135,32 @@ class CallDirect(Opcode):
 
 
 class CallMethod(Opcode):
-    """Call a method (rN = rN.m(rN, ...) [C])."""
+    """Call a method (rN = rN.m(rN, ...) [C]).
+
+    Attributes:
+      target: lvalue for the result (register)
+      object: receiver (register)
+      method: method name
+      type: vtable to use
+      args: arguments (registers)
+      static: resolve method statically (be default, at runtime)
+    """
     void __init__(self, int target, int object, str method, TypeInfo type,
-                  int[] args):
+                  int[] args, bool static=False):
         self.target = target
         self.object = object
         self.method = method
         self.type = type
         self.args = args
+        self.static = static
 
     str __str__(self):
         args = ', '.join(['r%d' % arg for arg in self.args])
+        cls = self.type.name()
+        if self.static:
+            cls = 'static ' + cls
         return 'r%d = r%d.%s(%s) [%s]' % (self.target, self.object,
-                                          self.method, args, self.type.name())
+                                          self.method, args, cls)
 
 
 class Construct(Opcode):
@@ -227,6 +244,13 @@ class IfR(Branch):
         self.negated = not self.negated
         self.true_block, self.false_block = self.false_block, self.true_block
 
+    str __str__(self):
+        prefix = ''
+        if self.negated:
+            prefix = 'not '
+        return 'if %sr%d goto L%d else goto L%d' % (
+            prefix, self.value, self.true_block.label, self.false_block.label)
+
 
 class Goto(Opcode):
     """Unconditional jump (goto LN)."""
@@ -271,6 +295,11 @@ class UnaryOp(Opcode):
         return 'r%d = %sr%d [int]' % (self.target, self.op, self.operand)
 
 
+# Types of registers
+INT = 0 # int, initialized to 0
+REF = 1 # Arbitrary reference, initialized to None
+
+
 class IcodeBuilder(NodeVisitor<int>):
     """Generate icode from a parse tree."""
 
@@ -286,6 +315,8 @@ class IcodeBuilder(NodeVisitor<int>):
     dict<Node, int> lvar_regs
     # Stack of expression target registers (-1 => create new register)
     int[] targets
+    # Storage type for each register (REG_* values)
+    int[] register_types
 
     # Stack of inactive scopes
     tuple<BasicBlock[], int, dict<Node, int>>[] scopes
@@ -298,11 +329,22 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_mypy_file(self, MypyFile mfile):
         self.enter()
+        
+        # Initialize non-int global variables.
+        for name in sorted(mfile.names):
+            node = mfile.names[name].node
+            if isinstance(node, Var) and name != '__name__':
+                v = (Var)node
+                if not is_named_instance(v.type, 'builtins.int'):
+                    tmp = self.alloc_register()
+                    self.add(SetRNone(tmp))
+                    self.add(SetGR(v.full_name(), tmp))
+        
         for d in mfile.defs:
             d.accept(self)
         self.add_implicit_return()
         self.generated['__init'] = FuncIcode(0, self.blocks,
-                                             self.num_registers)
+                                             self.register_types)
         # TODO leave?
         return -1
 
@@ -316,7 +358,7 @@ class IcodeBuilder(NodeVisitor<int>):
         for arg in fdef.args:
             self.add_local(arg)
         fdef.body.accept(self)
-        self.add_implicit_return()
+        self.add_implicit_return((Callable)fdef.type)
 
         if fdef.info:
             name = '%s.%s' % (fdef.info.name(), fdef.name())
@@ -324,17 +366,21 @@ class IcodeBuilder(NodeVisitor<int>):
             name = fdef.name()
         
         self.generated[name] = FuncIcode(len(fdef.args), self.blocks,
-                                         self.num_registers)
+                                         self.register_types)
 
         self.leave()
         
         return -1
 
-    void add_implicit_return(self):
+    void add_implicit_return(self, FunctionLike sig=None):
         if not self.current.ops or not isinstance(self.current.ops[-1],
                                                   Return):
             r = self.alloc_register()
-            self.add(SetRNone(r))
+            if sig and is_named_instance(((Callable)sig).ret_type,
+                                         'builtins.int'):
+                self.add(SetRI(r, 0))
+            else:
+                self.add(SetRNone(r))
             self.add(Return(r))
 
     int visit_type_def(self, TypeDef tdef):
@@ -350,6 +396,7 @@ class IcodeBuilder(NodeVisitor<int>):
     void make_class_constructor(self, TypeDef tdef):
         # Do we have a non-empty __init__?
         init = (FuncDef)tdef.info.get_method('__init__')
+        init_argc = len(init.args) - 1
         if init.info.full_name() == 'builtins.object':
             init = None
         
@@ -360,9 +407,6 @@ class IcodeBuilder(NodeVisitor<int>):
                 args.append(self.add_local(arg))
         target = self.alloc_register()
         self.add(Construct(target, tdef.info))
-        if init:
-            self.add(CallMethod(self.alloc_register(), target, '__init__',
-                                tdef.info, args))
         # Inititalize data attributes to default values.
         for var in sorted(tdef.info.vars.keys()):
             temp = self.alloc_register()
@@ -371,10 +415,13 @@ class IcodeBuilder(NodeVisitor<int>):
                 self.add(SetRI(temp, 0))
             else:
                 self.add(SetRNone(temp))
-            self.add(SetAttr(0, var, temp, tdef.info))
+            self.add(SetAttr(target, var, temp, tdef.info))
+        if init:
+            self.add(CallMethod(self.alloc_register(), target, '__init__',
+                                init.info, args, static=True))
         self.add(Return(target))
-        self.generated[tdef.name] = FuncIcode(0, self.blocks,
-                                              self.num_registers)
+        self.generated[tdef.name] = FuncIcode(init_argc, self.blocks,
+                                              self.register_types)
         self.leave()
 
     #
@@ -384,6 +431,18 @@ class IcodeBuilder(NodeVisitor<int>):
     int visit_block(self, Block b):
         for stmt in b.body:
             stmt.accept(self)
+        return -1
+
+    int visit_var_def(self, VarDef d):
+        assert len(d.items) == 1
+        var = d.items[0]
+        if d.kind == nodes.LDEF:
+            reg = self.add_local(var)
+            if d.init:
+                self.accept(d.init, reg)
+        elif d.kind == nodes.GDEF and d.init:
+            init = self.accept(d.init)
+            self.add(SetGR(var.full_name(), init))
         return -1
 
     int visit_expression_stmt(self, ExpressionStmt s):
@@ -403,7 +462,7 @@ class IcodeBuilder(NodeVisitor<int>):
             name = (NameExpr)lvalue
             if name.kind == nodes.LDEF:
                 if name.is_def:
-                    reg = self.add_local(name.node)
+                    reg = self.add_local((Var)name.node)
                 else:
                     reg = self.lvar_regs[name.node]
                 self.accept(s.rvalue, reg)
@@ -429,8 +488,19 @@ class IcodeBuilder(NodeVisitor<int>):
                 # TODO do not hard code set$ prefix
                 self.add(CallMethod(temp, obj, 'set$' + member.name, typeinfo,
                                     [source]))
+        elif isinstance(lvalue, IndexExpr):
+            indexexpr = (IndexExpr)lvalue
+            obj_type = self.types[indexexpr.base]
+            assert isinstance(obj_type, Instance) # TODO more flexible
+            typeinfo = ((Instance)obj_type).type
+            base = self.accept(indexexpr.base)
+            index = self.accept(indexexpr.index)
+            value = self.accept(s.rvalue)
+            temp = self.alloc_register()
+            self.add(CallMethod(temp, base, '__setitem__', typeinfo,
+                                [index, value]))
         else:
-            pass # TODO globals etc.
+            raise RuntimeError()
 
     int visit_while_stmt(self, WhileStmt s):
         # Split block so that we get a handle to the top of the loop.
@@ -491,7 +561,10 @@ class IcodeBuilder(NodeVisitor<int>):
             target = self.target_register()
             assert isinstance(e.node, Var) # TODO more flexible
             var = (Var)e.node
-            self.add(SetRG(target, var.full_name()))
+            if var.full_name() == 'builtins.None':
+                self.add(SetRNone(target)) # Special opcode for None
+            else:
+                self.add(SetRG(target, var.full_name()))
             return target
         else:
             raise NotImplementedError('unsupported kind %d' % e.kind)
@@ -511,10 +584,26 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_op_expr(self, OpExpr e):
         # TODO arbitrary operand types
-        left, left_kind = self.get_operand(e.left)
-        right, right_kind = self.get_operand(e.right)
-        target = self.target_register()
-        self.add(BinOp(target, left, left_kind, right, right_kind, e.op))
+        left_type = self.types[e.left]
+        right_type = self.types[e.right]
+        if (is_named_instance(left_type, 'builtins.int') and
+                is_named_instance(right_type, 'builtins.int')):
+            # Primitive operation
+            left, left_kind = self.get_operand(e.left)
+            right, right_kind = self.get_operand(e.right)
+            target = self.target_register()
+            self.add(BinOp(target, left, left_kind, right, right_kind, e.op))
+        else:
+            # Generate method call
+            inst = (Instance)left_type
+            left = self.accept(e.left)
+            right = self.accept(e.right)
+            target = self.target_register()
+            method = op_methods[e.op]
+            if e.op == 'in':
+                left, right = right, left
+                inst = (Instance)right_type
+            self.add(CallMethod(target, left, method, inst.type, [right]))
         return target
 
     tuple<int, int> get_operand(self, Node n):
@@ -524,9 +613,20 @@ class IcodeBuilder(NodeVisitor<int>):
             return self.accept(n), REG_KIND
 
     int visit_unary_expr(self, UnaryExpr e):
+        operand_type = self.types[e.expr]
         operand = self.accept(e.expr)
         target = self.target_register()
-        self.add(UnaryOp(target, operand, e.op))
+        if is_named_instance(operand_type, 'builtins.int'):
+            self.add(UnaryOp(target, operand, e.op))
+        else:
+            if e.op == '-':
+                method = '__neg__'
+            elif e.op == '~':
+                method = '__invert__'
+            else:
+                raise NotImplementedError()
+            inst = (Instance)operand_type # TODO more flexible
+            self.add(CallMethod(target, operand, method, inst.type, []))
         return target
 
     int visit_call_expr(self, CallExpr e):
@@ -545,6 +645,11 @@ class IcodeBuilder(NodeVisitor<int>):
             assert isinstance(receiver_type, Instance) # TODO more flexible
             typeinfo = ((Instance)receiver_type).type
             self.add(CallMethod(target, receiver, member.name, typeinfo, args))
+        elif isinstance(e.callee, SuperExpr):
+            superexpr = (SuperExpr)e.callee
+            target = self.target_register()
+            self.add(CallMethod(target, 0, superexpr.name, superexpr.info.base,
+                                args, static=True))
         else:
             raise NotImplementedError('call target %s' % type(e.callee))
         return target
@@ -561,6 +666,16 @@ class IcodeBuilder(NodeVisitor<int>):
         else:
             # Non-trivial coercions not supported yet.
             raise NotImplementedError()
+
+    int visit_index_expr(self, IndexExpr e):
+        # Generate method call
+        basetype = (Instance)self.types[e.base]
+        base = self.accept(e.base)
+        index = self.accept(e.index)
+        target = self.target_register()
+        self.add(CallMethod(target, base, '__getitem__', basetype.type,
+                            [index]))
+        return target
 
     #
     # Conditional expressions
@@ -629,6 +744,7 @@ class IcodeBuilder(NodeVisitor<int>):
         self.scopes.append((self.blocks, self.num_registers, self.lvar_regs))
         self.blocks = []
         self.num_registers = 0
+        self.register_types= []
         self.lvar_regs = {}
         self.current = None
         self.new_block()
@@ -656,9 +772,11 @@ class IcodeBuilder(NodeVisitor<int>):
         self.targets.pop()
         return actual
 
-    int alloc_register(self):
+    int alloc_register(self, int type=REF):
+        # Temps are always set before access, so type does not matter for them.
         n = self.num_registers
         self.num_registers += 1
+        self.register_types.append(type)
         return n
 
     int target_register(self):
@@ -667,8 +785,11 @@ class IcodeBuilder(NodeVisitor<int>):
         else:
             return self.targets[-1]
 
-    int add_local(self, Node node):
-        reg = self.alloc_register()
+    int add_local(self, Var node):
+        type = REF
+        if is_named_instance(node.type, 'builtins.int'):
+            type = INT
+        reg = self.alloc_register(type)
         self.lvar_regs[node] = reg
         return reg
     

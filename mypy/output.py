@@ -139,7 +139,7 @@ class OutputVisitor(NodeVisitor):
                     # Remove spaces before the first argument name. Generally
                     # spaces are only present after a type, and if we erase the
                     # type, we should also erase also the spaces.
-                    n = re.sub(' +([a-zA-Z0-9_])$', '\\1', n)
+                    n = re.sub(' +([a-zA-Z0-9_]+)$', '\\1', n)
                 self.string(n)
             if i < len(arg_repr.assigns):
                 self.token(arg_repr.assigns[i])
@@ -152,8 +152,8 @@ class OutputVisitor(NodeVisitor):
     def visit_var_def(self, o):
         r = o.repr
         if r:
-            for v, t in o.items:
-                self.type(t)
+            for v in o.items:
+                self.type(v.type)
                 self.node(v)
             self.token(r.assign)
             self.node(o.init)

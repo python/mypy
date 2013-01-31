@@ -607,6 +607,24 @@ d.x = 1
 ...
 d.x* = {any <= int 1}
 
+[case testDataAttributeWithImplicitDefinition]
+class A:
+    void __init__(self):
+        self.x = 0
+[out]
+...
+    void __init__(A self):
+        self.x = 0
+...
+    int $x(A self):
+        return self.x!
+    void set$x(A self, int x):
+        self.x! = x
+    any $x*(A self):
+...
+    void set$x*(A self, any x):
+...
+
 
 -- Casts
 -- -----
@@ -864,16 +882,15 @@ i = (1 - 2) * 2
 i = 1 % 2
 i = 1 // 2
 i = -i
--- TODO the coercions to int are somewhat arbitrary
 d = {any <= int 1 + {int d}}
-d = {any <= int 1 - d}
-d = {any <= int 1 * d}
-d = {any <= int 1 % d}
-d = {any <= int 1 // d}
-d = {int -d} + {int d} - d * d
-d = {int d} + 1
-d = d - 1
-d = d * 1
+d = {any <= int 1 - {int d}}
+d = {any <= int 1 * {int d}}
+d = {any <= int 1 % {int d}}
+d = {any <= int 1 // {int d}}
+d = -d + d - d * d
+d = d + {any <= int 1}
+d = d - {any <= int 1}
+d = d * {any <= int 1}
 d = d % d
 d = d // d
 
@@ -887,7 +904,7 @@ i = -d.g()
 [builtins fixtures/ops.py]
 [out]
 ...
-i = {int {int d.g*()} + {int d.f*()}}
+i = {int d.g*() + d.f*()}
 i = {int d.g*() * d.f*()}
 i = i + {int d.f*()}
 i = {int -d.g*()}
@@ -948,17 +965,17 @@ d = 1 > d
 [builtins fixtures/ops.py]
 [out]
 ...
-b = 1 == 2
-d = {any <= bool 1 != 2}
+b = 1 == {object <= int 2}
+d = {any <= bool 1 != {object <= int 2}}
 b = 1 < 2
 b = 1 <= 2
 b = 1 > 2
 b = 1 >= 2
 b = {bool d == d}
 d = d == d
-b = {bool d != 1}
-b = 1 < d
-d = {any <= bool 1 > d}
+b = {bool d != {any <= int 1}}
+b = 1 < {int d}
+d = {any <= bool 1 > {int d}}
 
 [case testNoneComparison]
 bool b
@@ -1095,3 +1112,163 @@ class A:
         x = self.i*
         x.y*()
 ...
+
+
+-- Operator overloading
+-- --------------------
+
+
+[case testBinaryOperatorOverloading]
+class A:
+    int __add__(self, A x): pass
+any x
+A a
+x = a + x
+[out]
+...
+A a
+x = {any <= int a + {A x}}
+
+[case testBinaryOperatorOverloading2]
+class A:
+    A __mul__(self, int x): pass
+any x
+A a
+x = a * x
+[out]
+...
+A a
+x = a * {int x}
+
+[case testIndexedGet]
+class A:
+    int __getitem__(self, A x): pass
+any x
+A a
+x = a[x]
+[out]
+...
+A a
+x = {any <= int a[{A x}]}
+
+[case testIndexedGetWithAnyBase]
+any x
+int i = x[1]
+[out]
+any x
+int i = {int x[{any <= int 1}]}
+
+[case testIndexedGetInDynamicallyTypedFunction]
+def f():
+    1[2]
+[out]
+...
+any f():
+    {any <= int 1}[{any <= int 2}]
+...
+
+[case testIndexedSet]
+class A:
+    int __setitem__(self, A x, int y): pass
+any x
+A a
+a[x] = 1
+a[a] = x
+[out]
+...
+A a
+a[{A x}] = 1
+a[a] = {int x}
+
+[case testIndexedSetInDynamicallyTypedFunction]
+def f():
+    1[2] = 3
+[out]
+...
+any f():
+    {any <= int 1}[{any <= int 2}] = {any <= int 3}
+...
+
+[case testIndexedSetWithAnyBase]
+any x
+x[1] = 2
+[out]
+any x
+x[{any <= int 1}] = {any <= int 2}
+
+[case testGenericOperatorMethod]
+class A:
+    t __add__<t>(self, t x): pass
+any x
+A a
+x = a + 1
+[out]
+...
+A a
+x = a + {any <= int 1}
+
+[case testGenericIndexedGet]
+class A:
+    B<t> __getitem__<t>(self, t x): pass
+class B<t>: pass
+any x
+A a
+B<int> b = a[x]
+[out]
+...
+A a
+B b = a[{int x}]
+
+[case testInOperator]
+class A:
+    int __contains__(self, A a): pass
+any x
+A a
+x = x in a
+[out]
+...
+A a
+x = {any <= int {A x} in a}
+
+[case testUnaryOperator]
+class A:
+    bool __neg__(self): pass
+any x
+A a
+x = -a
+[builtins fixtures/ops.py]
+[out]
+...
+A a
+x = {any <= bool -a}
+
+[case testTransformBinaryOpOperands]
+class A:
+    int __add__(self, A x): pass
+A f(any x): pass
+A a
+a + f(1)
+[out]
+...
+A a
+a + f({any <= int 1})
+
+[case testTransformIndexExpr]
+class A:
+    int __getitem__(self, A x): pass
+A f(any x): pass
+A a
+a[f(1)]
+[out]
+...
+A a
+a[f({any <= int 1})]
+
+[case testTransformUnaryOperand]
+class A:
+    int __neg__(self): pass
+A f(any x): pass
+-f(1)
+[out]
+...
+-f({any <= int 1})

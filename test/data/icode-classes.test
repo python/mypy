@@ -126,7 +126,7 @@ def __init:
     return r2
 def A:
     r1 = <construct A>
-    r2 = r1.__init__(r0) [A]
+    r2 = r1.__init__(r0) [static A]
     return r1
 def A.__init__:
     r1 = 2
@@ -145,3 +145,70 @@ def A:
     r2 = 0
     r0.x = r2 [A]
     return r0
+    
+[case testAttributesAndInit]
+class A:
+    int x
+    void __init__(self, int y): pass
+[out]
+def A:
+    r1 = <construct A>
+    r2 = 0
+    r1.x = r2 [A]
+    r3 = r1.__init__(r0) [static A]
+    return r1
+    
+[case testInheritedInit]
+class A:
+    void __init__(self, int x):
+        self.x = 2
+class B(A): pass
+[out]
+def B:
+    r1 = <construct B>
+    r2 = r1.__init__(r0) [static A]
+    return r1
+
+
+-- None values
+-- -----------
+
+
+[case testNoneExpression]
+class A: pass
+void f(A a):
+    a = None
+[out]
+def f:
+    r0 = None
+    r1 = None
+    return r1
+
+
+-- super()
+-- -------
+
+
+[case testCallSuperInit]
+class A:
+    void __init__(self, int x): pass
+class B(A):
+    void __init__(self, int x, int y):
+        super().__init__(y)
+[out]
+def B.__init__:
+    r3 = r0.__init__(r2) [static A]
+    r4 = None
+    return r4
+
+[case testCallSuperMethod]
+class A:
+    void f(self, int x): pass
+class B(A):
+    void f(self, int x):
+        super().f(x)
+[out]
+def B.f:
+    r2 = r0.f(r1) [static A]
+    r3 = None
+    return r3

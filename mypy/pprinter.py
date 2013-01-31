@@ -72,10 +72,10 @@ class PrettyPrintVisitor(NodeVisitor):
         fdef.body.accept(self)
     
     void visit_var_def(self, VarDef vdef):
-        if vdef.items[0][0].name() != '__name__':
-            self.type(vdef.items[0][1])
+        if vdef.items[0].name() != '__name__':
+            self.type(vdef.items[0].type)
             self.string(' ')
-            self.string(vdef.items[0][0].name())
+            self.string(vdef.items[0].name())
             if vdef.init:
                 self.string(' = ')
                 self.node(vdef.init)

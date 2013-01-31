@@ -71,12 +71,21 @@ class TypeTransformer:
             defs.extend(self.make_tvar_representation(tdef.info))
         
         # Iterate over definitions and transform each of them.
+        vars = set<Var>()
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
                 # Implicit cast from FuncDef[] to Node[] is safe below.
                 defs.extend((any)self.func_tf.transform_method((FuncDef)d))
             elif isinstance(d, VarDef):
-                defs.extend(self.transform_var_def((VarDef)d))
+                vdef = (VarDef)d
+                defs.extend(self.transform_var_def(vdef))
+                for n in vdef.items:
+                    vars.add(n)
+
+        # Add accessors for implicitly defined attributes.
+        for v in tdef.info.vars.values():
+            if v.info == tdef.info and v not in vars:
+                defs.extend(self.make_accessors(v))
         
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
@@ -235,17 +244,20 @@ class TypeTransformer:
         
         # Add $x and set$x accessor wrappers for data attributes. These let
         # derived classes redefine a data attribute as a property.
-        for n, vt in o.items:
-            if n.type:
-                t = n.type
-            else:
-                t = Any()
-            res.append(self.make_getter_wrapper(n.name(), t))
-            res.append(self.make_setter_wrapper(n.name(), t))
-            res.append(self.make_dynamic_getter_wrapper(n.name(), t))
-            res.append(self.make_dynamic_setter_wrapper(n.name(), t))
+        for n in o.items:
+            res.extend(self.make_accessors(n))
         
         return res
+
+    Node[] make_accessors(self, Var n):
+        if n.type:
+            t = n.type
+        else:
+            t = Any()
+        return [self.make_getter_wrapper(n.name(), t),
+                self.make_setter_wrapper(n.name(), t),
+                self.make_dynamic_getter_wrapper(n.name(), t),
+                self.make_dynamic_setter_wrapper(n.name(), t)]
     
     FuncDef make_getter_wrapper(self, str name, Type typ):
         """Create a getter wrapper for a data attribute.
@@ -354,7 +366,7 @@ class TypeTransformer:
     Node[] generic_accessor_wrappers(self, VarDef vdef):
         """Construct wrapper class methods for attribute accessors."""
         res = <Node> []
-        for n, vt in vdef.items:
+        for n in vdef.items:
             if n.type:
                 t = n.type
             else:
@@ -430,8 +442,8 @@ class TypeTransformer:
         This is added to a generic wrapper class.
         """
         # The type is 'any' since it should behave covariantly in subclasses.
-        return [VarDef([(Var(self.object_member_name(tdef.info)),
-                         Any())], False, None)]
+        return [VarDef([Var(self.object_member_name(tdef.info),
+                            Any())], False, None)]
     
     str object_member_name(self, TypeInfo info):
         if self.tf.is_java:
@@ -501,8 +513,8 @@ class TypeTransformer:
             # Only include a type variable if it introduces a new slot.
             slot = get_tvar_access_path(info, n + 1)[0] - 1
             if slot >= base_slots:
-                defs.append(VarDef([(Var(tvar_slot_name(slot, is_alt)),
-                                     Any())], False, None))
+                defs.append(VarDef([Var(tvar_slot_name(slot, is_alt),
+                                        Any())], False, None))
         return defs
     
     void make_instance_tvar_initializer(self, FuncDef creat):

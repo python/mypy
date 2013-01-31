@@ -100,14 +100,17 @@ class ExpressionChecker:
         the type of the callee expression.
         """
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
-                               e.arg_names, callable_node=e.callee)
+                               e.arg_names, callable_node=e.callee)[0]
     
-    Type check_call(self, Type callee, Node[] args, int[] arg_kinds,
-                   Context context, str[] arg_names=None,
-                   Node callable_node=None):
+    tuple<Type, Type> check_call(self, Type callee, Node[] args,
+                                 int[] arg_kinds, Context context,
+                                 str[] arg_names=None,
+                                 Node callable_node=None):
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
+
+        Return (result type, inferred callee type).
 
         Arguments:
           callee: type of the called value
@@ -144,7 +147,7 @@ class ExpressionChecker:
             if callable_node:
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callable)
-            return callable.ret_type
+            return callable.ret_type, callable
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again
             # later in a context derived from the signature; these types are
@@ -158,9 +161,9 @@ class ExpressionChecker:
             return self.check_call(target, args, arg_kinds, context, arg_names)
         elif isinstance(callee, Any) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
-            return Any()
+            return Any(), Any()
         else:
-            return self.msg.not_callable(callee, context)
+            return self.msg.not_callable(callee, context), Any()
     
     Type[] infer_arg_types_in_context(self, Callable callee,
                                      Node[] args):
@@ -640,21 +643,29 @@ class ExpressionChecker:
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
-            result = self.check_op('__contains__', right_type, e.left, e)
+            result, method_type = self.check_op('__contains__', right_type,
+                                                e.left, e)
+            e.method_type = method_type
             if e.op == 'in':
                 return result
             else:
                 return self.chk.bool_type()
         elif e.op in mypy.checker.op_methods:
             method = mypy.checker.op_methods[e.op]
-            return self.check_op(method, left_type, e.right, e)
+            result, method_type = self.check_op(method, left_type, e.right, e)
+            e.method_type = method_type
+            return result
         elif e.op == 'is' or e.op == 'is not':
             return self.chk.bool_type()
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
     
-    Type check_op(self, str method, Type base_type, Node arg, Context context):
-        """Type check a binary operation which maps to a method call."""
+    tuple<Type, Type> check_op(self, str method, Type base_type, Node arg,
+                               Context context):
+        """Type check a binary operation which maps to a method call.
+
+        Return tuple (result type, inferred operatro method type).
+        """
         if self.has_non_method(base_type, method):
             self.msg.method_expected_as_operator_implementation(
                 base_type, method, context)
@@ -687,15 +698,18 @@ class ExpressionChecker:
         op = e.op
         if op == 'not':
             self.check_not_void(operand_type, e)
-            return self.chk.bool_type()
+            Type result = self.chk.bool_type()
         elif op == '-':
             method_type = self.analyse_external_member_access('__neg__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], [], e)
+            result, method_type = self.check_call(method_type, [], [], e)
+            e.method_type = method_type
         elif op == '~':
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], [], e)
+            result, method_type = self.check_call(method_type, [], [], e)
+            e.method_type = method_type
+        return result
     
     Type visit_index_expr(self, IndexExpr e):
         """Type check an index expression (base[index])."""
@@ -716,7 +730,10 @@ class ExpressionChecker:
                 self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
                 return Any()
         else:
-            return self.check_op('__getitem__', left_type, e.index, e)
+            result, method_type = self.check_op('__getitem__', left_type,
+                                                e.index, e)
+            e.method_type = method_type
+            return result
     
     Type visit_cast_expr(self, CastExpr expr):
         """Type check a cast expression."""
@@ -786,7 +803,7 @@ class ExpressionChecker:
                                    TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor,
                                e.items,
-                               [nodes.ARG_POS] * len(e.items), e)
+                               [nodes.ARG_POS] * len(e.items), e)[0]
     
     Type visit_tuple_expr(self, TupleExpr e):    
         """Type check a tuple expression."""
@@ -843,7 +860,7 @@ class ExpressionChecker:
                 args.append(TupleExpr([key, value]))
             return self.check_call(constructor,
                                    args,
-                                   [nodes.ARG_POS] * len(args), e)
+                                   [nodes.ARG_POS] * len(args), e)[0]
         else:
             for key_, value_ in e.items:
                 kt = self.accept(key_)
@@ -956,7 +973,7 @@ class ExpressionChecker:
                                id_for_messages,
                                TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor,
-                               [gen.left_expr], [nodes.ARG_POS], gen)
+                               [gen.left_expr], [nodes.ARG_POS], gen)[0]
     
     #
     # Helpers

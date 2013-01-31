@@ -619,3 +619,14 @@ def g(x):
         return g2(x)
     else:
         raise TypeError("Invalid argument types")
+
+[case testNoSpaceBeforeFirstArg]
+-- Issue #34
+class A: pass
+void f(A na):
+    pass
+[out]
+class A: pass
+def f(na):
+    pass
+

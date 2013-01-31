@@ -144,9 +144,9 @@ class PythonGenerator(OutputVisitor):
     def visit_var_def(self, o):
         r = o.repr
         if r:
-            self.string(self.get_pre_whitespace(o.items[0][1]))
+            self.string(self.get_pre_whitespace(o.items[0].type))
             self.omit_next_space = True
-            for v, t in o.items:
+            for v in o.items:
                 self.node(v)
             if o.init:
                 self.token(r.assign)

@@ -524,26 +524,26 @@ class Parser:
     
     VarDef parse_var_def(self, Type typ):
         """Parse variable definition with explicit types."""
-        n = self.parse_var_list(typ)
+        vars = self.parse_var_list(typ)
         Node init = None
         assign_token = none
         if self.current_str() == '=':
             assign_token = self.expect('=')
             init = self.parse_expression(0)
-        for nn, t in n:
-            nn.is_init = init is not None
+        for v in vars:
+            v.is_init = init is not None
         br = self.expect_break()
         
-        node = VarDef(n, self.is_at_top_level(), init)
+        node = VarDef(vars, self.is_at_top_level(), init)
         self.set_repr(node, noderepr.VarDefRepr(assign_token, br))
         return node
     
-    tuple<Var, Type>[] parse_var_list(self, Type first_type):
+    Var[] parse_var_list(self, Type first_type):
         """Parse a comma-separated list of variable names, potentially
         prefixed by type declarations.
         """
         tok = self.expect_type(Name)
-        n = [(Var(tok.string), first_type)]
+        n = [Var(tok.string, first_type)]
         r = [noderepr.VarRepr(tok, none)]
         while self.current_str() == ',':
             tok = self.expect(',')
@@ -553,10 +553,10 @@ class Parser:
             if self.is_at_type():
                 t = self.parse_type()
             tok = self.expect_type(Name)
-            n.append((Var(tok.string), t))
+            n.append(Var(tok.string, t))
             r.append(noderepr.VarRepr(tok, none))
         for i in range(len(n)):
-            self.set_repr(n[i][0], r[i])
+            self.set_repr(n[i], r[i])
         return n
     
     # Parsing statements

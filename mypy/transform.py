@@ -15,7 +15,7 @@ from mypy.nodes import (
     Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
     CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
-    SymbolTableNode, function_type
+    SymbolTableNode, IndexExpr, function_type
 )
 from mypy.traverser import TraverserVisitor
 from mypy.mtypes import Type, Any, Callable, TypeVarDef, Instance
@@ -98,8 +98,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         super().visit_var_def(o)
         
         if o.init is not None:
-            if o.items[0][0].type:
-                t = o.items[0][0].type
+            if o.items[0].type:
+                t = o.items[0].type
             else:
                 t = Any()
             o.init = self.coerce(o.init, t, self.get_type(o.init),
@@ -161,8 +161,20 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         super().visit_assignment_stmt(s)
-        s.rvalue = self.coerce2(s.rvalue, self.get_type(s.lvalues[0]),
-                                self.get_type(s.rvalue), self.type_context())
+        if isinstance(s.lvalues[0], IndexExpr):
+            index = (IndexExpr)s.lvalues[0]
+            method_type = index.method_type
+            if self.dynamic_funcs[-1] or isinstance(method_type, Any):
+                Type lvalue_type = Any()
+            else:
+                method_callable = (Callable)method_type
+                # TODO arg_types[1] may not be reliable
+                lvalue_type = method_callable.arg_types[1]
+        else:
+            lvalue_type = self.get_type(s.lvalues[0])
+            
+        s.rvalue = self.coerce2(s.rvalue, lvalue_type, self.get_type(s.rvalue),
+                                self.type_context())
     
     #
     # Transform expressions
@@ -265,18 +277,39 @@ class DyncheckTransformVisitor(TraverserVisitor):
             e.right = self.coerce(e.right, target,
                                   self.get_type(e.right), self.type_context())
         else:
-            if self.dynamic_funcs[-1]:
+            method_type = e.method_type
+            if self.dynamic_funcs[-1] or isinstance(method_type, Any):
                 e.left = self.coerce_to_dynamic(e.left, self.get_type(e.left),
                                                 self.type_context())
                 e.right = self.coerce(e.right, Any(), self.get_type(e.right),
                                       self.type_context())
-            elif e.op == '+':
-                e.left = self.coerce(e.left, self.named_type('builtins.int'),
-                                     self.get_type(e.left),
-                                     self.type_context())
-                e.right = self.coerce(e.right, self.named_type('builtins.int'),
-                                      self.get_type(e.right),
+            elif method_type:
+                method_callable = (Callable)method_type
+                operand = e.right
+                # For 'in', the order of operands is reversed.
+                if e.op == 'in':
+                    operand = e.left
+                # TODO arg_types[0] may not be reliable
+                operand = self.coerce(operand, method_callable.arg_types[0],
+                                      self.get_type(operand),
                                       self.type_context())
+                if e.op == 'in':
+                    e.left = operand
+                else:
+                    e.right = operand
+
+    void visit_index_expr(self, IndexExpr e):
+        super().visit_index_expr(e)
+        method_type = e.method_type
+        if self.dynamic_funcs[-1] or isinstance(method_type, Any):
+            e.base = self.coerce_to_dynamic(e.base, self.get_type(e.base),
+                                            self.type_context())
+            e.index = self.coerce_to_dynamic(e.index, self.get_type(e.index),
+                                             self.type_context())
+        else:
+            method_callable = (Callable)method_type
+            e.index = self.coerce(e.index, method_callable.arg_types[0],
+                                  self.get_type(e.index), self.type_context())
     
     #
     # Helpers
@@ -335,7 +368,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
             return self.coerce(expr, target_type, source_type, context,
                                is_wrapper_class)
     
-    Node coerce_to_dynamic(self, Node expr, Type source_type, TypeInfo context):
+    Node coerce_to_dynamic(self, Node expr, Type source_type,
+                           TypeInfo context):
         if isinstance(source_type, Any):
             return expr
         source_type = translate_runtime_type_vars_in_context(

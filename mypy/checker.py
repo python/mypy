@@ -133,18 +133,18 @@ class TypeChecker(NodeVisitor<Type>):
         # Type check initializer.
         if defn.init:
             # There is an initializer.
-            if defn.items[0][1]:
+            if defn.items[0].type:
                 # Explicit types.
                 if len(defn.items) == 1:
-                    self.check_single_assignment(defn.items[0][1], None,
+                    self.check_single_assignment(defn.items[0].type, None,
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
                     Type[] lvt = []
-                    for v, t in defn.items:
-                        lvt.append(t)
+                    for v in defn.items:
+                        lvt.append(v.type)
                     self.check_multi_assignment(
-                        lvt, <tuple<Type, Node>> [None] * len(lvt),
+                        lvt, <IndexExpr> [None] * len(lvt),
                         defn.init, defn.init)
             else:
                 init_type = self.accept(defn.init)
@@ -152,13 +152,10 @@ class TypeChecker(NodeVisitor<Type>):
                     # Infer local variable type if there is an initializer
                     # except if the# definition is at the top level (outside a
                     # function).
-                    Var[] names = []
-                    for vv, tt in defn.items:
-                        names.append(vv)
-                    self.infer_local_variable_type(names, init_type, defn)
+                    self.infer_local_variable_type(defn.items, init_type, defn)
         else:
             # No initializer
-            if (defn.kind == LDEF and not defn.items[0][1] and
+            if (defn.kind == LDEF and not defn.items[0].type and
                     not defn.is_top_level and not self.is_dynamic_function()):
                 self.fail(messages.NEED_ANNOTATION_FOR_VAR, defn)
     
@@ -338,13 +335,22 @@ class TypeChecker(NodeVisitor<Type>):
     
     Type visit_type_def(self, TypeDef defn):
         """Type check a type definition (class or interface)."""
-        typ = self.lookup(defn.name, GDEF).node
+        typ = (TypeInfo)self.lookup(defn.name, GDEF).node
         self.errors.set_type(defn.name, defn.is_interface)
-        self.check_unique_interface_implementations((TypeInfo)typ)
-        self.check_interface_errors((TypeInfo)typ)
+        self.check_unique_interface_implementations(typ)
+        self.check_interface_errors(typ)
+        self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.report_error_if_statements_in_class_body(defn.defs)
         self.errors.set_type(None, False)
+
+    void check_no_constructor_if_interface(self, TypeInfo typ):
+        if not typ.is_interface:
+            return
+        ctor = typ.get_method('__init__')
+        if ctor is None:
+            return
+        self.msg.interface_has_constructor(ctor)
     
     void check_unique_interface_implementations(self, TypeInfo typ):
         """Check that each interface is implemented only once."""
@@ -406,9 +412,10 @@ class TypeChecker(NodeVisitor<Type>):
     void check_assignments(self, Node[] lvalues, Node rvalue):        
         # Collect lvalue types. Index lvalues require special consideration,
         # since we cannot typecheck them until we know the rvalue type.
-        lvalue_types = <Type> []    # May be None
-        # Base type and index types (or None)
-        index_lvalue_types = <tuple<Type, Node>> []
+        # For each lvalue, one of lvalue_types[i] or index_lvalues[i] is not
+        # None.
+        lvalue_types = <Type> []       # Each may be None
+        index_lvalues = <IndexExpr> [] # Each may be None
         inferred = <Var> []
         is_inferred = False
         
@@ -420,25 +427,26 @@ class TypeChecker(NodeVisitor<Type>):
                     inferred.append(((Var)n.node))
                 else:
                     m = (MemberExpr)lv
+                    self.accept(m.expr)
                     inferred.append(m.def_var)
                 lvalue_types.append(None)
-                index_lvalue_types.append(None)
+                index_lvalues.append(None)
             elif isinstance(lv, IndexExpr):
                 ilv = (IndexExpr)lv
                 lvalue_types.append(None)
-                index_lvalue_types.append((self.accept(ilv.base), ilv.index))
+                index_lvalues.append(ilv)
                 inferred.append(None)
             else:
                 lvalue_types.append(self.accept(lv))
-                index_lvalue_types.append(None)
+                index_lvalues.append(None)
                 inferred.append(None)
         
         if len(lvalues) == 1:
             # Single lvalue.
             self.check_single_assignment(lvalue_types[0],
-                                         index_lvalue_types[0], rvalue, rvalue)
+                                         index_lvalues[0], rvalue, rvalue)
         else:
-            self.check_multi_assignment(lvalue_types, index_lvalue_types,
+            self.check_multi_assignment(lvalue_types, index_lvalues,
                                         rvalue, rvalue)
         if is_inferred:
             self.infer_variable_type(inferred, lvalues, self.accept(rvalue),
@@ -547,7 +555,7 @@ class TypeChecker(NodeVisitor<Type>):
             return typ
     
     void check_multi_assignment(self, Type[] lvalue_types,
-                                list<tuple<Type, Node>> index_lvalue_types,
+                                IndexExpr[] index_lvalues,
                                 Node rvalue,
                                 Context context,
                                 str msg=None):
@@ -576,7 +584,7 @@ class TypeChecker(NodeVisitor<Type>):
                 # The number of values is compatible. Check their types.
                 for j in range(len(lvalue_types)):
                     self.check_single_assignment(
-                        lvalue_types[j], index_lvalue_types[j],
+                        lvalue_types[j], index_lvalues[j],
                         self.temp_node(trvalue.items[j]), context, msg)
         elif (isinstance(rvalue_type, Instance) and
                 ((Instance)rvalue_type).type.full_name() == 'builtins.list'):
@@ -584,34 +592,41 @@ class TypeChecker(NodeVisitor<Type>):
             item_type = ((Instance)rvalue_type).args[0]
             for k in range(len(lvalue_types)):
                 self.check_single_assignment(lvalue_types[k],
-                                             index_lvalue_types[k],
+                                             index_lvalues[k],
                                              self.temp_node(item_type),
                                              context, msg)
         else:
             self.fail(msg, context)
     
     void check_single_assignment(self,
-                          Type lvalue_type, tuple<Type, Node> index_lvalue,
+                          Type lvalue_type, IndexExpr index_lvalue,
                           Node rvalue, Context context,
                           str msg=messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT):
+        """Type check an assignment.
+
+        If lvalue_type is None, the index_lvalue argument must be the
+        index expr for indexed assignment (__setitem__).
+        Otherwise, lvalue_type is used as the type of the lvalue.
+        """
         if lvalue_type:
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg)
         elif index_lvalue:
             self.check_indexed_assignment(index_lvalue, rvalue, context)
     
-    Type check_indexed_assignment(self, tuple<Type, Node> lvalue, Node rvalue,
-                                 Context context):
+    void check_indexed_assignment(self, IndexExpr lvalue,
+                                  Node rvalue, Context context):
         """Type check indexed assignment base[index] = rvalue.
 
-        The lvalue argument is the tuple (base type, index) and rvalue is the
-        assigned expression.
+        The lvalue argument is the base[index] expression.
         """
+        basetype = self.accept(lvalue.base)
         method_type = self.expr_checker.analyse_external_member_access(
-            '__setitem__', lvalue[0], context)
-        return self.expr_checker.check_call(method_type, [lvalue[1], rvalue],
-                                            [nodes.ARG_POS, nodes.ARG_POS],
-                                            context)
+            '__setitem__', basetype, context)
+        lvalue.method_type = method_type
+        self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
+                                     [nodes.ARG_POS, nodes.ARG_POS],
+                                     context)
     
     Type visit_expression_stmt(self, ExpressionStmt s):
         self.accept(s.expr)
@@ -673,14 +688,12 @@ class TypeChecker(NodeVisitor<Type>):
     Type visit_operator_assignment_stmt(self, OperatorAssignmentStmt s):
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
-        rvalue_type = self.expr_checker.check_op(op_methods[s.op], lvalue_type,
-                                                 s.rvalue, s)
+        rvalue_type, method_type = self.expr_checker.check_op(
+            op_methods[s.op], lvalue_type, s.rvalue, s)
         
         if isinstance(s.lvalue, IndexExpr):
             lv = (IndexExpr)s.lvalue
-            self.check_single_assignment(None,
-                                         (self.accept(lv.base), lv.index),
-                                         s.rvalue, s.rvalue)
+            self.check_single_assignment(None, lv, s.rvalue, s.rvalue)
         else:
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
@@ -750,10 +763,10 @@ class TypeChecker(NodeVisitor<Type>):
         echk = self.expr_checker
         method = echk.analyse_external_member_access('__iter__', iterable,
                                                      expr)
-        iterator = echk.check_call(method, [], [], expr)
+        iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyse_external_member_access('__next__', iterator,
                                                      expr)
-        return echk.check_call(method, [], [], expr)
+        return echk.check_call(method, [], [], expr)[0]
 
     void analyse_index_variables(self, NameExpr[] index, bool is_annotated,
                                  Type item_type, Context context):
@@ -780,10 +793,9 @@ class TypeChecker(NodeVisitor<Type>):
                     t.append(v.type)
                 else:
                     t.append(Any())
-            self.check_multi_assignment(
-                t, <tuple<Type, Node>> [None] * len(index),
-                self.temp_node(item_type), context,
-                messages.INCOMPATIBLE_TYPES_IN_FOR)
+            self.check_multi_assignment(t, <IndexExpr> [None] * len(index),
+                                        self.temp_node(item_type), context,
+                                        messages.INCOMPATIBLE_TYPES_IN_FOR)
     
     Type visit_del_stmt(self, DelStmt s):
         if isinstance(s.expr, IndexExpr):
