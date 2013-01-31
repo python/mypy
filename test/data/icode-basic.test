@@ -431,3 +431,15 @@ def f:
     r1 = A()
     r2 = r1.__contains__(r0) [A]
     return r2
+
+[case testIndexedGet]
+class A:
+    int __getitem__(self, int x): pass
+int f(A a, int n):
+    return a[n]
+[out]
+def f:
+    r2 = r0.__getitem__(r1) [A]
+    return r2
+
+    

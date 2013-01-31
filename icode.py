@@ -6,7 +6,7 @@ from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
     UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo,
-    VarDef, SuperExpr
+    VarDef, SuperExpr, IndexExpr
 )
 import nodes
 from visitor import NodeVisitor
@@ -643,6 +643,16 @@ class IcodeBuilder(NodeVisitor<int>):
         else:
             # Non-trivial coercions not supported yet.
             raise NotImplementedError()
+
+    int visit_index_expr(self, IndexExpr e):
+        # Generate method call
+        basetype = (Instance)self.types[e.base]
+        base = self.accept(e.base)
+        index = self.accept(e.index)
+        target = self.target_register()
+        self.add(CallMethod(target, base, '__getitem__', basetype.type,
+                            [index]))
+        return target
 
     #
     # Conditional expressions
