@@ -121,8 +121,8 @@ L3:
     return r1
 
 
--- Arithmetic expressions
--- ----------------------
+-- Primitive arithmetic expressions
+-- --------------------------------
 
 
 [case testComplexArithmeticExpression]
@@ -390,3 +390,32 @@ int f(): pass
 def f:
     r0 = 0
     return r0
+
+
+-- Operator overloading
+-- --------------------
+
+
+[case testOverloadedAdd]
+class A:
+    int __add__(self, int x): pass
+int f():
+    return A() + 2
+[out]
+def f:
+    r0 = A()
+    r1 = 2
+    r2 = r0.__add__(r1) [A]
+    return r2
+
+[case testOverloadedMul]
+class A:
+    int __mul__(self, int x): pass
+int f():
+    return A() * 2
+[out]
+def f:
+    r0 = A()
+    r1 = 2
+    r2 = r0.__mul__(r1) [A]
+    return r2

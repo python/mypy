@@ -1,5 +1,6 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
+from checker import op_methods
 from mtypes import Any, Instance, Type, Callable, FunctionLike
 from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
@@ -572,10 +573,23 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_op_expr(self, OpExpr e):
         # TODO arbitrary operand types
-        left, left_kind = self.get_operand(e.left)
-        right, right_kind = self.get_operand(e.right)
-        target = self.target_register()
-        self.add(BinOp(target, left, left_kind, right, right_kind, e.op))
+        left_type = self.types[e.left]
+        right_type = self.types[e.right]
+        if (is_named_instance(left_type, 'builtins.int') and
+                is_named_instance(right_type, 'builtins.int')):
+            # Primitive operation
+            left, left_kind = self.get_operand(e.left)
+            right, right_kind = self.get_operand(e.right)
+            target = self.target_register()
+            self.add(BinOp(target, left, left_kind, right, right_kind, e.op))
+        else:
+            # Generate method call
+            inst = (Instance)left_type
+            left = self.accept(e.left)
+            right = self.accept(e.right)
+            target = self.target_register()
+            method = op_methods[e.op]
+            self.add(CallMethod(target, left, method, inst.type, [right]))
         return target
 
     tuple<int, int> get_operand(self, Node n):
