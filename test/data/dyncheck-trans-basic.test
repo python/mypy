@@ -1195,3 +1195,26 @@ x[1] = 2
 [out]
 any x
 x[{any <= int 1}] = {any <= int 2}
+
+[case testGenericOperatorMethod]
+class A:
+    t __add__<t>(self, t x): pass
+any x
+A a
+x = a + 1
+[out]
+...
+A a
+x = a + {any <= int 1}
+
+[case testGenericIndexedGet]
+class A:
+    B<t> __getitem__<t>(self, t x): pass
+class B<t>: pass
+any x
+A a
+B<int> b = a[x]
+[out]
+...
+A a
+B b = a[{int x}]

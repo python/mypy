@@ -100,14 +100,17 @@ class ExpressionChecker:
         the type of the callee expression.
         """
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
-                               e.arg_names, callable_node=e.callee)
+                               e.arg_names, callable_node=e.callee)[0]
     
-    Type check_call(self, Type callee, Node[] args, int[] arg_kinds,
-                   Context context, str[] arg_names=None,
-                   Node callable_node=None):
+    tuple<Type, Type> check_call(self, Type callee, Node[] args,
+                                 int[] arg_kinds, Context context,
+                                 str[] arg_names=None,
+                                 Node callable_node=None):
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
+
+        Return (result type, inferred callee type).
 
         Arguments:
           callee: type of the called value
@@ -144,7 +147,7 @@ class ExpressionChecker:
             if callable_node:
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callable)
-            return callable.ret_type
+            return callable.ret_type, callable
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again
             # later in a context derived from the signature; these types are
@@ -158,9 +161,9 @@ class ExpressionChecker:
             return self.check_call(target, args, arg_kinds, context, arg_names)
         elif isinstance(callee, Any) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
-            return Any()
+            return Any(), Any()
         else:
-            return self.msg.not_callable(callee, context)
+            return self.msg.not_callable(callee, context), Any()
     
     Type[] infer_arg_types_in_context(self, Callable callee,
                                      Node[] args):
@@ -667,8 +670,7 @@ class ExpressionChecker:
                 base_type, method, context)
         method_type = self.analyse_external_member_access(
             method, base_type, context)
-        return (self.check_call(method_type, [arg], [nodes.ARG_POS], context),
-                method_type)
+        return self.check_call(method_type, [arg], [nodes.ARG_POS], context)
     
     Type check_boolean_op(self, OpExpr e, Context context):
         """Type check a boolean operation ('and' or 'or')."""
@@ -699,11 +701,11 @@ class ExpressionChecker:
         elif op == '-':
             method_type = self.analyse_external_member_access('__neg__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], [], e)
+            return self.check_call(method_type, [], [], e)[0]
         elif op == '~':
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], [], e)
+            return self.check_call(method_type, [], [], e)[0]
     
     Type visit_index_expr(self, IndexExpr e):
         """Type check an index expression (base[index])."""
@@ -797,7 +799,7 @@ class ExpressionChecker:
                                    TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor,
                                e.items,
-                               [nodes.ARG_POS] * len(e.items), e)
+                               [nodes.ARG_POS] * len(e.items), e)[0]
     
     Type visit_tuple_expr(self, TupleExpr e):    
         """Type check a tuple expression."""
@@ -854,7 +856,7 @@ class ExpressionChecker:
                 args.append(TupleExpr([key, value]))
             return self.check_call(constructor,
                                    args,
-                                   [nodes.ARG_POS] * len(args), e)
+                                   [nodes.ARG_POS] * len(args), e)[0]
         else:
             for key_, value_ in e.items:
                 kt = self.accept(key_)
@@ -967,7 +969,7 @@ class ExpressionChecker:
                                id_for_messages,
                                TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor,
-                               [gen.left_expr], [nodes.ARG_POS], gen)
+                               [gen.left_expr], [nodes.ARG_POS], gen)[0]
     
     #
     # Helpers

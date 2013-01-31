@@ -763,10 +763,10 @@ class TypeChecker(NodeVisitor<Type>):
         echk = self.expr_checker
         method = echk.analyse_external_member_access('__iter__', iterable,
                                                      expr)
-        iterator = echk.check_call(method, [], [], expr)
+        iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyse_external_member_access('__next__', iterator,
                                                      expr)
-        return echk.check_call(method, [], [], expr)
+        return echk.check_call(method, [], [], expr)[0]
 
     void analyse_index_variables(self, NameExpr[] index, bool is_annotated,
                                  Type item_type, Context context):
