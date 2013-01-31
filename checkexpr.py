@@ -726,6 +726,7 @@ class ExpressionChecker:
         else:
             result, method_type = self.check_op('__getitem__', left_type,
                                                 e.index, e)
+            e.method_type = method_type
             return result
     
     Type visit_cast_expr(self, CastExpr expr):

@@ -731,6 +731,7 @@ class IndexExpr(Node):
     """Index expression x[y]"""
     Node base
     Node index
+    mtypes.Type method_type  # Inferred __getitem__ method type
     
     void __init__(self, Node base, Node index):
         self.base = base

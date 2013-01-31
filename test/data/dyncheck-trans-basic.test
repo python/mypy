@@ -1139,3 +1139,25 @@ x = a * x
 ...
 A a
 x = a * {int x}
+
+[case testIndexedGet]
+class A:
+    int __getitem__(self, A x): pass
+any x
+A a
+x = a[x]
+[out]
+...
+A a
+x = {any <= int a[{A x}]}
+
+[case testIndexedGetInDynamicallyTypedFunction]
+class A:
+    int __getitem__(self, A x): pass
+def f():
+    1[2]
+[out]
+...
+any f():
+    {any <= int 1}[{any <= int 2}]
+...

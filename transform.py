@@ -15,7 +15,7 @@ from nodes import (
     Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
     CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
-    SymbolTableNode, function_type
+    SymbolTableNode, IndexExpr, function_type
 )
 from traverser import TraverserVisitor
 from mtypes import Type, Any, Callable, TypeVarDef, Instance
@@ -277,6 +277,19 @@ class DyncheckTransformVisitor(TraverserVisitor):
                 e.right = self.coerce(e.right, method_callable.arg_types[0],
                                       self.get_type(e.right),
                                       self.type_context())
+
+    void visit_index_expr(self, IndexExpr e):
+        super().visit_index_expr(e)
+        method_type = e.method_type
+        if self.dynamic_funcs[-1] or isinstance(method_type, Any):
+            e.base = self.coerce_to_dynamic(e.base, self.get_type(e.base),
+                                            self.type_context())
+            e.index = self.coerce_to_dynamic(e.index, self.get_type(e.index),
+                                             self.type_context())
+        else:
+            method_callable = (Callable)method_type
+            e.index = self.coerce(e.index, method_callable.arg_types[0],
+                                  self.get_type(e.index), self.type_context())
     
     #
     # Helpers
