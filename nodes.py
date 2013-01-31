@@ -758,6 +758,9 @@ class OpExpr(Node):
     str op
     Node left
     Node right
+    # Inferred type for the operator method type (when relevant; None for
+    # 'is').
+    mtypes.Type method_type
     
     void __init__(self, str op, Node left, Node right):
         self.op = op

@@ -640,27 +640,35 @@ class ExpressionChecker:
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
-            result = self.check_op('__contains__', right_type, e.left, e)
+            result, method_type = self.check_op('__contains__', right_type,
+                                                e.left, e)
             if e.op == 'in':
                 return result
             else:
                 return self.chk.bool_type()
         elif e.op in checker.op_methods:
             method = checker.op_methods[e.op]
-            return self.check_op(method, left_type, e.right, e)
+            result, method_type = self.check_op(method, left_type, e.right, e)
+            e.method_type = method_type
+            return result
         elif e.op == 'is' or e.op == 'is not':
             return self.chk.bool_type()
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
     
-    Type check_op(self, str method, Type base_type, Node arg, Context context):
-        """Type check a binary operation which maps to a method call."""
+    tuple<Type, Type> check_op(self, str method, Type base_type, Node arg,
+                               Context context):
+        """Type check a binary operation which maps to a method call.
+
+        Return tuple (result type, inferred operatro method type).
+        """
         if self.has_non_method(base_type, method):
             self.msg.method_expected_as_operator_implementation(
                 base_type, method, context)
         method_type = self.analyse_external_member_access(
             method, base_type, context)
-        return self.check_call(method_type, [arg], [nodes.ARG_POS], context)
+        return (self.check_call(method_type, [arg], [nodes.ARG_POS], context),
+                method_type)
     
     Type check_boolean_op(self, OpExpr e, Context context):
         """Type check a boolean operation ('and' or 'or')."""
@@ -716,7 +724,9 @@ class ExpressionChecker:
                 self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
                 return Any()
         else:
-            return self.check_op('__getitem__', left_type, e.index, e)
+            result, method_type = self.check_op('__getitem__', left_type,
+                                                e.index, e)
+            return result
     
     Type visit_cast_expr(self, CastExpr expr):
         """Type check a cast expression."""

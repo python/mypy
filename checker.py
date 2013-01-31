@@ -680,8 +680,8 @@ class TypeChecker(NodeVisitor<Type>):
     Type visit_operator_assignment_stmt(self, OperatorAssignmentStmt s):
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
-        rvalue_type = self.expr_checker.check_op(op_methods[s.op], lvalue_type,
-                                                 s.rvalue, s)
+        rvalue_type, method_type = self.expr_checker.check_op(
+            op_methods[s.op], lvalue_type, s.rvalue, s)
         
         if isinstance(s.lvalue, IndexExpr):
             lv = (IndexExpr)s.lvalue

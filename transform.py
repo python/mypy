@@ -265,16 +265,16 @@ class DyncheckTransformVisitor(TraverserVisitor):
             e.right = self.coerce(e.right, target,
                                   self.get_type(e.right), self.type_context())
         else:
-            if self.dynamic_funcs[-1]:
+            method_type = e.method_type
+            if self.dynamic_funcs[-1] or isinstance(method_type, Any):
                 e.left = self.coerce_to_dynamic(e.left, self.get_type(e.left),
                                                 self.type_context())
                 e.right = self.coerce(e.right, Any(), self.get_type(e.right),
                                       self.type_context())
-            elif e.op == '+':
-                e.left = self.coerce(e.left, self.named_type('builtins.int'),
-                                     self.get_type(e.left),
-                                     self.type_context())
-                e.right = self.coerce(e.right, self.named_type('builtins.int'),
+            elif method_type:
+                method_callable = (Callable)method_type
+                # TODO arg_types[0] may not be reliable
+                e.right = self.coerce(e.right, method_callable.arg_types[0],
                                       self.get_type(e.right),
                                       self.type_context())
     
