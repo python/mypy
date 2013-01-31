@@ -1151,9 +1151,14 @@ x = a[x]
 A a
 x = {any <= int a[{A x}]}
 
+[case testIndexedGetWithAnyBase]
+any x
+int i = x[1]
+[out]
+any x
+int i = {int x[{any <= int 1}]}
+
 [case testIndexedGetInDynamicallyTypedFunction]
-class A:
-    int __getitem__(self, A x): pass
 def f():
     1[2]
 [out]
@@ -1161,3 +1166,32 @@ def f():
 any f():
     {any <= int 1}[{any <= int 2}]
 ...
+
+[case testIndexedSet]
+class A:
+    int __setitem__(self, A x, int y): pass
+any x
+A a
+a[x] = 1
+a[a] = x
+[out]
+...
+A a
+a[{A x}] = 1
+a[a] = {int x}
+
+[case testIndexedSetInDynamicallyTypedFunction]
+def f():
+    1[2] = 3
+[out]
+...
+any f():
+    {any <= int 1}[{any <= int 2}] = {any <= int 3}
+...
+
+[case testIndexedSetWithAnyBase]
+any x
+x[1] = 2
+[out]
+any x
+x[{any <= int 1}] = {any <= int 2}

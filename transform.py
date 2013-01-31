@@ -161,8 +161,20 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         super().visit_assignment_stmt(s)
-        s.rvalue = self.coerce2(s.rvalue, self.get_type(s.lvalues[0]),
-                                self.get_type(s.rvalue), self.type_context())
+        if isinstance(s.lvalues[0], IndexExpr):
+            index = (IndexExpr)s.lvalues[0]
+            method_type = index.method_type
+            if self.dynamic_funcs[-1] or isinstance(method_type, Any):
+                Type lvalue_type = Any()
+            else:
+                method_callable = (Callable)method_type
+                # TODO arg_types[1] may not be reliable
+                lvalue_type = method_callable.arg_types[1]
+        else:
+            lvalue_type = self.get_type(s.lvalues[0])
+            
+        s.rvalue = self.coerce2(s.rvalue, lvalue_type, self.get_type(s.rvalue),
+                                self.type_context())
     
     #
     # Transform expressions
