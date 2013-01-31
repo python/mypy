@@ -1241,3 +1241,34 @@ x = -a
 ...
 A a
 x = {any <= bool -a}
+
+[case testTransformBinaryOpOperands]
+class A:
+    int __add__(self, A x): pass
+A f(any x): pass
+A a
+a + f(1)
+[out]
+...
+A a
+a + f({any <= int 1})
+
+[case testTransformIndexExpr]
+class A:
+    int __getitem__(self, A x): pass
+A f(any x): pass
+A a
+a[f(1)]
+[out]
+...
+A a
+a[f({any <= int 1})]
+
+[case testTransformUnaryOperand]
+class A:
+    int __neg__(self): pass
+A f(any x): pass
+-f(1)
+[out]
+...
+-f({any <= int 1})
