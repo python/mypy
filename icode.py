@@ -488,8 +488,19 @@ class IcodeBuilder(NodeVisitor<int>):
                 # TODO do not hard code set$ prefix
                 self.add(CallMethod(temp, obj, 'set$' + member.name, typeinfo,
                                     [source]))
+        elif isinstance(lvalue, IndexExpr):
+            indexexpr = (IndexExpr)lvalue
+            obj_type = self.types[indexexpr.base]
+            assert isinstance(obj_type, Instance) # TODO more flexible
+            typeinfo = ((Instance)obj_type).type
+            base = self.accept(indexexpr.base)
+            index = self.accept(indexexpr.index)
+            value = self.accept(s.rvalue)
+            temp = self.alloc_register()
+            self.add(CallMethod(temp, base, '__setitem__', typeinfo,
+                                [index, value]))
         else:
-            pass # TODO globals etc.
+            raise RuntimeError()
 
     int visit_while_stmt(self, WhileStmt s):
         # Split block so that we get a handle to the top of the loop.

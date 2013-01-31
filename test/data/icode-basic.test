@@ -442,4 +442,13 @@ def f:
     r2 = r0.__getitem__(r1) [A]
     return r2
 
-    
+[case testIndexedSet]
+class A:
+    void __setitem__(self, int x, int y): pass
+void f(A a, int n, int m):
+    a[m] = n
+[out]
+def f:
+    r3 = r0.__setitem__(r2, r1) [A]
+    r4 = None
+    return r4
