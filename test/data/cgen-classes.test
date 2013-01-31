@@ -244,3 +244,12 @@ class B(A):
         return super().f(x + 1) + 2
 n = B().f(3) # 4
 print(n)     # 7
+
+[case testOperatorOverload]
+class A:
+    void __init__(self, int x):
+        self.x = x
+    A __add__(self, int y):
+        return A(self.x + y + 1)
+a = A(3)
+print((a + 5).x) # 9
