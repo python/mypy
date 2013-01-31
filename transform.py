@@ -368,7 +368,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
             return self.coerce(expr, target_type, source_type, context,
                                is_wrapper_class)
     
-    Node coerce_to_dynamic(self, Node expr, Type source_type, TypeInfo context):
+    Node coerce_to_dynamic(self, Node expr, Type source_type,
+                           TypeInfo context):
         if isinstance(source_type, Any):
             return expr
         source_type = translate_runtime_type_vars_in_context(
