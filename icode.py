@@ -612,9 +612,20 @@ class IcodeBuilder(NodeVisitor<int>):
             return self.accept(n), REG_KIND
 
     int visit_unary_expr(self, UnaryExpr e):
+        operand_type = self.types[e.expr]
         operand = self.accept(e.expr)
         target = self.target_register()
-        self.add(UnaryOp(target, operand, e.op))
+        if is_named_instance(operand_type, 'builtins.int'):
+            self.add(UnaryOp(target, operand, e.op))
+        else:
+            if e.op == '-':
+                method = '__neg__'
+            elif e.op == '~':
+                method = '__invert__'
+            else:
+                raise NotImplementedError()
+            inst = (Instance)operand_type # TODO more flexible
+            self.add(CallMethod(target, operand, method, inst.type, []))
         return target
 
     int visit_call_expr(self, CallExpr e):
