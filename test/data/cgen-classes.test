@@ -214,3 +214,22 @@ b = B(4)
 b.y = 5
 print(b.x) # 4
 print(b.y) # 5
+
+[case testCallSuperInit]
+class A:
+    void __init__(self, int x):
+        print(x)
+class B(A):
+    void __init__(self, int x, int y):
+        super().__init__(y)
+B(5, 6) # 6
+
+[case testCallSuperInitInDeepHierarchy]
+class A:
+    void __init__(self, int x):
+        print(x)
+class B(A): pass
+class C(A):
+    void __init__(self, int x, int y):
+        super().__init__(y)
+C(5, 6) # 6

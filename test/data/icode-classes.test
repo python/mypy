@@ -184,3 +184,19 @@ def f:
     r1 = None
     return r1
 
+
+-- super()
+-- -------
+
+
+[case testCallSuperInit]
+class A:
+    void __init__(self, int x): pass
+class B(A):
+    void __init__(self, int x, int y):
+        super().__init__(y)
+[out]
+def B.__init__:
+    r3 = r0.__init__(r2) [A]
+    r4 = None
+    return r4

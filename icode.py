@@ -5,7 +5,7 @@ from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
     UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo,
-    VarDef
+    VarDef, SuperExpr
 )
 import nodes
 from visitor import NodeVisitor
@@ -593,6 +593,11 @@ class IcodeBuilder(NodeVisitor<int>):
             assert isinstance(receiver_type, Instance) # TODO more flexible
             typeinfo = ((Instance)receiver_type).type
             self.add(CallMethod(target, receiver, member.name, typeinfo, args))
+        elif isinstance(e.callee, SuperExpr):
+            superexpr = (SuperExpr)e.callee
+            target = self.target_register()
+            self.add(CallMethod(target, 0, superexpr.name, superexpr.info.base,
+                                args))
         else:
             raise NotImplementedError('call target %s' % type(e.callee))
         return target
