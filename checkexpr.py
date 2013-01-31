@@ -698,15 +698,18 @@ class ExpressionChecker:
         op = e.op
         if op == 'not':
             self.check_not_void(operand_type, e)
-            return self.chk.bool_type()
+            Type result = self.chk.bool_type()
         elif op == '-':
             method_type = self.analyse_external_member_access('__neg__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], [], e)[0]
+            result, method_type = self.check_call(method_type, [], [], e)
+            e.method_type = method_type
         elif op == '~':
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
-            return self.check_call(method_type, [], [], e)[0]
+            result, method_type = self.check_call(method_type, [], [], e)
+            e.method_type = method_type
+        return result
     
     Type visit_index_expr(self, IndexExpr e):
         """Type check an index expression (base[index])."""

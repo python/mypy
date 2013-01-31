@@ -745,6 +745,7 @@ class UnaryExpr(Node):
     """Unary operation"""
     str op
     Node expr
+    mtypes.Type method_type  # Inferred operator method type
     
     void __init__(self, str op, Node expr):
         self.op = op
