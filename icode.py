@@ -589,6 +589,8 @@ class IcodeBuilder(NodeVisitor<int>):
             right = self.accept(e.right)
             target = self.target_register()
             method = op_methods[e.op]
+            if e.op == 'in':
+                left, right = right, left
             self.add(CallMethod(target, left, method, inst.type, [right]))
         return target
 

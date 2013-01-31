@@ -419,3 +419,15 @@ def f:
     r1 = 2
     r2 = r0.__mul__(r1) [A]
     return r2
+
+[case testOverloadedIn]
+class A:
+    int __contains__(self, int x): pass
+int f():
+    return 2 in A()
+[out]
+def f:
+    r0 = 2
+    r1 = A()
+    r2 = r1.__contains__(r0) [A]
+    return r2
