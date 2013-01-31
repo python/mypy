@@ -1229,3 +1229,15 @@ x = x in a
 ...
 A a
 x = {any <= int {A x} in a}
+
+[case testUnaryOperator]
+class A:
+    bool __neg__(self): pass
+any x
+A a
+x = -a
+[builtins fixtures/ops.py]
+[out]
+...
+A a
+x = {any <= bool -a}
