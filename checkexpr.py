@@ -645,6 +645,7 @@ class ExpressionChecker:
         if e.op == 'in' or e.op == 'not in':
             result, method_type = self.check_op('__contains__', right_type,
                                                 e.left, e)
+            e.method_type = method_type
             if e.op == 'in':
                 return result
             else:

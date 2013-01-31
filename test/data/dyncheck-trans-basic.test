@@ -1218,3 +1218,14 @@ B<int> b = a[x]
 ...
 A a
 B b = a[{int x}]
+
+[case testInOperator]
+class A:
+    int __contains__(self, A a): pass
+any x
+A a
+x = x in a
+[out]
+...
+A a
+x = {any <= int {A x} in a}

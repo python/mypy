@@ -285,10 +285,18 @@ class DyncheckTransformVisitor(TraverserVisitor):
                                       self.type_context())
             elif method_type:
                 method_callable = (Callable)method_type
+                operand = e.right
+                # For 'in', the order of operands is reversed.
+                if e.op == 'in':
+                    operand = e.left
                 # TODO arg_types[0] may not be reliable
-                e.right = self.coerce(e.right, method_callable.arg_types[0],
-                                      self.get_type(e.right),
+                operand = self.coerce(operand, method_callable.arg_types[0],
+                                      self.get_type(operand),
                                       self.type_context())
+                if e.op == 'in':
+                    e.left = operand
+                else:
+                    e.right = operand
 
     void visit_index_expr(self, IndexExpr e):
         super().visit_index_expr(e)
