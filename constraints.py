@@ -7,6 +7,10 @@ from subtypes import map_instance_to_supertype
 import nodes
 
 
+SUBTYPE_OF = 0
+SUPERTYPE_OF = 1
+
+
 Constraint[] infer_constraints_for_callable(
                  Callable callee, Type[] arg_types, int[] arg_kinds,
                  int[][] formal_to_actual):
@@ -79,10 +83,6 @@ Constraint[] infer_constraints(Type template, Type actual, int direction):
     The constraints are represented as Constraint objects.
     """
     return template.accept(ConstraintBuilderVisitor(actual, direction))
-
-
-SUBTYPE_OF = 0
-SUPERTYPE_OF = 1
 
 
 class Constraint:
