@@ -7,7 +7,8 @@ import re
 
 from errors import Errors
 from mtypes import (
-    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any, Overloaded
+    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
+    Overloaded
 )
 from nodes import TypeInfo, Context
 import checker
@@ -53,10 +54,10 @@ class MessageBuilder:
     The methods of this class need to be provided with the context within a
     file; the errors member manages the wider context.
     
-    IDEA: Support a "verbose mode" that includes full information about types
+    IDEA: Support a 'verbose mode' that includes full information about types
           in error messages and that may otherwise produce more detailed error
           messages.
-          """
+    """
     # Report errors using this instance. It knows about the current file and
     # import context.
     Errors errors
@@ -109,7 +110,7 @@ class MessageBuilder:
           any -> 'any'
           void -> void
           function type -> "" (empty string)
-          """
+        """
         if isinstance(typ, Instance):
             itype = (Instance)typ
             # Get the short name of the type.
@@ -368,7 +369,8 @@ class MessageBuilder:
         self.fail('Function signature variants {} and {} overlap'.format(
             n1 + 1, n2 + 1), context)
     
-    void invalid_cast(self, Type target_type, Type source_type, Context context):
+    void invalid_cast(self, Type target_type, Type source_type,
+                      Context context):
         if not self.check_void(source_type, context):
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
