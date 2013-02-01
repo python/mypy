@@ -24,6 +24,18 @@ SHR_OPERAND = 2
 CLEAR_LSB = 4
 
 
+MAIN_FRAGMENT = '''
+int main(int argc, char **argv) {
+    MValue stack[1024];
+    MEnv env;
+    env.frame = stack;
+    env.stack_top = stack + 1024 - 16; // Reserve 16 entries for arguments
+    M__init(&env);
+    return 0;
+}
+'''
+
+
 class CGenerator:
     """Translate icode to C."""
     
@@ -356,18 +368,6 @@ str operand(int n, int kind):
         return str(n * 2)
     else:
         return reg(n)
-
-
-MAIN_FRAGMENT = '''
-int main(int argc, char **argv) {
-    MValue stack[1024];
-    MEnv env;
-    env.frame = stack;
-    env.stack_top = stack + 1024 - 16; // Reserve 16 entries for arguments
-    M__init(&env);
-    return 0;
-}
-'''
 
 
 class ClassRepresentation:
