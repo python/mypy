@@ -46,6 +46,7 @@ INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
 INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
+CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
 
 
 class MessageBuilder:

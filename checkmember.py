@@ -6,6 +6,7 @@ from messages import MessageBuilder
 from subtypes import map_instance_to_supertype
 from expandtype import expand_type_by_instance
 from nodes import method_type
+import messages
 
 
 Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
@@ -20,6 +21,12 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
          override_info should refer to the supertype)
     """
     if isinstance(typ, Instance):
+        if name == '__init__' and not is_super:
+            # Accessing __init__ in statically typed code would compromise
+            # type safety unless used via super().
+            msg.fail(messages.CANNOT_ACCESS_INIT, node)
+            return Any()
+        
         # The base object has an instance type.
         itype = (Instance)typ
         
