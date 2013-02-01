@@ -1,3 +1,5 @@
+"""Type checking of member access"""
+
 from mtypes import Type, Instance, Any, TupleType, Callable
 from nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
 from messages import MessageBuilder
