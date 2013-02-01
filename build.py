@@ -39,7 +39,7 @@ TYPE_CHECK = 1          # Type check
 PYTHON = 2              # Type check and generate Python
 TRANSFORM = 3           # Type check and transform for runtime type checking
 ICODE = 4               # All TRANSFORM passes + generate icode
-int C = 5               # All ICODE passes + generate C and compile it
+C = 5                   # All ICODE passes + generate C and compile it
 
 
 # Build flags

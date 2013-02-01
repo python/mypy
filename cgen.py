@@ -3,7 +3,6 @@
 import os
 import sys
 
-import build
 import errors
 import icode
 from icode import (
@@ -414,18 +413,3 @@ class ClassRepresentation:
             self.slotmap[k] = v
         for k, n in base.defining_class.items():
             self.defining_class[k] = n
-
-
-if __name__ == '__main__':
-    program = sys.argv[1]
-    text = open(program).read()
-    
-    try:
-        # Compile the input program to a binary via C.
-        result = build.build(program_text=text,
-                             program_path=program,
-                             target=build.C)
-    except errors.CompileError as e:
-        for s in e.messages:
-            sys.stderr.write(s + '\n')
-        sys.exit(1)
