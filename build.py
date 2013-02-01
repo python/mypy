@@ -224,6 +224,10 @@ class BuildManager:
     
     dict<str, FuncIcode> icode
     str binary_path
+
+    # Cache for module dependencies (direct or indirect). Item (m, n)
+    # indicates whether m depends on n (directly or indirectly).
+    dict<tuple<str, str>, bool> module_deps
     
     void __init__(self, str mypy_base_dir, str[] lib_path, int target,
                   str output_dir, str[] flags):
@@ -240,6 +244,7 @@ class BuildManager:
         self.module_files = {}
         self.icode = None
         self.binary_path = None
+        self.module_deps = {}
     
     BuildResult process(self, UnprocessedFile initial_state):
         """Perform a build.
@@ -299,18 +304,14 @@ class BuildManager:
     State next_available_state(self):
         """Find a ready state (one that has all its dependencies met)."""
         i = len(self.states) - 1
-        available = <tuple<int, State>> []
         while i >= 0:
             if self.states[i].is_ready():
-                available.append((self.states[i].num_incomplete_deps(),
-                                  self.states[i]))
+                num_incomplete = self.states[i].num_incomplete_deps()
+                if num_incomplete == 0:
+                    # This is perfect; no need to look for the best match.
+                    return self.states[i]
             i -= 1
-        if available:
-            # Return the state with the least number of incomplete deps.
-            available.sort(key=lambda x: x[0])
-            return available[0][1]
-        else:
-            return None
+        return None
     
     bool has_module(self, str name):
         """Have we seen a module yet?"""
@@ -344,6 +345,39 @@ class BuildManager:
         if earlier_state(fs, state):
             state = fs
         return state
+
+    bool is_dep(self, str m1, str m2, set<str> done=None):
+        """Does m1 import m2 directly or indirectly?"""
+        # Have we computed this previously?
+        dep = self.module_deps.get((m1, m2))
+        if dep is not None:
+            return dep
+        
+        if not done:
+            done = set([m1])
+            
+        # m1 depends on m2 iff one of the deps of m1 depends on m2.
+        st = self.lookup_state(m1)
+        for m in st.dependencies:
+            if m in done:
+                continue
+            done.add(m)
+            # Cache this dependency.
+            self.module_deps[m1, m] = True
+            # Search recursively.
+            if m == m2 or self.is_dep(m, m2, done):
+                # Yes! Mark it in the cache.
+                self.module_deps[m1, m2] = True
+                return True
+        # No dependency. Mark it in the cache.
+        self.module_deps[m1, m2] = False
+        return False
+
+    State lookup_state(self, str module):
+        for state in self.states:
+            if state.id == module:
+                return state
+        raise RuntimeError('%s not found' % str)
     
     tuple<str, int>[] all_imported_modules_in_file(self, MypyFile file):
         """Find all import statements in a file.
@@ -554,26 +588,8 @@ class State:
         return True
 
     int num_incomplete_deps(self):
-        """Return the number of dependencies that are ready but incomplete.
-
-        Here complete means that their state is *later* than this module.
-        """
-        incomplete = 0
-        for module in self.dependencies:
-            state = self.manager.module_state(module)
-            if (not earlier_state(self.state(), state) and
-                    not self.is_circular_dep(module)):
-                incomplete += 1
-        return incomplete
-
-    bool is_circular_dep(self, str module):
-        for state in self.manager.states:
-            if state.id == module:
-                break
-        else:
-            raise RuntimeError('%s,%s,%d' % (self.id, module,self.state()))
-        # TODO graph search
-        return self.id in state.dependencies
+        """Return the number of dependencies that are ready but incomplete."""
+        return 0 # Does not matter in this state
     
     int state(self):
         raise RuntimeError('Not implemented')
@@ -739,6 +755,21 @@ class SemanticallyAnalyzedFile(ParsedFile):
         # FIX remove from active state list to speed up processing
         
         self.switch_state(TypeCheckedFile(self.info(), self.tree))
+        
+    int num_incomplete_deps(self):        
+        """Return the number of dependencies that are incomplete.
+
+        Here complete means that their state is *later* than this module.
+        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
+        arbitrarily).
+        """
+        incomplete = 0
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
+            if (not earlier_state(self.state(), state) and
+                    not self.manager.is_dep(module, self.id)):
+                incomplete += 1
+        return incomplete
     
     int state(self):
         return SEMANTICALLY_ANALYSED_STATE
