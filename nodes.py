@@ -754,7 +754,7 @@ class UnaryExpr(Node):
 
 
 # Map from binary operator id to related method name.
-dict<str, str> op_methods = {
+op_methods = {
     '+': '__add__',
     '-': '__sub__',
     '*': '__mul__',
