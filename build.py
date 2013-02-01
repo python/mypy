@@ -299,11 +299,18 @@ class BuildManager:
     State next_available_state(self):
         """Find a ready state (one that has all its dependencies met)."""
         i = len(self.states) - 1
+        available = <tuple<int, State>> []
         while i >= 0:
             if self.states[i].is_ready():
-                return self.states[i]
+                available.append((self.states[i].num_incomplete_deps(),
+                                  self.states[i]))
             i -= 1
-        return None
+        if available:
+            # Return the state with the least number of incomplete deps.
+            available.sort(key=lambda x: x[0])
+            return available[0][1]
+        else:
+            return None
     
     bool has_module(self, str name):
         """Have we seen a module yet?"""
@@ -539,12 +546,34 @@ class State:
         """Return True if all dependencies are at least in the same state
         as this object (but not in the initial state).
         """
-        for module_name in self.dependencies:
-            state = self.manager.module_state(module_name)      
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
             if earlier_state(state,
                              self.state()) or state == UNPROCESSED_STATE:
                 return False
         return True
+
+    int num_incomplete_deps(self):
+        """Return the number of dependencies that are ready but incomplete.
+
+        Here complete means that their state is *later* than this module.
+        """
+        incomplete = 0
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
+            if (not earlier_state(self.state(), state) and
+                    not self.is_circular_dep(module)):
+                incomplete += 1
+        return incomplete
+
+    bool is_circular_dep(self, str module):
+        for state in self.manager.states:
+            if state.id == module:
+                break
+        else:
+            raise RuntimeError('%s,%s,%d' % (self.id, module,self.state()))
+        # TODO graph search
+        return self.id in state.dependencies
     
     int state(self):
         raise RuntimeError('Not implemented')
