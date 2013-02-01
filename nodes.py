@@ -277,16 +277,14 @@ class Var(Node, AccessorNode, SymNode):
     """
     str _name        # Name without module prefix
     str _full_name   # Name with module prefix
-    bool is_init     # Is is initialized?
     TypeInfo info    # Defining class (for member variables)
-    mtypes.Type type # Declared type, or None if none
+    mtypes.Type type # Declared or inferred type, or None if none
     bool is_self     # Is this the first argument to an ordinary method
                      # (usually "self")?
     
     void __init__(self, str name, mtypes.Type type=None):
         self._name = name
         self.type = type
-        self.is_init = False
         self.is_self = False
 
     str name(self):
@@ -336,13 +334,11 @@ class VarDef(Node):
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
-    bool is_init
     
     void __init__(self, Var[] items, bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
         self.init = init
-        self.is_init = init is not None
     
     TypeInfo info(self):
         return self.items[0].info
