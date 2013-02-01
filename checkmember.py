@@ -73,6 +73,8 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         if var.type:
             return expand_type_by_instance(var.type, itype)
         else:
+            if not var.is_ready:
+                msg.cannot_determine_type(var.name(), node)
             # Implicit dynamic type.
             return Any()
     elif isinstance(v, FuncDef):

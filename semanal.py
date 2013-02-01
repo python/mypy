@@ -449,6 +449,7 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.is_def = True
                 v = Var(lval.name)
                 v.info = self.type
+                v.is_ready = False
                 lval.def_var = v
                 self.type.vars[lval.name] = v
     

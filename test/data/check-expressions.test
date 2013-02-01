@@ -761,14 +761,13 @@ class A:
 main, line 2: Too many arguments for "__add__" of "A"
 
 [case testOperatorMethodAsVar]
-A a
-a + a   # Currently fails (but should work in the future)
-
 class A:
     void __init__(self, any _add):
         self.__add__ = _add
+A a
+a + a   # Currently fails (but should work in the future)
 [out]
-main, line 2: Expected operator method "__add__" in "A"
+main, line 5: Expected operator method "__add__" in "A"
 
 [case testIndexedLvalueWithSubtypes]
 A a, B b, C c
