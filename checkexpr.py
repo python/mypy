@@ -58,10 +58,12 @@ class ExpressionChecker:
             # Variable or constant reference.
             v = (Var)node
             if not v.type:
-                # Implicit dynamic type.
+                if not v.is_ready:
+                    self.msg.cannot_determine_type(v.name(), e)
+                # Implicit 'any' type.
                 result = Any()
             else:
-                # Local or global variable.
+                # A variable with type (inferred or explicit).
                 result = v.type
         elif isinstance(node, FuncDef):
             # Reference to a global function.

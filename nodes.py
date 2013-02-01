@@ -281,11 +281,13 @@ class Var(Node, AccessorNode, SymNode):
     mtypes.Type type # Declared or inferred type, or None if none
     bool is_self     # Is this the first argument to an ordinary method
                      # (usually "self")?
+    bool is_ready    # If inferred, is the inferred type available?
     
     void __init__(self, str name, mtypes.Type type=None):
         self._name = name
         self.type = type
         self.is_self = False
+        self.is_ready = True
 
     str name(self):
         return self._name

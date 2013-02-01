@@ -485,6 +485,9 @@ class MessageBuilder:
     void interface_has_constructor(self, Context context):
         self.fail('An interface must not define a constructor', context)
 
+    void cannot_determine_type(self, str name, Context context):
+        self.fail("Cannot determine type of '%s'" % name, context)
+
 
 str capitalize(str s):
     """Capitalize the first character of a string."""
