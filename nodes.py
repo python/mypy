@@ -17,11 +17,11 @@ import mtypes
 
 
 # Variable kind constants
-LDEF = 0
-GDEF = 1
-MDEF = 2
-MODULE_REF = 3
-TVAR = 4 # Constant for type variable nodes in symbol table
+int LDEF = 0
+int GDEF = 1
+int MDEF = 2
+int MODULE_REF = 3
+int TVAR = 4 # Constant for type variable nodes in symbol table
 
 
 node_kinds = {
@@ -696,11 +696,11 @@ class MemberExpr(RefExpr):
 
 
 # Kinds of arguments
-ARG_POS = 0   # Positional argument
-ARG_OPT = 1   # Positional, optional argument (functions only, not calls)
-ARG_STAR = 2  # *arg argument
-ARG_NAMED = 3 # Keyword argument x=y in call, or keyword-only function arg
-ARG_STAR2 = 4 # **arg argument
+int ARG_POS = 0   # Positional argument
+int ARG_OPT = 1   # Positional, optional argument (functions only, not calls)
+int ARG_STAR = 2  # *arg argument
+int ARG_NAMED = 3 # Keyword argument x=y in call, or keyword-only function arg
+int ARG_STAR2 = 4 # **arg argument
 
 
 class CallExpr(Node):
