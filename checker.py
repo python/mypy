@@ -30,7 +30,7 @@ from visitor import NodeVisitor
 
 
 # Map from binary operator id to related method name.
-op_methods = {
+dict<str, str> op_methods = {
     '+': '__add__',
     '-': '__sub__',
     '*': '__mul__',
