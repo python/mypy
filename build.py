@@ -39,13 +39,35 @@ TYPE_CHECK = 1          # Type check
 PYTHON = 2              # Type check and generate Python
 TRANSFORM = 3           # Type check and transform for runtime type checking
 ICODE = 4               # All TRANSFORM passes + generate icode
-C = 5                   # All ICODE passes + generate C and compile it
+int C = 5               # All ICODE passes + generate C and compile it
 
 
 # Build flags
 PYTHON2 = 'python2'           # Generate Python 2
 COMPILE_ONLY = 'compile-only' # Compile only to C, do not generate binary
 VERBOSE = 'verbose'           # More verbose messages (for troubleshooting)
+
+
+# State ids. These describe the states a source file / module can be in a
+# build.
+
+# We aren't processing this source file yet (no associated state object).
+UNSEEN_STATE = 0
+# The source file has a state object, but we haven't done anything with it yet.
+UNPROCESSED_STATE = 1
+# We've parsed the source file.
+PARSED_STATE = 2
+# We've semantically analyzed the source file.
+SEMANTICALLY_ANALYSED_STATE = 3
+# We've type checked the source file (and all its dependencies).
+TYPE_CHECKED_STATE = 4
+
+
+final_state = TYPE_CHECKED_STATE
+
+
+bool earlier_state(int s, int t):
+    return s < t
 
 
 class BuildResult:
@@ -464,28 +486,6 @@ bool is_stub(str path):
     else:
         stubnames = ['stubs', 'stubs-auto']
         return (basename in stubnames) or is_stub(dirname)
-
-
-# State ids. These describe the states a source file / module can be in a
-# build.
-
-# We aren't processing this source file yet (no associated state object).
-UNSEEN_STATE = 0
-# The source file has a state object, but we haven't done anything with it yet.
-UNPROCESSED_STATE = 1
-# We've parsed the source file.
-PARSED_STATE = 2
-# We've semantically analyzed the source file.
-SEMANTICALLY_ANALYSED_STATE = 3
-# We've type checked the source file (and all its dependencies).
-TYPE_CHECKED_STATE = 4
-
-
-final_state = TYPE_CHECKED_STATE
-
-
-bool earlier_state(int s, int t):
-    return s < t
 
 
 class StateInfo:
