@@ -1,14 +1,13 @@
 """Calculation of the least upper bound types (joins)."""
 
-import checker
 from mtypes import (
     Type, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
-    TypeVar, Callable, TupleType, ErasedType
+    TypeVar, Callable, TupleType, ErasedType, BasicTypes
 )
 from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
-Type join_types(Type s, Type t, checker.BasicTypes basic):
+Type join_types(Type s, Type t, BasicTypes basic):
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
@@ -30,7 +29,7 @@ Type join_types(Type s, Type t, checker.BasicTypes basic):
 
 class TypeJoinVisitor(TypeVisitor<Type>):
     """Implementation of the least upper bound algorithm."""
-    void __init__(self, Type s, checker.BasicTypes basic):
+    void __init__(self, Type s, BasicTypes basic):
         self.s = s
         self.basic = basic
         self.object = basic.object
@@ -113,7 +112,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
 
 
 Type join_instances(Instance t, Instance s, bool allow_interfaces,
-                   checker.BasicTypes basic):
+                    BasicTypes basic):
     """Calculate the join of two instance types.
 
     If allow_interfaces is True, also consider interface-type results for
@@ -146,8 +145,8 @@ Type join_instances(Instance t, Instance s, bool allow_interfaces,
 
 
 Type join_instances_via_supertype(Instance t, Instance s,
-                                 bool allow_interfaces,
-                                 checker.BasicTypes basic):
+                                  bool allow_interfaces,
+                                  BasicTypes basic):
     res = s
     mapped = map_instance_to_supertype(t, t.type.base)
     join = join_instances(mapped, res, False, basic)
@@ -166,7 +165,7 @@ Type join_instances_via_supertype(Instance t, Instance s,
 
 
 Type join_instances_as_interface(Instance t, Instance s,
-                                checker.BasicTypes basic):
+                                 BasicTypes basic):
     """Compute join of two instances with a preference to an interface
     type result.  Return object if no common interface type is found
     and ErrorType if the result type is ambiguous.
@@ -239,7 +238,7 @@ bool is_similar_callables(Callable t, Callable s):
 
 
 Callable combine_similar_callables(Callable t, Callable s,
-                                   checker.BasicTypes basic):
+                                   BasicTypes basic):
     Type[] arg_types = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))

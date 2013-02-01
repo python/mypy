@@ -1,13 +1,12 @@
-from mtypes import Type, Void, NoneTyp, Any, ErrorType
+from mtypes import Type, Void, NoneTyp, Any, ErrorType, BasicTypes
 from constraints import Constraint, SUPERTYPE_OF
-import checker
 from join import join_types
 from meet import meet_types
 from subtypes import is_subtype
 
 
 Type[] solve_constraints(int[] vars, Constraint[] constraints,
-                            checker.BasicTypes basic):
+                         BasicTypes basic):
     """Solve type constraints.
 
     Return lower bound for each type variable or None if the variable could

@@ -17,7 +17,7 @@ from nodes import function_type, method_type
 import nodes
 from mtypes import (
     Type, Any, Callable, Void, FunctionLike, Overloaded, TupleType, Instance,
-    NoneTyp, UnboundType, TypeTranslator
+    NoneTyp, UnboundType, TypeTranslator, BasicTypes
 )
 from sametypes import is_same_type
 from messages import MessageBuilder
@@ -27,16 +27,6 @@ from subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 from semanal import self_type
 from expandtype import expand_type_by_instance
 from visitor import NodeVisitor
-
-
-class BasicTypes:
-    """Collection of Instance types of basic types (object, type, etc.)."""
-    void __init__(self, Instance object, Instance std_type, Type tuple,
-                  Type function):
-        self.object = object
-        self.std_type = std_type
-        self.tuple = tuple
-        self.function = function
 
 
 class TypeChecker(NodeVisitor<Type>):

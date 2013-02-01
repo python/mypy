@@ -1,6 +1,5 @@
-import checker
 from constraints import infer_constraints, infer_constraints_for_callable
-from mtypes import Type, Callable
+from mtypes import Type, Callable, BasicTypes
 from solve import solve_constraints
 from constraints import SUBTYPE_OF
 
@@ -9,7 +8,7 @@ Type[] infer_function_type_arguments(Callable callee_type,
                                     Type[] arg_types,
                                     int[] arg_kinds,
                                     int[][] formal_to_actual,
-                                    checker.BasicTypes basic):
+                                    BasicTypes basic):
     """Infer the type arguments of a generic function.
 
     Return an array of lower bound types for the type variables -1 (at
@@ -34,7 +33,7 @@ Type[] infer_function_type_arguments(Callable callee_type,
 
 Type[] infer_type_arguments(int[] type_var_ids,
                                Type template, Type actual,
-                               checker.BasicTypes basic):
+                               BasicTypes basic):
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUBTYPE_OF)

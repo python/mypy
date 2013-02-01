@@ -658,3 +658,13 @@ class TypeQuery(TypeVisitor<bool>):
                 if not res:
                     break
             return res
+
+
+class BasicTypes:
+    """Collection of Instance types of basic types (object, type, etc.)."""
+    void __init__(self, Instance object, Instance std_type, Type tuple,
+                  Type function):
+        self.object = object
+        self.std_type = std_type
+        self.tuple = tuple
+        self.function = function

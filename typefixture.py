@@ -5,9 +5,8 @@ It contains class and interface objects and Type objects.
 
 from mtypes import (
     TypeVar, Any, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
-    TypeVars
+    TypeVars, BasicTypes
 )
-from checker import BasicTypes
 from nodes import TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR
 
 
