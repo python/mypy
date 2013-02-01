@@ -29,30 +29,6 @@ from expandtype import expand_type_by_instance
 from visitor import NodeVisitor
 
 
-# Map from binary operator id to related method name.
-dict<str, str> op_methods = {
-    '+': '__add__',
-    '-': '__sub__',
-    '*': '__mul__',
-    '/': '__truediv__',
-    '%': '__mod__',
-    '//': '__floordiv__',
-    '**': '__pow__',
-    '&': '__and__',
-    '|': '__or__',
-    '^': '__xor__',
-    '<<': '__lshift__',
-    '>>': '__rshift__',
-    '==': '__eq__',
-    '!=': '__ne__',
-    '<': '__lt__',
-    '>=': '__ge__',
-    '>': '__gt__',
-    '<=': '__le__',
-    'in': '__contains__'
-}
-
-
 class BasicTypes:
     """Collection of Instance types of basic types (object, type, etc.)."""
     void __init__(self, Instance object, Instance std_type, Type tuple,
@@ -689,7 +665,7 @@ class TypeChecker(NodeVisitor<Type>):
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
         rvalue_type, method_type = self.expr_checker.check_op(
-            op_methods[s.op], lvalue_type, s.rvalue, s)
+            nodes.op_methods[s.op], lvalue_type, s.rvalue, s)
         
         if isinstance(s.lvalue, IndexExpr):
             lv = (IndexExpr)s.lvalue

@@ -753,6 +753,30 @@ class UnaryExpr(Node):
         return visitor.visit_unary_expr(self)
 
 
+# Map from binary operator id to related method name.
+dict<str, str> op_methods = {
+    '+': '__add__',
+    '-': '__sub__',
+    '*': '__mul__',
+    '/': '__truediv__',
+    '%': '__mod__',
+    '//': '__floordiv__',
+    '**': '__pow__',
+    '&': '__and__',
+    '|': '__or__',
+    '^': '__xor__',
+    '<<': '__lshift__',
+    '>>': '__rshift__',
+    '==': '__eq__',
+    '!=': '__ne__',
+    '<': '__lt__',
+    '>=': '__ge__',
+    '>': '__gt__',
+    '<=': '__le__',
+    'in': '__contains__'
+}
+
+
 class OpExpr(Node):
     """Binary operation (other than . or [], which have specific nodes)"""
     str op

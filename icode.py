@@ -1,6 +1,5 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from checker import op_methods
 from mtypes import Any, Instance, Type, Callable, FunctionLike
 from nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
@@ -599,7 +598,7 @@ class IcodeBuilder(NodeVisitor<int>):
             left = self.accept(e.left)
             right = self.accept(e.right)
             target = self.target_register()
-            method = op_methods[e.op]
+            method = nodes.op_methods[e.op]
             if e.op == 'in':
                 left, right = right, left
                 inst = (Instance)right_type

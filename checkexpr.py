@@ -652,8 +652,8 @@ class ExpressionChecker:
                 return result
             else:
                 return self.chk.bool_type()
-        elif e.op in checker.op_methods:
-            method = checker.op_methods[e.op]
+        elif e.op in nodes.op_methods:
+            method = nodes.op_methods[e.op]
             result, method_type = self.check_op(method, left_type, e.right, e)
             e.method_type = method_type
             return result

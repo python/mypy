@@ -10,8 +10,7 @@ from mtypes import (
     Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
     Overloaded
 )
-from nodes import TypeInfo, Context
-import checker
+from nodes import TypeInfo, Context, op_methods
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -183,10 +182,10 @@ class MessageBuilder:
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
                 self.format(typ)), context)
-        elif member in checker.op_methods.values():
+        elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
-            for op, method in checker.op_methods.items():
+            for op, method in op_methods.items():
                 if method == member:
                     self.unsupported_left_operand(op, typ, context)
                     break
@@ -259,7 +258,7 @@ class MessageBuilder:
             name = callee.name
             base = extract_type(name)
             
-            for op, method in checker.op_methods.items():
+            for op, method in op_methods.items():
                 if name.startswith('"{}" of'.format(method)):
                     if op == 'in':
                         self.unsupported_operand_types(op, arg_type, base,
