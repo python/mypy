@@ -451,17 +451,11 @@ class TypeTranslator(TypeVisitor<Type>):
         return TupleType(self.translate_types(t.items), t.line, t.repr)
     
     Type[] translate_types(self, Type[] types):
-        Type[] a = []
-        for t in types:
-            a.append(t.accept(self))
-        return a
+        return [t.accept(self) for t in types]
     
-    list<tuple<int, Type>> translate_bound_vars(self,
-                                               list<tuple<int, Type>> types):
-        list<tuple<int, Type>> a = []
-        for id, t in types:
-            a.append((id, t.accept(self)))
-        return a
+    tuple<int, Type>[] translate_bound_vars(self,
+                                            tuple<int, Type>[] types):
+        return [(id, t.accept(self)) for id, t in types]
 
     TypeVars translate_variables(self, TypeVars variables):
         return variables

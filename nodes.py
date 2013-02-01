@@ -98,9 +98,9 @@ class MypyFile(Node, AccessorNode, SymNode):
 
 class Import(Node):
     """import m [as n]"""    
-    list<tuple<str, str>> ids     # (module id, as id)
+    tuple<str, str>[] ids     # (module id, as id)
     
-    void __init__(self, list<tuple<str, str>> ids):
+    void __init__(self, tuple<str, str>[] ids):
         self.ids = ids
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -865,11 +865,11 @@ class ListExpr(Node):
 
 class DictExpr(Node):
     """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
-    list<tuple<Node, Node>> items
+    tuple<Node, Node>[] items
     mtypes.Type key_type    # None if implicit type
     mtypes.Type value_type  # None if implicit type
     
-    void __init__(self, list<tuple<Node, Node>> items):
+    void __init__(self, tuple<Node, Node>[] items):
         self.items = items
     
     T accept<T>(self, NodeVisitor<T> visitor):

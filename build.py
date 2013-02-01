@@ -503,11 +503,11 @@ class StateInfo:
     str id
     # The import trail that caused this module to be imported (path, line)
     # tuples
-    list<tuple<str, int>> import_context
+    tuple<str, int>[] import_context
     # The manager that manages this build
     BuildManager manager
     
-    void __init__(self, str path, str id, list<tuple<str, int>> import_context,
+    void __init__(self, str path, str id, tuple<str, int>[] import_context,
                   BuildManager manager):
         self.path = path
         self.id = id
@@ -524,7 +524,7 @@ class State:
     # The StateInfo attributes are duplicated here for convenience.
     str path
     str id   # Module id
-    list<tuple<str, int>> import_context
+    tuple<str, int>[] import_context
     BuildManager manager
     # Modules that this file directly depends on (in no particular order).
     str[] dependencies
