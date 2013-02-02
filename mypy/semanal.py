@@ -394,6 +394,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # Define new global name.
                 v = Var(n.name)
                 v._full_name = self.qualified_name(n.name)
+                v.is_ready = False # Type not inferred yet
                 n.node = v
                 n.is_def = True
                 n.kind = GDEF
@@ -448,6 +449,7 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.is_def = True
                 v = Var(lval.name)
                 v.info = self.type
+                v.is_ready = False
                 lval.def_var = v
                 self.type.vars[lval.name] = v
     

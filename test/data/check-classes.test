@@ -318,6 +318,13 @@ class B: pass
 [out]
 main, line 2: Incompatible types in assignment
 
+[case testAccessingInit]
+class A:
+    void __init__(self, A a): pass
+A a
+a.__init__(a)  # E: Cannot access "__init__" directly
+((any)a).__init__(a)
+
 
 -- Inheritance
 -- -----------

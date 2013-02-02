@@ -7,10 +7,10 @@ import re
 
 from mypy.errors import Errors
 from mypy.mtypes import (
-    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any, Overloaded
+    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
+    Overloaded
 )
-from mypy.nodes import TypeInfo, Context
-import mypy.checker
+from mypy.nodes import TypeInfo, Context, op_methods
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -46,6 +46,7 @@ INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
 INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
+CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
 
 
 class MessageBuilder:
@@ -53,10 +54,10 @@ class MessageBuilder:
     The methods of this class need to be provided with the context within a
     file; the errors member manages the wider context.
     
-    IDEA: Support a "verbose mode" that includes full information about types
+    IDEA: Support a 'verbose mode' that includes full information about types
           in error messages and that may otherwise produce more detailed error
           messages.
-          """
+    """
     # Report errors using this instance. It knows about the current file and
     # import context.
     Errors errors
@@ -109,7 +110,7 @@ class MessageBuilder:
           any -> 'any'
           void -> void
           function type -> "" (empty string)
-          """
+        """
         if isinstance(typ, Instance):
             itype = (Instance)typ
             # Get the short name of the type.
@@ -182,10 +183,10 @@ class MessageBuilder:
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
                 self.format(typ)), context)
-        elif member in mypy.checker.op_methods.values():
+        elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
-            for op, method in mypy.checker.op_methods.items():
+            for op, method in op_methods.items():
                 if method == member:
                     self.unsupported_left_operand(op, typ, context)
                     break
@@ -258,7 +259,7 @@ class MessageBuilder:
             name = callee.name
             base = extract_type(name)
             
-            for op, method in mypy.checker.op_methods.items():
+            for op, method in op_methods.items():
                 if name.startswith('"{}" of'.format(method)):
                     if op == 'in':
                         self.unsupported_operand_types(op, arg_type, base,
@@ -368,7 +369,8 @@ class MessageBuilder:
         self.fail('Function signature variants {} and {} overlap'.format(
             n1 + 1, n2 + 1), context)
     
-    void invalid_cast(self, Type target_type, Type source_type, Context context):
+    void invalid_cast(self, Type target_type, Type source_type,
+                      Context context):
         if not self.check_void(source_type, context):
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
@@ -482,6 +484,9 @@ class MessageBuilder:
 
     void interface_has_constructor(self, Context context):
         self.fail('An interface must not define a constructor', context)
+
+    void cannot_determine_type(self, str name, Context context):
+        self.fail("Cannot determine type of '%s'" % name, context)
 
 
 str capitalize(str s):

@@ -1,9 +1,12 @@
+"""Type checking of member access"""
+
 from mypy.mtypes import Type, Instance, Any, TupleType, Callable
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
 from mypy.messages import MessageBuilder
 from mypy.subtypes import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.nodes import method_type
+from mypy import messages
 
 
 Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
@@ -18,6 +21,12 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
          override_info should refer to the supertype)
     """
     if isinstance(typ, Instance):
+        if name == '__init__' and not is_super:
+            # Accessing __init__ in statically typed code would compromise
+            # type safety unless used via super().
+            msg.fail(messages.CANNOT_ACCESS_INIT, node)
+            return Any()
+        
         # The base object has an instance type.
         itype = (Instance)typ
         
@@ -73,6 +82,8 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         if var.type:
             return expand_type_by_instance(var.type, itype)
         else:
+            if not var.is_ready:
+                msg.cannot_determine_type(var.name(), node)
             # Implicit dynamic type.
             return Any()
     elif isinstance(v, FuncDef):

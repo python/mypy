@@ -530,8 +530,6 @@ class Parser:
         if self.current_str() == '=':
             assign_token = self.expect('=')
             init = self.parse_expression(0)
-        for v in vars:
-            v.is_init = init is not None
         br = self.expect_break()
         
         node = VarDef(vars, self.is_at_top_level(), init)

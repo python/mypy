@@ -3,7 +3,6 @@
 import os
 import sys
 
-import mypy.build
 from mypy import errors
 from mypy import icode
 from mypy.icode import (
@@ -22,6 +21,18 @@ INDENT = 4
 OVERFLOW_CHECK_3_ARGS = 1
 SHR_OPERAND = 2
 CLEAR_LSB = 4
+
+
+MAIN_FRAGMENT = '''
+int main(int argc, char **argv) {
+    MValue stack[1024];
+    MEnv env;
+    env.frame = stack;
+    env.stack_top = stack + 1024 - 16; // Reserve 16 entries for arguments
+    M__init(&env);
+    return 0;
+}
+'''
 
 
 class CGenerator:
@@ -358,18 +369,6 @@ str operand(int n, int kind):
         return reg(n)
 
 
-MAIN_FRAGMENT = '''
-int main(int argc, char **argv) {
-    MValue stack[1024];
-    MEnv env;
-    env.frame = stack;
-    env.stack_top = stack + 1024 - 16; // Reserve 16 entries for arguments
-    M__init(&env);
-    return 0;
-}
-'''
-
-
 class ClassRepresentation:
     """Description of the runtime representation of a mypy class."""
     # TODO add methods
@@ -414,18 +413,3 @@ class ClassRepresentation:
             self.slotmap[k] = v
         for k, n in base.defining_class.items():
             self.defining_class[k] = n
-
-
-if __name__ == '__main__':
-    program = sys.argv[1]
-    text = open(program).read()
-    
-    try:
-        # Compile the input program to a binary via C.
-        result = mypy.build.build(program_text=text,
-                                  program_path=program,
-                                  target=mypy.build.C)
-    except errors.CompileError as e:
-        for s in e.messages:
-            sys.stderr.write(s + '\n')
-        sys.exit(1)

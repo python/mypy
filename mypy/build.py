@@ -48,6 +48,28 @@ COMPILE_ONLY = 'compile-only' # Compile only to C, do not generate binary
 VERBOSE = 'verbose'           # More verbose messages (for troubleshooting)
 
 
+# State ids. These describe the states a source file / module can be in a
+# build.
+
+# We aren't processing this source file yet (no associated state object).
+UNSEEN_STATE = 0
+# The source file has a state object, but we haven't done anything with it yet.
+UNPROCESSED_STATE = 1
+# We've parsed the source file.
+PARSED_STATE = 2
+# We've semantically analyzed the source file.
+SEMANTICALLY_ANALYSED_STATE = 3
+# We've type checked the source file (and all its dependencies).
+TYPE_CHECKED_STATE = 4
+
+
+final_state = TYPE_CHECKED_STATE
+
+
+bool earlier_state(int s, int t):
+    return s < t
+
+
 class BuildResult:
     """The result of a successful build."""
     # Map module name to related AST node.
@@ -202,6 +224,10 @@ class BuildManager:
     
     dict<str, FuncIcode> icode
     str binary_path
+
+    # Cache for module dependencies (direct or indirect). Item (m, n)
+    # indicates whether m depends on n (directly or indirectly).
+    dict<tuple<str, str>, bool> module_deps
     
     void __init__(self, str mypy_base_dir, str[] lib_path, int target,
                   str output_dir, str[] flags):
@@ -218,6 +244,7 @@ class BuildManager:
         self.module_files = {}
         self.icode = None
         self.binary_path = None
+        self.module_deps = {}
     
     BuildResult process(self, UnprocessedFile initial_state):
         """Perform a build.
@@ -279,7 +306,10 @@ class BuildManager:
         i = len(self.states) - 1
         while i >= 0:
             if self.states[i].is_ready():
-                return self.states[i]
+                num_incomplete = self.states[i].num_incomplete_deps()
+                if num_incomplete == 0:
+                    # This is perfect; no need to look for the best match.
+                    return self.states[i]
             i -= 1
         return None
     
@@ -315,6 +345,39 @@ class BuildManager:
         if earlier_state(fs, state):
             state = fs
         return state
+
+    bool is_dep(self, str m1, str m2, set<str> done=None):
+        """Does m1 import m2 directly or indirectly?"""
+        # Have we computed this previously?
+        dep = self.module_deps.get((m1, m2))
+        if dep is not None:
+            return dep
+        
+        if not done:
+            done = set([m1])
+            
+        # m1 depends on m2 iff one of the deps of m1 depends on m2.
+        st = self.lookup_state(m1)
+        for m in st.dependencies:
+            if m in done:
+                continue
+            done.add(m)
+            # Cache this dependency.
+            self.module_deps[m1, m] = True
+            # Search recursively.
+            if m == m2 or self.is_dep(m, m2, done):
+                # Yes! Mark it in the cache.
+                self.module_deps[m1, m2] = True
+                return True
+        # No dependency. Mark it in the cache.
+        self.module_deps[m1, m2] = False
+        return False
+
+    State lookup_state(self, str module):
+        for state in self.states:
+            if state.id == module:
+                return state
+        raise RuntimeError('%s not found' % str)
     
     tuple<str, int>[] all_imported_modules_in_file(self, MypyFile file):
         """Find all import statements in a file.
@@ -475,28 +538,6 @@ bool is_stub(str path):
         return (basename in stubnames) or is_stub(dirname)
 
 
-# State ids. These describe the states a source file / module can be in a
-# build.
-
-# We aren't processing this source file yet (no associated state object).
-UNSEEN_STATE = 0
-# The source file has a state object, but we haven't done anything with it yet.
-UNPROCESSED_STATE = 1
-# We've parsed the source file.
-PARSED_STATE = 2
-# We've semantically analyzed the source file.
-SEMANTICALLY_ANALYSED_STATE = 3
-# We've type checked the source file (and all its dependencies).
-TYPE_CHECKED_STATE = 4
-
-
-final_state = TYPE_CHECKED_STATE
-
-
-bool earlier_state(int s, int t):
-    return s < t
-
-
 class StateInfo:
     """Description of a source file that is being built."""
     # Path to the file
@@ -505,11 +546,11 @@ class StateInfo:
     str id
     # The import trail that caused this module to be imported (path, line)
     # tuples
-    list<tuple<str, int>> import_context
+    tuple<str, int>[] import_context
     # The manager that manages this build
     BuildManager manager
     
-    void __init__(self, str path, str id, list<tuple<str, int>> import_context,
+    void __init__(self, str path, str id, tuple<str, int>[] import_context,
                   BuildManager manager):
         self.path = path
         self.id = id
@@ -526,7 +567,7 @@ class State:
     # The StateInfo attributes are duplicated here for convenience.
     str path
     str id   # Module id
-    list<tuple<str, int>> import_context
+    tuple<str, int>[] import_context
     BuildManager manager
     # Modules that this file directly depends on (in no particular order).
     str[] dependencies
@@ -548,12 +589,16 @@ class State:
         """Return True if all dependencies are at least in the same state
         as this object (but not in the initial state).
         """
-        for module_name in self.dependencies:
-            state = self.manager.module_state(module_name)      
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
             if earlier_state(state,
                              self.state()) or state == UNPROCESSED_STATE:
                 return False
         return True
+
+    int num_incomplete_deps(self):
+        """Return the number of dependencies that are ready but incomplete."""
+        return 0 # Does not matter in this state
     
     int state(self):
         raise RuntimeError('Not implemented')
@@ -719,6 +764,21 @@ class SemanticallyAnalyzedFile(ParsedFile):
         # FIX remove from active state list to speed up processing
         
         self.switch_state(TypeCheckedFile(self.info(), self.tree))
+        
+    int num_incomplete_deps(self):        
+        """Return the number of dependencies that are incomplete.
+
+        Here complete means that their state is *later* than this module.
+        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
+        arbitrarily).
+        """
+        incomplete = 0
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
+            if (not earlier_state(self.state(), state) and
+                    not self.manager.is_dep(module, self.id)):
+                incomplete += 1
+        return incomplete
     
     int state(self):
         return SEMANTICALLY_ANALYSED_STATE

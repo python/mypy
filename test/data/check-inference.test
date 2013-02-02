@@ -538,7 +538,7 @@ for x in [A()]:
     a = x
 
 for y in []: # E: Need type annotation for variable
-    a = y
+    a = y # E: Cannot determine type of 'y'
 
 class A: pass
 class B: pass
@@ -714,3 +714,21 @@ a = a2
 a2 = o # E: Incompatible types in assignment
 class A: pass
 [builtins fixtures/list.py]
+
+
+-- Accessing variable before its type has been inferred
+-- ----------------------------------------------------
+
+
+[case testAccessGlobalVarBeforeItsTypeIsAvailable]
+x.y  # E: Cannot determine type of 'x' 
+x = object()
+x.y  # E: "object" has no member "y"
+
+[case testAccessDataAttributeBeforeItsTypeIsAvailable]
+A a
+a.x.y  # E: Cannot determine type of 'x'
+class A:
+   void __init__(self):
+       self.x = object()
+a.x.y  # E: "object" has no member "y"

@@ -1,14 +1,13 @@
-import mypy.checker
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.mtypes import (
     Type, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType, ErasedType
+    Instance, Callable, TupleType, ErasedType, BasicTypes
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
 
 
-Type meet_types(Type s, Type t, mypy.checker.BasicTypes basic):
+Type meet_types(Type s, Type t, BasicTypes basic):
     if isinstance(s, Any) or isinstance(s, ErasedType):
         return s
     
@@ -16,7 +15,7 @@ Type meet_types(Type s, Type t, mypy.checker.BasicTypes basic):
 
 
 class TypeMeetVisitor(TypeVisitor<Type>):
-    void __init__(self, Type s, mypy.checker.BasicTypes basic):
+    void __init__(self, Type s, BasicTypes basic):
         self.s = s
         self.basic = basic
     

@@ -17,11 +17,11 @@ import mypy.mtypes
 
 
 # Variable kind constants
-LDEF = 0
-GDEF = 1
-MDEF = 2
-MODULE_REF = 3
-TVAR = 4 # Constant for type variable nodes in symbol table
+int LDEF = 0
+int GDEF = 1
+int MDEF = 2
+int MODULE_REF = 3
+int TVAR = 4 # Constant for type variable nodes in symbol table
 
 
 node_kinds = {
@@ -98,9 +98,9 @@ class MypyFile(Node, AccessorNode, SymNode):
 
 class Import(Node):
     """import m [as n]"""    
-    list<tuple<str, str>> ids     # (module id, as id)
+    tuple<str, str>[] ids     # (module id, as id)
     
-    void __init__(self, list<tuple<str, str>> ids):
+    void __init__(self, tuple<str, str>[] ids):
         self.ids = ids
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -277,17 +277,17 @@ class Var(Node, AccessorNode, SymNode):
     """
     str _name        # Name without module prefix
     str _full_name   # Name with module prefix
-    bool is_init     # Is is initialized?
     TypeInfo info    # Defining class (for member variables)
-    mypy.mtypes.Type type # Declared type, or None if none
+    mypy.mtypes.Type type # Declared or inferred type, or None if none
     bool is_self     # Is this the first argument to an ordinary method
                      # (usually "self")?
+    bool is_ready    # If inferred, is the inferred type available?
     
     void __init__(self, str name, mypy.mtypes.Type type=None):
         self._name = name
         self.type = type
-        self.is_init = False
         self.is_self = False
+        self.is_ready = True
 
     str name(self):
         return self._name
@@ -336,13 +336,11 @@ class VarDef(Node):
     Node init         # Expression or None
     bool is_top_level # Is the definition at the top level (not within
                       # a function or a type)?
-    bool is_init
     
     void __init__(self, Var[] items, bool is_top_level, Node init=None):
         self.items = items
         self.is_top_level = is_top_level
         self.init = init
-        self.is_init = init is not None
     
     TypeInfo info(self):
         return self.items[0].info
@@ -700,11 +698,11 @@ class MemberExpr(RefExpr):
 
 
 # Kinds of arguments
-ARG_POS = 0   # Positional argument
-ARG_OPT = 1   # Positional, optional argument (functions only, not calls)
-ARG_STAR = 2  # *arg argument
-ARG_NAMED = 3 # Keyword argument x=y in call, or keyword-only function arg
-ARG_STAR2 = 4 # **arg argument
+int ARG_POS = 0   # Positional argument
+int ARG_OPT = 1   # Positional, optional argument (functions only, not calls)
+int ARG_STAR = 2  # *arg argument
+int ARG_NAMED = 3 # Keyword argument x=y in call, or keyword-only function arg
+int ARG_STAR2 = 4 # **arg argument
 
 
 class CallExpr(Node):
@@ -753,6 +751,30 @@ class UnaryExpr(Node):
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_unary_expr(self)
+
+
+# Map from binary operator id to related method name.
+op_methods = {
+    '+': '__add__',
+    '-': '__sub__',
+    '*': '__mul__',
+    '/': '__truediv__',
+    '%': '__mod__',
+    '//': '__floordiv__',
+    '**': '__pow__',
+    '&': '__and__',
+    '|': '__or__',
+    '^': '__xor__',
+    '<<': '__lshift__',
+    '>>': '__rshift__',
+    '==': '__eq__',
+    '!=': '__ne__',
+    '<': '__lt__',
+    '>=': '__ge__',
+    '>': '__gt__',
+    '<=': '__le__',
+    'in': '__contains__'
+}
 
 
 class OpExpr(Node):
@@ -843,11 +865,11 @@ class ListExpr(Node):
 
 class DictExpr(Node):
     """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
-    list<tuple<Node, Node>> items
+    tuple<Node, Node>[] items
     mypy.mtypes.Type key_type    # None if implicit type
     mypy.mtypes.Type value_type  # None if implicit type
     
-    void __init__(self, list<tuple<Node, Node>> items):
+    void __init__(self, tuple<Node, Node>[] items):
         self.items = items
     
     T accept<T>(self, NodeVisitor<T> visitor):

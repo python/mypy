@@ -33,7 +33,7 @@ DataDrivenTestCase[] parse_test_cases(
         if p[i].id == 'case':
             i += 1
             
-            list<tuple<str, str>> files = [] # path and contents
+            files = <tuple<str, str>> [] # path and contents
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.

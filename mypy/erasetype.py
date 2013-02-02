@@ -1,12 +1,11 @@
 from mypy.mtypes import (
     Type, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
-    TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator
+    TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator,
+    BasicTypes
 )
-import mypy.checker
-from mypy.lex import Token
 
 
-Type erase_type(Type typ, mypy.checker.BasicTypes basic):
+Type erase_type(Type typ, BasicTypes basic):
     """Erase any type variables from a type.
 
     Also replace tuple types with the corresponding concrete types. Replace
@@ -22,7 +21,7 @@ Type erase_type(Type typ, mypy.checker.BasicTypes basic):
 
 
 class EraseTypeVisitor(TypeVisitor<Type>):
-    void __init__(self, mypy.checker.BasicTypes basic):
+    void __init__(self, BasicTypes basic):
         self.basic = basic
     
     Type visit_unbound_type(self, UnboundType t):
@@ -60,9 +59,6 @@ class EraseTypeVisitor(TypeVisitor<Type>):
     
     Type visit_tuple_type(self, TupleType t):
         return self.basic.tuple
-
-
-none = Token('')
 
 
 Type erase_generic_types(Type t):

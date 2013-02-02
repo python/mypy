@@ -58,10 +58,12 @@ class ExpressionChecker:
             # Variable or constant reference.
             v = (Var)node
             if not v.type:
-                # Implicit dynamic type.
+                if not v.is_ready:
+                    self.msg.cannot_determine_type(v.name(), e)
+                # Implicit 'any' type.
                 result = Any()
             else:
-                # Local or global variable.
+                # A variable with type (inferred or explicit).
                 result = v.type
         elif isinstance(node, FuncDef):
             # Reference to a global function.
@@ -650,8 +652,8 @@ class ExpressionChecker:
                 return result
             else:
                 return self.chk.bool_type()
-        elif e.op in mypy.checker.op_methods:
-            method = mypy.checker.op_methods[e.op]
+        elif e.op in nodes.op_methods:
+            method = nodes.op_methods[e.op]
             result, method_type = self.check_op(method, left_type, e.right, e)
             e.method_type = method_type
             return result

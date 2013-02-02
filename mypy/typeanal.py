@@ -100,8 +100,8 @@ class TypeAnalyser(TypeVisitor<Type>):
             res.append(t.accept(self))
         return res
     
-    list<tuple<int, Type>> anal_bound_vars(self, list<tuple<int, Type>> a):
-        list<tuple<int, Type>> res = []
+    tuple<int, Type>[] anal_bound_vars(self, tuple<int, Type>[] a):
+        res = <tuple<int, Type>> []
         for id, t in a:
             res.append((id, t.accept(self)))
         return res
