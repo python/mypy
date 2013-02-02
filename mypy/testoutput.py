@@ -6,14 +6,14 @@ import os.path
 import re
 import sys
 
-import build
-from myunit import Suite, run_test
-from testhelpers import assert_string_arrays_equal
-from testdata import parse_test_cases
-from testconfig import test_data_prefix, test_temp_dir
-from parse import parse
-from output import OutputVisitor
-from errors import CompileError
+from mypy import build
+from mypy.myunit import Suite, run_test
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.testdata import parse_test_cases
+from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.parse import parse
+from mypy.output import OutputVisitor
+from mypy.errors import CompileError
 
 
 # Files which contain test case descriptions.

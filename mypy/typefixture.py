@@ -3,11 +3,11 @@
 It contains class and interface objects and Type objects.
 """
 
-from mtypes import (
+from mypy.mtypes import (
     TypeVar, Any, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
     TypeVars, BasicTypes
 )
-from nodes import TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR
+from mypy.nodes import TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR
 
 
 BASE = 0

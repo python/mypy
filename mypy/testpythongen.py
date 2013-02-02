@@ -8,14 +8,14 @@ stubs to speed up running.
 import os.path
 import sys
 
-import build
-from myunit import Suite, run_test
-from testconfig import test_data_prefix, test_temp_dir
-from testdata import parse_test_cases
-from testhelpers import assert_string_arrays_equal
-from testoutput import fix_path, remove_prefix
-from pythongen import PythonGenerator
-from errors import CompileError
+from mypy import build
+from mypy.myunit import Suite, run_test
+from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.testdata import parse_test_cases
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.testoutput import fix_path, remove_prefix
+from mypy.pythongen import PythonGenerator
+from mypy.errors import CompileError
 
 
 # Files which contain test case descriptions.

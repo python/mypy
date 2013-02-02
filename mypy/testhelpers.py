@@ -2,8 +2,8 @@ import sys
 import re
 import os
 
-from myunit import AssertionFailure
-import testconfig
+from mypy.myunit import AssertionFailure
+from mypy import testconfig
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if

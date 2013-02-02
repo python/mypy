@@ -3,14 +3,14 @@
 import os.path
 import re
 
-import build
-from myunit import Suite, run_test
-import testconfig
-from testdata import parse_test_cases
-from testhelpers import assert_string_arrays_equal
-from util import short_type
-from nodes import NameExpr
-from errors import CompileError
+from mypy import build
+from mypy.myunit import Suite, run_test
+from mypy import testconfig
+from mypy.testdata import parse_test_cases
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.util import short_type
+from mypy.nodes import NameExpr
+from mypy.errors import CompileError
 
 
 class TypeExportSuite(Suite):

@@ -4,16 +4,16 @@ import os.path
 import re
 import sys
 
-import build
-import icode
-from myunit import Suite, run_test
-from testhelpers import assert_string_arrays_equal_wildcards
-from testdata import parse_test_cases
-from testconfig import test_data_prefix, test_temp_dir
-from testoutput import remove_prefix
-from testtransform import builtins_wrapper, remove_comment_lines
-from transform import DyncheckTransformVisitor
-from errors import CompileError
+from mypy import build
+from mypy import icode
+from mypy.myunit import Suite, run_test
+from mypy.testhelpers import assert_string_arrays_equal_wildcards
+from mypy.testdata import parse_test_cases
+from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.testoutput import remove_prefix
+from mypy.testtransform import builtins_wrapper, remove_comment_lines
+from mypy.transform import DyncheckTransformVisitor
+from mypy.errors import CompileError
 
 
 # The builtins stub used during icode generation test cases.

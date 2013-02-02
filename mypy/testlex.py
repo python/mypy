@@ -1,5 +1,5 @@
-from myunit import Suite, assert_equal
-from lex import lex
+from mypy.myunit import Suite, assert_equal
+from mypy.lex import lex
 
 
 class LexerSuite(Suite):

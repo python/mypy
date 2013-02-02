@@ -1,18 +1,18 @@
 """Test cases for mypy types and type operations."""
 
-from myunit import Suite, assert_equal, assert_true
-from erasetype import erase_type
-from expandtype import expand_type
-from join import join_types
-from meet import meet_types
-from mtypes import (
+from mypy.myunit import Suite, assert_equal, assert_true
+from mypy.erasetype import erase_type
+from mypy.expandtype import expand_type
+from mypy.join import join_types
+from mypy.meet import meet_types
+from mypy.mtypes import (
     UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Type,
     Instance, NoneTyp, ErrorType
 )
-from nodes import ARG_POS, ARG_OPT, ARG_STAR
-from replacetvars import replace_type_vars
-from subtypes import is_subtype
-from typefixture import TypeFixture, InterfaceTypeFixture
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
+from mypy.replacetvars import replace_type_vars
+from mypy.subtypes import is_subtype
+from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class TypesSuite(Suite):

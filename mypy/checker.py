@@ -21,7 +21,7 @@ from mypy.mtypes import (
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
-from mypy import checkexpr
+import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 from mypy.semanal import self_type
@@ -39,7 +39,7 @@ class TypeChecker(NodeVisitor<Type>):
     SymbolTable symtable   # Symbol table for the whole program
     MessageBuilder msg     # Utility for generating messages
     dict<Node, Type> type_map  # Types of type checked nodes
-    checkexpr.ExpressionChecker expr_checker
+    mypy.checkexpr.ExpressionChecker expr_checker
     
     str[] stack # Stack of local variable definitions
                     # None separates nested functions
@@ -62,7 +62,7 @@ class TypeChecker(NodeVisitor<Type>):
         self.modules = modules
         self.msg = MessageBuilder(errors)
         self.type_map = {}
-        self.expr_checker = checkexpr.ExpressionChecker(self, self.msg)
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.stack = [None]
         self.return_types = []
         self.type_context = []

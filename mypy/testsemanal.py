@@ -1,12 +1,12 @@
 import os.path
 import sys
 
-import build
-from myunit import Suite, run_test
-from testhelpers import assert_string_arrays_equal
-from testdata import parse_test_cases
-from errors import CompileError
-from testconfig import test_data_prefix, test_temp_dir
+from mypy import build
+from mypy.myunit import Suite, run_test
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.testdata import parse_test_cases
+from mypy.errors import CompileError
+from mypy.testconfig import test_data_prefix, test_temp_dir
 
 
 # Semantic analyser test cases: dump parse tree

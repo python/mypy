@@ -5,12 +5,12 @@ Test case descriptions are in files test/data/parse[-errors].test."""
 import os.path
 import sys
 
-from myunit import Suite, AssertionFailure, run_test
-from testhelpers import assert_string_arrays_equal
-from testdata import parse_test_cases
-import testconfig
-from parse import parse
-from errors import CompileError
+from mypy.myunit import Suite, AssertionFailure, run_test
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.testdata import parse_test_cases
+from mypy import testconfig
+from mypy.parse import parse
+from mypy.errors import CompileError
 
 
 class ParserSuite(Suite):

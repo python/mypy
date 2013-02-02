@@ -1,9 +1,9 @@
 """Test cases for the constraint solver used in type inference."""
 
-from myunit import Suite, assert_equal
-from constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
-from solve import solve_constraints
-from typefixture import TypeFixture
+from mypy.myunit import Suite, assert_equal
+from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
+from mypy.solve import solve_constraints
+from mypy.typefixture import TypeFixture
 
 
 class SolveSuite(Suite):

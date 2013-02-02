@@ -3,7 +3,7 @@ import os
 import re
 from os import remove, rmdir
 
-from myunit import TestCase, SkipTestCaseException
+from mypy.myunit import TestCase, SkipTestCaseException
 
 
 DataDrivenTestCase[] parse_test_cases(

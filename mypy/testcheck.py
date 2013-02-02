@@ -1,13 +1,13 @@
 import os.path
 import sys
 
-import build
-from myunit import Suite, run_test
-from testconfig import test_temp_dir, test_data_prefix
-from testdata import parse_test_cases
-from testhelpers import assert_string_arrays_equal
-from errors import CompileError
-from testsemanal import normalize_error_messages
+from mypy import build
+from mypy.myunit import Suite, run_test
+from mypy.testconfig import test_temp_dir, test_data_prefix
+from mypy.testdata import parse_test_cases
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.errors import CompileError
+from mypy.testsemanal import normalize_error_messages
 
 
 # List of files that contain test case descriptions.

@@ -1,6 +1,6 @@
-from myunit import Suite, assert_true
-from subtypes import is_subtype
-from typefixture import TypeFixture, InterfaceTypeFixture
+from mypy.myunit import Suite, assert_true
+from mypy.subtypes import is_subtype
+from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class SubtypingSuite(Suite):
