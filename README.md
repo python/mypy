@@ -44,7 +44,7 @@ translated to Python.  You need to clone it to actually run mypy:
 
 Now you can run mypy programs:
 
-    $ python3 <path-to-repo>/mypy-py/mypy.py PROGRAM
+    $ python3 <path-to-repo>/mypy-py/driver.py PROGRAM
 
 Replace 'python3' with your Python 3 interpreter.
 
