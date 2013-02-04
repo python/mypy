@@ -162,11 +162,11 @@ class FunctionLike(Type):
 class Callable(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
     Type[] arg_types # Types of function arguments
-    int[] arg_kinds # nodes.ARG_ constants
-    str[] arg_names # None if not a keyword argument
+    int[] arg_kinds  # mypy.nodes.ARG_ constants
+    str[] arg_names  # None if not a keyword argument
     int minargs         # Minimum number of arguments
     bool is_var_arg     # Is it a varargs function?
-    Type ret_type        # Return value type
+    Type ret_type       # Return value type
     str name            # Name (may be None; for error messages)
     TypeVars variables  # Type variables for a generic function
     
