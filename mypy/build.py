@@ -455,12 +455,15 @@ class BuildManager:
             raise RuntimeError('Unsupported target %d' % self.target)
 
     str get_python_out_path(self, MypyFile f):
-        components = f.full_name().split('.')
-        if os.path.basename(f.path) == '__init__.py':
-            components.append('__init__.py')
+        if f.full_name() == '__main__':
+            return os.path.join(self.output_dir, basename(f.path))
         else:
-            components[-1] += '.py'
-        return os.path.join(self.output_dir, *components)
+            components = f.full_name().split('.')
+            if os.path.basename(f.path) == '__init__.py':
+                components.append('__init__.py')
+            else:
+                components[-1] += '.py'
+            return os.path.join(self.output_dir, *components)
 
     void generate_python(self, MypyFile[] files):
         """Translate each file to Python."""

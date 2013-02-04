@@ -79,7 +79,7 @@ void compile_to_python(str path, str module, str[] args):
                 f.close()
                 opts = [p]
             else:
-                opts = [os.path.join(outputdir, '__main__.py')]
+                opts = [os.path.join(outputdir, os.path.basename(path))]
             status = subprocess.call([interpreter] + opts + args)
             sys.exit(status)
     finally:
