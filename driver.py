@@ -138,10 +138,11 @@ void usage(str msg=None):
     if msg:
         sys.stderr.write('%s\n' % msg)
     sys.stderr.write(
-'''Usage: mypy.py [options] file [args]
+'''Usage: mypy.py [options] [-m mod | file] [args]
 
 Options:
   -c          compile to native code (EXPERIMENTAL)
+  -m mod      run module as a script (terminates option list)
   -S          compile only to C or Python; do not run or generate a binary
   --verbose   more verbose messages
   
