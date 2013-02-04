@@ -5,11 +5,13 @@
 # TODO force keyword arguments
 # TODO more keyword arguments
 int call(Sequence<str> args, *, any stdin=None, any stdout=None,
-         any stderr=None, bool shell=False): pass
+         any stderr=None, bool shell=False, Mapping<str, str> env=None): pass
 int check_call(Sequence<str> args, *, any stdin=None, any stdout=None,
-               any stderr=None, bool shell=False): pass
+               any stderr=None, bool shell=False,
+               Mapping<str, str> env=None): pass
 bytes check_output(Sequence<str> args, *, any stdin=None, any stderr=None,
-                   bool shell=False, bool universal_newlines=False): pass
+                   bool shell=False, bool universal_newlines=False,
+                   Mapping<str, str> env=None): pass
 
 # TODO types
 any PIPE
