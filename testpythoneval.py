@@ -16,10 +16,10 @@ import os.path
 import subprocess
 import sys
 
-from myunit import Suite, run_test
-from testconfig import test_data_prefix, test_temp_dir
-from testdata import parse_test_cases
-from testhelpers import assert_string_arrays_equal
+from mypy.myunit import Suite, run_test
+from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.testdata import parse_test_cases
+from mypy.testhelpers import assert_string_arrays_equal
 
 
 # Files which contain test case descriptions.
@@ -28,7 +28,7 @@ python_eval_files = ['pythoneval.test']
 # Path to Python 3 interpreter
 python_path = 'python3'
 # Path to mypy implementation translated to Python.
-mypy_path = '~/mypy-py/mypy.py'
+mypy_path = '~/mypy-py/driver.py'
 
 
 class PythonEvaluationSuite(Suite):
@@ -51,7 +51,7 @@ def test_python_evaluation(testcase):
     # Run the program.
     outb = subprocess.check_output([python_path,
                                     os.path.expanduser(mypy_path),
-                                    'mypy.py',
+                                    'driver.py',
                                     program])
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
