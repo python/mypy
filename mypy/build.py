@@ -454,7 +454,7 @@ class BuildManager:
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
-    def get_python_out_path(self, MypyFile f):
+    str get_python_out_path(self, MypyFile f):
         components = f.full_name().split('.')
         if os.path.basename(f.path) == '__init__.py':
             components.append('__init__.py')
@@ -889,7 +889,8 @@ str[] super_packages(str id):
         res.append('.'.join(c[:i]))
     return res
 
-def make_parent_dirs( path):
+
+void make_parent_dirs(str path):
     parent = os.path.dirname(path)
     try:
         os.makedirs(parent)
