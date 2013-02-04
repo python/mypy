@@ -84,7 +84,6 @@ Here are some of the more significant Python features not supported
 right now (but all of these will improve):
 
  - only top-level imports are supported
- - packages (nested modules) are only supported for Python libraries
  - class attributes are not supported in statically typed code
  - no decorators (neither properties)
  - no 'with' statements
