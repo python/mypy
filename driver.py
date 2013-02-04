@@ -138,7 +138,7 @@ void usage(str msg=None):
     if msg:
         sys.stderr.write('%s\n' % msg)
     sys.stderr.write(
-'''Usage: mypy.py [options] [-m mod | file] [args]
+'''Usage: mypy [options] [-m mod | file] [args]
 
 Options:
   -c          compile to native code (EXPERIMENTAL)
