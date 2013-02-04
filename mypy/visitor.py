@@ -48,7 +48,8 @@ class NodeVisitor<T>:
         pass
     T visit_assignment_stmt(self, mypy.nodes.AssignmentStmt o):
         pass
-    T visit_operator_assignment_stmt(self, mypy.nodes.OperatorAssignmentStmt o):
+    T visit_operator_assignment_stmt(self,
+                                     mypy.nodes.OperatorAssignmentStmt o):
         pass
     T visit_while_stmt(self, mypy.nodes.WhileStmt o):
         pass
