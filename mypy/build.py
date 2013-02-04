@@ -147,10 +147,13 @@ BuildResult build(str program_path,
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
         lib_path.insert(0, 'test/data/lib-stub')
-    else:
+    elif program_path:
         # Include directory of the program file in the module search path.
         lib_path.insert(
             0, remove_cwd_prefix_from_path(dirname(program_path)))
+    else:
+        # Building/running a module.
+        lib_path.insert(0, os.getcwd())
     
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
@@ -204,7 +207,12 @@ str[] default_lib_path(str mypy_base_dir, int target):
 
 
 str lookup_program(str module, str[] lib_path):
-    raise NotImplementedError()
+    path = find_module(module, lib_path)
+    if path:
+        return path
+    else:
+        raise CompileError([
+            "mypy: can't find module '{}'".format(module)])
 
 
 str read_program(str path):

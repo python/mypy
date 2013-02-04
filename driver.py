@@ -42,7 +42,12 @@ void main():
 
 
 void compile_to_python(str path, str module, str[] args):
-    outputdir = os.path.join(os.path.dirname(path), '__mycache__')
+    if path:
+        basedir = os.path.dirname(path)
+    else:
+        basedir = os.getcwd()
+    
+    outputdir = os.path.join(basedir, '__mycache__')
     tempdir = False
     if not os.path.isdir(outputdir):
         try:
@@ -63,10 +68,19 @@ void compile_to_python(str path, str module, str[] args):
 
         if build.COMPILE_ONLY not in build_flags:
             # Run the translated program.
-            status = subprocess.call(
-                [interpreter,
-                 '{}/__main__.py'.format(outputdir)] +
-                args)
+            if module:
+                # Run the module using runpy. We can't use -m since Python
+                # would try to run the mypy code instead of the translated
+                # code.
+                p = os.path.join(outputdir, '__main__.py')
+                f = open(p, 'w')
+                f.write('import runpy\n'
+                        "runpy.run_module('%s', run_name='__main__')" % module)
+                f.close()
+                opts = [p]
+            else:
+                opts = [os.path.join(outputdir, '__main__.py')]
+            status = subprocess.call([interpreter] + opts + args)
             sys.exit(status)
     finally:
         if tempdir:
@@ -110,7 +124,7 @@ tuple<str, str, str[]> process_options():
             args = args[1:]
         elif args[0] == '-m' and args[1:]:
             build_flags.append(build.MODULE)
-            return None, args[0], args[1:]
+            return None, args[1], args[2:]
         else:
             usage('Invalid option {}'.format(args[0]))
     
