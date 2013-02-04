@@ -35,7 +35,7 @@ class TypeExportSuite(Suite):
             src = '\n'.join(testcase.input)
             result = build.build(src, 'main',
                                  target=build.TYPE_CHECK,
-                                 test_builtins=True,
+                                 flags=[build.TEST_BUILTINS],
                                  alt_lib_path=testconfig.test_temp_dir)
             map = result.types
             kk = map.keys()

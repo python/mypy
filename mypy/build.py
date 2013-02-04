@@ -43,9 +43,11 @@ C = 5                   # All ICODE passes + generate C and compile it
 
 
 # Build flags
-PYTHON2 = 'python2'           # Generate Python 2
-COMPILE_ONLY = 'compile-only' # Compile only to C, do not generate binary
-VERBOSE = 'verbose'           # More verbose messages (for troubleshooting)
+PYTHON2 = 'python2'             # Generate Python 2
+COMPILE_ONLY = 'compile-only'   # Compile only to C, do not generate binary
+VERBOSE = 'verbose'             # More verbose messages (for troubleshooting)
+MODULE = 'module'               # Build/run module as a script
+TEST_BUILTINS = 'test-builtins' # Use stub builtins to speed up tests
 
 
 # State ids. These describe the states a source file / module can be in a
@@ -97,7 +99,6 @@ class BuildResult:
 BuildResult build(str program_text,
                   str program_path,
                   int target,
-                  bool test_builtins=False,
                   str alt_lib_path=None,
                   str mypy_base_dir=None,
                   str output_dir=None,
@@ -115,8 +116,6 @@ BuildResult build(str program_text,
       program_path: the path to the main source file, for error reporting
       target: select passes to perform (a build target constant, e.g. C)
     Optional arguments:
-      test_builtins: if False, use normal builtins (default); if True, use
-        minimal stub builtins (this is for test cases only)
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
@@ -124,7 +123,7 @@ BuildResult build(str program_text,
       output_dir: directory where the output (Python) is stored
       flags: list of build options (e.g. COMPILE_ONLY)
     """
-
+    flags = flags or []
     if target == PYTHON and not output_dir:
         raise RuntimeError('output_dir must be set for Python target')
 
@@ -140,7 +139,7 @@ BuildResult build(str program_text,
     # Determine the default module search path.
     str[] lib_path = default_lib_path(mypy_base_dir, target)
     
-    if test_builtins:
+    if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
         lib_path.insert(0, 'test/data/lib-stub')
@@ -156,8 +155,7 @@ BuildResult build(str program_text,
     
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
-    manager = BuildManager(mypy_base_dir, lib_path, target, output_dir,
-                           flags or [])
+    manager = BuildManager(mypy_base_dir, lib_path, target, output_dir, flags)
     
     # Ignore current directory prefix in error messages.
     manager.errors.set_ignore_prefix(os.getcwd())

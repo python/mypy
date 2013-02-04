@@ -44,7 +44,7 @@ def test_python_generation(testcase):
         # Parse and semantically analyze the source program.
         result = build.build(src, 'main',
                              target=build.SEMANTIC_ANALYSIS,
-                             test_builtins=True,
+                             flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
         first = True

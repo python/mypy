@@ -45,7 +45,7 @@ class TypeCheckSuite(Suite):
             src = '\n'.join(testcase.input)
             build.build(src, 'main',
                         target=build.TYPE_CHECK,
-                        test_builtins=True,
+                        flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:
             a = normalize_error_messages(e.messages)

@@ -36,7 +36,7 @@ def test_semanal(testcase):
         src = '\n'.join(testcase.input)
         result = build.build(src, 'main',
                              target=build.SEMANTIC_ANALYSIS,
-                             test_builtins=True,
+                             flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
         # Include string representations of the source files in the actual
@@ -78,7 +78,7 @@ def test_semanal_error(testcase):
         src = '\n'.join(testcase.input)
         build.build(src, 'main',
                     target=build.SEMANTIC_ANALYSIS,
-                    test_builtins=True,
+                    flags=[build.TEST_BUILTINS],
                     alt_lib_path=test_temp_dir)
         raise AssertionError('No errors reported in {}, line {}'.format(
             testcase.file, testcase.line))
@@ -118,7 +118,7 @@ class SemAnalSymtableSuite(Suite):
             src = '\n'.join(testcase.input)
             result = build.build(src, 'main',
                                  target=build.SEMANTIC_ANALYSIS,
-                                 test_builtins=True,
+                                 flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = []      
@@ -155,7 +155,7 @@ class SemAnalTypeInfoSuite(Suite):
             src = '\n'.join(testcase.input)
             result = build.build(src, 'main',
                                  target=build.SEMANTIC_ANALYSIS,
-                                 test_builtins=True,
+                                 flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = str(result.typeinfos).split('\n')

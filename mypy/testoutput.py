@@ -46,7 +46,7 @@ def test_output(testcase):
         if testcase.name.endswith('_SemanticAnalyzer'):
             result = build.build(src, 'main',
                                  target=build.SEMANTIC_ANALYSIS,
-                                 test_builtins=True,
+                                 flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             files = result.files
         else:
