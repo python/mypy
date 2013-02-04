@@ -22,7 +22,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
-from mypy.mtypes import Void, Type, TypeVars, Callable, Any, UnboundType
+from mypy.types import Void, Type, TypeVars, Callable, Any, UnboundType
 from mypy.parsetype import (parse_type, parse_type_variables, parse_type_args,
                        TypeParseError)
 

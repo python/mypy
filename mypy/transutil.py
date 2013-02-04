@@ -1,4 +1,4 @@
-from mypy.mtypes import (
+from mypy.types import (
     Callable, Type, Any, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR
 ) 
 from mypy.nodes import FuncDef, TypeInfo, NameExpr, LDEF

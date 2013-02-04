@@ -1,6 +1,6 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from mypy.mtypes import Any, Instance, Type, Callable, FunctionLike
+from mypy.types import Any, Instance, Type, Callable, FunctionLike
 from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,

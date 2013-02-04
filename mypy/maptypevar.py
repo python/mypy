@@ -1,4 +1,4 @@
-from mypy.mtypes import RuntimeTypeVar, OBJECT_VAR, Instance, Type, TypeVar
+from mypy.types import RuntimeTypeVar, OBJECT_VAR, Instance, Type, TypeVar
 from mypy.nodes import TypeInfo, Node, MemberExpr, IndexExpr, IntExpr
 from mypy.transutil import self_expr, tvar_slot_name
 

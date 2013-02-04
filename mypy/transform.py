@@ -18,7 +18,7 @@ from mypy.nodes import (
     SymbolTableNode, IndexExpr, function_type
 )
 from mypy.traverser import TraverserVisitor
-from mypy.mtypes import Type, Any, Callable, TypeVarDef, Instance
+from mypy.types import Type, Any, Callable, TypeVarDef, Instance
 from mypy.lex import Token
 from mypy.transformtype import TypeTransformer
 from mypy.transutil import (

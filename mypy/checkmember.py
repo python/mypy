@@ -1,6 +1,6 @@
 """Type checking of member access"""
 
-from mypy.mtypes import Type, Instance, Any, TupleType, Callable
+from mypy.types import Type, Instance, Any, TupleType, Callable
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, AccessorNode, Context
 from mypy.messages import MessageBuilder
 from mypy.subtypes import map_instance_to_supertype

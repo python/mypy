@@ -1,6 +1,6 @@
 """Calculation of the least upper bound types (joins)."""
 
-from mypy.mtypes import (
+from mypy.types import (
     Type, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
     TypeVar, Callable, TupleType, ErasedType, BasicTypes
 )

@@ -16,9 +16,9 @@ import subprocess
 import sys
 from os.path import dirname, basename
 
-from mypy.mtypes import Type
-from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll, MODULE_REF
-from mypy.nodes import SymbolTableNode
+from mypy.types import Type
+from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
+from mypy.nodes import SymbolTableNode, MODULE_REF
 from mypy.semanal import TypeInfoMap, SemanticAnalyzer
 from mypy.checker import TypeChecker
 from mypy.errors import Errors

@@ -5,7 +5,7 @@ from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types
 from mypy.meet import meet_types
-from mypy.mtypes import (
+from mypy.types import (
     UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Type,
     Instance, NoneTyp, ErrorType
 )

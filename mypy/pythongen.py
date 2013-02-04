@@ -1,5 +1,5 @@
 from mypy.parse import none
-from mypy.mtypes import (
+from mypy.types import (
     Any, Instance, Void, TypeVar, TupleType, Callable, UnboundType
 )
 from mypy.nodes import IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt

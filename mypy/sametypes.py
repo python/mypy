@@ -1,4 +1,4 @@
-from mypy.mtypes import (
+from mypy.types import (
     Type, UnboundType, ErrorType, Any, NoneTyp, Void, TupleType, Callable,
     TypeVar, Instance, TypeVisitor, ErasedType
 )

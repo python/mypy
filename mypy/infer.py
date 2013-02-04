@@ -1,5 +1,5 @@
 from mypy.constraints import infer_constraints, infer_constraints_for_callable
-from mypy.mtypes import Type, Callable, BasicTypes
+from mypy.types import Type, Callable, BasicTypes
 from mypy.solve import solve_constraints
 from mypy.constraints import SUBTYPE_OF
 

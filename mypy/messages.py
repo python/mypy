@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 
 from mypy.errors import Errors
-from mypy.mtypes import (
+from mypy.types import (
     Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
     Overloaded
 )

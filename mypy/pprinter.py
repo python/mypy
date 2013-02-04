@@ -3,7 +3,7 @@ from mypy.nodes import (
     Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr
 )
 from mypy.visitor import NodeVisitor
-from mypy.mtypes import Void, TypeVisitor, Callable, Instance, Type, UnboundType
+from mypy.types import Void, TypeVisitor, Callable, Instance, Type, UnboundType
 from mypy.maptypevar import num_slots
 from mypy.transutil import tvar_arg_name
 from mypy import coerce

@@ -1,5 +1,5 @@
 from nodes import TypeInfo
-from mtypes import Instance, Type, TypeVar, Any
+from types import Instance, Type, TypeVar, Any
 
 
 interface MapPremise: pass

@@ -15,7 +15,7 @@ from mypy.nodes import (
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
-from mypy.mtypes import (
+from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any
 )
 from mypy.nodes import function_type

@@ -1,4 +1,4 @@
-from mypy.mtypes import Type, Void, NoneTyp, Any, ErrorType, BasicTypes
+from mypy.types import Type, Void, NoneTyp, Any, ErrorType, BasicTypes
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types

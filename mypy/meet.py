@@ -1,5 +1,5 @@
 from mypy.join import is_similar_callables, combine_similar_callables
-from mypy.mtypes import (
+from mypy.types import (
     Type, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
     Instance, Callable, TupleType, ErasedType, BasicTypes
 )

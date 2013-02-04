@@ -3,7 +3,7 @@
 It contains class and interface objects and Type objects.
 """
 
-from mypy.mtypes import (
+from mypy.types import (
     TypeVar, Any, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
     TypeVars, BasicTypes
 )

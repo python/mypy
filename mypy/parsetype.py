@@ -1,4 +1,4 @@
-from mypy.mtypes import Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable
+from mypy.types import Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable
 from mypy.typerepr import (
     TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
     ListTypeRepr, CallableRepr

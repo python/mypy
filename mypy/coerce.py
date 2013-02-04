@@ -1,5 +1,5 @@
 from mypy.nodes import Node, TypeInfo, CoerceExpr, JavaCast
-from mypy.mtypes import (
+from mypy.types import (
     Type, Instance, Void, NoneTyp, Any
 )
 from mypy.sametypes import is_same_type

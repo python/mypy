@@ -1,4 +1,4 @@
-from mypy.mtypes import Type
+from mypy.types import Type
 from mypy.nodes import TypeInfo
 from mypy.semanal import self_type
 from mypy.subtypes import map_instance_to_supertype

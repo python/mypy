@@ -13,7 +13,7 @@ interface Context:
     int get_line(self)
 
 
-import mypy.mtypes
+import mypy.types
 
 
 # Variable kind constants
@@ -133,7 +133,7 @@ class ImportAll(Node):
 
 class FuncBase(Node, AccessorNode):
     """Abstract base class for function-like nodes"""
-    mypy.mtypes.Type type # Type signature (Callable or Overloaded)
+    mypy.types.Type type # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
     str name(self):
         pass
@@ -179,7 +179,7 @@ class FuncItem(FuncBase):
                         # more than one overload variant?
     
     void __init__(self, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, mypy.mtypes.Type typ=None):
+                  Block body, mypy.types.Type typ=None):
         self.args = args
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
@@ -237,7 +237,7 @@ class FuncDef(FuncItem, SymNode):
                   int[] arg_kinds,   # Arguments kinds (nodes.ARG_*)
                   Node[] init,       # Initializers (each may be None)
                   Block body,
-                  mypy.mtypes.Type typ=None):
+                  mypy.types.Type typ=None):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
@@ -278,12 +278,12 @@ class Var(Node, AccessorNode, SymNode):
     str _name        # Name without module prefix
     str _full_name   # Name with module prefix
     TypeInfo info    # Defining class (for member variables)
-    mypy.mtypes.Type type # Declared or inferred type, or None if none
+    mypy.types.Type type # Declared or inferred type, or None if none
     bool is_self     # Is this the first argument to an ordinary method
                      # (usually "self")?
     bool is_ready    # If inferred, is the inferred type available?
     
-    void __init__(self, str name, mypy.mtypes.Type type=None):
+    void __init__(self, str name, mypy.types.Type type=None):
         self._name = name
         self.type = type
         self.is_self = False
@@ -304,15 +304,15 @@ class TypeDef(Node):
     str name        # Name of the class without module prefix
     str full_name   # Fully qualified name of the class
     Block defs
-    mypy.mtypes.TypeVars type_vars
+    mypy.types.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
-    mypy.mtypes.Type[] base_types
+    mypy.types.Type[] base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
     
     void __init__(self, str name, Block defs,
-                  mypy.mtypes.TypeVars type_vars=None,
-                  mypy.mtypes.Type[] base_types=None,
+                  mypy.types.TypeVars type_vars=None,
+                  mypy.types.Type[] base_types=None,
                   bool is_interface=False):
         if not base_types:
             base_types = []
@@ -448,13 +448,13 @@ class WhileStmt(Node):
 
 class ForStmt(Node):
     NameExpr[] index   # Index variables
-    mypy.mtypes.Type[] types    # Index variable types (each may be None)
+    mypy.types.Type[] types    # Index variable types (each may be None)
     Node expr              # Expression to iterate
     Block body
     Block else_body
     
     void __init__(self, NameExpr[] index, Node expr, Block body,
-                  Block else_body, mypy.mtypes.Type[] types=None):
+                  Block else_body, mypy.types.Type[] types=None):
         self.index = index
         self.expr = expr
         self.body = body
@@ -729,7 +729,7 @@ class IndexExpr(Node):
     """Index expression x[y]"""
     Node base
     Node index
-    mypy.mtypes.Type method_type  # Inferred __getitem__ method type
+    mypy.types.Type method_type  # Inferred __getitem__ method type
     
     void __init__(self, Node base, Node index):
         self.base = base
@@ -743,7 +743,7 @@ class UnaryExpr(Node):
     """Unary operation"""
     str op
     Node expr
-    mypy.mtypes.Type method_type  # Inferred operator method type
+    mypy.types.Type method_type  # Inferred operator method type
     
     void __init__(self, str op, Node expr):
         self.op = op
@@ -784,7 +784,7 @@ class OpExpr(Node):
     Node right
     # Inferred type for the operator method type (when relevant; None for
     # 'is').
-    mypy.mtypes.Type method_type
+    mypy.types.Type method_type
     
     void __init__(self, str op, Node left, Node right):
         self.op = op
@@ -816,9 +816,9 @@ class SliceExpr(Node):
 class CastExpr(Node):
     """Cast expression (type)expr"""
     Node expr
-    mypy.mtypes.Type type
+    mypy.types.Type type
     
-    void __init__(self, Node expr, mypy.mtypes.Type typ):
+    void __init__(self, Node expr, mypy.types.Type typ):
         self.expr = expr
         self.type = typ
     
@@ -853,9 +853,9 @@ class FuncExpr(FuncItem):
 class ListExpr(Node):
     """List literal expression [...] or <type> [...]"""
     Node[] items 
-    mypy.mtypes.Type type # None if implicit type
+    mypy.types.Type type # None if implicit type
     
-    void __init__(self, Node[] items, mypy.mtypes.Type typ=None):
+    void __init__(self, Node[] items, mypy.types.Type typ=None):
         self.items = items
         self.type = typ
     
@@ -866,8 +866,8 @@ class ListExpr(Node):
 class DictExpr(Node):
     """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
     tuple<Node, Node>[] items
-    mypy.mtypes.Type key_type    # None if implicit type
-    mypy.mtypes.Type value_type  # None if implicit type
+    mypy.types.Type key_type    # None if implicit type
+    mypy.types.Type value_type  # None if implicit type
     
     void __init__(self, tuple<Node, Node>[] items):
         self.items = items
@@ -879,9 +879,9 @@ class DictExpr(Node):
 class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
     Node[] items
-    mypy.mtypes.Type[] types
+    mypy.types.Type[] types
     
-    void __init__(self, Node[] items, mypy.mtypes.Type[] types=None):
+    void __init__(self, Node[] items, mypy.types.Type[] types=None):
         self.items = items
         self.types = types
     
@@ -906,10 +906,10 @@ class GeneratorExpr(Node):
     Node right_expr
     Node condition   # May be None
     NameExpr[] index
-    mypy.mtypes.Type[] types
+    mypy.types.Type[] types
     
     void __init__(self, Node left_expr, NameExpr[] index,
-                  mypy.mtypes.Type[] types, Node right_expr, Node condition):
+                  mypy.types.Type[] types, Node right_expr, Node condition):
         self.left_expr = left_expr
         self.right_expr = right_expr
         self.condition = condition
@@ -949,7 +949,7 @@ class ConditionalExpr(Node):
 class TypeApplication(Node):
     """Type application expr<type, ...>"""
     any expr   # Node
-    any types  # mypy.mtypes.Type[]
+    any types  # mypy.types.Type[]
     
     def __init__(self, expr, types):
         self.expr = expr
@@ -964,12 +964,12 @@ class CoerceExpr(Node):
     inserted after type checking).
     """
     Node expr
-    mypy.mtypes.Type target_type
-    mypy.mtypes.Type source_type
+    mypy.types.Type target_type
+    mypy.types.Type source_type
     bool is_wrapper_class
     
-    void __init__(self, Node expr, mypy.mtypes.Type target_type,
-                  mypy.mtypes.Type source_type, bool is_wrapper_class):
+    void __init__(self, Node expr, mypy.types.Type target_type,
+                  mypy.types.Type source_type, bool is_wrapper_class):
         self.expr = expr
         self.target_type = target_type
         self.source_type = source_type
@@ -982,9 +982,9 @@ class CoerceExpr(Node):
 class JavaCast(Node):
     # TODO obsolete; remove
     Node expr
-    mypy.mtypes.Type target
+    mypy.types.Type target
     
-    void __init__(self, Node expr, mypy.mtypes.Type target):
+    void __init__(self, Node expr, mypy.types.Type target):
         self.expr = expr
         self.target = target
     
@@ -998,9 +998,9 @@ class TypeExpr(Node):
     This is used only for runtime type checking. This node is always generated
     only after type checking.
     """
-    mypy.mtypes.Type type
+    mypy.types.Type type
     
-    void __init__(self, mypy.mtypes.Type typ):
+    void __init__(self, mypy.types.Type typ):
         self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -1014,9 +1014,9 @@ class TempNode(Node):
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
-    mypy.mtypes.Type type
+    mypy.types.Type type
     
-    void __init__(self, mypy.mtypes.Type typ):
+    void __init__(self, mypy.types.Type typ):
         self.type = typ
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -1048,12 +1048,12 @@ class TypeInfo(Node, AccessorNode, SymNode):
     
     # Type variable bounds (each may be None)
     # TODO implement these
-    mypy.mtypes.Type[] bounds
+    mypy.types.Type[] bounds
     
     # Inherited generic types (Instance or UnboundType or None). The first base
     # is the superclass, and the rest are interfaces.
     # TODO comment may not be accurate; also why generics should be special?
-    mypy.mtypes.Type[] bases
+    mypy.types.Type[] bases
     
     void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
                   TypeDef defn):
@@ -1085,7 +1085,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         """Is the type generic (i.e. does it have type variables)?"""
         return self.type_vars is not None and len(self.type_vars) > 0
     
-    void set_type_bounds(self, mypy.mtypes.TypeVarDef[] a):
+    void set_type_bounds(self, mypy.types.TypeVarDef[] a):
         for vd in a:
             self.bounds.append(vd.bound)
     
@@ -1252,10 +1252,10 @@ class SymbolTableNode:
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
-    mypy.mtypes.Type type_override  # If None, fall back to type of node
+    mypy.types.Type type_override  # If None, fall back to type of node
     
     void __init__(self, int kind, SymNode node, str mod_id=None,
-                  mypy.mtypes.Type typ=None, int tvar_id=0):
+                  mypy.types.Type typ=None, int tvar_id=0):
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -1268,7 +1268,7 @@ class SymbolTableNode:
         else:
             return None
     
-    mypy.mtypes.Type type(self):
+    mypy.types.Type type(self):
         # IDEA: Get rid of the any type.
         any node = self.node
         if self.type_override is not None:
@@ -1293,9 +1293,9 @@ str clean_up(str s):
     return re.sub('.*::', '', s)
         
 
-mypy.mtypes.FunctionLike function_type(FuncBase func):
+mypy.types.FunctionLike function_type(FuncBase func):
     if func.type:
-        return (mypy.mtypes.FunctionLike)func.type
+        return (mypy.types.FunctionLike)func.type
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an
@@ -1307,29 +1307,29 @@ mypy.mtypes.FunctionLike function_type(FuncBase func):
         names = <str> []
         for arg in fdef.args:
             names.append(arg.name())
-        return mypy.mtypes.Callable(<mypy.mtypes.Type> [mypy.mtypes.Any()] * len(fdef.args),
+        return mypy.types.Callable(<mypy.types.Type> [mypy.types.Any()] * len(fdef.args),
                                fdef.arg_kinds,
                                names,
-                               mypy.mtypes.Any(),
+                               mypy.types.Any(),
                                False,
                                name)
 
 
-mypy.mtypes.FunctionLike method_type(FuncBase func):
+mypy.types.FunctionLike method_type(FuncBase func):
     """Return the signature of a method (omit self)."""
     t = function_type(func)
-    if isinstance(t, mypy.mtypes.Callable):
-        return method_callable((mypy.mtypes.Callable)t)
+    if isinstance(t, mypy.types.Callable):
+        return method_callable((mypy.types.Callable)t)
     else:
-        o = (mypy.mtypes.Overloaded)t
-        mypy.mtypes.Callable[] it = []
+        o = (mypy.types.Overloaded)t
+        mypy.types.Callable[] it = []
         for c in o.items():
             it.append(method_callable(c))
-        return mypy.mtypes.Overloaded(it)
+        return mypy.types.Overloaded(it)
 
 
-mypy.mtypes.Callable method_callable(mypy.mtypes.Callable c):
-    return mypy.mtypes.Callable(c.arg_types[1:],
+mypy.types.Callable method_callable(mypy.types.Callable c):
+    return mypy.types.Callable(c.arg_types[1:],
                            c.arg_kinds[1:],
                            c.arg_names[1:],
                            c.ret_type,

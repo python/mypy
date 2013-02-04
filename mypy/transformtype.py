@@ -7,7 +7,7 @@ from mypy.nodes import (
 )
 from mypy import nodes
 from mypy.semanal import self_type
-from mypy.mtypes import (
+from mypy.types import (
     Callable, Instance, Type, Any, BOUND_VAR, Void, RuntimeTypeVar, UnboundType
 )
 from mypy.checkmember import analyse_member_access

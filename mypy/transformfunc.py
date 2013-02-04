@@ -6,7 +6,7 @@ from mypy.nodes import (
 )
 from mypy import nodes
 from mypy.checker import map_type_from_supertype
-from mypy.mtypes import Callable, Any, Void, RuntimeTypeVar, Type
+from mypy.types import Callable, Any, Void, RuntimeTypeVar, Type
 from mypy.replacetvars import replace_type_vars
 import mypy.transform
 from mypy.transutil import (

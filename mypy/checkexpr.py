@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from mypy.mtypes import (
+from mypy.types import (
     Type, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
     TupleType, Instance, TypeVar, TypeTranslator, ErasedType
 )
@@ -14,7 +14,7 @@ from mypy.nodes import (
 from mypy.nodes import function_type, method_type
 from mypy import nodes
 import mypy.checker
-from mypy import mtypes
+from mypy import types
 from mypy.sametypes import is_same_type
 from mypy.replacetvars import replace_func_type_vars, replace_type_vars
 from mypy.messages import MessageBuilder
@@ -1187,7 +1187,7 @@ Callable replace_callable_return_type(Callable c, Type new_ret_type):
                     c.line)
 
 
-class ArgInferSecondPassQuery(mtypes.TypeQuery):
+class ArgInferSecondPassQuery(types.TypeQuery):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
@@ -1195,16 +1195,16 @@ class ArgInferSecondPassQuery(mtypes.TypeQuery):
     type variable.
     """    
     void __init__(self):
-        super().__init__(False, mtypes.ANY_TYPE_STRATEGY)
+        super().__init__(False, types.ANY_TYPE_STRATEGY)
 
     bool visit_callable(self, Callable t):
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
-class HasTypeVarQuery(mtypes.TypeQuery):
+class HasTypeVarQuery(types.TypeQuery):
     """Visitor for querying whether a type has a type variable component."""
     void __init__(self):
-        super().__init__(False, mtypes.ANY_TYPE_STRATEGY)
+        super().__init__(False, types.ANY_TYPE_STRATEGY)
 
     bool visit_type_var(self, TypeVar t):
         return True
@@ -1214,10 +1214,10 @@ bool has_erased_component(Type t):
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
-class HasErasedComponentsQuery(mtypes.TypeQuery):
+class HasErasedComponentsQuery(types.TypeQuery):
     """Visitor for querying whether a type has an erased component."""
     void __init__(self):
-        super().__init__(False, mtypes.ANY_TYPE_STRATEGY)
+        super().__init__(False, types.ANY_TYPE_STRATEGY)
 
     bool visit_erased_type(self, ErasedType t):
         return True

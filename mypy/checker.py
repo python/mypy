@@ -15,7 +15,7 @@ from mypy.nodes import (
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
-from mypy.mtypes import (
+from mypy.types import (
     Type, Any, Callable, Void, FunctionLike, Overloaded, TupleType, Instance,
     NoneTyp, UnboundType, TypeTranslator, BasicTypes
 )

@@ -1,5 +1,5 @@
 from mypy.lex import Token
-from mypy.mtypes import Type, Any, NoneTyp, TypeTranslator, TypeVar
+from mypy.types import Type, Any, NoneTyp, TypeTranslator, TypeVar
 from mypy.typerepr import AnyRepr
 
 
