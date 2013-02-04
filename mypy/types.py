@@ -1,9 +1,9 @@
 """Classes for representing mypy types."""
 
-from mypy import nodes
+import mypy.nodes
 
 
-class Type(nodes.Context):
+class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
     int line
     any repr
@@ -101,11 +101,11 @@ class ErasedType(Type):
 class Instance(Type):
     """An instance type of form C<T1, ..., Tn>. Type variables Tn may
     be empty"""
-    nodes.TypeInfo type
+    mypy.nodes.TypeInfo type
     Type[] args
     bool erased      # True if result of type variable substitution
     
-    void __init__(self, nodes.TypeInfo typ, Type[] args, int line=-1,
+    void __init__(self, mypy.nodes.TypeInfo typ, Type[] args, int line=-1,
                   any repr=None, any erased=False):
         self.type = typ
         self.args = args
@@ -198,8 +198,8 @@ class Callable(FunctionLike):
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
-        self.min_args = arg_kinds.count(nodes.ARG_POS)
-        self.is_var_arg = nodes.ARG_STAR in arg_kinds
+        self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
+        self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
         self.ret_type = ret_type
         self._is_type_obj = is_type_obj
         assert not name or '<bound method' not in name
@@ -318,7 +318,7 @@ class TypeVars:
         return '<{}>'.format(', '.join(a))
 
 
-class TypeVarDef(nodes.Context):
+class TypeVarDef(mypy.nodes.Context):
     """Definition of a single type variable, with an optional bound
     (for bounded polymorphism).
     """
@@ -352,9 +352,9 @@ class RuntimeTypeVar(Type):
     node types are properly supported (NameExpr, MemberExpr and IndexExpr
     mainly).
     """
-    nodes.Node node
+    mypy.nodes.Node node
     
-    void __init__(self, nodes.Node node):
+    void __init__(self, mypy.nodes.Node node):
         self.node = node
         super().__init__(-1, None)
     
@@ -521,13 +521,13 @@ class TypeStrVisitor(TypeVisitor<str>):
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            if t.arg_kinds[i] == nodes.ARG_NAMED and not bare_asterisk:
+            if t.arg_kinds[i] == mypy.nodes.ARG_NAMED and not bare_asterisk:
                 s += '*, '
                 bare_asterisk = True
-            if t.arg_kinds[i] == nodes.ARG_STAR:
+            if t.arg_kinds[i] == mypy.nodes.ARG_STAR:
                 s += '*'
             s += str(t.arg_types[i])
-            if t.arg_kinds[i] == nodes.ARG_STAR2:
+            if t.arg_kinds[i] == mypy.nodes.ARG_STAR2:
                 s += '**'
             if t.arg_names[i]:
                 if s.endswith('**'):
@@ -535,7 +535,7 @@ class TypeStrVisitor(TypeVisitor<str>):
                 else:
                     s += ' '
                 s += t.arg_names[i]
-            if t.arg_kinds[i] == nodes.ARG_OPT:
+            if t.arg_kinds[i] == mypy.nodes.ARG_OPT:
                 s += '='
         
         s = '({})'.format(s)
