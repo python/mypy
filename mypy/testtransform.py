@@ -43,9 +43,9 @@ def test_transform(testcase):
         src = '\n'.join(testcase.input)
         # Parse and type check the input program. Perform transform manually
         # so that we can skip some files.
-        result = build.build(program_text=src,
-                             program_path='main',
+        result = build.build(program_path='main',
                              target=build.TRANSFORM,
+                             program_text=src,
                              alt_lib_path=test_temp_dir)
         a = []
         first = True

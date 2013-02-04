@@ -33,8 +33,9 @@ class TypeExportSuite(Suite):
                 mask = '(' + line[2:].strip() + ')$'
             
             src = '\n'.join(testcase.input)
-            result = build.build(src, 'main',
+            result = build.build(program_path='main',
                                  target=build.TYPE_CHECK,
+                                 program_text=src,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=testconfig.test_temp_dir)
             map = result.types

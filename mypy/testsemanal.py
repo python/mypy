@@ -34,8 +34,9 @@ def test_semanal(testcase):
     """
     try:
         src = '\n'.join(testcase.input)
-        result = build.build(src, 'main',
+        result = build.build('main',
                              target=build.SEMANTIC_ANALYSIS,
+                             program_text=src,
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
@@ -76,8 +77,9 @@ def test_semanal_error(testcase):
     """Perform a test case."""
     try:
         src = '\n'.join(testcase.input)
-        build.build(src, 'main',
+        build.build('main',
                     target=build.SEMANTIC_ANALYSIS,
+                    program_text=src,
                     flags=[build.TEST_BUILTINS],
                     alt_lib_path=test_temp_dir)
         raise AssertionError('No errors reported in {}, line {}'.format(
@@ -116,8 +118,9 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            result = build.build(src, 'main',
+            result = build.build('main',
                                  target=build.SEMANTIC_ANALYSIS,
+                                 program_text=src,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
@@ -153,8 +156,9 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            result = build.build(src, 'main',
+            result = build.build('main',
                                  target=build.SEMANTIC_ANALYSIS,
+                                 program_text=src,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.

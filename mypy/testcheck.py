@@ -43,8 +43,9 @@ class TypeCheckSuite(Suite):
         a = []
         try:
             src = '\n'.join(testcase.input)
-            build.build(src, 'main',
+            build.build('main',
                         target=build.TYPE_CHECK,
+                        program_text=src,
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:

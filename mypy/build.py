@@ -21,7 +21,7 @@ from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
 from mypy.nodes import SymbolTableNode, MODULE_REF
 from mypy.semanal import TypeInfoMap, SemanticAnalyzer
 from mypy.checker import TypeChecker
-from mypy.errors import Errors
+from mypy.errors import Errors, CompileError
 from mypy.icode import FuncIcode
 from mypy import cgen
 from mypy import icode
@@ -96,14 +96,15 @@ class BuildResult:
         self.binary_path = binary_path
 
 
-BuildResult build(str program_text,
-                  str program_path,
+BuildResult build(str program_path,
                   int target,
+                  str module=None,
+                  str program_text=None,
                   str alt_lib_path=None,
                   str mypy_base_dir=None,
                   str output_dir=None,
                   str[] flags=None):
-    """Build a program represented as a string (program_text).
+    """Build a mypy program.
 
     A single call to build performs parsing, semantic analysis and optionally
     type checking and other build passes for the program *and* all imported
@@ -112,10 +113,12 @@ BuildResult build(str program_text,
     Return BuildResult if successful; otherwise raise CompileError.
     
     Arguments:
-      program_text: the contents of the main (program) source file
-      program_path: the path to the main source file, for error reporting
+      program_path: the path to the main source file (if module argument is
+        given, this can be None => will be looked up)
       target: select passes to perform (a build target constant, e.g. C)
     Optional arguments:
+      module: name of the initial module; __main__ by default
+      program_text: the main source file contents; if omitted, read from file
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
@@ -124,6 +127,7 @@ BuildResult build(str program_text,
       flags: list of build options (e.g. COMPILE_ONLY)
     """
     flags = flags or []
+    module = module or '__main__'
     if target == PYTHON and not output_dir:
         raise RuntimeError('output_dir must be set for Python target')
 
@@ -159,10 +163,14 @@ BuildResult build(str program_text,
     
     # Ignore current directory prefix in error messages.
     manager.errors.set_ignore_prefix(os.getcwd())
+
+    program_path = program_path or lookup_program(module, lib_path)
+    if program_text is None:
+        program_text = read_program(program_path)
     
     # Construct information that describes the initial file. __main__ is the
     # implicit module id and the import context is empty initially ([]).
-    info = StateInfo(program_path, '__main__', [], manager)
+    info = StateInfo(program_path, module, [], manager)
     # Perform the build by sending the file as new file (UnprocessedFile is the
     # initial state of all files) to the manager. The manager will process the
     # file and all dependant modules recursively.
@@ -193,6 +201,21 @@ str[] default_lib_path(str mypy_base_dir, int target):
         path.append('/usr/local/lib/mypy')
     
     return path
+
+
+str lookup_program(str module, str[] lib_path):
+    raise NotImplementedError()
+
+
+str read_program(str path):
+    try:
+        f = open(path)
+        text = f.read()
+        f.close()
+    except IOError as ioerr:
+        raise CompileError([
+            "mypy: can't read file '{}': {}".format(path, ioerr.strerror)])
+    return text
 
 
 class BuildManager:

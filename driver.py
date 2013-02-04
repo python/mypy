@@ -27,21 +27,12 @@ interpreter = 'python'
 
 
 void main():
-    path, args = process_options()
-
-    try:
-        mainfile = open(path)
-        program_text = mainfile.read()
-        mainfile.close()
-    except IOError as ioerr:
-        fail("mypy: can't read file '{}': {}".format(path,
-                                                     ioerr.strerror))
-    
+    path, module, args = process_options()
     try:
         if target == build.PYTHON:
-            compile_to_python(program_text, path, args)
+            compile_to_python(path, module, args)
         elif target == build.C:
-            compile_to_c(program_text, path)
+            compile_to_c(path, module, args)
         else:
             raise RuntimeError('unsupported target %d' % target)
     except CompileError as e:
@@ -50,7 +41,7 @@ void main():
         sys.exit(1)
 
 
-void compile_to_python(str program_text, str path, str[] args):
+void compile_to_python(str path, str module, str[] args):
     outputdir = os.path.join(os.path.dirname(path), '__mycache__')
     tempdir = False
     if not os.path.isdir(outputdir):
@@ -64,7 +55,8 @@ void compile_to_python(str program_text, str path, str[] args):
 
     try:
         # Type check the program and dependencies and translate to Python.
-        build.build(program_text, path,
+        build.build(path,
+                    module=module,
                     target=build.PYTHON,
                     output_dir=outputdir,
                     flags=build_flags)
@@ -81,9 +73,12 @@ void compile_to_python(str program_text, str path, str[] args):
             shutil.rmtree(outputdir)
 
 
-void compile_to_c(str program_text, str path):
+void compile_to_c(str path, str module, str[] args):
+    assert not module # Not supported yet
+    assert not args   # Not supported yet
+    
     # Compile the program to C (also generate binary by default).
-    result = build.build(program_text, path, target=build.C, flags=build_flags)
+    result = build.build(path, target=build.C, flags=build_flags)
 
     if build.COMPILE_ONLY not in build_flags:
         # Run the compiled program.
@@ -92,7 +87,7 @@ void compile_to_c(str program_text, str path):
         sys.exit(status)
 
 
-tuple<str, str[]> process_options():
+tuple<str, str, str[]> process_options():
     if sys.executable:
         global interpreter
         interpreter = sys.executable
@@ -113,13 +108,16 @@ tuple<str, str[]> process_options():
         elif args[0] == '-S':
             build_flags.append(build.COMPILE_ONLY)
             args = args[1:]
+        elif args[0] == '-m' and args[1:]:
+            build_flags.append(build.MODULE)
+            return None, args[0], args[1:]
         else:
             usage('Invalid option {}'.format(args[0]))
     
     if not args:
         usage()
     
-    return args[0], args[1:]    
+    return args[0], None, args[1:]
 
 
 void usage(str msg=None):

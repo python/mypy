@@ -46,8 +46,9 @@ def test_transform(testcase):
         # Construct input as a single single.
         src = '\n'.join(testcase.input)
         # Parse and type check the input program.
-        result = build.build(src, program_path='main',
+        result = build.build(program_path='main',
                              target=build.ICODE,
+                             program_text=src,
                              alt_lib_path=test_temp_dir)
         a = []
         for fn in func_names:

@@ -42,8 +42,9 @@ def test_python_generation(testcase):
     try:
         src = '\n'.join(testcase.input)
         # Parse and semantically analyze the source program.
-        result = build.build(src, 'main',
+        result = build.build('main',
                              target=build.SEMANTIC_ANALYSIS,
+                             program_text=src,
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []

@@ -36,7 +36,10 @@ def test_cgen_compile(testcase):
     # Build the program.
     text = '\n'.join(testcase.input)
     try:
-        build.build(text, '_program.py', target=build.C, alt_lib_path='lib',
+        build.build('_program.py',
+                    target=build.C,
+                    program_text=text, 
+                    alt_lib_path='lib',
                     flags=[build.COMPILE_ONLY])
         outfile = '_program.c'
         f = open(outfile)
@@ -75,7 +78,10 @@ def test_cgen(testcase):
     text = '\n'.join(testcase.input)
     program = '_program.py'
     try:
-        build.build(text, program, target=build.C, alt_lib_path='lib')
+        build.build(program,
+                    target=build.C,
+                    program_text=text,
+                    alt_lib_path='lib')
         # Run the program.
         outfile = './_program'
         outb = subprocess.check_output([outfile], stderr=subprocess.STDOUT)
