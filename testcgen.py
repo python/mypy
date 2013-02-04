@@ -10,14 +10,13 @@ import re
 import subprocess
 import sys
 
-import build
-import errors
-from myunit import Suite, run_test
-from testconfig import test_data_prefix, test_temp_dir
-from testdata import parse_test_cases
-from testhelpers import (
-    assert_string_arrays_equal, assert_string_arrays_equal_wildcards
-)
+from mypy import build
+from mypy import errors
+from mypy.myunit import Suite, run_test
+from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.testdata import parse_test_cases
+from mypy.testhelpers import assert_string_arrays_equal
+from mypy.testhelpers import assert_string_arrays_equal_wildcards
 
 
 class CGenCompileSuite(Suite):
