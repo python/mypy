@@ -690,5 +690,9 @@ Type strip_type(Type typ):
                         ctyp.is_type_obj(),
                         None,
                         ctyp.variables)
+    elif isinstance(typ, Overloaded):
+        overload = (Overloaded)typ
+        return Overloaded([(Callable)strip_type(t)
+                           for t in overload.items()])
     else:
         return typ

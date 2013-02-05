@@ -339,3 +339,14 @@ class A:
 A a
 a.f()
 a.f(a) # E: Too many arguments
+
+[case testOverloadedMethodAsDataAttribute]
+class B: pass
+class A:
+    void f(self): pass
+    void f(self, B b): pass
+    g = f
+A a
+a.g()
+a.g(B())
+a.g(a) # E: No overload variant matches argument types
