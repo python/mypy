@@ -488,6 +488,9 @@ class MessageBuilder:
     void cannot_determine_type(self, str name, Context context):
         self.fail("Cannot determine type of '%s'" % name, context)
 
+    void invalid_method_type(self, Callable sig, Context context):
+        self.fail('Invalid method type', context)
+
 
 str capitalize(str s):
     """Capitalize the first character of a string."""

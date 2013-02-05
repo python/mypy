@@ -306,3 +306,36 @@ class B: pass
 main, line 2: Incompatible types in assignment
 main, line 3: Argument 1 to "f" has incompatible type "B"
 main, line 4: Too many arguments for "f"
+
+
+-- Access to method defined as a data attribute
+-- --------------------------------------------
+
+
+[case testMethodAsDataAttribute]
+class B: pass
+class A:
+    func<void(A)> f
+    func<void(A, B)> g
+A a
+a.f()
+a.g(B())
+a.f(a) # E: Too many arguments
+a.g()  # E: Too few arguments
+
+[case testMethodWithInvalidMethodAsDataAttribute]
+class B: pass
+class A:
+    func<void()> f
+    func<void(B)> g
+A a
+a.f() # E: Invalid method type
+a.g() # E: Invalid method type
+
+[case testMethodWithDynamicallyTypedMethodAsDataAttribute]
+class B: pass
+class A:
+    func<any(any)> f
+A a
+a.f()
+a.f(a) # E: Too many arguments

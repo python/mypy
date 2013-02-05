@@ -1,12 +1,14 @@
 """Type checking of member access"""
 
-from mypy.types import Type, Instance, Any, TupleType, Callable
+from mypy.types import Type, Instance, Any, TupleType, Callable, FunctionLike
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymNode, Context
+from mypy.nodes import ARG_POS
 from mypy.messages import MessageBuilder
 from mypy.subtypes import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.nodes import method_type
 from mypy import messages
+from mypy import sametypes
 
 
 Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
@@ -79,7 +81,12 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         var = (Var)v
         itype = map_instance_to_supertype(itype, var.info)
         if var.type:
-            return expand_type_by_instance(var.type, itype)
+            t = expand_type_by_instance(var.type, itype)
+            if isinstance(t, FunctionLike):
+                functype = (FunctionLike)t
+                check_method_type(functype, itype, node, msg)
+                return method_type(functype)
+            return t
         else:
             if not var.is_ready:
                 msg.cannot_determine_type(var.name(), node)
@@ -103,3 +110,17 @@ SymNode lookup_member_var_or_accessor(TypeInfo info, str name, bool is_lvalue):
         return info.get_var_or_setter(name)
     else:
         return info.get_var_or_getter(name)
+
+
+void check_method_type(FunctionLike functype, Instance itype, Context context,
+                       MessageBuilder msg):
+    for item in functype.items():
+        if not item.arg_types or item.arg_kinds[0] != ARG_POS:
+            # No positional first (self) argument.
+            msg.invalid_method_type(item, context)
+        else:
+            # Check that self argument has type 'any' or valid instance type.
+            selfarg = item.arg_types[0]
+            if (not isinstance(selfarg, Any) and
+                    not sametypes.is_same_type(selfarg, itype)):
+                msg.invalid_method_type(item, context)
