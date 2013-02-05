@@ -93,17 +93,3 @@ class A:
 A.x y
 [out]
 main, line 4: Feature not implemented yet (class attributes)
-
-[case testStatementInClassBody]
-class A:
-  if None: pass
-  A()
-  for x in [A()]: pass
-  while None: pass
-[builtins fixtures/for.py]
-[out]
-main: In class "A":
-main, line 2: Feature not implemented yet (statement in class body)
-main, line 3: Feature not implemented yet (statement in class body)
-main, line 4: Feature not implemented yet (statement in class body)
-main, line 5: Feature not implemented yet (statement in class body)

@@ -310,7 +310,6 @@ class TypeChecker(NodeVisitor<Type>):
         self.check_interface_errors(typ)
         self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
-        self.report_error_if_statements_in_class_body(defn.defs)
         self.errors.set_type(None, False)
 
     void check_no_constructor_if_interface(self, TypeInfo typ):
@@ -349,16 +348,6 @@ class TypeChecker(NodeVisitor<Type>):
             for n in iface.methods.keys():
                 if not typ.has_method(n):
                     self.msg.interface_member_not_implemented(typ, iface, n)
-
-    void report_error_if_statements_in_class_body(self, Block defs):
-        for b in defs.body:
-            if (isinstance(b, ExpressionStmt) and
-                    isinstance(((ExpressionStmt)b).expr, StrExpr)):
-                # Just a string literal (probably a doc string); ok.
-                continue
-            if type(b) not in [AssignmentStmt, VarDef, FuncDef,
-                               OverloadedFuncDef, PassStmt]:
-                self.msg.not_implemented('statement in class body', b)
     
     #
     # Statements

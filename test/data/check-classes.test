@@ -382,6 +382,24 @@ class A:
 main: In class "A":
 
 
+-- Arbitrary statements in class body
+-- ----------------------------------
+
+
+[case testStatementsInClassBody]
+class B: pass
+class A:
+    for x in [A()]:
+        y = x
+        y = B() # E: Incompatible types in assignment
+    x = A()
+    y = A()
+    x = B() # E: Incompatible types in assignment
+[builtins fixtures/for.py]
+[out]
+main: In class "A":
+
+
 -- Special cases
 -- -------------
 
