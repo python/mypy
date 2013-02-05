@@ -350,3 +350,12 @@ A a
 a.g()
 a.g(B())
 a.g(a) # E: No overload variant matches argument types
+
+[case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
+class A:
+    def f(self, x): pass
+    g = f
+A a
+a.g(object())
+a.g(a, a) # E: Too many arguments
+a.g()     # E: Too few arguments
