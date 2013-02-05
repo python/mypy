@@ -378,3 +378,13 @@ A<B> ab
 A<C> ac
 ab.f()
 ac.f()   # E: Invalid method type
+
+[case testPartiallyTypedSelfInMethodDataAttribute]
+class B: pass
+class C: pass
+class A<t>:
+    func<void(A)> f
+A<B> ab
+A<C> ac
+ab.f()
+ac.f()

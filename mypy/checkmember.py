@@ -8,7 +8,7 @@ from mypy.subtypes import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.nodes import method_type
 from mypy import messages
-from mypy import sametypes
+from mypy import subtypes
 
 
 Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
@@ -121,6 +121,5 @@ void check_method_type(FunctionLike functype, Instance itype, Context context,
         else:
             # Check that self argument has type 'any' or valid instance type.
             selfarg = item.arg_types[0]
-            if (not isinstance(selfarg, Any) and
-                    not sametypes.is_same_type(selfarg, itype)):
+            if not subtypes.is_equivalent(selfarg, itype):
                 msg.invalid_method_type(item, context)
