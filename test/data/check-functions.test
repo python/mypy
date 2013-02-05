@@ -359,3 +359,22 @@ A a
 a.g(object())
 a.g(a, a) # E: Too many arguments
 a.g()     # E: Too few arguments
+
+[case testMethodAsDataAttributeInGenericClass]
+class B: pass
+class A<t>:
+    void f(self, t x): pass
+    g = f
+A<B> a
+a.g(B())
+a.g(a)   # E: Argument 1 has incompatible type A<B>
+
+[case testInvalidMethodAsDataAttributeInGenericClass]
+class B: pass
+class C: pass
+class A<t>:
+    func<void(A<B>)> f
+A<B> ab
+A<C> ac
+ab.f()
+ac.f()   # E: Invalid method type
