@@ -368,8 +368,9 @@ class RuntimeTypeVar(Type):
 
 
 class TypeVisitor<T>:
-    """Visitor class for types (Type subclasses). The parameter T is the return
-    type of the visit methods.
+    """Visitor class for types (Type subclasses).
+
+    The parameter T is the return type of the visit methods.
     """
     T visit_unbound_type(self, UnboundType t):
         pass
@@ -409,8 +410,10 @@ class TypeVisitor<T>:
 
 
 class TypeTranslator(TypeVisitor<Type>):
-    """Identity type transformation. Subclass this and override some methods to
-    implement a non-trivial transformation.
+    """Identity type transformation.
+
+    Subclass this and override some methods to implement a non-trivial
+    transformation.
     """
     Type visit_unbound_type(self, UnboundType t):
         return t
@@ -462,14 +465,15 @@ class TypeTranslator(TypeVisitor<Type>):
 
 
 class TypeStrVisitor(TypeVisitor<str>):
-    """Visitor for pretty-printing types into strings. Do not preserve original
-    formatting.
+    """Visitor for pretty-printing types into strings.
+
+    Do not preserve original formatting.
     
     Notes:
      - Include implicit bound type variables of callables.
      - Represent unbound types as Foo? or Foo?<...>.
      - Represent the NoneTyp type as None.
-     """
+    """
     def visit_unbound_type(self, t):
         s = t.name + '?'
         if t.args != []:
@@ -588,17 +592,20 @@ ANY_TYPE_STRATEGY = 0   # Return True if any of the results are True.
 ALL_TYPES_STRATEGY = 1  # Return True if all of the results are True.
 
 
-# Visitor for performing simple boolean queries of types. This class allows
-# defining the default value for leafs to simplify the implementation of many
-# queries.
 class TypeQuery(TypeVisitor<bool>):
+    """Visitor for performing simple boolean queries of types.
+
+    This class allows defining the default value for leafs to simplify the
+    implementation of many queries.
+    """
     bool default  # Default result
     int strategy  # Strategy for combining multiple values
     
-    # Construct a query visitor with the given default result and strategy for
-    # combining multiple results. The strategy must be either
-    # ANY_TYPE_STRATEGY or ALL_TYPES_STRATEGY.
     void __init__(self, bool default, int strategy):
+        """Construct a query visitor with the given default result and
+        strategy for combining multiple results. The strategy must be either
+        ANY_TYPE_STRATEGY or ALL_TYPES_STRATEGY.
+        """
         self.default = default
         self.strategy = strategy
     
@@ -636,10 +643,12 @@ class TypeQuery(TypeVisitor<bool>):
     bool visit_runtime_type_var(self, RuntimeTypeVar t):
         return self.default
     
-    # Perform a query for a list of types. Use the strategy constant to combine
-    # the results.
     bool query_types(self, Type[] types):
-        if types == []:
+        """Perform a query for a list of types.
+
+        Use the strategy constant to combine the results.
+        """
+        if not types:
             # Use default result for empty list.
             return self.default
         if self.strategy == ANY_TYPE_STRATEGY:
