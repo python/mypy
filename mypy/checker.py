@@ -17,7 +17,7 @@ from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
     Type, Any, Callable, Void, FunctionLike, Overloaded, TupleType, Instance,
-    NoneTyp, UnboundType, TypeTranslator, BasicTypes
+    NoneTyp, UnboundType, TypeTranslator, BasicTypes, strip_type
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -449,7 +449,7 @@ class TypeChecker(NodeVisitor<Type>):
             # Infer type of the target.
             
             # Make the type more general (strip away function names etc.).
-            init_type = self.strip_type(init_type)
+            init_type = strip_type(init_type)
             
             if len(names) > 1:
                 if isinstance(init_type, TupleType):
@@ -505,20 +505,6 @@ class TypeChecker(NodeVisitor<Type>):
                 if not self.is_valid_inferred_type(item):
                     return False
         return True
-    
-    Type strip_type(self, Type typ):
-        """Make a copy of type without 'debugging info' (function name)."""
-        if isinstance(typ, Callable):
-            ctyp = (Callable)typ
-            return Callable(ctyp.arg_types,
-                            ctyp.arg_kinds,
-                            ctyp.arg_names,
-                            ctyp.ret_type,
-                            ctyp.is_type_obj(),
-                            None,
-                            ctyp.variables)
-        else:
-            return typ
     
     void check_multi_assignment(self, Type[] lvalue_types,
                                 IndexExpr[] index_lvalues,

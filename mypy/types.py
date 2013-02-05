@@ -677,3 +677,18 @@ class BasicTypes:
         self.std_type = std_type
         self.tuple = tuple
         self.function = function
+
+
+Type strip_type(Type typ):
+    """Make a copy of type without 'debugging info' (function name)."""
+    if isinstance(typ, Callable):
+        ctyp = (Callable)typ
+        return Callable(ctyp.arg_types,
+                        ctyp.arg_kinds,
+                        ctyp.arg_names,
+                        ctyp.ret_type,
+                        ctyp.is_type_obj(),
+                        None,
+                        ctyp.variables)
+    else:
+        return typ
