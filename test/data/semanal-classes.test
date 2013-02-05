@@ -232,3 +232,39 @@ MypyFile:1(
       Lvalues(
         NameExpr(a*))
       NameExpr(object [builtins.object]))))
+
+[case testDataAttributeRefInClassBody]
+class A:
+    x = 1
+    y = x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    AssignmentStmt:2(
+      Lvalues(
+        NameExpr(x*))
+      IntExpr(1))
+    AssignmentStmt:3(
+      Lvalues(
+        NameExpr(y*))
+      NameExpr(x [m]))))
+
+[case testMethodRefInClassBody]
+class A:
+    def f(self): pass
+    g = f
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Block:2(
+        PassStmt:2()))
+    AssignmentStmt:3(
+      Lvalues(
+        NameExpr(g*))
+      NameExpr(f [m]))))

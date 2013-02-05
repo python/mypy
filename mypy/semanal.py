@@ -11,7 +11,7 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr
+    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr, MDEF
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -672,18 +672,27 @@ class SemanticAnalyzer(NodeVisitor):
     
     SymbolTableNode lookup(self, str name, Context ctx):
         if name in self.global_decls[-1]:
+            # Name declared using 'global x' takes precedence.
             if name in self.globals:
                 return self.globals[name]
             else:
                 self.name_not_defined(name, ctx)
                 return None
-        elif self.locals:
+        if self.locals:
             for table in reversed(self.locals):
                 if name in table:
                     return table[name]
         if self.class_tvars and name in self.class_tvars:
             return self.class_tvars[name]
-        elif name in self.globals:
+        if self.type and (not self.locals and
+                          self.type.has_readable_member(name)):
+            # Reference to attribute within class body.
+            v = self.type.get_var(name)
+            if v:
+                return SymbolTableNode(MDEF, v, typ=v.type)
+            m = self.type.get_method(name)
+            return SymbolTableNode(MDEF, m, typ=m.type)
+        if name in self.globals:
             return self.globals[name]
         else:
             b = self.globals.get('__builtins__', None)

@@ -94,13 +94,6 @@ A.x y
 [out]
 main, line 4: Feature not implemented yet (class attributes)
 
-[case testClassAttributeAccessInClassBody]
-class A:
-  any x
-  any y = x          # E: Feature not implemented yet (class attributes)
-  def f(self): pass
-  g = f              # E: Feature not implemented yet (class attributes)
-
 [case testStatementInClassBody]
 class A:
   if None: pass

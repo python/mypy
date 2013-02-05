@@ -352,6 +352,36 @@ main, line 3: Incompatible types in assignment
 main, line 4: Incompatible types in assignment
 
 
+-- Attribute access in class body
+-- ------------------------------
+
+
+[case testDataAttributeRefInClassBody]
+class B: pass
+class A:
+    x = B()
+    y = x
+    B b = x
+    b = x
+    A c = x # E: Incompatible types in assignment
+    c = b   # E: Incompatible types in assignment
+[out]
+main: In class "A":
+
+[case testMethodRefInClassBody]
+class B: pass
+class A:
+    void f(self): pass
+    g = f
+    func<void(A)> h = f
+    h = f
+    g = h
+    func<void(B)> ff = f  # E: Incompatible types in assignment
+    g = ff                # E: Incompatible types in assignment
+[out]
+main: In class "A":
+
+
 -- Special cases
 -- -------------
 
