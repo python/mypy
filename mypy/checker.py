@@ -10,7 +10,7 @@ from mypy.nodes import (
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     BytesExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
-    Context, AccessorNode, ListComprehension, ConditionalExpr, GeneratorExpr,
+    Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt
 )
 from mypy.nodes import function_type, method_type

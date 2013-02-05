@@ -33,12 +33,6 @@ node_kinds = {
 }
 
 
-# Nodes that can be stored in the symbol table.
-# TODO better name
-# TODO remove or combine with SymNode?
-interface AccessorNode: pass
-
-
 interface SymNode:
     # Nodes that can be stored in a symbol table.
     # TODO do not use methods for these
@@ -71,7 +65,7 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-class MypyFile(Node, AccessorNode, SymNode):
+class MypyFile(Node, SymNode):
     """The abstract syntax tree of a single source file."""
     
     str _name         # Module name ('__main__' for initial file)
@@ -131,17 +125,19 @@ class ImportAll(Node):
         return visitor.visit_import_all(self)
 
 
-class FuncBase(Node, AccessorNode):
+class FuncBase(Node, SymNode):
     """Abstract base class for function-like nodes"""
     mypy.types.Type type # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
     str name(self):
         pass
+    str full_name(self):
+        pass
     bool is_method(self):
         return bool(self.info)
 
 
-class OverloadedFuncDef(FuncBase, SymNode):
+class OverloadedFuncDef(FuncBase):
     """A logical node representing all the variants of an overloaded function.
 
     This node has no explicit representation in the source program.
@@ -228,7 +224,7 @@ class FuncItem(FuncBase):
         return res
 
 
-class FuncDef(FuncItem, SymNode):
+class FuncDef(FuncItem):
     str _full_name      # Name with module prefix
     
     void __init__(self,
@@ -270,7 +266,7 @@ class Decorator(Node):
         return visitor.visit_decorator(self)
 
 
-class Var(Node, AccessorNode, SymNode):
+class Var(Node, SymNode):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
@@ -648,7 +644,7 @@ class ParenExpr(Node):
 
 class RefExpr(Node):
     """Abstract base class for name-like constructs"""
-    int kind      # Ldef/Gdef/Mdef/... (None if not available)
+    int kind      # LDEF/GDEF/MDEF/... (None if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
 
 
@@ -1023,7 +1019,7 @@ class TempNode(Node):
         return visitor.visit_temp_node(self)
 
 
-class TypeInfo(Node, AccessorNode, SymNode):
+class TypeInfo(Node, SymNode):
     """Class representing the type structure of a single class.
 
     The corresponding TypeDef instance represents the parse tree of
@@ -1113,7 +1109,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         else:
             return None
     
-    AccessorNode get_var_or_getter(self, str name):
+    SymNode get_var_or_getter(self, str name):
         # TODO getter
         if name in self.vars:
             return self.vars[name]
@@ -1122,7 +1118,7 @@ class TypeInfo(Node, AccessorNode, SymNode):
         else:
             return None
     
-    AccessorNode get_var_or_setter(self, str name):
+    SymNode get_var_or_setter(self, str name):
         # TODO setter
         if name in self.vars:
             return self.vars[name]
@@ -1246,7 +1242,7 @@ class SymbolTable(dict<str, SymbolTableNode>):
 
 
 class SymbolTableNode:
-    int kind      # Ldef/Gdef/Mdef/Tvar/...
+    int kind      # LDEF/GDEF/MDEF/TVAR/...
     SymNode node  # Parse tree node of definition (FuncDef/Var/
                   # TypeInfo), None for Tvar
     int tvar_id   # Type variable id (for Tvars only)
