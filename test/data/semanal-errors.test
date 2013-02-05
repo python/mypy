@@ -408,3 +408,15 @@ def f():
 [out]
 main: In function "f":
 main, line 5: Name 'p' already defined
+
+[case testNestedFunctionInMethod]
+class A:
+   def f(self):
+       def g():
+           x
+       y
+[out]
+main: In function "g":
+main, line 4: Name 'x' is not defined
+main: In function "f":
+main, line 5: Name 'y' is not defined
