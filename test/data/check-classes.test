@@ -419,6 +419,18 @@ class B:
     y = B()
 [builtins fixtures/primitives.py]
 
+[case testErrorMessageInFunctionNestedWithinMethod]
+class A:
+    void f(self):
+        void g():
+            a = None
+        b = None
+[out]
+main: In function "g":
+main, line 4: Need type annotation for variable
+main: In member "f" of class "A":
+main, line 5: Need type annotation for variable
+
 
 -- TODO
 --   attribute inherited from superclass; assign in __init__

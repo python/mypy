@@ -111,7 +111,10 @@ class Errors:
     void report(self, int line, str message):
         """Report a message at the given line using the current error
         context."""
-        info = ErrorInfo(self.import_context(), self.file, self.type_name,
+        type = self.type_name
+        if len(self.function_or_member) > 2:
+            type = None # Omit type context if nested function
+        info = ErrorInfo(self.import_context(), self.file, type,
                          self.is_interface, self.function_or_member[-1], line,
                          message)
         self.error_info.append(info)
