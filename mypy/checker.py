@@ -35,16 +35,16 @@ class TypeChecker(NodeVisitor<Type>):
     Type check mypy source files that have been semantically analysed.
     """
     
-    Errors errors          # Error reporting
+    Errors errors          # Error message reporting
     SymbolTable symtable   # Symbol table for the whole program
     MessageBuilder msg     # Utility for generating messages
     dict<Node, Type> type_map  # Types of type checked nodes
     mypy.checkexpr.ExpressionChecker expr_checker
     
     str[] stack # Stack of local variable definitions
-                    # None separates nested functions
-    Type[] return_types   # Stack of function return types
-    Type[] type_context   # Type context for type inference
+                # None separates nested functions
+    Type[] return_types  # Stack of function return types
+    Type[] type_context  # Type context for type inference
     bool[] dynamic_funcs # Flags; true for dynamically typed functions
     
     SymbolTable globals
@@ -53,9 +53,10 @@ class TypeChecker(NodeVisitor<Type>):
     dict<str, MypyFile> modules
     
     void __init__(self, Errors errors, dict<str, MypyFile> modules):
-        """Construct a type checker. Use errors to report type check
-        errors. Assume symtable has been populated by the semantic
-        analyzer.
+        """Construct a type checker.
+
+        Use errors to report type check errors. Assume symtable has been
+        populated by the semantic analyzer.
         """
         self.expr_checker
         self.errors = errors
@@ -94,8 +95,10 @@ class TypeChecker(NodeVisitor<Type>):
     #
     
     Type visit_var_def(self, VarDef defn):
-        """Type check a variable definition (of any kind: local,
-        member or global)."""
+        """Type check a variable definition.
+
+        It can be of any kind: local, member or global.
+        """
         # Type check initializer.
         if defn.init:
             # There is an initializer.
@@ -366,8 +369,9 @@ class TypeChecker(NodeVisitor<Type>):
             self.accept(s)
     
     Type visit_assignment_stmt(self, AssignmentStmt s):
-        """Type check an assignment statement. Handle all kinds of assignment
-        statements (simple, indexed, multiple).
+        """Type check an assignment statement.
+
+        Handle all kinds of assignment statements (simple, indexed, multiple).
         """
         # TODO support chained assignment x = y = z
         if len(s.lvalues) > 1:
@@ -434,9 +438,7 @@ class TypeChecker(NodeVisitor<Type>):
     
     void infer_variable_type(self, Var[] names, Node[] lvalues, Type init_type,
                              Context context):
-        """Infer the type of initialized variables from the type of the
-        initializer expression.
-        """
+        """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, Void):
             self.check_not_void(init_type, context)
         elif not self.is_valid_inferred_type(init_type):
@@ -505,9 +507,7 @@ class TypeChecker(NodeVisitor<Type>):
         return True
     
     Type strip_type(self, Type typ):
-        """Return a copy of type with all 'debugging information' (e.g. name of
-        function) removed.
-        """
+        """Make a copy of type without 'debugging info' (function name)."""
         if isinstance(typ, Callable):
             ctyp = (Callable)typ
             return Callable(ctyp.arg_types,
