@@ -268,3 +268,46 @@ MypyFile:1(
       Lvalues(
         NameExpr(g*))
       NameExpr(f [m]))))
+
+[case testIfStatementInClassBody]
+class A:
+    if A:
+        x = 1
+    else:
+        x = 2
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    IfStmt:2(
+      If(
+        NameExpr(A [__main__.A]))
+      Then(
+        AssignmentStmt:3(
+          Lvalues(
+            NameExpr(x*))
+          IntExpr(1)))
+      Else(
+        AssignmentStmt:5(
+          Lvalues(
+            NameExpr(x [m]))
+          IntExpr(2))))))
+
+[case testForStatementInClassBody]
+class A:
+    for x in [1, 2]:
+        y = x
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    ForStmt:2(
+      NameExpr(x*)
+      ListExpr:2(
+        IntExpr(1)
+        IntExpr(2))
+      Block:2(
+        AssignmentStmt:3(
+          Lvalues(
+            NameExpr(y*))
+          NameExpr(x [m]))))))
