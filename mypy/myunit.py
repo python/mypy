@@ -80,7 +80,7 @@ void fail():
 
 class TestCase:
     void __init__(self, str name, Suite suite=None, func<void()> func=None):
-        self.func = (any)func # TODO fix type checking
+        self.func = func
         self.name = name
         self.suite = suite
     
