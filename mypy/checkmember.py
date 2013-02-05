@@ -17,7 +17,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
     This is a general operation that supports various different variations:
     
       1. lvalue or non-lvalue access (i.e. setter or getter access)
-      2. supertype access (when using the super keyword; is_super == True and
+      2. supertype access (when using super(); is_super == True and
          override_info should refer to the supertype)
     """
     if isinstance(typ, Instance):
@@ -78,13 +78,12 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         # Found a member variable.
         var = (Var)v
         itype = map_instance_to_supertype(itype, var.info)
-        # FIX what if more than one?
         if var.type:
             return expand_type_by_instance(var.type, itype)
         else:
             if not var.is_ready:
                 msg.cannot_determine_type(var.name(), node)
-            # Implicit dynamic type.
+            # Implicit 'any' type.
             return Any()
     elif isinstance(v, FuncDef):
         # Found a getter or a setter.
