@@ -361,3 +361,49 @@ MypyFile:1(
         NameExpr(x [__main__.x]))))
   ExpressionStmt:4(
     NameExpr(x [__main__.x])))
+
+[case testNestedFunctions]
+def f(x):
+    def g(y):
+        z = y + x
+    return g
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Block:1(
+      FuncDef:2(
+        g
+        Args(
+          Var(y))
+        Block:2(
+          AssignmentStmt:3(
+            Lvalues(
+              NameExpr(z* [l]))
+            OpExpr:3(
+              +
+              NameExpr(y [l])
+              NameExpr(x [l])))))
+      ReturnStmt:4(
+        NameExpr(g [l])))))
+
+[case testNestedFunctionWithOverlappingName]
+def f(x):
+    def g():
+        x = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Block:1(
+      FuncDef:2(
+        g
+        Block:2(
+          AssignmentStmt:3(
+            Lvalues(
+              NameExpr(x* [l]))
+            IntExpr(1)))))))

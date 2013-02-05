@@ -154,7 +154,7 @@ class TypeChecker(NodeVisitor<Type>):
         self.dynamic_funcs.append(defn.type is None and not type_override)
         
         if fdef:
-            self.errors.set_function(fdef.name())
+            self.errors.push_function(fdef.name())
         
         typ = function_type(defn)
         if type_override:
@@ -165,7 +165,7 @@ class TypeChecker(NodeVisitor<Type>):
             raise RuntimeError('Not supported')
         
         if fdef:
-            self.errors.set_function(None)
+            self.errors.pop_function()
         
         self.dynamic_funcs.pop()
     

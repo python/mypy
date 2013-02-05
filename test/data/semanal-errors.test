@@ -377,3 +377,24 @@ def f():
 [out]
 main: In function "f":
 main, line 3: Name 'x' is not defined
+
+[case testNestedFunctionAndScoping]
+def f(x):
+    def g(y):
+        z = x
+    z
+    y
+    x
+[out]
+main: In function "f":
+main, line 4: Name 'z' is not defined
+main, line 5: Name 'y' is not defined
+
+[case testMultipleNestedFunctionDef]
+def f(x):
+    def g(): pass
+    x = 1
+    def g(): pass
+[out]
+main: In function "f":
+main, line 4: Name 'g' already defined

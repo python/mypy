@@ -388,3 +388,48 @@ A<B> ab
 A<C> ac
 ab.f()
 ac.f()
+
+
+-- Nested functions
+-- ----------------
+
+
+[case testSimpleNestedFunction]
+void f(A a):
+    void g(B b):
+         b = a # fail
+         A aa = a # ok
+         b = B()
+    g(a) # fail
+    g(B())
+class A: pass
+class B: pass
+[out]
+main: In function "g":
+main, line 3: Incompatible types in assignment
+main: In function "f":
+main, line 6: Argument 1 to "g" has incompatible type "A"
+
+[case testReturnAndNestedFunction]
+A f():
+    B g():
+        return A() # fail
+        return B()
+    return B() # fail
+    return A()
+class A: pass
+class B: pass
+[out]
+main: In function "g":
+main, line 3: Incompatible return value type
+main: In function "f":
+main, line 5: Incompatible return value type
+
+[case testDynamicallyTypedNestedFunction]
+void f(object x):
+    def g(y):
+        pass
+    g() # E: Too few arguments for "g"
+    g(x)
+[out]
+main: In function "f":

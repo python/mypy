@@ -336,7 +336,7 @@ class Parser:
                                                   arg_reprs))
             return node
         finally:
-            self.errors.set_function(None)
+            self.errors.pop_function()
             self.is_function = False
     
     tuple<str, Var[], Node[], int[], Type, bool, tuple<Token, any>> \
@@ -358,7 +358,7 @@ class Parser:
             name_tok = self.expect_type(Name)
             name = name_tok.string
             
-            self.errors.set_function(name)
+            self.errors.push_function(name)
             
             (args, init, kinds, typ, arg_repr) = self.parse_args(ret_type)
         except ParseError:

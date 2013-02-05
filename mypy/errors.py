@@ -59,12 +59,13 @@ class Errors:
     str type_name = None
     # Is the current type an interface?
     bool is_interface = False
-    # Short name of current function or member (or None).
-    str function_or_member = None
+    # Stack of short names of current functions or members (or None).
+    str[] function_or_member
     
     void __init__(self):
         self.error_info = []
         self.import_ctx = []
+        self.function_or_member = [None]
     
     void set_ignore_prefix(self, str prefix):
         """Set path prefix that will be removed from all paths."""
@@ -79,9 +80,12 @@ class Errors:
         file = os.path.normpath(file)
         self.file = remove_path_prefix(file, self.ignore_prefix)
     
-    void set_function(self, str name):
+    void push_function(self, str name):
         """Set the current function or member short name (it can be None)."""
-        self.function_or_member = name
+        self.function_or_member.append(name)
+
+    void pop_function(self):
+        self.function_or_member.pop()
     
     void set_type(self, str name, bool is_interface):
         """Set the short name of the current type (it can be None)."""
@@ -108,7 +112,7 @@ class Errors:
         """Report a message at the given line using the current error
         context."""
         info = ErrorInfo(self.import_context(), self.file, self.type_name,
-                         self.is_interface, self.function_or_member, line,
+                         self.is_interface, self.function_or_member[-1], line,
                          message)
         self.error_info.append(info)
     

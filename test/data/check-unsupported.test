@@ -37,17 +37,6 @@ main, line 4: Imports within blocks not supported yet
 main: In function "f":
 main, line 7: Imports within blocks not supported yet
 
-[case testNestedFunction]
-def f():
-    def g(): pass # Fail
-class A:
-    def f(self):
-        def g(): pass # Fail
-[out]
-main: In function "f":
-main, line 2: Nested functions not supported yet
-main, line 5: Nested functions not supported yet
-
 [case testNestedClass]
 def f():
     class A: pass    

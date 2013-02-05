@@ -170,10 +170,7 @@ class SemanticAnalyzer(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
-        if self.locals:
-            self.fail('Nested functions not supported yet', defn)
-            return
-        if self.type:
+        if self.type and not self.locals:
             defn.info = self.type
             if not defn.is_overload:
                 if defn.name() in self.type.methods:
@@ -183,10 +180,13 @@ class SemanticAnalyzer(NodeVisitor):
                 self.is_init_method = True
             if defn.args == []:
                 self.fail('Method must have at least one argument', defn)
+
+        if self.locals:
+            self.add_local_func(defn, defn)
         
-        self.errors.set_function(defn.name())
+        self.errors.push_function(defn.name())
         self.analyse_function(defn)
-        self.errors.set_function(None)
+        self.errors.pop_function()
         self.is_init_method = False
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
@@ -749,6 +749,13 @@ class SemanticAnalyzer(NodeVisitor):
             self.name_already_defined(v.name(), ctx)
         v._full_name = v.name()
         self.locals[-1][v.name()] = SymbolTableNode(LDEF, v)
+
+    void add_local_func(self, FuncDef defn, Context ctx):
+        # TODO combine with above
+        if defn.name() in self.locals[-1]:
+            self.name_already_defined(defn.name(), ctx)
+        defn._full_name = defn.name()
+        self.locals[-1][defn.name()] = SymbolTableNode(LDEF, defn)
     
     void check_no_global(self, str n, Context ctx, bool is_func=False):
         if n in self.globals:
