@@ -278,12 +278,15 @@ class Var(Node, SymNode):
     bool is_self     # Is this the first argument to an ordinary method
                      # (usually "self")?
     bool is_ready    # If inferred, is the inferred type available?
+    # Is this initialized explicitly to a non-None value in class body?
+    bool is_initialized_in_class
     
     void __init__(self, str name, mypy.types.Type type=None):
         self._name = name
         self.type = type
         self.is_self = False
         self.is_ready = True
+        self.is_initialized_in_class = False
 
     str name(self):
         return self._name

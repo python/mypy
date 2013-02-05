@@ -314,9 +314,10 @@ main, line 4: Too many arguments for "f"
 
 [case testMethodAsDataAttribute]
 class B: pass
+any x
 class A:
-    func<void(A)> f
-    func<void(A, B)> g
+    func<void(A)> f = x
+    func<void(A, B)> g = x
 A a
 a.f()
 a.g(B())
@@ -325,17 +326,19 @@ a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
 class B: pass
+any x
 class A:
-    func<void()> f
-    func<void(B)> g
+    func<void()> f = x
+    func<void(B)> g = x
 A a
 a.f() # E: Invalid method type
 a.g() # E: Invalid method type
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
 class B: pass
+any x
 class A:
-    func<any(any)> f
+    func<any(any)> f = x
 A a
 a.f()
 a.f(a) # E: Too many arguments
@@ -372,8 +375,9 @@ a.g(a)   # E: Argument 1 has incompatible type A<B>
 [case testInvalidMethodAsDataAttributeInGenericClass]
 class B: pass
 class C: pass
+any x
 class A<t>:
-    func<void(A<B>)> f
+    func<void(A<B>)> f = x
 A<B> ab
 A<C> ac
 ab.f()
@@ -382,12 +386,24 @@ ac.f()   # E: Invalid method type
 [case testPartiallyTypedSelfInMethodDataAttribute]
 class B: pass
 class C: pass
+any x
 class A<t>:
-    func<void(A)> f
+    func<void(A)> f = x
 A<B> ab
 A<C> ac
 ab.f()
 ac.f()
+
+[case testCallableDataAttribute]
+class A:
+    func<void()> g
+    void __init__(self, func<void()> f):
+        self.f = f
+a = A(None)
+a.f()
+a.g()
+a.f(a) # E: Too many arguments
+a.g(a) # E: Too many arguments
 
 
 -- Nested functions

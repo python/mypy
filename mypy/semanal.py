@@ -364,6 +364,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_local(v, defn)
             elif self.type:
                 v.info = self.type
+                v.is_initialized_in_class = defn.init is not None
                 self.type.vars[v.name()] = v
             elif v.name not in self.globals:
                 defn.kind = GDEF
@@ -418,6 +419,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # Define a new attribute.
                 v = Var(n.name)
                 v.info = self.type
+                v.is_initialized_in_class = True
                 n.node = v
                 n.is_def = True
                 self.type.vars[n.name] = v

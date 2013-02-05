@@ -82,7 +82,8 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         itype = map_instance_to_supertype(itype, var.info)
         if var.type:
             t = expand_type_by_instance(var.type, itype)
-            if isinstance(t, FunctionLike):
+            if var.is_initialized_in_class and isinstance(t, FunctionLike):
+                # Class-level function object becomes a bound method.
                 functype = (FunctionLike)t
                 check_method_type(functype, itype, node, msg)
                 return method_type(functype)
