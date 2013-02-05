@@ -64,8 +64,8 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
 
 
 Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
-                              Context node, bool is_lvalue, bool is_super,
-                              MessageBuilder msg):
+                               Context node, bool is_lvalue, bool is_super,
+                               MessageBuilder msg):
     """Analyse member access that does not target a method.
 
     This is logically part of analyse_member_access and the arguments are
