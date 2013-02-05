@@ -1314,15 +1314,18 @@ mypy.types.FunctionLike function_type(FuncBase func):
 
 mypy.types.FunctionLike method_type(FuncBase func):
     """Return the signature of a method (omit self)."""
-    t = function_type(func)
-    if isinstance(t, mypy.types.Callable):
-        return method_callable((mypy.types.Callable)t)
+    return method_type(function_type(func))
+
+mypy.types.FunctionLike method_type(mypy.types.FunctionLike sig):
+    if isinstance(sig, mypy.types.Callable):
+        csig = (mypy.types.Callable)sig
+        return method_callable(csig)
     else:
-        o = (mypy.types.Overloaded)t
-        mypy.types.Callable[] it = []
-        for c in o.items():
-            it.append(method_callable(c))
-        return mypy.types.Overloaded(it)
+        osig = (mypy.types.Overloaded)sig
+        mypy.types.Callable[] items = []
+        for c in osig.items():
+            items.append(method_callable(c))
+        return mypy.types.Overloaded(items)
 
 
 mypy.types.Callable method_callable(mypy.types.Callable c):
