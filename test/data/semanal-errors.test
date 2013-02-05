@@ -398,3 +398,13 @@ def f(x):
 [out]
 main: In function "f":
 main, line 4: Name 'g' already defined
+
+[case testRedefinedOverloadedFunction]
+def f():
+    void p(object o): pass # no error
+    void p(any o): pass    # no error
+    x = 1
+    def p(): pass # fail
+[out]
+main: In function "f":
+main, line 5: Name 'p' already defined

@@ -752,7 +752,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     void add_local_func(self, FuncDef defn, Context ctx):
         # TODO combine with above
-        if defn.name() in self.locals[-1]:
+        if not defn.is_overload and defn.name() in self.locals[-1]:
             self.name_already_defined(defn.name(), ctx)
         defn._full_name = defn.name()
         self.locals[-1][defn.name()] = SymbolTableNode(LDEF, defn)
