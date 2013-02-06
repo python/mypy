@@ -57,10 +57,10 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         # Actually look up from the tuple type.
         return analyse_member_access(name, tuple_type, node, is_lvalue,
                                      is_super, tuple_type, msg)
-    elif isinstance(typ, Callable) and ((Callable)typ).is_type_obj():
+    elif isinstance(typ, FunctionLike) and ((FunctionLike)typ).is_type_obj():
         # TODO super? lvalue?
-        sig = (Callable)typ
-        itype = (Instance)sig.ret_type
+        sig = (FunctionLike)typ
+        itype = (Instance)sig.items()[0].ret_type
         return analyse_class_attribute_access(itype, name, node, msg)
     else:
         # The base object has an unsupported type.

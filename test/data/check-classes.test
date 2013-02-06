@@ -423,6 +423,14 @@ B b = A.x # E: Incompatible types in assignment
 class A: pass
 A.x # E: "A" has no member "x"
 
+[case testAccessMethodOfClassWithOverloadedInit]
+class A:
+    void __init__(self): pass
+    void __init__(self, any x): pass
+    void f(self): pass
+A.f(A())
+A.f()    # E: Too few arguments
+
 
 -- Special cases
 -- -------------
