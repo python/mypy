@@ -299,46 +299,33 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_type_var(self.class_tvars, vars[i], i + 1)
     
     void visit_import(self, Import i):
-        if not self.check_import_at_toplevel(i):
-            return
         for id, as_id in i.ids:
             if as_id != id:
                 m = self.modules[id]
-                self.globals[as_id] = SymbolTableNode(MODULE_REF, m,
-                                                      self.cur_mod_id)
+                self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m,
+                                                       self.cur_mod_id), i)
             else:
                 base = id.split('.')[0]
                 m = self.modules[base]
-                self.globals[base] = SymbolTableNode(MODULE_REF, m,
-                                                     self.cur_mod_id)
+                self.add_symbol(base, SymbolTableNode(MODULE_REF, m,
+                                                      self.cur_mod_id), i)
     
     void visit_import_from(self, ImportFrom i):
-        if not self.check_import_at_toplevel(i):
-            return
         m = self.modules[i.id]
         for id, as_id in i.names:
             node = m.names.get(id, None)
             if node:
-                self.globals[as_id] = SymbolTableNode(node.kind, node.node,
-                                                      self.cur_mod_id)
+                self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
+                                                       self.cur_mod_id), i)
             else:
                 self.fail("Module has no attribute '{}'".format(id), i)
     
     void visit_import_all(self, ImportAll i):
-        if not self.check_import_at_toplevel(i):
-            return
         m = self.modules[i.id]
         for name, node in m.names.items():
             if not name.startswith('_'):
-                self.globals[name] = SymbolTableNode(node.kind, node.node,
-                                                     self.cur_mod_id)
-
-    bool check_import_at_toplevel(self, Context c):
-        if self.block_depth > 0:
-            self.fail("Imports within blocks not supported yet", c)
-            return False
-        else:
-            return True
+                self.add_symbol(name, SymbolTableNode(node.kind, node.node,
+                                                      self.cur_mod_id), i)
     
     #
     # Statements
@@ -738,6 +725,14 @@ class SemanticAnalyzer(NodeVisitor):
     void leave(self):
         self.locals.pop()
         self.global_decls.pop()
+
+    void add_symbol(self, str name, SymbolTableNode node, Context context):
+        if self.locals:
+            if name in self.locals[-1]:
+                self.name_already_defined(name, context)
+            self.locals[-1][name] = node
+        else:
+            self.globals[name] = node
     
     void add_var(self, Var v, Context ctx):
         if self.locals:

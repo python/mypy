@@ -78,6 +78,8 @@ class Parser:
     bool is_function = False
     # Are we currently parsing a type definition?
     bool is_type = False
+
+    Node[] imports
     
     void __init__(self, str fnam, Errors errors):
         self.raise_on_error = errors is None
@@ -93,6 +95,7 @@ class Parser:
     MypyFile parse(self, str s):
         self.tok = lex.lex(s)
         self.ind = 0
+        self.imports = []
         file = self.parse_file()
         if self.raise_on_error and self.errors.is_errors():
             self.errors.raise_error()
@@ -103,7 +106,7 @@ class Parser:
         is_bom = self.parse_bom()
         defs = self.parse_defs()
         eof = self.expect_type(Eof)
-        node = MypyFile(defs, is_bom)
+        node = MypyFile(defs, self.imports, is_bom)
         self.set_repr(node, noderepr.MypyFileRepr(eof))
         return node
     
@@ -142,6 +145,7 @@ class Parser:
             commas.append(self.expect(','))
         br = self.expect_break()
         node = Import(ids)
+        self.imports.append(node)
         self.set_repr(node, noderepr.ImportRepr(import_tok, id_toks, as_names,
                                                 commas, br))
         return node
@@ -175,6 +179,7 @@ class Parser:
                 rparen = self.expect(')')
             node = ImportFrom(name, targets)
         br = self.expect_break()
+        self.imports.append(node)
         self.set_repr(node, noderepr.ImportFromRepr(
             from_tok, components,import_tok, lparen, name_toks, rparen, br))
         return node

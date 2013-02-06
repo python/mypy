@@ -420,3 +420,29 @@ main: In function "g":
 main, line 4: Name 'x' is not defined
 main: In function "f":
 main, line 5: Name 'y' is not defined
+
+[case testImportScope]
+void f():
+    import x
+x.y # E: Name 'x' is not defined
+[file x.py]
+y = 1
+[out]
+
+[case testImportScope2]
+void f():
+    from x import y
+    y
+y # E: Name 'y' is not defined
+[file x.py]
+y = 1
+[out]
+
+[case testImportScope3]
+void f():
+    from x import *
+    y
+y # E: Name 'y' is not defined
+[file x.py]
+y = 1
+[out]

@@ -518,3 +518,39 @@ MypyFile:1(
           x [_m.x])
         NameExpr(None [builtins.None])))
     NameExpr(None [builtins.None])))
+
+[case testImportInBlock]
+if 1:
+    import _x
+    _x.y
+[file _x.py]
+y = 1
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      Import:2(_x : _x)
+      ExpressionStmt:3(
+        MemberExpr:3(
+          NameExpr(_x)
+          y [_x.y])))))
+
+[case testImportInFunction]
+void f():
+    import _x
+    _x.y
+[file _x.py]
+y = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:1(
+      Import:2(_x : _x)
+      ExpressionStmt:3(
+        MemberExpr:3(
+          NameExpr(_x)
+          y [_x.y])))))

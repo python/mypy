@@ -416,7 +416,7 @@ class BuildManager:
         """
         # TODO also find imports not at the top level of the file
         res = <tuple<str, int>> []
-        for d in file.defs:
+        for d in file.imports:
             if isinstance(d, Import):
                 for id, _ in ((Import)d).ids:
                     res.append((id, d.line))

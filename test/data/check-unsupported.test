@@ -21,22 +21,6 @@ void f():
 main: In function "f":
 main, line 2: Feature not implemented yet (with statement)
 
-[case testNonTopLevelImport]
-def f():
-    import x
-if f:
-    from y import a
-class A:
-    def f(self):
-        from z import *
-[out]
-main: In function "f":
-main, line 2: Imports within blocks not supported yet
-main: At top level:
-main, line 4: Imports within blocks not supported yet
-main: In function "f":
-main, line 7: Imports within blocks not supported yet
-
 [case testNestedClass]
 def f():
     class A: pass    

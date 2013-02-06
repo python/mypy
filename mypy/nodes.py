@@ -74,10 +74,12 @@ class MypyFile(Node, SymNode):
     Node[] defs       # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
     SymbolTable names
+    Node[] imports    # All import nodes within the file
     
-    void __init__(self, Node[] defs, bool is_bom=False):
+    void __init__(self, Node[] defs, Node[] imports, bool is_bom=False):
         self.defs = defs
         self.line = 1  # Dummy line number
+        self.imports = imports
         self.is_bom = is_bom
 
     str name(self):
