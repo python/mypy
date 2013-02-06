@@ -732,6 +732,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.name_already_defined(name, context)
             self.locals[-1][name] = node
         else:
+            if name in self.globals:
+                self.name_already_defined(name, context)
             self.globals[name] = node
     
     void add_var(self, Var v, Context ctx):

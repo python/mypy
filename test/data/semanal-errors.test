@@ -446,3 +446,16 @@ y # E: Name 'y' is not defined
 [file x.py]
 y = 1
 [out]
+
+[case testImportTwice]
+import y
+import y
+void f():
+    import x
+    import x
+[file x.py]
+[file y.py]
+[out]
+main, line 2: Name 'y' already defined
+main: In function "f":
+main, line 5: Name 'x' already defined
