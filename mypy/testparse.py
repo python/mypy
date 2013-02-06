@@ -3,7 +3,6 @@
 Test case descriptions are in files test/data/parse[-errors].test."""
 
 import os.path
-import sys
 
 from mypy.myunit import Suite, AssertionFailure, run_test
 from mypy.testhelpers import assert_string_arrays_equal
@@ -70,4 +69,5 @@ class CombinedParserSuite(Suite):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(CombinedParserSuite(), sys.argv[1:])

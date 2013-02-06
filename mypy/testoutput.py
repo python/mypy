@@ -4,7 +4,6 @@ Test case descriptions are in file test/data/output.test."""
 
 import os.path
 import re
-import sys
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -92,4 +91,5 @@ def fix_path(path):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(OutputSuite(), sys.argv[1:])

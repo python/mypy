@@ -1,5 +1,4 @@
 import os.path
-import sys
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -181,4 +180,5 @@ class CombinedSemAnalSuite(Suite):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(CombinedSemAnalSuite(), sys.argv[1:])

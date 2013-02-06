@@ -1,5 +1,6 @@
+"""Type checker test cases"""
+
 import os.path
-import sys
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -57,4 +58,5 @@ class TypeCheckSuite(Suite):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(TypeCheckSuite(), sys.argv[1:])

@@ -1,7 +1,6 @@
 import os
 import os.path
 import shutil
-import sys
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -116,4 +115,5 @@ def perform_test(func, path, testcase):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(DyncheckTransformSuite(), sys.argv[1:])

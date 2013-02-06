@@ -6,7 +6,6 @@ stubs to speed up running.
 """
 
 import os.path
-import sys
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -79,4 +78,5 @@ def test_python_generation(testcase):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(PythonGenerationSuite(), sys.argv[1:])

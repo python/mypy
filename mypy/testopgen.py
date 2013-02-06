@@ -1,7 +1,6 @@
 """Test Alore type operation generation (OBSOLETE)."""
 
 import os.path
-import sys
 
 from build import build
 from myunit import Suite, run_test
@@ -70,4 +69,5 @@ def test_op_gen(testcase):
 
     
 if __name__ == '__main__':
+    import sys
     run_test(DyncheckOpGenSuite(), sys.argv[1:])

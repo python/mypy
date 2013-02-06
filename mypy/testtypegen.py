@@ -61,7 +61,6 @@ class TypeExportSuite(Suite):
                                                                testcase.line))
 
 
-import sys
-
 if __name__ == '__main__':
+    import sys
     run_test(TypeExportSuite(), sys.argv[1:])

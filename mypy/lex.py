@@ -738,9 +738,8 @@ class Lexer:
                 self.add_token(LexError('', type))
 
 
-import sys
-
 if __name__ == '__main__':
+    import sys
     if len(sys.argv) != 2:
         print('Usage: lex.py FILE')
         sys.exit(2)

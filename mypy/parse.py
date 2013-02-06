@@ -1825,9 +1825,8 @@ Node unwrap_parens(Node node):
         return node
 
 
-import sys
-
 if __name__ == '__main__':
+    import sys
     if len(sys.argv) != 2:
         print('Usage: parse.py FILE')
         sys.exit(2)

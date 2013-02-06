@@ -2,7 +2,6 @@
 
 import os.path
 import re
-import sys
 
 from mypy import build
 from mypy import icode
@@ -80,4 +79,5 @@ def get_func_names(expected):
 
 
 if __name__ == '__main__':
+    import sys
     run_test(IcodeGenerationSuite(), sys.argv[1:])
