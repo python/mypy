@@ -20,7 +20,6 @@ from mypy.transutil import (
 )
 from mypy.rttypevars import translate_runtime_type_vars_locally
 from mypy.compileslotmap import find_slot_origin
-from mypy.subtypes import map_instance_to_supertype
 from mypy.coerce import coerce
 from mypy.maptypevar import num_slots, get_tvar_access_path
 from mypy import erasetype

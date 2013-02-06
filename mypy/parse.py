@@ -6,7 +6,7 @@ representing a source file. Performs only minimal semantic checks.
 
 from mypy import lex
 from mypy.lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
-                 StrLit, BytesLit, FloatLit, Op, Indent, Keyword, Name, Punct,
+                 StrLit, BytesLit, FloatLit, Op, Indent, Keyword, Punct,
                  LexError)
 import mypy.types
 from mypy.nodes import (
