@@ -678,8 +678,7 @@ class SemanticAnalyzer(NodeVisitor):
                     return table[name]
         if self.class_tvars and name in self.class_tvars:
             return self.class_tvars[name]
-        if self.type and (not self.locals and
-                          self.type.has_readable_member(name)):
+        if self.type and (not self.locals and name in self.type.names):
             return self.type[name]
         if name in self.globals:
             return self.globals[name]

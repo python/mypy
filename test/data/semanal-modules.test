@@ -570,3 +570,21 @@ MypyFile:1(
       Lvalues(
         NameExpr(z*))
       NameExpr(y [_x.y]))))
+
+[case testImportInClassBody2]
+class A:
+    import _x
+    z = _x.y
+[file _x.py]
+y = 1
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Import:2(_x : _x)
+    AssignmentStmt:3(
+      Lvalues(
+        NameExpr(z*))
+      MemberExpr:3(
+        NameExpr(_x)
+        y [_x.y]))))
