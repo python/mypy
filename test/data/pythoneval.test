@@ -174,3 +174,18 @@ f(x=1, y='y')
 1 x
 x
 1 y
+
+[case testCallMethodViaTypeObject]
+print(list.__add__([1, 2], [3, 4]))
+[out]
+[[1, 2, 3, 4]
+
+[case testClassDataAttribute]
+class A:
+    int x = 0
+print(A.x)
+A.x += 1
+print(A.x)
+[out]
+0
+1
