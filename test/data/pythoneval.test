@@ -152,3 +152,25 @@ int_t
 int_t
 other
 other
+
+[case testOverloadWithOptionalArg]
+void f(int x, str y='x'): print(x, y)
+void f(str x): print(x)
+f(1)
+f('x')
+f(1, 'y')
+[out]
+1 x
+x
+1 y
+
+[case testOverloadWithOptionalArg2]
+void f(int x, str y='x'): print(x, y)
+void f(str x): print(x)
+f(x=1)
+f(x='x')
+f(x=1, y='y')
+[out]
+1 x
+x
+1 y

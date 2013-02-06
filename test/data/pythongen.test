@@ -115,7 +115,7 @@ def f(a):
     elif isinstance(a, B):
         return f2(a)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 class A: pass
 class B: pass
 
@@ -139,7 +139,7 @@ class A:
         elif isinstance(a, B):
             return f2(self, a)
         else:
-            raise TypeError("Invalid argument types")
+            raise TypeError("Invalid arguments")
 class B: pass
 
 [case testSimpleOverloadFollowedByFunction]
@@ -162,7 +162,7 @@ def f(a):
     elif isinstance(a, B):
         return f2(a)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 def g(): pass
 class A: pass
 class B: pass
@@ -182,36 +182,39 @@ def f(a):
     elif callable(a):
         return f2(a)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 class A: pass
 
 [case testDifferentArgumentCountsInOverloads]
 def f(x): pass
 def f(x, y): pass
 [out]
-def f(x, *args):
+__def0 = object()
+def f(x, y=__def0):
     def f1(x): pass
     def f2(x, y): pass
-    if len(args) == 0:
+    if y is __def0:
         return f1(x)
-    elif len(args) == 1:
-        return f2(x, args[0])
+    elif y is not __def0:
+        return f2(x, y)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testDifferentArgumentCountsInOverloads2]
 def f(x): pass
 def f(x, y, z): pass
 [out]
-def f(x, *args):
+__def0 = object()
+__def1 = object()
+def f(x, y=__def0, z=__def1):
     def f1(x): pass
     def f2(x, y, z): pass
-    if len(args) == 0:
+    if y is __def0 and z is __def1:
         return f1(x)
-    elif len(args) == 2:
-        return f2(x, args[0], args[1])
+    elif y is not __def0 and z is not __def1:
+        return f2(x, y, z)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testMultipleArgumentsInOverloads]
 void f(A x, B y): pass
@@ -228,7 +231,7 @@ def f(x, y):
     elif isinstance(y, A):
         return f2(x, y)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 class A: pass
 class B: pass
 
@@ -278,18 +281,19 @@ def f(x, y):
   if x:
     pass
 [out]
-def f(x, *args):
+__def0 = object()
+def f(x, y=__def0):
     def f1(x):
       pass
     def f2(x, y):
       if x:
         pass
-    if len(args) == 0:
+    if y is __def0:
         return f1(x)
-    elif len(args) == 1:
-        return f2(x, args[0])
+    elif y is not __def0:
+        return f2(x, y)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testClassWithMultipleVarDefinitions]
 class A:
@@ -314,19 +318,20 @@ class A:
     def g(self):
         pass
 [out]
+__def0 = object()
 class A:
-    def f(self, *args):
+    def f(self, x=__def0):
         def f1(self):
             pass
         def f2(self, x):
             pass
 
-        if len(args) == 0:
+        if x is __def0:
             return f1(self)
-        elif len(args) == 1:
-            return f2(self, args[0])
+        elif x is not __def0:
+            return f2(self, x)
         else:
-            raise TypeError("Invalid argument types")
+            raise TypeError("Invalid arguments")
     # Comment
     def g(self):
         pass
@@ -342,24 +347,25 @@ class A:
     void f(self, any x): 
         pass
 [out]
+__def0 = object()
 class A:
     def g(self):
         pass
 
     # Comment
-    def f(self, *args):
+    def f(self, x=__def0):
 
         # Comment
         def f1(self):
             pass
         def f2(self, x):
             pass
-        if len(args) == 0:
+        if x is __def0:
             return f1(self)
-        elif len(args) == 1:
-            return f2(self, args[0])
+        elif x is not __def0:
+            return f2(self, x)
         else:
-            raise TypeError("Invalid argument types")
+            raise TypeError("Invalid arguments")
 
 [case testImportingMypyOnlyNames]
 from re import Pattern
@@ -408,7 +414,7 @@ def f(x):
     elif isinstance(x, B):
         return f2(x)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testOverloadedFunctionWithVariableArgumentCountsAndTypes]
 class A: pass
@@ -416,17 +422,18 @@ class B: pass
 def f(A x): pass
 def f(B y, A z): pass
 [out]
+__def0 = object()
 class A: pass
 class B: pass
-def f(x, *args):
+def f(x, z=__def0):
     def f1(x): pass
     def f2(y, z): pass
-    if len(args) == 0 and isinstance(x, A):
+    if isinstance(x, A) and z is __def0:
         return f1(x)
-    elif len(args) == 1 and isinstance(x, B) and isinstance(args[0], A):
-        return f2(x, args[0])
+    elif isinstance(x, B) and isinstance(z, A):
+        return f2(x, z)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testSuper-2]
 class A:
@@ -452,7 +459,7 @@ def f(o):
     elif isinstance(o, object):
         return f2(o)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testListTypeReturnType]
 class A:
@@ -476,21 +483,22 @@ def f(x):
     elif True:
         return f2(x)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testOverloadWithZeroArgs]
 def f(x): pass
 def f(): pass
 [out]
-def f(*args):
+__def0 = object()
+def f(x=__def0):
     def f1(x): pass
     def f2(): pass
-    if len(args) == 1:
-        return f1(args[0])
-    elif len(args) == 0:
+    if x is not __def0:
+        return f1(x)
+    elif x is __def0:
         return f2()
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testTypeApplication]
 void f<t>(t x): pass
@@ -513,7 +521,7 @@ def f(x):
     elif isinstance(x, object):
         return f2(x)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testReferenceToBuiltinInterface]
 s = Sized
@@ -543,7 +551,7 @@ def f(x):
     elif True:
         return f2(x)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
         
 [case testSpecialInterfaceAsBaseType]
 class A(int_t):
@@ -582,7 +590,7 @@ def f(i):
     elif isinstance(i, object):
         return f2(i)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 
 -- Special cases
@@ -610,7 +618,7 @@ def f(x):
     elif True:
         return f2(x)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 def g(x):
     def g1(x): pass
     def g2(x): pass
@@ -619,7 +627,7 @@ def g(x):
     elif True:
         return g2(x)
     else:
-        raise TypeError("Invalid argument types")
+        raise TypeError("Invalid arguments")
 
 [case testNoSpaceBeforeFirstArg]
 -- Issue #34

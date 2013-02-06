@@ -286,7 +286,7 @@ class PythonGenerator(OutputVisitor):
             self.visit_func_def(f, '{}{}'.format(f.name(), n + 1))
         self.string('\n')
 
-        self.make_dispatcher(o, fixed_args, rest_args)
+        self.make_dispatcher(o, fixed_args, optional, rest_args)
         
         self.extra_indent -= 4
         last_stmt = o.items[-1].body.body[-1]
@@ -294,22 +294,25 @@ class PythonGenerator(OutputVisitor):
 
     tuple<str[], str[], str> make_overload_sig(self, OverloadedFuncDef o):
         fixed_args, optional, is_more = get_overload_args(o)
-        self.string(', '.join(fixed_args))
+        args = fixed_args[:]
+        for i, arg in enumerate(optional):
+            self.add_to_prolog('{} = object()\n'.format(default(i)))
+            args.append('{}={}'.format(arg, default(i)))
         str rest_args = None
         if is_more:
             rest_args = make_unique('args', fixed_args)
-            if len(fixed_args) > 0:
-                self.string(', ')
-            self.string('*{}'.format(rest_args))
+            args.append('*{}'.format(rest_args))
+        self.string(', '.join(args))
         return fixed_args, optional, rest_args
 
     void make_dispatcher(self, OverloadedFuncDef o, str[] fixed_args,
-                         str rest_args):
+                         str[] optional_args, str rest_args):
         """Generate dispatching logic for an overloaded function."""
         indent = self.indent * ' '
         n = 1
-        for fi in o.items:
-            for c in self.make_overload_check(fi, fixed_args, rest_args):
+        for i, fi in enumerate(o.items):
+            for c, argc in self.make_overload_check(fi, fixed_args,
+                                                    optional_args, rest_args):
                 self.string(indent)
                 if n == 1:
                     self.string('if ')
@@ -318,28 +321,41 @@ class PythonGenerator(OutputVisitor):
                 self.string(c)
                 self.string(':' + '\n' + indent)
                 self.string('    return {}'.format(make_overload_call(
-                    fi, n, fixed_args, rest_args)) + '\n')
+                    fi, i + 1, argc, fixed_args, optional_args,
+                    rest_args)) + '\n')
                 n += 1
         self.string(indent + 'else:' + '\n')
-        self.string(indent + '    raise TypeError("Invalid argument types")')
+        self.string(indent + '    raise TypeError("Invalid arguments")')
 
-    str[] make_overload_check(self, FuncDef f, str[] fixed_args,
-                              str rest_args):
-        a = <str> []
-        i = 0
-        if rest_args:
-            a.append(make_argument_count_check(f, len(fixed_args), rest_args))
+    tuple<str, int>[] make_overload_check(self, FuncDef f, str[] fixed_args,
+                                          str[] optional_args, str rest_args):
+        """Return (condition, arg count) tuples."""
+        res = <tuple<str, int>> []
         sig = (Callable)function_type(f)
-        for t in sig.arg_types:
-            if not isinstance(t, Any) and (t.repr or isinstance(t, Callable)):
-                a.append(self.make_argument_check(
-                    argument_ref(i, fixed_args, rest_args),
-                    t))
-            i += 1
-        if len(a) > 0:
-            return [' and '.join(a)]
-        else:
-            return ['True']
+        for argc in range(sig.min_args, len(sig.arg_types) + 1):
+            a = <str> []
+            if rest_args:
+                a.append(make_argument_count_check(f, len(fixed_args),
+                                                   rest_args))
+            i = 0
+            for t in sig.arg_types[:argc]:
+                if not isinstance(t, Any) and (t.repr or
+                                               isinstance(t, Callable)):
+                    a.append(self.make_argument_check(
+                        argument_ref(i, fixed_args, optional_args, rest_args),
+                        t))
+                elif i >= len(fixed_args):
+                    j = i - len(fixed_args)
+                    a.append('{} is not {}'.format(optional_args[j],
+                                                   default(j)))
+                i += 1
+            for i in range(argc - len(fixed_args), len(optional_args)):
+                a.append('{} is {}'.format(optional_args[i], default(i)))
+            if len(a) > 0:
+                res.append((' and '.join(a), argc))
+            else:
+                res.append(('True', argc))
+        return res
 
     str make_argument_check(self, str name, Type typ):
         if isinstance(typ, Callable):
@@ -456,7 +472,7 @@ tuple<str[], str[], bool> get_overload_args(OverloadedFuncDef o):
                 fixed.append(v.name())
         min_fixed = min(min_fixed, f.min_args)
         max_fixed = max(max_fixed, len(f.args))
-    return fixed[:min_fixed], [], max_fixed > min_fixed
+    return fixed[:min_fixed], fixed[min_fixed:], False #max_fixed > min_fixed
 
 
 str make_unique(str n, str[] others):
@@ -472,16 +488,23 @@ str make_argument_count_check(FuncDef f, int num_fixed,
     return 'len({}) == {}'.format(rest_args, f.min_args - num_fixed)
 
 
-str make_overload_call(FuncDef f, int n, str[] fixed_args,
-                       str rest_args):
+str make_overload_call(FuncDef f, int n, int argc, str[] fixed_args,
+                       str[] optional_args, str rest_args):
     a = <str> []
-    for i in range(len(f.args)):
-        a.append(argument_ref(i, fixed_args, rest_args))
+    for i in range(argc):
+        a.append(argument_ref(i, fixed_args, optional_args, rest_args))
     return '{}{}({})'.format(f.name(), n, ', '.join(a))
 
 
-str argument_ref(int i, str[] fixed_args, str rest_args):
+str argument_ref(int i, str[] fixed_args, str[] optional_args, str rest_args):
     if i < len(fixed_args):
         return fixed_args[i]
+    elif i < len(fixed_args) + len(optional_args):
+        return optional_args[i - len(fixed_args)]
     else:
-        return '{}[{}]'.format(rest_args, i - len(fixed_args))
+        return '{}[{}]'.format(rest_args, i - len(fixed_args) -
+                               len(optional_args))
+
+
+str default(int n):
+    return '__def%d' % n
