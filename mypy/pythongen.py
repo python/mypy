@@ -280,11 +280,11 @@ class PythonGenerator(OutputVisitor):
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
         # Emit function signature.
-        fixed_args, is_more = self.get_overload_args(o)
+        fixed_args, optional, is_more = get_overload_args(o)
         self.string(', '.join(fixed_args))
         str rest_args = None
         if is_more:
-            rest_args = self.make_unique('args', fixed_args)
+            rest_args = make_unique('args', fixed_args)
             if len(fixed_args) > 0:
                 self.string(', ')
             self.string('*{}'.format(rest_args))
@@ -303,20 +303,53 @@ class PythonGenerator(OutputVisitor):
 
     void make_dispatcher(self, OverloadedFuncDef o, str[] fixed_args,
                          str rest_args):
+        """Generate dispatching logic for an overloaded function."""
         indent = self.indent * ' '
-        for n, fi in enumerate(o.items):
-            c = self.make_overload_check(fi, fixed_args, rest_args)
-            self.string(indent)
-            if n == 0:
-                self.string('if ')
-            else:
-                self.string('elif ')
-            self.string(c)
-            self.string(':' + '\n' + indent)
-            self.string('    return {}'.format(self.make_overload_call(
-                fi, n + 1, fixed_args, rest_args)) + '\n')
+        n = 1
+        for fi in o.items:
+            for c in self.make_overload_check(fi, fixed_args, rest_args):
+                self.string(indent)
+                if n == 1:
+                    self.string('if ')
+                else:
+                    self.string('elif ')
+                self.string(c)
+                self.string(':' + '\n' + indent)
+                self.string('    return {}'.format(make_overload_call(
+                    fi, n, fixed_args, rest_args)) + '\n')
+                n += 1
         self.string(indent + 'else:' + '\n')
         self.string(indent + '    raise TypeError("Invalid argument types")')
+
+    str[] make_overload_check(self, FuncDef f, str[] fixed_args,
+                              str rest_args):
+        a = <str> []
+        i = 0
+        if rest_args:
+            a.append(make_argument_count_check(f, len(fixed_args), rest_args))
+        sig = (Callable)function_type(f)
+        for t in sig.arg_types:
+            if not isinstance(t, Any) and (t.repr or isinstance(t, Callable)):
+                a.append(self.make_argument_check(
+                    argument_ref(i, fixed_args, rest_args),
+                    t))
+            i += 1
+        if len(a) > 0:
+            return [' and '.join(a)]
+        else:
+            return ['True']
+
+    str make_argument_check(self, str name, Type typ):
+        if isinstance(typ, Callable):
+            return 'callable({})'.format(name)
+        if (isinstance(typ, Instance) and
+                ((Instance)typ).type.fullname() in erased_duck_types):
+            inst = (Instance)typ
+            return "hasattr({}, '{}')".format(
+                                name, erased_duck_types[inst.type.fullname()])
+        else:
+            cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
+            return cond.replace('  ', ' ')
     
     str find_break_after_statement(self, any s):
         if isinstance(s, IfStmt):
@@ -333,71 +366,6 @@ class PythonGenerator(OutputVisitor):
             if b:
                 return self.find_break_after_statement(b.body[-1])
         raise RuntimeError('Could not find break after statement')
-    
-    str make_unique(self, str n, str[] others):
-        if n in others:
-            return self.make_unique('_' + n, others)
-        else:
-            return n
-    
-    tuple<str[], bool> get_overload_args(self, OverloadedFuncDef o):
-        fixed = <str> []
-        min_fixed = 100000
-        max_fixed = 0
-        for f in o.items:
-            if len(f.args) > len(fixed):
-                for v in f.args[len(fixed):]:
-                    fixed.append(v.name())
-            min_fixed = min(min_fixed, f.min_args)
-            max_fixed = max(max_fixed, len(f.args))
-        return fixed[:min_fixed], max_fixed > min_fixed
-    
-    str make_overload_check(self, FuncDef f, str[] fixed_args, str rest_args):
-        a = <str> []
-        i = 0
-        if rest_args:
-            a.append(self.make_argument_count_check(f, len(fixed_args),
-                                                    rest_args))
-        sig = (Callable)function_type(f)
-        for t in sig.arg_types:
-            if not isinstance(t, Any) and (t.repr or
-                                           isinstance(t, Callable)):
-                a.append(self.make_argument_check(
-                    self.argument_ref(i, fixed_args, rest_args), t))
-            i += 1
-        if len(a) > 0:
-            return ' and '.join(a)
-        else:
-            return 'True'
-    
-    str make_argument_count_check(self, FuncDef f, int num_fixed,
-                                  str rest_args):
-        return 'len({}) == {}'.format(rest_args, f.min_args - num_fixed)
-    
-    str make_argument_check(self, str name, Type typ):
-        if isinstance(typ, Callable):
-            return 'callable({})'.format(name)
-        if (isinstance(typ, Instance) and
-                ((Instance)typ).type.fullname() in erased_duck_types):
-            inst = (Instance)typ
-            return "hasattr({}, '{}')".format(
-                                name, erased_duck_types[inst.type.fullname()])
-        else:
-            cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
-            return cond.replace('  ', ' ')
-    
-    str make_overload_call(self, FuncDef f, int n, str[] fixed_args,
-                           str rest_args):
-        a = <str> []
-        for i in range(len(f.args)):
-            a.append(self.argument_ref(i, fixed_args, rest_args))
-        return '{}{}({})'.format(f.name(), n, ', '.join(a))
-    
-    str argument_ref(self, int i, str[] fixed_args, str rest_args):
-        if i < len(fixed_args):
-            return fixed_args[i]
-        else:
-            return '{}[{}]'.format(rest_args, i - len(fixed_args))
     
     def visit_list_expr(self, o):
         r = o.repr
@@ -473,3 +441,45 @@ class PythonGenerator(OutputVisitor):
                 return renamed
             else:
                 return None
+
+
+tuple<str[], str[], bool> get_overload_args(OverloadedFuncDef o):
+    """Return: fixed args, optional args, *args?."""
+    fixed = <str> []
+    min_fixed = 100000
+    max_fixed = 0
+    for f in o.items:
+        if len(f.args) > len(fixed):
+            for v in f.args[len(fixed):]:
+                fixed.append(v.name())
+        min_fixed = min(min_fixed, f.min_args)
+        max_fixed = max(max_fixed, len(f.args))
+    return fixed[:min_fixed], [], max_fixed > min_fixed
+
+
+str make_unique(str n, str[] others):
+    """Modify name n as needed to make it distinct from names in others."""
+    if n in others:
+        return make_unique('_' + n, others)
+    else:
+        return n
+
+
+str make_argument_count_check(FuncDef f, int num_fixed,
+                              str rest_args):
+    return 'len({}) == {}'.format(rest_args, f.min_args - num_fixed)
+
+
+str make_overload_call(FuncDef f, int n, str[] fixed_args,
+                       str rest_args):
+    a = <str> []
+    for i in range(len(f.args)):
+        a.append(argument_ref(i, fixed_args, rest_args))
+    return '{}{}({})'.format(f.name(), n, ', '.join(a))
+
+
+str argument_ref(int i, str[] fixed_args, str rest_args):
+    if i < len(fixed_args):
+        return fixed_args[i]
+    else:
+        return '{}[{}]'.format(rest_args, i - len(fixed_args))
