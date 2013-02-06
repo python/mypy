@@ -106,3 +106,23 @@ b = B()
 void f(): pass
 [out]
 main: In member "f" of class "C":
+
+[case testImportWithinClassBody]
+class C:
+    import m
+    m.f()
+    m.f(C) # E: Too many arguments for "f"
+[file m.py]
+void f(): pass
+[out]
+main: In class "C":
+
+[case testImportWithinClassBody2]
+class C:
+    from m import f
+    f()
+    f(C) # E: Too many arguments for "f"
+[file m.py]
+void f(): pass
+[out]
+main: In class "C":
