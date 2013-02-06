@@ -497,7 +497,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         return "<Erased>"
     
     def visit_instance(self, t):
-        s = t.type.full_name()
+        s = t.type.fullname()
         if t.erased:
             s += '*'
         if t.args != []:

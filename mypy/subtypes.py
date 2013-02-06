@@ -47,7 +47,7 @@ class SubtypeVisitor(TypeVisitor<bool>):
     bool visit_instance(self, Instance left):
         if isinstance(self.right, Instance):
             right = (Instance)self.right
-            rname = right.type.full_name()
+            rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
             
@@ -272,9 +272,9 @@ Instance[] map_instance_to_direct_supertypes(Instance instance,
         return [Instance(supertype, <Type> [Any()] * len(supertype.type_vars))]
 
 
-bool is_named_instance(Type t, str full_name):
+bool is_named_instance(Type t, str fullname):
     return isinstance(t,
-                      Instance) and ((Instance)t).type.full_name() == full_name
+                      Instance) and ((Instance)t).type.fullname() == fullname
 
 
 def is_proper_subtype(t, s):

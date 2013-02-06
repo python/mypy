@@ -455,10 +455,10 @@ class BuildManager:
             raise RuntimeError('Unsupported target %d' % self.target)
 
     str get_python_out_path(self, MypyFile f):
-        if f.full_name() == '__main__':
+        if f.fullname() == '__main__':
             return os.path.join(self.output_dir, basename(f.path))
         else:
-            components = f.full_name().split('.')
+            components = f.fullname().split('.')
             if os.path.basename(f.path) == '__init__.py':
                 components.append('__init__.py')
             else:
@@ -747,7 +747,7 @@ class UnprocessedFile(State):
         """
         num_errs = self.errors().num_messages()
         tree = parse.parse(source_text, fnam, self.errors())
-        tree._full_name = self.id
+        tree._fullname = self.id
         if self.errors().num_messages() != num_errs:
             self.errors().raise_error()
         return tree

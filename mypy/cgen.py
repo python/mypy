@@ -304,7 +304,7 @@ class CGenerator:
         self.emit_types('MTypeRepr %s = {' % rep.cname)
         self.emit_types('    %s,' % vtable)
         self.emit_types('    0,')
-        self.emit_types('    "%s"' % cls.full_name())
+        self.emit_types('    "%s"' % cls.fullname())
         self.emit_types('};\n')
         
         return rep
@@ -374,7 +374,7 @@ class ClassRepresentation:
     # TODO add base class
 
     str cname
-    str full_name
+    str fullname
     dict<str, int> slotmap
     # Map method name to/from vtable index
     dict<str, int> vtable_index
@@ -383,7 +383,7 @@ class ClassRepresentation:
 
     void __init__(self, TypeInfo type, ClassRepresentation base):
         self.cname = 'MR_%s' % type.name()
-        self.full_name = type.full_name()
+        self.fullname = type.fullname()
         self.slotmap = {}
         self.vtable_index = {}
         self.defining_class = {}

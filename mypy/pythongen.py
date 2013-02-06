@@ -160,7 +160,7 @@ class PythonGenerator(OutputVisitor):
 
     def visit_name_expr(self, o):
         # Rename some type references (e.g. Iterable -> collections.Iterable).
-        renamed = self.get_renaming(o.full_name)
+        renamed = self.get_renaming(o.fullname)
         if renamed:
             self.string(o.repr.id.pre)
             self.string(renamed)
@@ -200,7 +200,7 @@ class PythonGenerator(OutputVisitor):
         commas = []
         bases = []
         for i, base in enumerate(o.base_types):
-            if (base.type.full_name() not in erased_duck_types
+            if (base.type.fullname() not in erased_duck_types
                     and base.repr):
                 bases.append(base)
                 if i < len(r.commas):
@@ -233,7 +233,7 @@ class PythonGenerator(OutputVisitor):
                 return '__builtins.list'
             else:
                 # Some types need to be translated (e.g. Iterable).
-                renamed = self.get_renaming(t.type.full_name())
+                renamed = self.get_renaming(t.type.fullname())
                 if renamed:
                     pre = t.repr.components[0].pre
                     return pre + renamed
@@ -367,9 +367,9 @@ class PythonGenerator(OutputVisitor):
         if isinstance(typ, Callable):
             return 'callable({})'.format(name)
         if (isinstance(typ, Instance) and
-                typ.type.full_name() in erased_duck_types):
+                typ.type.fullname() in erased_duck_types):
             return "hasattr({}, '{}')".format(
-                                name, erased_duck_types[typ.type.full_name()])
+                                name, erased_duck_types[typ.type.fullname()])
         else:
             cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
             return cond.replace('  ', ' ')

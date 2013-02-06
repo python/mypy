@@ -39,7 +39,7 @@ Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
     """
     if kind == nodes.ARG_STAR:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).type.full_name() == 'builtins.list'):
+                ((Instance)arg_type).type.fullname() == 'builtins.list'):
             # List *arg. TODO any iterable
             return ((Instance)arg_type).args[0]
         elif isinstance(arg_type, TupleType):
@@ -51,7 +51,7 @@ Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
             return Any()
     elif kind == nodes.ARG_STAR2:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).type.full_name() == 'builtins.dict'):
+                ((Instance)arg_type).type.fullname() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
             return ((Instance)arg_type).args[1]
         else:
@@ -145,7 +145,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
             res = <Constraint> []
             instance = (Instance)actual
             if (self.direction == SUBTYPE_OF and
-                    template.type.has_base(instance.type.full_name())):
+                    template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
                 for i in range(len(instance.args)):
                     # The constraints for generic type parameters are
@@ -157,7 +157,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
                     res.extend(negate_constraints(cb))
                 return res
             elif (self.direction == SUPERTYPE_OF and
-                    instance.type.has_base(template.type.full_name())):
+                    instance.type.has_base(template.type.fullname())):
                 mapped = map_instance_to_supertype(instance, template.type)
                 for j in range(len(template.args)):
                     # The constraints for generic type parameters are

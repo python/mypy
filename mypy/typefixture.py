@@ -206,7 +206,7 @@ TypeInfo make_type_info(any name, any *args):
     map = dict(args)
     
     type_def = TypeDef(name, Block([]), None, [])
-    type_def.full_name = name
+    type_def.fullname = name
     
     if VARS in map:
         TypeVarDef[] v = []

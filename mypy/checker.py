@@ -452,7 +452,7 @@ class TypeChecker(NodeVisitor<Type>):
                         self.msg.incompatible_value_count_in_assignment(
                             len(names), len(tinit_type.items), context)
                 elif (isinstance(init_type, Instance) and
-                        ((Instance)init_type).type.full_name() ==
+                        ((Instance)init_type).type.fullname() ==
                             'builtins.list'):
                     # Initializer with an array type.
                     item_type = ((Instance)init_type).args[0]
@@ -528,7 +528,7 @@ class TypeChecker(NodeVisitor<Type>):
                         lvalue_types[j], index_lvalues[j],
                         self.temp_node(trvalue.items[j]), context, msg)
         elif (isinstance(rvalue_type, Instance) and
-                ((Instance)rvalue_type).type.full_name() == 'builtins.list'):
+                ((Instance)rvalue_type).type.fullname() == 'builtins.list'):
             # Rvalue with list type.
             item_type = ((Instance)rvalue_type).args[0]
             for k in range(len(lvalue_types)):
@@ -596,7 +596,7 @@ class TypeChecker(NodeVisitor<Type>):
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):
             inst = (Instance)return_type
-            if inst.type.full_name() != 'builtins.Iterator':
+            if inst.type.fullname() != 'builtins.Iterator':
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
             expected_item_type = inst.args[0]

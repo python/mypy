@@ -180,7 +180,7 @@ class TypeTransformer:
             # Insert a call to superclass constructor. If the
             # superclass is object, the constructor does nothing =>
             # omit the call.
-            if tdef.info.base.full_name() != 'builtins.object':
+            if tdef.info.base.fullname() != 'builtins.object':
                 creat.body.body.append(
                     self.make_superclass_constructor_call(tdef.info,
                                                           callee_type))
@@ -385,7 +385,7 @@ class TypeTransformer:
         defs = <Node> []
         
         # Does the type have a superclass, other than builtins.object?
-        has_proper_superclass = tdef.info.base.full_name() != 'builtins.object'
+        has_proper_superclass = tdef.info.base.fullname() != 'builtins.object'
         
         if not has_proper_superclass or self.tf.is_java:
             # Generate member variables for wrapper object.
@@ -460,7 +460,7 @@ class TypeTransformer:
         cdefs = <Node> []
         
         # Build superclass constructor call.
-        if info.base.full_name() != 'builtins.object' and self.tf.is_java:
+        if info.base.fullname() != 'builtins.object' and self.tf.is_java:
             s = SuperExpr('__init__')
             cargs = <Node> [NameExpr('__o')]
             for n in range(num_slots(info.base)):

@@ -268,16 +268,16 @@ class StrConv(NodeVisitor<str>):
     
     def visit_name_expr(self, o):
         return (short_type(o) + '(' + self.pretty_name(o.name, o.kind,
-                                                       o.full_name, o.is_def)
+                                                       o.fullname, o.is_def)
                 + ')')
     
-    def pretty_name(self, name, kind, full_name, is_def):
+    def pretty_name(self, name, kind, fullname, is_def):
         n = name
         if is_def:
             n += '*'
-        if kind == mypy.nodes.GDEF or (full_name != name and full_name is not None):
+        if kind == mypy.nodes.GDEF or (fullname != name and fullname is not None):
             # Append fully qualified name for global references.
-            n += ' [{}]'.format(full_name)
+            n += ' [{}]'.format(fullname)
         elif kind == mypy.nodes.LDEF:
             # Add tag to signify a local reference.
             n += ' [l]'
@@ -287,7 +287,7 @@ class StrConv(NodeVisitor<str>):
         return n
     
     def visit_member_expr(self, o):
-        return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.full_name,
+        return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.fullname,
                                                    o.is_def)], o)
     
     def visit_call_expr(self, o):

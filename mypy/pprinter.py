@@ -41,7 +41,7 @@ class PrettyPrintVisitor(NodeVisitor):
                     continue
                 elif isinstance(bt, UnboundType):
                     b.append(((UnboundType)bt).name)
-                elif ((Instance)bt).type.full_name() != 'builtins.object':
+                elif ((Instance)bt).type.fullname() != 'builtins.object':
                     typestr = bt.accept(TypeErasedPrettyPrintVisitor())
                     b.append(typestr)
             if b:

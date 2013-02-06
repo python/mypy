@@ -28,13 +28,13 @@ class TypeAnalyser(TypeVisitor<Type>):
                 return TypeVar(t.name, sym.tvar_id, False, t.line,
                                TypeVarRepr(t.repr.components[0]))
             elif sym.kind != GDEF or not isinstance(sym.node, TypeInfo):
-                name = sym.full_name()
+                name = sym.fullname()
                 if name is None:
                     name = sym.node.name()
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = (TypeInfo)sym.node
-            if len(t.args) > 0 and info.full_name() == 'builtins.tuple':
+            if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args), t.line, t.repr)
             elif len(t.args) != len(info.type_vars):
                 if len(t.args) == 0:

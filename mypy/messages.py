@@ -120,7 +120,7 @@ class MessageBuilder:
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
-            elif itype.type.full_name() == 'builtins.list':
+            elif itype.type.fullname() == 'builtins.list':
                 return '{}[]'.format(strip_quotes(self.format(itype.args[0])))
             else:
                 # There are type arguments. Convert the arguments to strings
@@ -446,7 +446,7 @@ class MessageBuilder:
     
     void invalid_keyword_var_arg(self, Type typ, Context context):
         if isinstance(typ, Instance) and (
-                ((Instance)typ).type.full_name() == 'builtins.dict'):
+                ((Instance)typ).type.fullname() == 'builtins.dict'):
             self.fail('Keywords must be strings', context)
         else:
             self.fail('Argument after ** must be a dictionary',

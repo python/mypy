@@ -61,6 +61,6 @@ bool is_special_primitive(Type type):
     int, float and bool.
     """
     return (isinstance(type, Instance)
-            and ((Instance)type).type.full_name() in ['builtins.int',
+            and ((Instance)type).type.fullname() in ['builtins.int',
                                                      'builtins.float',
                                                      'builtins.bool'])

@@ -132,7 +132,7 @@ tuple<Type[], Type> expand_caller_var_args(Type[] arg_types,
         if isinstance(arg_types[-1], Any):
             item_type = Any()
         elif isinstance(arg_types[-1], Instance) and (
-                ((Instance)arg_types[-1]).type.full_name() == 'builtins.list'):
+                ((Instance)arg_types[-1]).type.fullname() == 'builtins.list'):
             # List.
             item_type = ((Instance)arg_types[-1]).args[0]
         else:

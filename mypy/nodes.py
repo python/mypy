@@ -62,14 +62,14 @@ class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
     # TODO do not use methods for these
     str name(self): pass
-    str full_name(self): pass
+    str fullname(self): pass
 
 
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
     
     str _name         # Module name ('__main__' for initial file)
-    str _full_name    # Qualified module name
+    str _fullname    # Qualified module name
     str path          # Path to the file (None if not known)
     Node[] defs       # Global definitions and statements
     bool is_bom       # Is there a UTF-8 BOM at the start?
@@ -85,8 +85,8 @@ class MypyFile(SymbolNode):
     str name(self):
         return self._name
 
-    str full_name(self):
-        return self._full_name
+    str fullname(self):
+        return self._fullname
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_mypy_file(self)
@@ -133,7 +133,7 @@ class FuncBase(SymbolNode):
     TypeInfo info    # If method, reference to TypeInfo
     str name(self):
         pass
-    str full_name(self):
+    str fullname(self):
         pass
     bool is_method(self):
         return bool(self.info)
@@ -146,7 +146,7 @@ class OverloadedFuncDef(FuncBase):
     Overloaded variants must be consecutive in the source file.
     """
     FuncDef[] items
-    str _full_name
+    str _fullname
     
     void __init__(self, FuncDef[] items):
         self.items = items
@@ -155,8 +155,8 @@ class OverloadedFuncDef(FuncBase):
     str name(self):
         return self.items[1].name()
 
-    str full_name(self):
-        return self._full_name
+    str fullname(self):
+        return self._fullname
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_overloaded_func_def(self)
@@ -227,7 +227,7 @@ class FuncItem(FuncBase):
 
 
 class FuncDef(FuncItem):
-    str _full_name      # Name with module prefix
+    str _fullname      # Name with module prefix
     
     void __init__(self,
                   str name,          # Function name
@@ -242,8 +242,8 @@ class FuncDef(FuncItem):
     str name(self):
         return self._name
     
-    str full_name(self):
-        return self._full_name
+    str fullname(self):
+        return self._fullname
 
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_func_def(self)
@@ -274,7 +274,7 @@ class Var(SymbolNode):
     It can refer to global/local variable or a data attribute.
     """
     str _name        # Name without module prefix
-    str _full_name   # Name with module prefix
+    str _fullname   # Name with module prefix
     TypeInfo info    # Defining class (for member variables)
     mypy.types.Type type # Declared or inferred type, or None if none
     bool is_self     # Is this the first argument to an ordinary method
@@ -293,8 +293,8 @@ class Var(SymbolNode):
     str name(self):
         return self._name
 
-    str full_name(self):
-        return self._full_name
+    str fullname(self):
+        return self._fullname
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_var(self)
@@ -303,7 +303,7 @@ class Var(SymbolNode):
 class TypeDef(Node):
     """Class or interface definition"""
     str name        # Name of the class without module prefix
-    str full_name   # Fully qualified name of the class
+    str fullname   # Fully qualified name of the class
     Block defs
     mypy.types.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
@@ -659,7 +659,7 @@ class NameExpr(RefExpr):
     This refers to a local name, global name or a module.
     """
     str name      # Name referred to (may be qualified)
-    str full_name # Fully qualified name (or name if not global)
+    str fullname # Fully qualified name (or name if not global)
     TypeInfo info # TypeInfo of class surrounding expression (may be None)
     bool is_def   # Does this define a new variable as a lvalue?
     
@@ -679,7 +679,7 @@ class MemberExpr(RefExpr):
     Node expr
     str name
     # Full name if referring to a name in module.
-    str full_name
+    str fullname
     # True if first assignment to member via self in __init__ (and if not
     # defined in class body). After semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
@@ -1030,7 +1030,7 @@ class TypeInfo(SymbolNode):
     The corresponding TypeDef instance represents the parse tree of
     the class.
     """
-    str _full_name     # Fully qualified name
+    str _fullname     # Fully qualified name
     bool is_interface  # Is this a interface type?
     TypeDef defn       # Corresponding TypeDef
     TypeInfo base = None   # Superclass or None (not interface)
@@ -1064,7 +1064,7 @@ class TypeInfo(SymbolNode):
         self.type_vars = []
         self.bounds = []
         self.bases = []
-        self._full_name = defn.full_name
+        self._fullname = defn.fullname
         self.is_interface = defn.is_interface
         if defn.type_vars:
             for vd in defn.type_vars.items:
@@ -1074,8 +1074,8 @@ class TypeInfo(SymbolNode):
         """Short name."""
         return self.defn.name
 
-    str full_name(self):
-        return self._full_name
+    str fullname(self):
+        return self._fullname
     
     bool is_generic(self):
         """Is the type generic (i.e. does it have type variables)?"""
@@ -1148,16 +1148,16 @@ class TypeInfo(SymbolNode):
         self.base = base
         base.subtypes.add(self)
     
-    bool has_base(self, str full_name):
+    bool has_base(self, str fullname):
         """Return True if type has a base type with the specified name.
 
         This can be either via extension or via implementation.
         """
-        if self.full_name() == full_name or (self.base is not None and
-                                             self.base.has_base(full_name)):
+        if self.fullname() == fullname or (self.base is not None and
+                                             self.base.has_base(fullname)):
             return True
         for iface in self.interfaces:
-            if iface.full_name() == full_name or iface.has_base(full_name):
+            if iface.fullname() == fullname or iface.has_base(fullname):
                 return True
         return False
     
@@ -1208,14 +1208,14 @@ class TypeInfo(SymbolNode):
         """
         str[] interfaces = []
         for i in self.interfaces:
-            interfaces.append(i.full_name())
+            interfaces.append(i.fullname())
         str base = None
         if self.base is not None:
-            base = 'Base({})'.format(self.base.full_name())
+            base = 'Base({})'.format(self.base.fullname())
         str iface = None
         if self.is_interface:
             iface = 'Interface'
-        return dump_tagged(['Name({})'.format(self.full_name()),
+        return dump_tagged(['Name({})'.format(self.fullname()),
                             iface,
                             base,
                             ('Interfaces', interfaces),
@@ -1229,8 +1229,8 @@ class SymbolTable(dict<str, SymbolTableNode>):
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
-                if (value.full_name() != 'builtins' and
-                        not value.full_name().endswith('.__name__')):
+                if (value.fullname() != 'builtins' and
+                        not value.fullname().endswith('.__name__')):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:
                 a.append('  <invalid item>')
@@ -1257,9 +1257,9 @@ class SymbolTableNode:
         self.mod_id = mod_id
         self.tvar_id = tvar_id
     
-    str full_name(self):
+    str fullname(self):
         if self.node is not None:
-            return self.node.full_name()
+            return self.node.fullname()
         else:
             return None
     

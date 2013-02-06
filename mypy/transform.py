@@ -393,10 +393,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
         sym = self.lookup(name, GDEF)
         return Instance((TypeInfo)sym.node, [])
     
-    SymbolTableNode lookup(self, str full_name, int kind):
+    SymbolTableNode lookup(self, str fullname, int kind):
         # TODO combine with checker
         # TODO remove kind argument
-        parts = full_name.split('.')
+        parts = fullname.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):
             n = (MypyFile)((n.names.get(parts[i], None).node))

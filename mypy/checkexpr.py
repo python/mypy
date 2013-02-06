@@ -1012,7 +1012,7 @@ class ExpressionChecker:
     bool is_list_instance(self, Type t):
         """Is the argument an instance type ...[]?"""
         return (isinstance(t, Instance) and
-                ((Instance)t).type.full_name() == 'builtins.list')
+                ((Instance)t).type.fullname() == 'builtins.list')
     
     bool has_non_method(self, Type typ, str member):
         """Does a type have a member variable or an accessor with the given

@@ -122,27 +122,27 @@ class SemanticAnalyzer(NodeVisitor):
     
     void anal_func_def(self, FuncDef d):
         self.check_no_global(d.name(), d, True)
-        d._full_name = self.qualified_name(d.name())
+        d._fullname = self.qualified_name(d.name())
         self.globals[d.name()] = SymbolTableNode(GDEF, d, self.cur_mod_id)
     
     void anal_overloaded_func_def(self, OverloadedFuncDef d):
         self.check_no_global(d.name(), d)
-        d._full_name = self.qualified_name(d.name())
+        d._fullname = self.qualified_name(d.name())
         self.globals[d.name()] = SymbolTableNode(GDEF, d, self.cur_mod_id)
     
     void anal_type_def(self, TypeDef d):
         self.check_no_global(d.name, d)
-        d.full_name = self.qualified_name(d.name)
+        d.fullname = self.qualified_name(d.name)
         info = TypeInfo(SymbolTable(), d)
         info.set_line(d.line)
-        self.types[d.full_name] = info
+        self.types[d.fullname] = info
         d.info = info
         self.globals[d.name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
     
     void anal_var_def(self, VarDef d):
         for v in d.items:
             self.check_no_global(v.name(), d)
-            v._full_name = self.qualified_name(v.name())
+            v._fullname = self.qualified_name(v.name())
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
 
     void anal_for_stmt(self, ForStmt s):
@@ -160,7 +160,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.set_file(fnam)
         self.globals = file_node.names
         self.module_names = SymbolTable()
-        self.cur_mod_id = file_node.full_name()
+        self.cur_mod_id = file_node.fullname()
         
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -272,7 +272,7 @@ class SemanticAnalyzer(NodeVisitor):
                                                         defn.base_types[i])
         # Add 'object' as implicit base if there is no other base class.
         if (not defn.is_interface and not has_base_class and
-                defn.full_name != 'builtins.object'):
+                defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
             self.type.bases.append(obj)
@@ -385,12 +385,12 @@ class SemanticAnalyzer(NodeVisitor):
             if (add_defs or nested_global) and n.name not in self.globals:
                 # Define new global name.
                 v = Var(n.name)
-                v._full_name = self.qualified_name(n.name)
+                v._fullname = self.qualified_name(n.name)
                 v.is_ready = False # Type not inferred yet
                 n.node = v
                 n.is_def = True
                 n.kind = GDEF
-                n.full_name = v._full_name
+                n.fullname = v._fullname
                 self.globals[n.name] = SymbolTableNode(GDEF, v,
                                                        self.cur_mod_id)
             elif isinstance(n.node, Var) and n.is_def:
@@ -562,7 +562,7 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 expr.kind = n.kind
                 expr.node = ((Node)n.node)
-                expr.full_name = n.full_name()
+                expr.fullname = n.fullname()
     
     void visit_super_expr(self, SuperExpr expr):
         if not self.type:
@@ -606,7 +606,7 @@ class SemanticAnalyzer(NodeVisitor):
             n = names.get(expr.name, None)
             if n:
                 expr.kind = n.kind
-                expr.full_name = n.full_name()
+                expr.fullname = n.fullname()
                 expr.node = (Node)n.node
             else:
                 self.fail("Module has no attribute '{}'".format(expr.name),
@@ -750,19 +750,19 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_local(v, ctx)
         else:
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            v._full_name = self.qualified_name(v.name())
+            v._fullname = self.qualified_name(v.name())
     
     void add_local(self, Var v, Context ctx):
         if v.name() in self.locals[-1]:
             self.name_already_defined(v.name(), ctx)
-        v._full_name = v.name()
+        v._fullname = v.name()
         self.locals[-1][v.name()] = SymbolTableNode(LDEF, v)
 
     void add_local_func(self, FuncDef defn, Context ctx):
         # TODO combine with above
         if not defn.is_overload and defn.name() in self.locals[-1]:
             self.name_already_defined(defn.name(), ctx)
-        defn._full_name = defn.name()
+        defn._fullname = defn.name()
         self.locals[-1][defn.name()] = SymbolTableNode(LDEF, defn)
     
     void check_no_global(self, str n, Context ctx, bool is_func=False):

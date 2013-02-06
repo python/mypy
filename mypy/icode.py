@@ -337,7 +337,7 @@ class IcodeBuilder(NodeVisitor<int>):
                 if not is_named_instance(v.type, 'builtins.int'):
                     tmp = self.alloc_register()
                     self.add(SetRNone(tmp))
-                    self.add(SetGR(v.full_name(), tmp))
+                    self.add(SetGR(v.fullname(), tmp))
         
         for d in mfile.defs:
             d.accept(self)
@@ -396,7 +396,7 @@ class IcodeBuilder(NodeVisitor<int>):
         # Do we have a non-empty __init__?
         init = (FuncDef)tdef.info.get_method('__init__')
         init_argc = len(init.args) - 1
-        if init.info.full_name() == 'builtins.object':
+        if init.info.fullname() == 'builtins.object':
             init = None
         
         self.enter()
@@ -443,7 +443,7 @@ class IcodeBuilder(NodeVisitor<int>):
                 self.accept(d.init, reg)
         elif d.kind == nodes.GDEF and d.init:
             init = self.accept(d.init)
-            self.add(SetGR(var.full_name(), init))
+            self.add(SetGR(var.fullname(), init))
         return -1
 
     int visit_expression_stmt(self, ExpressionStmt s):
@@ -471,7 +471,7 @@ class IcodeBuilder(NodeVisitor<int>):
                 assert isinstance(name.node, Var)
                 var = (Var)name.node
                 rvalue = self.accept(s.rvalue)
-                self.add(SetGR(var.full_name(), rvalue))
+                self.add(SetGR(var.fullname(), rvalue))
             else:
                 print(name, name.kind)
                 raise NotImplementedError()
@@ -562,10 +562,10 @@ class IcodeBuilder(NodeVisitor<int>):
             target = self.target_register()
             assert isinstance(e.node, Var) # TODO more flexible
             var = (Var)e.node
-            if var.full_name() == 'builtins.None':
+            if var.fullname() == 'builtins.None':
                 self.add(SetRNone(target)) # Special opcode for None
             else:
-                self.add(SetRG(target, var.full_name()))
+                self.add(SetRG(target, var.fullname()))
             return target
         else:
             raise NotImplementedError('unsupported kind %d' % e.kind)
