@@ -447,6 +447,15 @@ y # E: Name 'y' is not defined
 y = 1
 [out]
 
+[case testImportScope4]
+class A:
+    from x import *
+    y
+y # E: Name 'y' is not defined
+[file x.py]
+y = 1
+[out]
+
 [case testImportTwice]
 from x import a, a
 void f():

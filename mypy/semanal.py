@@ -731,6 +731,8 @@ class SemanticAnalyzer(NodeVisitor):
             if name in self.locals[-1]:
                 self.name_already_defined(name, context)
             self.locals[-1][name] = node
+        elif self.type:
+            self.type.names[name] = node
         else:
             if name in self.globals and not isinstance(node.node, MypyFile):
                 # Modules can be imported multiple times to support import
