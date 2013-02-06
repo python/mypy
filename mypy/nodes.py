@@ -1084,6 +1084,15 @@ class TypeInfo(Node, SymNode):
     void set_type_bounds(self, mypy.types.TypeVarDef[] a):
         for vd in a:
             self.bounds.append(vd.bound)
+
+    SymNode get(self, str name):
+        n = self.names.get(name)
+        if n:
+            return n.node
+        elif self.base:
+            return self.base.get(name)
+        else:
+            return None
     
     # IDEA: Refactor the has* methods to be more consistent and document
     #       them.

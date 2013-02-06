@@ -107,10 +107,8 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
 
 SymNode lookup_member_var_or_accessor(TypeInfo info, str name, bool is_lvalue):
     """Find the attribute/accessor node that refers to a member of a type."""
-    if is_lvalue:
-        return info.get_var_or_setter(name)
-    else:
-        return info.get_var_or_getter(name)
+    # TODO handle lvalues
+    return info.get(name)
 
 
 void check_method_type(FunctionLike functype, Instance itype, Context context,
