@@ -23,6 +23,7 @@ class OutputVisitor(NodeVisitor):
         # Number of spaces of extra indent to add when encountering a line
         # break
         self.extra_indent = 0
+        self.block_depth = 0
     
     def output(self):
         """Return a string representation of the output."""
@@ -175,11 +176,13 @@ class OutputVisitor(NodeVisitor):
     def visit_block(self, o):
         r = o.repr
         self.tokens([r.colon, r.br, r.indent])
+        self.block_depth += 1
         old_indent = self.indent
         self.indent = len(r.indent.string)
         self.nodes(o.body)
         self.token(r.dedent)
         self.indent = old_indent
+        self.block_depth -= 1
     
     def visit_global_decl(self, o):
         r = o.repr

@@ -91,7 +91,7 @@ class PythonGenerator(OutputVisitor):
                     comma = r.names[i][1]
             
             # If everything was filtered out, omit the statement.
-            if toks != []:
+            if toks:
                 # Output the filtered statement.
                 self.token(r.from_tok)
                 self.tokens(r.components)
@@ -100,6 +100,9 @@ class PythonGenerator(OutputVisitor):
                 self.tokens(toks)
                 self.token(r.rparen)
                 self.token(r.br)
+            elif self.block_depth > 0:
+                # Can't just remove a statement if within a block.
+                self.string(r.from_tok.pre + 'pass\n')
         else:
             super().visit_import_from(o)
     

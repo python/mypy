@@ -363,10 +363,10 @@ class A:
 
 [case testImportingMypyOnlyNames]
 from re import Pattern
-from re import match, Pattern, sub
-from re import Match, Pattern
-from re import match, Match, Pattern, sub
-from re import match, Match
+void b(): from re import match, Pattern, sub
+void c(): from re import Match, Pattern
+void d(): from re import match, Match, Pattern, sub
+void e(): from re import match, Match
 [file re.py]
 # Dummy definitions
 class Pattern: pass
@@ -374,9 +374,10 @@ class Match: pass
 def match(): pass
 def sub(): pass
 [out]
-from re import match, sub
-from re import match, sub
-from re import match
+def b(): from re import match, sub
+def c(): pass
+def d(): from re import match, sub
+def e(): from re import match
 re.py:
 # Dummy definitions
 class Pattern: pass
