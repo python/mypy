@@ -448,14 +448,15 @@ y = 1
 [out]
 
 [case testImportTwice]
-import y
-import y
+from x import a, a
 void f():
-    import x
-    import x
+    from x import a
+    from x import a
+import x
+import x # ok, since we may import multiple submodules of a package
 [file x.py]
-[file y.py]
+a = 1
 [out]
-main, line 2: Name 'y' already defined
+main, line 1: Name 'a' already defined
 main: In function "f":
-main, line 5: Name 'x' already defined
+main, line 4: Name 'a' already defined
