@@ -276,19 +276,10 @@ class PythonGenerator(OutputVisitor):
             # TODO omit (some) comments; now comments may be duplicated
             sig = (Callable)first.type
             self.string(self.get_pre_whitespace(sig.ret_type) + 'def')
-        # Emit " funcname(".
+        # Emit function name and signature.
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
-        # Emit function signature.
-        fixed_args, optional, is_more = get_overload_args(o)
-        self.string(', '.join(fixed_args))
-        str rest_args = None
-        if is_more:
-            rest_args = make_unique('args', fixed_args)
-            if len(fixed_args) > 0:
-                self.string(', ')
-            self.string('*{}'.format(rest_args))
-        # Close signature.
+        fixed_args, optional, rest_args = self.make_overload_sig(o)
         self.string('):\n' + indent)
         # Emit function bodies of overload variants.
         for n, f in enumerate(o.items):
@@ -300,6 +291,17 @@ class PythonGenerator(OutputVisitor):
         self.extra_indent -= 4
         last_stmt = o.items[-1].body.body[-1]
         self.token(self.find_break_after_statement(last_stmt))
+
+    tuple<str[], str[], str> make_overload_sig(self, OverloadedFuncDef o):
+        fixed_args, optional, is_more = get_overload_args(o)
+        self.string(', '.join(fixed_args))
+        str rest_args = None
+        if is_more:
+            rest_args = make_unique('args', fixed_args)
+            if len(fixed_args) > 0:
+                self.string(', ')
+            self.string('*{}'.format(rest_args))
+        return fixed_args, optional, rest_args
 
     void make_dispatcher(self, OverloadedFuncDef o, str[] fixed_args,
                          str rest_args):
