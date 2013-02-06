@@ -149,7 +149,7 @@ class TypeVar(Type):
 class FunctionLike(Type):
     """Abstract base class for function types (Callable and
     OverloadedCallable)."""
-    bool is_type_obj(self):
+    bool is_type_obj(self): # Abstract
         pass
     
     Callable[] items(self): # Abstract

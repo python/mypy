@@ -431,6 +431,13 @@ class A:
 A.f(A())
 A.f()    # E: Too few arguments
 
+[case testAssignmentToClassDataAttribute]
+class B: pass
+class A:
+    B x = None
+A.x = B()
+A.x = object()  # E: Incompatible types in assignment
+
 
 -- Special cases
 -- -------------
