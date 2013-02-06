@@ -267,14 +267,17 @@ class PythonGenerator(OutputVisitor):
         indent = self.indent * ' '
         first = o.items[0]
         r = first.repr
+        # Emit "def".
         if r.def_tok and r.def_tok.string:
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
             self.string(self.get_pre_whitespace(first.type.ret_type) +
                         'def')
+        # Emit " funcname(".
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
+        # Emit function signature.
         fixed_args, is_more = self.get_overload_args(o)
         self.string(', '.join(fixed_args))
         rest_args = None
@@ -283,13 +286,14 @@ class PythonGenerator(OutputVisitor):
             if len(fixed_args) > 0:
                 self.string(', ')
             self.string('*{}'.format(rest_args))
+        # Close signature.
         self.string('):\n' + indent)
-        n = 1
-        for f in o.items:
-            self.visit_func_def(f, '{}{}'.format(f.name(), n))
-            n += 1
+        # Emit function bodies of overload variants.
+        for n, f in enumerate(o.items):
+            self.visit_func_def(f, '{}{}'.format(f.name(), n + 1))
         self.string('\n')
-        
+
+        # Emit dispatching logic.
         n = 1
         for fi in o.items:
             c = self.make_overload_check(fi, fixed_args, rest_args)
