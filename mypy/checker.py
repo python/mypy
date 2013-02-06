@@ -36,7 +36,7 @@ class TypeChecker(NodeVisitor<Type>):
     """
     
     Errors errors          # Error message reporting
-    SymbolTable symtable   # Symbol table for the whole program
+    SymbolTable symtable   # SymbolNode table for the whole program
     MessageBuilder msg     # Utility for generating messages
     dict<Node, Type> type_map  # Types of type checked nodes
     mypy.checkexpr.ExpressionChecker expr_checker

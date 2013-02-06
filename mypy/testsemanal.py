@@ -99,7 +99,7 @@ def normalize_error_messages(messages):
     return a
 
 
-# Symbol table export test cases
+# SymbolNode table export test cases
 
 # Test case descriptions
 semanal_symtable_files = ['semanal-symtable.test']

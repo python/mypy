@@ -33,13 +33,6 @@ node_kinds = {
 }
 
 
-interface SymNode:
-    # Nodes that can be stored in a symbol table.
-    # TODO do not use methods for these
-    str name(self)
-    str full_name(self)
-
-
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
     
@@ -65,7 +58,14 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-class MypyFile(Node, SymNode):
+class SymbolNode(Node):
+    # Nodes that can be stored in a symbol table.
+    # TODO do not use methods for these
+    str name(self): pass
+    str full_name(self): pass
+
+
+class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
     
     str _name         # Module name ('__main__' for initial file)
@@ -127,7 +127,7 @@ class ImportAll(Node):
         return visitor.visit_import_all(self)
 
 
-class FuncBase(Node, SymNode):
+class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
     mypy.types.Type type # Type signature (Callable or Overloaded)
     TypeInfo info    # If method, reference to TypeInfo
@@ -268,7 +268,7 @@ class Decorator(Node):
         return visitor.visit_decorator(self)
 
 
-class Var(Node, SymNode):
+class Var(SymbolNode):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
@@ -1024,7 +1024,7 @@ class TempNode(Node):
         return visitor.visit_temp_node(self)
 
 
-class TypeInfo(Node, SymNode):
+class TypeInfo(SymbolNode):
     """Class representing the type structure of a single class.
 
     The corresponding TypeDef instance represents the parse tree of
@@ -1085,7 +1085,7 @@ class TypeInfo(Node, SymNode):
         for vd in a:
             self.bounds.append(vd.bound)
 
-    SymNode get(self, str name):
+    SymbolNode get(self, str name):
         n = self.names.get(name)
         if n:
             return n.node
@@ -1119,11 +1119,11 @@ class TypeInfo(Node, SymNode):
         else:
             return None
     
-    SymNode get_var_or_getter(self, str name):
+    SymbolNode get_var_or_getter(self, str name):
         # TODO getter
         return self.get_var(name)
     
-    SymNode get_var_or_setter(self, str name):
+    SymbolNode get_var_or_setter(self, str name):
         # TODO setter
         return self.get_var(name)
     
@@ -1242,14 +1242,14 @@ class SymbolTable(dict<str, SymbolTableNode>):
 
 class SymbolTableNode:
     int kind      # LDEF/GDEF/MDEF/TVAR/...
-    SymNode node  # Parse tree node of definition (FuncDef/Var/
+    SymbolNode node  # Parse tree node of definition (FuncDef/Var/
                   # TypeInfo), None for Tvar
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
     mypy.types.Type type_override  # If None, fall back to type of node
     
-    void __init__(self, int kind, SymNode node, str mod_id=None,
+    void __init__(self, int kind, SymbolNode node, str mod_id=None,
                   mypy.types.Type typ=None, int tvar_id=0):
         self.kind = kind
         self.node = node

@@ -1,7 +1,7 @@
 """Type checking of member access"""
 
 from mypy.types import Type, Instance, Any, TupleType, Callable, FunctionLike
-from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymNode, Context
+from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS
 from mypy.messages import MessageBuilder
 from mypy.subtypes import map_instance_to_supertype
@@ -105,7 +105,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         return msg.has_no_member(itype, name, node)
 
 
-SymNode lookup_member_var_or_accessor(TypeInfo info, str name, bool is_lvalue):
+SymbolNode lookup_member_var_or_accessor(TypeInfo info, str name, bool is_lvalue):
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     return info.get(name)
