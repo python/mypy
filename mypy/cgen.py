@@ -9,7 +9,7 @@ from mypy.icode import (
     CallDirect, CallMethod, FuncIcode, UnaryOp, SetGR, SetRG, Construct,
     SetAttr, GetAttr, IfR
 )
-from mypy.nodes import TypeInfo
+from mypy.nodes import TypeInfo, FuncBase
 from mypy import transform
 
 
@@ -390,12 +390,13 @@ class ClassRepresentation:
         self.vtable_methods = []
         if base:
             self.inherit_from_base(base)
-        for m in sorted(type.methods):
-            self.add_method(m, type)
-        for v in type.vars.keys():
-            self.slotmap[v] = len(self.slotmap)
-            self.add_method('_' + v, type)    # Getter TODO refactor
-            self.add_method('set_' + v, type) # Setter # TODO refactor
+        for m in sorted(type.names):
+            if isinstance(type.names[m].node, FuncBase):
+                self.add_method(m, type)
+            else:
+                self.slotmap[m] = len(self.slotmap)
+                self.add_method('_' + m, type)    # Getter TODO refactor
+                self.add_method('set_' + m, type) # Setter # TODO refactor
 
     void add_method(self, str method, TypeInfo defining_class):
         self.defining_class[method] = defining_class.name()

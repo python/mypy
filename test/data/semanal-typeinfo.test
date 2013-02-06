@@ -10,8 +10,7 @@ TypeInfoMap(
     Name(__main__.c)
     Base(builtins.object)
     Interfaces()
-    Vars()
-    Methods()))
+    Names()))
 
 [case testClassWithMethod]
 class c:
@@ -22,8 +21,7 @@ TypeInfoMap(
     Name(__main__.c)
     Base(builtins.object)
     Interfaces()
-    Vars()
-    Methods(
+    Names(
       f)))
 
 [case testClassWithAttributes]
@@ -37,11 +35,10 @@ TypeInfoMap(
     Name(__main__.c)
     Base(builtins.object)
     Interfaces()
-    Vars(
+    Names(
+      __init__
       y
-      z)
-    Methods(
-      __init__)))
+      z)))
 
 [case testBaseClass]
 class base: pass
@@ -52,14 +49,12 @@ TypeInfoMap(
     Name(__main__.base)
     Base(builtins.object)
     Interfaces()
-    Vars()
-    Methods())
+    Names())
   __main__.c : TypeInfo(
     Name(__main__.c)
     Base(__main__.base)
     Interfaces()
-    Vars()
-    Methods()))
+    Names()))
 
 [case testClassWithInterface]
 interface i: pass
@@ -71,14 +66,12 @@ TypeInfoMap(
     Base(builtins.object)
     Interfaces(
       __main__.i)
-    Vars()
-    Methods())
+    Names())
   __main__.i : TypeInfo(
     Name(__main__.i)
     Interface
     Interfaces()
-    Vars()
-    Methods()))
+    Names()))
 
 [case testAttributeWithoutType]
 class A:
@@ -89,6 +82,5 @@ TypeInfoMap(
     Name(__main__.A)
     Base(builtins.object)
     Interfaces()
-    Vars(
-      a)
-    Methods()))
+    Names(
+      a)))

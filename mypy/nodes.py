@@ -1035,9 +1035,8 @@ class TypeInfo(Node, SymNode):
     TypeDef defn       # Corresponding TypeDef
     TypeInfo base = None   # Superclass or None (not interface)
     set<TypeInfo> subtypes # Direct subclasses
-    
-    dict<str, Var> vars    # Member variables; also slots
-    dict<str, FuncBase> methods
+
+    SymbolTable names      # Names defined directly in this type
     
     # TypeInfos of base interfaces
     TypeInfo[] interfaces
@@ -1056,21 +1055,17 @@ class TypeInfo(Node, SymNode):
     # TODO comment may not be accurate; also why generics should be special?
     mypy.types.Type[] bases
     
-    void __init__(self, dict<str, Var> vars, dict<str, FuncBase> methods,
-                  TypeDef defn):
+    void __init__(self, SymbolTable names, TypeDef defn):
         """Construct a TypeInfo."""
+        self.names = names
+        self.defn = defn
         self.subtypes = set()
-        self.vars = {}
-        self.methods = {}
         self.interfaces = []
         self.type_vars = []
         self.bounds = []
         self.bases = []
         self._full_name = defn.full_name
         self.is_interface = defn.is_interface
-        self.vars = vars
-        self.methods = methods
-        self.defn = defn
         if defn.type_vars:
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
@@ -1103,12 +1098,13 @@ class TypeInfo(Node, SymNode):
         return self.get_var(name) is not None
     
     bool has_method(self, str name):
-        return name in self.methods or (self.base is not None
-                                        and self.base.has_method(name))
+        if name in self.names and isinstance(self.names[name].node, FuncBase):
+            return True
+        return self.base is not None and self.base.has_method(name)
     
     Var get_var(self, str name):
-        if name in self.vars:
-            return self.vars[name]
+        if name in self.names and isinstance(self.names[name].node, Var):
+            return (Var)self.names[name].node
         elif self.base:
             return self.base.get_var(name)
         else:
@@ -1116,25 +1112,15 @@ class TypeInfo(Node, SymNode):
     
     SymNode get_var_or_getter(self, str name):
         # TODO getter
-        if name in self.vars:
-            return self.vars[name]
-        elif self.base:
-            return self.base.get_var_or_getter(name)
-        else:
-            return None
+        return self.get_var(name)
     
     SymNode get_var_or_setter(self, str name):
         # TODO setter
-        if name in self.vars:
-            return self.vars[name]
-        elif self.base:
-            return self.base.get_var_or_setter(name)
-        else:
-            return None
+        return self.get_var(name)
     
     FuncBase get_method(self, str name):
-        if name in self.methods:
-            return self.methods[name]
+        if name in self.names and isinstance(self.names[name].node, FuncBase):
+            return (FuncBase)self.names[name].node
         elif self.base:
             # Lookup via base type.
             result = self.base.get_method(name)
@@ -1224,8 +1210,7 @@ class TypeInfo(Node, SymNode):
                             iface,
                             base,
                             ('Interfaces', interfaces),
-                            ('Vars', sorted(self.vars.keys())),
-                            ('Methods', sorted(self.methods.keys()))],
+                            ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
 

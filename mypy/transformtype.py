@@ -3,7 +3,7 @@
 from mypy.nodes import (
     TypeDef, Node, FuncDef, VarDef, Block, Var, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
-    AssignmentStmt, TypeExpr, PassStmt
+    AssignmentStmt, TypeExpr, PassStmt, SymbolTableNode
 )
 from mypy import nodes
 from mypy.semanal import self_type
@@ -82,9 +82,11 @@ class TypeTransformer:
                     vars.add(n)
 
         # Add accessors for implicitly defined attributes.
-        for v in tdef.info.vars.values():
-            if v.info == tdef.info and v not in vars:
-                defs.extend(self.make_accessors(v))
+        for node in tdef.info.names.values():
+            if isinstance(node.node, Var):
+                v = (Var)node.node
+                if v.info == tdef.info and v not in vars:
+                    defs.extend(self.make_accessors(v))
         
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
@@ -92,7 +94,7 @@ class TypeTransformer:
         if tdef.is_generic() or (tdef.info.base and
                                  tdef.info.base.is_generic()):
             self.make_instance_tvar_initializer(
-                (FuncDef)tdef.info.methods['__init__'])
+                (FuncDef)tdef.info.get_method('__init__'))
 
         if not defs:
             defs.append(PassStmt())
@@ -135,7 +137,7 @@ class TypeTransformer:
 
         info = tdef.info
         
-        if '__init__' not in info.methods and (
+        if '__init__' not in info.names and (
                 tdef.is_generic() or (info.base and info.base.is_generic())):
             # Generic class with no explicit __init__ method
             # (i.e. __init__ inherited from superclass). Generate a
@@ -172,7 +174,8 @@ class TypeTransformer:
             creat.info = tdef.info
             creat.type = callee_type
             creat.is_implicit = False
-            tdef.info.methods['__init__'] = creat
+            tdef.info.names['__init__'] = SymbolTableNode(MDEF, creat,
+                                                          typ=creat.type)
             
             # Insert a call to superclass constructor. If the
             # superclass is object, the constructor does nothing =>

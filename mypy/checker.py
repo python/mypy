@@ -345,7 +345,7 @@ class TypeChecker(NodeVisitor<Type>):
     void check_interface_errors(self, TypeInfo typ):
         interfaces = typ.all_directly_implemented_interfaces()
         for iface in interfaces:
-            for n in iface.methods.keys():
+            for n in iface.names.keys():
                 if not typ.has_method(n):
                     self.msg.interface_member_not_implemented(typ, iface, n)
     

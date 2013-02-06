@@ -7,7 +7,9 @@ from mypy.types import (
     TypeVar, Any, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
     TypeVars, BasicTypes
 )
-from mypy.nodes import TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR
+from mypy.nodes import (
+    TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
+)
 
 
 BASE = 0
@@ -214,7 +216,7 @@ TypeInfo make_type_info(any name, any *args):
             id += 1
         type_def.type_vars = TypeVars(v)
     
-    info = TypeInfo({}, {}, type_def)
+    info = TypeInfo(SymbolTable(), type_def)
     info.base = map.get(BASE, None)
     info.bases = map.get(BASE_DEFS, [])
     info.interfaces = map.get(INTERFACES, []) # TODO fix

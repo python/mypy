@@ -132,7 +132,7 @@ class SemanticAnalyzer(NodeVisitor):
     void anal_type_def(self, TypeDef d):
         self.check_no_global(d.name, d)
         d.full_name = self.qualified_name(d.name)
-        info = TypeInfo({}, {}, d)
+        info = TypeInfo(SymbolTable(), d)
         info.set_line(d.line)
         self.types[d.full_name] = info
         d.info = info
@@ -173,9 +173,10 @@ class SemanticAnalyzer(NodeVisitor):
         if self.type and not self.locals:
             defn.info = self.type
             if not defn.is_overload:
-                if defn.name() in self.type.methods:
+                if defn.name() in self.type.names:
                     self.name_already_defined(defn.name(), defn)
-                self.type.methods[defn.name()] = defn
+                self.type.names[defn.name()] = SymbolTableNode(
+                    MDEF, defn, typ=defn.type)
             if defn.name() == '__init__':
                 self.is_init_method = True
             if defn.args == []:
@@ -199,7 +200,8 @@ class SemanticAnalyzer(NodeVisitor):
         defn.type.line = defn.line
         
         if self.type:
-            self.type.methods[defn.name()] = defn
+            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
+                                                           typ=defn.type)
             defn.info = self.type
     
     void analyse_function(self, FuncItem defn):
@@ -352,7 +354,8 @@ class SemanticAnalyzer(NodeVisitor):
             elif self.type:
                 v.info = self.type
                 v.is_initialized_in_class = defn.init is not None
-                self.type.vars[v.name()] = v
+                self.type.names[v.name()] = SymbolTableNode(MDEF, v,
+                                                            typ=v.type)
             elif v.name not in self.globals:
                 defn.kind = GDEF
                 self.add_var(v, defn)
@@ -402,14 +405,14 @@ class SemanticAnalyzer(NodeVisitor):
                 n.kind = LDEF
                 self.add_local(v, n)
             elif not self.locals and (self.type and
-                                      n.name not in self.type.vars):
+                                      n.name not in self.type.names):
                 # Define a new attribute.
                 v = Var(n.name)
                 v.info = self.type
                 v.is_initialized_in_class = True
                 n.node = v
                 n.is_def = True
-                self.type.vars[n.name] = v
+                self.type.names[n.name] = SymbolTableNode(MDEF, v, typ=v.type)
             else:
                 # Bind to an existing name.
                 lval.accept(self)
@@ -434,13 +437,14 @@ class SemanticAnalyzer(NodeVisitor):
         if self.is_init_method and isinstance(lval.expr, NameExpr):
             node = ((NameExpr)lval.expr).node
             if (isinstance(node, Var) and ((Var)node).is_self and
-                    lval.name not in self.type.vars):
+                    lval.name not in self.type.names):
                 lval.is_def = True
                 v = Var(lval.name)
                 v.info = self.type
                 v.is_ready = False
                 lval.def_var = v
-                self.type.vars[lval.name] = v
+                self.type.names[lval.name] = SymbolTableNode(MDEF, v,
+                                                             typ=v.type)
     
     void visit_expression_stmt(self, ExpressionStmt s):
         s.expr.accept(self)

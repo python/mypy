@@ -407,14 +407,16 @@ class IcodeBuilder(NodeVisitor<int>):
         target = self.alloc_register()
         self.add(Construct(target, tdef.info))
         # Inititalize data attributes to default values.
-        for var in sorted(tdef.info.vars.keys()):
-            temp = self.alloc_register()
-            vtype = tdef.info.vars[var].type
-            if is_named_instance(vtype, 'builtins.int'):
-                self.add(SetRI(temp, 0))
-            else:
-                self.add(SetRNone(temp))
-            self.add(SetAttr(target, var, temp, tdef.info))
+        for name, node in sorted(tdef.info.names.items()):
+            if isinstance(node.node, Var):
+                var = (Var)node.node
+                temp = self.alloc_register()
+                vtype = var.type
+                if is_named_instance(vtype, 'builtins.int'):
+                    self.add(SetRI(temp, 0))
+                else:
+                    self.add(SetRNone(temp))
+                self.add(SetAttr(target, name, temp, tdef.info))
         if init:
             self.add(CallMethod(self.alloc_register(), target, '__init__',
                                 init.info, args, static=True))
