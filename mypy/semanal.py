@@ -11,7 +11,8 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr, MDEF
+    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr, MDEF,
+    FuncBase
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -680,11 +681,13 @@ class SemanticAnalyzer(NodeVisitor):
         if self.type and (not self.locals and
                           self.type.has_readable_member(name)):
             # Reference to attribute within class body.
-            v = self.type.get_var(name)
-            if v:
-                return SymbolTableNode(MDEF, v, typ=v.type)
-            m = self.type.get_method(name)
-            return SymbolTableNode(MDEF, m, typ=m.type)
+            v = self.type.get(name)
+            # TODO fix, this is ugly
+            if isinstance(v, Var):
+                type = ((Var)v).type
+            elif isinstance(v, FuncBase):
+                type = ((FuncBase)v).type
+            return SymbolTableNode(MDEF, v, typ=type)
         if name in self.globals:
             return self.globals[name]
         else:
