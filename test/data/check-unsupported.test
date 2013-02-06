@@ -49,16 +49,6 @@ main, line 3: Feature not implemented yet (chained assignment)
 main: In class "A":
 main, line 5: Feature not implemented yet (chained assignment)
 
-[case testClassAttributeExternalAccess]
-class A:
-  any x
-  def f(self): pass
-A.x
-A.f
-[out]
-main, line 4: Feature not implemented yet (class attributes)
-main, line 5: Feature not implemented yet (class attributes)
-
 [case testClassAttributeAccessInTypeDeclaration]
 class A:
   any x

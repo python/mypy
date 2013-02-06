@@ -172,6 +172,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_func_def(self, FuncDef defn):
         if self.type and not self.locals:
+            # Method definition
             defn.info = self.type
             if not defn.is_overload:
                 if defn.name() in self.type.names:

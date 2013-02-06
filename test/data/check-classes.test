@@ -400,6 +400,30 @@ class A:
 main: In class "A":
 
 
+-- Class attributes
+-- ----------------
+
+
+[case testAccessMethodViaClass]
+class A:
+    void f(self): pass
+A.f(A())
+A.f(object())     # TODO should be an error
+A.f()             # E: Too few arguments
+A.f(None, None)   # E: Too many arguments
+
+[case testAccessAttributeViaClass]
+class B: pass
+class A:
+    A x = None
+A a = A.x
+B b = A.x # E: Incompatible types in assignment
+
+[case testAccessingUndefinedAttributeViaClass]
+class A: pass
+A.x # E: "A" has no member "x"
+
+
 -- Special cases
 -- -------------
 
