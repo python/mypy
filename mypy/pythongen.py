@@ -293,7 +293,14 @@ class PythonGenerator(OutputVisitor):
             self.visit_func_def(f, '{}{}'.format(f.name(), n + 1))
         self.string('\n')
 
-        # Emit dispatching logic.
+        self.make_dispatcher(o, fixed_args, rest_args)
+        
+        self.extra_indent -= 4
+        last_stmt = o.items[-1].body.body[-1]
+        self.token(self.find_break_after_statement(last_stmt))
+
+    def make_dispatcher(self, o, fixed_args, rest_args):
+        indent = self.indent * ' '
         n = 1
         for fi in o.items:
             c = self.make_overload_check(fi, fixed_args, rest_args)
@@ -309,9 +316,6 @@ class PythonGenerator(OutputVisitor):
             n += 1
         self.string(indent + 'else:' + '\n')
         self.string(indent + '    raise TypeError("Invalid argument types")')
-        self.extra_indent -= 4
-        last_stmt = o.items[-1].body.body[-1]
-        self.token(self.find_break_after_statement(last_stmt))
     
     def find_break_after_statement(self, s):
         if isinstance(s, IfStmt):
