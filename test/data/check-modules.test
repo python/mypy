@@ -53,3 +53,56 @@ except Bad: # E: Invalid exception type
 class Err(BaseException): pass
 class Bad: pass
 [builtins fixtures/exception.py]
+
+[case testImportWithinBlock]
+if None:
+    import m
+    m.a = m.b   # E: Incompatible types in assignment
+    m.a = m.a
+    m.f()
+    m.f(m.a)    # E: Too many arguments for "f"
+    m.a = m.A()
+    m.a = m.B() # E: Incompatible types in assignment
+[file m.py]
+class A: pass
+class B: pass
+a = A()
+b = B()
+void f(): pass
+
+[case testImportWithinFunction]
+void f():
+    from m import a, b, f, A, B
+    a = b   # E: Incompatible types in assignment
+    a = a
+    f()
+    f(a)    # E: Too many arguments for "f"
+    a = A()
+    a = B() # E: Incompatible types in assignment
+[file m.py]
+class A: pass
+class B: pass
+a = A()
+b = B()
+void f(): pass
+[out]
+main: In function "f":
+
+[case testImportWithinMethod]
+class C:
+    void f(self):
+        from m import *
+        a = b   # E: Incompatible types in assignment
+        a = a
+        f()
+        f(a)    # E: Too many arguments for "f"
+        a = A()
+        a = B() # E: Incompatible types in assignment
+[file m.py]
+class A: pass
+class B: pass
+a = A()
+b = B()
+void f(): pass
+[out]
+main: In member "f" of class "C":
