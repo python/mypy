@@ -1,7 +1,6 @@
 """Generate C code from icode."""
 
 import os
-import sys
 
 from mypy import errors
 from mypy import icode
