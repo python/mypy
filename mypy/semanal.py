@@ -414,7 +414,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.is_initialized_in_class = True
                 n.node = v
                 n.is_def = True
-                self.type.names[n.name] = SymbolTableNode(MDEF, v, typ=v.type)
+                self.type.names[n.name] = SymbolTableNode(MDEF, v)
             else:
                 # Bind to an existing name.
                 lval.accept(self)
@@ -445,8 +445,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.info = self.type
                 v.is_ready = False
                 lval.def_var = v
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v,
-                                                             typ=v.type)
+                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
     
     void visit_expression_stmt(self, ExpressionStmt s):
         s.expr.accept(self)
@@ -608,7 +607,7 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 expr.kind = n.kind
                 expr.fullname = n.fullname()
-                expr.node = (Node)n.node
+                expr.node = n.node
             else:
                 self.fail("Module has no attribute '{}'".format(expr.name),
                           expr)
