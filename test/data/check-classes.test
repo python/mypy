@@ -438,6 +438,13 @@ class A:
 A.x = B()
 A.x = object()  # E: Incompatible types in assignment
 
+[case testAssignmentToInferredClassDataAttribute]
+class B: pass
+class A:
+     x = B()
+A.x = B()
+A.x = A()   # E: Incompatible types in assignment
+
 
 -- Special cases
 -- -------------

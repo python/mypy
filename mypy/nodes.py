@@ -1278,7 +1278,7 @@ class SymbolTableNode:
             return self.type_override
         elif ((isinstance(node, Var) or isinstance(node, FuncDef))
               and node.type is not None):
-            return node.type.type
+            return node.type
         else:
             return None
     
