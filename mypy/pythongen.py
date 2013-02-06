@@ -1,8 +1,10 @@
 from mypy.parse import none
 from mypy.types import (
-    Any, Instance, Void, TypeVar, TupleType, Callable, UnboundType
+    Any, Instance, Void, TypeVar, TupleType, Callable, UnboundType, Type
 )
-from mypy.nodes import IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt
+from mypy.nodes import (
+    IfStmt, ForStmt, WhileStmt, WithStmt, TryStmt, OverloadedFuncDef, FuncDef
+)
 from mypy.nodes import function_type
 from mypy.output import OutputVisitor
 from mypy.typerepr import ListTypeRepr
@@ -257,7 +259,7 @@ class PythonGenerator(OutputVisitor):
         self.token(r.colon)
         self.node(o.body.body[0].expr)
     
-    def visit_overloaded_func_def(self, o):
+    void visit_overloaded_func_def(self, OverloadedFuncDef o):
         """Translate overloaded function definition.
 
         Overloaded functions are transformed into a single Python function that
@@ -272,15 +274,15 @@ class PythonGenerator(OutputVisitor):
             self.token(r.def_tok)
         else:
             # TODO omit (some) comments; now comments may be duplicated
-            self.string(self.get_pre_whitespace(first.type.ret_type) +
-                        'def')
+            sig = (Callable)first.type
+            self.string(self.get_pre_whitespace(sig.ret_type) + 'def')
         # Emit " funcname(".
         self.string(' {}('.format(first.name()))
         self.extra_indent += 4
         # Emit function signature.
         fixed_args, is_more = self.get_overload_args(o)
         self.string(', '.join(fixed_args))
-        rest_args = None
+        str rest_args = None
         if is_more:
             rest_args = self.make_unique('args', fixed_args)
             if len(fixed_args) > 0:
@@ -299,7 +301,8 @@ class PythonGenerator(OutputVisitor):
         last_stmt = o.items[-1].body.body[-1]
         self.token(self.find_break_after_statement(last_stmt))
 
-    def make_dispatcher(self, o, fixed_args, rest_args):
+    void make_dispatcher(self, OverloadedFuncDef o, str[] fixed_args,
+                         str rest_args):
         indent = self.indent * ' '
         for n, fi in enumerate(o.items):
             c = self.make_overload_check(fi, fixed_args, rest_args)
@@ -315,7 +318,7 @@ class PythonGenerator(OutputVisitor):
         self.string(indent + 'else:' + '\n')
         self.string(indent + '    raise TypeError("Invalid argument types")')
     
-    def find_break_after_statement(self, s):
+    str find_break_after_statement(self, any s):
         if isinstance(s, IfStmt):
             blocks = s.body + [s.else_body]
         elif isinstance(s, ForStmt) or isinstance(s, WhileStmt):
@@ -331,14 +334,14 @@ class PythonGenerator(OutputVisitor):
                 return self.find_break_after_statement(b.body[-1])
         raise RuntimeError('Could not find break after statement')
     
-    def make_unique(self, n, others):
+    str make_unique(self, str n, str[] others):
         if n in others:
             return self.make_unique('_' + n, others)
         else:
             return n
     
-    def get_overload_args(self, o):
-        fixed = []
+    tuple<str[], bool> get_overload_args(self, OverloadedFuncDef o):
+        fixed = <str> []
         min_fixed = 100000
         max_fixed = 0
         for f in o.items:
@@ -349,13 +352,14 @@ class PythonGenerator(OutputVisitor):
             max_fixed = max(max_fixed, len(f.args))
         return fixed[:min_fixed], max_fixed > min_fixed
     
-    def make_overload_check(self, f, fixed_args, rest_args):
-        a = []
+    str make_overload_check(self, FuncDef f, str[] fixed_args, str rest_args):
+        a = <str> []
         i = 0
         if rest_args:
             a.append(self.make_argument_count_check(f, len(fixed_args),
                                                     rest_args))
-        for t in function_type(f).arg_types:
+        sig = (Callable)function_type(f)
+        for t in sig.arg_types:
             if not isinstance(t, Any) and (t.repr or
                                            isinstance(t, Callable)):
                 a.append(self.make_argument_check(
@@ -366,27 +370,30 @@ class PythonGenerator(OutputVisitor):
         else:
             return 'True'
     
-    def make_argument_count_check(self, f, num_fixed, rest_args):
+    str make_argument_count_check(self, FuncDef f, int num_fixed,
+                                  str rest_args):
         return 'len({}) == {}'.format(rest_args, f.min_args - num_fixed)
     
-    def make_argument_check(self, name, typ):
+    str make_argument_check(self, str name, Type typ):
         if isinstance(typ, Callable):
             return 'callable({})'.format(name)
         if (isinstance(typ, Instance) and
-                typ.type.fullname() in erased_duck_types):
+                ((Instance)typ).type.fullname() in erased_duck_types):
+            inst = (Instance)typ
             return "hasattr({}, '{}')".format(
-                                name, erased_duck_types[typ.type.fullname()])
+                                name, erased_duck_types[inst.type.fullname()])
         else:
             cond = 'isinstance({}, {})'.format(name, self.erased_type(typ))
             return cond.replace('  ', ' ')
     
-    def make_overload_call(self, f, n, fixed_args, rest_args):
-        a = []
+    str make_overload_call(self, FuncDef f, int n, str[] fixed_args,
+                           str rest_args):
+        a = <str> []
         for i in range(len(f.args)):
             a.append(self.argument_ref(i, fixed_args, rest_args))
         return '{}{}({})'.format(f.name(), n, ', '.join(a))
     
-    def argument_ref(self, i, fixed_args, rest_args):
+    str argument_ref(self, int i, str[] fixed_args, str rest_args):
         if i < len(fixed_args):
             return fixed_args[i]
         else:
