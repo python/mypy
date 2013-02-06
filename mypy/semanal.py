@@ -680,14 +680,7 @@ class SemanticAnalyzer(NodeVisitor):
             return self.class_tvars[name]
         if self.type and (not self.locals and
                           self.type.has_readable_member(name)):
-            # Reference to attribute within class body.
-            v = self.type.get(name)
-            # TODO fix, this is ugly
-            if isinstance(v, Var):
-                type = ((Var)v).type
-            elif isinstance(v, FuncBase):
-                type = ((FuncBase)v).type
-            return SymbolTableNode(MDEF, v, typ=type)
+            return self.type[name]
         if name in self.globals:
             return self.globals[name]
         else:

@@ -1085,14 +1085,22 @@ class TypeInfo(SymbolNode):
         for vd in a:
             self.bounds.append(vd.bound)
 
-    SymbolNode get(self, str name):
+    SymbolTableNode get(self, str name):
         n = self.names.get(name)
         if n:
-            return n.node
+            return n
         elif self.base:
             return self.base.get(name)
         else:
             return None
+
+    SymbolTableNode __getitem__(self, str name):
+        n = self.names.get(name)
+        if n:
+            return n
+        else:
+            return self.base[name]
+        
     
     # IDEA: Refactor the has* methods to be more consistent and document
     #       them.
