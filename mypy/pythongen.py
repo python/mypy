@@ -301,19 +301,17 @@ class PythonGenerator(OutputVisitor):
 
     def make_dispatcher(self, o, fixed_args, rest_args):
         indent = self.indent * ' '
-        n = 1
-        for fi in o.items:
+        for n, fi in enumerate(o.items):
             c = self.make_overload_check(fi, fixed_args, rest_args)
             self.string(indent)
-            if n == 1:
+            if n == 0:
                 self.string('if ')
             else:
                 self.string('elif ')
             self.string(c)
             self.string(':' + '\n' + indent)
             self.string('    return {}'.format(self.make_overload_call(
-                fi, n, fixed_args, rest_args)) + '\n')
-            n += 1
+                fi, n + 1, fixed_args, rest_args)) + '\n')
         self.string(indent + 'else:' + '\n')
         self.string(indent + '    raise TypeError("Invalid argument types")')
     
