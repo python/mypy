@@ -791,6 +791,14 @@ A.f
 [out]
 MemberExpr(4) : def (A self)
 
+[case testUnboundMethodWithImplicitSig]
+## MemberExpr
+class A:
+    def f(self): pass
+A.f
+[out]
+MemberExpr(4) : def (any self) -> any
+
 
 -- Special cases
 -- -------------

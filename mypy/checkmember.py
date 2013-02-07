@@ -2,7 +2,7 @@
 
 from mypy.types import Type, Instance, Any, TupleType, Callable, FunctionLike
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
-from mypy.nodes import ARG_POS
+from mypy.nodes import ARG_POS, function_type
 from mypy.messages import MessageBuilder
 from mypy.subtypes import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -135,7 +135,12 @@ Type analyse_class_attribute_access(Instance itype, str name, Context context,
                                     MessageBuilder msg):
     node = itype.type.get(name)
     if node:
-        return node.type()
+        t = node.type()
+        if t:
+            return t
+        else:
+            f = (FuncBase)node.node
+            return function_type(f)
     else:
         msg.has_no_member(itype, name, context)
         return Any()
