@@ -96,9 +96,9 @@ class VarDefRepr:
 
 
 class DecoratorRepr:
-    void __init__(self, any at, any br):
-        self.at = at
-        self.br = br
+    void __init__(self, any ats, any brs):
+        self.ats = ats
+        self.brs = brs
 
 
 class BlockRepr:

@@ -304,16 +304,15 @@ class Parser:
             return self.parse_var_def(typ)
     
     Node parse_decorated_function(self):
-        at = self.expect('@')
-        decorator = self.parse_expression()
-        br = self.expect_break()
-        Node target
-        if self.current_str() == '@':
-            target = self.parse_decorated_function()
-        else:
-            target = self.parse_function()
-        node = Decorator(target, decorator)
-        self.set_repr(node, noderepr.DecoratorRepr(at, br))
+        ats = <Token> []
+        brs = <Token> []
+        decorators = <Node> []
+        while self.current_str() == '@':
+            ats.append(self.expect('@'))
+            decorators.append(self.parse_expression())
+            brs.append(self.expect_break())
+        node = Decorator(self.parse_function(), decorators)
+        self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
         return node
     
     FuncDef parse_function_at_name(self, Type ret_type, Token def_tok,
@@ -337,6 +336,7 @@ class Parser:
             
             node = FuncDef(name, args, kinds, init, body, typ)
             name_tok, arg_reprs = toks
+            node.set_line(name_tok)
             self.set_repr(node, noderepr.FuncRepr(def_tok, name_tok,
                                                   arg_reprs))
             return node

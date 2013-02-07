@@ -257,20 +257,13 @@ class FuncDef(FuncItem):
 
 
 class Decorator(Node):
-    Node func       # FuncDef or Decorator
-    Node decorator
+    FuncDef func
+    Node[] decorators   # Decorators, at least one
     
-    void __init__(self, Node func, Node decorator):
+    void __init__(self, FuncDef func, Node[] decorators):
         self.func = func
-        self.decorator = decorator
+        self.decorators = decorators
 
-    FuncDef unwrap(self):
-        if isinstance(self.func, FuncDef):
-            return (FuncDef)self.func
-        else:
-            nested = (Decorator)self.func
-            return nested.unwrap()
-    
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_decorator(self)
 

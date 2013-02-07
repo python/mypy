@@ -1829,7 +1829,7 @@ def f():
 MypyFile:1(
   Decorator:1(
     NameExpr(property)
-    FuncDef:-1(
+    FuncDef:2(
       f
       Block:2(
         PassStmt:3()))))
@@ -1847,13 +1847,12 @@ MypyFile:1(
       Args(
         NameExpr(bar)
         IntExpr(1)))
-    Decorator:-1(
-      NameExpr(zar)
-      FuncDef:-1(
-        f
-        def () -> int?
-        Block:3(
-          PassStmt:4())))))
+    NameExpr(zar)
+    FuncDef:3(
+      f
+      def () -> int?
+      Block:3(
+        PassStmt:4()))))
 
 [case testKeywordArgInCall]
 f(x=1)

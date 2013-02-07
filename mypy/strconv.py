@@ -145,7 +145,7 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.names], o)
     
     def visit_decorator(self, o):
-        return self.dump([o.decorator, o.func], o)
+        return self.dump([o.decorators, o.func], o)
     
     def visit_annotation(self, o):
         return 'Type:{}({})'.format(o.line, o.type)

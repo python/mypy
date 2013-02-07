@@ -166,9 +166,10 @@ class OutputVisitor(NodeVisitor):
         self.token(r.comma)
     
     def visit_decorator(self, o):
-        self.token(o.repr.at)
-        self.node(o.decorator)
-        self.token(o.repr.br)
+        for at, br, dec in zip(o.repr.ats, o.repr.brs, o.decorators):
+            self.token(at)
+            self.node(dec)
+            self.token(br)
         self.node(o.func)
     
     # Statements

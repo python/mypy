@@ -153,7 +153,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyse_lvalue(n, False, True)
 
     void anal_decorator(self, Decorator d):
-        self.anal_func_def(d.unwrap())
+        self.anal_func_def(d.func)
     
     #
     # Second pass of semantic analysis
@@ -458,7 +458,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     void visit_decorator(self, Decorator dec):
         dec.func.accept(self)
-        dec.decorator.accept(self)
+        for d in dec.decorators:
+            d.accept(self)
     
     void visit_expression_stmt(self, ExpressionStmt s):
         s.expr.accept(self)
