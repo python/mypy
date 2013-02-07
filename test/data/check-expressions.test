@@ -736,7 +736,7 @@ A a
 None + a   # Fail
 f + a      # Fail
 a + f      # Fail
-(A)f       # Fail
+(A)f
 
 void f():
     pass
@@ -748,7 +748,6 @@ class A:
 main, line 2: Unsupported left operand type for + (None)
 main, line 3: Unsupported left operand type for + (function)
 main, line 4: Unsupported operand types for + ("A" and function)
-main, line 5: Cannot cast from function to "A"
 
 [case testOperatorMethodWithInvalidArgCount]
 A a

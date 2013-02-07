@@ -2,7 +2,7 @@
 
 from mypy.types import (
     Type, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
-    TupleType, Instance, TypeVar, TypeTranslator, ErasedType
+    TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -757,7 +757,11 @@ class ExpressionChecker:
                 (isinstance(target_type, Instance) and
                      ((Instance)target_type).type.is_interface) or
                 (isinstance(source_type, Instance) and
-                     ((Instance)source_type).type.is_interface))
+                     ((Instance)source_type).type.is_interface) or
+                isinstance(source_type, TypeVar) or
+                isinstance(target_type, TypeVar) or
+                isinstance(source_type, FunctionLike) or
+                isinstance(target_type, FunctionLike))
     
     Type visit_type_application(self, TypeApplication tapp):
         """Type check a type application (expr<...>)."""

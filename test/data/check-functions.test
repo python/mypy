@@ -449,3 +449,15 @@ void f(object x):
     g(x)
 [out]
 main: In function "f":
+
+
+-- Casts
+-- -----
+
+
+[case testCastsToAndFromFunctionTypes]
+void f<t>(t x, func<void()> f1, func<void(any)> f2, object o):
+    x = (t)f1
+    f1 = (func<void()>)x
+    f1 = (func<void()>)f2
+    f1 = (func<void()>)o
