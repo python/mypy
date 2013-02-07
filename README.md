@@ -83,12 +83,9 @@ mypy development is already done in mypy!).
 Here are some of the more significant Python features not supported
 right now (but all of these will improve):
 
- - only top-level imports are supported
- - class attributes are not supported in statically typed code
  - no decorators (neither properties)
  - no 'with' statements
- - no arbitrary statements in class body
- - no nested functions or classes
+ - no nested classes
  - no metaclasses
  - only basic operator overloading
  - only some Python modules are supported, and some only partially
