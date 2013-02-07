@@ -817,6 +817,17 @@ A.f
 [out]
 MemberExpr(5) : Overload(def (any self) -> any, def (any self, any x) -> any)
 
+[case testUnboundMethodWithInheritance]
+## MemberExpr
+class A:
+    void __init__(self): pass
+    void f(self): pass
+class B(A):
+    pass
+B.f
+[out]
+MemberExpr(7) : def (A self)
+
 
 -- Special cases
 -- -------------
