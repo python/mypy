@@ -808,6 +808,15 @@ A.f
 [out]
 MemberExpr(5) : Overload(def (A self), def (A self, builtins.object x))
 
+[case testOverloadedUnboundMethodWithImplicitSig]
+## MemberExpr
+class A:
+    def f(self): pass
+    def f(self, x): pass
+A.f
+[out]
+MemberExpr(5) : Overload(def (any self) -> any, def (any self, any x) -> any)
+
 
 -- Special cases
 -- -------------
