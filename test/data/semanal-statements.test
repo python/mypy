@@ -739,3 +739,26 @@ MypyFile:1(
     TupleExpr:2(
       NameExpr(o [__main__.o])
       NameExpr(o [__main__.o]))))
+
+[case testFunctionDecorator]
+def decorate(f): pass
+@decorate
+def g():
+    g()
+[out]
+MypyFile:1(
+  FuncDef:1(
+    decorate
+    Args(
+      Var(f))
+    Block:1(
+      PassStmt:1()))
+  Decorator:2(
+    NameExpr(decorate [__main__.decorate])
+    FuncDef:-1(
+      g
+      Block:3(
+        ExpressionStmt:4(
+          CallExpr:4(
+            NameExpr(g [__main__.g])
+            Args()))))))

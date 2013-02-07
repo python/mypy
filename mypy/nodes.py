@@ -263,6 +263,13 @@ class Decorator(Node):
     void __init__(self, Node func, Node decorator):
         self.func = func
         self.decorator = decorator
+
+    FuncDef unwrap(self):
+        if isinstance(self.func, FuncDef):
+            return (FuncDef)self.func
+        else:
+            nested = (Decorator)self.func
+            return nested.unwrap()
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_decorator(self)

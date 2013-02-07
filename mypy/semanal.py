@@ -12,7 +12,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr, MDEF,
-    FuncBase
+    FuncBase, Decorator
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -110,6 +110,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.anal_var_def((VarDef)d)
             elif isinstance(d, ForStmt):
                 self.anal_for_stmt((ForStmt)d)
+            elif isinstance(d, Decorator):
+                self.anal_decorator((Decorator)d)
         # Add implicit definition of 'None' to builtins, as we cannot define a
         # variable with a None type explicitly.
         if mod_id == 'builtins':
@@ -149,6 +151,9 @@ class SemanticAnalyzer(NodeVisitor):
     void anal_for_stmt(self, ForStmt s):
         for n in s.index:
             self.analyse_lvalue(n, False, True)
+
+    void anal_decorator(self, Decorator d):
+        self.anal_func_def(d.unwrap())
     
     #
     # Second pass of semantic analysis
@@ -450,6 +455,10 @@ class SemanticAnalyzer(NodeVisitor):
                 v.is_ready = False
                 lval.def_var = v
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+
+    void visit_decorator(self, Decorator dec):
+        dec.func.accept(self)
+        dec.decorator.accept(self)
     
     void visit_expression_stmt(self, ExpressionStmt s):
         s.expr.accept(self)
