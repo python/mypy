@@ -1,6 +1,7 @@
 """Type checking of member access"""
 
 from mypy.types import Type, Instance, Any, TupleType, Callable, FunctionLike
+from mypy.types import TypeVars, TypeVarDef, Overloaded
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type
 from mypy.messages import MessageBuilder
@@ -137,10 +138,30 @@ Type analyse_class_attribute_access(Instance itype, str name, Context context,
     if node:
         t = node.type()
         if t:
-            return t
+            return add_class_tvars(t, itype.type)
         else:
             f = (FuncBase)node.node
             return function_type(f)
     else:
         msg.has_no_member(itype, name, context)
         return Any()
+
+
+def add_class_tvars(t, TypeInfo info):
+    if isinstance(t, Callable):
+        vars = TypeVars([TypeVarDef(n, i + 1)
+                         for i, n in enumerate(info.type_vars)])
+        c = Callable(t.arg_types,
+                     t.arg_kinds,
+                     t.arg_names,
+                     t.ret_type,
+                     t.is_type_obj(),
+                     t.name,
+                     TypeVars(vars.items + t.variables.items),
+                     t.bound_vars,
+                     t.line, None)
+        return c
+    elif isinstance(t, Overloaded):
+        return Overloaded([(Callable)add_class_tvars(i, info)
+                           for i in t.items()])
+    return t

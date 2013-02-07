@@ -833,9 +833,31 @@ MemberExpr(7) : def (A self)
 class B: pass
 class A:
     void f<t>(self, t x): pass
-A.f(None, B())
+A.f(A(), B())
 [out]
 MemberExpr(5) : def [-1:B] (A self, B x)
+
+[case testUnboundMethodOfGenericClass]
+## MemberExpr
+class B: pass
+class A<t>:
+    void f(self, t x): pass
+A.f
+A.f(A<B>(), B())
+[out]
+MemberExpr(5) : def <t> (A<t`1> self, t`1 x)
+MemberExpr(6) : def [1:B] (A<B> self, B x)
+
+[case testUnboundOverloadedMethodOfGenericClass]
+## CallExpr
+class B: pass
+class A<t>:
+    t f(self, t x): pass
+    object f(self): pass
+A<B> ab, B b
+A.f(ab, b)
+[out]
+CallExpr(7) : B
 
 
 -- Special cases
