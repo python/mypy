@@ -445,6 +445,15 @@ class A:
 A.x = B()
 A.x = A()   # E: Incompatible types in assignment
 
+[case testInitMethodUnbound]
+class B: pass
+class A:
+    void __init__(self, B b): pass
+A a, B b
+A.__init__(a, b)
+A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"
+A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"
+
 
 -- Special cases
 -- -------------
