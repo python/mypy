@@ -147,21 +147,22 @@ Type analyse_class_attribute_access(Instance itype, str name, Context context,
         return Any()
 
 
-def add_class_tvars(t, TypeInfo info):
+Type add_class_tvars(Type t, TypeInfo info):
     if isinstance(t, Callable):
+        c = (Callable)t
         vars = TypeVars([TypeVarDef(n, i + 1)
                          for i, n in enumerate(info.type_vars)])
-        c = Callable(t.arg_types,
-                     t.arg_kinds,
-                     t.arg_names,
-                     t.ret_type,
-                     t.is_type_obj(),
-                     t.name,
-                     TypeVars(vars.items + t.variables.items),
-                     t.bound_vars,
-                     t.line, None)
-        return c
+        return Callable(c.arg_types,
+                        c.arg_kinds,
+                        c.arg_names,
+                        c.ret_type,
+                        c.is_type_obj(),
+                        c.name,
+                        TypeVars(vars.items + c.variables.items),
+                        c.bound_vars,
+                        c.line, None)
     elif isinstance(t, Overloaded):
+        o = (Overloaded)t
         return Overloaded([(Callable)add_class_tvars(i, info)
-                           for i in t.items()])
+                           for i in o.items()])
     return t
