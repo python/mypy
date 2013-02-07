@@ -189,3 +189,15 @@ print(A.x)
 [out]
 0
 1
+
+[case testInheritedClassAttribute]
+class A:
+    x = 1
+    void f(self): print('f')
+class B(A):
+    pass
+B.f(None)
+print(B.x)
+[out]
+f
+1
