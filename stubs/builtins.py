@@ -786,10 +786,17 @@ void setattr(any object, str name, any value): pass
 t[] sorted<t>(Iterable<t> iterable, *, func<any(t)> key=None,
               bool reverse=False): pass
 t sum<t>(Iterable<t> iterable, t start=None): pass
-# TODO more than two iterables
+# TODO more than four iterables
 Iterator<tuple<t1>> zip<t1>(Iterable<t1> iter1): pass
 Iterator<tuple<t1, t2>> zip<t1, t2>(Iterable<t1> iter1,
                                     Iterable<t2> iter2): pass
+Iterator<tuple<t1, t2, t3>> zip<t1, t2, t3>(Iterable<t1> iter1,
+                                            Iterable<t2> iter2,
+                                            Iterable<t3> iter3): pass
+Iterator<tuple<t1, t2, t3, t4>> zip<t1, t2, t3, t4>(Iterable<t1> iter1,
+                                                    Iterable<t2> iter2,
+                                                    Iterable<t3> iter3,
+                                                    Iterable<t4> iter4): pass
 
 
 # Exceptions
