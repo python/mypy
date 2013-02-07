@@ -828,6 +828,15 @@ B.f
 [out]
 MemberExpr(7) : def (A self)
 
+[case testUnboundGenericMethod]
+## MemberExpr
+class B: pass
+class A:
+    void f<t>(self, t x): pass
+A.f(None, B())
+[out]
+MemberExpr(5) : def [-1:B] (A self, B x)
+
 
 -- Special cases
 -- -------------
