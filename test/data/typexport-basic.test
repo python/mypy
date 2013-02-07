@@ -799,6 +799,15 @@ A.f
 [out]
 MemberExpr(4) : def (any self) -> any
 
+[case testOverloadedUnboundMethod]
+## MemberExpr
+class A:
+    void f(self): pass
+    void f(self, object x): pass
+A.f
+[out]
+MemberExpr(5) : Overload(def (A self), def (A self, builtins.object x))
+
 
 -- Special cases
 -- -------------
