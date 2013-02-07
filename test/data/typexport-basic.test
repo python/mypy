@@ -779,6 +779,19 @@ NameExpr(4) : builtins.list<A>
 OpExpr(4) : builtins.list<A>
 
 
+-- Class attributes
+-- ----------------
+
+
+[case testUnboundMethod]
+## MemberExpr
+class A:
+    void f(self): pass
+A.f
+[out]
+MemberExpr(4) : def (A self)
+
+
 -- Special cases
 -- -------------
 

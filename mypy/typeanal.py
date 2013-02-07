@@ -75,7 +75,7 @@ class TypeAnalyser(TypeVisitor<Type>):
         return t
     
     Type visit_instance(self, Instance t):
-        raise RuntimeError('Instance is already analysed')
+        return t
     
     Type visit_type_var(self, TypeVar t):
         raise RuntimeError('TypeVar is already analysed')

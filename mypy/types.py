@@ -696,3 +696,19 @@ Type strip_type(Type typ):
                            for t in overload.items()])
     else:
         return typ
+
+
+Callable replace_self_type(Callable t, Type self_type):
+    """Return a copy of a callable type with a different self argument type.
+
+    Assume that the callable is the signature of a method.
+    """
+    return Callable([self_type] + t.arg_types[1:],
+                    t.arg_kinds,
+                    t.arg_names,
+                    t.ret_type,
+                    t.is_type_obj(),
+                    t.name,
+                    t.variables,
+                    t.bound_vars,
+                    t.line, None)

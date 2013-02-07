@@ -408,9 +408,9 @@ main: In class "A":
 class A:
     void f(self): pass
 A.f(A())
-A.f(object())     # TODO should be an error
-A.f()             # E: Too few arguments
-A.f(None, None)   # E: Too many arguments
+A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"
+A.f()             # E: Too few arguments for "f" of "A"
+A.f(None, None)   # E: Too many arguments for "f" of "A"
 
 [case testAccessAttributeViaClass]
 class B: pass
@@ -429,7 +429,7 @@ class A:
     void __init__(self, any x): pass
     void f(self): pass
 A.f(A())
-A.f()    # E: Too few arguments
+A.f()    # E: Too few arguments for "f" of "A"
 
 [case testAssignmentToClassDataAttribute]
 class B: pass

@@ -17,7 +17,8 @@ from mypy.nodes import (
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
 from mypy.types import (
-    NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any
+    NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
+    replace_self_type
 )
 from mypy.nodes import function_type
 from mypy.typeanal import TypeAnalyser
@@ -177,12 +178,15 @@ class SemanticAnalyzer(NodeVisitor):
             if not defn.is_overload:
                 if defn.name() in self.type.names:
                     self.name_already_defined(defn.name(), defn)
-                self.type.names[defn.name()] = SymbolTableNode(
-                    MDEF, defn, typ=defn.type)
+                self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             if defn.name() == '__init__':
                 self.is_init_method = True
             if defn.args == []:
                 self.fail('Method must have at least one argument', defn)
+            elif defn.type:
+                sig = (FunctionLike)defn.type
+                defn.type = replace_implicit_self_type(sig,
+                                                       self_type(self.type))
 
         if self.locals:
             self.add_local_func(defn, defn)
@@ -796,3 +800,16 @@ class TypeInfoMap(dict<str, TypeInfo>):
                 a.append('  {} : {}'.format(x, ti))
         a[-1] += ')'
         return '\n'.join(a)
+
+
+Callable replace_implicit_self_type(Callable sig, Type new):
+    # We can detect implicit self type by it having no representation.
+    if not sig.arg_types[0].repr:
+        return replace_self_type(sig, new)
+    else:
+        return sig
+
+FunctionLike replace_implicit_self_type(FunctionLike sig, Type new):
+    osig = (Overloaded)sig
+    return Overloaded([replace_implicit_self_type(i, new)
+                       for i in osig.items()])
