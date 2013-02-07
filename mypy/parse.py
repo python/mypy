@@ -1391,6 +1391,7 @@ class Parser:
         Node node
         if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
                 and expr.callee.name == 'super'):
+            # super() expression
             node = SuperExpr(name.string)
             self.set_repr(node,
                           noderepr.SuperExprRepr(expr.callee.repr.id,
