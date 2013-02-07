@@ -228,6 +228,7 @@ class FuncItem(FuncBase):
 
 class FuncDef(FuncItem):
     str _fullname      # Name with module prefix
+    bool is_decorated
     
     void __init__(self,
                   str name,          # Function name
@@ -238,6 +239,7 @@ class FuncDef(FuncItem):
                   mypy.types.Type typ=None):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
+        self.is_decorated = False
 
     str name(self):
         return self._name
@@ -257,12 +259,14 @@ class FuncDef(FuncItem):
 
 
 class Decorator(Node):
-    FuncDef func
+    FuncDef func        # Decorated function
     Node[] decorators   # Decorators, at least one
+    Var var             # Represents the decorated function value
     
-    void __init__(self, FuncDef func, Node[] decorators):
+    void __init__(self, FuncDef func, Node[] decorators, Var var):
         self.func = func
         self.decorators = decorators
+        self.var = var
 
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_decorator(self)

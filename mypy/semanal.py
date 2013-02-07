@@ -153,7 +153,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyse_lvalue(n, False, True)
 
     void anal_decorator(self, Decorator d):
-        self.anal_func_def(d.func)
+        d.var._fullname = self.qualified_name(d.var.name())
+        self.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
     
     #
     # Second pass of semantic analysis
@@ -180,10 +181,11 @@ class SemanticAnalyzer(NodeVisitor):
         if self.type and not self.locals:
             # Method definition
             defn.info = self.type
-            if not defn.is_overload:
-                if defn.name() in self.type.names:
-                    self.name_already_defined(defn.name(), defn)
-                self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+            if not defn.is_decorated:
+                if not defn.is_overload:
+                    if defn.name() in self.type.names:
+                        self.name_already_defined(defn.name(), defn)
+                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             if defn.name() == '__init__':
                 self.is_init_method = True
             if defn.args == []:
@@ -193,7 +195,7 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.type = replace_implicit_self_type(sig,
                                                        self_type(self.type))
 
-        if self.locals:
+        if self.locals and not defn.is_decorated:
             self.add_local_func(defn, defn)
         
         self.errors.push_function(defn.name())

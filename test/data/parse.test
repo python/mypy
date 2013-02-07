@@ -1828,6 +1828,7 @@ def f():
 [out]
 MypyFile:1(
   Decorator:1(
+    Var(f)
     NameExpr(property)
     FuncDef:2(
       f
@@ -1842,6 +1843,7 @@ int f():
 [out]
 MypyFile:1(
   Decorator:1(
+    Var(f)
     CallExpr:1(
       NameExpr(foo)
       Args(

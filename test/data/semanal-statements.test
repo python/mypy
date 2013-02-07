@@ -754,6 +754,7 @@ MypyFile:1(
     Block:1(
       PassStmt:1()))
   Decorator:2(
+    Var(g)
     NameExpr(decorate [__main__.decorate])
     FuncDef:3(
       g

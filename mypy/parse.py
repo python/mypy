@@ -311,7 +311,13 @@ class Parser:
             ats.append(self.expect('@'))
             decorators.append(self.parse_expression())
             brs.append(self.expect_break())
-        node = Decorator(self.parse_function(), decorators)
+        func = self.parse_function()
+        func.is_decorated = True
+        var = Var(func.name())
+        # Types of decorated functions must always be inferred.
+        var.is_ready = False
+        var.set_line(decorators[0].line)
+        node = Decorator(func, decorators, var)
         self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
         return node
     
