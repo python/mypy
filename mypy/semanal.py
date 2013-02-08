@@ -714,11 +714,6 @@ class SemanticAnalyzer(NodeVisitor):
             table = ((MypyFile)b.node).names
             if name in table:
                 return table[name]
-        if self.type and (not self.is_func_scope() and
-                          self.type.has_readable_member(name)):
-            self.fail('Feature not implemented yet (class attributes)',
-                      ctx)
-            return None
         # Give up.
         self.name_not_defined(name, ctx)
         return None
