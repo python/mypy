@@ -495,3 +495,11 @@ B # E: Name 'B' is not defined
 class A: pass
 A.x foo # E: Name 'A.x' is not defined
 [out]
+
+[case testTvarScopingWithNestedClass]
+class A<t>:
+    class B<s>:
+        A<s> x
+        A<t> x # E: Name 't' is not defined
+    A<s> y # E: Name 's' is not defined
+[out]
