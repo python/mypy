@@ -522,6 +522,15 @@ def f(y): pass
 f()
 f(None) # E: Too many arguments for "f"
 
+[case testDecoratorThatSwitchesTypeWithMethod]
+func<void(any)> dec(x): pass
+class A:
+    @dec
+    def f(self, a, b, c): pass
+A a
+a.f()
+a.f(None) # E: Too many arguments for "f" of "A"
+
 [case testNestedDecorators]
 func<void()> dec1(func<void(any)> f): pass
 func<void(any)> dec2(func<void(any, any)> f): pass
