@@ -530,3 +530,17 @@ func<void(any)> dec2(func<void(any, any)> f): pass
 def f(x, y): pass
 f()
 f(None) # E: Too many arguments
+
+[case testInvalidDecorator1]
+func<void()> dec1(func<void(any)> f): pass
+func<void(any)> dec2(func<void(any, any)> f): pass
+@dec1 # E: Argument 1 to "dec2" has incompatible type
+@dec2
+def f(x): pass
+
+[case testInvalidDecorator2]
+func<void()> dec1(func<void(any, any)> f): pass
+func<void(any)> dec2(func<void(any, any)> f): pass
+@dec1 # E: Argument 1 to "dec1" has incompatible type
+@dec2
+def f(x, y): pass
