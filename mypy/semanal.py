@@ -43,8 +43,8 @@ class SemanticAnalyzer(NodeVisitor):
     SymbolTable class_tvars
     # Local names
     SymbolTable[] locals
-    
     TypeInfo type       # TypeInfo of enclosing class (or None)
+
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
     int block_depth     # Depth of nested blocks
@@ -57,7 +57,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Create semantic analyzer. Use lib_path to search for
         modules, and report compile errors using the Errors instance.
         """
-        self.locals = []
+        self.locals = [None]
         self.imports = set()
         self.type = None
         self.block_depth = 0
@@ -168,7 +168,7 @@ class SemanticAnalyzer(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
-        if self.type and not self.locals:
+        if self.type and not self.is_func_scope():
             # Method definition
             defn.info = self.type
             if not defn.is_decorated:
@@ -185,7 +185,7 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.type = replace_implicit_self_type(sig,
                                                        self_type(self.type))
 
-        if self.locals and not defn.is_decorated:
+        if self.is_func_scope() and not defn.is_decorated:
             self.add_local_func(defn, defn)
         
         self.errors.push_function(defn.name())
@@ -257,7 +257,7 @@ class SemanticAnalyzer(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
-        if self.locals or self.type:
+        if self.is_func_scope() or self.type:
             self.fail('Nested classes not supported yet', defn)
             return
         self.type = defn.info
@@ -347,7 +347,7 @@ class SemanticAnalyzer(NodeVisitor):
             defn.items[i].type = self.anal_type(defn.items[i].type)
         
         for v in defn.items:
-            if self.locals:
+            if self.is_func_scope():
                 defn.kind = LDEF
                 self.add_local(v, defn)
             elif self.type:
@@ -378,7 +378,8 @@ class SemanticAnalyzer(NodeVisitor):
                         bool add_defs=False):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
-            nested_global = (not self.locals and self.block_depth > 0 and
+            nested_global = (not self.is_func_scope() and
+                             self.block_depth > 0 and
                              not self.type)
             if (add_defs or nested_global) and n.name not in self.globals:
                 # Define new global name.
@@ -395,7 +396,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v = (Var)n.node
                 self.globals[v.name()] = SymbolTableNode(GDEF, v,
                                                          self.cur_mod_id)
-            elif (self.locals and n.name not in self.locals[-1] and
+            elif (self.is_func_scope() and n.name not in self.locals[-1] and
                   n.name not in self.global_decls[-1]):
                 # Define new local name.
                 v = Var(n.name)
@@ -403,8 +404,8 @@ class SemanticAnalyzer(NodeVisitor):
                 n.is_def = True
                 n.kind = LDEF
                 self.add_local(v, n)
-            elif not self.locals and (self.type and
-                                      n.name not in self.type.names):
+            elif not self.is_func_scope() and (self.type and
+                                               n.name not in self.type.names):
                 # Define a new attribute.
                 v = Var(n.name)
                 v.info = self.type
@@ -445,7 +446,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
 
     void visit_decorator(self, Decorator dec):
-        if self.locals:
+        if self.is_func_scope():
             self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec.var),
                             dec)
         elif self.type:
@@ -461,7 +462,7 @@ class SemanticAnalyzer(NodeVisitor):
         s.expr.accept(self)
     
     void visit_return_stmt(self, ReturnStmt s):
-        if not self.locals:
+        if not self.is_func_scope():
             self.fail("'return' outside function", s)
         if s.expr:
             s.expr.accept(self)
@@ -471,7 +472,7 @@ class SemanticAnalyzer(NodeVisitor):
             s.expr.accept(self)
     
     void visit_yield_stmt(self, YieldStmt s):
-        if not self.locals:
+        if not self.is_func_scope():
             self.fail("'yield' outside function", s)
         if s.expr:
             s.expr.accept(self)
@@ -682,13 +683,14 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.name_not_defined(name, ctx)
                 return None
-        if self.locals:
+        if self.is_func_scope():
             for table in reversed(self.locals):
-                if name in table:
+                if table is not None and name in table:
                     return table[name]
         if self.class_tvars and name in self.class_tvars:
             return self.class_tvars[name]
-        if self.type and (not self.locals and name in self.type.names):
+        if self.type and (not self.is_func_scope() and
+                          name in self.type.names):
             return self.type[name]
         if name in self.globals:
             return self.globals[name]
@@ -698,8 +700,8 @@ class SemanticAnalyzer(NodeVisitor):
                 table = ((MypyFile)b.node).names
                 if name in table:
                     return table[name]
-            if self.type and (not self.locals and
-                             self.type.has_readable_member(name)):
+            if self.type and (not self.is_func_scope() and
+                              self.type.has_readable_member(name)):
                 self.fail('Feature not implemented yet (class attributes)',
                           ctx)
                 return None
@@ -735,8 +737,11 @@ class SemanticAnalyzer(NodeVisitor):
         self.locals.pop()
         self.global_decls.pop()
 
+    bool is_func_scope(self):
+        return self.locals[-1] is not None
+
     void add_symbol(self, str name, SymbolTableNode node, Context context):
-        if self.locals:
+        if self.is_func_scope():
             if name in self.locals[-1]:
                 self.name_already_defined(name, context)
             self.locals[-1][name] = node
@@ -750,7 +755,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.globals[name] = node
     
     void add_var(self, Var v, Context ctx):
-        if self.locals:
+        if self.is_func_scope():
             self.add_local(v, ctx)
         else:
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
