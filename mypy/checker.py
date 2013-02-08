@@ -24,7 +24,7 @@ from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
-from mypy.semanal import self_type
+from mypy.semanal import self_type, set_callable_name
 from mypy.expandtype import expand_type_by_instance
 from mypy.visitor import NodeVisitor
 
@@ -759,6 +759,7 @@ class TypeChecker(NodeVisitor<Type>):
             temp = self.temp_node(sig)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)
+        sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
     

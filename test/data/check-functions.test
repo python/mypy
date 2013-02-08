@@ -520,7 +520,7 @@ func<void()> dec(x): pass
 @dec
 def f(y): pass
 f()
-f(None) # E: Too many arguments
+f(None) # E: Too many arguments for "f"
 
 [case testNestedDecorators]
 func<void()> dec1(func<void(any)> f): pass
@@ -529,7 +529,7 @@ func<void(any)> dec2(func<void(any, any)> f): pass
 @dec2
 def f(x, y): pass
 f()
-f(None) # E: Too many arguments
+f(None) # E: Too many arguments for "f"
 
 [case testInvalidDecorator1]
 func<void()> dec1(func<void(any)> f): pass
