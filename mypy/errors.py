@@ -55,16 +55,18 @@ class Errors:
     # Path name prefix that is removed from all paths, if set.
     str ignore_prefix = None
     str file = None     # Path to current file.
-    # Short name of current type (or None).
-    str type_name = None
-    # Is the current type an interface?
-    bool is_interface = False
+    # Statck of short names of currents types (or None).
+    str[] type_name
+    # Stack of flags: is the corresponding type_name an interface?
+    bool[] is_interface
     # Stack of short names of current functions or members (or None).
     str[] function_or_member
     
     void __init__(self):
         self.error_info = []
         self.import_ctx = []
+        self.type_name = [None]
+        self.is_interface = [False]
         self.function_or_member = [None]
     
     void set_ignore_prefix(self, str prefix):
@@ -87,10 +89,14 @@ class Errors:
     void pop_function(self):
         self.function_or_member.pop()
     
-    void set_type(self, str name, bool is_interface):
+    void push_type(self, str name, bool is_interface):
         """Set the short name of the current type (it can be None)."""
-        self.type_name = name
-        self.is_interface = is_interface
+        self.type_name.append(name)
+        self.is_interface.append(is_interface)
+
+    void pop_type(self):
+        self.type_name.pop()
+        self.is_interface.pop()
     
     void push_import_context(self, str path, int line):
         """Add a (file, line) tuple to the import context."""
@@ -111,12 +117,12 @@ class Errors:
     void report(self, int line, str message):
         """Report a message at the given line using the current error
         context."""
-        type = self.type_name
+        type = self.type_name[-1]
         if len(self.function_or_member) > 2:
             type = None # Omit type context if nested function
         info = ErrorInfo(self.import_context(), self.file, type,
-                         self.is_interface, self.function_or_member[-1], line,
-                         message)
+                         self.is_interface[-1], self.function_or_member[-1],
+                         line, message)
         self.error_info.append(info)
     
     int num_messages(self):

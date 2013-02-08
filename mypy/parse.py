@@ -252,7 +252,7 @@ class Parser:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
                 
-                self.errors.set_type(name, is_interface)
+                self.errors.push_type(name, is_interface)
                 
                 if self.current_str() == '<':
                     try:
@@ -279,7 +279,7 @@ class Parser:
                                                      lparen, commas, rparen))
             return node
         finally:
-            self.errors.set_type(None, False)
+            self.errors.pop_type()
             self.is_type = False
     
     Type parse_super_type(self):

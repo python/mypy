@@ -475,6 +475,8 @@ class A:
     b = B()
     b = A() # E: Incompatible types in assignment
     b = B(b) # E: Too many arguments for "B"
+[out]
+main: In class "A":
 
 [case testConstructNestedClassWithCustomInit]
 class A:
@@ -485,7 +487,7 @@ class A:
         b = A() # E: Incompatible types in assignment
         b = B() # E: Too few arguments for "B"
 [out]
-main: In function "f":
+main: In member "f" of class "A":
 
 [case testDeclareVariableWithNestedClassType]
 void f():
