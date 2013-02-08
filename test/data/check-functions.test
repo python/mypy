@@ -461,3 +461,56 @@ void f<t>(t x, func<void()> f1, func<void(any)> f2, object o):
     f1 = (func<void()>)x
     f1 = (func<void()>)f2
     f1 = (func<void()>)o
+
+
+-- Function decorators
+-- -------------------
+
+
+[case testTrivialStaticallyTypedFunctionDecorator]
+t dec<t>(t f):
+    return f
+@dec
+void f(A x): pass
+A a
+B b
+f(a)
+f(b) # E: Argument 1 to "f" has incompatible type "B"
+class A: pass
+class B: pass
+
+[case testTrivialStaticallyTypedMethodDecorator]
+t dec<t>(t f):
+    return f
+class A:
+    @dec
+    void f(self, A x): pass
+A a
+B b
+a.f(a)
+a.f(b) # E: Argument 1 to "f" of "A" has incompatible type "B"
+class B: pass
+
+[case testTrivialDecoratedNestedFunction]
+t dec<t>(t f):
+    return f
+A a, B b
+void g():
+    @dec
+    void f(A x): pass
+    f(a)
+    f(b) # E: Argument 1 to "f" has incompatible type "B"
+class A: pass
+class B: pass
+[out]
+main: In function "g":
+
+[case testCheckingDecoratedFunction]
+def dec(f): pass
+@dec
+void f(A x):
+    A a = x
+    x = object() # E: Incompatible types in assignment
+class A: pass
+[out]
+main: In function "f":

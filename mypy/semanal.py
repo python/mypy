@@ -459,6 +459,14 @@ class SemanticAnalyzer(NodeVisitor):
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
 
     void visit_decorator(self, Decorator dec):
+        if self.locals:
+            self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec.var),
+                            dec)
+        elif self.type:
+            dec.var.info = self.type
+            dec.var.is_initialized_in_class = True
+            self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec.var),
+                            dec)
         dec.func.accept(self)
         for d in dec.decorators:
             d.accept(self)

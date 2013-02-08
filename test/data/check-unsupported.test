@@ -9,10 +9,6 @@ a = None if None else None
 [out]
 main, line 1: Feature not implemented yet (conditional expression) 
 
-[case testDecorator]
-@f  # E: Feature not implemented yet (decorator)
-def f(x): pass
-
 [case testWith]
 void f():
   with None:

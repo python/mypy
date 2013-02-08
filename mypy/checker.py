@@ -749,6 +749,14 @@ class TypeChecker(NodeVisitor<Type>):
         else:
             return None # this case is handled in semantical analysis
     
+    Type visit_decorator(self, Decorator e):
+        e.func.accept(self)
+        dec = self.accept(e.decorators[0])
+        temp = self.temp_node(function_type(e.func))
+        t1, t2 = self.expr_checker.check_call(dec, [temp], [nodes.ARG_POS], e)
+        e.var.type = t1
+        e.var.is_ready = True
+    
     #
     # Expressions
     #
@@ -829,9 +837,6 @@ class TypeChecker(NodeVisitor<Type>):
     Type visit_conditional_expr(self, ConditionalExpr e):
         return self.msg.not_implemented('conditional expression', e)
 
-    Type visit_decorator(self, Decorator e):
-        return self.msg.not_implemented('decorator', e)
-    
     Type visit_with_stmt(self, WithStmt s):
         self.msg.not_implemented('with statement', s)
     
