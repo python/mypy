@@ -469,3 +469,24 @@ a = 1
 main, line 1: Name 'a' already defined
 main: In function "f":
 main, line 4: Name 'a' already defined
+
+[case testScopeOfNestedClass]
+def f():
+    class A: pass
+    A
+A # E: Name 'A' is not defined
+[out]
+
+[case testScopeOfNestedClass2]
+class A:
+    class B: pass
+B # E: Name 'B' is not defined
+[out]
+
+[case testScopeOfNestedClass3]
+class A:
+    def f(self):
+        class B: pass
+    B # E: Name 'B' is not defined
+B # E: Name 'B' is not defined
+[out]
