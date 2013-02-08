@@ -487,6 +487,23 @@ class A:
 [out]
 main: In function "f":
 
+[case testDeclareVariableWithNestedClassType]
+void f():
+    class A: pass
+    A a
+    a = A()
+    a = object() # E: Incompatible types in assignment
+[out]
+main: In function "f":
+
+[case testExternalReferenceToClassWithinClass]
+class A:
+    class B: pass
+A.B b
+b = A.B()
+b = A() # E: Incompatible types in assignment
+b = A.B(b) # E: Too many arguments for "B"
+
 
 -- Special cases
 -- -------------

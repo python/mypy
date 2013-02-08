@@ -490,3 +490,8 @@ class A:
     B # E: Name 'B' is not defined
 B # E: Name 'B' is not defined
 [out]
+
+[case testInvalidNestedClassReferenceInDecl]
+class A: pass
+A.x foo # E: Name 'A.x' is not defined
+[out]

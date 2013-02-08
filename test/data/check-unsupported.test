@@ -30,14 +30,6 @@ main, line 3: Feature not implemented yet (chained assignment)
 main: In class "A":
 main, line 5: Feature not implemented yet (chained assignment)
 
-[case testClassAttributeAccessInTypeDeclaration]
-class A:
-  any x
-  def f(self): pass
-A.x y
-[out]
-main, line 4: Feature not implemented yet (class attributes)
-
 [case testDecorateOverloadedFunction]
 # The error messages are not the most informative ever.
 def d(x): pass

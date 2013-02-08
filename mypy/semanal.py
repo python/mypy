@@ -728,11 +728,9 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        self.fail(
-                            'Feature not implemented yet (class attributes)',
-                            ctx)
-                        return None
-                    n = ((MypyFile)n.node).names.get(parts[i], None)
+                        n = ((TypeInfo)n.node).get(parts[i])
+                    else:
+                        n = ((MypyFile)n.node).names.get(parts[i], None)
                     if not n:
                         self.name_not_defined(name, ctx)
             return n

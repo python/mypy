@@ -24,7 +24,7 @@ from mypy import join
 from mypy.expandtype import expand_type, expand_caller_var_args
 from mypy.subtypes import is_subtype
 from mypy import erasetype
-from mypy.checkmember import analyse_member_access
+from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 
@@ -1064,36 +1064,6 @@ bool is_valid_argc(int nargs, bool is_var_arg, Callable callable):
         return nargs <= len(callable.arg_types) and nargs >= callable.min_args
 
 
-Callable convert_class_tvars_to_func_tvars(Callable callable,
-                                           int num_func_tvars):
-    return (Callable)callable.accept(TvarTranslator(num_func_tvars))
-
-
-class TvarTranslator(TypeTranslator):
-    void __init__(self, int num_func_tvars):
-        super().__init__()
-        self.num_func_tvars = num_func_tvars
-    
-    Type visit_type_var(self, TypeVar t):
-        if t.id < 0:
-            return t
-        else:
-            return TypeVar(t.name, -t.id - self.num_func_tvars)
-    
-    TypeVars translate_variables(self, TypeVars variables):
-        if not variables.items:
-            return variables
-        items = <TypeVarDef> []
-        for v in variables.items:
-            if v.id > 0:
-                # TODO translate bound
-                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        v.bound))
-            else:
-                items.append(v)
-        return TypeVars(items)
-
-
 int[][] map_actuals_to_formals(int[] caller_kinds,
                                str[] caller_names,
                                int[] callee_kinds,
@@ -1225,52 +1195,3 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
     bool visit_erased_type(self, ErasedType t):
         return True
-
-
-Type type_object_type(TypeInfo info, func<Type()> type_type):
-    """Return the type of a type object.
-
-    For a generic type G with type variables T and S the type is of form
-
-      def <T, S>(...) as G<T, S>,
-
-    where ... are argument types for the __init__ method.
-    """
-    if info.is_interface:
-        return type_type()
-    init_method = info.get_method('__init__')
-    if not init_method:
-        # Must be an invalid class definition.
-        return Any()
-    else:
-        # Construct callable type based on signature of __init__. Adjust
-        # return type and insert type arguments.
-        init_type = method_type(init_method)
-        if isinstance(init_type, Callable):
-            return class_callable((Callable)init_type, info)
-        else:
-            # Overloaded __init__.
-            Callable[] items = []
-            for it in ((Overloaded)init_type).items():
-                items.append(class_callable(it, info))
-            return Overloaded(items)
-    
-
-Callable class_callable(Callable init_type, TypeInfo info):
-    """Create a type object type based on the signature of __init__."""
-    variables = <TypeVarDef> []
-    for i in range(len(info.type_vars)): # TODO bounds
-        variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
-
-    initvars = init_type.variables.items
-    variables.extend(initvars)
-
-    c = Callable(init_type.arg_types,
-                 init_type.arg_kinds,
-                 init_type.arg_names,
-                 self_type(info),
-                 True,
-                 None,
-                 TypeVars(variables)).with_name(
-                                      '"{}"'.format(info.name()))
-    return convert_class_tvars_to_func_tvars(c, len(initvars))
