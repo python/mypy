@@ -39,9 +39,6 @@ class SemanticAnalyzer(NodeVisitor):
     SymbolTable globals
     # Names declared using "global" (separate set for each scope)
     set<str>[] global_decls
-    # Module-local name space for current modules
-    # TODO not needed?
-    SymbolTable module_names
     # Class type variables (the scope is a single class definition)
     SymbolTable class_tvars
     # Local names
@@ -160,7 +157,6 @@ class SemanticAnalyzer(NodeVisitor):
     void visit_file(self, MypyFile file_node, str fnam):
         self.errors.set_file(fnam)
         self.globals = file_node.names
-        self.module_names = SymbolTable()
         self.cur_mod_id = file_node.fullname()
         
         if 'builtins' in self.modules:
@@ -397,8 +393,8 @@ class SemanticAnalyzer(NodeVisitor):
                                                        self.cur_mod_id)
             elif isinstance(n.node, Var) and n.is_def:
                 v = (Var)n.node
-                self.module_names[v.name()] = SymbolTableNode(GDEF, v,
-                                                              self.cur_mod_id)
+                self.globals[v.name()] = SymbolTableNode(GDEF, v,
+                                                         self.cur_mod_id)
             elif (self.locals and n.name not in self.locals[-1] and
                   n.name not in self.global_decls[-1]):
                 # Define new local name.
