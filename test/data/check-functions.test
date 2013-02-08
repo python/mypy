@@ -514,3 +514,10 @@ void f(A x):
 class A: pass
 [out]
 main: In function "f":
+
+[case testDecoratorThatSwitchesType]
+func<void()> dec(x): pass
+@dec
+def f(y): pass
+f()
+f(None) # E: Too many arguments
