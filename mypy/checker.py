@@ -751,10 +751,15 @@ class TypeChecker(NodeVisitor<Type>):
     
     Type visit_decorator(self, Decorator e):
         e.func.accept(self)
-        dec = self.accept(e.decorators[0])
-        temp = self.temp_node(function_type(e.func))
-        t1, t2 = self.expr_checker.check_call(dec, [temp], [nodes.ARG_POS], e)
-        e.var.type = t1
+        Type sig = function_type(e.func)
+        # Process decorators from the inside out.
+        for i in range(len(e.decorators)):
+            n = len(e.decorators) - 1 - i
+            dec = self.accept(e.decorators[n])
+            temp = self.temp_node(sig)
+            sig, t2 = self.expr_checker.check_call(dec, [temp],
+                                                   [nodes.ARG_POS], e)
+        e.var.type = sig
         e.var.is_ready = True
     
     #
