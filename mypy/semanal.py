@@ -687,37 +687,41 @@ class SemanticAnalyzer(NodeVisitor):
     #
     
     SymbolTableNode lookup(self, str name, Context ctx):
+        """Look up a name in all active namespaces."""
+        # 1. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
-            # Name declared using 'global x' takes precedence.
             if name in self.globals:
                 return self.globals[name]
             else:
                 self.name_not_defined(name, ctx)
                 return None
-        if self.is_func_scope():
-            for table in reversed(self.locals):
-                if table is not None and name in table:
-                    return table[name]
+        # 2. Class tvars and class attributes (if inside type def)
         if self.class_tvars and name in self.class_tvars:
             return self.class_tvars[name]
         if self.type and (not self.is_func_scope() and
                           name in self.type.names):
             return self.type[name]
+        # 3. Local (function) scopes
+        for table in reversed(self.locals):
+            if table is not None and name in table:
+                return table[name]
+        # 4. Current file global scope
         if name in self.globals:
             return self.globals[name]
-        else:
-            b = self.globals.get('__builtins__', None)
-            if b:
-                table = ((MypyFile)b.node).names
-                if name in table:
-                    return table[name]
-            if self.type and (not self.is_func_scope() and
-                              self.type.has_readable_member(name)):
-                self.fail('Feature not implemented yet (class attributes)',
-                          ctx)
-                return None
-            self.name_not_defined(name, ctx)
+        # 5. Builtins
+        b = self.globals.get('__builtins__', None)
+        if b:
+            table = ((MypyFile)b.node).names
+            if name in table:
+                return table[name]
+        if self.type and (not self.is_func_scope() and
+                          self.type.has_readable_member(name)):
+            self.fail('Feature not implemented yet (class attributes)',
+                      ctx)
             return None
+        # Give up.
+        self.name_not_defined(name, ctx)
+        return None
     
     SymbolTableNode lookup_qualified(self, str name, Context ctx):
         if '.' not in name:

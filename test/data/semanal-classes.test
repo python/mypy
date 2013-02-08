@@ -357,3 +357,32 @@ MypyFile:1(
       VarDef:3(
         Var(x)
         Type(A)))))
+
+[case testAccessToLocalInOuterScopeWithinNestedClass]
+def f(x):
+    class A:
+        y = x
+        def g(self):
+            z = x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Block:1(
+      TypeDef:2(
+        A
+        AssignmentStmt:3(
+          Lvalues(
+            NameExpr(y*))
+          NameExpr(x [l]))
+        FuncDef:4(
+          g
+          Args(
+            Var(self))
+          Block:4(
+            AssignmentStmt:5(
+              Lvalues(
+                NameExpr(z* [l]))
+              NameExpr(x [l]))))))))
