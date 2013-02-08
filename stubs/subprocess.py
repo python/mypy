@@ -54,8 +54,8 @@ class Popen:
     void send_signal(self, int signal): pass
     void terminatate(self): pass
     void kill(self): pass
-    void __enter__(self): pass
-    void __exit__(self): pass
+    Popen __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass
 
 tuple<int, str> getstatusoutput(str cmd): pass
 str getoutput(str cmd): pass

@@ -29,8 +29,8 @@ class TemporaryDirectory:
     str name    
     void __init__(self, str suffix='', str prefix='tmp', str dir=None): pass
     void cleanup(self): pass
-    void __enter__(self): pass
-    void __exit__(self): pass
+    str __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass
     
 tuple<IO, str> mkstemp(
             str suffix='', str prefix='tmp', str dir=None, bool text=False):

@@ -24,5 +24,5 @@ class catch_warnings:
     # TODO record and module must be keyword arguments!
     # TODO type of module?
     void __init__(self, bool record=False, any module=None): pass
-    void __enter__(self): pass
-    void __exit__(self): pass
+    any[] __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass

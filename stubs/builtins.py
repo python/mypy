@@ -114,8 +114,8 @@ interface IO:
     int write(self, bytearray s)
     void writelines(self, bytes[] lines)
 
-    void __enter__(self): pass
-    void __exit__(self): pass
+    IO __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass
 
 interface TextIO:
     # TODO __enter__ etc.
@@ -148,8 +148,8 @@ interface TextIO:
     int write(self, str s)
     void writelines(self, str[] lines)
 
-    void __enter__(self): pass
-    void __exit__(self): pass
+    TextIO __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass
 
 
 # Classes
