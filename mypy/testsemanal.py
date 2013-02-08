@@ -6,6 +6,7 @@ from mypy.testhelpers import assert_string_arrays_equal
 from mypy.testdata import parse_test_cases
 from mypy.errors import CompileError
 from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.nodes import TypeInfo
 
 
 # Semantic analyser test cases: dump parse tree
@@ -160,14 +161,33 @@ class SemAnalTypeInfoSuite(Suite):
                                  program_text=src,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
+            
+            # Collect all TypeInfos in top-level modules.
+            typeinfos = TypeInfoMap()
+            for f in result.files.values():
+                for n in f.names.values():
+                    if isinstance(n.node, TypeInfo):
+                        typeinfos[n.fullname()] = n.node
+            
             # The output is the symbol table converted into a string.
-            a = str(result.typeinfos).split('\n')
+            a = str(typeinfos).split('\n')
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
             'Invalid semantic analyzer output ({}, line {})'.format(
                 testcase.file, testcase.line))
+
+
+class TypeInfoMap(dict<str, TypeInfo>):
+    str __str__(self):
+        a = <str> ['TypeInfoMap(']
+        for x, y in sorted(self.items()):
+            if isinstance(x, str) and not x.startswith('builtins.'):
+                ti = ('\n' + '  ').join(str(y).split('\n'))
+                a.append('  {} : {}'.format(x, ti))
+        a[-1] += ')'
+        return '\n'.join(a)
 
 
 class CombinedSemAnalSuite(Suite):

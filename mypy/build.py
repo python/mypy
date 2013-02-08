@@ -19,7 +19,7 @@ from os.path import dirname, basename
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
 from mypy.nodes import SymbolTableNode, MODULE_REF
-from mypy.semanal import TypeInfoMap, SemanticAnalyzer
+from mypy.semanal import SemanticAnalyzer
 from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
 from mypy.icode import FuncIcode
@@ -76,9 +76,6 @@ class BuildResult:
     """The result of a successful build."""
     # Map module name to related AST node.
     dict<str, MypyFile> files
-    # Map qualified type name to related TypeInfo; includes each class and
-    # interface defined in all the built files.
-    TypeInfoMap typeinfos
     # Map parse tree node to its inferred type.
     dict<Node, Type> types
     # Icode for functions
@@ -86,11 +83,9 @@ class BuildResult:
     # Path of generated binary file (for the C back end, None otherwise)
     str binary_path
 
-    void __init__(self, dict<str, MypyFile> files, TypeInfoMap typeinfos,
-                  dict<Node, Type> types, dict<str, FuncIcode> icode,
-                  str binary_path):
+    void __init__(self, dict<str, MypyFile> files, dict<Node, Type> types,
+                  dict<str, FuncIcode> icode, str binary_path):
         self.files = files
-        self.typeinfos = typeinfos
         self.types = types
         self.icode = icode
         self.binary_path = binary_path
@@ -326,7 +321,6 @@ class BuildManager:
         self.final_passes(trees, self.type_checker.type_map)
         
         return BuildResult(self.semantic_analyzer.modules,
-                           self.semantic_analyzer.types,
                            self.type_checker.type_map,
                            self.icode, self.binary_path)
     

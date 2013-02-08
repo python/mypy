@@ -46,8 +46,6 @@ class SemanticAnalyzer(NodeVisitor):
     SymbolTable class_tvars
     # Local names
     SymbolTable[] locals
-    # All classes, from name to info (TODO needed?)
-    TypeInfoMap types
     
     TypeInfo type       # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
@@ -67,7 +65,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.type = None
         self.block_depth = 0
         self.loop_depth = 0
-        self.types = TypeInfoMap()
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
@@ -136,7 +133,6 @@ class SemanticAnalyzer(NodeVisitor):
         d.fullname = self.qualified_name(d.name)
         info = TypeInfo(SymbolTable(), d)
         info.set_line(d.line)
-        self.types[d.fullname] = info
         d.info = info
         self.globals[d.name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
     
@@ -803,17 +799,6 @@ Instance self_type(TypeInfo typ):
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1))
     return Instance(typ, tv)
-
-
-class TypeInfoMap(dict<str, TypeInfo>):
-    str __str__(self):
-        a = <str> ['TypeInfoMap(']
-        for x, y in sorted(self.items()):
-            if isinstance(x, str) and not x.startswith('builtins.'):
-                ti = ('\n' + '  ').join(str(y).split('\n'))
-                a.append('  {} : {}'.format(x, ti))
-        a[-1] += ')'
-        return '\n'.join(a)
 
 
 Callable replace_implicit_self_type(Callable sig, Type new):
