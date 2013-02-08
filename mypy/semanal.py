@@ -224,12 +224,8 @@ class SemanticAnalyzer(NodeVisitor):
             defn.type = self.anal_type(defn.type)
             if isinstance(defn, FuncDef):
                 fdef = (FuncDef)defn
-                if self.type:
-                    defn.type = ((Callable)defn.type).with_name(
-                        '"{}" of "{}"'.format(fdef.name(), self.type.name()))
-                else:
-                    defn.type = ((Callable)defn.type).with_name(
-                        '"{}"'.format(fdef.name()))
+                fdef.info = self.type
+                defn.type = set_callable_name(defn.type, fdef)
                 if self.type and ((Callable)defn.type).arg_types != []:
                     ((Callable)defn.type).arg_types[0] = self_type(
                         fdef.info)
@@ -833,3 +829,15 @@ FunctionLike replace_implicit_self_type(FunctionLike sig, Type new):
     osig = (Overloaded)sig
     return Overloaded([replace_implicit_self_type(i, new)
                        for i in osig.items()])
+
+
+Type set_callable_name(Type sig, FuncDef fdef):
+    if isinstance(sig, FunctionLike):
+        if fdef.info:
+            return ((FunctionLike)sig).with_name(
+                '"{}" of "{}"'.format(fdef.name(), fdef.info.name()))
+        else:
+            return ((FunctionLike)sig).with_name(
+                '"{}"'.format(fdef.name()))
+    else:
+        return sig
