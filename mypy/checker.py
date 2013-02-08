@@ -304,7 +304,7 @@ class TypeChecker(NodeVisitor<Type>):
     
     Type visit_type_def(self, TypeDef defn):
         """Type check a type definition (class or interface)."""
-        typ = (TypeInfo)self.lookup(defn.name, GDEF).node
+        typ = defn.info
         self.errors.set_type(defn.name, defn.is_interface)
         self.check_unique_interface_implementations(typ)
         self.check_interface_errors(typ)

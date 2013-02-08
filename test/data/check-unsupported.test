@@ -17,21 +17,6 @@ void f():
 main: In function "f":
 main, line 2: Feature not implemented yet (with statement)
 
-[case testNestedClass]
-def f():
-    class A: pass    
-class B:
-    class C: pass
-    def f(self):
-        class D: pass
-[out]
-main: In function "f":
-main, line 2: Nested classes not supported yet
-main: At top level:
-main, line 4: Nested classes not supported yet
-main: In function "f":
-main, line 6: Nested classes not supported yet
-
 [case testChainedAssignment]
 x = y = object
 def f():

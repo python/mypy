@@ -41,9 +41,12 @@ class SemanticAnalyzer(NodeVisitor):
     set<str>[] global_decls
     # Class type variables (the scope is a single class definition)
     SymbolTable class_tvars
-    # Local names
+    # Local names of function scopes; None for non-function scopes.
     SymbolTable[] locals
     TypeInfo type       # TypeInfo of enclosing class (or None)
+
+    # Stack of outer classes (the second tuple item is tvar table).
+    tuple<TypeInfo, SymbolTable>[] type_stack
 
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
@@ -60,12 +63,13 @@ class SemanticAnalyzer(NodeVisitor):
         self.locals = [None]
         self.imports = set()
         self.type = None
+        self.class_tvars = None
+        self.type_stack = []
         self.block_depth = 0
         self.loop_depth = 0
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
-        self.class_tvars = None
         self.is_init_method = False
         self.is_function = False
     
@@ -257,9 +261,16 @@ class SemanticAnalyzer(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
+        if not defn.info:
+            defn.info = TypeInfo(SymbolTable(), defn)
+            defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
-            self.fail('Nested classes not supported yet', defn)
-            return
+            kind = MDEF
+            if self.is_func_scope():
+                kind = LDEF
+            self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
+        self.type_stack.append((self.type, self.class_tvars))
+        self.locals.append(None) # Add class scope
         self.type = defn.info
         self.add_class_type_variables_to_symbol_table(self.type)
         has_base_class = False
@@ -282,8 +293,8 @@ class SemanticAnalyzer(NodeVisitor):
                 if isinstance(t, Instance):
                     defn.info.add_interface(((Instance)t).type)
         defn.defs.accept(self)
-        self.class_tvars = None
-        self.type = None
+        self.locals.pop()
+        self.type, self.class_tvars = self.type_stack.pop()
     
     Type object_type(self):
         sym = self.lookup_qualified('__builtins__.object', None)
@@ -293,9 +304,9 @@ class SemanticAnalyzer(NodeVisitor):
         return isinstance(t, Instance) and not ((Instance)t).type.is_interface
     
     void add_class_type_variables_to_symbol_table(self, TypeInfo info):
+        self.class_tvars = SymbolTable()
         vars = info.type_vars
-        if vars != []:
-            self.class_tvars = SymbolTable()
+        if vars:
             for i in range(len(vars)):
                 self.add_type_var(self.class_tvars, vars[i], i + 1)
     

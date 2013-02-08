@@ -27,7 +27,7 @@ class TypeAnalyser(TypeVisitor<Type>):
                         t.name), t)
                 return TypeVar(t.name, sym.tvar_id, False, t.line,
                                TypeVarRepr(t.repr.components[0]))
-            elif sym.kind != GDEF or not isinstance(sym.node, TypeInfo):
+            elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname()
                 if name is None:
                     name = sym.node.name()

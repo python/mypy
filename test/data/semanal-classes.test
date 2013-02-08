@@ -311,3 +311,49 @@ MypyFile:1(
           Lvalues(
             NameExpr(y*))
           NameExpr(x [m]))))))
+
+[case testReferenceToClassWithinFunction]
+def f():
+    class A: pass
+    A
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      TypeDef:2(
+        A
+        PassStmt:2())
+      ExpressionStmt:3(
+        NameExpr(A [l])))))
+
+[case testReferenceToClassWithinClass]
+class A:
+    class B: pass
+    B
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    TypeDef:2(
+      B
+      PassStmt:2())
+    ExpressionStmt:3(
+      NameExpr(B [m]))))
+
+[case testDeclarationReferenceToNestedClass]
+void f():
+    class A: pass
+    A x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:1(
+      TypeDef:2(
+        A
+        PassStmt:2())
+      VarDef:3(
+        Var(x)
+        Type(A)))))

@@ -455,6 +455,21 @@ A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"
 A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"
 
 
+-- Nested classes
+-- --------------
+
+
+[case testClassWithinFunction]
+void f():
+    class A:
+        void g(self): pass
+    A a
+    a.g()
+    a.g(a) # E: Too many arguments for "g" of "A"
+[out]
+main: In function "f":
+
+
 -- Special cases
 -- -------------
 
