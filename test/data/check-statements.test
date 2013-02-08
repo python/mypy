@@ -453,3 +453,41 @@ class A: pass
 main: In function "f":
 
 -- TODO both return and yield
+
+
+-- With statement
+-- --------------
+
+
+[case testSimpleWith]
+class A:
+    void __enter__(self): pass
+    void __exit__(self, x, y, z): pass
+with A():
+    object(A) # E: Too many arguments for "object"
+
+[case testWithStmtAndInvalidExit]
+class A:
+    void __enter__(self): pass
+    void __exit__(self, x, y): pass
+with A(): # E: Too many arguments for "__exit__" of "A"
+    pass
+
+[case testWithStmtAndMissingExit]
+class A:
+    void __enter__(self): pass
+with A(): # E: "A" has no member "__exit__"
+    pass
+
+[case testWithStmtAndInvalidEnter]
+class A:
+    void __enter__(self, x): pass
+    void __exit__(self, x, y, z): pass
+with A(): # E: Too few arguments for "__enter__" of "A"
+    pass
+
+[case testWithStmtAndMissingEnter]
+class A:
+    void __exit__(self, x, y, z): pass
+with A(): # E: "A" has no member "__enter__"
+    pass

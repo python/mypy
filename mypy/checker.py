@@ -762,6 +762,17 @@ class TypeChecker(NodeVisitor<Type>):
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
+
+    Type visit_with_stmt(self, WithStmt s):
+        echk = self.expr_checker
+        for expr, name in zip(s.expr, s.name):
+            ctx = self.accept(expr)
+            enter = echk.analyse_external_member_access('__enter__', ctx, expr)
+            obj = echk.check_call(enter, [], [], expr)[0]
+            exit = echk.analyse_external_member_access('__exit__', ctx, expr)
+            arg = self.temp_node(Any(), expr)
+            echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        self.accept(s.body)
     
     #
     # Expressions
@@ -842,9 +853,6 @@ class TypeChecker(NodeVisitor<Type>):
 
     Type visit_conditional_expr(self, ConditionalExpr e):
         return self.msg.not_implemented('conditional expression', e)
-
-    Type visit_with_stmt(self, WithStmt s):
-        self.msg.not_implemented('with statement', s)
     
     #
     # Helpers

@@ -9,14 +9,6 @@ a = None if None else None
 [out]
 main, line 1: Feature not implemented yet (conditional expression) 
 
-[case testWith]
-void f():
-  with None:
-    pass
-[out]
-main: In function "f":
-main, line 2: Feature not implemented yet (with statement)
-
 [case testChainedAssignment]
 x = y = object
 def f():
