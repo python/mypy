@@ -1629,7 +1629,7 @@ MypyFile:1(
         Args(
           StrExpr(foo))))
     Name(
-      Var(f))
+      NameExpr(f))
     Block:1(
       PassStmt:2())))
 
@@ -2125,11 +2125,11 @@ MypyFile:1(
     Expr(
       NameExpr(x))
     Name(
-      Var(y))
+      NameExpr(y))
     Expr(
       NameExpr(a))
     Name(
-      Var(b))
+      NameExpr(b))
     Block:1(
       PassStmt:2()))
   WithStmt:3(
