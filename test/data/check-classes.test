@@ -469,6 +469,24 @@ void f():
 [out]
 main: In function "f":
 
+[case testConstructNestedClass]
+class A:
+    class B: pass
+    b = B()
+    b = A() # E: Incompatible types in assignment
+    b = B(b) # E: Too many arguments for "B"
+
+[case testConstructNestedClassWithCustomInit]
+class A:
+    void f(self):
+        class B:
+            void __init__(self, A a): pass
+        b = B(A())
+        b = A() # E: Incompatible types in assignment
+        b = B() # E: Too few arguments for "B"
+[out]
+main: In function "f":
+
 
 -- Special cases
 -- -------------
