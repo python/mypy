@@ -49,7 +49,6 @@ class SemanticAnalyzer(NodeVisitor):
     # All classes, from name to info (TODO needed?)
     TypeInfoMap types
     
-    str[] stack         # Function local/type variable stack TODO remove
     TypeInfo type       # TypeInfo of enclosing class (or None)
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
@@ -63,7 +62,6 @@ class SemanticAnalyzer(NodeVisitor):
         """Create semantic analyzer. Use lib_path to search for
         modules, and report compile errors using the Errors instance.
         """
-        self.stack = [None]
         self.locals = []
         self.imports = set()
         self.type = None
