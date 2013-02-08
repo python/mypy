@@ -201,3 +201,29 @@ print(B.x)
 [out]
 f
 1
+
+[case testFunctionDecorator]
+ftype logged<ftype>(ftype f):
+    def g(*args, **kwargs):
+        print('enter', f.__name__)
+        r = f(*args, **kwargs)
+        print('exit', f.__name__)
+        return r
+    return (ftype)g
+
+@logged
+str foo(str s):
+    print('foo', s)
+    return s + '!'
+
+print(foo('y'))
+print(foo('x'))
+[out]
+enter foo
+foo y
+exit foo
+y!
+enter foo
+foo x
+exit foo
+x!
