@@ -52,3 +52,16 @@ class A:
 A.x y
 [out]
 main, line 4: Feature not implemented yet (class attributes)
+
+[case testDecorateOverloadedFunction]
+# The error messages are not the most informative ever.
+def d(x): pass
+@d
+def f(): pass
+def f(x): pass
+def g(): pass
+@d
+def g(x): pass
+[out]
+main, line 5: Name 'f' already defined
+main, line 7: Name 'g' already defined
