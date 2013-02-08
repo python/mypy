@@ -581,10 +581,10 @@ class TryStmt(Node):
 
 class WithStmt(Node):
     Node[] expr
-    Var[] name
+    NameExpr[] name
     Block body
     
-    void __init__(self, Node[] expr, Var[] name, Block body):
+    void __init__(self, Node[] expr, NameExpr[] name, Block body):
         self.expr = expr
         self.name = name
         self.body = body

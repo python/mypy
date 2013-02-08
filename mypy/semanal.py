@@ -106,6 +106,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.anal_var_def((VarDef)d)
             elif isinstance(d, ForStmt):
                 self.anal_for_stmt((ForStmt)d)
+            elif isinstance(d, WithStmt):
+                self.anal_with_stmt((WithStmt)d)
             elif isinstance(d, Decorator):
                 self.anal_decorator((Decorator)d)
         # Add implicit definition of 'None' to builtins, as we cannot define a
@@ -146,6 +148,11 @@ class SemanticAnalyzer(NodeVisitor):
     void anal_for_stmt(self, ForStmt s):
         for n in s.index:
             self.analyse_lvalue(n, False, True)
+
+    void anal_with_stmt(self, WithStmt s):
+        for n in s.name:
+            if n:
+                self.analyse_lvalue(n, False, True)
 
     void anal_decorator(self, Decorator d):
         d.var._fullname = self.qualified_name(d.var.name())
@@ -559,7 +566,7 @@ class SemanticAnalyzer(NodeVisitor):
             e.accept(self)
         for n in s.name:
             if n:
-                self.add_var(n, s)
+                self.analyse_lvalue(n)
         self.visit_block(s.body)
     
     void visit_del_stmt(self, DelStmt s):

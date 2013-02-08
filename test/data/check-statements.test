@@ -491,3 +491,35 @@ class A:
     void __exit__(self, x, y, z): pass
 with A(): # E: "A" has no member "__enter__"
     pass
+
+[case testWithStmtAndMultipleExprs]
+class A:
+    void __enter__(self): pass
+    void __exit__(self, x, y, z): pass
+class B:
+    void __enter__(self): pass
+with A(), B(): # E: "B" has no member "__exit__"
+    pass
+with B(), A(): # E: "B" has no member "__exit__"
+    pass
+
+[case testWithStmtAndResult]
+class B: pass
+class A:
+    B __enter__(self): pass
+    def __exit__(self, x, y, z): pass
+with A() as b:
+    b = B()
+    b = A() # E: Incompatible types in assignment
+
+[case testWithStmtAndMultipleResults]
+class B: pass
+class C: pass
+class A<t>:
+    t __enter__(self): pass
+    def __exit__(self, x, y, z): pass
+with A<B>() as b, A<C>() as c:
+    b = B()
+    c = C()
+    b = c # E: Incompatible types in assignment
+    c = b # E: Incompatible types in assignment

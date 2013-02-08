@@ -575,12 +575,12 @@ MypyFile:1(
     Expr(
       NameExpr(object [builtins.object]))
     Name(
-      Var(x))
+      NameExpr(x* [__main__.x]))
     Block:1(
       ExpressionStmt:2(
         NameExpr(x [__main__.x])))))
 
-[case testInFunction]
+[case testWithInFunction]
 def f():
   with f as x:
     x
@@ -593,7 +593,7 @@ MypyFile:1(
         Expr(
           NameExpr(f [__main__.f]))
         Name(
-          Var(x))
+          NameExpr(x* [l]))
         Block:2(
           ExpressionStmt:3(
             NameExpr(x [l])))))))
@@ -616,11 +616,11 @@ MypyFile:1(
     Expr(
       NameExpr(object [builtins.object]))
     Name(
-      Var(a))
+      NameExpr(a* [__main__.a]))
     Expr(
       NameExpr(object [builtins.object]))
     Name(
-      Var(b))
+      NameExpr(b* [__main__.b]))
     Block:3(
       PassStmt:4())))
 

@@ -769,6 +769,8 @@ class TypeChecker(NodeVisitor<Type>):
             ctx = self.accept(expr)
             enter = echk.analyse_external_member_access('__enter__', ctx, expr)
             obj = echk.check_call(enter, [], [], expr)[0]
+            if name:
+                self.check_assignments([name], self.temp_node(obj, expr))
             exit = echk.analyse_external_member_access('__exit__', ctx, expr)
             arg = self.temp_node(Any(), expr)
             echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)

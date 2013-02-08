@@ -974,17 +974,17 @@ class Parser:
         Token[] as_toks = []
         Token[] commas = []
         Node[] expr = []
-        Var[] name = []
+        NameExpr[] name = []
         while True:
             e = self.parse_expression(precedence[','])
-            Var v = None
             if self.current_str() == 'as':
                 as_toks.append(self.expect('as'))
-                v = self.parse_var()
+                n = self.parse_name_expr()
             else:
                 as_toks.append(none)
+                n = None
             expr.append(e)
-            name.append(v)
+            name.append(n)
             if self.current_str() != ',':
                 break
             commas.append(self.expect(','))
