@@ -8,7 +8,7 @@ import re
 from mypy.errors import Errors
 from mypy.types import (
     Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
-    Overloaded
+    Overloaded, FunctionLike
 )
 from mypy.nodes import TypeInfo, Context, op_methods
 
@@ -92,10 +92,18 @@ class MessageBuilder:
         if s != '':
             # If format_simple returns a non-trivial result, use that.
             return s
-        elif isinstance(typ, Callable):
-            # Use a simple representation for function types; proper function
-            # types may result in long and difficult-to-read error messages.
-            return 'function'
+        elif isinstance(typ, FunctionLike):
+            func = (FunctionLike)typ
+            if func.is_type_obj():
+                # The type of a type object type can be derived from the
+                # return type (this always works).
+                itype = (Instance)func.items()[0].ret_type
+                return self.format(itype)                
+            else:
+                # Use a simple representation for function types; proper
+                # function types may result in long and difficult-to-read
+                # error messages.
+                return 'function'
         else:
             # Default case; we simply have to return something meaningful here.
             return 'object'
