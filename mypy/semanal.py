@@ -322,7 +322,10 @@ class SemanticAnalyzer(NodeVisitor):
                       (' and '.join(bases)), defn)
 
     Type object_type(self):
-        sym = self.lookup_qualified('__builtins__.object', None)
+        return self.named_type('__builtins__.object')
+
+    Type named_type(self, str qualified_name):
+        sym = self.lookup_qualified(qualified_name, None)
         return Instance((TypeInfo)sym.node, [])
     
     bool is_instance_type(self, Type t):
