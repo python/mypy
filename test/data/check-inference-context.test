@@ -613,3 +613,10 @@ s[] map<t, s>(func<s(t)>[] f, t[] a): pass
 class A: pass
 [builtins fixtures/list.py]
 [out]
+
+[case testChainedAssignmentInferenceContexts]
+int[] i
+str[] s
+i = i = []
+i = s = [] # E: Incompatible types in assignment
+[builtins fixtures/list.py]

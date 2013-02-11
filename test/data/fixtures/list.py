@@ -8,3 +8,6 @@ class type: pass
 class list<t>: pass
 
 class tuple: pass
+
+class int: pass
+class str: pass
