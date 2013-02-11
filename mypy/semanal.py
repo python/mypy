@@ -311,6 +311,11 @@ class SemanticAnalyzer(NodeVisitor):
                 baseinfo = ((Instance)base).type
                 if not baseinfo.is_interface:
                     base_classes.append(baseinfo.name())
+                    if baseinfo.fullname() in ['builtins.int',
+                                               'builtins.bool',
+                                               'builtins.float']:
+                        self.fail("'%s' is not a valid base class" %
+                                  baseinfo.name(), defn)
         if len(base_classes) > 1:
             bases = ["'%s'" % n for n in sorted(base_classes)]
             self.fail('Class has multiple base classes (%s)' %

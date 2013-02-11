@@ -509,3 +509,11 @@ class A: pass
 class B: pass
 class C(A, B): pass # E: Class has multiple base classes ('A' and 'B')
 [out]
+
+[case testTestExtendPrimitives]
+class A(int): pass # E: 'int' is not a valid base class
+class B(float): pass # E: 'float' is not a valid base class
+class C(bool): pass # E: 'bool' is not a valid base class
+class D(str): pass # ok
+[builtins fixtures/primitives.py]
+[out]
