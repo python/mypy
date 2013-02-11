@@ -185,9 +185,20 @@ main, line 2: Incompatible return value type
 main: At top level:
 main, line 3: Incompatible types in assignment
 
-[case test__name__]
+[case testModule__name__]
 str x = __name__
 a = __name__
+object o = __name__ # TODO should be an error
+class A: pass
+[file builtins.py]
+class object:
+  def __init__(self): pass
+class str: pass
+
+[case testModule__doc__]
+str x = __doc__
+a = __doc__
+object o = __doc__ # TODO should be an error
 class A: pass
 [file builtins.py]
 class object:

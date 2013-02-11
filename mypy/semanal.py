@@ -20,7 +20,7 @@ from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
     replace_self_type
 )
-from mypy.nodes import function_type
+from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser
 
 
@@ -89,9 +89,10 @@ class SemanticAnalyzer(NodeVisitor):
         self.globals = SymbolTable()
         self.global_decls = [set()]
         
-        # Add implicit definition of '__name__'.
-        name_def = VarDef([Var('__name__', Any())], True)
-        defs.insert(0, name_def)
+        # Add implicit definitions of module '__name__' etc.
+        for n in implicit_module_attrs:
+            name_def = VarDef([Var(n, Any())], True)
+            defs.insert(0, name_def)
         
         for d in defs:
             if isinstance(d, AssignmentStmt):

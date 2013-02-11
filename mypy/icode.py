@@ -332,7 +332,8 @@ class IcodeBuilder(NodeVisitor<int>):
         # Initialize non-int global variables.
         for name in sorted(mfile.names):
             node = mfile.names[name].node
-            if isinstance(node, Var) and name != '__name__':
+            if (isinstance(node, Var) and
+                    name not in nodes.implicit_module_attrs):
                 v = (Var)node
                 if not is_named_instance(v.type, 'builtins.int'):
                     tmp = self.alloc_register()

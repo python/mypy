@@ -33,6 +33,9 @@ node_kinds = {
 }
 
 
+implicit_module_attrs = ['__name__', '__doc__']
+
+
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
     
@@ -1242,7 +1245,8 @@ class SymbolTable(dict<str, SymbolTableNode>):
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
                 if (value.fullname() != 'builtins' and
-                        not value.fullname().endswith('.__name__')):
+                        not value.fullname().endswith('.__name__') and
+                        not value.fullname().endswith('.__doc__')):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:
                 a.append('  <invalid item>')

@@ -7,6 +7,7 @@ from mypy.types import Void, TypeVisitor, Callable, Instance, Type, UnboundType
 from mypy.maptypevar import num_slots
 from mypy.transutil import tvar_arg_name
 from mypy import coerce
+from mypy import nodes
 
 
 class PrettyPrintVisitor(NodeVisitor):
@@ -72,7 +73,7 @@ class PrettyPrintVisitor(NodeVisitor):
         fdef.body.accept(self)
     
     void visit_var_def(self, VarDef vdef):
-        if vdef.items[0].name() != '__name__':
+        if vdef.items[0].name() not in nodes.implicit_module_attrs:
             self.type(vdef.items[0].type)
             self.string(' ')
             self.string(vdef.items[0].name())
