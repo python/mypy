@@ -65,10 +65,10 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         # TODO super? lvalue?
         sig = (FunctionLike)typ
         itype = (Instance)sig.items()[0].ret_type
-        return analyse_class_attribute_access(itype, name, node, msg)
-    else:
-        # The base object has an unsupported type.
-        return msg.has_no_member(typ, name, node)
+        result = analyse_class_attribute_access(itype, name, node, msg)
+        if result:
+            return result
+    return msg.has_no_member(typ, name, node)
 
 
 Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
@@ -148,8 +148,7 @@ Type analyse_class_attribute_access(Instance itype, str name, Context context,
         else:
             return function_type((FuncBase)node.node)
     else:
-        msg.has_no_member(itype, name, context)
-        return Any()
+        return None
 
 
 Type add_class_tvars(Type t, TypeInfo info):
