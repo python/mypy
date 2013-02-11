@@ -144,3 +144,14 @@ y = object()
 [file n.py]
 x = object()
 [builtins fixtures/module.py]
+
+[case testChainedAssignmentAndImports]
+import m
+int i, str s
+i = m.x
+i = m.y
+s = m.x # E: Incompatible types in assignment
+s = m.y # E: Incompatible types in assignment
+[file m.py]
+x = y = 1
+[builtins fixtures/primitives.py]

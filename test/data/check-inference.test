@@ -676,6 +676,29 @@ class B: pass
 [out]
 main: In member "__init__" of class "A":
 
+[case testInferAttributeInInit]
+class B: pass
+class A:
+    void __init__(self):
+        self.a = A()
+        self.b = B()
+a = A()
+a.a = A()
+a.b = B()
+a.a = B() # E: Incompatible types in assignment
+a.b = A() # E: Incompatible types in assignment
+
+[case testInferAttributeInInitUsingChainedAssignment]
+class B: pass
+class A:
+    void __init__(self):
+        self.a = self.b = A()
+a = A()
+a.a = A()
+a.b = A()
+a.a = B() # E: Incompatible types in assignment
+a.b = B() # E: Incompatible types in assignment
+
 
 -- Lambdas
 -- -------
