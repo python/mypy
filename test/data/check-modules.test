@@ -126,3 +126,15 @@ class C:
 void f(): pass
 [out]
 main: In class "C":
+
+[case testInvalidOperationsOnModules]
+import m
+class A: pass
+m()      # E: "_module" not callable
+A a = m  # E: Incompatible types in assignment
+m + None # E: Unsupported left operand type for + ("_module")
+[file m.py]
+[file builtins.py]
+class object:
+    void __init__(self): pass
+class _module: pass

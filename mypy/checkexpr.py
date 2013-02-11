@@ -9,7 +9,7 @@ from mypy.nodes import (
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
     UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
     DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
-    ListComprehension, GeneratorExpr
+    ListComprehension, GeneratorExpr, MypyFile
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -75,8 +75,11 @@ class ExpressionChecker:
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type((TypeInfo)node, self.chk.type_type)
+        elif isinstance(node, MypyFile):
+            # Reference to a module object.
+            result = self.chk.named_type('builtins._module')
         else:
-            # Unknown reference; use dynamic type implicitly to avoid
+            # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = Any()
         return result

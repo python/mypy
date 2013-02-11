@@ -703,6 +703,11 @@ class range(Sized, Iterable<int>, Sequence<int>, reversed_t<int>):
     Iterator<int> __reversed__(self): pass
 
 
+class _module:
+    # TODO name of the class; corresponds to 'module' in Python
+    pass
+
+
 bool True
 bool False
 
