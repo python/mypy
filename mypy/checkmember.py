@@ -2,7 +2,7 @@
 
 from mypy.types import (
     Type, Instance, Any, TupleType, Callable, FunctionLike, TypeVars,
-    TypeVarDef, Overloaded, TypeVar, TypeTranslator
+    TypeVarDef, Overloaded, TypeVar, TypeTranslator, BasicTypes
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type
@@ -16,8 +16,8 @@ from mypy import subtypes
 
 
 Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
-                          bool is_super, Type tuple_type, MessageBuilder msg,
-                          TypeInfo override_info=None):
+                           bool is_super, BasicTypes basic_types,
+                           MessageBuilder msg, TypeInfo override_info=None):
     """Analyse member access.
 
     This is a general operation that supports various different variations:
@@ -59,8 +59,8 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         return Any()
     elif isinstance(typ, TupleType):
         # Actually look up from the tuple type.
-        return analyse_member_access(name, tuple_type, node, is_lvalue,
-                                     is_super, tuple_type, msg)
+        return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
+                                     is_super, basic_types, msg)
     elif isinstance(typ, FunctionLike) and ((FunctionLike)typ).is_type_obj():
         # TODO super? lvalue?
         sig = (FunctionLike)typ

@@ -614,7 +614,7 @@ class ExpressionChecker:
             # This is a reference to a non-module attribute.
             return analyse_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False,
-                                         self.chk.tuple_type(), self.msg)
+                                         self.chk.basic_types(), self.msg)
     
     Type analyse_external_member_access(self, str member, Type base_type,
                                        Context context):
@@ -623,7 +623,7 @@ class ExpressionChecker:
         """
         # TODO remove; no private definitions in mypy
         return analyse_member_access(member, base_type, context, False, False,
-                                     self.chk.tuple_type(), self.msg)
+                                     self.chk.basic_types(), self.msg)
     
     Type visit_int_expr(self, IntExpr e):
         """Type check an integer literal (trivial)."""
@@ -935,7 +935,7 @@ class ExpressionChecker:
         if e.info and e.info.base:
             return analyse_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
-                                         self.chk.tuple_type(), self.msg,
+                                         self.chk.basic_types(), self.msg,
                                          e.info.base)
         else:
             # Invalid super. This has been reported by the semantic analyser.

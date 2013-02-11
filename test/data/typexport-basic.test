@@ -108,6 +108,7 @@ class int:
 class float:
   float __mul__(self, int x): pass
   float __sub__(self, int x): pass
+class type: pass
 [out]
 OpExpr(2) : builtins.int
 OpExpr(3) : builtins.float
@@ -126,6 +127,7 @@ class int:
   bool __eq__(self, object x): pass
   bool __lt__(selef, int x): pass
 class bool: pass
+class type: pass
 [out]
 OpExpr(2) : builtins.bool
 OpExpr(3) : builtins.bool

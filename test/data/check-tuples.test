@@ -344,3 +344,4 @@ class tuple:
 class int: pass
 class str: pass
 class bool: pass
+class type: pass

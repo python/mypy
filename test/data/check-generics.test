@@ -677,7 +677,7 @@ A e, object f = <A> []
 class A: pass
 [builtins fixtures/list.py]
 
-[case testMultipleAssignmentWithArrayAndIndexing]
+[case testMultipleAssignmentWithListAndIndexing]
 list<A> a
 list<int> b
 
@@ -690,6 +690,7 @@ class object: pass
 class list<T>:
   void __setitem__(self, int x, T v): pass
 class int: pass
+class type: pass
 
 
 -- Error messages
