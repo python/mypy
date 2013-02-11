@@ -503,3 +503,9 @@ class A<t>:
         A<t> x # E: Name 't' is not defined
     A<s> y # E: Name 's' is not defined
 [out]
+
+[case testExtendMultipleClasses]
+class A: pass
+class B: pass
+class C(A, B): pass # E: Class has multiple base classes ('A' and 'B')
+[out]

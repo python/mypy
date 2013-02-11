@@ -67,10 +67,10 @@ class A<t>:
 class A:
     pass
 
-[case testGenericBaseClass]
+[case testGenericBaseType]
 class A(B<object>, C<any, object>):
     pass
-class B<t>: pass
+interface B<t>: pass
 class C<t, s>: pass
 [out]
 class A(B, C):

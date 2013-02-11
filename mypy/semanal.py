@@ -299,10 +299,23 @@ class SemanticAnalyzer(NodeVisitor):
             for t in bt[1:]:
                 if isinstance(t, Instance):
                     defn.info.add_interface(((Instance)t).type)
+        self.verify_base_classes(defn)
         defn.defs.accept(self)
         self.locals.pop()
         self.type, self.class_tvars = self.type_stack.pop()
-    
+
+    void verify_base_classes(self, TypeDef defn):
+        base_classes = <str> []
+        for base in defn.base_types:
+            if isinstance(base, Instance):
+                baseinfo = ((Instance)base).type
+                if not baseinfo.is_interface:
+                    base_classes.append(baseinfo.name())
+        if len(base_classes) > 1:
+            bases = ["'%s'" % n for n in sorted(base_classes)]
+            self.fail('Class has multiple base classes (%s)' %
+                      (' and '.join(bases)), defn)
+
     Type object_type(self):
         sym = self.lookup_qualified('__builtins__.object', None)
         return Instance((TypeInfo)sym.node, [])
