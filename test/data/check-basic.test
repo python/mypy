@@ -187,23 +187,15 @@ main, line 3: Incompatible types in assignment
 
 [case testModule__name__]
 str x = __name__
-a = __name__
-object o = __name__ # TODO should be an error
+A a = __name__ # TODO should be an error
 class A: pass
-[file builtins.py]
-class object:
-  def __init__(self): pass
-class str: pass
+[builtins fixtures/primitives.py]
 
 [case testModule__doc__]
 str x = __doc__
-a = __doc__
-object o = __doc__ # TODO should be an error
+A a = __doc__ # TODO should be an error
 class A: pass
-[file builtins.py]
-class object:
-  def __init__(self): pass
-class str: pass
+[builtins fixtures/primitives.py]
 
 
 -- Scoping and shadowing
