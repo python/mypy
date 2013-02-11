@@ -33,7 +33,7 @@ node_kinds = {
 }
 
 
-implicit_module_attrs = ['__name__', '__doc__']
+implicit_module_attrs = ['__name__', '__doc__', '__file__']
 
 
 class Node(Context):
@@ -1245,8 +1245,8 @@ class SymbolTable(dict<str, SymbolTableNode>):
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
                 if (value.fullname() != 'builtins' and
-                        not value.fullname().endswith('.__name__') and
-                        not value.fullname().endswith('.__doc__')):
+                        value.fullname().split('.')[-1] not in
+                            implicit_module_attrs):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:
                 a.append('  <invalid item>')

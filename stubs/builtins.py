@@ -714,6 +714,7 @@ class range(Sized, Iterable<int>, Sequence<int>, reversed_t<int>):
 
 class module:
     str __name__
+    str __file__
     dict<str, any> __dict__
 
 

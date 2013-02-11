@@ -197,6 +197,12 @@ A a = __doc__ # TODO should be an error
 class A: pass
 [builtins fixtures/primitives.py]
 
+[case testModule__file__]
+str x = __file__
+A a = __file__ # TODO should be an error
+class A: pass
+[builtins fixtures/primitives.py]
+
 
 -- Scoping and shadowing
 -- ---------------------
