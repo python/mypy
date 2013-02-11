@@ -671,10 +671,10 @@ class TypeQuery(TypeVisitor<bool>):
 
 class BasicTypes:
     """Collection of Instance types of basic types (object, type, etc.)."""
-    void __init__(self, Instance object, Instance std_type, Type tuple,
+    void __init__(self, Instance object, Instance type_type, Type tuple,
                   Type function):
         self.object = object
-        self.std_type = std_type
+        self.type_type = type_type
         self.tuple = tuple
         self.function = function
 

@@ -108,7 +108,7 @@ class SubtypingSuite(Suite):
     
     def test_type_callable_subtyping(self):
         self.assert_proper_subtype(
-            self.fx.callable_type(self.fx.d, self.fx.a), self.fx.std_type)
+            self.fx.callable_type(self.fx.d, self.fx.a), self.fx.type_type)
         
         self.assert_proper_subtype(
             self.fx.callable_type(self.fx.d, self.fx.b),

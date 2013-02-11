@@ -371,9 +371,9 @@ class JoinSuite(Suite):
         self.assert_join(t1, t1, t1)
         assert_true(join_types(t1, t1, self.fx.basic).is_type_obj())
         
-        self.assert_join(t1, t2, self.fx.std_type)
-        self.assert_join(t1, self.fx.std_type, self.fx.std_type)
-        self.assert_join(self.fx.std_type, self.fx.std_type, self.fx.std_type)
+        self.assert_join(t1, t2, self.fx.type_type)
+        self.assert_join(t1, self.fx.type_type, self.fx.type_type)
+        self.assert_join(self.fx.type_type, self.fx.type_type, self.fx.type_type)
     
     # There are additional test cases in check-inference.test.
     

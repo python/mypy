@@ -70,7 +70,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
     Type visit_instance(self, Instance t):
         if isinstance(self.s, Instance):
             return join_instances(t, (Instance)self.s, True, self.basic)
-        elif t.type == self.basic.std_type.type and is_subtype(self.s, t):
+        elif t.type == self.basic.type_type.type and is_subtype(self.s, t):
             return t
         else:
             return self.default(self.s)
@@ -79,12 +79,12 @@ class TypeJoinVisitor(TypeVisitor<Type>):
         if isinstance(self.s, Callable) and is_similar_callables(
                                                     t, (Callable)self.s):
             return combine_similar_callables(t, (Callable)self.s, self.basic)
-        elif t.is_type_obj() and is_subtype(self.s, self.basic.std_type):
-            return self.basic.std_type
+        elif t.is_type_obj() and is_subtype(self.s, self.basic.type_type):
+            return self.basic.type_type
         elif (isinstance(self.s, Instance) and
-                  ((Instance)self.s).type == self.basic.std_type.type and
+                  ((Instance)self.s).type == self.basic.type_type.type and
                   t.is_type_obj()):
-            return self.basic.std_type
+            return self.basic.type_type
         else:
             return self.default(self.s)
     

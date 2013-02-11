@@ -57,7 +57,7 @@ class TypeFixture:
 
         self.oi = make_type_info('builtins.object')       # class object
         self.std_tuplei = make_type_info('builtins.tuple') # class tuple
-        self.std_typei = make_type_info('builtins.type')   # class type
+        self.type_typei = make_type_info('builtins.type')   # class type
         self.std_functioni = make_type_info('std::Function') # Function TODO
         self.ai = make_type_info('A', (BASE, self.oi))       # class A
         self.bi = make_type_info('B', (BASE, self.ai))       # class B is A
@@ -97,7 +97,7 @@ class TypeFixture:
 
         self.o = Instance(self.oi, [])                       # object
         self.std_tuple = Instance(self.std_tuplei, [])       # tuple
-        self.std_type = Instance(self.std_typei, [])         # type
+        self.type_type = Instance(self.type_typei, [])         # type
         self.std_function = Instance(self.std_functioni, []) # function TODO
         self.a = Instance(self.ai, [])          # A
         self.b = Instance(self.bi, [])          # B
@@ -139,7 +139,7 @@ class TypeFixture:
         self.lstb = Instance(self.std_listi, [self.b])  # B[]
 
         # Basic types
-        self.basic = BasicTypes(self.o, self.std_type, self.std_tuple,
+        self.basic = BasicTypes(self.o, self.type_type, self.std_tuple,
                                 self.std_function)
     
     # Helper methods
