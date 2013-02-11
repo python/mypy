@@ -288,8 +288,6 @@ class MessageBuilder:
                     self.fail(INCOMPATIBLE_TYPES_IN_ASSIGNMENT, context)
                 return 
             
-            if name.startswith('method "create" of '):
-                name = base
             target = 'to {} '.format(name)
         
         str msg
