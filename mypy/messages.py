@@ -177,7 +177,7 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
     
-    Type has_no_member(self, Type typ, str member, Context context):
+    Type has_no_attr(self, Type typ, str member, Context context):
         """Report a missing or non-accessible member.  The type
         argument is the base type. If member corresponds to an
         operator, use the corresponding operator name in the

@@ -80,7 +80,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         return analyse_member_access(name, basic_types.function, node,
                                      is_lvalue, is_super, basic_types, msg,
                                      report_type=report_type)
-    return msg.has_no_member(report_type, name, node)
+    return msg.has_no_attr(report_type, name, node)
 
 
 Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
@@ -120,7 +120,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         msg.undefined_in_superclass(name, node)
         return Any()
     else:
-        return msg.has_no_member(report_type or itype, name, node)
+        return msg.has_no_attr(report_type or itype, name, node)
 
 
 SymbolNode lookup_member_var_or_accessor(TypeInfo info, str name,
