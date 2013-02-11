@@ -195,7 +195,7 @@ I i, A a, B b
 
 a = i.f(a) # E: Incompatible types in assignment
 b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "B"
-i.g()      # E: "I" has no member "g"
+i.g()      # E: "I" has no attribute "g"
 
 b = i.f(a)
 

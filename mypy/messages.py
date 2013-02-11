@@ -212,9 +212,9 @@ class MessageBuilder:
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
         else:
-            # The non-special case: a missing ordinary member.
-            self.fail('{} has no member "{}"'.format(self.format(typ),
-                                                     member), context)
+            # The non-special case: a missing ordinary attribute.
+            self.fail('{} has no attribute "{}"'.format(self.format(typ),
+                                                        member), context)
         return Any()
     
     void unsupported_operand_types(self, str op, any left_type, any right_type,

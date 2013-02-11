@@ -399,8 +399,8 @@ except:
 A a, B b
 del b[a]
 del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"
-del a[a] # E: "A" has no member "__delitem__"
-del a[b] # E: "A" has no member "__delitem__"
+del a[a] # E: "A" has no attribute "__delitem__"
+del a[b] # E: "A" has no attribute "__delitem__"
 class B:
   def __delitem__(self, A index): pass
 class A: pass
@@ -476,7 +476,7 @@ with A(): # E: Too many arguments for "__exit__" of "A"
 [case testWithStmtAndMissingExit]
 class A:
     void __enter__(self): pass
-with A(): # E: "A" has no member "__exit__"
+with A(): # E: "A" has no attribute "__exit__"
     pass
 
 [case testWithStmtAndInvalidEnter]
@@ -489,7 +489,7 @@ with A(): # E: Too few arguments for "__enter__" of "A"
 [case testWithStmtAndMissingEnter]
 class A:
     void __exit__(self, x, y, z): pass
-with A(): # E: "A" has no member "__enter__"
+with A(): # E: "A" has no attribute "__enter__"
     pass
 
 [case testWithStmtAndMultipleExprs]
@@ -498,9 +498,9 @@ class A:
     void __exit__(self, x, y, z): pass
 class B:
     void __enter__(self): pass
-with A(), B(): # E: "B" has no member "__exit__"
+with A(), B(): # E: "B" has no attribute "__exit__"
     pass
-with B(), A(): # E: "B" has no member "__exit__"
+with B(), A(): # E: "B" has no attribute "__exit__"
     pass
 
 [case testWithStmtAndResult]

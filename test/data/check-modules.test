@@ -138,7 +138,7 @@ m + None # E: Unsupported left operand type for + ("_module")
 
 [case testNameDefinedInDifferentModule]
 import m, n
-m.x # E: "_module" has no member "x"
+m.x # E: "_module" has no attribute "x"
 [file m.py]
 y = object()
 [file n.py]

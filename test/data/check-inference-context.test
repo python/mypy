@@ -505,7 +505,7 @@ class C<s, t>: pass
 [case testInferLambdaArgumentTypeUsingContext]
 func<A(B)> f
 f = lambda x: x.o
-f = lambda x: x.x # E: "B" has no member "x"
+f = lambda x: x.x # E: "B" has no attribute "x"
 class A: pass
 class B:
   A o

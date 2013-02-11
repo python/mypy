@@ -655,7 +655,7 @@ func<object(object)> f = lambda m: m
 
 [case testLambdaBodyWithExplicitArgumentType]
 lambda A a: a.x
-lambda object a: a.x # E: "object" has no member "x"
+lambda object a: a.x # E: "object" has no attribute "x"
 class A:
   object x
 

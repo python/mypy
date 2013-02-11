@@ -18,7 +18,7 @@ class B:
   void bar(self, B x, A y): pass
 [out]
 main, line 4: Argument 1 to "foo" of "A" has incompatible type "B"
-main, line 5: "A" has no member "bar"
+main, line 5: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]
 A a
@@ -102,7 +102,7 @@ class B: pass
 [out]
 main: In member "f" of class "A":
 main, line 3: Incompatible types in assignment
-main, line 4: "A" has no member "g"
+main, line 4: "A" has no attribute "g"
 
 
 -- Attributes
@@ -119,8 +119,8 @@ a.y = object()
 a.x
 a.x = object()
 [out]
-main, line 5: "A" has no member "y"
-main, line 6: "A" has no member "y"
+main, line 5: "A" has no attribute "y"
+main, line 6: "A" has no attribute "y"
 
 [case testArgumentTypeInference]
 class A:
@@ -138,7 +138,7 @@ a.b = b
 [out]
 main, line 8: Incompatible types in assignment
 main, line 9: Incompatible types in assignment
-main, line 10: "B" has no member "a"
+main, line 10: "B" has no attribute "a"
 
 [case testExplicitAttributeInBody]
 A a
@@ -421,13 +421,13 @@ B b = A.x # E: Incompatible types in assignment
 
 [case testAccessingUndefinedAttributeViaClass]
 class A: pass
-A.x # E: "A" has no member "x"
+A.x # E: "A" has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
 class A: 
     def __init__(self): pass
     def __init__(self, x): pass
-A.x # E: "A" has no member "x"
+A.x # E: "A" has no attribute "x"
 
 [case testAccessMethodOfClassWithOverloadedInit]
 class A:

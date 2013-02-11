@@ -723,7 +723,7 @@ class A: pass
 [case testAccessGlobalVarBeforeItsTypeIsAvailable]
 x.y  # E: Cannot determine type of 'x' 
 x = object()
-x.y  # E: "object" has no member "y"
+x.y  # E: "object" has no attribute "y"
 
 [case testAccessDataAttributeBeforeItsTypeIsAvailable]
 A a
@@ -731,4 +731,4 @@ a.x.y  # E: Cannot determine type of 'x'
 class A:
    void __init__(self):
        self.x = object()
-a.x.y  # E: "object" has no member "y"
+a.x.y  # E: "object" has no attribute "y"

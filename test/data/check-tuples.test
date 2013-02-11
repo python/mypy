@@ -296,7 +296,7 @@ A a
 (a, a) + a  # E: Unsupported left operand type for + ("tuple")
 a + (a, a)  # E: Unsupported operand types for + ("A" and "tuple<A, A>")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "tuple<A, A>"
-(a, a).foo  # E: "tuple" has no member "foo"
+(a, a).foo  # E: "tuple" has no attribute "foo"
 
 void f(A x): pass
 
@@ -328,7 +328,7 @@ bool b
 s = t.__len__()  # E: Incompatible types in assignment
 i = t.__str__()  # E: Incompatible types in assignment
 i = s in t       # E: Incompatible types in assignment
-t.foo            # E: "tuple" has no member "foo"
+t.foo            # E: "tuple" has no attribute "foo"
 
 i = t.__len__()
 s = t.__str__()
