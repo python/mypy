@@ -110,16 +110,6 @@ x = y = 1
 [out]
 main, line 2: Name 'x' is not defined
 
-[case testNameDefinedInDifferentModule]
-import m, n
-m.x
-[file m.py]
-y = 1
-[file n.py]
-x = 1
-[out]
-main, line 2: Module has no attribute 'x'
-
 [case testMissingNameInImportFrom]
 from m import y
 [file m.py]

@@ -227,3 +227,11 @@ enter foo
 foo x
 exit foo
 x!
+
+[case testModuleAttributes]
+import math
+print(math.__name__)
+print(type(math.__dict__))
+[out]
+math
+<class 'dict'>

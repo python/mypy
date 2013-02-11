@@ -134,7 +134,13 @@ m()      # E: "_module" not callable
 A a = m  # E: Incompatible types in assignment
 m + None # E: Unsupported left operand type for + ("_module")
 [file m.py]
-[file builtins.py]
-class object:
-    void __init__(self): pass
-class _module: pass
+[builtins fixtures/module.py]
+
+[case testNameDefinedInDifferentModule]
+import m, n
+m.x # E: "_module" has no member "x"
+[file m.py]
+y = object()
+[file n.py]
+x = object()
+[builtins fixtures/module.py]

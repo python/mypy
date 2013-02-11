@@ -705,7 +705,8 @@ class range(Sized, Iterable<int>, Sequence<int>, reversed_t<int>):
 
 class _module:
     # TODO name of the class; corresponds to 'module' in Python
-    pass
+    str __name__
+    dict<str, any> __dict__
 
 
 bool True

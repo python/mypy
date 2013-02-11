@@ -659,9 +659,6 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.kind = n.kind
                 expr.fullname = n.fullname()
                 expr.node = n.node
-            else:
-                self.fail("Module has no attribute '{}'".format(expr.name),
-                          expr)
     
     void visit_op_expr(self, OpExpr expr):
         expr.left.accept(self)
