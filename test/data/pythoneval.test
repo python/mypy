@@ -232,6 +232,18 @@ x!
 import math
 print(math.__name__)
 print(type(math.__dict__))
+print(type(math.__doc__))
+print(math.__class__)
 [out]
 math
 <class 'dict'>
+<class 'str'>
+<class 'module'>
+
+[case testSpecialAttributes]
+class A: pass
+print(object().__doc__)
+print(A().__class__)
+[out]
+The most base type
+<class '__main__.A'>

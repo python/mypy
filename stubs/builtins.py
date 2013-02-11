@@ -2,6 +2,9 @@
 
 
 class object:
+    str __doc__
+    type __class__
+    
     void __init__(self): pass
     
     bool __eq__(self, object o): pass
