@@ -523,3 +523,27 @@ with A<B>() as b, A<C>() as c:
     c = C()
     b = c # E: Incompatible types in assignment
     c = b # E: Incompatible types in assignment
+
+
+-- Chained assignment
+-- ------------------
+
+
+[case testChainedAssignment]
+class A: pass
+class B: pass
+x = y = A()
+x = A()
+y = A()
+x = B() # E: Incompatible types in assignment
+y = B() # E: Incompatible types in assignment
+
+[case testChainedAssignment2]
+void f():
+    x = 1
+    y = 'x'
+    x = y = 'x' # E: Incompatible types in assignment
+    x = y = 1   # E: Incompatible types in assignment
+[builtins fixtures/primitives.py]
+[out]
+main: In function "f":

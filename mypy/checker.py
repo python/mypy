@@ -362,11 +362,12 @@ class TypeChecker(NodeVisitor<Type>):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        # TODO support chained assignment x = y = z
+        self.check_assignments(self.expand_lvalues(s.lvalues[-1]), s.rvalue)
         if len(s.lvalues) > 1:
-            self.msg.not_implemented('chained assignment', s)
-
-        self.check_assignments(self.expand_lvalues(s.lvalues[0]), s.rvalue)
+            # Make sure that rvalue type will not be reinferred.
+            rvalue = self.temp_node(self.type_map[s.rvalue], s)
+            for lv in s.lvalues[:-1]:
+                self.check_assignments(self.expand_lvalues(lv), rvalue)
 
     void check_assignments(self, Node[] lvalues, Node rvalue):        
         # Collect lvalue types. Index lvalues require special consideration,
