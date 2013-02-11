@@ -159,6 +159,10 @@ interface TextIO:
 
 
 class type:
+    str __name__
+    str __module__
+    dict<str, any> __dict__
+    
     void __init__(self, object o): pass
 
 
@@ -572,7 +576,9 @@ class tuple:
 
 
 class function:
-    pass
+    # TODO name of the class (corresponds to Python 'function' class)
+    str __name__
+    str __module__
 
 
 class list<t>(Sequence<t>, reversed_t<t>):

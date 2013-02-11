@@ -17,7 +17,8 @@ from mypy import subtypes
 
 Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
                            bool is_super, BasicTypes basic_types,
-                           MessageBuilder msg, TypeInfo override_info=None):
+                           MessageBuilder msg, TypeInfo override_info=None,
+                           Type report_type=None):
     """Analyse member access.
 
     This is a general operation that supports various different variations:
@@ -26,6 +27,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
       2. supertype access (when using super(); is_super == True and
          override_info should refer to the supertype)
     """
+    report_type = report_type or typ
     if isinstance(typ, Instance):
         if name == '__init__' and not is_super:
             # Accessing __init__ in statically typed code would compromise
@@ -53,12 +55,13 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         else:
             # Not a method.
             return analyse_member_var_access(name, itype, info, node,
-                                             is_lvalue, is_super, msg)
+                                             is_lvalue, is_super, msg,
+                                             report_type=report_type)
     elif isinstance(typ, Any):
         # The base object has dynamic type.
         return Any()
     elif isinstance(typ, TupleType):
-        # Actually look up from the tuple type.
+        # Actually look up from the 'tuple' type.
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
                                      is_super, basic_types, msg)
     elif isinstance(typ, FunctionLike) and ((FunctionLike)typ).is_type_obj():
@@ -68,12 +71,21 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         result = analyse_class_attribute_access(itype, name, node, msg)
         if result:
             return result
-    return msg.has_no_member(typ, name, node)
+        # Look up from the 'type' type.
+        return analyse_member_access(name, basic_types.type_type, node,
+                                     is_lvalue, is_super, basic_types, msg,
+                                     report_type=report_type)
+    elif isinstance(typ, FunctionLike):
+        # Look up from the 'function' type.
+        return analyse_member_access(name, basic_types.function, node,
+                                     is_lvalue, is_super, basic_types, msg,
+                                     report_type=report_type)
+    return msg.has_no_member(report_type, name, node)
 
 
 Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
                                Context node, bool is_lvalue, bool is_super,
-                               MessageBuilder msg):
+                               MessageBuilder msg, Type report_type=None):
     """Analyse member access that does not target a method.
 
     This is logically part of analyse_member_access and the arguments are
@@ -108,7 +120,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         msg.undefined_in_superclass(name, node)
         return Any()
     else:
-        return msg.has_no_member(itype, name, node)
+        return msg.has_no_member(report_type or itype, name, node)
 
 
 SymbolNode lookup_member_var_or_accessor(TypeInfo info, str name,

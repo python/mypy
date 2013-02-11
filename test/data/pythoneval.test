@@ -247,3 +247,27 @@ print(A().__class__)
 [out]
 The most base type
 <class '__main__.A'>
+
+[case testFunctionAttributes]
+print(ord.__class__)
+print(ord.__doc__[:10])
+print(ord.__name__)
+print(ord.__module__)
+[out]
+<class 'builtin_function_or_method'>
+ord(c) ->
+ord
+builtins
+
+[case testTypeAttributes]
+print(str.__class__)
+print(str.__doc__[:10])
+print(str.__name__)
+print(str.__module__)
+print(type(str.__dict__))
+[out]
+<class 'type'>
+str(string
+str
+builtins
+<class 'dict_proxy'>
