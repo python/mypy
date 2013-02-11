@@ -77,7 +77,7 @@ class ExpressionChecker:
             result = type_object_type((TypeInfo)node, self.chk.type_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.chk.named_type('builtins._module')
+            result = self.chk.named_type('builtins.module')
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.

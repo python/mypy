@@ -130,15 +130,15 @@ main: In class "C":
 [case testInvalidOperationsOnModules]
 import m
 class A: pass
-m()      # E: "_module" not callable
+m()      # E: "module" not callable
 A a = m  # E: Incompatible types in assignment
-m + None # E: Unsupported left operand type for + ("_module")
+m + None # E: Unsupported left operand type for + ("module")
 [file m.py]
 [builtins fixtures/module.py]
 
 [case testNameDefinedInDifferentModule]
 import m, n
-m.x # E: "_module" has no attribute "x"
+m.x # E: "module" has no attribute "x"
 [file m.py]
 y = object()
 [file n.py]
