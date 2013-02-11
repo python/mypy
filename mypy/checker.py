@@ -978,7 +978,6 @@ class TypeChecker(NodeVisitor<Type>):
         """Return a BasicTypes instance that contains primitive types that are
         needed for certain type operations (joins, for example).
         """
-        # TODO function type
         return BasicTypes(self.object_type(), self.type_type(),
                           self.named_type_if_exists('builtins.tuple'),
                           self.named_type_if_exists('builtins.function'))
