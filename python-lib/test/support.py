@@ -651,9 +651,9 @@ class WarningsRecorder(object):
             return None
         raise AttributeError("%r has no attribute %r" % (self, attr))
 
-    @property
-    def warnings(self):
-        return self._warnings[self._last:]
+    #@property
+    #def warnings(self):
+    #    return self._warnings[self._last:]
 
     def reset(self):
         self._last = len(self._warnings)
