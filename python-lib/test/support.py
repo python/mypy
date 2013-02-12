@@ -1490,7 +1490,7 @@ class TestHandler(logging.handlers.BufferingHandler):
         logging.handlers.BufferingHandler.__init__(self, 0)
         self.matcher = matcher
 
-    def shouldFlush(self):
+    def shouldFlush(self, record):
         return False
 
     def emit(self, record):
