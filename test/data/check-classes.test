@@ -104,6 +104,11 @@ main: In member "f" of class "A":
 main, line 3: Incompatible types in assignment
 main, line 4: "A" has no attribute "g"
 
+[case testAssignToMethodViaInstance]
+class A:
+    def f(self): pass
+A().f = None # E: Cannot assign to a method
+
 
 -- Attributes
 -- ----------
@@ -459,6 +464,11 @@ A a, B b
 A.__init__(a, b)
 A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"
 A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"
+
+[case testAssignToMethodViaClass]
+class A:
+    def f(self): pass
+A.f = None # E: Cannot assign to a method
 
 
 -- Nested classes

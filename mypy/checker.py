@@ -396,6 +396,14 @@ class TypeChecker(NodeVisitor<Type>):
                 lvalue_types.append(None)
                 index_lvalues.append(ilv)
                 inferred.append(None)
+            elif isinstance(lv, MemberExpr):
+                mlv = (MemberExpr)lv
+                lvalue_types.append(
+                    self.expr_checker.analyse_ordinary_member_access(mlv,
+                                                                     True))
+                self.store_type(mlv, lvalue_types[-1])
+                index_lvalues.append(None)
+                inferred.append(None)
             else:
                 lvalue_types.append(self.accept(lv))
                 index_lvalues.append(None)

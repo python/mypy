@@ -43,13 +43,10 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
             info = override_info
         
         # Look up the member. First look up the method dictionary.
-        FuncBase method = None
-        if not is_lvalue:
-            method = info.get_method(name)
-        
+        method = info.get_method(name)
         if method:
-            # Found a method. The call below has a unique result for all valid
-            # programs.
+            if is_lvalue:
+                msg.fail(messages.CANNOT_ASSIGN_TO_METHOD, node)
             itype = map_instance_to_supertype(itype, method.info)
             return expand_type_by_instance(method_type(method), itype)
         else:
@@ -65,10 +62,11 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
                                      is_super, basic_types, msg)
     elif isinstance(typ, FunctionLike) and ((FunctionLike)typ).is_type_obj():
-        # TODO super? lvalue?
+        # TODO super?
         sig = (FunctionLike)typ
         itype = (Instance)sig.items()[0].ret_type
-        result = analyse_class_attribute_access(itype, name, node, msg)
+        result = analyse_class_attribute_access(itype, name, node, is_lvalue,
+                                                msg)
         if result:
             return result
         # Look up from the 'type' type.
@@ -148,9 +146,11 @@ void check_method_type(FunctionLike functype, Instance itype, Context context,
 
 
 Type analyse_class_attribute_access(Instance itype, str name, Context context,
-                                    MessageBuilder msg):
+                                    bool is_lvalue, MessageBuilder msg):
     node = itype.type.get(name)
     if node:
+        if is_lvalue and isinstance(node.node, FuncDef):
+            msg.fail(messages.CANNOT_ASSIGN_TO_METHOD, context)
         t = node.type()
         if t:
             return add_class_tvars(t, itype.type)
