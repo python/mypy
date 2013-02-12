@@ -225,7 +225,11 @@ def make_legacy_pyc(source):
     """
     pyc_file = imp.cache_from_source(source)
     up_one = os.path.dirname(os.path.abspath(source))
-    legacy_pyc = os.path.join(up_one, source + ('c' if __debug__ else 'o'))
+    if __debug__:
+        ch = 'c'
+    else:
+        ch = 'o'
+    legacy_pyc = os.path.join(up_one, source + ch)
     os.rename(pyc_file, legacy_pyc)
     return legacy_pyc
 
@@ -1562,7 +1566,10 @@ def skip_unless_symlink(test):
     """Skip decorator for tests that require functional symlink"""
     ok = can_symlink()
     msg = "Requires functional symlink implementation"
-    return test if ok else unittest.skip(msg)(test)
+    if ok:
+        return test
+    else:
+        return unittest.skip(msg)(test)
 
 def patch(test_instance, object_to_patch, attr_name, new_value):
     """Override 'object_to_patch'.'attr_name' with 'new_value'.
