@@ -588,8 +588,9 @@ def make_bad_fd():
         unlink(TESTFN)
 
 def check_syntax_error(testcase, statement):
-    testcase.assertRaises(SyntaxError, compile, statement,
-                          '<test string>', 'exec')
+    raise NotImplementedError('no compile built-in')
+    #testcase.assertRaises(SyntaxError, compile, statement,
+    #                      '<test string>', 'exec')
 
 def open_urlresource(url, *args, **kw):
     import urllib.request, urllib.parse
