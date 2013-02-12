@@ -55,3 +55,13 @@ class C:
 [out]
 main: In member "f" of class "A":
 main, line 3: "g" undefined in superclass
+
+[case testAssignToBaseClassMethod]
+class A:
+    void f(self): pass
+class B(A):
+    void g(self):
+        super().f = None
+[out]
+main: In function "g":
+main, line 5: Invalid assignment target
