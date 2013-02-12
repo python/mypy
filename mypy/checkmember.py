@@ -1,4 +1,4 @@
-"""Type checking of member access"""
+"""Type checking of attribute access"""
 
 from mypy.types import (
     Type, Instance, Any, TupleType, Callable, FunctionLike, TypeVars,
@@ -19,7 +19,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
                            bool is_super, BasicTypes basic_types,
                            MessageBuilder msg, TypeInfo override_info=None,
                            Type report_type=None):
-    """Analyse member access.
+    """Analyse attribute access.
 
     This is a general operation that supports various different variations:
     
@@ -86,7 +86,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
 Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
                                Context node, bool is_lvalue, bool is_super,
                                MessageBuilder msg, Type report_type=None):
-    """Analyse member access that does not target a method.
+    """Analyse attribute access that does not target a method.
 
     This is logically part of analyse_member_access and the arguments are
     similar.
