@@ -124,7 +124,7 @@ any _getframe(): pass
 any _getframe(int depth): pass
 any getprofile(): pass # TODO return type
 any gettrace(): pass # TODO return
-#list<int> getwindowsversion(): pass  # Windows only, return type???
+any getwindowsversion(): pass  # Windows only, TODO return type
 str intern(str string): pass
 void setcheckinterval(int interval): pass  # deprecated
 #setdlopenflags(int n): pass  # Linux only
