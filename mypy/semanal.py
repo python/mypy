@@ -466,7 +466,10 @@ class SemanticAnalyzer(NodeVisitor):
                 self.type.names[n.name] = SymbolTableNode(MDEF, v)
             else:
                 # Bind to an existing name.
-                lval.accept(self)
+                n.accept(self)
+                if (isinstance(n.node, FuncDef) or
+                        isinstance(n.node, TypeInfo)):
+                    self.fail('Invalid assignment target', n)
         elif isinstance(lval, MemberExpr):
             if not add_defs:
                 self.analyse_member_lvalue((MemberExpr)lval)

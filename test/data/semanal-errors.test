@@ -511,3 +511,13 @@ class D(str): pass # ok
 [case testCyclicInheritance]
 class A(A): pass # E: Cycle in inheritance hierarchy
 [out]
+
+[case testAssignToFuncDef]
+def f(): pass
+f = None # E: Invalid assignment target
+[out]
+
+[case testAssignToTypeDef]
+class A: pass
+A = None # E: Invalid assignment target
+[out]
