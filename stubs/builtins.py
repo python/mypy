@@ -733,6 +733,7 @@ bool all(Iterable i): pass
 #bool any(Iterable i): pass
 str ascii(object o): pass
 str chr(int code): pass
+void delattr(any o, str name): pass
 str[] dir(): pass
 str[] dir(object o): pass
 tuple<int, int> divmod(int a, int b): pass
