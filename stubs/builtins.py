@@ -720,6 +720,7 @@ class module:
 
 bool True
 bool False
+bool __debug__
 
 class _NotImplementedType: pass # TODO name of the class
 _NotImplementedType NotImplemented
