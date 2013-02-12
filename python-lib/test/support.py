@@ -80,9 +80,9 @@ def _ignore_deprecated_imports(ignore=True):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", ".+ (module|package)",
                                     DeprecationWarning)
-            yield
+            yield None
     else:
-        yield
+        yield None
 
 
 def import_module(name, deprecated=False):
@@ -548,7 +548,7 @@ def temp_umask(umask):
     """Context manager that temporarily sets the process umask."""
     oldmask = os.umask(umask)
     try:
-        yield
+        yield None
     finally:
         os.umask(oldmask)
 
@@ -907,7 +907,7 @@ def transient_internet(resource_name, *, timeout=30.0, errnos=()):
     try:
         if timeout is not None:
             socket.setdefaulttimeout(timeout)
-        yield
+        yield None
     except IOError as err:
         # urllib can wrap original socket errors multiple times (!), we must
         # unwrap to get at the original error.
@@ -1408,13 +1408,13 @@ def swap_attr(obj, attr, new_val):
         real_val = getattr(obj, attr)
         setattr(obj, attr, new_val)
         try:
-            yield
+            yield None
         finally:
             setattr(obj, attr, real_val)
     else:
         setattr(obj, attr, new_val)
         try:
-            yield
+            yield None
         finally:
             delattr(obj, attr)
 
@@ -1435,13 +1435,13 @@ def swap_item(obj, item, new_val):
         real_val = obj[item]
         obj[item] = new_val
         try:
-            yield
+            yield None
         finally:
             obj[item] = real_val
     else:
         obj[item] = new_val
         try:
-            yield
+            yield None
         finally:
             del obj[item]
 
