@@ -507,3 +507,7 @@ class C(bool): pass # E: 'bool' is not a valid base class
 class D(str): pass # ok
 [builtins fixtures/primitives.py]
 [out]
+
+[case testCyclicInheritance]
+class A(A): pass # E: Cycle in inheritance hierarchy
+[out]

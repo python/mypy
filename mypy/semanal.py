@@ -310,6 +310,8 @@ class SemanticAnalyzer(NodeVisitor):
         for base in defn.base_types:
             if isinstance(base, Instance):
                 baseinfo = ((Instance)base).type
+                if self.is_base_class(defn.info, baseinfo):
+                    self.fail('Cycle in inheritance hierarchy', defn)
                 if not baseinfo.is_interface:
                     base_classes.append(baseinfo.name())
                     if baseinfo.fullname() in ['builtins.int',
@@ -321,6 +323,15 @@ class SemanticAnalyzer(NodeVisitor):
             bases = ["'%s'" % n for n in sorted(base_classes)]
             self.fail('Class has multiple base classes (%s)' %
                       (' and '.join(bases)), defn)
+
+    bool is_base_class(self, TypeInfo t, TypeInfo s):
+        """Is t a base class of s?"""
+        while True:
+            if t == s:
+                return True
+            s = s.base
+            if not s:
+                return False
 
     Type object_type(self):
         return self.named_type('__builtins__.object')
