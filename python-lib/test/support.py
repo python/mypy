@@ -754,7 +754,7 @@ class CleanImport(object):
         sys.modules.update(self.original_modules)
 
 
-class EnvironmentVarGuard(collections.MutableMapping):
+class EnvironmentVarGuard(dict):
 
     """Class to help protect the environment variable properly.  Can be used as
     a context manager."""
