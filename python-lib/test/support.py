@@ -440,7 +440,7 @@ def fcmp(x, y): # fuzzy comparison function
 
 # decorator for skipping tests on non-IEEE 754 platforms
 requires_IEEE_754 = unittest.skipUnless(
-    float.__getformat__("double").startswith("IEEE"),
+    ((any)float).__getformat__("double").startswith("IEEE"),
     "test requires IEEE 754 doubles")
 
 is_jython = sys.platform.startswith('java')
