@@ -29,10 +29,10 @@ try:
 except ImportError:
     _thread = None
     threading = None
-try:
-    import multiprocessing.process
-except ImportError:
-    multiprocessing = None
+#try:
+#    import multiprocessing.process
+#except ImportError:
+#    multiprocessing = None
 
 
 __all__ = [
