@@ -247,30 +247,31 @@ def forget(modname):
 
 # On some platforms, should not run gui test even if it is allowed
 # in `use_resources'.
-if sys.platform.startswith('win'):
-    import ctypes
-    import ctypes.wintypes
-    def _is_gui_available():
-        UOI_FLAGS = 1
-        WSF_VISIBLE = 0x0001
-        class USEROBJECTFLAGS(ctypes.Structure):
-            _fields_ = [("fInherit", ctypes.wintypes.BOOL),
-                        ("fReserved", ctypes.wintypes.BOOL),
-                        ("dwFlags", ctypes.wintypes.DWORD)]
-        dll = ctypes.windll.user32
-        h = dll.GetProcessWindowStation()
-        if not h:
-            raise ctypes.WinError()
-        uof = USEROBJECTFLAGS()
-        needed = ctypes.wintypes.DWORD()
-        res = dll.GetUserObjectInformationW(h,
-            UOI_FLAGS,
-            ctypes.byref(uof),
-            ctypes.sizeof(uof),
-            ctypes.byref(needed))
-        if not res:
-            raise ctypes.WinError()
-        return bool(uof.dwFlags & WSF_VISIBLE)
+if False: #sys.platform.startswith('win'):
+    pass
+    #import ctypes
+    #import ctypes.wintypes
+    #def _is_gui_available():
+    #    UOI_FLAGS = 1
+    #    WSF_VISIBLE = 0x0001
+    #    class USEROBJECTFLAGS(ctypes.Structure):
+    #        _fields_ = [("fInherit", ctypes.wintypes.BOOL),
+    #                    ("fReserved", ctypes.wintypes.BOOL),
+    #                    ("dwFlags", ctypes.wintypes.DWORD)]
+    #    dll = ctypes.windll.user32
+    #    h = dll.GetProcessWindowStation()
+    #    if not h:
+    #        raise ctypes.WinError()
+    #    uof = USEROBJECTFLAGS()
+    #    needed = ctypes.wintypes.DWORD()
+    #    res = dll.GetUserObjectInformationW(h,
+    #        UOI_FLAGS,
+    #        ctypes.byref(uof),
+    #        ctypes.sizeof(uof),
+    #        ctypes.byref(needed))
+    #    if not res:
+    #        raise ctypes.WinError()
+    #    return bool(uof.dwFlags & WSF_VISIBLE)
 else:
     def _is_gui_available():
         return True
