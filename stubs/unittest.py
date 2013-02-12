@@ -80,7 +80,7 @@ class TestResult:
 
 class TextTestRunner:
     void __init__(self, TextIO stream=None, bool descriptions=True,
-                  int verbosity=1): pass
+                  int verbosity=1, bool failfast=False): pass
 
 class SkipTest(Exception):
     pass
