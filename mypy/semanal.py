@@ -467,9 +467,7 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 # Bind to an existing name.
                 n.accept(self)
-                if (isinstance(n.node, FuncDef) or
-                        isinstance(n.node, TypeInfo)):
-                    self.fail('Invalid assignment target', n)
+                self.check_lvalue_validity(n.node, n)
         elif isinstance(lval, MemberExpr):
             if not add_defs:
                 self.analyse_member_lvalue((MemberExpr)lval)
@@ -492,12 +490,19 @@ class SemanticAnalyzer(NodeVisitor):
             node = ((NameExpr)lval.expr).node
             if (isinstance(node, Var) and ((Var)node).is_self and
                     lval.name not in self.type.names):
+                # Implicit attribute definition in __init__.
                 lval.is_def = True
                 v = Var(lval.name)
                 v.info = self.type
                 v.is_ready = False
                 lval.def_var = v
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+        self.check_lvalue_validity(lval.node, lval)
+
+    void check_lvalue_validity(self, Node node, Context ctx):
+        if (isinstance(node, FuncDef) or
+                isinstance(node, TypeInfo)):
+            self.fail('Invalid assignment target', ctx)
 
     void visit_decorator(self, Decorator dec):
         if self.is_func_scope():

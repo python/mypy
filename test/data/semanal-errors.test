@@ -517,6 +517,45 @@ def f(): pass
 f = None # E: Invalid assignment target
 [out]
 
+[case testAssignToFuncDefViaModule]
+import m
+m.f = None # E: Invalid assignment target
+[file m.py]
+def f(): pass
+[out]
+
+[case testAssignToFuncDefViaNestedModules]
+import m.n
+m.n.f = None # E: Invalid assignment target
+[file m/__init__.py]
+[file m/n.py]
+def f(): pass
+[out]
+
+[case testAssignToFuncDefViaImport]
+from m import f # E: Name 'f' already defined
+f = None
+[file m.py]
+def f(): pass
+[out]
+
+[case testAssignToFuncDefViaImport2]
+from m import * # E: Name 'f' already defined
+f = None
+[file m.py]
+def f(): pass
+[out]
+
+[case testAssignToFuncDefViaGlobalDecl2]
+from m import f
+void g():
+    global f
+    f = None # E: Invalid assignment target
+[file m.py]
+def f(): pass
+[out]
+main: In function "g":
+
 [case testAssignToTypeDef]
 class A: pass
 A = None # E: Invalid assignment target
