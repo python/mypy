@@ -814,6 +814,11 @@ Iterator<tuple<t1, t2, t3, t4>> zip<t1, t2, t3, t4>(Iterable<t1> iter1,
                                                     Iterable<t3> iter3,
                                                     Iterable<t4> iter4): pass
 
+any __import__(str name,
+               dict<str, any> globals={},
+               dict<str, any> locals={},
+               str[] fromlist=[], int level=-1): pass
+
 
 # Exceptions
 
