@@ -386,7 +386,7 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     tempsock = socket.socket(family, socktype)
     port = bind_port(tempsock)
     tempsock.close()
-    del tempsock
+    #del tempsock
     return port
 
 def bind_port(sock, host=HOST):
