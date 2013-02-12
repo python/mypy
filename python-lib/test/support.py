@@ -445,6 +445,7 @@ requires_IEEE_754 = unittest.skipUnless(
 
 is_jython = sys.platform.startswith('java')
 
+str TESTFN
 # Filename used for testing
 if os.name == 'java':
     # Jython disallows @ in module names
