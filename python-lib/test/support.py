@@ -173,17 +173,17 @@ def get_attribute(obj, name):
         return attribute
 
 verbose = 1              # Flag set to 0 by regrtest.py
-use_resources = None     # Flag set to [] by regrtest.py
+any use_resources = None     # Flag set to [] by regrtest.py
 max_memuse = 0           # Disable bigmem tests (they will still be run with
                          # small sizes, to make sure they work.)
 real_max_memuse = 0
 failfast = False
-match_tests = None
+any match_tests = None
 
 # _original_stdout is meant to hold stdout at the time regrtest began.
 # This may be "the real" stdout, or IDLE's emulation of stdout, or whatever.
 # The point is to have some flavor of stdout the user can actually see.
-_original_stdout = None
+any _original_stdout = None
 def record_original_stdout(stdout):
     global _original_stdout
     _original_stdout = stdout
@@ -470,7 +470,7 @@ TESTFN_ENCODING = sys.getfilesystemencoding()
 # TESTFN_UNENCODABLE is a filename (str type) that should *not* be able to be
 # encoded by the filesystem encoding (in strict mode). It can be None if we
 # cannot generate such filename.
-TESTFN_UNENCODABLE = None
+any TESTFN_UNENCODABLE = None
 if os.name in ('nt', 'ce'):
     # skip win32s (0) or Windows 9x/ME (1)
     if sys.getwindowsversion().platform >= 2:
@@ -1541,7 +1541,7 @@ class Matcher(object):
         return result
 
 
-_can_symlink = None
+any _can_symlink = None
 def can_symlink():
     global _can_symlink
     if _can_symlink is not None:
