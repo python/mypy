@@ -470,6 +470,11 @@ class A:
     def f(self): pass
 A.f = None # E: Cannot assign to a method
 
+[case testAssignToNestedClassViaClass]
+class A:
+    class B: pass
+A.B = None # E: Cannot assign to a type
+
 
 -- Nested classes
 -- --------------
