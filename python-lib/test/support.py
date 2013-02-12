@@ -247,8 +247,7 @@ def forget(modname):
 
 # On some platforms, should not run gui test even if it is allowed
 # in `use_resources'.
-if False: #sys.platform.startswith('win'):
-    pass
+#if sys.platform.startswith('win'):
     #import ctypes
     #import ctypes.wintypes
     #def _is_gui_available():
@@ -272,9 +271,9 @@ if False: #sys.platform.startswith('win'):
     #    if not res:
     #        raise ctypes.WinError()
     #    return bool(uof.dwFlags & WSF_VISIBLE)
-else:
-    def _is_gui_available():
-        return True
+#else:
+def _is_gui_available():
+    return True
 
 def is_resource_enabled(resource):
     """Test whether a resource is enabled.  Known resources are set by
