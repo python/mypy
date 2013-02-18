@@ -28,13 +28,13 @@ class ReprWrapper:
     def __repr__(self):
         return repr(self.value)
 
-class HashCountingInt(int):
-    'int-like object that counts the number of times __hash__ is called'
-    def __init__(self, *args):
-        self.hash_count = 0
-    def __hash__(self):
-        self.hash_count += 1
-        return int.__hash__(self)
+#class HashCountingInt(int):
+#    'int-like object that counts the number of times __hash__ is called'
+#    def __init__(self, *args):
+#        self.hash_count = 0
+#    def __hash__(self):
+#        self.hash_count += 1
+#        return int.__hash__(self)
 
 class TestJointOps(unittest.TestCase):
     # Tests common to both set and frozenset
@@ -310,8 +310,9 @@ class TestJointOps(unittest.TestCase):
             support.unlink(support.TESTFN)
 
     def test_do_not_rehash_dict_keys(self):
+        raise NotImplementedError() # cannot subclass int
         n = 10
-        d = dict.fromkeys(map(HashCountingInt, range(n)))
+        d = None # dict.fromkeys(map(HashCountingInt, range(n)))
         self.assertEqual(sum(elem.hash_count for elem in d), n)
         s = self.thetype(d)
         self.assertEqual(sum(elem.hash_count for elem in d), n)
