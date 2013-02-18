@@ -170,7 +170,7 @@ class QueryTestCase(unittest.TestCase):
 
     def test_nested_indentations(self):
         o1 = list(range(10))
-        o2 = dict(first=1, second=2, third=3)
+        o2 = {'first':1, 'second':2, 'third':3}
         o = [o1, o2]
         expected = """\
 [   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
