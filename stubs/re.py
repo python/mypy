@@ -30,8 +30,8 @@ class Pattern:
 
     Match search(self, str string, int pos=0, int endpos=-1): pass
     Match match(self, str string, int pos=0, int endpos=-1): pass
-    list<str> split(self, str string, int maxsplit=0): pass
-    list<str> findall(self, str string, int pos=0, int endpos=-1): pass
+    str[] split(self, str string, int maxsplit=0): pass
+    str[] findall(self, str string, int pos=0, int endpos=-1): pass
     Iterator<Match> finditer(self, str string, int pos=0, int endpos=-1): pass
     str sub(self, str repl, str string, int count=0): pass
     str sub(self, func<str(Match)> repl, str string, int count=0): pass
@@ -54,7 +54,7 @@ class Match:
     # TODO group(...) with multiple groups
     # if there are multiple arguments, the result is a tuple with one item per
     # argument
-    list<str> group(self, list<int> group1): pass  # not quite correct! ???
+    str[] group(self, int[] group1): pass  # not quite correct! ???
     
     tuple<str, str> groups(self, str default=None): pass
     dict<str, str> groupdict(self, str default=None): pass
@@ -65,8 +65,8 @@ class Match:
 Pattern compile(str pattern, int flags=0): pass
 Match search(str pattern, str string, int flags=0): pass
 Match match(str pattern, str string, int flags=0): pass
-list<str> split(str pattern, str string, int maxsplit=0, int flags=0): pass
-list<str> findall(str pattern, str string, int flags=0): pass
+str[] split(str pattern, str string, int maxsplit=0, int flags=0): pass
+str[] findall(str pattern, str string, int flags=0): pass
 
 # Return an iterator yielding match objects over all non-overlapping matches 
 # for the RE pattern in string. The string is scanned left-to-right, and 
