@@ -35,7 +35,7 @@ class TestBasicOps(unittest.TestCase):
 
     def test_seedargs(self):
         for arg in [None, 0, 0, 1, 1, -1, -1, 10**20, -(10**20),
-                    3.14, 1+2j, 'a', tuple('abc')]:
+                    3.14, complex(1., 2.), 'a', tuple('abc')]:
             self.gen.seed(arg)
         for arg in [list(range(3)), dict(one=1)]:
             self.assertRaises(TypeError, self.gen.seed, arg)
