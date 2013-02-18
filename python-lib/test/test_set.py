@@ -262,7 +262,7 @@ class TestJointOps(unittest.TestCase):
             elem.set = set([elem])
 
     def test_subclass_with_custom_hash(self):
-        raise NotImplemented() # runtime computed base class below
+        raise NotImplementedError() # runtime computed base class below
         # Bug #1257731
         class H: # (self.thetype):
             def __hash__(self):
@@ -362,7 +362,7 @@ class TestSet(TestJointOps):
         self.assertNotEqual(id(s), id(t))
 
     def test_set_literal(self):
-        raise NotImplemented()
+        raise NotImplementedError()
         #s = set([1,2,3])
         #t = {1,2,3}
         #self.assertEqual(s, t)
@@ -1239,7 +1239,7 @@ class TestSubsets(unittest.TestCase):
               }
 
     def test_issubset(self):
-        raise NotImplemented() # eval not supported below
+        raise NotImplementedError() # eval not supported below
         x = self.left
         y = self.right
         for case in "!=", "==", "<", "<=", ">", ">=":
