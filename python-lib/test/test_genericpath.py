@@ -207,7 +207,7 @@ class CommonTest(GenericTest):
         self.assertEqual(normcase(b''), b'')
 
         # check that normcase raises a TypeError for invalid types
-        for path in (None, True, 0, 2.5, [], bytearray(b''), {'o','o'}):
+        for path in (None, True, 0, 2.5, [], bytearray(b''), set(['o','o'])):
             self.assertRaises(TypeError, normcase, path)
 
     def test_splitdrive(self):
