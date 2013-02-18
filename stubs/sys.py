@@ -23,7 +23,7 @@ any last_traceback
 int maxsize
 int maxunicode
 any[] meta_path
-dict<int, any> modules
+dict<str, any> modules
 str[] path
 any[] path_hooks # TODO precise type; callable from path to finder
 dict<str, any> path_importer_cache # TODO precise type
