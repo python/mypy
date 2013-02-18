@@ -726,7 +726,7 @@ class TestFrozenSetSubclass(TestFrozenSet):
 
 # Tests taken from test_sets.py =============================================
 
-empty_set = set()
+any empty_set = set()
 
 #==============================================================================
 
@@ -1263,8 +1263,8 @@ class TestSubsets(unittest.TestCase):
 #------------------------------------------------------------------------------
 
 class TestSubsetEqualEmpty(TestSubsets):
-    left  = set()
-    right = set()
+    any left  = set()
+    any right = set()
     name  = "both empty"
     cases = "==", "<=", ">="
 
@@ -1279,7 +1279,7 @@ class TestSubsetEqualNonEmpty(TestSubsets):
 #------------------------------------------------------------------------------
 
 class TestSubsetEmptyNonEmpty(TestSubsets):
-    left  = set()
+    any left  = set()
     right = set([1, 2])
     name  = "one empty, one non-empty"
     cases = "!=", "<", "<="
