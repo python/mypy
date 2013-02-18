@@ -261,7 +261,10 @@ class Random(_random.Random):
         randbelow = self._randbelow
         for i in reversed(range(1, len(x))):
             # pick an element in x[:i+1] with which to exchange x[i]
-            j = randbelow(i+1) if random is None else int(random() * (i+1))
+            if random is None:
+                j = randbelow(i+1)
+            else:
+                j = int(random() * (i+1))
             x[i], x[j] = x[j], x[i]
 
     def sample(self, population, k):
@@ -342,7 +345,10 @@ class Random(_random.Random):
 
         """
         u = self.random()
-        c = 0.5 if mode is None else (mode - low) / (high - low)
+        if mode is None:
+            c = 0.5
+        else:
+            c = (mode - low) / (high - low)
         if u > c:
             u = 1.0 - u
             c = 1.0 - c
