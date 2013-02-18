@@ -44,6 +44,10 @@ erased_duck_types = {
 }
 
 
+# Prefix used for generated names to avoid name clashes
+PREFIX = '_m_'
+
+
 # Some names need more complex logic to translate them. This dictionary maps
 # qualified names to (initcode, newname) tuples. The initcode string is
 # added to the module prolog.
@@ -51,10 +55,11 @@ erased_duck_types = {
 # We use __ prefixes to avoid name clashes. Names starting with __ but not
 # ending with _ are reserved for the implementation.
 special_renamings = {
-    're.Match': (['import re as __re\n',
-                  'import builtins as __builtins\n',
-                  '__re_Match = __builtins.type(__re.match("", ""))\n'],
-                 '__re_Match')}
+    're.Match': (['import re as %sre\n' % PREFIX,
+                  'import builtins as %sbuiltins\n' % PREFIX,
+                  '%sre_Match = %sbuiltins.type(%sre.match("", ""))\n' %
+                  (PREFIX, PREFIX, PREFIX)],
+                 '%sre_Match' % PREFIX)}
 
 
 class PythonGenerator(OutputVisitor):
@@ -227,12 +232,12 @@ class PythonGenerator(OutputVisitor):
           - C -> 'C'
           - foo.Bar -> 'foo.Bar'
           - dict<x, y> -> 'dict'
-          - Iterable<x> -> '__collections.Iterable' (also add import)
+          - Iterable<x> -> '<PREFIX>collections.Iterable' (also add import)
         """
         if isinstance(t, Instance) or isinstance(t, UnboundType):
             if isinstance(t.repr, ListTypeRepr):
                 self.generate_import('builtins')
-                return '__builtins.list'
+                return '%sbuiltins.list' % PREFIX
             else:
                 # Some types need to be translated (e.g. Iterable).
                 renamed = self.get_renaming(t.type.fullname())
@@ -417,12 +422,13 @@ class PythonGenerator(OutputVisitor):
     def generate_import(self, modid):
         """Generate an import in the file prolog.
 
-        When importing, the module is given a '__' prefix. For example, an
-        import of module 'foo' is generated as 'import foo as __foo'.
+        When importing, the module is given a '_m_' prefix. For example, an
+        import of module 'foo' is generated as 'import foo as _m_foo'.
         """
         # TODO make sure that there is no name clash
         last_component = modid.split('.')[-1]
-        self.add_to_prolog('import {} as __{}\n'.format(modid, last_component))
+        self.add_to_prolog('import {} as _m_{}\n'.format(modid,
+                                                         last_component))
 
     def generate_import_from_name(self, fullname):
         """Use module portion of a qualified name to generate an import."""
@@ -447,7 +453,7 @@ class PythonGenerator(OutputVisitor):
             # Ordinary renaming. Import a module that defines the name and
             # rename the reference.
             self.generate_import_from_name(renamed)
-            return '__' + renamed
+            return PREFIX + renamed
         else:
             special = special_renamings.get(fullname)
             if special:
@@ -507,4 +513,4 @@ str argument_ref(int i, str[] fixed_args, str[] optional_args, str rest_args):
 
 
 str default(int n):
-    return '__def%d' % n
+    return '%sdef%d' % (PREFIX, n)

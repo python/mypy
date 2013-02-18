@@ -13,7 +13,7 @@ from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.testoutput import fix_path, remove_prefix
-from mypy.pythongen import PythonGenerator
+from mypy.pythongen import PythonGenerator, PREFIX
 from mypy.errors import CompileError
 
 
@@ -34,6 +34,8 @@ def test_python_generation(testcase):
     """Perform a mypy-to-Python source code transformation test case."""
     any a
     expected = testcase.output
+    for i, s in enumerate(expected):
+        expected[i] = s.replace('<prefix>', PREFIX)
     # By default, assume an identity translation. This is useful for
     # dynamically typed code.
     if expected == []:

@@ -189,13 +189,13 @@ class A: pass
 def f(x): pass
 def f(x, y): pass
 [out]
-__def0 = object()
-def f(x, y=__def0):
+<prefix>def0 = object()
+def f(x, y=<prefix>def0):
     def f1(x): pass
     def f2(x, y): pass
-    if y is __def0:
+    if y is <prefix>def0:
         return f1(x)
-    elif y is not __def0:
+    elif y is not <prefix>def0:
         return f2(x, y)
     else:
         raise TypeError("Invalid arguments")
@@ -204,14 +204,14 @@ def f(x, y=__def0):
 def f(x): pass
 def f(x, y, z): pass
 [out]
-__def0 = object()
-__def1 = object()
-def f(x, y=__def0, z=__def1):
+<prefix>def0 = object()
+<prefix>def1 = object()
+def f(x, y=<prefix>def0, z=<prefix>def1):
     def f1(x): pass
     def f2(x, y, z): pass
-    if y is __def0 and z is __def1:
+    if y is <prefix>def0 and z is <prefix>def1:
         return f1(x)
-    elif y is not __def0 and z is not __def1:
+    elif y is not <prefix>def0 and z is not <prefix>def1:
         return f2(x, y, z)
     else:
         raise TypeError("Invalid arguments")
@@ -281,16 +281,16 @@ def f(x, y):
   if x:
     pass
 [out]
-__def0 = object()
-def f(x, y=__def0):
+<prefix>def0 = object()
+def f(x, y=<prefix>def0):
     def f1(x):
       pass
     def f2(x, y):
       if x:
         pass
-    if y is __def0:
+    if y is <prefix>def0:
         return f1(x)
-    elif y is not __def0:
+    elif y is not <prefix>def0:
         return f2(x, y)
     else:
         raise TypeError("Invalid arguments")
@@ -318,17 +318,17 @@ class A:
     def g(self):
         pass
 [out]
-__def0 = object()
+<prefix>def0 = object()
 class A:
-    def f(self, x=__def0):
+    def f(self, x=<prefix>def0):
         def f1(self):
             pass
         def f2(self, x):
             pass
 
-        if x is __def0:
+        if x is <prefix>def0:
             return f1(self)
-        elif x is not __def0:
+        elif x is not <prefix>def0:
             return f2(self, x)
         else:
             raise TypeError("Invalid arguments")
@@ -347,22 +347,22 @@ class A:
     void f(self, any x): 
         pass
 [out]
-__def0 = object()
+<prefix>def0 = object()
 class A:
     def g(self):
         pass
 
     # Comment
-    def f(self, x=__def0):
+    def f(self, x=<prefix>def0):
 
         # Comment
         def f1(self):
             pass
         def f2(self, x):
             pass
-        if x is __def0:
+        if x is <prefix>def0:
             return f1(self)
-        elif x is not __def0:
+        elif x is not <prefix>def0:
             return f2(self, x)
         else:
             raise TypeError("Invalid arguments")
@@ -422,13 +422,13 @@ class B: pass
 def f(A x): pass
 def f(B y, A z): pass
 [out]
-__def0 = object()
+<prefix>def0 = object()
 class A: pass
 class B: pass
-def f(x, z=__def0):
+def f(x, z=<prefix>def0):
     def f1(x): pass
     def f2(y, z): pass
-    if isinstance(x, A) and z is __def0:
+    if isinstance(x, A) and z is <prefix>def0:
         return f1(x)
     elif isinstance(x, B) and isinstance(z, A):
         return f2(x, z)
@@ -450,11 +450,11 @@ def f(object o): pass
 [builtins fixtures/list.py]
 [out]
 -- Issue #26
-import builtins as __builtins
+import builtins as <prefix>builtins
 def f(o):
     def f1(o): pass
     def f2(o): pass
-    if isinstance(o, __builtins.list):
+    if isinstance(o, <prefix>builtins.list):
         return f1(o)
     elif isinstance(o, object):
         return f2(o)
@@ -489,13 +489,13 @@ def f(x):
 def f(x): pass
 def f(): pass
 [out]
-__def0 = object()
-def f(x=__def0):
+<prefix>def0 = object()
+def f(x=<prefix>def0):
     def f1(x): pass
     def f2(): pass
-    if x is not __def0:
+    if x is not <prefix>def0:
         return f1(x)
-    elif x is __def0:
+    elif x is <prefix>def0:
         return f2()
     else:
         raise TypeError("Invalid arguments")
@@ -527,26 +527,26 @@ def f(x):
 s = Sized
 [builtins fixtures/sized.py]
 [out]
-import collections as __collections
-s = __collections.Sized
+import collections as <prefix>collections
+s = <prefix>collections.Sized
 
 [case testBuiltinInterfaceAsBase]
 class A( Sized ): pass
 [builtins fixtures/sized.py]
 [out]
-import collections as __collections
-class A( __collections.Sized ): pass
+import collections as <prefix>collections
+class A( <prefix>collections.Sized ): pass
 
 [case testOverloadWithBuiltinInterface]
 void f(Sized x): pass
 void f(any x): pass
 [builtins fixtures/sized.py]
 [out]
-import collections as __collections
+import collections as <prefix>collections
 def f(x):
     def f1(x): pass
     def f2(x): pass
-    if isinstance(x, __collections.Sized):
+    if isinstance(x, <prefix>collections.Sized):
         return f1(x)
     elif True:
         return f2(x)
@@ -608,12 +608,12 @@ void g(object[] x): pass
 void g(any x): pass
 [builtins fixtures/list.py]
 [out]
-import builtins as __builtins
+import builtins as <prefix>builtins
 def f(x):
     def f1(x): pass
     def f2(x): pass
 
-    if isinstance(x, __builtins.list):
+    if isinstance(x, <prefix>builtins.list):
         return f1(x)
     elif True:
         return f2(x)
@@ -622,7 +622,7 @@ def f(x):
 def g(x):
     def g1(x): pass
     def g2(x): pass
-    if isinstance(x, __builtins.list):
+    if isinstance(x, <prefix>builtins.list):
         return g1(x)
     elif True:
         return g2(x)
