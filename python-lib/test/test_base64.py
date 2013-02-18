@@ -229,7 +229,7 @@ class BaseXYTestCase(unittest.TestCase):
 class TestMain(unittest.TestCase):
     def get_output(self, *args, **options):
         args = (sys.executable, '-m', 'base64') + args
-        return subprocess.check_output(args, **options)
+        return ((any)subprocess.check_output)(args, **options)
 
     def test_encode_decode(self):
         output = self.get_output('-t')
