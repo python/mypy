@@ -1782,7 +1782,10 @@ class TestGraphs(unittest.TestCase):
         self.assertEqual(len(vertices1), 8)     # eight vertices
         for edge in g.values():
             self.assertEqual(len(edge), 3)      # each vertex connects to three edges
-        vertices2 = set(v for edges in g.values() for v in edges)
+        vertices2 = set()
+        for edges in g.values():
+            for v in edges:
+                vertices2.add(v)
         self.assertEqual(vertices1, vertices2)  # edge vertices in original set
 
         cubefaces = faces(g)
