@@ -245,14 +245,13 @@ def expanduser(path):
     i = path.find(sep, 1)
     if i < 0:
         i = len(path)
+    import pwd
     if i == 1:
         if 'HOME' not in os.environ:
-            import pwd
             userhome = pwd.getpwuid(os.getuid()).pw_dir
         else:
             userhome = os.environ['HOME']
     else:
-        import pwd
         name = path[1:i]
         if isinstance(name, bytes):
             name = str(name, 'ASCII')
