@@ -3,6 +3,8 @@
 
 # based on http://docs.python.org/3.2/library/os.html
 
+from builtins import OSError as error
+
 # ----- os variables -----
 
 bool supports_bytes_environ = False  # TODO: True when bytes implemented?
@@ -140,7 +142,6 @@ class stat_result:
     #int f_namemax
 
 # ----- os function stubs -----
-OSError error(): pass
 str name(): pass
 bytes fsencode(str filename): pass
 str fsdecode(bytes filename): pass
