@@ -64,15 +64,11 @@ class Match:
     Pattern re
     
     str expand(self, str template): pass
-    str group(self): pass
-    str group(self, int group1): pass
-    
-    # TODO group(...) with multiple groups
-    # if there are multiple arguments, the result is a tuple with one item per
-    # argument
-    str[] group(self, int[] group1): pass  # not quite correct! ???
-    
-    tuple<str, str> groups(self, str default=None): pass
+    str group(self, int group1=0): pass
+    str group(self, str group1): pass
+    Sequence<str> group(self, int group1, int group2, int *groups): pass
+    Sequence<str> group(self, str group1, str group2, str *groups): pass    
+    Sequence<str> groups(self, str default=None): pass
     dict<str, str> groupdict(self, str default=None): pass
     int start(self, int group=0): pass
     int end(self, int group=0): pass
@@ -87,11 +83,12 @@ class BytesMatch:
     BytesPattern re
     
     bytes expand(self, bytes template): pass
-    
-    bytes group(self, int group1=0): pass
-    bytes[] group(self, int[] group1): pass  # not quite correct! ???
-    
-    tuple<bytes, bytes> groups(self, bytes default=None): pass
+    str group(self, int group1=0): pass
+    str group(self, str group1): pass
+    Sequence<bytes> group(self, int group1, int group2, int *groups): pass
+    Sequence<bytes> group(self, bytes group1, bytes group2,
+                          bytes *groups): pass    
+    Sequence<bytes> groups(self, bytes default=None): pass
     dict<bytes, bytes> groupdict(self, bytes default=None): pass
     int start(self, int group=0): pass
     int end(self, int group=0): pass
