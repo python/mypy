@@ -74,8 +74,10 @@ void compile_to_python(str path, str module, str[] args):
                 # code.
                 p = os.path.join(outputdir, '__main__.py')
                 f = open(p, 'w')
-                f.write('import runpy\n'
-                        "runpy.run_module('%s', run_name='__main__')" % module)
+                f.write("""
+import runpy
+runpy.run_module('%s', run_name='__main__', alter_sys=True)
+""" % module)
                 f.close()
                 opts = [p]
             else:
