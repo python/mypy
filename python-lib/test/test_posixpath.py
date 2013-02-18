@@ -172,8 +172,8 @@ class PosixPathTest(unittest.TestCase):
             if not f.close():
                 f.close()
 
-    @staticmethod
-    def _create_file(filename):
+    #@staticmethod
+    def _create_file(self, filename):
         with open(filename, 'wb') as f:
             f.write(b'foo')
 
