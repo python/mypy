@@ -803,7 +803,7 @@ class EnvironmentVarGuard(dict):
         return self
 
     def __exit__(self, *ignore_exc):
-        for (k, v) in self._changed.items():
+        for ( k, v) in self._changed.items():
             if v is None:
                 if k in self._environ:
                     del self._environ[k]
@@ -895,9 +895,9 @@ def transient_internet(resource_name, *, timeout=30.0, errnos=()):
     gai_errnos = []
     if not captured_errnos:
         captured_errnos = [getattr(errno, name, num)
-                           for (name, num) in default_errnos]
+                           for ( name, num) in default_errnos]
         gai_errnos = [getattr(socket, name, num)
-                      for (name, num) in default_gai_errnos]
+                      for ( name, num) in default_gai_errnos]
 
     def filter_error(err):
         n = getattr(err, 'errno', None)
