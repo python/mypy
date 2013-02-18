@@ -32,7 +32,7 @@ extsep = '.'
 sep = '/'
 pathsep = ':'
 defpath = ':/bin:/usr/bin'
-altsep = None
+any altsep = None
 devnull = '/dev/null'
 
 def _get_sep(path):
@@ -273,8 +273,8 @@ def expanduser(path):
 # This expands the forms $variable and ${variable} only.
 # Non-existent variables are left unchanged.
 
-_varprog = None
-_varprogb = None
+any _varprog = None
+any _varprogb = None
 
 def expandvars(path):
     """Expand shell variables of form $var and ${var}.  Unknown variables
