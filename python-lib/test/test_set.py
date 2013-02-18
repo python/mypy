@@ -362,9 +362,10 @@ class TestSet(TestJointOps):
         self.assertNotEqual(id(s), id(t))
 
     def test_set_literal(self):
-        s = set([1,2,3])
-        t = {1,2,3}
-        self.assertEqual(s, t)
+        raise NotImplemented()
+        #s = set([1,2,3])
+        #t = {1,2,3}
+        #self.assertEqual(s, t)
 
     def test_hash(self):
         self.assertRaises(TypeError, hash, self.s)
