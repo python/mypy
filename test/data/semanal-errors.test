@@ -560,3 +560,8 @@ main: In function "g":
 class A: pass
 A = None # E: Invalid assignment target
 [out]
+
+[case testInvalidQualifiedName]
+any x
+x.y z # E: Invalid type "__main__.x"
+[out]
