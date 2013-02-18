@@ -269,7 +269,12 @@ class float(float_t, int_t):
     float __float__(self): return self
     
     int __hash__(self): pass
-    
+
+
+class complex:
+    # TODO this is just a placeholder; add more members
+    void __init__(self, float re, float im=0.0): pass
+
 
 class str(Sequence<str>):
     # TODO maketrans
