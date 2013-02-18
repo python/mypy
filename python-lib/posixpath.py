@@ -280,11 +280,11 @@ def expandvars(path):
     """Expand shell variables of form $var and ${var}.  Unknown variables
     are left unchanged."""
     global _varprog, _varprogb
+    import re
     if isinstance(path, bytes):
         if b'$' not in path:
             return path
         if not _varprogb:
-            import re
             _varprogb = re.compile(br'\$(\w+|\{[^}]*\})', re.ASCII)
         search = _varprogb.search
         start = b'{'
@@ -293,7 +293,6 @@ def expandvars(path):
         if '$' not in path:
             return path
         if not _varprog:
-            import re
             _varprog = re.compile(r'\$(\w+|\{[^}]*\})', re.ASCII)
         search = _varprog.search
         start = '{'
