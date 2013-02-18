@@ -338,7 +338,8 @@ class TestJointOps(unittest.TestCase):
         ref = weakref.ref(obj)
         container = set([obj, 1])
         obj.x = iter(container)
-        del obj, container
+        obj = None
+        container = None
         gc.collect()
         self.assertTrue(ref() is None, "Cycle was not collected")
 
