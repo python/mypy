@@ -152,7 +152,7 @@ def islink(path):
     """Test whether a path is a symbolic link"""
     try:
         st = os.lstat(path)
-    except os.error:
+    except OSError:
         return False
     except AttributeError:
         return False
@@ -164,7 +164,7 @@ def lexists(path):
     """Test whether a path exists.  Returns True for broken symbolic links"""
     try:
         os.lstat(path)
-    except os.error:
+    except OSError:
         return False
     return True
 
@@ -212,7 +212,7 @@ def ismount(path):
         else:
             parent = join(path, '..')
         s2 = os.lstat(parent)
-    except os.error:
+    except OSError:
         return False # It doesn't exist -- so not a mount point :-)
     dev1 = s1.st_dev
     dev2 = s2.st_dev
