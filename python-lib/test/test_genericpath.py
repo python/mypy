@@ -21,7 +21,7 @@ class GenericTest(unittest.TestCase):
     pathmodule = genericpath
     common_attributes = ['commonprefix', 'getsize', 'getatime', 'getctime',
                          'getmtime', 'exists', 'isdir', 'isfile']
-    attributes = []
+    any attributes = []
 
     def test_no_argument(self):
         for attr in self.common_attributes + self.attributes:
@@ -185,7 +185,7 @@ class GenericTest(unittest.TestCase):
 
 class CommonTest(GenericTest):
     # The path module to be tested
-    pathmodule = None
+    any pathmodule = None
     common_attributes = GenericTest.common_attributes + [
         # Properties
         'curdir', 'pardir', 'extsep', 'sep',
