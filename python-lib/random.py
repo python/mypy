@@ -659,6 +659,35 @@ class SystemRandom(Random):
         raise NotImplementedError('System entropy source does not have state.')
     getstate = setstate = _notimplemented
 
+# Create one instance, seeded from current time, and export its methods
+# as module-level functions.  The functions share state across all uses
+#(both in the user's code and in the Python libraries), but that's fine
+# for most programs and is easier for the casual user than making them
+# instantiate their own Random() instance.
+
+_inst = Random()
+seed = _inst.seed
+random = _inst.random
+uniform = _inst.uniform
+triangular = _inst.triangular
+randint = _inst.randint
+choice = _inst.choice
+randrange = _inst.randrange
+sample = _inst.sample
+shuffle = _inst.shuffle
+normalvariate = _inst.normalvariate
+lognormvariate = _inst.lognormvariate
+expovariate = _inst.expovariate
+vonmisesvariate = _inst.vonmisesvariate
+gammavariate = _inst.gammavariate
+gauss = _inst.gauss
+betavariate = _inst.betavariate
+paretovariate = _inst.paretovariate
+weibullvariate = _inst.weibullvariate
+getstate = _inst.getstate
+setstate = _inst.setstate
+getrandbits = _inst.getrandbits
+
 ## -------------------- test program --------------------
 
 def _test_generator(n, func, args):
@@ -700,35 +729,6 @@ def _test(N=2000):
     _test_generator(N, gauss, (0.0, 1.0))
     _test_generator(N, betavariate, (3.0, 3.0))
     _test_generator(N, triangular, (0.0, 1.0, 1.0/3.0))
-
-# Create one instance, seeded from current time, and export its methods
-# as module-level functions.  The functions share state across all uses
-#(both in the user's code and in the Python libraries), but that's fine
-# for most programs and is easier for the casual user than making them
-# instantiate their own Random() instance.
-
-_inst = Random()
-seed = _inst.seed
-random = _inst.random
-uniform = _inst.uniform
-triangular = _inst.triangular
-randint = _inst.randint
-choice = _inst.choice
-randrange = _inst.randrange
-sample = _inst.sample
-shuffle = _inst.shuffle
-normalvariate = _inst.normalvariate
-lognormvariate = _inst.lognormvariate
-expovariate = _inst.expovariate
-vonmisesvariate = _inst.vonmisesvariate
-gammavariate = _inst.gammavariate
-gauss = _inst.gauss
-betavariate = _inst.betavariate
-paretovariate = _inst.paretovariate
-weibullvariate = _inst.weibullvariate
-getstate = _inst.getstate
-setstate = _inst.setstate
-getrandbits = _inst.getrandbits
 
 if __name__ == '__main__':
     _test()
