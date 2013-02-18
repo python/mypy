@@ -16,7 +16,7 @@ class GetoptTests(unittest.TestCase):
 
     def tearDown(self):
         self.env.__exit__()
-        del self.env
+        self.env = None
 
     def assertError(self, *args, **kwargs):
         self.assertRaises(getopt.GetoptError, *args, **kwargs)
