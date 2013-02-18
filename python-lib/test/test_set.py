@@ -1681,6 +1681,8 @@ class TestVariousIteratorArgs(unittest.TestCase):
                 self.assertRaises(TypeError, getattr(set('january'), methname), N(data))
                 self.assertRaises(ZeroDivisionError, getattr(set('january'), methname), E(data))
 
+any be_bad, set2, dict2
+
 class bad_eq:
     def __eq__(self, other):
         if be_bad:
