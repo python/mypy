@@ -262,8 +262,9 @@ class TestJointOps(unittest.TestCase):
             elem.set = set([elem])
 
     def test_subclass_with_custom_hash(self):
+        raise NotImplemented() # runtime computed base class below
         # Bug #1257731
-        class H(self.thetype):
+        class H: # (self.thetype):
             def __hash__(self):
                 return int(id(self) & 0x7fffffff)
         s=H()
