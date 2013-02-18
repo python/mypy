@@ -6,7 +6,9 @@
 # TODO UserDict
 # TODO UserList
 # TODO UserString
-# TODO abstract base classes
+# TODO more abstract base classes (interfaces in mypy)
+
+from builtins import Set, Sequence, Sized
 
 
 class deque<t>(Sized, Iterable<t>):
