@@ -112,6 +112,8 @@ class stat_result:
     int st_ctime # platform dependent (time of most recent metadata change on 
                  # Unix, or the time of creation on Windows)
 
+    void __init__(self, tuple): pass
+
     # On some Unix systems (such as Linux), the following attributes may also 
     # be available:
     #int st_blocks # number of blocks allocated for file
