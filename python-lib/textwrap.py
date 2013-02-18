@@ -61,7 +61,7 @@ class TextWrapper:
         Drop leading and trailing whitespace from lines.
     """
 
-    unicode_whitespace_trans = {}
+    any unicode_whitespace_trans = {}
     uspace = ord(' ')
     for x in _whitespace:
         unicode_whitespace_trans[ord(x)] = uspace
