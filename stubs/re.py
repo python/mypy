@@ -40,8 +40,8 @@ class Pattern:
                          int count=0): pass
 
 class Match:
-    int pos, endpos, lastindex
-    str lastgroup, string
+    int pos, int endpos, int lastindex
+    str lastgroup, str string
     
     # The regular expression object whose match() or search() method produced
     # this match instance.
