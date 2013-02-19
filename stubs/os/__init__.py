@@ -278,12 +278,11 @@ void kill(int pid, int sig): pass
 # TODO return type
 IO popen(str command, str mode='r', int bufsize=-1): pass  # TODO: params???
 
-int spawnl(int mode, str path, str[] args): pass # TODO fix
-int spawnle(int mode, str path, str[] args,
-            dict<str, str> env): pass # TODO fix
-int spawnlp(int mode, IO file, str[] args): pass  # Unix only TODO fix
-int spawnlpe(int mode, IO file, str[] args, dict<str, str> env): 
-    pass  # Unix only TODO fix
+int spawnl(int mode, str path, str *args): pass
+int spawnle(int mode, str path, any *args): pass # Imprecise signature
+int spawnlp(int mode, IO file, str *args): pass  # Unix only TODO 
+int spawnlpe(int mode, IO file, any *args):
+    pass # Imprecise signature; Unix only TODO 
 int spawnv(int mode, str path, str[] args): pass
 int spawnve(int mode, str path, str[] args, dict<str, str> env): pass
 int spawnvp(int mode, IO file, str[] args): pass  # Unix only
