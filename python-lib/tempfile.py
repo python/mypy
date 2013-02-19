@@ -104,7 +104,6 @@ class _RandomNameSequence:
 
     characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
 
-    @property
     def rng(self):
         cur_pid = _os.getpid()
         if cur_pid != getattr(self, '_rng_pid', None):
@@ -117,7 +116,7 @@ class _RandomNameSequence:
 
     def __next__(self):
         c = self.characters
-        choose = self.rng.choice
+        choose = self.rng().choice
         letters = [choose(c) for dummy in "123456"]
         return ''.join(letters)
 
