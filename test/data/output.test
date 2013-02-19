@@ -113,6 +113,9 @@ lambda x, *y: y
 (  < x > [])
 (  < x  , y > {})
 
+[case testSetLiteralWithType]
+(  < x  > { y })
+
 [case testGeneratorExpression]
 x + 1 for x in z
 x for x in y if foo

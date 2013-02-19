@@ -1279,6 +1279,8 @@ class Parser:
                 self.fail('Expected a single type before set literal', e.line)
             set = (SetExpr)e
             set.type = types[0]
+            set.repr.langle = langle
+            set.repr.rangle = rangle
         else:
             self.fail(
                 'Expected a list, dictionary, non-empty tuple or set '
