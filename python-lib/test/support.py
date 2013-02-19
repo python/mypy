@@ -1071,19 +1071,10 @@ def _memory_watchdog(start_evt, finish_evt, period=10.0):
     # and push results onto an anonymous pipe.
     try:
         page_size = os.sysconf('SC_PAGESIZE')
-    except ValueError:
+    except (ValueError, AttributeError):
         try:
             page_size = os.sysconf('SC_PAGE_SIZE')
-        except ValueError:
-            page_size = 4096
-        except AttributeError:
-            page_size = 4096
-    except AttributeError:
-        try:
-            page_size = os.sysconf('SC_PAGE_SIZE')
-        except ValueError:
-            page_size = 4096
-        except AttributeError:
+        except (ValueError, AttributeError):
             page_size = 4096
     procfile = '/proc/{pid}/statm'.format(pid=os.getpid())
     try:
@@ -1564,11 +1555,7 @@ def can_symlink():
     try:
         os.symlink(TESTFN, symlink_path)
         can = True
-    except OSError:
-        can = False
-    except NotImplementedError:
-        can = False
-    except AttributeError:
+    except (OSError, NotImplementedError, AttributeError):
         can = False
     else:
         os.remove(symlink_path)
@@ -1600,9 +1587,7 @@ def patch(test_instance, object_to_patch, attr_name, new_value):
     attr_is_local = False
     try:
         old_value = object_to_patch.__dict__[attr_name]
-    except AttributeError:
-        old_value = getattr(object_to_patch, attr_name, None)
-    except KeyError:
+    except (AttributeError, KeyError):
         old_value = getattr(object_to_patch, attr_name, None)
     else:
         attr_is_local = True
