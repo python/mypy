@@ -85,9 +85,10 @@ class TextTestRunner:
 class SkipTest(Exception):
     pass
 
-# TODO precise type
+# TODO precise types
 any skipUnless(any condition, str reason): pass
 any skipIf(any condition, str reason): pass
+ft expectedFailure<ft>(ft func): pass
 
 void main(str module='__main__', str defaultTest=None, str[] argv=None,
           any testRunner=None, any testLoader=None): pass # TODO types
