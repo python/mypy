@@ -653,9 +653,11 @@ class TypeChecker(NodeVisitor<Type>):
     
     Type visit_raise_stmt(self, RaiseStmt s):
         """Type check a raise statement."""
-        typ = self.accept(s.expr)
-        self.check_subtype(typ, self.named_type('builtins.BaseException'), s,
-                           messages.INVALID_EXCEPTION_TYPE)
+        if s.expr:
+            typ = self.accept(s.expr)
+            self.check_subtype(typ,
+                               self.named_type('builtins.BaseException'), s,
+                               messages.INVALID_EXCEPTION_TYPE)
     
     Type visit_try_stmt(self, TryStmt s):
         """Type check a try statement."""

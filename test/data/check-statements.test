@@ -390,6 +390,13 @@ except:
     ~None # E: Unsupported operand type for ~ (None)
 [builtins fixtures/exception.py]
 
+[case testRaiseWithoutArgument]
+try:
+    None
+except:
+    raise
+[builtins fixtures/exception.py]
+
 
 -- Del statement
 -- -------------
