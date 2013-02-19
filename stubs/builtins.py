@@ -578,6 +578,7 @@ class slice:
 class tuple:
     void __init__(self): pass
     void __init__(self, Iterable<any> iterable): pass
+    bool __contains__(self, object x): pass
 
 
 class function:
