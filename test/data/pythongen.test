@@ -639,3 +639,7 @@ class A: pass
 def f(na):
     pass
 
+[case testSetLiteralWithExplicitType]
+x = <object> { None }
+[out]
+x = { None }
