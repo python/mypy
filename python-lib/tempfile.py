@@ -179,7 +179,7 @@ def _get_default_tempdir():
     raise IOError(_errno.ENOENT,
                   "No usable temporary directory found in %s" % dirlist)
 
-_name_sequence = None
+any _name_sequence = None
 
 def _get_candidate_names():
     """Common setup sequence for all user-callable interfaces."""
@@ -221,7 +221,7 @@ def gettempprefix():
     """Accessor for tempdir.template."""
     return template
 
-tempdir = None
+any tempdir = None
 
 def gettempdir():
     """Accessor for tempfile.tempdir."""
