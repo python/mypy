@@ -656,19 +656,6 @@ class TemporaryDirectory(object):
         # Issue a ResourceWarning if implicit cleanup needed
         self.cleanup(_warn=True)
 
-    # XXX (ncoghlan): The following code attempts to make
-    # this class tolerant of the module nulling out process
-    # that happens during CPython interpreter shutdown
-    # Alas, it doesn't actually manage it. See issue #10188
-    _listdir = staticmethod(_os.listdir)
-    _path_join = staticmethod(_os.path.join)
-    _isdir = staticmethod(_os.path.isdir)
-    _islink = staticmethod(_os.path.islink)
-    _remove = staticmethod(_os.remove)
-    _rmdir = staticmethod(_os.rmdir)
-    _os_error = _os.error
-    _warn = _warnings.warn
-
     def _rmtree(self, path):
         # Essentially a stripped down version of shutil.rmtree.  We can't
         # use globals because they may be None'ed out at shutdown.
