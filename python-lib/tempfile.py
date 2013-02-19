@@ -371,6 +371,7 @@ class _TemporaryFileWrapper:
     # NT provides delete-on-close as a primitive, so we don't need
     # the wrapper to do anything special.  We still use it so that
     # file.name is useful (i.e. not "(fdopen)") with NamedTemporaryFile.
+    
     if _os.name != 'nt':
         # Cache the unlinker so we don't get spurious errors at
         # shutdown when the module-level "os" is None'd out.  Note
@@ -379,24 +380,28 @@ class _TemporaryFileWrapper:
         # __del__ is called.
         unlink = _os.unlink
 
-        def close(self):
+    def close(self):
+        if _os.name != 'nt':
             if not self.close_called:
                 self.close_called = True
                 self.file.close()
                 if self.delete:
                     self.unlink(self.name)
+        else:
+            self.file.close()
 
-        def __del__(self):
+    def __del__(self):
+        if _os.name != 'nt':
             self.close()
 
-        # Need to trap __exit__ as well to ensure the file gets
-        # deleted when used in a with statement
-        def __exit__(self, exc, value, tb):
+    # Need to trap __exit__ as well to ensure the file gets
+    # deleted when used in a with statement
+    def __exit__(self, exc, value, tb):
+        if _os.name != 'nt':
             result = self.file.__exit__(exc, value, tb)
             self.close()
             return result
-    else:
-        def __exit__(self, exc, value, tb):
+        else:
             self.file.__exit__(exc, value, tb)
 
 
