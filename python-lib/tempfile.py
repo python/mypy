@@ -83,7 +83,7 @@ else:
         try:
             f = open(fn)
         except IOError:
-            raise _os.error
+            raise _os.error()
         f.close()
 
 def _exists(fn):
