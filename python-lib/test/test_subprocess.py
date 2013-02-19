@@ -767,7 +767,7 @@ class _SuppressCoreFiles(object):
                 pass
 
 
-@unittest.skipIf(mswindows, "POSIX specific tests")
+#@unittest.skipIf(mswindows, "POSIX specific tests")
 class POSIXProcessTestCase(BaseTestCase):
 
     def test_exceptions(self):
@@ -1474,7 +1474,7 @@ class POSIXProcessTestCase(BaseTestCase):
         self.assertNotIn(ident, [id(o) for o in subprocess._active])
 
 
-@unittest.skipUnless(mswindows, "Windows specific tests")
+#@unittest.skipUnless(mswindows, "Windows specific tests")
 class Win32ProcessTestCase(BaseTestCase):
 
     def test_startupinfo(self):
@@ -1583,7 +1583,7 @@ class Win32ProcessTestCase(BaseTestCase):
 #
 # Actually, getoutput should work on any platform with an os.popen, but
 # I'll take the comment as given, and skip this suite.
-@unittest.skipUnless(os.name == 'posix', "only relevant for UNIX")
+#@unittest.skipUnless(os.name == 'posix', "only relevant for UNIX")
 class CommandTests(unittest.TestCase):
     def test_getoutput(self):
         self.assertEqual(subprocess.getoutput('echo xyzzy'), 'xyzzy')
@@ -1605,8 +1605,8 @@ class CommandTests(unittest.TestCase):
                 os.rmdir(dir)
 
 
-@unittest.skipUnless(getattr(subprocess, '_has_poll', False),
-                     "poll system call not supported")
+#@unittest.skipUnless(getattr(subprocess, '_has_poll', False),
+#                     "poll system call not supported")
 class ProcessTestCaseNoPoll(ProcessTestCase):
     def setUp(self):
         subprocess._has_poll = False
@@ -1617,8 +1617,8 @@ class ProcessTestCaseNoPoll(ProcessTestCase):
         ProcessTestCase.tearDown(self)
 
 
-@unittest.skipUnless(getattr(subprocess, '_posixsubprocess', False),
-                     "_posixsubprocess extension module not found.")
+#@unittest.skipUnless(getattr(subprocess, '_posixsubprocess', False),
+#                     "_posixsubprocess extension module not found.")
 class ProcessTestCasePOSIXPurePython(ProcessTestCase, POSIXProcessTestCase):
     @classmethod
     def setUpClass(cls):
@@ -1658,7 +1658,7 @@ class HelperFunctionTests(unittest.TestCase):
         self.assertEqual([(256, 999), (666,), (666,)], record_calls)
 
 
-@unittest.skipUnless(mswindows, "Windows-specific tests")
+#@unittest.skipUnless(mswindows, "Windows-specific tests")
 class CommandsWithSpaces (BaseTestCase):
 
     def setUp(self):
