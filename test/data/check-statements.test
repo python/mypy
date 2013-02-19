@@ -374,15 +374,6 @@ else:
   object(None) # E: Too many arguments for "object"
 [builtins fixtures/exception.py]
 
-[case testMultipleExceptionTypes]
-try: pass
-except (BaseException, Err): # Fail; but should work eventually
-  pass
-class Err(BaseException): pass
-[builtins fixtures/exception.py]
-[out]
-main, line 2: Multiple exception types not supported yet
-
 [case testExceptWithoutType]
 try: 
     -None # E: Unsupported operand type for unary - (None)
@@ -395,6 +386,16 @@ try:
     None
 except:
     raise
+[builtins fixtures/exception.py]
+
+[case testExceptWithMultipleTypes]
+class E1(BaseException): pass
+class E2(E1): pass
+try:
+    pass
+except (E1, E2): pass
+except (E1, object): pass # E: Invalid exception type
+except (object, E2): pass # E: Invalid exception type
 [builtins fixtures/exception.py]
 
 

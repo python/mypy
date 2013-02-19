@@ -682,9 +682,13 @@ class TypeChecker(NodeVisitor<Type>):
             m = (MemberExpr)n
             if isinstance(m.node, TypeInfo):
                 return self.check_exception_type((TypeInfo)m.node, n)
-        elif isinstance(self.expr_checker.unwrap(n), TupleExpr):
-            self.fail('Multiple exception types not supported yet', n)
-            return Any()
+        else:
+            unwrapped = self.expr_checker.unwrap(n)
+            if isinstance(unwrapped, TupleExpr):
+                tupleexpr = (TupleExpr)unwrapped
+                for n in tupleexpr.items:
+                    t = self.exception_type(n)
+                return t
         self.fail('Unsupported exception', n)
         return Any()
 
