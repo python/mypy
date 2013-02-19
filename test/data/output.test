@@ -87,6 +87,11 @@ f(x *y, z=1)
 { x : y, 1 : 2 }
 { x : y, 1 : 2, 3 : 4 , }
 
+[case testSetLiterals]
+{ x }
+{ x, y }
+{ x , y   ,  }
+
 [case testCasts]
 (x)y
 (any)z

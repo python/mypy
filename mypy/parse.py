@@ -1157,8 +1157,8 @@ class Parser:
              return list_comp
         else:
             expr = ListExpr(items)
-            self.set_repr(expr, noderepr.ListExprRepr(lbracket, commas,
-                                                      rbracket, none, none))
+            self.set_repr(expr, noderepr.ListSetExprRepr(lbracket, commas,
+                                                         rbracket, none, none))
             return expr
     
     GeneratorExpr parse_generator_expr(self, Node left_expr):
@@ -1201,7 +1201,7 @@ class Parser:
         while self.current_str() != '}' and not self.eol():
             key = self.parse_expression(precedence[','])
             if self.current_str() in [',', '}'] and items == []:
-                return self.parse_set_expr(key)
+                return self.parse_set_expr(key, lbrace)
             elif self.current_str() != ':':
                 self.parse_error()
             colons.append(self.expect(':'))
@@ -1216,15 +1216,19 @@ class Parser:
                                                   rbrace, none, none, none))
         return node
     
-    SetExpr parse_set_expr(self, Node first):
+    SetExpr parse_set_expr(self, Node first, Token lbrace):
         items = [first]
+        commas = <Token> []
         while self.current_str() != '}' and not self.eol():
-            self.expect(',')
+            commas.append(self.expect(','))
             if self.current_str() == '}':
                 break
             items.append(self.parse_expression(precedence[',']))
-        self.expect('}')
-        return SetExpr(items)
+        rbrace = self.expect('}')
+        expr = SetExpr(items)
+        self.set_repr(expr, noderepr.ListSetExprRepr(lbrace, commas,
+                                                     rbrace, none, none))
+        return expr
     
     TupleExpr parse_tuple_expr(self, Node expr, int prec=precedence[',']):
         items = [expr]
@@ -1249,8 +1253,10 @@ class Parser:
                 self.fail('Expected a single type before list literal', e.line)
             else:
                 ((ListExpr)e).type = types[0]
-                e.repr = noderepr.ListExprRepr(e.repr.lbracket, e.repr.commas,
-                                               e.repr.rbracket, langle, rangle)
+                e.repr = noderepr.ListSetExprRepr(e.repr.lbracket,
+                                                  e.repr.commas,
+                                                  e.repr.rbracket,
+                                                  langle, rangle)
         elif (isinstance(e, ParenExpr) and
                   isinstance(((ParenExpr)e).expr, TupleExpr)):
             t = (TupleExpr)((ParenExpr)e).expr

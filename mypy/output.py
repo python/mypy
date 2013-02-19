@@ -402,6 +402,9 @@ class OutputVisitor(NodeVisitor):
         self.comma_list(o.items, r.commas)
         self.token(r.rbracket)
     
+    def visit_set_expr(self, o):
+        self.visit_list_expr(o)
+    
     def visit_tuple_expr(self, o):
         r = o.repr
         self.token(r.lparen)

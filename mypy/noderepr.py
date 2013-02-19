@@ -287,7 +287,8 @@ class SuperExprRepr:
         self.name = name
 
 
-class ListExprRepr:
+class ListSetExprRepr:
+    # [...] or {...}
     void __init__(self, any lbracket, Token[] commas, any rbracket,
                   any langle, any rangle):
         self.lbracket = lbracket
