@@ -1490,8 +1490,8 @@ class Popen(object):
                         chunk = input[input_offset : input_offset + _PIPE_BUF]
                         try:
                             input_offset += os.write(fd, chunk)
-                        except OSError as e:
-                            if e.errno == errno.EPIPE:
+                        except OSError as oe:
+                            if oe.errno == errno.EPIPE:
                                 close_unregister_and_remove(fd)
                             else:
                                 raise
@@ -1541,8 +1541,8 @@ class Popen(object):
                     chunk = input[input_offset : input_offset + _PIPE_BUF]
                     try:
                         bytes_written = os.write(self.stdin.fileno(), chunk)
-                    except OSError as e:
-                        if e.errno == errno.EPIPE:
+                    except OSError as oe:
+                        if oe.errno == errno.EPIPE:
                             self.stdin.close()
                             write_set.remove(self.stdin)
                         else:
