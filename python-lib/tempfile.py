@@ -509,7 +509,7 @@ class SpooledTemporaryFile:
         if self._rolled: return
         file = self._file
         newfile = self._file = TemporaryFile(**self._TemporaryFileArgs)
-        del self._TemporaryFileArgs
+        self._TemporaryFileArgs = None
 
         newfile.write(file.getvalue())
         newfile.seek(file.tell(), 0)
