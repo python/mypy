@@ -176,7 +176,7 @@ def _get_default_tempdir():
                 fp.write(b'blat')
                 fp.close()
                 _os.unlink(filename)
-                del fp, fd
+                fp = fd = None
                 return dir
             except (OSError, IOError) as e:
                 if e.args[0] != _errno.EEXIST:
