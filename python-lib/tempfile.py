@@ -624,6 +624,19 @@ class TemporaryDirectory(object):
         self.name = None # Handle mkdtemp throwing an exception
         self.name = mkdtemp(suffix, prefix, dir)
 
+        # XXX (ncoghlan): The following code attempts to make
+        # this class tolerant of the module nulling out process
+        # that happens during CPython interpreter shutdown
+        # Alas, it doesn't actually manage it. See issue #10188
+        self._listdir = _os.listdir
+        self._path_join = _os.path.join
+        self._isdir = _os.path.isdir
+        self._islink = _os.path.islink
+        self._remove = _os.remove
+        self._rmdir = _os.rmdir
+        self._os_error = _os.error
+        self._warn = _warnings.warn
+
     def __repr__(self):
         return "<{} {!r}>".format(self.__class__.__name__, self.name)
 
