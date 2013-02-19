@@ -438,7 +438,7 @@ def NamedTemporaryFile(mode='w+b', buffering=-1, encoding=None,
 
     return _TemporaryFileWrapper(file, name, delete)
 
-if _os.name != 'posix' or _os.sys.platform == 'cygwin':
+if _os.name != 'posix' or _sys.platform == 'cygwin':
     # On non-POSIX and Cygwin systems, assume that we cannot unlink a file
     # while it is open.
     TemporaryFile = NamedTemporaryFile
