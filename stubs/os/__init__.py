@@ -223,7 +223,7 @@ void chown(str path, int uid, int gid): pass  # Unix only
 #void lchown(str path, int uid, int gid): pass  # Unix only
 void link(str src, str link_name): pass
 str[] listdir(str path='.'): pass
-str lstat(str path): pass
+stat_result lstat(str path): pass
 #void mkfifo(path, int mode=0o666): pass  # Unix only
 void mknod(str filename, int mode=0o600, int device=0): pass
 int major(int device): pass
