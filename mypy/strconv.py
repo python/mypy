@@ -332,7 +332,10 @@ class StrConv(NodeVisitor<str>):
         return self.dump(a, o)
     
     def visit_set_expr(self, o):
-        return self.dump(o.items, o)
+        a = o.items[:]
+        if o.type:
+            a.insert(0, ('Type', [o.type]))
+        return self.dump(a, o)
     
     def visit_tuple_expr(self, o):
         a = o.items[:]

@@ -1268,10 +1268,15 @@ class Parser:
                 e.repr = noderepr.DictExprRepr(e.repr.lbrace, e.repr.colons,
                                                e.repr.commas, e.repr.rbrace,
                                                langle, commas[0], rangle)
+        elif isinstance(e, SetExpr):
+            if len(types) != 1:
+                self.fail('Expected a single type before set literal', e.line)
+            set = (SetExpr)e
+            set.type = types[0]
         else:
             self.fail(
-                'Expected a list, dictionary or non-empty tuple after <...>',
-                e.line)
+                'Expected a list, dictionary, non-empty tuple or set '
+                'after <...>', e.line)
         return e
     
     NameExpr parse_name_expr(self):

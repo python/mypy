@@ -900,9 +900,11 @@ class TupleExpr(Node):
 class SetExpr(Node):
     """Set literal expression {value, ...}."""
     Node[] items
+    mypy.types.Type type
     
-    void __init__(self, Node[] items):
+    void __init__(self, Node[] items, mypy.types.Type type=None):
         self.items = items
+        self.type = type
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_set_expr(self)

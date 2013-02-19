@@ -111,16 +111,18 @@ file, line 1: Expected an indented block
 <t, s> []
 <t> 1
 <t> x
+<t, s> {x}
 [out]
 file, line 1: Expected a single type before list literal
-file, line 2: Expected a list, dictionary or non-empty tuple after <...>
-file, line 3: Expected a list, dictionary or non-empty tuple after <...>
+file, line 2: Expected a list, dictionary, non-empty tuple or set after <...>
+file, line 3: Expected a list, dictionary, non-empty tuple or set after <...>
+file, line 4: Expected a single type before set literal
 
 [case testInvalidTypeForTuple]
 <t, s> ()
 <t> (1, 2)
 [out]
-file, line 1: Expected a list, dictionary or non-empty tuple after <...>
+file, line 1: Expected a list, dictionary, non-empty tuple or set after <...>
 file, line 2: Wrong number of types for a tuple literal
 
 [case testInvalidKeywordArguments1]
