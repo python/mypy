@@ -525,6 +525,16 @@ class A: pass
 class B: pass
 [builtins fixtures/dict.py]
 
+[case testSetLiteral]
+A a, any x
+s = {a}
+s = {x}
+s = <A> {x}
+s = <B> {x} # E: Incompatible types in assignment
+class A: pass
+class B: pass
+[builtins fixtures/set.py]
+
 
 -- For statements
 -- --------------

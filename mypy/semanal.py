@@ -12,7 +12,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr, MDEF,
-    FuncBase, Decorator
+    FuncBase, Decorator, SetExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -648,6 +648,11 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.types[i] = self.anal_type(expr.types[i])
     
     void visit_list_expr(self, ListExpr expr):
+        for item in expr.items:
+            item.accept(self)
+        expr.type = self.anal_type(expr.type)
+    
+    void visit_set_expr(self, SetExpr expr):
         for item in expr.items:
             item.accept(self)
         expr.type = self.anal_type(expr.type)

@@ -9,7 +9,7 @@ from mypy.nodes import (
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
     UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
     DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
-    ListComprehension, GeneratorExpr, MypyFile
+    ListComprehension, GeneratorExpr, SetExpr, MypyFile
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -787,32 +787,41 @@ class ExpressionChecker:
     
     Type visit_list_expr(self, ListExpr e):
         """Type check a list expression [...] or <t> [...]."""
+        return self.check_list_or_set_expr(e.items, e.type, 'builtins.list',
+                                           '<list>', e)
+
+    Type visit_set_expr(self, SetExpr e):
+        return self.check_list_or_set_expr(e.items, e.type, 'builtins.set',
+                                           '<set>', e)
+
+    Type check_list_or_set_expr(self, Node[] items, Type type, str fullname,
+                                str tag, Context context):
         Callable constructor
-        if e.type:
-            # A list expression with an explicit item type; translate into type
+        if type:
+            # A literal with an explicit item type; translate into type
             # checking a function call.
-            constructor = Callable([e.type],
+            constructor = Callable([type],
                                    [nodes.ARG_STAR],
                                    [None],
-                                   self.chk.named_generic_type('builtins.list',
-                                                               [e.type]),
+                                   self.chk.named_generic_type(fullname,
+                                                               [type]),
                                    False,
-                                   '<list>')
+                                   tag)
         else:
-            # A list expression without an explicit type; translate into type
+            # A literal without an explicit type; translate into type
             # checking a generic function call.
             tv = TypeVar('T', -1)
             constructor = Callable([tv],
                                    [nodes.ARG_STAR],
                                    [None],
-                                   self.chk.named_generic_type('builtins.list',
+                                   self.chk.named_generic_type(fullname,
                                                                [tv]),
                                    False,
-                                   '<list>',
+                                   tag,
                                    TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor,
-                               e.items,
-                               [nodes.ARG_POS] * len(e.items), e)[0]
+                               items,
+                               [nodes.ARG_POS] * len(items), context)[0]
     
     Type visit_tuple_expr(self, TupleExpr e):    
         """Type check a tuple expression."""

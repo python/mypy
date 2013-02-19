@@ -1,9 +1,6 @@
 -- Tests for unsupported features
 
 
-[case testSetLiteral]
-{None} # E: Feature not implemented yet (set literal)
-
 [case testConditionalExpression]
 a = None if None else None
 [out]

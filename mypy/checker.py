@@ -836,6 +836,9 @@ class TypeChecker(NodeVisitor<Type>):
     Type visit_list_expr(self, ListExpr e):
         return self.expr_checker.visit_list_expr(e)
     
+    Type visit_set_expr(self, SetExpr e):
+        return self.expr_checker.visit_set_expr(e)
+    
     Type visit_tuple_expr(self, TupleExpr e):
         return self.expr_checker.visit_tuple_expr(e)
     
@@ -860,9 +863,6 @@ class TypeChecker(NodeVisitor<Type>):
     #
     # Currently unsupported features
     #
-
-    Type visit_set_expr(self, SetExpr e):
-        return self.msg.not_implemented('set literal', e)
 
     Type visit_conditional_expr(self, ConditionalExpr e):
         return self.msg.not_implemented('conditional expression', e)
