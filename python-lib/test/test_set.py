@@ -590,7 +590,7 @@ class TestSet(TestJointOps):
         # This first tries the builtin rich set comparison, which doesn't know
         # how to handle the custom object. Upon returning NotImplemented, the
         # corresponding comparison on the right object is invoked.
-        myset = set([1, 2, 3])
+        myset = {1, 2, 3}
 
         myobj = TestRichSetCompare()
         myset < myobj
@@ -1706,13 +1706,13 @@ class TestWeirdBugs(unittest.TestCase):
         # This used to segfault
         global be_bad, set2, dict2
         be_bad = False
-        set1 = set([bad_eq()])
-        set2 = set(bad_eq() for i in range(75))
+        set1 = {bad_eq()}
+        set2 = {bad_eq() for i in range(75)}
         be_bad = True
         self.assertRaises(ZeroDivisionError, set1.update, set2)
 
         be_bad = False
-        set1 = set([bad_dict_clear()])
+        set1 = {bad_dict_clear()}
         dict2 = {bad_dict_clear(): None}
         be_bad = True
         set1.symmetric_difference_update(dict2)
