@@ -152,9 +152,7 @@ def islink(path):
     """Test whether a path is a symbolic link"""
     try:
         st = os.lstat(path)
-    except OSError:
-        return False
-    except AttributeError:
+    except (OSError, AttributeError):
         return False
     return stat.S_ISLNK(st.st_mode)
 
