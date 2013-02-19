@@ -53,10 +53,7 @@ else:
             _fcntl.fcntl(fd, _fcntl.F_SETFD, flags)
 
 
-try:
-    import _thread
-except ImportError:
-    import _dummy_thread as _thread
+import _thread
 _allocate_lock = _thread.allocate_lock
 
 _text_openflags = _os.O_RDWR | _os.O_CREAT | _os.O_EXCL
