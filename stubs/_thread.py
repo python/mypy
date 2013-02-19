@@ -4,3 +4,4 @@
 
 int _count(): pass
 any _dangling
+any allocate_lock(): pass
