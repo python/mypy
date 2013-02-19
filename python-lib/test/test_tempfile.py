@@ -68,7 +68,7 @@ class TC(unittest.TestCase):
                      "random string '%s' does not match /^[a-zA-Z0-9_-]{6}$/"
                      % nbase)
 
-test_classes = []
+any test_classes = []
 
 class test_exports(TC):
     def test_exports(self):
