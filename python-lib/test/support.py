@@ -203,7 +203,7 @@ def unlink(filename):
     except OSError as error:
         # The filename need not exist.
         if error.errno not in (errno.ENOENT, errno.ENOTDIR):
-            raise error
+            raise
 
 def rmtree(path):
     try:
@@ -211,7 +211,7 @@ def rmtree(path):
     except OSError as error:
         # Unix returns ENOENT, Windows returns ESRCH.
         if error.errno not in (errno.ENOENT, errno.ESRCH):
-            raise error
+            raise
 
 def make_legacy_pyc(source):
     """Move a PEP 3147 pyc/pyo file to its legacy pyc/pyo location.
@@ -528,16 +528,16 @@ def temp_cwd(name='tempcwd', quiet=False, path=None):
         try:
             os.mkdir(name)
             is_temporary = True
-        except OSError as error:
+        except OSError:
             if not quiet:
-                raise error
+                raise
             warnings.warn('tests may fail, unable to create temp CWD ' + name,
                           RuntimeWarning, stacklevel=3)
     try:
         os.chdir(path)
-    except OSError as err:
+    except OSError:
         if not quiet:
-            raise err
+            raise
         warnings.warn('tests may fail, unable to change the CWD to ' + name,
                       RuntimeWarning, stacklevel=3)
     try:
@@ -928,7 +928,7 @@ def transient_internet(resource_name, *, timeout=30.0, errnos=()):
             else:
                 break
         filter_error(err)
-        raise err # TODO fix this; this might not work always
+        raise
     # XXX should we catch generic exceptions and look for their
     # __cause__ or __context__?
     finally:
@@ -1001,9 +1001,9 @@ def run_with_locale(catstr, *locales):
                 import locale
                 category = getattr(locale, catstr)
                 orig_locale = locale.setlocale(category)
-            except AttributeError as aerr:
+            except AttributeError:
                 # if the test author gives us an invalid category string
-                raise aerr
+                raise
             except:
                 # cannot retrieve original locale, so do nothing
                 locale = orig_locale = None
