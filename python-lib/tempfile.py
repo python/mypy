@@ -36,21 +36,16 @@ import os as _os
 import errno as _errno
 from random import Random as _Random
 
-try:
-    import fcntl as _fcntl
-except ImportError:
-    def _set_cloexec(fd):
+import fcntl as _fcntl
+def _set_cloexec(fd):
+    try:
+        flags = _fcntl.fcntl(fd, _fcntl.F_GETFD, 0)
+    except IOError:
         pass
-else:
-    def _set_cloexec(fd):
-        try:
-            flags = _fcntl.fcntl(fd, _fcntl.F_GETFD, 0)
-        except IOError:
-            pass
-        else:
-            # flags read successfully, modify
-            flags |= _fcntl.FD_CLOEXEC
-            _fcntl.fcntl(fd, _fcntl.F_SETFD, flags)
+    else:
+        # flags read successfully, modify
+        flags |= _fcntl.FD_CLOEXEC
+        _fcntl.fcntl(fd, _fcntl.F_SETFD, flags)
 
 
 import _thread
