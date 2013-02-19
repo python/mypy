@@ -27,6 +27,7 @@ from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name
 from mypy.expandtype import expand_type_by_instance
 from mypy.visitor import NodeVisitor
+from mypy.join import join_types
 
 
 class TypeChecker(NodeVisitor<Type>):
@@ -686,8 +687,13 @@ class TypeChecker(NodeVisitor<Type>):
             unwrapped = self.expr_checker.unwrap(n)
             if isinstance(unwrapped, TupleExpr):
                 tupleexpr = (TupleExpr)unwrapped
+                Type t = None
                 for n in tupleexpr.items:
-                    t = self.exception_type(n)
+                    tt = self.exception_type(n)
+                    if t:
+                        t = join_types(t, tt, self.basic_types())
+                    else:
+                        t = tt
                 return t
         self.fail('Unsupported exception', n)
         return Any()

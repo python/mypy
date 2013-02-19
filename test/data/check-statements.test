@@ -398,6 +398,19 @@ except (E1, object): pass # E: Invalid exception type
 except (object, E2): pass # E: Invalid exception type
 [builtins fixtures/exception.py]
 
+[case testExceptWithMultipleTypes2]
+class E1(BaseException): pass
+class E2(E1): pass
+try:
+    pass
+except (E1, E2) as e1:
+    E1 x = e1
+    E2 x = e1 # E: Incompatible types in assignment
+except (E2, E1) as e2:
+    E1 x = e2
+    E2 x = e2 # E: Incompatible types in assignment
+[builtins fixtures/exception.py]
+
 
 -- Del statement
 -- -------------
