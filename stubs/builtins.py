@@ -889,6 +889,8 @@ class UnicodeWarning(Warning): pass
 class BytesWarning(Warning): pass
 class ResourceWarning(Warning): pass
 
+# TODO Windows-only
+class WindowsError(OSError): pass
+
 # TODO
 #   VMSError
-#   WindowsError
