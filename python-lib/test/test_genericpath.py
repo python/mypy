@@ -284,10 +284,7 @@ class CommonTest(GenericTest):
         try:
             fsencoding = support.TESTFN_ENCODING or "ascii"
             unicwd.encode(fsencoding)
-        except AttributeError:
-            # FS encoding is probably ASCII
-            pass
-        except UnicodeEncodeError:
+        except (AttributeError, UnicodeEncodeError):
             # FS encoding is probably ASCII
             pass
         else:
