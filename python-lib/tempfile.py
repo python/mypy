@@ -536,13 +536,13 @@ class SpooledTemporaryFile:
     def close(self):
         self._file.close()
 
-    @property
-    def closed(self):
-        return self._file.closed
+    #@property
+    #def closed(self):
+    #    return self._file.closed
 
-    @property
-    def encoding(self):
-        return self._file.encoding
+    #@property
+    #def encoding(self):
+    #    return self._file.encoding
 
     def fileno(self):
         self.rollover()
@@ -554,17 +554,17 @@ class SpooledTemporaryFile:
     def isatty(self):
         return self._file.isatty()
 
-    @property
-    def mode(self):
-        return self._file.mode
+    #@property
+    #def mode(self):
+    #    return self._file.mode
 
-    @property
-    def name(self):
-        return self._file.name
+    #@property
+    #def name(self):
+    #    return self._file.name
 
-    @property
-    def newlines(self):
-        return self._file.newlines
+    #@property
+    #def newlines(self):
+    #    return self._file.newlines
 
     def next(self):
         return self._file.next
@@ -581,9 +581,9 @@ class SpooledTemporaryFile:
     def seek(self, *args):
         self._file.seek(*args)
 
-    @property
-    def softspace(self):
-        return self._file.softspace
+    #@property
+    #def softspace(self):
+    #    return self._file.softspace
 
     def tell(self):
         return self._file.tell()
