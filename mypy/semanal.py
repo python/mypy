@@ -118,6 +118,10 @@ class SemanticAnalyzer(NodeVisitor):
         self.analyse_function(defn)
         self.errors.pop_function()
         self.is_init_method = False
+
+    bool is_conditional_func(self, Node n, FuncDef defn):
+        return (isinstance(n, FuncDef) and ((FuncDef)n).is_conditional and
+                defn.is_conditional)
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
         Callable[] t = []
@@ -820,10 +824,8 @@ class FirstPass(NodeVisitor):
         d.is_conditional = sem.block_depth[-1] > 0
         if d.name() in sem.globals:
             n = sem.globals[d.name()].node
-            if (isinstance(n, FuncDef) and ((FuncDef)n).is_conditional and
-                    d.is_conditional):
-                # Original definition was conditional -- multiple conditional
-                # definitions are fine.
+            if sem.is_conditional_func(n, d):
+                # Conditional function definition -- multiple defs are ok.
                 d.original_def = (FuncDef)n
             else:
                 sem.check_no_global(d.name(), d, True)
