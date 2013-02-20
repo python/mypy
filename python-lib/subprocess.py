@@ -378,13 +378,7 @@ else:
     import fcntl
     import pickle
 
-    try:
-        import _posixsubprocess
-    except ImportError:
-        _posixsubprocess = None
-        warnings.warn("The _posixsubprocess module is not being used. "
-                      "Child process reliability may suffer if your "
-                      "program uses threads.", RuntimeWarning)
+    import _posixsubprocess
 
     # When select or poll has indicated that the file is writable,
     # we can write up to _PIPE_BUF bytes without risk of blocking.
