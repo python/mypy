@@ -1076,7 +1076,10 @@ class Popen(object):
             """
             _subprocess.TerminateProcess(self._handle, 1)
 
-        kill = terminate
+        def kill(self):
+            """Terminates the process
+            """
+            self.terminate()
 
     else:
         #
