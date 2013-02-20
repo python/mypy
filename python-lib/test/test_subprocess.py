@@ -31,7 +31,7 @@ else:
 
 
 try:
-    mkstemp = tempfile.mkstemp
+    any mkstemp = tempfile.mkstemp
 except AttributeError:
     # tempfile.mkstemp is not available
     def _mkstemp():
@@ -728,7 +728,7 @@ class ProcessTestCase(BaseTestCase):
 # context manager
 class _SuppressCoreFiles(object):
     """Try to prevent core files from being created."""
-    old_limit = None
+    any old_limit = None
 
     def __enter__(self):
         """Try to save previous ulimit, then set it to (0, 0)."""
