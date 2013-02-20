@@ -677,3 +677,10 @@ main, line 5: Incompatible types in assignment
 main, line 9: Unsupported left operand type for + ("int")
 main: At top level:
 main, line 12: Argument 1 to "f" of "A" has incompatible type "str"
+
+[case testUnconditionalRedefinitionOfConditionalMethod]
+any x
+class A:
+    if x:
+        def f(self): pass
+    def f(self): pass # E: Name 'f' already defined
