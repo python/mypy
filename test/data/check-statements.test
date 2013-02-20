@@ -405,10 +405,10 @@ try:
     pass
 except (E1, E2) as e1:
     E1 x = e1
-    E2 x = e1 # E: Incompatible types in assignment
+    E2 y = e1 # E: Incompatible types in assignment
 except (E2, E1) as e2:
-    E1 x = e2
-    E2 x = e2 # E: Incompatible types in assignment
+    E1 a = e2
+    E2 b = e2 # E: Incompatible types in assignment
 [builtins fixtures/exception.py]
 
 
