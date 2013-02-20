@@ -79,12 +79,13 @@ elif hasattr(_os, "stat"):
 else:
     # Fallback.  All we need is something that raises os.error if the
     # file doesn't exist.
-    def _stat(fn):
+    def __stat(fn):
         try:
             f = open(fn)
         except IOError:
             raise _os.error()
         f.close()
+    _stat = __stat
 
 def _exists(fn):
     try:
