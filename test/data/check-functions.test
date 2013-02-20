@@ -553,3 +553,17 @@ func<void(any)> dec2(func<void(any, any)> f): pass
 @dec1 # E: Argument 1 to "dec1" has incompatible type
 @dec2
 def f(x, y): pass
+
+
+-- Conditional function definition
+-- -------------------------------
+
+
+[case testTypeCheckBodyOfConditionalFunction]
+any x
+if x:
+    void f(int x): 
+        x = 1
+        x = '' # E: Incompatible types in assignment
+[out]
+main: In function "f":
