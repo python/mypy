@@ -15,10 +15,7 @@ import select
 import shutil
 import gc
 
-try:
-    import resource
-except ImportError:
-    resource = None
+import resource
 
 mswindows = (sys.platform == "win32")
 
