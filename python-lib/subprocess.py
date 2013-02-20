@@ -403,11 +403,12 @@ else:
     if _posixsubprocess:
         _create_pipe = _posixsubprocess.cloexec_pipe
     else:
-        def _create_pipe():
+        def __create_pipe():
             fds = os.pipe()
             _set_cloexec(fds[0], True)
             _set_cloexec(fds[1], True)
             return fds
+        _create_pie = __create_pipe
 
 __all__ = ["Popen", "PIPE", "STDOUT", "call", "check_call", "getstatusoutput",
            "getoutput", "check_output", "CalledProcessError"]
