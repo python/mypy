@@ -680,15 +680,8 @@ class TypeChecker(NodeVisitor<Type>):
             self.accept(s.else_body)
     
     Type exception_type(self, Node n):
-        if isinstance(n, NameExpr):
-            name = (NameExpr)n
-            if isinstance(name.node, TypeInfo):
-                return self.check_exception_type((TypeInfo)name.node, n)
-        elif isinstance(n, MemberExpr):
-            m = (MemberExpr)n
-            if isinstance(m.node, TypeInfo):
-                return self.check_exception_type((TypeInfo)m.node, n)
-        else:
+        if isinstance(n, ParenExpr):
+            # Multiple exception types (...).
             unwrapped = self.expr_checker.unwrap(n)
             if isinstance(unwrapped, TupleExpr):
                 tupleexpr = (TupleExpr)unwrapped
@@ -700,16 +693,29 @@ class TypeChecker(NodeVisitor<Type>):
                     else:
                         t = tt
                 return t
+        else:
+            # A single exception type; should evaluate to a type object type.
+            type = self.accept(n)
+            return self.check_exception_type(type, n)
         self.fail('Unsupported exception', n)
         return Any()
 
-    Type check_exception_type(self, TypeInfo info, Context context):
-        t = Instance(info, [])
-        if is_subtype(t, self.named_type('builtins.BaseException')):
-            return t
+    Type check_exception_type(self, FunctionLike type, Context context):
+        item = type.items()[0]
+        ret = item.ret_type
+        if (is_subtype(ret, self.named_type('builtins.BaseException'))
+                and item.is_type_obj()):
+            return ret
         else:
             self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-            return Any()
+            return Any()        
+
+    Type check_exception_type(self, Any type, Context context):
+        return Any()
+
+    Type check_exception_type(self, Type type, Context context):
+        self.fail(messages.INVALID_EXCEPTION_TYPE, context)
+        return Any()
 
     Type visit_for_stmt(self, ForStmt s):
         """Type check a for statement."""

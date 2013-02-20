@@ -422,6 +422,32 @@ try: pass
 except E2 as e: pass # E: Incompatible types in assignment
 [builtins fixtures/exception.py]
 
+[case testArbitraryExpressionAsExceptionType]
+a = BaseException
+try: pass
+except a as b:
+    b = BaseException()
+    b = object() # E: Incompatible types in assignment
+[builtins fixtures/exception.py]
+
+[case testInvalidExceptionCallable]
+BaseException exc(): pass
+try: pass
+except exc as e: pass             # E: Invalid exception type
+except BaseException() as b: pass # E: Invalid exception type
+[builtins fixtures/exception.py]
+
+[case testOverloadedExceptionType]
+class E(BaseException):
+    void __init__(self): pass
+    void __init__(self, x): pass
+try: 
+    pass
+except E as e:
+    e = E()
+    e = BaseException() # E: Incompatible types in assignment
+[builtins fixtures/exception.py]
+
 
 -- Del statement
 -- -------------
