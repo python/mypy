@@ -19,7 +19,7 @@ from os.path import dirname, basename
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
 from mypy.nodes import SymbolTableNode, MODULE_REF
-from mypy.semanal import SemanticAnalyzer
+from mypy.semanal import SemanticAnalyzer, FirstPass
 from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
 from mypy.icode import FuncIcode
@@ -706,7 +706,8 @@ class UnprocessedFile(State):
 
         # Do the first pass of semantic analysis: add top-level definitions in
         # the file to the symbol table.
-        self.semantic_analyzer().anal_defs(tree.defs, self.path, self.id)
+        first = FirstPass(self.semantic_analyzer())
+        first.analyze(tree, self.path, self.id)
         # Initialize module symbol table, which was populated by the semantic
         # analyzer.
         tree.names = self.semantic_analyzer().globals

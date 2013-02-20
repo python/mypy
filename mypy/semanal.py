@@ -74,92 +74,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.is_function = False
     
     #
-    # First pass of semantic analysis
-    #
-    
-    void anal_defs(self, Node[] defs, str fnam, str mod_id):
-        """Perform the first analysis pass.
-
-        Resolve the full names of definitions and construct type info
-        structures, but do not resolve inter-definition references
-        such as base classes.
-        """
-        self.cur_mod_id = mod_id
-        self.errors.set_file(fnam)
-        self.globals = SymbolTable()
-        self.global_decls = [set()]
-        
-        # Add implicit definitions of module '__name__' etc.
-        for n in implicit_module_attrs:
-            name_def = VarDef([Var(n, Any())], True)
-            defs.insert(0, name_def)
-        
-        for d in defs:
-            if isinstance(d, AssignmentStmt):
-                self.anal_assignment_stmt((AssignmentStmt)d)
-            elif isinstance(d, FuncDef):
-                self.anal_func_def((FuncDef)d)
-            elif isinstance(d, OverloadedFuncDef):
-                self.anal_overloaded_func_def((OverloadedFuncDef)d)
-            elif isinstance(d, TypeDef):
-                self.anal_type_def((TypeDef)d)
-            elif isinstance(d, VarDef):
-                self.anal_var_def((VarDef)d)
-            elif isinstance(d, ForStmt):
-                self.anal_for_stmt((ForStmt)d)
-            elif isinstance(d, WithStmt):
-                self.anal_with_stmt((WithStmt)d)
-            elif isinstance(d, Decorator):
-                self.anal_decorator((Decorator)d)
-        # Add implicit definition of 'None' to builtins, as we cannot define a
-        # variable with a None type explicitly.
-        if mod_id == 'builtins':
-            none_def = VarDef([Var('None', NoneTyp())], True)
-            defs.append(none_def)
-            self.anal_var_def(none_def)
-    
-    void anal_assignment_stmt(self, AssignmentStmt s):
-        for lval in s.lvalues:
-            self.analyse_lvalue(lval, False, True)
-    
-    void anal_func_def(self, FuncDef d):
-        self.check_no_global(d.name(), d, True)
-        d._fullname = self.qualified_name(d.name())
-        self.globals[d.name()] = SymbolTableNode(GDEF, d, self.cur_mod_id)
-    
-    void anal_overloaded_func_def(self, OverloadedFuncDef d):
-        self.check_no_global(d.name(), d)
-        d._fullname = self.qualified_name(d.name())
-        self.globals[d.name()] = SymbolTableNode(GDEF, d, self.cur_mod_id)
-    
-    void anal_type_def(self, TypeDef d):
-        self.check_no_global(d.name, d)
-        d.fullname = self.qualified_name(d.name)
-        info = TypeInfo(SymbolTable(), d)
-        info.set_line(d.line)
-        d.info = info
-        self.globals[d.name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
-    
-    void anal_var_def(self, VarDef d):
-        for v in d.items:
-            self.check_no_global(v.name(), d)
-            v._fullname = self.qualified_name(v.name())
-            self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-
-    void anal_for_stmt(self, ForStmt s):
-        for n in s.index:
-            self.analyse_lvalue(n, False, True)
-
-    void anal_with_stmt(self, WithStmt s):
-        for n in s.name:
-            if n:
-                self.analyse_lvalue(n, False, True)
-
-    void anal_decorator(self, Decorator d):
-        d.var._fullname = self.qualified_name(d.var.name())
-        self.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
-    
-    #
     # Second pass of semantic analysis
     #
     
@@ -848,6 +762,90 @@ class SemanticAnalyzer(NodeVisitor):
     
     void fail(self, str msg, Context ctx):
         self.errors.report(ctx.get_line(), msg)
+
+
+class FirstPass(NodeVisitor):
+    """First pass of semantic analysis"""
+    
+    void __init__(self, SemanticAnalyzer sem):
+        self.sem = sem
+
+    void analyze(self, MypyFile file, str fnam, str mod_id):
+        """Perform the first analysis pass.
+
+        Resolve the full names of definitions not nested within functions and
+        construct type info structures, but do not resolve inter-definition
+        references such as base classes.
+
+        Also add implicit definitions such as __name__.
+        """
+        sem = self.sem
+        sem.cur_mod_id = mod_id
+        sem.errors.set_file(fnam)
+        sem.globals = SymbolTable()
+        sem.global_decls = [set()]
+
+        defs = file.defs
+    
+        # Add implicit definitions of module '__name__' etc.
+        for n in implicit_module_attrs:
+            name_def = VarDef([Var(n, Any())], True)
+            defs.insert(0, name_def)
+        
+        for d in defs:
+            d.accept(self)
+        
+        # Add implicit definition of 'None' to builtins, as we cannot define a
+        # variable with a None type explicitly.
+        if mod_id == 'builtins':
+            none_def = VarDef([Var('None', NoneTyp())], True)
+            defs.append(none_def)
+            none_def.accept(self)
+    
+    void visit_assignment_stmt(self, AssignmentStmt s):
+        for lval in s.lvalues:
+            self.sem.analyse_lvalue(lval, False, True)
+    
+    void visit_func_def(self, FuncDef d):
+        self.sem.check_no_global(d.name(), d, True)
+        d._fullname = self.sem.qualified_name(d.name())
+        self.sem.globals[d.name()] = SymbolTableNode(GDEF, d,
+                                                     self.sem.cur_mod_id)
+    
+    void visit_overloaded_func_def(self, OverloadedFuncDef d):
+        self.sem.check_no_global(d.name(), d)
+        d._fullname = self.sem.qualified_name(d.name())
+        self.sem.globals[d.name()] = SymbolTableNode(GDEF, d,
+                                                     self.sem.cur_mod_id)
+    
+    void visit_type_def(self, TypeDef d):
+        self.sem.check_no_global(d.name, d)
+        d.fullname = self.sem.qualified_name(d.name)
+        info = TypeInfo(SymbolTable(), d)
+        info.set_line(d.line)
+        d.info = info
+        self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
+                                                   self.sem.cur_mod_id)
+    
+    void visit_var_def(self, VarDef d):
+        for v in d.items:
+            self.sem.check_no_global(v.name(), d)
+            v._fullname = self.sem.qualified_name(v.name())
+            self.sem.globals[v.name()] = SymbolTableNode(GDEF, v,
+                                                         self.sem.cur_mod_id)
+
+    void visit_for_stmt(self, ForStmt s):
+        for n in s.index:
+            self.sem.analyse_lvalue(n, False, True)
+
+    void visit_with_stmt(self, WithStmt s):
+        for n in s.name:
+            if n:
+                self.sem.analyse_lvalue(n, False, True)
+
+    void visit_decorator(self, Decorator d):
+        d.var._fullname = self.sem.qualified_name(d.var.name())
+        self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
 
 Instance self_type(TypeInfo typ):
