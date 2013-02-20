@@ -517,15 +517,21 @@ class SemanticAnalyzer(NodeVisitor):
         self.visit_block_maybe(s.else_body)
     
     void visit_try_stmt(self, TryStmt s):
-        s.body.accept(self)
+        self.analyze_try_stmt(s, self)
+
+    void analyze_try_stmt(self, TryStmt s, NodeVisitor visitor,
+                          bool add_defs=False):
+        s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
             if type:
-                type.accept(self)
+                type.accept(visitor)
             if var:
-                self.analyse_lvalue(var)
-            handler.accept(self)
-        self.visit_block_maybe(s.else_body)
-        self.visit_block_maybe(s.finally_body)
+                self.analyse_lvalue(var, add_defs=add_defs)
+            handler.accept(visitor)
+        if s.else_body:
+            s.else_body.accept(visitor)
+        if s.finally_body:
+            s.finally_body.accept(visitor)
     
     void visit_with_stmt(self, WithStmt s):
         for e in s.expr:
@@ -879,17 +885,7 @@ class FirstPass(NodeVisitor):
             s.else_body.accept(self)
 
     void visit_try_stmt(self, TryStmt s):
-        s.body.accept(self)
-        for type, var, handler in zip(s.types, s.vars, s.handlers):
-            if type:
-                type.accept(self)
-            if var:
-                self.sem.analyse_lvalue(var, add_defs=True)
-            handler.accept(self)
-        if s.else_body:
-            s.else_body.accept(self)
-        if s.finally_body:
-            s.finally_body.accept(self) 
+        self.sem.analyze_try_stmt(s, self, add_defs=True)
 
 
 Instance self_type(TypeInfo typ):
