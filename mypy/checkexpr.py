@@ -1083,7 +1083,7 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                                func<Type(int)> caller_arg_type):
     """Calculate mapping between actual (caller) args and formals.
 
-    The result contains a list of caller argument indexes mapping to to each
+    The result contains a list of caller argument indexes mapping to each
     callee argument index, indexed by callee index.
 
     The caller_arg_type argument should evaluate to the type of the actual
@@ -1120,12 +1120,10 @@ int[][] map_actuals_to_formals(int[] caller_kinds,
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while j < ncallee:
-                    if callee_kinds[j] == nodes.ARG_NAMED:
+                    if callee_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_STAR2):
                         break
-                    elif callee_kinds[j] != nodes.ARG_STAR2:
-                        map[j].append(i)
                     else:
-                        raise NotImplementedError()
+                        map[j].append(i)
                     j += 1
         elif kind == nodes.ARG_NAMED:
             name = caller_names[i]
