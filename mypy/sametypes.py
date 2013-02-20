@@ -65,9 +65,9 @@ class SameTypeVisitor(TypeVisitor<bool>):
         if isinstance(self.right, Callable):
             cright = (Callable)self.right
             return (is_same_type(left.ret_type, cright.ret_type) and
-                    is_same_types(left.arg_types, cright.arg_types) and
-                    left.min_args == cright.min_args and
-                    left.is_var_arg == cright.is_var_arg and
+                    is_same_types(left.arg_types, cright.arg_types)  and
+                    left.arg_names == cright.arg_names and
+                    left.arg_kinds == cright.arg_kinds and
                     left.is_type_obj() == cright.is_type_obj())
         else:
             return False
