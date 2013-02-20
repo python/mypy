@@ -657,3 +657,23 @@ class A:
          void f(self, int x): pass
 A().f(1)
 A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"
+
+[case testConditionalMethodDefinitionWithIfElse]
+any x
+class A: 
+    if x:
+        void f(self, int x):
+            x = 'x'   # fail
+            x = 1
+    else:
+        void f(self, int x):
+            x + 'x'   # fail
+            x = 1
+A().f(1)
+A().f('x') # fail
+[out]
+main: In member "f" of class "A":
+main, line 5: Incompatible types in assignment
+main, line 9: Unsupported left operand type for + ("int")
+main: At top level:
+main, line 12: Argument 1 to "f" of "A" has incompatible type "str"

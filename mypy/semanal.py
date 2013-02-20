@@ -96,11 +96,16 @@ class SemanticAnalyzer(NodeVisitor):
     void visit_func_def(self, FuncDef defn):
         if self.type and not self.is_func_scope():
             # Method definition
+            defn.is_conditional = self.block_depth[-1] > 0
             defn.info = self.type
             if not defn.is_decorated:
                 if not defn.is_overload:
                     if defn.name() in self.type.names:
-                        self.name_already_defined(defn.name(), defn)
+                        n = self.type.names[defn.name()].node
+                        if self.is_conditional_func(n, defn):
+                            defn.original_def = (FuncDef)n
+                        else:
+                            self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             if defn.name() == '__init__':
                 self.is_init_method = True
