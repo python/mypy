@@ -43,6 +43,7 @@ class SemanticAnalyzer(NodeVisitor):
     SymbolTable class_tvars
     # Local names of function scopes; None for non-function scopes.
     SymbolTable[] locals
+    int[] block_depth   # Nested block depths of scopes
     TypeInfo type       # TypeInfo of enclosing class (or None)
 
     # Stack of outer classes (the second tuple item is tvar table).
@@ -50,7 +51,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     bool is_init_method # Are we now analysing __init__?
     bool is_function    # Are we now analysing a function/method?
-    int block_depth     # Depth of nested blocks
     int loop_depth      # Depth of breakable loops
     str cur_mod_id      # Current module id (or None) (phase 2)
     set<str> imports    # Imported modules (during phase 2 analysis)
@@ -65,7 +65,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.type = None
         self.class_tvars = None
         self.type_stack = []
-        self.block_depth = 0
+        self.block_depth = [0]
         self.loop_depth = 0
         self.lib_path = lib_path
         self.errors = errors
@@ -193,6 +193,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
         self.type_stack.append((self.type, self.class_tvars))
         self.locals.append(None) # Add class scope
+        self.block_depth.append(-1) # The class body increments this to 0
         self.type = defn.info
         self.add_class_type_variables_to_symbol_table(self.type)
         has_base_class = False
@@ -216,6 +217,7 @@ class SemanticAnalyzer(NodeVisitor):
                     defn.info.add_interface(((Instance)t).type)
         self.verify_base_classes(defn)
         defn.defs.accept(self)
+        self.block_depth.pop()
         self.locals.pop()
         self.type, self.class_tvars = self.type_stack.pop()
 
@@ -298,10 +300,10 @@ class SemanticAnalyzer(NodeVisitor):
     #
     
     void visit_block(self, Block b):
-        self.block_depth += 1
+        self.block_depth[-1] += 1
         for s in b.body:
             s.accept(self)
-        self.block_depth -= 1
+        self.block_depth[-1] -= 1
     
     void visit_block_maybe(self, Block b):
         if b:
@@ -344,7 +346,7 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
             nested_global = (not self.is_func_scope() and
-                             self.block_depth > 0 and
+                             self.block_depth[-1] > 0 and
                              not self.type)
             if (add_defs or nested_global) and n.name not in self.globals:
                 # Define new global name.
@@ -784,7 +786,7 @@ class FirstPass(NodeVisitor):
         sem.errors.set_file(fnam)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
-        sem.block_depth = 0
+        sem.block_depth = [0]
 
         defs = file.defs
     
@@ -804,10 +806,10 @@ class FirstPass(NodeVisitor):
             none_def.accept(self)
 
     void visit_block(self, Block b):
-        self.sem.block_depth += 1
+        self.sem.block_depth[-1] += 1
         for node in b.body:
             node.accept(self)
-        self.sem.block_depth -= 1
+        self.sem.block_depth[-1] -= 1
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
@@ -815,7 +817,7 @@ class FirstPass(NodeVisitor):
     
     void visit_func_def(self, FuncDef d):
         sem = self.sem
-        d.is_conditional = sem.block_depth > 0
+        d.is_conditional = sem.block_depth[-1] > 0
         if d.name() in sem.globals:
             n = sem.globals[d.name()].node
             if (isinstance(n, FuncDef) and ((FuncDef)n).is_conditional and
