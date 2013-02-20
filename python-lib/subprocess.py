@@ -368,9 +368,9 @@ if mswindows:
     import _subprocess
     class STARTUPINFO:
         dwFlags = 0
-        hStdInput = None
-        hStdOutput = None
-        hStdError = None
+        any hStdInput = None
+        any hStdOutput = None
+        any hStdError = None
         wShowWindow = 0
 else:
     import select
@@ -432,7 +432,7 @@ except:
 # exited at the time its __del__ method got called: those processes are wait()ed
 # for synchronously from _cleanup() when a new Popen object is created, to avoid
 # zombie processes.
-_active = []
+any _active = []
 
 def _cleanup():
     for inst in _active[:]:
