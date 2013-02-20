@@ -913,7 +913,7 @@ class Popen(object):
                            p2cread, p2cwrite,
                            c2pread, c2pwrite,
                            errread, errwrite,
-                           unused_restore_signals, unused_start_new_session):
+                           restore_signals, start_new_session):
             """Execute program (MS Windows version)"""
 
             assert not pass_fds, "pass_fds not supported on Windows."
