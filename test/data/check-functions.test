@@ -684,3 +684,13 @@ class A:
     if x:
         def f(self): pass
     def f(self): pass # E: Name 'f' already defined
+
+[case testIncompatibleConditionalMethodDefinition]
+any x
+class A:
+    if x:
+        void f(self, int x): pass
+    else:
+        def f(self, x): pass # E: All conditional function variants must have identical signatures
+[out]
+main: In class "A":
