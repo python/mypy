@@ -649,3 +649,11 @@ class A:
     f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"
 [out]
 main: In class "A":
+
+[case testCallConditionalMethodViaInstance]
+any x
+class A:
+    if x:
+         void f(self, int x): pass
+A().f(1)
+A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"
