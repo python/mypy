@@ -373,7 +373,7 @@ def main():
     import sys, getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'deut')
-    except getopt.GetoptError as msg:
+    except getopt.error as msg:
         sys.stdout = sys.stderr
         print(msg)
         print("""usage: %s [-d|-e|-u|-t] [file|-]
