@@ -567,3 +567,12 @@ if x:
         x = '' # E: Incompatible types in assignment
 [out]
 main: In function "f":
+
+[case testCallConditionalFunction]
+any x
+if x:
+    void f(int x):  pass
+    f(1)
+    f('x') # E: Argument 1 to "f" has incompatible type "str"
+f(1)
+f('x') # E: Argument 1 to "f" has incompatible type "str"

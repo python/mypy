@@ -801,6 +801,10 @@ class FirstPass(NodeVisitor):
             none_def = VarDef([Var('None', NoneTyp())], True)
             defs.append(none_def)
             none_def.accept(self)
+
+    void visit_block(self, Block b):
+        for node in b.body:
+            node.accept(self)
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
@@ -846,6 +850,12 @@ class FirstPass(NodeVisitor):
     void visit_decorator(self, Decorator d):
         d.var._fullname = self.sem.qualified_name(d.var.name())
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
+
+    void visit_if_stmt(self, IfStmt s):
+        for node in s.body:
+            node.accept(self)
+        if s.else_body:
+            s.else_body.accept(self)
 
 
 Instance self_type(TypeInfo typ):
