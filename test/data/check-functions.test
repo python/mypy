@@ -637,3 +637,15 @@ class A:
             x = '' # E: Incompatible types in assignment
 [out]
 main: In member "f" of class "A":
+
+[case testCallConditionalMethodInClassBody]
+any x
+class A:
+    if x:
+        void f(self, int x):  pass
+        f(x, 1)
+        f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"
+    f(x, 1)
+    f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"
+[out]
+main: In class "A":
