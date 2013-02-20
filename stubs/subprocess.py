@@ -9,9 +9,10 @@ int call(Sequence<str> args, *, any stdin=None, any stdout=None,
 int check_call(Sequence<str> args, *, any stdin=None, any stdout=None,
                any stderr=None, bool shell=False,
                Mapping<str, str> env=None): pass
-bytes check_output(Sequence<str> args, *, any stdin=None, any stderr=None,
-                   bool shell=False, bool universal_newlines=False,
-                   Mapping<str, str> env=None): pass
+# Return str/bytes
+any check_output(Sequence<str> args, *, any stdin=None, any stderr=None,
+                 bool shell=False, bool universal_newlines=False,
+                 Mapping<str, str> env=None): pass
 
 # TODO types
 any PIPE
@@ -23,9 +24,9 @@ class CalledProcessError(Exception):
     bytes output # May be None
 
 class Popen:
-    IO stdin
-    IO stdout
-    IO stderr
+    any stdin  # IO or TextIO
+    any stdout # IO or TextIO
+    any stderr # IO or TextIO
     int pid
     int returncode
     
@@ -50,7 +51,8 @@ class Popen:
     
     int poll(self): pass
     int wait(self): pass
-    tuple<bytes, bytes> communicate(self, input=None): pass
+    # Return str/bytes
+    tuple<any, any> communicate(self, input=None): pass
     void send_signal(self, int signal): pass
     void terminatate(self): pass
     void kill(self): pass
