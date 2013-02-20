@@ -784,6 +784,7 @@ class FirstPass(NodeVisitor):
         sem.errors.set_file(fnam)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
+        sem.block_depth = 0
 
         defs = file.defs
     
@@ -803,18 +804,29 @@ class FirstPass(NodeVisitor):
             none_def.accept(self)
 
     void visit_block(self, Block b):
+        self.sem.block_depth += 1
         for node in b.body:
             node.accept(self)
+        self.sem.block_depth -= 1
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
             self.sem.analyse_lvalue(lval, False, True)
     
     void visit_func_def(self, FuncDef d):
-        self.sem.check_no_global(d.name(), d, True)
-        d._fullname = self.sem.qualified_name(d.name())
-        self.sem.globals[d.name()] = SymbolTableNode(GDEF, d,
-                                                     self.sem.cur_mod_id)
+        sem = self.sem
+        d.is_conditional = sem.block_depth > 0
+        if d.name() in sem.globals:
+            n = sem.globals[d.name()].node
+            if (isinstance(n, FuncDef) and ((FuncDef)n).is_conditional and
+                    d.is_conditional):
+                # Original definition was conditional -- multiple conditional
+                # definitions are fine.
+                pass
+            else:
+                sem.check_no_global(d.name(), d, True)
+        d._fullname = sem.qualified_name(d.name())
+        sem.globals[d.name()] = SymbolTableNode(GDEF, d, sem.cur_mod_id)
     
     void visit_overloaded_func_def(self, OverloadedFuncDef d):
         self.sem.check_no_global(d.name(), d)

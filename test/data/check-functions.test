@@ -576,3 +576,28 @@ if x:
     f('x') # E: Argument 1 to "f" has incompatible type "str"
 f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"
+
+[case testConditionalFunctionDefinitionWithIfElse]
+any x
+if x:
+    void f(int x):
+        x = 'x'   # fail
+        x = 1
+else:
+    void f(int y):
+        y + 'x'   # fail
+        y = 1
+f(1)
+f('x') # fail
+[out]
+main: In function "f":
+main, line 4: Incompatible types in assignment
+main, line 8: Unsupported left operand type for + ("int")
+main: At top level:
+main, line 11: Argument 1 to "f" has incompatible type "str"
+
+[case testUnconditionalRedefinitionOfConditionalFunction]
+any x
+if x:
+    def f(): pass
+def f(): pass # E: Name 'f' already defined (overload variants must be next to each other)

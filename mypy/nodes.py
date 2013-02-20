@@ -230,8 +230,10 @@ class FuncItem(FuncBase):
 
 
 class FuncDef(FuncItem):
-    str _fullname      # Name with module prefix
+    str _fullname       # Name with module prefix
     bool is_decorated
+    bool is_conditional # Defined conditionally (within block)?
+    Node original_def   # Original conditional definition
     
     void __init__(self,
                   str name,          # Function name
