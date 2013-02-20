@@ -763,3 +763,23 @@ MypyFile:1(
           CallExpr:4(
             NameExpr(g [__main__.g])
             Args()))))))
+
+[case testTryWithinFunction]
+void f():
+    try:
+        pass
+    except object as o:
+        pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:1(
+      TryStmt:2(
+        Block:2(
+          PassStmt:3())
+        NameExpr(object [builtins.object])
+        NameExpr(o* [l])
+        Block:4(
+          PassStmt:5())))))
