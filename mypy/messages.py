@@ -10,7 +10,7 @@ from mypy.types import (
     Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
     Overloaded, FunctionLike
 )
-from mypy.nodes import TypeInfo, Context, op_methods
+from mypy.nodes import TypeInfo, Context, op_methods, FuncDef
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -498,6 +498,10 @@ class MessageBuilder:
 
     void invalid_method_type(self, Callable sig, Context context):
         self.fail('Invalid method type', context)
+
+    void incompatible_conditional_function_def(self, FuncDef defn):
+        self.fail('All conditional function variants must have identical '
+                  'signatures', defn)
 
 
 str capitalize(str s):

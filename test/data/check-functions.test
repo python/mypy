@@ -584,9 +584,9 @@ if x:
         x = 'x'   # fail
         x = 1
 else:
-    void f(int y):
-        y + 'x'   # fail
-        y = 1
+    void f(int x):
+        x + 'x'   # fail
+        x = 1
 f(1)
 f('x') # fail
 [out]
@@ -601,3 +601,24 @@ any x
 if x:
     def f(): pass
 def f(): pass # E: Name 'f' already defined (overload variants must be next to each other)
+
+[case testIncompatibleConditionalFunctionDefinition]
+any x
+if x:
+    void f(int x): pass
+else:
+    def f(x): pass # E: All conditional function variants must have identical signatures
+
+[case testIncompatibleConditionalFunctionDefinition2]
+any x
+if x:
+    void f(int x): pass
+else:
+    void f(int y): pass # E: All conditional function variants must have identical signatures
+
+[case testIncompatibleConditionalFunctionDefinition3]
+any x
+if x:
+    void f(int x): pass
+else:
+    void f(int x=0): pass # E: All conditional function variants must have identical signatures

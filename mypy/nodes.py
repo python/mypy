@@ -232,8 +232,8 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem):
     str _fullname       # Name with module prefix
     bool is_decorated
-    bool is_conditional # Defined conditionally (within block)?
-    Node original_def   # Original conditional definition
+    bool is_conditional    # Defined conditionally (within block)?
+    FuncDef original_def   # Original conditional definition
     
     void __init__(self,
                   str name,          # Function name
@@ -245,6 +245,7 @@ class FuncDef(FuncItem):
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
         self.is_decorated = False
+        self.original_def = None
 
     str name(self):
         return self._name

@@ -822,7 +822,7 @@ class FirstPass(NodeVisitor):
                     d.is_conditional):
                 # Original definition was conditional -- multiple conditional
                 # definitions are fine.
-                pass
+                d.original_def = (FuncDef)n
             else:
                 sem.check_no_global(d.name(), d, True)
         d._fullname = sem.qualified_name(d.name())

@@ -144,6 +144,10 @@ class TypeChecker(NodeVisitor<Type>):
         self.check_func_item(defn)
         if defn.info:
             self.check_method_override(defn)
+        if defn.original_def:
+            if not is_same_type(function_type(defn),
+                                function_type(defn.original_def)):
+                self.msg.incompatible_conditional_function_def(defn)
     
     Type check_func_item(self, FuncItem defn, Callable type_override=None):
         # We may be checking a function definition or an anonymous function. In
