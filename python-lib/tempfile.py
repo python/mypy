@@ -447,7 +447,7 @@ if _os.name != 'posix' or _sys.platform == 'cygwin':
 else:
     def _TemporaryFile(mode='w+b', buffering=-1, encoding=None,
                       newline=None, suffix="", prefix=template,
-                      dir=None):
+                      dir=None, delete=True):
         """Create and return a temporary file.
         Arguments:
         'prefix', 'suffix', 'dir' -- as for mkstemp.
