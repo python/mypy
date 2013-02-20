@@ -1284,6 +1284,7 @@ class Parser:
     NameExpr parse_name_expr(self):
         tok = self.expect_type(Name)
         node = NameExpr(tok.string)
+        node.set_line(tok)
         self.set_repr(node, noderepr.NameExprRepr(tok))
         return node
     
