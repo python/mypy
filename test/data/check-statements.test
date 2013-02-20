@@ -411,6 +411,17 @@ except (E2, E1) as e2:
     E2 b = e2 # E: Incompatible types in assignment
 [builtins fixtures/exception.py]
 
+[case testReuseTryExceptionVariable]
+class E1(BaseException): pass
+class E2(BaseException): pass
+try: pass
+except E1 as e: pass
+try: pass
+except E1 as e: pass
+try: pass
+except E2 as e: pass # E: Incompatible types in assignment
+[builtins fixtures/exception.py]
+
 
 -- Del statement
 -- -------------
