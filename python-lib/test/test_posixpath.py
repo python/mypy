@@ -6,10 +6,7 @@ import os
 import sys
 from posixpath import realpath, abspath, dirname, basename
 
-try:
-    import posix
-except ImportError:
-    posix = None
+import posix
 
 # An absolute path to a temporary filename for testing. We can't rely on TESTFN
 # being an absolute path, so we need this.
