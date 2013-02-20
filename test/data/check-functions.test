@@ -694,3 +694,13 @@ class A:
         def f(self, x): pass # E: All conditional function variants must have identical signatures
 [out]
 main: In class "A":
+
+[case testConditionalFunctionDefinitionInTry]
+try:
+    void f(int x): pass
+except:
+    void g(str x): pass
+f(1)
+f('x') # E: Argument 1 to "f" has incompatible type "str"
+g('x')
+g(1) # E: Argument 1 to "g" has incompatible type "int"

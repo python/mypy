@@ -565,14 +565,14 @@ class RaiseStmt(Node):
 
 
 class TryStmt(Node):
-    Block body                # Try body
+    Block body            # Try body
     Node[] types          # Except type expressions
-    Var[] vars            # Except variable names
+    NameExpr[] vars       # Except variable names
     Block[] handlers      # Except bodies
     Block else_body
     Block finally_body
     
-    void __init__(self, Block body, Var[] vars, Node[] types,
+    void __init__(self, Block body, NameExpr[] vars, Node[] types,
                   Block[] handlers, Block else_body, Block finally_body):
         self.body = body
         self.vars = vars

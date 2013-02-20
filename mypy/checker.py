@@ -671,7 +671,8 @@ class TypeChecker(NodeVisitor<Type>):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
-                    s.vars[i].type = t
+                    self.check_assignments([s.vars[i]],
+                                           self.temp_node(t, s.vars[i]))
             self.accept(s.handlers[i])
         if s.finally_body:
             self.accept(s.finally_body)

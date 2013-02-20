@@ -518,12 +518,12 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_try_stmt(self, TryStmt s):
         s.body.accept(self)
-        for i in range(len(s.types)):
-            if s.types[i]:
-                s.types[i].accept(self)
-            if s.vars[i]:
-                self.add_var(s.vars[i], s.vars[i])
-            s.handlers[i].accept(self)
+        for type, var, handler in zip(s.types, s.vars, s.handlers):
+            if type:
+                type.accept(self)
+            if var:
+                self.analyse_lvalue(var)
+            handler.accept(self)
         self.visit_block_maybe(s.else_body)
         self.visit_block_maybe(s.finally_body)
     
@@ -877,6 +877,19 @@ class FirstPass(NodeVisitor):
             node.accept(self)
         if s.else_body:
             s.else_body.accept(self)
+
+    void visit_try_stmt(self, TryStmt s):
+        s.body.accept(self)
+        for type, var, handler in zip(s.types, s.vars, s.handlers):
+            if type:
+                type.accept(self)
+            if var:
+                self.sem.analyse_lvalue(var, add_defs=True)
+            handler.accept(self)
+        if s.else_body:
+            s.else_body.accept(self)
+        if s.finally_body:
+            s.finally_body.accept(self) 
 
 
 Instance self_type(TypeInfo typ):

@@ -483,7 +483,7 @@ MypyFile:1(
       ExpressionStmt:5(
         NameExpr(c [__main__.c])))
     NameExpr(c [__main__.c])
-    Var(e)
+    NameExpr(e* [__main__.e])
     Block:6(
       ExpressionStmt:7(
         NameExpr(e [__main__.e])))
@@ -543,7 +543,7 @@ MypyFile:1(
       TupleExpr:4(
         NameExpr(c [__main__.c])
         NameExpr(object [builtins.object])))
-    Var(e)
+    NameExpr(e* [__main__.e])
     Block:4(
       ExpressionStmt:5(
         NameExpr(e [__main__.e])))))
@@ -653,7 +653,7 @@ MypyFile:1(
     Block:1(
       PassStmt:2())
     NameExpr(object [builtins.object])
-    Var(o)
+    NameExpr(o* [__main__.o])
     Block:3(
       VarDef:4(
         Var(x)
@@ -674,7 +674,7 @@ MypyFile:1(
     Block:1(
       PassStmt:2())
     NameExpr(object [builtins.object])
-    Var(o)
+    NameExpr(o* [__main__.o])
     Block:3(
       AssignmentStmt:4(
         Lvalues(
@@ -699,11 +699,11 @@ MypyFile:1(
     Block:1(
       PassStmt:2())
     NameExpr(BaseException [builtins.BaseException])
-    Var(e)
+    NameExpr(e* [__main__.e])
     Block:3(
       PassStmt:4())
     NameExpr(Err [__main__.Err])
-    Var(f)
+    NameExpr(f* [__main__.f])
     Block:5(
       AssignmentStmt:6(
         Lvalues(

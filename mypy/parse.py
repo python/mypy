@@ -918,7 +918,7 @@ class Parser:
         try_tok = self.expect('try')
         body = self.parse_block()
         is_error = False
-        Var[] vars = []
+        NameExpr[] vars = []
         Node[] types = []
         Block[] handlers = []
         except_toks, name_toks, as_toks, except_brs = (<Token> [], <Token> [],
@@ -931,7 +931,7 @@ class Parser:
                     types.append(self.parse_expression().set_line(t))
                     if self.current_str() == 'as':
                         as_toks.append(self.expect('as'))
-                        vars.append(self.parse_var())
+                        vars.append(self.parse_name_expr())
                     else:
                         name_toks.append(none)
                         vars.append(None)
@@ -962,12 +962,6 @@ class Parser:
             return node
         else:
             return None
-    
-    Var parse_var(self):
-        t = self.current()
-        v = Var(self.expect_type(Name).string).set_line(t)
-        self.set_repr(v, noderepr.VarRepr(t, none))
-        return (Var)v
     
     WithStmt parse_with_stmt(self):
         with_tok = self.expect('with')

@@ -1300,7 +1300,7 @@ MypyFile:1(
       ExpressionStmt:2(
         IntExpr(1)))
     NameExpr(x)
-    Var(y)
+    NameExpr(y)
     Block:3(
       ExpressionStmt:4(
         IntExpr(2)))
@@ -1760,7 +1760,7 @@ MypyFile:1(
         NameExpr(a)
         NameExpr(b)
         NameExpr(c)))
-    Var(e)
+    NameExpr(e)
     Block:5(
       PassStmt:6())))
 
