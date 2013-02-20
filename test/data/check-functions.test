@@ -622,3 +622,18 @@ if x:
     void f(int x): pass
 else:
     void f(int x=0): pass # E: All conditional function variants must have identical signatures
+
+
+-- Conditional method definition
+-- -----------------------------
+
+
+[case testTypeCheckBodyOfConditionalMethod]
+any x
+class A:
+    if x:
+        void f(self, int x): 
+            x = 1
+            x = '' # E: Incompatible types in assignment
+[out]
+main: In member "f" of class "A":
