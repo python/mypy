@@ -783,3 +783,29 @@ MypyFile:1(
         NameExpr(o* [l])
         Block:4(
           PassStmt:5())))))
+
+[case testReuseExceptionVariable]
+void f():
+    try:
+        pass
+    except object as o:
+        pass
+    except object as o:
+        pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:1(
+      TryStmt:2(
+        Block:2(
+          PassStmt:3())
+        NameExpr(object [builtins.object])
+        NameExpr(o* [l])
+        Block:4(
+          PassStmt:5())
+        NameExpr(object [builtins.object])
+        NameExpr(o [l])
+        Block:6(
+          PassStmt:7())))))
