@@ -981,10 +981,7 @@ class Popen(object):
             self.pid = pid
             ht.Close()
 
-        def _internal_poll(self, _deadstate=None,
-                _WaitForSingleObject=_subprocess.WaitForSingleObject,
-                _WAIT_OBJECT_0=_subprocess.WAIT_OBJECT_0,
-                _GetExitCodeProcess=_subprocess.GetExitCodeProcess):
+        def _internal_poll(self, _deadstate=None):
             """Check if child process has terminated.  Returns returncode
             attribute.
 
@@ -992,6 +989,12 @@ class Popen(object):
             in its local scope.
 
             """
+            return self._internal_poll_win(_deadstate)
+            
+        def _internal_poll_win(self, _deadstate=None,
+                _WaitForSingleObject=_subprocess.WaitForSingleObject,
+                _WAIT_OBJECT_0=_subprocess.WAIT_OBJECT_0,
+                _GetExitCodeProcess=_subprocess.GetExitCodeProcess):
             if self.returncode is None:
                 if _WaitForSingleObject(self._handle, 0) == _WAIT_OBJECT_0:
                     self.returncode = _GetExitCodeProcess(self._handle)
@@ -1372,8 +1375,7 @@ class Popen(object):
                 raise RuntimeError("Unknown child exit status!")
 
 
-        def _internal_poll(self, _deadstate=None, _waitpid=os.waitpid,
-                _WNOHANG=os.WNOHANG, _os_error=os.error):
+        def _internal_poll(self, _deadstate=None):
             """Check if child process has terminated.  Returns returncode
             attribute.
 
@@ -1381,6 +1383,10 @@ class Popen(object):
             outside of the local scope (nor can any methods it calls).
 
             """
+            return self._internal_poll_posix(_deadstate)
+            
+        def _internal_poll_posix(self, _deadstate=None, _waitpid=os.waitpid,
+                                 _WNOHANG=os.WNOHANG, _os_error=os.error):
             if self.returncode is None:
                 try:
                     pid, sts = _waitpid(self.pid, _WNOHANG)
