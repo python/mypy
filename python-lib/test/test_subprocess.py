@@ -1275,15 +1275,15 @@ class POSIXProcessTestCase(BaseTestCase):
         self.addCleanup(p1.wait)
         self.addCleanup(p2.wait)
         def kill_p1():
-            try:
-                p1.terminate()
-            except ProcessLookupError:
-                pass
+            #try:
+            p1.terminate()
+            #except ProcessLookupError:
+            #    pass
         def kill_p2():
-            try:
-                p2.terminate()
-            except ProcessLookupError:
-                pass
+            #try:
+            p2.terminate()
+            #except ProcessLookupError:
+            #    pass
         self.addCleanup(kill_p1)
         self.addCleanup(kill_p2)
 
