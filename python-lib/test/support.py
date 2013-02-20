@@ -24,11 +24,7 @@ import sysconfig
 import fnmatch
 import logging.handlers
 
-try:
-    import _thread, threading
-except ImportError:
-    _thread = None
-    threading = None
+import _thread, threading
 #try:
 #    import multiprocessing.process
 #except ImportError:
