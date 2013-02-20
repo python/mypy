@@ -402,7 +402,7 @@ else:
             _set_cloexec(fds[0], True)
             _set_cloexec(fds[1], True)
             return fds
-        _create_pie = __create_pipe
+        _create_pipe = __create_pipe
 
 __all__ = ["Popen", "PIPE", "STDOUT", "call", "check_call", "getstatusoutput",
            "getoutput", "check_output", "CalledProcessError"]
