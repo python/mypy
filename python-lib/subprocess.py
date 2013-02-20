@@ -424,7 +424,7 @@ if mswindows:
                     "STD_ERROR_HANDLE", "SW_HIDE",
                     "STARTF_USESTDHANDLES", "STARTF_USESHOWWINDOW"])
 try:
-    MAXFD = os.sysconf("SC_OPEN_MAX")
+    MAXFD = ((any)os).sysconf("SC_OPEN_MAX")
 except:
     MAXFD = 256
 
