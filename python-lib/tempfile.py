@@ -445,7 +445,7 @@ if _os.name != 'posix' or _sys.platform == 'cygwin':
     TemporaryFile = NamedTemporaryFile
 
 else:
-    def TemporaryFile(mode='w+b', buffering=-1, encoding=None,
+    def _TemporaryFile(mode='w+b', buffering=-1, encoding=None,
                       newline=None, suffix="", prefix=template,
                       dir=None):
         """Create and return a temporary file.
@@ -474,6 +474,7 @@ else:
         except:
             _os.close(fd)
             raise
+    TemporaryFile = _TemporaryFile
 
 class SpooledTemporaryFile:
     """Temporary file wrapper, specialized to switch from
