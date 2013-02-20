@@ -37,10 +37,11 @@ try:
     mkstemp = tempfile.mkstemp
 except AttributeError:
     # tempfile.mkstemp is not available
-    def mkstemp():
+    def _mkstemp():
         """Replacement for mkstemp, calling mktemp."""
         fname = tempfile.mktemp()
         return os.open(fname, os.O_RDWR|os.O_CREAT), fname
+    mkstemp = _mkstemp
 
 
 class BaseTestCase(unittest.TestCase):
