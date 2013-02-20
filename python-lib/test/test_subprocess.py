@@ -765,7 +765,6 @@ class _SuppressCoreFiles(object):
                 pass
 
 
-#@unittest.skipIf(mswindows, "POSIX specific tests")
 class POSIXProcessTestCase(BaseTestCase):
 
     def test_exceptions(self):
@@ -1471,8 +1470,9 @@ class POSIXProcessTestCase(BaseTestCase):
         self.assertRaises(OSError, os.waitpid, pid, 0)
         self.assertNotIn(ident, [id(o) for o in subprocess._active])
 
+unittest.skipIf(mswindows, "POSIX specific tests")(POSIXProcessTestCase)
 
-#@unittest.skipUnless(mswindows, "Windows specific tests")
+
 class Win32ProcessTestCase(BaseTestCase):
 
     def test_startupinfo(self):
@@ -1574,6 +1574,8 @@ class Win32ProcessTestCase(BaseTestCase):
 
     def test_terminate(self):
         self._kill_process('terminate')
+        
+unittest.skipUnless(mswindows, "Windows specific tests")(Win32ProcessTestCase)
 
 
 # The module says:
@@ -1581,7 +1583,6 @@ class Win32ProcessTestCase(BaseTestCase):
 #
 # Actually, getoutput should work on any platform with an os.popen, but
 # I'll take the comment as given, and skip this suite.
-#@unittest.skipUnless(os.name == 'posix', "only relevant for UNIX")
 class CommandTests(unittest.TestCase):
     def test_getoutput(self):
         self.assertEqual(subprocess.getoutput('echo xyzzy'), 'xyzzy')
@@ -1602,9 +1603,9 @@ class CommandTests(unittest.TestCase):
             if dir is not None:
                 os.rmdir(dir)
 
+unittest.skipUnless(os.name == 'posix', "only relevant for UNIX")(CommandTests)
 
-#@unittest.skipUnless(getattr(subprocess, '_has_poll', False),
-#                     "poll system call not supported")
+
 class ProcessTestCaseNoPoll(ProcessTestCase):
     def setUp(self):
         subprocess._has_poll = False
@@ -1613,6 +1614,9 @@ class ProcessTestCaseNoPoll(ProcessTestCase):
     def tearDown(self):
         subprocess._has_poll = True
         ProcessTestCase.tearDown(self)
+
+unittest.skipUnless(getattr(subprocess, '_has_poll', False),
+                    "poll system call not supported")(ProcessTestCaseNoPoll)
 
 
 #@unittest.skipUnless(getattr(subprocess, '_posixsubprocess', False),
@@ -1656,7 +1660,6 @@ class HelperFunctionTests(unittest.TestCase):
         self.assertEqual([(256, 999), (666,), (666,)], record_calls)
 
 
-#@unittest.skipUnless(mswindows, "Windows-specific tests")
 class CommandsWithSpaces (BaseTestCase):
 
     def setUp(self):
@@ -1698,6 +1701,8 @@ class CommandsWithSpaces (BaseTestCase):
     def test_noshell_sequence_with_spaces(self):
         # call() function with sequence argument with spaces on Windows
         self.with_spaces([sys.executable, self.fname, "ab cd"])
+
+unittest.skipUnless(mswindows, "Windows-specific tests")(CommandsWithSpaces)
 
 
 class ContextManagerTests(BaseTestCase):
