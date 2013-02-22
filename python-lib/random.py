@@ -301,7 +301,7 @@ class Random(_random.Random):
             raise TypeError("Population must be a sequence or set.  For dicts, use list(d).")
         randbelow = self._randbelow
         n = len(population)
-        if not 0 <= k <= n:
+        if not (0 <= k and k <= n):
             raise ValueError("Sample larger than population")
         result = [None] * k
         setsize = 21        # size of a small set minus size of an empty list
@@ -496,7 +496,7 @@ class Random(_random.Random):
 
             while 1:
                 u1 = random()
-                if not 1e-7 < u1 < .9999999:
+                if not (1e-7 < u1 and u1 < .9999999):
                     continue
                 u2 = 1.0 - random()
                 v = _log(u1/(1.0-u1))/ainv
