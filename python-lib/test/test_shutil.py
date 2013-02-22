@@ -57,11 +57,11 @@ def mock_rename(func):
     @functools.wraps(func)
     def wrap(*args, **kwargs):
         try:
-            builtin_rename = os.rename
-            os.rename = _fake_rename
+            builtin_rename = shutil.rename
+            shutil.rename = _fake_rename
             return func(*args, **kwargs)
         finally:
-            os.rename = builtin_rename
+            shutil.rename = builtin_rename
     return wrap
 
 class TestShutil(unittest.TestCase):
@@ -873,8 +873,7 @@ class TestCopyFile(unittest.TestCase):
             return self._suppress_at_exit
 
     def tearDown(self):
-        if self._delete:
-            del shutil.open
+        shutil.open = open
 
     def _set_shutil_open(self, func):
         shutil.open = func

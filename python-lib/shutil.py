@@ -12,6 +12,7 @@ import fnmatch
 import collections
 import errno
 import tarfile
+import builtins
 
 try:
     import bz2
@@ -52,6 +53,12 @@ try:
     _WindowsError = WindowsError
 except NameError:
     _WindowsError = None
+
+
+# Function aliases to be patched in test cases
+any rename = os.rename
+any open = builtins.open
+
 
 def copyfileobj(fsrc, fdst, length=16*1024):
     """copy data from file-like object fsrc to file-like object fdst"""
