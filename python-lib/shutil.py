@@ -244,11 +244,13 @@ def rmtree(path, ignore_errors=False, onerror=None):
 
     """
     if ignore_errors:
-        def onerror(*args):
+        def _onerror(*args):
             pass
+        onerror = _onerror
     elif onerror is None:
-        def onerror(*args):
+        def __onerror(*args):
             raise
+        onerror = __onerror
     try:
         if os.path.islink(path):
             # symlinks to directories are forbidden, see bug #1669
