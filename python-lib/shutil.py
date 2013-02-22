@@ -697,7 +697,7 @@ def _unpack_tarfile(filename, extract_dir):
     finally:
         tarobj.close()
 
-_UNPACK_FORMATS = {
+any _UNPACK_FORMATS = {
     'gztar': (['.tar.gz', '.tgz'], _unpack_tarfile, [], "gzip'ed tar-file"),
     'tar':   (['.tar'], _unpack_tarfile, [], "uncompressed tar file"),
     'zip':   (['.zip'], _unpack_zipfile, [], "ZIP file")
