@@ -759,8 +759,7 @@ str input(str prompt=None): pass
 Iterator<t> iter<t>(Iterable<t> iterable): pass
 Iterator<t> iter<t>(func<t()> function, t sentinel): pass
 bool isinstance(object o, type t): pass
-# TODO perhaps support this
-#bool isinstance(object o, Sequence<type> t): pass
+bool isinstance(object o, tuple t): pass
 bool issubclass(type cls, type classinfo): pass
 # TODO perhaps support this
 #bool issubclass(type cld, Sequence<type> classinfo): pass
