@@ -23,31 +23,19 @@ import warnings
 from test import support
 from test.support import check_warnings, captured_stdout
 
-try:
-    import bz2
-    BZ2_SUPPORTED = True
-except ImportError:
-    BZ2_SUPPORTED = False
+import bz2
+BZ2_SUPPORTED = True
 
 TESTFN2 = TESTFN + "2"
 
-try:
-    import grp
-    import pwd
-    UID_GID_SUPPORT = True
-except ImportError:
-    UID_GID_SUPPORT = False
+import grp
+import pwd
+UID_GID_SUPPORT = True
 
-try:
-    import zlib
-except ImportError:
-    zlib = None
+import zlib
 
-try:
-    import zipfile
-    ZIP_SUPPORT = True
-except ImportError:
-    ZIP_SUPPORT = find_executable('zip')
+import zipfile
+ZIP_SUPPORT = True
 
 def _fake_rename(*args, **kwargs):
     # Pretend the destination path is on a different filesystem.
