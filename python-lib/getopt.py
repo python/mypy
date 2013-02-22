@@ -38,17 +38,22 @@ import os
 class GetoptError(Exception):
     opt = ''
     msg = ''
-    def __init__(self, msg, opt=''):
+    void __init__(self, str msg, str opt=''):
         self.msg = msg
         self.opt = opt
         Exception.__init__(self, msg, opt)
 
-    def __str__(self):
+    str __str__(self):
         return self.msg
 
 error = GetoptError # backward compatibility
 
-def getopt(args, shortopts, longopts = []):
+tuple<tuple<str, str>[], str[]> \
+           getopt(str[] args, str shortopts, str longopts):
+    return getopt(args, shortopts, [longopts])
+    
+tuple<tuple<str, str>[], str[]> \
+           getopt(str[] args, str shortopts, Iterable<str> longopts = []):
     """getopt(args, options[, long_options]) -> opts, args
 
     Parses command line options and parameter list.  args is the
@@ -75,23 +80,25 @@ def getopt(args, shortopts, longopts = []):
 
     """
 
-    opts = []
-    if type(longopts) == type(""):
-        longopts = [longopts]
-    else:
-        longopts = list(longopts)
+    opts = <tuple<str, str>> []
+    llongopts = list(longopts)
     while args and args[0].startswith('-') and args[0] != '-':
         if args[0] == '--':
             args = args[1:]
             break
         if args[0].startswith('--'):
-            opts, args = do_longs(opts, args[0][2:], longopts, args[1:])
+            opts, args = do_longs(opts, args[0][2:], llongopts, args[1:])
         else:
             opts, args = do_shorts(opts, args[0][1:], shortopts, args[1:])
 
     return opts, args
 
-def gnu_getopt(args, shortopts, longopts = []):
+tuple<tuple<str, str>[], str[]> \
+        gnu_getopt(str[] args, str shortopts, str longopts):
+    return gnu_getopt(args, shortopts, [longopts])
+
+tuple<tuple<str, str>[], str[]> \
+        gnu_getopt(str[] args, str shortopts, Iterable<str> longopts = []):
     """getopt(args, options[, long_options]) -> opts, args
 
     This function works like getopt(), except that GNU style scanning
@@ -106,12 +113,9 @@ def gnu_getopt(args, shortopts, longopts = []):
 
     """
 
-    opts = []
-    prog_args = []
-    if isinstance(longopts, str):
-        longopts = [longopts]
-    else:
-        longopts = list(longopts)
+    opts = <tuple<str, str>> []
+    prog_args = <str> []
+    llongopts = list(longopts)
 
     # Allow options after non-option arguments?
     if shortopts.startswith('+'):
@@ -128,7 +132,7 @@ def gnu_getopt(args, shortopts, longopts = []):
             break
 
         if args[0][:2] == '--':
-            opts, args = do_longs(opts, args[0][2:], longopts, args[1:])
+            opts, args = do_longs(opts, args[0][2:], llongopts, args[1:])
         elif args[0][:1] == '-' and args[0] != '-':
             opts, args = do_shorts(opts, args[0][1:], shortopts, args[1:])
         else:
@@ -141,11 +145,13 @@ def gnu_getopt(args, shortopts, longopts = []):
 
     return opts, prog_args
 
-def do_longs(opts, opt, longopts, args):
+tuple<tuple<str, str>[], str[]> \
+                      do_longs(tuple<str, str>[] opts, str opt,
+                               str[] longopts, str[] args):
     try:
         i = opt.index('=')
     except ValueError:
-        optarg = None
+        str optarg = None
     else:
         opt, optarg = opt[:i], opt[i+1:]
 
@@ -163,7 +169,7 @@ def do_longs(opts, opt, longopts, args):
 # Return:
 #   has_arg?
 #   full option name
-def long_has_args(opt, longopts):
+tuple<bool, str> long_has_args(str opt, str[] longopts):
     possibilities = [o for o in longopts if o.startswith(opt)]
     if not possibilities:
         raise GetoptError('option --%s not recognized' % opt, opt)
@@ -184,7 +190,9 @@ def long_has_args(opt, longopts):
         unique_match = unique_match[:-1]
     return has_arg, unique_match
 
-def do_shorts(opts, optstring, shortopts, args):
+tuple<tuple<str, str>[], str[]> \
+                      do_shorts(tuple<str, str>[] opts, str optstring,
+                                str shortopts, str[] args):
     while optstring != '':
         opt, optstring = optstring[0], optstring[1:]
         if short_has_arg(opt, shortopts):
@@ -199,7 +207,7 @@ def do_shorts(opts, optstring, shortopts, args):
         opts.append(('-' + opt, optarg))
     return opts, args
 
-def short_has_arg(opt, shortopts):
+bool short_has_arg(str opt, str shortopts):
     for i in range(len(shortopts)):
         if opt == shortopts[i] != ':':
             return shortopts.startswith(':', i+1)
