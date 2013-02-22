@@ -175,6 +175,8 @@ class int(int_t, float_t):
     void __init__(self, bytes string, int base): pass
     void __init__(self, bytearray string, int base): pass
 
+    int bit_length(self): pass
+
     # Operators
     # TODO other __r* methods
     
