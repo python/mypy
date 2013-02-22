@@ -30,7 +30,7 @@ __all__ = [
 bytes_types = (bytes, bytearray)  # Types acceptable as binary data
 
 
-def _translate(s, altchars):
+bytes _translate(bytes s, dict<str, bytes> altchars):
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
     translation = bytearray(range(256))
@@ -42,7 +42,7 @@ def _translate(s, altchars):
 
 # Base64 encoding/decoding uses binascii
 
-def b64encode(s, altchars=None):
+bytes b64encode(s, bytes altchars=None):
     """Encode a byte string using Base64.
 
     s is the byte string to encode.  Optional altchars must be a byte
@@ -65,7 +65,7 @@ def b64encode(s, altchars=None):
     return encoded
 
 
-def b64decode(s, altchars=None, validate=False):
+bytes b64decode(bytes s, bytes altchars=None, bool validate=False):
     """Decode a Base64 encoded byte string.
 
     s is the byte string to decode.  Optional altchars must be a
@@ -92,14 +92,14 @@ def b64decode(s, altchars=None, validate=False):
     return binascii.a2b_base64(s)
 
 
-def standard_b64encode(s):
+bytes standard_b64encode(bytes s):
     """Encode a byte string using the standard Base64 alphabet.
 
     s is the byte string to encode.  The encoded byte string is returned.
     """
     return b64encode(s)
 
-def standard_b64decode(s):
+bytes standard_b64decode(bytes s):
     """Decode a byte string encoded with the standard Base64 alphabet.
 
     s is the byte string to decode.  The decoded byte string is
@@ -109,7 +109,7 @@ def standard_b64decode(s):
     """
     return b64decode(s)
 
-def urlsafe_b64encode(s):
+bytes urlsafe_b64encode(bytes s):
     """Encode a byte string using a url-safe Base64 alphabet.
 
     s is the byte string to encode.  The encoded byte string is
@@ -118,7 +118,7 @@ def urlsafe_b64encode(s):
     """
     return b64encode(s, b'-_')
 
-def urlsafe_b64decode(s):
+bytes urlsafe_b64decode(bytes s):
     """Decode a byte string encoded with the standard Base64 alphabet.
 
     s is the byte string to decode.  The decoded byte string is
@@ -149,7 +149,7 @@ _b32tab = [v[0] for k, v in sorted(_b32alphabet.items())]
 _b32rev = dict([(v[0], k) for k, v in _b32alphabet.items()])
 
 
-def b32encode(s):
+bytes b32encode(bytes s):
     """Encode a byte string using Base32.
 
     s is the byte string to encode.  The encoded byte string is returned.
@@ -192,7 +192,7 @@ def b32encode(s):
     return encoded
 
 
-def b32decode(s, casefold=False, map01=None):
+bytes b32decode(bytes s, bool casefold=False, bytes map01=None):
     """Decode a Base32 encoded byte string.
 
     s is the byte string to decode.  Optional casefold is a flag
@@ -223,7 +223,7 @@ def b32decode(s, casefold=False, map01=None):
         if not isinstance(map01, bytes_types):
             raise TypeError("expected bytes, not %s" % map01.__class__.__name__)
         assert len(map01) == 1, repr(map01)
-        s = _translate(s, {b'0': b'O', b'1': map01})
+        s = _translate(s, {'0': b'O', '1': map01})
     if casefold:
         s = s.upper()
     # Strip off pad characters from the right.  We need to count the pad
@@ -236,7 +236,7 @@ def b32decode(s, casefold=False, map01=None):
         if padchars > 0:
             s = s[:-padchars]
     # Now decode the full quanta
-    parts = []
+    parts = <bytes> []
     acc = 0
     shift = 35
     for c in s:
@@ -271,7 +271,7 @@ def b32decode(s, casefold=False, map01=None):
 # RFC 3548, Base 16 Alphabet specifies uppercase, but hexlify() returns
 # lowercase.  The RFC also recommends against accepting input case
 # insensitively.
-def b16encode(s):
+bytes b16encode(bytes s):
     """Encode a byte string using Base16.
 
     s is the byte string to encode.  The encoded byte string is returned.
@@ -281,7 +281,7 @@ def b16encode(s):
     return binascii.hexlify(s).upper()
 
 
-def b16decode(s, casefold=False):
+bytes b16decode(bytes s, bool casefold=False):
     """Decode a Base16 encoded byte string.
 
     s is the byte string to decode.  Optional casefold is a flag
@@ -309,7 +309,7 @@ def b16decode(s, casefold=False):
 MAXLINESIZE = 76 # Excluding the CRLF
 MAXBINSIZE = (MAXLINESIZE//4)*3
 
-def encode(input, output):
+void encode(IO input, IO output):
     """Encode a file; input and output are binary files."""
     while True:
         s = input.read(MAXBINSIZE)
@@ -324,7 +324,7 @@ def encode(input, output):
         output.write(line)
 
 
-def decode(input, output):
+void decode(IO input, IO output):
     """Decode a file; input and output are binary files."""
     while True:
         line = input.readline()
@@ -334,18 +334,18 @@ def decode(input, output):
         output.write(s)
 
 
-def encodebytes(s):
+bytes encodebytes(bytes s):
     """Encode a bytestring into a bytestring containing multiple lines
     of base-64 data."""
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
-    pieces = []
+    pieces = <bytes> []
     for i in range(0, len(s), MAXBINSIZE):
         chunk = s[i : i + MAXBINSIZE]
         pieces.append(binascii.b2a_base64(chunk))
     return b"".join(pieces)
 
-def encodestring(s):
+bytes encodestring(bytes s):
     """Legacy alias of encodebytes()."""
     import warnings
     warnings.warn("encodestring() is a deprecated alias, use encodebytes()",
@@ -353,13 +353,13 @@ def encodestring(s):
     return encodebytes(s)
 
 
-def decodebytes(s):
+bytes decodebytes(bytes s):
     """Decode a bytestring of base-64 data into a bytestring."""
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
     return binascii.a2b_base64(s)
 
-def decodestring(s):
+bytes decodestring(bytes s):
     """Legacy alias of decodebytes()."""
     import warnings
     warnings.warn("decodestring() is a deprecated alias, use decodebytes()",
@@ -368,7 +368,7 @@ def decodestring(s):
 
 
 # Usable as a script...
-def main():
+void main():
     """Small main program"""
     import sys, getopt
     try:
@@ -394,7 +394,7 @@ def main():
         func(sys.stdin.buffer, sys.stdout.buffer)
 
 
-def test():
+void test():
     s0 = b"Aladdin:open sesame"
     print(repr(s0))
     s1 = encodebytes(s0)
