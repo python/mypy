@@ -432,7 +432,8 @@ class bytes(Sequence<int>):
     bytes strip(self, bytearray chars=None): pass
     bytes swapcase(self): pass
     bytes title(self): pass
-    bytes translate(self, dict<int, any> table): pass
+    bytes translate(self, bytes table): pass
+    bytes translate(self, bytearray table): pass
     bytes upper(self): pass
     bytes zfill(self, int width): pass
     
@@ -529,7 +530,8 @@ class bytearray(Sequence<int>):
     bytearray strip(self, bytearray chars=None): pass
     bytearray swapcase(self): pass
     bytearray title(self): pass
-    bytearray translate(self, dict<int, any> table): pass
+    bytearray translate(self, bytes table): pass
+    bytearray translate(self, bytearray table): pass
     bytearray upper(self): pass
     bytearray zfill(self, int width): pass
     
