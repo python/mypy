@@ -226,3 +226,15 @@ class A:
    void __init__(self, A a): pass
 class B:
     pass
+
+[case testOverlappingErasedSignatures]
+int f(int[] a): pass
+int f(str[] a): pass
+n = f(<int> [])
+m = f(<str> [])
+n = 1
+m = 1
+n = 'x' # E: Incompatible types in assignment
+m = 'x' # E: Incompatible types in assignment
+f(<object> []) # E: Argument 1 to "f" has incompatible type object[]
+[builtins fixtures/list.py]

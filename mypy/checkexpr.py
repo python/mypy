@@ -493,13 +493,14 @@ class ExpressionChecker:
         could not be determined). If is_var_arg is True, the caller
         uses varargs.
         """
+        # TODO also consider argument names and kinds
         # TODO for overlapping signatures we should try to get a more precise
         #      result than 'any'
-        Type match = None # Callable, Any or None
+        match = <Callable> []
         for typ in overload.items():
-            if self.matches_signature(arg_types, is_var_arg, typ):
+            if self.matches_signature_erased(arg_types, is_var_arg, typ):
                 if match and (isinstance(match, Any) or
-                              not is_same_type(((Callable)match).ret_type,
+                              not is_same_type(((Callable)match[-1]).ret_type,
                                                typ.ret_type)):
                     # Ambiguous return type. Either the function overload is
                     # overlapping (which results in an error elsewhere) or the
@@ -508,20 +509,30 @@ class ExpressionChecker:
                     # not an error to use any types in calls.
                     # TODO overlapping overloads should be possible in some
                     #      cases
-                    match = Any()
+                    return Any()
                 else:
-                    match = typ
+                    match.append(typ)
         if not match:
             self.msg.no_variant_matches_arguments(overload, context)
             return Any()
         else:
-            return match
+            if len(match) == 1:
+                return match[0]
+            else:
+                # More than one signature matches. Pick the first *non-erased*
+                # matching signature, or default to the first one if none
+                # match.
+                for m in match:
+                    if self.match_signature_types(arg_types, is_var_arg, m):
+                        return m
+                return match[0]
     
-    bool matches_signature(self, Type[] arg_types, bool is_var_arg,
-                           Callable callee):
-        """Determine whether argument types match the signature.
+    bool matches_signature_erased(self, Type[] arg_types, bool is_var_arg,
+                                  Callable callee):
+        """Determine whether arguments could match the signature at runtime.
 
-        If is_var_arg is True, the caller uses varargs.
+        If is_var_arg is True, the caller uses varargs. This is used for
+        overload resolution.
         """
         if not is_valid_argc(len(arg_types), False, callee):
             return False
@@ -544,6 +555,30 @@ class ExpressionChecker:
             for i in range(func_fixed, len(arg_types)):
                 if not is_subtype(self.erase(arg_types[i]),
                                   self.erase(callee.arg_types[func_fixed])):
+                    return False
+        return True
+    
+    bool match_signature_types(self, Type[] arg_types, bool is_var_arg,
+                               Callable callee):
+        """Determine whether arguments types match the signature.
+
+        If is_var_arg is True, the caller uses varargs. Assume that argument
+        counts are compatible.
+        """
+        if is_var_arg:
+            arg_types, rest = expand_caller_var_args(arg_types,
+                                                     callee.max_fixed_args())
+
+        # Fixed function arguments.
+        func_fixed = callee.max_fixed_args()
+        for i in range(min(len(arg_types), func_fixed)):
+            if not is_subtype(arg_types[i], callee.arg_types[i]):
+                return False
+        # Function varargs.
+        if callee.is_var_arg:
+            for i in range(func_fixed, len(arg_types)):
+                if not is_subtype(arg_types[i],
+                                  callee.arg_types[func_fixed]):
                     return False
         return True
     
