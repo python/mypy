@@ -389,9 +389,9 @@ void main():
         if o == '-t': test(); return
     if args and args[0] != '-':
         with open(args[0], 'rb') as f:
-            func(f, sys.stdout.buffer)
+            func(f, ((any)sys.stdout).buffer)
     else:
-        func(sys.stdin.buffer, sys.stdout.buffer)
+        func(((any)sys.stdin).buffer, ((any)sys.stdout).buffer)
 
 
 void test():
