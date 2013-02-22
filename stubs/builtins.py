@@ -739,6 +739,7 @@ bool all(Iterable i): pass
 # TODO name clash with 'any' type
 #bool any(Iterable i): pass
 str ascii(object o): pass
+bool callable(object o): pass
 str chr(int code): pass
 void delattr(any o, str name): pass
 str[] dir(): pass
