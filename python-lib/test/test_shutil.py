@@ -844,7 +844,7 @@ class TestCopyFile(unittest.TestCase):
 
     class Faux(object):
         _entered = False
-        _exited_with = None
+        any _exited_with = None
         _raised = False
         def __init__(self, raise_in_exit=False, suppress_at_exit=True):
             self._raise_in_exit = raise_in_exit
