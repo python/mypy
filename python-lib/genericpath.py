@@ -12,18 +12,24 @@ __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
 
 # Does a path exist?
 # This is false for dangling symbolic links on systems that support them.
-def exists(path):
-    """Test whether a path exists.  Returns False for broken symbolic links"""
+def _exists(path):
     try:
         os.stat(path)
     except OSError:
         return False
     return True
 
+bool exists(str path):
+    """Test whether a path exists.  Returns False for broken symbolic links"""
+    return _exists(path)
+
+bool exists(bytes path):
+    return _exists(path)
+
 
 # This follows symbolic links, so both islink() and isdir() can be true
 # for the same path ono systems that support symlinks
-def isfile(path):
+def _isfile(path):
     """Test whether a path is a regular file"""
     try:
         st = os.stat(path)
@@ -31,42 +37,66 @@ def isfile(path):
         return False
     return stat.S_ISREG(st.st_mode)
 
+bool isfile(str path):
+    """Test whether a path is a regular file"""
+    return _isfile(path)
+
+bool isfile(bytes path):
+    return _isfile(path)
+
 
 # Is a path a directory?
 # This follows symbolic links, so both islink() and isdir()
 # can be true for the same path on systems that support symlinks
-def isdir(s):
-    """Return true if the pathname refers to an existing directory."""
+def _isdir(s):
     try:
         st = os.stat(s)
     except OSError:
         return False
     return stat.S_ISDIR(st.st_mode)
 
+bool isdir(str s):
+    """Return true if the pathname refers to an existing directory."""
+    return _isdir(s)
 
-def getsize(filename):
+bool isdir(bytes s):
+    return _isdir(s)
+
+
+int getsize(str filename):
     """Return the size of a file, reported by os.stat()."""
     return os.stat(filename).st_size
 
+int getsize(bytes filename):
+    return os.stat(filename).st_size
 
-def getmtime(filename):
+
+any getmtime(str filename):
     """Return the last modification time of a file, reported by os.stat()."""
     return os.stat(filename).st_mtime
 
+any getmtime(bytes filename):
+    return os.stat(filename).st_mtime
 
-def getatime(filename):
+
+any getatime(str filename):
     """Return the last access time of a file, reported by os.stat()."""
     return os.stat(filename).st_atime
 
+any getatime(bytes filename):
+    return os.stat(filename).st_atime
 
-def getctime(filename):
+
+any getctime(str filename):
     """Return the metadata change time of a file, reported by os.stat()."""
+    return os.stat(filename).st_ctime
+
+any getctime(bytes filename):
     return os.stat(filename).st_ctime
 
 
 # Return the longest prefix of all list elements.
-def commonprefix(m):
-    "Given a list of pathnames, returns the longest common leading component"
+def _commonprefix(m):
     if not m: return ''
     s1 = min(m)
     s2 = max(m)
@@ -74,6 +104,14 @@ def commonprefix(m):
         if c != s2[i]:
             return s1[:i]
     return s1
+
+str commonprefix(str[] m):
+    "Given a list of pathnames, returns the longest common leading component"
+    return _commonprefix(m)
+
+bytes commonprefix(bytes[] m):
+    return _commonprefix(m)
+
 
 # Split a path in root and extension.
 # The extension is everything starting at the last dot in the last
