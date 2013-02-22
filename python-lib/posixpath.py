@@ -32,7 +32,7 @@ extsep = '.'
 sep = '/'
 pathsep = ':'
 defpath = ':/bin:/usr/bin'
-any altsep = None
+str altsep = None
 devnull = '/dev/null'
 
 def _get_sep(path):
@@ -46,32 +46,39 @@ def _get_sep(path):
 # normalizations (such as optimizing '../' away) are not allowed
 # (another function should be defined to do that).
 
-def normcase(s):
-    """Normalize case of pathname.  Has no effect under Posix"""
+def _normcase(s):
     # TODO: on Mac OS X, this should really return s.lower().
     if not isinstance(s, (bytes, str)):
         raise TypeError("normcase() argument must be str or bytes, "
                         "not '{}'".format(s.__class__.__name__))
     return s
 
+str normcase(str s):
+    """Normalize case of pathname.  Has no effect under Posix"""
+    return _normcase(s)
+bytes normcase(bytes s):
+    return _normcase(s)
+
 
 # Return whether a path is absolute.
 # Trivial in Posix, harder on the Mac or MS-DOS.
 
-def isabs(s):
-    """Test whether a path is absolute"""
+def _isabs(s):
     sep = _get_sep(s)
     return s.startswith(sep)
+
+bool isabs(str s):
+    """Test whether a path is absolute"""
+    return _isabs(s)
+bool isabs(bytes s):
+    return _isabs(s)
 
 
 # Join pathnames.
 # Ignore the previous parts if a part is absolute.
 # Insert a '/' unless the first part is empty or already ends in '/'.
 
-def join(a, *p):
-    """Join two or more pathname components, inserting '/' as needed.
-    If any component is an absolute path, all previous path components
-    will be discarded."""
+def _join(a, *p):
     sep = _get_sep(a)
     path = a
     for b in p:
@@ -83,15 +90,21 @@ def join(a, *p):
             path += sep + b
     return path
 
+str join(str a, str *p):
+    """Join two or more pathname components, inserting '/' as needed.
+    If any component is an absolute path, all previous path components
+    will be discarded."""
+    return _join(a, p)
+bytes join(bytes a, bytes *p):
+    return _join(a, p)
+
 
 # Split a path in head (everything up to the last '/') and tail (the
 # rest).  If the path ends in '/', tail will be empty.  If there is no
 # '/' in the path, head  will be empty.
 # Trailing '/'es are stripped from head unless it is the root.
 
-def split(p):
-    """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
-    everything after the final slash.  Either part may be empty."""
+def _split(p):
     sep = _get_sep(p)
     i = p.rfind(sep) + 1
     head, tail = p[:i], p[i:]
@@ -99,13 +112,20 @@ def split(p):
         head = head.rstrip(sep)
     return head, tail
 
+tuple<str, str> split(str p):
+    """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+    everything after the final slash.  Either part may be empty."""
+    return _split(p)
+tuple<bytes, bytes> split(bytes p):
+    return _split(p)
+
 
 # Split a path in root and extension.
 # The extension is everything starting at the last dot in the last
 # pathname component; the root is everything before that.
 # It is always true that root + ext == p.
 
-def splitext(p):
+def _splitext(p):
     if isinstance(p, bytes):
         sep = b'/'
         extsep = b'.'
@@ -113,30 +133,44 @@ def splitext(p):
         sep = '/'
         extsep = '.'
     return genericpath._splitext(p, sep, None, extsep)
+
+tuple<str, str> splitext(str p):
+    return _splitext(p)
+tuple<bytes, bytes> splitext(bytes p):
+    return _splitext(p)
 splitext.__doc__ = genericpath._splitext.__doc__
 
 # Split a pathname into a drive specification and the rest of the
 # path.  Useful on DOS/Windows/NT; on Unix, the drive is always empty.
 
-def splitdrive(p):
+def _splitdrive(p):
+    return p[:0], p
+
+tuple<str, str> splitdrive(str p):
     """Split a pathname into drive and path. On Posix, drive is always
     empty."""
-    return p[:0], p
+    return _splitdrive(p)
+tuple<bytes, bytes> splitdrive(bytes p):
+    return _splitdrive(p)
 
 
 # Return the tail (basename) part of a path, same as split(path)[1].
 
-def basename(p):
-    """Returns the final component of a pathname"""
+def _basename(p):
     sep = _get_sep(p)
     i = p.rfind(sep) + 1
     return p[i:]
 
+str basename(str p):
+    """Returns the final component of a pathname"""
+    return _basename(p)
+bytes basename(bytes p):
+    return _basename(p)
+
 
 # Return the head (dirname) part of a path, same as split(path)[0].
 
-def dirname(p):
-    """Returns the directory component of a pathname"""
+def _dirname(p):
     sep = _get_sep(p)
     i = p.rfind(sep) + 1
     head = p[:i]
@@ -144,52 +178,78 @@ def dirname(p):
         head = head.rstrip(sep)
     return head
 
+str dirname(str p):
+    """Returns the directory component of a pathname"""
+    return _dirname(p)
+bytes dirname(bytes p):
+    return _dirname(p)
+
 
 # Is a path a symbolic link?
 # This will always return false on systems where os.lstat doesn't exist.
 
-def islink(path):
-    """Test whether a path is a symbolic link"""
+def _islink(path):
     try:
         st = os.lstat(path)
     except (os.error, AttributeError):
         return False
     return stat.S_ISLNK(st.st_mode)
 
+bool islink(str path):
+    """Test whether a path is a symbolic link"""
+    return _islink(path)
+bool islink(bytes path):
+    return _islink(path)
+
 # Being true for dangling symbolic links is also useful.
 
-def lexists(path):
-    """Test whether a path exists.  Returns True for broken symbolic links"""
+def _lexists(path):
     try:
         os.lstat(path)
     except os.error:
         return False
     return True
 
+bool lexists(str path):
+    """Test whether a path exists.  Returns True for broken symbolic links"""
+    return _lexists(path)
+bool lexists(bytes path):
+    return _lexists(path)
+
 
 # Are two filenames really pointing to the same file?
 
-def samefile(f1, f2):
-    """Test whether two pathnames reference the same actual file"""
+def _samefile(f1, f2):
     s1 = os.stat(f1)
     s2 = os.stat(f2)
     return samestat(s1, s2)
+
+bool samefile(str path1, str path2):
+    """Test whether two pathnames reference the same actual file"""
+    return _samefile(path1, path2)
+bool samefile(bytes path1, bytes path2):
+    return _samefile(path1, path2)
 
 
 # Are two open files really referencing the same file?
 # (Not necessarily the same file descriptor!)
 
-def sameopenfile(fp1, fp2):
-    """Test whether two open file objects reference the same file"""
+def _sameopenfile(fp1, fp2):
     s1 = os.fstat(fp1)
     s2 = os.fstat(fp2)
     return samestat(s1, s2)
+
+bool sameopenfile(IO fp1, IO fp2):
+    """Test whether two open file objects reference the same file"""
+    return _sameopenfile(fp1, fp2)
+bool sameopenfile(TextIO fp1, TextIO fp2):
+    return _sameopenfile(fp1, fp2)
 
 
 # Are two stat buffers (obtained from stat, fstat or lstat)
 # describing the same file?
 
-def samestat(s1, s2):
+bool samestat(os.stat_result s1, os.stat_result s2):
     """Test whether two stat buffers reference the same file"""
     return s1.st_ino == s2.st_ino and \
            s1.st_dev == s2.st_dev
@@ -198,8 +258,7 @@ def samestat(s1, s2):
 # Is a path a mount point?
 # (Does this work for all UNIXes?  Is it even guaranteed to work by Posix?)
 
-def ismount(path):
-    """Test whether a path is a mount point"""
+def _ismount(path):
     if islink(path):
         # A symlink can never be a mount point
         return False
@@ -222,6 +281,12 @@ def ismount(path):
         return True     # path/.. is the same i-node as path
     return False
 
+bool ismount(str path):
+    """Test whether a path is a mount point"""
+    return _ismount(path)
+bool ismount(bytes path):
+    return _ismount(path)
+
 
 # Expand paths beginning with '~' or '~user'.
 # '~' means $HOME; '~user' means that user's home directory.
@@ -232,9 +297,7 @@ def ismount(path):
 # (A function should also be defined to do full *sh-style environment
 # variable expansion.)
 
-def expanduser(path):
-    """Expand ~ and ~user constructions.  If user or $HOME is unknown,
-    do nothing."""
+def _expanduser(path):
     if isinstance(path, bytes):
         tilde = b'~'
     else:
@@ -268,17 +331,23 @@ def expanduser(path):
     userhome = userhome.rstrip(root) or userhome
     return userhome + path[i:]
 
+str expanduser(str path):
+    """Expand ~ and ~user constructions.  If user or $HOME is unknown,
+    do nothing."""
+    return _expanduser(path)
+bytes expanduser(bytes path):
+    return _expanduser(path)
+
 
 # Expand paths containing shell variable substitutions.
 # This expands the forms $variable and ${variable} only.
 # Non-existent variables are left unchanged.
 
-any _varprog = None
-any _varprogb = None
+from re import Pattern, BytesPattern
+Pattern _varprog = None
+BytesPattern _varprogb = None
 
-def expandvars(path):
-    """Expand shell variables of form $var and ${var}.  Unknown variables
-    are left unchanged."""
+def _expandvars(path):
     global _varprog, _varprogb
     import re
     if isinstance(path, bytes):
@@ -320,13 +389,19 @@ def expandvars(path):
             i = j
     return path
 
+str expandvars(str path):
+    """Expand shell variables of form $var and ${var}.  Unknown variables
+    are left unchanged."""
+    return _expandvars(path)
+bytes expandvars(bytes path):
+    return _expandvars(path)
+
 
 # Normalize a path, e.g. A//B, A/./B and A/foo/../B all become A/B.
 # It should be understood that this may change the meaning of the path
 # if it contains symbolic links!
 
-def normpath(path):
-    """Normalize path, eliminating double slashes, etc."""
+def _normpath(path):
     if isinstance(path, bytes):
         sep = b'/'
         empty = b''
@@ -361,9 +436,14 @@ def normpath(path):
         path = sep*initial_slashes + path
     return path or dot
 
+str normpath(str path):
+    """Normalize path, eliminating double slashes, etc."""
+    return _normpath(path)
+bytes normpath(bytes path):
+    return _normpath(path)
 
-def abspath(path):
-    """Return an absolute path."""
+
+def _abspath(path):
     if not isabs(path):
         if isinstance(path, bytes):
             cwd = os.getcwdb()
@@ -372,13 +452,17 @@ def abspath(path):
         path = join(cwd, path)
     return normpath(path)
 
+str abspath(str path):
+    """Return an absolute path."""
+    return _abspath(path)
+bytes abspath(bytes path):
+    return _abspath(path)
+
 
 # Return a canonical path (i.e. the absolute location of a file on the
 # filesystem).
 
-def realpath(filename):
-    """Return the canonical path of the specified filename, eliminating any
-symbolic links encountered in the path."""
+def _realpath(filename):
     if isinstance(filename, bytes):
         sep = b'/'
         empty = b''
@@ -404,6 +488,13 @@ symbolic links encountered in the path."""
 
     return abspath(filename)
 
+str realpath(str filename):
+    """Return the canonical path of the specified filename, eliminating any
+    symbolic links encountered in the path."""
+    return _realpath(filename)
+bytes realpath(bytes filename):
+    return _realpath(filename)
+
 
 def _resolve_link(path):
     """Internal helper function.  Takes a path and follows symlinks
@@ -427,9 +518,7 @@ def _resolve_link(path):
 
 supports_unicode_filenames = (sys.platform == 'darwin')
 
-def relpath(path, start=None):
-    """Return a relative version of a path"""
-
+def _relpath(path, start=None):
     if not path:
         raise ValueError("no path specified")
 
@@ -455,3 +544,9 @@ def relpath(path, start=None):
     if not rel_list:
         return curdir
     return join(*rel_list)
+
+str relpath(str path, str start=None):
+    """Return a relative version of a path"""
+    return _relpath(path, start)
+bytes relpath(bytes path, bytes start=None):
+    return _relpath(path, start)
