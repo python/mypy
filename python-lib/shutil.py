@@ -49,7 +49,7 @@ class RegistryError(Exception):
 
 
 try:
-    WindowsError
+    WindowsError = WindowsError
 except NameError:
     WindowsError = None
 
