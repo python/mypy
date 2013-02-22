@@ -140,7 +140,7 @@ class Random(_random.Random):
             try:
                 internalstate = tuple(x % (2**32) for x in internalstate)
             except ValueError as e:
-                raise TypeError from e
+                raise TypeError()
             super().setstate(internalstate)
         else:
             raise ValueError("state with version %s passed to "
