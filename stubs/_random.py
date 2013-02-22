@@ -3,7 +3,7 @@
 # NOTE: These are incomplete!
 
 class Random:
-    void seed(self, int x=None): pass
+    void seed(self, any x=None): pass
     tuple getstate(self): pass
     void setstate(self, tuple state): pass
     float random(self): pass
