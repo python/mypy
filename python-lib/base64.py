@@ -264,7 +264,7 @@ bytes b32decode(bytes s, bool casefold=False, bytes map01=None):
     else:
         raise binascii.Error('Incorrect padding')
     parts.append(last)
-    return b''.join((any)parts)
+    return b''.join(parts)
 
 
 
@@ -343,7 +343,7 @@ bytes encodebytes(bytes s):
     for i in range(0, len(s), MAXBINSIZE):
         chunk = s[i : i + MAXBINSIZE]
         pieces.append(binascii.b2a_base64(chunk))
-    return b"".join((any)pieces)
+    return b"".join(pieces)
 
 bytes encodestring(bytes s):
     """Legacy alias of encodebytes()."""
