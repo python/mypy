@@ -16,7 +16,12 @@ import functools
 
 __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
 
-def fnmatch(name, pat):
+def _fnmatch(name, pat):
+    name = os.path.normcase(name)
+    pat = os.path.normcase(pat)
+    return fnmatchcase(name, pat)
+
+bool fnmatch(str name, str pat):
     """Test whether FILENAME matches PATTERN.
 
     Patterns are Unix shell style:
@@ -31,9 +36,10 @@ def fnmatch(name, pat):
     if the operating system requires it.
     If you don't want this, use fnmatchcase(FILENAME, PATTERN).
     """
-    name = os.path.normcase(name)
-    pat = os.path.normcase(pat)
-    return fnmatchcase(name, pat)
+    return _fnmatch(name, pat)
+
+bool fnmatch(bytes name, bytes pat):
+    return _fnmatch(name, pat)
 
 @functools.lru_cache(maxsize=250)
 def _compile_pattern(pat, is_bytes=False):
@@ -45,8 +51,7 @@ def _compile_pattern(pat, is_bytes=False):
         res = translate(pat)
     return re.compile(res).match
 
-def filter(names, pat):
-    """Return the subset of the list NAMES that match PAT."""
+def _filter(names, pat):
     result = []
     pat = os.path.normcase(pat)
     match = _compile_pattern(pat, isinstance(pat, bytes))
@@ -61,17 +66,29 @@ def filter(names, pat):
                 result.append(name)
     return result
 
-def fnmatchcase(name, pat):
+str[] filter(Iterable<str> names, str pat):
+    """Return the subset of the list NAMES that match PAT."""
+    return _filter(names, pat)
+
+bytes[] filter(Iterable<bytes> names, bytes pat):
+    return _filter(names, pat)
+
+def _fnmatchcase(name, pat):
+    match = _compile_pattern(pat, isinstance(pat, bytes))
+    return match(name) is not None
+
+bool fnmatchcase(str name, str pat):
     """Test whether FILENAME matches PATTERN, including case.
 
     This is a version of fnmatch() which doesn't case-normalize
     its arguments.
     """
-    match = _compile_pattern(pat, isinstance(pat, bytes))
-    return match(name) is not None
+    return _fnmatchcase(name, pat)
 
+bool fnmatchcase(bytes name, bytes pat):
+    return _fnmatchcase(name, pat)
 
-def translate(pat):
+str translate(str pat):
     """Translate a shell PATTERN to a regular expression.
 
     There is no way to quote meta-characters.
