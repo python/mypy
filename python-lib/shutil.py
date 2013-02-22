@@ -678,7 +678,7 @@ def _unpack_zipfile(filename, extract_dir):
                     f.write(data)
                 finally:
                     f.close()
-                    del data
+                    data = None
     finally:
         zip.close()
 
