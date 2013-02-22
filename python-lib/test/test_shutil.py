@@ -658,12 +658,14 @@ class TestShutil(unittest.TestCase):
     def test_register_archive_format(self):
 
         self.assertRaises(TypeError, register_archive_format, 'xxx', 1)
-        self.assertRaises(TypeError, register_archive_format, 'xxx', lambda: x,
+        self.assertRaises(TypeError, register_archive_format, 'xxx',
+                          lambda: 1/0,
                           1)
-        self.assertRaises(TypeError, register_archive_format, 'xxx', lambda: x,
+        self.assertRaises(TypeError, register_archive_format, 'xxx',
+                          lambda: 1/0,
                           [(1, 2), (1, 2, 3)])
 
-        register_archive_format('xxx', lambda: x, [(1, 2)], 'xxx file')
+        register_archive_format('xxx', lambda: 1/0, [(1, 2)], 'xxx file')
         formats = [name for name, params in get_archive_formats()]
         self.assertIn('xxx', formats)
 
