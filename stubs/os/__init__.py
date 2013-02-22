@@ -185,7 +185,9 @@ str strerror(int code): pass
 int umask(int mask): pass
 #str[] uname(): pass  # Unix only, reurns 5-tuple of str
 void unsetenv(str key): pass
-IO fdopen(int fd, str file, int flags, int mode=0o777): pass
+# Return IO or TextIO
+any fdopen(int fd, str mode='r', str encoding=None, str errors=None,
+           str newline=None, bool closefd=True): pass
 void close(int fd): pass
 void closerange(int fd_low, int fd_high): pass
 str device_encoding(int fd): pass # May return None
