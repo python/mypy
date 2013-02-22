@@ -19,15 +19,9 @@ try:
 except ImportError:
     _BZ2_SUPPORTED = False
 
-try:
-    from pwd import getpwnam
-except ImportError:
-    getpwnam = None
+from pwd import getpwnam
 
-try:
-    from grp import getgrnam
-except ImportError:
-    getgrnam = None
+from grp import getgrnam
 
 __all__ = ["copyfileobj", "copyfile", "copymode", "copystat", "copy", "copy2",
            "copytree", "move", "rmtree", "Error", "SpecialFileError",
