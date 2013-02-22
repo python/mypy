@@ -49,9 +49,9 @@ class RegistryError(Exception):
 
 
 try:
-    WindowsError = WindowsError
+    _WindowsError = WindowsError
 except NameError:
-    WindowsError = None
+    _WindowsError = None
 
 def copyfileobj(fsrc, fdst, length=16*1024):
     """copy data from file-like object fsrc to file-like object fdst"""
@@ -224,7 +224,7 @@ def copytree(src, dst, symlinks=False, ignore=None, copy_function=copy2,
     try:
         copystat(src, dst)
     except OSError as why:
-        if WindowsError is not None and isinstance(why, WindowsError):
+        if _WindowsError is not None and isinstance(why, _WindowsError):
             # Copying file access times may fail on Windows
             pass
         else:
