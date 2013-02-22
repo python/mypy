@@ -21,7 +21,7 @@ import tarfile
 import warnings
 
 from test import support
-from test.support import TESTFN, check_warnings, captured_stdout
+from test.support import check_warnings, captured_stdout
 
 try:
     import bz2
