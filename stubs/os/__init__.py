@@ -185,6 +185,7 @@ str strerror(int code): pass
 int umask(int mask): pass
 #str[] uname(): pass  # Unix only, reurns 5-tuple of str
 void unsetenv(str key): pass
+void unsetenv(bytes key): pass
 # Return IO or TextIO
 any fdopen(int fd, str mode='r', str encoding=None, str errors=None,
            str newline=None, bool closefd=True): pass
@@ -192,7 +193,7 @@ void close(int fd): pass
 void closerange(int fd_low, int fd_high): pass
 str device_encoding(int fd): pass # May return None
 int dup(int fd): pass
-void dup2(fd, fd2): pass
+void dup2(int fd, int fd2): pass
 #void fchmod(int fd, intmode): pass  # Unix only
 #void fchown(int fd, int uid, int gid): pass  # Unix only
 #void fdatasync(int fd): pass  # Unix only, not Mac
@@ -203,44 +204,62 @@ void fsync(int fd): pass
 #void ftruncate(int fd, int length): pass  # Unix only
 #bool isatty(int fd): pass  # Unix only
 int lseek(int fd, int pos, int how): pass
-IO open(str file, int flags, int mode=0o777): pass
+int open(str file, int flags, int mode=0o777): pass
+int open(bytes file, int flags, int mode=0o777): pass
 #tuple<int, int> openpty(): pass  # some flavors of Unix
 tuple<int, int> pipe(): pass
-str read(int fd, int n): pass  # TODO: maybe returns bytes for bin files?
+bytes read(int fd, int n): pass
 #int tcgetpgrp(int fd): pass  # Unix only
 #void tcsetpgrp(int fd, int pg): pass  # Unix only
 #str ttyname(int fd): pass  # Unix only
-int write(int fd, str string): pass
+int write(int fd, bytes string): pass
 bool access(str path, int mode): pass
+bool access(bytes path, int mode): pass
 void chdir(str path): pass
+void chdir(bytes path): pass
 void fchdir(int fd): pass
 str getcwd(): pass
 bytes getcwdb(): pass
 #void chflags(str path, int flags): pass  # Unix only
 #void chroot(str path): pass  # Unix only
 void chmod(str path, int mode): pass
+void chmod(bytes path, int mode): pass
 void chown(str path, int uid, int gid): pass  # Unix only
+void chown(bytes path, int uid, int gid): pass  # Unix only
 #void lchflags(str path, int flags): pass  # Unix only
 #void lchmod(str path, int mode): pass  # Unix only
 #void lchown(str path, int uid, int gid): pass  # Unix only
 void link(str src, str link_name): pass
+void link(bytes src, bytes link_name): pass
 str[] listdir(str path='.'): pass
+bytes[] listdir(bytes path): pass
 stat_result lstat(str path): pass
+stat_result lstat(bytes path): pass
 #void mkfifo(path, int mode=0o666): pass  # Unix only
 void mknod(str filename, int mode=0o600, int device=0): pass
+void mknod(bytes filename, int mode=0o600, int device=0): pass
 int major(int device): pass
 int minor(int device): pass
 int makedev(int major, int minor): pass
 void mkdir(str path, int mode=0o777): pass
+void mkdir(bytes path, int mode=0o777): pass
 void makedirs(str path, int mode=0o777, bool exist_ok=False): pass
+void makedirs(bytes path, int mode=0o777, bool exist_ok=False): pass
 #int pathconf(str path, str name): pass  # Unix only
 str readlink(str path): pass
+bytes readlink(bytes path): pass
 void remove(str path): pass
+void remove(bytes path): pass
 void removedirs(str path): pass
+void removedirs(bytes path): pass
 void rename(str src, str dst): pass
+void rename(bytes src, bytes dst): pass
 void renames(str old, str new): pass
+void renames(bytes old, bytes new): pass
 void rmdir(str path): pass
+void rmdir(bytes path): pass
 stat_result stat(str path): pass
+stat_result stat(bytes path): pass
 bool stat_float_times(): pass
 bool stat_float_times(bool newvalue): pass
 #statvfs_result statvfs(str path): pass # Unix only
@@ -248,12 +267,18 @@ bool stat_float_times(bool newvalue): pass
 #void symlink(str source, str link_name, bool target_is_directory=False):
 #    pass  # Windows only
 void unlink(str path): pass
+void unlink(str bytes): pass
 void utime(str path, tuple<int, int> times=None): pass
+void utime(bytes path, tuple<int, int> times=None): pass
 void utime(str path, tuple<float, float> times=None): pass
+void utime(bytes path, tuple<float, float> times=None): pass
 # TODO onerror: function from OSError to void
-str[] walk(str top, bool topdown=True, any onerror=None, 
-               bool followlinks=False): 
-    pass
+Iterator<tuple<str, str[], str[]>> \
+                    walk(str top, bool topdown=True, any onerror=None, 
+                         bool followlinks=False): pass
+Iterator<tuple<bytes, bytes[], bytes[]>> \
+                    walk(bytes top, bool topdown=True, any onerror=None, 
+                         bool followlinks=False): pass
 # walk(): "By default errors from the os.listdir() call are ignored.  If
 # optional arg 'onerror' is specified, it should be a function; it
 # will be called with one argument, an os.error instance.  It can
@@ -261,14 +286,22 @@ str[] walk(str top, bool topdown=True, any onerror=None,
 # to abort the walk.  Note that the filename is available as the
 # filename attribute of the exception object."
 void abort(): pass
-void execl(str path, str[] args): pass # TODO fix
-void execle(str path, str[] args, dict<str, str> env): pass # TODO fix
-void execlp(str path, str[] args): pass # TODO fix
-void execlpe(str path, str[] args, dict<str, str> env): pass # TODO fix
+void execl(str path, str arg0, str *args): pass
+void execl(bytes path, bytes arg0, bytes *args): pass
+void execle(str path, str arg0, any *args): pass # Imprecise signature
+void execle(bytes path, bytes arg0, any *args): pass # Imprecise signature
+void execlp(str path, str arg0, str *args): pass
+void execlp(bytes path, bytes arg0, bytes *args): pass
+void execlpe(str path, str arg0, any *args): pass # Imprecise signature
+void execlpe(bytes path, bytes arg0, any *args): pass # Imprecise signature
 void execv(str path, str[] args): pass
+void execv(bytes path, bytes[] args): pass
 void execve(str path, str[] args, dict<str, str> env): pass
+void execve(bytes path, bytes[] args, dict<str, str> env): pass
 void execvp(str file, str[] args): pass
+void execvp(bytes file, bytes[] args): pass
 void execvpe(str file, str[] args, dict<str, str> env): pass
+void execvpe(bytes file, bytes[] args, dict<str, str> env): pass
 void _exit(int n): pass
 #int fork(): pass  # Unix only
 #tuple<int, int> forkpty(): pass  # some flavors of Unix
@@ -277,24 +310,34 @@ void kill(int pid, int sig): pass
 #int nice(int increment): pass  # Unix only
 #void plock(int op): pass  # Unix only ???op is int?
 
-# TODO return type
-IO popen(str command, str mode='r', int bufsize=-1): pass  # TODO: params???
+# TODO 'b' modes or bytes command not accepted?
+TextIO popen(str command, str mode='r', int bufsize=-1): pass
 
-int spawnl(int mode, str path, str *args): pass
-int spawnle(int mode, str path, any *args): pass # Imprecise signature
-int spawnlp(int mode, IO file, str *args): pass  # Unix only TODO 
-int spawnlpe(int mode, IO file, any *args):
+int spawnl(int mode, str path, str arg0, str *args): pass
+int spawnl(int mode, bytes path, bytes arg0, bytes *args): pass
+int spawnle(int mode, str path, str arg0, any *args): pass # Imprecise sig
+int spawnle(int mode, bytes path, bytes arg0, any *args): pass # Imprecise sig
+int spawnlp(int mode, str file, str arg0, str *args): pass  # Unix only TODO 
+int spawnlp(int mode, bytes file, bytes arg0, bytes *args): pass
+int spawnlpe(int mode, str file, str arg0, any *args):
     pass # Imprecise signature; Unix only TODO 
+int spawnlpe(int mode, bytes file, bytes arg0, any *args):
+    pass # Imprecise signature
 int spawnv(int mode, str path, str[] args): pass
+int spawnv(int mode, bytes path, bytes[] args): pass
 int spawnve(int mode, str path, str[] args, dict<str, str> env): pass
-int spawnvp(int mode, IO file, str[] args): pass  # Unix only
-int spawnvpe(int mode, IO file, str[] args, dict<str, str> env): 
+int spawnve(int mode, bytes path, bytes[] args, dict<str, str> env): pass
+int spawnvp(int mode, str file, str[] args): pass  # Unix only
+int spawnvp(int mode, bytes file, bytes[] args): pass
+int spawnvpe(int mode, str file, str[] args, dict<str, str> env): 
     pass  # Unix only
+int spawnvpe(int mode, bytes file, bytes[] args, dict<str, str> env): pass
 #void startfile(str path): pass  # Windows only
 #void startfile(str path, str operation): pass  # Windows only
 #tuple<int, int> system(str command): pass  # Unix only
 int system(str command): pass
-float[] times(): pass  # actually returns a 5-tuple of float
+int system(bytes command): pass
+tuple<float, float, float, float, float> times(): pass
 #tuple<int, int> wait(): pass  # Unix only
 tuple<int, int> waitpid(int pid, int options): pass
 #tuple<int, int, object> wait3(): pass  # Unix only
