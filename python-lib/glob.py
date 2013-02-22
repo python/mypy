@@ -6,7 +6,7 @@ import fnmatch
 
 __all__ = ["glob", "iglob"]
 
-def glob(pathname):
+str[] glob(str pathname):
     """Return a list of paths matching a pathname pattern.
 
     The pattern may contain simple shell-style wildcards a la fnmatch.
@@ -14,12 +14,10 @@ def glob(pathname):
     """
     return list(iglob(pathname))
 
-def iglob(pathname):
-    """Return an iterator which yields the paths matching a pathname pattern.
+bytes[] glob(bytes pathname):
+    return list(iglob(pathname))
 
-    The pattern may contain simple shell-style wildcards a la fnmatch.
-
-    """
+def _iglob(pathname):
     if not has_magic(pathname):
         if os.path.lexists(pathname):
             yield pathname
@@ -40,6 +38,17 @@ def iglob(pathname):
     for dirname in dirs:
         for name in glob_in_dir(dirname, basename):
             yield os.path.join(dirname, name)
+
+Iterator<str> iglob(str pathname):
+    """Return an iterator which yields the paths matching a pathname pattern.
+
+    The pattern may contain simple shell-style wildcards a la fnmatch.
+
+    """
+    return _iglob(pathname)
+
+Iterator<bytes> iglob(bytes pathname):
+    return _iglob(pathname)
 
 # These 2 helper functions non-recursively glob inside a literal directory.
 # They return a list of basenames. `glob1` accepts a pattern while `glob0`
