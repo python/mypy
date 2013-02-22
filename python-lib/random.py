@@ -106,7 +106,7 @@ class Random(_random.Random):
 
         if a is None:
             try:
-                a = int.from_bytes(_urandom(32), 'big')
+                a = ((any)int).from_bytes(_urandom(32), 'big')
             except NotImplementedError:
                 import time
                 a = int(time.time() * 256) # use fractional seconds
@@ -116,7 +116,7 @@ class Random(_random.Random):
                 if isinstance(a, str):
                     a = a.encode()
                 a += _sha512(a).digest()
-                a = int.from_bytes(a, 'big')
+                a = ((any)int).from_bytes(a, 'big')
 
         super().seed(a)
         self.gauss_next = None
@@ -640,7 +640,7 @@ class SystemRandom(Random):
 
     float random(self):
         """Get the next random number in the range [0.0, 1.0)."""
-        return (int.from_bytes(_urandom(7), 'big') >> 3) * RECIP_BPF
+        return (((any)int).from_bytes(_urandom(7), 'big') >> 3) * RECIP_BPF
 
     int getrandbits(self, int k):
         """getrandbits(k) -> x.  Generates a long int with k random bits."""
@@ -649,7 +649,7 @@ class SystemRandom(Random):
         if k != int(k):
             raise TypeError('number of bits should be an integer')
         numbytes = (k + 7) // 8                       # bits / 8 and rounded up
-        x = int.from_bytes(_urandom(numbytes), 'big')
+        x = ((any)int).from_bytes(_urandom(numbytes), 'big')
         return x >> (numbytes * 8 - k)                # trim excess bits
 
     def seed(self, *args, **kwds):
