@@ -264,9 +264,10 @@ stat_result stat(bytes path): pass
 bool stat_float_times(): pass
 bool stat_float_times(bool newvalue): pass
 #statvfs_result statvfs(str path): pass # Unix only
-#void symlink(str source, str link_name): pass  # Unix only
-#void symlink(str source, str link_name, bool target_is_directory=False):
-#    pass  # Windows only
+void symlink(str source, str link_name, bool target_is_directory=False):
+    pass  # final argument in Windows only
+void symlink(bytes source, bytes link_name, bool target_is_directory=False):
+    pass
 void unlink(str path): pass
 void unlink(str bytes): pass
 void utime(str path, tuple<int, int> times=None): pass
