@@ -259,11 +259,11 @@ void rmtree(str path, bool ignore_errors=False,
 
     """
     if ignore_errors:
-        def _onerror(*args):
+        def _onerror(x, y, z):
             pass
         onerror = _onerror
     elif onerror is None:
-        def __onerror(*args):
+        def __onerror(x, y, z):
             raise
         onerror = __onerror
     try:
