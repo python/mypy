@@ -788,12 +788,12 @@ t next<t>(Iterator<t> i, t default): pass
 # TODO __index__
 str oct(int i): pass
 # TODO return type
-any open(str file, str mode='r', str encoding=None, str errors=None,
-         str newline=None, bool closefd=True): pass
-any open(bytes file, str mode='r', str encoding=None, str errors=None,
-         str newline=None, bool closefd=True): pass
-any open(int file, str mode='r', str encoding=None, str errors=None,
-         str newline=None, bool closefd=True): pass
+any open(str file, str mode='r', int buffering=-1, str encoding=None,
+         str errors=None, str newline=None, bool closefd=True): pass
+any open(bytes file, str mode='r', int buffering=-1, str encoding=None,
+         str errors=None, str newline=None, bool closefd=True): pass
+any open(int file, str mode='r', int buffering=-1, str encoding=None,
+         str errors=None, str newline=None, bool closefd=True): pass
 int ord(str c): pass
 int ord(bytes c): pass
 int ord(bytearray c): pass
