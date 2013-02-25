@@ -579,9 +579,10 @@ class slice:
     void __init__(self, int start, int stop, int step): pass
 
 
-class tuple:
+class tuple(Sized):
     void __init__(self): pass
     void __init__(self, Iterable<any> iterable): pass
+    int __len__(self): pass
     bool __contains__(self, object x): pass
     bool __lt__(self, tuple x): pass
     bool __le__(self, tuple x): pass
