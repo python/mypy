@@ -2,7 +2,9 @@
 
 # Based on http://docs.python.org/3.2/library/shutil.html
 
-# TODO bytes paths?
+# 'bytes' paths are not properly supported: they don't work with all functions,
+# sometimes they only work partially (broken exception messages), and the test
+# cases don't use them.
 
 void copyfileobj(IO fsrc, IO fdst, int length=None): pass
 void copyfileobj(TextIO fsrc, TextIO fdst, int length=None): pass
