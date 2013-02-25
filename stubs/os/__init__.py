@@ -4,6 +4,7 @@
 # based on http://docs.python.org/3.2/library/os.html
 
 from builtins import OSError as error
+import os.path as path
 
 # ----- os variables -----
 
@@ -31,7 +32,7 @@ int O_TRUNC
 #int O_BINARY  # Windows only
 #int O_NOINHERIT  # Windows only
 #int O_SHORT_LIVED  # Windows only
-#int O_TEMPORARY  # Windows only
+int O_TEMPORARY  # Windows only
 #int O_RANDOM  # Windows only
 #int O_SEQUENTIAL  # Windows only
 #int O_TEXT  # Windows only
