@@ -61,7 +61,7 @@ class TextWrapper:
         Drop leading and trailing whitespace from lines.
     """
 
-    any unicode_whitespace_trans = {}
+    dict<int, int> unicode_whitespace_trans = {}
     uspace = ord(' ')
     for x in _whitespace:
         unicode_whitespace_trans[ord(x)] = uspace
@@ -91,16 +91,16 @@ class TextWrapper:
                                  r'\Z')               # end of chunk
 
 
-    def __init__(self,
-                 width=70,
-                 initial_indent="",
-                 subsequent_indent="",
-                 expand_tabs=True,
-                 replace_whitespace=True,
-                 fix_sentence_endings=False,
-                 break_long_words=True,
-                 drop_whitespace=True,
-                 break_on_hyphens=True):
+    void __init__(self,
+                 int width=70,
+                 str initial_indent="",
+                 str subsequent_indent="",
+                 bool expand_tabs=True,
+                 bool replace_whitespace=True,
+                 bool fix_sentence_endings=False,
+                 bool break_long_words=True,
+                 bool drop_whitespace=True,
+                 bool break_on_hyphens=True):
         self.width = width
         self.initial_indent = initial_indent
         self.subsequent_indent = subsequent_indent
@@ -115,7 +115,7 @@ class TextWrapper:
     # -- Private methods -----------------------------------------------
     # (possibly useful for subclasses to override)
 
-    def _munge_whitespace(self, text):
+    str _munge_whitespace(self, str text):
         """_munge_whitespace(text : string) -> string
 
         Munge whitespace in text: expand tabs and convert all other
@@ -129,7 +129,7 @@ class TextWrapper:
         return text
 
 
-    def _split(self, text):
+    str[] _split(self, str text):
         """_split(text : string) -> [string]
 
         Split the text to wrap into indivisible chunks.  Chunks are
@@ -151,7 +151,7 @@ class TextWrapper:
         chunks = [c for c in chunks if c]
         return chunks
 
-    def _fix_sentence_endings(self, chunks):
+    void _fix_sentence_endings(self, str[] chunks):
         """_fix_sentence_endings(chunks : [string])
 
         Correct for sentence endings buried in 'chunks'.  Eg. when the
@@ -169,7 +169,8 @@ class TextWrapper:
             else:
                 i += 1
 
-    def _handle_long_word(self, reversed_chunks, cur_line, cur_len, width):
+    void _handle_long_word(self, str[] reversed_chunks, str[] cur_line,
+                           int cur_len, int width):
         """_handle_long_word(chunks : [string],
                              cur_line : [string],
                              cur_len : int, width : int)
@@ -202,7 +203,7 @@ class TextWrapper:
         # cur_len will be zero, so the next line will be entirely
         # devoted to the long word that we can't handle right now.
 
-    def _wrap_chunks(self, chunks):
+    str[] _wrap_chunks(self, str[] chunks):
         """_wrap_chunks(chunks : [string]) -> [string]
 
         Wrap a sequence of text chunks and return a list of lines of
@@ -215,7 +216,7 @@ class TextWrapper:
         Whitespace chunks will be removed from the beginning and end of
         lines, but apart from that whitespace is preserved.
         """
-        lines = []
+        lines = <str> []
         if self.width <= 0:
             raise ValueError("invalid width %r (must be > 0)" % self.width)
 
@@ -227,7 +228,7 @@ class TextWrapper:
 
             # Start the list of chunks that will make up the current line.
             # cur_len is just the length of all the chunks in cur_line.
-            cur_line = []
+            cur_line = <str> []
             cur_len = 0
 
             # Figure out which static string will prefix this line.
@@ -275,7 +276,7 @@ class TextWrapper:
 
     # -- Public interface ----------------------------------------------
 
-    def wrap(self, text):
+    str[] wrap(self, str text):
         """wrap(text : string) -> [string]
 
         Reformat the single paragraph in 'text' so it fits in lines of
@@ -290,7 +291,7 @@ class TextWrapper:
             self._fix_sentence_endings(chunks)
         return self._wrap_chunks(chunks)
 
-    def fill(self, text):
+    str fill(self, str text):
         """fill(text : string) -> string
 
         Reformat the single paragraph in 'text' to fit in lines of no
@@ -302,7 +303,7 @@ class TextWrapper:
 
 # -- Convenience interface ---------------------------------------------
 
-def wrap(text, width=70, **kwargs):
+str[] wrap(str text, int width=70, **kwargs):
     """Wrap a single paragraph of text, returning a list of wrapped lines.
 
     Reformat the single paragraph in 'text' so it fits in lines of no
@@ -315,7 +316,7 @@ def wrap(text, width=70, **kwargs):
     w = TextWrapper(width=width, **kwargs)
     return w.wrap(text)
 
-def fill(text, width=70, **kwargs):
+str fill(str text, int width=70, **kwargs):
     """Fill a single paragraph of text, returning a new string.
 
     Reformat the single paragraph in 'text' to fit in lines of no more
@@ -333,7 +334,7 @@ def fill(text, width=70, **kwargs):
 _whitespace_only_re = re.compile('^[ \t]+$', re.MULTILINE)
 _leading_whitespace_re = re.compile('(^[ \t]*)(?:[^ \t\n])', re.MULTILINE)
 
-def dedent(text):
+str dedent(str text):
     """Remove any common leading whitespace from every line in `text`.
 
     This can be used to make triple-quoted strings line up with the left
@@ -348,7 +349,7 @@ def dedent(text):
     """
     # Look for the longest leading string of spaces and tabs common to
     # all lines.
-    margin = None
+    str margin = None
     text = _whitespace_only_re.sub('', text)
     indents = _leading_whitespace_re.findall(text)
     for indent in indents:
