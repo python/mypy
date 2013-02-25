@@ -32,7 +32,7 @@ class TemporaryDirectory:
     str __enter__(self): pass
     void __exit__(self, type, value, traceback): pass
     
-tuple<IO, str> mkstemp(
+tuple<int, str> mkstemp(
             str suffix='', str prefix='tmp', str dir=None, bool text=False):
     pass
 str mkdtemp(str suffix='', str prefix='tmp', str dir=None): pass
