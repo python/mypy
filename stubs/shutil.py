@@ -19,7 +19,7 @@ void copytree(str src, str dst, bool symlinks=False,
               func<void(str, str)> copy_function=copy2,
               bool ignore_dangling_symlinks=False): pass
 void rmtree(str path, bool ignore_errors=False,
-            func<tuple<type, any, any>(any, str)> onerror=None): pass
+            func<void(any, str, any)> onerror=None): pass
 void move(str src, str dst): pass
 
 class Error(Exception): pass
