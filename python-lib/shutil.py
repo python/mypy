@@ -453,9 +453,9 @@ void _call_external_zip(str base_dir, str zip_filename, bool verbose=False,
     except DistutilsExecError:
         # XXX really should distinguish between "couldn't find
         # external 'zip' command" and "zip failed".
-        raise ExecError("unable to create zip file '%s': "
+        raise ExecError(("unable to create zip file '%s': "
             "could neither import the 'zipfile' module nor "
-            "find a standalone zip utility") % zip_filename
+            "find a standalone zip utility") % zip_filename)
 
 str _make_zipfile(str base_name, str base_dir, bool verbose=False,
                   bool dry_run=False, any logger=None):
