@@ -24,9 +24,9 @@ void move(str src, str dst): pass
 
 class Error(Exception): pass
 
-void make_archive(str base_name, str format, str base_dir=None,
-                  bool verbose=False, bool dry_run=False, str owner=None,
-                  str group=None, any logger=None): pass
+void make_archive(str base_name, str format, str root_dir=None,
+                  str base_dir=None, bool verbose=False, bool dry_run=False,
+                  str owner=None, str group=None, any logger=None): pass
 tuple<str, str>[] get_archive_formats(): pass
 void register_archive_format(str name, any function,
                              Sequence<tuple<str, any>> extra_args=None,
