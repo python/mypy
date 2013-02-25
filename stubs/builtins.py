@@ -583,6 +583,10 @@ class tuple:
     void __init__(self): pass
     void __init__(self, Iterable<any> iterable): pass
     bool __contains__(self, object x): pass
+    bool __lt__(self, tuple x): pass
+    bool __le__(self, tuple x): pass
+    bool __gt__(self, tuple x): pass
+    bool __ge__(self, tuple x): pass
 
 
 class function:
