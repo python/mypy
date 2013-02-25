@@ -4,4 +4,9 @@
 
 int _count(): pass
 any _dangling
-any allocate_lock(): pass
+
+class lock:
+    void acquire(self): pass
+    void release(self): pass
+
+lock allocate_lock(): pass
