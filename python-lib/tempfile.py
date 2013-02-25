@@ -73,7 +73,7 @@ template = "tmp"
 _once_lock = _allocate_lock()
 
 if hasattr(_os, "lstat"):
-    _stat = _os.lstat
+    func<_os.stat_result(str)> _stat = _os.lstat
 elif hasattr(_os, "stat"):
     _stat = _os.stat
 else:
