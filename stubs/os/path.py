@@ -5,6 +5,15 @@
 
 # ----- os.path variables -----
 bool supports_unicode_filenames
+# aliases (also in os)
+str curdir
+str pardir
+str sep
+str altsep
+str extsep
+str pathsep
+str defpath
+str devnull
 
 # ----- os.path function stubs -----
 str abspath(str path): pass
