@@ -15,6 +15,10 @@
 # TODO TextIOWrapper
 # TODO IncrementalNewlineDecoder
 
+int DEFAULT_BUFFER_SIZE
+
+from builtins import open
+
 class BytesIO(IO):
     void __init__(self, bytes initial_bytes=b''): pass
     # TODO getbuffer
