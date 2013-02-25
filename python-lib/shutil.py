@@ -242,7 +242,7 @@ void copytree(str src, str dst, bool symlinks=False,
             # Copying file access times may fail on Windows
             pass
         else:
-            errors.extend((src, dst, str(why)))
+            errors.append((src, dst, str(why)))
     if errors:
         raise Error(errors)
 
