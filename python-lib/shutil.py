@@ -60,18 +60,13 @@ rename = os.rename
 open = builtins.open
 
 
-void _copyfileobj(fsrc, fdst, int length=16*1024):
+void copyfileobj(fsrc, fdst, int length=16*1024):
+    """copy data from file-like object fsrc to file-like object fdst"""
     while 1:
         buf = fsrc.read(length)
         if not buf:
             break
         fdst.write(buf)
-
-void copyfileobj(IO fsrc, IO fdst, int length=16*1024):
-    """copy data from file-like object fsrc to file-like object fdst"""
-    _copyfileobj(fsrc, fdst, length)
-void copyfileobj(TextIO fsrc, TextIO fdst, int length=16*1024):
-    _copyfileobj(fsrc, fdst, length)
 
 bool _samefile(str src, str dst):
     # Macintosh, Unix.
