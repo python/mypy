@@ -507,8 +507,9 @@ str _make_zipfile(str base_name, str base_dir, bool verbose=False,
 
 _ARCHIVE_FORMATS = <str, tuple<any, tuple<str, str>[], str>> {
     'gztar': (_make_tarball, [('compress', 'gzip')], "gzip'ed tar-file"),
-    'tar':   (_make_tarball, [('compress', None)], "uncompressed tar file"),
-    'zip':   (_make_zipfile, [],"ZIP file")
+    'tar':   (_make_tarball, <tuple<str, str>> [('compress', None)],
+              "uncompressed tar file"),
+    'zip':   (_make_zipfile, <tuple<str, str>> [],"ZIP file")
     }
 
 if _BZ2_SUPPORTED:
