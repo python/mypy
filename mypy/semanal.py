@@ -94,7 +94,7 @@ class SemanticAnalyzer(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
-        if self.type and not self.is_func_scope():
+        if self.is_class_scope():
             # Method definition
             defn.is_conditional = self.block_depth[-1] > 0
             defn.info = self.type
@@ -137,12 +137,13 @@ class SemanticAnalyzer(NodeVisitor):
         defn.type = Overloaded(t)
         defn.type.line = defn.line
         
-        if self.type:
+        if self.is_class_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
                                                            typ=defn.type)
             defn.info = self.type
     
     void analyse_function(self, FuncItem defn):
+        is_method = self.is_class_scope()
         self.enter()
         self.add_func_type_variables_to_symbol_table(defn)
         if defn.type:
@@ -151,7 +152,7 @@ class SemanticAnalyzer(NodeVisitor):
                 fdef = (FuncDef)defn
                 fdef.info = self.type
                 defn.type = set_callable_name(defn.type, fdef)
-                if self.type and ((Callable)defn.type).arg_types != []:
+                if is_method and ((Callable)defn.type).arg_types != []:
                     ((Callable)defn.type).arg_types[0] = self_type(
                         fdef.info)
         for init in defn.init:
@@ -164,7 +165,7 @@ class SemanticAnalyzer(NodeVisitor):
                 init_.lvalues[0].accept(self)
         
         # The first argument of a method is self.
-        if self.type and defn.args:
+        if is_method and defn.args:
             defn.args[0].is_self = True
         
         defn.body.accept(self)
@@ -679,8 +680,7 @@ class SemanticAnalyzer(NodeVisitor):
         # 2. Class tvars and class attributes (if inside type def)
         if self.class_tvars and name in self.class_tvars:
             return self.class_tvars[name]
-        if self.type and (not self.is_func_scope() and
-                          name in self.type.names):
+        if self.is_class_scope() and name in self.type.names:
             return self.type[name]
         # 3. Local (function) scopes
         for table in reversed(self.locals):
@@ -728,6 +728,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     bool is_func_scope(self):
         return self.locals[-1] is not None
+
+    bool is_class_scope(self):
+        return self.type is not None and not self.is_func_scope()
 
     void add_symbol(self, str name, SymbolTableNode node, Context context):
         if self.is_func_scope():

@@ -450,6 +450,20 @@ void f(object x):
 [out]
 main: In function "f":
 
+[case testNestedFunctionInMethod]
+class A:
+    void f(self):
+        void g(int x):
+            int y = x
+            A a = x # fail
+        g(2)
+        g(A()) # fail
+[out]
+main: In function "g":
+main, line 5: Incompatible types in assignment
+main: In member "f" of class "A":
+main, line 7: Argument 1 to "g" of "A" has incompatible type "A"
+
 
 -- Casts
 -- -----
