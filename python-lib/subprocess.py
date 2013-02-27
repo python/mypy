@@ -1645,8 +1645,6 @@ void _demo_posix():
     except OSError as e:
         if e.errno == errno.ENOENT:
             print("The file didn't exist.  I thought so...")
-            print("Child traceback:")
-            print(e.child_traceback)
         else:
             print("Error", e.errno)
     else:
