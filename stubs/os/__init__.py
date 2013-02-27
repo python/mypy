@@ -180,8 +180,8 @@ void putenv(bytes key, bytes value): pass
 #void setresuid(int ruid, int euid, int suid): pass  # Unix only
 #void setreuid(int ruid, int euid): pass  # Unix only
 #int getsid(int pid): pass  # Unix only
-#int setsid(): pass  # Unix only
-#void setuid(uid): pass  # Unix only
+int setsid(): pass  # Unix only
+void setuid(uid): pass  # Unix only
 str strerror(int code): pass
 int umask(int mask): pass
 #str[] uname(): pass  # Unix only, reurns 5-tuple of str
@@ -298,22 +298,25 @@ void execlpe(str path, str arg0, any *args): pass # Imprecise signature
 void execlpe(bytes path, bytes arg0, any *args): pass # Imprecise signature
 void execv(str path, str[] args): pass
 void execv(bytes path, bytes[] args): pass
-void execve(str path, str[] args, dict<str, str> env): pass
-void execve(bytes path, bytes[] args, dict<str, str> env): pass
+void execve(str path, str[] args, Mapping<str, str> env): pass
+void execve(bytes path, bytes[] args, Mapping<str, str> env): pass
 void execvp(str file, str[] args): pass
 void execvp(bytes file, bytes[] args): pass
-void execvpe(str file, str[] args, dict<str, str> env): pass
-void execvpe(bytes file, bytes[] args, dict<str, str> env): pass
+void execvpe(str file, str[] args, Mapping<str, str> env): pass
+void execvpe(bytes file, bytes[] args, Mapping<str, str> env): pass
 void _exit(int n): pass
-#int fork(): pass  # Unix only
+int fork(): pass  # Unix only
 #tuple<int, int> forkpty(): pass  # some flavors of Unix
 void kill(int pid, int sig): pass
 #void killpg(int pgid, int sig): pass  # Unix only
 #int nice(int increment): pass  # Unix only
 #void plock(int op): pass  # Unix only ???op is int?
 
-# TODO 'b' modes or bytes command not accepted?
-TextIO popen(str command, str mode='r', int bufsize=-1): pass
+from io import TextIOWrapper as _TextIOWrapper
+class popen(_TextIOWrapper):
+    # TODO 'b' modes or bytes command not accepted?
+    void __init__(self, str command, str mode='r', int bufsize=-1): pass
+    any close(self): pass # may return int
 
 int spawnl(int mode, str path, str arg0, str *args): pass
 int spawnl(int mode, bytes path, bytes arg0, bytes *args): pass
@@ -327,13 +330,13 @@ int spawnlpe(int mode, bytes file, bytes arg0, any *args):
     pass # Imprecise signature
 int spawnv(int mode, str path, str[] args): pass
 int spawnv(int mode, bytes path, bytes[] args): pass
-int spawnve(int mode, str path, str[] args, dict<str, str> env): pass
-int spawnve(int mode, bytes path, bytes[] args, dict<str, str> env): pass
+int spawnve(int mode, str path, str[] args, Mapping<str, str> env): pass
+int spawnve(int mode, bytes path, bytes[] args, Mapping<str, str> env): pass
 int spawnvp(int mode, str file, str[] args): pass  # Unix only
 int spawnvp(int mode, bytes file, bytes[] args): pass
-int spawnvpe(int mode, str file, str[] args, dict<str, str> env): 
+int spawnvpe(int mode, str file, str[] args, Mapping<str, str> env): 
     pass  # Unix only
-int spawnvpe(int mode, bytes file, bytes[] args, dict<str, str> env): pass
+int spawnvpe(int mode, bytes file, bytes[] args, Mapping<str, str> env): pass
 #void startfile(str path): pass  # Windows only
 #void startfile(str path, str operation): pass  # Windows only
 #tuple<int, int> system(str command): pass  # Unix only
