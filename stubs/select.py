@@ -15,6 +15,7 @@ class poll:
     void __init__(self): pass
     void register(self, any fd, int eventmask=POLLIN|POLLPRI|POLLOUT): pass
     void modify(self, any fd, int eventmask): pass
+    void unregister(self, any fd): pass
     tuple<int, int>[] poll(self, int timeout=None): pass
 
 tuple<int[], int[], int[]> select(Sequence rlist, Sequence wlist,
