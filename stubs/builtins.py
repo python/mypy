@@ -566,9 +566,11 @@ class bytearray(Sequence<int>):
     void __delitem__(self, slice s): pass
 
 
-class bool:
+class bool(int_t, float_t):
     void __init__(self, object o): pass
-    str __str__(self): pass    
+    str __str__(self): pass
+    int __int__(self): pass
+    float __float__(self): pass
 
 
 class slice:
@@ -843,6 +845,7 @@ class BaseException:
     any args
     
     void __init__(self, any *args): pass
+    BaseException with_traceback(self, any tb): pass
 
 class GeneratorExit(BaseException): pass
 class KeyboardInterrupt(BaseException): pass
