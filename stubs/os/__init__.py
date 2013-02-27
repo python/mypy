@@ -89,7 +89,7 @@ int P_WAIT
 #int P_OVERLAY  # Windows only
 
 # wait()/waitpid() options
-#int WNOHANG  # Unix only
+int WNOHANG  # Unix only
 #int WCONTINUED  # some Unix systems
 #int WUNTRACED  # Unix only
 
@@ -348,14 +348,14 @@ tuple<int, int> waitpid(int pid, int options): pass
 #tuple<int, int, object> wait3(): pass  # Unix only
 #tuple<int, int, object> wait3(int options): pass  # Unix only
 #tuple<int, int, object> wait4(int pid, int options): pass  # Unix only
-#bool WCOREDUMP(object status): pass  # Unix only
-#bool WIFCONTINUED(object status): pass  # Unix only
-#bool WIFSTOPPED(object status): pass  # Unix only
-#bool WIFSIGNALED(object status): pass  # Unix only
-#bool WIFEXITED(object status): pass  # Unix only
-#bool WEXITSTATUS(object status): pass  # Unix only
-#bool WSTOPSIG(object status): pass  # Unix only
-#bool WTERMSIG(object status): pass  # Unix only
+bool WCOREDUMP(int status): pass  # Unix only
+bool WIFCONTINUED(int status): pass  # Unix only
+bool WIFSTOPPED(int status): pass  # Unix only
+bool WIFSIGNALED(int status): pass  # Unix only
+bool WIFEXITED(int status): pass  # Unix only
+bool WEXITSTATUS(int status): pass  # Unix only
+bool WSTOPSIG(int status): pass  # Unix only
+bool WTERMSIG(int status): pass  # Unix only
 #str? confstr(str name): pass  # Unix only
 #tuple<float, float, float> getloadavg(): pass  # Unix only
 #int sysconf(str name): pass  # Unix only
