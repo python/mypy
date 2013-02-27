@@ -391,7 +391,7 @@ class TypeTransformer:
             # Generate member variables for wrapper object.
             defs.extend(self.make_generic_wrapper_member_vars(tdef))
         
-        for alt in [False, BOUND_VAR]:
+        for alt in <any> [False, BOUND_VAR]:
             defs.extend(self.make_tvar_representation(tdef.info, alt))
         
         # Generate constructor.
@@ -481,7 +481,7 @@ class TypeTransformer:
         args = [Var('self'), Var('__o')]
         Node[] init = [None, None]
         
-        for alt in [False, BOUND_VAR]:
+        for alt in <any> [False, BOUND_VAR]:
             for n in range(nslots):
                 args.append(Var(tvar_arg_name(n + 1, alt)))
                 init.append(None)
@@ -540,7 +540,7 @@ class TypeTransformer:
         The function must be a constructor of a generic wrapper class. Modify
         the constructor body directly.
         """
-        for alt in [BOUND_VAR, False]:
+        for alt in <any> [BOUND_VAR, False]:
             for n in range(num_slots(creat.info)):
                 rvalue = TypeExpr(
                     RuntimeTypeVar(NameExpr(tvar_slot_name(n, alt))))
