@@ -40,5 +40,6 @@ any getsignal(int signalnum): pass
 #def getitimer(int which): pass # Unix
 void set_wakeup_fd(int fd): pass
 void siginterrupt(int signalnum, bool flag): pass
+any signal(int signalnum, int handler): pass
 any signal(int signalnum,
-           func<void(int, any)> handler): pass # TODO frame object
+           func<void(int, any)> handler): pass # TODO frame object type
