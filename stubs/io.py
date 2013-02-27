@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/io.html
 
-# Only a small subset of functionality is included (see below).
+# Only a subset of functionality is included (see below).
 # TODO IOBase
 # TODO RawIOBase
 # TODO BufferedIOBase
@@ -12,7 +12,6 @@
 # TODO BufferedRandom
 # TODO BufferedRWPair
 # TODO TextIOBase
-# TODO TextIOWrapper
 # TODO IncrementalNewlineDecoder
 
 int DEFAULT_BUFFER_SIZE
@@ -48,6 +47,33 @@ class BytesIO(IO):
 
 class StringIO(TextIO):
     void __init__(self, str initial_value='', str newline=None): pass
+    # TODO see comments in IO for missing functionality
+    void close(self): pass
+    bool closed(self): pass
+    int fileno(self): pass
+    void flush(self): pass
+    bool isatty(self): pass
+    str read(self, int n=-1): pass
+    bool readable(self): pass
+    str readline(self, int limit=-1): pass
+    str[] readlines(self, int hint=-1): pass
+    int seek(self, int offset, int whence=0): pass
+    bool seekable(self): pass
+    int tell(self): pass
+    int truncate(self, int size=None): pass
+    bool writable(self): pass
+    int write(self, str s): pass
+    void writelines(self, str[] lines): pass
+    str getvalue(self): pass
+
+    StringIO __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass
+    
+class TextIOWrapper:
+    # write_through is undocumented but used by subprocess
+    void __init__(IO buffer, str encoding=None, str errors=None,
+                  str newline=None, bool line_buffering=False,
+                  bool write_through=True): pass
     # TODO see comments in IO for missing functionality
     void close(self): pass
     bool closed(self): pass
