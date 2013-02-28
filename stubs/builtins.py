@@ -88,7 +88,6 @@ interface Set<t>(Sized, Iterable<t>):
     bool isdisjoint(self, Set<t> s)
 
 interface IO:    
-    # TODO __enter__ etc.
     # TODO iteration
     # TODO mode
     # TODO name
@@ -121,7 +120,6 @@ interface IO:
     void __exit__(self, type, value, traceback): pass
 
 interface TextIO:
-    # TODO __enter__ etc.
     # TODO iteration
     # TODO buffer?
     # TODO str encoding
