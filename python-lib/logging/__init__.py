@@ -892,7 +892,7 @@ class Handler(Filterer):
             except IOError:
                 pass    # see issue 5971
             finally:
-                del ei
+                ei = None
 
 class StreamHandler(Handler):
     """
