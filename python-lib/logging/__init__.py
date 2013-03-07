@@ -35,16 +35,10 @@ __all__ = ['BASIC_FORMAT', 'BufferingFormatter', 'CRITICAL', 'DEBUG', 'ERROR',
            'info', 'log', 'makeLogRecord', 'setLoggerClass', 'warn', 'warning',
            'getLogRecordFactory', 'setLogRecordFactory', 'lastResort']
 
-try:
-    import codecs
-except ImportError:
-    codecs = None
+import codecs
 
-try:
-    import _thread as thread
-    import threading
-except ImportError:
-    thread = None
+import _thread as thread
+import threading
 
 __author__  = "Vinay Sajip <vinay_sajip@red-dove.com>"
 __status__  = "production"
