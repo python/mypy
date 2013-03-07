@@ -1184,6 +1184,10 @@ class Logger(Filterer):
     level, and "input.csv", "input.xls" and "input.gnu" for the sub-levels.
     There is no arbitrary limit to the depth of nesting.
     """
+
+    any root
+    any manager
+    
     def __init__(self, name, level=NOTSET):
         """
         Initialize the logger with a name and an optional level.
