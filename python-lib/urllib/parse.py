@@ -585,7 +585,10 @@ def parse_qsl(qs, keep_blank_values=False, strict_parsing=False,
     Returns a list, as G-d intended.
     """
     qs, _coerce_result = _coerce_args(qs)
-    pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
+    pairs = []
+    for s1 in qs.split('&'):
+        for s2 in s1.split(';'):
+            pairs.append(s2)
     r = []
     for name_value in pairs:
         if not name_value and not strict_parsing:
