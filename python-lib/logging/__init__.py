@@ -696,8 +696,8 @@ class Filterer(object):
 #   Handler classes and functions
 #---------------------------------------------------------------------------
 
-_handlers = weakref.WeakValueDictionary()  #map of handler names to handlers
-_handlerList = [] # added to allow handlers to be removed in reverse of order initialized
+any _handlers = weakref.WeakValueDictionary()  #map of handler names to handlers
+any _handlerList = [] # added to allow handlers to be removed in reverse of order initialized
 
 def _removeHandlerRef(wr):
     """
@@ -1039,7 +1039,7 @@ class PlaceHolder(object):
 #
 #   Determine which class to use when instantiating loggers.
 #
-_loggerClass = None
+any _loggerClass = None
 
 def setLoggerClass(klass):
     """
@@ -1832,7 +1832,7 @@ class NullHandler(Handler):
 
 # Warnings integration
 
-_warnings_showwarning = None
+any _warnings_showwarning = None
 
 def _showwarning(message, category, filename, lineno, file=None, line=None):
     """
