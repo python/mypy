@@ -766,7 +766,7 @@ class Handler(Filterer):
         finally:
             _releaseLock()
 
-    name = property(get_name, set_name)
+    #name = property(get_name, set_name)
 
     def createLock(self):
         """
@@ -1011,9 +1011,9 @@ class _StderrHandler(StreamHandler):
         """
         Handler.__init__(self, level)
 
-    @property
-    def stream(self):
-        return sys.stderr
+    #@property
+    #def stream(self):
+    #    return sys.stderr
 
 
 _defaultLastResort = _StderrHandler(WARNING)
