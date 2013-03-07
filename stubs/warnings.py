@@ -10,8 +10,12 @@ void warn_explicit(str message, type category, str filename, int lineno,
 void warn_explicit(Warning message, type category, str filename, int lineno,
                    str module=None, any registry=None,
                    any module_globals=None): pass
-void showwarning(str message, type category, str filename, int lineno,
-                 TextIO file=None, str line=None): pass
+
+# logging modifies showwarning => make it a variable.
+void _showwarning(str message, type category, str filename, int lineno,
+                  TextIO file=None, str line=None): pass
+showwarning = _showwarning
+
 void formatwarning(str message, type category, str filename, int lineno,
                    str line=None): pass
 void filterwarnings(str action, str message='', type category=Warning,
