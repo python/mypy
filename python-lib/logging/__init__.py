@@ -66,12 +66,13 @@ else:
 _srcfile = os.path.normcase(_srcfile)
 
 # next bit filched from 1.5.2's inspect.py
-def currentframe():
+def _currentframe():
     """Return the frame object for the caller's stack frame."""
     try:
         raise Exception
     except:
         return sys.exc_info()[2].tb_frame.f_back
+currentframe = _currentframe
 
 if hasattr(sys, '_getframe'): currentframe = lambda: sys._getframe(3)
 # done filching
