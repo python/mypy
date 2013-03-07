@@ -28,3 +28,10 @@ class Event:
     # TODO can it return None?
     # TOOD None value for float
     bool wait(self, float timeout=None): pass
+
+class RLock:
+    # TODO may return None
+    bool acquire(self, bool blocking=True, float timeout=-1.0): pass
+    void release(self): pass
+    bool __enter__(self): pass
+    void __exit__(self, type, value, traceback): pass
