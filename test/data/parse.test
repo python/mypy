@@ -2178,46 +2178,6 @@ MypyFile:1(
     Interface
     PassStmt:2()))
 
-[case testListTypesInVariableDecl]
-int[] x
-int[][] y
-a<c, d>[] z
-a<x[]> h
-[out]
-MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(__builtins__.list?<int?>))
-  VarDef:2(
-    Var(y)
-    Type(__builtins__.list?<__builtins__.list?<int?>>))
-  VarDef:3(
-    Var(z)
-    Type(__builtins__.list?<a?<c?, d?>>))
-  VarDef:4(
-    Var(h)
-    Type(a?<__builtins__.list?<x?>>)))
-
-[case testMoreListTypesInVariableDecl]
-a<b<c>>[] x
-any[] x
-tuple<a, b>[] x
-func<void()>[] x
-[out]
-MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(__builtins__.list?<a?<b?<c?>>>))
-  VarDef:2(
-    Var(x)
-    Type(__builtins__.list?<any>))
-  VarDef:3(
-    Var(x)
-    Type(__builtins__.list?<tuple?<a?, b?>>))
-  VarDef:4(
-    Var(x)
-    Type(__builtins__.list?<def ()>)))
-
 [case testKeywordAndDictArgs]
 f(x = y, **kwargs)
 [out]
