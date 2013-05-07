@@ -2026,7 +2026,7 @@ MypyFile:1(
       PassStmt:1())))
 
 [case testBareAsteriskInFuncDefWithSignature]
-void f(A x, *, B y=1): pass
+def f(x: A, *, y: B = 1) -> None: pass
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -2035,7 +2035,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    def (A? x, *, B? y)
+    def (A? x, *, B? y) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)
@@ -2044,7 +2044,7 @@ MypyFile:1(
       PassStmt:1())))
 
 [case testBareAsteriskAndVarArgs]
-void f(A *x, *, B y=1): pass
+def f(*x: A, *, y: B = 1) -> None: pass
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -2052,7 +2052,7 @@ MypyFile:1(
     MaxPos(0)
     Args(
       Var(y))
-    def (*A? x, *, B? y)
+    def (*A? x, *, B? y) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)

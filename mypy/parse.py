@@ -463,10 +463,12 @@ class Parser:
                         kinds.append(nodes.ARG_STAR2)
                     else:
                         kinds.append(nodes.ARG_STAR)
+                    arg_types.append(self.parse_arg_type(allow_signature))
                 else:
                     name = self.expect_type(Name)
                     arg_names.append(name)
                     args.append(Var(name.string))
+                    arg_types.append(self.parse_arg_type(allow_signature))
                     
                     if self.current_str() == '=':
                         assigns.append(self.expect('='))
@@ -482,19 +484,20 @@ class Parser:
                         init.append(None)
                         assigns.append(none)
                         kinds.append(nodes.ARG_POS)
-                if (not require_named and self.current().string == ':' and
-                        allow_signature):
-                    self.skip()
-                    arg_types.append(self.parse_type())
-                else:
-                    arg_types.append(None)
-                
+                        
                 if self.current().string != ',':
                     break
                 commas.append(self.expect(','))
         
         return (args, init, kinds, has_inits, arg_names, commas, asterisk,
                 assigns, arg_types)
+
+    Type parse_arg_type(self, bool allow_signature):
+        if self.current_str() == ':' and allow_signature:
+            self.skip()
+            return self.parse_type()
+        else:
+            return None
 
     void verify_argument_kinds(self, int[] kinds, int line):
         set<int> found = set()
