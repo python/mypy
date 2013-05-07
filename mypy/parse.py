@@ -1595,14 +1595,6 @@ class Parser:
         else:
             return i >= 0 and isinstance(self.tok[i], Name)
     
-    bool is_at_sig_type(self):
-        i, j = self.try_scan_type(self.ind)
-        if j == 0 and i >= 0 and (isinstance(self.tok[i], Name)
-                                  or self.tok[i].string in ['*', '**']):
-            return True
-        else:
-            return self.is_at_type()
-    
     tuple<int, int> try_scan_type(self, int i):
         """Check if there seems to be a valid type at the token index.
 
