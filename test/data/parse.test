@@ -930,18 +930,24 @@ MypyFile:1(
   Import:1(x : x)
   Import:2(y.z.foo : y.z.foo, __foo__.bar : __foo__.bar))
 
-[case testTypesWithQualifiedNames]
-x.y x
-x.y<a.b.c> y = 1
+[case testVariableTypeWithQualifiedName]
+x = None # type: x.y 
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(x.y?))
-  VarDef:2(
-    Var(y)
-    Type(x.y?<a.b.c?>)
-    IntExpr(1)))
+  AssignmentStmt:1(
+    NameExpr(x)
+    NameExpr(None)
+    x.y?))
+
+[case testTypeInSignatureWithQualifiedName]
+def f() -> x.y[a.b.c]: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> x.y?<a.b.c?>
+    Block:1(
+      PassStmt:1())))
 
 [case testImportFrom]
 from m import x
