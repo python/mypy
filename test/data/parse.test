@@ -1733,14 +1733,14 @@ MypyFile:1(
       PassStmt:2())))
       
 [case testDictVarArgsWithType]
-void f(X x, A **a): pass
+def f(x: X, **a: A) -> None: pass
 [out]
 MypyFile:1(
   FuncDef:1(
     f
     Args(
       Var(x))
-    def (X? x, A? **a)
+    def (X? x, A? **a) -> None?
     DictVarArg(
       Var(a))
     Block:1(
