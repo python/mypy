@@ -673,7 +673,7 @@ class Parser:
             e = self.parse_expression()
         br = self.expect_break()
 
-        type = parse_assignment_type(br.pre)        
+        type = self.parse_assignment_type(br.pre)        
         assignment = AssignmentStmt(lvalues, e, type)
         self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
         return assignment
@@ -1501,6 +1501,24 @@ class Parser:
         except TypeParseError as e:
             self.parse_error_at(e.token)
         return typ
+
+    Type parse_assignment_type(self, str whitespace_or_comments):
+        """Parse a '# type: ...' annotation.
+
+        Return None if no annotation found.
+        """
+        whitespace_or_comments = whitespace_or_comments.strip()
+        if whitespace_or_comments.startswith('# type:'):
+            type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
+            tokens = lex.lex(type_as_str)
+            try:
+                type, index = parse_type_list(tokens, 0)
+            except TypeParseError as e:
+                self.parse_error_at(e.token)
+            # TODO check index
+            return type
+        else:
+            return None                          
     
     # Representation management
     
@@ -1589,18 +1607,6 @@ Node unwrap_parens(Node node):
         return unwrap_parens(((ParenExpr)node).expr)
     else:
         return node
-
-
-Type parse_assignment_type(str whitespace_or_comments):
-    whitespace_or_comments = whitespace_or_comments.strip()
-    if whitespace_or_comments.startswith('# type:'):
-        type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
-        tokens = lex.lex(type_as_str)
-        type, index = parse_type_list(tokens, 0)
-        # TODO check index
-        return type
-    else:
-        return None                          
 
 
 if __name__ == '__main__':
