@@ -385,8 +385,6 @@ class Parser:
         It is potentially prefixed with type variable specification within
         <...>.
         """        
-        type_vars = self.parse_type_vars()
-        
         lparen = self.expect('(')
         
         # Parse the argument list (everything within '(' and ')').
@@ -409,7 +407,7 @@ class Parser:
             names.append(arg.name())
         
         annotation = self.build_func_annotation(
-            ret_type, arg_types, kinds, names, type_vars, lparen.line)
+            ret_type, arg_types, kinds, names, lparen.line)
         
         return (args, init, kinds, annotation,
                 noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
@@ -417,15 +415,14 @@ class Parser:
     
     Type build_func_annotation(self, Type ret_type,
                                Type[] arg_types, int[] kinds,
-                               str[] names, TypeVars type_vars,
+                               str[] names, 
                                int line, bool is_default_ret=False):
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
-                or arg_types != [None] * len(arg_types)
-                or type_vars.items):
+                or arg_types != [None] * len(arg_types)):
             # Yes. Construct a type for the function signature.
             return self.construct_function_type(arg_types, kinds, names,
-                                                ret_type, type_vars, line)
+                                                ret_type, line)
         else:
             return None
     
@@ -520,7 +517,7 @@ class Parser:
     
     Callable construct_function_type(self, Type[] arg_types, int[] kinds,
                                      str[] names, Type ret_type,
-                                     TypeVars type_vars, int line):
+                                     int line):
         # Complete the type annotation by replacing omitted types with
         # dynamic/void.
         arg_types = arg_types[:]
@@ -530,7 +527,7 @@ class Parser:
         if ret_type is None:
             ret_type = Any()
         return Callable(arg_types, kinds, names, ret_type, False, None,
-                        type_vars, [], line, None)
+                        None, [], line, None)
     
     # Parsing statements
     
@@ -1433,8 +1430,7 @@ class Parser:
         # less precise.
         ret_type = UnboundType('__builtins__.object')
         typ = self.build_func_annotation(ret_type, arg_types, kinds, names,
-                                         TypeVars([]), lambda_tok.line,
-                                         is_default_ret=True)
+                                         lambda_tok.line, is_default_ret=True)
         
         colon = self.expect(':')
         
