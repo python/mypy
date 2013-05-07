@@ -836,34 +836,6 @@ MypyFile:1(
       C?<any, d?<x?>>)
     PassStmt:4()))
 
-[case testSimpleGenericFunction]
-T f<T>(T x):
-  return x
-[out]
-MypyFile:1(
-  FuncDef:1(
-    f
-    Args(
-      Var(x))
-    def <T> (T? x) -> T?
-    Block:1(
-      ReturnStmt:2(
-        NameExpr(x)))))
-
-[case testComplexGenericFunction]
-def g<T, S>(t, s):
-  pass
-[out]
-MypyFile:1(
-  FuncDef:1(
-    g
-    Args(
-      Var(t)
-      Var(s))
-    def <T, S> (any t, any s) -> any
-    Block:1(
-      PassStmt:2())))
-
 [case testIsNot]
 x is not y
 [out]
