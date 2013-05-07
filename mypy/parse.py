@@ -1603,24 +1603,6 @@ class Parser:
         else:
             return self.is_at_type()
     
-    bool is_at_type_application(self):
-        """Does the token index point to a type application '<t, ...>('?"""
-        if self.current_str() != '<':
-            return False
-        i = self.ind + 1
-        while True:
-            int j
-            i, j = self.try_scan_type(i)
-            if i < 0:
-                return False
-            if j == 1 and self.tok[i].string == '(':
-                # The closing > is the final part of >>.
-                return True
-            if self.tok[i].string != ',':
-                break
-            i += 1
-        return self.tok[i].string == '>' and self.tok[i + 1].string == '('
-    
     tuple<int, int> try_scan_type(self, int i):
         """Check if there seems to be a valid type at the token index.
 
