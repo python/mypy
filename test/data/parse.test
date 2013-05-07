@@ -1532,8 +1532,8 @@ MypyFile:1(
 def f():
   def g():
     pass
-int h():
-  int g():
+def h() -> int:
+  def g() -> int:
     pass
 [out]
 MypyFile:1(
