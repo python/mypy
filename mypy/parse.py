@@ -420,7 +420,7 @@ class Parser:
             return None
     
     tuple<Var[], Node[], int[], bool, Token[], Token[], Token[], Token[], \
-                     Type[]> parse_arg_list(self):
+                     Type[]> parse_arg_list(self, bool allow_signature=True):
         """Parse function definition argument list.
 
         This includes everything between '(' and ')').
@@ -482,7 +482,8 @@ class Parser:
                         init.append(None)
                         assigns.append(none)
                         kinds.append(nodes.ARG_POS)
-                if not require_named and self.current().string == ':':
+                if (not require_named and self.current().string == ':' and
+                        allow_signature):
                     self.skip()
                     arg_types.append(self.parse_type())
                 else:
@@ -1372,7 +1373,7 @@ class Parser:
         
         (args, init, kinds, has_inits,
          arg_names, commas, asterisk,
-         assigns, arg_types) = self.parse_arg_list()
+         assigns, arg_types) = self.parse_arg_list(allow_signature=False)
 
         names = <str> []
         for arg in args:

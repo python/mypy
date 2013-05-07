@@ -1318,7 +1318,6 @@ MypyFile:1(
 
 [case testComplexLambda]
 lambda x=2: x
-lambda int x: y
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -1331,15 +1330,7 @@ MypyFile:1(
           IntExpr(2)))
       Block:1(
         ReturnStmt:1(
-          NameExpr(x)))))
-  ExpressionStmt:2(
-    FuncExpr:2(
-      Args(
-        Var(x))
-      def (int? x) -> __builtins__.object?
-      Block:2(
-        ReturnStmt:2(
-          NameExpr(y))))))
+          NameExpr(x))))))
 
 [case testLambdaPrecedence]
 lambda x: 1, 2
