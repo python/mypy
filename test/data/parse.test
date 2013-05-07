@@ -772,29 +772,6 @@ MypyFile:1(
       ExpressionStmt:4(
         IntExpr(1)))))
 
-[case testForStatementWithTypeDecls]
-for int x in y:
-  pass
-for c<x> f, any g in [z]:
-  pass
-[out]
-MypyFile:1(
-  ForStmt:1(
-    NameExpr(x)
-    int?
-    NameExpr(y)
-    Block:1(
-      PassStmt:2()))
-  ForStmt:3(
-    NameExpr(f)
-    NameExpr(g)
-    c?<x?>
-    any
-    ListExpr:3(
-      NameExpr(z))
-    Block:3(
-      PassStmt:4())))
-
 [case testGlobalDecl]
 global x
 def f():

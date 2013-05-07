@@ -865,12 +865,9 @@ class Parser:
             self.skip()
         
         while True:
-            Type ann = None
-            if self.is_at_type():
-                ann = self.parse_type()
             v = self.parse_name_expr()
             index.append(v)
-            types.append(ann)
+            types.append(None)
             if self.current_str() != ',':
                 commas.append(none)
                 break
