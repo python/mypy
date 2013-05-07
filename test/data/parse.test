@@ -943,28 +943,6 @@ MypyFile:1(
     Type(x.y?<a.b.c?>)
     IntExpr(1)))
 
-[case testQualifiedTypesInCasts]
-(x.y.z)1
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    CastExpr:1(
-      IntExpr(1)
-      x.y.z?)))
-
-[case testQualifiedTypesInTypeApp]
-f<x.y, a.b.c>()
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    CallExpr:1(
-      TypeApplication:1(
-        NameExpr(f)
-        Types(
-          x.y?
-          a.b.c?))
-      Args())))
-
 [case testImportFrom]
 from m import x
 from m.n import x, y, z
