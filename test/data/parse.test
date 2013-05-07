@@ -1837,16 +1837,6 @@ MypyFile:1(
   ExpressionStmt:1(
     SetExpr:1(
       NameExpr(x))))
-      
-[case testSetLiteralWithType]
-<A> {x}
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    SetExpr:1(
-      Type(
-        A?)
-      NameExpr(x))))
 
 [case testImportAs]
 import x as y
