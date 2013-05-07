@@ -580,24 +580,28 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testMultipleVarDef]
-int x, a<c> y = z
-a<c> xx, any z, int i = 1
+x, y = z # type: int, a[c]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(int?)
-    Var(y)
-    Type(a?<c?>)
-    NameExpr(z))
-  VarDef:2(
-    Var(xx)
-    Type(a?<c?>)
-    Var(z)
-    Type(any)    
-    Var(i)
-    Type(int?)
-    IntExpr(1)))
+  AssignmentStmt:1(
+    TupleExpr:1(
+      NameExpr(x)
+      NameExpr(y))
+    NameExpr(z)
+    tuple<int?, a?<c?>>))
+
+[case testMultipleVarDef2]
+(xx, z, i) = 1 # type: (a[c], Any, int)
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    ParenExpr:1(
+      TupleExpr:1(
+        NameExpr(xx)
+        NameExpr(z)
+        NameExpr(i)))
+    IntExpr(1)
+    tuple<a?<c?>, Any?, int?>))
 
 [case testSimpleCasts]
 (x)y

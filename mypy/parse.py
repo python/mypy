@@ -24,8 +24,8 @@ from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, TypeVars, Callable, Any, UnboundType
-from mypy.parsetype import (parse_type, parse_type_variables, parse_type_args,
-                       TypeParseError)
+from mypy.parsetype import (parse_type, parse_type_list, parse_type_variables,
+                            parse_type_args, TypeParseError)
 
 
 precedence = {
@@ -1847,7 +1847,7 @@ Type parse_assignment_type(str whitespace_or_comments):
     if whitespace_or_comments.startswith('# type:'):
         type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
         tokens = lex.lex(type_as_str)
-        type, index = parse_type(tokens, 0)
+        type, index = parse_type_list(tokens, 0)
         # TODO check index
         return type
     else:

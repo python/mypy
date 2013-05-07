@@ -1,4 +1,6 @@
-from mypy.types import Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable
+from mypy.types import (
+    Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable, TupleType
+)
 from mypy.typerepr import (
     TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
     ListTypeRepr, CallableRepr
@@ -17,6 +19,15 @@ tuple<Type, int> parse_type(Token[] tok, int index):
     """
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
+
+
+tuple<Type, int> parse_type_list(Token[] tok, int index):
+    """Parse one or more types separated by commas (optional parentheses).
+
+    Return (type, index after type).
+    """
+    p = TypeParser(tok, index)
+    return p.parse_type_list(), p.index()
 
 
 tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
@@ -67,6 +78,22 @@ class TypeParser:
             return self.parse_named_type()
         else:
             self.parse_error()
+
+    Type parse_type_list(self):
+        parens = False
+        if self.current_token().string == '(':
+            self.skip()
+            parens = True
+        type = self.parse_type()
+        if self.current_token().string == ',':
+            items = [type]
+            while self.current_token().string == ',':
+                self.skip()
+                items.append(self.parse_type())
+            type = TupleType(items)
+        if parens:
+            self.expect(')')
+        return type
     
     TypeVars parse_type_variables(self, bool is_func):
         """Parse type variables and optional bounds (<...>)."""
