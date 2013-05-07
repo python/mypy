@@ -292,13 +292,6 @@ class Parser:
         def_tok = self.expect('def')
         return self.parse_function_at_name(None, def_tok, is_in_interface)
     
-    Node parse_function_or_var(self):
-        typ = self.parse_type()
-        if self.peek().string in ['(', '<'] or isinstance(typ, Void):
-            return self.parse_function_at_name(typ, None)
-        else:
-            return self.parse_var_def(typ)
-    
     Node parse_decorated_function(self):
         ats = <Token> []
         brs = <Token> []
@@ -531,43 +524,6 @@ class Parser:
     
     # Parsing statements
     
-    VarDef parse_var_def(self, Type typ):
-        """Parse variable definition with explicit types."""
-        vars = self.parse_var_list(typ)
-        Node init = None
-        assign_token = none
-        if self.current_str() == '=':
-            assign_token = self.expect('=')
-            init = self.parse_expression(0)
-        br = self.expect_break()
-        
-        node = VarDef(vars, self.is_at_top_level(), init)
-        self.set_repr(node, noderepr.VarDefRepr(assign_token, br))
-        return node
-    
-    Var[] parse_var_list(self, Type first_type):
-        """Parse a comma-separated list of variable names, potentially
-        prefixed by type declarations.
-        """
-        tok = self.expect_type(Name)
-        n = [Var(tok.string, first_type)]
-        r = [noderepr.VarRepr(tok, none)]
-        while self.current_str() == ',':
-            tok = self.expect(',')
-            r[-1] = noderepr.VarRepr(r[-1].name, tok)
-            
-            Type t = None
-            if self.is_at_type():
-                t = self.parse_type()
-            tok = self.expect_type(Name)
-            n.append(Var(tok.string, t))
-            r.append(noderepr.VarRepr(tok, none))
-        for i in range(len(n)):
-            self.set_repr(n[i], r[i])
-        return n
-    
-    # Parsing statements
-    
     Block parse_block(self, bool interface_body=False):
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
@@ -671,10 +627,7 @@ class Parser:
         elif ts == '@':
             stmt = self.parse_decorated_function()
         else:
-            if self.is_at_type():
-                stmt = self.parse_function_or_var()
-            else:
-                stmt = self.parse_expression_or_assignment()
+            stmt = self.parse_expression_or_assignment()
         if stmt is not None:
             stmt.set_line(t)
         return stmt
@@ -1545,19 +1498,6 @@ class Parser:
             self.parse_error_at(e.token)
         return typ
     
-    TypeVars parse_type_vars(self):
-        """Note: For type variables of generic functions only."""
-        TypeVars type_vars
-        if self.current_str() == '<':
-            try:
-                type_vars, self.ind = parse_type_variables(self.tok, self.ind,
-                                                           True)
-            except TypeParseError as e:
-                self.parse_error_at(e.token)
-        else:
-            type_vars = TypeVars([])
-        return type_vars
-    
     # Representation management
     
     void set_repr(self, Node node, any repr):
@@ -1586,85 +1526,6 @@ class Parser:
         (i.e. not within a class or a function)?
         """
         return not self.is_function and not self.is_type
-    
-    bool is_at_type(self):
-        i, j = self.try_scan_type(self.ind)
-        if j > 0:
-            self.ind = i - 1 # Token before >>; report error at >>.
-            self.parse_error()
-        else:
-            return i >= 0 and isinstance(self.tok[i], Name)
-    
-    tuple<int, int> try_scan_type(self, int i):
-        """Check if there seems to be a valid type at the token index.
-
-        Return the index of next token after type starting at token
-        index i as the first integer. The second integer is 1 if only the
-        first > has been consumed from >>, 0 otherwise. Return -1 as
-        the first integer if could not parse a type.
-        """
-        if isinstance(self.tok[i], Name):
-            if self.tok[i].string == 'func':
-                return self.try_scan_func_type(i + 1)
-            while (self.tok[i + 1].string == '.'
-                   and isinstance(self.tok[i + 2], Name)):
-                i += 2
-            if self.tok[i + 1].string == '<':
-                i += 2
-                while True:
-                    j, gt = self.try_scan_type(i)
-                    if j < 0:
-                        return -1, 0
-                    if gt > 0:
-                        # There was an unconsumed < of a << token; use that.
-                        return self.try_scan_list_type(j)
-                    elif self.tok[j].string == '>':
-                        return self.try_scan_list_type(j + 1)
-                    elif self.tok[j].string == '>>':
-                        return j + 1, 1
-                    elif self.tok[j].string != ',':
-                        return -1, 0
-                    i = j + 1
-            else:
-                return self.try_scan_list_type(i + 1)
-        elif self.tok[i].string == 'any':
-            return self.try_scan_list_type(i + 1)
-        else:
-            return -1, 0
-
-    tuple<int, int> try_scan_list_type(self, int i):
-        if self.tok[i].string == '[':
-            while True:
-                if (self.tok[i].string == '[' and
-                        self.tok[i + 1].string == ']'):
-                    i += 2
-                    if self.tok[i].string != '[':
-                        return i, 0
-                else:
-                    return -1, 0
-        else:
-            return i, 0
-
-    tuple<int, int> try_scan_func_type(self, int i):
-        if self.tok[i].string == '<':
-            i, j = self.try_scan_type(i + 1)
-            if i >= 0:
-                if self.tok[i].string == '(':
-                    i += 1
-                    while self.tok[i].string != ')':
-                        i, j = self.try_scan_type(i)
-                        if j > 0:
-                            return -1, 0
-                        if self.tok[i].string != ',':
-                            break
-                        i += 1
-                    if self.tok[i].string == ')':
-                        i += 1
-                        if self.tok[i].string == '>':
-                            return self.try_scan_list_type(i + 1)
-                        elif self.tok[i].string == '>>':
-                            return i + 1, 1
-        return -1, 0
 
 
 class ParseError(Exception): pass
