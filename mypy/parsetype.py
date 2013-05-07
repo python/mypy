@@ -167,8 +167,8 @@ class TypeParser:
         langle, rangle = none, none
         Token[] commas = []
         Type[] args = []
-        if self.current_token_str() == '<':
-            langle = self.skip()
+        if self.current_token_str() == '[':
+            lbracket = self.skip()
             
             while True:
                 typ = self.parse_type()
@@ -177,7 +177,7 @@ class TypeParser:
                     break
                 commas.append(self.skip())
             
-            rangle = self.expect('>')
+            rbracket = self.expect(']')
         
         typ = UnboundType(name, args, line, CommonTypeRepr(components,
                                                            langle,
