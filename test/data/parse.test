@@ -651,84 +651,6 @@ MypyFile:1(
       S)
     PassStmt:4()))
 
-[case testSimpleTypeApplication]
-f<t>()
-g<t, s>(x)
-g<a<c>, any>()
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    CallExpr:1(
-      TypeApplication:1(
-        NameExpr(f)
-        Types(
-          t?))
-      Args()))
-  ExpressionStmt:2(
-    CallExpr:2(
-      TypeApplication:2(
-        NameExpr(g)
-        Types(
-          t?
-          s?))
-      Args(
-        NameExpr(x))))
-  ExpressionStmt:3(
-    CallExpr:3(
-      TypeApplication:3(
-        NameExpr(g)
-        Types(
-          a?<c?>
-          any))
-      Args())))
-
-[case testTypeApplicationSpecialCases]
-(f)<t>()
-1 ** f<t>()
-f < t > -1
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    CallExpr:1(
-      TypeApplication:1(
-        ParenExpr:1(
-          NameExpr(f))
-        Types(
-          t?))
-      Args()))
-  ExpressionStmt:2(
-    OpExpr:2(
-      **
-      IntExpr(1)
-      CallExpr:2(
-        TypeApplication:2(
-          NameExpr(f)
-          Types(
-            t?))
-        Args())))
-  ExpressionStmt:3(
-    OpExpr:3(
-      >
-      OpExpr:3(
-        <
-        NameExpr(f)
-        NameExpr(t))
-      UnaryExpr:3(
-        -
-        IntExpr(1)))))
-
-[case testTypeApplicationWithGenericTypeArg]
-C<C<A>>()
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    CallExpr:1(
-      TypeApplication:1(
-        NameExpr(C)
-        Types(
-          C?<A?>))
-      Args())))
-
 [case testOperatorPrecedence]
 a | b ^ c
 a & b << c
@@ -1050,17 +972,6 @@ MypyFile:1(
         and
         IntExpr(2)
         IntExpr(3)))))
-
-[case testDictionaryExpressionWithTypes]
-<a<b>, any> {}
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    DictExpr:1(
-      KeyType(
-        a?<b?>)
-      ValueType(
-        any))))
 
 [case testImport]
 import x
@@ -2238,63 +2149,6 @@ MypyFile:1(
       Var(x))
     Block:1(
       PassStmt:1())))
-
-[case testListWithSimpleType]
-<t> []
-<any> [1, 2]
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    ListExpr:1(
-      Type(
-        t?)))
-  ExpressionStmt:2(
-    ListExpr:2(
-      Type(
-        any)
-      IntExpr(1)
-      IntExpr(2))))
-
-[case testTypePrefixPrecedence]
-<t> [] ** 2
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    OpExpr:1(
-      **
-      ListExpr:1(
-        Type(
-          t?))
-      IntExpr(2))))
-
-[case testTypePrefixWithGenericType]
-<dict<any, foo>> []
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    ListExpr:1(
-      Type(
-        dict?<any, foo?>))))
-
-[case testTupleWithTypes]
-<t> (x,)
-<t, any> (x, y)
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    ParenExpr:1(
-      TupleExpr:1(
-        Type(
-          t?)
-        NameExpr(x))))
-  ExpressionStmt:2(
-    ParenExpr:2(
-      TupleExpr:2(
-        Type(
-          t?
-          any)
-        NameExpr(x)
-        NameExpr(y)))))
 
 [case testOverloadedFunction]
 object f(): pass

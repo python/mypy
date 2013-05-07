@@ -1011,8 +1011,6 @@ class Parser:
             expr = self.parse_lambda_expr()
         elif _x == '{':
             expr = self.parse_dict_or_set_expr()
-        elif _x == '<':
-            expr = self.parse_literal_with_prefix_type()
         else:
             if isinstance(self.current(), Name):
                 # Name expression.
@@ -1075,24 +1073,20 @@ class Parser:
                 else:
                     break
             else:
-                # Binary operation, type application or a special case.
+                # Binary operation or a special case.
                 if isinstance(self.current(), Op):
                     op = self.current_str()
-                    if op == '<' and self.is_at_type_application():
-                        expr = self.parse_type_application(expr)
+                    op_prec = precedence[op]
+                    if op == 'not':
+                        # Either "not in" or an error.
+                        op_prec = precedence['in']
+                    if op_prec > prec:
+                        expr = self.parse_bin_op_expr(expr, op_prec)
                     else:
-                        # Binary operation.
-                        op_prec = precedence[op]
-                        if op == 'not':
-                            # Either "not in" or an error.
-                            op_prec = precedence['in']
-                        if op_prec > prec:
-                            expr = self.parse_bin_op_expr(expr, op_prec)
-                        else:
-                            # The operation cannot be associated with the
-                            # current left operand due to the precedence
-                            # context; let the caller handle it.
-                            break
+                        # The operation cannot be associated with the
+                        # current left operand due to the precedence
+                        # context; let the caller handle it.
+                        break
                 else:
                     # Not an operation that accepts a left argument; let the
                     # caller handle the rest.
@@ -1232,49 +1226,6 @@ class Parser:
         node = TupleExpr(items)
         self.set_repr(node, noderepr.TupleExprRepr(none, commas, none))
         return node
-    
-    Node parse_literal_with_prefix_type(self):
-        (types, langle,
-         rangle, commas) = self.parse_type_list_in_angle_brackets()
-        e = self.parse_expression(precedence['**'])
-        if isinstance(e, ListExpr):
-            if len(types) != 1:
-                self.fail('Expected a single type before list literal', e.line)
-            else:
-                ((ListExpr)e).type = types[0]
-                e.repr = noderepr.ListSetExprRepr(e.repr.lbracket,
-                                                  e.repr.commas,
-                                                  e.repr.rbracket,
-                                                  langle, rangle)
-        elif (isinstance(e, ParenExpr) and
-                  isinstance(((ParenExpr)e).expr, TupleExpr)):
-            t = (TupleExpr)((ParenExpr)e).expr
-            if len(types) != len(t.items):
-                self.fail('Wrong number of types for a tuple literal', e.line)
-            else:
-                t.types = types
-        elif isinstance(e, DictExpr):
-            if len(types) != 2:
-                self.fail('Expected two types before dictionary literal',
-                          e.line)
-            else:
-                ((DictExpr)e).key_type = types[0]
-                ((DictExpr)e).value_type = types[1]
-                e.repr = noderepr.DictExprRepr(e.repr.lbrace, e.repr.colons,
-                                               e.repr.commas, e.repr.rbrace,
-                                               langle, commas[0], rangle)
-        elif isinstance(e, SetExpr):
-            if len(types) != 1:
-                self.fail('Expected a single type before set literal', e.line)
-            set = (SetExpr)e
-            set.type = types[0]
-            set.repr.langle = langle
-            set.repr.rangle = rangle
-        else:
-            self.fail(
-                'Expected a list, dictionary, non-empty tuple or set '
-                'after <...>', e.line)
-        return e
     
     NameExpr parse_name_expr(self):
         tok = self.expect_type(Name)
@@ -1502,23 +1453,6 @@ class Parser:
                           noderepr.FuncArgsRepr(none, none, arg_names, commas,
                                                 assigns, asterisk)))
         return node
-    
-    TypeApplication parse_type_application(self, any expr):
-        try:
-            (types, langle,
-             rangle, commas) = self.parse_type_list_in_angle_brackets()
-            node = TypeApplication(expr, types)
-            self.set_repr(node, noderepr.TypeApplicationRepr(langle, commas,
-                                                             rangle))
-            return node
-        except TypeParseError as e:
-            self.parse_error_at(e.token)
-    
-    tuple<Type[], Token, \
-          Token, Token[]> parse_type_list_in_angle_brackets(self):
-        types, langle, rangle, commas, i = parse_type_args(self.tok, self.ind)
-        self.ind = i
-        return types, langle, rangle, commas
     
     # Helper methods
     
