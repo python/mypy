@@ -411,18 +411,21 @@ class AssignmentStmt(Node):
     """Assignment statement
 
     The same node is used for single assignment, multiple assignment
-    (e.g. x, y = z) and chained assignment (e.g. x = y = z) and assignments
-    that define new names.
+    (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
+    that define new names, and assignments with explicit types (# type).
 
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr or
     ParenExpr.
     """
     Node[] lvalues
     Node rvalue
+    mypy.types.Type type    # Declared type in a comment, may be None.
     
-    void __init__(self, Node[] lvalues, Node rvalue):
+    void __init__(self, Node[] lvalues, Node rvalue,
+                  mypy.types.Type type=None):
         self.lvalues = lvalues
         self.rvalue = rvalue
+        self.type = type
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_assignment_stmt(self)

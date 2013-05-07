@@ -161,7 +161,14 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.expr], o)
     
     def visit_assignment_stmt(self, o):
-        return self.dump([('Lvalues', o.lvalues), o.rvalue], o)
+        if len(o.lvalues) > 1:
+            a = [('Lvalues', o.lvalues)]
+        else:
+            a = [o.lvalues[0]]
+        a.append(o.rvalue)
+        if o.type:
+            a.append(o.type)
+        return self.dump(a, o)
     
     def visit_operator_assignment_stmt(self, o):
         return self.dump([o.op, o.lvalue, o.rvalue], o)

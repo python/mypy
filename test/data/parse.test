@@ -23,8 +23,7 @@ x = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x))
+    NameExpr(x)
     IntExpr(1)))
 
 [case testExpressionBasics]
@@ -35,8 +34,7 @@ x = f(1, None)
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x))
+    NameExpr(x)
     CallExpr:1(
       NameExpr(f)
       Args(
@@ -190,21 +188,18 @@ a[[1]] = a[2]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(a))
+    NameExpr(a)
     ListExpr:1())
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(a))
+    NameExpr(a)
     ListExpr:2(
       IntExpr(1)
       IntExpr(2)))
   AssignmentStmt:3(
-    Lvalues(
-      IndexExpr:3(
-        NameExpr(a)
-        ListExpr:3(
-          IntExpr(1))))
+    IndexExpr:3(
+      NameExpr(a)
+      ListExpr:3(
+        IntExpr(1)))
     IndexExpr:3(
       NameExpr(a)
       IntExpr(2))))
@@ -228,10 +223,9 @@ MypyFile:1(
         IntExpr(1)
         NameExpr(foo))))
   AssignmentStmt:4(
-    Lvalues(
-      TupleExpr:4(
-        NameExpr(a)
-        NameExpr(b)))
+    TupleExpr:4(
+      NameExpr(a)
+      NameExpr(b))
     TupleExpr:4(
       IntExpr(1)
       ParenExpr:4(
@@ -375,16 +369,14 @@ MypyFile:1(
       IntExpr(1))
     Then(
       AssignmentStmt:2(
-        Lvalues(
-          NameExpr(x))
+        NameExpr(x)
         IntExpr(1))
       WhileStmt:3(
         IntExpr(2)
         Block:3(
           PassStmt:4()))
       AssignmentStmt:5(
-        Lvalues(
-          NameExpr(y))
+        NameExpr(y)
         IntExpr(2)))))
 
 [case testSimpleClass]
@@ -403,42 +395,41 @@ MypyFile:1(
         PassStmt:3()))))
 
 [case testGlobalVarWithType]
-int x
-bool y = False
-any a
+x = 0 # type: int
+y = False # type: bool
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(int?))
-  VarDef:2(
-    Var(y)
-    Type(bool?)
-    NameExpr(False))
-  VarDef:3(
-    Var(a)
-    Type(any)))
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(0)
+    int?)
+  AssignmentStmt:2(
+    NameExpr(y)
+    NameExpr(False)
+    bool?))
 
 [case testLocalVarWithType]
 def f():
-  int x
-  bool y = False
-  any a
+  x = 0 # type: int
+  y = False # type: bool
+  a = None # type: Any
 [out]
 MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      VarDef:2(
-        Var(x)
-        Type(int?))
-      VarDef:3(
-        Var(y)
-        Type(bool?)
-        NameExpr(False))
-      VarDef:4(
-        Var(a)
-        Type(any)))))
+      AssignmentStmt:2(
+        NameExpr(x)
+        IntExpr(0)
+        int?)
+      AssignmentStmt:3(
+        NameExpr(y)
+        NameExpr(False)
+        bool?)
+      AssignmentStmt:4(
+        NameExpr(a)
+        NameExpr(None)
+        Any?))))
 
 [case testFunctionDefWithType]
 def f(y: str) -> int:
@@ -488,17 +479,18 @@ MypyFile:1(
       PassStmt:2())))
 
 [case testVarDefWithGenericType]
-list<str> x
-dict<int, any> y = None
+x = None # type: List[str]
+y = None # type: Dict[int, Any]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(list?<str?>))
-  VarDef:2(
-    Var(y)
-    Type(dict?<int?, any>)
-    NameExpr(None)))
+  AssignmentStmt:1(
+    NameExpr(x)
+    NameExpr(None)
+    List?<str?>)
+  AssignmentStmt:2(
+    NameExpr(y)
+    NameExpr(None)
+    Dict?<int?, Any?>))
 
 [case testSignatureWithGenericTypes]
 def f(y: t[Any, x]) -> a[b[c], d]:
@@ -535,8 +527,7 @@ x < b, y > 2
 [out]
 MypyFile:1(
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(x))
+    NameExpr(x)
     OpExpr:2(
       >
       OpExpr:2(
@@ -1226,8 +1217,7 @@ MypyFile:1(
       Var(x))
     Init(
       AssignmentStmt:1(
-        Lvalues(
-          NameExpr(x))
+        NameExpr(x)
         IntExpr(1)))
     Block:1(
       PassStmt:2()))
@@ -1239,15 +1229,13 @@ MypyFile:1(
       Var(z))
     Init(
       AssignmentStmt:3(
-        Lvalues(
-          NameExpr(y))
+        NameExpr(y)
         OpExpr:3(
           +
           IntExpr(1)
           IntExpr(2)))
       AssignmentStmt:3(
-        Lvalues(
-          NameExpr(z))
+        NameExpr(z)
         ParenExpr:3(
           TupleExpr:3(
             IntExpr(1)
@@ -1326,8 +1314,7 @@ x=[x for y in z]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x))
+    NameExpr(x)
     ListComprehension:1(
       GeneratorExpr:1(
         NameExpr(x)
@@ -1339,8 +1326,7 @@ x=[(x, y) for y, z in 1, 2]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x))
+    NameExpr(x)
     ListComprehension:1(
       GeneratorExpr:1(
         ParenExpr:1(
@@ -1553,8 +1539,7 @@ MypyFile:1(
         Var(x))
       Init(
         AssignmentStmt:1(
-          Lvalues(
-            NameExpr(x))
+          NameExpr(x)
           IntExpr(2)))
       Block:1(
         ReturnStmt:1(
@@ -1803,8 +1788,7 @@ MypyFile:1(
     ExpressionStmt:2(
       StrExpr(doc string))
     AssignmentStmt:3(
-      Lvalues(
-        NameExpr(x))
+      NameExpr(x)
       NameExpr(y))
     FuncDef:4(
       f
@@ -2267,8 +2251,7 @@ MypyFile:1(
       Var(y))
     Init(
       AssignmentStmt:1(
-        Lvalues(
-          NameExpr(y))
+        NameExpr(y)
         IntExpr(1)))
     Block:1(
       PassStmt:1())))
@@ -2286,8 +2269,7 @@ MypyFile:1(
     def (A? x, *, B? y)
     Init(
       AssignmentStmt:1(
-        Lvalues(
-          NameExpr(y))
+        NameExpr(y)
         IntExpr(1)))
     Block:1(
       PassStmt:1())))
@@ -2304,8 +2286,7 @@ MypyFile:1(
     def (*A? x, *, B? y)
     Init(
       AssignmentStmt:1(
-        Lvalues(
-          NameExpr(y))
+        NameExpr(y)
         IntExpr(1)))
     VarArg(
       Var(x))

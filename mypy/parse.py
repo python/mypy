@@ -703,9 +703,11 @@ class Parser:
             self.set_repr(expr, noderepr.ExpressionStmtRepr(br))
             return expr
     
-    AssignmentStmt parse_assignment(self, any lv):
-        """Parse an assignment statement. Assume that lvalue has been parsed
-        already, and the current token is =.
+    Node parse_assignment(self, any lv):
+        """Parse an assignment statement.
+
+        Assume that lvalue has been parsed already, and the current token is =.
+        Also parse an optional '# type:' comment.
         """
         assigns = [self.expect('=')]
         lvalues = [lv]
@@ -715,12 +717,12 @@ class Parser:
             lvalues.append(e)
             assigns.append(self.skip())
             e = self.parse_expression()
-        
         br = self.expect_break()
-        
-        node = AssignmentStmt(lvalues, e)
-        self.set_repr(node, noderepr.AssignmentStmtRepr(assigns, br))
-        return node
+
+        type = parse_assignment_type(br.pre)        
+        assignment = AssignmentStmt(lvalues, e, type)
+        self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
+        return assignment
     
     ReturnStmt parse_return_stmt(self):
         return_tok = self.expect('return')
@@ -1838,6 +1840,18 @@ Node unwrap_parens(Node node):
         return unwrap_parens(((ParenExpr)node).expr)
     else:
         return node
+
+
+Type parse_assignment_type(str whitespace_or_comments):
+    whitespace_or_comments = whitespace_or_comments.strip()
+    if whitespace_or_comments.startswith('# type:'):
+        type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
+        tokens = lex.lex(type_as_str)
+        type, index = parse_type(tokens, 0)
+        # TODO check index
+        return type
+    else:
+        return None                          
 
 
 if __name__ == '__main__':
