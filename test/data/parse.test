@@ -1682,7 +1682,7 @@ MypyFile:1(
       VarArg)))
 
 [case testVarArgWithType]
-def f(str x, int *a): pass
+def f(x: str, *a: int): pass
 [out]
 MypyFile:1(
   FuncDef:1(
