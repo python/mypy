@@ -289,12 +289,8 @@ class Parser:
             self.parse_error()
     
     FuncDef parse_function(self, bool is_in_interface=False):
-        if self.current_str() == 'def':
-            def_tok = self.skip()
-            return self.parse_function_at_name(None, def_tok, is_in_interface)
-        else:
-            t = self.parse_type()
-            return self.parse_function_at_name(t, None, is_in_interface)
+        def_tok = self.expect('def')
+        return self.parse_function_at_name(None, def_tok, is_in_interface)
     
     Node parse_function_or_var(self):
         typ = self.parse_type()
@@ -401,6 +397,11 @@ class Parser:
         
         rparen = self.expect(')')
 
+        if self.current_str() == '-':
+            self.skip()
+            self.expect('>')
+            ret_type = self.parse_type()
+
         self.verify_argument_kinds(kinds, lparen.line)
         
         names = <str> []
@@ -454,15 +455,9 @@ class Parser:
         
         if self.current_str() != ')' and self.current_str() != ':':
             while self.current_str() != ')':
-                Type arg_type = None
-                if self.is_at_sig_type():
-                    arg_type = self.parse_type()
-                arg_types.append(arg_type)
-                
                 if self.current_str() == '*' and self.peek().string == ',':
                     self.expect('*')
                     require_named = True
-                    arg_types.pop()
                 elif self.current_str() in ['*', '**']:
                     asterisk.append(self.skip())
                     isdict = asterisk[-1].string == '**'
@@ -497,6 +492,11 @@ class Parser:
                         init.append(None)
                         assigns.append(none)
                         kinds.append(nodes.ARG_POS)
+                if not require_named and self.current().string == ':':
+                    self.skip()
+                    arg_types.append(self.parse_type())
+                else:
+                    arg_types.append(None)
                 
                 if self.current().string != ',':
                     break

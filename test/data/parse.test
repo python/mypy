@@ -441,12 +441,12 @@ MypyFile:1(
         Type(any)))))
 
 [case testFunctionDefWithType]
-int f(str y):
+def f(y: str) -> int:
   return
 class A:
-  x f(self, int a, any b):
+  def f(self, a: int, b: Any) -> x:
     pass
-  any g(self):
+  def g(self) -> Any:
     pass
 [out]
 MypyFile:1(
@@ -465,25 +465,25 @@ MypyFile:1(
         Var(self)
         Var(a)
         Var(b))
-      def (any self, int? a, any b) -> x?
+      def (any self, int? a, Any? b) -> x?
       Block:4(
         PassStmt:5()))
     FuncDef:6(
       g
       Args(
         Var(self))
-      def (any self) -> any
+      def (any self) -> Any?
       Block:6(
         PassStmt:7()))))
 
-[case testFuncWithVoidReturn]
-void f():
+[case testFuncWithNoneReturn]
+def f() -> None:
   pass
 [out]
 MypyFile:1(
   FuncDef:1(
     f
-    def ()
+    def () -> None?
     Block:1(
       PassStmt:2())))
 
