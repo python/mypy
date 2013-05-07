@@ -818,7 +818,7 @@ MypyFile:1(
 [case testSuperClass]
 class A(B):
   pass
-class A<T>(B<T>, C<any, d<x>>):
+class A(B[T], C[Any, d[x]]):
   pass
 [out]
 MypyFile:1(
@@ -829,11 +829,9 @@ MypyFile:1(
     PassStmt:2())
   TypeDef:3(
     A
-    TypeVars(
-      T)
     BaseType(
       B?<T?>
-      C?<any, d?<x?>>)
+      C?<Any?, d?<x?>>)
     PassStmt:4()))
 
 [case testIsNot]
