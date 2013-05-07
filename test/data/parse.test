@@ -505,18 +505,6 @@ MypyFile:1(
     Block:1(
       PassStmt:2())))
 
-[case testDoubleGtInGenericType]
-a<b<c>> x
-a<b<c<d>>> y
-[out]
-MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(a?<b?<c?>>))
-  VarDef:2(
-    Var(y)
-    Type(a?<b?<c?<d?>>>)))
-
 [case testParsingExpressionsWithLessAndGreaterThan]
 # The operators < > can sometimes be confused with generic types.
 x = a < b > c
