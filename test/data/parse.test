@@ -603,6 +603,26 @@ MypyFile:1(
     IntExpr(1)
     tuple<a?<c?>, Any?, int?>))
 
+[case testAnnotateAssignmentViaSelf]
+class A:
+    def __init__(self):
+        self.x = 1 # type: int
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      __init__
+      Args(
+        Var(self))
+      Block:2(
+        AssignmentStmt:3(
+          MemberExpr:3(
+            NameExpr(self)
+            x)
+          IntExpr(1)
+          int?)))))
+
 [case testSimpleCasts]
 (x)y
 (x)(y)
