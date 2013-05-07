@@ -729,7 +729,7 @@ MypyFile:1(
 if 1: pass
 while 1: pass
 def f(): pass
-int g(): return 1
+def g() -> int: return 1
 [out]
 MypyFile:1(
   IfStmt:1(
