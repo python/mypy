@@ -1109,14 +1109,7 @@ class Parser:
     Node parse_parentheses(self):
         Node expr
         lparen = self.skip()
-        if self.is_at_cast():
-            # Cast.
-            typ = self.parse_type()
-            rparen = self.expect(')')
-            expr = self.parse_expression(precedence['<cast>'])
-            expr = CastExpr(expr, typ)
-            self.set_repr(expr, noderepr.CastExprRepr(lparen, rparen))
-        elif self.current_str() == ')':
+        if self.current_str() == ')':
             # Empty tuple ().
             expr = self.parse_empty_tuple_expr(lparen)
         else:
@@ -1682,16 +1675,6 @@ class Parser:
             return True
         else:
             return self.is_at_type()
-    
-    bool is_at_cast(self):
-        i, j = self.try_scan_type(self.ind)
-        if i < 0 or j > 0 or self.tok[i].string != ')':
-            return False
-        else:
-            t = self.tok[i + 1]
-            return (isinstance(t, Name) or isinstance(t, IntLit)
-                    or isinstance(t, StrLit) or isinstance(t, FloatLit)
-                    or t.string in ['(', '[', '{', 'lambda'])
     
     bool is_at_type_application(self):
         """Does the token index point to a type application '<t, ...>('?"""
