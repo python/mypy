@@ -1601,7 +1601,7 @@ MypyFile:1(
 [case testComplexDecorator]
 @foo(bar, 1)
 @zar
-int f():
+def f() -> int:
   pass
 [out]
 MypyFile:1(
