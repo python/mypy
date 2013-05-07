@@ -2073,7 +2073,7 @@ MypyFile:1(
 
 [case testInterfaceWithMethod]
 interface A:
-    void f(self, object o)
+    def f(self, o: object) -> None
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -2084,13 +2084,13 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      def (any self, object? o)
+      def (any self, object? o) -> None?
       Block:-1())))
 
 [case testInterfaceWithTwoMethods]
 interface A:
-    void f(self, object o)
-    A g(self)
+    def f(self, o: object) -> None
+    def g(self) -> A
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -2101,7 +2101,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      def (any self, object? o)
+      def (any self, object? o) -> None?
       Block:-1())
     FuncDef:3(
       g
@@ -2112,7 +2112,7 @@ MypyFile:1(
 
 [case testInterfaceWithDefaultMethodBody]
 interface A:
-    A f(self): return None
+    def f(self) -> A: return None
 [out]
 MypyFile:1(
   TypeDef:1(
