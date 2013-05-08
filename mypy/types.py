@@ -47,6 +47,23 @@ class ErrorType(Type):
         return visitor.visit_error_type(self)
 
 
+class TypeList(Type):
+    """A list of types [...].
+
+    This is only used for the arguments of a Function type, i.e. for
+    [arg, ...] in Function[[arg, ...], ret].
+    """
+
+    Type[] items
+
+    void __init__(self, Type[] items, int line=-1, any repr=None):
+        super().__init__(line, repr)
+        self.items = items
+    
+    T accept<T>(self, TypeVisitor<T> visitor):
+        return visitor.visit_type_list(self)
+
+
 class Any(Type):
     """The type "any"."""
     T accept<T>(self, TypeVisitor<T> visitor):
@@ -374,6 +391,9 @@ class TypeVisitor<T>:
     """
     T visit_unbound_type(self, UnboundType t):
         pass
+
+    T visit_type_list(self, TypeList t):
+        pass
     
     T visit_error_type(self, ErrorType t):
         pass
@@ -416,6 +436,9 @@ class TypeTranslator(TypeVisitor<Type>):
     transformation.
     """
     Type visit_unbound_type(self, UnboundType t):
+        return t
+
+    Type visit_type_list(self, TypeList t):
         return t
     
     Type visit_error_type(self, ErrorType t):
@@ -479,6 +502,9 @@ class TypeStrVisitor(TypeVisitor<str>):
         if t.args != []:
             s += '<{}>'.format(self.list_str(t.args))
         return s
+
+    def visit_type_list(self, t):
+        return '<TypeList {}>'.format(self.list_str(t.items))
     
     def visit_error_type(self, t):
         return '<ERROR>'
@@ -610,6 +636,9 @@ class TypeQuery(TypeVisitor<bool>):
         self.strategy = strategy
     
     bool visit_unbound_type(self, UnboundType t):
+        return self.default
+
+    bool visit_type_list(self, TypeList t):
         return self.default
     
     bool visit_error_type(self, ErrorType t):
