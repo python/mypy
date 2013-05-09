@@ -649,7 +649,7 @@ class Parser:
             e = self.parse_expression()
         br = self.expect_break()
 
-        type = self.parse_assignment_type(br.pre)        
+        type = self.parse_assignment_type(br)
         assignment = AssignmentStmt(lvalues, e, type)
         self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
         return assignment
@@ -1478,20 +1478,21 @@ class Parser:
             self.parse_error_at(e.token)
         return typ
 
-    Type parse_assignment_type(self, str whitespace_or_comments):
+    Type parse_assignment_type(self, Token token):
         """Parse a '# type: ...' annotation.
 
         Return None if no annotation found.
         """
-        whitespace_or_comments = whitespace_or_comments.strip()
+        whitespace_or_comments = token.pre.strip()
         if whitespace_or_comments.startswith('# type:'):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
-            tokens = lex.lex(type_as_str)
+            tokens = lex.lex(type_as_str, token.line)
             try:
                 type, index = parse_types(tokens, 0)
             except TypeParseError as e:
                 self.parse_error_at(e.token)
-            # TODO check index
+            if index < len(tokens) - 2:
+                self.parse_error_at(tokens[index])
             return type
         else:
             return None                          

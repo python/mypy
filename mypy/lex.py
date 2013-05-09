@@ -130,13 +130,13 @@ STR_CONTEXT = 1
 COMMENT_CONTEXT = 2
 
 
-Token[] lex(str string):
+Token[] lex(str string, int first_line=1):
     """Analyze string and return an array of token objects.
 
     The last token is always Eof.
     """
     l = Lexer()
-    l.lex(string)
+    l.lex(string, first_line)
     return l.tok
 
 
@@ -282,11 +282,11 @@ class Lexer:
             for c in seq:
                 self.map[ord(c)] = method
     
-    void lex(self, str s):
+    void lex(self, str s, int first_line):
         """Lexically analyze a string, storing the tokens at the tok array."""
         self.s = s
         self.i = 0
-        self.line = 1    
+        self.line = first_line
 
         if s.startswith('\xef\xbb\xbf'):
             self.add_token(Bom(s[0:3]))

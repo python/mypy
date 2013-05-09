@@ -145,3 +145,14 @@ file: In function "f":
 file, line 2: Parse error before "B"
 file, line 3: Parse error before end of line
 
+[case testInvalidTypeComment]
+0
+x = 0 # type: A A
+[out]
+file, line 2: Parse error before "A"
+
+[case testInvalidTypeComment2]
+0
+x = 0 # type: A[
+[out]
+file, line 2: Parse error before end of line
