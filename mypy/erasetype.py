@@ -1,7 +1,7 @@
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
     TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator,
-    BasicTypes
+    BasicTypes, TypeList
 )
 
 
@@ -25,10 +25,13 @@ class EraseTypeVisitor(TypeVisitor<Type>):
         self.basic = basic
     
     Type visit_unbound_type(self, UnboundType t):
-        return t
+        assert False, 'Not supported'
     
     Type visit_error_type(self, ErrorType t):
         return t
+    
+    Type visit_type_list(self, TypeList t):
+        assert False, 'Not supported'
     
     Type visit_any(self, Any t):
         return t

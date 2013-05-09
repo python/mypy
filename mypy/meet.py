@@ -1,7 +1,7 @@
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType, ErasedType, BasicTypes
+    Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
@@ -29,6 +29,9 @@ class TypeMeetVisitor(TypeVisitor<Type>):
     
     Type visit_error_type(self, ErrorType t):
         return t
+    
+    Type visit_type_list(self, TypeList t):
+        assert False, 'Not supported'
     
     Type visit_any(self, Any t):
         return t

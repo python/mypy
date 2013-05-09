@@ -1,6 +1,6 @@
 from mypy.types import (
     Type, UnboundType, ErrorType, Any, NoneTyp, Void, TupleType, Callable,
-    TypeVar, Instance, TypeVisitor, ErasedType
+    TypeVar, Instance, TypeVisitor, ErasedType, TypeList
 )
 
 
@@ -36,6 +36,9 @@ class SameTypeVisitor(TypeVisitor<bool>):
     
     bool visit_error_type(self, ErrorType left):
         return False
+    
+    bool visit_type_list(self, TypeList t):
+        assert False, 'Not supported'
     
     bool visit_any(self, Any left):
         return isinstance(self.right, Any)

@@ -1,6 +1,6 @@
 from mypy.types import (
     Type, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
-    TypeVar, Callable, TupleType, Overloaded, ErasedType
+    TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeList
 )
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
@@ -31,6 +31,9 @@ class SubtypeVisitor(TypeVisitor<bool>):
     
     bool visit_error_type(self, ErrorType left):
         return False
+    
+    bool visit_type_list(self, TypeList t):
+        assert False, 'Not supported'
     
     bool visit_any(self, Any left):
         return True

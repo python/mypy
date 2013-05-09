@@ -1,6 +1,6 @@
 from mypy.types import (
     Type, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void,
-    NoneTyp, TypeVar, Overloaded, TupleType, ErasedType
+    NoneTyp, TypeVar, Overloaded, TupleType, ErasedType, TypeList
 )
 
 
@@ -42,6 +42,9 @@ class ExpandTypeVisitor(TypeVisitor<Type>):
     
     Type visit_error_type(self, ErrorType t):
         return t
+    
+    Type visit_type_list(self, TypeList t):
+        assert False, 'Not supported'
     
     Type visit_any(self, Any t):
         return t

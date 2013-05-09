@@ -2,7 +2,7 @@
 
 from mypy.types import (
     Type, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
-    TypeVar, Callable, TupleType, ErasedType, BasicTypes
+    TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList
 )
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
@@ -42,6 +42,9 @@ class TypeJoinVisitor(TypeVisitor<Type>):
     
     Type visit_error_type(self, ErrorType t):
         return t
+    
+    Type visit_type_list(self, TypeList t):
+        assert False, 'Not supported'
     
     Type visit_any(self, Any t):
         return t
