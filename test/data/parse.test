@@ -456,14 +456,14 @@ MypyFile:1(
         Var(self)
         Var(a)
         Var(b))
-      def (self: any, a: int?, b: Any?) -> x?
+      def (self: Any, a: int?, b: Any?) -> x?
       Block:4(
         PassStmt:5()))
     FuncDef:6(
       g
       Args(
         Var(self))
-      def (self: any) -> Any?
+      def (self: Any) -> Any?
       Block:6(
         PassStmt:7()))))
 
@@ -1738,7 +1738,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: str?, *a: int?) -> any
+    def (x: str?, *a: int?) -> Any
     VarArg(
       Var(a))
     Block:1(
@@ -2168,7 +2168,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Function?[<TypeList str?>, int?]) -> any
+    def (x: Function?[<TypeList str?>, int?]) -> Any
     Block:1(
       PassStmt:1())))
 

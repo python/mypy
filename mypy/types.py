@@ -510,7 +510,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         return '<ERROR>'
     
     def visit_any(self, t):
-        return 'any'
+        return 'Any'
     
     def visit_void(self, t):
         return 'void'
