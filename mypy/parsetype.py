@@ -1,5 +1,6 @@
 from mypy.types import (
-    Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable, TupleType
+    Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable, TupleType,
+    TypeList
 )
 from mypy.typerepr import (
     TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
@@ -76,6 +77,8 @@ class TypeParser:
             return self.parse_func_type()
         elif isinstance(t, Name):
             return self.parse_named_type()
+        elif t.string == '[':
+            return self.parse_type_list2()
         else:
             self.parse_error()
 
@@ -94,6 +97,20 @@ class TypeParser:
         if parens:
             self.expect(')')
         return type
+
+    TypeList parse_type_list2(self):
+        """Parse type list [t, ...]."""
+        lbracket = self.expect('[')
+        Token[] commas = []
+        Type[] items = []
+        while self.current_token().string != ']':
+            t = self.parse_type()
+            items.append(t)
+            if self.current_token_str() != ',':
+                break
+            commas.append(self.skip())
+        rbracket = self.expect(']')
+        return TypeList(items)
     
     TypeVars parse_type_variables(self, bool is_func):
         """Parse type variables and optional bounds (<...>)."""

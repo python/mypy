@@ -2193,25 +2193,40 @@ MypyFile:1(
         NameExpr(kwargs)))))
 
 [case testSimpleFunctionType]
-func<void()> f
+f = None # type: Function[[], None]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(f)
-    Type(def ())))
+  AssignmentStmt:1(
+    NameExpr(f)
+    NameExpr(None)    
+    Function?<<TypeList >, None?>))
 
 [case testFunctionTypeWithArgument]
-func<int(str)> f
+f = None # type: Function[[str], int]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(f)
-    Type(def (str?) -> int?)))
+  AssignmentStmt:1(
+    NameExpr(f)
+    NameExpr(None)    
+    Function?<<TypeList str?>, int?>))
 
-[case testFunctionTypeWithArguments]
-func<int[](a<b>, x.y[])> f
+[case testFunctionTypeWithTwoArguments]
+f = None # type: Function[[a[b], x.y], List[int]]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(f)
-    Type(def (a?<b?>, __builtins__.list?<x.y?>) -> __builtins__.list?<int?>)))
+  AssignmentStmt:1(
+    NameExpr(f)
+    NameExpr(None)    
+    Function?<<TypeList a?<b?>, x.y?>, List?<int?>>))
+
+[case testFunctionTypeWithExtraComma]
+def f(x: Function[[str,], int]): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    def (Function?<<TypeList str?>, int?> x) -> any
+    Block:1(
+      PassStmt:1())))
