@@ -237,7 +237,7 @@ class Parser:
                 pass
         return defs
     
-    TypeDef parse_type_def(self):
+    TypeDef parse_class_def(self):
         self.is_type = True
         
         type_tok = self.expect('class')
@@ -583,7 +583,7 @@ class Parser:
         elif ts == 'from':
             stmt = self.parse_import_from()
         elif ts == 'class':
-            stmt = self.parse_type_def()
+            stmt = self.parse_class_def()
         elif ts == 'global':
             stmt = self.parse_global_decl()
         elif ts == 'assert':
