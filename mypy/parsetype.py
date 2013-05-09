@@ -1,11 +1,7 @@
-from mypy.types import (
-    Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable, TupleType,
-    TypeList
-)
-from mypy.typerepr import (
-    TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
-    ListTypeRepr, CallableRepr
-)
+"""Type parser"""
+
+from mypy.types import Type, UnboundType, TupleType, TypeList
+from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name
 from mypy import nodes
 
