@@ -815,7 +815,7 @@ MypyFile:1(
     NameExpr(e)
     NameExpr(x)))
 
-[case testSuperClass]
+[case testBaseclasses]
 class A(B):
   pass
 class A(B[T], C[Any, d[x]]):
