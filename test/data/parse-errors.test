@@ -156,3 +156,9 @@ file, line 2: Parse error before "A"
 x = 0 # type: A[
 [out]
 file, line 2: Parse error before end of line
+
+[case testInvalidMultilineLiteralType]
+def f() -> "A\nB": pass
+[out]
+file: In function "f":
+file, line 1: Parse error before end of line
