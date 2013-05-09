@@ -48,9 +48,7 @@ class TypeParser:
     Type parse_type(self):
         """Parse a type."""
         t = self.current_token()
-        if t.string == 'func':
-            return self.parse_func_type()
-        elif isinstance(t, Name):
+        if isinstance(t, Name):
             return self.parse_named_type()
         elif t.string == '[':
             return self.parse_type_list()
@@ -86,29 +84,6 @@ class TypeParser:
             commas.append(self.skip())
         rbracket = self.expect(']')
         return TypeList(items)
-
-    Type parse_func_type(self):
-        """Parse func<...> type."""
-        func_tok = self.skip()
-        langle = self.expect('<')
-        return_type = self.parse_type()
-        lparen = self.expect('(')
-        arg_types = <Type> []
-        commas = <Token> []
-        while self.current_token_str() != ')':
-            arg_types.append(self.parse_type())
-            if self.current_token_str() != ',':
-                break
-            commas.append(self.expect(','))
-        rparen = self.expect(')')
-        rangle = self.expect('>')
-        typ = Callable(arg_types,
-                       [nodes.ARG_POS] * len(arg_types),
-                       <str> [None] * len(arg_types),
-                       return_type, is_type_obj=False,
-                       repr=CallableRepr(func_tok, langle, lparen, commas,
-                                         rparen, rangle))
-        return self.parse_optional_list_type(typ)
     
     Type parse_named_type(self):
         line = self.current_token().line
