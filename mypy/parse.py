@@ -24,8 +24,8 @@ from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, TypeVars, Callable, Any, UnboundType
-from mypy.parsetype import (parse_type, parse_types, parse_type_variables,
-                            parse_type_args, TypeParseError)
+from mypy.parsetype import (parse_type, parse_types, parse_type_args,
+                            TypeParseError)
 
 
 precedence = {
@@ -253,13 +253,6 @@ class Parser:
                 name = name_tok.string
                 
                 self.errors.push_type(name, is_interface)
-                
-                if self.current_str() == '<':
-                    try:
-                        type_vars, self.ind = parse_type_variables(
-                            self.tok, self.ind, False)
-                    except TypeParseError as e:
-                        self.parse_error_at(e.token)
                 
                 if self.current_str() == '(':
                     lparen = self.skip()

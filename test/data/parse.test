@@ -632,25 +632,6 @@ MypyFile:1(
     C
     PassStmt:2()))
 
-[case testGenericClass]
-class C<T>:
-  pass
-class D<T, S>:
-  pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    C
-    TypeVars(
-      T)
-    PassStmt:2())
-  TypeDef:3(
-    D
-    TypeVars(
-      T
-      S)
-    PassStmt:4()))
-
 [case testOperatorPrecedence]
 a | b ^ c
 a & b << c
@@ -2136,17 +2117,6 @@ MypyFile:1(
     Interface
     BaseType(
       B?)
-    PassStmt:1()))
-
-[case testGenericInterface]
-interface A<t>: pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    TypeVars(
-      t)
     PassStmt:1()))
 
 [case testSuperExpr]

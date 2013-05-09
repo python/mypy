@@ -31,16 +31,6 @@ tuple<Type, int> parse_types(Token[] tok, int index):
     return p.parse_types(), p.index()
 
 
-tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
-                                          bool is_func):
-    """Parse type variables and optional bounds (<...>).
-
-    Return (bounds, index after bounds).
-    """
-    p = TypeParser(tok, index)
-    return p.parse_type_variables(is_func), p.index()
-
-
 tuple<Type[], Token, Token, \
       Token[], int> parse_type_args(Token[] tok, int index):
     """Parse type arguments within angle brackets (<...>).
@@ -111,24 +101,6 @@ class TypeParser:
             commas.append(self.skip())
         rbracket = self.expect(']')
         return TypeList(items)
-    
-    TypeVars parse_type_variables(self, bool is_func):
-        """Parse type variables and optional bounds (<...>)."""
-        langle = self.expect('<')
-        
-        Token[] commas = []
-        TypeVarDef[] items = []
-        n = 1
-        while True:
-            t = self.parse_type_variable(n, is_func)
-            items.append(t)
-            if self.current_token_str() != ',':
-                break
-            commas.append(self.skip())
-            n += 1
-        
-        rangle = self.expect('>')
-        return TypeVars(items, TypeVarsRepr(langle, commas, rangle))
     
     TypeVarDef parse_type_variable(self, int n, bool is_func):
         t = self.expect_type(Name)
