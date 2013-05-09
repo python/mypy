@@ -632,6 +632,23 @@ MypyFile:1(
     IntExpr(0)
     int?))
 
+[case testMultilineAssignmentAndAnnotations]
+(x,
+ y) = (1,
+      2) # type: foo, bar
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    ParenExpr:1(
+      TupleExpr:1(
+        NameExpr(x)
+        NameExpr(y)))
+    ParenExpr:2(
+      TupleExpr:2(
+        IntExpr(1)
+        IntExpr(2)))
+    tuple<foo?, bar?>))
+
 [case testEmptyClass]
 class C:
   pass
