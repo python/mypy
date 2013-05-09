@@ -229,35 +229,6 @@ MypyFile:1(
       NameExpr(c [__main__.c])
       __main__.d<__main__.c>)))
 
-[case testTypeApplication]
-class c: pass
-f = 0
-f<c>()
-f<c, object>()
-[out]
-MypyFile:1(
-  TypeDef:1(
-    c
-    PassStmt:1())
-  AssignmentStmt:2(
-    NameExpr(f* [__main__.f])
-    IntExpr(0))
-  ExpressionStmt:3(
-    CallExpr:3(
-      TypeApplication:3(
-        NameExpr(f [__main__.f])
-        Types(
-          __main__.c))
-      Args()))
-  ExpressionStmt:4(
-    CallExpr:4(
-      TypeApplication:4(
-        NameExpr(f [__main__.f])
-        Types(
-          __main__.c
-          builtins.object))
-      Args())))
-
 [case testFunctionTvar]
 void f<t>(t x):
   t y
@@ -356,15 +327,6 @@ MypyFile:1(
       __main__.d<t`1>)
     PassStmt:2()))
 
-[case testListLiteralWithType]
-<object> []
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    ListExpr:1(
-      Type(
-        builtins.object))))
-
 [case testTupleType]
 tuple t
 tuple<object> t1
@@ -381,19 +343,6 @@ MypyFile:1(
   VarDef:3(
     Var(t2)
     Type(tuple<any, builtins.object>)))
-
-[case testTupleLiteralWithType]
-<object, type> (1, 2)
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    ParenExpr:1(
-      TupleExpr:1(
-        Type(
-          builtins.object
-          builtins.type)
-        IntExpr(1)
-        IntExpr(2)))))
 
 [case testFunctionTypes]
 func<A(object, type)> f
@@ -491,26 +440,3 @@ MypyFile:1(
     TypeVars(
       s)
     PassStmt:2()))
-
-[case testDictionaryLiteralWithType]
-<B, A<any>> {B:None}
-class A<t>: pass
-class B: pass
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    DictExpr:1(
-      KeyType(
-        __main__.B)
-      ValueType(
-        __main__.A<any>)
-      NameExpr(B [__main__.B])
-      NameExpr(None [builtins.None])))
-  TypeDef:2(
-    A
-    TypeVars(
-      t)
-    PassStmt:2())
-  TypeDef:3(
-    B
-    PassStmt:3()))

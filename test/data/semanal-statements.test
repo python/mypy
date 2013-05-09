@@ -121,27 +121,6 @@ MypyFile:1(
           NameExpr(x [__main__.x])
           NameExpr(y [__main__.y]))))))
 
-[case testForWithTypes]
-class c: pass
-for object x, c y in []:
-  x, y
-[out]
-MypyFile:1(
-  TypeDef:1(
-    c
-    PassStmt:1())
-  ForStmt:2(
-    NameExpr(x* [__main__.x])
-    NameExpr(y* [__main__.y])
-    builtins.object
-    __main__.c
-    ListExpr:2()
-    Block:2(
-      ExpressionStmt:3(
-        TupleExpr:3(
-          NameExpr(x [__main__.x])
-          NameExpr(y [__main__.y]))))))
-
 [case testForIndexVarScope]
 for x in []:
   pass

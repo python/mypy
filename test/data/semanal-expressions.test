@@ -279,20 +279,3 @@ MypyFile:1(
             +
             NameExpr(x [l])
             NameExpr(y [l])))))))
-
-[case testLambdaWithSignature]
-lambda A x: x
-class A: pass
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    FuncExpr:1(
-      Args(
-        Var(x))
-      def (__main__.A x) -> builtins.object
-      Block:1(
-        ReturnStmt:1(
-          NameExpr(x [l])))))
-  TypeDef:2(
-    A
-    PassStmt:2()))
