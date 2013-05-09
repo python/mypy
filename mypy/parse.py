@@ -649,7 +649,7 @@ class Parser:
             e = self.parse_expression()
         br = self.expect_break()
 
-        type = self.parse_assignment_type(br)
+        type = self.parse_type_comment(br)
         assignment = AssignmentStmt(lvalues, e, type)
         self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
         return assignment
@@ -1478,7 +1478,7 @@ class Parser:
             self.parse_error_at(e.token)
         return typ
 
-    Type parse_assignment_type(self, Token token):
+    Type parse_type_comment(self, Token token):
         """Parse a '# type: ...' annotation.
 
         Return None if no annotation found.
