@@ -24,7 +24,7 @@ from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, TypeVars, Callable, Any, UnboundType
-from mypy.parsetype import (parse_type, parse_type_list, parse_type_variables,
+from mypy.parsetype import (parse_type, parse_types, parse_type_variables,
                             parse_type_args, TypeParseError)
 
 
@@ -1512,7 +1512,7 @@ class Parser:
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
             tokens = lex.lex(type_as_str)
             try:
-                type, index = parse_type_list(tokens, 0)
+                type, index = parse_types(tokens, 0)
             except TypeParseError as e:
                 self.parse_error_at(e.token)
             # TODO check index

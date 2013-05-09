@@ -22,13 +22,13 @@ tuple<Type, int> parse_type(Token[] tok, int index):
     return p.parse_type(), p.index()
 
 
-tuple<Type, int> parse_type_list(Token[] tok, int index):
+tuple<Type, int> parse_types(Token[] tok, int index):
     """Parse one or more types separated by commas (optional parentheses).
 
     Return (type, index after type).
     """
     p = TypeParser(tok, index)
-    return p.parse_type_list(), p.index()
+    return p.parse_types(), p.index()
 
 
 tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
@@ -78,11 +78,11 @@ class TypeParser:
         elif isinstance(t, Name):
             return self.parse_named_type()
         elif t.string == '[':
-            return self.parse_type_list2()
+            return self.parse_type_list()
         else:
             self.parse_error()
 
-    Type parse_type_list(self):
+    Type parse_types(self):
         parens = False
         if self.current_token().string == '(':
             self.skip()
@@ -98,7 +98,7 @@ class TypeParser:
             self.expect(')')
         return type
 
-    TypeList parse_type_list2(self):
+    TypeList parse_type_list(self):
         """Parse type list [t, ...]."""
         lbracket = self.expect('[')
         Token[] commas = []
