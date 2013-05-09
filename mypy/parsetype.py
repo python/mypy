@@ -48,11 +48,7 @@ class TypeParser:
     Type parse_type(self):
         """Parse a type."""
         t = self.current_token()
-        if t.string == 'any':
-            return self.parse_any_type()
-        elif t.string == 'void':
-            return self.parse_void_type()
-        elif t.string == 'func':
+        if t.string == 'func':
             return self.parse_func_type()
         elif isinstance(t, Name):
             return self.parse_named_type()
@@ -90,17 +86,6 @@ class TypeParser:
             commas.append(self.skip())
         rbracket = self.expect(']')
         return TypeList(items)
-    
-    Type parse_any_type(self):
-        """Parse 'any' type (or list of ... of any)."""
-        tok = self.skip()
-        anyt = Any(tok.line, AnyRepr(tok))
-        return self.parse_optional_list_type(anyt)
-    
-    Void parse_void_type(self):
-        """Parse 'void' type."""
-        tok = self.skip()
-        return Void(None, tok.line, VoidRepr(tok))
 
     Type parse_func_type(self):
         """Parse func<...> type."""
