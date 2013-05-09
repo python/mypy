@@ -623,6 +623,15 @@ MypyFile:1(
           IntExpr(1)
           int?)))))
 
+[case testCommentAfterTypeComment]
+x = 0 # type: int # bar!
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(0)
+    int?))
+
 [case testEmptyClass]
 class C:
   pass
