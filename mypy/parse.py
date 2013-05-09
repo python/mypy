@@ -4,6 +4,8 @@ Constructs a parse tree (abstract syntax tree) based on a string
 representing a source file. Performs only minimal semantic checks.
 """
 
+import re
+
 from mypy import lex
 from mypy.lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
                  StrLit, BytesLit, FloatLit, Op, Indent, Keyword, Punct,
@@ -1478,13 +1480,15 @@ class Parser:
             self.parse_error_at(e.token)
         return typ
 
+    annotation_prefix_re = re.compile(r'#\s*type:')
+
     Type parse_type_comment(self, Token token):
         """Parse a '# type: ...' annotation.
 
         Return None if no annotation found.
         """
         whitespace_or_comments = token.pre.strip()
-        if whitespace_or_comments.startswith('# type:'):
+        if self.annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
             tokens = lex.lex(type_as_str, token.line)
             try:

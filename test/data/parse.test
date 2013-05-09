@@ -649,6 +649,48 @@ MypyFile:1(
         IntExpr(2)))
     tuple<foo?, bar?>))
 
+[case testWhitespaceAndCommentAnnotation]
+x = 1#type:int
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1)
+    int?))
+
+[case testWhitespaceAndCommentAnnotation2]
+x = 1#   type:   int
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1)
+    int?))
+
+[case testWhitespaceAndCommentAnnotation3]
+x = 1# type : int       # not recognized!
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1)))
+    
+[case testInvalidAnnotation]
+x=1 ##type: int
+y=1 #.type: int
+z=1 # Type: int
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(1))
+  AssignmentStmt:3(
+    NameExpr(z)
+    IntExpr(1)))
+
 [case testEmptyClass]
 class C:
   pass
