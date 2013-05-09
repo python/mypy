@@ -2043,82 +2043,6 @@ MypyFile:1(
     Block:1(
       PassStmt:1())))
 
-[case testEmptyInterface]
-interface A: pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    PassStmt:1()))
-
-[case testInterfaceWithMethod]
-interface A:
-    def f(self, o: object) -> None
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    FuncDef:2(
-      f
-      Args(
-        Var(self)
-        Var(o))
-      def (any self, object? o) -> None?
-      Block:-1())))
-
-[case testInterfaceWithTwoMethods]
-interface A:
-    def f(self, o: object) -> None
-    def g(self) -> A
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    FuncDef:2(
-      f
-      Args(
-        Var(self)
-        Var(o))
-      def (any self, object? o) -> None?
-      Block:-1())
-    FuncDef:3(
-      g
-      Args(
-        Var(self))
-      def (any self) -> A?
-      Block:-1())))
-
-[case testInterfaceWithDefaultMethodBody]
-interface A:
-    def f(self) -> A: return None
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    FuncDef:2(
-      f
-      Args(
-        Var(self))
-      def (any self) -> A?
-      Block:2(
-        ReturnStmt:2(
-          NameExpr(None))))))
-
-[case testInterfaceWithSuperinterface]
-interface A(B): pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    BaseType(
-      B?)
-    PassStmt:1()))
-
 [case testSuperExpr]
 super().x
 [out]
@@ -2126,27 +2050,6 @@ MypyFile:1(
   ExpressionStmt:1(
     SuperExpr:1(
       x)))
-
-[case testDocStringInTerface]
-interface A:
-    """foo"""
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    ExpressionStmt:2(
-      StrExpr(foo))))
-
-[case testInterfaceWithEmptyBodyOnSeparateLine]
-interface A:
-    pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    PassStmt:2()))
 
 [case testKeywordAndDictArgs]
 f(x = y, **kwargs)

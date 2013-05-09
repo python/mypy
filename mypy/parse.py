@@ -237,21 +237,20 @@ class Parser:
                 pass
         return defs
     
-    def parse_type_def(self, is_interface):
+    TypeDef parse_type_def(self):
         self.is_type = True
         
-        # Skip "class" or "interface".
-        type_tok = self.skip()
+        type_tok = self.expect('class')
         lparen = none
         rparen = none
         
         try:
-            type_vars, commas, base_types = None, [], []
+            commas, base_types = <Token> [], <Type> []
             try:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
                 
-                self.errors.push_type(name, is_interface)
+                self.errors.push_type(name, False)
                 
                 if self.current_str() == '(':
                     lparen = self.skip()
@@ -264,9 +263,9 @@ class Parser:
             except ParseError:
                 pass
             
-            defs = self.parse_block(is_interface)
+            defs = self.parse_block()
             
-            node = TypeDef(name, defs, type_vars, base_types, is_interface)
+            node = TypeDef(name, defs, None, base_types, False)
             self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
                                                      lparen, commas, rparen))
             return node
@@ -520,7 +519,7 @@ class Parser:
     
     # Parsing statements
     
-    Block parse_block(self, bool interface_body=False):
+    Block parse_block(self):
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
@@ -539,13 +538,7 @@ class Parser:
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:
-                    Node s
-                    if interface_body:
-                        t = self.current()
-                        s = self.parse_interface_body_def()
-                        s.set_line(t)
-                    else:
-                        s = self.parse_statement()
+                    s = self.parse_statement()
                     if s is not None:
                         if not self.try_combine_overloads(s, stmt):
                             stmt.append(s)
@@ -571,12 +564,6 @@ class Parser:
                 ((OverloadedFuncDef)stmt[-1]).items.append(fdef)
                 return True
         return False
-    
-    Node parse_interface_body_def(self):
-        if self.current_str() == 'pass':
-            return self.parse_pass_stmt()
-        else:
-            return self.parse_function(True)
     
     Node parse_statement(self):
         Node stmt
@@ -607,9 +594,7 @@ class Parser:
         elif ts == 'from':
             stmt = self.parse_import_from()
         elif ts == 'class':
-            stmt = self.parse_type_def(False)
-        elif ts == 'interface':
-            stmt = self.parse_type_def(True)
+            stmt = self.parse_type_def()
         elif ts == 'global':
             stmt = self.parse_global_decl()
         elif ts == 'assert':
