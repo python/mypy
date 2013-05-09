@@ -126,3 +126,22 @@ def f(**x, y=x):
 [out]
 file: In function "f":
 file, line 1: Invalid argument list
+
+[case testInvalidStringLiteralType]
+def f(x: 
+     'A['
+     ) -> None: pass
+[out]
+file: In function "f":
+file, line 2: Parse error before end of line
+file, line 3: Parse error before end of line
+
+[case testInvalidStringLiteralType2]
+def f(x: 
+      'A B'
+      ) -> None: pass
+[out]
+file: In function "f":
+file, line 2: Parse error before "B"
+file, line 3: Parse error before end of line
+

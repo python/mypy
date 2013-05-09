@@ -2103,3 +2103,53 @@ MypyFile:1(
     def (Function?<<TypeList str?>, int?> x) -> any
     Block:1(
       PassStmt:1())))
+
+[case testSimpleStringLiteralType]
+def f() -> 'A': pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> A?
+    Block:1(
+      PassStmt:1())))
+
+[case testGenericStringLiteralType]
+def f() -> 'A[B, C]': pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> A?<B?, C?>
+    Block:1(
+      PassStmt:1())))
+
+[case testPartialStringLiteralType]
+def f() -> A['B', C]: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> A?<B?, C?>
+    Block:1(
+      PassStmt:1())))
+
+[case testWhitespaceInStringLiteralType]
+def f() -> '  A  [  X  ]  ': pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> A?<X?>
+    Block:1(
+      PassStmt:1())))
+
+[case testEscapeInStringLiteralType]
+def f() -> '\x41': pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> A?
+    Block:1(
+      PassStmt:1())))

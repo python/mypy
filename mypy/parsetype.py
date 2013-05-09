@@ -2,11 +2,18 @@
 
 from mypy.types import Type, UnboundType, TupleType, TypeList
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
-from mypy.lex import Token, Name
+from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
 
 
 none = Token('') # Empty token
+
+
+class TypeParseError(Exception):
+    void __init__(self, Token token, int index):
+        super().__init__()
+        self.token = token
+        self.index = index
 
 
 tuple<Type, int> parse_type(Token[] tok, int index):
@@ -42,6 +49,25 @@ class TypeParser:
             return self.parse_named_type()
         elif t.string == '[':
             return self.parse_type_list()
+        elif isinstance(t, StrLit):
+            # Type escaped as string literal.
+            typestr = ((StrLit)t).parsed()
+            typestr = typestr.strip()
+            tokens = lex(typestr)
+            self.skip()
+            try:
+                result, i = parse_type(tokens, 0)
+            except TypeParseError as e:
+                # The error token probably has an invalid line number, so
+                # we fix it.
+                e.token.line = t.line
+                raise TypeParseError(e.token, self.ind)
+            if not isinstance(tokens[i], Break):
+                # Extra tokens after type. Again, we have to fix the line no.
+                errtoken = tokens[i]
+                errtoken.line = t.line
+                raise TypeParseError(errtoken, self.ind)
+            return result
         else:
             self.parse_error()
 
@@ -136,11 +162,4 @@ class TypeParser:
         return self.current_token().string
     
     void parse_error(self):
-        raise TypeParseError(self.tok, self.ind)
-
-
-class TypeParseError(Exception):
-    void __init__(self, Token[] token, int index):
-        super().__init__()
-        self.token = token[index]
-        self.index = index
+        raise TypeParseError(self.tok[self.ind], self.ind)
