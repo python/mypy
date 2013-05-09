@@ -110,17 +110,6 @@ class TypeParser:
         typ = UnboundType(name, args, line, CommonTypeRepr(components,
                                                            langle,
                                                            commas, rangle))
-        return self.parse_optional_list_type(typ)
-
-    Type parse_optional_list_type(self, Type typ):
-        """Try to parse list types t[]."""
-        while self.current_token_str() == '[':
-            line = self.current_token().line
-            # TODO representation
-            lbracket = self.skip()
-            rbracket = self.expect(']')
-            typ = UnboundType('__builtins__.list', [typ], line,
-                              ListTypeRepr(lbracket, rbracket))
         return typ
     
     # Helpers
