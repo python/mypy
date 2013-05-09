@@ -28,9 +28,6 @@ tuple<Type, int> parse_types(Token[] tok, int index):
 
 
 class TypeParser:
-    Token[] tok
-    int ind
-    
     void __init__(self, Token[] tok, int ind):
         self.tok = tok
         self.ind = ind
@@ -143,10 +140,7 @@ class TypeParser:
 
 
 class TypeParseError(Exception):
-    int index
-    Token token
-    
     void __init__(self, Token[] token, int index):
+        super().__init__()
         self.token = token[index]
         self.index = index
-        super().__init__()
