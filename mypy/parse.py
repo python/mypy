@@ -279,10 +279,6 @@ class Parser:
         else:
             self.parse_error()
     
-    FuncDef parse_function(self):
-        def_tok = self.expect('def')
-        return self.parse_function_at_name(None, def_tok)
-    
     Node parse_decorated_function(self):
         ats = <Token> []
         brs = <Token> []
@@ -301,11 +297,12 @@ class Parser:
         self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
         return node
     
-    FuncDef parse_function_at_name(self, Type ret_type, Token def_tok):
+    FuncDef parse_function(self):
+        def_tok = self.expect('def')
         self.is_function = True
         try:
             (name, args, init, kinds,
-             typ, is_error, toks) = self.parse_function_header(ret_type)
+             typ, is_error, toks) = self.parse_function_header()
             
             body = self.parse_block()
             
@@ -325,7 +322,7 @@ class Parser:
             self.is_function = False
     
     tuple<str, Var[], Node[], int[], Type, bool, tuple<Token, any>> \
-              parse_function_header(self, Type ret_type):
+              parse_function_header(self):
         """Parse function header (a name followed by arguments)
 
         Returns a 7-tuple with the following items:
@@ -345,7 +342,7 @@ class Parser:
             
             self.errors.push_function(name)
             
-            (args, init, kinds, typ, arg_repr) = self.parse_args(ret_type)
+            (args, init, kinds, typ, arg_repr) = self.parse_args()
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1 # Kludge: go back to the Break token
@@ -357,12 +354,8 @@ class Parser:
         return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
     
     tuple<Var[], Node[], int[], Type, \
-          noderepr.FuncArgsRepr> parse_args(self, Type ret_type):
-        """Parse a function type signature.
-
-        It is potentially prefixed with type variable specification within
-        <...>.
-        """        
+          noderepr.FuncArgsRepr> parse_args(self):
+        """Parse a function type signature."""
         lparen = self.expect('(')
         
         # Parse the argument list (everything within '(' and ')').
@@ -377,6 +370,8 @@ class Parser:
             self.skip()
             self.expect('>')
             ret_type = self.parse_type()
+        else:
+            ret_type = None
 
         self.verify_argument_kinds(kinds, lparen.line)
         
