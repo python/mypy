@@ -50,13 +50,13 @@ class TypeParser:
 
     Type parse_types(self):
         parens = False
-        if self.current_token().string == '(':
+        if self.current_token_str() == '(':
             self.skip()
             parens = True
         type = self.parse_type()
-        if self.current_token().string == ',':
+        if self.current_token_str() == ',':
             items = [type]
-            while self.current_token().string == ',':
+            while self.current_token_str() == ',':
                 self.skip()
                 items.append(self.parse_type())
             type = TupleType(items)
@@ -69,7 +69,7 @@ class TypeParser:
         lbracket = self.expect('[')
         Token[] commas = []
         Type[] items = []
-        while self.current_token().string != ']':
+        while self.current_token_str() != ']':
             t = self.parse_type()
             items.append(t)
             if self.current_token_str() != ',':
