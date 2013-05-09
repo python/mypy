@@ -320,11 +320,13 @@ class TypeDef(Node):
     mypy.types.Type[] base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
+    str metaclass
     
     void __init__(self, str name, Block defs,
                   mypy.types.TypeVars type_vars=None,
                   mypy.types.Type[] base_types=None,
-                  bool is_interface=False):
+                  bool is_interface=False,
+                  str metaclass=None):
         if not base_types:
             base_types = []
         self.name = name
@@ -332,6 +334,7 @@ class TypeDef(Node):
         self.type_vars = type_vars
         self.base_types = base_types
         self.is_interface = is_interface
+        self.metaclass = metaclass
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_type_def(self)

@@ -243,6 +243,7 @@ class Parser:
         type_tok = self.expect('class')
         lparen = none
         rparen = none
+        str metaclass = None
         
         try:
             commas, base_types = <Token> [], <Type> []
@@ -255,6 +256,9 @@ class Parser:
                 if self.current_str() == '(':
                     lparen = self.skip()
                     while True:
+                        if self.current_str() == 'metaclass':
+                            metaclass = self.parse_metaclass()
+                            break
                         base_types.append(self.parse_super_type())
                         if self.current_str() != ',':
                             break
@@ -265,7 +269,8 @@ class Parser:
             
             defs = self.parse_block()
             
-            node = TypeDef(name, defs, None, base_types, False)
+            node = TypeDef(name, defs, None, base_types,
+                           is_interface=False, metaclass=metaclass)
             self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
                                                      lparen, commas, rparen))
             return node
@@ -278,6 +283,11 @@ class Parser:
             return self.parse_type()
         else:
             self.parse_error()
+
+    str parse_metaclass(self):
+        self.expect('metaclass')
+        self.expect('=')
+        return self.parse_qualified_name()[0]
     
     Node parse_decorated_function(self):
         ats = <Token> []

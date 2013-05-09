@@ -122,6 +122,8 @@ class StrConv(NodeVisitor<str>):
             a.insert(1, ('TypeVars', o.type_vars.items))
         if o.is_interface:
             a.insert(1, 'Interface')
+        if o.metaclass:
+            a.insert(1, 'Metaclass({})'.format(o.metaclass))
         return self.dump(a, o)
     
     def visit_var_def(self, o):

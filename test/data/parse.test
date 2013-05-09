@@ -2153,3 +2153,32 @@ MypyFile:1(
     def () -> A?
     Block:1(
       PassStmt:1())))
+
+[case testMetaclass]
+class Foo(metaclass=Bar): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    Foo
+    Metaclass(Bar)
+    PassStmt:1()))
+
+[case testQualifiedMetaclass]
+class Foo(metaclass=foo.Bar): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    Foo
+    Metaclass(foo.Bar)
+    PassStmt:1()))
+
+[case testBaseAndMetaclass]
+class Foo(foo.bar[x], metaclass=Bar): pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    Foo
+    Metaclass(Bar)
+    BaseType(
+      foo.bar?<x?>)
+    PassStmt:1()))
