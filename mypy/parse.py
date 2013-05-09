@@ -279,9 +279,9 @@ class Parser:
         else:
             self.parse_error()
     
-    FuncDef parse_function(self, bool is_in_interface=False):
+    FuncDef parse_function(self):
         def_tok = self.expect('def')
-        return self.parse_function_at_name(None, def_tok, is_in_interface)
+        return self.parse_function_at_name(None, def_tok)
     
     Node parse_decorated_function(self):
         ats = <Token> []
@@ -301,19 +301,13 @@ class Parser:
         self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
         return node
     
-    FuncDef parse_function_at_name(self, Type ret_type, Token def_tok,
-                                   bool is_in_interface=False):
+    FuncDef parse_function_at_name(self, Type ret_type, Token def_tok):
         self.is_function = True
         try:
             (name, args, init, kinds,
              typ, is_error, toks) = self.parse_function_header(ret_type)
             
-            if is_in_interface and isinstance(self.current(), Break):
-                body = Block([])
-                br = self.expect_break()
-                self.set_repr(body, noderepr.BlockRepr(none, br, none, none))
-            else:
-                body = self.parse_block()
+            body = self.parse_block()
             
             # If there was a serious error, we really cannot build a parse tree
             # node.
