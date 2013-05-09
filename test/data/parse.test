@@ -2215,11 +2215,3 @@ MypyFile:1(
   VarDef:1(
     Var(f)
     Type(def (a?<b?>, __builtins__.list?<x.y?>) -> __builtins__.list?<int?>)))
-
-[case testFunctionTypeWithDoubleAngleBrackets]
-a<func<a()>> f
-[out]
-MypyFile:1(
-  VarDef:1(
-    Var(f)
-    Type(a?<def () -> a?>)))
