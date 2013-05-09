@@ -494,13 +494,13 @@ class TypeStrVisitor(TypeVisitor<str>):
     
     Notes:
      - Include implicit bound type variables of callables.
-     - Represent unbound types as Foo? or Foo?<...>.
+     - Represent unbound types as Foo? or Foo?[...].
      - Represent the NoneTyp type as None.
     """
     def visit_unbound_type(self, t):
         s = t.name + '?'
         if t.args != []:
-            s += '<{}>'.format(self.list_str(t.args))
+            s += '[{}]'.format(self.list_str(t.args))
         return s
 
     def visit_type_list(self, t):
@@ -527,7 +527,7 @@ class TypeStrVisitor(TypeVisitor<str>):
         if t.erased:
             s += '*'
         if t.args != []:
-            s += '<{}>'.format(self.list_str(t.args))
+            s += '[{}]'.format(self.list_str(t.args))
         return s
     
     def visit_type_var(self, t):
@@ -593,7 +593,7 @@ class TypeStrVisitor(TypeVisitor<str>):
     
     def visit_tuple_type(self, t):
         s = self.list_str(t.items)
-        return 'tuple<{}>'.format(s)
+        return 'Tuple[{}]'.format(s)
     
     def visit_runtime_type_var(self, t):
         return '<RuntimeTypeVar>'

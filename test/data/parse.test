@@ -486,11 +486,11 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x)
     NameExpr(None)
-    List?<str?>)
+    List?[str?])
   AssignmentStmt:2(
     NameExpr(y)
     NameExpr(None)
-    Dict?<int?, Any?>))
+    Dict?[int?, Any?]))
 
 [case testSignatureWithGenericTypes]
 def f(y: t[Any, x]) -> a[b[c], d]:
@@ -501,7 +501,7 @@ MypyFile:1(
     f
     Args(
       Var(y))
-    def (t?<Any?, x?> y) -> a?<b?<c?>, d?>
+    def (t?[Any?, x?] y) -> a?[b?[c?], d?]
     Block:1(
       PassStmt:2())))
 
@@ -588,7 +588,7 @@ MypyFile:1(
       NameExpr(x)
       NameExpr(y))
     NameExpr(z)
-    tuple<int?, a?<c?>>))
+    Tuple[int?, a?[c?]]))
 
 [case testMultipleVarDef2]
 (xx, z, i) = 1 # type: (a[c], Any, int)
@@ -601,7 +601,7 @@ MypyFile:1(
         NameExpr(z)
         NameExpr(i)))
     IntExpr(1)
-    tuple<a?<c?>, Any?, int?>))
+    Tuple[a?[c?], Any?, int?]))
 
 [case testAnnotateAssignmentViaSelf]
 class A:
@@ -647,7 +647,7 @@ MypyFile:1(
       TupleExpr:2(
         IntExpr(1)
         IntExpr(2)))
-    tuple<foo?, bar?>))
+    Tuple[foo?, bar?]))
 
 [case testWhitespaceAndCommentAnnotation]
 x = 1#type:int
@@ -879,8 +879,8 @@ MypyFile:1(
   TypeDef:3(
     A
     BaseType(
-      B?<T?>
-      C?<Any?, d?<x?>>)
+      B?[T?]
+      C?[Any?, d?[x?]])
     PassStmt:4()))
 
 [case testIsNot]
@@ -992,7 +992,7 @@ def f() -> x.y[a.b.c]: pass
 MypyFile:1(
   FuncDef:1(
     f
-    def () -> x.y?<a.b.c?>
+    def () -> x.y?[a.b.c?]
     Block:1(
       PassStmt:1())))
 
@@ -2140,7 +2140,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
     NameExpr(None)    
-    Function?<<TypeList >, None?>))
+    Function?[<TypeList >, None?]))
 
 [case testFunctionTypeWithArgument]
 f = None # type: Function[[str], int]
@@ -2149,7 +2149,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
     NameExpr(None)    
-    Function?<<TypeList str?>, int?>))
+    Function?[<TypeList str?>, int?]))
 
 [case testFunctionTypeWithTwoArguments]
 f = None # type: Function[[a[b], x.y], List[int]]
@@ -2158,7 +2158,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
     NameExpr(None)    
-    Function?<<TypeList a?<b?>, x.y?>, List?<int?>>))
+    Function?[<TypeList a?[b?], x.y?>, List?[int?]]))
 
 [case testFunctionTypeWithExtraComma]
 def f(x: Function[[str,], int]): pass
@@ -2168,7 +2168,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (Function?<<TypeList str?>, int?> x) -> any
+    def (Function?[<TypeList str?>, int?] x) -> any
     Block:1(
       PassStmt:1())))
 
@@ -2188,7 +2188,7 @@ def f() -> 'A[B, C]': pass
 MypyFile:1(
   FuncDef:1(
     f
-    def () -> A?<B?, C?>
+    def () -> A?[B?, C?]
     Block:1(
       PassStmt:1())))
 
@@ -2198,7 +2198,7 @@ def f() -> A['B', C]: pass
 MypyFile:1(
   FuncDef:1(
     f
-    def () -> A?<B?, C?>
+    def () -> A?[B?, C?]
     Block:1(
       PassStmt:1())))
 
@@ -2208,7 +2208,7 @@ def f() -> '  A  [  X  ]  ': pass
 MypyFile:1(
   FuncDef:1(
     f
-    def () -> A?<X?>
+    def () -> A?[X?]
     Block:1(
       PassStmt:1())))
 
@@ -2248,7 +2248,7 @@ MypyFile:1(
     Foo
     Metaclass(Bar)
     BaseType(
-      foo.bar?<x?>)
+      foo.bar?[x?])
     PassStmt:1()))
 
 [case testNamesThatAreNoLongerKeywords]
