@@ -9,8 +9,7 @@ MypyFile:1(
     A
     PassStmt:1())
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     NameExpr(A [__main__.A])))
 
 [case testMethods]
@@ -30,8 +29,7 @@ MypyFile:1(
         Var(x))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            NameExpr(y* [l]))
+          NameExpr(y* [l])
           NameExpr(x [l]))))
     FuncDef:4(
       f
@@ -39,8 +37,7 @@ MypyFile:1(
         Var(self))
       Block:4(
         AssignmentStmt:5(
-          Lvalues(
-            NameExpr(y* [l]))
+          NameExpr(y* [l])
           NameExpr(self [l]))))))
 
 [case testMemberDefinitionInInit]
@@ -135,8 +132,7 @@ MypyFile:1(
         Var(x))
       Block:5(
         AssignmentStmt:6(
-          Lvalues(
-            NameExpr(self* [l]))
+          NameExpr(self* [l])
           NameExpr(x [l]))
         AssignmentStmt:7(
           Lvalues(
@@ -289,8 +285,7 @@ MypyFile:1(
           IntExpr(1)))
       Else(
         AssignmentStmt:5(
-          Lvalues(
-            NameExpr(x [m]))
+          NameExpr(x [m])
           IntExpr(2))))))
 
 [case testForStatementInClassBody]
@@ -383,6 +378,5 @@ MypyFile:1(
             Var(self))
           Block:4(
             AssignmentStmt:5(
-              Lvalues(
-                NameExpr(z* [l]))
+              NameExpr(z* [l])
               NameExpr(x [l]))))))))

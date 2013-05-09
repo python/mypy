@@ -288,8 +288,7 @@ else:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   IfStmt:2(
     If(
@@ -339,8 +338,7 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(x [__main__.x]))
+    NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:3(
     Lvalues(
@@ -432,8 +430,7 @@ y, x = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
     Lvalues(
@@ -637,8 +634,7 @@ MypyFile:1(
         Var(x)
         Type(builtins.object))
       AssignmentStmt:3(
-        Lvalues(
-          NameExpr(x [__main__.x]))
+        NameExpr(x [__main__.x])
         NameExpr(x [__main__.x])))))
 
 [case testVariableInExceptHandler]
@@ -659,8 +655,7 @@ MypyFile:1(
         Var(x)
         Type(builtins.object))
       AssignmentStmt:5(
-        Lvalues(
-          NameExpr(o [__main__.o]))
+        NameExpr(o [__main__.o])
         NameExpr(x [__main__.x])))))
 
 [case testCallInExceptHandler]
@@ -677,8 +672,7 @@ MypyFile:1(
     NameExpr(o* [__main__.o])
     Block:3(
       AssignmentStmt:4(
-        Lvalues(
-          NameExpr(o [__main__.o]))
+        NameExpr(o [__main__.o])
         CallExpr:4(
           NameExpr(object [builtins.object])
           Args())))))
@@ -706,14 +700,12 @@ MypyFile:1(
     NameExpr(f* [__main__.f])
     Block:5(
       AssignmentStmt:6(
-        Lvalues(
-          NameExpr(f [__main__.f]))
+        NameExpr(f [__main__.f])
         CallExpr:6(
           NameExpr(BaseException [builtins.BaseException])
           Args()))
       AssignmentStmt:7(
-        Lvalues(
-          NameExpr(f [__main__.f]))
+        NameExpr(f [__main__.f])
         CallExpr:7(
           NameExpr(Err [__main__.Err])
           Args()))))

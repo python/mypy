@@ -11,8 +11,7 @@ MypyFile:1(
     Var(x)
     Type(__main__.A))
   AssignmentStmt:3(
-    Lvalues(
-      NameExpr(y* [__main__.y]))
+    NameExpr(y* [__main__.y])
     NameExpr(x [__main__.x])))
 
 [case testLocalVarWithType]
@@ -32,8 +31,7 @@ MypyFile:1(
         Var(x)
         Type(__main__.A))
       AssignmentStmt:4(
-        Lvalues(
-          NameExpr(y* [l]))
+        NameExpr(y* [l])
         NameExpr(x [l])))))
 
 [case testAnyType]
@@ -45,8 +43,7 @@ MypyFile:1(
     Var(x)
     Type(any))
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(y* [__main__.y]))
+    NameExpr(y* [__main__.y])
     NameExpr(x [__main__.x])))
 
 [case testFunctionSig]
@@ -74,8 +71,7 @@ MypyFile:1(
     def (any x, __main__.A y)
     Block:3(
       AssignmentStmt:4(
-        Lvalues(
-          NameExpr(z* [l]))
+        NameExpr(z* [l])
         TupleExpr:4(
           NameExpr(x [l])
           NameExpr(y [l]))))))
@@ -104,8 +100,7 @@ MypyFile:1(
     A
     PassStmt:1())
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   VarDef:3(
     Var(a)
@@ -131,8 +126,7 @@ MypyFile:1(
     Var(b)
     Type(__main__.B))
   AssignmentStmt:4(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     TupleExpr:4(
       NameExpr(a [__main__.a])
       NameExpr(b [__main__.b]))))
@@ -194,8 +188,7 @@ MypyFile:1(
     Var(a)
     Type(__main__.A))
   AssignmentStmt:3(
-    Lvalues(
-      NameExpr(a [__main__.a]))
+    NameExpr(a [__main__.a])
     IntExpr(1))
   FuncDef:4(
     f
@@ -204,8 +197,7 @@ MypyFile:1(
         Var(b)
         Type(__main__.A))
       AssignmentStmt:6(
-        Lvalues(
-          NameExpr(b [l]))
+        NameExpr(b [l])
         IntExpr(1)))))
 
 [case testCast]
@@ -248,8 +240,7 @@ MypyFile:1(
     c
     PassStmt:1())
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(f* [__main__.f]))
+    NameExpr(f* [__main__.f])
     IntExpr(0))
   ExpressionStmt:3(
     CallExpr:3(
@@ -465,8 +456,7 @@ MypyFile:1(
       Block:2(
         PassStmt:2())))
   AssignmentStmt:3(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     NameExpr(f [__main__.f])))
 
 [case testImplicitGenericType]

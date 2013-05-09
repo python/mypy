@@ -15,8 +15,7 @@ x.y
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   ExpressionStmt:2(
     MemberExpr:2(
@@ -81,8 +80,7 @@ not x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   ExpressionStmt:2(
     UnaryExpr:2(
@@ -230,8 +228,7 @@ MypyFile:1(
     Var(a)
     Type(any))
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(a [__main__.a]))
+    NameExpr(a [__main__.a])
     ListComprehension:2(
       GeneratorExpr:2(
         NameExpr(x [l])
