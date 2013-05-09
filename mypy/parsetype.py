@@ -30,13 +30,10 @@ tuple<Type, int> parse_types(Token[] tok, int index):
 class TypeParser:
     Token[] tok
     int ind
-    # Have we consumed only the first '>' of a '>>' token?
-    bool partial_shr
     
     void __init__(self, Token[] tok, int ind):
         self.tok = tok
         self.ind = ind
-        self.partial_shr = False
     
     int index(self):
         return self.ind
@@ -133,25 +130,14 @@ class TypeParser:
         return self.tok[self.ind - 1]
     
     Token expect(self, str string):
-        if string == '>' and self.partial_shr:
-            self.partial_shr = False
-            self.ind += 1
-            return Token('')
-        elif string == '>' and self.tok[self.ind].string == '>>':
-            self.partial_shr = True
-            return self.tok[self.ind]
-        elif self.partial_shr:
-            self.parse_error()
-        elif self.tok[self.ind].string == string:
+        if self.tok[self.ind].string == string:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
     
     Token expect_type(self, type typ):
-        if self.partial_shr:
-            self.parse_error()
-        elif isinstance(self.current_token(), typ):
+        if isinstance(self.current_token(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
@@ -161,10 +147,7 @@ class TypeParser:
         return self.tok[self.ind]
     
     str current_token_str(self):
-        s = self.current_token().string
-        if s == '>>':
-            s = '>'
-        return s
+        return self.current_token().string
     
     void parse_error(self):
         raise TypeParseError(self.tok, self.ind)
