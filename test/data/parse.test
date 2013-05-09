@@ -445,7 +445,7 @@ MypyFile:1(
     f
     Args(
       Var(y))
-    def (str? y) -> int?
+    def (y: str?) -> int?
     Block:1(
       ReturnStmt:2()))
   TypeDef:3(
@@ -456,14 +456,14 @@ MypyFile:1(
         Var(self)
         Var(a)
         Var(b))
-      def (any self, int? a, Any? b) -> x?
+      def (self: any, a: int?, b: Any?) -> x?
       Block:4(
         PassStmt:5()))
     FuncDef:6(
       g
       Args(
         Var(self))
-      def (any self) -> Any?
+      def (self: any) -> Any?
       Block:6(
         PassStmt:7()))))
 
@@ -501,7 +501,7 @@ MypyFile:1(
     f
     Args(
       Var(y))
-    def (t?[Any?, x?] y) -> a?[b?[c?], d?]
+    def (y: t?[Any?, x?]) -> a?[b?[c?], d?]
     Block:1(
       PassStmt:2())))
 
@@ -1738,7 +1738,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (str? x, *int? a) -> any
+    def (x: str?, *a: int?) -> any
     VarArg(
       Var(a))
     Block:1(
@@ -1789,7 +1789,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (X? x, A? **a) -> None?
+    def (x: X?, **a: A?) -> None?
     DictVarArg(
       Var(a))
     Block:1(
@@ -2084,7 +2084,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    def (A? x, *, B? y) -> None?
+    def (x: A?, *, y: B?) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)
@@ -2101,7 +2101,7 @@ MypyFile:1(
     MaxPos(0)
     Args(
       Var(y))
-    def (*A? x, *, B? y) -> None?
+    def (*x: A?, *, y: B?) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)
@@ -2168,7 +2168,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (Function?[<TypeList str?>, int?] x) -> any
+    def (x: Function?[<TypeList str?>, int?]) -> any
     Block:1(
       PassStmt:1())))
 

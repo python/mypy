@@ -556,17 +556,13 @@ class TypeStrVisitor(TypeVisitor<str>):
                 bare_asterisk = True
             if t.arg_kinds[i] == mypy.nodes.ARG_STAR:
                 s += '*'
-            s += str(t.arg_types[i])
             if t.arg_kinds[i] == mypy.nodes.ARG_STAR2:
                 s += '**'
             if t.arg_names[i]:
-                if s.endswith('**'):
-                    s = s[:-2] + ' **'
-                else:
-                    s += ' '
-                s += t.arg_names[i]
+                s += t.arg_names[i] + ': '
+            s += str(t.arg_types[i])
             if t.arg_kinds[i] == mypy.nodes.ARG_OPT:
-                s += '='
+                s += ' ='
         
         s = '({})'.format(s)
         
