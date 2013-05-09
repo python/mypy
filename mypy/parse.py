@@ -24,8 +24,7 @@ from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, TypeVars, Callable, Any, UnboundType
-from mypy.parsetype import (parse_type, parse_types, parse_type_args,
-                            TypeParseError)
+from mypy.parsetype import parse_type, parse_types, TypeParseError
 
 
 precedence = {

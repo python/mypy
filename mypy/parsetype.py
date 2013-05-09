@@ -31,17 +31,6 @@ tuple<Type, int> parse_types(Token[] tok, int index):
     return p.parse_types(), p.index()
 
 
-tuple<Type[], Token, Token, \
-      Token[], int> parse_type_args(Token[] tok, int index):
-    """Parse type arguments within angle brackets (<...>).
-
-    Return types, '<' token, '>' token, comma tokens, token index after '>').
-    """
-    p = TypeParser(tok, index)
-    types, lparen, rparen, commas = p.parse_type_args()
-    return types, lparen, rparen, commas, p.index()
-
-
 class TypeParser:
     Token[] tok
     int ind
@@ -101,36 +90,6 @@ class TypeParser:
             commas.append(self.skip())
         rbracket = self.expect(']')
         return TypeList(items)
-    
-    TypeVarDef parse_type_variable(self, int n, bool is_func):
-        t = self.expect_type(Name)
-        
-        line = t.line
-        name = t.string
-        
-        is_tok = none
-        Type bound = None
-        if self.current_token_str() == 'is':
-            is_tok = self.skip()
-            bound = self.parse_type()
-        
-        if is_func:
-            n = -n
-        
-        return TypeVarDef(name, n, bound, line, TypeVarDefRepr(t, is_tok))
-    
-    tuple<Type[], Token, Token, Token[]> parse_type_args(self):
-        """Parse type arguments within angle brackets (<...>)."""
-        langle = self.expect('<')
-        Token[] commas = []
-        Type[] types = []
-        while True:
-            types.append(self.parse_type())
-            if self.current_token_str() != ',':
-                break
-            commas.append(self.skip())
-        rangle = self.expect('>')
-        return types, langle, rangle, commas
     
     Type parse_any_type(self):
         """Parse 'any' type (or list of ... of any)."""
