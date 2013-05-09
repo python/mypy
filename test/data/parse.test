@@ -2208,3 +2208,11 @@ MypyFile:1(
     BaseType(
       foo.bar?<x?>)
     PassStmt:1()))
+
+[case testNamesThatAreNoLongerKeywords]
+any = interface
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(any)
+    NameExpr(interface)))

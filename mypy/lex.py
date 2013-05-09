@@ -142,9 +142,9 @@ Token[] lex(str string, int first_line=1):
 
 # Reserved words (not including operators)
 keywords = set([
-    'any', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif',
+    'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif',
     'else', 'except', 'finally', 'from', 'for', 'global', 'if', 'import',
-    'interface', 'lambda', 'pass', 'raise', 'return', 'try', 'while', 'with',
+    'lambda', 'pass', 'raise', 'return', 'try', 'while', 'with',
     'yield'])
 
 # Alphabetical operators (reserved words)
