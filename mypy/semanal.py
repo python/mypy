@@ -1,6 +1,10 @@
-"""The semantic analyzer binds names to definitions and does various other
-simple consistency checks. Semantic analysis is first analysis pass after
-parsing."""
+"""The semantic analyzer.
+
+Bind names to definitions and do various other simple consistency
+checks. Semantic analysis is the first analysis pass after parsing,
+and it is subdivided into two phases (implemented in FirstPass and
+SemanticAnalyzer).
+"""
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -30,6 +34,8 @@ class SemanticAnalyzer(NodeVisitor):
     The analyzer binds names and does various consistency checks for a
     parse tree. Note that type checking is performed as a separate
     pass.
+
+    This is the second phase of semantic analysis.
     """
     # Library search paths
     str[] lib_path
@@ -57,8 +63,10 @@ class SemanticAnalyzer(NodeVisitor):
     Errors errors       # Keep track of generated errors
     
     void __init__(self, str[] lib_path, Errors errors):
-        """Create semantic analyzer. Use lib_path to search for
-        modules, and report compile errors using the Errors instance.
+        """Construct semantic analyzer.
+
+        Use lib_path to search for modules, and report analysis errors
+        using the Errors instance.
         """
         self.locals = [None]
         self.imports = set()
@@ -72,13 +80,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.modules = {}
         self.is_init_method = False
         self.is_function = False
-    
-    #
-    # Second pass of semantic analysis
-    #
-    
-    # Do the bulk of semantic analysis in this second and final semantic
-    # analysis pass (other than type checking).
     
     void visit_file(self, MypyFile file_node, str fnam):
         self.errors.set_file(fnam)
@@ -785,7 +786,7 @@ class SemanticAnalyzer(NodeVisitor):
 
 
 class FirstPass(NodeVisitor):
-    """First pass of semantic analysis"""
+    """First phase of semantic analysis"""
     
     void __init__(self, SemanticAnalyzer sem):
         self.sem = sem
