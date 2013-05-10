@@ -1,4 +1,25 @@
 [case testVarWithType]
+import typing
+class A: pass
+x = A() # type: A
+y = x
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  TypeDef:2(
+    A
+    PassStmt:2())
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    CallExpr:3(
+      NameExpr(A [__main__.A])
+      Args())
+    __main__.A)
+  AssignmentStmt:4(
+    NameExpr(y* [__main__.y])
+    NameExpr(x [__main__.x])))
+
+[case testInitializeToUndefined]
 from typing import Undefined
 
 class A: pass

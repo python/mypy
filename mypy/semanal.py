@@ -351,6 +351,8 @@ class SemanticAnalyzer(NodeVisitor):
         for lval in s.lvalues:
             self.analyse_lvalue(lval)
         s.rvalue.accept(self)
+        s.type = self.anal_type(s.type)
+        # TODO store type into node
     
     void analyse_lvalue(self, Node lval, bool nested=False,
                         bool add_defs=False):
