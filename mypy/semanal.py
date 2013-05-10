@@ -194,6 +194,19 @@ class SemanticAnalyzer(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
+        self.setup_type_def_analysis(defn)
+        self.analyze_base_classes(defn)
+
+        # Analyze class body.
+        defn.defs.accept(self)
+        
+        # Restore analyzer state.
+        self.block_depth.pop()
+        self.locals.pop()
+        self.type, self.class_tvars = self.type_stack.pop()
+
+    void setup_type_def_analysis(self, TypeDef defn):
+        """Prepare for the analysis of a class definition."""
         if not defn.info:
             defn.info = TypeInfo(SymbolTable(), defn)
             defn.info._fullname = defn.info.name()
@@ -202,11 +215,15 @@ class SemanticAnalyzer(NodeVisitor):
             if self.is_func_scope():
                 kind = LDEF
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
-        self.type_stack.append((self.type, self.class_tvars))
+        # Remember previous active class and type variables.
+        self.type_stack.append((self.type, self.class_tvars))        
         self.locals.append(None) # Add class scope
         self.block_depth.append(-1) # The class body increments this to 0
         self.type = defn.info
         self.add_class_type_variables_to_symbol_table(self.type)
+
+    void analyze_base_classes(self, TypeDef defn):
+        """Analyze and set up base classes."""        
         has_base_class = False
         for i in range(len(defn.base_types)):
             defn.base_types[i] = self.anal_type(defn.base_types[i])
@@ -227,10 +244,6 @@ class SemanticAnalyzer(NodeVisitor):
                 if isinstance(t, Instance):
                     defn.info.add_interface(((Instance)t).type)
         self.verify_base_classes(defn)
-        defn.defs.accept(self)
-        self.block_depth.pop()
-        self.locals.pop()
-        self.type, self.class_tvars = self.type_stack.pop()
 
     void verify_base_classes(self, TypeDef defn):
         base_classes = <str> []
