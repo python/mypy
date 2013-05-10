@@ -9,7 +9,7 @@ from mypy.util import dump_tagged, short_type
 
 
 interface Context:
-    # Supertype for objects that are valid as error message locations.
+    """Base type for objects that are valid as error message locations."""
     int get_line(self)
 
 
@@ -17,6 +17,8 @@ import mypy.types
 
 
 # Variable kind constants
+# TODO rename to use more descriptive names
+
 int LDEF = 0
 int GDEF = 1
 int MDEF = 2
