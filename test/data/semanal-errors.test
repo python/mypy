@@ -180,8 +180,10 @@ def f() -> m.c: pass
 def g() -> n.c: pass
 [file m.py]
 [out]
-main, line 2: Name 'm.c' is not defined
-main, line 3: Name 'n' is not defined
+main: In function "f":
+main, line 3: Name 'm.c' is not defined
+main: In function "g":
+main, line 4: Name 'n' is not defined
 
 [case testMissingPackage]
 import typing
