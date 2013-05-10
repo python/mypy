@@ -481,9 +481,9 @@ import x # ok, since we may import multiple submodules of a package
 [file x.py]
 a = 1
 [out]
-main, line 1: Name 'a' already defined
+main, line 2: Name 'a' already defined
 main: In function "f":
-main, line 4: Name 'a' already defined
+main, line 5: Name 'a' already defined
 
 [case testScopeOfNestedClass]
 import typing
