@@ -320,35 +320,30 @@ MypyFile:1(
     NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:3(
-    Lvalues(
-      MemberExpr:3(
-        NameExpr(x [__main__.x])
-        m))
+    MemberExpr:3(
+      NameExpr(x [__main__.x])
+      m)
     IntExpr(1))
   AssignmentStmt:4(
-    Lvalues(
-      IndexExpr:4(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    IndexExpr:4(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:5(
-    Lvalues(
-      TupleExpr:5(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    TupleExpr:5(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:6(
-    Lvalues(
-      ListExpr:6(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    ListExpr:6(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:7(
-    Lvalues(
-      ParenExpr:7(
-        TupleExpr:7(
-          NameExpr(x [__main__.x])
-          NameExpr(y [__main__.y]))))
+    ParenExpr:7(
+      TupleExpr:7(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))
     IntExpr(1)))
 
 [case testMultipleDefinition]
@@ -357,16 +352,14 @@ x, y = 2
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      TupleExpr:1(
-        NameExpr(x* [__main__.x])
-        NameExpr(y* [__main__.y])))
+    TupleExpr:1(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      TupleExpr:2(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    TupleExpr:2(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(2)))
 
 [case testComplexDefinitions]
@@ -375,15 +368,13 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      ParenExpr:1(
-        NameExpr(x* [__main__.x])))
+    ParenExpr:1(
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      ParenExpr:2(
-        ListExpr:2(
-          NameExpr(y* [__main__.y]))))
+    ParenExpr:2(
+      ListExpr:2(
+        NameExpr(y* [__main__.y])))
     IntExpr(2)))
 
 [case testLocalComplexDefinition]
@@ -396,9 +387,8 @@ MypyFile:1(
     f
     Block:1(
       AssignmentStmt:2(
-        Lvalues(
-          ParenExpr:2(
-            NameExpr(x* [l])))
+        ParenExpr:2(
+          NameExpr(x* [l]))
         IntExpr(1))
       ExpressionStmt:3(
         NameExpr(x [l])))))
@@ -412,10 +402,9 @@ MypyFile:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      TupleExpr:2(
-        NameExpr(y* [__main__.y])
-        NameExpr(x [__main__.x])))
+    TupleExpr:2(
+      NameExpr(y* [__main__.y])
+      NameExpr(x [__main__.x]))
     IntExpr(1)))
 
 [case testIndexedDel]
@@ -709,10 +698,9 @@ MypyFile:1(
     Var(o)
     Type(builtins.object))
   AssignmentStmt:2(
-    Lvalues(
-      TupleExpr:2(
-        NameExpr(x* [__main__.x])
-        NameExpr(o [__main__.o])))
+    TupleExpr:2(
+      NameExpr(x* [__main__.x])
+      NameExpr(o [__main__.o]))
     TupleExpr:2(
       NameExpr(o [__main__.o])
       NameExpr(o [__main__.o]))))

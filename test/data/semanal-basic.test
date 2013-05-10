@@ -253,10 +253,9 @@ def f():
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      TupleExpr:1(
-        NameExpr(x* [__main__.x])
-        NameExpr(y* [__main__.y])))
+    TupleExpr:1(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     TupleExpr:1(
       NameExpr(None [builtins.None])
       NameExpr(None [builtins.None])))

@@ -55,16 +55,14 @@ MypyFile:1(
         Var(self))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            MemberExpr:3(
-              NameExpr(self [l])
-              x*))
+          MemberExpr:3(
+            NameExpr(self [l])
+            x*)
           IntExpr(1))
         AssignmentStmt:4(
-          Lvalues(
-            MemberExpr:4(
-              NameExpr(self [l])
-              y*))
+          MemberExpr:4(
+            NameExpr(self [l])
+            y*)
           IntExpr(2))))))
 
 [case testMemberAssignmentViaSelfOutsideInit]
@@ -83,10 +81,9 @@ MypyFile:1(
         Var(self))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            MemberExpr:3(
-              NameExpr(self [l])
-              x))
+          MemberExpr:3(
+            NameExpr(self [l])
+            x)
           IntExpr(1)))))
   FuncDef:4(
     __init__
@@ -94,10 +91,9 @@ MypyFile:1(
       Var(self))
     Block:4(
       AssignmentStmt:5(
-        Lvalues(
-          MemberExpr:5(
-            NameExpr(self [l])
-            y))
+        MemberExpr:5(
+          NameExpr(self [l])
+          y)
         IntExpr(1)))))
 
 [case testMemberAssignmentNotViaSelf]
@@ -119,10 +115,9 @@ MypyFile:1(
         Var(self))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            MemberExpr:3(
-              NameExpr(self [l])
-              y))
+          MemberExpr:3(
+            NameExpr(self [l])
+            y)
           IntExpr(1)))))
   TypeDef:4(
     B
@@ -135,10 +130,9 @@ MypyFile:1(
           NameExpr(self* [l])
           NameExpr(x [l]))
         AssignmentStmt:7(
-          Lvalues(
-            MemberExpr:7(
-              NameExpr(self [l])
-              z))
+          MemberExpr:7(
+            NameExpr(self [l])
+            z)
           IntExpr(1))))))
 
 [case testNonStandardNameForSelfAndInit]
@@ -155,10 +149,9 @@ MypyFile:1(
         Var(x))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            MemberExpr:3(
-              NameExpr(x [l])
-              y*))
+          MemberExpr:3(
+            NameExpr(x [l])
+            y*)
           IntExpr(1))))))
 
 [case testAssignmentAfterAttributeInit]
@@ -176,16 +169,14 @@ MypyFile:1(
         Var(self))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            MemberExpr:3(
-              NameExpr(self [l])
-              x*))
+          MemberExpr:3(
+            NameExpr(self [l])
+            x*)
           IntExpr(1))
         AssignmentStmt:4(
-          Lvalues(
-            MemberExpr:4(
-              NameExpr(self [l])
-              x))
+          MemberExpr:4(
+            NameExpr(self [l])
+            x)
           IntExpr(2))))))
 
 [case testOverloadedMethod]
@@ -229,8 +220,7 @@ MypyFile:1(
   TypeDef:1(
     A
     AssignmentStmt:2(
-      Lvalues(
-        NameExpr(a*))
+      NameExpr(a*)
       NameExpr(object [builtins.object]))))
 
 [case testDataAttributeRefInClassBody]
@@ -242,12 +232,10 @@ MypyFile:1(
   TypeDef:1(
     A
     AssignmentStmt:2(
-      Lvalues(
-        NameExpr(x*))
+      NameExpr(x*)
       IntExpr(1))
     AssignmentStmt:3(
-      Lvalues(
-        NameExpr(y*))
+      NameExpr(y*)
       NameExpr(x [m]))))
 
 [case testMethodRefInClassBody]
@@ -265,8 +253,7 @@ MypyFile:1(
       Block:2(
         PassStmt:2()))
     AssignmentStmt:3(
-      Lvalues(
-        NameExpr(g*))
+      NameExpr(g*)
       NameExpr(f [m]))))
 
 [case testIfStatementInClassBody]
@@ -284,8 +271,7 @@ MypyFile:1(
         NameExpr(A [__main__.A]))
       Then(
         AssignmentStmt:3(
-          Lvalues(
-            NameExpr(x*))
+          NameExpr(x*)
           IntExpr(1)))
       Else(
         AssignmentStmt:5(
@@ -307,8 +293,7 @@ MypyFile:1(
         IntExpr(2))
       Block:2(
         AssignmentStmt:3(
-          Lvalues(
-            NameExpr(y*))
+          NameExpr(y*)
           NameExpr(x [m]))))))
 
 [case testReferenceToClassWithinFunction]
@@ -375,8 +360,7 @@ MypyFile:1(
       TypeDef:2(
         A
         AssignmentStmt:3(
-          Lvalues(
-            NameExpr(y*))
+          NameExpr(y*)
           NameExpr(x [l]))
         FuncDef:4(
           g
