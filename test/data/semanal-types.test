@@ -41,23 +41,24 @@ MypyFile:1(
 
 [case testLocalVarWithType]
 from typing import Undefined
-
 class A: pass
 def f():
   x = Undefined # type: A
   y = x
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [Undefined : Undefined])
+  TypeDef:2(
     A
-    PassStmt:1())
-  FuncDef:2(
+    PassStmt:2())
+  FuncDef:3(
     f
-    Block:2(
-      VarDef:3(
-        Var(x)
-        Type(__main__.A))
+    Block:3(
       AssignmentStmt:4(
+        NameExpr(x* [l])
+        NameExpr(Undefined [typing.Undefined])
+        __main__.A)
+      AssignmentStmt:5(
         NameExpr(y* [l])
         NameExpr(x [l])))))
 
