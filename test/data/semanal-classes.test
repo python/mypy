@@ -179,7 +179,7 @@ MypyFile:1(
             x)
           IntExpr(2))))))
 
-[case testOverloadedMethod]
+[case testOverloadedMethod-skip]
 from typing import overload
 
 class A:
