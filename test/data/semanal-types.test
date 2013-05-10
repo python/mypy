@@ -63,15 +63,16 @@ MypyFile:1(
 
 [case testAnyType]
 from typing import Undefined, Any
-
 x = Undefined # type: Any
 y = x
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(any))
+  ImportFrom:1(typing, [Undefined : Undefined, Any : Any])
   AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    Any)
+  AssignmentStmt:3(
     NameExpr(y* [__main__.y])
     NameExpr(x [__main__.x])))
 

@@ -29,6 +29,8 @@ class TypeAnalyser(TypeVisitor<Type>):
                                TypeVarRepr(t.repr.components[0]))
             elif sym.node.fullname() == 'builtins.None':
                 return Void()
+            elif sym.node.fullname() == 'typing.Any':
+                return Any()
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname()
                 if name is None:
