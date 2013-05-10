@@ -220,15 +220,13 @@ MypyFile:1(
             NameExpr(a [l])))))))
 
 [case testListComprehensionWithCondition]
-from typing import Undefined, Any
-
-a = Undefined # type: Any
-a=[x for x in a if x]
+a = 0
+a = [x for x in a if x]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(a)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
   AssignmentStmt:2(
     NameExpr(a [__main__.a])
     ListComprehension:2(
@@ -239,15 +237,13 @@ MypyFile:1(
         NameExpr(x [l])))))
 
 [case testGeneratorExpression]
-from typing import Undefined, Any
-
-a = Undefined # type: Any
+a = 0
 x for x in a
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(a)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
   ExpressionStmt:2(
     GeneratorExpr:2(
       NameExpr(x [l])
@@ -255,15 +251,13 @@ MypyFile:1(
       NameExpr(a [__main__.a]))))
 
 [case testLambda]
-from typing import Undefined, Any
-
-x = Undefined # type: Any
+x = 0
 lambda: x
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(x* [__main__.x])
+    IntExpr(0))
   ExpressionStmt:2(
     FuncExpr:2(
       Block:2(
