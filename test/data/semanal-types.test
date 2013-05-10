@@ -125,27 +125,30 @@ MypyFile:1(
 
 [case testMultipleVarDef]
 from typing import Undefined
-
 class A: pass
 class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 x = a, b
 [out]
 MypyFile:1(
-  TypeDef:1(
-    A
-    PassStmt:1())
+  ImportFrom:1(typing, [Undefined : Undefined])
   TypeDef:2(
-    B
+    A
     PassStmt:2())
-  VarDef:3(
-    Var(a)
-    Type(__main__.A)
-    Var(b)
-    Type(__main__.B))
+  TypeDef:3(
+    B
+    PassStmt:3())
   AssignmentStmt:4(
-    NameExpr(x* [__main__.x])
     TupleExpr:4(
+      NameExpr(a* [__main__.a])
+      NameExpr(b* [__main__.b]))
+    TupleExpr:4(
+      NameExpr(Undefined [typing.Undefined])
+      NameExpr(Undefined [typing.Undefined]))
+    Tuple[__main__.A, __main__.B])
+  AssignmentStmt:5(
+    NameExpr(x* [__main__.x])
+    TupleExpr:5(
       NameExpr(a [__main__.a])
       NameExpr(b [__main__.b]))))
 
