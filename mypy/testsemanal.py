@@ -48,6 +48,7 @@ def test_semanal(testcase):
             # path.
             # TODO the test is not reliable
             if (not f.path.endswith(os.sep + 'builtins.py')
+                    and not f.path.endswith(os.sep + 'typing.py')
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
