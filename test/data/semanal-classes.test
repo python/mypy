@@ -326,11 +326,9 @@ MypyFile:1(
       NameExpr(B [m]))))
 
 [case testDeclarationReferenceToNestedClass]
-from typing import Undefined
-
 def f() -> None:
     class A: pass
-    x = Undefined # type: A
+    x = None # type: A
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -340,9 +338,10 @@ MypyFile:1(
       TypeDef:2(
         A
         PassStmt:2())
-      VarDef:3(
-        Var(x)
-        Type(A)))))
+      AssignmentStmt:3(
+        NameExpr(x* [l])
+        NameExpr(None [builtins.None])
+        A))))
 
 [case testAccessToLocalInOuterScopeWithinNestedClass]
 def f(x):
