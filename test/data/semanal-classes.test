@@ -189,9 +189,13 @@ MypyFile:1(
           IntExpr(2))))))
 
 [case testOverloadedMethod]
+from typing import overload
+
 class A:
-  void f(self): self
-  void f(self, A x): self
+  @overload
+  def f(self) -> None: self
+  @overload
+  def f(self, x: 'A') -> None: self
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -337,9 +341,11 @@ MypyFile:1(
       NameExpr(B [m]))))
 
 [case testDeclarationReferenceToNestedClass]
-void f():
+from typing import Undefined
+
+def f() -> None:
     class A: pass
-    A x
+    x = Undefined # type: A
 [out]
 MypyFile:1(
   FuncDef:1(

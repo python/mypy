@@ -21,7 +21,8 @@ MypyFile:1(
 
 [case testImportedNameInType]
 import m
-m.c x
+from typing import Undefined
+x = Undefined # type: m.c
 [file m.py]
 class c: pass
 [out]
@@ -55,7 +56,8 @@ MypyFile:1(
 
 [case testImportFromType]
 from m import c
-c x
+from typing import Undefined
+x = Undefined # type: c
 [file m.py]
 class c: pass
 [out]
@@ -161,7 +163,8 @@ MypyFile:1(
 
 [case testAccessingImportedNameInType]
 from _m import c
-c x
+from typing import Undefined
+x = Undefined # type: c
 [file _m.py]
 from _n import c
 [file _n.py]
@@ -175,7 +178,8 @@ MypyFile:1(
 
 [case testAccessingImportedNameInType2]
 import _m
-_m.c x
+from typing import Undefined
+x = Undefined # type: _m.c
 [file _m.py]
 from _n import c
 [file _n.py]
@@ -221,7 +225,8 @@ MypyFile:1(
 
 [case testAccessTypeViaDoubleIndirection]
 from _m import c
-c a
+from typing import Undefined
+a = Undefined # type: c
 [file _m.py]
 from _n import c
 [file _n.py]
@@ -235,7 +240,8 @@ MypyFile:1(
 
 [case testAccessTypeViaDoubleIndirection2]
 import _m
-_m.c a
+from typing import Undefined
+a = Undefined # type: _m.c
 [file _m.py]
 from _n import c
 [file _n.py]
@@ -280,8 +286,9 @@ MypyFile:1(
 
 [case testImportAsteriskAndImportedNamesInTypes]
 from _m import *
-n_.c x
-d y
+from typing import Undefined
+x = Undefined # type: n_.c
+y = Undefined # type: d
 [file _m.py]
 import n_
 from n_ import d
@@ -365,7 +372,8 @@ MypyFile:1(
 
 [case testSubmodulesAndTypes]
 import m._n
-m._n.c x
+from typing import Undefined
+x = Undefined # type: m._n.c
 [file m/__init__.py]
 [file m/_n.py]
 class c: pass
@@ -378,7 +386,8 @@ MypyFile:1(
 
 [case testSubmodulesAndTypes]
 from m._n import c
-c x
+from typing import Undefined
+x = Undefined # type: c
 [file m/__init__.py]
 [file m/_n.py]
 class c: pass
@@ -461,7 +470,9 @@ MypyFile:1(
       x [m._k.x])))
 
 [case testBuiltinsUsingModule]
-__builtins__.object o
+from typing import Undefined
+
+o = Undefined # type: __builtins__.object
 [out]
 MypyFile:1(
   VarDef:1(
@@ -530,7 +541,7 @@ MypyFile:1(
           y [_x.y])))))
 
 [case testImportInFunction]
-void f():
+def f() -> None:
     import _x
     _x.y
 [file _x.py]

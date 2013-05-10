@@ -1,6 +1,8 @@
 [case testVarWithType]
+from typing import Undefined
+
 class A: pass
-A x
+x = Undefined # type: A
 y = x
 [out]
 MypyFile:1(
@@ -15,9 +17,11 @@ MypyFile:1(
     NameExpr(x [__main__.x])))
 
 [case testLocalVarWithType]
+from typing import Undefined
+
 class A: pass
 def f():
-  A x
+  x = Undefined # type: A
   y = x
 [out]
 MypyFile:1(
@@ -35,7 +39,9 @@ MypyFile:1(
         NameExpr(x [l])))))
 
 [case testAnyType]
-any x
+from typing import Undefined, Any
+
+x = Undefined # type: Any
 y = x
 [out]
 MypyFile:1(
@@ -47,9 +53,11 @@ MypyFile:1(
     NameExpr(x [__main__.x])))
 
 [case testFunctionSig]
+from typing import Any
+
 class A: pass
-A f(A x): pass
-void g(any x, A y):
+def f(x: A) -> A: pass
+def g(x: Any, y: A) -> None:
   z = x, y
 [out]
 MypyFile:1(
@@ -93,7 +101,7 @@ MypyFile:1(
 [case testVarDefWithInit]
 class A: pass
 x = 1
-A a = x
+a = x # type: A
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -108,9 +116,11 @@ MypyFile:1(
     NameExpr(x [__main__.x])))
 
 [case testMultipleVarDef]
+from typing import Undefined
+
 class A: pass
 class B: pass
-A a, B b
+a, b = Undefined, Undefined # type: (A, B)
 x = a, b
 [out]
 MypyFile:1(
@@ -132,10 +142,14 @@ MypyFile:1(
       NameExpr(b [__main__.b]))))
 
 [case testGenericType]
-class A<t>: pass
+from typing import typevar, Generic, Undefined, Any
+
+t = typevar('t')
+
+class A(Generic[t]): pass
 class B: pass
-A<B> x
-A<any> y
+x = Undefined # type: A[B]
+y = Undefined # type: A[Any]
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -154,9 +168,14 @@ MypyFile:1(
     Type(__main__.A<any>)))
 
 [case testGenericType2]
-class A<t, s>: pass
+from typing import typevar, Generic, Undefined, Any
+
+t = typevar('t')
+s = typevar('s')
+
+class A(Generic[t, s]): pass
 class B: pass
-A<B, any> x
+x = Undefined # type: A[B, Any]
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -173,11 +192,13 @@ MypyFile:1(
     Type(__main__.A<__main__.B, any>)))
 
 [case testAssignmentAfterDef]
+from typing import Undefined
+
 class A: pass
-A a
+a = Undefined # type: A
 a = 1
 def f():
-  A b
+  b = Undefined # type: A
   b = 1
 [out]
 MypyFile:1(
@@ -201,11 +222,15 @@ MypyFile:1(
         IntExpr(1)))))
 
 [case testCast]
+from typing import typevar, Generic, Any, cast
+
+t = typevar('t')
+
 class c: pass
-class d<t>: pass
-(any)1
-(c)1
-(d<c>)c
+class d(Generic[t]): pass
+Any(1)
+cast(c, 1)
+cast(d[c], c)
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -230,8 +255,12 @@ MypyFile:1(
       __main__.d<__main__.c>)))
 
 [case testFunctionTvar]
-void f<t>(t x):
-  t y
+from typing import typevar, Undefined
+
+t = typevar('t')
+
+def f(x: t) -> None:
+  y = Undefined # type: t
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -245,7 +274,12 @@ MypyFile:1(
         Type(t`-1)))))
 
 [case testFunctionTvar2]
-void f<t, u>(t x, u y): pass
+from typing import typevar
+
+t = typevar('t')
+u = typevar('u')
+
+def f(x: t, y: u) -> None: pass
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -259,7 +293,7 @@ MypyFile:1(
 
 [case testSelfType]
 class A:
-  void f(self, object o): pass
+  def f(self, o: object) -> None: pass
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -274,8 +308,12 @@ MypyFile:1(
         PassStmt:2()))))
 
 [case testClassTvar]
-class c<t>:
-  t f(self): pass
+from typing import typevar, Generic
+
+t = typevar('t')
+
+class c(Generic[t]):
+  def f(self) -> t: pass
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -291,8 +329,13 @@ MypyFile:1(
         PassStmt:2()))))
 
 [case testClassTvar2]
-class c<t, s>:
-  t f(self, s x): pass
+from typing import typevar, Generic
+
+t = typevar('t')
+s = typevar('s')
+
+class c(Generic[t, s]):
+  def f(self, x: s) -> t: pass
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -310,8 +353,12 @@ MypyFile:1(
         PassStmt:2()))))
 
 [case testGenericBaseClass]
-class d<t>: pass
-class c<t>(d<t>): pass
+from typing import typevar, Generic
+
+t = typevar('t')
+
+class d(Generic[t]): pass
+class c(d[t], Generic[t]): pass
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -328,9 +375,11 @@ MypyFile:1(
     PassStmt:2()))
 
 [case testTupleType]
-tuple t
-tuple<object> t1
-tuple<any, object> t2
+from typing import Undefined, Tuple, Any
+
+t = Undefined # type: tuple
+t1 = Undefined # type: Tuple[object]
+t2 = Undefined # type: Tuple[Any, object]
 [builtins fixtures/tuple.py]
 [out]
 MypyFile:1(
@@ -345,8 +394,10 @@ MypyFile:1(
     Type(tuple<any, builtins.object>)))
 
 [case testFunctionTypes]
-func<A(object, type)> f
-func<void()> g
+from typing import Undefined, Function
+
+f = Undefined # type: Function[[object, type], A]
+g = Undefined # type: Function[[], None]
 class A: pass
 [out]
 MypyFile:1(
@@ -361,8 +412,12 @@ MypyFile:1(
     PassStmt:3()))
 
 [case testOverloadedFunction]
-any f(object o): o
-object f(any a): a
+from typing import overload, Any
+
+@overload
+def f(o: object) -> Any: o
+@overload
+def f(a: Any) -> object: a
 [out]
 MypyFile:1(
   OverloadedFuncDef:1(
@@ -385,8 +440,12 @@ MypyFile:1(
           NameExpr(a [l]))))))
 
 [case testReferenceToOverloadedFunction]
-void f(): pass
-void f(any x): pass
+from typing import overload, Any
+
+@overload
+def f() -> None: pass
+@overload
+def f(x: Any) -> None: pass
 x = f
 [out]
 MypyFile:1(
@@ -409,8 +468,13 @@ MypyFile:1(
     NameExpr(f [__main__.f])))
 
 [case testImplicitGenericType]
-class A<t, s>: pass
-A x
+from typing import typevar, Generic, Undefined
+
+t = typevar('t')
+s = typevar('s')
+
+class A(Generic[t, s]): pass
+x = Undefined # type: A
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -424,8 +488,13 @@ MypyFile:1(
     Type(__main__.A<any, any>)))
 
 [case testImplicitGenericBaseClass]
-class A<t>(B): pass
-class B<s>: pass
+from typing import typevar, Generic
+
+t = typevar('t')
+s = typevar('s')
+
+class A('B', Generic[t]): pass
+class B(Generic[s]): pass
 [out]
 MypyFile:1(
   TypeDef:1(

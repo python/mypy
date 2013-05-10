@@ -601,8 +601,10 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testVariableInBlock]
+from typing import Undefined
+
 while object:
-  object x 
+  x = Undefined # type: object 
   x = x
 [out]
 MypyFile:1(
@@ -617,10 +619,12 @@ MypyFile:1(
         NameExpr(x [__main__.x])))))
 
 [case testVariableInExceptHandler]
+from typing import Undefined
+
 try:
   pass
 except object as o:
-  object x
+  x = Undefined # type: object
   o = x
 [out]
 MypyFile:1(
@@ -695,7 +699,9 @@ MypyFile:1(
     PassStmt:8()))
 
 [case testMultipleAssignmentWithPartialNewDef]
-object o
+from typing import Undefined
+
+o = Undefined # type: object
 x, o = o, o
 [out]
 MypyFile:1(
@@ -736,7 +742,7 @@ MypyFile:1(
             Args()))))))
 
 [case testTryWithinFunction]
-void f():
+def f() -> None:
     try:
         pass
     except object as o:
@@ -756,7 +762,7 @@ MypyFile:1(
           PassStmt:5())))))
 
 [case testReuseExceptionVariable]
-void f():
+def f() -> None:
     try:
         pass
     except object as o:

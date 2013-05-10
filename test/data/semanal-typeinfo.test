@@ -57,7 +57,10 @@ TypeInfoMap(
     Names()))
 
 [case testClassWithInterface]
-interface i: pass
+from abc import abstractmethod, ABCMeta
+import typing
+
+class i(metaclass=ABCMeta): pass
 class c(i): pass
 [out]
 TypeInfoMap(

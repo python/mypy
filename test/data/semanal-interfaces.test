@@ -1,7 +1,12 @@
 [case testInterface]
-interface A:
-  A g(self)
-  A f(self): return self
+from abc import abstractmethod, ABCMeta
+import typing
+
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self) -> 'A': pass
+  @abstractmethod
+  def f(self) -> 'A': return self
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -23,8 +28,11 @@ MypyFile:1(
           NameExpr(self [l]))))))
 
 [case testSuperinterface]
-interface B: pass
-interface A(B): pass
+from abc import abstractmethod, ABCMeta
+import typing
+
+class B(metaclass=ABCMeta): pass
+class A(B): pass
 [out]
 MypyFile:1(
   TypeDef:1(
@@ -39,8 +47,11 @@ MypyFile:1(
     PassStmt:2()))
 
 [case testClassImplementingInterface]
-interface A: pass
-interface B: pass
+from abc import abstractmethod, ABCMeta
+import typing
+
+class A(metaclass=ABCMeta): pass
+class B(metaclass=ABCMeta): pass
 class C(A, B): pass
 [out]
 MypyFile:1(
@@ -61,9 +72,13 @@ MypyFile:1(
     PassStmt:3()))
 
 [case testInterfaceWithDocString]
-interface A:
+from abc import abstractmethod, ABCMeta
+import typing
+
+class A(metaclass=ABCMeta):
     "foo"
-    A f(self)
+    @abstractmethod
+    def f(self) -> 'A': pass
 [out]
 MypyFile:1(
   TypeDef:1(

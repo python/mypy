@@ -183,7 +183,9 @@ MypyFile:1(
       NameExpr(x [__main__.x]))))
 
 [case testListComprehension]
-any a
+from typing import Undefined, Any
+
+a = Undefined # type: Any
 ([x + 1 for x in a])
 [out]
 MypyFile:1(
@@ -202,7 +204,7 @@ MypyFile:1(
           NameExpr(a [__main__.a]))))))
 
 [case testListComprehensionInFunction]
-void f(a):
+def f(a) -> None:
     [x for x in a]
 [out]
 MypyFile:1(
@@ -220,7 +222,9 @@ MypyFile:1(
             NameExpr(a [l])))))))
 
 [case testListComprehensionWithCondition]
-any a
+from typing import Undefined, Any
+
+a = Undefined # type: Any
 a=[x for x in a if x]
 [out]
 MypyFile:1(
@@ -237,7 +241,9 @@ MypyFile:1(
         NameExpr(x [l])))))
 
 [case testGeneratorExpression]
-any a
+from typing import Undefined, Any
+
+a = Undefined # type: Any
 x for x in a
 [out]
 MypyFile:1(
@@ -251,7 +257,9 @@ MypyFile:1(
       NameExpr(a [__main__.a]))))
 
 [case testLambda]
-any x
+from typing import Undefined, Any
+
+x = Undefined # type: Any
 lambda: x
 [out]
 MypyFile:1(
