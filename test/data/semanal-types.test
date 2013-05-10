@@ -123,23 +123,6 @@ MypyFile:1(
       __main__.A)
     PassStmt:2()))
 
-[case testVarDefWithInit]
-class A: pass
-x = 1
-a = x # type: A
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    PassStmt:1())
-  AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
-    IntExpr(1))
-  VarDef:3(
-    Var(a)
-    Type(__main__.A)
-    NameExpr(x [__main__.x])))
-
 [case testMultipleVarDef]
 from typing import Undefined
 
