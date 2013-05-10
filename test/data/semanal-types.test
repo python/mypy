@@ -79,33 +79,33 @@ MypyFile:1(
 
 [case testFunctionSig]
 from typing import Any
-
 class A: pass
 def f(x: A) -> A: pass
 def g(x: Any, y: A) -> None:
   z = x, y
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [Any : Any])
+  TypeDef:2(
     A
-    PassStmt:1())
-  FuncDef:2(
+    PassStmt:2())
+  FuncDef:3(
     f
     Args(
       Var(x))
-    def (__main__.A x) -> __main__.A
-    Block:2(
-      PassStmt:2()))
-  FuncDef:3(
+    def (x: __main__.A) -> __main__.A
+    Block:3(
+      PassStmt:3()))
+  FuncDef:4(
     g
     Args(
       Var(x)
       Var(y))
-    def (any x, __main__.A y)
-    Block:3(
-      AssignmentStmt:4(
+    def (x: Any, y: __main__.A)
+    Block:4(
+      AssignmentStmt:5(
         NameExpr(z* [l])
-        TupleExpr:4(
+        TupleExpr:5(
           NameExpr(x [l])
           NameExpr(y [l]))))))
 
