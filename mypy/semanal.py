@@ -15,14 +15,14 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr, FuncExpr, MDEF,
-    FuncBase, Decorator, SetExpr
+    SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
-    replace_self_type
+    UnboundType, TypeVars, TypeVarDef, replace_self_type
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser
@@ -194,6 +194,7 @@ class SemanticAnalyzer(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
+        #self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_type_def_analysis(defn)
         self.analyze_base_classes(defn)
 
@@ -204,6 +205,32 @@ class SemanticAnalyzer(NodeVisitor):
         self.block_depth.pop()
         self.locals.pop()
         self.type, self.class_tvars = self.type_stack.pop()
+
+    void clean_up_bases_and_infer_type_variables(self, TypeDef defn):
+        """Remove extra base classes such as Generic and infer type vars.
+
+        For example, consider this class:
+
+        . class Foo(Bar, Generic[t]): ...
+
+        Now we will remove Generic[t] from bases of Foo and infer that the
+        type variable 't' in a type argument of Foo.
+        """
+        removed = <int> []
+        type_vars = <TypeVarDef> []
+        for i, base in enumerate(defn.base_types):
+            # TODO bind name reliably
+            if (isinstance(base, UnboundType)
+                    and ((UnboundType)base).name == 'Generic'):
+                unbound = (UnboundType)base
+                removed.append(i)
+                for j, arg in enumerate(unbound.args):
+                    type_vars.append(TypeVarDef(((UnboundType)arg).name,
+                                                j + 1))
+        if type_vars:
+            defn.type_vars = TypeVars(type_vars)
+        for i in reversed(removed):
+            del defn.base_types[i]
 
     void setup_type_def_analysis(self, TypeDef defn):
         """Prepare for the analysis of a class definition."""
@@ -848,6 +875,25 @@ class FirstPass(NodeVisitor):
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
             self.sem.analyse_lvalue(lval, False, True)
+
+        self.process_typevar_declaration(s)
+
+    void process_typevar_declaration(self, AssignmentStmt s):
+        """Check if s declares a typevar; it yes, store it in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        if not isinstance(s.rvalue, CallExpr):
+            return
+        call = (CallExpr)s.rvalue
+        if not isinstance(call.callee, NameExpr):
+            return
+        callee = (NameExpr)call.callee
+        if callee.fullname != 'typing.typevar':
+            return
+        # Yes, it's a type variable definition!
+        name = ((NameExpr)s.lvalues[0]).name
+        node = self.sem.globals[name]
+        node.kind = UNBOUND_TVAR
     
     void visit_func_def(self, FuncDef d):
         sem = self.sem
@@ -869,6 +915,7 @@ class FirstPass(NodeVisitor):
                                                      self.sem.cur_mod_id)
     
     void visit_type_def(self, TypeDef d):
+        self.sem.clean_up_bases_and_infer_type_variables(d)
         self.sem.check_no_global(d.name, d)
         d.fullname = self.sem.qualified_name(d.name)
         info = TypeInfo(SymbolTable(), d)

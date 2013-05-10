@@ -23,7 +23,12 @@ int LDEF = 0
 int GDEF = 1
 int MDEF = 2
 int MODULE_REF = 3
-int TVAR = 4 # Constant for type variable nodes in symbol table
+# Type variable declared using typevar(...) has kind UNBOUND_TVAR. It's not
+# valid as a type. A type variable is valid as a type (kind TVAR) within 
+# (1) a generic class that uses the type variable as a type argument or
+# (2) a generic function that refers to the type variable in its signature.
+int UNBOUND_TVAR = 4
+int TVAR = 5
 
 
 node_kinds = {
@@ -31,7 +36,8 @@ node_kinds = {
     GDEF: 'Gdef',
     MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
-    TVAR: 'Tvar'
+    UNBOUND_TVAR: 'UnboundTvar',
+    TVAR: 'Tvar',
 }
 
 
