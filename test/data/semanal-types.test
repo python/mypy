@@ -559,25 +559,36 @@ MypyFile:1(
     NameExpr(Undefined [typing.Undefined])
     __main__.A[Any, Any]))
 
-[case testImplicitGenericBaseClass]
+[case testImplicitTypeArgsAndGenericBaseClass]
 from typing import typevar, Generic
-
 t = typevar('t')
 s = typevar('s')
-
-class A('B', Generic[t]): pass
 class B(Generic[s]): pass
+class A(B, Generic[t]): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    CallExpr:3(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(s))))
+  TypeDef:4(
+    B
+    TypeVars(
+      s)
+    PassStmt:4())
+  TypeDef:5(
     A
     TypeVars(
       t)
     BaseType(
-      __main__.B<any>)
-    PassStmt:1())
-  TypeDef:2(
-    B
-    TypeVars(
-      s)
-    PassStmt:2()))
+      __main__.B[Any])
+    PassStmt:5()))
