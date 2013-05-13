@@ -234,22 +234,25 @@ def f():
   b = 1
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [Undefined : Undefined])
+  TypeDef:3(
     A
-    PassStmt:1())
-  VarDef:2(
-    Var(a)
-    Type(__main__.A))
-  AssignmentStmt:3(
+    PassStmt:3())
+  AssignmentStmt:4(
+    NameExpr(a* [__main__.a])
+    NameExpr(Undefined [typing.Undefined])
+    __main__.A)
+  AssignmentStmt:5(
     NameExpr(a [__main__.a])
     IntExpr(1))
-  FuncDef:4(
+  FuncDef:6(
     f
-    Block:4(
-      VarDef:5(
-        Var(b)
-        Type(__main__.A))
-      AssignmentStmt:6(
+    Block:6(
+      AssignmentStmt:7(
+        NameExpr(b* [l])
+        NameExpr(Undefined [typing.Undefined])
+        __main__.A)
+      AssignmentStmt:8(
         NameExpr(b [l])
         IntExpr(1)))))
 
