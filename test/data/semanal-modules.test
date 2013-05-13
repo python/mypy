@@ -20,17 +20,19 @@ MypyFile:1(
     IntExpr(1)))
 
 [case testImportedNameInType]
-import m
 from typing import Undefined
+import m
 x = Undefined # type: m.c
 [file m.py]
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(m : m)
-  VarDef:2(
-    Var(x)
-    Type(m.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  Import:2(m : m)
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    m.c))
 MypyFile:1(
   tmp/m.py
   TypeDef:1(
