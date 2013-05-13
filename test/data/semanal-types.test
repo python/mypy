@@ -409,25 +409,30 @@ MypyFile:1(
 
 [case testGenericBaseClass]
 from typing import typevar, Generic
-
 t = typevar('t')
-
 class d(Generic[t]): pass
 class c(d[t], Generic[t]): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
     d
     TypeVars(
       t)
-    PassStmt:1())
-  TypeDef:2(
+    PassStmt:3())
+  TypeDef:4(
     c
     TypeVars(
       t)
     BaseType(
-      __main__.d<t`1>)
-    PassStmt:2()))
+      __main__.d[t`1])
+    PassStmt:4()))
 
 [case testTupleType]
 from typing import Undefined, Tuple, Any
