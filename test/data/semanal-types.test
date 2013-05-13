@@ -338,7 +338,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(o))
-      def (__main__.A self, builtins.object o)
+      def (self: __main__.A, o: builtins.object)
       Block:2(
         PassStmt:2()))))
 
