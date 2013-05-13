@@ -590,30 +590,26 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testVariableInBlock]
-from typing import Undefined
-
 while object:
-  x = Undefined # type: object 
+  x = None
   x = x
 [out]
 MypyFile:1(
   WhileStmt:1(
     NameExpr(object [builtins.object])
     Block:1(
-      VarDef:2(
-        Var(x)
-        Type(builtins.object))
+      AssignmentStmt:2(
+        NameExpr(x* [__main__.x])
+        NameExpr(None [builtins.None]))
       AssignmentStmt:3(
         NameExpr(x [__main__.x])
         NameExpr(x [__main__.x])))))
 
 [case testVariableInExceptHandler]
-from typing import Undefined
-
 try:
   pass
 except object as o:
-  x = Undefined # type: object
+  x = None
   o = x
 [out]
 MypyFile:1(
@@ -623,9 +619,9 @@ MypyFile:1(
     NameExpr(object [builtins.object])
     NameExpr(o* [__main__.o])
     Block:3(
-      VarDef:4(
-        Var(x)
-        Type(builtins.object))
+      AssignmentStmt:4(
+        NameExpr(x* [__main__.x])
+        NameExpr(None [builtins.None]))
       AssignmentStmt:5(
         NameExpr(o [__main__.o])
         NameExpr(x [__main__.x])))))
@@ -688,15 +684,13 @@ MypyFile:1(
     PassStmt:8()))
 
 [case testMultipleAssignmentWithPartialNewDef]
-from typing import Undefined
-
-o = Undefined # type: object
+o = None
 x, o = o, o
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(o)
-    Type(builtins.object))
+  AssignmentStmt:1(
+    NameExpr(o* [__main__.o])
+    NameExpr(None [builtins.None]))
   AssignmentStmt:2(
     TupleExpr:2(
       NameExpr(x* [__main__.x])
