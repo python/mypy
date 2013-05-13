@@ -1058,7 +1058,8 @@ Type expr_to_unanalyzed_type(Node expr):
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
         lst = (ListExpr)expr
-        return TypeList([expr_to_unanalyzed_type(t) for t in lst.items])
+        return TypeList([expr_to_unanalyzed_type(t) for t in lst.items],
+                        line=expr.line)
     else:
         raise TypeTranslationError()
 

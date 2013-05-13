@@ -93,7 +93,7 @@ class TypeParser:
                 break
             commas.append(self.skip())
         rbracket = self.expect(']')
-        return TypeList(items)
+        return TypeList(items, line=lbracket.line)
     
     Type parse_named_type(self):
         line = self.current_token().line
