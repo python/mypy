@@ -649,13 +649,7 @@ class SemanticAnalyzer(NodeVisitor):
     void visit_call_expr(self, CallExpr expr):
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
-            # Verify number and kinds of of arguments (2, all positional).
-            if len(expr.args) != 2:
-                self.fail("'cast' expects 2 arguments", expr)
-                return
-            if expr.arg_kinds != [ARG_POS, ARG_POS]:
-                self.fail("'cast' must be called with 2 positional arguments",
-                          expr)
+            if not self.check_fixed_args(expr, 2, 'cast'):
                 return
             
             # Translate first argument to an unanalyzed type and analyze it.
@@ -673,9 +667,33 @@ class SemanticAnalyzer(NodeVisitor):
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
+        elif refers_to_fullname(expr.callee, 'typing.Any'):
+            if not self.check_fixed_args(expr, 1, 'Any'):
+                return            
+            expr.args[0].accept(self)
+            expr.analyzed = CastExpr(expr.args[0], Any())
+            expr.analyzed.line = expr.line
         else:
             for a in expr.args:
                 a.accept(self)
+
+    bool check_fixed_args(self, CallExpr expr, int numargs, str name):
+            """Verify that expr has specified number of positional args.
+
+            Return True if the arguments are valid.
+            """
+            s = 's'
+            if numargs == 1:
+                s = ''
+            if len(expr.args) != numargs:
+                self.fail("'%s' expects %d argument%s" % (name, numargs, s),
+                          expr)
+                return False
+            if expr.arg_kinds != [ARG_POS] * numargs:
+                self.fail("'%s' must be called with %s positional argument%s" %
+                          (name, numargs, s), expr)
+                return False
+            return True
     
     void visit_member_expr(self, MemberExpr expr):
         base = expr.expr
