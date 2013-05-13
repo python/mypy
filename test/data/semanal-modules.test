@@ -57,17 +57,19 @@ MypyFile:1(
     IntExpr(1)))
 
 [case testImportFromType]
-from m import c
 from typing import Undefined
+from m import c
 x = Undefined # type: c
 [file m.py]
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [c : c])
-  VarDef:2(
-    Var(x)
-    Type(m.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  ImportFrom:2(m, [c : c])
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    m.c))
 MypyFile:1(
   tmp/m.py
   TypeDef:1(
@@ -164,8 +166,8 @@ MypyFile:1(
       x [_n.x])))
 
 [case testAccessingImportedNameInType]
-from _m import c
 from typing import Undefined
+from _m import c
 x = Undefined # type: c
 [file _m.py]
 from _n import c
@@ -173,14 +175,16 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(_m, [c : c])
-  VarDef:2(
-    Var(x)
-    Type(_n.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  ImportFrom:2(_m, [c : c])
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    _n.c))
 
 [case testAccessingImportedNameInType2]
-import _m
 from typing import Undefined
+import _m
 x = Undefined # type: _m.c
 [file _m.py]
 from _n import c
@@ -188,10 +192,12 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
-  VarDef:2(
-    Var(x)
-    Type(_n.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  Import:2(_m : _m)
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    _n.c))
 
 [case testAccessingImportedModule]
 from _m import _n
@@ -226,8 +232,8 @@ MypyFile:1(
       x [_n.x])))
 
 [case testAccessTypeViaDoubleIndirection]
-from _m import c
 from typing import Undefined
+from _m import c
 a = Undefined # type: c
 [file _m.py]
 from _n import c
@@ -235,14 +241,16 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(_m, [c : c])
-  VarDef:2(
-    Var(a)
-    Type(_n.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  ImportFrom:2(_m, [c : c])
+  AssignmentStmt:3(
+    NameExpr(a* [__main__.a])
+    NameExpr(Undefined [typing.Undefined])
+    _n.c))
 
 [case testAccessTypeViaDoubleIndirection2]
-import _m
 from typing import Undefined
+import _m
 a = Undefined # type: _m.c
 [file _m.py]
 from _n import c
@@ -250,10 +258,12 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
-  VarDef:2(
-    Var(a)
-    Type(_n.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  Import:2(_m : _m)
+  AssignmentStmt:3(
+    NameExpr(a* [__main__.a])
+    NameExpr(Undefined [typing.Undefined])
+    _n.c))
 
 [case testImportAsterisk]
 from _m import *
@@ -287,8 +297,8 @@ MypyFile:1(
       NameExpr(y [n_.y]))))
 
 [case testImportAsteriskAndImportedNamesInTypes]
-from _m import *
 from typing import Undefined
+from _m import *
 x = Undefined # type: n_.c
 y = Undefined # type: d
 [file _m.py]
@@ -299,13 +309,16 @@ class c: pass
 class d: pass
 [out]
 MypyFile:1(
-  ImportAll:1(_m)
-  VarDef:2(
-    Var(x)
-    Type(n_.c))
-  VarDef:3(
-    Var(y)
-    Type(n_.d)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  ImportAll:2(_m)
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    n_.c)
+  AssignmentStmt:4(
+    NameExpr(y* [__main__.y])
+    NameExpr(Undefined [typing.Undefined])
+    n_.d))
 
 [case testModuleInSubdir]
 import _m
@@ -373,32 +386,36 @@ MypyFile:1(
       NameExpr(y [m._n.y]))))
 
 [case testSubmodulesAndTypes]
-import m._n
 from typing import Undefined
+import m._n
 x = Undefined # type: m._n.c
 [file m/__init__.py]
 [file m/_n.py]
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(m._n : m._n)
-  VarDef:2(
-    Var(x)
-    Type(m._n.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  Import:2(m._n : m._n)
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    m._n.c))
 
 [case testSubmodulesAndTypes]
-from m._n import c
 from typing import Undefined
+from m._n import c
 x = Undefined # type: c
 [file m/__init__.py]
 [file m/_n.py]
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(m._n, [c : c])
-  VarDef:2(
-    Var(x)
-    Type(m._n.c)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  ImportFrom:2(m._n, [c : c])
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    NameExpr(Undefined [typing.Undefined])
+    m._n.c))
     
 [case testFromPackageImportModule]
 from m import _n
@@ -473,13 +490,14 @@ MypyFile:1(
 
 [case testBuiltinsUsingModule]
 from typing import Undefined
-
 o = Undefined # type: __builtins__.object
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(o)
-    Type(builtins.object)))
+  ImportFrom:1(typing, [Undefined : Undefined])
+  AssignmentStmt:2(
+    NameExpr(o* [__main__.o])
+    NameExpr(Undefined [typing.Undefined])
+    builtins.object))
 
 [case testImplicitAccessToBuiltins]
 object
@@ -493,7 +511,7 @@ import _m
 _m.x = (
   _m.x)
 [file _m.py]
-object x
+x = None
 [out]
 MypyFile:1(
   Import:1(_m : _m)
