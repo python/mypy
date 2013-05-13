@@ -652,27 +652,24 @@ class SemanticAnalyzer(NodeVisitor):
             if not self.check_fixed_args(expr, 2, 'cast'):
                 return
             
-            # Translate first argument to an unanalyzed type and analyze it.
+            # Translate first argument to an unanalyzed type.
             try:
                 target = expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
-            target = self.anal_type(target)
             
-            # Analyze second argument (it's an arbitrary expression).
-            expr.args[1].accept(self)
-
             # Pigguback CastExpr object to the CallExpr object; it takes
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
+            expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
             if not self.check_fixed_args(expr, 1, 'Any'):
                 return            
-            expr.args[0].accept(self)
             expr.analyzed = CastExpr(expr.args[0], Any())
             expr.analyzed.line = expr.line
+            expr.analyzed.accept(self)
         else:
             for a in expr.args:
                 a.accept(self)
