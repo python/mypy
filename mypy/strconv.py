@@ -300,6 +300,8 @@ class StrConv(NodeVisitor<str>):
                                                    o.is_def)], o)
     
     def visit_call_expr(self, o):
+        if o.analyzed:
+            return o.analyzed.accept(self)
         args = []
         extra = []
         for i, kind in enumerate(o.arg_kinds):

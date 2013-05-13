@@ -40,9 +40,7 @@ class UnboundType(Type):
 
 
 class ErrorType(Type):
-    """The error type is only used as a result of join and meet
-    operations, when the result is undefined.
-    """
+    """The error type is used as the result of failed type operations."""
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_error_type(self)
 

@@ -16,16 +16,20 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, ARG_POS
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
-    UnboundType, TypeVars, TypeVarDef, replace_self_type
+    UnboundType, TypeList, ErrorType, TypeVars, TypeVarDef, replace_self_type
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser
+
+
+class TypeTranslationError(Exception):
+    """Exception raised when an expression is not valid as a type."""
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -644,8 +648,34 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_call_expr(self, CallExpr expr):
         expr.callee.accept(self)
-        for a in expr.args:
-            a.accept(self)
+        if refers_to_fullname(expr.callee, 'typing.cast'):
+            # Verify number and kinds of of arguments (2, all positional).
+            if len(expr.args) != 2:
+                self.fail("'cast' expects 2 arguments", expr)
+                return
+            if expr.arg_kinds != [ARG_POS, ARG_POS]:
+                self.fail("'cast' must be called with 2 positional arguments",
+                          expr)
+                return
+            
+            # Translate first argument to an unanalyzed type and analyze it.
+            try:
+                target = expr_to_unanalyzed_type(expr.args[0])
+            except TypeTranslationError:
+                self.fail('Cast target is not a type', expr)
+                return
+            target = self.anal_type(target)
+            
+            # Analyze second argument (it's an arbitrary expression).
+            expr.args[1].accept(self)
+
+            # Pigguback CastExpr object to the CallExpr object; it takes
+            # precedence over the CallExpr semantics.
+            expr.analyzed = CastExpr(expr.args[1], target)
+            expr.analyzed.line = expr.line
+        else:
+            for a in expr.args:
+                a.accept(self)
     
     void visit_member_expr(self, MemberExpr expr):
         base = expr.expr
@@ -987,3 +1017,62 @@ Type set_callable_name(Type sig, FuncDef fdef):
                 '"{}"'.format(fdef.name()))
     else:
         return sig
+
+
+bool refers_to_fullname(Node node, str fullname):
+    """Is node a name or member expression with the given full name?"""
+    return isinstance(node,
+                      RefExpr) and ((RefExpr)node).fullname == fullname
+
+
+Type expr_to_unanalyzed_type(Node expr):
+    """Translate an expression to the corresonding type.
+
+    The result is not semantically analyzed. It can be UnboundType or ListType.
+    Raise TypeTranslationError if the expression cannot represent a type.
+    """
+    if isinstance(expr, NameExpr):
+        name = ((NameExpr)expr).name
+        return UnboundType(name, line=expr.line)
+    elif isinstance(expr, MemberExpr):
+        memberexpr = (MemberExpr)expr
+        fullname = get_member_expr_fullname(memberexpr)
+        if fullname:
+            return UnboundType(fullname, line=expr.line)
+        else:
+            raise TypeTranslationError()
+    elif isinstance(expr, IndexExpr):
+        indexexpr = (IndexExpr)expr
+        base = expr_to_unanalyzed_type(indexexpr.base)
+        if isinstance(base, UnboundType):
+            basetype = (UnboundType)base
+            if basetype.args:
+                raise TypeTranslationError()
+            if isinstance(indexexpr.index, TupleExpr):
+                args = ((TupleExpr)indexexpr.index).items
+            else:
+                args = [indexexpr.index]
+            basetype.args = [expr_to_unanalyzed_type(arg) for arg in args]
+            return basetype
+        else:
+            raise TypeTranslationError()
+    elif isinstance(expr, ListExpr):
+        lst = (ListExpr)expr
+        return TypeList([expr_to_unanalyzed_type(t) for t in lst.items])
+    else:
+        raise TypeTranslationError()
+
+
+str get_member_expr_fullname(MemberExpr expr):
+    """Return the qualified name represention of a member expression.
+
+    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
+    argument cannot be represented in this form.
+    """
+    if isinstance(expr.expr, NameExpr):
+        initial = ((NameExpr)expr.expr).name
+    elif isinstance(expr.expr, MemberExpr):
+        initial = get_member_expr_fullname((MemberExpr)expr.expr)
+    else:
+        return None
+    return '{}.{}'.format(initial, expr.name)

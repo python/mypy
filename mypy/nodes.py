@@ -675,6 +675,7 @@ class RefExpr(Node):
     """Abstract base class for name-like constructs"""
     int kind      # LDEF/GDEF/MDEF/... (None if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
+    str fullname  # Fully qualified name (or name if not global)
 
 
 class NameExpr(RefExpr):
@@ -683,7 +684,6 @@ class NameExpr(RefExpr):
     This refers to a local name, global name or a module.
     """
     str name      # Name referred to (may be qualified)
-    str fullname # Fully qualified name (or name if not global)
     TypeInfo info # TypeInfo of class surrounding expression (may be None)
     bool is_def   # Does this define a new variable as a lvalue?
     
@@ -702,8 +702,6 @@ class MemberExpr(RefExpr):
     """Member access expression x.y"""
     Node expr
     str name
-    # Full name if referring to a name in module.
-    str fullname
     # True if first assignment to member via self in __init__ (and if not
     # defined in class body). After semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
@@ -735,7 +733,9 @@ class CallExpr(Node):
     Node callee
     Node[] args
     int[] arg_kinds # ARG_ constants
-    str[] arg_names # None if not a keyword argument
+    str[] arg_names # Each name can be None if not a keyword argument.
+    Node analyzed   # If not None, the node that represents the meaning of the
+                    # CallExpr. For cast(...) this is a CastExpr.
     
     void __init__(self, Node callee, Node[] args, int[] arg_kinds,
                   str[] arg_names=None):

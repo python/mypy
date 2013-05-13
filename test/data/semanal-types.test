@@ -258,36 +258,104 @@ MypyFile:1(
 
 [case testCast]
 from typing import typevar, Generic, Any, cast
-
 t = typevar('t')
-
 class c: pass
 class d(Generic[t]): pass
-Any(1)
+cast(Any, 1)
 cast(c, 1)
 cast(d[c], c)
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Any : Any, cast : cast])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
     c
-    PassStmt:1())
-  TypeDef:2(
+    PassStmt:3())
+  TypeDef:4(
     d
     TypeVars(
       t)
-    PassStmt:2())
-  ExpressionStmt:3(
-    CastExpr:3(
-      IntExpr(1)
-      any))
-  ExpressionStmt:4(
-    CastExpr:4(
-      IntExpr(1)
-      __main__.c))
+    PassStmt:4())
   ExpressionStmt:5(
     CastExpr:5(
+      IntExpr(1)
+      Any))
+  ExpressionStmt:6(
+    CastExpr:6(
+      IntExpr(1)
+      __main__.c))
+  ExpressionStmt:7(
+    CastExpr:7(
       NameExpr(c [__main__.c])
-      __main__.d<__main__.c>)))
+      __main__.d[__main__.c])))
+
+[case testCastToQualifiedTypeAndCast]
+import typing
+import _m
+typing.cast(_m.C, object)
+[file _m.py]
+class C: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  Import:2(_m : _m)
+  ExpressionStmt:3(
+    CastExpr:3(
+      NameExpr(object [builtins.object])
+      _m.C)))
+
+[case testLongQualifiedCast]
+import typing
+import _m._n
+typing.cast(_m._n.C, object)
+[file _m/__init__.py]
+[file _m/_n.py]
+class C: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  Import:2(_m._n : _m._n)
+  ExpressionStmt:3(
+    CastExpr:3(
+      NameExpr(object [builtins.object])
+      _m._n.C)))
+
+[case testCastTargetWithTwoTypeArgs]
+from typing import typevar, Generic, cast
+t = typevar('t')
+s = typevar('s')
+class C(Generic[t, s]): pass
+cast(C[str, int], C)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, cast : cast])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    CallExpr:3(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(s))))
+  TypeDef:4(
+    C
+    TypeVars(
+      t
+      s)
+    PassStmt:4())
+  ExpressionStmt:5(
+    CastExpr:5(
+      NameExpr(C [__main__.C])
+      __main__.C[builtins.str, builtins.int])))
 
 [case testFunctionTvar]
 from typing import typevar, Undefined
