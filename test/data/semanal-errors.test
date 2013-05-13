@@ -611,6 +611,7 @@ cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
 cast((str).str, None)    # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
+cast([int, str], None)   # E: Invalid type
 [out]
 
 [case testInvalidCastTargetType]
@@ -633,3 +634,9 @@ from typing import cast
 cast(str, *None) # E: 'cast' must be called with 2 positional arguments
 cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
 [out]
+
+[case testTypeListAsType]
+def f(x:[int, str]) -> None: # E: Invalid type
+    pass
+[out]
+main: In function "f":

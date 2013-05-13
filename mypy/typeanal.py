@@ -2,7 +2,7 @@
 
 from mypy.types import (
     Type, UnboundType, TypeVar, TupleType, Instance, Any, Callable, TypeVars,
-    Void, NoneTyp, TypeVarDef, TypeVisitor
+    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
@@ -79,6 +79,9 @@ class TypeAnalyser(TypeVisitor<Type>):
     
     Type visit_none_type(self, NoneTyp t):
         return t
+
+    Type visit_type_list(self, TypeList t):
+        self.fail('Invalid type', t)
     
     Type visit_instance(self, Instance t):
         return t
