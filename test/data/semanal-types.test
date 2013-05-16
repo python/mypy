@@ -566,6 +566,30 @@ MypyFile:1(
       def (self: __main__.A, o: builtins.object)
       Block:2(
         PassStmt:2()))))
+        
+[case testNestedGenericFunction]
+from typing import typevar
+t = typevar('t')
+def f() -> None:
+    def g() -> t: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  FuncDef:3(
+    f
+    def ()
+    Block:3(
+      FuncDef:4(
+        g
+        def [t] () -> t`-1
+        Block:4(
+          PassStmt:4())))))
 
 [case testClassTvar]
 from typing import typevar, Generic

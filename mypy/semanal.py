@@ -99,6 +99,7 @@ class SemanticAnalyzer(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
+        self.update_function_type_variables(defn)
         if self.is_class_scope():
             # Method definition
             defn.is_conditional = self.block_depth[-1] > 0
@@ -142,10 +143,16 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.type:
             functype = (Callable)defn.type
             typevars = infer_type_variables(functype, self.globals)
+            # Do not define a new type variable if already defined in scope.
+            typevars = [tvar for tvar in typevars
+                        if not self.is_defined_type_var(tvar, defn)]
             if typevars:
                 defs = [TypeVarDef(name, i + 1)
                         for i, name in enumerate(typevars)]
                 functype.variables = TypeVars(defs)
+
+    bool is_defined_type_var(self, str tvar, Node context):
+        return self.lookup(tvar, context).kind == TVAR
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
         Callable[] t = []
@@ -431,9 +438,10 @@ class SemanticAnalyzer(NodeVisitor):
                 self.globals[n.name] = SymbolTableNode(GDEF, v,
                                                        self.cur_mod_id)
             elif isinstance(n.node, Var) and n.is_def:
+                # Since the is_def flag is set, this must have been analyzed
+                # already in the first pass and added to the symbol table.
                 v = (Var)n.node
-                self.globals[v.name()] = SymbolTableNode(GDEF, v,
-                                                         self.cur_mod_id)
+                assert v.name() in self.globals
             elif (self.is_func_scope() and n.name not in self.locals[-1] and
                   n.name not in self.global_decls[-1]):
                 # Define new local name.
@@ -956,7 +964,6 @@ class FirstPass(NodeVisitor):
     
     void visit_func_def(self, FuncDef d):
         sem = self.sem
-        sem.update_function_type_variables(d)
         d.is_conditional = sem.block_depth[-1] > 0
         if d.name() in sem.globals:
             n = sem.globals[d.name()].node
