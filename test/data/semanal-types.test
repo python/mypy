@@ -423,6 +423,115 @@ MypyFile:1(
     Block:4(
       PassStmt:4())))
 
+[case testNestedGenericFunctionTypeVariable]
+from typing import typevar
+t = typevar('t')
+class A(Generic[t]): pass
+def f(x: A[t], y) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
+    A
+    TypeVars(
+      t)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    def [t] (x: __main__.A[t`-1], y: Any)
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable2]
+from typing import typevar, Tuple
+t = typevar('t')
+class A(Generic[t]): pass
+def f(x: Tuple[int, t]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Tuple : Tuple])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
+    A
+    TypeVars(
+      t)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def [t] (x: Tuple[builtins.int, t`-1])
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable3]
+from typing import typevar, Function
+t = typevar('t')
+class A(Generic[t]): pass
+def f(x: Function[[int, t], int]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Function : Function])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
+    A
+    TypeVars(
+      t)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def [t] (x: def (builtins.int, t`-1) -> builtins.int)
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable4]
+from typing import typevar, Function
+t = typevar('t')
+class A(Generic[t]): pass
+def f(x: Function[[], t]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Function : Function])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
+    A
+    TypeVars(
+      t)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def [t] (x: def () -> t`-1)
+    Block:4(
+      PassStmt:4())))
+
 [case testSelfType]
 class A:
   def f(self, o: object) -> None: pass

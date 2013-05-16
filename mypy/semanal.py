@@ -1109,14 +1109,32 @@ str get_member_expr_fullname(MemberExpr expr):
 
 
 str[] infer_type_variables(Callable type, SymbolTable globals):
+    """Return list of unique type variables referred to in a callable type."""
     # TODO support multiple scopes
-    # TODO look inside types recursively
+    result = <str> []
+    for arg in type.arg_types:
+        for tvar in find_type_variables_in_type(arg, globals):
+            if tvar not in result:
+                result.append(tvar)
+    return result
 
-    res = <str> []
-    for t in type.arg_types:
-        if isinstance(t, UnboundType):
-            ub = (UnboundType)t
-            if ub.name in globals and globals[ub.name].kind == UNBOUND_TVAR:
-                if not ub.name in res:
-                    res.append(ub.name)
-    return res
+
+str[] find_type_variables_in_type(Type type, SymbolTable globals):
+    """Return a list of all unique type variable references in type."""
+    result = <str> []
+    if isinstance(type, UnboundType):
+        unbound = (UnboundType)type
+        name = unbound.name
+        if name in globals and globals[name].kind == UNBOUND_TVAR:
+            result.append(name)
+        for arg in unbound.args:
+            result.extend(find_type_variables_in_type(arg, globals))
+    elif isinstance(type, TypeList):
+        types = (TypeList)type
+        for item in types.items:
+            result.extend(find_type_variables_in_type(item, globals))
+    elif isinstance(type, Any):
+        pass
+    else:
+        assert False, 'Unsupported type %s' % type
+    return result
