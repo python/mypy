@@ -179,9 +179,8 @@ MypyFile:1(
             x)
           IntExpr(2))))))
 
-[case testOverloadedMethod-skip]
+[case testOverloadedMethod]
 from typing import overload
-
 class A:
   @overload
   def f(self) -> None: self
@@ -189,28 +188,35 @@ class A:
   def f(self, x: 'A') -> None: self
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(typing, [overload : overload])
+  TypeDef:2(
     A
-    OverloadedFuncDef:2(
-      Overload(def (__main__.A self), \
-               def (__main__.A self, __main__.A x))
-      FuncDef:2(
-        f
-        Args(
-          Var(self))
-        def (__main__.A self)
-        Block:2(
-          ExpressionStmt:2(
-            NameExpr(self [l]))))
-      FuncDef:3(
-        f
-        Args(
-          Var(self)
-          Var(x))
-        def (__main__.A self, __main__.A x)
-        Block:3(
-          ExpressionStmt:3(
-            NameExpr(self [l])))))))
+    OverloadedFuncDef:3(
+      Overload(def (self: __main__.A), \
+               def (self: __main__.A, x: __main__.A))
+      Decorator:3(
+        Var(f)
+        NameExpr(overload [typing.overload])
+        FuncDef:4(
+          f
+          Args(
+            Var(self))
+          def (self: __main__.A)
+          Block:4(
+            ExpressionStmt:4(
+              NameExpr(self [l])))))
+      Decorator:5(
+        Var(f)
+        NameExpr(overload [typing.overload])
+        FuncDef:6(
+          f
+          Args(
+            Var(self)
+            Var(x))
+          def (self: __main__.A, x: __main__.A)
+          Block:6(
+            ExpressionStmt:6(
+              NameExpr(self [l]))))))))
 
 [case testAttributeWithoutType]
 class A:

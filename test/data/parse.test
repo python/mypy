@@ -2258,3 +2258,119 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(any)
     NameExpr(interface)))
+
+[case testFunctionOverload]
+@foo
+def f() -> x: pass
+@foo
+def f() -> y: pass
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:2(
+        f
+        def () -> x?
+        Block:2(
+          PassStmt:2())))
+    Decorator:3(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:4(
+        f
+        def () -> y?
+        Block:4(
+          PassStmt:4())))))
+
+[case testFunctionOverloadAndOtherStatements]
+x
+@foo
+def f() -> x: pass
+@foo
+def f() -> y: pass
+x
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(x))
+  OverloadedFuncDef:2(
+    Decorator:2(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:3(
+        f
+        def () -> x?
+        Block:3(
+          PassStmt:3())))
+    Decorator:4(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:5(
+        f
+        def () -> y?
+        Block:5(
+          PassStmt:5()))))
+  ExpressionStmt:6(
+    NameExpr(x)))
+
+[case testFunctionOverloadWithThreeVariants]
+@foo
+def f() -> x: pass
+@foo
+def f() -> y: pass
+@foo
+def f(y): pass
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:2(
+        f
+        def () -> x?
+        Block:2(
+          PassStmt:2())))
+    Decorator:3(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:4(
+        f
+        def () -> y?
+        Block:4(
+          PassStmt:4())))
+    Decorator:5(
+      Var(f)
+      NameExpr(foo)
+      FuncDef:6(
+        f
+        Args(
+          Var(y))
+        Block:6(
+          PassStmt:6())))))
+          
+[case testDecoratorsThatAreNotOverloads]
+@foo
+def f() -> x: pass
+@foo
+def g() -> y: pass
+[out]
+MypyFile:1(
+  Decorator:1(
+    Var(f)
+    NameExpr(foo)
+    FuncDef:2(
+      f
+      def () -> x?
+      Block:2(
+        PassStmt:2())))
+  Decorator:3(
+    Var(g)
+    NameExpr(foo)
+    FuncDef:4(
+      g
+      def () -> y?
+      Block:4(
+        PassStmt:4()))))

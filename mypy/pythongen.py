@@ -272,7 +272,7 @@ class PythonGenerator(OutputVisitor):
         right implementation.
         """
         indent = self.indent * ' '
-        first = o.items[0]
+        first = o.items[0].func
         r = first.repr
         # Emit "def".
         if r.def_tok and r.def_tok.string:
@@ -288,13 +288,13 @@ class PythonGenerator(OutputVisitor):
         self.string('):\n' + indent)
         # Emit function bodies of overload variants.
         for n, f in enumerate(o.items):
-            self.visit_func_def(f, '{}{}'.format(f.name(), n + 1))
+            self.visit_func_def(f.func, '{}{}'.format(f.func.name(), n + 1))
         self.string('\n')
 
         self.make_dispatcher(o, fixed_args, optional, rest_args)
         
         self.extra_indent -= 4
-        last_stmt = o.items[-1].body.body[-1]
+        last_stmt = o.items[-1].func.body.body[-1]
         self.token(self.find_break_after_statement(last_stmt))
 
     tuple<str[], str[], str> make_overload_sig(self, OverloadedFuncDef o):
@@ -316,7 +316,7 @@ class PythonGenerator(OutputVisitor):
         indent = self.indent * ' '
         n = 1
         for i, fi in enumerate(o.items):
-            for c, argc in self.make_overload_check(fi, fixed_args,
+            for c, argc in self.make_overload_check(fi.func, fixed_args,
                                                     optional_args, rest_args):
                 self.string(indent)
                 if n == 1:
@@ -326,7 +326,7 @@ class PythonGenerator(OutputVisitor):
                 self.string(c)
                 self.string(':' + '\n' + indent)
                 self.string('    return {}'.format(make_overload_call(
-                    fi, i + 1, argc, fixed_args, optional_args,
+                    fi.func, i + 1, argc, fixed_args, optional_args,
                     rest_args)) + '\n')
                 n += 1
         self.string(indent + 'else:' + '\n')
@@ -472,7 +472,8 @@ tuple<str[], str[], bool> get_overload_args(OverloadedFuncDef o):
     fixed = <str> []
     min_fixed = 100000
     max_fixed = 0
-    for f in o.items:
+    for decorator in o.items:
+        f = decorator.func
         if len(f.args) > len(fixed):
             for v in f.args[len(fixed):]:
                 fixed.append(v.name())

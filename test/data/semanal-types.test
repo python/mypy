@@ -722,60 +722,83 @@ MypyFile:1(
     def ()))
 
 [case testOverloadedFunction]
-from typing import overload, Any
-
+from typing import overload
 @overload
-def f(o: object) -> Any: o
+def f(o: object) -> int: o
 @overload
-def f(a: Any) -> object: a
+def f(a: str) -> object: a
 [out]
 MypyFile:1(
-  OverloadedFuncDef:1(
-    Overload(def (builtins.object o) -> any, def (any a) -> builtins.object)
-    FuncDef:1(
-      f
-      Args(
-        Var(o))
-      def (builtins.object o) -> any
-      Block:1(
-        ExpressionStmt:1(
-          NameExpr(o [l]))))
-    FuncDef:2(
-      f
-      Args(
-        Var(a))
-      def (any a) -> builtins.object
-      Block:2(
-        ExpressionStmt:2(
-          NameExpr(a [l]))))))
+  ImportFrom:1(typing, [overload : overload])
+  OverloadedFuncDef:2(
+    Overload(def (o: builtins.object) -> builtins.int, \
+             def (a: builtins.str) -> builtins.object)
+    Decorator:2(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:3(
+        f
+        Args(
+          Var(o))
+        def (o: builtins.object) -> builtins.int
+        Block:3(
+          ExpressionStmt:3(
+            NameExpr(o [l])))))
+    Decorator:4(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:5(
+        f
+        Args(
+          Var(a))
+        def (a: builtins.str) -> builtins.object
+        Block:5(
+          ExpressionStmt:5(
+            NameExpr(a [l])))))))
 
 [case testReferenceToOverloadedFunction]
-from typing import overload, Any
-
+from typing import overload
 @overload
 def f() -> None: pass
 @overload
-def f(x: Any) -> None: pass
+def f(x: int) -> None: pass
 x = f
 [out]
 MypyFile:1(
-  OverloadedFuncDef:1(
-    Overload(def (), def (any x))
-    FuncDef:1(
-      f
-      def ()
-      Block:1(
-        PassStmt:1()))
-    FuncDef:2(
-      f
-      Args(
-        Var(x))
-      def (any x)
-      Block:2(
-        PassStmt:2())))
-  AssignmentStmt:3(
+  ImportFrom:1(typing, [overload : overload])
+  OverloadedFuncDef:2(
+    Overload(def (), def (x: builtins.int))
+    Decorator:2(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:3(
+        f
+        def ()
+        Block:3(
+          PassStmt:3())))
+    Decorator:4(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:5(
+        f
+        Args(
+          Var(x))
+        def (x: builtins.int)
+        Block:5(
+          PassStmt:5()))))
+  AssignmentStmt:6(
     NameExpr(x* [__main__.x])
     NameExpr(f [__main__.f])))
+
+[case testNestedOverloadedFunction-skip]
+from typing import overload
+def f():
+    @overload
+    def g(): pass
+    @overload
+    def g(x): pass
+[out]
+TODO
 
 [case testImplicitGenericTypeArgs]
 from typing import typevar, Generic, Undefined

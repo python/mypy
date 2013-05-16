@@ -135,7 +135,7 @@ class TypeChecker(NodeVisitor<Type>):
     
     Type visit_overloaded_func_def(self, OverloadedFuncDef defn):
         for fdef in defn.items:
-            self.check_func_item(fdef)
+            self.check_func_item(fdef.func)
         if defn.info:
             self.check_method_override(defn)
     

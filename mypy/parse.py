@@ -221,19 +221,7 @@ class Parser:
             try:
                 defn = self.parse_statement()
                 if defn is not None:
-                    if isinstance(defn, FuncDef) and defs != []:
-                        fdef = (FuncDef)defn
-                        n = fdef.name()
-                        if (isinstance(defs[-1], FuncDef) and
-                                ((FuncDef)defs[-1]).name() == n):
-                            defs[-1] = OverloadedFuncDef([(FuncDef)defs[-1],
-                                                          fdef])
-                        elif (isinstance(defs[-1], OverloadedFuncDef) and
-                                  ((OverloadedFuncDef)defs[-1]).name() == n):
-                            ((OverloadedFuncDef)defs[-1]).items.append(fdef)
-                        else:
-                            defs.append(defn)
-                    else:
+                    if not self.try_combine_overloads(defn, defs):
                         defs.append(defn)
             except ParseError:
                 pass
@@ -553,12 +541,12 @@ class Parser:
             return (Block)node
 
     bool try_combine_overloads(self, Node s, Node[] stmt):
-        if isinstance(s, FuncDef) and stmt:
-            fdef = (FuncDef)s
-            n = fdef.name()
-            if (isinstance(stmt[-1], FuncDef) and
-                    ((FuncDef)stmt[-1]).name() == n):
-                stmt[-1] = OverloadedFuncDef([(FuncDef)stmt[-1], fdef])
+        if isinstance(s, Decorator) and stmt:
+            fdef = (Decorator)s
+            n = fdef.func.name()
+            if (isinstance(stmt[-1], Decorator) and
+                    ((Decorator)stmt[-1]).func.name() == n):
+                stmt[-1] = OverloadedFuncDef([(Decorator)stmt[-1], fdef])
                 return True
             elif (isinstance(stmt[-1], OverloadedFuncDef) and
                       ((OverloadedFuncDef)stmt[-1]).name() == n):

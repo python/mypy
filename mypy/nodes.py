@@ -156,15 +156,15 @@ class OverloadedFuncDef(FuncBase):
     This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
     """
-    FuncDef[] items
+    Decorator[] items
     str _fullname
     
-    void __init__(self, FuncDef[] items):
+    void __init__(self, Decorator[] items):
         self.items = items
         self.set_line(items[0].line)
     
     str name(self):
-        return self.items[1].name()
+        return self.items[1].func.name()
 
     str fullname(self):
         return self._fullname
