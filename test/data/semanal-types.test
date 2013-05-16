@@ -532,6 +532,25 @@ MypyFile:1(
     Block:4(
       PassStmt:4())))
 
+[case testGenericFunctionTypeVariableInReturnType]
+from typing import typevar
+t = typevar('t')
+def f() -> t: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  FuncDef:3(
+    f
+    def [t] () -> t`-1
+    Block:3(
+      PassStmt:3())))
+
 [case testSelfType]
 class A:
   def f(self, o: object) -> None: pass

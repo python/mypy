@@ -1112,7 +1112,7 @@ str[] infer_type_variables(Callable type, SymbolTable globals):
     """Return list of unique type variables referred to in a callable type."""
     # TODO support multiple scopes
     result = <str> []
-    for arg in type.arg_types:
+    for arg in type.arg_types + [type.ret_type]:
         for tvar in find_type_variables_in_type(arg, globals):
             if tvar not in result:
                 result.append(tvar)
