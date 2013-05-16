@@ -314,7 +314,7 @@ t = typevar('t')
 def f(x: t) -> t: pass
 x = 0 # type: t
 [out]
-main, line 4: Name 't' is not defined
+main, line 4: Invalid type "__main__.t"
 
 [case testClassTvarScope]
 from typing import Generic, typevar
