@@ -329,7 +329,7 @@ class TypeVars:
         str[] a = []
         for v in self.items:
             a.append(str(v))
-        return '<{}>'.format(', '.join(a))
+        return '[{}]'.format(', '.join(a))
 
 
 class TypeVarDef(mypy.nodes.Context):
