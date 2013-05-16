@@ -35,6 +35,8 @@ class TypeAnalyser(TypeVisitor<Type>):
                 return Any()
             elif sym.node.fullname() == 'typing.Tuple':
                 return TupleType(self.anal_array(t.args))
+            elif sym.node.fullname() == 'typing.Function':
+                return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname()
                 if name is None:
@@ -105,6 +107,19 @@ class TypeAnalyser(TypeVisitor<Type>):
     
     Type visit_tuple_type(self, TupleType t):
         return TupleType(self.anal_array(t.items), t.line, t.repr)
+
+    Type analyze_function_type(self, UnboundType t):
+        if len(t.args) != 2:
+            self.fail('Invalid function type', t)
+        if not isinstance(t.args[0], TypeList):
+            self.fail('Invalid function type', t)
+            return Any()
+        args = ((TypeList)t.args[0]).items
+        return Callable(self.anal_array(args),
+                        [nodes.ARG_POS] * len(args),
+                        <str> [None] * len(args),
+                        ret_type=t.args[1].accept(self),
+                        is_type_obj=False)
     
     Type[] anal_array(self, Type[] a):
         Type[] res = []

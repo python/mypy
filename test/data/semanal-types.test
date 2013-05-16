@@ -554,22 +554,20 @@ MypyFile:1(
     Tuple[builtins.int, builtins.object]))
 
 [case testFunctionTypes]
-from typing import Undefined, Function
-
-f = Undefined # type: Function[[object, type], A]
-g = Undefined # type: Function[[], None]
-class A: pass
+from typing import Function
+f = None # type: Function[[object, int], str]
+g = None # type: Function[[], None]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(f)
-    Type(def (builtins.object, builtins.type) -> __main__.A))
-  VarDef:2(
-    Var(g)
-    Type(def ()))
-  TypeDef:3(
-    A
-    PassStmt:3()))
+  ImportFrom:1(typing, [Function : Function])
+  AssignmentStmt:2(
+    NameExpr(f* [__main__.f])
+    NameExpr(None [builtins.None])
+    def (builtins.object, builtins.int) -> builtins.str)
+  AssignmentStmt:3(
+    NameExpr(g* [__main__.g])
+    NameExpr(None [builtins.None])
+    def ()))
 
 [case testOverloadedFunction]
 from typing import overload, Any

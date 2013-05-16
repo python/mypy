@@ -646,3 +646,13 @@ def f(x:[int, str]) -> None: # E: Invalid type
     pass
 [out]
 main: In function "f":
+
+[case testInvalidFunctionType]
+from typing import Function
+x = None # type: Function[int, str]
+x = None # type: Function[int]
+x = None # type: Function[int, int, int]
+[out]
+main, line 2: Invalid function type
+main, line 3: Invalid function type
+main, line 4: Invalid function type
