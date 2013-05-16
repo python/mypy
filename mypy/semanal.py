@@ -132,6 +132,20 @@ class SemanticAnalyzer(NodeVisitor):
     bool is_conditional_func(self, Node n, FuncDef defn):
         return (isinstance(n, FuncDef) and ((FuncDef)n).is_conditional and
                 defn.is_conditional)
+
+    void update_function_type_variables(self, FuncDef defn):
+        """Make any type variables in the signature of defn explicit.
+
+        Update the signature of defn to contain type variable definitions
+        if defn is generic.
+        """
+        if defn.type:
+            functype = (Callable)defn.type
+            typevars = infer_type_variables(functype, self.globals)
+            if typevars:
+                defs = [TypeVarDef(name, i + 1)
+                        for i, name in enumerate(typevars)]
+                functype.variables = TypeVars(defs)
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
         Callable[] t = []
@@ -932,7 +946,7 @@ class FirstPass(NodeVisitor):
         if not isinstance(call.callee, NameExpr):
             return
         callee = (NameExpr)call.callee
-        if callee.fullname != 'typing.typevar':
+        if callee.name != 'typevar':
             return
         # Yes, it's a type variable definition!
         name = ((NameExpr)s.lvalues[0]).name
@@ -941,6 +955,7 @@ class FirstPass(NodeVisitor):
     
     void visit_func_def(self, FuncDef d):
         sem = self.sem
+        sem.update_function_type_variables(d)
         d.is_conditional = sem.block_depth[-1] > 0
         if d.name() in sem.globals:
             n = sem.globals[d.name()].node
@@ -1091,3 +1106,17 @@ str get_member_expr_fullname(MemberExpr expr):
     else:
         return None
     return '{}.{}'.format(initial, expr.name)
+
+
+str[] infer_type_variables(Callable type, SymbolTable globals):
+    # TODO support multiple scopes
+    # TODO look inside types recursively
+
+    res = <str> []
+    for t in type.arg_types:
+        if isinstance(t, UnboundType):
+            ub = (UnboundType)t
+            if ub.name in globals and globals[ub.name].kind == UNBOUND_TVAR:
+                if not ub.name in res:
+                    res.append(ub.name)
+    return res

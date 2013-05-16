@@ -368,42 +368,60 @@ MypyFile:1(
       NameExpr(None [builtins.None])
       Any)))
 
-[case testFunctionTvar]
+[case testFunctionTypeVariable]
 from typing import typevar, Undefined
-
 t = typevar('t')
-
 def f(x: t) -> None:
   y = Undefined # type: t
 [out]
 MypyFile:1(
-  FuncDef:1(
+  ImportFrom:1(typing, [typevar : typevar, Undefined : Undefined])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  FuncDef:3(
     f
     Args(
       Var(x))
-    def <t> (t`-1 x)
-    Block:1(
-      VarDef:2(
-        Var(y)
-        Type(t`-1)))))
+    def [t] (x: t`-1)
+    Block:3(
+      AssignmentStmt:4(
+        NameExpr(y* [l])
+        NameExpr(Undefined [typing.Undefined])
+        t`-1))))
 
-[case testFunctionTvar2]
+[case testTwoFunctionTypeVariables]
 from typing import typevar
-
 t = typevar('t')
 u = typevar('u')
-
-def f(x: t, y: u) -> None: pass
+def f(x: t, y: u, z: t) -> None: pass
 [out]
 MypyFile:1(
-  FuncDef:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  AssignmentStmt:3(
+    NameExpr(u* [__main__.u])
+    CallExpr:3(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(u))))
+  FuncDef:4(
     f
     Args(
       Var(x)
-      Var(y))
-    def <t, u> (t`-1 x, u`-2 y)
-    Block:1(
-      PassStmt:1())))
+      Var(y)
+      Var(z))
+    def [t, u] (x: t`-1, y: u`-2, z: t`-1)
+    Block:4(
+      PassStmt:4())))
 
 [case testSelfType]
 class A:
