@@ -183,7 +183,8 @@ class SemanticAnalyzer(NodeVisitor):
             if init_:
                 init_.lvalues[0].accept(self)
         
-        # The first argument of a method is self.
+        # The first argument of a method is like 'self', though the name could
+        # be different.
         if is_method and defn.args:
             defn.args[0].is_self = True
         
@@ -443,7 +444,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_local(v, n)
             elif not self.is_func_scope() and (self.type and
                                                n.name not in self.type.names):
-                # Define a new attribute.
+                # Define a new attribute within class body.
                 v = Var(n.name)
                 v.info = self.type
                 v.is_initialized_in_class = True
