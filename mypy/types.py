@@ -312,11 +312,10 @@ class TupleType(Type):
 
 
 class TypeVars:
-    """Representation of type variables of a function or type (i.e.
-    <T1 [: B1], ..., Tn [: Bn]>).
+    """Collection of type variables related to a generic function or type.
 
-    TODO bounds are not supported, but they may be supported in future
-    """    
+    TODO bounds are not supported currently
+    """
     TypeVarDef[] items
     any repr
     
