@@ -56,7 +56,7 @@ TypeInfoMap(
     Interfaces()
     Names()))
 
-[case testClassWithInterface]
+[case testClassWithInterface-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 
