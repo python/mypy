@@ -198,7 +198,6 @@ class SemanticAnalyzer(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
-        #self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_type_def_analysis(defn)
         self.analyze_base_classes(defn)
 
@@ -218,7 +217,7 @@ class SemanticAnalyzer(NodeVisitor):
         . class Foo(Bar, Generic[t]): ...
 
         Now we will remove Generic[t] from bases of Foo and infer that the
-        type variable 't' in a type argument of Foo.
+        type variable 't' is a type argument of Foo.
         """
         removed = <int> []
         type_vars = <TypeVarDef> []
@@ -675,22 +674,22 @@ class SemanticAnalyzer(NodeVisitor):
                 a.accept(self)
 
     bool check_fixed_args(self, CallExpr expr, int numargs, str name):
-            """Verify that expr has specified number of positional args.
+        """Verify that expr has specified number of positional args.
 
-            Return True if the arguments are valid.
-            """
-            s = 's'
-            if numargs == 1:
-                s = ''
-            if len(expr.args) != numargs:
-                self.fail("'%s' expects %d argument%s" % (name, numargs, s),
-                          expr)
-                return False
-            if expr.arg_kinds != [ARG_POS] * numargs:
-                self.fail("'%s' must be called with %s positional argument%s" %
-                          (name, numargs, s), expr)
-                return False
-            return True
+        Return True if the arguments are valid.
+        """
+        s = 's'
+        if numargs == 1:
+            s = ''
+        if len(expr.args) != numargs:
+            self.fail("'%s' expects %d argument%s" % (name, numargs, s),
+                      expr)
+            return False
+        if expr.arg_kinds != [ARG_POS] * numargs:
+            self.fail("'%s' must be called with %s positional argument%s" %
+                      (name, numargs, s), expr)
+            return False
+        return True
     
     void visit_member_expr(self, MemberExpr expr):
         base = expr.expr
