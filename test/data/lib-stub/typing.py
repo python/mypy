@@ -5,3 +5,4 @@ Undefined = None
 Any = None
 typevar = None
 Generic = None
+Tuple = None

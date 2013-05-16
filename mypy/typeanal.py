@@ -33,6 +33,8 @@ class TypeAnalyser(TypeVisitor<Type>):
                 return Void()
             elif sym.node.fullname() == 'typing.Any':
                 return Any()
+            elif sym.node.fullname() == 'typing.Tuple':
+                return TupleType(self.anal_array(t.args))
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname()
                 if name is None:

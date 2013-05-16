@@ -532,23 +532,26 @@ MypyFile:1(
     PassStmt:4()))
 
 [case testTupleType]
-from typing import Undefined, Tuple, Any
-
-t = Undefined # type: tuple
-t1 = Undefined # type: Tuple[object]
-t2 = Undefined # type: Tuple[Any, object]
+from typing import Tuple
+t = None # type: tuple
+t1 = None # type: Tuple[object]
+t2 = None # type: Tuple[int, object]
 [builtins fixtures/tuple.py]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(t)
-    Type(builtins.tuple))
-  VarDef:2(
-    Var(t1)
-    Type(tuple<builtins.object>))
-  VarDef:3(
-    Var(t2)
-    Type(tuple<any, builtins.object>)))
+  ImportFrom:1(typing, [Tuple : Tuple])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    NameExpr(None [builtins.None])
+    builtins.tuple)
+  AssignmentStmt:3(
+    NameExpr(t1* [__main__.t1])
+    NameExpr(None [builtins.None])
+    Tuple[builtins.object])
+  AssignmentStmt:4(
+    NameExpr(t2* [__main__.t2])
+    NameExpr(None [builtins.None])
+    Tuple[builtins.int, builtins.object]))
 
 [case testFunctionTypes]
 from typing import Undefined, Function
