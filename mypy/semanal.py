@@ -415,13 +415,13 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
-            self.analyse_lvalue(lval)
+            self.analyse_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
         s.type = self.anal_type(s.type)
         # TODO store type into node
     
     void analyse_lvalue(self, Node lval, bool nested=False,
-                        bool add_global=False):
+                        bool add_global=False, bool explicit_type=False):
         """Analyze an lvalue or assignment target.
 
         Only if add_global is True, add name to globals table. If nested
@@ -467,6 +467,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.type.names[n.name] = SymbolTableNode(MDEF, v)
             else:
                 # Bind to an existing name.
+                if explicit_type:
+                    self.name_already_defined(n.name, lval)
                 n.accept(self)
                 self.check_lvalue_validity(n.node, n)
         elif isinstance(lval, MemberExpr):
@@ -476,12 +478,14 @@ class SemanticAnalyzer(NodeVisitor):
             if not add_global:
                 lval.accept(self)
         elif isinstance(lval, ParenExpr):
-            self.analyse_lvalue(((ParenExpr)lval).expr, nested, add_global)
+            self.analyse_lvalue(((ParenExpr)lval).expr, nested, add_global,
+                                explicit_type)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)) and not nested:
             items = ((any)lval).items
             for i in items:
-                self.analyse_lvalue(i, nested=True, add_global=add_global)
+                self.analyse_lvalue(i, nested=True, add_global=add_global,
+                                    explicit_type = explicit_type)
         else:
             self.fail('Invalid assignment target', lval)
     
@@ -947,7 +951,8 @@ class FirstPass(NodeVisitor):
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
-            self.sem.analyse_lvalue(lval, add_global=True)
+            self.sem.analyse_lvalue(lval, add_global=True,
+                                    explicit_type=s.type is not None)
 
         self.process_typevar_declaration(s)
 
