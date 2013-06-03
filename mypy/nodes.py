@@ -321,7 +321,7 @@ class Var(SymbolNode):
 class TypeDef(Node):
     """Class definition"""
     str name        # Name of the class without module prefix
-    str fullname   # Fully qualified name of the class
+    str fullname    # Fully qualified name of the class
     Block defs
     mypy.types.TypeVars type_vars
     # Inherited types (Instance or UnboundType).
