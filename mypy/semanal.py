@@ -421,13 +421,18 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO store type into node
     
     void analyse_lvalue(self, Node lval, bool nested=False,
-                        bool add_defs=False):
+                        bool add_global=False):
+        """Analyze an lvalue or assignment target.
+
+        Only if add_global is True, add name to globals table. If nested
+        is true, the lvalue is within a tuple or list lvalue expression.
+        """
         if isinstance(lval, NameExpr):
             n = (NameExpr)lval
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and
                              not self.type)
-            if (add_defs or nested_global) and n.name not in self.globals:
+            if (add_global or nested_global) and n.name not in self.globals:
                 # Define new global name.
                 v = Var(n.name)
                 v._fullname = self.qualified_name(n.name)
@@ -465,18 +470,18 @@ class SemanticAnalyzer(NodeVisitor):
                 n.accept(self)
                 self.check_lvalue_validity(n.node, n)
         elif isinstance(lval, MemberExpr):
-            if not add_defs:
+            if not add_global:
                 self.analyse_member_lvalue((MemberExpr)lval)
         elif isinstance(lval, IndexExpr):
-            if not add_defs:
+            if not add_global:
                 lval.accept(self)
         elif isinstance(lval, ParenExpr):
-            self.analyse_lvalue(((ParenExpr)lval).expr, nested, add_defs)
+            self.analyse_lvalue(((ParenExpr)lval).expr, nested, add_global)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)) and not nested:
             items = ((any)lval).items
             for i in items:
-                self.analyse_lvalue(i, True, add_defs)
+                self.analyse_lvalue(i, nested=True, add_global=add_global)
         else:
             self.fail('Invalid assignment target', lval)
     
@@ -591,13 +596,13 @@ class SemanticAnalyzer(NodeVisitor):
         self.analyze_try_stmt(s, self)
 
     void analyze_try_stmt(self, TryStmt s, NodeVisitor visitor,
-                          bool add_defs=False):
+                          bool add_global=False):
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
             if type:
                 type.accept(visitor)
             if var:
-                self.analyse_lvalue(var, add_defs=add_defs)
+                self.analyse_lvalue(var, add_global=add_global)
             handler.accept(visitor)
         if s.else_body:
             s.else_body.accept(visitor)
@@ -942,7 +947,7 @@ class FirstPass(NodeVisitor):
     
     void visit_assignment_stmt(self, AssignmentStmt s):
         for lval in s.lvalues:
-            self.sem.analyse_lvalue(lval, False, True)
+            self.sem.analyse_lvalue(lval, add_global=True)
 
         self.process_typevar_declaration(s)
 
@@ -1005,12 +1010,12 @@ class FirstPass(NodeVisitor):
 
     void visit_for_stmt(self, ForStmt s):
         for n in s.index:
-            self.sem.analyse_lvalue(n, False, True)
+            self.sem.analyse_lvalue(n, add_global=True)
 
     void visit_with_stmt(self, WithStmt s):
         for n in s.name:
             if n:
-                self.sem.analyse_lvalue(n, False, True)
+                self.sem.analyse_lvalue(n, add_global=True)
 
     void visit_decorator(self, Decorator d):
         d.var._fullname = self.sem.qualified_name(d.var.name())
@@ -1023,7 +1028,7 @@ class FirstPass(NodeVisitor):
             s.else_body.accept(self)
 
     void visit_try_stmt(self, TryStmt s):
-        self.sem.analyze_try_stmt(s, self, add_defs=True)
+        self.sem.analyze_try_stmt(s, self, add_global=True)
 
 
 Instance self_type(TypeInfo typ):
