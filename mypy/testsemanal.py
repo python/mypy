@@ -18,7 +18,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-types.test',
                  'semanal-modules.test',
                  'semanal-statements.test',
-                 'semanal-interfaces.test']
+                 'semanal-abstractclasses.test']
 
 class SemAnalSuite(Suite):
     def cases(self):

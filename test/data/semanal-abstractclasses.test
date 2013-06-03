@@ -1,4 +1,4 @@
-[case testInterface-skip]
+[case testAbstractMethods-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 
@@ -27,26 +27,7 @@ MypyFile:1(
         ReturnStmt:3(
           NameExpr(self [l]))))))
 
-[case testSuperinterface-skip]
-from abc import abstractmethod, ABCMeta
-import typing
-
-class B(metaclass=ABCMeta): pass
-class A(B): pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    B
-    Interface
-    PassStmt:1())
-  TypeDef:2(
-    A
-    Interface
-    BaseType(
-      __main__.B)
-    PassStmt:2()))
-
-[case testClassImplementingInterface-skip]
+[case testClassInheritingTwoAbstractClasses-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 
@@ -70,25 +51,3 @@ MypyFile:1(
       __main__.A
       __main__.B)
     PassStmt:3()))
-
-[case testInterfaceWithDocString-skip]
-from abc import abstractmethod, ABCMeta
-import typing
-
-class A(metaclass=ABCMeta):
-    "foo"
-    @abstractmethod
-    def f(self) -> 'A': pass
-[out]
-MypyFile:1(
-  TypeDef:1(
-    A
-    Interface
-    ExpressionStmt:2(
-      StrExpr(foo))
-    FuncDef:3(
-      f
-      Args(
-        Var(self))
-      def (__main__.A self) -> __main__.A
-      Block:-1())))
