@@ -77,6 +77,28 @@ MypyFile:1(
     NameExpr(y* [__main__.y])
     NameExpr(x [__main__.x])))
 
+[case testMemberVarWithType]
+import typing
+class A:
+  def __init__(self):
+    self.x = None # type: int
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  TypeDef:2(
+    A
+    FuncDef:3(
+      __init__
+      Args(
+        Var(self))
+      Block:3(
+        AssignmentStmt:4(
+          MemberExpr:4(
+            NameExpr(self [l])
+            x*)
+          NameExpr(None [builtins.None])
+          builtins.int)))))
+
 [case testFunctionSig]
 from typing import Any
 class A: pass
