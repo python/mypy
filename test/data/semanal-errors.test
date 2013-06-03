@@ -82,7 +82,7 @@ z = 0 # type: x
 main, line 4: Invalid type "__main__.f"
 main, line 5: Invalid type "__main__.x"
 
-[case testMultipleVarDefinitions]
+[case testGlobalVarRedefinition]
 import typing
 class A: pass
 x = 0 # type: A
@@ -90,7 +90,7 @@ x = 0 # type: A
 [out]
 main, line 4: Name 'x' already defined
 
-[case testMultipleVarDefinitions2]
+[case testLocalVarRedefinition]
 import typing
 class A: pass
 def f():
