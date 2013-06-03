@@ -537,12 +537,6 @@ class A(Generic[t]):
     a = 0 # type: A[t]
 [out]
 
-[case testExtendMultipleClasses]
-class A: pass
-class B: pass
-class C(A, B): pass # E: Class has multiple base classes ('A' and 'B')
-[out]
-
 [case testTestExtendPrimitives]
 class A(int): pass # E: 'int' is not a valid base class
 class B(float): pass # E: 'float' is not a valid base class

@@ -304,23 +304,17 @@ class SemanticAnalyzer(NodeVisitor):
         self.verify_base_classes(defn)
 
     void verify_base_classes(self, TypeDef defn):
-        base_classes = <str> []
         for base in defn.base_types:
             if isinstance(base, Instance):
                 baseinfo = ((Instance)base).type
                 if self.is_base_class(defn.info, baseinfo):
                     self.fail('Cycle in inheritance hierarchy', defn)
                 if not baseinfo.is_interface:
-                    base_classes.append(baseinfo.name())
                     if baseinfo.fullname() in ['builtins.int',
                                                'builtins.bool',
                                                'builtins.float']:
                         self.fail("'%s' is not a valid base class" %
                                   baseinfo.name(), defn)
-        if len(base_classes) > 1:
-            bases = ["'%s'" % n for n in sorted(base_classes)]
-            self.fail('Class has multiple base classes (%s)' %
-                      (' and '.join(bases)), defn)
 
     bool is_base_class(self, TypeInfo t, TypeInfo s):
         """Is t a base class of s?"""

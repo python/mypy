@@ -36,7 +36,7 @@ MypyFile:1(
           ReturnStmt:8(
             NameExpr(self [l])))))))
 
-[case testClassInheritingTwoAbstractClasses-skip]
+[case testClassInheritingTwoAbstractClasses]
 from abc import abstractmethod, ABCMeta
 import typing
 
@@ -45,18 +45,19 @@ class B(metaclass=ABCMeta): pass
 class C(A, B): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(abc, [abstractmethod : abstractmethod, ABCMeta : ABCMeta])
+  Import:2(typing : typing)
+  TypeDef:4(
     A
-    Interface
-    PassStmt:1())
-  TypeDef:2(
+    Metaclass(ABCMeta)
+    PassStmt:4())
+  TypeDef:5(
     B
-    Interface
-    PassStmt:2())
-  TypeDef:3(
+    Metaclass(ABCMeta)
+    PassStmt:5())
+  TypeDef:6(
     C
     BaseType(
-      builtins.object
       __main__.A
       __main__.B)
-    PassStmt:3()))
+    PassStmt:6()))
