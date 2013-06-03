@@ -659,3 +659,21 @@ z = None # type: Function[int, int, int]
 main, line 2: Invalid function type
 main, line 3: Invalid function type
 main, line 4: Invalid function type
+
+[case testAbstractGlobalFunction]
+import typing
+from abc import abstractmethod
+@abstractmethod
+def foo(): pass
+[out]
+main, line 3: 'abstractmethod' used with a non-method
+
+[case testAbstractNestedFunction]
+import typing
+from abc import abstractmethod
+def g():
+  @abstractmethod
+  def foo(): pass
+[out]
+main: In function "g":
+main, line 4: 'abstractmethod' used with a non-method

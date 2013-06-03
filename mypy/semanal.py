@@ -526,6 +526,8 @@ class SemanticAnalyzer(NodeVisitor):
             if refers_to_fullname(d, 'abc.abstractmethod'):
                 dec.decorators.remove(d)
                 dec.func.is_abstract = True
+                if not self.type or self.is_func_scope():
+                    self.fail("'abstractmethod' used with a non-method", dec)
                 break
     
     void visit_expression_stmt(self, ExpressionStmt s):
