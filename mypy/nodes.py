@@ -319,7 +319,7 @@ class Var(SymbolNode):
 
 
 class TypeDef(Node):
-    """Class or interface definition"""
+    """Class definition"""
     str name        # Name of the class without module prefix
     str fullname   # Fully qualified name of the class
     Block defs
