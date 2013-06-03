@@ -527,6 +527,11 @@ class SemanticAnalyzer(NodeVisitor):
         dec.func.accept(self)
         for d in dec.decorators:
             d.accept(self)
+        for i, d in enumerate(dec.decorators):
+            if refers_to_fullname(d, 'abc.abstractmethod'):
+                dec.decorators.remove(d)
+                dec.func.is_abstract = True
+                break
     
     void visit_expression_stmt(self, ExpressionStmt s):
         s.expr.accept(self)

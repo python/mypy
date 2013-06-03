@@ -1,0 +1,2 @@
+ABCMeta = None
+abstractmethod = None

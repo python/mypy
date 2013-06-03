@@ -103,6 +103,8 @@ class StrConv(NodeVisitor<str>):
         a.insert(0, o.name())
         if mypy.nodes.ARG_NAMED in o.arg_kinds:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
+        if o.is_abstract:
+            a.insert(-1, 'Abstract')
         return self.dump(a, o)
     
     def visit_overloaded_func_def(self, o):

@@ -47,8 +47,9 @@ def test_semanal(testcase):
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
-            if (not f.path.endswith(os.sep + 'builtins.py')
-                    and not f.path.endswith(os.sep + 'typing.py')
+            if (not f.path.endswith((os.sep + 'builtins.py',
+                                     'typing.py',
+                                     'abc.py'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):

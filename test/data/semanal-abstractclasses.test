@@ -1,4 +1,4 @@
-[case testAbstractMethods-skip]
+[case testAbstractMethods]
 from abc import abstractmethod, ABCMeta
 import typing
 
@@ -9,23 +9,32 @@ class A(metaclass=ABCMeta):
   def f(self) -> 'A': return self
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ImportFrom:1(abc, [abstractmethod : abstractmethod, ABCMeta : ABCMeta])
+  Import:2(typing : typing)
+  TypeDef:4(
     A
-    Interface
-    FuncDef:2(
-      g
-      Args(
-        Var(self))
-      def (__main__.A self) -> __main__.A
-      Block:-1())
-    FuncDef:3(
-      f
-      Args(
-        Var(self))
-      def (__main__.A self) -> __main__.A
-      Block:3(
-        ReturnStmt:3(
-          NameExpr(self [l]))))))
+    Metaclass(ABCMeta)
+    Decorator:5(
+      Var(g)
+      FuncDef:6(
+        g
+        Args(
+          Var(self))
+        def (self: __main__.A) -> __main__.A
+        Abstract
+        Block:6(
+          PassStmt:6())))
+    Decorator:7(
+      Var(f)
+      FuncDef:8(
+        f
+        Args(
+          Var(self))
+        def (self: __main__.A) -> __main__.A
+        Abstract
+        Block:8(
+          ReturnStmt:8(
+            NameExpr(self [l])))))))
 
 [case testClassInheritingTwoAbstractClasses-skip]
 from abc import abstractmethod, ABCMeta
