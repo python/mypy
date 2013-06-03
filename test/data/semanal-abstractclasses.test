@@ -61,3 +61,35 @@ MypyFile:1(
       __main__.A
       __main__.B)
     PassStmt:6()))
+
+[case testAbstractGenericClass]
+from abc import abstractmethod
+from typing import AbstractGeneric, typevar
+T = typevar('T')
+class A(AbstractGeneric[T]):
+  @abstractmethod
+  def f(self) -> 'A[T]': pass
+[out]
+MypyFile:1(
+  ImportFrom:1(abc, [abstractmethod : abstractmethod])
+  ImportFrom:2(typing, [AbstractGeneric : AbstractGeneric, typevar : typevar])
+  AssignmentStmt:3(
+    NameExpr(T* [__main__.T])
+    CallExpr:3(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(T))))
+  TypeDef:4(
+    A
+    TypeVars(
+      T)
+    Decorator:5(
+      Var(f)
+      FuncDef:6(
+        f
+        Args(
+          Var(self))
+        def (self: __main__.A[T`1]) -> __main__.A[T`1]
+        Abstract
+        Block:6(
+          PassStmt:6())))))

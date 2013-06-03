@@ -6,5 +6,6 @@ Undefined = None
 Any = None
 typevar = None
 Generic = None
+AbstractGeneric = None
 Tuple = None
 Function = None

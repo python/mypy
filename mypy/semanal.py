@@ -252,7 +252,8 @@ class SemanticAnalyzer(NodeVisitor):
         for i, base in enumerate(defn.base_types):
             # TODO bind name reliably
             if (isinstance(base, UnboundType)
-                    and ((UnboundType)base).name == 'Generic'):
+                    and ((UnboundType)base).name in ('Generic',
+                                                     'AbstractGeneric')):
                 unbound = (UnboundType)base
                 removed.append(i)
                 for j, arg in enumerate(unbound.args):
