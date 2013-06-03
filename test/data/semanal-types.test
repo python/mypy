@@ -99,6 +99,24 @@ MypyFile:1(
           NameExpr(None [builtins.None])
           builtins.int)))))
 
+[case testClassVarWithType]
+import typing
+class A:
+  x = None # type: int
+  x = 1
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  TypeDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(x*)
+      NameExpr(None [builtins.None])
+      builtins.int)
+    AssignmentStmt:4(
+      NameExpr(x [m])
+      IntExpr(1))))
+
 [case testFunctionSig]
 from typing import Any
 class A: pass
