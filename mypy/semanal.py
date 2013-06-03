@@ -497,20 +497,19 @@ class SemanticAnalyzer(NodeVisitor):
     
     void analyse_member_lvalue(self, MemberExpr lval):
         lval.accept(self)
-        if self.is_init_method and isinstance(lval.expr, NameExpr):
-            node = ((NameExpr)lval.expr).node
-            if (isinstance(node, Var) and ((Var)node).is_self and
-                    lval.name not in self.type.names):
-                # Implicit attribute definition in __init__.
-                lval.is_def = True
-                v = Var(lval.name)
-                v.info = self.type
-                v.is_ready = False
-                lval.def_var = v
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+        if self.is_init_method and (self.is_self_member_ref(lval) and
+                                    lval.name not in self.type.names):
+            # Implicit attribute definition in __init__.
+            lval.is_def = True
+            v = Var(lval.name)
+            v.info = self.type
+            v.is_ready = False
+            lval.def_var = v
+            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 
     bool is_self_member_ref(self, MemberExpr memberexpr):
+        """Does memberexpr to refer to an attribute of self?"""
         if not isinstance(memberexpr.expr, NameExpr):
             return False
         node = ((NameExpr)memberexpr.expr).node
