@@ -276,11 +276,13 @@ class Decorator(Node):
     FuncDef func        # Decorated function
     Node[] decorators   # Decorators, at least one
     Var var             # Represents the decorated function value
+    bool is_overload
     
     void __init__(self, FuncDef func, Node[] decorators, Var var):
         self.func = func
         self.decorators = decorators
         self.var = var
+        self.is_overload = False
 
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_decorator(self)

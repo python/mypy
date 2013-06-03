@@ -122,8 +122,10 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.type = replace_implicit_self_type(sig,
                                                        self_type(self.type))
 
-        if self.is_func_scope() and not defn.is_decorated:
+        if self.is_func_scope() and (not defn.is_decorated and
+                                     not defn.is_overload):
             self.add_local_func(defn, defn)
+            defn._fullname = defn.name()
         
         self.errors.push_function(defn.name())
         self.analyse_function(defn)
@@ -156,11 +158,12 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
         Callable[] t = []
-        for f in defn.items:
+        for decorator in defn.items:
             # TODO support decorated overloaded functions properly
-            f.func.is_overload = True
-            f.accept(self)
-            t.append((Callable)function_type(f.func))
+            decorator.is_overload = True
+            decorator.func.is_overload = True
+            decorator.accept(self)
+            t.append((Callable)function_type(decorator.func))
         defn.type = Overloaded(t)
         defn.type.line = defn.line
         
@@ -168,6 +171,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
                                                            typ=defn.type)
             defn.info = self.type
+        elif self.is_func_scope():
+            self.add_local_func(defn, defn)
     
     void analyse_function(self, FuncItem defn):
         is_method = self.is_class_scope()
@@ -510,14 +515,15 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Invalid assignment target', ctx)
 
     void visit_decorator(self, Decorator dec):
-        if self.is_func_scope():
-            self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec.var),
-                            dec)
-        elif self.type:
-            dec.var.info = self.type
-            dec.var.is_initialized_in_class = True
-            self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec.var),
-                            dec)
+        if not dec.is_overload:
+            if self.is_func_scope():
+                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec.var),
+                                dec)
+            elif self.type:
+                dec.var.info = self.type
+                dec.var.is_initialized_in_class = True
+                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec.var),
+                                dec)
         dec.func.accept(self)
         for d in dec.decorators:
             d.accept(self)
@@ -879,11 +885,10 @@ class SemanticAnalyzer(NodeVisitor):
         v._fullname = v.name()
         self.locals[-1][v.name()] = SymbolTableNode(LDEF, v)
 
-    void add_local_func(self, FuncDef defn, Context ctx):
+    void add_local_func(self, FuncBase defn, Context ctx):
         # TODO combine with above
-        if not defn.is_overload and defn.name() in self.locals[-1]:
+        if defn.name() in self.locals[-1]:
             self.name_already_defined(defn.name(), ctx)
-        defn._fullname = defn.name()
         self.locals[-1][defn.name()] = SymbolTableNode(LDEF, defn)
     
     void check_no_global(self, str n, Context ctx, bool is_func=False):
