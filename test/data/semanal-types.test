@@ -379,6 +379,17 @@ MypyFile:1(
       NameExpr(None [builtins.None])
       Tuple[builtins.int, builtins.str])))
 
+[case testCastToFunctionType]
+from typing import Function, cast
+cast(Function[[int], str], None)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Function : Function, cast : cast])
+  ExpressionStmt:2(
+    CastExpr:2(
+      NameExpr(None [builtins.None])
+      def (builtins.int) -> builtins.str)))
+
 [case testFunctionTypeVariable]
 from typing import typevar, Undefined
 t = typevar('t')
