@@ -690,3 +690,18 @@ import typing
 None[1] = 1 # type: int
 [out]
 main, line 2: Unexpected type declaration
+
+[case testNonSelfMemberAssignmentWithTypeDeclaration]
+import typing
+None.x = 1 # type: int
+[out]
+main, line 2: Type cannot be declared in assignment to non-self attribute
+
+[case testNonSelfMemberAssignmentWithTypeDeclarationInMethod]
+import typing
+class A:
+  def f(self, x) -> None:
+    x.y = 1 # type: int
+[out]
+main: In function "f":
+main, line 4: Type cannot be declared in assignment to non-self attribute

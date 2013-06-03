@@ -472,8 +472,12 @@ class SemanticAnalyzer(NodeVisitor):
                 n.accept(self)
                 self.check_lvalue_validity(n.node, n)
         elif isinstance(lval, MemberExpr):
+            memberexpr = (MemberExpr)lval
             if not add_global:
-                self.analyse_member_lvalue((MemberExpr)lval)
+                self.analyse_member_lvalue(memberexpr)
+            if explicit_type and not self.is_self_member_ref(memberexpr):
+                self.fail('Type cannot be declared in assignment to non-self '
+                          'attribute', lval)
         elif isinstance(lval, IndexExpr):
             if explicit_type:
                 self.fail('Unexpected type declaration', lval)
@@ -505,6 +509,12 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.def_var = v
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
+
+    bool is_self_member_ref(self, MemberExpr memberexpr):
+        if not isinstance(memberexpr.expr, NameExpr):
+            return False
+        node = ((NameExpr)memberexpr.expr).node
+        return isinstance(node, Var) and ((Var)node).is_self
 
     void check_lvalue_validity(self, Node node, Context ctx):
         if (isinstance(node, FuncDef) or
