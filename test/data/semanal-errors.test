@@ -677,3 +677,11 @@ def g():
 [out]
 main: In function "g":
 main, line 4: 'abstractmethod' used with a non-method
+
+[case testInvalidTypeDeclaration]
+import typing
+def f(): pass
+f() = 1 # type: int
+[out]
+main, line 3: Invalid assignment target
+
