@@ -42,7 +42,8 @@ str dump_tagged(any[] nodes, str tag):
         a.append(tag + '(')
     for n in nodes:
         if isinstance(n, list):
-            a.append(dump_tagged(n, None))
+            if n:
+                a.append(dump_tagged(n, None))
         elif isinstance(n, tuple):
             s = dump_tagged(n[1], n[0])
             a.append(indent(s, 2))

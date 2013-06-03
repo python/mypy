@@ -1,7 +1,6 @@
 [case testEmptyFile]
 [out]
-MypyFile:1(
-)
+MypyFile:1()
 
 [case testGlobalVariable]
 x = 1
