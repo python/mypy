@@ -100,6 +100,15 @@ def f():
 main: In function "f":
 main, line 5: Name 'x' already defined
 
+[case testClassVarRedefinition]
+import typing
+class A:
+  x = 0 # type: object
+  x = 0 # type: object
+[out]
+main: In class "A":
+main, line 4: Name 'x' already defined
+
 [case testMultipleClassDefinitions]
 import typing
 class A: pass
