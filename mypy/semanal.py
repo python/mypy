@@ -475,6 +475,8 @@ class SemanticAnalyzer(NodeVisitor):
             if not add_global:
                 self.analyse_member_lvalue((MemberExpr)lval)
         elif isinstance(lval, IndexExpr):
+            if explicit_type:
+                self.fail('Unexpected type declaration', lval)
             if not add_global:
                 lval.accept(self)
         elif isinstance(lval, ParenExpr):

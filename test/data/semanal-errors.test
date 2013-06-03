@@ -685,3 +685,8 @@ f() = 1 # type: int
 [out]
 main, line 3: Invalid assignment target
 
+[case testIndexedAssignmentWithTypeDeclaration]
+import typing
+None[1] = 1 # type: int
+[out]
+main, line 2: Unexpected type declaration
