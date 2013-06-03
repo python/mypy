@@ -9,7 +9,6 @@ TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
     Base(builtins.object)
-    Interfaces()
     Names()))
 
 [case testClassWithMethod]
@@ -20,7 +19,6 @@ TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
     Base(builtins.object)
-    Interfaces()
     Names(
       f)))
 
@@ -34,7 +32,6 @@ TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
     Base(builtins.object)
-    Interfaces()
     Names(
       __init__
       y
@@ -48,15 +45,13 @@ TypeInfoMap(
   __main__.base : TypeInfo(
     Name(__main__.base)
     Base(builtins.object)
-    Interfaces()
     Names())
   __main__.c : TypeInfo(
     Name(__main__.c)
     Base(__main__.base)
-    Interfaces()
     Names()))
 
-[case testClassWithInterface-skip]
+[case testClassAndAbstractClass]
 from abc import abstractmethod, ABCMeta
 import typing
 
@@ -66,14 +61,11 @@ class c(i): pass
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
-    Interfaces(
-      __main__.i)
+    Base(__main__.i)
     Names())
   __main__.i : TypeInfo(
     Name(__main__.i)
-    Interface
-    Interfaces()
+    Base(builtins.object)
     Names()))
 
 [case testAttributeWithoutType]
@@ -84,6 +76,5 @@ TypeInfoMap(
   __main__.A : TypeInfo(
     Name(__main__.A)
     Base(builtins.object)
-    Interfaces()
     Names(
       a)))

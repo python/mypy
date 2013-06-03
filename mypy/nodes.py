@@ -1244,19 +1244,12 @@ class TypeInfo(SymbolNode):
 
         This includes the most important information about the type.
         """
-        str[] interfaces = []
-        for i in self.interfaces:
-            interfaces.append(i.fullname())
+        # TODO multiple bases
         str base = None
         if self.base is not None:
             base = 'Base({})'.format(self.base.fullname())
-        str iface = None
-        if self.is_interface:
-            iface = 'Interface'
         return dump_tagged(['Name({})'.format(self.fullname()),
-                            iface,
                             base,
-                            ('Interfaces', interfaces),
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
