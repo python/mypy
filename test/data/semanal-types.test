@@ -790,15 +790,41 @@ MypyFile:1(
     NameExpr(x* [__main__.x])
     NameExpr(f [__main__.f])))
 
-[case testNestedOverloadedFunction-skip]
+[case testNestedOverloadedFunction]
 from typing import overload
 def f():
     @overload
     def g(): pass
     @overload
     def g(x): pass
+    y = g
 [out]
-TODO
+MypyFile:1(
+  ImportFrom:1(typing, [overload : overload])
+  FuncDef:2(
+    f
+    Block:2(
+      OverloadedFuncDef:3(
+        Overload(def () -> Any, def (x: Any) -> Any)
+        Decorator:3(
+          Var(g)
+          NameExpr(overload [typing.overload])
+          FuncDef:4(
+            g
+            Block:4(
+              PassStmt:4())))
+        Decorator:5(
+          Var(g)
+          NameExpr(overload [typing.overload])
+          FuncDef:6(
+            g
+            Args(
+              Var(x))
+            Block:6(
+              PassStmt:6()))))
+      AssignmentStmt:7(
+        NameExpr(y* [l])
+        NameExpr(g [l])))))
 
 [case testImplicitGenericTypeArgs]
 from typing import typevar, Generic, Undefined
