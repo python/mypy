@@ -991,6 +991,10 @@ class FirstPass(NodeVisitor):
         d.info = info
         self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
                                                    self.sem.cur_mod_id)
+        for defn in d.defs.body:
+            if isinstance(defn, TypeDef):
+                self.sem.clean_up_bases_and_infer_type_variables(
+                    (TypeDef)defn)
     
     void visit_var_def(self, VarDef d):
         for v in d.items:

@@ -524,8 +524,9 @@ s = typevar('s')
 class A(Generic[t]):
     class B(Generic[s]):
         x = 0 # type: A[s]
-        y = 0 # type: A[t]        # E: Name 't' is not defined
-    z = 0 # type: A[s]            # E: Name 's' is not defined
+        y = 0 # type: A[t]        # E: Invalid type "__main__.t"
+    z = 0 # type: A[s]            # E: Invalid type "__main__.s"
+    a = 0 # type: A[t]
 [out]
 
 [case testExtendMultipleClasses]
