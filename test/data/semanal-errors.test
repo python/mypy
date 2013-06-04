@@ -712,3 +712,16 @@ y = 1
 x = Undefined(Undefined) # E: Invalid type "typing.Undefined"
 [out]
 
+[case testInvalidTypeInTypeApplication]
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+A[typevar] # E: Invalid type "typing.typevar"
+[out]
+
+[case testInvalidTypeInTypeApplication2]
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+A[1] # E: Type expected within [...]
+[out]
