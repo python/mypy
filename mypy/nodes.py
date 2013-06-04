@@ -1301,7 +1301,7 @@ class SymbolTable(dict<str, SymbolTableNode>):
 class SymbolTableNode:
     int kind      # LDEF/GDEF/MDEF/TVAR/...
     SymbolNode node  # Parse tree node of definition (FuncDef/Var/
-                  # TypeInfo), None for Tvar
+                     # TypeInfo), None for Tvar
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
