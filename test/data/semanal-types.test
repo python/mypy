@@ -1084,3 +1084,16 @@ MypyFile:1(
     def () -> builtins.dict[builtins.int, builtins.str]
     Block:2(
       PassStmt:2())))
+
+[case testQualifiedTypeAlias]
+import typing
+def f() -> typing.List[int]: pass
+[builtins fixtures/list.py]
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  FuncDef:2(
+    f
+    def () -> builtins.list[builtins.int]
+    Block:2(
+      PassStmt:2())))

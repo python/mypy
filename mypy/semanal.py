@@ -367,16 +367,20 @@ class SemanticAnalyzer(NodeVisitor):
         for id, as_id in i.names:
             node = m.names.get(id, None)
             if node:
-                if node.fullname() in type_aliases:
-                    # Aliased type such as typing.List.
-                    node = self.lookup_qualified(type_aliases[node.fullname()],
-                                                 i)
-                    if not node:
-                        return
+                node = self.normalize_type_alias(node, i)
+                if not node:
+                    return
                 self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
                                                        self.cur_mod_id), i)
             else:
                 self.fail("Module has no attribute '{}'".format(id), i)
+
+    SymbolTableNode normalize_type_alias(self, SymbolTableNode node,
+                                         Context ctx):
+        if node.fullname() in type_aliases:
+            # Node refers to an aliased type such as typing.List; normalize.
+            node = self.lookup_qualified(type_aliases[node.fullname()], ctx)
+        return node
     
     void visit_import_all(self, ImportAll i):
         m = self.modules[i.id]
@@ -782,6 +786,9 @@ class SemanticAnalyzer(NodeVisitor):
             names = ((MypyFile)((RefExpr)base).node).names
             n = names.get(expr.name, None)
             if n:
+                n = self.normalize_type_alias(n, expr)
+                if not n:
+                    return
                 expr.kind = n.kind
                 expr.fullname = n.fullname()
                 expr.node = n.node
@@ -905,6 +912,8 @@ class SemanticAnalyzer(NodeVisitor):
                         n = ((MypyFile)n.node).names.get(parts[i], None)
                     if not n:
                         self.name_not_defined(name, ctx)
+                if n:
+                    n = self.normalize_type_alias(n, ctx)
             return n
     
     str qualified_name(self, str n):
