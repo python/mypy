@@ -1,5 +1,4 @@
 [case testEmptyFile]
-
 [out]
 
 [case testAssignmentAndVarDef]
