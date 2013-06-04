@@ -28,6 +28,13 @@ from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser
 
 
+type_aliases = {
+    'typing.List': '__builtins__.list',
+    'typing.Dict': '__builtins__.dict',
+    'typing.Set': '__builtins__.set',
+}
+
+
 class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
@@ -360,6 +367,12 @@ class SemanticAnalyzer(NodeVisitor):
         for id, as_id in i.names:
             node = m.names.get(id, None)
             if node:
+                if node.fullname() in type_aliases:
+                    # Aliased type such as typing.List.
+                    node = self.lookup_qualified(type_aliases[node.fullname()],
+                                                 i)
+                    if not node:
+                        return
                 self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
                                                        self.cur_mod_id), i)
             else:

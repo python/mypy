@@ -9,3 +9,8 @@ Generic = None
 AbstractGeneric = None
 Tuple = None
 Function = None
+# Type aliases. These need to be classes, but their definition is not used,
+# so they can be empty.
+List = None
+Dict = None
+Set = None
