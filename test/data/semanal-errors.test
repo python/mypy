@@ -705,3 +705,10 @@ class A:
 [out]
 main: In function "f":
 main, line 4: Type cannot be declared in assignment to non-self attribute
+
+[case testInvalidUndefined]
+from typing import Undefined
+y = 1
+x = Undefined(Undefined) # E: Invalid type "typing.Undefined"
+[out]
+
