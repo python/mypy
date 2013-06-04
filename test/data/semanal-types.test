@@ -117,20 +117,6 @@ MypyFile:1(
       NameExpr(x [m])
       IntExpr(1))))
 
-[case testUndefinedWithArgument]
-from typing import Undefined
-x = Undefined(int)
-x = 1
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
-  AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
-    UndefinedExpr:2(builtins.int))
-  AssignmentStmt:3(
-    NameExpr(x [__main__.x])
-    IntExpr(1)))
-
 [case testFunctionSig]
 from typing import Any
 class A: pass
@@ -309,6 +295,46 @@ MypyFile:1(
       AssignmentStmt:8(
         NameExpr(b [l])
         IntExpr(1)))))
+
+[case testUndefinedWithArgument]
+from typing import Undefined
+x = Undefined(int)
+x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Undefined : Undefined])
+  AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    UndefinedExpr:2(builtins.int))
+  AssignmentStmt:3(
+    NameExpr(x [__main__.x])
+    IntExpr(1)))
+
+[case testUndefinedWithComplexType]
+from typing import Undefined, Tuple
+x = Undefined(Tuple[int, str])
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Undefined : Undefined, Tuple : Tuple])
+  AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    UndefinedExpr:2(Tuple[builtins.int, builtins.str])))
+
+[case testUndefinedInMultipleAssignment]
+from typing import Undefined, Any
+x, y, z = Undefined(int), 1, Undefined(Any)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Undefined : Undefined, Any : Any])
+  AssignmentStmt:2(
+    TupleExpr:2(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y])
+      NameExpr(z* [__main__.z]))
+    TupleExpr:2(
+      UndefinedExpr:2(builtins.int)
+      IntExpr(1)
+      UndefinedExpr:2(Any))))
 
 [case testCast]
 from typing import typevar, Generic, Any, cast
