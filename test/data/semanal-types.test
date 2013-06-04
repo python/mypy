@@ -993,3 +993,31 @@ MypyFile:1(
     BaseType(
       __main__.B[Any])
     PassStmt:5()))
+
+[case testTypeApplication]
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+x = A[int]()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  TypeDef:3(
+    A
+    TypeVars(
+      t)
+    PassStmt:3())
+  AssignmentStmt:4(
+    NameExpr(x* [__main__.x])
+    CallExpr:4(
+      TypeApplication:4(
+        NameExpr(A [__main__.A])
+        Types(
+          builtins.int))
+      Args())))

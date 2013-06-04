@@ -782,8 +782,20 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_index_expr(self, IndexExpr expr):
         expr.base.accept(self)
-        expr.index.accept(self)
-    
+        if refers_to_class(expr.base):
+            # Special form -- type application.
+            # Translate index to an unanalyzed type.
+            try:
+                typearg = expr_to_unanalyzed_type(expr.index)
+            except TypeTranslationError:
+                self.fail('Type expected within [...]', expr)
+                return
+            typearg = self.anal_type(typearg)
+            expr.analyzed = TypeApplication(expr.base, [typearg])
+            expr.analyzed.line = expr.line
+        else:
+            expr.index.accept(self)
+
     void visit_slice_expr(self, SliceExpr expr):
         if expr.begin_index:
             expr.begin_index.accept(self)
@@ -1114,6 +1126,12 @@ bool refers_to_fullname(Node node, str fullname):
     """Is node a name or member expression with the given full name?"""
     return isinstance(node,
                       RefExpr) and ((RefExpr)node).fullname == fullname
+
+
+bool refers_to_class(Node node):
+    """Does semantically analyzed node refer to a class?"""
+    return isinstance(node, RefExpr) and isinstance(((RefExpr)node).node,
+                                                    TypeInfo)
 
 
 Type expr_to_unanalyzed_type(Node expr):

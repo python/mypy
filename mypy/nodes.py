@@ -759,14 +759,20 @@ class CallExpr(Node):
 
 
 class IndexExpr(Node):
-    """Index expression x[y]"""
+    """Index expression x[y].
+
+    Also wraps type application as a special form.
+    """
     Node base
     Node index
     mypy.types.Type method_type  # Inferred __getitem__ method type
+    TypeApplication analyzed     # If not None, this is actually semantically
+                                 # a type application Class[type, ...].
     
     void __init__(self, Node base, Node index):
         self.base = base
         self.index = index
+        self.analyzed = None
     
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_index_expr(self)

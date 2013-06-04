@@ -357,6 +357,8 @@ class StrConv(NodeVisitor<str>):
         return self.dump(a, o)
     
     def visit_index_expr(self, o):
+        if o.analyzed:
+            return o.analyzed.accept(self)
         return self.dump([o.base, o.index], o)
     
     def visit_super_expr(self, o):
