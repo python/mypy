@@ -680,6 +680,12 @@ class RefExpr(Node):
     int kind      # LDEF/GDEF/MDEF/... (None if not available)
     Node node     # Var, FuncDef or TypeInfo that describes this
     str fullname  # Fully qualified name (or name if not global)
+    
+    # Does this define a new name with inferred type?
+    #
+    # For members, after semantic analysis, this does not take base
+    # classes into consideration at all; the type checker deals with these.
+    bool is_def = False
 
 
 class NameExpr(RefExpr):
@@ -689,11 +695,9 @@ class NameExpr(RefExpr):
     """
     str name      # Name referred to (may be qualified)
     TypeInfo info # TypeInfo of class surrounding expression (may be None)
-    bool is_def   # Does this define a new variable as a lvalue?
     
     void __init__(self, str name):
         self.name = name
-        self.is_def = False
     
     def type_node(self):
         return (TypeInfo)self.node
@@ -706,10 +710,6 @@ class MemberExpr(RefExpr):
     """Member access expression x.y"""
     Node expr
     str name
-    # True if first assignment to member via self in __init__ (and if not
-    # defined in class body). After semantic analysis, this does not take base
-    # classes into consideration at all; the type checker deals with these.
-    bool is_def = False
     # The variable node related to a definition.
     Var def_var = None
     # Is this direct assignment to a data member (bypassing accessors)?
