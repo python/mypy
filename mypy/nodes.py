@@ -733,7 +733,11 @@ int ARG_STAR2 = 4 # **arg argument
 
 
 class CallExpr(Node):
-    """Call expression"""
+    """Call expression.
+
+    This can also represent several special forms that are syntactically calls
+    such as cast(...) and Undefined(...).
+    """
     Node callee
     Node[] args
     int[] arg_kinds # ARG_ constants
