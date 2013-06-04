@@ -785,13 +785,20 @@ class SemanticAnalyzer(NodeVisitor):
         if refers_to_class(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
-            try:
-                typearg = expr_to_unanalyzed_type(expr.index)
-            except TypeTranslationError:
-                self.fail('Type expected within [...]', expr)
-                return
-            typearg = self.anal_type(typearg)
-            expr.analyzed = TypeApplication(expr.base, [typearg])
+            types = <Type> []
+            if isinstance(expr.index, TupleExpr):
+                items = ((TupleExpr)expr.index).items
+            else:
+                items = [expr.index]
+            for item in items:
+                try:
+                    typearg = expr_to_unanalyzed_type(item)
+                except TypeTranslationError:
+                    self.fail('Type expected within [...]', expr)
+                    return
+                typearg = self.anal_type(typearg)
+                types.append(typearg)
+            expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
         else:
             expr.index.accept(self)

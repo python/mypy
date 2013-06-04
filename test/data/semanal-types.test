@@ -1021,3 +1021,41 @@ MypyFile:1(
         Types(
           builtins.int))
       Args())))
+
+[case testTypeApplicationWithTwoTypeArgs]
+from typing import typevar, Generic, Any
+t = typevar('t')
+s = typevar('s')
+class A(Generic[t, s]): pass
+x = A[int, Any]()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Any : Any])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    CallExpr:2(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(t))))
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    CallExpr:3(
+      NameExpr(typevar [typing.typevar])
+      Args(
+        StrExpr(s))))
+  TypeDef:4(
+    A
+    TypeVars(
+      t
+      s)
+    PassStmt:4())
+  AssignmentStmt:5(
+    NameExpr(x* [__main__.x])
+    CallExpr:5(
+      TypeApplication:5(
+        NameExpr(A [__main__.A])
+        Types(
+          builtins.int
+          Any))
+      Args())))
+
