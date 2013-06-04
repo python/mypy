@@ -999,10 +999,10 @@ class UndefinedExpr(Node):
 
 class TypeApplication(Node):
     """Type application expr<type, ...>"""
-    any expr   # Node
-    any types  # mypy.types.Type[]
+    Node expr
+    mypy.types.Type[] types
     
-    def __init__(self, expr, types):
+    void __init__(self, Node expr, mypy.types.Type[] types):
         self.expr = expr
         self.types = types
     
