@@ -12,24 +12,26 @@ from mypy.testsemanal import normalize_error_messages
 
 
 # List of files that contain test case descriptions.
-files = ['check-basic.test',
-         'check-generics.test',
-         'check-classes.test',
-         'check-expressions.test',
-         'check-statements.test',
-         'check-tuples.test',
-         'check-inference.test',
-         'check-inference-context.test',
-         'check-dynamic.test',
-         'check-functions.test',
-         'check-varargs.test',
-         'check-kwargs.test',
-         'check-overloading.test',
-         'check-interfaces.test',
-         'check-super.test',
-         'check-modules.test',
-         'check-generic-subtyping.test',
-         'check-unsupported.test']
+files = [
+    'check-basic.test',
+    #'check-generics.test',
+    #'check-classes.test',
+    #'check-expressions.test',
+    #'check-statements.test',
+    #'check-tuples.test',
+    #'check-inference.test',
+    #'check-inference-context.test',
+    #'check-dynamic.test',
+    #'check-functions.test',
+    #'check-varargs.test',
+    #'check-kwargs.test',
+    #'check-overloading.test',
+    #'check-interfaces.test',
+    #'check-super.test',
+    #'check-modules.test',
+    #'check-generic-subtyping.test',
+    #'check-unsupported.test',
+]
 
 
 class TypeCheckSuite(Suite):
