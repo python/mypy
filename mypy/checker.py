@@ -72,6 +72,10 @@ class TypeChecker(NodeVisitor<Type>):
     
     void visit_file(self, MypyFile file_node, str path):  
         """Type check a mypy file with the given path."""
+        if file_node.fullname() == 'typing':
+            # The typing module is special and we don't type check it.
+            return
+        
         self.errors.set_file(path)
         self.globals = file_node.names
         self.locals = None
