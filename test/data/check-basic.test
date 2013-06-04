@@ -12,7 +12,7 @@ class B: pass
 [out]
 main, line 5: Incompatible types in assignment
 
-[case testConstructionAndAssignment]
+[case testConstructionAndAssignment-skip]
 from typing import Undefined
 x = Undefined # type: A
 x = A()
@@ -24,7 +24,7 @@ class B:
 [out]
 main, line 4: Incompatible types in assignment
 
-[case testInheritInitFromObject]
+[case testInheritInitFromObject-skip]
 from typing import Undefined
 x = Undefined # type: A
 x = A()
@@ -34,7 +34,7 @@ class B(object): pass
 [out]
 main, line 4: Incompatible types in assignment
 
-[case testImplicitInheritInitFromObject]
+[case testImplicitInheritInitFromObject-skip]
 from typing import Undefined
 x = Undefined # type: A
 o = Undefined # type: object
@@ -52,7 +52,7 @@ object(object())
 [out]
 main, line 2: Too many arguments for "object"
 
-[case testVarDefWithInit]
+[case testVarDefWithInit-skip]
 import typing
 a = A() # type: A
 b = object() # type: A
@@ -60,7 +60,7 @@ class A: pass
 [out]
 main, line 3: Incompatible types in assignment
 
-[case testInheritanceBasedSubtyping]
+[case testInheritanceBasedSubtyping-skip]
 import typing
 x = B() # type: A
 y = A() # type: B # Fail
@@ -116,7 +116,7 @@ main, line 4: Too many arguments for "f"
 -- ------
 
 
-[case testLocalVariables]
+[case testLocalVariables-skip]
 from typing import Undefined
 def f() -> None:
   x = Undefined # type: A
@@ -129,7 +129,7 @@ class B: pass
 main: In function "f":
 main, line 6: Incompatible types in assignment
 
-[case testLocalVariableScope]
+[case testLocalVariableScope-skip]
 from typing import Undefined
 def f() -> None:
   x = Undefined # type: A
@@ -155,7 +155,7 @@ class B: pass
 main: In function "f":
 main, line 3: Incompatible types in assignment
 
-[case testLocalVariableInitialization]
+[case testLocalVariableInitialization-skip]
 import typing
 def f() -> None:
   a = A() # type: A
@@ -166,7 +166,7 @@ class B: pass
 main: In function "f":
 main, line 4: Incompatible types in assignment
 
-[case testVariableInitializationWithSubtype]
+[case testVariableInitializationWithSubtype-skip]
 import typing
 x = B() # type: A
 y = A() # type: B # Fail
@@ -190,7 +190,7 @@ class B: pass
 main: In function "f":
 main, line 3: Incompatible return value type
 
-[case testTopLevelContextAndInvalidReturn]
+[case testTopLevelContextAndInvalidReturn-skip]
 import typing
 def f() -> 'A':
   return B()
@@ -229,7 +229,7 @@ class A: pass
 -- ---------------------
 
 
-[case testLocalVariableShadowing]
+[case testLocalVariableShadowing-skip]
 from typing import Undefined
 a = Undefined # type: A
 a = B()       # Fail
@@ -250,7 +250,7 @@ main, line 7: Incompatible types in assignment
 main: At top level:
 main, line 9: Incompatible types in assignment
 
-[case testGlobalDefinedInBlockWithType]
+[case testGlobalDefinedInBlockWithType-skip]
 from typing import Undefined
 class A: pass
 while A:
