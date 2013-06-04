@@ -345,7 +345,7 @@ MypyFile:1(
         A
         PassStmt:2())
       AssignmentStmt:3(
-        NameExpr(x* [l])
+        NameExpr(x [l])
         NameExpr(None [builtins.None])
         A))))
 

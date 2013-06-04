@@ -30,7 +30,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   Import:2(m : m)
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     m.c))
 MypyFile:1(
@@ -67,7 +67,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   ImportFrom:2(m, [c : c])
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     m.c))
 MypyFile:1(
@@ -178,7 +178,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   ImportFrom:2(_m, [c : c])
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     _n.c))
 
@@ -195,7 +195,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   Import:2(_m : _m)
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     _n.c))
 
@@ -244,7 +244,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   ImportFrom:2(_m, [c : c])
   AssignmentStmt:3(
-    NameExpr(a* [__main__.a])
+    NameExpr(a [__main__.a])
     NameExpr(Undefined [typing.Undefined])
     _n.c))
 
@@ -261,7 +261,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   Import:2(_m : _m)
   AssignmentStmt:3(
-    NameExpr(a* [__main__.a])
+    NameExpr(a [__main__.a])
     NameExpr(Undefined [typing.Undefined])
     _n.c))
 
@@ -312,11 +312,11 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   ImportAll:2(_m)
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     n_.c)
   AssignmentStmt:4(
-    NameExpr(y* [__main__.y])
+    NameExpr(y [__main__.y])
     NameExpr(Undefined [typing.Undefined])
     n_.d))
 
@@ -397,7 +397,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   Import:2(m._n : m._n)
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     m._n.c))
 
@@ -413,7 +413,7 @@ MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   ImportFrom:2(m._n, [c : c])
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     m._n.c))
     
@@ -495,7 +495,7 @@ o = Undefined # type: __builtins__.object
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   AssignmentStmt:2(
-    NameExpr(o* [__main__.o])
+    NameExpr(o [__main__.o])
     NameExpr(Undefined [typing.Undefined])
     builtins.object))
 

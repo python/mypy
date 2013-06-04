@@ -24,7 +24,7 @@ from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
-from mypy.semanal import self_type, set_callable_name
+from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.expandtype import expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
@@ -569,6 +569,9 @@ class TypeChecker(NodeVisitor<Type>):
         Otherwise, lvalue_type is used as the type of the lvalue.
         """
         if lvalue_type:
+            if refers_to_fullname(rvalue, 'typing.Undefined'):
+                # The rvalue is just 'Undefined'; this is always valid.
+                return
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg)
         elif index_lvalue:
@@ -1078,3 +1081,4 @@ T find_duplicate<T>(T[] list):
         if list[i] in list[:i]:
             return list[i]
     return None
+

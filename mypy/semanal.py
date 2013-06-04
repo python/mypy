@@ -22,7 +22,8 @@ from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
-    UnboundType, TypeList, ErrorType, TypeVars, TypeVarDef, replace_self_type
+    UnboundType, TypeList, ErrorType, TypeVars, TypeVarDef, replace_self_type,
+    TupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser
@@ -435,7 +436,10 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyse_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
         s.type = self.anal_type(s.type)
-        # TODO store type into node
+        if s.type:
+            # Store type into nodes.
+            for lvalue in s.lvalues:
+                self.store_declared_types(lvalue, s.type)
     
     void analyse_lvalue(self, Node lval, bool nested=False,
                         bool add_global=False, bool explicit_type=False):
@@ -536,6 +540,30 @@ class SemanticAnalyzer(NodeVisitor):
         if (isinstance(node, FuncDef) or
                 isinstance(node, TypeInfo)):
             self.fail('Invalid assignment target', ctx)
+
+    void store_declared_types(self, Node lvalue, Type typ):
+        if isinstance(lvalue, RefExpr):
+            ref = (RefExpr)lvalue
+            ref.is_def = False
+            if isinstance(ref.node, Var):
+                var = (Var)ref.node
+                var.type = typ
+                var.is_ready = True
+            # If node is not a variable, we'll catch it elsewhere.
+        elif isinstance(lvalue, TupleExpr):
+            if isinstance(typ, TupleType):
+                tuple_expr = (TupleExpr)lvalue
+                tuple_type = (TupleType)typ
+                if len(tuple_expr.items) != len(tuple_type.items):
+                    # TODO error
+                    return
+                for item, itemtype in zip(tuple_expr.items,
+                                          tuple_type.items):
+                    self.store_declared_types(item, typ)
+            else:
+                pass # TODO error?
+        else:
+            raise RuntimeError('Not implemented yet (%s)' % type(lvalue))
 
     void visit_decorator(self, Decorator dec):
         if not dec.is_overload:

@@ -10,7 +10,7 @@ MypyFile:1(
     A
     PassStmt:2())
   AssignmentStmt:3(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     CallExpr:3(
       NameExpr(A [__main__.A])
       Args())
@@ -32,7 +32,7 @@ MypyFile:1(
     A
     PassStmt:3())
   AssignmentStmt:4(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     __main__.A)
   AssignmentStmt:5(
@@ -55,7 +55,7 @@ MypyFile:1(
     f
     Block:3(
       AssignmentStmt:4(
-        NameExpr(x* [l])
+        NameExpr(x [l])
         NameExpr(Undefined [typing.Undefined])
         __main__.A)
       AssignmentStmt:5(
@@ -70,7 +70,7 @@ y = x
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined, Any : Any])
   AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     Any)
   AssignmentStmt:3(
@@ -95,7 +95,7 @@ MypyFile:1(
         AssignmentStmt:4(
           MemberExpr:4(
             NameExpr(self [l])
-            x*)
+            x)
           NameExpr(None [builtins.None])
           builtins.int)))))
 
@@ -110,7 +110,7 @@ MypyFile:1(
   TypeDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(x*)
+      NameExpr(x)
       NameExpr(None [builtins.None])
       builtins.int)
     AssignmentStmt:4(
@@ -180,8 +180,8 @@ MypyFile:1(
     PassStmt:3())
   AssignmentStmt:4(
     TupleExpr:4(
-      NameExpr(a* [__main__.a])
-      NameExpr(b* [__main__.b]))
+      NameExpr(a [__main__.a])
+      NameExpr(b [__main__.b]))
     TupleExpr:4(
       NameExpr(Undefined [typing.Undefined])
       NameExpr(Undefined [typing.Undefined]))
@@ -219,11 +219,11 @@ MypyFile:1(
     B
     PassStmt:6())
   AssignmentStmt:7(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
     __main__.A[__main__.B])
   AssignmentStmt:8(
-    NameExpr(y* [__main__.y])
+    NameExpr(y [__main__.y])
     NameExpr(None [builtins.None])
     __main__.A[Any]))
 
@@ -259,7 +259,7 @@ MypyFile:1(
     B
     PassStmt:5())
   AssignmentStmt:6(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
     __main__.A[__main__.B, Any]))
 
@@ -279,7 +279,7 @@ MypyFile:1(
     A
     PassStmt:3())
   AssignmentStmt:4(
-    NameExpr(a* [__main__.a])
+    NameExpr(a [__main__.a])
     NameExpr(Undefined [typing.Undefined])
     __main__.A)
   AssignmentStmt:5(
@@ -289,7 +289,7 @@ MypyFile:1(
     f
     Block:6(
       AssignmentStmt:7(
-        NameExpr(b* [l])
+        NameExpr(b [l])
         NameExpr(Undefined [typing.Undefined])
         __main__.A)
       AssignmentStmt:8(
@@ -491,7 +491,7 @@ MypyFile:1(
     def [t] (x: t`-1)
     Block:3(
       AssignmentStmt:4(
-        NameExpr(y* [l])
+        NameExpr(y [l])
         NameExpr(Undefined [typing.Undefined])
         t`-1))))
 
@@ -795,15 +795,15 @@ t2 = None # type: Tuple[int, object]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple : Tuple])
   AssignmentStmt:2(
-    NameExpr(t* [__main__.t])
+    NameExpr(t [__main__.t])
     NameExpr(None [builtins.None])
     builtins.tuple)
   AssignmentStmt:3(
-    NameExpr(t1* [__main__.t1])
+    NameExpr(t1 [__main__.t1])
     NameExpr(None [builtins.None])
     Tuple[builtins.object])
   AssignmentStmt:4(
-    NameExpr(t2* [__main__.t2])
+    NameExpr(t2 [__main__.t2])
     NameExpr(None [builtins.None])
     Tuple[builtins.int, builtins.object]))
 
@@ -815,11 +815,11 @@ g = None # type: Function[[], None]
 MypyFile:1(
   ImportFrom:1(typing, [Function : Function])
   AssignmentStmt:2(
-    NameExpr(f* [__main__.f])
+    NameExpr(f [__main__.f])
     NameExpr(None [builtins.None])
     def (builtins.object, builtins.int) -> builtins.str)
   AssignmentStmt:3(
-    NameExpr(g* [__main__.g])
+    NameExpr(g [__main__.g])
     NameExpr(None [builtins.None])
     def ()))
 
@@ -956,7 +956,7 @@ MypyFile:1(
       s)
     PassStmt:4())
   AssignmentStmt:5(
-    NameExpr(x* [__main__.x])
+    NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     __main__.A[Any, Any]))
 
