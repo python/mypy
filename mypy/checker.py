@@ -373,6 +373,7 @@ class TypeChecker(NodeVisitor<Type>):
         """
         self.check_assignments(self.expand_lvalues(s.lvalues[-1]), s.rvalue)
         if len(s.lvalues) > 1:
+            # Chained assignment (e.g. x = y = ...).
             # Make sure that rvalue type will not be reinferred.
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
