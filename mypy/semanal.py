@@ -16,7 +16,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, ARG_POS
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, ARG_POS
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -698,30 +698,48 @@ class SemanticAnalyzer(NodeVisitor):
         expr.expr.accept(self)
     
     void visit_call_expr(self, CallExpr expr):
+        """Analyze a call expression.
+
+        Some call expressions are recognized as special forms, including
+        cast(...), Undefined(...) and Any(...).
+        """
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
+            # Special form cast(...).
             if not self.check_fixed_args(expr, 2, 'cast'):
                 return
-            
             # Translate first argument to an unanalyzed type.
             try:
                 target = expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
-            
             # Pigguback CastExpr object to the CallExpr object; it takes
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
+            # Special form Any(...).
             if not self.check_fixed_args(expr, 1, 'Any'):
                 return            
             expr.analyzed = CastExpr(expr.args[0], Any())
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'typing.Undefined'):
+            # Special form Undefined(...).
+            if not self.check_fixed_args(expr, 1, 'Undefined'):
+                return
+            try:
+                type = expr_to_unanalyzed_type(expr.args[0])
+            except TypeTranslationError:
+                self.fail('Argument to Undefined is not a type', expr)
+                return
+            expr.analyzed = UndefinedExpr(type)
+            expr.analyzed.line = expr.line
+            expr.analyzed.accept(self)
         else:
+            # Normal call expression.
             for a in expr.args:
                 a.accept(self)
 
@@ -776,6 +794,9 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_cast_expr(self, CastExpr expr):
         expr.expr.accept(self)
+        expr.type = self.anal_type(expr.type)
+
+    void visit_undefined_expr(self, UndefinedExpr expr):
         expr.type = self.anal_type(expr.type)
     
     void visit_type_application(self, TypeApplication expr):

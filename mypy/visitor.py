@@ -114,6 +114,8 @@ class NodeVisitor<T>:
         pass
     T visit_index_expr(self, mypy.nodes.IndexExpr o):
         pass
+    T visit_undefined_expr(self, mypy.nodes.UndefinedExpr o):
+        pass
     T visit_type_application(self, mypy.nodes.TypeApplication o):
         pass
     T visit_func_expr(self, mypy.nodes.FuncExpr o):

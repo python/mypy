@@ -977,6 +977,22 @@ class ConditionalExpr(Node):
         return visitor.visit_conditional_expr(self)
 
 
+class UndefinedExpr(Node):
+    """Expression Undefined(type), used as an initializer.
+
+    This is used to declare the type of a variable without initializing with
+    a proper value. For example:
+
+      x = Undefined(List[int])
+    """
+    
+    void __init__(self, mypy.types.Type type):
+        self.type = type
+
+    T accept<T>(self, NodeVisitor<T> visitor):
+        return visitor.visit_undefined_expr(self)
+
+
 class TypeApplication(Node):
     """Type application expr<type, ...>"""
     any expr   # Node

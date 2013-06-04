@@ -117,6 +117,20 @@ MypyFile:1(
       NameExpr(x [m])
       IntExpr(1))))
 
+[case testUndefinedWithArgument]
+from typing import Undefined
+x = Undefined(int)
+x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Undefined : Undefined])
+  AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    UndefinedExpr:2(builtins.int))
+  AssignmentStmt:3(
+    NameExpr(x [__main__.x])
+    IntExpr(1)))
+
 [case testFunctionSig]
 from typing import Any
 class A: pass
