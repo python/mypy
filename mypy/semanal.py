@@ -848,7 +848,7 @@ class SemanticAnalyzer(NodeVisitor):
     #
     
     SymbolTableNode lookup(self, str name, Context ctx):
-        """Look up a name in all active namespaces."""
+        """Look up an unqualified name in all active namespaces."""
         # 1. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
