@@ -542,18 +542,18 @@ class C(A, I, J): pass
 -- --------------------------------------------------
 
 
-[case testNonOverloadedMapInference-skip]
+[case testNonOverloadedMapInference]
 from typing import typevar, Function, List
 t = typevar('t')
 s = typevar('s')
-b = False
-def f(x: bool) -> 'A': pass
-def mymap(f: Function[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
+b = bool()
+def f(x: bool) -> A: pass
+def mymap(f: Function[[t], s], a: List[t]) -> List[s]: pass
 
 l = mymap(f, [b])
-l = [] # type: List[A]
-l = [] # type: List[bool] # E: Incompatible types in assignment
+l = List[A]()
+l = List[bool]() # E: Incompatible types in assignment
 [builtins fixtures/for.py]
 
 
