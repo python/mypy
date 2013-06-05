@@ -529,19 +529,15 @@ def f(x: t,
 -- -------------------
 
 
-[case testTrivialStaticallyTypedFunctionDecorator-skip]
-from typing import typevar, Undefined
+[case testTrivialStaticallyTypedFunctionDecorator]
+from typing import typevar
 t = typevar('t')
 def dec(f: t) -> t:
     return f
 @dec
-def f(x: 'A') -> None: pass
-a = Undefined # type: A
-b = Undefined # type: B
-f(a)
-f(b) # E: Argument 1 to "f" has incompatible type "B"
-class A: pass
-class B: pass
+def f(x: int) -> None: pass
+f(1)
+f('x') # E: Argument 1 to "f" has incompatible type "str"
 
 [case testTrivialStaticallyTypedMethodDecorator-skip]
 from typing import typevar, Undefined
