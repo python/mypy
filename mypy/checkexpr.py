@@ -755,7 +755,13 @@ class ExpressionChecker:
         return result
     
     Type visit_index_expr(self, IndexExpr e):
-        """Type check an index expression (base[index])."""
+        """Type check an index expression (base[index]).
+
+        It may also represent type application.
+        """
+        if e.analyzed:
+            # It's actually a type application.
+            return self.accept(e.analyzed)
         left_type = self.accept(e.base)
         if isinstance(left_type, TupleType):
             # Special case for tuples. They support indexing only by integer
