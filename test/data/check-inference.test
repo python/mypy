@@ -132,20 +132,17 @@ class A: pass
 [out]
 main: In function "f":
 
-[case testInferringGenericTypeForLvar-skip]
+[case testInferringGenericTypeForLvar]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
-ac = Undefined # type: A[C]
-ad = Undefined # type: A[D]
+class A(Generic[T]): pass
+a_i = Undefined # type: A[int]
+a_s = Undefined # type: A[str]
 
 def f() -> None:
-    a = A['C']()
-    a = ad # E: Incompatible types in assignment
-    a = ac
-
-class A(Generic[T]): pass
-class C: pass
-class D: pass
+    a = A[int]()
+    a = a_s # E: Incompatible types in assignment
+    a = a_i
 [builtins fixtures/tuple.py]
 [out]
 main: In function "f":
