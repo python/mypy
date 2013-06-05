@@ -1004,7 +1004,7 @@ class UndefinedExpr(Node):
 
 
 class TypeApplication(Node):
-    """Type application expr<type, ...>"""
+    """Type application expr[type, ...]"""
     Node expr
     mypy.types.Type[] types
     
