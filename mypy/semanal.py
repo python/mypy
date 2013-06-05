@@ -1190,8 +1190,9 @@ bool refers_to_fullname(Node node, str fullname):
 
 bool refers_to_class_or_function(Node node):
     """Does semantically analyzed node refer to a class?"""
-    return isinstance(node, RefExpr) and isinstance(((RefExpr)node).node,
-                                                    (TypeInfo, FuncDef))
+    return (isinstance(node, RefExpr) and
+            isinstance(((RefExpr)node).node, (TypeInfo, FuncDef,
+                                              OverloadedFuncDef)))
 
 
 Type expr_to_unanalyzed_type(Node expr):

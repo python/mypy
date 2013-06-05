@@ -721,20 +721,21 @@ b = f([b])
 b = f(b)
 [builtins fixtures/list.py]
 
-[case testOverloadedGenericFunction-skip]
+[case testOverloadedGenericFunction]
 from typing import overload, typevar, Undefined
 t = typevar('t')
-@overload
-def f(a: 'A') -> 'A': pass
-@overload
-def f(a: t) -> t: pass
-a, b = Undefined, Undefined # type: (A, B)
-b = f['B'](b)
-a = f['B'](b) # E: Incompatible types in assignment
-f['B'](a) # E: No overload variant of "f" matches argument types
-
 class A: pass
 class B: pass
+
+@overload
+def f(a: A) -> A: pass
+@overload
+def f(a: t) -> t: pass
+
+a, b = Undefined, Undefined # type: (A, B)
+b = f[B](b)
+a = f[B](b) # E: Incompatible types in assignment
+f[B](a) # E: No overload variant of "f" matches argument types
 
 
 -- For statements (without type inference)
