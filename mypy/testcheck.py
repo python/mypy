@@ -15,8 +15,8 @@ from mypy.testsemanal import normalize_error_messages
 files = [
     'check-basic.test',
     'check-classes.test',
+    'check-expressions.test',
     #'check-generics.test',
-    #'check-expressions.test',
     #'check-statements.test',
     #'check-tuples.test',
     #'check-inference.test',
