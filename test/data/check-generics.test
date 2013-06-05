@@ -699,9 +699,17 @@ a = f([a])
 b = f(b)
 [builtins fixtures/list.py]
 
-[case testGenericFunctionAsOverloadItem-skip]
+[case testGenericFunctionAsOverloadItem]
 from typing import Undefined, overload, typevar, List
 T = typevar('T')
+class A: pass
+class B: pass
+
+@overload
+def f(a: B) -> B: pass
+@overload
+def f(a: List[T]) -> T: pass
+
 a, b = Undefined, Undefined # type: (A, B)
 
 b = f([a]) # E: List item 1 has incompatible type "A"
@@ -711,14 +719,6 @@ a = f(b)   # E: Incompatible types in assignment
 a = f([a])
 b = f([b])
 b = f(b)
-
-@overload
-def f(a: 'B') -> 'B': pass
-@overload
-def f(a: List[T]) -> T: pass
-
-class A: pass
-class B: pass
 [builtins fixtures/list.py]
 
 [case testOverloadedGenericFunction-skip]
