@@ -30,7 +30,7 @@ files = [
     #'check-super.test',
     #'check-modules.test',
     #'check-generic-subtyping.test',
-    #'check-unsupported.test',
+    'check-unsupported.test',
 ]
 
 
