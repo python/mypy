@@ -501,6 +501,8 @@ class B:
 class A: pass
 
 
+-- Yield statement
+-- ---------------
 
 
 [case testSimpleYield-skip]
@@ -633,6 +635,8 @@ with A() as b, A() as c:
     c = b # E: Incompatible types in assignment
 
 
+-- Chained assignment
+-- ------------------
 
 
 [case testChainedAssignment]
