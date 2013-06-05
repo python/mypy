@@ -382,25 +382,20 @@ def f(x: T) -> None: pass
 f[object](None)
 [out]
 
-[case testSimpleGenericFunction-skip]
+[case testSimpleGenericFunction]
 from typing import Undefined, typevar
 T = typevar('T')
+class A: pass
+class B: pass
 a = Undefined # type: A
 b = Undefined # type: B
-
-b = id['B'](a)  # Fail
-a = id['B'](b)  # Fail
-
-a = id['A'](a)
 
 def id(a: T) -> T:
     return a
 
-class A: pass
-class B: pass
-[out]
-main, line 6: Argument 1 to "id" has incompatible type "A"
-main, line 7: Incompatible types in assignment
+b = id[B](a)  # E: Argument 1 to "id" has incompatible type "A"
+a = id[B](b)  # E: Incompatible types in assignment
+a = id[A](a)
 
 [case testGenericFunctionWithTwoTypeArguments-skip]
 from typing import Undefined, typevar, Generic

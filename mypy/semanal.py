@@ -158,7 +158,7 @@ class SemanticAnalyzer(NodeVisitor):
             typevars = [tvar for tvar in typevars
                         if not self.is_defined_type_var(tvar, defn)]
             if typevars:
-                defs = [TypeVarDef(name, i + 1)
+                defs = [TypeVarDef(name, -i - 1)
                         for i, name in enumerate(typevars)]
                 functype.variables = TypeVars(defs)
 
