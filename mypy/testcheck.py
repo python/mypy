@@ -17,7 +17,7 @@ files = [
     'check-classes.test',
     'check-expressions.test',
     'check-statements.test',
-    #'check-generics.test',
+    'check-generics.test',
     'check-tuples.test',
     'check-dynamic.test',
     'check-functions.test',
