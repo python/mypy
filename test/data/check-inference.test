@@ -227,11 +227,15 @@ class A: pass
 [out]
 main: In function "f":
 
-[case testInferringMultipleLvarDefinitionWithListRvalue-skip]
+[case testInferringMultipleLvarDefinitionWithListRvalue]
 from typing import List
+
+class C: pass
+class D: pass
+
 def f() -> None:
-    a, b = [] # type: List[C]
-    c, d, e = [] # type: List[D]
+    a, b = List[C]()
+    c, d, e = List[D]()
     a = D() # E: Incompatible types in assignment
     b = D() # E: Incompatible types in assignment
     c = C() # E: Incompatible types in assignment
@@ -246,9 +250,6 @@ def f() -> None:
     a = b
     c = d
     d = e
-
-class C: pass
-class D: pass
 [builtins fixtures/list.py]
 [out]
 main: In function "f":
