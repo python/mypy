@@ -451,7 +451,7 @@ class A:
     def g(self):
         return 
         
-[case testVarArgsWithImplicitSignature-skip]
+[case testVarArgsWithImplicitSignature]
 from typing import Undefined, Any
 o = Undefined # type: Any
 def f(x, *a): pass
