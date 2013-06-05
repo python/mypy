@@ -604,7 +604,7 @@ main, line 7: "f" does not return a value
 main: In function "g":
 main, line 10: "f" does not return a value
 
-[case testVoidWithExpressions-skip]
+[case testVoidWithExpressions]
 from typing import Undefined, cast
 a = Undefined # type: A
 [f()]       # E: "f" does not return a value
@@ -732,7 +732,7 @@ main, line 8: Incompatible types in assignment
 -- -------------------
 
 
-[case testSimpleListComprehension-skip]
+[case testSimpleListComprehension]
 from typing import Undefined, List
 a = Undefined # type: List[A]
 a = [x for x in a]
