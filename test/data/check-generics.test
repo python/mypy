@@ -469,26 +469,22 @@ abc = ab.f[C](c) # E: Incompatible types in assignment
 acb = ab.f[C](b) # E: Argument 1 to "f" of "A" has incompatible type "B"
 acb = ab.f[C](c)
 
-[case testTypeCheckingGenericFunctionBody-skip]
+[case testTypeCheckingGenericFunctionBody]
 from typing import typevar, Generic
 S = typevar('S')
 T = typevar('T')
 class A: pass
-def f(s: S, t: T) -> 'p[T, A]':
-    a = t # type: S # Fail
-    s = t   # Fail
-    return p[S, A](s, A()) # Fail
+class p(Generic[T, S]):
+    def __init__(self, t: T, a: S) -> None: pass
+def f(s: S, t: T) -> p[T, A]:
+    a = t # type: S # E: Incompatible types in assignment
+    s = t           # E: Incompatible types in assignment
+    return p[S, A](s, A()) # E: Incompatible return value type
     b = t # type: T
     c = s # type: S
     return p[T, A](t, A())
-    
-class p(Generic[T, S]):
-    def __init__(self, t: T, a: S) -> None: pass
 [out]
 main: In function "f":
-main, line 6: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
-main, line 8: Incompatible return value type
 
 [case testTypeCheckingGenericMethodBody-skip]
 from typing import typevar, Generic
