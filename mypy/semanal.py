@@ -559,7 +559,7 @@ class SemanticAnalyzer(NodeVisitor):
                     return
                 for item, itemtype in zip(tuple_expr.items,
                                           tuple_type.items):
-                    self.store_declared_types(item, typ)
+                    self.store_declared_types(item, itemtype)
             else:
                 pass # TODO error?
         else:

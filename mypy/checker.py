@@ -521,7 +521,13 @@ class TypeChecker(NodeVisitor<Type>):
                                 str msg=None):
         if not msg:
             msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
-        rvalue_type = self.accept(rvalue) # TODO maybe elsewhere; redundant
+        # First handle case where rvalue is of form Undefined, ...
+        rvalue_type = get_undefined_tuple(rvalue)
+        undefined_rvalue = True
+        if not rvalue_type:
+            # Infer the type of an ordinary rvalue expression.
+            rvalue_type = self.accept(rvalue) # TODO maybe elsewhere; redundant
+            undefined_rvalue = False
         # Try to expand rvalue to lvalue(s).
         if isinstance(rvalue_type, Any):
             pass
@@ -536,7 +542,9 @@ class TypeChecker(NodeVisitor<Type>):
                     # TODO Figure out more precise type context, probably
                     #      based on the type signature of the _set method.
                     items.append(trvalue.items[i])
-            trvalue = ((TupleType)self.accept(rvalue, TupleType(items)))
+            if not undefined_rvalue:
+                # Infer rvalue again, now in the correct type context.
+                trvalue = ((TupleType)self.accept(rvalue, TupleType(items)))
             if len(trvalue.items) != len(lvalue_types):
                 self.msg.incompatible_value_count_in_assignment(
                     len(lvalue_types), len(trvalue.items), context)
@@ -1072,6 +1080,22 @@ Type map_type_from_supertype(Type typ, TypeInfo sub_info, TypeInfo super_info):
     return expand_type_by_instance(typ, inst_type)
 
 
+Type get_undefined_tuple(Node rvalue):
+    """Get tuple type corresponding to a tuple of Undefined values.
+
+    The type is Tuple[Any, ...]. If rvalue is not of the right form, return
+    None.
+    """
+    if isinstance(rvalue, TupleExpr):
+        tuple_expr = (TupleExpr)rvalue
+        for item in tuple_expr.items:
+            if not refers_to_fullname(item, 'typing.Undefined'):
+                break
+        else:
+            return TupleType([Any()] * len(tuple_expr.items))
+    return None
+
+
 T find_duplicate<T>(T[] list):
     """If the list has duplicates, return one of the duplicates.
 
@@ -1081,4 +1105,4 @@ T find_duplicate<T>(T[] list):
         if list[i] in list[:i]:
             return list[i]
     return None
-
+    
