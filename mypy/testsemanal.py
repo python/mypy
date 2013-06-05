@@ -185,7 +185,8 @@ class TypeInfoMap(dict<str, TypeInfo>):
     str __str__(self):
         a = <str> ['TypeInfoMap(']
         for x, y in sorted(self.items()):
-            if isinstance(x, str) and not x.startswith('builtins.'):
+            if isinstance(x, str) and (not x.startswith('builtins.') and
+                                       not x.startswith('typing.')):
                 ti = ('\n' + '  ').join(str(y).split('\n'))
                 a.append('  {} : {}'.format(x, ti))
         a[-1] += ')'
