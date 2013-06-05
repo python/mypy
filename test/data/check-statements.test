@@ -620,7 +620,7 @@ with A() as b:
     b = B()
     b = A() # E: Incompatible types in assignment
 
-[case testWithStmtAndMultipleResults-skip]
+[case testWithStmtAndMultipleResults]
 from typing import typevar, Generic
 t = typevar('t')
 class B: pass
@@ -628,7 +628,7 @@ class C: pass
 class A(Generic[t]):
     def __enter__(self) -> t: pass
     def __exit__(self, x, y, z): pass
-with A() as b, A() as c:
+with A[B]() as b, A[C]() as c:
     b = B()
     c = C()
     b = c # E: Incompatible types in assignment
