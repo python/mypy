@@ -72,10 +72,6 @@ class TypeChecker(NodeVisitor<Type>):
     
     void visit_file(self, MypyFile file_node, str path):  
         """Type check a mypy file with the given path."""
-        if file_node.fullname() == 'typing':
-            # The typing module is special and we don't type check it.
-            return
-        
         self.errors.set_file(path)
         self.globals = file_node.names
         self.locals = None
@@ -626,7 +622,7 @@ class TypeChecker(NodeVisitor<Type>):
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):
             inst = (Instance)return_type
-            if inst.type.fullname() != 'builtins.Iterator':
+            if inst.type.fullname() != 'typing.Iterator':
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
             expected_item_type = inst.args[0]

@@ -505,13 +505,11 @@ class A: pass
 -- ---------------
 
 
-[case testSimpleYield-skip]
+[case testSimpleYield]
 from typing import Iterator
-def f() -> 'Iterator[A]':
-    yield A()
-    yield B() # E: Incompatible types
-class A: pass
-class B: pass
+def f() -> Iterator[int]:
+    yield 1
+    yield '' # E: Incompatible types
 [builtins fixtures/for.py]
 [out]
 main: In function "f":

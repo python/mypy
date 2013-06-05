@@ -1,16 +1,30 @@
-# Stub for typing module. Each of the definitions has special handling in
-# the type checker, so they can just be initialized to None.
-cast = None
-overload = None
-Undefined = None
-Any = None
-typevar = None
-Generic = None
-AbstractGeneric = None
-Tuple = None
-Function = None
+# Stub for typing module. Many of the definitions have special handling in
+# the type checker, so they can just be initialized to anything.
+
+from abc import abstractmethod
+
+cast = object()
+overload = object()
+Undefined = object()
+Any = object()
+typevar = object()
+Generic = object()
+AbstractGeneric = object()
+Tuple = object()
+Function = object()
+
 # Type aliases. These need to be classes, but their definition is not used,
-# so they can be empty.
-List = None
-Dict = None
-Set = None
+# so their value does not matter.
+List = object()
+Dict = object()
+Set = object()
+
+T = typevar('T')
+
+class Iterable(AbstractGeneric[T]):
+    @abstractmethod
+    def __iter__(self) -> 'Iterator[T]': pass
+
+class Iterator(Iterable[T], AbstractGeneric[T]):
+    @abstractmethod
+    def __next__(self) -> T: pass
