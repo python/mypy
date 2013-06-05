@@ -557,7 +557,7 @@ acb = A[B, C](c, b) # E: Incompatible types in assignment
 abc = A[B, C](c, b)
 acb = A[C, B](b, c)
 
-[case testGenericConstructorOfNonGenericType-skip]
+[case testGenericConstructorOfNonGenericType]
 from typing import Undefined, typevar
 T = typevar('T')
 class A:
