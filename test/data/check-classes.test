@@ -406,7 +406,7 @@ main: In class "A":
 -- ----------------------------------
 
 
-[case testStatementsInClassBody-skip]
+[case testStatementsInClassBody]
 import typing
 class B: pass
 class A:
