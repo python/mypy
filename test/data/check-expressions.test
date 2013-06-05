@@ -741,7 +741,7 @@ class A: pass
 class B: pass
 [builtins fixtures/for.py]
 
-[case testListComprehensionWithNonDirectMapping-skip]
+[case testListComprehensionWithNonDirectMapping]
 from typing import Undefined, List
 a = Undefined # type: List[A]
 b = Undefined # type: List[B]
@@ -753,14 +753,14 @@ class B: pass
 def f(a: A) -> B: pass
 [builtins fixtures/for.py]
 
-[case testErrorInListComprehensionCondition-skip]
+[case testErrorInListComprehensionCondition]
 from typing import Undefined, List
 a = Undefined # type: List[A]
 a = [x for x in a if x()] # E: "A" not callable
 class A: pass
 [builtins fixtures/for.py]
 
-[case testTypeInferenceOfListComprehension-skip]
+[case testTypeInferenceOfListComprehension]
 from typing import Undefined, List
 a = Undefined # type: List[A]
 o = [x for x in a] # type: List[object]
