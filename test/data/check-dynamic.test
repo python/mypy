@@ -219,23 +219,18 @@ t2 = (d, d)
 class A: pass
 [builtins fixtures/tuple.py]
 
-[case testCastsWithDynamicType-skip]
+[case testCastsWithDynamicType]
 from typing import Undefined, Any, cast
+class A: pass
+class B: pass
 d = Undefined # type: Any
 a = Undefined # type: A
 b = Undefined # type: B
-
-b = cast('A', d) # E: Incompatible types in assignment
-
-a = cast('A', d)
+b = cast(A, d) # E: Incompatible types in assignment
+a = cast(A, d)
 b = Any(d)
 a = Any(f())
-
 def f() -> None: pass
-
-class A: pass
-class B: pass
-
 [case testCompatibilityOfDynamicWithOtherTypes]
 from typing import Undefined, Any, Tuple
 d = Undefined # type: Any

@@ -544,7 +544,7 @@ main, line 8: Cannot cast from "B" to "A"
 main, line 9: "A" not callable
 main, line 10: Incompatible types in assignment
 
-[case testAnyCast-skip]
+[case testAnyCast]
 from typing import Undefined, cast, Any
 a, b = Undefined, Undefined # type: (A, B)
 a = Any(a())     # Fail
@@ -789,24 +789,22 @@ class B: pass
 -- -------------
 
 
-[case testOperationsWithNonInstanceTypes-skip]
+[case testOperationsWithNonInstanceTypes]
 from typing import Undefined, cast
+class A:
+    def __add__(self, a: 'A') -> 'A': pass
 a = Undefined # type: A
 None + a   # Fail
 f + a      # Fail
 a + f      # Fail
-cast('A', f)
+cast(A, f)
 
 def f() -> None:
     pass
-
-class A:
-    def __add__(self, a: 'A') -> 'A':
-        pass
 [out]
-main, line 3: Unsupported left operand type for + (None)
-main, line 4: Unsupported left operand type for + (function)
-main, line 5: Unsupported operand types for + ("A" and function)
+main, line 5: Unsupported left operand type for + (None)
+main, line 6: Unsupported left operand type for + (function)
+main, line 7: Unsupported operand types for + ("A" and function)
 
 [case testOperatorMethodWithInvalidArgCount]
 from typing import Undefined
