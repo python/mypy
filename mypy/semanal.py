@@ -831,7 +831,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_index_expr(self, IndexExpr expr):
         expr.base.accept(self)
-        if refers_to_class(expr.base):
+        if refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             types = <Type> []
@@ -1188,10 +1188,10 @@ bool refers_to_fullname(Node node, str fullname):
                       RefExpr) and ((RefExpr)node).fullname == fullname
 
 
-bool refers_to_class(Node node):
+bool refers_to_class_or_function(Node node):
     """Does semantically analyzed node refer to a class?"""
     return isinstance(node, RefExpr) and isinstance(((RefExpr)node).node,
-                                                    TypeInfo)
+                                                    (TypeInfo, FuncDef))
 
 
 Type expr_to_unanalyzed_type(Node expr):
