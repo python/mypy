@@ -93,8 +93,11 @@ class ExpressionChecker:
     
     Type visit_call_expr(self, CallExpr e):
         """Type check a call expression."""
+        if e.analyzed:
+            # It's really a special form that only looks like a call.
+            return self.accept(e.analyzed)
         self.accept(e.callee)
-        # Access callee type directly, since accept may return the any type
+        # Access callee type directly, since accept may return the Any type
         # even if the type is known (in a dynamically typed function). This
         # way we get a more precise callee in dynamically typed functions.
         callee_type = self.chk.type_map[e.callee]

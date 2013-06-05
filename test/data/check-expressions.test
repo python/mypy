@@ -521,28 +521,39 @@ main, line 5: Unsupported target for indexed assignment
 -- ---------------
 
 
-[case testCastExpressions-skip]
+[case testCastExpressions]
 from typing import Undefined, cast, Any
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
-a = cast('A', a())       # Fail
-a = cast('A', b)         # Fail
-a = Any(a())     # Fail
-b = cast('A', a)         # Fail
-
-a = cast('A', a)
-c = cast('C', a)
-a = cast('A', c)
-a = Any(b)
-b = Any(a)
-
 class A: pass
 class B: pass
 class C(A): pass
+a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a = cast(A, a())       # Fail
+a = cast(A, b)         # Fail
+a = cast(Any, a())     # Fail
+b = cast(A, a)         # Fail
+
+a = cast(A, a)
+c = cast(C, a)
+a = cast(A, c)
+a = cast(Any, b)
+b = cast(Any, a)
+[out]
+main, line 7: "A" not callable
+main, line 8: Cannot cast from "B" to "A"
+main, line 9: "A" not callable
+main, line 10: Incompatible types in assignment
+
+[case testAnyCast-skip]
+from typing import Undefined, cast, Any
+a, b = Undefined, Undefined # type: (A, B)
+a = Any(a())     # Fail
+a = Any(b)
+b = Any(a)
+class A: pass
+class B: pass
 [out]
 main, line 3: "A" not callable
-main, line 4: Cannot cast from "B" to "A"
-main, line 5: "A" not callable
-main, line 6: Incompatible types in assignment
 
 
 -- Void type
