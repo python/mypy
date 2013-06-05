@@ -561,15 +561,15 @@ l = List[bool]() # E: Incompatible types in assignment
 -- -------------------
 
 
-[case testDictLiteral-skip]
+[case testDictLiteral]
 from typing import Undefined, Dict
-a, b = Undefined, Undefined # type: (A, B)
-d = {a:b}
-d = {} # type: Dict[A, B]
-d = {} # type: Dict[A, A] # E: Incompatible types in assignment
-d = {} # type: Dict[B, B] # E: Incompatible types in assignment
 class A: pass
 class B: pass
+a, b = Undefined, Undefined # type: (A, B)
+d = {a:b}
+d = Dict[A, B]()
+d = Dict[A, A]() # E: Incompatible types in assignment
+d = Dict[B, B]() # E: Incompatible types in assignment
 [builtins fixtures/dict.py]
 
 [case testSetLiteral]
