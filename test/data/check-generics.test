@@ -418,25 +418,19 @@ tbc = f[B, C](b, tbb) # E: Argument 2 to "f" has incompatible type t<B, B>
 tbb = f[B, C](b, tbc) # E: Incompatible types in assignment
 tbc = f[B, C](b, tbc)
 
-[case testInvalidNumberOfTypeArgumentsForGenericFunction-skip]
+[case testInvalidNumberOfTypeArgumentsForGenericFunction]
 from typing import Undefined, typevar, Generic
 s = typevar('s')
 t = typevar('t')
+class p(Generic[s, t]): pass
+def f(a: p[s, t]) -> None: pass
+def g() -> None: pass
 a = Undefined # type: p[object, object]
 
-a = f[object](a)                 # Fail
-a = f[object, object, object](a) # Fail
-g[object]()                      # Fail
+a = f[object](a) # E: Type application has too few types (2 expected)
+a = f[object, object, object](a) # E: Type application has too many types (2 expected)
+g[object]() # E: Type application targets a non-generic function
 f[object, object](a)
-
-def f(a: 'p[s, t]') -> None: pass
-def g() -> None: pass
-
-class p(Generic[s, t]): pass
-[out]
-main, line 6: Type application has too few types (2 expected)
-main, line 7: Type application has too many types (2 expected)
-main, line 8: Type application targets a non-generic function
 
 [case testGenericMethodInNonGenericType-skip]
 from typing import Undefined, typevar
