@@ -14,8 +14,8 @@ from mypy.testsemanal import normalize_error_messages
 # List of files that contain test case descriptions.
 files = [
     'check-basic.test',
+    'check-classes.test',
     #'check-generics.test',
-    #'check-classes.test',
     #'check-expressions.test',
     #'check-statements.test',
     #'check-tuples.test',

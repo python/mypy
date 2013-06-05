@@ -1,17 +1,26 @@
 # builtins stub used in for statement test cases
 
+from typing import typevar, Generic
+from abc import abstractmethod, ABCMeta
+
+t = typevar('t')
+
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
+    
 class type: pass
 class bool: pass
+class str: pass
 
-interface Iterable<t>:
-    Iterator<t> __iter__(self)
+class Iterable(AbstractGeneric[t]):
+    @abstractmethod
+    def __iter__(self) -> 'Iterator[t]': pass
 
-interface Iterator<t>(Iterable<t>):
-    t __next__(self)
+class Iterator(Iterable[t], Generic[t]):
+    @abstractmethod
+    def __next__(self) -> t: pass
 
-class list<t>(Iterable<t>):
-    Iterator<t> __iter__(self): pass
+class list(Iterable[t], Generic[t]):
+    def __iter__(self) -> Iterator[t]: pass
 
 class tuple: pass
