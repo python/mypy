@@ -551,19 +551,16 @@ A().f(1)
 A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
 class B: pass
 
-[case testTrivialDecoratedNestedFunction-skip]
-from typing import typevar, Undefined
+[case testTrivialDecoratedNestedFunction]
+from typing import typevar
 t = typevar('t')
 def dec(f: t) -> t:
     return f
-a, b = Undefined, Undefined # type: (A, B)
 def g() -> None:
     @dec
-    def f(x: 'A') -> None: pass
-    f(a)
-    f(b) # E: Argument 1 to "f" has incompatible type "B"
-class A: pass
-class B: pass
+    def f(x: int) -> None: pass
+    f(1)
+    f('') # E: Argument 1 to "f" has incompatible type "str"
 [out]
 main: In function "g":
 
