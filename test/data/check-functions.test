@@ -9,8 +9,9 @@
 
 
 [case testCallingVariableWithFunctionType]
-func<B(A)> f
-A a, B b
+from typing import Undefined, Function
+f = Undefined # type: Function[[A], B]
+a, b = Undefined, Undefined # type: (A, B)
 a = f(a)    # E: Incompatible types in assignment
 b = f(b)    # E: Argument 1 has incompatible type "B"
 b = f()     # E: Too few arguments
@@ -21,9 +22,10 @@ class A: pass
 class B: pass
 
 [case testSubtypingFunctionTypes]
-func<A(B)> f
-func<A(A)> g
-func<B(B)> h  # subtype of f
+from typing import Undefined, Function
+f = Undefined # type: Function[[B], A]
+g = Undefined # type: Function[[A], A]
+h = Undefined # type: Function[[B], B]  # subtype of f
 g = f  # E: Incompatible types in assignment
 g = h  # E: Incompatible types in assignment
 h = f  # E: Incompatible types in assignment
@@ -38,8 +40,9 @@ class A: pass
 class B(A): pass
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
-func<void()> f
-A a, object o
+from typing import Undefined, Function
+f = Undefined # type: Function[[], None]
+a, o = Undefined, Undefined # type: (A, object)
 a = f   # E: Incompatible types in assignment
 f = a   # E: Incompatible types in assignment
 f = o   # E: Incompatible types in assignment
@@ -52,8 +55,9 @@ o = f
 class A: pass
 
 [case testFunctionSubtypingWithVoid]
-func<void()> f
-func<object()> g
+from typing import Undefined, Function
+f = Undefined # type: Function[[], None]
+g = Undefined # type: Function[[], object]
 f = g  # E: Incompatible types in assignment
 g = f  # E: Incompatible types in assignment
 
@@ -61,9 +65,10 @@ f = f
 g = g
 
 [case testFunctionSubtypingWithMultipleArgs]
-func<void(A, A)> f
-func<void(A, B)> g
-func<void(B, B)> h
+from typing import Undefined, Function
+f = Undefined # type: Function[[A, A], None]
+g = Undefined # type: Function[[A, B], None]
+h = Undefined # type: Function[[B, B], None]
 f = g  # E: Incompatible types in assignment
 f = h  # E: Incompatible types in assignment
 g = h  # E: Incompatible types in assignment
@@ -78,9 +83,10 @@ class A: pass
 class B(A): pass
 
 [case testFunctionTypesWithDifferentArgumentCounts]
-func<void()> f
-func<void(A)> g
-func<void(A, A)> h
+from typing import Undefined, Function
+f = Undefined # type: Function[[], None]
+g = Undefined # type: Function[[A], None]
+h = Undefined # type: Function[[A, A], None]
 
 f = g   # E: Incompatible types in assignment
 f = h   # E: Incompatible types in assignment
@@ -95,22 +101,24 @@ class A: pass
 [out]
 
 [case testCompatibilityOfSimpleTypeObjectWithStdType]
-type t
-A a
+from typing import Undefined
+t = Undefined # type: type
+a = Undefined # type: A
 
 a = A # E: Incompatible types in assignment
 t = f # E: Incompatible types in assignment
 t = A
 
 class A:
-    void __init__(self, A a): pass
+    def __init__(self, a: 'A') -> None: pass
 
-void f(): pass
+def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
-func<A(AA)> f
-func<B(B)> g
-func<AA(A)> h
+from typing import Undefined, Function, overload
+f = Undefined # type: Function[[AA], A]
+g = Undefined # type: Function[[B], B]
+h = Undefined # type: Function[[A], AA]
 
 h = i  # E: Incompatible types in assignment
 f = j
@@ -119,14 +127,18 @@ f = i
 g = i
 g = j
 
-A i(AA x):
+@overload
+def i(x: 'AA') -> 'A':
     pass
-B i(B x):
+@overload
+def i(x: 'B') -> 'B':
     pass
     
-B j(B x):
+@overload
+def j(x: 'B') -> 'B':
     pass
-AA j(A x):
+@overload
+def j(x: 'A') -> 'AA':
     pass
 
 class A: pass
@@ -134,11 +146,12 @@ class AA(A): pass
 class B: pass
 
 [case testOverloadWithThreeItems]
-func<A(A)> g1
-func<B(B)> g2
-func<C(C)> g3
-func<B(A)> g4
-A a, B b, C c
+from typing import Undefined, Function, overload
+g1 = Undefined # type: Function[[A], A]
+g2 = Undefined # type: Function[[B], B]
+g3 = Undefined # type: Function[[C], C]
+g4 = Undefined # type: Function[[A], B]
+a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
 b = f(a)  # E: Incompatible types in assignment
 a = f(b)  # E: Incompatible types in assignment
@@ -152,13 +165,16 @@ a = f(a)
 b = f(b)
 c = f(c)
 
-A f(A x):
+@overload
+def f(x: 'A') -> 'A':
     pass
 
-B f(B x):
+@overload
+def f(x: 'B') -> 'B':
     pass
 
-C f(C x):
+@overload
+def f(x: 'C') -> 'C':
     pass
 
 class A: pass
@@ -171,27 +187,29 @@ class C: pass
 
 
 [case testDefaultArgumentExpressions]
-void f(A x=A()):
-    B b = x # Fail
-    A a = x
+import typing
+def f(x: 'A' = A()) -> None:
+    b = x # type: B # Fail
+    a = x # type: A
 
-void g(A x=B()): # Fail
-    B b = x # Fail
-    A a = x
+def g(x: 'A' = B()) -> None: # Fail
+    b = x # type: B # Fail
+    a = x # type: A
 
 class B: pass
 class A: pass
 [out]
 main: In function "f":
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 main: In function "g":
-main, line 5: Incompatible types in assignment
 main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 
 [case testDefaultArgumentsWithSubtypes]
-void f(B x=A()): # E: Incompatible types in assignment
+import typing
+def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment
     pass
-void g(A x=B()):
+def g(x: 'A' = B()) -> None:
     pass
 
 class A: pass
@@ -200,23 +218,25 @@ class B(A): pass
 main: In function "f":
 
 [case testMultipleDefaultArgumentExpressions]
-void f(A x=B(), B y=B()): # Fail
+import typing
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # Fail
     pass
-void g(A x=A(), B y=A()): # Fail
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # Fail
     pass
-void h(A x=A(), B y=B()):
+def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
 
 class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 1: Incompatible types in assignment
+main, line 2: Incompatible types in assignment
 main: In function "g":
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 
 [case testCallingFunctionsWithDefaultArgumentValues]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 a = f()     # E: Incompatible types in assignment
 b = f(b)    # E: Argument 1 to "f" has incompatible type "B"
 b = f(a, a) # E: Too many arguments for "f"
@@ -225,7 +245,7 @@ b = f()
 b = f(a)
 b = f(AA())
 
-B f(A x = None): pass
+def f(x: 'A'  =  None) -> 'B': pass
 
 class A: pass
 class AA(A): pass
@@ -237,9 +257,10 @@ class B: pass
 
 
 [case testDefaultArgumentExpressions]
-void f(A x=A()):
-    B b = x # E: Incompatible types in assignment
-    A a = x
+import typing
+def f(x: 'A' = A()) -> None:
+    b = x # type: B # E: Incompatible types in assignment
+    a = x # type: A
 
 class B: pass
 class A: pass
@@ -247,9 +268,10 @@ class A: pass
 main: In function "f":
 
 [case testDefaultArgumentExpressions]
-void f(A x=B()): # E: Incompatible types in assignment
-    B b = x      # E: Incompatible types in assignment
-    A a = x
+import typing
+def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment
+    b = x # type: B      # E: Incompatible types in assignment
+    a = x # type: A
 
 class B: pass
 class A: pass
@@ -257,9 +279,10 @@ class A: pass
 main: In function "f":
 
 [case testDefaultArgumentsWithSubtypes]
-void f(B x=A()): # E: Incompatible types in assignment
+import typing
+def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment
     pass
-void g(A x=B()):
+def g(x: 'A' = B()) -> None:
     pass
 
 class A: pass
@@ -268,9 +291,10 @@ class B(A): pass
 main: In function "f":
 
 [case testMultipleDefaultArgumentExpressions]
-void f(A x=B(), B y=B()): # E: Incompatible types in assignment
+import typing
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible types in assignment
     pass
-void h(A x=A(), B y=B()):
+def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
 
 class A: pass
@@ -279,7 +303,8 @@ class B: pass
 main: In function "f":
 
 [case testMultipleDefaultArgumentExpressions2]
-void g(A x=A(), B y=A()): # E: Incompatible types in assignment
+import typing
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment
     pass
 
 class A: pass
@@ -288,7 +313,8 @@ class B: pass
 main: In function "g":
 
 [case testCallingFunctionsWithDefaultArgumentValues]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 a = f()     # Fail
 b = f(b)    # Fail
 b = f(a, a) # Fail
@@ -297,15 +323,15 @@ b = f()
 b = f(a)
 b = f(AA())
 
-B f(A x=None): pass
+def f(x: 'A' = None) -> 'B': pass
 
 class A: pass
 class AA(A): pass 
 class B: pass
 [out]
-main, line 2: Incompatible types in assignment
-main, line 3: Argument 1 to "f" has incompatible type "B"
-main, line 4: Too many arguments for "f"
+main, line 3: Incompatible types in assignment
+main, line 4: Argument 1 to "f" has incompatible type "B"
+main, line 5: Too many arguments for "f"
 
 
 -- Access to method defined as a data attribute
@@ -313,91 +339,105 @@ main, line 4: Too many arguments for "f"
 
 
 [case testMethodAsDataAttribute]
+from typing import Undefined, Any, Function
 class B: pass
-any x
+x = Undefined # type: Any
 class A:
-    func<void(A)> f = x
-    func<void(A, B)> g = x
-A a
+    f = x # type: Function[[A], None]
+    g = x # type: Function[[A, B], None]
+a = Undefined # type: A
 a.f()
 a.g(B())
 a.f(a) # E: Too many arguments
 a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
+from typing import Undefined, Any, Function
 class B: pass
-any x
+x = Undefined # type: Any
 class A:
-    func<void()> f = x
-    func<void(B)> g = x
-A a
+    f = x # type: Function[[], None]
+    g = x # type: Function[[B], None]
+a = Undefined # type: A
 a.f() # E: Invalid method type
 a.g() # E: Invalid method type
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
+from typing import Undefined, Any, Function
 class B: pass
-any x
+x = Undefined # type: Any
 class A:
-    func<any(any)> f = x
-A a
+    f = x # type: Function[[Any], Any]
+a = Undefined # type: A
 a.f()
 a.f(a) # E: Too many arguments
 
 [case testOverloadedMethodAsDataAttribute]
+from typing import overload, Undefined
 class B: pass
 class A:
-    void f(self): pass
-    void f(self, B b): pass
+    @overload
+    def f(self) -> None: pass
+    @overload
+    def f(self, b: B) -> None: pass
     g = f
-A a
+a = Undefined # type: A
 a.g()
 a.g(B())
 a.g(a) # E: No overload variant matches argument types
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
+from typing import Undefined
 class A:
     def f(self, x): pass
     g = f
-A a
+a = Undefined # type: A
 a.g(object())
 a.g(a, a) # E: Too many arguments
 a.g()     # E: Too few arguments
 
-[case testMethodAsDataAttributeInGenericClass]
+[case testMethodAsDataAttributeInGenericClass-skip]
+from typing import typevar, Generic, Undefined
+t = typevar('t')
 class B: pass
-class A<t>:
-    void f(self, t x): pass
+class A(Generic[t]):
+    def f(self, x: t) -> None: pass
     g = f
-A<B> a
+a = Undefined # type: A[B]
 a.g(B())
 a.g(a)   # E: Argument 1 has incompatible type A<B>
 
-[case testInvalidMethodAsDataAttributeInGenericClass]
+[case testInvalidMethodAsDataAttributeInGenericClass-skip]
+from typing import Undefined, Any, typevar, Generic, Function
+t = typevar('t')
 class B: pass
 class C: pass
-any x
-class A<t>:
-    func<void(A<B>)> f = x
-A<B> ab
-A<C> ac
+x = Undefined # type: Any
+class A(Generic[t]):
+    f = x # type: Function[[A[B]], None]
+ab = Undefined # type: A[B]
+ac = Undefined # type: A[C]
 ab.f()
 ac.f()   # E: Invalid method type
 
-[case testPartiallyTypedSelfInMethodDataAttribute]
+[case testPartiallyTypedSelfInMethodDataAttribute-skip]
+from typing import Undefined, Any, typevar, Generic, Function
+t = typevar('t')
 class B: pass
 class C: pass
-any x
-class A<t>:
-    func<void(A)> f = x
-A<B> ab
-A<C> ac
+x = Undefined # type: Any
+class A(Generic[t]):
+    f = x # type: Function[[A], None]
+ab = Undefined # type: A[B]
+ac = Undefined # type: A[C]
 ab.f()
 ac.f()
 
-[case testCallableDataAttribute]
+[case testCallableDataAttribute-skip]
+from typing import Undefined, Function
 class A:
-    func<void()> g
-    void __init__(self, func<void()> f):
+    g = Undefined # type: Function[[], None]
+    def __init__(self, f: Function[[], None]) -> None:
         self.f = f
 a = A(None)
 a.f()
@@ -411,10 +451,11 @@ a.g(a) # E: Too many arguments
 
 
 [case testSimpleNestedFunction]
-void f(A a):
-    void g(B b):
+import typing
+def f(a: 'A') -> None:
+    def g(b: 'B') -> None:
          b = a # fail
-         A aa = a # ok
+         aa = a # type: A # ok
          b = B()
     g(a) # fail
     g(B())
@@ -422,13 +463,14 @@ class A: pass
 class B: pass
 [out]
 main: In function "g":
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 main: In function "f":
-main, line 6: Argument 1 to "g" has incompatible type "A"
+main, line 7: Argument 1 to "g" has incompatible type "A"
 
 [case testReturnAndNestedFunction]
-A f():
-    B g():
+import typing
+def f() -> 'A':
+    def g() -> 'B':
         return A() # fail
         return B()
     return B() # fail
@@ -437,12 +479,13 @@ class A: pass
 class B: pass
 [out]
 main: In function "g":
-main, line 3: Incompatible return value type
+main, line 4: Incompatible return value type
 main: In function "f":
-main, line 5: Incompatible return value type
+main, line 6: Incompatible return value type
 
 [case testDynamicallyTypedNestedFunction]
-void f(object x):
+import typing
+def f(x: object) -> None:
     def g(y):
         pass
     g() # E: Too few arguments for "g"
@@ -451,67 +494,76 @@ void f(object x):
 main: In function "f":
 
 [case testNestedFunctionInMethod]
+import typing
 class A:
-    void f(self):
-        void g(int x):
-            int y = x
-            A a = x # fail
+    def f(self) -> None:
+        def g(x: int) -> None:
+            y = x # type: int
+            a = x # type: A # fail
         g(2)
         g(A()) # fail
 [out]
 main: In function "g":
-main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
 main: In member "f" of class "A":
-main, line 7: Argument 1 to "g" of "A" has incompatible type "A"
+main, line 8: Argument 1 to "g" of "A" has incompatible type "A"
 
 
 -- Casts
 -- -----
 
 
-[case testCastsToAndFromFunctionTypes]
-void f<t>(t x, func<void()> f1, func<void(any)> f2, object o):
-    x = (t)f1
-    f1 = (func<void()>)x
-    f1 = (func<void()>)f2
-    f1 = (func<void()>)o
+[case testCastsToAndFromFunctionTypes-skip]
+from typing import typevar, Function, Any, cast
+t = typevar('t')
+def f(x: t, f1: Function[[], None], f2: Function[[Any], None], o: object) -> None:
+    x = cast(t, f1)
+    f1 = cast(Function[[], None], x)
+    f1 = cast(Function[[], None], f2)
+    f1 = cast(Function[[], None], o)
 
 
 -- Function decorators
 -- -------------------
 
 
-[case testTrivialStaticallyTypedFunctionDecorator]
-t dec<t>(t f):
+[case testTrivialStaticallyTypedFunctionDecorator-skip]
+from typing import typevar, Undefined
+t = typevar('t')
+def dec(f: t) -> t:
     return f
 @dec
-void f(A x): pass
-A a
-B b
+def f(x: 'A') -> None: pass
+a = Undefined # type: A
+b = Undefined # type: B
 f(a)
 f(b) # E: Argument 1 to "f" has incompatible type "B"
 class A: pass
 class B: pass
 
-[case testTrivialStaticallyTypedMethodDecorator]
-t dec<t>(t f):
+[case testTrivialStaticallyTypedMethodDecorator-skip]
+from typing import typevar, Undefined
+t = typevar('t')
+def dec(f: t) -> t:
     return f
 class A:
     @dec
-    void f(self, A x): pass
-A a
-B b
+    def f(self, x: 'A') -> None: pass
+a = Undefined # type: A
+b = Undefined # type: B
 a.f(a)
 a.f(b) # E: Argument 1 to "f" of "A" has incompatible type "B"
 class B: pass
 
-[case testTrivialDecoratedNestedFunction]
-t dec<t>(t f):
+[case testTrivialDecoratedNestedFunction-skip]
+from typing import typevar, Undefined
+t = typevar('t')
+def dec(f: t) -> t:
     return f
-A a, B b
-void g():
+a, b = Undefined, Undefined # type: (A, B)
+def g() -> None:
     @dec
-    void f(A x): pass
+    def f(x: 'A') -> None: pass
     f(a)
     f(b) # E: Argument 1 to "f" has incompatible type "B"
 class A: pass
@@ -520,34 +572,38 @@ class B: pass
 main: In function "g":
 
 [case testCheckingDecoratedFunction]
+import typing
 def dec(f): pass
 @dec
-void f(A x):
-    A a = x
+def f(x: 'A') -> None:
+    a = x # type: A
     x = object() # E: Incompatible types in assignment
 class A: pass
 [out]
 main: In function "f":
 
 [case testDecoratorThatSwitchesType]
-func<void()> dec(x): pass
+from typing import Function
+def dec(x) -> Function[[], None]: pass
 @dec
 def f(y): pass
 f()
 f(None) # E: Too many arguments for "f"
 
 [case testDecoratorThatSwitchesTypeWithMethod]
-func<void(any)> dec(x): pass
+from typing import Any, Function, Undefined
+def dec(x) -> Function[[Any], None]: pass
 class A:
     @dec
     def f(self, a, b, c): pass
-A a
+a = Undefined # type: A
 a.f()
 a.f(None) # E: Too many arguments for "f" of "A"
 
 [case testNestedDecorators]
-func<void()> dec1(func<void(any)> f): pass
-func<void(any)> dec2(func<void(any, any)> f): pass
+from typing import Any, Function
+def dec1(f: Function[[Any], None]) -> Function[[], None]: pass
+def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
 @dec1
 @dec2
 def f(x, y): pass
@@ -555,15 +611,17 @@ f()
 f(None) # E: Too many arguments for "f"
 
 [case testInvalidDecorator1]
-func<void()> dec1(func<void(any)> f): pass
-func<void(any)> dec2(func<void(any, any)> f): pass
+from typing import Any, Function
+def dec1(f: Function[[Any], None]) -> Function[[], None]: pass
+def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
 @dec1 # E: Argument 1 to "dec2" has incompatible type
 @dec2
 def f(x): pass
 
 [case testInvalidDecorator2]
-func<void()> dec1(func<void(any, any)> f): pass
-func<void(any)> dec2(func<void(any, any)> f): pass
+from typing import Any, Function
+def dec1(f: Function[[Any, Any], None]) -> Function[[], None]: pass
+def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
 @dec1 # E: Argument 1 to "dec1" has incompatible type
 @dec2
 def f(x, y): pass
@@ -574,68 +632,75 @@ def f(x, y): pass
 
 
 [case testTypeCheckBodyOfConditionalFunction]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
-    void f(int x): 
+    def f(x: int) -> None: 
         x = 1
         x = '' # E: Incompatible types in assignment
 [out]
 main: In function "f":
 
 [case testCallConditionalFunction]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
-    void f(int x):  pass
+    def f(x: int) -> None:  pass
     f(1)
     f('x') # E: Argument 1 to "f" has incompatible type "str"
 f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"
 
 [case testConditionalFunctionDefinitionWithIfElse]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
-    void f(int x):
+    def f(x: int) -> None:
         x = 'x'   # fail
         x = 1
 else:
-    void f(int x):
+    def f(x: int) -> None:
         x + 'x'   # fail
         x = 1
 f(1)
 f('x') # fail
 [out]
 main: In function "f":
-main, line 4: Incompatible types in assignment
-main, line 8: Unsupported left operand type for + ("int")
+main, line 5: Incompatible types in assignment
+main, line 9: Unsupported left operand type for + ("int")
 main: At top level:
-main, line 11: Argument 1 to "f" has incompatible type "str"
+main, line 12: Argument 1 to "f" has incompatible type "str"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
     def f(): pass
 def f(): pass # E: Name 'f' already defined (overload variants must be next to each other)
 
 [case testIncompatibleConditionalFunctionDefinition]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
-    void f(int x): pass
+    def f(x: int) -> None: pass
 else:
     def f(x): pass # E: All conditional function variants must have identical signatures
 
 [case testIncompatibleConditionalFunctionDefinition2]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
-    void f(int x): pass
+    def f(x: int) -> None: pass
 else:
-    void f(int y): pass # E: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
 
 [case testIncompatibleConditionalFunctionDefinition3]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 if x:
-    void f(int x): pass
+    def f(x: int) -> None: pass
 else:
-    void f(int x=0): pass # E: All conditional function variants must have identical signatures
+    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
 
 
 -- Conditional method definition
@@ -643,20 +708,22 @@ else:
 
 
 [case testTypeCheckBodyOfConditionalMethod]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 class A:
     if x:
-        void f(self, int x): 
+        def f(self, x: int) -> None: 
             x = 1
             x = '' # E: Incompatible types in assignment
 [out]
 main: In member "f" of class "A":
 
 [case testCallConditionalMethodInClassBody]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 class A:
     if x:
-        void f(self, int x):  pass
+        def f(self, x: int) -> None:  pass
         f(x, 1)
         f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"
     f(x, 1)
@@ -665,55 +732,60 @@ class A:
 main: In class "A":
 
 [case testCallConditionalMethodViaInstance]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 class A:
     if x:
-         void f(self, int x): pass
+         def f(self, x: int) -> None: pass
 A().f(1)
 A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"
 
 [case testConditionalMethodDefinitionWithIfElse]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 class A: 
     if x:
-        void f(self, int x):
+        def f(self, x: int) -> None:
             x = 'x'   # fail
             x = 1
     else:
-        void f(self, int x):
+        def f(self, x: int) -> None:
             x + 'x'   # fail
             x = 1
 A().f(1)
 A().f('x') # fail
 [out]
 main: In member "f" of class "A":
-main, line 5: Incompatible types in assignment
-main, line 9: Unsupported left operand type for + ("int")
+main, line 6: Incompatible types in assignment
+main, line 10: Unsupported left operand type for + ("int")
 main: At top level:
-main, line 12: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 13: Argument 1 to "f" of "A" has incompatible type "str"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 class A:
     if x:
         def f(self): pass
     def f(self): pass # E: Name 'f' already defined
 
 [case testIncompatibleConditionalMethodDefinition]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 class A:
     if x:
-        void f(self, int x): pass
+        def f(self, x: int) -> None: pass
     else:
         def f(self, x): pass # E: All conditional function variants must have identical signatures
 [out]
 main: In class "A":
 
 [case testConditionalFunctionDefinitionInTry]
+import typing
 try:
-    void f(int x): pass
+    def f(x: int) -> None: pass
 except:
-    void g(str x): pass
+    def g(x: str) -> None: pass
 f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"
 g('x')
