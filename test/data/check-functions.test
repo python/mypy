@@ -539,18 +539,16 @@ def f(x: int) -> None: pass
 f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"
 
-[case testTrivialStaticallyTypedMethodDecorator-skip]
-from typing import typevar, Undefined
+[case testTrivialStaticallyTypedMethodDecorator]
+from typing import typevar
 t = typevar('t')
 def dec(f: t) -> t:
     return f
 class A:
     @dec
-    def f(self, x: 'A') -> None: pass
-a = Undefined # type: A
-b = Undefined # type: B
-a.f(a)
-a.f(b) # E: Argument 1 to "f" of "A" has incompatible type "B"
+    def f(self, x: int) -> None: pass
+A().f(1)
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
 class B: pass
 
 [case testTrivialDecoratedNestedFunction-skip]
