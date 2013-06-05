@@ -513,7 +513,7 @@ main, line 8: Argument 1 to "g" of "A" has incompatible type "A"
 -- -----
 
 
-[case testCastsToAndFromFunctionTypes-skip]
+[case testCastsToAndFromFunctionTypes]
 from typing import typevar, Function, Any, cast
 t = typevar('t')
 def f(x: t,
