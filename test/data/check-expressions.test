@@ -772,16 +772,14 @@ class A: pass
 -- ---------------------
 
 
-[case testSimpleGeneratorExpression-skip]
+[case testSimpleGeneratorExpression]
 from typing import Undefined, Iterator
 # The implementation is mostly identical to list comprehensions, so a single 
 # test case is ok.
-a = Undefined # type: Iterator[A]
+a = Undefined # type: Iterator[int]
 a = x for x in a
-b = Undefined # type: Iterator[B]
-b = x for x in a # E: Generator has incompatible item type "A"
-class A: pass
-class B: pass
+b = Undefined # type: Iterator[str]
+b = x for x in a # E: Generator has incompatible item type "int"
 [builtins fixtures/for.py]
 
 
