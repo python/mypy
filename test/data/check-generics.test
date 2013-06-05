@@ -680,9 +680,16 @@ class B: pass
 -- --------------------
 
 
-[case testGenericArgumentInOverload-skip]
+[case testGenericArgumentInOverload]
 from typing import Undefined, overload, List
+class A: pass
+class B: pass
 a, b = Undefined, Undefined # type: (A, B)
+
+@overload
+def f(a: List[A]) -> A: pass
+@overload
+def f(a: B) -> B: pass
 
 b = f([a]) # E: Incompatible types in assignment
 a = f([b]) # E: List item 1 has incompatible type "B"
@@ -690,14 +697,6 @@ a = f(b)   # E: Incompatible types in assignment
 
 a = f([a])
 b = f(b)
-
-@overload
-def f(a: 'List[A]') -> 'A': pass
-@overload
-def f(a: 'B') -> 'B': pass
-
-class A: pass
-class B: pass
 [builtins fixtures/list.py]
 
 [case testGenericFunctionAsOverloadItem-skip]
