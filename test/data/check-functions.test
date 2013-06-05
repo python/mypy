@@ -396,7 +396,7 @@ a.g(object())
 a.g(a, a) # E: Too many arguments
 a.g()     # E: Too few arguments
 
-[case testMethodAsDataAttributeInGenericClass-skip]
+[case testMethodAsDataAttributeInGenericClass]
 from typing import typevar, Generic, Undefined
 t = typevar('t')
 class B: pass
@@ -407,7 +407,7 @@ a = Undefined # type: A[B]
 a.g(B())
 a.g(a)   # E: Argument 1 has incompatible type A<B>
 
-[case testInvalidMethodAsDataAttributeInGenericClass-skip]
+[case testInvalidMethodAsDataAttributeInGenericClass]
 from typing import Undefined, Any, typevar, Generic, Function
 t = typevar('t')
 class B: pass
@@ -420,7 +420,7 @@ ac = Undefined # type: A[C]
 ab.f()
 ac.f()   # E: Invalid method type
 
-[case testPartiallyTypedSelfInMethodDataAttribute-skip]
+[case testPartiallyTypedSelfInMethodDataAttribute]
 from typing import Undefined, Any, typevar, Generic, Function
 t = typevar('t')
 class B: pass
