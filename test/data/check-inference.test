@@ -173,25 +173,6 @@ class A: pass
 [out]
 main: In function "f":
 
-[case testInferringGenericFunctionTypeForLvar-skip]
-from typing import Undefined, typevar
-T = typevar('T')
-def f() -> None:
-    a = id
-    b = Undefined # type: B
-    c = Undefined # type: C
-    b = a['B'](c) # E: Argument 1 has incompatible type "C"
-    b = a['B'](b)
-    c = a['C'](c)
-
-def id(x: T) -> T:
-    return x
-
-class B: pass
-class C:pass
-[out]
-main: In function "f":
-
 
 -- Inferring local variable types in multiple definition
 -- -----------------------------------------------------
@@ -312,6 +293,22 @@ def id(a: T) -> T: pass
 class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
+
+[case testInferringGenericFunctionTypeForLvar]
+# TODO this is actually a contextual inference test case
+from typing import Undefined, typevar
+T = typevar('T')
+def f() -> None:
+    a = id
+    b = Undefined # type: int
+    c = Undefined # type: str
+    b = a(c) # E: Argument 1 has incompatible type "str"
+    b = a(b)
+    c = a(c)
+def id(x: T) -> T:
+    return x
+[out]
+main: In function "f":
 
 [case testUnderspecifiedInferenceResult-skip]
 from typing import Undefined, typevar
