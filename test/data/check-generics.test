@@ -453,26 +453,21 @@ main, line 6: Argument 1 to "f" of "A" has incompatible type "B"
 from typing import Undefined, typevar, Generic
 T = typevar('T')
 S = typevar('S')
-ab = Undefined # type: A[B]
-acb = Undefined # type: A[t[C, B]]
-abc = Undefined # type: A[t[B, C]]
-b = Undefined # type: B
-c = Undefined # type: C
-
-abc = ab.f['C'](c) # Fail
-acb = ab.f['C'](b) # Fail
-
-acb = ab.f['C'](c)
-
 class A(Generic[T]):
     def f(self, a: S) -> 'A[t[S, T]]':
         pass
 class t(Generic[T, S]): pass
 class B: pass
 class C: pass
-[out]
-main, line 10: Incompatible types in assignment
-main, line 11: Argument 1 to "f" of "A" has incompatible type "B"
+ab = Undefined # type: A[B]
+acb = Undefined # type: A[t[C, B]]
+abc = Undefined # type: A[t[B, C]]
+b = Undefined # type: B
+c = Undefined # type: C
+
+abc = ab.f[C](c) # E: Incompatible types in assignment
+acb = ab.f[C](b) # E: Argument 1 to "f" of "A" has incompatible type "B"
+acb = ab.f[C](c)
 
 [case testTypeCheckingGenericFunctionBody-skip]
 from typing import typevar, Generic
