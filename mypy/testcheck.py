@@ -21,7 +21,7 @@ files = [
     'check-tuples.test',
     'check-dynamic.test',
     'check-functions.test',
-    #'check-inference.test',
+    'check-inference.test',
     #'check-inference-context.test',
     #'check-varargs.test',
     #'check-kwargs.test',
