@@ -397,30 +397,26 @@ b = id[B](a)  # E: Argument 1 to "id" has incompatible type "A"
 a = id[B](b)  # E: Incompatible types in assignment
 a = id[A](a)
 
-[case testGenericFunctionWithTwoTypeArguments-skip]
+[case testGenericFunctionWithTwoTypeArguments]
 from typing import Undefined, typevar, Generic
 S = typevar('S')
 T = typevar('T')
+
+class t(Generic[S, T]): pass
+class B: pass
+class C: pass
+
 tbc = Undefined # type: t[B, C]
 tbb = Undefined # type: t[B, B]
 b = Undefined # type: B
 c = Undefined # type: C
 
-tbc = f['B', 'C'](c, tbc) # Fail
-tbc = f['B', 'C'](b, tbb) # Fail
-tbb = f['B', 'C'](b, tbc) # Fail
+def f(a: S, b: t[S, T]) -> t[S, T]: pass
 
-tbc = f['B', 'C'](b, tbc)
-
-def f(a: S, b: 't[S, T]') -> 't[S, T]': pass
-
-class t(Generic[S, T]): pass
-class B: pass
-class C: pass
-[out]
-main, line 9: Argument 1 to "f" has incompatible type "C"
-main, line 10: Argument 2 to "f" has incompatible type t<B, B>
-main, line 11: Incompatible types in assignment
+tbc = f[B, C](c, tbc) # E: Argument 1 to "f" has incompatible type "C"
+tbc = f[B, C](b, tbb) # E: Argument 2 to "f" has incompatible type t<B, B>
+tbb = f[B, C](b, tbc) # E: Incompatible types in assignment
+tbc = f[B, C](b, tbc)
 
 [case testInvalidNumberOfTypeArgumentsForGenericFunction-skip]
 from typing import Undefined, typevar, Generic
