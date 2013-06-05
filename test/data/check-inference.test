@@ -311,9 +311,10 @@ def id(x: T) -> T:
 [out]
 main: In function "f":
 
-[case testUnderspecifiedInferenceResult-skip]
+[case testUnderspecifiedInferenceResult]
 from typing import Undefined, typevar
 T = typevar('T')
+class A: pass
 a = Undefined # type: A
 
 def ff() -> None:
@@ -321,16 +322,11 @@ def ff() -> None:
 
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
-f['A']()
+f[A]()
 g(a)
 
-def f() -> T:
-    pass
-
-def g(a: T) -> None:
-    pass
-
-class A: pass
+def f() -> T: pass
+def g(a: T) -> None: pass
 [out]
 main: In function "ff":
 
