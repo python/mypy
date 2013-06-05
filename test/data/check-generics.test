@@ -486,26 +486,22 @@ def f(s: S, t: T) -> p[T, A]:
 [out]
 main: In function "f":
 
-[case testTypeCheckingGenericMethodBody-skip]
+[case testTypeCheckingGenericMethodBody]
 from typing import typevar, Generic
 T = typevar('T')
 S = typevar('S')
-A = typevar('A')
+class p(Generic[T, S]):
+    def __init__(self, t: T, a: S) -> None: pass
 class A(Generic[T]):
-    def f(self, s: S, t: T) -> 'p[S, T]':
-        s = t # Fail
-        return p[S, S](s, s) # Fail
-        return p[T, T](t, t) # Fail
+    def f(self, s: S, t: T) -> p[S, T]:
+        s = t # E: Incompatible types in assignment
+        return p[S, S](s, s) # E: Incompatible return value type
+        return p[T, T](t, t) # E: Incompatible return value type
         t = t
         s = s
         return p[S, T](s, t)
-class p(Generic[T, A]):
-    def __init__(self, t: T, a: A) -> None: pass
 [out]
 main: In member "f" of class "A":
-main, line 7: Incompatible types in assignment
-main, line 8: Incompatible return value type
-main, line 9: Incompatible return value type
 
 
 -- Constructing instances + generics
