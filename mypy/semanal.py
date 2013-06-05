@@ -16,7 +16,8 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, ARG_POS
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
+    ARG_POS
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -1080,6 +1081,8 @@ class FirstPass(NodeVisitor):
         name = ((NameExpr)s.lvalues[0]).name
         node = self.sem.globals[name]
         node.kind = UNBOUND_TVAR
+        call.analyzed = TypeVarExpr()
+        call.analyzed.line = call.line
     
     void visit_func_def(self, FuncDef d):
         sem = self.sem

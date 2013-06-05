@@ -369,6 +369,9 @@ class StrConv(NodeVisitor<str>):
     
     def visit_type_application(self, o):
         return self.dump([o.expr, ('Types', o.types)], o)
+
+    def visit_type_var_expr(self, o):
+        return 'TypeVarExpr:{}()'.format(o.line)
     
     def visit_func_expr(self, o):
         a = self.func_helper(o)

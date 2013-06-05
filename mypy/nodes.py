@@ -1016,6 +1016,15 @@ class TypeApplication(Node):
         return visitor.visit_type_application(self)
 
 
+class TypeVarExpr(Node):
+    """Type variable expression typevar(...)."""
+    void __init__(self):
+        pass
+
+    T accept<T>(self, NodeVisitor<T> visitor):
+        return visitor.visit_type_var_expr(self)
+
+
 class CoerceExpr(Node):
     """Implicit coercion expression (used only when compiling/transforming;
     inserted after type checking).

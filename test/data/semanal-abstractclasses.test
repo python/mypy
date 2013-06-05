@@ -75,10 +75,7 @@ MypyFile:1(
   ImportFrom:2(typing, [AbstractGeneric : AbstractGeneric, typevar : typevar])
   AssignmentStmt:3(
     NameExpr(T* [__main__.T])
-    CallExpr:3(
-      NameExpr(typevar [typing.typevar])
-      Args(
-        StrExpr(T))))
+    TypeVarExpr:3())
   TypeDef:4(
     A
     TypeVars(

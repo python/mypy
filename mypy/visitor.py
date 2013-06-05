@@ -128,6 +128,8 @@ class NodeVisitor<T>:
         pass
     T visit_conditional_expr(self, mypy.nodes.ConditionalExpr o):
         pass
+    T visit_type_var_expr(self, mypy.nodes.TypeVarExpr o):
+        pass
     
     T visit_coerce_expr(self, mypy.nodes.CoerceExpr o):
         pass
