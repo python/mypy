@@ -516,7 +516,9 @@ main, line 8: Argument 1 to "g" of "A" has incompatible type "A"
 [case testCastsToAndFromFunctionTypes-skip]
 from typing import typevar, Function, Any, cast
 t = typevar('t')
-def f(x: t, f1: Function[[], None], f2: Function[[Any], None], o: object) -> None:
+def f(x: t,
+      f1: Function[[], None],
+      f2: Function[[Any], None], o: object) -> None:
     x = cast(t, f1)
     f1 = cast(Function[[], None], x)
     f1 = cast(Function[[], None], f2)
