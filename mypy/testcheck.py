@@ -23,7 +23,7 @@ files = [
     'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',
-    #'check-varargs.test',
+    'check-varargs.test',
     #'check-kwargs.test',
     #'check-overloading.test',
     #'check-interfaces.test',
