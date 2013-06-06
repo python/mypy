@@ -447,14 +447,14 @@ class D(Generic[k, v]): pass
 -- -------------------
 
 
-[case testDictionaryLiteralInContext-skip]
+[case testDictionaryLiteralInContext]
 from typing import Dict, typevar, Generic
 t = typevar('t')
-d = {A()    : A['C'](), 
-                      A['B']() : A()} # type: Dict[A[B], A[C]]
 class A(Generic[t]): pass
 class B: pass
 class C: pass
+d = {A()    : A[C](), 
+     A[B]() : A()} # type: Dict[A[B], A[C]]
 [builtins fixtures/dict.py]
 
 
