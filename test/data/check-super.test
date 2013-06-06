@@ -6,62 +6,63 @@
 
 
 [case testAccessingSupertypeMethod]
-class A(B):
-  A f(self):
-    A a, B b
-    a = super().f() # Fail
-    a = super().g() # Fail
-    b = super().f()
+from typing import Undefined
 class B:
-  B f(self): pass
+  def f(self) -> 'B': pass
+class A(B):
+  def f(self) -> 'A':
+    a, b = Undefined, Undefined # type: (A, B)
+    a = super().f() # E: Incompatible types in assignment
+    a = super().g() # E: "g" undefined in superclass
+    b = super().f()
 [out]
 main: In member "f" of class "A":
-main, line 4: Incompatible types in assignment
-main, line 5: "g" undefined in superclass
 
 [case testAccessingSuperTypeMethodWithArgs]
+from typing import Any, Undefined
+class B:
+  def f(self, y: 'A') -> None: pass
 class A(B):
-  void f(self, any x):
-    A a, B b
+  def f(self, x: Any) -> None:
+    a, b = Undefined, Undefined # type: (A, B)
     super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
     super().f(a)
     self.f(b)
     self.f(a)
-class B:
-  void f(self, A y): pass
 [out]
 main: In member "f" of class "A":
 
 [case testAccessingSuperInit]
+import typing
+class B:
+    def __init__(self, x: A) -> None: pass
 class A(B):
-  void __init__(self):
+  def __init__(self) -> None:
     super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"
     super().__init__()       # E: Too few arguments for "__init__" of "B"
     super().__init__(A())
-class B:
-    void __init__(self, A x):
-        pass
 [out]
 main: In member "__init__" of class "A":
 
 [case testAccessingSuperMemberWithDeepHierarchy]
-class A(B):
-  void f(self):
-    super().g() # Fail
-    super().f()
-class B(C): pass
+import typing
 class C:
-  void f(self): pass
+  def f(self) -> None: pass
+class B(C): pass
+class A(B):
+  def f(self) -> None:
+    super().g() # E: "g" undefined in superclass
+    super().f()
 [out]
 main: In member "f" of class "A":
-main, line 3: "g" undefined in superclass
 
 [case testAssignToBaseClassMethod]
+import typing
 class A:
-    void f(self): pass
+    def f(self) -> None: pass
 class B(A):
-    void g(self):
+    def g(self) -> None:
         super().f = None
 [out]
 main: In function "g":
-main, line 5: Invalid assignment target
+main, line 6: Invalid assignment target

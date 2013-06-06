@@ -27,7 +27,7 @@ files = [
     'check-kwargs.test',
     'check-overloading.test',
     #'check-interfaces.test',
-    #'check-super.test',
+    'check-super.test',
     'check-modules.test',
     #'check-generic-subtyping.test',
     'check-unsupported.test',
