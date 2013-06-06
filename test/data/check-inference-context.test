@@ -582,13 +582,13 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
-[case testInferLambdaAsGenericFunctionArgument-skip]
+[case testInferLambdaAsGenericFunctionArgument]
 from typing import typevar, List, Any, Function, Undefined
 t = typevar('t')
-def f(a: List[t], fn: Function[[t], Any]) -> None: pass
-f( [], lambda a: a.x)
 class A:
   x = Undefined # type: A
+def f(a: List[t], fn: Function[[t], Any]) -> None: pass
+f(List[A](), lambda a: a.x)
 [builtins fixtures/list.py]
 
 [case testLambdaTypeInferenceWithExplicitArgumentType-skip]
