@@ -25,7 +25,7 @@ files = [
     'check-inference-context.test',
     'check-varargs.test',
     'check-kwargs.test',
-    #'check-overloading.test',
+    'check-overloading.test',
     #'check-interfaces.test',
     #'check-super.test',
     #'check-modules.test',
