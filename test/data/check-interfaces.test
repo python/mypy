@@ -1,11 +1,11 @@
--- Type checker test cases for interfaces.
+-- Type checker test cases for abstract classes.
 
 
--- Subtyping with interfaces
--- -------------------------
+-- Subtyping with abstract classes
+-- -------------------------------
 
 
-[case testInterfaceSubtypingViaImplementation]
+[case testAbstractClassSubclasses]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -33,7 +33,7 @@ class A(I, J): pass
 class B(A): pass
 class C(I): pass
 
-[case testInterfaceSubtypingViaExtension]
+[case testAbstractClassSubtypingViaExtension]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -58,7 +58,7 @@ class I(metaclass=ABCMeta): pass
 class J(I): pass
 class A(J): pass
 
-[case testImplementingInSubclass]
+[case testInheritingAbstractClassInSubclass]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -77,11 +77,11 @@ class A: pass
 class B(A, I): pass
 
 
--- Interfaces objects
--- ------------------
+-- Abstract class objects
+-- ----------------------
 
 
-[case testInterfaceAsTypeObject]
+[case testAbstractClassAsTypeObject]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -93,7 +93,7 @@ t = I
 
 class I(metaclass=ABCMeta): pass
 
-[case testInterfacesInCasts-skip]
+[case testAbstractClassInCasts-skip]
 from typing import Undefined, cast
 from abc import abstractmethod, ABCMeta
 
@@ -111,7 +111,7 @@ class I(metaclass=ABCMeta): pass
 class A(I): pass
 class B: pass
 
-[case testConstructingInterface-skip]
+[case testConstructingAbstractClassInstance-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 I()
@@ -128,11 +128,11 @@ main: In interface "J":
 main, line 9: An interface must not define a constructor
 
 
--- Implementing interface methods
--- ------------------------------
+-- Implementing abstract methods
+-- -----------------------------
 
 
-[case testImplementingInterfaceMethod-skip]
+[case testImplementingAbstractMethod-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I'):
@@ -151,7 +151,7 @@ class B: pass
 [out]
 main: In class "A":
 
-[case testImplementingInterfaceMethodWithMultipleInterfaces-skip]
+[case testImplementingAbstractMethodWithMultipleBaseClasses-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I', 'J'):
@@ -159,7 +159,7 @@ class A('I', 'J'):
         pass
     def g(self, x: 'A') -> 'B': # Fail
         pass
-    def h(self) -> 'B': # Not related to any interface
+    def h(self) -> 'B': # Not related to any base class
         pass
 class I(metaclass=ABCMeta):
     @abstractmethod
@@ -173,7 +173,7 @@ main: In class "A":
 main, line 4: Argument 1 of "f" incompatible with supertype "I"
 main, line 6: Return type of "g" incompatible with supertype "J"
 
-[case testImplementingInterfaceMethodWithExtension-skip]
+[case testImplementingAbstractMethodWithExtension-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I'):
@@ -187,7 +187,7 @@ class B: pass
 [out]
 main: In class "A":
 
-[case testInvalidSubinterfaceMethod-skip]
+[case testInvalidDerivedAbstractClassMethod-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class I('J'):
@@ -200,7 +200,7 @@ class J(metaclass=ABCMeta):
 main: In interface "I":
 main, line 5: Argument 1 of "f" incompatible with supertype "J"
 
-[case testInterfaceCoAndContraVariance-skip]
+[case testAbstractClassCoAndContraVariance-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I'):
@@ -224,11 +224,11 @@ main, line 4: Return type of "h" incompatible with supertype "I"
 main, line 6: Argument 1 of "f" incompatible with supertype "I"
 
 
--- Accessing interface members
--- ---------------------------
+-- Accessing abstract members
+-- --------------------------
 
 
-[case testAccessingInterfaceMethod-skip]
+[case testAccessingAbstractMethod-skip]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -247,7 +247,7 @@ class I(metaclass=ABCMeta):
 class A: pass
 class B: pass
 
-[case testAccessingInheritedInterfaceMethod-skip]
+[case testAccessingInheritedAbstractMethod-skip]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -269,7 +269,7 @@ class B: pass
 -- -------------
 
 
-[case testInterfacesWithAllDynamicTypes-skip]
+[case testAbstractClassWithAllDynamicTypes-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I'):
@@ -280,7 +280,7 @@ class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self, x): pass
 
-[case testTypedInterfaceWithUntypedImplementation-skip]
+[case testAbstractClassWithImplementationUsingDynamicTypes-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I'):
@@ -295,7 +295,7 @@ class I(metaclass=ABCMeta):
 -- -----------------------
 
 
-[case testMethodWithoutImplementation-skip]
+[case testAbstractMethodWithoutImplementation-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('I'): pass
@@ -306,7 +306,7 @@ class I(metaclass=ABCMeta):
 main: In class "A":
 main, line 3: "A" does not implement "f" defined in "I"
 
-[case testMethodWithoutImplementationWithInterfaceInheritance-skip]
+[case testAbstractMethodWithoutImplementationWithInheritance-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A('J'): pass
@@ -323,7 +323,7 @@ main, line 3: "A" does not implement "f" defined in "I"
 -- -------------
 
 
-[case testMultipleBaseInterfaces-skip]
+[case testMultipleAbstractBases-skip]
 from abc import abstractmethod, ABCMeta
 import typing
 class A(metaclass=ABCMeta):
@@ -336,7 +336,7 @@ class C(A, B):
   @abstractmethod
   def h(self) -> None: pass
 
-[case testMemberAccessWithMultipleBaseInterfaces-skip]
+[case testMemberAccessWithMultipleAbstractBaseClasses-skip]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
