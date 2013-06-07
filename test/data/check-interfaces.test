@@ -191,16 +191,9 @@ class I(J):
 [out]
 main: In class "I":
 
-[case testAbstractClassCoAndContraVariance-skip]
+[case testAbstractClassCoAndContraVariance]
 from abc import abstractmethod, ABCMeta
 import typing
-class A('I'):
-    def h(self, a: 'A') -> 'I': # Fail
-        pass
-    def f(self, a: 'I') -> 'I': # Fail
-        pass
-    def g(self, a: 'A') -> 'A':
-        pass
 class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self, a: A) -> 'I': pass
@@ -208,11 +201,18 @@ class I(metaclass=ABCMeta):
     def g(self, a: A) -> 'I': pass
     @abstractmethod
     def h(self, a: 'I') -> A: pass
+class A(I):
+    def h(self, a: 'A') -> 'I': # Fail
+        pass
+    def f(self, a: 'I') -> 'I': # Fail
+        pass
+    def g(self, a: 'A') -> 'A':
+        pass
 [out]
 main: In class "A":
-main, line 4: Argument 1 of "h" incompatible with supertype "I"
-main, line 4: Return type of "h" incompatible with supertype "I"
-main, line 6: Argument 1 of "f" incompatible with supertype "I"
+main, line 11: Argument 1 of "h" incompatible with supertype "I"
+main, line 11: Return type of "h" incompatible with supertype "I"
+main, line 13: Argument 1 of "f" incompatible with supertype "I"
 
 
 -- Accessing abstract members
