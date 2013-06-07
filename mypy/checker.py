@@ -238,7 +238,7 @@ class TypeChecker(NodeVisitor<Type>):
         """
         if base:
             if defn.name() != '__init__':
-                # Check method override (create is special).
+                # Check method override (__init__ is special).
                 base_method = base.get_method(defn.name())
                 if base_method and base_method.info == base:
                     # There is an overridden method in the supertype.
@@ -264,8 +264,8 @@ class TypeChecker(NodeVisitor<Type>):
                 self.check_method_or_accessor_override_for_base(defn, iface)
             
             # We have to check that the member is compatible with all
-            # supertypes due to the dynamic type. Otherwise we could first
-            # override with dynamic and then with an arbitary type.
+            # supertypes due to the Any type. Otherwise we could first
+            # override with Any and then with an arbitary type.
             self.check_method_or_accessor_override_for_base(defn, base.base)
     
     void check_override(self, FunctionLike override, FunctionLike original,
