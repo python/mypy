@@ -219,7 +219,7 @@ main, line 13: Argument 1 of "f" incompatible with supertype "I"
 -- --------------------------
 
 
-[case testAccessingAbstractMethod-skip]
+[case testAccessingAbstractMethod]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
@@ -231,12 +231,11 @@ i.g()      # E: "I" has no attribute "g"
 
 b = i.f(a)
 
-class I(metaclass=ABCMeta):
-    @abstractmethod
-    def f(self, a: 'A') -> 'B': pass
-
 class A: pass
 class B: pass
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: A) -> B: pass
 
 [case testAccessingInheritedAbstractMethod-skip]
 from typing import Undefined
