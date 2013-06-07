@@ -179,18 +179,17 @@ class A(I):
 [out]
 main: In class "A":
 
-[case testInvalidDerivedAbstractClassMethod-skip]
+[case testInvalidOverridingAbstractMethod]
 from abc import abstractmethod, ABCMeta
 import typing
-class I('J'):
-    @abstractmethod
-    def f(self, x: 'I') -> None: pass
 class J(metaclass=ABCMeta):
     @abstractmethod
     def f(self, x: 'J') -> None: pass
+class I(J):
+    @abstractmethod
+    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" incompatible with supertype "J"
 [out]
-main: In interface "I":
-main, line 5: Argument 1 of "f" incompatible with supertype "J"
+main: In class "I":
 
 [case testAbstractClassCoAndContraVariance-skip]
 from abc import abstractmethod, ABCMeta
