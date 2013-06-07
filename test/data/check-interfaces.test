@@ -166,17 +166,16 @@ class A(I, J):
 [out]
 main: In class "A":
 
-[case testImplementingAbstractMethodWithExtension-skip]
+[case testImplementingAbstractMethodWithExtension]
 from abc import abstractmethod, ABCMeta
 import typing
-class A('I'):
-    def f(self, x: 'B') -> 'A': # E: Argument 1 of "f" incompatible with supertype "J"
-        pass
-class I('J'): pass
 class J(metaclass=ABCMeta):
     @abstractmethod
-    def f(self, x: A) -> A: pass
-class B: pass
+    def f(self, x: int) -> int: pass
+class I(J): pass
+class A(I):
+    def f(self, x: str) -> int: pass \
+        # E: Argument 1 of "f" incompatible with supertype "J"
 [out]
 main: In class "A":
 
