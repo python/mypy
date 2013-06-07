@@ -223,40 +223,35 @@ main, line 13: Argument 1 of "f" incompatible with supertype "I"
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
-i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: int) -> str: pass
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
 
 a = i.f(a) # E: Incompatible types in assignment
-b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "B"
+b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"
 i.g()      # E: "I" has no attribute "g"
 
 b = i.f(a)
 
-class A: pass
-class B: pass
-class I(metaclass=ABCMeta):
-    @abstractmethod
-    def f(self, a: A) -> B: pass
-
-[case testAccessingInheritedAbstractMethod-skip]
+[case testAccessingInheritedAbstractMethod]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
-i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
-
-a = i.f(a) # E: Incompatible types in assignment
-b = i.f(a)
-
-class I('J'): pass
 class J(metaclass=ABCMeta):
     @abstractmethod
-    def f(self, a: 'A') -> 'B': pass
+    def f(self, a: int) -> str: pass
+class I(J): pass
 
-class A: pass
-class B: pass
+i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
+
+a = i.f(1) # E: Incompatible types in assignment
+b = i.f(1)
 
 
--- Dynamic types
--- -------------
+-- Any (dynamic) types
+-- -------------------
 
 
 [case testAbstractClassWithAllDynamicTypes-skip]
