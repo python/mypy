@@ -148,27 +148,23 @@ class B(A):
 [out]
 main: In class "B":
 
-[case testImplementingAbstractMethodWithMultipleBaseClasses-skip]
+[case testImplementingAbstractMethodWithMultipleBaseClasses]
 from abc import abstractmethod, ABCMeta
 import typing
-class A('I', 'J'):
-    def f(self, x: 'B') -> 'A': # Fail
-        pass
-    def g(self, x: 'A') -> 'B': # Fail
-        pass
-    def h(self) -> 'B': # Not related to any base class
-        pass
 class I(metaclass=ABCMeta):
     @abstractmethod
-    def f(self, x: A) -> A: pass
+    def f(self, x: int) -> int: pass
 class J(metaclass=ABCMeta):
     @abstractmethod
-    def g(self, x: A) -> A: pass
-class B: pass
+    def g(self, x: str) -> str: pass
+class A(I, J):
+    def f(self, x: str) -> int: pass \
+        # E: Argument 1 of "f" incompatible with supertype "I"
+    def g(self, x: str) -> int: pass \
+        # E: Return type of "g" incompatible with supertype "J"
+    def h(self) -> int: pass # Not related to any base class
 [out]
 main: In class "A":
-main, line 4: Argument 1 of "f" incompatible with supertype "I"
-main, line 6: Return type of "g" incompatible with supertype "J"
 
 [case testImplementingAbstractMethodWithExtension-skip]
 from abc import abstractmethod, ABCMeta
