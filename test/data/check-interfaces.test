@@ -6,11 +6,14 @@
 
 
 [case testInterfaceSubtypingViaImplementation]
-I i
-J j
-A a
-B b
-C c
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i = Undefined # type: I
+j = Undefined # type: J
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
 
 j = c  # E: Incompatible types in assignment
 a = i  # E: Incompatible types in assignment
@@ -24,17 +27,20 @@ j = a
 j = b
 a = b
 
-interface I: pass
-interface J: pass
+class I(metaclass=ABCMeta): pass
+class J(metaclass=ABCMeta): pass
 class A(I, J): pass
 class B(A): pass
 class C(I): pass
 
 [case testInterfaceSubtypingViaExtension]
-I i
-J j
-A a
-object o
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i = Undefined # type: I
+j = Undefined # type: J
+a = Undefined # type: A
+o = Undefined # type: object
 
 j = i # E: Incompatible types in assignment
 a = i # E: Incompatible types in assignment
@@ -48,14 +54,17 @@ i = j
 o = i
 o = j
 
-interface I: pass
-interface J(I): pass
+class I(metaclass=ABCMeta): pass
+class J(I): pass
 class A(J): pass
 
 [case testImplementingInSubclass]
-I i
-A a
-B b
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i = Undefined # type: I
+a = Undefined # type: A
+b = Undefined # type: B
 
 i = a # E: Incompatible types in assignment
 b = a # E: Incompatible types in assignment
@@ -63,7 +72,7 @@ b = a # E: Incompatible types in assignment
 a = b
 i = b
 
-interface I: pass
+class I(metaclass=ABCMeta): pass
 class A: pass
 class B(A, I): pass
 
@@ -73,125 +82,157 @@ class B(A, I): pass
 
 
 [case testInterfaceAsTypeObject]
-object o
-type t
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+o = Undefined # type: object
+t = Undefined # type: type
 
 o = I
 t = I
 
-interface I: pass
+class I(metaclass=ABCMeta): pass
 
-[case testInterfacesInCasts]
-I i, A a, B b
-object o
+[case testInterfacesInCasts-skip]
+from typing import Undefined, cast
+from abc import abstractmethod, ABCMeta
 
-a = (I)o # E: Incompatible types in assignment
-b = (B)i # Ok; a subclass of B might implement I
-i = (I)b # Ok; a subclass of B might implement I
+i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
+o = Undefined # type: object
 
-i = (I)o
-i = (I)a
+a = cast('I', o) # E: Incompatible types in assignment
+b = cast('B', i) # Ok; a subclass of B might implement I
+i = cast('I', b) # Ok; a subclass of B might implement I
 
-interface I: pass
+i = cast('I', o)
+i = cast('I', a)
+
+class I(metaclass=ABCMeta): pass
 class A(I): pass
 class B: pass
 
-[case testConstructingInterface]
+[case testConstructingInterface-skip]
+from abc import abstractmethod, ABCMeta
+import typing
 I()
 J()
 
-interface I: pass
-interface J:
-    def __init__(self)
+class I(metaclass=ABCMeta): pass
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def __init__(self): pass
 [out]
-main, line 1: "type" not callable
-main, line 2: "type" not callable
+main, line 3: "type" not callable
+main, line 4: "type" not callable
 main: In interface "J":
-main, line 6: An interface must not define a constructor
+main, line 9: An interface must not define a constructor
 
 
 -- Implementing interface methods
 -- ------------------------------
 
 
-[case testImplementingInterfaceMethod]
-class A(I):
-    A f(self, B x): # E: Argument 1 of "f" incompatible with supertype "I"
+[case testImplementingInterfaceMethod-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I'):
+    def f(self, x: 'B') -> 'A': # E: Argument 1 of "f" incompatible with supertype "I"
         pass
-    A g(self, A x):
+    def g(self, x: 'A') -> 'A':
         pass
 
-interface I:
-    A f(self, A x)
-    A g(self, A x)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: A) -> A: pass
+    @abstractmethod
+    def g(self, x: A) -> A: pass
 
 class B: pass
 [out]
 main: In class "A":
 
-[case testImplementingInterfaceMethodWithMultipleInterfaces]
-class A(I, J):
-    A f(self, B x): # Fail
+[case testImplementingInterfaceMethodWithMultipleInterfaces-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I', 'J'):
+    def f(self, x: 'B') -> 'A': # Fail
         pass
-    B g(self, A x): # Fail
+    def g(self, x: 'A') -> 'B': # Fail
         pass
-    B h(self): # Not related to any interface
+    def h(self) -> 'B': # Not related to any interface
         pass
-interface I:
-    A f(self, A x)
-interface J:
-    A g(self, A x)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: A) -> A: pass
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def g(self, x: A) -> A: pass
 class B: pass
 [out]
 main: In class "A":
-main, line 2: Argument 1 of "f" incompatible with supertype "I"
-main, line 4: Return type of "g" incompatible with supertype "J"
+main, line 4: Argument 1 of "f" incompatible with supertype "I"
+main, line 6: Return type of "g" incompatible with supertype "J"
 
-[case testImplementingInterfaceMethodWithExtension]
-class A(I):
-    A f(self, B x): # E: Argument 1 of "f" incompatible with supertype "J"
+[case testImplementingInterfaceMethodWithExtension-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I'):
+    def f(self, x: 'B') -> 'A': # E: Argument 1 of "f" incompatible with supertype "J"
         pass
-interface I(J): pass
-interface J:
-    A f(self, A x)
+class I('J'): pass
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: A) -> A: pass
 class B: pass
 [out]
 main: In class "A":
 
-[case testInvalidSubinterfaceMethod]
-interface I(J):
-    void f(self, I x)
-interface J:
-    void f(self, J x)
+[case testInvalidSubinterfaceMethod-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class I('J'):
+    @abstractmethod
+    def f(self, x: 'I') -> None: pass
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: 'J') -> None: pass
 [out]
 main: In interface "I":
-main, line 2: Argument 1 of "f" incompatible with supertype "J"
+main, line 5: Argument 1 of "f" incompatible with supertype "J"
 
-[case testInterfaceCoAndContraVariance]
-class A(I):
-    I h(self, A a): # Fail
+[case testInterfaceCoAndContraVariance-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I'):
+    def h(self, a: 'A') -> 'I': # Fail
         pass
-    I f(self, I a): # Fail
+    def f(self, a: 'I') -> 'I': # Fail
         pass
-    A g(self, A a):
+    def g(self, a: 'A') -> 'A':
         pass
-interface I:
-    I f(self, A a)
-    I g(self, A a)
-    A h(self, I a)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: A) -> 'I': pass
+    @abstractmethod
+    def g(self, a: A) -> 'I': pass
+    @abstractmethod
+    def h(self, a: 'I') -> A: pass
 [out]
 main: In class "A":
-main, line 2: Argument 1 of "h" incompatible with supertype "I"
-main, line 2: Return type of "h" incompatible with supertype "I"
-main, line 4: Argument 1 of "f" incompatible with supertype "I"
+main, line 4: Argument 1 of "h" incompatible with supertype "I"
+main, line 4: Return type of "h" incompatible with supertype "I"
+main, line 6: Argument 1 of "f" incompatible with supertype "I"
 
 
 -- Accessing interface members
 -- ---------------------------
 
 
-[case testAccessingInterfaceMethod]
-I i, A a, B b
+[case testAccessingInterfaceMethod-skip]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
 
 a = i.f(a) # E: Incompatible types in assignment
 b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "B"
@@ -199,21 +240,26 @@ i.g()      # E: "I" has no attribute "g"
 
 b = i.f(a)
 
-interface I:
-    B f(self, A a)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: 'A') -> 'B': pass
 
 class A: pass
 class B: pass
 
-[case testAccessingInheritedInterfaceMethod]
-I i, A a, B b
+[case testAccessingInheritedInterfaceMethod-skip]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
 
 a = i.f(a) # E: Incompatible types in assignment
 b = i.f(a)
 
-interface I(J): pass
-interface J:
-    B f(self, A a)
+class I('J'): pass
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: 'A') -> 'B': pass
 
 class A: pass
 class B: pass
@@ -223,61 +269,82 @@ class B: pass
 -- -------------
 
 
-[case testInterfacesWithAllDynamicTypes]
-class A(I):
+[case testInterfacesWithAllDynamicTypes-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I'):
     def f(self, x):
         pass
 
-interface I:
-    def f(self, x)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x): pass
 
-[case testTypedInterfaceWithUntypedImplementation]
-class A(I):
+[case testTypedInterfaceWithUntypedImplementation-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I'):
     def f(self, x):
         pass
-interface I:
-    void f(self, A x)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: A) -> None: pass
 
 
 -- Missing implementations
 -- -----------------------
 
 
-[case testMethodWithoutImplementation]
-class A(I): pass
-interface I:
-  void f(self)
+[case testMethodWithoutImplementation-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('I'): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self) -> None: pass
 [out]
 main: In class "A":
-main, line 1: "A" does not implement "f" defined in "I"
+main, line 3: "A" does not implement "f" defined in "I"
 
-[case testMethodWithoutImplementationWithInterfaceInheritance]
-class A(J): pass
-interface J(I): pass
-interface I:
-  void f(self)
+[case testMethodWithoutImplementationWithInterfaceInheritance-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A('J'): pass
+class J('I'): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self) -> None: pass
 [out]
 main: In class "A":
-main, line 1: "A" does not implement "f" defined in "I"
+main, line 3: "A" does not implement "f" defined in "I"
 
 
 -- Special cases
 -- -------------
 
 
-[case testMultipleBaseInterfaces]
-interface A:
-  void f(self): pass
-interface B:
-  void g(self): pass
-interface C(A, B):
-  void h(self): pass
+[case testMultipleBaseInterfaces-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self) -> None: pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self) -> None: pass
+class C(A, B):
+  @abstractmethod
+  def h(self) -> None: pass
 
-[case testMemberAccessWithMultipleBaseInterfaces]
-interface A: pass
-interface B:
-    void f(self): pass
-interface C(A, B): pass
-C x
+[case testMemberAccessWithMultipleBaseInterfaces-skip]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+class A(metaclass=ABCMeta): pass
+class B(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+class C(A, B): pass
+x = Undefined # type: C
 x.f()
 x.f(x) # E: Too many arguments for "f" of "B"
