@@ -239,9 +239,9 @@ class TypeChecker(NodeVisitor<Type>):
         if base:
             if defn.name() != '__init__':
                 # Check method override (__init__ is special).
-                base_method = base.get_method(defn.name())
-                if base_method and base_method.info == base:
-                    # There is an overridden method in the supertype.
+                base_attr = base.names.get(defn.name())
+                if base_attr:
+                    # The name of the method is defined in the base class.
                     
                     # Construct the type of the overriding method.
                     typ = method_type(defn)
@@ -249,15 +249,24 @@ class TypeChecker(NodeVisitor<Type>):
                     # it can be checked for compatibility. Note that multiple
                     # types from multiple implemented interface instances may
                     # be present.
-                    original_type = map_type_from_supertype(
-                        method_type(base_method), defn.info, base)
-                    # Check that the types are compatible.
-                    # TODO overloaded signatures
-                    self.check_override((FunctionLike)typ,
-                                        (FunctionLike)original_type,
-                                        defn.name(),
-                                        base_method.info.name(),
-                                        defn)
+                    original_type = base_attr.type()
+                    if original_type is None and isinstance(base_attr.node,
+                                                            FuncDef):
+                        original_type = function_type((FuncDef)base_attr.node)
+                    if isinstance(original_type, FunctionLike):
+                        original_type = map_type_from_supertype(
+                            method_type((FunctionLike)original_type),
+                            defn.info, base)
+                        # Check that the types are compatible.
+                        # TODO overloaded signatures
+                        self.check_override((FunctionLike)typ,
+                                            (FunctionLike)original_type,
+                                            defn.name(),
+                                            base.name(),
+                                            defn)
+                    else:
+                        self.msg.signature_incompatible_with_supertype(
+                            defn.name(), base.name(), defn)
             
             # Also check interface implementations.
             for iface in base.interfaces:
