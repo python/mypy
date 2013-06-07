@@ -257,22 +257,32 @@ b = i.f(1)
 [case testAbstractClassWithAllDynamicTypes]
 from abc import abstractmethod, ABCMeta
 import typing
-
 class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self, x): pass
+    @abstractmethod
+    def g(self, x): pass
 class A(I):
     def f(self, x): pass
+    def g(self, x, y): pass \
+        # E: Signature of "g" incompatible with supertype "I"
+[out]
+main: In class "A":
 
-[case testAbstractClassWithImplementationUsingDynamicTypes-skip]
+[case testAbstractClassWithImplementationUsingDynamicTypes]
 from abc import abstractmethod, ABCMeta
 import typing
-class A('I'):
-    def f(self, x):
-        pass
 class I(metaclass=ABCMeta):
     @abstractmethod
-    def f(self, x: A) -> None: pass
+    def f(self, x: int) -> None: pass
+    @abstractmethod
+    def g(self, x: int) -> None: pass
+class A(I):
+    def f(self, x): pass
+    def g(self, x, y): pass \
+        # E: Signature of "g" incompatible with supertype "I"
+[out]
+main: In class "A":
 
 
 -- Missing implementations
