@@ -22,7 +22,7 @@ class TypesSuite(Suite):
         self.y = UnboundType('Y')
     
     def test_any(self):
-        assert_equal(str(Any()), 'any')
+        assert_equal(str(Any()), 'Any')
     
     def test_simple_unbound_type(self):
         u = UnboundType('Foo')
@@ -30,7 +30,7 @@ class TypesSuite(Suite):
     
     def test_generic_unbound_type(self):
         u = UnboundType('Foo', [UnboundType('T'), Any()])
-        assert_equal(str(u), 'Foo?<T?, any>')
+        assert_equal(str(u), 'Foo?[T?, Any]')
     
     def test_void_type(self):
         assert_equal(str(Void(None)), 'void')
@@ -40,7 +40,7 @@ class TypesSuite(Suite):
                      [ARG_POS, ARG_POS],
                      [None, None],
                      Any(), False)
-        assert_equal(str(c), 'def (X?, Y?) -> any')
+        assert_equal(str(c), 'def (X?, Y?) -> Any')
         
         c2 = Callable([], [], [], Void(None), False)
         assert_equal(str(c2), 'def ()')
@@ -48,28 +48,28 @@ class TypesSuite(Suite):
     def test_callable_type_with_default_args(self):
         c = Callable([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
                      Any(), False)
-        assert_equal(str(c), 'def (X?, Y?=) -> any')
+        assert_equal(str(c), 'def (X?, Y? =) -> Any')
         
         c2 = Callable([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
                       Any(), False)
-        assert_equal(str(c2), 'def (X?=, Y?=) -> any')
+        assert_equal(str(c2), 'def (X? =, Y? =) -> Any')
     
     def test_callable_type_with_var_args(self):
         c = Callable([self.x], [ARG_STAR], [None], Any(), False)
-        assert_equal(str(c), 'def (*X?) -> any')
+        assert_equal(str(c), 'def (*X?) -> Any')
         
         c2 = Callable([self.x, self.y], [ARG_POS, ARG_STAR],
                       [None, None], Any(), False)
-        assert_equal(str(c2), 'def (X?, *Y?) -> any')
+        assert_equal(str(c2), 'def (X?, *Y?) -> Any')
         
         c3 = Callable([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
                       Any(), False)
-        assert_equal(str(c3), 'def (X?=, *Y?) -> any')
+        assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
     
     def test_tuple_type(self):
-        assert_equal(str(TupleType([])), 'tuple<>')
-        assert_equal(str(TupleType([self.x])), 'tuple<X?>')
-        assert_equal(str(TupleType([self.x, Any()])), 'tuple<X?, any>')
+        assert_equal(str(TupleType([])), 'Tuple[]')
+        assert_equal(str(TupleType([self.x])), 'Tuple[X?]')
+        assert_equal(str(TupleType([self.x, Any()])), 'Tuple[X?, Any]')
     
     def test_type_variable_binding(self):
         assert_equal(str(TypeVarDef('X', 1)), 'X')
@@ -79,12 +79,12 @@ class TypesSuite(Suite):
         c = Callable([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
                      self.y, False, None,
                      TypeVars([TypeVarDef('X', -1)]))
-        assert_equal(str(c), 'def <X> (X?, Y?) -> Y?')
+        assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
         
         v = TypeVars([TypeVarDef('Y', -1, UnboundType('X')),
                       TypeVarDef('X', -2)])
         c2 = Callable([], [], [], Void(None), False, None, v)
-        assert_equal(str(c2), 'def <Y is X?, X> ()')
+        assert_equal(str(c2), 'def [Y is X?, X] ()')
 
 
 class TypeOpsSuite(Suite):
