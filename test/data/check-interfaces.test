@@ -254,15 +254,14 @@ b = i.f(1)
 -- -------------------
 
 
-[case testAbstractClassWithAllDynamicTypes-skip]
+[case testAbstractClassWithAllDynamicTypes]
 from abc import abstractmethod, ABCMeta
 import typing
-class A('I'):
-    def f(self, x):
-        pass
 
 class I(metaclass=ABCMeta):
     @abstractmethod
+    def f(self, x): pass
+class A(I):
     def f(self, x): pass
 
 [case testAbstractClassWithImplementationUsingDynamicTypes-skip]
