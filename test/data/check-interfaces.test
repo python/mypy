@@ -97,19 +97,19 @@ class I(metaclass=ABCMeta): pass
 from typing import Undefined, cast
 from abc import abstractmethod, ABCMeta
 
-i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
-o = Undefined # type: object
-
-a = cast('I', o) # E: Incompatible types in assignment
-b = cast('B', i) # Ok; a subclass of B might implement I
-i = cast('I', b) # Ok; a subclass of B might implement I
-
-i = cast('I', o)
-i = cast('I', a)
-
 class I(metaclass=ABCMeta): pass
 class A(I): pass
 class B: pass
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
+o = Undefined # type: object
+
+a = cast(I, o) # E: Incompatible types in assignment
+b = cast(B, i) # Ok; a subclass of B might implement I
+i = cast(I, b) # Ok; a subclass of B might implement I
+
+i = cast(I, o)
+i = cast(I, a)
 
 [case testConstructingAbstractClassInstance-skip]
 from abc import abstractmethod, ABCMeta
