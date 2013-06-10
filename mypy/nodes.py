@@ -1115,9 +1115,7 @@ class TypeInfo(SymbolNode):
     # TODO implement these
     mypy.types.Type[] bounds
     
-    # Inherited generic types (Instance or UnboundType or None). The first base
-    # is the superclass, and the rest are interfaces.
-    # TODO comment may not be accurate; also why generics should be special?
+    # Inherited types (each is Instance or UnboundType).
     mypy.types.Type[] bases
     
     void __init__(self, SymbolTable names, TypeDef defn):

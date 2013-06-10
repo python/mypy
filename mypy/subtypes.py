@@ -188,7 +188,7 @@ Instance map_instance_to_direct_supertype(Instance instance,
     for b in typ.bases:
         # The cast below cannot fail since we require that semantic analysis
         # was successful, so bases cannot contain unbound types.
-        if b and ((Instance)b).type == supertype:
+        if ((Instance)b).type == supertype:
             map = type_var_map(typ, instance.args)
             return (Instance)expand_type(b, map)
     
@@ -263,7 +263,7 @@ Instance[] map_instance_to_direct_supertypes(Instance instance,
     for b in typ.bases:
         # The cast below cannot fail since we require that semantic analysis
         # was successful, so bases cannot contain unbound types.
-        if b and ((Instance)b).type == supertype:
+        if ((Instance)b).type == supertype:
             map = type_var_map(typ, instance.args)
             result.append((Instance)expand_type(b, map))
     
