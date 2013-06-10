@@ -72,8 +72,7 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
                                                               tvindex))
     
     # Figure out the superclass instance type.
-    # The cast will succeed if we get here.
-    base = ((Instance)typ.bases[0])
+    base = typ.bases[0]
     
     # Go through all the supertype tvars to find a match.
     int[] mapping = None

@@ -294,8 +294,10 @@ class SemanticAnalyzer(NodeVisitor):
         """Analyze and set up base classes."""        
         has_base_class = False
         for i in range(len(defn.base_types)):
-            defn.base_types[i] = self.anal_type(defn.base_types[i])
-            self.type.bases.append(defn.base_types[i])
+            base = self.anal_type(defn.base_types[i])
+            if isinstance(base, Instance):
+                defn.base_types[i] = base
+                self.type.bases.append((Instance)base)
             has_base_class = has_base_class or self.is_instance_type(
                                                         defn.base_types[i])
         # Add 'object' as implicit base if there is no other base class.
@@ -335,10 +337,10 @@ class SemanticAnalyzer(NodeVisitor):
             if not s:
                 return False
 
-    Type object_type(self):
+    Instance object_type(self):
         return self.named_type('__builtins__.object')
 
-    Type named_type(self, str qualified_name):
+    Instance named_type(self, str qualified_name):
         sym = self.lookup_qualified(qualified_name, None)
         return Instance((TypeInfo)sym.node, [])
     

@@ -1115,8 +1115,8 @@ class TypeInfo(SymbolNode):
     # TODO implement these
     mypy.types.Type[] bounds
     
-    # Inherited types (each is Instance or UnboundType).
-    mypy.types.Type[] bases
+    # Direct base classes.
+    mypy.types.Instance[] bases
     
     void __init__(self, SymbolTable names, TypeDef defn):
         """Construct a TypeInfo."""
