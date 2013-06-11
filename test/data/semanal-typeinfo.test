@@ -8,7 +8,7 @@ class c: pass
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
+    Bases(builtins.object)
     Names()))
 
 [case testClassWithMethod]
@@ -18,7 +18,7 @@ class c:
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
+    Bases(builtins.object)
     Names(
       f)))
 
@@ -31,7 +31,7 @@ class c:
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
+    Bases(builtins.object)
     Names(
       __init__
       y
@@ -44,11 +44,11 @@ class c(base): pass
 TypeInfoMap(
   __main__.base : TypeInfo(
     Name(__main__.base)
-    Base(builtins.object)
+    Bases(builtins.object)
     Names())
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(__main__.base)
+    Bases(__main__.base)
     Names()))
 
 [case testClassAndAbstractClass]
@@ -61,11 +61,11 @@ class c(i): pass
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(__main__.i)
+    Bases(__main__.i)
     Names())
   __main__.i : TypeInfo(
     Name(__main__.i)
-    Base(builtins.object)
+    Bases(builtins.object)
     Names()))
 
 [case testAttributeWithoutType]
@@ -75,6 +75,6 @@ class A:
 TypeInfoMap(
   __main__.A : TypeInfo(
     Name(__main__.A)
-    Base(builtins.object)
+    Bases(builtins.object)
     Names(
       a)))

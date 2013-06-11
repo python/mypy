@@ -256,7 +256,7 @@ class TypeChecker(NodeVisitor<Type>):
                         self.check_override((FunctionLike)typ,
                                             (FunctionLike)original_type,
                                             defn.name(),
-                                            base_method.info.name(),
+                                            base.name(),
                                             defn)
                     else:
                         self.msg.signature_incompatible_with_supertype(

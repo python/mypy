@@ -292,23 +292,23 @@ class SemanticAnalyzer(NodeVisitor):
 
     void analyze_base_classes(self, TypeDef defn):
         """Analyze and set up base classes."""        
-        has_base_class = False
+        bases = <Instance> []
         for i in range(len(defn.base_types)):
             base = self.anal_type(defn.base_types[i])
             if isinstance(base, Instance):
                 defn.base_types[i] = base
-                self.type.bases.append((Instance)base)
-            has_base_class = has_base_class or self.is_instance_type(
-                                                        defn.base_types[i])
+                bases.append((Instance)base)
         # Add 'object' as implicit base if there is no other base class.
-        if (not defn.is_interface and not has_base_class and
+        if (not defn.is_interface and not bases and
                 defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
-            self.type.bases.append(obj)
-        if defn.info.bases:
-            for bt in defn.info.bases:
-                defn.info.mro.append(((Instance)bt).type)
+            bases.append(obj)
+        defn.info.bases = bases
+        defn.info.mro.append(defn.info)
+        if bases:
+            for bt in bases:
+                defn.info.mro.append(bt.type)
         self.verify_base_classes(defn)
 
     void verify_base_classes(self, TypeDef defn):

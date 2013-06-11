@@ -1149,7 +1149,7 @@ class TypeInfo(SymbolNode):
 
     SymbolTableNode get(self, str name):
         for cls in self.mro:
-            n = cls.get(name)
+            n = cls.names.get(name)
             if n:
                 return n
         return None
