@@ -1160,6 +1160,9 @@ class TypeInfo(SymbolNode):
             return n
         else:
             raise KeyError(name)
+
+    str __repr__(self):
+        return '<TypeInfo %s>' % self.fullname()
         
     
     # IDEA: Refactor the has* methods to be more consistent and document
