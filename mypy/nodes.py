@@ -1207,11 +1207,9 @@ class TypeInfo(SymbolNode):
                 else:
                     return None
         return None
-    
-    #void set_base(self, TypeInfo base):
-    #    """Set the base class."""
-    #    self.base = base
-    #    base.subtypes.add(self)
+
+    void calculate_mro(self):
+        self.mro = linearize_hierarchy(self)
     
     bool has_base(self, str fullname):
         """Return True if type has a base type with the specified name.
@@ -1231,10 +1229,6 @@ class TypeInfo(SymbolNode):
                 set.add(t)
         return set
     
-    void add_base(self, TypeInfo base):
-        """Add a base class."""
-        assert False
-    
     TypeInfo[] all_base_classes(self):
         """Return a list of base classes, including indirect bases."""
         assert False
@@ -1244,7 +1238,7 @@ class TypeInfo(SymbolNode):
 
         Omit base classes of other base classes.
         """
-        assert False
+        return [base.type for base in self.bases]
     
     str __str__(self):
         """Return a string representation of the type.
@@ -1375,3 +1369,30 @@ mypy.types.Callable method_callable(mypy.types.Callable c):
                            c.name,
                            c.variables,
                            c.bound_vars)
+
+
+TypeInfo[] linearize_hierarchy(TypeInfo info):
+    if info.mro:
+        return info.mro
+    bases = info.direct_base_classes()
+    return [info] + merge([linearize_hierarchy(base) for base in bases] +
+                          [bases])
+
+
+TypeInfo[] merge(TypeInfo[][] seqs):
+    seqs = [s[:] for s in seqs]
+    result = <TypeInfo> []
+    while True:
+        seqs = [s for s in seqs if s]
+        if not seqs:
+            return result
+        for seq in seqs:
+            head = seq[0]
+            if not [s for s in seqs if head in s[1:]]:
+                break
+        else:
+            raise ValueError()
+        result.append(head)
+        for s in seqs:
+            if s[0] == head:
+                del s[0]

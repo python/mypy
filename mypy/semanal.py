@@ -305,11 +305,8 @@ class SemanticAnalyzer(NodeVisitor):
             defn.base_types.insert(0, obj)
             bases.append(obj)
         defn.info.bases = bases
-        defn.info.mro.append(defn.info)
-        if bases:
-            for bt in bases:
-                defn.info.mro.append(bt.type)
         self.verify_base_classes(defn)
+        defn.info.calculate_mro()
 
     void verify_base_classes(self, TypeDef defn):
         base_classes = <str> []
@@ -318,6 +315,8 @@ class SemanticAnalyzer(NodeVisitor):
             baseinfo = base.type
             if self.is_base_class(info, baseinfo):
                 self.fail('Cycle in inheritance hierarchy', defn)
+                # Clear bases to forcefully get rid of the cycle.
+                info.bases = []
             if baseinfo.fullname() in ['builtins.int',
                                        'builtins.bool',
                                        'builtins.float']:
@@ -325,15 +324,15 @@ class SemanticAnalyzer(NodeVisitor):
                           baseinfo.name(), defn)
 
     bool is_base_class(self, TypeInfo t, TypeInfo s):
-        """Is t a base class of s?"""
-        # Search the base class graph for t.
+        """Determine if t is a base class of s (but do not use mro)."""
+        # Search the base class graph for t, starting from s.
         worklist = [s]
         visited = {s}
         while worklist:
-            next = worklist.pop()
-            if next == t:
+            nxt = worklist.pop()
+            if nxt == t:
                 return True
-            for base in next.bases:
+            for base in nxt.bases:
                 if base.type not in visited:
                     worklist.append(base.type)
                     visited.add(base.type)
