@@ -240,11 +240,31 @@ class SemanticAnalyzer(NodeVisitor):
 
         # Analyze class body.
         defn.defs.accept(self)
+
+        self.calculate_abstract_status(defn.info)
         
         # Restore analyzer state.
         self.block_depth.pop()
         self.locals.pop()
         self.type, self.class_tvars = self.type_stack.pop()
+    
+    void calculate_abstract_status(self, TypeInfo typ):
+        """Calculate abstract status of a class.
+
+        Set is_abstract of the type to True if the type has an unimplemented
+        abstract attribute.  Also compute a list of abstract attributes.
+        """
+        concrete = set<str>()
+        abstract = <str> []
+        for base in typ.mro:
+            for name, node in base.names.items():
+                if isinstance(node.node, Decorator):
+                    fdef = ((Decorator)node.node).func
+                    if fdef.is_abstract and name not in concrete:
+                        typ.is_abstract = True
+                        abstract.append(name)
+                concrete.add(name)
+        typ.abstract_attributes = sorted(abstract)
 
     void clean_up_bases_and_infer_type_variables(self, TypeDef defn):
         """Remove extra base classes such as Generic and infer type vars.
@@ -572,12 +592,12 @@ class SemanticAnalyzer(NodeVisitor):
     void visit_decorator(self, Decorator dec):
         if not dec.is_overload:
             if self.is_func_scope():
-                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec.var),
+                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec),
                                 dec)
             elif self.type:
                 dec.var.info = self.type
                 dec.var.is_initialized_in_class = True
-                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec.var),
+                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
                                 dec)
         dec.func.accept(self)
         for d in dec.decorators:

@@ -5,7 +5,7 @@ from mypy.types import (
     TypeVarDef, Overloaded, TypeVar, TypeTranslator, BasicTypes
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
-from mypy.nodes import ARG_POS, function_type
+from mypy.nodes import ARG_POS, function_type, Decorator
 from mypy.messages import MessageBuilder
 from mypy.subtypes import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -91,6 +91,10 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
     """
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
+    
+    if isinstance(v, Decorator):
+        # The associated Var node of a decorator contains the type.
+        v = ((Decorator)v).var
     
     if isinstance(v, Var):
         # Found a member variable.

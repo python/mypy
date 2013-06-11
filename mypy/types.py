@@ -225,6 +225,10 @@ class Callable(FunctionLike):
     
     bool is_type_obj(self):
         return self._is_type_obj
+
+    mypy.nodes.TypeInfo type_object(self):
+        assert self._is_type_obj
+        return ((Instance)self.ret_type).type
     
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_callable(self)

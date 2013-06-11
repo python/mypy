@@ -503,6 +503,15 @@ class MessageBuilder:
         self.fail('All conditional function variants must have identical '
                   'signatures', defn)
 
+    void cannot_instantiate_abstract_class(self, str class_name,
+                                           str[] abstract_attributes,
+                                           Context context):
+        attrs = format_string_list("'%s'" % a for a in abstract_attributes[:5])
+        self.fail("Cannot instantiate abstract class '%s' with abstract "
+                  "method%s %s" % (class_name, plural_s(abstract_attributes),
+                                   attrs),
+                  context)
+
 
 str capitalize(str s):
     """Capitalize the first character of a string."""
@@ -526,3 +535,19 @@ str strip_quotes(str s):
     s = re.sub('^"', '', s)
     s = re.sub('"$', '', s)
     return s
+
+
+str plural_s(Sequence s):
+    if len(s) > 1:
+        return 's'
+    else:
+        return ''
+
+
+str format_string_list(Iterable<str> s):
+    l = list(s)
+    assert len(l) > 0
+    if len(l) == 1:
+        return l[0]
+    else:
+        return '%s and %s' % (', '.join(l[:-1]), l[-1])

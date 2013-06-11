@@ -274,7 +274,7 @@ class FuncDef(FuncItem):
         return self._name
 
 
-class Decorator(Node):
+class Decorator(SymbolNode):
     FuncDef func        # Decorated function
     Node[] decorators   # Decorators, at least one
     Var var             # Represents the decorated function value
@@ -285,6 +285,12 @@ class Decorator(Node):
         self.decorators = decorators
         self.var = var
         self.is_overload = False
+
+    str name(self):
+        return self.func.name()
+
+    str fullname(self):
+        return self.func.fullname()
 
     T accept<T>(self, NodeVisitor<T> visitor):
         return visitor.visit_decorator(self)
@@ -1101,9 +1107,12 @@ class TypeInfo(SymbolNode):
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to self.
     TypeInfo[] mro
-    set<TypeInfo> subtypes  # Direct subclasses
+    set<TypeInfo> subtypes # Direct subclasses
 
     SymbolTable names      # Names defined directly in this type
+    
+    bool is_abstract       # Does the class have any abstract attributes?
+    str[] abstract_attributes
     
     # Information related to type annotations.
     
@@ -1128,6 +1137,8 @@ class TypeInfo(SymbolNode):
         self.bases = []
         self._fullname = defn.fullname
         self.is_interface = defn.is_interface
+        self.is_abstract = False
+        self.abstract_attributes = []
         if defn.type_vars:
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
@@ -1276,7 +1287,7 @@ class SymbolTable(dict<str, SymbolTableNode>):
 class SymbolTableNode:
     int kind      # LDEF/GDEF/MDEF/TVAR/...
     SymbolNode node  # Parse tree node of definition (FuncDef/Var/
-                     # TypeInfo), None for Tvar
+                     # TypeInfo/Decorator), None for Tvar
     int tvar_id   # Type variable id (for Tvars only)
     str mod_id    # Module id (e.g. "foo.bar") or None
     
@@ -1304,6 +1315,8 @@ class SymbolTableNode:
         elif ((isinstance(node, Var) or isinstance(node, FuncDef))
               and node.type is not None):
             return node.type
+        elif isinstance(node, Decorator):
+            return ((Decorator)node).var.type
         else:
             return None
     

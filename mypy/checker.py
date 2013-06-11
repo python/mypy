@@ -306,7 +306,6 @@ class TypeChecker(NodeVisitor<Type>):
         typ = defn.info
         self.errors.push_type(defn.name, defn.is_interface)
         self.check_duplicate_base_classes(typ)
-        self.check_abstract_attributes(typ)
         self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.errors.pop_type()
@@ -344,16 +343,6 @@ class TypeChecker(NodeVisitor<Type>):
         #        self.msg.duplicate_interfaces(typ, dup)
         #        return 
         #    base = base.base
-    
-    void check_abstract_attributes(self, TypeInfo typ):
-        """Check that all abstract attributes have implementations."""
-        # TODO implement
-        pass
-        #interfaces = typ.all_directly_implemented_interfaces()
-        #for iface in interfaces:
-        #    for n in iface.names.keys():
-        #        if not typ.has_method(n):
-        #            self.msg.interface_member_not_implemented(typ, iface, n)
     
     #
     # Statements

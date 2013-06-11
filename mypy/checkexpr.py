@@ -9,7 +9,7 @@ from mypy.nodes import (
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
     UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
     DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
-    ListComprehension, GeneratorExpr, SetExpr, MypyFile
+    ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -55,16 +55,8 @@ class ExpressionChecker:
         Type result
         node = e.node
         if isinstance(node, Var):
-            # Variable or constant reference.
-            v = (Var)node
-            if not v.type:
-                if not v.is_ready:
-                    self.msg.cannot_determine_type(v.name(), e)
-                # Implicit 'any' type.
-                result = Any()
-            else:
-                # A variable with type (inferred or explicit).
-                result = v.type
+            # Variable reference.
+            result = self.analyse_var_ref((Var)node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             f = (FuncDef)node
@@ -78,11 +70,23 @@ class ExpressionChecker:
         elif isinstance(node, MypyFile):
             # Reference to a module object.
             result = self.chk.named_type('builtins.module')
+        elif isinstance(node, Decorator):
+            result = self.analyse_var_ref(((Decorator)node).var, e)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = Any()
         return result
+
+    Type analyse_var_ref(self, Var v, Context ctx):
+        if not v.type:
+            if not v.is_ready:
+                self.msg.cannot_determine_type(v.name(), ctx)
+            # Implicit 'Any' type.
+            return Any()
+        else:
+            # A variable with type (inferred or explicit).
+            return v.type
     
     Type analyse_direct_member_access(self, str name, TypeInfo info,
                                      bool is_lvalue, Context context):
@@ -132,6 +136,14 @@ class ExpressionChecker:
         is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, Callable):
             callable = (Callable)callee
+
+            if callable.is_type_obj():
+                t = callable.type_object()
+            if callable.is_type_obj() and callable.type_object().is_abstract:
+                type = callable.type_object()
+                self.msg.cannot_instantiate_abstract_class(
+                    callable.type_object().name(), type.abstract_attributes,
+                    context)
             
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
