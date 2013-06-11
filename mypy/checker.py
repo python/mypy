@@ -305,8 +305,8 @@ class TypeChecker(NodeVisitor<Type>):
         """Type check a type definition (class or interface)."""
         typ = defn.info
         self.errors.push_type(defn.name, defn.is_interface)
-        self.check_unique_interface_implementations(typ)
-        self.check_interface_errors(typ)
+        self.check_duplicate_base_classes(typ)
+        self.check_abstract_attributes(typ)
         self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.errors.pop_type()
@@ -319,8 +319,11 @@ class TypeChecker(NodeVisitor<Type>):
             return
         self.msg.interface_has_constructor(ctor)
     
-    void check_unique_interface_implementations(self, TypeInfo typ):
-        """Check that each interface is implemented only once."""
+    void check_duplicate_base_classes(self, TypeInfo typ):
+        """Check that a base is class is not duplicated.
+
+        For example, reject class X(Y, Y).
+        """
         # TODO fix this
         #ifaces = typ.interfaces[:]
         #
@@ -342,8 +345,9 @@ class TypeChecker(NodeVisitor<Type>):
         #        return 
         #    base = base.base
     
-    void check_interface_errors(self, TypeInfo typ):
-        # TODO fixi this
+    void check_abstract_attributes(self, TypeInfo typ):
+        """Check that all abstract attributes have implementations."""
+        # TODO implement
         pass
         #interfaces = typ.all_directly_implemented_interfaces()
         #for iface in interfaces:
