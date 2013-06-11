@@ -49,7 +49,7 @@ tuple<TypeInfo, int> find_slot_origin(TypeInfo info, int slot):
       - In 'class D<S, U>(C<U>): ...', the slot 0 in D is mapped to type var
         1 (T) in C; the slot 1 of D is mapped to type variable 1 of D.
     """
-    base = info.base
+    base = info.bases[0].type
     super_slots = num_slots(base)
     if slot < super_slots:
         # A superclass introduced the slot.

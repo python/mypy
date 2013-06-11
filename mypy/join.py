@@ -137,9 +137,9 @@ Type join_instances(Instance t, Instance s, bool allow_interfaces,
             return basic.object
     elif t.type.is_interface != s.type.is_interface:
         return join_instances_as_interface(t, s, basic)
-    elif t.type.base is not None and is_subtype(t, s):
+    elif t.type.bases and is_subtype(t, s):
         return join_instances_via_supertype(t, s, allow_interfaces, basic)
-    elif s.type.base is not None:
+    elif s.type.bases:
         return join_instances_via_supertype(s, t, allow_interfaces, basic)
     elif allow_interfaces and not t.type.is_interface:
         return join_instances_as_interface(t, s, basic)
@@ -151,7 +151,7 @@ Type join_instances_via_supertype(Instance t, Instance s,
                                   bool allow_interfaces,
                                   BasicTypes basic):
     res = s
-    mapped = map_instance_to_supertype(t, t.type.base)
+    mapped = map_instance_to_supertype(t, t.type.bases[0].type)
     join = join_instances(mapped, res, False, basic)
     # If the join failed, fail. This is a defensive measure (this might
     # never happen).
@@ -159,12 +159,7 @@ Type join_instances_via_supertype(Instance t, Instance s,
         return join
     # Now the result must be an Instance, so the cast below cannot fail.
     res = (Instance)join
-    
-    if (res.type == basic.object.type and not t.type.is_interface and
-            allow_interfaces):
-        return join_instances_as_interface(t, s, basic)
-    else:
-        return res
+    return res
 
 
 Type join_instances_as_interface(Instance t, Instance s,
@@ -217,19 +212,20 @@ Type[] implemented_interfaces(Instance t):
     """If t is a class instance, return all the directly implemented interface
     types by t and its supertypes, including mapped type arguments.
     """
-    if t.type.is_interface:
-        return [t]
-    else:
-        Type[] res = []
+    assert False
+    #if t.type.is_interface:
+    #    return [t]
+    #else:
+    #    Type[] res = []
+    #    
+    #    for iface in t.type.interfaces:
+    #        res.append(map_instance_to_supertype(t, iface))
         
-        for iface in t.type.interfaces:
-            res.append(map_instance_to_supertype(t, iface))
+    #    if t.type.base is not None:
+    #        tt = map_instance_to_supertype(t, t.type.base)
+    #        res.extend(implemented_interfaces(tt))
         
-        if t.type.base is not None:
-            tt = map_instance_to_supertype(t, t.type.base)
-            res.extend(implemented_interfaces(tt))
-        
-        return res
+    #    return res
 
 
 bool is_similar_callables(Callable t, Callable s):

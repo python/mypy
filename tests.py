@@ -9,11 +9,11 @@ from mypy import testlex
 from mypy import testparse
 from mypy import testsemanal
 from mypy import testcheck
-from mypy import testtypegen
-from mypy import testoutput
-from mypy import testpythongen
-from mypy import testtransform
-from mypy import testicodegen
+#from mypy import testtypegen
+#from mypy import testoutput
+#from mypy import testpythongen
+#from mypy import testtransform
+#from mypy import testicodegen
 
 
 class AllSuite(Suite):

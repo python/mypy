@@ -61,8 +61,9 @@ class FuncTransformer:
             res = [self.transform_method_implementation(
                 fdef, fdef.name() + self.tf.type_suffix(fdef))]
             
-            if fdef.info.base and fdef.info.base.has_method(fdef.name()):
+            if fdef.info.bases and fdef.info.mro[1].has_method(fdef.name()):
                 # Override.
+                # TODO do not assume single inheritance
                 
                 # Is is an override with a different signature? For
                 # trivial overrides we can inherit wrappers.
@@ -119,7 +120,7 @@ class FuncTransformer:
     
     FuncDef override_method_wrapper(self, FuncDef fdef):
         """Construct a method wrapper for an overridden method."""
-        orig_fdef = fdef.info.base.get_method(fdef.name())
+        orig_fdef = fdef.info.mro[1].get_method(fdef.name())
         return self.method_wrapper((FuncDef)orig_fdef, fdef, False, False)
     
     FuncDef dynamic_method_wrapper(self, FuncDef fdef):

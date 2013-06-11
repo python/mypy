@@ -650,7 +650,9 @@ class IcodeBuilder(NodeVisitor<int>):
         elif isinstance(e.callee, SuperExpr):
             superexpr = (SuperExpr)e.callee
             target = self.target_register()
-            self.add(CallMethod(target, 0, superexpr.name, superexpr.info.base,
+            self.add(CallMethod(target, 0,
+                                superexpr.name,
+                                superexpr.info.bases[0].type,
                                 args, static=True))
         else:
             raise NotImplementedError('call target %s' % type(e.callee))

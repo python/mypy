@@ -63,7 +63,7 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     
       get_tvar_access_path(<B>, 1) == [2, 1] (slot 2, lookup type argument 1).
     """
-    if not typ.base:
+    if not typ.bases:
         return None
     
     # Check argument range.
@@ -79,7 +79,7 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     for i in range(len(base.args)):
         mapping = find_tvar_mapping(base.args[i], tvindex)
         if mapping is not None:
-            if base.type.base:
+            if base.type.bases[0]:
                 return get_tvar_access_path(base.type, i + 1) + mapping
             else:
                 return [i + 1] + mapping
@@ -122,7 +122,7 @@ int tvar_slot_index(TypeInfo typ, int tvindex):
     """If the specified type variable was introduced as a new variable in type,
     return the slot index (1 = first type varible slot) of the type variable.
     """
-    base_slots = num_slots(typ.base)
+    base_slots = num_slots(typ.bases[0].type)
     
     for i in range(1, tvindex):
         if get_tvar_access_path(typ, i)[0] > base_slots:
@@ -138,7 +138,7 @@ int num_slots(TypeInfo typ):
     """
     if not typ:
         return 0
-    slots = num_slots(typ.base)
+    slots = num_slots(typ.bases[0].type)
     ntv = len(typ.type_vars)
     for i in range(ntv):
         n = get_tvar_access_path(typ, i + 1)[0]

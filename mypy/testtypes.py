@@ -1,6 +1,6 @@
 """Test cases for mypy types and type operations."""
 
-from mypy.myunit import Suite, assert_equal, assert_true
+from mypy.myunit import Suite, assert_equal, assert_true, run_test
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types
@@ -616,3 +616,17 @@ class MeetSuite(Suite):
                         [ARG_POS] * n,
                         <str> [None] * n,
                         a[-1], False)
+
+
+class CombinedTypesSuite(Suite):
+    def __init__(self):
+        self.test_types = TypesSuite()
+        self.test_type_ops = TypeOpsSuite()
+        self.test_join = JoinSuite()
+        self.test_meet = MeetSuite()
+        super().__init__()
+
+
+if __name__ == '__main__':
+    import sys
+    run_test(CombinedTypesSuite(), sys.argv[1:])

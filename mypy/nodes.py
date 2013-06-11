@@ -328,7 +328,7 @@ class TypeDef(Node):
     str fullname    # Fully qualified name of the class
     Block defs
     mypy.types.TypeVars type_vars
-    # Inherited types (Instance or UnboundType).
+    # Base classes (Instance or UnboundType).
     mypy.types.Type[] base_types
     TypeInfo info    # Related TypeInfo
     bool is_interface
@@ -1098,13 +1098,12 @@ class TypeInfo(SymbolNode):
     str _fullname     # Fully qualified name
     bool is_interface  # Is this a interface type?
     TypeDef defn       # Corresponding TypeDef
-    TypeInfo base = None   # Superclass or None (not interface)
-    set<TypeInfo> subtypes # Direct subclasses
+    # Method Resolution Order: the order of looking up attributes. The first
+    # value always to refers to self.
+    TypeInfo[] mro
+    set<TypeInfo> subtypes  # Direct subclasses
 
     SymbolTable names      # Names defined directly in this type
-    
-    # TypeInfos of base interfaces
-    TypeInfo[] interfaces
     
     # Information related to type annotations.
     
@@ -1123,7 +1122,7 @@ class TypeInfo(SymbolNode):
         self.names = names
         self.defn = defn
         self.subtypes = set()
-        self.interfaces = []
+        self.mro = []
         self.type_vars = []
         self.bounds = []
         self.bases = []
@@ -1149,20 +1148,18 @@ class TypeInfo(SymbolNode):
             self.bounds.append(vd.bound)
 
     SymbolTableNode get(self, str name):
-        n = self.names.get(name)
-        if n:
-            return n
-        elif self.base:
-            return self.base.get(name)
-        else:
-            return None
+        for cls in self.mro:
+            n = cls.get(name)
+            if n:
+                return n
+        return None
 
     SymbolTableNode __getitem__(self, str name):
-        n = self.names.get(name)
+        n = self.get(name)
         if n:
             return n
         else:
-            return self.base[name]
+            raise KeyError(name)
         
     
     # IDEA: Refactor the has* methods to be more consistent and document
@@ -1178,17 +1175,17 @@ class TypeInfo(SymbolNode):
         return self.get_var(name) is not None
     
     bool has_method(self, str name):
-        if name in self.names and isinstance(self.names[name].node, FuncBase):
-            return True
-        return self.base is not None and self.base.has_method(name)
+        return self.get_method(name) is not None
     
     Var get_var(self, str name):
-        if name in self.names and isinstance(self.names[name].node, Var):
-            return (Var)self.names[name].node
-        elif self.base:
-            return self.base.get_var(name)
-        else:
-            return None
+        for cls in self.mro:
+            if name in cls.names:
+                node = cls.names[name].node
+                if isinstance(node, Var):
+                    return (Var)node
+                else:
+                    return None
+        return None
     
     SymbolNode get_var_or_getter(self, str name):
         # TODO getter
@@ -1199,36 +1196,27 @@ class TypeInfo(SymbolNode):
         return self.get_var(name)
     
     FuncBase get_method(self, str name):
-        if name in self.names and isinstance(self.names[name].node, FuncBase):
-            return (FuncBase)self.names[name].node
-        elif self.base:
-            # Lookup via base type.
-            result = self.base.get_method(name)
-            if result:
-                return result
-        # Finally lookup via all implemented interfaces.
-        for iface in self.interfaces:
-            result = iface.get_method(name)
-            if result:
-                return result
-        # Give up; could not find it.
+        for cls in self.mro:
+            if name in cls.names:
+                node = cls.names[name].node
+                if isinstance(node, FuncBase):
+                    return (FuncBase)node
+                else:
+                    return None
         return None
     
-    void set_base(self, TypeInfo base):
-        """Set the base class."""
-        self.base = base
-        base.subtypes.add(self)
+    #void set_base(self, TypeInfo base):
+    #    """Set the base class."""
+    #    self.base = base
+    #    base.subtypes.add(self)
     
     bool has_base(self, str fullname):
         """Return True if type has a base type with the specified name.
 
         This can be either via extension or via implementation.
         """
-        if self.fullname() == fullname or (self.base is not None and
-                                             self.base.has_base(fullname)):
-            return True
-        for iface in self.interfaces:
-            if iface.fullname() == fullname or iface.has_base(fullname):
+        for cls in self.mro:
+            if cls.fullname() == fullname:
                 return True
         return False
     
@@ -1240,47 +1228,30 @@ class TypeInfo(SymbolNode):
                 set.add(t)
         return set
     
-    void add_interface(self, TypeInfo base):
-        """Add a base interface."""
-        self.interfaces.append(base)
+    void add_base(self, TypeInfo base):
+        """Add a base class."""
+        assert False
     
-    TypeInfo[] all_directly_implemented_interfaces(self):
-        """Return a list of interfaces that the type implements.
-
-        This includes interfaces that are directly implemented by the type and
-        that are implemented by base types.
-        """
-        # Interfaces never implement interfaces.
-        if self.is_interface:
-            return []
-        TypeInfo[] a = []
-        for i in range(len(self.interfaces)):
-            iface = self.interfaces[i]
-            if iface not in a:
-                a.append(iface)
-            ifa = iface
-            while ifa.base is not None:
-                ifa = ifa.base
-                if ifa not in a:
-                    a.append(ifa)
-        return a
+    TypeInfo[] all_base_classes(self):
+        """Return a list of base classes, including indirect bases."""
+        assert False
     
-    TypeInfo[] directly_implemented_interfaces(self):
-        """Return a directly implemented interfaces.
+    TypeInfo[] direct_base_classes(self):
+        """Return a direct base classes.
 
-        Omit inherited interfaces.
+        Omit base classes of other base classes.
         """
-        return self.interfaces[:]
+        assert False
     
     str __str__(self):
         """Return a string representation of the type.
 
         This includes the most important information about the type.
         """
-        # TODO multiple bases
         str base = None
-        if self.base is not None:
-            base = 'Base({})'.format(self.base.fullname())
+        if self.bases:
+            base = 'Bases({})'.format(', '.join(str(base)
+                                                for base in self.bases))
         return dump_tagged(['Name({})'.format(self.fullname()),
                             base,
                             ('Names', sorted(self.names.keys()))],

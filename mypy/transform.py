@@ -331,10 +331,11 @@ class DyncheckTransformVisitor(TraverserVisitor):
             info = fdef.info
         # If info is None, we have a global function => no suffix. Also if the
         # method is not an override, we need no suffix.
-        if not info or not info.base or not info.base.has_method(fdef.name()):
+        if not info or (not info.bases or
+                        not info.bases[0].type.has_method(fdef.name())):
             return ''
         elif is_simple_override(fdef, info):
-            return self.type_suffix(fdef, info.base)
+            return self.type_suffix(fdef, info.bases[0].type)
         elif self.is_pretty:
             return '`' + info.name()
         else:

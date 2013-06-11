@@ -167,32 +167,25 @@ Instance map_instance_to_supertype(Instance instance, TypeInfo supertype):
         return instance
     
     # Strip type variables away if the supertype has none.
-    if supertype.type_vars == []:
+    if not supertype.type_vars:
         return Instance(supertype, [])
     
-    if supertype.is_interface:
-        return map_instance_to_interface_supertypes(instance, supertype)[0]
-    
-    while True:
-        instance = map_instance_to_direct_supertype(instance,
-                                                    instance.type.base)
-        if instance.type == supertype: break
-    
-    return instance
+    return map_instance_to_supertypes(instance, supertype)[0]
 
 
 Instance map_instance_to_direct_supertype(Instance instance,
                                           TypeInfo supertype):
     typ = instance.type
     
-    for b in typ.bases:
-        if b.type == supertype:
+    for base in typ.bases:
+        if base.type == supertype:
             map = type_var_map(typ, instance.args)
-            return (Instance)expand_type(b, map)
+            return (Instance)expand_type(base, map)
     
-    # Relationship with the supertype not specified explicitly. Use dynamic
+    # Relationship with the supertype not specified explicitly. Use Any
     # type arguments implicitly.
-    return Instance(typ.base, <Type> [Any()] * len(typ.base.type_vars))
+    # TODO Should this be an error instead?
+    return Instance(supertype, <Type> [Any()] * len(supertype.type_vars))
 
 
 dict<int, Type> type_var_map(TypeInfo typ, Type[] args):
@@ -205,12 +198,12 @@ dict<int, Type> type_var_map(TypeInfo typ, Type[] args):
         return tvars
 
 
-Instance[] map_instance_to_interface_supertypes(Instance instance,
-                                                    TypeInfo supertype):
+Instance[] map_instance_to_supertypes(Instance instance,
+                                      TypeInfo supertype):
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
     result = <Instance> []
-    for path in interface_implementation_paths(instance.type, supertype):
+    for path in class_derivation_paths(instance.type, supertype):
         types = [instance]
         for sup in path:
             a = <Instance> []
@@ -221,9 +214,9 @@ Instance[] map_instance_to_interface_supertypes(Instance instance,
     return result
 
 
-list<TypeInfo[]> interface_implementation_paths(TypeInfo typ,
-                                                    TypeInfo supertype):
-    """Return an array of non-empty paths of direct supertypes from
+TypeInfo[][] class_derivation_paths(TypeInfo typ,
+                                    TypeInfo supertype):
+    """Return an array of non-empty paths of direct base classes from
     type to supertype.  Return [] if no such path could be found.
     
       InterfaceImplementationPaths(A, B) == [[B]] if A inherits B
@@ -232,23 +225,16 @@ list<TypeInfo[]> interface_implementation_paths(TypeInfo typ,
     """
     # FIX: Currently we might only ever have a single path, so this could be
     #      simplified
-    list<TypeInfo[]> result = []
-    
-    if typ.base == supertype or supertype in typ.interfaces:
-        # Direct supertype.
-        result.append([supertype])
-    
-    # Try constructing a path via superclass.
-    if typ.base:
-        for path in interface_implementation_paths(typ.base, supertype):
-            result.append([typ.base] + path)
-    
-    # Try constructing a path via each superinterface.
-    if typ.interfaces:
-        for iface in typ.interfaces:
-            for path_ in interface_implementation_paths(iface, supertype):
-                result.append([iface] + path_)
-    
+    result = <TypeInfo[]> []
+
+    for base in typ.bases:
+        if base.type == supertype:
+            result.append([base.type])
+        else:
+            # Try constructing a longer path via the base class.
+            for path in class_derivation_paths(base.type, supertype):
+                result.append([base.type] + path)
+
     return result
 
 

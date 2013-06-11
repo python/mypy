@@ -222,20 +222,14 @@ class TypeChecker(NodeVisitor<Type>):
         self.leave()
     
     void check_method_override(self, FuncBase defn):
-        """Check that function definition is compatible with any overridden
-        definitions defined in superclasses or implemented interfaces.
-        """
-        # Check against definitions in superclass.
-        self.check_method_or_accessor_override_for_base(defn, defn.info.base)
-        # Check against definitions in implemented interfaces.
-        for iface in defn.info.interfaces:
-            self.check_method_or_accessor_override_for_base(defn, iface)
+        """Check if function definition is compatible with base classes."""
+        # Check against definitions in base classes.
+        for base in defn.info.mro[1:]:
+            self.check_method_or_accessor_override_for_base(defn, base)
     
     void check_method_or_accessor_override_for_base(self, FuncBase defn,
                                                     TypeInfo base):
-        """Check that function definition is compatible with any overridden
-        definition in the specified supertype.
-        """
+        """Check if method definition is compatible with a base class."""
         if base:
             if defn.name() != '__init__':
                 # Check method override (__init__ is special).
@@ -262,20 +256,11 @@ class TypeChecker(NodeVisitor<Type>):
                         self.check_override((FunctionLike)typ,
                                             (FunctionLike)original_type,
                                             defn.name(),
-                                            base.name(),
+                                            base_method.info.name(),
                                             defn)
                     else:
                         self.msg.signature_incompatible_with_supertype(
                             defn.name(), base.name(), defn)
-            
-            # Also check interface implementations.
-            for iface in base.interfaces:
-                self.check_method_or_accessor_override_for_base(defn, iface)
-            
-            # We have to check that the member is compatible with all
-            # supertypes due to the Any type. Otherwise we could first
-            # override with Any and then with an arbitary type.
-            self.check_method_or_accessor_override_for_base(defn, base.base)
     
     void check_override(self, FunctionLike override, FunctionLike original,
                         str name, str supertype, Context node):
@@ -336,32 +321,35 @@ class TypeChecker(NodeVisitor<Type>):
     
     void check_unique_interface_implementations(self, TypeInfo typ):
         """Check that each interface is implemented only once."""
-        ifaces = typ.interfaces[:]
-        
-        dup = find_duplicate(ifaces)
-        if dup:
-            self.msg.duplicate_interfaces(typ, dup)
-            return 
-        
-        base = typ.base
-        while base:
-            # Avoid duplicate error messages.
-            if find_duplicate(base.interfaces):
-                return 
-            
-            ifaces.extend(base.interfaces)
-            dup = find_duplicate(ifaces)
-            if dup:
-                self.msg.duplicate_interfaces(typ, dup)
-                return 
-            base = base.base
+        # TODO fix this
+        #ifaces = typ.interfaces[:]
+        #
+        #dup = find_duplicate(ifaces)
+        #if dup:
+        #    self.msg.duplicate_interfaces(typ, dup)
+        #    return 
+        #
+        #base = typ.base
+        #while base:
+        #    # Avoid duplicate error messages.
+        #    if find_duplicate(base.interfaces):
+        #        return 
+        #    
+        #    ifaces.extend(base.interfaces)
+        #    dup = find_duplicate(ifaces)
+        #    if dup:
+        #        self.msg.duplicate_interfaces(typ, dup)
+        #        return 
+        #    base = base.base
     
     void check_interface_errors(self, TypeInfo typ):
-        interfaces = typ.all_directly_implemented_interfaces()
-        for iface in interfaces:
-            for n in iface.names.keys():
-                if not typ.has_method(n):
-                    self.msg.interface_member_not_implemented(typ, iface, n)
+        # TODO fixi this
+        pass
+        #interfaces = typ.all_directly_implemented_interfaces()
+        #for iface in interfaces:
+        #    for n in iface.names.keys():
+        #        if not typ.has_method(n):
+        #            self.msg.interface_member_not_implemented(typ, iface, n)
     
     #
     # Statements

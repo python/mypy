@@ -306,36 +306,38 @@ class SemanticAnalyzer(NodeVisitor):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
             self.type.bases.append(obj)
-        if defn.base_types:
-            bt = defn.base_types
-            if isinstance(bt[0], Instance):
-                defn.info.base = ((Instance)bt[0]).type
-            for t in bt[1:]:
-                if isinstance(t, Instance):
-                    defn.info.add_interface(((Instance)t).type)
+        if defn.info.bases:
+            for bt in defn.info.bases:
+                defn.info.mro.append(((Instance)bt).type)
         self.verify_base_classes(defn)
 
     void verify_base_classes(self, TypeDef defn):
-        for base in defn.base_types:
-            if isinstance(base, Instance):
-                baseinfo = ((Instance)base).type
-                if self.is_base_class(defn.info, baseinfo):
-                    self.fail('Cycle in inheritance hierarchy', defn)
-                if not baseinfo.is_interface:
-                    if baseinfo.fullname() in ['builtins.int',
-                                               'builtins.bool',
-                                               'builtins.float']:
-                        self.fail("'%s' is not a valid base class" %
-                                  baseinfo.name(), defn)
+        base_classes = <str> []
+        info = defn.info
+        for base in info.bases:
+            baseinfo = base.type
+            if self.is_base_class(info, baseinfo):
+                self.fail('Cycle in inheritance hierarchy', defn)
+            if baseinfo.fullname() in ['builtins.int',
+                                       'builtins.bool',
+                                       'builtins.float']:
+                self.fail("'%s' is not a valid base class" %
+                          baseinfo.name(), defn)
 
     bool is_base_class(self, TypeInfo t, TypeInfo s):
         """Is t a base class of s?"""
-        while True:
-            if t == s:
+        # Search the base class graph for t.
+        worklist = [s]
+        visited = {s}
+        while worklist:
+            next = worklist.pop()
+            if next == t:
                 return True
-            s = s.base
-            if not s:
-                return False
+            for base in next.bases:
+                if base.type not in visited:
+                    worklist.append(base.type)
+                    visited.add(base.type)
+        return False
 
     Instance object_type(self):
         return self.named_type('__builtins__.object')

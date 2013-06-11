@@ -42,56 +42,56 @@ class TypeFixture:
         self.err = ErrorType()
         self.nonet = NoneTyp()
 
-        # Interface TypeInfos
+        # Abstract class TypeInfos
 
-        # interface F
-        self.fi = make_type_info('F', (IS_INTERFACE, True))
+        # class F
+        self.fi = make_type_info('F', is_abstract=True)
 
-        # interface F2
-        self.f2i = make_type_info('F2', (IS_INTERFACE, True))
+        # class F2
+        self.f2i = make_type_info('F2', is_abstract=True)
 
-        # interface F3(F)
-        self.f3i = make_type_info('F3', (IS_INTERFACE, True), (BASE, self.fi))
+        # class F3(F)
+        self.f3i = make_type_info('F3', is_abstract=True, mro=[self.fi])
 
         # Class TypeInfos
 
-        self.oi = make_type_info('builtins.object')       # class object
-        self.std_tuplei = make_type_info('builtins.tuple') # class tuple
+        self.oi = make_type_info('builtins.object')         # class object
+        self.std_tuplei = make_type_info('builtins.tuple')  # class tuple
         self.type_typei = make_type_info('builtins.type')   # class type
         self.std_functioni = make_type_info('std::Function') # Function TODO
-        self.ai = make_type_info('A', (BASE, self.oi))       # class A
-        self.bi = make_type_info('B', (BASE, self.ai))       # class B is A
-        self.ci = make_type_info('C', (BASE, self.ai))       # class C is A
-        self.di = make_type_info('D', (BASE, self.oi))       # class D
+        self.ai = make_type_info('A', mro=[self.oi])        # class A
+        self.bi = make_type_info('B', mro=[self.ai])        # class B(A)
+        self.ci = make_type_info('C', mro=[self.ai])        # class C(A)
+        self.di = make_type_info('D', mro=[self.oi])        # class D
 
         # class E(F)
-        self.ei = make_type_info('E', (INTERFACES, [self.fi]), (BASE, self.oi))
+        self.ei = make_type_info('E', mro=[self.fi, self.oi])
 
         # class E2(F2, F)
-        self.e2i = make_type_info('E2', (INTERFACES, [self.f2i, self.fi]),
-                                  (BASE, self.oi))
+        self.e2i = make_type_info('E2', mro=[self.f2i, self.fi, self.oi])
 
         # class E3(F, F2)
-        self.e3i = make_type_info('E3', (INTERFACES, [self.fi, self.f2i]),
-                                  (BASE, self.oi))
+        self.e3i = make_type_info('E3', mro=[self.fi, self.f2i, self.oi])
 
         # Generic class TypeInfos
 
-        # class G<T>
-        self.gi = make_type_info('G', (BASE, self.oi), (VARS, ['T']))
-        # class G2<T>
-        self.g2i = make_type_info('G2', (BASE, self.oi), (VARS, ['T']))
-        # class H<S, T>
-        self.hi = make_type_info('H', (BASE, self.oi), (VARS, ['S', 'T']))
-        # class GS<T, S>(G<S>)
-        self.gsi = make_type_info('GS', (BASE, self.gi), (VARS, ['T', 'S']),
-                                  (BASE_DEFS, [Instance(self.gi, [self.s])]))
-        # class GS2<S>(G<S>)
-        self.gs2i = make_type_info('GS2', (BASE, self.gi), (VARS, ['S']),
-                                   (BASE_DEFS, [Instance(self.gi, [self.s1])]))
-        # class list<T>
-        self.std_listi = make_type_info('builtins.list', (BASE, self.oi),
-                                        (VARS, ['T']))
+        # G[T]
+        self.gi = make_type_info('G', mro=[self.oi], typevars=['T'])
+        # G2[T]
+        self.g2i = make_type_info('G2', mro=[self.oi], typevars=['T'])
+        # H[S, T]
+        self.hi = make_type_info('H', mro=[self.oi], typevars=['S', 'T'])
+        # GS[T, S] <: G[S]
+        self.gsi = make_type_info('GS', mro=[self.gi, self.oi],
+                                  typevars=['T', 'S'],
+                                  bases=[Instance(self.gi, [self.s])])
+        # GS2[S] <: G[S]
+        self.gs2i = make_type_info('GS2', mro=[self.gi, self.oi],
+                                   typevars=['S'],
+                                   bases=[Instance(self.gi, [self.s1])])
+        # list[T]
+        self.std_listi = make_type_info('builtins.list', mro=[self.oi],
+                                        typevars=['T'])
 
         # Instance types
 
@@ -188,37 +188,48 @@ class InterfaceTypeFixture(TypeFixture):
     interface types."""
     def __init__(self):
         super().__init__()
-        # interface GF<T>
-        self.gfi = make_type_info('GF', (VARS, ['T']), (IS_INTERFACE, True))
+        # GF[T]
+        self.gfi = make_type_info('GF', typevars=['T'], is_abstract=True)
     
-        # class M1 implements GF<A>
-        self.m1i = make_type_info('M1', (INTERFACES, [self.gfi]),
-                                  (BASE_DEFS, [Instance(self.gfi, [self.a])]))
+        # M1 <: GF[A]
+        self.m1i = make_type_info('M1',
+                                  is_abstract=True,
+                                  mro=[self.gfi, self.oi],
+                                  bases=[Instance(self.gfi, [self.a])])
 
-        self.gfa = Instance(self.gfi, [self.a]) # GF<A>
-        self.gfb = Instance(self.gfi, [self.b]) # GF<B>
+        self.gfa = Instance(self.gfi, [self.a]) # GF[A]
+        self.gfb = Instance(self.gfi, [self.b]) # GF[B]
 
         self.m1 = Instance(self.m1i, []) # M1
 
 
-TypeInfo make_type_info(any name, any *args):
+TypeInfo make_type_info(str name,
+                        bool is_abstract=False,
+                        TypeInfo[] mro=None,
+                        Instance[] bases=None,
+                        str[] typevars=None):
     """Make a TypeInfo suitable for use in unit tests."""
-    map = dict(args)
-    
     type_def = TypeDef(name, Block([]), None, [])
     type_def.fullname = name
     
-    if VARS in map:
+    if typevars:
         TypeVarDef[] v = []
         id = 1
-        for n in map[VARS]:
+        for n in typevars:
             v.append(TypeVarDef(n, id))
             id += 1
         type_def.type_vars = TypeVars(v)
     
     info = TypeInfo(SymbolTable(), type_def)
-    info.base = map.get(BASE, None)
-    info.bases = map.get(BASE_DEFS, [])
-    info.interfaces = map.get(INTERFACES, []) # TODO fix
+    if mro is None:
+        mro = []
+    info.mro = [info] + mro
+    if bases is None:
+        if mro:
+            # By default, assume that there is a single non-generic base.
+            bases = [Instance(mro[0], [])]
+        else:
+            bases = []
+    info.bases = bases
     
     return info

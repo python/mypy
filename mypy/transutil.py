@@ -135,16 +135,18 @@ bool is_simple_override(FuncDef fdef, TypeInfo info):
     # Generic inheritance is not currently supported, since we need to map
     # type variables between types; in the future this restriction can be
     # lifted.
-    if info.base is None or info.base.type_vars != []:
-        return False
-    orig = info.base.get_method(fdef.name())
-    # Ignore the first argument (self) when determining type sameness.
-    # TODO overloads
-    newtype = (Callable)function_type(fdef)
-    newtype = replace_self_type(newtype, Any())
-    origtype = (Callable)function_type(orig)
-    origtype = replace_self_type(origtype, Any())
-    return is_same_type(newtype, origtype)
+    # TODO fix
+    assert False, 'not working'
+    #if info.base is None or info.base.type_vars != []:
+    #    return False
+    #orig = info.base.get_method(fdef.name())
+    ## Ignore the first argument (self) when determining type sameness.
+    ## TODO overloads
+    #newtype = (Callable)function_type(fdef)
+    #newtype = replace_self_type(newtype, Any())
+    #origtype = (Callable)function_type(orig)
+    #origtype = replace_self_type(origtype, Any())
+    #return is_same_type(newtype, origtype)
 
 
 str tvar_slot_name(int n, any is_alt=False):

@@ -23,11 +23,11 @@ from mypy.semanal import SemanticAnalyzer, FirstPass
 from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
 from mypy.icode import FuncIcode
-from mypy import cgen
+#from mypy import cgen
 from mypy import icode
 from mypy import parse
 from mypy import pythongen
-from mypy import transform
+#from mypy import transform
 
 
 debug = False
@@ -481,11 +481,12 @@ class BuildManager:
     void transform(self, MypyFile[] files):
         for f in files:
             # Transform parse tree and produce pretty-printed output.
-            v = transform.DyncheckTransformVisitor(
-                self.type_checker.type_map,
-                self.semantic_analyzer.modules,
-                is_pretty=True)
-            f.accept(v)
+            pass # TODO enable
+            #v = transform.DyncheckTransformVisitor(
+            #    self.type_checker.type_map,
+            #    self.semantic_analyzer.modules,
+            #    is_pretty=True)
+            #f.accept(v)
 
     void generate_icode(self, MypyFile[] files, dict<Node, Type> types):
         builder = icode.IcodeBuilder(types)
@@ -496,36 +497,37 @@ class BuildManager:
         self.icode = builder.generated
 
     void generate_c_and_compile(self, MypyFile[] files):
-        gen = cgen.CGenerator()
+        assert False, 'currently broken'
+        #gen = cgen.CGenerator()
         
-        for fn, icode in self.icode.items():
-            gen.generate_function('M' + fn, icode)
+        #for fn, icode in self.icode.items():
+        #    gen.generate_function('M' + fn, icode)
 
-        program_name = os.path.splitext(basename(files[0].path))[0]
-        c_file = '%s.c' % program_name
+        #program_name = os.path.splitext(basename(files[0].path))[0]
+        #c_file = '%s.c' % program_name
 
-        # Write C file.
-        self.log('writing %s' % c_file)
-        out = open(c_file, 'w')
-        out.writelines(gen.output())
-        out.close()
+        ## Write C file.
+        #self.log('writing %s' % c_file)
+        #out = open(c_file, 'w')
+        #out.writelines(gen.output())
+        #out.close()
 
-        if COMPILE_ONLY not in self.flags:
-            # Generate binary file.
-            base_dir = self.mypy_base_dir
-            vm_dir = os.path.join(base_dir, 'vm')
-            cc = os.getenv('CC', 'gcc')
-            cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
-            cmdline = [cc] + cflags +['-I%s' % vm_dir,
-                                      '-o%s' % program_name,
-                                      c_file,
-                                      os.path.join(vm_dir, 'runtime.c')]
-            self.log(' '.join(cmdline))
-            status = subprocess.call(cmdline)
-            # TODO check status
-            self.log('removing %s' % c_file)
-            os.remove(c_file)
-            self.binary_path = os.path.join('.', program_name)
+        #if COMPILE_ONLY not in self.flags:
+        #    # Generate binary file.
+        #    base_dir = self.mypy_base_dir
+        #    vm_dir = os.path.join(base_dir, 'vm')
+        #    cc = os.getenv('CC', 'gcc')
+        #    cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
+        #    cmdline = [cc] + cflags +['-I%s' % vm_dir,
+        #                              '-o%s' % program_name,
+        #                              c_file,
+        #                              os.path.join(vm_dir, 'runtime.c')]
+        #    self.log(' '.join(cmdline))
+        #    status = subprocess.call(cmdline)
+        #    # TODO check status
+        #    self.log('removing %s' % c_file)
+        #    os.remove(c_file)
+        #    self.binary_path = os.path.join('.', program_name)
 
     void log(self, str message):
         if VERBOSE in self.flags:

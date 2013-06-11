@@ -285,8 +285,8 @@ class CGenerator:
         return rep
 
     ClassRepresentation generate_class(self, TypeInfo cls):
-        if cls.base:
-            baserep = self.get_class_representation(cls.base)
+        if cls.bases:
+            baserep = self.get_class_representation(cls.bases[0].type)
         else:
             baserep = None
         rep = ClassRepresentation(cls, baserep)

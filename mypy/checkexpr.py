@@ -985,11 +985,12 @@ class ExpressionChecker:
     
     Type analyse_super(self, SuperExpr e, bool is_lvalue):
         """Type check a super expression."""
-        if e.info and e.info.base:
+        if e.info and e.info.bases:
+            # TODO fix multiple inheritance etc
             return analyse_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
                                          self.chk.basic_types(), self.msg,
-                                         e.info.base)
+                                         e.info.mro[1])
         else:
             # Invalid super. This has been reported by the semantic analyser.
             return Any()
