@@ -433,10 +433,10 @@ ac = Undefined # type: A[C]
 ab.f()
 ac.f()
 
-[case testCallableDataAttribute-skip]
+[case testCallableDataAttribute]
 from typing import Undefined, Function
 class A:
-    g = Undefined # type: Function[[], None]
+    g = Undefined # type: Function[[A], None]
     def __init__(self, f: Function[[], None]) -> None:
         self.f = f
 a = A(None)
