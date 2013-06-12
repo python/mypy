@@ -79,7 +79,7 @@ MemberExpr(5) : def () -> B
 CallExpr(6) : B
 MemberExpr(6) : def () -> B
 
-[case testCastExpression-skip]
+[case testCastExpression]
 ## CastExpr|[a-z]
 from typing import Undefined, Any, cast
 d = Undefined # type: Any
@@ -90,12 +90,12 @@ cast(A, d)
 cast(A, b)
 cast(B, b)
 [out]
-CastExpr(4) : A
-NameExpr(4) : any
-CastExpr(5) : A
-NameExpr(5) : B
-CastExpr(6) : B
-NameExpr(6) : B
+CastExpr(7) : A
+NameExpr(7) : Any
+CastExpr(8) : A
+NameExpr(8) : B
+CastExpr(9) : B
+NameExpr(9) : B
 
 [case testArithmeticOps]
 ## OpExpr
@@ -108,11 +108,11 @@ a = 1 + 2
 class object:
     def __init__(self) -> None: pass
 class int:
-  def __add__(self, x: int) -> int: pass
-  def __truediv__(self, x: int) -> float: pass
+    def __add__(self, x: int) -> int: pass
+    def __truediv__(self, x: int) -> float: pass
 class float:
-  def __mul__(self, x: int) -> float: pass
-  def __sub__(self, x: int) -> float: pass
+    def __mul__(self, x: int) -> float: pass
+    def __sub__(self, x: int) -> float: pass
 class type: pass
 [out]
 OpExpr(3) : builtins.int
@@ -130,8 +130,8 @@ import typing
 class object:
     def __init__(self) -> None: pass
 class int:
-  def __eq__(self, x: object) -> bool: pass
-  def __lt__(selef, x: int) -> bool: pass
+    def __eq__(self, x: object) -> bool: pass
+    def __lt__(selef, x: int) -> bool: pass
 class bool: pass
 class type: pass
 [out]
