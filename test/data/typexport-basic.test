@@ -701,16 +701,6 @@ NameExpr(6) : def () -> A
 -- -------
 
 
-[case testLambdaWithExplicitType-skip]
-import typing
-lambda 'A' x: B()
-class A: pass
-class B: pass
-[out]
-CallExpr(1) : B
-FuncExpr(1) : def (A x) -> B
-NameExpr(1) : def () -> B
-
 [case testLambdaWithInferredType-skip]
 from typing import Function, Undefined
 f = lambda x: x.a # type: Function[[B], A]
