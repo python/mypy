@@ -698,30 +698,13 @@ a[:None]
 
 [case testTrivialLambda]
 from typing import Function
-f = lambda m: m # type: Function[[object], object]
-
-[case testLambdaBodyWithExplicitArgumentType-skip]
-from typing import Undefined
-lambda 'A' a: a.x
-lambda object a: a.x # E: "object" has no attribute "x"
-class A:
-  x = Undefined # type: object
-
-[case testLambdaWithExplicitArgumentType-skip]
-from typing import Undefined, Function
-f = Undefined # type: Function[[A], B]
-a, b = Undefined, Undefined # type: (A, B)
-f = lambda 'A' a: b
-f2 = Undefined # type: Function[[A], A]
-f3 = Undefined # type: Function[[B], B]
-f2 = lambda 'A' a: b
-f3 = lambda 'A' a: b
-class A: pass
-class B: pass
+f = lambda: 1 # type: Function[[], int]
+f = lambda: ''.x
+f = lambda: ''
 [out]
-main, line 7: Incompatible return value type
-main, line 7: Incompatible types in assignment
-main, line 8: Incompatible types in assignment
+main, line 3: "str" has no attribute "x"
+main, line 4: Incompatible return value type
+main, line 4: Incompatible types in assignment
 
 
 -- List comprehensions
