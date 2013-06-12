@@ -332,15 +332,19 @@ class C(A, B):
   @abstractmethod
   def h(self) -> None: pass
 
-[case testMemberAccessWithMultipleAbstractBaseClasses-skip]
+[case testMemberAccessWithMultipleAbstractBaseClasses]
 from typing import Undefined
 from abc import abstractmethod, ABCMeta
 
-class A(metaclass=ABCMeta): pass
-class B(metaclass=ABCMeta):
+class A(metaclass=ABCMeta):
     @abstractmethod
     def f(self) -> None: pass
+class B(metaclass=ABCMeta):
+    @abstractmethod
+    def g(self) -> None: pass
 class C(A, B): pass
 x = Undefined # type: C
 x.f()
-x.f(x) # E: Too many arguments for "f" of "B"
+x.g()
+x.f(x) # E: Too many arguments for "f" of "A"
+x.g(x) # E: Too many arguments for "g" of "B"
