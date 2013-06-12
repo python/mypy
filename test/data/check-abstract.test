@@ -348,3 +348,24 @@ x.f()
 x.g()
 x.f(x) # E: Too many arguments for "f" of "A"
 x.g(x) # E: Too many arguments for "g" of "B"
+
+[case testInstantiatingAbstractClassWithMultipleBaseClasses]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self) -> None: pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self) -> None: pass
+class C(A, B):
+  def f(self) -> None: pass
+class D(A, B):
+  def g(self) -> None: pass
+class E(A, B):
+  def f(self) -> None: pass
+  def g(self) -> None: pass
+C() # E: Cannot instantiate abstract class 'C' with abstract method 'g'
+D() # E: Cannot instantiate abstract class 'D' with abstract method 'f'
+E()
