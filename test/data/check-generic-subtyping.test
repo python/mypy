@@ -260,41 +260,37 @@ a.x = bc
 a.f(bc)
 [out]
 
-[case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess-skip]
+[case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
 a = Undefined # type: A
 c = Undefined # type: C
 bc = Undefined # type: B[C]
 
-class A('B'):
+class B(Generic[T]):
+  def f(self, a: 'B[T]') -> None: pass
+  def __init__(self, x: 'B[T]') -> None:
+    self.x = x
+    
+class A(B):
   def g(self) -> None:
     self.x = c # E: Incompatible types in assignment
     self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
     self.x = bc
     self.f(bc)
 
-class B(Generic[T]):
-  x = Undefined # type: B[T]
-  def f(self, a: 'B[T]') -> None:
-    pass
-  def __init__(self, x: 'B[T]') -> None:
-    self.x = x
-    
 class C: pass
 [out]
 main: In member "g" of class "A":
 
-[case testInheritanceFromGenericWithImplicitDynamicAndOverriding-skip]
+[case testInheritanceFromGenericWithImplicitDynamicAndOverriding]
 from typing import typevar, Generic, Tuple
 T = typevar('T')
-class A('B'):
-    def f(self, a, b):
-        pass
-
 class B(Generic[T]):
     def f(self, a: T, b: 'Tuple[T, B[T]]') -> None:
         pass
+class A(B):
+    def f(self, a, b): pass
 [builtins fixtures/tuple.py]
 [out]
 
