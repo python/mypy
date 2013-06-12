@@ -472,19 +472,18 @@ class D: pass
 main, line 7: Incompatible types in assignment
 main: In class "A":
 
-[case testSubclassingGenenericABCWithDeepHierarchy2-skip]
-from typing import Any, typevar
-from abc import abstractmethod, ABCMeta
+[case testSubclassingGenenericABCWithDeepHierarchy2]
+from typing import Any, typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
-class A('B'):
-    def f(self, a: 'C', b: 'D') -> None: # E: Argument 2 of "f" incompatible with supertype "I"
-        pass
-
-class B('I[C]'):
-    def f(self, a: 'C', b: Any) -> None: pass
-class I(metaclass=ABCMeta):
+class I(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
+class B(I[C]):
+    def f(self, a: 'C', b: Any) -> None: pass
+class A(B):
+    def f(self, a: 'C', b: 'D') -> None: pass \
+        # E: Argument 2 of "f" incompatible with supertype "I"
 class C: pass
 class D: pass
 [out]
