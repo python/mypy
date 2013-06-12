@@ -10,6 +10,7 @@ from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.util import short_type
 from mypy.nodes import NameExpr, TypeVarExpr, CallExpr
+from mypy.traverser import TraverserVisitor
 from mypy.errors import CompileError
 
 
@@ -40,15 +41,26 @@ class TypeExportSuite(Suite):
                                  alt_lib_path=testconfig.test_temp_dir)
             map = result.types
             nodes = map.keys()
+
+            # Ignore NameExpr nodes of variables with explicit (trivial) types
+            # to simplify output.
+            searcher = VariableDefinitionSearcher()
+            for file in result.files.values():
+                file.accept(searcher)
+            ignore_defs = searcher.defs
+
+            # Filter nodes that should be included in the output.
             keys = []
             for node in nodes:
                 if node.line is not None and node.line != -1 and map[node]:
-                    if ignore_node(node):
-                        continue                    
+                    if ignore_node(node) or node in ignore_defs:
+                        continue
                     if (re.match(mask, short_type(node))
                             or (isinstance(node, NameExpr)
                                 and re.match(mask, node.name))):
+                        # Include node in output.
                         keys.append(node)
+                        
             for key in sorted(keys,
                               key=lambda n: (n.line, short_type(n),
                                              str(n) + str(map[n]))):
@@ -61,6 +73,17 @@ class TypeExportSuite(Suite):
             testcase.output, a,
             'Invalid type checker output ({}, line {})'.format(testcase.file,
                                                                testcase.line))
+
+
+class VariableDefinitionSearcher(TraverserVisitor):
+    def __init__(self):
+        self.defs = set()
+    
+    def visit_assignment_stmt(self, s):
+        if s.type:
+            for lvalue in s.lvalues:
+                if isinstance(lvalue, NameExpr):
+                    self.defs.add(lvalue)
 
 
 def ignore_node(node):
