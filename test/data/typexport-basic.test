@@ -455,7 +455,7 @@ NameExpr(9) : C
 -- ------------------
 
 
-[case testDynamicallyTypedFunction-skip]
+[case testDynamicallyTypedFunction]
 from typing import Undefined
 def f(x):
   y = x + o
@@ -463,15 +463,15 @@ def f(x):
   z
 o = Undefined # type: object
 [out]
-NameExpr(2) : builtins.object
-NameExpr(2) : Any
-NameExpr(2) : Any
-OpExpr(2) : Any
 NameExpr(3) : builtins.object
 NameExpr(3) : Any
+NameExpr(3) : Any
+OpExpr(3) : Any
+NameExpr(4) : builtins.object
 NameExpr(4) : Any
+NameExpr(5) : Any
 
-[case testDynamicallyTypedMethod-skip]
+[case testDynamicallyTypedMethod]
 from typing import Undefined
 class A:
   def f(self, x):
@@ -481,13 +481,13 @@ class A:
     y
 o = Undefined # type: object
 [out]
-NameExpr(3) : Any
-ParenExpr(3) : Any
-NameExpr(4) : builtins.object
-NameExpr(5) : Any
+NameExpr(4) : Any
+ParenExpr(4) : Any
+NameExpr(5) : builtins.object
 NameExpr(6) : Any
+NameExpr(7) : Any
 
-[case testDynamicallyTypedConstructor-skip]
+[case testDynamicallyTypedConstructor]
 from typing import Undefined
 class A:
   def __init__(self, x):
@@ -496,21 +496,21 @@ class A:
     y
 o = Undefined # type: object
 [out]
-NameExpr(3) : builtins.object
-NameExpr(3) : Any
+NameExpr(4) : builtins.object
 NameExpr(4) : Any
 NameExpr(5) : Any
+NameExpr(6) : Any
 
-[case testCallInDynamicallyTypedFunction-skip]
+[case testCallInDynamicallyTypedFunction]
 from typing import Undefined
 def f():
   g(o)
 def g(a: object) -> object: pass
 o = Undefined # type: object
 [out]
-CallExpr(2) : builtins.object
-NameExpr(2) : def (builtins.object a) -> builtins.object
-NameExpr(2) : builtins.object
+CallExpr(3) : builtins.object
+NameExpr(3) : def (a: builtins.object) -> builtins.object
+NameExpr(3) : builtins.object
 
 [case testExpressionInDynamicallyTypedFn-skip]
 import typing
