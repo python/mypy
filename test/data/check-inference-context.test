@@ -499,16 +499,18 @@ def f(x: 'B') -> None: pass
 class A(Generic[T]): pass
 class B: pass
 
-[case testInferenceWithInterfaceContext-skip]
-from typing import typevar, Generic
+[case testInferenceWithAbstractClassContext]
+from typing import typevar, AbstractGeneric
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
-x = A() # type: I[B]
-y = A[object]() # type: I[B] # E: Incompatible types in assignment
+x = A() # type: I[int]
+y = A[object]() # type: I[int] # E: Incompatible types in assignment
 
-class A('I[t]', Generic[t]): pass
-class I(metaclass=ABCMeta): pass
-class B: pass
+class I(AbstractGeneric[t]):
+  @abstractmethod
+  def f(self): pass
+class A(I[t], AbstractGeneric[t]):
+  def f(self): pass
 
 [case testInferenceWithInterfaceContext2-skip]
 from typing import typevar, Generic
