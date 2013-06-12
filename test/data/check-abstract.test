@@ -319,7 +319,7 @@ main: In class "A":
 -- -------------
 
 
-[case testMultipleAbstractBases-skip]
+[case testMultipleAbstractBases]
 from abc import abstractmethod, ABCMeta
 import typing
 class A(metaclass=ABCMeta):
