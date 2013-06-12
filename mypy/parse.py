@@ -444,6 +444,7 @@ class Parser:
                     else:
                         kinds.append(nodes.ARG_STAR)
                     arg_types.append(self.parse_arg_type(allow_signature))
+                    require_named = True
                 else:
                     name = self.expect_type(Name)
                     arg_names.append(name)

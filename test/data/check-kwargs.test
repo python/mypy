@@ -132,9 +132,8 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
-[case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs-skip]
+[case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
 from typing import Undefined, List
-# TODO The argument 'b' below should be implicitly keyword-only.
 def f(*a: 'A', b: 'B' = None) -> None: pass
 a = Undefined # type: List[A]
 f(*a)

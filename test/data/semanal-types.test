@@ -1092,3 +1092,22 @@ MypyFile:1(
               Types(
                 builtins.int))
             Args()))))))
+
+[case testVarArgsAndKeywordArgs]
+def g(*x: int, y: str = ''): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    MaxPos(0)
+    Args(
+      Var(y))
+    def (*x: builtins.int, *, y: builtins.str) -> Any
+    Init(
+      AssignmentStmt:1(
+        NameExpr(y [l])
+        StrExpr()))
+    VarArg(
+      Var(x))
+    Block:1(
+      PassStmt:1())))

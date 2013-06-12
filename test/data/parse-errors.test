@@ -111,14 +111,20 @@ def f(*x, y):
     pass
 [out]
 file: In function "f":
-file, line 1: Invalid argument list
+file, line 1: Parse error before )
+file: At top level:
+file, line 1: Parse error before :
+file, line 2: Inconsistent indentation
 
 [case testInvalidFuncDefArgs3]
 def f(**x, y): 
    pass
 [out]
 file: In function "f":
-file, line 1: Invalid argument list
+file, line 1: Parse error before )
+file: At top level:
+file, line 1: Parse error before :
+file, line 2: Inconsistent indentation
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x): 
