@@ -63,9 +63,9 @@ NameExpr(5) : A
 NameExpr(6) : B
 NameExpr(9) : A
 
-[case testMemberAccess-skip]
-from typing import Undefined
+[case testMemberAccess]
 ## MemberExpr|CallExpr
+from typing import Undefined
 a = Undefined # type: A
 a.m
 a.f
@@ -75,14 +75,14 @@ class A:
   def f(self) -> 'B': pass
 class B: pass
 [out]
-MemberExpr(3) : A
-MemberExpr(4) : def () -> B
-CallExpr(5) : B
+MemberExpr(4) : A
 MemberExpr(5) : def () -> B
+CallExpr(6) : B
+MemberExpr(6) : def () -> B
 
 [case testCastExpression-skip]
-from typing import Undefined, Any, cast
 ## CastExpr|[a-z]
+from typing import Undefined, Any, cast
 d = Undefined # type: Any
 b = Undefined # type: B
 cast('A', d)
@@ -99,8 +99,8 @@ CastExpr(6) : B
 NameExpr(6) : B
 
 [case testArithmeticOps-skip]
-import typing
 ## OpExpr
+import typing
 a = 1 + 2
 1.2 * 3
 2.2 - 3
@@ -122,8 +122,8 @@ OpExpr(4) : builtins.float
 OpExpr(5) : builtins.float
 
 [case testComparisonOps-skip]
-import typing
 ## OpExpr
+import typing
 1 == object()
 1 == 2
 2 < 3
@@ -141,8 +141,8 @@ OpExpr(3) : builtins.bool
 OpExpr(4) : builtins.bool
 
 [case testBooleanOps-skip]
-import typing
 ## OpExpr|UnaryExpr
+import typing
 a = False
 a and a
 a or a
@@ -154,8 +154,8 @@ OpExpr(4) : builtins.bool
 UnaryExpr(5) : builtins.bool
 
 [case testFunctionCall-skip]
-from typing import Tuple
 ## CallExpr
+from typing import Tuple
 f(
   A(),
   B())
@@ -246,8 +246,8 @@ IntExpr(1) : builtins.int
 NameExpr(1) : builtins.int
 
 [case testInferTwoTypes-skip]
-import typing
 ## NameExpr
+import typing
 s, i = 'x', 1
 [builtins fixtures/primitives.py]
 [out]
@@ -269,9 +269,9 @@ NameExpr(2) : builtins.int
 
 
 [case testImplicitBoundTypeVarsForMethod-skip]
+## MemberExpr
 from typing import typevar, Generic, Undefined
 T = typevar('T')
-## MemberExpr
 class A(Generic[T]):
   def f(self) -> T: pass
 class B: pass
@@ -282,9 +282,9 @@ def g() -> None:
 MemberExpr(7) : def [1:B] () -> B
 
 [case testImplicitBoundTypeVarsForConstructor-skip]
+## CallExpr|TypeApplication|NameExpr
 from typing import Any, typevar, Generic
 T = typevar('T')
-## CallExpr|TypeApplication|NameExpr
 A['B']()
 A[Any]()
 class A(Generic[T]):
@@ -310,9 +310,9 @@ MemberExpr(3) : def [1:T`1] () -> T`1
 NameExpr(3) : A<T`1>
 
 [case testGenericFunctionCallWithTypeApp-skip]
+## CallExpr|TypeApplication|NameExpr
 from typing import Any, typevar, Tuple
 T = typevar('T')
-## CallExpr|TypeApplication|NameExpr
 f['A'](A())
 f[Any](A())
 def f(a: T) -> Tuple[T, T]: pass
@@ -331,9 +331,9 @@ NameExpr(3) : def [-1:any] (any a) -> tuple<any, any>
 TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
 
 [case testGenericMethodCallWithTypeApp-skip]
+## CallExpr|MemberExpr|TypeApplication
 from typing import Any, typevar, Tuple, Undefined
 T = typevar('T')
-## CallExpr|MemberExpr|TypeApplication
 a.f['A'](a)
 a.f[Any](a)
 class A:
@@ -349,10 +349,10 @@ MemberExpr(3) : def [-1:any] (any a) -> tuple<any, any>
 TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
 
 [case testGenericMethodCallInGenericTypeWithTypeApp-skip]
+## CallExpr|MemberExpr|TypeApplication
 from typing import Any, typevar, Generic, Tuple, Undefined
 T = typevar('T')
 S = typevar('S')
-## CallExpr|MemberExpr|TypeApplication
 a.f['B'](b)
 a.f[Any](b)
 class A(Generic[T]):
@@ -371,10 +371,10 @@ MemberExpr(3) : def [1:C, -1:any] (any a) -> tuple<C, any>
 TypeApplication(3) : def [1:C, -1:any] (any a) -> tuple<C, any>
 
 [case testGenericFunctionWithTwoArgsAndTypeApp-skip]
+## CallExpr|TypeApplication
 from typing import Any, typevar, Tuple
 S = typevar('S')
 T = typevar('T')
-## CallExpr|TypeApplication
 f['A', Any]()
 def f() -> Tuple[S, T]: pass
 class A: pass
@@ -581,9 +581,9 @@ NameExpr(2) : def [-1:any] (any x) -> any
 
 
 [case testInferenceInArgumentContext-skip]
+## CallExpr
 from typing import Undefined, typevar, Generic
 T = typevar('T')
-## CallExpr
 f(g())
 f(h(b))
 f(h(c))
@@ -757,10 +757,10 @@ NameExpr(2) : A
 ListExpr(3) : builtins.list<A>
 
 [case testLambdaAndHigherOrderFunction2-skip]
+## FuncExpr|NameExpr|ListExpr
 from typing import typevar, List, Function
 t = typevar('t')
 s = typevar('s')
-## FuncExpr|NameExpr|ListExpr
 map(
   lambda x: [f(x)], [])
 def map(f: Function[[t], List[s]], a: List[t]) -> List[s]: pass
@@ -866,8 +866,8 @@ OpExpr(4) : builtins.list<A>
 
 
 [case testUnboundMethod-skip]
-import typing
 ## MemberExpr
+import typing
 class A:
     def f(self) -> None: pass
 A.f
@@ -875,8 +875,8 @@ A.f
 MemberExpr(4) : def (A self)
 
 [case testUnboundMethodWithImplicitSig-skip]
-import typing
 ## MemberExpr
+import typing
 class A:
     def f(self): pass
 A.f
@@ -884,8 +884,8 @@ A.f
 MemberExpr(4) : def (any self) -> any
 
 [case testOverloadedUnboundMethod-skip]
-from typing import overload
 ## MemberExpr
+from typing import overload
 class A:
     @overload
     def f(self) -> None: pass
@@ -896,8 +896,8 @@ A.f
 MemberExpr(5) : Overload(def (A self), def (A self, builtins.object x))
 
 [case testOverloadedUnboundMethodWithImplicitSig-skip]
-from typing import overload
 ## MemberExpr
+from typing import overload
 class A:
     @overload
     def f(self): pass
@@ -908,8 +908,8 @@ A.f
 MemberExpr(5) : Overload(def (any self) -> any, def (any self, any x) -> any)
 
 [case testUnboundMethodWithInheritance-skip]
-import typing
 ## MemberExpr
+import typing
 class A:
     def __init__(self) -> None: pass
     def f(self) -> None: pass
@@ -920,9 +920,9 @@ B.f
 MemberExpr(7) : def (A self)
 
 [case testUnboundGenericMethod-skip]
+## MemberExpr
 from typing import typevar
 t = typevar('t')
-## MemberExpr
 class B: pass
 class A:
     def f(self, x: t) -> None: pass
@@ -931,9 +931,9 @@ A.f(A(), B())
 MemberExpr(5) : def [-1:B] (A self, B x)
 
 [case testUnboundMethodOfGenericClass-skip]
+## MemberExpr
 from typing import typevar, Generic
 t = typevar('t')
-## MemberExpr
 class B: pass
 class A(Generic[t]):
     def f(self, x: t) -> None: pass
@@ -944,9 +944,9 @@ MemberExpr(5) : def <t> (A<t`1> self, t`1 x)
 MemberExpr(6) : def [1:B] (A<B> self, B x)
 
 [case testUnboundOverloadedMethodOfGenericClass-skip]
+## CallExpr
 from typing import typevar, Generic, overload, Undefined
 t = typevar('t')
-## CallExpr
 class B: pass
 class A(Generic[t]):
     @overload
@@ -959,9 +959,9 @@ A.f(ab, b)
 CallExpr(7) : B
 
 [case testUnboundMethodOfGenericClassWithImplicitSig-skip]
+## MemberExpr
 from typing import typevar, Generic
 t = typevar('t')
-## MemberExpr
 class B: pass
 class A(Generic[t]):
     def f(self, x): pass
@@ -970,10 +970,10 @@ A.f(None, None)
 MemberExpr(5) : def (any self, any x) -> any
 
 [case testGenericMethodOfGenericClass-skip]
+## MemberExpr
 from typing import typevar, Generic, Undefined
 t = typevar('t')
 s = typevar('s')
-## MemberExpr
 class B: pass
 class A(Generic[t]):
     def f(self, y: s) -> None: pass
@@ -989,8 +989,8 @@ MemberExpr(7) : def [1:B, -1:builtins.object] (A<B> self, builtins.object y)
 
 
 [case testImplicitDataAttributeInit-skip]
-import typing
 ## NameExpr
+import typing
 class A:
     def __init__(self) -> None:
         self.x = (
