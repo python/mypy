@@ -299,39 +299,33 @@ class A(B):
 -- ----------------------------------------------------
 
 
-[case testSuperExpressionsWhenInheritingFromGenericType-skip]
+[case testSuperExpressionsWhenInheritingFromGenericType]
 from typing import typevar, Generic
 T = typevar('T')
 S = typevar('S')
-class A('B[S]', Generic[T, S]):
+class B(Generic[T]):
+    def f(self, a: T) -> None: pass
+class A(B[S], Generic[T, S]):
     def g(self, t: T, s: S) -> None:
         super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"
         super().f(s)
-
-class B(Generic[T]):
-    def f(self, a: T) -> None:
-        pass
 [out]
 main: In member "g" of class "A":
 
-[case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy-skip]
+[case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy]
 from typing import typevar, Generic
 T = typevar('T')
 S = typevar('S')
 U = typevar('U')
 V = typevar('V')
-class A('B[S]', Generic[T, S]):
+class C(Generic[T, U, V]):
+    def f(self, a: V) -> None: pass
+class D: pass
+class B(C[D, D, T], Generic[T]): pass
+class A(B[S], Generic[T, S]):
     def g(self, t: T, s: S) -> None:
         super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"
         super().f(s)
-
-class B('C[D, D, T]', Generic[T]): pass
-
-class C(Generic[T, U, V]):
-    def f(self, a: V) -> None:
-        pass
-
-class D: pass
 [out]
 main: In member "g" of class "A":
 
