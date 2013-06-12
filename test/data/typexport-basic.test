@@ -826,7 +826,7 @@ NameExpr(3) : A
 -- ------------------
 
 
-[case testBooleanOr-skip]
+[case testBooleanOr]
 from typing import Undefined, List
 a = Undefined # type: List[A]
 a or []
@@ -835,17 +835,17 @@ a = [] or a
 class A: pass
 [builtins fixtures/list.py]
 [out]
-ListExpr(2) : builtins.list[A]
-NameExpr(2) : builtins.list[A]
-OpExpr(2) : builtins.list[A]
 ListExpr(3) : builtins.list[A]
-NameExpr(3) : builtins.list[A]
 NameExpr(3) : builtins.list[A]
 OpExpr(3) : builtins.list[A]
 ListExpr(4) : builtins.list[A]
 NameExpr(4) : builtins.list[A]
 NameExpr(4) : builtins.list[A]
 OpExpr(4) : builtins.list[A]
+ListExpr(5) : builtins.list[A]
+NameExpr(5) : builtins.list[A]
+NameExpr(5) : builtins.list[A]
+OpExpr(5) : builtins.list[A]
 
 
 -- Class attributes
@@ -975,7 +975,7 @@ MemberExpr(10) : def [1:B, -1:builtins.object] (self: A[B], y: builtins.object)
 -- -------------
 
 
-[case testImplicitDataAttributeInit-skip]
+[case testImplicitDataAttributeInit]
 ## NameExpr
 import typing
 class A:
@@ -983,8 +983,8 @@ class A:
         self.x = (
                   A())
 [out]
-NameExpr(4) : A
-NameExpr(5) : def () -> A
+NameExpr(5) : A
+NameExpr(6) : def () -> A
 
 
 -- TODO
