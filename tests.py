@@ -9,7 +9,7 @@ from mypy import testlex
 from mypy import testparse
 from mypy import testsemanal
 from mypy import testcheck
-#from mypy import testtypegen
+from mypy import testtypegen
 #from mypy import testoutput
 #from mypy import testpythongen
 #from mypy import testtransform
@@ -33,7 +33,7 @@ class AllSuite(Suite):
         self.test_semanal_symtable = testsemanal.SemAnalSymtableSuite()
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
         self.test_check = testcheck.TypeCheckSuite()
-        #self.test_typegen = testtypegen.TypeExportSuite()
+        self.test_typegen = testtypegen.TypeExportSuite()
         #self.test_transform = testtransform.DyncheckTransformSuite()
         #self.test_icodegen = testicodegen.IcodeGenerationSuite()
         #self.test_output = testoutput.OutputSuite()
