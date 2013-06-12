@@ -343,45 +343,48 @@ NameExpr(6) : def () -> A
 NameExpr(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
 TypeApplication(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
 
-[case testGenericMethodCallWithTypeApp-skip]
-## CallExpr|MemberExpr|TypeApplication
-from typing import Any, typevar, Tuple, Undefined
-T = typevar('T')
-a.f['A'](a)
-a.f[Any](a)
-class A:
-  def f(self, a: T) -> Tuple[T, T]: pass
-a = Undefined # type: A
-[builtins fixtures/tuple.py]
-[out]
-CallExpr(2) : Tuple[A, A]
-MemberExpr(2) : def [-1:A] (A a) -> Tuple[A, A]
-TypeApplication(2) : def [-1:A] (A a) -> Tuple[A, A]
-CallExpr(3) : Tuple[Any, Any]
-MemberExpr(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
-TypeApplication(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
+-- NOTE: Type applications are not supported for generic methods, so the
+--       following test cases are commented out.
 
-[case testGenericMethodCallInGenericTypeWithTypeApp-skip]
-## CallExpr|MemberExpr|TypeApplication
-from typing import Any, typevar, Generic, Tuple, Undefined
-T = typevar('T')
-S = typevar('S')
-class B: pass
-class C: pass
-a.f[B](b)
-a.f[Any](b)
-class A(Generic[T]):
-  def f(self, a: S) -> Tuple[T, S]: pass
-a = Undefined # type: A[C]
-b = Undefined # type: B
-[builtins fixtures/tuple.py]
-[out]
-CallExpr(6) : Tuple[C, B]
-MemberExpr(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
-TypeApplication(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
-CallExpr(7) : Tuple[C, Any]
-MemberExpr(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
-TypeApplication(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
+--[case testGenericMethodCallWithTypeApp]
+--## CallExpr|MemberExpr|TypeApplication
+--from typing import Any, typevar, Tuple, Undefined
+--T = typevar('T')
+--class A:
+--  def f(self, a: T) -> Tuple[T, T]: pass
+--a.f[A](a)
+--a.f[Any](a)
+--a = Undefined # type: A
+--[builtins fixtures/tuple.py]
+--[out]
+--CallExpr(2) : Tuple[A, A]
+--MemberExpr(2) : def [-1:A] (A a) -> Tuple[A, A]
+--TypeApplication(2) : def [-1:A] (A a) -> Tuple[A, A]
+--CallExpr(3) : Tuple[Any, Any]
+--MemberExpr(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
+--TypeApplication(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
+
+--[case testGenericMethodCallInGenericTypeWithTypeApp]
+--## CallExpr|MemberExpr|TypeApplication
+--from typing import Any, typevar, Generic, Tuple, Undefined
+--T = typevar('T')
+--S = typevar('S')
+--class B: pass
+--class C: pass
+--a.f[B](b)
+--a.f[Any](b)
+--class A(Generic[T]):
+--  def f(self, a: S) -> Tuple[T, S]: pass
+--a = Undefined # type: A[C]
+--b = Undefined # type: B
+--[builtins fixtures/tuple.py]
+--[out]
+--CallExpr(6) : Tuple[C, B]
+--MemberExpr(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
+--TypeApplication(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
+--CallExpr(7) : Tuple[C, Any]
+--MemberExpr(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
+--TypeApplication(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
 
 [case testGenericFunctionWithTwoArgsAndTypeApp]
 ## CallExpr|TypeApplication
