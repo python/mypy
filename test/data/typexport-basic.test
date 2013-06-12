@@ -865,25 +865,25 @@ OpExpr(4) : builtins.list<A>
 -- ----------------
 
 
-[case testUnboundMethod-skip]
+[case testUnboundMethod]
 ## MemberExpr
 import typing
 class A:
     def f(self) -> None: pass
 A.f
 [out]
-MemberExpr(4) : def (A self)
+MemberExpr(5) : def (self: A)
 
-[case testUnboundMethodWithImplicitSig-skip]
+[case testUnboundMethodWithImplicitSig]
 ## MemberExpr
 import typing
 class A:
     def f(self): pass
 A.f
 [out]
-MemberExpr(4) : def (any self) -> any
+MemberExpr(5) : def (self: Any) -> Any
 
-[case testOverloadedUnboundMethod-skip]
+[case testOverloadedUnboundMethod]
 ## MemberExpr
 from typing import overload
 class A:
@@ -893,7 +893,7 @@ class A:
     def f(self, x: object) -> None: pass
 A.f
 [out]
-MemberExpr(5) : Overload(def (A self), def (A self, builtins.object x))
+MemberExpr(8) : Overload(def (self: A), def (self: A, x: builtins.object))
 
 [case testOverloadedUnboundMethodWithImplicitSig]
 ## MemberExpr
