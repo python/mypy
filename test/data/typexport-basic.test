@@ -219,30 +219,30 @@ MemberExpr(7) : Any
 NameExpr(7) : A
 NameExpr(7) : A
 
-[case testIf-skip]
-import typing
-a = False
+[case testIf]
+from typing import Undefined
+a = Undefined # type: bool
 if a:
   None
 elif not a:
   None
 [builtins fixtures/bool.py]
 [out]
-NameExpr(2) : builtins.bool
-NameExpr(3) : 'None'
-NameExpr(4) : builtins.bool
-UnaryExpr(4) : builtins.bool
-NameExpr(5) : 'None'
+NameExpr(3) : builtins.bool
+NameExpr(4) : 'None'
+NameExpr(5) : builtins.bool
+UnaryExpr(5) : builtins.bool
+NameExpr(6) : 'None'
 
-[case testWhile-skip]
-import typing
-a = False
+[case testWhile]
+from typing import Undefined
+a = Undefined # type: bool
 while a:
   None
 [builtins fixtures/bool.py]
 [out]
-NameExpr(2) : builtins.bool
-NameExpr(3) : 'None'
+NameExpr(3) : builtins.bool
+NameExpr(4) : 'None'
 
 
 -- Simple type inference
