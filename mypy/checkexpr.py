@@ -800,27 +800,15 @@ class ExpressionChecker:
         """Type check a cast expression."""
         source_type = self.accept(expr.expr)
         target_type = expr.type
-        if isinstance(target_type, Any):
-            return Any()
-        else:
-            if not self.is_valid_cast(source_type, target_type):
-                self.msg.invalid_cast(target_type, source_type, expr)
-            return target_type
+        if not self.is_valid_cast(source_type, target_type):
+            self.msg.invalid_cast(target_type, source_type, expr)
+        return target_type
     
     bool is_valid_cast(self, Type source_type, Type target_type):
-        """Is a cast from source_type to target_type valid (i.e. can succeed at
-        runtime)?
-        """
-        return (is_subtype(target_type, source_type) or
-                is_subtype(source_type, target_type) or
-                (isinstance(target_type, Instance) and
-                     ((Instance)target_type).type.is_interface) or
-                (isinstance(source_type, Instance) and
-                     ((Instance)source_type).type.is_interface) or
-                isinstance(source_type, TypeVar) or
-                isinstance(target_type, TypeVar) or
-                isinstance(source_type, FunctionLike) or
-                isinstance(target_type, FunctionLike))
+        """Is a cast from source_type to target_type meaningful?"""
+        return (isinstance(target_type, Any) or
+                (not isinstance(source_type, Void) and
+                 not isinstance(target_type, Void)))
     
     Type visit_type_application(self, TypeApplication tapp):
         """Type check a type application (expr<...>)."""

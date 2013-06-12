@@ -103,11 +103,13 @@ class I(metaclass=ABCMeta):
   @abstractmethod
   def f(self): pass
 
-[case testAbstractClassInCasts-skip]
+[case testAbstractClassInCasts]
 from typing import Undefined, cast
 from abc import abstractmethod, ABCMeta
 
-class I(metaclass=ABCMeta): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
 class A(I): pass
 class B: pass
 
@@ -115,8 +117,8 @@ i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
 o = Undefined # type: object
 
 a = cast(I, o) # E: Incompatible types in assignment
-b = cast(B, i) # Ok; a subclass of B might implement I
-i = cast(I, b) # Ok; a subclass of B might implement I
+b = cast(B, i) # Ok; a subclass of B might inherit I
+i = cast(I, b) # Ok; a subclass of B might inherit I
 
 i = cast(I, o)
 i = cast(I, a)
