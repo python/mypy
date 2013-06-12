@@ -444,34 +444,33 @@ main: In class "A":
 -- ------------------------------------------------
 
 
-[case testSubclassingGenenericABCWithDeepHierarchy-skip]
-from typing import Undefined, Any, typevar
-from abc import abstractmethod, ABCMeta
+[case testSubclassingGenenericABCWithDeepHierarchy]
+from typing import Undefined, Any, typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: A
 ic, id = Undefined, Undefined # type: (I[C], I[D])
 
-class A('B'):
-    def g(self, a: 'C', b: 'C') -> None: pass # Fail
-    def f(self, a: 'C', b: 'C') -> None: pass
-
-id = a # E: Incompatible types in assignment
+id = a # Fail
 ic = a
 
-class B('I[C]'):
-    def f(self, a: 'C', b: 'C') -> None: pass
-    def g(self, a: 'C', b: Any) -> None: pass
-class I(metaclass=ABCMeta):
+class I(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
     @abstractmethod
     def g(self, a: T, b: 'D') -> None: pass
+class B(I[C]):
+    def f(self, a: 'C', b: 'C') -> None: pass
+    def g(self, a: 'C', b: Any) -> None: pass
+class A(B):
+    def g(self, a: 'C', b: 'C') -> None: pass \
+        # E: Argument 2 of "g" incompatible with supertype "I"
+    def f(self, a: 'C', b: 'C') -> None: pass
 class C: pass
 class D: pass
 [out]
+main, line 7: Incompatible types in assignment
 main: In class "A":
-main, line 8: Argument 2 of "g" incompatible with supertype "I"
-main: At top level:
 
 [case testSubclassingGenenericABCWithDeepHierarchy2-skip]
 from typing import Any, typevar
