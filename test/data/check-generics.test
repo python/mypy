@@ -432,42 +432,39 @@ a = f[object, object, object](a) # E: Type application has too many types (2 exp
 g[object]() # E: Type application targets a non-generic function
 f[object, object](a)
 
-[case testGenericMethodInNonGenericType-skip]
-from typing import Undefined, typevar
-T = typevar('T')
-a, b = Undefined, Undefined # type: (A, B)
+-- NOTE: Commented out test cases that do not make sense currently.
 
-a = a.f['B'](b) # Fail
-a = a.f['A'](b) # Fail
+--[case testGenericMethodInNonGenericType]
+--from typing import Undefined, typevar
+--T = typevar('T')
+--a, b = Undefined, Undefined # type: (A, B)
+--class A:
+--    def f(self, a: T) -> T: pass
+--class B: pass
+--
+--a = a.f[B](b) # E: Incompatible types in assignment
+--a = a.f[A](b) # E: Argument 1 to "f" of "A" has incompatible type "B"
+--a = a.f[A](a)
 
-a = a.f['A'](a)
-
-class A:
-    def f(self, a: T) -> T: pass
-class B: pass
-[out]
-main, line 5: Incompatible types in assignment
-main, line 6: Argument 1 to "f" of "A" has incompatible type "B"
-
-[case testGenericMethodInGenericType-skip]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
-S = typevar('S')
-class A(Generic[T]):
-    def f(self, a: S) -> 'A[t[S, T]]':
-        pass
-class t(Generic[T, S]): pass
-class B: pass
-class C: pass
-ab = Undefined # type: A[B]
-acb = Undefined # type: A[t[C, B]]
-abc = Undefined # type: A[t[B, C]]
-b = Undefined # type: B
-c = Undefined # type: C
-
-abc = ab.f[C](c) # E: Incompatible types in assignment
-acb = ab.f[C](b) # E: Argument 1 to "f" of "A" has incompatible type "B"
-acb = ab.f[C](c)
+--[case testGenericMethodInGenericType]
+--from typing import Undefined, typevar, Generic
+--T = typevar('T')
+--S = typevar('S')
+--class A(Generic[T]):
+--    def f(self, a: S) -> 'A[t[S, T]]':
+--        pass
+--class t(Generic[T, S]): pass
+--class B: pass
+--class C: pass
+--ab = Undefined # type: A[B]
+--acb = Undefined # type: A[t[C, B]]
+--abc = Undefined # type: A[t[B, C]]
+--b = Undefined # type: B
+--c = Undefined # type: C
+--
+--abc = ab.f[C](c) # E: Incompatible types in assignment
+--acb = ab.f[C](b) # E: Argument 1 to "f" of "A" has incompatible type "B"
+--acb = ab.f[C](c)
 
 [case testTypeCheckingGenericFunctionBody]
 from typing import typevar, Generic
