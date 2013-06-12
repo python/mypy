@@ -563,39 +563,34 @@ class D: pass
 -- -----------------------------
 
 
-[case testAccessingGenericABCMembers-skip]
-from typing import Undefined, typevar
-from abc import abstractmethod, ABCMeta
+[case testAccessingGenericABCMembers]
+from typing import Undefined, typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
+class I(AbstractGeneric[T]):
+    @abstractmethod
+    def f(self, a: T) -> None: pass
+class A: pass
+class B: pass
+
 a, b = Undefined, Undefined # type: (A, B)
 ia = Undefined # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"
 ia.f(a)
 
-class I(metaclass=ABCMeta):
+[case testAccessingInheritedGenericABCMembers]
+from typing import Undefined, typevar, AbstractGeneric
+from abc import abstractmethod
+T = typevar('T')
+class J(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
-
+class I(J[T], AbstractGeneric[T]): pass
 class A: pass
 class B: pass
-[out]
-
-[case testAccessingInheritedGenericABCMembers-skip]
-from typing import Undefined, typevar, Generic
-from abc import abstractmethod, ABCMeta
-T = typevar('T')
 a, b = Undefined, Undefined # type: (A, B)
 ia = Undefined # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"
 ia.f(a)
-
-class I('J[T]', Generic[T]): pass
-
-class J(metaclass=ABCMeta):
-    @abstractmethod
-    def f(self, a: T) -> None: pass
-
-class A: pass
-class B: pass
