@@ -80,7 +80,7 @@ class VariableDefinitionSearcher(TraverserVisitor):
         self.defs = set()
     
     def visit_assignment_stmt(self, s):
-        if s.type:
+        if s.type or ignore_node(s.rvalue):
             for lvalue in s.lvalues:
                 if isinstance(lvalue, NameExpr):
                     self.defs.add(lvalue)
@@ -91,12 +91,9 @@ def ignore_node(node):
     # We want to get rid of object() expressions in the typing module stub
     # and also typevar(...) expressions. Since detecting whether a node comes
     # from the typing module is not easy, we just to strip them all away.
-    #
-    # Also strip away some lvalue name expressions.
     if isinstance(node, TypeVarExpr):
         return True
-    if isinstance(node, NameExpr) and (node.fullname == 'builtins.object' or
-                                       node.is_def):
+    if isinstance(node, NameExpr) and node.fullname == 'builtins.object':
         return True
     if isinstance(node, CallExpr) and (ignore_node(node.callee) or
                                        node.analyzed):
