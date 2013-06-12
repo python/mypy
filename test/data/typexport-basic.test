@@ -172,7 +172,7 @@ CallExpr(5) : B
 -- ----------
 
 
-[case testSimpleAssignment-skip]
+[case testSimpleAssignment]
 from typing import Undefined, Any
 a = Undefined # type: A
 b = a # type: Any
@@ -181,11 +181,11 @@ a = b
 
 class A: pass
 [out]
-NameExpr(2) : A
 NameExpr(3) : A
-NameExpr(3) : any
 NameExpr(4) : A
-NameExpr(4) : any
+NameExpr(4) : Any
+NameExpr(5) : A
+NameExpr(5) : Any
 
 [case testMemberAssignment-skip]
 from typing import Undefined, Any
@@ -197,12 +197,12 @@ class A:
     self.a.a = self.b
 [out]
 MemberExpr(5) : A
-MemberExpr(5) : any
+MemberExpr(5) : Any
 NameExpr(5) : A
 NameExpr(5) : A
 MemberExpr(6) : A
 MemberExpr(6) : A
-MemberExpr(6) : any
+MemberExpr(6) : Any
 NameExpr(6) : A
 NameExpr(6) : A
 
@@ -463,12 +463,12 @@ def f(x):
 o = Undefined # type: object
 [out]
 NameExpr(2) : builtins.object
-NameExpr(2) : any
-NameExpr(2) : any
-OpExpr(2) : any
+NameExpr(2) : Any
+NameExpr(2) : Any
+OpExpr(2) : Any
 NameExpr(3) : builtins.object
-NameExpr(3) : any
-NameExpr(4) : any
+NameExpr(3) : Any
+NameExpr(4) : Any
 
 [case testDynamicallyTypedMethod-skip]
 from typing import Undefined
@@ -480,11 +480,11 @@ class A:
     y
 o = Undefined # type: object
 [out]
-NameExpr(3) : any
-ParenExpr(3) : any
+NameExpr(3) : Any
+ParenExpr(3) : Any
 NameExpr(4) : builtins.object
-NameExpr(5) : any
-NameExpr(6) : any
+NameExpr(5) : Any
+NameExpr(6) : Any
 
 [case testDynamicallyTypedConstructor-skip]
 from typing import Undefined
@@ -496,9 +496,9 @@ class A:
 o = Undefined # type: object
 [out]
 NameExpr(3) : builtins.object
-NameExpr(3) : any
-NameExpr(4) : any
-NameExpr(5) : any
+NameExpr(3) : Any
+NameExpr(4) : Any
+NameExpr(5) : Any
 
 [case testCallInDynamicallyTypedFunction-skip]
 from typing import Undefined
@@ -518,10 +518,10 @@ def f():
   x.f()
 [out]
 NameExpr(2) : 'None'
-NameExpr(2) : any
-CallExpr(3) : any
-MemberExpr(3) : any
-NameExpr(3) : any
+NameExpr(2) : Any
+CallExpr(3) : Any
+MemberExpr(3) : Any
+NameExpr(3) : Any
 
 [case testGenericCall-skip]
 from typing import typevar, Generic, Undefined
@@ -570,7 +570,7 @@ def f():
   g(None)
 def g(x: t) -> t: pass
 [out]
-CallExpr(2) : any
+CallExpr(2) : Any
 NameExpr(2) : 'None'
 NameExpr(2) : def [-1:any] (any x) -> any
 
