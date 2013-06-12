@@ -339,7 +339,7 @@ class B: pass
 [out]
 main, line 3: Incompatible types in assignment
 
-[case testAccessingInit-skip]
+[case testAccessingInit]
 from typing import Undefined, Any
 class A:
     def __init__(self, a: 'A') -> None: pass
