@@ -170,22 +170,17 @@ class A(B[C]):
 [out]
 main: In class "A":
 
-[case testOverridingMethodInGenericTypeInheritingSimpleType-skip]
+[case testOverridingMethodInGenericTypeInheritingSimpleType]
 from typing import typevar, Generic
 T = typevar('T')
-class A('B', Generic[T]):
-    def f(self, a: T) -> None: # E: Argument 1 of "f" incompatible with supertype "B"
-        pass
-    def g(self, a: 'C') -> None:
-        pass
-
-class B:
-    def f(self, a: 'C') -> None:
-        pass
-    def g(self, a: 'C') -> None:
-        pass
-
 class C: pass
+class B:
+    def f(self, a: C) -> None: pass
+    def g(self, a: C) -> None: pass
+class A(B, Generic[T]):
+    def f(self, a: T) -> None: pass \
+        # E: Argument 1 of "f" incompatible with supertype "B"
+    def g(self, a: 'C') -> None: pass
 [out]
 main: In class "A":
 
