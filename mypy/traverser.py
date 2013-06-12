@@ -1,6 +1,6 @@
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
-    Block, MypyFile, VarDef, FuncItem, CallExpr
+    Block, MypyFile, VarDef, FuncItem, CallExpr, TypeDef, Decorator
 )
 
 
@@ -39,13 +39,15 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     def visit_func_def(self, o):
         self.visit_func(o)
     
-    def visit_type_def(self, o):
-        for d in o.defs:
+    T visit_type_def(self, TypeDef o):
+        for d in o.defs.body:
             d.accept(self)
     
-    def visit_decorator(self, o):
+    T visit_decorator(self, Decorator o):
         o.func.accept(self)
-        o.decorator.accept(self)
+        o.var.accept(self)
+        for decorator in o.decorators:
+            decorator.accept(self)
     
     T visit_var_def(self, VarDef o):
         if o.init is not None:
