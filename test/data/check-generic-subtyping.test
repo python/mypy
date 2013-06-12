@@ -494,9 +494,9 @@ main: In class "A":
 -- ----------------------------------------------
 
 
-[case testSubclassingGenericABCWithImplicitAny-skip]
-from typing import Undefined, Any, typevar
-from abc import abstractmethod, ABCMeta
+[case testSubclassingGenericABCWithImplicitAny]
+from typing import Undefined, Any, typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: Any
 ic = Undefined # type: I[C]
@@ -505,12 +505,11 @@ id = Undefined # type: I[D]
 ic = a
 id = a
 
-class A('I'):
-    def f(self, a): pass
-
-class I(metaclass=ABCMeta):
+class I(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
+class A(I):
+    def f(self, a): pass
 
 class C: pass
 class D: pass
