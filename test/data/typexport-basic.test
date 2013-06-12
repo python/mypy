@@ -268,7 +268,7 @@ NameExpr(2) : builtins.int
 -- --------------
 
 
-[case testImplicitBoundTypeVarsForMethod-skip]
+[case testImplicitBoundTypeVarsForMethod]
 ## MemberExpr
 from typing import typevar, Generic, Undefined
 T = typevar('T')
@@ -279,7 +279,7 @@ def g() -> None:
   a = Undefined # type: A[B]
   f = a.f
 [out]
-MemberExpr(7) : def [1:B] () -> B
+MemberExpr(9) : def [1:B] () -> B
 
 [case testImplicitBoundTypeVarsForConstructor-skip]
 ## CallExpr|TypeApplication|NameExpr
@@ -958,7 +958,7 @@ A.f(ab, b)
 [out]
 CallExpr(7) : B
 
-[case testUnboundMethodOfGenericClassWithImplicitSig-skip]
+[case testUnboundMethodOfGenericClassWithImplicitSig]
 ## MemberExpr
 from typing import typevar, Generic
 t = typevar('t')
@@ -967,9 +967,9 @@ class A(Generic[t]):
     def f(self, x): pass
 A.f(None, None)
 [out]
-MemberExpr(5) : def (any self, any x) -> any
+MemberExpr(7) : def (self: Any, x: Any) -> Any
 
-[case testGenericMethodOfGenericClass-skip]
+[case testGenericMethodOfGenericClass]
 ## MemberExpr
 from typing import typevar, Generic, Undefined
 t = typevar('t')
@@ -981,7 +981,7 @@ ab = Undefined # type: A[B]
 o = Undefined # type: object
 A.f(ab, o)
 [out]
-MemberExpr(7) : def [1:B, -1:builtins.object] (A<B> self, builtins.object y)
+MemberExpr(10) : def [1:B, -1:builtins.object] (self: A[B], y: builtins.object)
 
 
 -- Special cases
