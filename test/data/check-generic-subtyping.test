@@ -363,16 +363,15 @@ class A(I[C], I[object]): pass # E: Duplicate base class "I"
 class C: pass
 [out]
 
-[case testSubtypingWithTypeImplementingGenericABCViaInheritance-skip]
-from typing import Undefined, typevar
-from abc import abstractmethod, ABCMeta
+[case testSubtypingWithTypeImplementingGenericABCViaInheritance]
+from typing import Undefined, typevar, AbstractGeneric
 S = typevar('S')
 a, b = Undefined, Undefined # type: (A, B)
 ic, id, ie = Undefined, Undefined, Undefined # type: (I[C], I[D], I[E])
 
-class A('B'): pass
-class B('I[C]', 'I[D]'): pass # Fail
-class I(metaclass=ABCMeta): pass
+class I(AbstractGeneric[S]): pass
+class B(I[C]): pass
+class A(B): pass
 
 ie = a # E: Incompatible types in assignment
 a = ic # E: Incompatible types in assignment
@@ -387,9 +386,6 @@ class C: pass
 class D: pass
 class E: pass
 [out]
-main: In class "B":
-main, line 8: Class "B" implements interface "I" more than once
-main: At top level:
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
 from typing import typevar, Generic
