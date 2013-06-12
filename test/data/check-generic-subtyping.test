@@ -184,45 +184,36 @@ class A(B, Generic[T]):
 [out]
 main: In class "A":
 
-[case testOverridingMethodInGenericTypeInheritingGenericType-skip]
+[case testOverridingMethodInGenericTypeInheritingGenericType]
 from typing import typevar, Generic
 T = typevar('T')
 S = typevar('S')
-class A('B[S]', Generic[T, S]):
-    def f(self, a: T) -> None: # E: Argument 1 of "f" incompatible with supertype "B"
-        pass
-    def g(self, a: S) -> None:
-        pass
-
 class B(Generic[T]):
-    def f(self, a: T) -> None:
-        pass
-    def g(self, a: T) -> None:
-        pass
+    def f(self, a: T) -> None: pass
+    def g(self, a: T) -> None: pass
+class A(B[S], Generic[T, S]):
+    def f(self, a: T) -> None: pass \
+        # E: Argument 1 of "f" incompatible with supertype "B"
+    def g(self, a: S) -> None: pass
 [out]
 main: In class "A":
 
-[case testOverridingMethodInMultilevelHierarchyOfGenericTypes-skip]
+[case testOverridingMethodInMultilevelHierarchyOfGenericTypes]
 from typing import typevar, Generic
 T = typevar('T')
 S = typevar('S')
 U = typevar('U')
 V = typevar('V')
-class A('B[S]', Generic[T, S]):
-    def f(self, a: T) -> None: # E: Argument 1 of "f" incompatible with supertype "C"
-        pass
-    def g(self, a: S) -> None:
-        pass
-
-class B('C[D, D, T]', Generic[T]): pass
-
-class C(Generic[T, U, V]):
-    def f(self, a: V) -> None:
-        pass
-    def g(self, a: V) -> None:
-        pass
 
 class D: pass
+class C(Generic[T, U, V]):
+    def f(self, a: V) -> None: pass
+    def g(self, a: V) -> None: pass
+class B(C[D, D, T], Generic[T]): pass
+class A(B[S], Generic[T, S]):
+    def f(self, a: T) -> None: pass \
+        # E: Argument 1 of "f" incompatible with supertype "C"
+    def g(self, a: S) -> None: pass
 [out]
 main: In class "A":
 
