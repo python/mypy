@@ -936,19 +936,21 @@ class ExpressionChecker:
     
     Type visit_func_expr(self, FuncExpr e):
         """Type check lambda expression."""
-        inferred_type = self.infer_lambda_type(e)
+        inferred_type = self.infer_lambda_type_using_context(e)
         self.chk.check_func_item(e, type_override=inferred_type)
         ret_type = self.chk.type_map[e.expr()]
         if inferred_type:
             return replace_callable_return_type(inferred_type, ret_type)
-        elif e.type:
-            return replace_callable_return_type((Callable)e.type, ret_type)
+        elif not e.args:
+            # Form 'lambda: e'; just use the inferred return type.
+            return Callable([], [], [], ret_type, is_type_obj=False)
         else:
             # Use default type for lambda.
+            # TODO report error if context is not Any?
             # TODO infer return type?
             return function_type(e)
 
-    Callable infer_lambda_type(self, FuncExpr e):
+    Callable infer_lambda_type_using_context(self, FuncExpr e):
         """Try to infer lambda expression type using context.
 
         Return None if could not infer type.

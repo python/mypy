@@ -717,7 +717,7 @@ NameExpr(6) : def () -> A
 -- -------
 
 
-[case testLambdaWithInferredType]
+[case testLambdaWithTypeInferredFromContext]
 from typing import Function, Undefined
 f = lambda x: x.a # type: Function[[B], A]
 class A: pass
@@ -727,6 +727,13 @@ class B:
 FuncExpr(2) : def (B) -> A
 MemberExpr(2) : A
 NameExpr(2) : B
+
+[case testLambdaWithInferredType]
+## FuncExpr
+import typing
+f = lambda: 1
+[out]
+FuncExpr(3) : def () -> builtins.int
 
 [case testLambdaWithInferredType2]
 from typing import List, Function, Undefined
