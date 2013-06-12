@@ -930,7 +930,7 @@ A.f(A(), B())
 [out]
 MemberExpr(5) : def [-1:B] (A self, B x)
 
-[case testUnboundMethodOfGenericClass-skip]
+[case testUnboundMethodOfGenericClass]
 ## MemberExpr
 from typing import typevar, Generic
 t = typevar('t')
@@ -940,10 +940,10 @@ class A(Generic[t]):
 A.f
 A.f(A[B](), B())
 [out]
-MemberExpr(5) : def <t> (A<t`1> self, t`1 x)
-MemberExpr(6) : def [1:B] (A<B> self, B x)
+MemberExpr(7) : def [t] (self: A[t`1], x: t`1)
+MemberExpr(8) : def [1:B] (self: A[B], x: B)
 
-[case testUnboundOverloadedMethodOfGenericClass-skip]
+[case testUnboundOverloadedMethodOfGenericClass]
 ## CallExpr
 from typing import typevar, Generic, overload, Undefined
 t = typevar('t')
@@ -956,7 +956,7 @@ class A(Generic[t]):
 ab, b = Undefined, Undefined # type: (A[B], B)
 A.f(ab, b)
 [out]
-CallExpr(7) : B
+CallExpr(11) : B
 
 [case testUnboundMethodOfGenericClassWithImplicitSig]
 ## MemberExpr
