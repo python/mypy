@@ -139,7 +139,20 @@ OpExpr(3) : builtins.bool
 OpExpr(4) : builtins.bool
 OpExpr(5) : builtins.bool
 
-[case testBooleanOps-skip]
+[case testBooleanOps]
+## OpExpr|UnaryExpr
+import typing
+a = 1
+a and a
+a or a
+not a
+[builtins fixtures/bool.py]
+[out]
+OpExpr(4) : builtins.int
+OpExpr(5) : builtins.int
+UnaryExpr(6) : builtins.bool
+
+[case testBooleanOpsOnBools]
 ## OpExpr|UnaryExpr
 import typing
 a = bool()
