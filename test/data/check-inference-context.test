@@ -522,7 +522,7 @@ class I(AbstractGeneric[t]): pass
 class A(I[t], AbstractGeneric[t]): pass
 def f(i: I[t]) -> A[t]: pass
 
-[case testInferenceWithInterfaceContext3]
+[case testInferenceWithAbstractClassContext3]
 from typing import typevar, Generic, Iterable
 t = typevar('t')
 class set(Generic[t]):
@@ -533,15 +533,15 @@ l = set[bool]([])
 l = set[object]([]) # E: Incompatible types in assignment
 [builtins fixtures/for.py]
 
-[case testInferenceWithInterfaceContext4-skip]
-from typing import typevar, Generic, Iterable, Set
+[case testInferenceWithAbstractClassContext4]
+from typing import typevar, Generic, Iterable
 t = typevar('t')
-b = False
+class set(Generic[t]): pass
+def f(iterable: Iterable[t]) -> set[t]: pass
+b = bool()
 l = f([b])
 l = f[bool]([])
 l = f[object]([]) # E: Incompatible types in assignment
-class set(Generic[t]): pass
-def f(iterable: Iterable[t]) -> Set[t]: pass
 [builtins fixtures/for.py]
 
 
