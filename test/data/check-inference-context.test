@@ -512,18 +512,15 @@ class I(AbstractGeneric[t]):
 class A(I[t], AbstractGeneric[t]):
   def f(self): pass
 
-[case testInferenceWithInterfaceContext2-skip]
-from typing import typevar, Generic
+[case testInferenceWithInterfaceContext2]
+from typing import typevar, AbstractGeneric
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
-a = f(A()) # type: A[B]
-aa = f(A['B']())
-def f(i: 'I[t]') -> 'A[t]': pass
-class A('I[t]', Generic[t]): 
-    pass
-class I(metaclass=ABCMeta): 
-    pass
-class B: pass
+a = f(A()) # type: A[int]
+aa = f(A[int]())
+class I(AbstractGeneric[t]): pass
+class A(I[t], AbstractGeneric[t]): pass
+def f(i: I[t]) -> A[t]: pass
 
 [case testInferenceWithInterfaceContext3-skip]
 from typing import typevar, Generic, Iterable
