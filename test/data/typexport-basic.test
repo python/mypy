@@ -298,16 +298,16 @@ CallExpr(8) : A[Any]
 NameExpr(8) : def [-1:Any] () -> A[Any]
 TypeApplication(8) : def [-1:Any] () -> A[Any]
 
-[case testImplicitBoundTypeVarsForSelfMethodReference-skip]
+[case testImplicitBoundTypeVarsForSelfMethodReference]
 from typing import typevar, Generic
 T = typevar('T')
 class A(Generic[T]):
   def f(self) -> T:
     self.f()
 [out]
-CallExpr(3) : T`1
-MemberExpr(3) : def [1:T`1] () -> T`1
-NameExpr(3) : A<T`1>
+CallExpr(5) : T`1
+MemberExpr(5) : def [1:T`1] () -> T`1
+NameExpr(5) : A[T`1]
 
 [case testGenericFunctionCallWithTypeApp]
 ## CallExpr|TypeApplication|NameExpr
@@ -383,20 +383,20 @@ def f() -> Tuple[S, T]: pass
 CallExpr(6) : Tuple[A, Any]
 TypeApplication(6) : def [-1:A, -2:Any] () -> Tuple[A, Any]
 
-[case testGenericTypeVariableInference-skip]
+[case testGenericTypeVariableInference]
 from typing import typevar, Generic
 T = typevar('T')
-A(A(B()))
 class A(Generic[T]):
   def __init__(self, a: T) -> None: pass
 class B: pass
+A(A(B()))
 [out]
-CallExpr(1) : A<A[B]>
-CallExpr(1) : A[B]
-CallExpr(1) : B
-NameExpr(1) : def [-1:A[B]] (A[B] a) -> A<A[B]>
-NameExpr(1) : def [-1:B] (B a) -> A[B]
-NameExpr(1) : def () -> B
+CallExpr(6) : A[A[B]]
+CallExpr(6) : A[B]
+CallExpr(6) : B
+NameExpr(6) : def [-1:A[B]] (a: A[B]) -> A[A[B]]
+NameExpr(6) : def [-1:B] (a: B) -> A[B]
+NameExpr(6) : def () -> B
 
 
 -- Generic inheritance
@@ -432,7 +432,7 @@ class C: pass
 CallExpr(5) : void
 MemberExpr(5) : def [1:C, 2:T`1] (C a)
 NameExpr(5) : C
-NameExpr(5) : B<T`1>
+NameExpr(5) : B[T`1]
 
 [case testExternalReferenceWithGenericInheritance-skip]
 from typing import typevar, Generic, Undefined
