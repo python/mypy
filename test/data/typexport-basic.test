@@ -729,11 +729,21 @@ MemberExpr(2) : A
 NameExpr(2) : B
 
 [case testLambdaWithInferredType]
-## FuncExpr
+## FuncExpr|NameExpr
 import typing
 f = lambda: 1
 [out]
 FuncExpr(3) : def () -> builtins.int
+NameExpr(3) : def () -> builtins.int
+
+[case testLambdaWithInferredType2]
+## FuncExpr|NameExpr
+import typing
+f = lambda: [1]
+[builtins fixtures/list.py]
+[out]
+FuncExpr(3) : def () -> builtins.list[builtins.int]
+NameExpr(3) : def () -> builtins.list[builtins.int]
 
 [case testLambdaWithInferredType2]
 from typing import List, Function, Undefined

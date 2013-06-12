@@ -598,7 +598,6 @@ f2 = lambda: A() # type: Function[[A], A]
 class A: pass
 [out]
 main, line 2: Cannot infer type of lambda
-main, line 2: Incompatible types in assignment
 main, line 3: Cannot infer type of lambda
 main, line 3: Incompatible types in assignment
 

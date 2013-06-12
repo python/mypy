@@ -937,24 +937,27 @@ class ExpressionChecker:
     Type visit_func_expr(self, FuncExpr e):
         """Type check lambda expression."""
         inferred_type = self.infer_lambda_type_using_context(e)
-        self.chk.check_func_item(e, type_override=inferred_type)
-        ret_type = self.chk.type_map[e.expr()]
-        if inferred_type:
-            return replace_callable_return_type(inferred_type, ret_type)
-        elif not e.args:
-            # Form 'lambda: e'; just use the inferred return type.
-            return Callable([], [], [], ret_type, is_type_obj=False)
+        if not inferred_type:
+            # No useful type context.
+            ret_type = e.expr().accept(self.chk)
+            if not e.args:
+                # Form 'lambda: e'; just use the inferred return type.
+                return Callable([], [], [], ret_type, is_type_obj=False)
+            else:
+                # TODO report error
+                return Any()
         else:
-            # Use default type for lambda.
-            # TODO report error if context is not Any?
-            # TODO infer return type?
-            return function_type(e)
+            # Type context available.
+            self.chk.check_func_item(e, type_override=inferred_type)
+            ret_type = self.chk.type_map[e.expr()]
+            return replace_callable_return_type(inferred_type, ret_type)
 
     Callable infer_lambda_type_using_context(self, FuncExpr e):
         """Try to infer lambda expression type using context.
 
         Return None if could not infer type.
         """
+        # TODO also accept 'Any' context
         ctx = self.chk.type_context[-1]
         if not ctx or not isinstance(ctx, Callable):
             return None
@@ -973,12 +976,7 @@ class ExpressionChecker:
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
             return None
         
-        if not e.type:
-            return callable_ctx
-        else:
-            # The lambda already has a type; only infer the return type.
-            return replace_callable_return_type((Callable)e.type,
-                                                callable_ctx.ret_type)
+        return callable_ctx
     
     Type visit_super_expr(self, SuperExpr e):
         """Type check a super expression (non-lvalue)."""
