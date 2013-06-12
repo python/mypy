@@ -1,8 +1,8 @@
 -- Test cases for exporting node types from the type checker.
 --
 -- Each test case consists of at least two sections.
--- The first section contains [case NAME-skip] followed by the input code, while
--- the second section contains [out] followed by the output from the type
+-- The first section contains [case NAME-skip] followed by the input code,
+-- while the second section contains [out] followed by the output from the type
 -- checker.
 --
 -- The first line of input code should be a regexp in comment that describes
@@ -44,7 +44,7 @@ FloatExpr(3) : builtins.float
 StrExpr(4) : builtins.str
 NameExpr(5) : 'None'
 
-[case testNameExpression-skip]
+[case testNameExpression]
 from typing import Undefined
 a = Undefined # type: A
 a # node
@@ -55,13 +55,12 @@ def f(aa: 'A') -> None:
 class A:
   def g(self) -> None:
     self # node
-  c = Undefined # type: B
 class B: pass
 [out]
-NameExpr(2) : A
-NameExpr(5) : A
-NameExpr(6) : B
-NameExpr(9) : A
+NameExpr(3) : A
+NameExpr(6) : A
+NameExpr(7) : B
+NameExpr(10) : A
 
 [case testMemberAccess]
 ## MemberExpr|CallExpr
