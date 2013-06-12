@@ -607,7 +607,7 @@ CallExpr(5) : A[B]
 CallExpr(6) : void
 CallExpr(6) : A[B]
 
-[case testInferGenericTypeForLocalVariable-skip]
+[case testInferGenericTypeForLocalVariable]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
 def f() -> None:
@@ -616,7 +616,6 @@ def f() -> None:
   a2, a3 = A(b), A(c)
   a2
   a3
-
 b = Undefined # type: B
 c = Undefined # type: C
 class A(Generic[T]):
@@ -624,24 +623,24 @@ class A(Generic[T]):
 class B: pass
 class C: pass
 [out]
-CallExpr(2) : A[B]
-NameExpr(2) : def [-1:B] (B x) -> A[B]
-NameExpr(2) : A[B]
-NameExpr(2) : B
-NameExpr(3) : A[B]
 CallExpr(4) : A[B]
-CallExpr(4) : A[C]
-NameExpr(4) : def [-1:B] (B x) -> A[B]
-NameExpr(4) : def [-1:C] (C x) -> A[C]
+NameExpr(4) : def [-1:B] (x: B) -> A[B]
 NameExpr(4) : A[B]
-NameExpr(4) : A[C]
 NameExpr(4) : B
-NameExpr(4) : C
-TupleExpr(4) : Tuple[A[B], A[C]]
 NameExpr(5) : A[B]
+CallExpr(6) : A[B]
+CallExpr(6) : A[C]
+NameExpr(6) : def [-1:B] (x: B) -> A[B]
+NameExpr(6) : def [-1:C] (x: C) -> A[C]
+NameExpr(6) : A[B]
 NameExpr(6) : A[C]
+NameExpr(6) : B
+NameExpr(6) : C
+TupleExpr(6) : Tuple[A[B], A[C]]
+NameExpr(7) : A[B]
+NameExpr(8) : A[C]
 
-[case testNestedGenericCalls-skip]
+[case testNestedGenericCalls]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
 S = typevar('S')
@@ -650,19 +649,17 @@ def h() -> None:
 
 c = Undefined # type: C
 
-def f(a: T) -> 'A[T]': pass
-
-def g(a: S) -> 'B[S]': pass
-
 class A(Generic[T]): pass
 class B(Generic[T]): pass
 class C: pass
+def f(a: T) -> A[T]: pass
+def g(a: S) -> B[S]: pass
 [out]
-CallExpr(2) : A[C]
-CallExpr(2) : B[A[C]]
-NameExpr(2) : C
-NameExpr(2) : def [-1:C] (a: C) -> A[C]
-NameExpr(2) : def [-1:A[C]] (A[C] a) -> B[A[C]]
+CallExpr(5) : A[C]
+CallExpr(5) : B[A[C]]
+NameExpr(5) : C
+NameExpr(5) : def [-1:C] (a: C) -> A[C]
+NameExpr(5) : def [-1:A[C]] (a: A[C]) -> B[A[C]]
 
 [case testInferListLiterals-skip]
 from typing import List
