@@ -85,11 +85,11 @@ MemberExpr(6) : def () -> B
 from typing import Undefined, Any, cast
 d = Undefined # type: Any
 b = Undefined # type: B
-cast('A', d)
-cast('A', b)
-cast('B', b)
 class A: pass
 class B(A): pass
+cast(A, d)
+cast(A, b)
+cast(B, b)
 [out]
 CastExpr(4) : A
 NameExpr(4) : any
@@ -98,7 +98,7 @@ NameExpr(5) : B
 CastExpr(6) : B
 NameExpr(6) : B
 
-[case testArithmeticOps-skip]
+[case testArithmeticOps]
 ## OpExpr
 import typing
 a = 1 + 2
@@ -107,21 +107,21 @@ a = 1 + 2
 1 / 2
 [file builtins.py]
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 class int:
-  int __add__(self, int x): pass
-  float __truediv__(self, int x): pass
+  def __add__(self, x: int) -> int: pass
+  def __truediv__(self, x: int) -> float: pass
 class float:
-  float __mul__(self, int x): pass
-  float __sub__(self, int x): pass
+  def __mul__(self, x: int) -> float: pass
+  def __sub__(self, x: int) -> float: pass
 class type: pass
 [out]
-OpExpr(2) : builtins.int
-OpExpr(3) : builtins.float
+OpExpr(3) : builtins.int
 OpExpr(4) : builtins.float
 OpExpr(5) : builtins.float
+OpExpr(6) : builtins.float
 
-[case testComparisonOps-skip]
+[case testComparisonOps]
 ## OpExpr
 import typing
 1 == object()
@@ -129,44 +129,44 @@ import typing
 2 < 3
 [file builtins.py]
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 class int:
-  bool __eq__(self, object x): pass
-  bool __lt__(selef, int x): pass
+  def __eq__(self, x: object) -> bool: pass
+  def __lt__(selef, x: int) -> bool: pass
 class bool: pass
 class type: pass
 [out]
-OpExpr(2) : builtins.bool
 OpExpr(3) : builtins.bool
 OpExpr(4) : builtins.bool
+OpExpr(5) : builtins.bool
 
 [case testBooleanOps-skip]
 ## OpExpr|UnaryExpr
 import typing
-a = False
+a = bool()
 a and a
 a or a
 not a
 [builtins fixtures/bool.py]
 [out]
-OpExpr(3) : builtins.bool
 OpExpr(4) : builtins.bool
-UnaryExpr(5) : builtins.bool
+OpExpr(5) : builtins.bool
+UnaryExpr(6) : builtins.bool
 
-[case testFunctionCall-skip]
+[case testFunctionCall]
 ## CallExpr
 from typing import Tuple
 f(
   A(),
   B())
-def f(a: 'A', b: 'B') -> 'Tuple[A, B]': pass
 class A: pass
 class B: pass
+def f(a: A, b: B) -> Tuple[A, B]: pass
 [builtins fixtures/tuple.py]
 [out]
-CallExpr(2) : tuple<A, B>
-CallExpr(3) : A
-CallExpr(4) : B
+CallExpr(3) : Tuple[A, B]
+CallExpr(4) : A
+CallExpr(5) : B
 
 
 -- Statements
