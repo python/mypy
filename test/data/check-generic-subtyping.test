@@ -95,6 +95,13 @@ class C(B[A[X], A[Y]], Generic[X, Y]): pass
 class E: pass
 class F: pass
 
+[case testIncludingBaseClassTwice]
+from typing import typevar, Generic
+t = typevar('t')
+class I(Generic[T]): pass
+class A(I[C], I[object]): pass # E: Duplicate base class "I"
+class C: pass
+
 
 -- Accessing inherited generic members
 -- -----------------------------------
@@ -336,6 +343,7 @@ main: In member "g" of class "A":
 
 [case testSubtypingWithGenericTypeSubclassingGenericAbstractClass]
 from typing import Undefined, typevar, Generic, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
 S = typevar('S')
 acd = Undefined # type: A[C, D]
@@ -350,18 +358,12 @@ adc = ic # E: Incompatible types in assignment
 ic = adc
 id = acd
 
-class I(AbstractGeneric[T]): pass
+class I(AbstractGeneric[T]):
+    @abstractmethod
+    def f(self): pass
 class A(I[S], AbstractGeneric[T, S]): pass
 class C: pass
 class D: pass
-
-[case testIncludingBaseClassTwice]
-from typing import typevar, AbstractGeneric
-t = typevar('t')
-class I(AbstractGeneric[T]): pass
-class A(I[C], I[object]): pass # E: Duplicate base class "I"
-class C: pass
-[out]
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance]
 from typing import Undefined, typevar, AbstractGeneric
