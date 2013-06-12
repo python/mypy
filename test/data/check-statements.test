@@ -50,10 +50,10 @@ main, line 3: Return value expected
 -- ------------
 
 
-[case testIfStatement-skip]
+[case testIfStatement]
 from typing import Undefined
 a = Undefined # type: A
-b = False
+b = Undefined # type: bool
 if a:
     a = b # Fail
 elif a:
@@ -82,10 +82,10 @@ main, line 11: Incompatible types in assignment
 -- -----
 
 
-[case testWhileStatement-skip]
+[case testWhileStatement]
 from typing import Undefined
 a = Undefined # type: A
-b = False
+b = Undefined # type: bool
 while a:
     a = b    # Fail
 else:
