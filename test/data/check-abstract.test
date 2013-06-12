@@ -27,8 +27,12 @@ j = a
 j = b
 a = b
 
-class I(metaclass=ABCMeta): pass
-class J(metaclass=ABCMeta): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+class J(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self): pass
 class A(I, J): pass
 class B(A): pass
 class C(I): pass
@@ -54,7 +58,9 @@ i = j
 o = i
 o = j
 
-class I(metaclass=ABCMeta): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
 class J(I): pass
 class A(J): pass
 
@@ -72,7 +78,9 @@ b = a # E: Incompatible types in assignment
 a = b
 i = b
 
-class I(metaclass=ABCMeta): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
 class A: pass
 class B(A, I): pass
 
@@ -91,7 +99,9 @@ t = Undefined # type: type
 o = I
 t = I
 
-class I(metaclass=ABCMeta): pass
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
 
 [case testAbstractClassInCasts-skip]
 from typing import Undefined, cast
