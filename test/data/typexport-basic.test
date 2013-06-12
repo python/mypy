@@ -512,19 +512,19 @@ CallExpr(3) : builtins.object
 NameExpr(3) : def (a: builtins.object) -> builtins.object
 NameExpr(3) : builtins.object
 
-[case testExpressionInDynamicallyTypedFn-skip]
+[case testExpressionInDynamicallyTypedFn]
 import typing
 def f():
   x = None
   x.f()
 [out]
-NameExpr(2) : 'None'
-NameExpr(2) : Any
-CallExpr(3) : Any
-MemberExpr(3) : Any
+NameExpr(3) : 'None'
 NameExpr(3) : Any
+CallExpr(4) : Any
+MemberExpr(4) : Any
+NameExpr(4) : Any
 
-[case testGenericCall-skip]
+[case testGenericCall]
 from typing import typevar, Generic, Undefined
 T = typevar('T')
 def f() -> None:
@@ -535,24 +535,24 @@ class A(Generic[T]):
 class B: pass
 b = Undefined # type: B
 [out]
-CallExpr(2) : A[B]
-NameExpr(2) : def [-1:B] (B a) -> A[B]
-NameExpr(2) : B
-CallExpr(3) : A[builtins.object]
-NameExpr(3) : def [-1:builtins.object] (builtins.object a) -> A[builtins.object]
-NameExpr(3) : B
+CallExpr(4) : A[B]
+NameExpr(4) : def [-1:B] (a: B) -> A[B]
+NameExpr(4) : B
+CallExpr(5) : A[builtins.object]
+NameExpr(5) : def [-1:builtins.object] (a: builtins.object) -> A[builtins.object]
+NameExpr(5) : B
 
-[case testGenericCallInDynamicallyTypedFunction-skip]
+[case testGenericCallInDynamicallyTypedFunction]
 from typing import typevar, Generic
 T = typevar('T')
 def f():
   A()
 class A(Generic[T]): pass
 [out]
-CallExpr(2) : A[Any]
-NameExpr(2) : def [-1:Any] () -> A[Any]
+CallExpr(4) : A[Any]
+NameExpr(4) : def [-1:Any] () -> A[Any]
 
-[case testGenericCallInDynamicallyTypedFunction2-skip]
+[case testGenericCallInDynamicallyTypedFunction2]
 from typing import typevar, Generic
 T = typevar('T')
 def f():
@@ -560,20 +560,20 @@ def f():
 class A(Generic[T]): 
     def __init__(self, x: T) -> None: pass
 [out]
-CallExpr(2) : A[Any]
-NameExpr(2) : def [-1:Any] (any x) -> A[Any]
-NameExpr(2) : def () -> any
+CallExpr(4) : A[Any]
+NameExpr(4) : def [-1:Any] (x: Any) -> A[Any]
+NameExpr(4) : def () -> Any
 
-[case testGenericCallInDynamicallyTypedFunction2-skip]
+[case testGenericCallInDynamicallyTypedFunction3]
 from typing import typevar
 t = typevar('t')
 def f():
   g(None)
 def g(x: t) -> t: pass
 [out]
-CallExpr(2) : Any
-NameExpr(2) : 'None'
-NameExpr(2) : def [-1:Any] (any x) -> any
+CallExpr(4) : Any
+NameExpr(4) : 'None'
+NameExpr(4) : def [-1:Any] (x: Any) -> Any
 
 
 -- Generic types and type inference
