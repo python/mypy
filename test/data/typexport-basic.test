@@ -730,18 +730,18 @@ s = typevar('s')
 map(
   lambda x: f(x), [])
 def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
-def f(a: 'A') -> 'B': pass
 class A: pass
 class B: pass
+def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list[B]
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
-CallExpr(2) : B
-FuncExpr(2) : def (A) -> B
-NameExpr(2) : def (a: A) -> B
-NameExpr(2) : A
-ListExpr(3) : builtins.list[A]
+CallExpr(4) : builtins.list[B]
+NameExpr(4) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+CallExpr(5) : B
+FuncExpr(5) : def (A) -> B
+NameExpr(5) : def (a: A) -> B
+NameExpr(5) : A
+ListExpr(6) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction2-skip]
 ## FuncExpr|NameExpr|ListExpr
