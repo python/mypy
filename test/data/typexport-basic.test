@@ -281,22 +281,22 @@ def g() -> None:
 [out]
 MemberExpr(9) : def [1:B] () -> B
 
-[case testImplicitBoundTypeVarsForConstructor-skip]
+[case testImplicitBoundTypeVarsForConstructor]
 ## CallExpr|TypeApplication|NameExpr
 from typing import Any, typevar, Generic
 T = typevar('T')
-A['B']()
-A[Any]()
 class A(Generic[T]):
   def __init__(self) -> None: pass
 class B: pass
+A[B]()
+A[Any]()
 [out]
-CallExpr(2) : A<B>
-NameExpr(2) : def [-1:B] () -> A<B>
-TypeApplication(2) : def [-1:B] () -> A<B>
-CallExpr(3) : A<any>
-NameExpr(3) : def [-1:any] () -> A<any>
-TypeApplication(3) : def [-1:any] () -> A<any>
+CallExpr(7) : A[B]
+NameExpr(7) : def [-1:B] () -> A[B]
+TypeApplication(7) : def [-1:B] () -> A[B]
+CallExpr(8) : A[Any]
+NameExpr(8) : def [-1:Any] () -> A[Any]
+TypeApplication(8) : def [-1:Any] () -> A[Any]
 
 [case testImplicitBoundTypeVarsForSelfMethodReference-skip]
 from typing import typevar, Generic
@@ -345,8 +345,8 @@ CallExpr(2) : tuple<A, A>
 MemberExpr(2) : def [-1:A] (A a) -> tuple<A, A>
 TypeApplication(2) : def [-1:A] (A a) -> tuple<A, A>
 CallExpr(3) : tuple<any, any>
-MemberExpr(3) : def [-1:any] (any a) -> tuple<any, any>
-TypeApplication(3) : def [-1:any] (any a) -> tuple<any, any>
+MemberExpr(3) : def [-1:Any] (any a) -> tuple<any, any>
+TypeApplication(3) : def [-1:Any] (any a) -> tuple<any, any>
 
 [case testGenericMethodCallInGenericTypeWithTypeApp-skip]
 ## CallExpr|MemberExpr|TypeApplication
@@ -367,8 +367,8 @@ CallExpr(6) : tuple<C, B>
 MemberExpr(6) : def [1:C, -1:B] (B a) -> tuple<C, B>
 TypeApplication(6) : def [1:C, -1:B] (B a) -> tuple<C, B>
 CallExpr(7) : tuple<C, any>
-MemberExpr(7) : def [1:C, -1:any] (any a) -> tuple<C, any>
-TypeApplication(7) : def [1:C, -1:any] (any a) -> tuple<C, any>
+MemberExpr(7) : def [1:C, -1:Any] (any a) -> tuple<C, any>
+TypeApplication(7) : def [1:C, -1:Any] (any a) -> tuple<C, any>
 
 [case testGenericFunctionWithTwoArgsAndTypeApp]
 ## CallExpr|TypeApplication
@@ -391,11 +391,11 @@ class A(Generic[T]):
   def __init__(self, a: T) -> None: pass
 class B: pass
 [out]
-CallExpr(1) : A<A<B>>
-CallExpr(1) : A<B>
+CallExpr(1) : A<A[B]>
+CallExpr(1) : A[B]
 CallExpr(1) : B
-NameExpr(1) : def [-1:A<B>] (A<B> a) -> A<A<B>>
-NameExpr(1) : def [-1:B] (B a) -> A<B>
+NameExpr(1) : def [-1:A[B]] (A[B] a) -> A<A[B]>
+NameExpr(1) : def [-1:B] (B a) -> A[B]
 NameExpr(1) : def () -> B
 
 
@@ -535,8 +535,8 @@ class A(Generic[T]):
 class B: pass
 b = Undefined # type: B
 [out]
-CallExpr(2) : A<B>
-NameExpr(2) : def [-1:B] (B a) -> A<B>
+CallExpr(2) : A[B]
+NameExpr(2) : def [-1:B] (B a) -> A[B]
 NameExpr(2) : B
 CallExpr(3) : A<builtins.object>
 NameExpr(3) : def [-1:builtins.object] (builtins.object a) -> A<builtins.object>
@@ -549,8 +549,8 @@ def f():
   A()
 class A(Generic[T]): pass
 [out]
-CallExpr(2) : A<any>
-NameExpr(2) : def [-1:any] () -> A<any>
+CallExpr(2) : A[Any]
+NameExpr(2) : def [-1:Any] () -> A[Any]
 
 [case testGenericCallInDynamicallyTypedFunction2-skip]
 from typing import typevar, Generic
@@ -560,8 +560,8 @@ def f():
 class A(Generic[T]): 
     def __init__(self, x: T) -> None: pass
 [out]
-CallExpr(2) : A<any>
-NameExpr(2) : def [-1:any] (any x) -> A<any>
+CallExpr(2) : A[Any]
+NameExpr(2) : def [-1:Any] (any x) -> A[Any]
 NameExpr(2) : def () -> any
 
 [case testGenericCallInDynamicallyTypedFunction2-skip]
@@ -573,7 +573,7 @@ def g(x: t) -> t: pass
 [out]
 CallExpr(2) : Any
 NameExpr(2) : 'None'
-NameExpr(2) : def [-1:any] (any x) -> any
+NameExpr(2) : def [-1:Any] (any x) -> any
 
 
 -- Generic types and type inference
@@ -624,21 +624,21 @@ class A(Generic[T]):
 class B: pass
 class C: pass
 [out]
-CallExpr(2) : A<B>
-NameExpr(2) : def [-1:B] (B x) -> A<B>
-NameExpr(2) : A<B>
+CallExpr(2) : A[B]
+NameExpr(2) : def [-1:B] (B x) -> A[B]
+NameExpr(2) : A[B]
 NameExpr(2) : B
-NameExpr(3) : A<B>
-CallExpr(4) : A<B>
+NameExpr(3) : A[B]
+CallExpr(4) : A[B]
 CallExpr(4) : A<C>
-NameExpr(4) : def [-1:B] (B x) -> A<B>
+NameExpr(4) : def [-1:B] (B x) -> A[B]
 NameExpr(4) : def [-1:C] (C x) -> A<C>
-NameExpr(4) : A<B>
+NameExpr(4) : A[B]
 NameExpr(4) : A<C>
 NameExpr(4) : B
 NameExpr(4) : C
-TupleExpr(4) : tuple<A<B>, A<C>>
-NameExpr(5) : A<B>
+TupleExpr(4) : tuple<A[B], A<C>>
+NameExpr(5) : A[B]
 NameExpr(6) : A<C>
 
 [case testNestedGenericCalls-skip]
@@ -677,7 +677,7 @@ from typing import Any
 a = [] # type: Any
 [builtins fixtures/list.py]
 [out]
-ListExpr(1) : builtins.list<any>
+ListExpr(1) : builtins.list<Any>
 
 [case testHigherOrderFunction-skip]
 from typing import typevar, Function, List
@@ -788,8 +788,8 @@ class A: pass
 [out]
 -- TODO We probably should not silently infer 'any' types in statically typed 
 --      context. Perhaps just fail instead?
-CallExpr(1) : builtins.list<any>
-NameExpr(1) : def [-1:A, -2:any] (builtins.list<def (A) -> any> f, builtins.list<A> a) -> builtins.list<any>
+CallExpr(1) : builtins.list<Any>
+NameExpr(1) : def [-1:A, -2:any] (builtins.list<def (A) -> any> f, builtins.list<A> a) -> builtins.list<Any>
 FuncExpr(2) : def (A) -> A
 ListExpr(2) : builtins.list<def (A) -> any>
 NameExpr(2) : A
