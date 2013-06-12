@@ -421,22 +421,19 @@ class A(I[t], AbstractGeneric[t]): pass
 -- -------------------------
 
 
-[case testSubclassingGenericABC1-skip]
-from typing import typevar
-from abc import abstractmethod, ABCMeta
+[case testSubclassingGenericABC1]
+from typing import typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
-class A('I[C]'):
-    def f(self, a: 'D') -> None: # E: Argument 1 of "f" incompatible with supertype "I"
-        pass
-    def g(self, a: 'C') -> None:
-        pass
-
-class I(metaclass=ABCMeta):
+class I(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
     @abstractmethod
     def g(self, a: T) -> None: pass
-
+class A(I[C]):
+    def f(self, a: 'D') -> None: pass \
+        # E: Argument 1 of "f" incompatible with supertype "I"
+    def g(self, a: 'C') -> None: pass
 class C: pass
 class D: pass
 [out]
