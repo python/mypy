@@ -403,56 +403,56 @@ NameExpr(6) : def () -> B
 -- -------------------
 
 
-[case testInheritedMethodReferenceWithGenericInheritance-skip]
+[case testInheritedMethodReferenceWithGenericInheritance]
 from typing import typevar, Generic
 T = typevar('T')
+class C: pass
 class A(Generic[T]):
   def f(self, a: T) -> None: pass
-class B('A[C]'):
-  def g(self, c: 'C') -> None:
+class B(A[C]):
+  def g(self, c: C) -> None:
     self.f(c)
-class C: pass
 [out]
-CallExpr(5) : void
-MemberExpr(5) : def [1:C] (a: C)
-NameExpr(5) : C
-NameExpr(5) : B
+CallExpr(8) : void
+MemberExpr(8) : def [1:C] (a: C)
+NameExpr(8) : C
+NameExpr(8) : B
 
-[case testInheritedMethodReferenceWithGenericSubclass-skip]
+[case testInheritedMethodReferenceWithGenericSubclass]
 from typing import typevar, Generic
 S = typevar('S')
 T = typevar('T')
-class A(Generic[S, T]):
-  def f(self, a: 'C') -> None: pass
-class B('A[C, T]', Generic[T]):
-  def g(self, c: 'C') -> None:
-    self.f(c)
 class C: pass
+class A(Generic[S, T]):
+  def f(self, a: C) -> None: pass
+class B(A[C, T], Generic[T]):
+  def g(self, c: C) -> None:
+    self.f(c)
 [out]
-CallExpr(5) : void
-MemberExpr(5) : def [1:C, 2:T`1] (a: C)
-NameExpr(5) : C
-NameExpr(5) : B[T`1]
+CallExpr(9) : void
+MemberExpr(9) : def [1:C, 2:T`1] (a: C)
+NameExpr(9) : C
+NameExpr(9) : B[T`1]
 
-[case testExternalReferenceWithGenericInheritance-skip]
+[case testExternalReferenceWithGenericInheritance]
 from typing import typevar, Generic, Undefined
 T = typevar('T')
+class C: pass
 class A(Generic[T]):
   def f(self, a: T) -> None: pass
-class B('A[C]'): pass
-class C: pass
+class B(A[C]): pass
 b = Undefined # type: B
 c = Undefined # type: C
 b.f(c)
 [out]
-CallExpr(7) : void
-MemberExpr(7) : def [1:C] (a: C)
-NameExpr(7) : B
-NameExpr(7) : C
+CallExpr(9) : void
+MemberExpr(9) : def [1:C] (a: C)
+NameExpr(9) : B
+NameExpr(9) : C
 
 
--- Implicit dynamic types
--- ----------------------
+-- Implicit Any types
+-- ------------------
 
 
 [case testDynamicallyTypedFunction-skip]
