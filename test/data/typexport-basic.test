@@ -19,19 +19,19 @@
 -- -----------
 
 
-[case testConstructorCall-skip]
+[case testConstructorCall]
 import typing
 A()
 B()
 class A: pass
 class B: pass
 [out]
-CallExpr(1) : A
-NameExpr(1) : def () -> A
-CallExpr(2) : B
-NameExpr(2) : def () -> B
+CallExpr(2) : A
+NameExpr(2) : def () -> A
+CallExpr(3) : B
+NameExpr(3) : def () -> B
 
-[case testLiterals-skip]
+[case testLiterals]
 import typing
 5
 2.3
@@ -39,10 +39,10 @@ import typing
 None
 [builtins fixtures/primitives.py]
 [out]
-IntExpr(1) : builtins.int
-FloatExpr(2) : builtins.float
-StrExpr(3) : builtins.str
-NameExpr(4) : 'None'
+IntExpr(2) : builtins.int
+FloatExpr(3) : builtins.float
+StrExpr(4) : builtins.str
+NameExpr(5) : 'None'
 
 [case testNameExpression-skip]
 from typing import Undefined

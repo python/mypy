@@ -9,7 +9,7 @@ from mypy import testconfig
 from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.util import short_type
-from mypy.nodes import NameExpr
+from mypy.nodes import NameExpr, TypeVarExpr, CallExpr
 from mypy.errors import CompileError
 
 
@@ -39,14 +39,16 @@ class TypeExportSuite(Suite):
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=testconfig.test_temp_dir)
             map = result.types
-            kk = map.keys()
+            nodes = map.keys()
             keys = []
-            for k in kk:
-                if k.line is not None and k.line != -1 and map[k]:
-                    if (re.match(mask, short_type(k))
-                            or (isinstance(k, NameExpr)
-                                and re.match(mask, k.name))):
-                        keys.append(k)
+            for node in nodes:
+                if node.line is not None and node.line != -1 and map[node]:
+                    if ignore_node(node):
+                        continue                    
+                    if (re.match(mask, short_type(node))
+                            or (isinstance(node, NameExpr)
+                                and re.match(mask, node.name))):
+                        keys.append(node)
             for key in sorted(keys,
                               key=lambda n: (n.line, short_type(n),
                                              str(n) + str(map[n]))):
@@ -59,6 +61,25 @@ class TypeExportSuite(Suite):
             testcase.output, a,
             'Invalid type checker output ({}, line {})'.format(testcase.file,
                                                                testcase.line))
+
+
+def ignore_node(node):
+    """Return True if node is to be omitted from test case output."""
+    # We want to get rid of object() expressions in the typing module stub
+    # and also typevar(...) expressions. Since detecting whether a node comes
+    # from the typing module is not easy, we just to strip them all away.
+    #
+    # Also strip away some lvalue name expressions.
+    if isinstance(node, TypeVarExpr):
+        return True
+    if isinstance(node, NameExpr) and (node.fullname == 'builtins.object' or
+                                       node.is_def):
+        return True
+    if isinstance(node, CallExpr) and (ignore_node(node.callee) or
+                                       node.analyzed):
+        return True
+    
+    return False
 
 
 if __name__ == '__main__':
