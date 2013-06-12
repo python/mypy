@@ -676,7 +676,7 @@ a = [] # type: Any
 [out]
 ListExpr(2) : builtins.list[Any]
 
-[case testHigherOrderFunction-skip]
+[case testHigherOrderFunction]
 from typing import typevar, Function, List
 t = typevar('t')
 s = typevar('s')
@@ -684,17 +684,17 @@ map(
     f, 
     [A()])
 def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
-def f(a: 'A') -> 'B': pass
 class A: pass
 class B: pass
+def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list[B]
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
-NameExpr(2) : def (A a) -> B
-CallExpr(3) : A
-ListExpr(3) : builtins.list[A]
-NameExpr(3) : def () -> A
+CallExpr(4) : builtins.list[B]
+NameExpr(4) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+NameExpr(5) : def (a: A) -> B
+CallExpr(6) : A
+ListExpr(6) : builtins.list[A]
+NameExpr(6) : def () -> A
 
 
 -- Lambdas
@@ -749,7 +749,7 @@ CallExpr(1) : builtins.list[B]
 NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
 CallExpr(2) : B
 FuncExpr(2) : def (A) -> B
-NameExpr(2) : def (A a) -> B
+NameExpr(2) : def (a: A) -> B
 NameExpr(2) : A
 ListExpr(3) : builtins.list[A]
 
@@ -769,7 +769,7 @@ class B: pass
 NameExpr(2) : def [-1:A, -2:B] (def (A) -> builtins.list[B] f, builtins.list[A] a) -> builtins.list[B]
 FuncExpr(3) : def (A) -> builtins.list[B]
 ListExpr(3) : builtins.list[B]
-NameExpr(3) : def (A a) -> B
+NameExpr(3) : def (a: A) -> B
 NameExpr(3) : A
 ListExpr(4) : builtins.list[A]
 
