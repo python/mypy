@@ -334,9 +334,8 @@ main: In member "g" of class "A":
 -- --------------------------------------------
 
 
-[case testSubtypingWithGenericTypeSubclassingGenericAbstractClass-skip]
-from typing import Undefined, typevar, Generic
-from abc import abstractmethod, ABCMeta
+[case testSubtypingWithGenericTypeSubclassingGenericAbstractClass]
+from typing import Undefined, typevar, Generic, AbstractGeneric
 T = typevar('T')
 S = typevar('S')
 acd = Undefined # type: A[C, D]
@@ -351,8 +350,8 @@ adc = ic # E: Incompatible types in assignment
 ic = adc
 id = acd
 
-class A('I[S]', Generic[T, S]): pass
-class I(metaclass=ABCMeta): pass
+class I(AbstractGeneric[T]): pass
+class A(I[S], AbstractGeneric[T, S]): pass
 class C: pass
 class D: pass
 
