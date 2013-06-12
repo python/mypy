@@ -944,7 +944,9 @@ class ExpressionChecker:
                 # Form 'lambda: e'; just use the inferred return type.
                 return Callable([], [], [], ret_type, is_type_obj=False)
             else:
-                # TODO report error
+                # TODO: Consider reporting an error. However, this is fine if
+                # we are just doing the first pass in contextual type
+                # inference.
                 return Any()
         else:
             # Type context available.
