@@ -355,16 +355,13 @@ class A(I[S], AbstractGeneric[T, S]): pass
 class C: pass
 class D: pass
 
-[case testIncludingBaseClassTwice-skip]
-from typing import typevar
-from abc import abstractmethod, ABCMeta
+[case testIncludingBaseClassTwice]
+from typing import typevar, AbstractGeneric
 t = typevar('t')
-class A('I[C]', 'I[object]'): pass # Fail
-class I(metaclass=ABCMeta): pass
+class I(AbstractGeneric[T]): pass
+class A(I[C], I[object]): pass # E: Duplicate base class "I"
 class C: pass
 [out]
-main: In class "A":
-main, line 4: Class "A" implements interface "I" more than once
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance-skip]
 from typing import Undefined, typevar

@@ -17,7 +17,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    ARG_POS
+    ARG_POS, MroError
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -325,10 +325,15 @@ class SemanticAnalyzer(NodeVisitor):
             defn.base_types.insert(0, obj)
             bases.append(obj)
         defn.info.bases = bases
-        self.verify_base_classes(defn)
-        defn.info.calculate_mro()
+        if not self.verify_base_classes(defn):
+            return
+        try:
+            defn.info.calculate_mro()
+        except MroError:
+            self.fail("Cannot determine consistent method resolution order "
+                      '(MRO) for "%s"' % defn.name, defn)
 
-    void verify_base_classes(self, TypeDef defn):
+    bool verify_base_classes(self, TypeDef defn):
         base_classes = <str> []
         info = defn.info
         for base in info.bases:
@@ -342,6 +347,12 @@ class SemanticAnalyzer(NodeVisitor):
                                        'builtins.float']:
                 self.fail("'%s' is not a valid base class" %
                           baseinfo.name(), defn)
+                return False
+        dup = find_duplicate(info.direct_base_classes())
+        if dup:
+            self.fail('Duplicate base class "%s"' % dup.name(), defn)
+            return False
+        return True
 
     bool is_base_class(self, TypeInfo t, TypeInfo s):
         """Determine if t is a base class of s (but do not use mro)."""
@@ -1302,3 +1313,14 @@ str[] find_type_variables_in_type(Type type, SymbolTable globals):
     else:
         assert False, 'Unsupported type %s' % type
     return result
+
+
+T find_duplicate<T>(T[] list):
+    """If the list has duplicates, return one of the duplicates.
+
+    Otherwise, return None.
+    """
+    for i in range(1, len(list)):
+        if list[i] in list[:i]:
+            return list[i]
+    return None

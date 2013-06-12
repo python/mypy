@@ -1220,6 +1220,10 @@ class TypeInfo(SymbolNode):
         return None
 
     void calculate_mro(self):
+        """Calculate and set mro (method resolution order).
+
+        Raise MroError if cannot determine mro.
+        """
         self.mro = linearize_hierarchy(self)
     
     bool has_base(self, str fullname):
@@ -1384,6 +1388,10 @@ mypy.types.Callable method_callable(mypy.types.Callable c):
                            c.bound_vars)
 
 
+class MroError(Exception):
+    """Raised if a consistent mro cannot be determined for a class."""
+
+
 TypeInfo[] linearize_hierarchy(TypeInfo info):
     if info.mro:
         return info.mro
@@ -1404,7 +1412,7 @@ TypeInfo[] merge(TypeInfo[][] seqs):
             if not [s for s in seqs if head in s[1:]]:
                 break
         else:
-            raise ValueError()
+            raise MroError()
         result.append(head)
         for s in seqs:
             if s[0] == head:

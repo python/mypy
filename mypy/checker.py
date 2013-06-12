@@ -305,7 +305,6 @@ class TypeChecker(NodeVisitor<Type>):
         """Type check a type definition (class or interface)."""
         typ = defn.info
         self.errors.push_type(defn.name, defn.is_interface)
-        self.check_duplicate_base_classes(typ)
         self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.errors.pop_type()
@@ -317,32 +316,6 @@ class TypeChecker(NodeVisitor<Type>):
         if ctor is None:
             return
         self.msg.interface_has_constructor(ctor)
-    
-    void check_duplicate_base_classes(self, TypeInfo typ):
-        """Check that a base is class is not duplicated.
-
-        For example, reject class X(Y, Y).
-        """
-        # TODO fix this
-        #ifaces = typ.interfaces[:]
-        #
-        #dup = find_duplicate(ifaces)
-        #if dup:
-        #    self.msg.duplicate_interfaces(typ, dup)
-        #    return 
-        #
-        #base = typ.base
-        #while base:
-        #    # Avoid duplicate error messages.
-        #    if find_duplicate(base.interfaces):
-        #        return 
-        #    
-        #    ifaces.extend(base.interfaces)
-        #    dup = find_duplicate(ifaces)
-        #    if dup:
-        #        self.msg.duplicate_interfaces(typ, dup)
-        #        return 
-        #    base = base.base
     
     #
     # Statements
@@ -1084,15 +1057,3 @@ Type get_undefined_tuple(Node rvalue):
         else:
             return TupleType([Any()] * len(tuple_expr.items))
     return None
-
-
-T find_duplicate<T>(T[] list):
-    """If the list has duplicates, return one of the duplicates.
-
-    Otherwise, return None.
-    """
-    for i in range(1, len(list)):
-        if list[i] in list[:i]:
-            return list[i]
-    return None
-    

@@ -464,10 +464,6 @@ class MessageBuilder:
         self.fail('"{}" has incomplete match to supertype type variable'
                   .format(member), context)
     
-    void duplicate_interfaces(self, TypeInfo typ, TypeInfo iface):
-        self.fail('Class "{}" implements interface "{}" more than once'
-                  .format(typ.name(), iface.name()), typ)
-    
     Type not_implemented(self, str msg, Context context):
         self.fail('Feature not implemented yet ({})'.format(msg), context)
         return Any()

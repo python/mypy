@@ -369,3 +369,11 @@ class E(A, B):
 C() # E: Cannot instantiate abstract class 'C' with abstract method 'g'
 D() # E: Cannot instantiate abstract class 'D' with abstract method 'f'
 E()
+
+[case testInconsistentMro]
+from abc import abstractmethod, ABCMeta
+import typing
+
+class A(metaclass=ABCMeta): pass
+class B(object, A): pass \
+      # E: Cannot determine consistent method resolution order (MRO) for "B"
