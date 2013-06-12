@@ -514,9 +514,9 @@ class A(I):
 class C: pass
 class D: pass
 
-[case testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy-skip]
-from typing import Undefined, Any, typevar
-from abc import abstractmethod, ABCMeta
+[case testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy]
+from typing import Undefined, Any, typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: Any
 ic = Undefined # type: I[C]
@@ -525,22 +525,19 @@ id = Undefined # type: I[D]
 ic = a
 id = a
 
-class A('B'):
-    def f(self, a: 'C', b: 'D') -> None: pass
-
-class B('I'):
-    def f(self, a, b): pass
-
-class I(metaclass=ABCMeta):
+class I(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
-
+class B(I):
+    def f(self, a, b): pass
+class A(B):
+    def f(self, a: 'C', b: 'D') -> None: pass
 class C: pass
 class D: pass
 
-[case testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2-skip]
-from typing import Undefined, Any, typevar
-from abc import abstractmethod, ABCMeta
+[case testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2]
+from typing import Undefined, Any, typevar, AbstractGeneric
+from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: Any
 jc = Undefined # type: J[C]
@@ -549,16 +546,14 @@ jd = Undefined # type: J[D]
 jc = a
 jd = a
 
-class A('I'):
-    def f(self, a: 'C', b: 'D') -> None: pass
-
-class I('J'):
-    @abstractmethod
-    def f(self, a, b): pass
-
-class J(metaclass=ABCMeta):
+class J(AbstractGeneric[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
+class I(J):
+    @abstractmethod
+    def f(self, a, b): pass
+class A(I):
+    def f(self, a: 'C', b: 'D') -> None: pass
 
 class C: pass
 class D: pass
