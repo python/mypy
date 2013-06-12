@@ -388,49 +388,17 @@ class E: pass
 [out]
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
-from typing import typevar, Generic
-from abc import abstractmethod, ABCMeta
+from typing import typevar, AbstractGeneric
 T = typevar('T')
-S = typevar('S')
-class A('B[S]', Generic[T, S]): pass
-class B('I[T]', 'I[D]', Generic[T]): pass # Fail
-class I(metaclass=ABCMeta): pass
-class C: pass
-class D: pass
-[out]
-main: In class "B":
-main, line 6: Class "B" implements interface "I" more than once
-
-[case testSubtypingWithTypeImplementingGenericABCViaInheritance3-skip]
-from typing import typevar, Generic
-from abc import abstractmethod, ABCMeta
-T = typevar('T')
-U = typevar('U')
-V = typevar('V')
-class A('I[C]', 'I[D]'): pass # Fail
-class I('J[E, T]', Generic[T]): pass
-class J(metaclass=ABCMeta): pass
-
-class C: pass
-class D: pass
-class E: pass
-[out]
-main: In class "A":
-main, line 6: Class "A" implements interface "I" more than once
-
-[case testSubtypingWithTypeImplementingGenericABCViaInheritance4-skip]
-from typing import typevar
-from abc import abstractmethod, ABCMeta
-T = typevar('T')
-class A('I[C]'): pass
-class B(A, 'I[D]'): pass # Fail
-class I(metaclass=ABCMeta): pass
+class I(AbstractGeneric[T]): pass
+class A(I[C]): pass
+class B(A, I[D]): pass # Fail
 
 class C: pass
 class D: pass
 [out]
 main: In class "B":
-main, line 5: Class "B" implements interface "I" more than once
+main, line 5: Class "B" has base "I" duplicated inconsistently
 
 [case testSubtypingAndABCExtension-skip]
 from typing import Undefined, typevar, Generic
