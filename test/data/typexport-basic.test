@@ -244,23 +244,24 @@ x = 1
 IntExpr(2) : builtins.int
 NameExpr(2) : builtins.int
 
-[case testInferTwoTypes-skip]
+[case testInferTwoTypes]
 ## NameExpr
 import typing
-s, i = 'x', 1
+(s, 
+i) = 'x', 1
 [builtins fixtures/primitives.py]
 [out]
-NameExpr(2) : builtins.str
-NameExpr(3) : builtins.int
+NameExpr(3) : builtins.str
+NameExpr(4) : builtins.int
 
-[case testInferSingleLocalVarType-skip]
+[case testInferSingleLocalVarType]
 import typing
 def f() -> None:
     x = 1
 [builtins fixtures/primitives.py]
 [out]
-IntExpr(2) : builtins.int
-NameExpr(2) : builtins.int
+IntExpr(3) : builtins.int
+NameExpr(3) : builtins.int
 
 
 -- Basic generics
