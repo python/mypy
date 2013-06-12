@@ -7,9 +7,11 @@
 
 
 [case testSubtypingAndInheritingNonGenericTypeFromGenericType]
-A<C> ac
-A<D> ad
-B b
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+ac = Undefined # type: A[C]
+ad = Undefined # type: A[D]
+b = Undefined # type: B
 
 b = ad # E: Incompatible types in assignment
 ad = b # E: Incompatible types in assignment
@@ -18,15 +20,17 @@ b = ac # E: Incompatible types in assignment
 b = b
 ac = b
 
-class A<T>: pass
-class B(A<C>): pass
 class C: pass
+class A(Generic[T]): pass
+class B(A[C]): pass
 class D: pass
 
 [case testSubtypingAndInheritingGenericTypeFromNonGenericType]
-A a
-B<C> bc
-B<D> bd
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+a = Undefined # type: A
+bc = Undefined # type: B[C]
+bd = Undefined # type: B[D]
 
 bc = bd # E: Incompatible types in assignment
 bd = bc # E: Incompatible types in assignment
@@ -37,15 +41,18 @@ a = bc
 a = bd
 
 class A: pass
-class B<T>(A): pass
+class B(A, Generic[T]): pass
 class C: pass
 class D: pass
 
 [case testSubtypingAndInheritingGenericTypeFromGenericType]
-A<C> ac
-A<D> ad
-B<C, C> bcc
-B<D, C> bdc
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+S = typevar('S')
+ac = Undefined # type: A[C]
+ad = Undefined # type: A[D]
+bcc = Undefined # type: B[C, C]
+bdc = Undefined # type: B[D, C]
 
 ad = bcc # E: Incompatible types in assignment
 ad = bdc # E: Incompatible types in assignment
@@ -57,18 +64,23 @@ bdc = bdc
 ac = bcc
 ac = bdc
 
-class A<T>: pass
-class B<T, S>(A<S>): pass
+class A(Generic[T]): pass
+class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
 
 [case testSubtypingAndInheritingGenericTypeFromGenericTypeAcrossHierarchy]
-A<A<E>> ae
-A<A<F>> af
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+S = typevar('S')
+X = typevar('X')
+Y = typevar('Y')
+ae = Undefined # type: A[A[E]]
+af = Undefined # type: A[A[F]]
 
-C<E, F> cef
-C<F, F> cff
-C<F, E> cfe
+cef = Undefined # type: C[E, F]
+cff = Undefined # type: C[F, F]
+cfe = Undefined # type: C[F, E]
 
 ae = cef # E: Incompatible types in assignment
 af = cfe # E: Incompatible types in assignment
@@ -77,9 +89,9 @@ ae = cfe
 af = cef
 af = cff
 
-class A<T>: pass
-class B<T, S>(A<S>): pass
-class C<X, Y>(B<A<X>, A<Y>>): pass
+class A(Generic[T]): pass
+class B(A[S], Generic[T, S]): pass
+class C(B[A[X], A[Y]], Generic[X, Y]): pass
 class E: pass
 class F: pass
 
@@ -89,44 +101,52 @@ class F: pass
 
 
 [case testAccessingMethodInheritedFromGenericType]
-B<C, D> b
-C c, D d
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+S = typevar('S')
+b = Undefined # type: B[C, D]
+c, d = Undefined, Undefined # type: (C, D)
 
 b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
 b.f(d)
 
-class A<T>:
-    void f(self, T a):
+class A(Generic[T]):
+    def f(self, a: T) -> None:
         pass
-class B<T, S>(A<S>): pass
+class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
 
 [case testAccessingMethodInheritedFromGenericTypeInNonGenericType]
-B b, C c, D d
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+b, c, d = Undefined, Undefined, Undefined # type: (B, C, D)
 
 b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
 b.f(d)
 
-class A<T>:
-    void f(self, T a):
-        pass
-class B(A<D>): pass
 class C: pass
 class D: pass
+class A(Generic[T]):
+    def f(self, a: T) -> None:
+        pass
+class B(A[D]): pass
 
 [case testAccessingMemberVarInheritedFromGenericType]
-class A<T>:
-    void __init__(self, T a):
+from typing import typevar, Generic, Undefined
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T]):
+    def __init__(self, a: T) -> None:
         self.a = a
         
-B<C, D> b
-C c, D d
+b = Undefined # type: B[C, D]
+c, d = Undefined, Undefined # type: (C, D)
 
 b.a = c # E: Incompatible types in assignment
 b.a = d
 
-class B<T, S>(A<S>): pass
+class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
 
@@ -136,68 +156,75 @@ class D: pass
 
 
 [case testOverridingMethodInSimpleTypeInheritingGenericType]
-class A(B<C>):
-    void f(self, D a): # E: Argument 1 of "f" incompatible with supertype "B"
-        pass
-    void g(self, C a):
-        pass
-
-class B<T>:
-    void f(self, T a):
-        pass
-    void g(self, T a):
-        pass
-
+from typing import typevar, Generic
+T = typevar('T')
+class B(Generic[T]):
+    def f(self, a: T) -> None: pass
+    def g(self, a: T) -> None: pass
 class C: pass
 class D: pass
+class A(B[C]):
+    def f(self, a: D) -> None: pass \
+        # E: Argument 1 of "f" incompatible with supertype "B"
+    def g(self, a: C) -> None: pass
 [out]
 main: In class "A":
 
-[case testOverridingMethodInGenericTypeInheritingSimpleType]
-class A<T>(B):
-    void f(self, T a): # E: Argument 1 of "f" incompatible with supertype "B"
+[case testOverridingMethodInGenericTypeInheritingSimpleType-skip]
+from typing import typevar, Generic
+T = typevar('T')
+class A('B', Generic[T]):
+    def f(self, a: T) -> None: # E: Argument 1 of "f" incompatible with supertype "B"
         pass
-    void g(self, C a):
+    def g(self, a: 'C') -> None:
         pass
 
 class B:
-    void f(self, C a):
+    def f(self, a: 'C') -> None:
         pass
-    void g(self, C a):
+    def g(self, a: 'C') -> None:
         pass
 
 class C: pass
 [out]
 main: In class "A":
 
-[case testOverridingMethodInGenericTypeInheritingGenericType]
-class A<T, S>(B<S>):
-    void f(self, T a): # E: Argument 1 of "f" incompatible with supertype "B"
+[case testOverridingMethodInGenericTypeInheritingGenericType-skip]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A('B[S]', Generic[T, S]):
+    def f(self, a: T) -> None: # E: Argument 1 of "f" incompatible with supertype "B"
         pass
-    void g(self, S a):
+    def g(self, a: S) -> None:
         pass
 
-class B<T>:
-    void f(self, T a):
+class B(Generic[T]):
+    def f(self, a: T) -> None:
         pass
-    void g(self, T a):
+    def g(self, a: T) -> None:
         pass
 [out]
 main: In class "A":
 
-[case testOverridingMethodInMultilevelHierarchyOfGenericTypes]
-class A<T, S>(B<S>):
-    void f(self, T a): # E: Argument 1 of "f" incompatible with supertype "C"
+[case testOverridingMethodInMultilevelHierarchyOfGenericTypes-skip]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+U = typevar('U')
+V = typevar('V')
+class A('B[S]', Generic[T, S]):
+    def f(self, a: T) -> None: # E: Argument 1 of "f" incompatible with supertype "C"
         pass
-    void g(self, S a):
+    def g(self, a: S) -> None:
         pass
 
-class B<T>(C<D, D, T>): pass
+class B('C[D, D, T]', Generic[T]): pass
 
-class C<T, U, V>:
-    void f(self, V a):
+class C(Generic[T, U, V]):
+    def f(self, a: V) -> None:
         pass
-    void g(self, V a):
+    def g(self, a: V) -> None:
         pass
 
 class D: pass
@@ -209,74 +236,82 @@ main: In class "A":
 -- --------------------------------------------------------------
 
 
-[case testInheritanceFromGenericWithImplicitDynamicAndSubtyping]
-A a
-B<C> bc
-B<D> bd
+[case testInheritanceFromGenericWithImplicitDynamicAndSubtyping-skip]
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+a = Undefined # type: A
+bc = Undefined # type: B[C]
+bd = Undefined # type: B[D]
 
 a = bc # E: Incompatible types in assignment
 
 bc = a
 bd = a
 
-class A(B): pass
-class B<T>: pass
+class A('B'): pass
+class B(Generic[T]): pass
 class C: pass
 class D: pass
 [out]
 
-[case testInheritanceFromGenericWithImplicitDynamicAndExternalAccess]
-A a
-C c
-B<C> bc
+[case testInheritanceFromGenericWithImplicitDynamicAndExternalAccess-skip]
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+a = Undefined # type: A
+c = Undefined # type: C
+bc = Undefined # type: B[C]
 
 a.x = c # E: Incompatible types in assignment
 a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
 a.x = bc
 a.f(bc)
 
-class A(B): pass
-class B<T>:
-    B<T> x
-    void f(self, B<T> a):
+class A('B'): pass
+class B(Generic[T]):
+    x = Undefined # type: B[T]
+    def f(self, a: 'B[T]') -> None:
         pass
     
-    void __init__(self, B<T> x):
+    def __init__(self, x: 'B[T]') -> None:
         self.x = x
 
 class C: pass
 [out]
 
-[case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess]
-A a
-C c
-B<C> bc
+[case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess-skip]
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+a = Undefined # type: A
+c = Undefined # type: C
+bc = Undefined # type: B[C]
 
-class A(B):
-  void g(self):
+class A('B'):
+  def g(self) -> None:
     self.x = c # E: Incompatible types in assignment
     self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
     self.x = bc
     self.f(bc)
 
-class B<T>:
-  B<T> x
-  void f(self, B<T> a):
+class B(Generic[T]):
+  x = Undefined # type: B[T]
+  def f(self, a: 'B[T]') -> None:
     pass
-  void __init__(self, B<T> x):
+  def __init__(self, x: 'B[T]') -> None:
     self.x = x
     
 class C: pass
 [out]
 main: In member "g" of class "A":
 
-[case testInheritanceFromGenericWithImplicitDynamicAndOverriding]
-class A(B):
+[case testInheritanceFromGenericWithImplicitDynamicAndOverriding-skip]
+from typing import typevar, Generic, Tuple
+T = typevar('T')
+class A('B'):
     def f(self, a, b):
         pass
 
-class B<T>:
-    void f(self, T a, tuple<T, B<T>> b):
+class B(Generic[T]):
+    def f(self, a: T, b: 'Tuple[T, B[T]]') -> None:
         pass
 [builtins fixtures/tuple.py]
 [out]
@@ -286,28 +321,36 @@ class B<T>:
 -- ----------------------------------------------------
 
 
-[case testSuperExpressionsWhenInheritingFromGenericType]
-class A<T, S>(B<S>):
-    void g(self, T t, S s):
+[case testSuperExpressionsWhenInheritingFromGenericType-skip]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A('B[S]', Generic[T, S]):
+    def g(self, t: T, s: S) -> None:
         super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"
         super().f(s)
 
-class B<T>:
-    void f(self, T a):
+class B(Generic[T]):
+    def f(self, a: T) -> None:
         pass
 [out]
 main: In member "g" of class "A":
 
-[case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy]
-class A<T, S>(B<S>):
-    void g(self, T t, S s):
+[case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy-skip]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+U = typevar('U')
+V = typevar('V')
+class A('B[S]', Generic[T, S]):
+    def g(self, t: T, s: S) -> None:
         super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"
         super().f(s)
 
-class B<T>(C<D, D, T>): pass
+class B('C[D, D, T]', Generic[T]): pass
 
-class C<T, U, V>:
-    void f(self, V a):
+class C(Generic[T, U, V]):
+    def f(self, a: V) -> None:
         pass
 
 class D: pass
@@ -319,11 +362,15 @@ main: In member "g" of class "A":
 -- ----------------------------------
 
 
-[case testSubtypingWithGenericTypeImplementingGenericInterface]
-A<C, D> acd
-A<D, C> adc
-I<C> ic
-I<D> id
+[case testSubtypingWithGenericTypeImplementingGenericInterface-skip]
+from typing import Undefined, typevar, Generic
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+S = typevar('S')
+acd = Undefined # type: A[C, D]
+adc = Undefined # type: A[D, C]
+ic = Undefined # type: I[C]
+id = Undefined # type: I[D]
 
 ic = acd # E: Incompatible types in assignment
 id = adc # E: Incompatible types in assignment
@@ -332,26 +379,32 @@ adc = ic # E: Incompatible types in assignment
 ic = adc
 id = acd
 
-class A<T, S>(I<S>): pass
-interface I<S>: pass
+class A('I[S]', Generic[T, S]): pass
+class I(metaclass=ABCMeta): pass
 class C: pass
 class D: pass
 
-[case testImplementingInterfaceTwice]
-class A(I<C>, I<object>): pass # Fail
-interface I<t>: pass
+[case testImplementingInterfaceTwice-skip]
+from typing import typevar
+from abc import abstractmethod, ABCMeta
+t = typevar('t')
+class A('I[C]', 'I[object]'): pass # Fail
+class I(metaclass=ABCMeta): pass
 class C: pass
 [out]
 main: In class "A":
-main, line 1: Class "A" implements interface "I" more than once
+main, line 4: Class "A" implements interface "I" more than once
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance]
-A a, B b
-I<C> ic, I<D> id, I<E> ie
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance-skip]
+from typing import Undefined, typevar
+from abc import abstractmethod, ABCMeta
+S = typevar('S')
+a, b = Undefined, Undefined # type: (A, B)
+ic, id, ie = Undefined, Undefined, Undefined # type: (I[C], I[D], I[E])
 
-class A(B): pass
-class B(I<C>, I<D>): pass # Fail
-interface I<S>: pass
+class A('B'): pass
+class B('I[C]', 'I[D]'): pass # Fail
+class I(metaclass=ABCMeta): pass
 
 ie = a # E: Incompatible types in assignment
 a = ic # E: Incompatible types in assignment
@@ -367,70 +420,90 @@ class D: pass
 class E: pass
 [out]
 main: In class "B":
-main, line 5: Class "B" implements interface "I" more than once
+main, line 8: Class "B" implements interface "I" more than once
 main: At top level:
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance2]
-class A<T, S>(B<S>): pass
-class B<T>(I<T>, I<D>): pass # Fail
-interface I<S>: pass
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance2-skip]
+from typing import typevar, Generic
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+S = typevar('S')
+class A('B[S]', Generic[T, S]): pass
+class B('I[T]', 'I[D]', Generic[T]): pass # Fail
+class I(metaclass=ABCMeta): pass
 class C: pass
 class D: pass
 [out]
 main: In class "B":
-main, line 2: Class "B" implements interface "I" more than once
+main, line 6: Class "B" implements interface "I" more than once
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance3]
-class A(I<C>, I<D>): pass # Fail
-interface I<T>(J<E, T>): pass
-interface J<U, V>: pass
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance3-skip]
+from typing import typevar, Generic
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+U = typevar('U')
+V = typevar('V')
+class A('I[C]', 'I[D]'): pass # Fail
+class I('J[E, T]', Generic[T]): pass
+class J(metaclass=ABCMeta): pass
 
 class C: pass
 class D: pass
 class E: pass
 [out]
 main: In class "A":
-main, line 1: Class "A" implements interface "I" more than once
+main, line 6: Class "A" implements interface "I" more than once
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance4]
-class A(I<C>): pass
-class B(A, I<D>): pass # Fail
-interface I<T>: pass
+[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance4-skip]
+from typing import typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+class A('I[C]'): pass
+class B(A, 'I[D]'): pass # Fail
+class I(metaclass=ABCMeta): pass
 
 class C: pass
 class D: pass
 [out]
 main: In class "B":
-main, line 2: Class "B" implements interface "I" more than once
+main, line 5: Class "B" implements interface "I" more than once
 
-[case testSubtypingAndInterfaceExtension]
-A<object> a, I<object> i, J<object> j
+[case testSubtypingAndInterfaceExtension-skip]
+from typing import Undefined, typevar, Generic
+from abc import abstractmethod, ABCMeta
+t = typevar('t')
+a, i, j = Undefined, Undefined, Undefined # type: (A[object], I[object], J[object])
 i = a
 j = a
 j = i
 a = i # E: Incompatible types in assignment
 a = j # E: Incompatible types in assignment
 
-class A<t>(I<t>): pass
-interface I<t>(X, J<t>): pass
-interface J<t>: pass
-interface X: pass
+class A('I[t]', Generic[t]): pass
+class I('X', 'J[t]', Generic[t]): pass
+class J(metaclass=ABCMeta): pass
+class X(metaclass=ABCMeta): pass
 
 
 -- Implementing a generic interface
 -- --------------------------------
 
 
-[case testImplementingGenericInterface1]
-class A(I<C>):
-    void f(self, D a): # E: Argument 1 of "f" incompatible with supertype "I"
+[case testImplementingGenericInterface1-skip]
+from typing import typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+class A('I[C]'):
+    def f(self, a: 'D') -> None: # E: Argument 1 of "f" incompatible with supertype "I"
         pass
-    void g(self, C a):
+    def g(self, a: 'C') -> None:
         pass
 
-interface I<T>:
-    void f(self, T a)
-    void g(self, T a)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T) -> None: pass
+    @abstractmethod
+    def g(self, a: T) -> None: pass
 
 class C: pass
 class D: pass
@@ -442,39 +515,48 @@ main: In class "A":
 -- ---------------------------------------------------------
 
 
-[case testImplementingGenenericInterfaceWithDeepHierarchy]
-A a
-I<C> ic, I<D> id
+[case testImplementingGenenericInterfaceWithDeepHierarchy-skip]
+from typing import Undefined, Any, typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+a = Undefined # type: A
+ic, id = Undefined, Undefined # type: (I[C], I[D])
 
-class A(B):
-    void g(self, C a, C b): pass # Fail
-    void f(self, C a, C b): pass
+class A('B'):
+    def g(self, a: 'C', b: 'C') -> None: pass # Fail
+    def f(self, a: 'C', b: 'C') -> None: pass
 
 id = a # E: Incompatible types in assignment
 ic = a
 
-class B(I<C>):
-    void f(self, C a, C b): pass
-    void g(self, C a, any b): pass
-interface I<T>:
-    void f(self, T a, T b)
-    void g(self, T a, D b)
+class B('I[C]'):
+    def f(self, a: 'C', b: 'C') -> None: pass
+    def g(self, a: 'C', b: Any) -> None: pass
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T, b: T) -> None: pass
+    @abstractmethod
+    def g(self, a: T, b: 'D') -> None: pass
 class C: pass
 class D: pass
 [out]
 main: In class "A":
-main, line 5: Argument 2 of "g" incompatible with supertype "I"
+main, line 8: Argument 2 of "g" incompatible with supertype "I"
 main: At top level:
 
-[case testImplementingGenenericInterfaceWithDeepHierarchy2]
-class A(B):
-    void f(self, C a, D b): # E: Argument 2 of "f" incompatible with supertype "I"
+[case testImplementingGenenericInterfaceWithDeepHierarchy2-skip]
+from typing import Any, typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+class A('B'):
+    def f(self, a: 'C', b: 'D') -> None: # E: Argument 2 of "f" incompatible with supertype "I"
         pass
 
-class B(I<C>):
-    void f(self, C a, any b): pass
-interface I<T>:
-    void f(self, T a, T b)
+class B('I[C]'):
+    def f(self, a: 'C', b: Any) -> None: pass
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T, b: T) -> None: pass
 class C: pass
 class D: pass
 [out]
@@ -485,59 +567,72 @@ main: In class "A":
 -- ----------------------------------------------------------
 
 
-[case testImplementingGenericInterfaceWithImplicitDynamic]
-any a
-I<C> ic
-I<D> id
+[case testImplementingGenericInterfaceWithImplicitDynamic-skip]
+from typing import Undefined, Any, typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+a = Undefined # type: Any
+ic = Undefined # type: I[C]
+id = Undefined # type: I[D]
 
 ic = a
 id = a
 
-class A(I):
+class A('I'):
     def f(self, a): pass
 
-interface I<T>:
-    void f(self, T a)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T) -> None: pass
 
 class C: pass
 class D: pass
 
-[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy]
-any a
-I<C> ic
-I<D> id
+[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy-skip]
+from typing import Undefined, Any, typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+a = Undefined # type: Any
+ic = Undefined # type: I[C]
+id = Undefined # type: I[D]
 
 ic = a
 id = a
 
-class A(B):
-    void f(self, C a, D b): pass
+class A('B'):
+    def f(self, a: 'C', b: 'D') -> None: pass
 
-class B(I):
+class B('I'):
     def f(self, a, b): pass
 
-interface I<T>:
-    void f(self, T a, T b)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T, b: T) -> None: pass
 
 class C: pass
 class D: pass
 
-[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy2]
-any a
-J<C> jc
-J<D> jd
+[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy2-skip]
+from typing import Undefined, Any, typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+a = Undefined # type: Any
+jc = Undefined # type: J[C]
+jd = Undefined # type: J[D]
 
 jc = a
 jd = a
 
-class A(I):
-    void f(self, C a, D b): pass
+class A('I'):
+    def f(self, a: 'C', b: 'D') -> None: pass
 
-interface I(J):
-    def f(self, a, b)
+class I('J'):
+    @abstractmethod
+    def f(self, a, b): pass
 
-interface J<T>:
-    void f(self, T a, T b)
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T, b: T) -> None: pass
 
 class C: pass
 class D: pass
@@ -547,31 +642,39 @@ class D: pass
 -- -----------------------------------
 
 
-[case testAccessingGenericInterfaceMembers]
-A a, B b
-I<A> ia
+[case testAccessingGenericInterfaceMembers-skip]
+from typing import Undefined, typevar
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+a, b = Undefined, Undefined # type: (A, B)
+ia = Undefined # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"
 ia.f(a)
 
-interface I<T>:
-    void f(self, T a)
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T) -> None: pass
 
 class A: pass
 class B: pass
 [out]
 
-[case testAccessingInheritedInterfaceMembers]
-A a, B b
-I<A> ia
+[case testAccessingInheritedInterfaceMembers-skip]
+from typing import Undefined, typevar, Generic
+from abc import abstractmethod, ABCMeta
+T = typevar('T')
+a, b = Undefined, Undefined # type: (A, B)
+ia = Undefined # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"
 ia.f(a)
 
-interface I<T>(J<T>): pass
+class I('J[T]', Generic[T]): pass
 
-interface J<T>:
-    void f(self, T a)
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: T) -> None: pass
 
 class A: pass
 class B: pass

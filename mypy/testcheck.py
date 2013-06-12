@@ -29,7 +29,7 @@ files = [
     'check-abstract.test',
     'check-super.test',
     'check-modules.test',
-    #'check-generic-subtyping.test',
+    'check-generic-subtyping.test',
     'check-unsupported.test',
 ]
 
