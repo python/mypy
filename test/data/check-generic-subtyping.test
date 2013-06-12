@@ -222,7 +222,7 @@ main: In class "A":
 -- --------------------------------------------------------------
 
 
-[case testInheritanceFromGenericWithImplicitDynamicAndSubtyping-skip]
+[case testInheritanceFromGenericWithImplicitDynamicAndSubtyping]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
 a = Undefined # type: A
@@ -230,19 +230,26 @@ bc = Undefined # type: B[C]
 bd = Undefined # type: B[D]
 
 a = bc # E: Incompatible types in assignment
-
 bc = a
 bd = a
 
-class A('B'): pass
 class B(Generic[T]): pass
+class A(B): pass
 class C: pass
 class D: pass
 [out]
 
-[case testInheritanceFromGenericWithImplicitDynamicAndExternalAccess-skip]
+[case testInheritanceFromGenericWithImplicitDynamicAndExternalAccess]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
+
+class B(Generic[T]):
+    def f(self, a: 'B[T]') -> None: pass
+    def __init__(self, x: 'B[T]') -> None:
+        self.x = x
+class A(B): pass
+class C: pass
+
 a = Undefined # type: A
 c = Undefined # type: C
 bc = Undefined # type: B[C]
@@ -251,17 +258,6 @@ a.x = c # E: Incompatible types in assignment
 a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
 a.x = bc
 a.f(bc)
-
-class A('B'): pass
-class B(Generic[T]):
-    x = Undefined # type: B[T]
-    def f(self, a: 'B[T]') -> None:
-        pass
-    
-    def __init__(self, x: 'B[T]') -> None:
-        self.x = x
-
-class C: pass
 [out]
 
 [case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess-skip]
