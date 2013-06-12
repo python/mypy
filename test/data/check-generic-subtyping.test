@@ -1,5 +1,5 @@
--- Test cases for the type checker related to subtyping (inheritance and
--- interfaces) with generics.
+-- Test cases for the type checker related to subtyping and inheritance with
+-- generics.
 
 
 -- Subtyping + inheritance
@@ -336,11 +336,11 @@ class D: pass
 main: In member "g" of class "A":
 
 
--- Subtyping with a generic interface
--- ----------------------------------
+-- Subtyping with a generic abstract base class
+-- --------------------------------------------
 
 
-[case testSubtypingWithGenericTypeImplementingGenericInterface-skip]
+[case testSubtypingWithGenericTypeSubclassingGenericAbstractClass-skip]
 from typing import Undefined, typevar, Generic
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -362,7 +362,7 @@ class I(metaclass=ABCMeta): pass
 class C: pass
 class D: pass
 
-[case testImplementingInterfaceTwice-skip]
+[case testIncludingBaseClassTwice-skip]
 from typing import typevar
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
@@ -373,7 +373,7 @@ class C: pass
 main: In class "A":
 main, line 4: Class "A" implements interface "I" more than once
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance-skip]
+[case testSubtypingWithTypeImplementingGenericABCViaInheritance-skip]
 from typing import Undefined, typevar
 from abc import abstractmethod, ABCMeta
 S = typevar('S')
@@ -401,7 +401,7 @@ main: In class "B":
 main, line 8: Class "B" implements interface "I" more than once
 main: At top level:
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance2-skip]
+[case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
 from typing import typevar, Generic
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -415,7 +415,7 @@ class D: pass
 main: In class "B":
 main, line 6: Class "B" implements interface "I" more than once
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance3-skip]
+[case testSubtypingWithTypeImplementingGenericABCViaInheritance3-skip]
 from typing import typevar, Generic
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -432,7 +432,7 @@ class E: pass
 main: In class "A":
 main, line 6: Class "A" implements interface "I" more than once
 
-[case testSubtypingWithTypeImplementingGenericInterfaceViaInheritance4-skip]
+[case testSubtypingWithTypeImplementingGenericABCViaInheritance4-skip]
 from typing import typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -446,7 +446,7 @@ class D: pass
 main: In class "B":
 main, line 5: Class "B" implements interface "I" more than once
 
-[case testSubtypingAndInterfaceExtension-skip]
+[case testSubtypingAndABCExtension-skip]
 from typing import Undefined, typevar, Generic
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
@@ -463,11 +463,11 @@ class J(metaclass=ABCMeta): pass
 class X(metaclass=ABCMeta): pass
 
 
--- Implementing a generic interface
--- --------------------------------
+-- Subclassing a generic ABC
+-- -------------------------
 
 
-[case testImplementingGenericInterface1-skip]
+[case testSubclassingGenericABC1-skip]
 from typing import typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -489,11 +489,11 @@ class D: pass
 main: In class "A":
 
 
--- Implementing a generic interface with deep type hierarchy
--- ---------------------------------------------------------
+-- Extending a generic ABC with deep type hierarchy
+-- ------------------------------------------------
 
 
-[case testImplementingGenenericInterfaceWithDeepHierarchy-skip]
+[case testSubclassingGenenericABCWithDeepHierarchy-skip]
 from typing import Undefined, Any, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -522,7 +522,7 @@ main: In class "A":
 main, line 8: Argument 2 of "g" incompatible with supertype "I"
 main: At top level:
 
-[case testImplementingGenenericInterfaceWithDeepHierarchy2-skip]
+[case testSubclassingGenenericABCWithDeepHierarchy2-skip]
 from typing import Any, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -541,11 +541,11 @@ class D: pass
 main: In class "A":
 
 
--- Implicit dynamic types and implementing generic interfaces
--- ----------------------------------------------------------
+-- Implicit Any types and subclassing generic ABC
+-- ----------------------------------------------
 
 
-[case testImplementingGenericInterfaceWithImplicitDynamic-skip]
+[case testSubclassingGenericABCWithImplicitAny-skip]
 from typing import Undefined, Any, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -566,7 +566,7 @@ class I(metaclass=ABCMeta):
 class C: pass
 class D: pass
 
-[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy-skip]
+[case testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy-skip]
 from typing import Undefined, Any, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -590,7 +590,7 @@ class I(metaclass=ABCMeta):
 class C: pass
 class D: pass
 
-[case testImplementingGenericInterfaceWithImplicitDynamicAndDeepHierarchy2-skip]
+[case testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2-skip]
 from typing import Undefined, Any, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -616,11 +616,11 @@ class C: pass
 class D: pass
 
 
--- Accessing generic interface members
--- -----------------------------------
+-- Accessing generic ABC members
+-- -----------------------------
 
 
-[case testAccessingGenericInterfaceMembers-skip]
+[case testAccessingGenericABCMembers-skip]
 from typing import Undefined, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
@@ -638,7 +638,7 @@ class A: pass
 class B: pass
 [out]
 
-[case testAccessingInheritedInterfaceMembers-skip]
+[case testAccessingInheritedGenericABCMembers-skip]
 from typing import Undefined, typevar, Generic
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
