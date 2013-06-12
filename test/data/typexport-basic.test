@@ -661,20 +661,20 @@ NameExpr(5) : C
 NameExpr(5) : def [-1:C] (a: C) -> A[C]
 NameExpr(5) : def [-1:A[C]] (a: A[C]) -> B[A[C]]
 
-[case testInferListLiterals-skip]
+[case testInferListLiterals]
 from typing import List
 a = [] # type: List[A]
 class A: pass
 [builtins fixtures/list.py]
 [out]
-ListExpr(1) : builtins.list[A]
+ListExpr(2) : builtins.list[A]
 
-[case testInferGenericTypeInTypeAnyContext-skip]
+[case testInferGenericTypeInTypeAnyContext]
 from typing import Any
 a = [] # type: Any
 [builtins fixtures/list.py]
 [out]
-ListExpr(1) : builtins.list[Any]
+ListExpr(2) : builtins.list[Any]
 
 [case testHigherOrderFunction-skip]
 from typing import typevar, Function, List
