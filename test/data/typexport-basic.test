@@ -341,12 +341,12 @@ class A:
 a = Undefined # type: A
 [builtins fixtures/tuple.py]
 [out]
-CallExpr(2) : tuple<A, A>
-MemberExpr(2) : def [-1:A] (A a) -> tuple<A, A>
-TypeApplication(2) : def [-1:A] (A a) -> tuple<A, A>
-CallExpr(3) : tuple<any, any>
-MemberExpr(3) : def [-1:Any] (any a) -> tuple<any, any>
-TypeApplication(3) : def [-1:Any] (any a) -> tuple<any, any>
+CallExpr(2) : Tuple[A, A]
+MemberExpr(2) : def [-1:A] (A a) -> Tuple[A, A]
+TypeApplication(2) : def [-1:A] (A a) -> Tuple[A, A]
+CallExpr(3) : Tuple[Any, Any]
+MemberExpr(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
+TypeApplication(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
 
 [case testGenericMethodCallInGenericTypeWithTypeApp-skip]
 ## CallExpr|MemberExpr|TypeApplication
@@ -363,12 +363,12 @@ a = Undefined # type: A[C]
 b = Undefined # type: B
 [builtins fixtures/tuple.py]
 [out]
-CallExpr(6) : tuple<C, B>
-MemberExpr(6) : def [1:C, -1:B] (B a) -> tuple<C, B>
-TypeApplication(6) : def [1:C, -1:B] (B a) -> tuple<C, B>
-CallExpr(7) : tuple<C, any>
-MemberExpr(7) : def [1:C, -1:Any] (any a) -> tuple<C, any>
-TypeApplication(7) : def [1:C, -1:Any] (any a) -> tuple<C, any>
+CallExpr(6) : Tuple[C, B]
+MemberExpr(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
+TypeApplication(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
+CallExpr(7) : Tuple[C, Any]
+MemberExpr(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
+TypeApplication(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
 
 [case testGenericFunctionWithTwoArgsAndTypeApp]
 ## CallExpr|TypeApplication
@@ -414,7 +414,7 @@ class B('A[C]'):
 class C: pass
 [out]
 CallExpr(5) : void
-MemberExpr(5) : def [1:C] (C a)
+MemberExpr(5) : def [1:C] (a: C)
 NameExpr(5) : C
 NameExpr(5) : B
 
@@ -430,7 +430,7 @@ class B('A[C, T]', Generic[T]):
 class C: pass
 [out]
 CallExpr(5) : void
-MemberExpr(5) : def [1:C, 2:T`1] (C a)
+MemberExpr(5) : def [1:C, 2:T`1] (a: C)
 NameExpr(5) : C
 NameExpr(5) : B[T`1]
 
@@ -446,7 +446,7 @@ c = Undefined # type: C
 b.f(c)
 [out]
 CallExpr(7) : void
-MemberExpr(7) : def [1:C] (C a)
+MemberExpr(7) : def [1:C] (a: C)
 NameExpr(7) : B
 NameExpr(7) : C
 
@@ -538,8 +538,8 @@ b = Undefined # type: B
 CallExpr(2) : A[B]
 NameExpr(2) : def [-1:B] (B a) -> A[B]
 NameExpr(2) : B
-CallExpr(3) : A<builtins.object>
-NameExpr(3) : def [-1:builtins.object] (builtins.object a) -> A<builtins.object>
+CallExpr(3) : A[builtins.object]
+NameExpr(3) : def [-1:builtins.object] (builtins.object a) -> A[builtins.object]
 NameExpr(3) : B
 
 [case testGenericCallInDynamicallyTypedFunction-skip]
@@ -630,16 +630,16 @@ NameExpr(2) : A[B]
 NameExpr(2) : B
 NameExpr(3) : A[B]
 CallExpr(4) : A[B]
-CallExpr(4) : A<C>
+CallExpr(4) : A[C]
 NameExpr(4) : def [-1:B] (B x) -> A[B]
-NameExpr(4) : def [-1:C] (C x) -> A<C>
+NameExpr(4) : def [-1:C] (C x) -> A[C]
 NameExpr(4) : A[B]
-NameExpr(4) : A<C>
+NameExpr(4) : A[C]
 NameExpr(4) : B
 NameExpr(4) : C
-TupleExpr(4) : tuple<A[B], A<C>>
+TupleExpr(4) : Tuple[A[B], A[C]]
 NameExpr(5) : A[B]
-NameExpr(6) : A<C>
+NameExpr(6) : A[C]
 
 [case testNestedGenericCalls-skip]
 from typing import Undefined, typevar, Generic
@@ -658,11 +658,11 @@ class A(Generic[T]): pass
 class B(Generic[T]): pass
 class C: pass
 [out]
-CallExpr(2) : A<C>
-CallExpr(2) : B<A<C>>
+CallExpr(2) : A[C]
+CallExpr(2) : B[A[C]]
 NameExpr(2) : C
-NameExpr(2) : def [-1:C] (C a) -> A<C>
-NameExpr(2) : def [-1:A<C>] (A<C> a) -> B<A<C>>
+NameExpr(2) : def [-1:C] (a: C) -> A[C]
+NameExpr(2) : def [-1:A[C]] (A[C] a) -> B[A[C]]
 
 [case testInferListLiterals-skip]
 from typing import List
@@ -670,14 +670,14 @@ a = [] # type: List[A]
 class A: pass
 [builtins fixtures/list.py]
 [out]
-ListExpr(1) : builtins.list<A>
+ListExpr(1) : builtins.list[A]
 
 [case testInferGenericTypeInTypeAnyContext-skip]
 from typing import Any
 a = [] # type: Any
 [builtins fixtures/list.py]
 [out]
-ListExpr(1) : builtins.list<Any>
+ListExpr(1) : builtins.list[Any]
 
 [case testHigherOrderFunction-skip]
 from typing import typevar, Function, List
@@ -692,11 +692,11 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list<B>
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+CallExpr(1) : builtins.list[B]
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
 NameExpr(2) : def (A a) -> B
 CallExpr(3) : A
-ListExpr(3) : builtins.list<A>
+ListExpr(3) : builtins.list[A]
 NameExpr(3) : def () -> A
 
 
@@ -733,8 +733,8 @@ class B:
   a = Undefined # type: A
 [builtins fixtures/list.py]
 [out]
-FuncExpr(1) : def (B) -> builtins.list<A>
-ListExpr(1) : builtins.list<A>
+FuncExpr(1) : def (B) -> builtins.list[A]
+ListExpr(1) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction-skip]
 from typing import typevar, Function, List
@@ -748,13 +748,13 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list<B>
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+CallExpr(1) : builtins.list[B]
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
 CallExpr(2) : B
 FuncExpr(2) : def (A) -> B
 NameExpr(2) : def (A a) -> B
 NameExpr(2) : A
-ListExpr(3) : builtins.list<A>
+ListExpr(3) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction2-skip]
 ## FuncExpr|NameExpr|ListExpr
@@ -769,12 +769,12 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-NameExpr(2) : def [-1:A, -2:B] (def (A) -> builtins.list<B> f, builtins.list<A> a) -> builtins.list<B>
-FuncExpr(3) : def (A) -> builtins.list<B>
-ListExpr(3) : builtins.list<B>
+NameExpr(2) : def [-1:A, -2:B] (def (A) -> builtins.list[B] f, builtins.list[A] a) -> builtins.list[B]
+FuncExpr(3) : def (A) -> builtins.list[B]
+ListExpr(3) : builtins.list[B]
 NameExpr(3) : def (A a) -> B
 NameExpr(3) : A
-ListExpr(4) : builtins.list<A>
+ListExpr(4) : builtins.list[A]
 
 [case testLambdaInListAndHigherOrderFunction-skip]
 from typing import typevar, Function, List
@@ -788,12 +788,12 @@ class A: pass
 [out]
 -- TODO We probably should not silently infer 'any' types in statically typed 
 --      context. Perhaps just fail instead?
-CallExpr(1) : builtins.list<Any>
-NameExpr(1) : def [-1:A, -2:any] (builtins.list<def (A) -> any> f, builtins.list<A> a) -> builtins.list<Any>
+CallExpr(1) : builtins.list[Any]
+NameExpr(1) : def [-1:A, -2:any] (builtins.list[def (A) -> Any] f, builtins.list[A] a) -> builtins.list[Any]
 FuncExpr(2) : def (A) -> A
-ListExpr(2) : builtins.list<def (A) -> any>
+ListExpr(2) : builtins.list[def (A) -> Any]
 NameExpr(2) : A
-ListExpr(3) : builtins.list<A>
+ListExpr(3) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction3-skip]
 from typing import typevar, Function, List, Undefined
@@ -807,12 +807,12 @@ class A:
 class B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list<B>
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
+CallExpr(1) : builtins.list[B]
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
 FuncExpr(2) : def (A) -> B
 MemberExpr(2) : B
 NameExpr(2) : A
-ListExpr(3) : builtins.list<A>
+ListExpr(3) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunctionAndKeywordArgs-skip]
 from typing import typevar, Function, List, Undefined
@@ -827,9 +827,9 @@ class A:
 class B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list<B>
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list<A> a) -> builtins.list<B>
-ListExpr(2) : builtins.list<A>
+CallExpr(1) : builtins.list[B]
+NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
+ListExpr(2) : builtins.list[A]
 FuncExpr(3) : def (A) -> B
 MemberExpr(3) : B
 NameExpr(3) : A
@@ -848,17 +848,17 @@ a = [] or a
 class A: pass
 [builtins fixtures/list.py]
 [out]
-ListExpr(2) : builtins.list<A>
-NameExpr(2) : builtins.list<A>
-OpExpr(2) : builtins.list<A>
-ListExpr(3) : builtins.list<A>
-NameExpr(3) : builtins.list<A>
-NameExpr(3) : builtins.list<A>
-OpExpr(3) : builtins.list<A>
-ListExpr(4) : builtins.list<A>
-NameExpr(4) : builtins.list<A>
-NameExpr(4) : builtins.list<A>
-OpExpr(4) : builtins.list<A>
+ListExpr(2) : builtins.list[A]
+NameExpr(2) : builtins.list[A]
+OpExpr(2) : builtins.list[A]
+ListExpr(3) : builtins.list[A]
+NameExpr(3) : builtins.list[A]
+NameExpr(3) : builtins.list[A]
+OpExpr(3) : builtins.list[A]
+ListExpr(4) : builtins.list[A]
+NameExpr(4) : builtins.list[A]
+NameExpr(4) : builtins.list[A]
+OpExpr(4) : builtins.list[A]
 
 
 -- Class attributes
