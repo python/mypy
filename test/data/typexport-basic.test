@@ -777,25 +777,26 @@ NameExpr(6) : def (a: A) -> B
 NameExpr(6) : builtins.list[A]
 NameExpr(6) : A
 
-[case testLambdaAndHigherOrderFunction2-skip]
+[case testLambdaAndHigherOrderFunction2]
 ## FuncExpr|NameExpr|ListExpr
-from typing import typevar, List, Function
+from typing import typevar, Undefined, List, Function
 t = typevar('t')
 s = typevar('s')
+l = Undefined # type: List[A]
 map(
-  lambda x: [f(x)], [])
+  lambda x: [f(x)], l)
 def map(f: Function[[t], List[s]], a: List[t]) -> List[s]: pass
-def f(a: 'A') -> 'B': pass
 class A: pass
 class B: pass
+def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
-NameExpr(2) : def [-1:A, -2:B] (def (A) -> builtins.list[B] f, builtins.list[A] a) -> builtins.list[B]
-FuncExpr(3) : def (A) -> builtins.list[B]
-ListExpr(3) : builtins.list[B]
-NameExpr(3) : def (a: A) -> B
-NameExpr(3) : A
-ListExpr(4) : builtins.list[A]
+NameExpr(6) : def [-1:A, -2:B] (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
+FuncExpr(7) : def (A) -> builtins.list[B]
+ListExpr(7) : builtins.list[B]
+NameExpr(7) : def (a: A) -> B
+NameExpr(7) : builtins.list[A]
+NameExpr(7) : A
 
 [case testLambdaInListAndHigherOrderFunction-skip]
 from typing import typevar, Function, List
