@@ -1026,6 +1026,16 @@ class A:
 NameExpr(5) : A
 NameExpr(6) : def () -> A
 
+[case testListMultiplicationInContext]
+## ListExpr|OpExpr|IntExpr
+from typing import List
+a = [None] * 3 # type: List[str]
+[builtins fixtures/list.py]
+[out]
+IntExpr(3) : builtins.int
+ListExpr(3) : builtins.list[builtins.str]
+OpExpr(3) : builtins.list[builtins.str]
+
 
 -- TODO
 --

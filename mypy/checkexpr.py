@@ -696,6 +696,8 @@ class ExpressionChecker:
         """Type check a binary operator expression."""
         if e.op == 'and' or e.op == 'or':
             return self.check_boolean_op(e, e)
+        if e.op == '*' and isinstance(e.left, ListExpr):
+            return self.check_list_multiply(e)
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
@@ -720,7 +722,7 @@ class ExpressionChecker:
                                Context context):
         """Type check a binary operation which maps to a method call.
 
-        Return tuple (result type, inferred operatro method type).
+        Return tuple (result type, inferred operator method type).
         """
         if self.has_non_method(base_type, method):
             self.msg.method_expected_as_operator_implementation(
@@ -747,6 +749,22 @@ class ExpressionChecker:
 
         return join.join_types(left_type, right_type,
                                self.chk.basic_types())
+
+    Type check_list_multiply(self, OpExpr e):
+        """Type check an expression of form '[...] * e'.
+
+        Type inference is special-cased for this common construct.
+        """
+        right_type = self.accept(e.right)
+        if is_subtype(right_type, self.chk.named_type('builtins.int')):
+            # Special case: [...] * <int value>. Use the type context of the
+            # OpExpr, since the multiplication does not affect the type.
+            left_type = self.accept(e.left, context=self.chk.type_context[-1])
+        else:
+            left_type = self.accept(e.left)
+        result, method_type = self.check_op('__mul__', left_type, e.right, e)
+        e.method_type = method_type
+        return result
     
     Type visit_unary_expr(self, UnaryExpr e):
         """Type check an unary operation ('not', '-' or '~')."""

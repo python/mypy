@@ -9,7 +9,8 @@ class object:
 
 class type: pass
 
-class list(Generic[T]): pass
+class list(Generic[T]):
+    def __mul__(self, x: int) -> list[T]: pass
 
 class tuple: pass
 
