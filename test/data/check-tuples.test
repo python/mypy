@@ -311,6 +311,22 @@ b = ''
 a = '' # E: Incompatible types in assignment
 b = 1  # E: Incompatible types in assignment
 
+[case testMultipleAssignmentUsingRepeatedUndefinedWithArgument]
+from typing import Undefined
+a, b = Undefined(int), Undefined(str)
+a = 1
+b = ''
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+
+[case testMultipleAssignmentUsingUndefinedWithArgumentAndNormalExpression]
+from typing import Undefined
+a, b = Undefined(int), ''
+a = 1
+b = ''
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+
 
 -- Error messages
 -- --------------
