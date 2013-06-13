@@ -602,6 +602,9 @@ class SemanticAnalyzer(NodeVisitor):
                     self.store_declared_types(item, itemtype)
             else:
                 pass # TODO error?
+        elif isinstance(lvalue, ParenExpr):
+            paren = (ParenExpr)lvalue
+            self.store_declared_types(paren.expr, typ)
         else:
             raise RuntimeError('Not implemented yet (%s)' % type(lvalue))
 

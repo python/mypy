@@ -284,6 +284,14 @@ class AA: pass
 class BB: pass
 [builtins fixtures/tuple.py]
 
+[case testMultipleDeclarationWithParentheses]
+from typing import Undefined
+(a, b) = (None, None) # type: int, str
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+a = 1
+b = ''
+
 [case testMultipleAssignmentWithExtraParentheses]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)

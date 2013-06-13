@@ -69,6 +69,12 @@ class B(A): pass
 [out]
 main, line 3: Incompatible types in assignment
 
+[case testDeclaredVariableInParentheses]
+from typing import Undefined
+(x) = Undefined # type: int
+x = '' # E: Incompatible types in assignment
+x = 1
+
 
 -- Simple functions and calling
 -- ----------------------------
