@@ -735,3 +735,28 @@ x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
 from typing import Undefined
 x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 [out]
+
+[case testInvalidLvalueWithExplicitType]
+from typing import Undefined
+a = 1
+a[1] = Undefined # type: int # E: Unexpected type declaration
+a.x = Undefined # type: int \
+    # E: Type cannot be declared in assignment to non-self attribute
+a() = Undefined # type: int  # E: Invalid assignment target
+[out]
+
+[case testInvalidLvalueWithExplicitType2]
+from typing import Undefined
+a = 1
+a[1] = Undefined(int) # TODO: Disallow this?
+a() = Undefined(int)  # E: Invalid assignment target
+[out]
+
+[case testInvalidLvalueWithExplicitType3]
+from typing import Undefined
+a = 1
+a.y, a.x = Undefined, Undefined # type: int, int \
+    # E: Type cannot be declared in assignment to non-self attribute
+a[1], a[2] = Undefined, Undefined # type: int, int \
+    # E: Unexpected type declaration
+[out]
