@@ -284,3 +284,7 @@ def f() -> None:
     a = '' # E: Incompatible types in assignment
 [out]
 main: In function "f":
+
+[case testDeclareTypeUsingUndefinedAndComment]
+from typing import Undefined
+x = Undefined(int) # type: str # E: Incompatible types in assignment
