@@ -554,6 +554,7 @@ class SemanticAnalyzer(NodeVisitor):
             v.info = self.type
             v.is_ready = False
             lval.def_var = v
+            lval.node = v
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 

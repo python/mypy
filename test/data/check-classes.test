@@ -564,6 +564,20 @@ b = A() # E: Incompatible types in assignment
 b = A.B(b) # E: Too many arguments for "B"
 
 
+-- Declaring attribute type in method
+-- ----------------------------------
+
+
+[case testDeclareAttributeTypeInInit]
+from typing import Undefined
+class A:
+    def __init__(self):
+        self.x = None # type: int
+a = Undefined # type: A
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+
+
 -- Special cases
 -- -------------
 
