@@ -595,7 +595,7 @@ class SemanticAnalyzer(NodeVisitor):
                 tuple_expr = (TupleExpr)lvalue
                 tuple_type = (TupleType)typ
                 if len(tuple_expr.items) != len(tuple_type.items):
-                    # TODO error
+                    self.fail('Incompatible number of tuple items', lvalue)
                     return
                 for item, itemtype in zip(tuple_expr.items,
                                           tuple_type.items):
