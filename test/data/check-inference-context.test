@@ -692,3 +692,14 @@ s = Undefined # type: List[str]
 i = i = []
 i = s = [] # E: Incompatible types in assignment
 [builtins fixtures/list.py]
+
+[case testContextForAttributeDeclaredInInit]
+from typing import List
+class A:
+  def __init__(self):
+    self.x = [] # type: List[int]
+a = A()
+a.x = []
+a.x = [1]
+a.x = [''] # E: List item 1 has incompatible type "str"
+[builtins fixtures/list.py]
