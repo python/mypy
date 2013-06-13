@@ -756,25 +756,26 @@ class B:
 FuncExpr(2) : def (B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
 
-[case testLambdaAndHigherOrderFunction-skip]
-from typing import typevar, Function, List
+[case testLambdaAndHigherOrderFunction]
+from typing import typevar, Function, Undefined, List
 t = typevar('t')
 s = typevar('s')
+l = Undefined # type: List[A]
 map(
-  lambda x: f(x), [])
+  lambda x: f(x), l)
 def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(4) : builtins.list[B]
-NameExpr(4) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
-CallExpr(5) : B
-FuncExpr(5) : def (A) -> B
-NameExpr(5) : def (a: A) -> B
-NameExpr(5) : A
-ListExpr(6) : builtins.list[A]
+CallExpr(5) : builtins.list[B]
+NameExpr(5) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+CallExpr(6) : B
+FuncExpr(6) : def (A) -> B
+NameExpr(6) : def (a: A) -> B
+NameExpr(6) : builtins.list[A]
+NameExpr(6) : A
 
 [case testLambdaAndHigherOrderFunction2-skip]
 ## FuncExpr|NameExpr|ListExpr
