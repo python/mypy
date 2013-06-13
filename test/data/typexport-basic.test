@@ -798,24 +798,26 @@ NameExpr(7) : def (a: A) -> B
 NameExpr(7) : builtins.list[A]
 NameExpr(7) : A
 
-[case testLambdaInListAndHigherOrderFunction-skip]
-from typing import typevar, Function, List
+[case testLambdaInListAndHigherOrderFunction]
+from typing import typevar, Undefined, Function, List
 t = typevar('t')
 s = typevar('s')
+l = Undefined # type: List[A]
 map(
-  [lambda x: x], [])
+  [lambda x: x],
+  l)
 def map(f: List[Function[[t], s]], a: List[t]) -> List[s]: pass
 class A: pass
 [builtins fixtures/list.py]
 [out]
--- TODO We probably should not silently infer 'any' types in statically typed 
+-- TODO We probably should not silently infer 'Any' types in statically typed 
 --      context. Perhaps just fail instead?
-CallExpr(1) : builtins.list[Any]
-NameExpr(1) : def [-1:A, -2:any] (builtins.list[def (A) -> Any] f, builtins.list[A] a) -> builtins.list[Any]
-FuncExpr(2) : def (A) -> A
-ListExpr(2) : builtins.list[def (A) -> Any]
-NameExpr(2) : A
-ListExpr(3) : builtins.list[A]
+CallExpr(5) : builtins.list[Any]
+NameExpr(5) : def [-1:A, -2:Any] (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]
+FuncExpr(6) : def (A) -> A
+ListExpr(6) : builtins.list[def (A) -> Any]
+NameExpr(6) : A
+NameExpr(7) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction3-skip]
 from typing import typevar, Function, List, Undefined
