@@ -275,3 +275,12 @@ a = Undefined(Any)
 a = 1
 a = ''
 a = None
+
+[case testDeclareLocalUsingUndefinedWithArgument]
+from typing import Undefined
+def f() -> None:
+    a = Undefined(int)
+    a = 1
+    a = '' # E: Incompatible types in assignment
+[out]
+main: In function "f":
