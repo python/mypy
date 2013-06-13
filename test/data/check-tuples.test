@@ -303,6 +303,14 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
 
+[case testMultipleAssignmentUsingUndefinedWithArgument]
+from typing import Undefined, Tuple
+a, b = Undefined(Tuple[int, str])
+a = 1
+b = ''
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+
 
 -- Error messages
 -- --------------
