@@ -577,6 +577,15 @@ a = Undefined # type: A
 a.x = 1
 a.x = '' # E: Incompatible types in assignment
 
+[case testAccessAttributeDeclaredInInitBeforeDeclaration]
+from typing import Undefined
+a = Undefined # type: A
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+class A:
+    def __init__(self):
+        self.x = None # type: int
+
 
 -- Special cases
 -- -------------
