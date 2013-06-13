@@ -607,7 +607,7 @@ class SemanticAnalyzer(NodeVisitor):
             paren = (ParenExpr)lvalue
             self.store_declared_types(paren.expr, typ)
         else:
-            raise RuntimeError('Not implemented yet (%s)' % type(lvalue))
+            raise RuntimeError('Internal error (%s)' % type(lvalue))
 
     void visit_decorator(self, Decorator dec):
         if not dec.is_overload:
