@@ -622,6 +622,28 @@ main: In member "f" of class "A":
 main, line 6: Need type annotation for variable
 
 
+-- Using Undefined(type) to declare attributes
+-- -------------------------------------------
+
+
+[case testDeclareClassVariableUsingUndefinedWithArgument]
+from typing import Undefined
+class A:
+    x = Undefined(int)
+a = Undefined(A)
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+
+[case testDeclareInstanceVariableUsingUndefinedWithArgument]
+from typing import Undefined
+class A:
+    def __init__(self):
+        self.x = Undefined(int)
+a = Undefined(A)
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+
+
 -- TODO
 --   attribute inherited from superclass; assign in __init__
 --   refer to attribute before type has been inferred (the initialization in
