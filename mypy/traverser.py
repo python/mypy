@@ -6,7 +6,7 @@ from mypy.nodes import (
     TryStmt, WithStmt, ParenExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
-    FuncExpr
+    FuncExpr, OverloadedFuncDef
 )
 
 
@@ -39,6 +39,10 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     
     T visit_func_def(self, FuncDef o):
         self.visit_func(o)
+
+    T visit_overloaded_func_def(self, OverloadedFuncDef o):
+        for item in o.items:
+            item.accept(self)
     
     T visit_type_def(self, TypeDef o):
         o.defs.accept(self)
