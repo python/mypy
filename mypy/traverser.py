@@ -203,8 +203,3 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     
     T visit_func_expr(self, FuncExpr o):
         self.visit_func(o)
-    
-    def visit_filter_node(self, o):
-        # These are for convenience. These node types are not defined in the
-        # parser module.
-        pass
