@@ -643,6 +643,17 @@ a = Undefined(A)
 a.x = 1
 a.x = '' # E: Incompatible types in assignment
 
+[case testAccessInstanceVariableDeclaredUsingUndefinedWithArgumentBeforeDecl]
+from typing import Undefined
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.x = '' # E: Incompatible types in assignment
+    def __init__(self):
+        self.x = Undefined(int)
+[out]
+main: In member "f" of class "A":
+
 
 -- TODO
 --   attribute inherited from superclass; assign in __init__
