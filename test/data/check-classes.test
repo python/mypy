@@ -507,6 +507,8 @@ class A:
 A.B = None # E: Cannot assign to a type
 
 
+-- Nested classes
+-- --------------
 
 
 [case testClassWithinFunction]
@@ -562,6 +564,8 @@ b = A() # E: Incompatible types in assignment
 b = A.B(b) # E: Too many arguments for "B"
 
 
+-- Special cases
+-- -------------
 
 
 [case testMultipleClassDefinition]
