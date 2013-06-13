@@ -257,3 +257,21 @@ while A:
     a = Undefined # type: A
     a = A()
     a = object() # E: Incompatible types in assignment
+
+
+-- Using Undefined with a type argument
+-- ------------------------------------
+
+
+[case testDeclareGlobalUsingUndefindWithArgument]
+from typing import Undefined
+a = Undefined(int)
+a = 1
+a = '' # E: Incompatible types in assignment
+
+[case testDeclareGlobalUsingUndefindWithAnyArgument]
+from typing import Undefined, Any
+a = Undefined(Any)
+a = 1
+a = ''
+a = None

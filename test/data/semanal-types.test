@@ -295,8 +295,9 @@ x = 1
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
   AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
-    UndefinedExpr:2(builtins.int))
+    NameExpr(x [__main__.x])
+    UndefinedExpr:2(builtins.int)
+    builtins.int)
   AssignmentStmt:3(
     NameExpr(x [__main__.x])
     IntExpr(1)))
@@ -308,8 +309,9 @@ x = Undefined(Tuple[int, str])
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined, Tuple : Tuple])
   AssignmentStmt:2(
-    NameExpr(x* [__main__.x])
-    UndefinedExpr:2(Tuple[builtins.int, builtins.str])))
+    NameExpr(x [__main__.x])
+    UndefinedExpr:2(Tuple[builtins.int, builtins.str])
+    Tuple[builtins.int, builtins.str]))
 
 [case testUndefinedInMultipleAssignment]
 from typing import Undefined, Any

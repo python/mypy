@@ -463,7 +463,10 @@ class SemanticAnalyzer(NodeVisitor):
         for lval in s.lvalues:
             self.analyse_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
-        s.type = self.anal_type(s.type)
+        if s.type:
+            s.type = self.anal_type(s.type)
+        else:
+            s.type = self.infer_type_from_undefined(s.rvalue)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -569,6 +572,14 @@ class SemanticAnalyzer(NodeVisitor):
         if (isinstance(node, FuncDef) or
                 isinstance(node, TypeInfo)):
             self.fail('Invalid assignment target', ctx)
+
+    Type infer_type_from_undefined(self, Node rvalue):
+        if isinstance(rvalue, CallExpr):
+            call = (CallExpr)rvalue
+            if isinstance(call.analyzed, UndefinedExpr):
+                undef = (UndefinedExpr)call.analyzed
+                return undef.type
+        return None
 
     void store_declared_types(self, Node lvalue, Type typ):
         if isinstance(lvalue, RefExpr):

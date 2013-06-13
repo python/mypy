@@ -9,7 +9,8 @@ from mypy.nodes import (
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
     UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
     DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
-    ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator
+    ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
+    UndefinedExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1039,6 +1040,9 @@ class ExpressionChecker:
                                TypeVars([TypeVarDef('T', -1)]))
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
+
+    Type visit_undefined_expr(self, UndefinedExpr e):
+        return e.type
     
     #
     # Helpers

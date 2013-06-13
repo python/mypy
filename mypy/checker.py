@@ -11,7 +11,7 @@ from mypy.nodes import (
     BytesExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr
+    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -856,6 +856,9 @@ class TypeChecker(NodeVisitor<Type>):
 
     Type visit_generator_expr(self, GeneratorExpr e):
         return self.expr_checker.visit_generator_expr(e)
+
+    Type visit_undefined_expr(self, UndefinedExpr e):
+        return self.expr_checker.visit_undefined_expr(e)
 
     Type visit_temp_node(self, TempNode e):
         return e.type
