@@ -840,12 +840,13 @@ MemberExpr(6) : B
 NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
 
-[case testLambdaAndHigherOrderFunctionAndKeywordArgs-skip]
+[case testLambdaAndHigherOrderFunctionAndKeywordArgs]
 from typing import typevar, Function, List, Undefined
 t = typevar('t')
 s = typevar('s')
+l = Undefined # type: List[A]
 map(
-  a= [],
+  a=l,
   f=lambda x: x.b)
 def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
 class A:
@@ -853,12 +854,12 @@ class A:
 class B: pass
 [builtins fixtures/list.py]
 [out]
-CallExpr(1) : builtins.list[B]
-NameExpr(1) : def [-1:A, -2:B] (def (A) -> B f, builtins.list[A] a) -> builtins.list[B]
-ListExpr(2) : builtins.list[A]
-FuncExpr(3) : def (A) -> B
-MemberExpr(3) : B
-NameExpr(3) : A
+CallExpr(5) : builtins.list[B]
+NameExpr(5) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+NameExpr(6) : builtins.list[A]
+FuncExpr(7) : def (A) -> B
+MemberExpr(7) : B
+NameExpr(7) : A
 
 
 -- Boolean operations
