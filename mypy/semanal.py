@@ -17,7 +17,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    ARG_POS, MroError
+    ARG_POS, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors
@@ -28,13 +28,6 @@ from mypy.types import (
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser
-
-
-type_aliases = {
-    'typing.List': '__builtins__.list',
-    'typing.Dict': '__builtins__.dict',
-    'typing.Set': '__builtins__.set',
-}
 
 
 class TypeTranslationError(Exception):

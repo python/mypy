@@ -199,8 +199,8 @@ d = Undefined # type: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2 = Undefined # type: Dict[str, B]
-f(**d2)        # E: Argument 1 to "f" has incompatible type dict[str, B]
-f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type dict[str, B]
+f(**d2)        # E: Argument 1 to "f" has incompatible type Dict[str, B]
+f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type Dict[str, B]
 class A: pass
 class B: pass
 [builtins fixtures/dict.py]
@@ -220,7 +220,7 @@ def f(a: 'A', b: 'B') -> None: pass
 d = Undefined # type: Dict[str, Any]
 f(**d)
 d2 = Undefined # type: Dict[str, A]
-f(**d2) # E: Argument 1 to "f" has incompatible type dict[str, A]
+f(**d2) # E: Argument 1 to "f" has incompatible type Dict[str, A]
 class A: pass
 class B: pass
 [builtins fixtures/dict.py]

@@ -10,7 +10,9 @@ from mypy.types import (
     Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
     Overloaded, FunctionLike
 )
-from mypy.nodes import TypeInfo, Context, op_methods, FuncDef
+from mypy.nodes import (
+    TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases
+)
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -117,8 +119,8 @@ class MessageBuilder:
         
         Examples:
           builtins.int -> 'int'
-          any -> 'any'
-          void -> void
+          Any -> 'Any'
+          void -> None
           function type -> "" (empty string)
         """
         if isinstance(typ, Instance):
@@ -130,9 +132,11 @@ class MessageBuilder:
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
-            elif itype.type.fullname() == 'builtins.list':
-                return 'List[{}]'.format(
-                    strip_quotes(self.format(itype.args[0])))
+            elif itype.type.fullname() in reverse_type_aliases:
+                alias = reverse_type_aliases[itype.type.fullname()]
+                alias = alias.split('.')[-1]
+                items = [strip_quotes(self.format(arg)) for arg in itype.args]
+                return '{}[{}]'.format(alias, ', '.join(items))
             else:
                 # There are type arguments. Convert the arguments to strings
                 # (using format() instead of format_simple() to avoid empty
@@ -150,7 +154,7 @@ class MessageBuilder:
             # This is similar to non-generic instance types.
             return '"{}"'.format(((TypeVar)typ).name)
         elif isinstance(typ, TupleType):
-            str[] items = []
+            items = []
             for t in ((TupleType)typ).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))

@@ -44,6 +44,16 @@ node_kinds = {
 implicit_module_attrs = ['__name__', '__doc__', '__file__']
 
 
+type_aliases = {
+    'typing.List': '__builtins__.list',
+    'typing.Dict': '__builtins__.dict',
+    'typing.Set': '__builtins__.set',
+}
+
+reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
+                            for alias, name in type_aliases.items())
+
+
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
     
