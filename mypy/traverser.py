@@ -19,18 +19,15 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     travelsal implementation.
     """
 
-    # Helper methods
-    
-    void accept_block(self, Block block):
-        self.visit_block(block)
-        for s in block.body:
-            s.accept(self)
-    
     # Visit methods
     
     T visit_mypy_file(self, MypyFile o):
         for d in o.defs:
             d.accept(self)
+
+    T visit_block(self, Block block):
+        for s in block.body:
+            s.accept(self)
     
     T visit_func(self, FuncItem o):
         for i in o.init:
@@ -38,14 +35,13 @@ class TraverserVisitor<T>(NodeVisitor<T>):
                 i.accept(self)
         for v in o.args:
             self.visit_var(v)
-        self.accept_block(o.body)
+        o.body.accept(self)
     
     T visit_func_def(self, FuncDef o):
         self.visit_func(o)
     
     T visit_type_def(self, TypeDef o):
-        for d in o.defs.body:
-            d.accept(self)
+        o.defs.accept(self)
     
     T visit_decorator(self, Decorator o):
         o.func.accept(self)
@@ -73,17 +69,17 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     
     T visit_while_stmt(self, WhileStmt o):
         o.expr.accept(self)
-        self.accept_block(o.body)
-        if o.else_body is not None:
-            self.accept_block(o.else_body)
+        o.body.accept(self)
+        if o.else_body:
+            o.else_body.accept(self)
     
     T visit_for_stmt(self, ForStmt o):
         for ind in o.index:
             ind.accept(self)
         o.expr.accept(self)
-        self.accept_block(o.body)
-        if o.else_body is not None:
-            self.accept_block(o.else_body)
+        o.body.accept(self)
+        if o.else_body:
+            o.else_body.accept(self)
     
     T visit_return_stmt(self, ReturnStmt o):
         if o.expr is not None:
@@ -105,9 +101,9 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         for e in o.expr:
             e.accept(self)
         for b in o.body:
-            self.accept_block(b)
-        if o.else_body is not None:
-            self.accept_block(o.else_body)
+            b.accept(self)
+        if o.else_body:
+            o.else_body.accept(self)
     
     T visit_raise_stmt(self, RaiseStmt o):
         if o.expr is not None:
@@ -116,21 +112,21 @@ class TraverserVisitor<T>(NodeVisitor<T>):
             o.from_expr.accept(self)
     
     T visit_try_stmt(self, TryStmt o):
-        self.accept_block(o.body)
+        o.body.accept(self)
         for i in range(len(o.types)):
             o.types[i].accept(self)
-            self.accept_block(o.handlers[i])
+            o.handlers[i].accept(self)
         if o.else_body is not None:
-            self.accept_block(o.else_body)
+            o.else_body.accept(self)
         if o.finally_body is not None:
-            self.accept_block(o.finally_body)
+            o.finally_body.accept(self)
     
     T visit_with_stmt(self, WithStmt o):
         for i in range(len(o.expr)):
             o.expr[i].accept(self)
             if o.name[i] is not None:
                 o.name[i].accept(self)
-        self.accept_block(o.body)
+        o.body.accept(self)
     
     T visit_paren_expr(self, ParenExpr o):
         o.expr.accept(self)
