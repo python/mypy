@@ -655,3 +655,11 @@ def f() -> None:
 [builtins fixtures/primitives.py]
 [out]
 main: In function "f":
+
+[case testChainedAssignmentWithType]
+from typing import Undefined
+x = y = None # type: int
+x = '' # E: Incompatible types in assignment
+y = '' # E: Incompatible types in assignment
+x = 1
+y = 1

@@ -288,3 +288,11 @@ main: In function "f":
 [case testDeclareTypeUsingUndefinedAndComment]
 from typing import Undefined
 x = Undefined(int) # type: str # E: Incompatible types in assignment
+
+[case testDeclareMultipleVarsUsingUndefinedWithArgument]
+from typing import Undefined
+x = y = Undefined(int)
+x = '' # E: Incompatible types in assignment
+y = '' # E: Incompatible types in assignment
+x = 1
+y = 1
