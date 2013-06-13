@@ -19,7 +19,7 @@ files = [
     'check-statements.test',
     'check-generics.test',
     'check-tuples.test',
-    'check-dynamic.test',
+    'check-dynamic-typing.test',
     'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',
