@@ -730,3 +730,8 @@ A[1] # E: Type expected within [...]
 from typing import Undefined
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
 [out]
+
+[case testVariableDeclWithInvalidType]
+from typing import Undefined
+x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
+[out]

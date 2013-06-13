@@ -601,7 +601,8 @@ class SemanticAnalyzer(NodeVisitor):
                                           tuple_type.items):
                     self.store_declared_types(item, itemtype)
             else:
-                pass # TODO error?
+                self.fail('Tuple type expected for multiple variables',
+                          lvalue) 
         elif isinstance(lvalue, ParenExpr):
             paren = (ParenExpr)lvalue
             self.store_declared_types(paren.expr, typ)
