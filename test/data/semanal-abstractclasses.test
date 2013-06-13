@@ -90,3 +90,30 @@ MypyFile:1(
         Abstract
         Block:6(
           PassStmt:6())))))
+
+[case testFullyQualifiedAbstractMethodDecl]
+import abc
+from abc import ABCMeta
+import typing
+
+class A(metaclass=ABCMeta):
+  @abc.abstractmethod
+  def g(self) -> 'A': pass
+[out]
+MypyFile:1(
+  Import:1(abc : abc)
+  ImportFrom:2(abc, [ABCMeta : ABCMeta])
+  Import:3(typing : typing)
+  TypeDef:5(
+    A
+    Metaclass(ABCMeta)
+    Decorator:6(
+      Var(g)
+      FuncDef:7(
+        g
+        Args(
+          Var(self))
+        def (self: __main__.A) -> __main__.A
+        Abstract
+        Block:7(
+          PassStmt:7())))))
