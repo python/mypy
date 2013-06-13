@@ -131,7 +131,8 @@ class MessageBuilder:
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
             elif itype.type.fullname() == 'builtins.list':
-                return '{}[]'.format(strip_quotes(self.format(itype.args[0])))
+                return 'List[{}]'.format(
+                    strip_quotes(self.format(itype.args[0])))
             else:
                 # There are type arguments. Convert the arguments to strings
                 # (using format() instead of format_simple() to avoid empty

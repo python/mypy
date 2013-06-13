@@ -406,7 +406,7 @@ ab = Undefined # type: List[B]
 b = Undefined # type: B
 o = Undefined # type: object
 
-aao = [[o], ab] # E: List item 2 has incompatible type B[]
+aao = [[o], ab] # E: List item 2 has incompatible type List[B]
 aab = [[], [o]] # E: List item 1 has incompatible type "object"
 
 aao = [[None], [b], [], [o]]

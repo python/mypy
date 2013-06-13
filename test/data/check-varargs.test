@@ -170,7 +170,7 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 7: Argument 1 to "f" has incompatible type A[]
+main, line 7: Argument 1 to "f" has incompatible type List[A]
 
 [case testCallingWithTupleVarArgs]
 from typing import Undefined
@@ -239,13 +239,13 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 3: Argument 1 to "f" has incompatible type A[]
-main, line 4: Argument 2 to "f" has incompatible type A[]
+main, line 3: Argument 1 to "f" has incompatible type List[A]
+main, line 4: Argument 2 to "f" has incompatible type List[A]
 main, line 5: Argument 1 to "f" has incompatible type "B"
 main, line 6: Argument 2 to "f" has incompatible type "A"
-main, line 7: Argument 3 to "f" has incompatible type A[]
+main, line 7: Argument 3 to "f" has incompatible type List[A]
 main, line 8: Argument 1 to "f" has incompatible type "B"
-main, line 9: Argument 1 to "g" has incompatible type B[]
+main, line 9: Argument 1 to "g" has incompatible type List[B]
 
 [case testCallingVarArgsFunctionWithTupleVarArgs]
 from typing import Undefined
@@ -302,7 +302,7 @@ from typing import Undefined, List
 aa = Undefined # type: List[A]
 ab = Undefined # type: List[B]
 
-g(*aa) # E: Argument 1 to "g" has incompatible type A[]
+g(*aa) # E: Argument 1 to "g" has incompatible type List[A]
 f(*aa)
 f(*ab)
 g(*ab)
@@ -339,8 +339,8 @@ class B: pass
 [builtins fixtures/list.py]
 [out]
 main, line 3: Too few arguments for "f"
-main, line 4: Argument 2 to "f" has incompatible type A[]
-main, line 5: Argument 3 to "f" has incompatible type A[]
+main, line 4: Argument 2 to "f" has incompatible type List[A]
+main, line 5: Argument 3 to "f" has incompatible type List[A]
 main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
 
 
@@ -418,11 +418,11 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 6: Argument 1 to "f" has incompatible type A[]
-main, line 7: Argument 1 to "f" has incompatible type A[]
+main, line 6: Argument 1 to "f" has incompatible type List[A]
+main, line 7: Argument 1 to "f" has incompatible type List[A]
 main, line 8: Argument 1 to "f" has incompatible type "B"
-main, line 9: Argument 2 to "f" has incompatible type A[]
-main, line 10: Argument 3 to "f" has incompatible type A[]
+main, line 9: Argument 2 to "f" has incompatible type List[A]
+main, line 10: Argument 3 to "f" has incompatible type List[A]
 main, line 11: List or tuple expected as variable arguments
 main, line 12: List or tuple expected as variable arguments
 
@@ -473,5 +473,5 @@ class B: pass
 [out]
 main, line 9: Incompatible types in assignment
 main, line 10: Incompatible types in assignment
-main, line 11: Argument 1 to "f" of "G" has incompatible type A[]
+main, line 11: Argument 1 to "f" of "G" has incompatible type List[A]
 main, line 11: Incompatible types in assignment

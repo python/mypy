@@ -307,5 +307,5 @@ n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment
 m = 'x' # E: Incompatible types in assignment
-f(List[object]()) # E: Argument 1 to "f" has incompatible type object[]
+f(List[object]()) # E: Argument 1 to "f" has incompatible type List[object]
 [builtins fixtures/list.py]
