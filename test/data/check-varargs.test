@@ -179,9 +179,9 @@ b = Undefined # type: B
 c = Undefined # type: C
 cc = Undefined # type: CC
 
-f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "tuple<A, B, B>"
-f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "tuple<B, B, C>"
-f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "tuple<B, B>"
+f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "Tuple[A, B, B]"
+f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "Tuple[B, B, C]"
+f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "Tuple[B, B]"
 f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"
 f(*(a, b))    # E: Too few arguments for "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
@@ -251,14 +251,14 @@ main, line 9: Argument 1 to "g" has incompatible type B[]
 from typing import Undefined
 a, b, c, cc = Undefined, Undefined, Undefined, Undefined # type: (A, B, C, CC)
 
-f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "tuple<B, B, B>"
-f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "tuple<A, A, B>"
-f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "tuple<A, B, A>"
-f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "tuple<A, B>"
+f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "Tuple[B, B, B]"
+f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
+f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B, A]"
+f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "Tuple[A, B]"
 f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"
 f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"
 f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"
-f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "tuple<A>"
+f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "Tuple[A]"
 f(*())          # E: Too few arguments for "f"
 f(*(a, b, b))
 f(a, *(b, b))
@@ -341,7 +341,7 @@ class B: pass
 main, line 3: Too few arguments for "f"
 main, line 4: Argument 2 to "f" has incompatible type A[]
 main, line 5: Argument 3 to "f" has incompatible type A[]
-main, line 6: Argument 1 to "f" has incompatible type "tuple<A, A, B>"
+main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
 
 
 -- Overloads + varargs
@@ -432,9 +432,9 @@ S = typevar('S')
 T = typevar('T')
 a, b = Undefined, Undefined # type: (A, B)
 
-a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "tuple<A, B>"
+a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"
 b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
-a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "tuple<A, B>"
+a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"
 b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
 a, b = f(*(a, b, b)) # E: Too many arguments for "f"
 

@@ -405,7 +405,7 @@ class A(Generic[t]):
     g = f
 a = Undefined # type: A[B]
 a.g(B())
-a.g(a)   # E: Argument 1 has incompatible type A<B>
+a.g(a)   # E: Argument 1 has incompatible type A[B]
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
 from typing import Undefined, Any, typevar, Generic, Function

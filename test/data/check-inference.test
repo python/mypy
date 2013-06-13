@@ -283,7 +283,7 @@ c = Undefined # type: Tuple[A, object]
 
 b = id(a) # E: Argument 1 to "id" has incompatible type "A"
 a = id(b) # E: Argument 1 to "id" has incompatible type "B"
-a = id(c) # E: Argument 1 to "id" has incompatible type "tuple<A, object>"
+a = id(c) # E: Argument 1 to "id" has incompatible type "Tuple[A, object]"
 
 a = id(a)
 b = id(b)
@@ -393,11 +393,11 @@ ao = Undefined # type: A[object]
 ab = Undefined # type: A[B]
 ac = Undefined # type: A[C]
 
-ab = f(ao) # E: Argument 1 to "f" has incompatible type A<object>
-ao = f(ab) # E: Argument 1 to "f" has incompatible type A<B>
-ab = f(ac) # E: Argument 1 to "f" has incompatible type A<C>
-ab = g(ao) # E: Argument 1 to "g" has incompatible type A<object>
-ao = g(ab) # E: Argument 1 to "g" has incompatible type A<B>
+ab = f(ao) # E: Argument 1 to "f" has incompatible type A[object]
+ao = f(ab) # E: Argument 1 to "f" has incompatible type A[B]
+ab = f(ac) # E: Argument 1 to "f" has incompatible type A[C]
+ab = g(ao) # E: Argument 1 to "g" has incompatible type A[object]
+ao = g(ab) # E: Argument 1 to "g" has incompatible type A[B]
 
 ab = f(ab)
 ac = f(ac)

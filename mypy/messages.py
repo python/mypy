@@ -136,15 +136,15 @@ class MessageBuilder:
                 # There are type arguments. Convert the arguments to strings
                 # (using format() instead of format_simple() to avoid empty
                 # strings). If the result is too long, replace arguments
-                # with <...>.
+                # with [...].
                 str[] a = []
                 for arg in itype.args:
                     a.append(strip_quotes(self.format(arg)))
                 s = ', '.join(a)
                 if len((base_str + s)) < 25:
-                    return '{}<{}>'.format(base_str, s)
+                    return '{}[{}]'.format(base_str, s)
                 else:
-                    return '{}<...>'.format(base_str)
+                    return '{}[...]'.format(base_str)
         elif isinstance(typ, TypeVar):
             # This is similar to non-generic instance types.
             return '"{}"'.format(((TypeVar)typ).name)
@@ -152,17 +152,17 @@ class MessageBuilder:
             str[] items = []
             for t in ((TupleType)typ).items:
                 items.append(strip_quotes(self.format(t)))
-            s = '"tuple<{}>"'.format(', '.join(items))
+            s = '"Tuple[{}]"'.format(', '.join(items))
             if len(s) < 30:
                 return s
             else:
                 return 'tuple'
         elif isinstance(typ, Void):
-            return 'void'
+            return 'None'
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, Any):
-            return '"any"'
+            return '"Any"'
         elif typ is None:
             raise RuntimeError('Type is None')
         else:
