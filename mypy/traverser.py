@@ -118,7 +118,8 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     T visit_try_stmt(self, TryStmt o):
         o.body.accept(self)
         for i in range(len(o.types)):
-            o.types[i].accept(self)
+            if o.types[i]:
+                o.types[i].accept(self)
             o.handlers[i].accept(self)
         if o.else_body is not None:
             o.else_body.accept(self)
@@ -142,6 +143,8 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         for a in o.args:
             a.accept(self)
         o.callee.accept(self)
+        if o.analyzed:
+            o.analyzed.accept(self)
     
     T visit_op_expr(self, OpExpr o):
         o.left.accept(self)
@@ -181,6 +184,8 @@ class TraverserVisitor<T>(NodeVisitor<T>):
     T visit_index_expr(self, IndexExpr o):
         o.base.accept(self)
         o.index.accept(self)
+        if o.analyzed:
+            o.analyzed.accept(self)
     
     T visit_generator_expr(self, GeneratorExpr o):
         o.left_expr.accept(self)
