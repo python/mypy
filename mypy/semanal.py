@@ -263,6 +263,7 @@ class SemanticAnalyzer(NodeVisitor):
         scope[name] = SymbolTableNode(TVAR, None, None, None, id)
     
     void visit_type_def(self, TypeDef defn):
+        self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_type_def_analysis(defn)
         self.analyze_base_classes(defn)
 
@@ -318,6 +319,8 @@ class SemanticAnalyzer(NodeVisitor):
                                                 j + 1))
         if type_vars:
             defn.type_vars = TypeVars(type_vars)
+            if defn.info:
+                defn.info.type_vars = [tv.name for tv in type_vars]
         for i in reversed(removed):
             del defn.base_types[i]
 
@@ -506,6 +509,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+        self.process_typevar_declaration(s)
     
     void analyse_lvalue(self, Node lval, bool nested=False,
                         bool add_global=False, bool explicit_type=False):
@@ -643,6 +647,25 @@ class SemanticAnalyzer(NodeVisitor):
             self.store_declared_types(paren.expr, typ)
         else:
             raise RuntimeError('Internal error (%s)' % type(lvalue))
+
+    void process_typevar_declaration(self, AssignmentStmt s):
+        """Check if s declares a typevar; it yes, store it in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        if not isinstance(s.rvalue, CallExpr):
+            return
+        call = (CallExpr)s.rvalue
+        if not isinstance(call.callee, NameExpr):
+            return
+        callee = (NameExpr)call.callee
+        if callee.fullname != 'typing.typevar':
+            return
+        # Yes, it's a type variable definition!
+        name = ((NameExpr)s.lvalues[0]).name
+        node = self.globals[name]
+        node.kind = UNBOUND_TVAR
+        call.analyzed = TypeVarExpr()
+        call.analyzed.line = call.line
 
     void visit_decorator(self, Decorator dec):
         if not dec.is_overload:
@@ -1140,27 +1163,6 @@ class FirstPass(NodeVisitor):
         for lval in s.lvalues:
             self.sem.analyse_lvalue(lval, add_global=True,
                                     explicit_type=s.type is not None)
-
-        self.process_typevar_declaration(s)
-
-    void process_typevar_declaration(self, AssignmentStmt s):
-        """Check if s declares a typevar; it yes, store it in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        if not isinstance(s.rvalue, CallExpr):
-            return
-        call = (CallExpr)s.rvalue
-        if not isinstance(call.callee, NameExpr):
-            return
-        callee = (NameExpr)call.callee
-        if callee.name != 'typevar':
-            return
-        # Yes, it's a type variable definition!
-        name = ((NameExpr)s.lvalues[0]).name
-        node = self.sem.globals[name]
-        node.kind = UNBOUND_TVAR
-        call.analyzed = TypeVarExpr()
-        call.analyzed.line = call.line
     
     void visit_func_def(self, FuncDef d):
         sem = self.sem
@@ -1182,7 +1184,6 @@ class FirstPass(NodeVisitor):
                                                      self.sem.cur_mod_id)
     
     void visit_type_def(self, TypeDef d):
-        self.sem.clean_up_bases_and_infer_type_variables(d)
         self.sem.check_no_global(d.name, d)
         d.fullname = self.sem.qualified_name(d.name)
         info = TypeInfo(SymbolTable(), d)
@@ -1190,10 +1191,6 @@ class FirstPass(NodeVisitor):
         d.info = info
         self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
                                                    self.sem.cur_mod_id)
-        for defn in d.defs.body:
-            if isinstance(defn, TypeDef):
-                self.sem.clean_up_bases_and_infer_type_variables(
-                    (TypeDef)defn)
     
     void visit_var_def(self, VarDef d):
         for v in d.items:
