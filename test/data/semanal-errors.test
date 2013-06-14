@@ -118,7 +118,7 @@ class A: pass
 x = cast(A[int], 1) # E: "A" expects no type arguments, but 1 given
 [out]
 
-[case testInvalidNumberOfGenericArgsInCast]
+[case testInvalidNumberOfGenericArgsInTypeApplication]
 import typing
 class A: pass
 class B: pass
