@@ -1,9 +1,43 @@
 """The semantic analyzer.
 
 Bind names to definitions and do various other simple consistency
-checks. Semantic analysis is the first analysis pass after parsing,
-and it is subdivided into two phases (implemented in FirstPass and
-SemanticAnalyzer).
+checks. For example, consider this program:
+
+  x = 1
+  y = x
+
+Here semantic analysis would detect that the assignment 'x = 1'
+defines a new variable, the type of which is to be inferred (in a
+later pass; type inference or type checking is not part of semantic
+analysis).  Also, it would bind both references to 'x' to the same
+module-level variable node.  The second assignment would also be
+analyzed, and the type of 'y' marked as being inferred.
+
+Semantic analysis is the first analysis pass after parsing, and it is
+subdivided into three passes:
+
+ * FirstPass looks up externally visible names defined in a module but
+   ignores imports and local definitions.  It helps enable (some)
+   cyclic references between modules, such as module 'a' that imports
+   module 'b' and used names defined in b *and* vice versa.  The first
+   pass can be performed before dependent modules have been processed.
+ 
+ * SemanticAnalyzer is the second pass.  It does the bulk of the work.
+   It assumes that dependent modules have been semantically analyzed,
+   up to the second pass, unless there is a import cycle.
+ 
+ * ThirdPass checks that type argument counts are valid; for example,
+   it will reject Dict[int].  We don't do this in the second pass,
+   since we infer the type argument counts of classes during this
+   pass, and it is possible to refer to classes defined later in a
+   file, which would not have the type argument count set yet.
+
+Semantic analysis of types is implemented in module mypy.typeanal.
+
+TODO: Check if the third pass slows down type checking significantly.
+  We could probably get rid of it -- for example, we could collect all
+  analyzed types in a collection and check them without having to
+  traverse the entire AST.
 """
 
 from mypy.nodes import (
@@ -20,6 +54,7 @@ from mypy.nodes import (
     ARG_POS, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
+from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
@@ -27,7 +62,7 @@ from mypy.types import (
     TupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3
 
 
 class TypeTranslationError(Exception):
@@ -1188,6 +1223,55 @@ class FirstPass(NodeVisitor):
 
     void visit_try_stmt(self, TryStmt s):
         self.sem.analyze_try_stmt(s, self, add_global=True)
+
+
+class ThirdPass(TraverserVisitor<void>):
+    """Check type argument counts of generic types.
+
+    This is the third and final pass of semantic analysis.
+    """
+    
+    void __init__(self, Errors errors):
+        self.errors = errors
+    
+    void visit_file(self, MypyFile file_node, str fnam):
+        self.errors.set_file(fnam)
+        file_node.accept(self)
+        
+    void visit_func_def(self, FuncDef fdef):
+        self.errors.push_function(fdef.name())
+        self.analyze(fdef.type)
+        super().visit_func_def(fdef)
+        self.errors.pop_function()
+
+    void visit_type_def(self, TypeDef tdef):
+        for base in tdef.info.bases:
+            self.analyze(base)
+        super().visit_type_def(tdef)
+
+    void visit_assignment_stmt(self, AssignmentStmt s):
+        self.analyze(s.type)
+        super().visit_assignment_stmt(s)
+
+    void visit_undefined_expr(self, UndefinedExpr e):
+        self.analyze(e.type)
+
+    void visit_cast_expr(self, CastExpr e):
+        self.analyze(e.type)
+        super().visit_cast_expr(e)
+
+    void visit_type_application(self, TypeApplication e):
+        for type in e.types:
+            self.analyze(type)
+        super().visit_type_application(e)
+
+    void analyze(self, Type type):
+        if type:
+            analyzer = TypeAnalyserPass3(self.fail)
+            type.accept(analyzer)
+    
+    void fail(self, str msg, Context ctx):
+        self.errors.report(ctx.get_line(), msg)
 
 
 Instance self_type(TypeInfo typ):

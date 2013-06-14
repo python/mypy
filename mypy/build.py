@@ -19,7 +19,7 @@ from os.path import dirname, basename
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
 from mypy.nodes import SymbolTableNode, MODULE_REF
-from mypy.semanal import SemanticAnalyzer, FirstPass
+from mypy.semanal import SemanticAnalyzer, FirstPass, ThirdPass
 from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
 from mypy.icode import FuncIcode
@@ -59,10 +59,12 @@ UNSEEN_STATE = 0
 UNPROCESSED_STATE = 1
 # We've parsed the source file.
 PARSED_STATE = 2
+# We've done the first two passes of semantic analysis.
+PARTIAL_SEMANTIC_ANALYSIS_STATE = 3
 # We've semantically analyzed the source file.
-SEMANTICALLY_ANALYSED_STATE = 3
+SEMANTICALLY_ANALYSED_STATE = 4
 # We've type checked the source file (and all its dependencies).
-TYPE_CHECKED_STATE = 4
+TYPE_CHECKED_STATE = 5
 
 
 final_state = TYPE_CHECKED_STATE
@@ -232,6 +234,7 @@ class BuildManager:
     int target            # Build target; selects which passes to perform
     str[] lib_path        # Library path for looking up modules
     SemanticAnalyzer semantic_analyzer # Semantic analyzer
+    ThirdPass semantic_analyzer_pass3  # Semantic analyzer, pass 3
     TypeChecker type_checker      # Type checker
     Errors errors                 # For reporting all errors
     str output_dir                # Store output files here (Python)
@@ -262,6 +265,7 @@ class BuildManager:
         self.output_dir = output_dir
         self.flags = flags
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
+        self.semantic_analyzer_pass3 = ThirdPass(self.errors)
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules)
         self.states = []
@@ -648,6 +652,9 @@ class State:
     SemanticAnalyzer semantic_analyzer(self):
         return self.manager.semantic_analyzer
     
+    ThirdPass semantic_analyzer_pass3(self):
+        return self.manager.semantic_analyzer_pass3
+    
     TypeChecker type_checker(self):
         return self.manager.type_checker
     
@@ -778,10 +785,21 @@ class ParsedFile(State):
     void process(self):
         """Semantically analyze file and advance to the next state."""
         self.semantic_analyzer().visit_file(self.tree, self.tree.path)
-        self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
+        self.switch_state(PartiallySemanticallyAnalyzedFile(self.info(),
+                                                            self.tree))
     
     int state(self):
         return PARSED_STATE
+
+
+class PartiallySemanticallyAnalyzedFile(ParsedFile):
+    void process(self):
+        """Perform final pass of semantic analysis and advance state."""
+        self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
+        self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
+
+    int state(self):
+        return PARTIAL_SEMANTIC_ANALYSIS_STATE
 
 
 class SemanticallyAnalyzedFile(ParsedFile):
