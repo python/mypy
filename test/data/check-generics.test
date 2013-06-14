@@ -580,6 +580,15 @@ A[A]() # Fail
 main, line 4: Value of type "A" is not indexable
 main, line 5: Type application targets a non-generic function
 
+[case testInvalidNumberOfGenericArgsInTypeApplication]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T, S]): pass
+x = A[int, str, int]() # E: Type application has too many types (2 expected)
+x = A[int]() # E: Type application has too few types (2 expected)
+[out]
+
 
 -- Multiple assignment with lists
 -- ------------------------------

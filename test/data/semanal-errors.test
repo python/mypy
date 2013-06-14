@@ -61,7 +61,7 @@ x = 0 # type: A[y]
 [out]
 main, line 4: Name 'y' is not defined
 
-[case testInvalidNumberOfGenericArgs]
+[case testInvalidNumberOfGenericArgsInTypeDecl]
 from typing import typevar, Generic
 t = typevar('t')
 class A: pass
@@ -71,6 +71,83 @@ y = 0 # type: A[A]
 [out]
 main, line 5: "B" expects 1 type argument, but 2 given
 main, line 6: "A" expects no type arguments, but 1 given
+
+[case testInvalidNumberOfGenericArgsInUndefinedArg]
+from typing import Undefined
+class A: pass
+x = Undefined(A[int]) # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInNestedBlock]
+from typing import Undefined
+class A: pass
+class B:
+    def f(self) -> None:
+        while 1:
+            x = Undefined(A[int]) \
+                # E: "A" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInSignature]
+import typing
+class A: pass
+def f() -> A[int]: pass # E: "A" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInOverloadedSignature]
+from typing import overload
+class A: pass
+@overload
+def f(): pass
+@overload
+def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInBaseType]
+import typing
+class A: pass
+class B(A[int]): pass # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInCast]
+from typing import cast
+class A: pass
+x = cast(A[int], 1) # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInCast]
+import typing
+class A: pass
+class B: pass
+x = A[B[int]]() # E: "B" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInNestedGenericType]
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]): pass
+class B: pass
+def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInTupleType]
+from typing import Tuple, Undefined
+class A: pass
+x = Undefined(Tuple[A[int]]) # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInFunctionType]
+from typing import Function, Undefined
+class A: pass
+x = Undefined(Function[[A[int]], int]) \
+              # E: "A" expects no type arguments, but 1 given
+x = Undefined(Function[[], A[int]]) \
+              # E: "A" expects no type arguments, but 1 given
+[out]
 
 [case testVarOrFuncAsType]
 import typing
