@@ -98,7 +98,7 @@ class F: pass
 [case testIncludingBaseClassTwice]
 from typing import typevar, Generic
 t = typevar('t')
-class I(Generic[T]): pass
+class I(Generic[t]): pass
 class A(I[C], I[object]): pass # E: Duplicate base class "I"
 class C: pass
 
