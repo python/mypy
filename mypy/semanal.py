@@ -51,7 +51,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    ARG_POS, MroError, type_aliases
+    StrExpr, ARG_POS, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -695,8 +695,20 @@ class SemanticAnalyzer(NodeVisitor):
         callee = (RefExpr)call.callee
         if callee.fullname != 'typing.typevar':
             return
-        # Yes, it's a type variable definition!
+        if len(call.args) != 1:
+            self.fail("typevar() takes exactly one argument", s)
+            return
+        if call.arg_kinds != [ARG_POS]:
+            self.fail("Unexpected arguments to typevar()", s)
+            return
+        if not isinstance(call.args[0], StrExpr):
+            self.fail("typevar() expects a string literal argument", s)
+            return
         name = ((RefExpr)s.lvalues[0]).fullname.split('.')[-1]
+        if ((StrExpr)call.args[0]).value != name:
+            self.fail("Unexpected typevar() argument value", s)
+            return
+        # Yes, it's a valid type variable definition!
         node = self.globals[name]
         node.kind = UNBOUND_TVAR
         call.analyzed = TypeVarExpr()

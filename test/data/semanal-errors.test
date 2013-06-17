@@ -893,3 +893,12 @@ class A(metaclass=abc.Foo): pass # E: Name 'abc.Foo' is not defined
 def f(): pass
 class A(metaclass=f): pass # E: Invalid metaclass 'f'
 [out]
+
+[case testInvalidTypevarArguments]
+from typing import typevar
+a = typevar('a', 1) # E: typevar() takes exactly one argument
+b = typevar()       # E: typevar() takes exactly one argument
+c = typevar(x='c')  # E: Unexpected arguments to typevar()
+d = typevar(1)      # E: typevar() expects a string literal argument
+e = typevar('E')    # E: Unexpected typevar() argument value
+[out]
