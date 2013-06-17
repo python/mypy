@@ -902,3 +902,11 @@ c = typevar(x='c')  # E: Unexpected arguments to typevar()
 d = typevar(1)      # E: typevar() expects a string literal argument
 e = typevar('E')    # E: Unexpected typevar() argument value
 [out]
+
+[case testLocalTypevarScope]
+from typing import typevar
+def f() -> None:
+    T = typevar('T')
+def g(x: T) -> None: pass # E: Name 'T' is not defined
+[out]
+main: In function "g":

@@ -1167,3 +1167,25 @@ MypyFile:1(
     def [T] (x: T`-1) -> T`-1
     Block:3(
       PassStmt:3())))
+
+[case testLocalTypevar]
+from typing import typevar
+def f():
+    T = typevar('T')
+    def g(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  FuncDef:2(
+    f
+    Block:2(
+      AssignmentStmt:3(
+        NameExpr(T* [l])
+        TypeVarExpr:3())
+      FuncDef:4(
+        g
+        Args(
+          Var(x))
+        def [T] (x: T`-1) -> T`-1
+        Block:4(
+          PassStmt:4())))))

@@ -742,3 +742,19 @@ a, b = Undefined, Undefined # type: (A, B)
 b = f[B](b)
 a = f[B](b) # E: Incompatible types in assignment
 f[B](a) # E: No overload variant of "f" matches argument types
+
+
+-- Type variable scoping
+-- ---------------------
+
+
+[case testLocalTypevariable]
+from typing import typevar
+def f() -> None:
+    T = typevar('T')
+    def g(x: T) -> T: pass
+    a = g(1)
+    a = 1
+    a = '' # E: Incompatible types in assignment
+[out]
+main: In function "f":

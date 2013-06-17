@@ -136,7 +136,10 @@ class SemanticAnalyzer(NodeVisitor):
             d.accept(self)
     
     void visit_func_def(self, FuncDef defn):
+        self.errors.push_function(defn.name())
         self.update_function_type_variables(defn)
+        self.errors.pop_function()
+        
         if self.is_class_scope():
             # Method definition
             defn.is_conditional = self.block_depth[-1] > 0
@@ -181,7 +184,7 @@ class SemanticAnalyzer(NodeVisitor):
         """
         if defn.type:
             functype = (Callable)defn.type
-            typevars = infer_type_variables(functype, self.globals)
+            typevars = self.infer_type_variables(functype)
             # Do not define a new type variable if already defined in scope.
             typevars = [tvar for tvar in typevars
                         if not self.is_defined_type_var(tvar, defn)]
@@ -189,6 +192,36 @@ class SemanticAnalyzer(NodeVisitor):
                 defs = [TypeVarDef(name, -i - 1)
                         for i, name in enumerate(typevars)]
                 functype.variables = TypeVars(defs)
+
+    str[] infer_type_variables(self, Callable type):
+        """Return list of unique type variables referred to in a callable."""
+        result = <str> []
+        for arg in type.arg_types + [type.ret_type]:
+            for tvar in self.find_type_variables_in_type(arg):
+                if tvar not in result:
+                    result.append(tvar)
+        return result
+
+    str[] find_type_variables_in_type(self, Type type):
+        """Return a list of all unique type variable references in type."""
+        result = <str> []
+        if isinstance(type, UnboundType):
+            unbound = (UnboundType)type
+            name = unbound.name
+            node = self.lookup_qualified(name, type)
+            if node and node.kind == UNBOUND_TVAR:
+                result.append(name)
+            for arg in unbound.args:
+                result.extend(self.find_type_variables_in_type(arg))
+        elif isinstance(type, TypeList):
+            types = (TypeList)type
+            for item in types.items:
+                result.extend(self.find_type_variables_in_type(item))
+        elif isinstance(type, Any):
+            pass
+        else:
+            assert False, 'Unsupported type %s' % type
+        return result
 
     bool is_defined_type_var(self, str tvar, Node context):
         return self.lookup(tvar, context).kind == TVAR
@@ -581,6 +614,7 @@ class SemanticAnalyzer(NodeVisitor):
                 n.node = v
                 n.is_def = True
                 n.kind = LDEF
+                n.fullname = n.name
                 self.add_local(v, n)
             elif not self.is_func_scope() and (self.type and
                                                n.name not in self.type.names):
@@ -704,12 +738,13 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(call.args[0], StrExpr):
             self.fail("typevar() expects a string literal argument", s)
             return
-        name = ((RefExpr)s.lvalues[0]).fullname.split('.')[-1]
+        ref = (RefExpr)s.lvalues[0]
+        name = ref.fullname.split('.')[-1]
         if ((StrExpr)call.args[0]).value != name:
             self.fail("Unexpected typevar() argument value", s)
             return
         # Yes, it's a valid type variable definition!
-        node = self.globals[name]
+        node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
         call.analyzed = TypeVarExpr()
         call.analyzed.line = call.line
@@ -1418,38 +1453,6 @@ str get_member_expr_fullname(MemberExpr expr):
     else:
         return None
     return '{}.{}'.format(initial, expr.name)
-
-
-str[] infer_type_variables(Callable type, SymbolTable globals):
-    """Return list of unique type variables referred to in a callable type."""
-    # TODO support multiple scopes
-    result = <str> []
-    for arg in type.arg_types + [type.ret_type]:
-        for tvar in find_type_variables_in_type(arg, globals):
-            if tvar not in result:
-                result.append(tvar)
-    return result
-
-
-str[] find_type_variables_in_type(Type type, SymbolTable globals):
-    """Return a list of all unique type variable references in type."""
-    result = <str> []
-    if isinstance(type, UnboundType):
-        unbound = (UnboundType)type
-        name = unbound.name
-        if name in globals and globals[name].kind == UNBOUND_TVAR:
-            result.append(name)
-        for arg in unbound.args:
-            result.extend(find_type_variables_in_type(arg, globals))
-    elif isinstance(type, TypeList):
-        types = (TypeList)type
-        for item in types.items:
-            result.extend(find_type_variables_in_type(item, globals))
-    elif isinstance(type, Any):
-        pass
-    else:
-        assert False, 'Unsupported type %s' % type
-    return result
 
 
 T find_duplicate<T>(T[] list):
