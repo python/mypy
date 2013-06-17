@@ -168,3 +168,10 @@ def f() -> "A\nB": pass
 [out]
 file: In function "f":
 file, line 1: Parse error before end of line
+
+[case testInvalidMetaclass]
+class A(metaclass=1): pass
+[out]
+file: In class "A":
+file, line 1: Parse error before numeric literal
+file, line 1: Parse error before end of file
