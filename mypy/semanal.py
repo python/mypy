@@ -683,13 +683,13 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(s.rvalue, CallExpr):
             return
         call = (CallExpr)s.rvalue
-        if not isinstance(call.callee, NameExpr):
+        if not isinstance(call.callee, RefExpr):
             return
-        callee = (NameExpr)call.callee
+        callee = (RefExpr)call.callee
         if callee.fullname != 'typing.typevar':
             return
         # Yes, it's a type variable definition!
-        name = ((NameExpr)s.lvalues[0]).name
+        name = ((RefExpr)s.lvalues[0]).fullname.split('.')[-1]
         node = self.globals[name]
         node.kind = UNBOUND_TVAR
         call.analyzed = TypeVarExpr()

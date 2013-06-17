@@ -1131,3 +1131,21 @@ MypyFile:1(
     TypeVars(
       T)
     PassStmt:4()))
+
+[case testQualifiedTypevar]
+import typing
+T = typing.typevar('T')
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
