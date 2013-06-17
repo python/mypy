@@ -266,6 +266,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_type_def_analysis(defn)
         self.analyze_base_classes(defn)
+        self.analyze_metaclass(defn)
 
         # Analyze class body.
         defn.defs.accept(self)
@@ -427,6 +428,10 @@ class SemanticAnalyzer(NodeVisitor):
                     worklist.append(base.type)
                     visited.add(base.type)
         return False
+
+    void analyze_metaclass(self, TypeDef defn):
+        if defn.metaclass:
+            self.lookup_qualified(defn.metaclass, defn)
 
     Instance object_type(self):
         return self.named_type('__builtins__.object')

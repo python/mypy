@@ -879,3 +879,9 @@ class A(Generic[T], Generic[S]): pass \
 class B(Generic[T], AbstractGeneric[T]): pass \
       # E: Duplicate Generic or AbstractGeneric in bases
 [out]
+
+[case testInvalidMetaclass]
+class A(metaclass=x): pass
+[out]
+main, line 1: Name 'x' is not defined
+
