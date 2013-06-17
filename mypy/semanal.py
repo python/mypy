@@ -739,10 +739,16 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(call.args[0], StrExpr):
             self.fail("typevar() expects a string literal argument", s)
             return
-        ref = (RefExpr)s.lvalues[0]
-        name = ref.fullname.split('.')[-1]
+        lvalue = (NameExpr)s.lvalues[0]
+        name = lvalue.name
         if ((StrExpr)call.args[0]).value != name:
             self.fail("Unexpected typevar() argument value", s)
+            return
+        if not lvalue.is_def:
+            if s.type:
+                self.fail("Cannot declare the type of a type variable", s)
+            else:
+                self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return
         # Yes, it's a valid type variable definition!
         node = self.lookup(name, s)
