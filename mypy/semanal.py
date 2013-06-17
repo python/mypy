@@ -308,21 +308,46 @@ class SemanticAnalyzer(NodeVisitor):
         removed = <int> []
         type_vars = <TypeVarDef> []
         for i, base in enumerate(defn.base_types):
-            # TODO bind name reliably
-            if (isinstance(base, UnboundType)
-                    and ((UnboundType)base).name in ('Generic',
-                                                     'AbstractGeneric')):
-                unbound = (UnboundType)base
+            tvars = self.analyze_typevar_declaration(base)
+            if tvars is not None:
                 removed.append(i)
-                for j, arg in enumerate(unbound.args):
-                    type_vars.append(TypeVarDef(((UnboundType)arg).name,
-                                                j + 1))
+                for j, name in enumerate(tvars):
+                    type_vars.append(TypeVarDef(name, j + 1))
         if type_vars:
             defn.type_vars = TypeVars(type_vars)
             if defn.info:
                 defn.info.type_vars = [tv.name for tv in type_vars]
         for i in reversed(removed):
             del defn.base_types[i]
+
+    str[] analyze_typevar_declaration(self, Type t):
+        if not isinstance(t, UnboundType):
+            return None
+        unbound = (UnboundType)t
+        sym = self.lookup_qualified(unbound.name, unbound)
+        if sym is None:
+            return None
+        if sym.node.fullname() in ('typing.Generic',
+                                   'typing.AbstractGeneric'):
+            tvars = <str> []
+            for arg in unbound.args:
+                tvar = self.analyze_unbound_tvar(arg)
+                if tvar:
+                    tvars.append(tvar)
+                else:
+                    self.fail('Free type variable expected in %s[...]' %
+                              sym.node.name(), t)
+            return tvars
+        return None
+
+    str analyze_unbound_tvar(self, Type t):
+        if not isinstance(t, UnboundType):
+            return None
+        unbound = (UnboundType)t
+        sym = self.lookup(unbound.name, unbound)
+        if sym is not None and sym.kind == UNBOUND_TVAR:
+            return sym.node.name() # TODO: Should use fullname()!
+        return None
 
     void setup_type_def_analysis(self, TypeDef defn):
         """Prepare for the analysis of a class definition."""

@@ -842,3 +842,17 @@ a.y, a.x = Undefined, Undefined # type: int, int \
 a[1], a[2] = Undefined, Undefined # type: int, int \
     # E: Unexpected type declaration
 [out]
+
+[case testMissingGenericImport]
+from typing import typevar
+T = typevar('T')
+class A(Generic[T]): pass
+[out]
+main, line 3: Name 'Generic' is not defined
+
+[case testMissingAbstractGenericImport]
+from typing import typevar, Generic
+T = typevar('T')
+class A(AbstractGeneric[T]): pass
+[out]
+main, line 3: Name 'AbstractGeneric' is not defined

@@ -1113,3 +1113,21 @@ MypyFile:1(
       Var(x))
     Block:1(
       PassStmt:1())))
+
+[case testQualifiedGeneric]
+from typing import typevar
+import typing
+T = typevar('T')
+class A(typing.Generic[T]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  Import:2(typing : typing)
+  AssignmentStmt:3(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:3())
+  TypeDef:4(
+    A
+    TypeVars(
+      T)
+    PassStmt:4()))
