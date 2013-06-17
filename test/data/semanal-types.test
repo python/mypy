@@ -1149,3 +1149,21 @@ MypyFile:1(
     def [T] (x: T`-1) -> T`-1
     Block:3(
       PassStmt:3())))
+
+[case testAliasedTypevar]
+from typing import typevar as tv
+T = tv('T')
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : tv])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
