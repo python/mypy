@@ -888,3 +888,8 @@ class A(metaclass=x): pass # E: Name 'x' is not defined
 import abc
 class A(metaclass=abc.Foo): pass # E: Name 'abc.Foo' is not defined
 [out]
+
+[case testNonClassMetaclass]
+def f(): pass
+class A(metaclass=f): pass # E: Invalid metaclass 'f'
+[out]

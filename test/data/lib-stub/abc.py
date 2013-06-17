@@ -1,2 +1,2 @@
-ABCMeta = object()
+class ABCMeta: pass
 abstractmethod = object()

@@ -431,7 +431,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     void analyze_metaclass(self, TypeDef defn):
         if defn.metaclass:
-            self.lookup_qualified(defn.metaclass, defn)
+            sym = self.lookup_qualified(defn.metaclass, defn)
+            if sym is not None and not isinstance(sym.node, TypeInfo):
+                self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
 
     Instance object_type(self):
         return self.named_type('__builtins__.object')
