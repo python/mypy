@@ -310,6 +310,9 @@ class SemanticAnalyzer(NodeVisitor):
         for i, base in enumerate(defn.base_types):
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
+                if type_vars:
+                    self.fail('Duplicate Generic or AbstractGeneric in bases',
+                              defn)
                 removed.append(i)
                 for j, name in enumerate(tvars):
                     type_vars.append(TypeVarDef(name, j + 1))

@@ -869,3 +869,13 @@ class A(AbstractGeneric[T]):
     class B(AbstractGeneric[T]): pass \
           # E: Free type variable expected in AbstractGeneric[...]
 [out]
+
+[case testIncludingGenericTwiceInBaseClassList]
+from typing import Generic, AbstractGeneric, typevar
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T], Generic[S]): pass \
+      # E: Duplicate Generic or AbstractGeneric in bases
+class B(Generic[T], AbstractGeneric[T]): pass \
+      # E: Duplicate Generic or AbstractGeneric in bases
+[out]
