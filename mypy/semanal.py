@@ -679,7 +679,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     void check_lvalue_validity(self, Node node, Context ctx):
         if (isinstance(node, FuncDef) or
-                isinstance(node, TypeInfo)):
+                isinstance(node, TypeInfo) or
+                (isinstance(node, Var) and ((Var)node).is_typevar)):
             self.fail('Invalid assignment target', ctx)
 
     Type infer_type_from_undefined(self, Node rvalue):
@@ -753,6 +754,7 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid type variable definition!
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
+        ((Var)lvalue.node).is_typevar = True
         call.analyzed = TypeVarExpr()
         call.analyzed.line = call.line
 

@@ -929,3 +929,27 @@ x = typevar('x') # E: Cannot redefine 'x' as a type variable
 from typing import typevar
 x = typevar('x') # type: int # E: Cannot declare the type of a type variable
 [out]
+
+[case testRedefineTypevar]
+from typing import typevar
+t = typevar('t')
+t = 1 # E: Invalid assignment target
+[out]
+
+[case testRedefineTypevar2]
+from typing import typevar
+t = typevar('t')
+def t(): pass # E: Name 't' already defined
+[out]
+
+[case testRedefineTypevar3]
+from typing import typevar
+t = typevar('t')
+class t: pass # E: Name 't' already defined
+[out]
+
+[case testRedefineTypevar4]
+from typing import typevar
+t = typevar('t')
+from typing import Generic as t # E: Name 't' already defined
+[out]

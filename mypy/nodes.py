@@ -320,6 +320,7 @@ class Var(SymbolNode):
     bool is_ready    # If inferred, is the inferred type available?
     # Is this initialized explicitly to a non-None value in class body?
     bool is_initialized_in_class
+    bool is_typevar
     
     void __init__(self, str name, mypy.types.Type type=None):
         self._name = name
@@ -327,6 +328,7 @@ class Var(SymbolNode):
         self.is_self = False
         self.is_ready = True
         self.is_initialized_in_class = False
+        self.is_typevar = False
 
     str name(self):
         return self._name
