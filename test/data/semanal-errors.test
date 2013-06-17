@@ -910,3 +910,11 @@ def f() -> None:
 def g(x: T) -> None: pass # E: Name 'T' is not defined
 [out]
 main: In function "g":
+
+[case testClassTypevarScope]
+from typing import typevar
+class A:
+    T = typevar('T')
+def g(x: T) -> None: pass # E: Name 'T' is not defined
+[out]
+main: In function "g":

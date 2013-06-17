@@ -748,7 +748,7 @@ f[B](a) # E: No overload variant of "f" matches argument types
 -- ---------------------
 
 
-[case testLocalTypevariable]
+[case testLocalTypeVariable]
 from typing import typevar
 def f() -> None:
     T = typevar('T')
@@ -758,3 +758,12 @@ def f() -> None:
     a = '' # E: Incompatible types in assignment
 [out]
 main: In function "f":
+
+[case testClassLevelTypeVariable]
+from typing import typevar
+class A:
+    T = typevar('T')
+    def g(self, x: T) -> T: pass
+a = A().g(1)
+a = 1
+a = '' # E: Incompatible types in assignment

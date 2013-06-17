@@ -1189,3 +1189,25 @@ MypyFile:1(
         def [T] (x: T`-1) -> T`-1
         Block:4(
           PassStmt:4())))))
+
+[case testClassLevelTypevar]
+from typing import typevar
+class A:
+    T = typevar('T')
+    def g(self, x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  TypeDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(T*)
+      TypeVarExpr:3())
+    FuncDef:4(
+      g
+      Args(
+        Var(self)
+        Var(x))
+      def [T] (self: __main__.A, x: T`-1) -> T`-1
+      Block:4(
+        PassStmt:4()))))
