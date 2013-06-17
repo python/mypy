@@ -375,3 +375,14 @@ MypyFile:1(
             AssignmentStmt:5(
               NameExpr(z* [l])
               NameExpr(x [l]))))))))
+
+[case testQualifiedMetaclass]
+import abc
+class A(metaclass=abc.ABCMeta): pass
+[out]
+MypyFile:1(
+  Import:1(abc : abc)
+  TypeDef:2(
+    A
+    Metaclass(abc.ABCMeta)
+    PassStmt:2()))
