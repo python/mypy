@@ -963,3 +963,30 @@ x = Undefined('foo') # E: Name 'foo' is not defined
 from typing import Undefined
 x = Undefined('int[') # E: Argument to Undefined is not a type
 [out]
+
+[case testInconsistentOverload]
+from typing import overload
+def dec(x): pass
+@overload
+def f(): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+[out]
+
+[case testInconsistentOverload2]
+from typing import overload
+def dec(x): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+@overload
+def f(): pass
+[out]
+
+[case testMissingOverloadDecorator]
+from typing import overload
+def dec(x): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+[out]

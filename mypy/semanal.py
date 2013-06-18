@@ -226,12 +226,16 @@ class SemanticAnalyzer(NodeVisitor):
     
     void visit_overloaded_func_def(self, OverloadedFuncDef defn):
         Callable[] t = []
-        for decorator in defn.items:
+        for item in defn.items:
             # TODO support decorated overloaded functions properly
-            decorator.is_overload = True
-            decorator.func.is_overload = True
-            decorator.accept(self)
-            t.append((Callable)function_type(decorator.func))
+            item.is_overload = True
+            item.func.is_overload = True
+            item.accept(self)
+            t.append((Callable)function_type(item.func))
+            if not [dec for dec in item.decorators
+                    if refers_to_fullname(dec, 'typing.overload')]:
+                self.fail("'overload' decorator expected", item)
+                
         defn.type = Overloaded(t)
         defn.type.line = defn.line
         
