@@ -695,13 +695,26 @@ class TestTyping(unittest.TestCase):
         class B(metaclass=ABCMeta):
             @overload
             @abstractmethod
-            def f(self, x:int): pass
+            def f(self, x:int) -> int: pass
+            
             @overload
             @abstractmethod
-            def f(self, x): pass
+            def f(self, x) ->None: pass
 
         with self.assertRaises(TypeError):
             B()
+
+        class C(B):
+            @overload
+            def f(self, x:int) -> int:
+                return 1
+            
+            @overload
+            def f(self, x):
+                return 'x'
+
+        self.assertEqual(C().f(2), 1)
+        self.assertEqual(C().f(None), 'x')
 
 
 @overload
