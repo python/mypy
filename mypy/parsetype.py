@@ -52,15 +52,12 @@ class TypeParser:
         elif isinstance(t, StrLit):
             # Type escaped as string literal.
             typestr = ((StrLit)t).parsed()
-            typestr = typestr.strip()
-            tokens = lex(typestr, t.line)
+            line = t.line
             self.skip()
             try:
-                result, i = parse_type(tokens, 0)
+                result = parse_str_as_type(typestr, line)
             except TypeParseError as e:
                 raise TypeParseError(e.token, self.ind)
-            if i < len(tokens) - 2:
-                raise TypeParseError(tokens[i], self.ind)
             return result
         else:
             self.parse_error()
@@ -157,3 +154,16 @@ class TypeParser:
     
     void parse_error(self):
         raise TypeParseError(self.tok[self.ind], self.ind)
+
+
+Type parse_str_as_type(str typestr, int line):
+    """Parse a type represented as a string.
+
+    Raise TypeParseError on parse error.
+    """
+    typestr = typestr.strip()
+    tokens = lex(typestr, line)
+    result, i = parse_type(tokens, 0)
+    if i < len(tokens) - 2:
+        raise TypeParseError(tokens[i], i)
+    return result
