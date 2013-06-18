@@ -10,11 +10,11 @@ __all__ = [
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
-    'ForwardRef',
     'Generic',
     'GenericMeta',
     'Protocol',
     'cast',
+    'forwardref',
     'overload',
     'typevar',
     # Protocols and abstract base classes
@@ -132,7 +132,7 @@ class typevar:
         self.name = name
 
 
-class ForwardRef:
+class forwardref:
     def __init__(self, name):
         self.name = name
 
@@ -195,7 +195,7 @@ def make_dispatcher(func, previous=None):
     argtypes = []
     for arg in args:
         ann = annotations.get(arg)
-        if isinstance(ann, ForwardRef):
+        if isinstance(ann, forwardref):
             ann = ann.name
         if is_erased_type(ann):
             ann = None

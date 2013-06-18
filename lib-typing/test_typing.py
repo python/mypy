@@ -3,7 +3,7 @@ import unittest
 
 from typing import (
     List, Dict, Tuple, Any, Function, Generic, AbstractGeneric, Protocol,
-    ForwardRef, Sized, Iterable, Iterator, Sequence, cast, overload, typevar
+    Sized, Iterable, Iterator, Sequence, cast, forwardref, overload, typevar
 )
 
 
@@ -518,7 +518,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(A(), P)
 
     def test_forward_ref_in_annotation(self):
-        A = ForwardRef('A')
+        A = forwardref('A')
         def f(a:A) -> A:
             return a
         self.assertEqual(A.name, 'A')
@@ -604,7 +604,7 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f([]), 2)
 
     def test_forward_ref_in_overload(self):
-        A = ForwardRef('A')
+        A = forwardref('A')
 
         @overload
         def f(a:A): return 1
