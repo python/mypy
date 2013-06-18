@@ -1211,3 +1211,58 @@ MypyFile:1(
       def [T] (self: __main__.A, x: T`-1) -> T`-1
       Block:4(
         PassStmt:4()))))
+
+[case testImportTypevar]
+from typing import Generic
+from _m import T
+class A(Generic[T]):
+    y = None # type: T
+[file _m.py]
+from typing import typevar
+T = typevar('T')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Generic : Generic])
+  ImportFrom:2(_m, [T : T])
+  TypeDef:3(
+    A
+    TypeVars(
+      T)
+    AssignmentStmt:4(
+      NameExpr(y)
+      NameExpr(None [builtins.None])
+      T`1)))
+
+[case testQualifiedReferenceToTypevarInClass]
+from typing import Generic
+import _m
+class A(Generic[_m.T]): pass
+[file _m.py]
+from typing import typevar
+T = typevar('T')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Generic : Generic])
+  Import:2(_m : _m)
+  TypeDef:3(
+    A
+    TypeVars(
+      _m.T)
+    PassStmt:3()))
+
+[case testQualifiedReferenceToTypevarInFunctionSignature]
+import _m
+def f(x: _m.T) -> None: pass
+[file _m.py]
+from typing import typevar
+T = typevar('T')
+[out]
+MypyFile:1(
+  Import:1(_m : _m)
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def [_m.T] (x: _m.T`-1)
+    Block:2(
+      PassStmt:2())))
