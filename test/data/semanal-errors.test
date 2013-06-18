@@ -958,3 +958,8 @@ from typing import Generic as t # E: Name 't' already defined
 from typing import Undefined
 x = Undefined('foo') # E: Name 'foo' is not defined
 [out]
+
+[case testInvalidStrLiteralType2]
+from typing import Undefined
+x = Undefined('int[') # E: Argument to Undefined is not a type
+[out]
