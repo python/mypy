@@ -51,6 +51,8 @@ CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
 CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
 CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
+INCONSISTENT_ABSTRACT_OVERLOAD = \
+              'Overloaded method has both abstract and non-abstract variants'
 
 
 class MessageBuilder:

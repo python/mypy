@@ -134,8 +134,13 @@ class TypeChecker(NodeVisitor<Type>):
         raise RuntimeError('Not implemented')
     
     Type visit_overloaded_func_def(self, OverloadedFuncDef defn):
+        num_abstract = 0
         for fdef in defn.items:
             self.check_func_item(fdef.func)
+            if fdef.func.is_abstract:
+                num_abstract += 1
+        if num_abstract not in (0, len(defn.items)):
+            self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.info:
             self.check_method_override(defn)
     

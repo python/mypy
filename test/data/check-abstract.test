@@ -402,3 +402,31 @@ a = B() # type: A
 a.f(1)
 a.f('')
 a.f(B()) # E: No overload variant of "f" of "A" matches argument types
+
+[case testOverloadedAbstractMethodVariantMissingDecorator1]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @abstractmethod \
+    # E: Overloaded method has both abstract and non-abstract variants
+  @overload
+  def f(self, x: int) -> int: pass
+  @overload
+  def f(self, x: str) -> str: pass
+[out]
+main: In class "A":
+
+[case testOverloadedAbstractMethodVariantMissingDecorator1]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @overload \
+    # E: Overloaded method has both abstract and non-abstract variants
+  def f(self, x: int) -> int: pass
+  @abstractmethod
+  @overload
+  def f(self, x: str) -> str: pass
+[out]
+main: In class "A":
