@@ -332,9 +332,17 @@ class SemanticAnalyzer(NodeVisitor):
         concrete = set<str>()
         abstract = <str> []
         for base in typ.mro:
-            for name, node in base.names.items():
-                if isinstance(node.node, Decorator):
-                    fdef = ((Decorator)node.node).func
+            for name, symnode in base.names.items():
+                node = symnode.node
+                if isinstance(node, OverloadedFuncDef):
+                    # Unwrap an overloaded function definition. We can just
+                    # check arbitrarily the first overload item. If the
+                    # different items have a different abstract status, there
+                    # should be an error reported elsewhere.
+                    overload = (OverloadedFuncDef)node
+                    node = overload.items[0]
+                if isinstance(node, Decorator):
+                    fdef = ((Decorator)node).func
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
