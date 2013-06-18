@@ -1036,6 +1036,30 @@ MypyFile:1(
       Args(
         IntExpr(1)))))
 
+[case testTypeApplicationWithStringLiteralType]
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+A['int']()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  TypeDef:3(
+    A
+    TypeVars(
+      t)
+    PassStmt:3())
+  ExpressionStmt:4(
+    CallExpr:4(
+      TypeApplication:4(
+        NameExpr(A [__main__.A])
+        Types(
+          builtins.int))
+      Args())))
+
 [case testListTypeAlias]
 from typing import List
 def f() -> List[int]: pass
