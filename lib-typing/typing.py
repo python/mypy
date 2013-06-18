@@ -6,7 +6,7 @@ import sys
 
 
 __all__ = [
-    # Type-related definitions
+    # Type system related
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
@@ -14,7 +14,6 @@ __all__ = [
     'Generic',
     'GenericMeta',
     'Protocol',
-    # Utilities
     'cast',
     'overload',
     'typevar',
