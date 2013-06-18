@@ -1,3 +1,6 @@
 # Stubs for logging
 
-# TODO add these
+# TODO signature
+def getLogger(name=None): pass
+
+# TODO add more
