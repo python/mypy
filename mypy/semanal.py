@@ -63,6 +63,7 @@ from mypy.types import (
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3
+from mypy.parsetype import parse_str_as_type, TypeParseError
 
 
 class TypeTranslationError(Exception):
@@ -1460,6 +1461,14 @@ Type expr_to_unanalyzed_type(Node expr):
         lst = (ListExpr)expr
         return TypeList([expr_to_unanalyzed_type(t) for t in lst.items],
                         line=expr.line)
+    elif isinstance(expr, StrExpr):
+        # Parse string literal type.
+        strlit = (StrExpr)expr
+        try:
+            result = parse_str_as_type(strlit.value, strlit.line)
+        except TypeParseError:
+            raise TypeTranslationError()
+        return result
     else:
         raise TypeTranslationError()
 

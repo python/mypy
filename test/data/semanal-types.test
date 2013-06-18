@@ -329,6 +329,21 @@ MypyFile:1(
       IntExpr(1)
       UndefinedExpr:2(Any))))
 
+[case testUndefinedWithStrLiteral]
+from typing import Undefined
+x = Undefined('A')
+class A: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Undefined : Undefined])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    UndefinedExpr:2(__main__.A)
+    __main__.A)
+  TypeDef:3(
+    A
+    PassStmt:3()))
+
 [case testCast]
 from typing import typevar, Generic, Any, cast
 t = typevar('t')

@@ -953,3 +953,8 @@ from typing import typevar
 t = typevar('t')
 from typing import Generic as t # E: Name 't' already defined
 [out]
+
+[case testInvalidStrLiteralType]
+from typing import Undefined
+x = Undefined('foo') # E: Name 'foo' is not defined
+[out]
