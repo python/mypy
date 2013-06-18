@@ -13,6 +13,7 @@ __all__ = [
     'Generic',
     'GenericMeta',
     'Protocol',
+    'Undefined',
     'cast',
     'forwardref',
     'overload',
@@ -248,6 +249,49 @@ def make_dispatcher(func, previous=None):
             return func(*args, **kwargs), True
         return None, False
     return dispatch
+
+
+class Undefined:
+    """Class that represents an undefined value with a specified type.
+
+    At runtime the name Undefined is bound to an instance of this
+    class.  The intent is that any operation on an Undefined object
+    raises an exception, including use in a boolean context.  Some
+    operations cannot be disallowed: Undefined can be used as an
+    operand of 'is', and it can be assigned to variables and stored in
+    containers.
+
+    'Undefined' makes it possible to declare the static type of a
+    variable even if there is no useful default value to initialize it
+    with:
+
+      from typing import Undefined
+      x = Undefined(int)
+      y = Undefined # type: int
+
+    The latter form can be used if efficiency is of utmost importance,
+    since it saves a call operation and potentially additional
+    operations needed to evaluate a type expression.  Undefined(x)
+    just evaluates to Undefined, ignoring the argument value.
+    """
+    
+    def __repr__(self):
+        return '<typing.Undefined>'
+
+    def __setattr__(self, attr, value):
+        raise AttributeError("'Undefined' object has no attribute '%s'" % attr)
+
+    def __eq__(self, other):
+        raise TypeError("'Undefined' object cannot be compared")
+
+    def __call__(self, type):
+        return self
+
+    def __bool__(self):
+        raise TypeError("'Undefined' object is not valid as a boolean")
+
+
+Undefined = Undefined()
 
 
 # Abstract classes

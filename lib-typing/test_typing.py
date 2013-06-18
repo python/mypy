@@ -3,7 +3,8 @@ import unittest
 
 from typing import (
     List, Dict, Tuple, Any, Function, Generic, AbstractGeneric, Protocol,
-    Sized, Iterable, Iterator, Sequence, cast, forwardref, overload, typevar
+    Sized, Iterable, Iterator, Sequence, Undefined, cast, forwardref, overload,
+    typevar
 )
 
 
@@ -529,6 +530,23 @@ class TestTyping(unittest.TestCase):
             return a + 'x'
         def f(a:'Iterable[int]') -> 'List[int]':
             return list(a)
+
+    def test_undefined(self):
+        self.assertEqual(str(Undefined), '<typing.Undefined>')
+        with self.assertRaises(AttributeError):
+            Undefined.x = 1
+        with self.assertRaises(AttributeError):
+            Undefined.x
+        with self.assertRaises(TypeError):
+            if Undefined == 0: pass
+        with self.assertRaises(TypeError):
+            if Undefined != 0: pass
+        with self.assertRaises(TypeError):
+            hash(Undefined)
+        with self.assertRaises(TypeError):
+            if Undefined: pass
+        with self.assertRaises(TypeError):
+            if not Undefined: pass
 
     def test_simple_string_literal_in_overload(self):
         @overload
