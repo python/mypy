@@ -403,6 +403,31 @@ a.f(1)
 a.f('')
 a.f(B()) # E: No overload variant of "f" of "A" matches argument types
 
+[case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @overload
+  @abstractmethod
+  def f(self, x: int) -> int: pass
+  @overload
+  @abstractmethod
+  def f(self, x: str) -> str: pass
+
+class B(A):
+  @overload
+  def f(self, x: int) -> int: pass
+  @overload
+  def f(self, x: str) -> str: pass
+A() # E: Cannot instantiate abstract class 'A' with abstract method 'f'
+B()
+B().f(1)
+a = B() # type: A
+a.f(1)
+a.f('')
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types
+
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
 from abc import abstractmethod, ABCMeta
 from typing import overload
