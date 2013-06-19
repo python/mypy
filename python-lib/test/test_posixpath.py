@@ -7,6 +7,7 @@ import sys
 from posixpath import realpath, abspath, dirname, basename
 
 import posix
+import typing
 
 # An absolute path to a temporary filename for testing. We can't rely on TESTFN
 # being an absolute path, so we need this.
