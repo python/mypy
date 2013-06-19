@@ -10,6 +10,8 @@ import re
 import struct
 import binascii
 
+from typing import Dict, List, Any, IO
+
 
 __all__ = [
     # Legacy interface exports traditional RFC 1521 Base64 encodings
@@ -30,7 +32,7 @@ __all__ = [
 bytes_types = (bytes, bytearray)  # Types acceptable as binary data
 
 
-bytes _translate(bytes s, dict<str, bytes> altchars):
+def _translate(s: bytes, altchars: Dict[str, bytes]) -> bytes:
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
     translation = bytearray(range(256))
@@ -42,7 +44,7 @@ bytes _translate(bytes s, dict<str, bytes> altchars):
 
 # Base64 encoding/decoding uses binascii
 
-bytes b64encode(s, bytes altchars=None):
+def b64encode(s, altchars: bytes = None) -> bytes:
     """Encode a byte string using Base64.
 
     s is the byte string to encode.  Optional altchars must be a byte
@@ -65,7 +67,7 @@ bytes b64encode(s, bytes altchars=None):
     return encoded
 
 
-bytes b64decode(bytes s, bytes altchars=None, bool validate=False):
+def b64decode(s: bytes, altchars: bytes = None, validate: bool = False) -> bytes:
     """Decode a Base64 encoded byte string.
 
     s is the byte string to decode.  Optional altchars must be a
@@ -92,14 +94,14 @@ bytes b64decode(bytes s, bytes altchars=None, bool validate=False):
     return binascii.a2b_base64(s)
 
 
-bytes standard_b64encode(bytes s):
+def standard_b64encode(s: bytes) -> bytes:
     """Encode a byte string using the standard Base64 alphabet.
 
     s is the byte string to encode.  The encoded byte string is returned.
     """
     return b64encode(s)
 
-bytes standard_b64decode(bytes s):
+def standard_b64decode(s: bytes) -> bytes:
     """Decode a byte string encoded with the standard Base64 alphabet.
 
     s is the byte string to decode.  The decoded byte string is
@@ -109,7 +111,7 @@ bytes standard_b64decode(bytes s):
     """
     return b64decode(s)
 
-bytes urlsafe_b64encode(bytes s):
+def urlsafe_b64encode(s: bytes) -> bytes:
     """Encode a byte string using a url-safe Base64 alphabet.
 
     s is the byte string to encode.  The encoded byte string is
@@ -118,7 +120,7 @@ bytes urlsafe_b64encode(bytes s):
     """
     return b64encode(s, b'-_')
 
-bytes urlsafe_b64decode(bytes s):
+def urlsafe_b64decode(s: bytes) -> bytes:
     """Decode a byte string encoded with the standard Base64 alphabet.
 
     s is the byte string to decode.  The decoded byte string is
@@ -149,7 +151,7 @@ _b32tab = [v[0] for k, v in sorted(_b32alphabet.items())]
 _b32rev = dict([(v[0], k) for k, v in _b32alphabet.items()])
 
 
-bytes b32encode(bytes s):
+def b32encode(s: bytes) -> bytes:
     """Encode a byte string using Base32.
 
     s is the byte string to encode.  The encoded byte string is returned.
@@ -192,7 +194,7 @@ bytes b32encode(bytes s):
     return encoded
 
 
-bytes b32decode(bytes s, bool casefold=False, bytes map01=None):
+def b32decode(s: bytes, casefold: bool = False, map01: bytes = None) -> bytes:
     """Decode a Base32 encoded byte string.
 
     s is the byte string to decode.  Optional casefold is a flag
@@ -236,7 +238,7 @@ bytes b32decode(bytes s, bool casefold=False, bytes map01=None):
         if padchars > 0:
             s = s[:-padchars]
     # Now decode the full quanta
-    parts = <bytes> []
+    parts = [] # type: List[bytes]
     acc = 0
     shift = 35
     for c in s:
@@ -271,7 +273,7 @@ bytes b32decode(bytes s, bool casefold=False, bytes map01=None):
 # RFC 3548, Base 16 Alphabet specifies uppercase, but hexlify() returns
 # lowercase.  The RFC also recommends against accepting input case
 # insensitively.
-bytes b16encode(bytes s):
+def b16encode(s: bytes) -> bytes:
     """Encode a byte string using Base16.
 
     s is the byte string to encode.  The encoded byte string is returned.
@@ -281,7 +283,7 @@ bytes b16encode(bytes s):
     return binascii.hexlify(s).upper()
 
 
-bytes b16decode(bytes s, bool casefold=False):
+def b16decode(s: bytes, casefold: bool = False) -> bytes:
     """Decode a Base16 encoded byte string.
 
     s is the byte string to decode.  Optional casefold is a flag
@@ -309,7 +311,7 @@ bytes b16decode(bytes s, bool casefold=False):
 MAXLINESIZE = 76 # Excluding the CRLF
 MAXBINSIZE = (MAXLINESIZE//4)*3
 
-void encode(IO input, IO output):
+def encode(input: IO, output: IO) -> None:
     """Encode a file; input and output are binary files."""
     while True:
         s = input.read(MAXBINSIZE)
@@ -324,7 +326,7 @@ void encode(IO input, IO output):
         output.write(line)
 
 
-void decode(IO input, IO output):
+def decode(input: IO, output: IO) -> None:
     """Decode a file; input and output are binary files."""
     while True:
         line = input.readline()
@@ -334,18 +336,18 @@ void decode(IO input, IO output):
         output.write(s)
 
 
-bytes encodebytes(bytes s):
+def encodebytes(s: bytes) -> bytes:
     """Encode a bytestring into a bytestring containing multiple lines
     of base-64 data."""
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
-    pieces = <bytes> []
+    pieces = [] # type: List[bytes]
     for i in range(0, len(s), MAXBINSIZE):
         chunk = s[i : i + MAXBINSIZE]
         pieces.append(binascii.b2a_base64(chunk))
     return b"".join(pieces)
 
-bytes encodestring(bytes s):
+def encodestring(s: bytes) -> bytes:
     """Legacy alias of encodebytes()."""
     import warnings
     warnings.warn("encodestring() is a deprecated alias, use encodebytes()",
@@ -353,13 +355,13 @@ bytes encodestring(bytes s):
     return encodebytes(s)
 
 
-bytes decodebytes(bytes s):
+def decodebytes(s: bytes) -> bytes:
     """Decode a bytestring of base-64 data into a bytestring."""
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
     return binascii.a2b_base64(s)
 
-bytes decodestring(bytes s):
+def decodestring(s: bytes) -> bytes:
     """Legacy alias of decodebytes()."""
     import warnings
     warnings.warn("decodestring() is a deprecated alias, use decodebytes()",
@@ -368,7 +370,7 @@ bytes decodestring(bytes s):
 
 
 # Usable as a script...
-void main():
+def main() -> None:
     """Small main program"""
     import sys, getopt
     try:
@@ -389,12 +391,12 @@ void main():
         if o == '-t': test(); return
     if args and args[0] != '-':
         with open(args[0], 'rb') as f:
-            func(f, ((any)sys.stdout).buffer)
+            func(f, (Any(sys.stdout)).buffer)
     else:
-        func(((any)sys.stdin).buffer, ((any)sys.stdout).buffer)
+        func((Any(sys.stdin)).buffer, (Any(sys.stdout)).buffer)
 
 
-void test():
+def test() -> None:
     s0 = b"Aladdin:open sesame"
     print(repr(s0))
     s1 = encodebytes(s0)
