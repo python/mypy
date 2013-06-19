@@ -2,16 +2,18 @@
 
 # Based on http://docs.python.org/3.2/library/getopt.html
 
-tuple<tuple<str, str>[], str[]> \
-                      getopt(str[] args, str shortopts,
-                             str[] longopts): pass
+from typing import List, Tuple
 
-tuple<tuple<str, str>[], str[]> \
-                      gnu_getopt(str[] args, str shortopts,
-                                 str[] longopts): pass
+def getopt(args: List[str], shortopts: str,
+           longopts: List[str]) -> Tuple[List[Tuple[str, str]],
+                                         List[str]]: pass
+
+def gnu_getopt(args: List[str], shortopts: str,
+               longopts: List[str]) -> Tuple[List[Tuple[str, str]],
+                                             List[str]]: pass
 
 class GetoptError(Exception):
-    str msg
-    str opt
+    msg = ''
+    opt = ''
 
 error = GetoptError
