@@ -2,11 +2,13 @@
 
 # NOTE: These are incomplete!
 
-int _count(): pass
-any _dangling
+from typing import Undefined, Any
+
+def _count() -> int: pass
+_dangling = Undefined(Any)
 
 class lock:
-    void acquire(self): pass
-    void release(self): pass
+    def acquire(self) -> None: pass
+    def release(self) -> None: pass
 
-lock allocate_lock(): pass
+def allocate_lock() -> lock: pass
