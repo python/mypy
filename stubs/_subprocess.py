@@ -2,34 +2,37 @@
 
 # NOTE: These are incomplete!
 
-int CREATE_NEW_CONSOLE
-int CREATE_NEW_PROCESS_GROUP
-int STD_INPUT_HANDLE
-int STD_OUTPUT_HANDLE
-int STD_ERROR_HANDLE
-int SW_HIDE
-int STARTF_USESTDHANDLES
-int STARTF_USESHOWWINDOW
-int INFINITE
-int DUPLICATE_SAME_ACCESS
-int WAIT_OBJECT_0
+from typing import Mapping, Any, Tuple
+
+CREATE_NEW_CONSOLE = 0
+CREATE_NEW_PROCESS_GROUP = 0
+STD_INPUT_HANDLE = 0
+STD_OUTPUT_HANDLE = 0
+STD_ERROR_HANDLE = 0
+SW_HIDE = 0
+STARTF_USESTDHANDLES = 0
+STARTF_USESHOWWINDOW = 0
+INFINITE = 0
+DUPLICATE_SAME_ACCESS = 0
+WAIT_OBJECT_0 = 0
 
 # TODO not exported by the Python module
 class Handle:
-    void Close(self): pass
+    def Close(self) -> None: pass
 
-int GetVersion(): pass
-int GetExitCodeProcess(Handle handle): pass
-int WaitForSingleObject(Handle handle, int timeout): pass
-tuple<any, Handle, int, int> CreateProcess(str executable, str cmd_line,
-                                           proc_attrs, thread_attrs,
-                                           int inherit, int flags,
-                                           Mapping<str, str> env_mapping,
-                                           str curdir, any startupinfo): pass
-str GetModuleFileName(int module): pass
-Handle GetCurrentProcess(): pass
-int DuplicateHandle(Handle source_proc, Handle source, Handle target_proc,
-                    any target, int access, int inherit): pass
-tuple<Handle, Handle> CreatePipe(pipe_attrs, int size): pass
-int GetStdHandle(int arg): pass
-void TerminateProcess(Handle handle, int exit_code): pass
+def GetVersion() -> int: pass
+def GetExitCodeProcess(handle: Handle) -> int: pass
+def WaitForSingleObject(handle: Handle, timeout: int) -> int: pass
+def CreateProcess(executable: str, cmd_line: str,
+                  proc_attrs, thread_attrs,
+                  inherit: int, flags: int,
+                  env_mapping: Mapping[str, str],
+                  curdir: str,
+                  startupinfo: Any) -> Tuple[Any, Handle, int, int]: pass
+def GetModuleFileName(module: int) -> str: pass
+def GetCurrentProcess() -> Handle: pass
+def DuplicateHandle(source_proc: Handle, source: Handle, target_proc: Handle,
+                    target: Any, access: int, inherit: int) -> int: pass
+def CreatePipe(pipe_attrs, size: int) -> Tuple[Handle, Handle]: pass
+def GetStdHandle(arg: int) -> int: pass
+def TerminateProcess(handle: Handle, exit_code: int) -> None: pass
