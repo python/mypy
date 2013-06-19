@@ -156,7 +156,12 @@ def overload(func):
     """Function decorator for defining overloaded functions."""
     frame = sys._getframe(1)
     locals = frame.f_locals
-    if func.__name__ in locals:
+    # See if there is a previous overload variant available.  Also verify
+    # that the existing function really is overloaded: otherwise, replace
+    # the definition.  The latter is actually important if we want to reload
+    # a library module such as genericpath with a custom one that uses
+    # overloading in the implementation.
+    if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
         orig_func = locals[func.__name__]
         
         def wrapper(*args, **kwargs):
