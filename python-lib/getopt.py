@@ -34,26 +34,29 @@ option involved with the exception.
 __all__ = ["GetoptError","error","getopt","gnu_getopt"]
 
 import os
+from typing import overload, List, Tuple, Iterable
 
 class GetoptError(Exception):
     opt = ''
     msg = ''
-    void __init__(self, str msg, str opt=''):
+    def __init__(self, msg: str, opt: str = '') -> None:
         self.msg = msg
         self.opt = opt
         Exception.__init__(self, msg, opt)
 
-    str __str__(self):
+    def __str__(self) -> str:
         return self.msg
 
 error = GetoptError # backward compatibility
 
-tuple<tuple<str, str>[], str[]> \
-           getopt(str[] args, str shortopts, str longopts):
+@overload
+def \
+           getopt(args: List[str], shortopts: str, longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
     return getopt(args, shortopts, [longopts])
     
-tuple<tuple<str, str>[], str[]> \
-           getopt(str[] args, str shortopts, Iterable<str> longopts = []):
+@overload
+def \
+           getopt(args: List[str], shortopts: str, longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]], List[str]]:
     """getopt(args, options[, long_options]) -> opts, args
 
     Parses command line options and parameter list.  args is the
@@ -80,7 +83,7 @@ tuple<tuple<str, str>[], str[]> \
 
     """
 
-    opts = <tuple<str, str>> []
+    opts = [] # type: List[Tuple[str, str]]
     llongopts = list(longopts)
     while args and args[0].startswith('-') and args[0] != '-':
         if args[0] == '--':
@@ -93,12 +96,14 @@ tuple<tuple<str, str>[], str[]> \
 
     return opts, args
 
-tuple<tuple<str, str>[], str[]> \
-        gnu_getopt(str[] args, str shortopts, str longopts):
+@overload
+def \
+        gnu_getopt(args: List[str], shortopts: str, longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
     return gnu_getopt(args, shortopts, [longopts])
 
-tuple<tuple<str, str>[], str[]> \
-        gnu_getopt(str[] args, str shortopts, Iterable<str> longopts = []):
+@overload
+def \
+        gnu_getopt(args: List[str], shortopts: str, longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]], List[str]]:
     """getopt(args, options[, long_options]) -> opts, args
 
     This function works like getopt(), except that GNU style scanning
@@ -113,8 +118,8 @@ tuple<tuple<str, str>[], str[]> \
 
     """
 
-    opts = <tuple<str, str>> []
-    prog_args = <str> []
+    opts = [] # type: List[Tuple[str, str]]
+    prog_args = [] # type: List[str]
     llongopts = list(longopts)
 
     # Allow options after non-option arguments?
@@ -145,13 +150,13 @@ tuple<tuple<str, str>[], str[]> \
 
     return opts, prog_args
 
-tuple<tuple<str, str>[], str[]> \
-                      do_longs(tuple<str, str>[] opts, str opt,
-                               str[] longopts, str[] args):
+def \
+                      do_longs(opts: List[Tuple[str, str]], opt: str,
+                               longopts: List[str], args: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
     try:
         i = opt.index('=')
     except ValueError:
-        str optarg = None
+        optarg = None # type: str
     else:
         opt, optarg = opt[:i], opt[i+1:]
 
@@ -169,7 +174,7 @@ tuple<tuple<str, str>[], str[]> \
 # Return:
 #   has_arg?
 #   full option name
-tuple<bool, str> long_has_args(str opt, str[] longopts):
+def long_has_args(opt: str, longopts: List[str]) -> Tuple[bool, str]:
     possibilities = [o for o in longopts if o.startswith(opt)]
     if not possibilities:
         raise GetoptError('option --%s not recognized' % opt, opt)
@@ -190,9 +195,9 @@ tuple<bool, str> long_has_args(str opt, str[] longopts):
         unique_match = unique_match[:-1]
     return has_arg, unique_match
 
-tuple<tuple<str, str>[], str[]> \
-                      do_shorts(tuple<str, str>[] opts, str optstring,
-                                str shortopts, str[] args):
+def \
+                      do_shorts(opts: List[Tuple[str, str]], optstring: str,
+                                shortopts: str, args: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
     while optstring != '':
         opt, optstring = optstring[0], optstring[1:]
         if short_has_arg(opt, shortopts):
@@ -207,7 +212,7 @@ tuple<tuple<str, str>[], str[]> \
         opts.append(('-' + opt, optarg))
     return opts, args
 
-bool short_has_arg(str opt, str shortopts):
+def short_has_arg(opt: str, shortopts: str) -> bool:
     for i in range(len(shortopts)):
         if opt == shortopts[i] != ':':
             return shortopts.startswith(':', i+1)
