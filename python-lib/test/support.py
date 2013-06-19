@@ -25,6 +25,7 @@ import fnmatch
 import logging.handlers
 
 import _thread, threading
+from typing import Any, Dict
 #try:
 #    import multiprocessing.process
 #except ImportError:
@@ -169,17 +170,17 @@ def get_attribute(obj, name):
         return attribute
 
 verbose = 1              # Flag set to 0 by regrtest.py
-any use_resources = None     # Flag set to [] by regrtest.py
+use_resources = None # type: Any     # Flag set to [] by regrtest.py
 max_memuse = 0           # Disable bigmem tests (they will still be run with
                          # small sizes, to make sure they work.)
 real_max_memuse = 0
 failfast = False
-any match_tests = None
+match_tests = None # type: Any
 
 # _original_stdout is meant to hold stdout at the time regrtest began.
 # This may be "the real" stdout, or IDLE's emulation of stdout, or whatever.
 # The point is to have some flavor of stdout the user can actually see.
-any _original_stdout = None
+_original_stdout = None # type: 'Any'
 def record_original_stdout(stdout):
     global _original_stdout
     _original_stdout = stdout
@@ -440,12 +441,12 @@ def fcmp(x, y): # fuzzy comparison function
 
 # decorator for skipping tests on non-IEEE 754 platforms
 requires_IEEE_754 = unittest.skipUnless(
-    ((any)float).__getformat__("double").startswith("IEEE"),
+    (Any(float)).__getformat__("double").startswith("IEEE"),
     "test requires IEEE 754 doubles")
 
 is_jython = sys.platform.startswith('java')
 
-str TESTFN
+TESTFN = ''
 # Filename used for testing
 if os.name == 'java':
     # Jython disallows @ in module names
@@ -471,7 +472,7 @@ TESTFN_ENCODING = sys.getfilesystemencoding()
 # TESTFN_UNENCODABLE is a filename (str type) that should *not* be able to be
 # encoded by the filesystem encoding (in strict mode). It can be None if we
 # cannot generate such filename.
-any TESTFN_UNENCODABLE = None
+TESTFN_UNENCODABLE = None # type: Any
 if os.name in ('nt', 'ce'):
     # skip win32s (0) or Windows 9x/ME (1)
     if sys.getwindowsversion().platform >= 2:
@@ -799,7 +800,7 @@ class EnvironmentVarGuard(dict):
         return self
 
     def __exit__(self, *ignore_exc):
-        for ( k, v) in self._changed.items():
+        for k, v in self._changed.items():
             if v is None:
                 if k in self._environ:
                     del self._environ[k]
@@ -891,9 +892,9 @@ def transient_internet(resource_name, *, timeout=30.0, errnos=()):
     gai_errnos = []
     if not captured_errnos:
         captured_errnos = [getattr(errno, name, num)
-                           for ( name, num) in default_errnos]
+                           for name, num in default_errnos]
         gai_errnos = [getattr(socket, name, num)
-                      for ( name, num) in default_gai_errnos]
+                      for name, num in default_gai_errnos]
 
     def filter_error(err):
         n = getattr(err, 'errno', None)
@@ -1542,7 +1543,7 @@ class Matcher(object):
         return result
 
 
-any _can_symlink = None
+_can_symlink = None # type: Any
 def can_symlink():
     global _can_symlink
     if _can_symlink is not None:
