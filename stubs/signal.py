@@ -2,44 +2,50 @@
 
 # Based on http://docs.python.org/3.2/library/signal.html
 
-int SIG_DFL
-int SIG_IGN
+from typing import Any, overload, Function
+
+SIG_DFL = 0
+SIG_IGN = 0
 
 # TODO more SIG* constants (these should be platform specific?)
-int SIGHUP
-int SIGINT
-int SIGQUIT
-int SIGABRT
-int SIGKILL
-int SIGALRM
-int SIGTERM
+SIGHUP = 0
+SIGINT = 0
+SIGQUIT = 0
+SIGABRT = 0
+SIGKILL = 0
+SIGALRM = 0
+SIGTERM = 0
 
-int SIGUSR1
-int SIGUSR2
-int SIGCONT
-int SIGSTOP
+SIGUSR1 = 0
+SIGUSR2 = 0
+SIGCONT = 0
+SIGSTOP = 0
 
-int SIGPOLL
-int SIGVTALRM
+SIGPOLL = 0
+SIGVTALRM = 0
 
-int CTRL_C_EVENT # Windows
-int CTRL_BREAK_EVENT # Windows
+CTRL_C_EVENT = 0 # Windows
+CTRL_BREAK_EVENT = 0 # Windows
 
-int NSIG
-int ITIMER_REAL
-int ITIMER_VIRTUAL
-int ITIMER_PROF
+NSIG = 0
+ITIMER_REAL = 0
+ITIMER_VIRTUAL = 0
+ITIMER_PROF = 0
 
 class ItimerError(IOError): pass
 
-#int alarm(int time): pass # Unix
-any getsignal(int signalnum): pass
-#void pause(): pass # Unix
-#tuple<float, float> setitimer(int which, float seconds,
-#                              float interval=None): pass # Unix
+#def alarm(time: int) -> int: pass # Unix
+def getsignal(signalnum: int) -> Any: pass
+#def pause() -> None: pass # Unix
+#def setitimer(which: int, seconds: float,
+#              internval: float = None) -> Tuple[float, float]: pass # Unix
 #def getitimer(int which): pass # Unix
-void set_wakeup_fd(int fd): pass
-void siginterrupt(int signalnum, bool flag): pass
-any signal(int signalnum, int handler): pass
-any signal(int signalnum,
-           func<void(int, any)> handler): pass # TODO frame object type
+def set_wakeup_fd(fd: int) -> None: pass
+def siginterrupt(signalnum: int, flag: bool) -> None: pass
+
+@overload
+def signal(signalnum: int, handler: int) -> Any: pass
+@overload
+def signal(signalnum: int,
+           handler: Function[[int, Any], None]) -> Any:
+    pass # TODO frame object type
