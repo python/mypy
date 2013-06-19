@@ -3,10 +3,20 @@
 # Based on http://docs.python.org/3.2/library/fnmatch.html and
 # python-lib/fnmatch.py
 
-bool fnmatch(str name, str pat): pass
-bool fnmatch(bytes name, bytes pat): pass
-bool fnmatchcase(str name, str pat): pass
-bool fnmatchcase(bytes name, bytes pat): pass
-str[] filter(Iterable<str> names, str pat): pass
-bytes[] filter(Iterable<bytes> names, bytes pat): pass
-str translate(str pat): pass
+from typing import overload, Iterable, List
+
+@overload
+def fnmatch(name: str, pat: str) -> bool: pass
+@overload
+def fnmatch(name: bytes, pat: bytes) -> bool: pass
+
+@overload
+def fnmatchcase(name: str, pat: str) -> bool: pass
+@overload
+def fnmatchcase(name: bytes, pat: bytes) -> bool: pass
+
+@overload
+def filter(names: Iterable[str], pat: str) -> List[str]: pass
+@overload
+def filter(names: Iterable[bytes], pat: bytes) -> List[bytes]: pass
+def translate(pat: str) -> str: pass
