@@ -1,4 +1,6 @@
+from typing import List
+
 # In Python, arguments have integer default values
-void spawn(str[] cmd, bool search_path=True, bool verbose=False,
-           bool dry_run=False): pass
-str find_executable(str executable, str path=None): pass
+def spawn(cmd: List[str], search_path: bool = True, verbose: bool = False,
+           dry_run: bool = False) -> None: pass
+def find_executable(executable: str, path: str = None) -> str: pass
