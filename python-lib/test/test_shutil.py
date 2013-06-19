@@ -23,6 +23,8 @@ import warnings
 from test import support
 from test.support import check_warnings, captured_stdout
 
+from typing import Any
+
 import bz2
 BZ2_SUPPORTED = True
 
@@ -55,11 +57,11 @@ def mock_rename(func):
 class TestShutil(unittest.TestCase):
 
     def setUp(self):
-        super(TestShutil, self).setUp()
+        super().setUp()
         self.tempdirs = []
 
     def tearDown(self):
-        super(TestShutil, self).tearDown()
+        super().tearDown()
         while self.tempdirs:
             d = self.tempdirs.pop()
             shutil.rmtree(d, os.name in ('nt', 'cygwin'))
@@ -95,7 +97,7 @@ class TestShutil(unittest.TestCase):
     # See bug #1071513 for why we don't run this on cygwin
     # and bug #1076467 for why we don't run this as root.
     if (hasattr(os, 'chmod') and sys.platform[:6] != 'cygwin'
-        and not (hasattr(os, 'geteuid') and ((any)os).geteuid() == 0)):
+        and not (hasattr(os, 'geteuid') and (Any(os)).geteuid() == 0)):
         def test_on_error(self):
             self.errorState = 0
             os.mkdir(TESTFN)
@@ -844,7 +846,7 @@ class TestCopyFile(unittest.TestCase):
 
     class Faux(object):
         _entered = False
-        any _exited_with = None
+        _exited_with = None # type: Any
         _raised = False
         def __init__(self, raise_in_exit=False, suppress_at_exit=True):
             self._raise_in_exit = raise_in_exit
