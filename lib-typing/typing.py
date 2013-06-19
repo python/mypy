@@ -124,6 +124,7 @@ class TypeAlias:
 # Define aliases for built-in types that support indexing.
 List = TypeAlias(list)
 Dict = TypeAlias(dict)
+Set = TypeAlias(set)
 Tuple = TypeAlias(tuple)
 Function = TypeAlias(callable)
 
