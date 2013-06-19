@@ -5,6 +5,7 @@ import test.test_set
 import random
 import collections
 import itertools
+import typing
 
 # list, tuple and dict subclasses that do or don't overwrite __repr__
 class list2(list):
