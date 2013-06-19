@@ -2,7 +2,11 @@
 
 # NOTE: These are incomplete!
 
-int get_osfhandle(IO file): pass
-int get_osfhandle(TextIO file): pass
+from typing import overload, IO, TextIO
 
-int open_osfhandle(int handle, int flags): pass
+@overload
+def get_osfhandle(file: IO) -> int: pass
+@overload
+def get_osfhandle(file: TextIO) -> int: pass
+
+def open_osfhandle(handle: int, flags: int) -> int: pass
