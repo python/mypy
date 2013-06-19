@@ -21,7 +21,7 @@ from mypy.pythongen import PythonGenerator
 
 
 # Fallback options
-target = build.PYTHON
+target = build.TYPE_CHECK
 build_flags = <str> []
 interpreter = 'python'
 
@@ -29,8 +29,8 @@ interpreter = 'python'
 void main():
     path, module, args = process_options(sys.argv[1:])
     try:
-        if target == build.PYTHON:
-            compile_to_python(path, module, args)
+        if target == build.TYPE_CHECK:
+            type_check_only(path, module, args)
         elif target == build.C:
             compile_to_c(path, module, args)
         else:
@@ -41,52 +41,21 @@ void main():
         sys.exit(1)
 
 
-void compile_to_python(str path, str module, str[] args):
-    if path:
-        basedir = os.path.dirname(path)
-    else:
-        basedir = os.getcwd()
-    
-    outputdir = os.path.join(basedir, '__mycache__')
-    tempdir = False
-    if not os.path.isdir(outputdir):
-        try:
-            os.mkdir(outputdir)
-        except OSError:
-            # Could not create a directory under program directory; must
-            # fall back to a temp directory. It will be removed later.
-            outputdir = tempfile.mkdtemp()
-            tempdir = True
+void type_check_only(str path, str module, str[] args):
+    # Type check the program and dependencies and translate to Python.
+    build.build(path,
+                module=module,
+                target=build.TYPE_CHECK,
+                flags=build_flags)
 
-    try:
-        # Type check the program and dependencies and translate to Python.
-        build.build(path,
-                    module=module,
-                    target=build.PYTHON,
-                    output_dir=outputdir,
-                    flags=build_flags)
-
-        if build.COMPILE_ONLY not in build_flags:
-            # Run the translated program.
-            if module:
-                # Run the module using runpy. We can't use -m since Python
-                # would try to run the mypy code instead of the translated
-                # code.
-                p = os.path.join(outputdir, '__main__.py')
-                f = open(p, 'w')
-                f.write("""
-import runpy
-runpy.run_module('%s', run_name='__main__', alter_sys=True)
-""" % module)
-                f.close()
-                opts = [p]
-            else:
-                opts = [os.path.join(outputdir, os.path.basename(path))]
-            status = subprocess.call([interpreter] + opts + args)
-            sys.exit(status)
-    finally:
-        if tempdir:
-            shutil.rmtree(outputdir)
+    if build.COMPILE_ONLY not in build_flags:
+        # Run the translated program.
+        if module:
+            opts = ['-m', module]
+        else:
+            opts = [path]
+        status = subprocess.call([interpreter] + opts + args)
+        sys.exit(status)
 
 
 void compile_to_c(str path, str module, str[] args):
