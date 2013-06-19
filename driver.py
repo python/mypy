@@ -27,7 +27,7 @@ interpreter = 'python'
 
 
 void main():
-    path, module, args = process_options()
+    path, module, args = process_options(sys.argv[1:])
     try:
         if target == build.PYTHON:
             compile_to_python(path, module, args)
@@ -103,17 +103,16 @@ void compile_to_c(str path, str module, str[] args):
         sys.exit(status)
 
 
-tuple<str, str, str[]> process_options():
+tuple<str, str, str[]> process_options(str[] args):
     if sys.executable:
         global interpreter
         interpreter = sys.executable
-    args = sys.argv[1:]
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
             build_flags.append(build.VERBOSE)
             args = args[1:]
         elif args[0] == '--py2' and args[1:]:
-            # Generate Python 2 (but this is very buggy).
+            # Generate Python 2 (but this is very incomplete).
             build_flags.append(build.PYTHON2)
             interpreter = args[1]
             args = args[2:]
@@ -145,7 +144,7 @@ void usage(str msg=None):
 Options:
   -c          compile to native code (EXPERIMENTAL)
   -m mod      run module as a script (terminates option list)
-  -S          compile only to C or Python; do not run or generate a binary
+  -S          compile only to C; do not generate a binary or run the program
   --verbose   more verbose messages
   
 Environment variables:
