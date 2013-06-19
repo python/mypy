@@ -2,8 +2,10 @@
 
 # TODO this is work in progress
 
+from typing import Any
+
 class ModuleType:
-    void __init__(self, str name, any doc): pass
+    def __init__(self, name: str, doc: Any) -> None: pass
 
 class MethodType: pass
 class BuiltinMethodType: pass
