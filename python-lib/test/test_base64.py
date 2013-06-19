@@ -4,6 +4,7 @@ import base64
 import binascii
 import sys
 import subprocess
+from typing import Any
 
 
 
@@ -229,7 +230,7 @@ class BaseXYTestCase(unittest.TestCase):
 class TestMain(unittest.TestCase):
     def get_output(self, *args, **options):
         args = (sys.executable, '-m', 'base64') + args
-        return ((any)subprocess.check_output)(args, **options)
+        return (Any(subprocess.check_output))(args, **options)
 
     def test_encode_decode(self):
         # get_output does not work with mypy files
