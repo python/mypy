@@ -2,11 +2,17 @@
 
 # Based on http://docs.python.org/3.2/library/heapq.html
 
-void heappush<t>(t[] heap, t item): pass
-t heappop<t>(t[] heap): pass
-t heappushpop<t>(t[] heap, t item): pass
-void heapify<t>(t[] x): pass
-t heapreplace<t>(list <t> heap, t item): pass
-Iterable<t> merge<t>(Iterable<t> *iterables): pass
-t[] nlargest<t>(int n, Iterable<t> iterable, func<any(t)> key=None): pass
-t[] nsmallest<t>(int n, Iterable<t> iterable, func<any(t)> key=None): pass
+from typing import typevar, List, Iterable, Any, Function
+
+T = typevar('T')
+
+def heappush(heap: List[T], item: T) -> None: pass
+def heappop(heap: List[T]) -> T: pass
+def heappushpop(heap: List[T], item: T) -> T: pass
+def heapify(x: List[T]) -> None: pass
+def heapreplace(heap: List[T], item: T) -> T: pass
+def merge(*iterables: Iterable[T]) -> Iterable[T]: pass
+def nlargest(n: int, iterable: Iterable[T],
+             key: Function[[T], Any] = None) -> List[T]: pass
+def nsmallest(n: int, iterable: Iterable[T],
+              key: Function[[T], Any] = None) -> List[T]: pass
