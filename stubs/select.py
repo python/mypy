@@ -21,7 +21,7 @@ class poll:
     def unregister(self, fd: Any) -> None: pass
     def poll(self, timeout: int = None) -> List[Tuple[int, int]]: pass
 
-def select(rlist: Sequence[], wlist: Sequence[], xlist: Sequence[],
+def select(rlist: Sequence, wlist: Sequence, xlist: Sequence,
            timeout: float = None) -> Tuple[List[int],
                                            List[int],
                                            List[int]]: pass
