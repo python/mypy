@@ -2,7 +2,9 @@
 
 # NOTE: These are incomplete!
 
-int collect(int generation=-1): pass
-void disable(): pass
-void enable(): pass
-bool isenabled(): pass
+import typing
+
+def collect(generation: int = -1) -> int: pass
+def disable() -> None: pass
+def enable() -> None: pass
+def isenabled() -> bool: pass
