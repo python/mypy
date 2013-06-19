@@ -6,10 +6,12 @@
 # sometimes they only work partially (broken exception messages), and the test
 # cases don't use them.
 
-from typing import overload, List, Iterable, Function, Any, Tuple, Sequence
+from typing import (
+    overload, List, Iterable, Function, Any, Tuple, Sequence, IO, TextIO
+)
 
 @overload
-def copyfileobj(fsrc: IO, fdst: IO, length: int = None) -> 'None': pass
+def copyfileobj(fsrc: IO, fdst: IO, length: int = None) -> None: pass
 @overload
 def copyfileobj(fsrc: TextIO, fdst: TextIO, length: int = None) -> None: pass
 
