@@ -2,17 +2,24 @@
 
 # NOTE: These are incomplete!
 
-interface Hash:
-    void update(self, bytes arg)
-    bytes digest(self)
-    str hexdigest(self)
-    Hash copy(self)
+from abc import abstractmethod, ABCMeta
+import typing
 
-Hash md5(bytes arg=None): pass
-Hash sha1(bytes arg=None): pass
-Hash sha224(bytes arg=None): pass
-Hash sha256(bytes arg=None): pass
-Hash sha384(bytes arg=None): pass
-Hash sha512(bytes arg=None): pass
+class Hash(metaclass=ABCMeta):
+    @abstractmethod
+    def update(self, arg: bytes) -> None: pass
+    @abstractmethod
+    def digest(self) -> bytes: pass
+    @abstractmethod
+    def hexdigest(self) -> str: pass
+    @abstractmethod
+    def copy(self) -> 'Hash': pass
 
-Hash new(str name, bytes data=None): pass
+def md5(arg: bytes = None) -> Hash: pass
+def sha1(arg: bytes = None) -> Hash: pass
+def sha224(arg: bytes = None) -> Hash: pass
+def sha256(arg: bytes = None) -> Hash: pass
+def sha384(arg: bytes = None) -> Hash: pass
+def sha512(arg: bytes = None) -> Hash: pass
+
+def new(name: str, data: bytes = None) -> Hash: pass
