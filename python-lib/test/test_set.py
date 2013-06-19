@@ -9,6 +9,7 @@ from random import randrange, shuffle
 import sys
 import warnings
 import collections
+from typing import Set, Any, Undefined
 
 class PassThru(Exception):
     pass
@@ -727,7 +728,7 @@ class TestFrozenSetSubclass(TestFrozenSet):
 
 # Tests taken from test_sets.py =============================================
 
-any empty_set = set()
+empty_set = set() # type: Any
 
 #==============================================================================
 
@@ -1264,8 +1265,8 @@ class TestSubsets(unittest.TestCase):
 #------------------------------------------------------------------------------
 
 class TestSubsetEqualEmpty(TestSubsets):
-    any left  = set()
-    any right = set()
+    left  = set() # type: Any
+    right = set() # type: Any
     name  = "both empty"
     cases = "==", "<=", ">="
 
@@ -1280,7 +1281,7 @@ class TestSubsetEqualNonEmpty(TestSubsets):
 #------------------------------------------------------------------------------
 
 class TestSubsetEmptyNonEmpty(TestSubsets):
-    any left  = set()
+    left  = set() # type: Any
     right = set([1, 2])
     name  = "one empty, one non-empty"
     cases = "!=", "<", "<="
@@ -1682,7 +1683,7 @@ class TestVariousIteratorArgs(unittest.TestCase):
                 self.assertRaises(TypeError, getattr(set('january'), methname), N(data))
                 self.assertRaises(ZeroDivisionError, getattr(set('january'), methname), E(data))
 
-any be_bad, set2, dict2
+be_bad = set2 = dict2 = Undefined(Any)
 
 class bad_eq:
     def __eq__(self, other):
