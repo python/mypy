@@ -3,6 +3,7 @@ from test.support import run_unittest, TESTFN, skip_unless_symlink, can_symlink
 import glob
 import os
 import shutil
+import typing
 
 class GlobTests(unittest.TestCase):
 
