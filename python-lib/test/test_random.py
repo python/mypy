@@ -7,6 +7,7 @@ import pickle
 import warnings
 from math import log, exp, pi, fsum, sin
 from test import support
+import typing
 
 class TestBasicOps(unittest.TestCase):
     # Superclass with tests common to all generators.
