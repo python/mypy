@@ -7,88 +7,107 @@
 
 # Only a subset of functionality is included.
 
-interface Testable:
-    void run(self, TestResult result)
-    void debug(self)
-    int countTestCases(self)
+from typing import (
+    Any, Function, Iterable, Undefined, Tuple, List, TextIO, typevar
+)
+from abc import abstractmethod, ABCMeta
 
-# TODO interface for test runners?
+FT = typevar('FT')
 
-class TestCase(Testable):
-    void __init__(self, str methodName='runTest'): pass
-    # TODO failureException
-    void setUp(self): pass
-    void tearDown(self): pass
-    void run(self, TestResult result=None): pass
-    void debug(self): pass
-    void assert_(self, any expr, str msg=None): pass
-    void failUnless(self, any expr, str msg=None): pass
-    void assertTrue(self, any expr, str msg=None): pass
-    void assertEqual(self, any first, any second, str msg=None): pass
-    void failUnlessEqual(self, any first, any second, str msg=None): pass
-    void assertNotEqual(self, any first, any second, str msg=None): pass
-    void failIfEqual(self, any first, any second, str msg=None): pass
-    void assertAlmostEqual(self, float first, float second, int places=7,
-                           str msg=None): pass
-    void failUnlessAlmostEqual(self, float first, float second, int places=7,
-                               str msg=None): pass
-    void assertNotAlmostEqual(self, float first, float second, int places=7,
-                              str msg=None): pass
-    void failIfAlmostEqual(self, float first, float second, int places=7,
-                           str msg=None): pass
-    void assertRaises(self, type exception, any callable, any *args): pass
-    void failIf(self, any expr, str msg=None): pass
-    void assertFalse(self, any expr, str msg=None): pass
-    void fail(self, str msg=None): pass
-    int countTestCases(self): pass
-    TestResult defaultTestResult(self): pass
-    str id(self): pass
-    str shortDescription(self): pass # May return None
+class Testable(metaclass=ABCMeta):
+    @abstractmethod
+    def run(self, result: 'TestResult') -> None: pass
+    @abstractmethod
+    def debug(self) -> None: pass
+    @abstractmethod
+    def countTestCases(self) -> int: pass
 
-class FunctionTestCase(Testable):
-    void __init__(self, func<void()> testFunc, func<void()> setUp=None,
-                  func<void()> tearDown=None, str description=None): pass
-    void run(self, TestResult result): pass
-    void debug(self): pass
-    int countTestCases(self): pass
-
-class TestSuite(Testable):
-    void __init__(self, Iterable<Testable> tests=None): pass
-    void addTest(self, Testable test): pass
-    void addTests(self, Iterable<Testable> tests): pass
-    void run(self, TestResult result): pass
-    void debug(self): pass
-    int countTestCases(self): pass
+# TODO ABC for test runners?
 
 class TestResult:
-    list<tuple<Testable, str>> errors
-    list<tuple<Testable, str>> failures
-    int testsRun
-    bool shouldStop
-    bool wasSuccessful(self): pass
-    void stop(self): pass
-    void startTest(self, Testable test): pass
-    void stopTest(self, Testable test): pass
-    void addError(self, Testable test,
-                  tuple<type, any, any> err): pass # TODO
-    void addFailure(self, Testable test,
-                    tuple<type, any, any> err): pass # TODO
-    void addSuccess(self, Testable test): pass
+    errors = Undefined(List[Tuple[Testable, str]])
+    failures = Undefined(List[Tuple[Testable, str]])
+    testsRun = 0
+    shouldStop = False
+    
+    def wasSuccessful(self) -> bool: pass
+    def stop(self) -> None: pass
+    def startTest(self, test: Testable) -> None: pass
+    def stopTest(self, test: Testable) -> None: pass
+    def addError(self, test: Testable,
+                  err: Tuple[type, Any, Any]) -> None: pass # TODO
+    def addFailure(self, test: Testable,
+                    err: Tuple[type, Any, Any]) -> None: pass # TODO
+    def addSuccess(self, test: Testable) -> None: pass
+
+class TestCase(Testable):
+    def __init__(self, methodName: str = 'runTest') -> None: pass
+    # TODO failureException
+    def setUp(self) -> None: pass
+    def tearDown(self) -> None: pass
+    def run(self, result: TestResult = None) -> None: pass
+    def debug(self) -> None: pass
+    def assert_(self, expr: Any, msg: str = None) -> None: pass
+    def failUnless(self, expr: Any, msg: str = None) -> None: pass
+    def assertTrue(self, expr: Any, msg: str = None) -> None: pass
+    def assertEqual(self, first: Any, second: Any,
+                    msg: str = None) -> None: pass
+    def failUnlessEqual(self, first: Any, second: Any,
+                        msg: str = None) -> None: pass
+    def assertNotEqual(self, first: Any, second: Any,
+                       msg: str = None) -> None: pass
+    def failIfEqual(self, first: Any, second: Any,
+                    msg: str = None) -> None: pass
+    def assertAlmostEqual(self, first: float, second: float, places: int = 7,
+                          msg: str = None) -> None: pass
+    def failUnlessAlmostEqual(self, first: float, second: float,
+                              places: int = 7, msg: str = None) -> None: pass
+    def assertNotAlmostEqual(self, first: float, second: float,
+                             places: int = 7, msg: str = None) -> None: pass
+    def failIfAlmostEqual(self, first: float, second: float, places: int = 7,
+                          msg: str = None) -> None: pass
+    def assertRaises(self, exception: type, callable: Any,
+                     *args: Any) -> None: pass
+    def failIf(self, expr: Any, msg: str = None) -> None: pass
+    def assertFalse(self, expr: Any, msg: str = None) -> None: pass
+    def fail(self, msg: str = None) -> None: pass
+    def countTestCases(self) -> int: pass
+    def defaultTestResult(self) -> TestResult: pass
+    def id(self) -> str: pass
+    def shortDescription(self) -> str: pass # May return None
+
+class FunctionTestCase(Testable):
+    def __init__(self, testFunc: Function[[], None],
+                 setUp: Function[[], None] = None,
+                 tearDown: Function[[], None] = None,
+                 description: str = None) -> None: pass
+    def run(self, result: TestResult) -> None: pass
+    def debug(self) -> None: pass
+    def countTestCases(self) -> int: pass
+
+class TestSuite(Testable):
+    def __init__(self, tests: Iterable[Testable] = None) -> None: pass
+    def addTest(self, test: Testable) -> None: pass
+    def addTests(self, tests: Iterable[Testable]) -> None: pass
+    def run(self, result: TestResult) -> None: pass
+    def debug(self) -> None: pass
+    def countTestCases(self) -> int: pass
 
 # TODO TestLoader
 # TODO defaultTestLoader
 
 class TextTestRunner:
-    void __init__(self, TextIO stream=None, bool descriptions=True,
-                  int verbosity=1, bool failfast=False): pass
+    def __init__(self, stream: TextIO = None, descriptions: bool = True,
+                 verbosity: int = 1, failfast: bool = False) -> None: pass
 
 class SkipTest(Exception):
     pass
 
 # TODO precise types
-any skipUnless(any condition, str reason): pass
-any skipIf(any condition, str reason): pass
-ft expectedFailure<ft>(ft func): pass
+def skipUnless(condition: Any, reason: str) -> Any: pass
+def skipIf(condition: Any, reason: str) -> Any: pass
+def expectedFailure(func: FT) -> FT: pass
 
-void main(str module='__main__', str defaultTest=None, str[] argv=None,
-          any testRunner=None, any testLoader=None): pass # TODO types
+def main(module: str = '__main__', defaultTest: str = None,
+         argv: List[str] = None, testRunner: Any = None,
+         testLoader: Any = None) -> None: pass # TODO types
