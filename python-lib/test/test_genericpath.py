@@ -8,7 +8,7 @@ import os
 
 import genericpath
 import imp
-imp.reload(genericpath) # Make sure we are using the local copy.
+imp.reload(genericpath) # Make sure we are using the local copy
 
 import sys
 from typing import Any
