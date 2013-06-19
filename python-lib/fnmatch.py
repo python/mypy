@@ -13,6 +13,7 @@ import os
 import posixpath
 import re
 import functools
+from typing import overload, Iterable, List
 
 __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
 
@@ -21,7 +22,8 @@ def _fnmatch(name, pat):
     pat = os.path.normcase(pat)
     return fnmatchcase(name, pat)
 
-bool fnmatch(str name, str pat):
+@overload
+def fnmatch(name: str, pat: str) -> bool:
     """Test whether FILENAME matches PATTERN.
 
     Patterns are Unix shell style:
@@ -38,7 +40,8 @@ bool fnmatch(str name, str pat):
     """
     return _fnmatch(name, pat)
 
-bool fnmatch(bytes name, bytes pat):
+@overload
+def fnmatch(name: bytes, pat: bytes) -> bool:
     return _fnmatch(name, pat)
 
 @functools.lru_cache(maxsize=250)
@@ -66,18 +69,21 @@ def _filter(names, pat):
                 result.append(name)
     return result
 
-str[] filter(Iterable<str> names, str pat):
+@overload
+def filter(names: Iterable[str], pat: str) -> List[str]:
     """Return the subset of the list NAMES that match PAT."""
     return _filter(names, pat)
 
-bytes[] filter(Iterable<bytes> names, bytes pat):
+@overload
+def filter(names: Iterable[bytes], pat: bytes) -> List[bytes]:
     return _filter(names, pat)
 
 def _fnmatchcase(name, pat):
     match = _compile_pattern(pat, isinstance(pat, bytes))
     return match(name) is not None
 
-bool fnmatchcase(str name, str pat):
+@overload
+def fnmatchcase(name: str, pat: str) -> bool:
     """Test whether FILENAME matches PATTERN, including case.
 
     This is a version of fnmatch() which doesn't case-normalize
@@ -85,10 +91,11 @@ bool fnmatchcase(str name, str pat):
     """
     return _fnmatchcase(name, pat)
 
-bool fnmatchcase(bytes name, bytes pat):
+@overload
+def fnmatchcase(name: bytes, pat: bytes) -> bool:
     return _fnmatchcase(name, pat)
 
-str translate(str pat):
+def translate(pat: str) -> str:
     """Translate a shell PATTERN to a regular expression.
 
     There is no way to quote meta-characters.
