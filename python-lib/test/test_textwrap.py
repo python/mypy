@@ -11,6 +11,8 @@
 import unittest
 from test import support
 
+import typing
+
 from textwrap import TextWrapper, wrap, fill, dedent
 
 
