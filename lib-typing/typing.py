@@ -298,7 +298,9 @@ Undefined = Undefined()
 # Abstract classes
 
 
-t = typevar('t')
+T = typevar('T')
+KT = typevar('KT')
+VT = typevar('VT')
 
 
 class Sized(Protocol):
@@ -306,32 +308,32 @@ class Sized(Protocol):
     def __len__(self) -> int: pass
 
 
-class Container(Protocol[t]):
+class Container(Protocol[T]):
     @abstractmethod
     def __contains__(self, x) -> bool: pass
 
 
-class Iterable(Protocol[t]):
+class Iterable(Protocol[T]):
     @abstractmethod
-    def __iter__(self) -> 'Iterator[t]': pass
+    def __iter__(self) -> 'Iterator[T]': pass
 
 
-class Iterator(Iterable[t], Protocol[t]):
+class Iterator(Iterable[T], Protocol[T]):
     @abstractmethod
-    def __next__(self) -> t: pass
+    def __next__(self) -> T: pass
 
 
-class Sequence(Sized, Iterable[t], Container[t], AbstractGeneric[t]):
+class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     @abstractmethod
     @overload
-    def __getitem__(self, i:int) -> t: pass
+    def __getitem__(self, i: int) -> T: pass
     
     @abstractmethod
     @overload
-    def __getitem__(self, s:slice) -> 'Sequence[t]': pass
+    def __getitem__(self, s: slice) -> 'Sequence[T]': pass
     
     @abstractmethod
-    def __reversed__(self, s:slice) -> Iterator[t]: pass
+    def __reversed__(self, s: slice) -> Iterator[T]: pass
     
     @abstractmethod
     def index(self, x) -> int: pass
@@ -345,3 +347,155 @@ for t in list, tuple, str, bytes, range:
 
 
 del t
+
+
+class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
+    @abstractmethod
+    def __contains__(self, x: object) -> bool: pass
+    @abstractmethod
+    def __and__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    @abstractmethod
+    def __or__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    @abstractmethod
+    def __sub__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    @abstractmethod
+    def __xor__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    @abstractmethod
+    def isdisjoint(self, s: 'AbstractSet[T]') -> bool: pass
+
+
+class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
+    @abstractmethod
+    def __getitem__(self, k: KT) -> VT: pass
+    @abstractmethod
+    def __setitem__(self, k: KT, v: VT) -> None: pass
+    @abstractmethod
+    def __delitem__(self, v: KT) -> None: pass
+    @abstractmethod
+    def __contains__(self, o: object) -> bool: pass
+
+    @abstractmethod
+    def clear(self) -> None: pass
+    @abstractmethod
+    def copy(self) -> 'Mapping[KT, VT]': pass
+    @overload
+    @abstractmethod
+    def get(self, k: KT) -> VT: pass
+    @overload
+    @abstractmethod
+    def get(self, k: KT, default: VT) -> VT: pass
+    @overload
+    @abstractmethod
+    def pop(self, k: KT) -> VT: pass
+    @overload
+    @abstractmethod
+    def pop(self, k: KT, default: VT) -> VT: pass
+    @abstractmethod
+    def popitem(self) -> Tuple[KT, VT]: pass
+    @overload
+    @abstractmethod
+    def setdefault(self, k: KT) -> VT: pass
+    @overload
+    @abstractmethod
+    def setdefault(self, k: KT, default: VT) -> VT: pass
+    
+    @overload
+    @abstractmethod
+    def update(self, m: 'Mapping[KT, VT]') -> None: pass
+    @overload
+    @abstractmethod
+    def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
+    
+    @abstractmethod
+    def keys(self) -> AbstractSet[KT]: pass
+    @abstractmethod
+    def values(self) -> AbstractSet[VT]: pass
+    @abstractmethod
+    def items(self) -> AbstractSet[Tuple[KT, VT]]: pass
+
+
+# Note that the IO and TextIO classes must be in sync with typing module stubs.
+
+
+class IO(metaclass=ABCMeta):
+    @abstractmethod
+    def close(self) -> None: pass
+    @abstractmethod
+    def closed(self) -> bool: pass
+    @abstractmethod
+    def fileno(self) -> int: pass
+    @abstractmethod
+    def flush(self) -> None: pass
+    @abstractmethod
+    def isatty(self) -> bool: pass
+    @abstractmethod
+    def read(self, n: int = -1) -> bytes: pass
+    @abstractmethod
+    def readable(self) -> bool: pass
+    @abstractmethod
+    def readline(self, limit: int = -1) -> bytes: pass
+    @abstractmethod
+    def readlines(self, hint: int = -1) -> List[bytes]: pass
+    @abstractmethod
+    def seek(self, offset: int, whence: int = 0) -> int: pass
+    @abstractmethod
+    def seekable(self) -> bool: pass
+    @abstractmethod
+    def tell(self) -> int: pass
+    @abstractmethod
+    def truncate(self, size: int = None) -> int: pass
+    @abstractmethod
+    def writable(self) -> bool: pass
+    @overload
+    @abstractmethod
+    def write(self, s: bytes) -> int: pass
+    @overload
+    @abstractmethod
+    def write(self, s: bytearray) -> int: pass
+    @abstractmethod
+    def writelines(self, lines: List[bytes]) -> None: pass
+
+    @abstractmethod
+    def __enter__(self) -> 'IO': pass
+    @abstractmethod
+    def __exit__(self, type, value, traceback) -> None: pass
+
+
+class TextIO(metaclass=ABCMeta):
+    @abstractmethod
+    def close(self) -> None: pass
+    @abstractmethod
+    def closed(self) -> bool: pass
+    @abstractmethod
+    def fileno(self) -> int: pass
+    @abstractmethod
+    def flush(self) -> None: pass
+    @abstractmethod
+    def isatty(self) -> bool: pass
+    @abstractmethod
+    def read(self, n: int = -1) -> str: pass
+    @abstractmethod
+    def readable(self) -> bool: pass
+    @abstractmethod
+    def readline(self, limit: int = -1) -> str: pass
+    @abstractmethod
+    def readlines(self, hint: int = -1) -> List[str]: pass
+    @abstractmethod
+    def seek(self, offset: int, whence: int = 0) -> int: pass
+    @abstractmethod
+    def seekable(self) -> bool: pass
+    @abstractmethod
+    def tell(self) -> int: pass
+    @abstractmethod
+    def truncate(self, size: int = None) -> int: pass
+    @abstractmethod
+    def writable(self) -> bool: pass
+    @abstractmethod
+    def write(self, s: str) -> int: pass
+    @abstractmethod
+    def writelines(self, lines: List[str]) -> None: pass
+
+    @abstractmethod
+    def __enter__(self) -> 'TextIO': pass
+    @abstractmethod
+    def __exit__(self, type, value, traceback) -> None: pass
