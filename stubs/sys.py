@@ -3,137 +3,150 @@
 
 # based on http://docs.python.org/3.2/library/sys.html
 
+from typing import (
+    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload
+)
+
 # ----- sys variables -----
-str abiflags
-str[] argv
-str byteorder
-Sequence<str> builtin_module_names  # actually a tuple of strings
-str copyright
-#int dllhandle  # Windows only
-bool dont_write_bytecode
-any __displayhook__  # contains the original value of displayhook
-any __excepthook__  # contains the original value of excepthook
-str exec_prefix
-str executable
-str float_repr_style
-int hexversion  # this is a 32-bit int
-any last_type
-any last_value
-any last_traceback
-int maxsize
-int maxunicode
-any[] meta_path
-dict<str, any> modules
-str[] path
-any[] path_hooks # TODO precise type; callable from path to finder
-dict<str, any> path_importer_cache # TODO precise type
-str platform
-str prefix
-str ps1
-str ps2
-TextIO stdin
-TextIO stdout
-TextIO stderr
-TextIO __stdin__
-TextIO __stdout__
-TextIO __stderr__
-tuple<str, str, str> subversion  # deprecated and removed in Python 3.3
-int tracebacklimit
-str version
-int api_version 
-any warnoptions
+abiflags = ''
+argv = Undefined(List[str])
+byteorder = ''
+builtin_module_names = Undefined(Sequence[str]) # actually a tuple of strings
+copyright = ''
+#dllhandle = 0  # Windows only
+dont_write_bytecode = False
+__displayhook__ = Undefined(Any) # contains the original value of displayhook
+__excepthook__ = Undefined(Any)  # contains the original value of excepthook
+exec_prefix = ''
+executable = ''
+float_repr_style = ''
+hexversion = 0  # this is a 32-bit int
+last_type = Undefined(Any)
+last_value = Undefined(Any)
+last_traceback = Undefined(Any)
+maxsize = 0
+maxunicode = 0
+meta_path = Undefined(List[Any])
+modules = Undefined(Dict[str, Any])
+path = Undefined(List[str])
+path_hooks = Undefined(List[Any]) # TODO precise type; function, path to finder
+path_importer_cache = Undefined(Dict[str, Any]) # TODO precise type
+platform = ''
+prefix = ''
+ps1 = ''
+ps2 = ''
+stdin = Undefined(TextIO)
+stdout = Undefined(TextIO)
+stderr = Undefined(TextIO)
+__stdin__ = Undefined(TextIO)
+__stdout__ = Undefined(TextIO)
+__stderr__ = Undefined(TextIO)
+# deprecated and removed in Python 3.3:
+subversion = Undefined(Tuple[str, str, str])
+tracebacklimit = 0
+version = ''
+api_version = 0 
+warnoptions = Undefined(Any)
 #  Each entry is a tuple of the form (action, message, category, module,
 #    lineno)
-#str winver  # Windows only
-dict<any, any> _xoptions
+#winver = ''  # Windows only
+_xoptions = Undefined(Dict[Any, Any])
 
-_flags flags
+flags = Undefined(_flags)
 class _flags:
-    int debug
-    int division_warning
-    int inspect
-    int interactive
-    int optimize
-    int dont_write_bytecode
-    int no_user_site
-    int no_site
-    int ignore_environment
-    int verbose
-    int bytes_warning
-    int quiet
-    int hash_randomization
+    debug = 0
+    division_warning = 0
+    inspect = 0
+    interactive = 0
+    optimize = 0
+    dont_write_bytecode = 0
+    no_user_site = 0
+    no_site = 0
+    ignore_environment = 0
+    verbose = 0
+    bytes_warning = 0
+    quiet = 0
+    hash_randomization = 0
 
-_float_info float_info
+float_info = Undefined(_float_info)
 class _float_info:
-    float epsilon   # DBL_EPSILON
-    int dig         # DBL_DIG
-    int mant_dig    # DBL_MANT_DIG
-    float max       # DBL_MAX
-    int max_exp     # DBL_MAX_EXP
-    int max_10_exp  # DBL_MAX_10_EXP
-    float min       # DBL_MIN
-    int min_exp     # DBL_MIN_EXP
-    int min_10_exp  # DBL_MIN_10_EXP
-    int radix       # FLT_RADIX
-    int rounds      # FLT_ROUNDS
+    epsilon = 0.0   # DBL_EPSILON
+    dig = 0         # DBL_DIG
+    mant_dig = 0    # DBL_MANT_DIG
+    max = 0.0       # DBL_MAX
+    max_exp = 0     # DBL_MAX_EXP
+    max_10_exp = 0  # DBL_MAX_10_EXP
+    min = 0.0       # DBL_MIN
+    min_exp = 0     # DBL_MIN_EXP
+    min_10_exp = 0  # DBL_MIN_10_EXP
+    radix = 0       # FLT_RADIX
+    rounds = 0      # FLT_ROUNDS
 
-_hash_info hash_info
+hash_info = Undefined(_hash_info)
 class _hash_info:
-    int width    # width in bits used for hash values
-    int modulus  # prime modulus P used for numeric hash scheme
-    int inf      # hash value returned for a positive infinity
-    int nan      # hash value returned for a nan
-    int imag     # multiplier used for the imaginary part of a complex number
+    width = 0    # width in bits used for hash values
+    modulus = 0  # prime modulus P used for numeric hash scheme
+    inf = 0      # hash value returned for a positive infinity
+    nan = 0      # hash value returned for a nan
+    imag = 0     # multiplier used for the imaginary part of a complex number
 
-_int_info int_info
+int_info = Undefined(_int_info)
 class _int_info:
-    int bits_per_digit  # number of bits held in each digit. Python integers 
+    bits_per_digit = 0  # number of bits held in each digit. Python integers 
                         # are stored internally in 
                         # base 2**int_info.bits_per_digit
-    int sizeof_digit    # size in bytes of C type used to represent a digit
+    sizeof_digit = 0    # size in bytes of C type used to represent a digit
 
-_version_info version_info
+version_info = Undefined(_version_info)
 class _version_info:
-    int major
-    int minor
-    int micro
-    str releaselevel
-    int serial
+    major = 0
+    minor = 0
+    micro = 0
+    releaselevel = ''
+    serial = 0
 
 
 # ----- sys function stubs -----
-object call_tracing(any fn, any args): pass
-void _clear_type_cache(): pass
-dict<int, any> _current_frames(): pass
-void displayhook(int value): pass  # value might be None
-void excepthook(type type_, BaseException value, any traceback):
+def call_tracing(fn: Any, args: Any) -> object: pass
+def _clear_type_cache() -> None: pass
+def _current_frames() -> Dict[int, Any]: pass
+def displayhook(value: int) -> None: pass  # value might be None
+def excepthook(type_: type, value: BaseException, traceback: Any) -> None:
     # TODO traceback type
     pass
-tuple<type, any, any> exc_info(): pass # see above
-void exit(int arg=0): pass  # arg might be None
-int getcheckinterval(): pass  # deprecated
-str getdefaultencoding(): pass
-#int getdlopenflags(): pass  # Unix only
-str getfilesystemencoding(): pass  # cannot return None
-#int getrefcount(object): pass  # no ref counts in MyPy!
-int getrecursionlimit(): pass
-int getsizeof(object obj): pass
-int getsizeof(object obj, int default): pass
-float getswitchinterval(): pass
-any _getframe(): pass
-any _getframe(int depth): pass
-any getprofile(): pass # TODO return type
-any gettrace(): pass # TODO return
-any getwindowsversion(): pass  # Windows only, TODO return type
-str intern(str string): pass
-void setcheckinterval(int interval): pass  # deprecated
-#setdlopenflags(int n): pass  # Linux only
-void setprofile(any profilefunc): pass # TODO type
-void setrecursionlimit(int limit): pass
-void setswitchinterval(float interval): pass
-void settrace(any tracefunc): pass # TODO type
+def exc_info() -> Tuple[type, Any, Any]: pass # see above
+def exit(arg: int = 0) -> None: pass  # arg might be None
+def getcheckinterval() -> int: pass  # deprecated
+def getdefaultencoding() -> str: pass
+#def getdlopenflags() -> int: pass  # Unix only
+def getfilesystemencoding() -> str: pass  # cannot return None
+#def getrefcount(object) -> int: pass  # no ref counts in MyPy!
+def getrecursionlimit() -> int: pass
+
+@overload
+def getsizeof(obj: object) -> int: pass
+@overload
+def getsizeof(obj: object, default: int) -> int: pass
+
+def getswitchinterval() -> float: pass
+
+@overload
+def _getframe() -> Any: pass
+@overload
+def _getframe(depth: int) -> Any: pass
+
+def getprofile() -> Any: pass # TODO return type
+def gettrace() -> Any: pass # TODO return
+def getwindowsversion() -> Any: pass  # Windows only, TODO return type
+def intern(string: str) -> str: pass
+def setcheckinterval(interval: int) -> None: pass  # deprecated
+#def setdlopenflags(n: int) -> None: pass  # Linux only
+def setprofile(profilefunc: Any) -> None: pass # TODO type
+def setrecursionlimit(limit: int) -> None: pass
+def setswitchinterval(interval: float) -> None: pass
+def settrace(tracefunc: Any) -> None: pass # TODO type
 # Trace functions should have three arguments: frame, event, and arg. frame 
 # is the current stack frame. event is a string: 'call', 'line', 'return', 
 # 'exception', 'c_call', 'c_return', or 'c_exception'. arg depends on the 
 # event type.
-void settscdump(bool on_flag): pass
+def settscdump(on_flag: bool) -> None: pass
