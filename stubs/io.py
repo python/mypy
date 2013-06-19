@@ -14,84 +14,88 @@
 # TODO TextIOBase
 # TODO IncrementalNewlineDecoder
 
-int DEFAULT_BUFFER_SIZE
+DEFAULT_BUFFER_SIZE = 0
 
 from builtins import open
+from typing import List, IO, TextIO, overload
 
 class BytesIO(IO):
-    void __init__(self, bytes initial_bytes=b''): pass
+    def __init__(self, initial_bytes: bytes = b'') -> None: pass
     # TODO getbuffer
     # TODO see comments in IO for missing functionality
-    void close(self): pass
-    bool closed(self): pass
-    int fileno(self): pass
-    void flush(self): pass
-    bool isatty(self): pass
-    bytes read(self, int n=-1): pass
-    bool readable(self): pass
-    bytes readline(self, int limit=-1): pass
-    bytes[] readlines(self, int hint=-1): pass
-    int seek(self, int offset, int whence=0): pass
-    bool seekable(self): pass
-    int tell(self): pass
-    int truncate(self, int size=None): pass
-    bool writable(self): pass
-    int write(self, bytes s): pass
-    int write(self, bytearray s): pass
-    void writelines(self, bytes[] lines): pass
-    bytes getvalue(self): pass
-    str read1(self): pass
+    def close(self) -> None: pass
+    def closed(self) -> bool: pass
+    def fileno(self) -> int: pass
+    def flush(self) -> None: pass
+    def isatty(self) -> bool: pass
+    def read(self, n: int = -1) -> bytes: pass
+    def readable(self) -> bool: pass
+    def readline(self, limit: int = -1) -> bytes: pass
+    def readlines(self, hint: int = -1) -> List[bytes]: pass
+    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seekable(self) -> bool: pass
+    def tell(self) -> int: pass
+    def truncate(self, size: int = None) -> int: pass
+    def writable(self) -> bool: pass
+    @overload
+    def write(self, s: bytes) -> int: pass
+    @overload
+    def write(self, s: bytearray) -> int: pass
+    def writelines(self, lines: List[bytes]) -> None: pass
+    def getvalue(self) -> bytes: pass
+    def read1(self) -> str: pass
 
-    BytesIO __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+    def __enter__(self) -> 'BytesIO': pass
+    def __exit__(self, type, value, traceback) -> None: pass
 
 class StringIO(TextIO):
-    void __init__(self, str initial_value='', str newline=None): pass
+    def __init__(self, initial_value: str = '',
+                 newline: str = None) -> None: pass
     # TODO see comments in IO for missing functionality
-    void close(self): pass
-    bool closed(self): pass
-    int fileno(self): pass
-    void flush(self): pass
-    bool isatty(self): pass
-    str read(self, int n=-1): pass
-    bool readable(self): pass
-    str readline(self, int limit=-1): pass
-    str[] readlines(self, int hint=-1): pass
-    int seek(self, int offset, int whence=0): pass
-    bool seekable(self): pass
-    int tell(self): pass
-    int truncate(self, int size=None): pass
-    bool writable(self): pass
-    int write(self, str s): pass
-    void writelines(self, str[] lines): pass
-    str getvalue(self): pass
+    def close(self) -> None: pass
+    def closed(self) -> bool: pass
+    def fileno(self) -> int: pass
+    def flush(self) -> None: pass
+    def isatty(self) -> bool: pass
+    def read(self, n: int = -1) -> str: pass
+    def readable(self) -> bool: pass
+    def readline(self, limit: int = -1) -> str: pass
+    def readlines(self, hint: int = -1) -> List[str]: pass
+    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seekable(self) -> bool: pass
+    def tell(self) -> int: pass
+    def truncate(self, size: int = None) -> int: pass
+    def writable(self) -> bool: pass
+    def write(self, s: str) -> int: pass
+    def writelines(self, lines: List[str]) -> None: pass
+    def getvalue(self) -> str: pass
 
-    StringIO __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+    def __enter__(self) -> 'StringIO': pass
+    def __exit__(self, type, value, traceback) -> None: pass
     
 class TextIOWrapper:
     # write_through is undocumented but used by subprocess
-    void __init__(IO buffer, str encoding=None, str errors=None,
-                  str newline=None, bool line_buffering=False,
-                  bool write_through=True): pass
+    def __init__(buffer: IO, encoding: str = None, errors: str = None,
+                  newline: str = None, line_buffering: bool = False,
+                  write_through: bool = True) -> None: pass
     # TODO see comments in IO for missing functionality
-    void close(self): pass
-    bool closed(self): pass
-    int fileno(self): pass
-    void flush(self): pass
-    bool isatty(self): pass
-    str read(self, int n=-1): pass
-    bool readable(self): pass
-    str readline(self, int limit=-1): pass
-    str[] readlines(self, int hint=-1): pass
-    int seek(self, int offset, int whence=0): pass
-    bool seekable(self): pass
-    int tell(self): pass
-    int truncate(self, int size=None): pass
-    bool writable(self): pass
-    int write(self, str s): pass
-    void writelines(self, str[] lines): pass
-    str getvalue(self): pass
+    def close(self) -> None: pass
+    def closed(self) -> bool: pass
+    def fileno(self) -> int: pass
+    def flush(self) -> None: pass
+    def isatty(self) -> bool: pass
+    def read(self, n: int = -1) -> str: pass
+    def readable(self) -> bool: pass
+    def readline(self, limit: int = -1) -> str: pass
+    def readlines(self, hint: int = -1) -> List[str]: pass
+    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seekable(self) -> bool: pass
+    def tell(self) -> int: pass
+    def truncate(self, size: int = None) -> int: pass
+    def writable(self) -> bool: pass
+    def write(self, s: str) -> int: pass
+    def writelines(self, lines: List[str]) -> None: pass
+    def getvalue(self) -> str: pass
 
-    StringIO __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+    def __enter__(self) -> StringIO: pass
+    def __exit__(self, type, value, traceback) -> None: pass
