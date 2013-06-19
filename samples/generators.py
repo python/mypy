@@ -1,8 +1,9 @@
 # Prime number sieve with generators
 
 import itertools
+from typing import Iterator
 
-Iterator<int> iter_primes():
+def iter_primes() -> Iterator[int]:
      # an iterator of all numbers between 2 and +infinity
      numbers = itertools.count(2)
 
