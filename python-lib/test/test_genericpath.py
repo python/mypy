@@ -5,7 +5,11 @@ Tests common to genericpath, macpath, ntpath and posixpath
 import unittest
 from test import support
 import os
+
 import genericpath
+import imp
+imp.reload(genericpath) # Make sure we are using the local copy.
+
 import sys
 from typing import Any
 
