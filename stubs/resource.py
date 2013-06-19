@@ -2,7 +2,9 @@
 
 # NOTE: These are incomplete!
 
-int RLIMIT_CORE
+from typing import Tuple
 
-tuple<int, int> getrlimit(int resource): pass
-void setrlimit(int resource, tuple<int, int> limits): pass
+RLIMIT_CORE = 0
+
+def getrlimit(resource: int) -> Tuple[int, int]: pass
+def setrlimit(resource: int, limits: Tuple[int, int]) -> None: pass
