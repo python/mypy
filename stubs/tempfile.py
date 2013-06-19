@@ -3,39 +3,43 @@
 
 # based on http://docs.python.org/3.3/library/tempfile.html
 
+from typing import Tuple, IO
+
 # global variables
-str tempdir
-str template
+tempdir = ''
+template = ''
 
 # TODO text files
 
 # function stubs 
-IO TemporaryFile(
-            str mode='w+b', int buffering=None, str encoding=None, 
-            str newline=None, str suffix='', str prefix='tmp', str dir=None):
+def TemporaryFile(
+            mode: str = 'w+b', buffering: int = None, encoding: str = None, 
+            newline: str = None, suffix: str = '', prefix: str = 'tmp',
+            dir: str = None) -> IO:
     pass
-IO NamedTemporaryFile(
-            str mode='w+b', int buffering=None, str encoding=None, 
-            str newline=None, str suffix='', str prefix='tmp', str dir=None, 
-            delete=True): 
+def NamedTemporaryFile(
+            mode: str = 'w+b', buffering: int = None, encoding: str = None, 
+            newline: str = None, suffix: str = '', prefix: str = 'tmp',
+            dir: str = None, delete=True) -> IO: 
     pass
-IO SpooledTemporaryFile(
-            int max_size=0, str mode='w+b', int buffering=None, 
-            str encoding=None, str  newline=None, str suffix='', 
-            str prefix='tmp', str dir=None): 
+def SpooledTemporaryFile(
+            max_size: int = 0, mode: str = 'w+b', buffering: int = None, 
+            encoding: str = None, newline: str = None, suffix: str = '', 
+            prefix: str = 'tmp', dir: str = None) -> IO: 
     pass
 
 class TemporaryDirectory:
-    str name    
-    void __init__(self, str suffix='', str prefix='tmp', str dir=None): pass
-    void cleanup(self): pass
-    str __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+    name = ''    
+    def __init__(self, suffix: str = '', prefix: str = 'tmp',
+                 dir: str = None) -> None: pass
+    def cleanup(self) -> None: pass
+    def __enter__(self) -> str: pass
+    def __exit__(self, type, value, traceback) -> None: pass
     
-tuple<int, str> mkstemp(
-            str suffix='', str prefix='tmp', str dir=None, bool text=False):
-    pass
-str mkdtemp(str suffix='', str prefix='tmp', str dir=None): pass
-str mktemp(str suffix='', str prefix='tmp', str dir=None): pass
-str gettempdir(): pass
-str gettempprefix(): pass
+def mkstemp(suffix: str = '', prefix: str = 'tmp', dir: str = None,
+            text: bool = False) -> Tuple[int, str]: pass
+def mkdtemp(suffix: str = '', prefix: str = 'tmp',
+            dir: str = None) -> str: pass
+def mktemp(suffix: str = '', prefix: str = 'tmp', dir: str = None) -> str: pass
+def gettempdir() -> str: pass
+def gettempprefix() -> str: pass
