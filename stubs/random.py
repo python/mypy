@@ -7,64 +7,92 @@
 # ----- random classes -----
 
 import _random
+from typing import (
+    Any, overload, typevar, Sequence, List, Function, AbstractSet
+)
+
+t = typevar('t')
 
 class Random(_random.Random):
-    void __init__(self, any x=None): pass
-    void seed(self, any a=None, int version=2): pass
-    tuple getstate(self): pass
-    void setstate(self, tuple state): pass
-    int getrandbits(self, int k): pass
-    int randrange(self, int stop): pass
-    int randrange(self, int start, int stop, int step=1): pass
-    int randint(self, int a, int b): pass
-    t choice<t>(self, Sequence<t> seq): pass
-    void shuffle(self, any[] x): pass
-    void shuffle(self, any[] x, func<float()> random): pass
-    t[] sample<t>(self, Sequence<t> population, int k): pass
-    t[] sample<t>(self, Set<t> population, int k): pass
-    float random(self): pass
-    float uniform(self, float a, float b): pass
-    float triangular(self, float low=0.0, float high=1.0,
-                     float mode=None): pass
-    float betavariate(self, float alpha, float beta): pass
-    float expovariate(self, float lambd): pass
-    float gammavariate(self, float alpha, float beta): pass
-    float gauss(self, float mu, float sigma): pass
-    float lognormvariate(self, float mu, float sigma): pass
-    float normalvariate(self, float mu, float sigma): pass
-    float vonmisesvariate(self, float mu, float kappa): pass
-    float paretovariate(self, float alpha): pass
-    float weibullvariate(self, float alpha, float beta): pass
+    def __init__(self, x: Any = None) -> None: pass
+    def seed(self, a: Any = None, version: int = 2) -> None: pass
+    def getstate(self) -> tuple: pass
+    def setstate(self, state: tuple) -> None: pass
+    def getrandbits(self, k: int) -> int: pass
+    
+    @overload
+    def randrange(self, stop: int) -> int: pass
+    @overload
+    def randrange(self, start: int, stop: int, step: int = 1) -> int: pass
+    
+    def randint(self, a: int, b: int) -> int: pass
+    def choice(self, seq: Sequence[t]) -> t: pass
+    
+    @overload
+    def shuffle(self, x: List[Any]) -> None: pass
+    @overload
+    def shuffle(self, x: List[Any], random: Function[[], float]) -> None: pass
+    
+    @overload
+    def sample(self, population: Sequence[t], k: int) -> List[t]: pass
+    @overload
+    def sample(self, population: AbstractSet[t], k: int) -> List[t]: pass
+    
+    def random(self) -> float: pass
+    def uniform(self, a: float, b: float) -> float: pass
+    def triangular(self, low: float = 0.0, high: float = 1.0,
+                     mode: float = None) -> float: pass
+    def betavariate(self, alpha: float, beta: float) -> float: pass
+    def expovariate(self, lambd: float) -> float: pass
+    def gammavariate(self, alpha: float, beta: float) -> float: pass
+    def gauss(self, mu: float, sigma: float) -> float: pass
+    def lognormvariate(self, mu: float, sigma: float) -> float: pass
+    def normalvariate(self, mu: float, sigma: float) -> float: pass
+    def vonmisesvariate(self, mu: float, kappa: float) -> float: pass
+    def paretovariate(self, alpha: float) -> float: pass
+    def weibullvariate(self, alpha: float, beta: float) -> float: pass
 
 # SystemRandom is not implemented for all OS's; good on Windows & Linux
 class SystemRandom:
-    void __init__(self, object randseed=None): pass
-    float random(self): pass
-    int getrandbits(self, int k): pass
-    void seed(self, object arg): pass  # ??? seed func does nothing by design
+    def __init__(self, randseed: object = None) -> None: pass
+    def random(self) -> float: pass
+    def getrandbits(self, k: int) -> int: pass
+    def seed(self, arg: object) -> None: pass
 
 # ----- random function stubs -----
-void seed(any a=None, int version=2): pass
-object getstate(): pass
-void setstate(object state): pass
-int getrandbits(int k): pass
-int randrange(int stop): pass
-int randrange(int start, int stop, int step=1): pass
-int randint(int a, int b): pass
-t choice<t>(Sequence<t> seq): pass
-void shuffle(any[] x): pass
-void shuffle(any[] x, func<float()> random): pass
-t[] sample<t>(Sequence<t> population, int k): pass
-t[] sample<t>(Set<t> population, int k): pass
-float random(): pass
-float uniform(float a, float b): pass
-float triangular(float low=0.0, float high=1.0, float mode=None): pass
-float betavariate(float alpha, float beta): pass
-float expovariate(float lambd): pass
-float gammavariate(float alpha, float beta): pass
-float gauss(float mu, float sigma): pass
-float lognormvariate(float mu, float sigma): pass
-float normalvariate(float mu, float sigma): pass
-float vonmisesvariate(float mu, float kappa): pass
-float paretovariate(float alpha): pass
-float weibullvariate(float alpha, float beta): pass
+def seed(a: Any = None, version: int = 2) -> None: pass
+def getstate() -> object: pass
+def setstate(state: object) -> None: pass
+def getrandbits(k: int) -> int: pass
+
+@overload
+def randrange(stop: int) -> int: pass
+@overload
+def randrange(start: int, stop: int, step: int = 1) -> int: pass
+
+def randint(a: int, b: int) -> int: pass
+def choice(seq: Sequence[t]) -> t: pass
+
+@overload
+def shuffle(x: List[Any]) -> None: pass
+@overload
+def shuffle(x: List[Any], random: Function[[], float]) -> None: pass
+
+@overload
+def sample(population: Sequence[t], k: int) -> List[t]: pass
+@overload
+def sample(population: AbstractSet[t], k: int) -> List[t]: pass
+
+def random() -> float: pass
+def uniform(a: float, b: float) -> float: pass
+def triangular(low: float = 0.0, high: float = 1.0,
+               mode: float = None) -> float: pass
+def betavariate(alpha: float, beta: float) -> float: pass
+def expovariate(lambd: float) -> float: pass
+def gammavariate(alpha: float, beta: float) -> float: pass
+def gauss(mu: float, sigma: float) -> float: pass
+def lognormvariate(mu: float, sigma: float) -> float: pass
+def normalvariate(mu: float, sigma: float) -> float: pass
+def vonmisesvariate(mu: float, kappa: float) -> float: pass
+def paretovariate(alpha: float) -> float: pass
+def weibullvariate(alpha: float, beta: float) -> float: pass
