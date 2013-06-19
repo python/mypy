@@ -2,4 +2,6 @@
 
 # NOTE: These are incomplete!
 
-any add(any a, any b): pass
+from typing import Any
+
+def add(a: Any, b: Any) -> Any: pass
