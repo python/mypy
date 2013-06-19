@@ -2,5 +2,7 @@
 
 # NOTE: These are incomplete!
 
-any getpwuid(int uid): pass
-any getpwnam(str name): pass
+from typing import Any
+
+def getpwuid(uid: int) -> Any: pass
+def getpwnam(name: str) -> Any: pass
