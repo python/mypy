@@ -2,5 +2,7 @@
 
 # NOTE: These are incomplete!
 
+from typing import Any
+
 # TODO more precise type?
-any contextmanager(any func): pass
+def contextmanager(func: Any) -> Any: pass
