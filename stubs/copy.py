@@ -2,4 +2,8 @@
 
 # NOTE: These are incomplete!
 
-t deepcopy<t>(t x): pass
+from typing import typevar
+
+T = typevar('T')
+
+def deepcopy(x: T) -> T: pass
