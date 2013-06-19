@@ -1,1 +1,3 @@
-any getgrnam(str name): pass
+from typing import Any
+
+def getgrnam(name: str) -> Any: pass
