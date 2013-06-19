@@ -1,11 +1,13 @@
+import typing
+
 class BankAccount(object):
-    void __init__(self, int initial_balance=0):
+    def __init__(self, initial_balance: int = 0) -> None:
         self.balance = initial_balance
-    void deposit(self, int amount):
+    def deposit(self, amount: int) -> None:
         self.balance += amount
-    void withdraw(self, int amount):
+    def withdraw(self, amount: int) -> None:
         self.balance -= amount
-    bool overdrawn(self):
+    def overdrawn(self) -> bool:
         return self.balance < 0
 my_account = BankAccount(15)
 my_account.withdraw(5)
