@@ -2,23 +2,25 @@
 
 # Based on http://docs.python.org/3.2/library/binascii.html
 
-bytes a2b_uu(bytes string): pass
-bytes b2a_uu(bytes data): pass
-bytes a2b_base64(bytes string): pass
-bytes b2a_base64(bytes data): pass
-bytes a2b_qp(bytes string, bool header=False): pass
-bytes b2a_qp(bytes data, bool quotetabs=False, bool istext=True,
-             bool header=False): pass
-bytes a2b_hqx(bytes string): pass
-bytes rledecode_hqx(bytes data): pass
-bytes rlecode_hqx(bytes data): pass
-bytes b2a_hqx(bytes data): pass
-int crc_hqx(bytes data, int crc): pass
-int crc32(bytes data, int crc=None): pass
-bytes b2a_hex(bytes data): pass
-bytes hexlify(bytes data): pass
-bytes a2b_hex(bytes hexstr): pass
-bytes unhexlify(bytes hexlify): pass
+import typing
+
+def a2b_uu(string: bytes) -> bytes: pass
+def b2a_uu(data: bytes) -> bytes: pass
+def a2b_base64(string: bytes) -> bytes: pass
+def b2a_base64(data: bytes) -> bytes: pass
+def a2b_qp(string: bytes, header: bool = False) -> bytes: pass
+def b2a_qp(data: bytes, quotetabs: bool = False, istext: bool = True,
+             header: bool = False) -> bytes: pass
+def a2b_hqx(string: bytes) -> bytes: pass
+def rledecode_hqx(data: bytes) -> bytes: pass
+def rlecode_hqx(data: bytes) -> bytes: pass
+def b2a_hqx(data: bytes) -> bytes: pass
+def crc_hqx(data: bytes, crc: int) -> int: pass
+def crc32(data: bytes, crc: int = None) -> int: pass
+def b2a_hex(data: bytes) -> bytes: pass
+def hexlify(data: bytes) -> bytes: pass
+def a2b_hex(hexstr: bytes) -> bytes: pass
+def unhexlify(hexlify: bytes) -> bytes: pass
 
 class Error(Exception): pass
 class Incomplete(Exception): pass
