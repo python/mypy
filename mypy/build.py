@@ -285,7 +285,7 @@ class BuildManager:
         self.states.append(initial_state)
         
         # Process states in a loop until all files (states) have been
-        # semantically analyzer or type checked (depending on target).
+        # semantically analyzed or type checked (depending on target).
         #
         # We type check all files before the rest of the passes so that we can
         # report errors and fail as quickly as possible.
