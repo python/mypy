@@ -36,6 +36,10 @@ import os as _os
 import errno as _errno
 from random import Random as _Random
 
+from typing import (
+    Any, Function, Iterator, Undefined, List, Tuple, Dict, Iterable
+)
+
 import fcntl as _fcntl
 def _set_cloexec(fd: int) -> None:
     try:
@@ -49,21 +53,20 @@ def _set_cloexec(fd: int) -> None:
 
 
 import _thread
-from typing import Any, Function, Iterator, Undefined, List, Tuple, Dict, Iterable
 _allocate_lock = _thread.allocate_lock
 
 _text_openflags = _os.O_RDWR | _os.O_CREAT | _os.O_EXCL
 if hasattr(_os, 'O_NOINHERIT'):
-    _text_openflags |= (Any(_os)).O_NOINHERIT
+    _text_openflags |= Any(_os).O_NOINHERIT
 if hasattr(_os, 'O_NOFOLLOW'):
-    _text_openflags |= (Any(_os)).O_NOFOLLOW
+    _text_openflags |= Any(_os).O_NOFOLLOW
 
 _bin_openflags = _text_openflags
 if hasattr(_os, 'O_BINARY'):
-    _bin_openflags |= (Any(_os)).O_BINARY
+    _bin_openflags |= Any(_os).O_BINARY
 
 if hasattr(_os, 'TMP_MAX'):
-    TMP_MAX = (Any(_os)).TMP_MAX
+    TMP_MAX = Any(_os).TMP_MAX
 else:
     TMP_MAX = 10000
 
@@ -105,7 +108,7 @@ class _RandomNameSequence(Iterator[str]):
     _RandomNameSequence is an iterator."""
 
     characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
-    _rng = Undefined # type: _Random
+    _rng = Undefined(_Random)
     _rng_pid = 0
 
     def rng(self) -> _Random:
@@ -199,7 +202,8 @@ def _get_candidate_names() -> _RandomNameSequence:
     return _name_sequence
 
 
-def _mkstemp_inner(dir: str, pre: str, suf: str, flags: int) -> Tuple[int, str]:
+def _mkstemp_inner(dir: str, pre: str, suf: str,
+                   flags: int) -> Tuple[int, str]:
     """Code common to mkstemp, TemporaryFile, and NamedTemporaryFile."""
 
     names = _get_candidate_names()
@@ -240,7 +244,7 @@ def gettempdir() -> str:
     return tempdir
 
 def mkstemp(suffix: str = "", prefix: str = template, dir: str = None,
-                        text: bool = False) -> Tuple[int, str]:
+            text: bool = False) -> Tuple[int, str]:
     """User-callable function to create and return a unique temporary
     file.  The return value is a pair (fd, name) where fd is the
     file descriptor returned by os.open, and name is the filename.
@@ -364,7 +368,7 @@ class _TemporaryFileWrapper:
         # Attribute lookups are delegated to the underlying file
         # and cached for non-numeric results
         # (i.e. methods are cached, closed and friends are not)
-        file = (Any(self)).__dict__['file']
+        file = Any(self).__dict__['file']
         a = getattr(file, name)
         if not isinstance(a, int):
             setattr(self, name, a)
@@ -377,7 +381,7 @@ class _TemporaryFileWrapper:
         return self
 
     # iter() doesn't use __getattr__ to find the __iter__ method
-    def __iter__(self) -> 'Iterator[Any]':
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.file)
 
     # NT provides delete-on-close as a primitive, so we don't need
@@ -405,8 +409,9 @@ class _TemporaryFileWrapper:
             self.file.__exit__(exc, value, tb)
 
 
-def NamedTemporaryFile(mode: str = 'w+b', buffering: int = -1, encoding: str = None,
-                       newline: str = None, suffix: str = "", prefix: str = template,
+def NamedTemporaryFile(mode: str = 'w+b', buffering: int = -1,
+                       encoding: str = None, newline: str = None,
+                       suffix: str = "", prefix: str = template,
                        dir: str = None, delete: bool = True) -> Any:
     """Create and return a temporary file.
     Arguments:
@@ -445,8 +450,9 @@ if _os.name != 'posix' or _sys.platform == 'cygwin':
     TemporaryFile = NamedTemporaryFile
 
 else:
-    def _TemporaryFile(mode: str = 'w+b', buffering: int = -1, encoding: str = None,
-                       newline: str = None, suffix: str = "", prefix: str = template,
+    def _TemporaryFile(mode: str = 'w+b', buffering: int = -1,
+                       encoding: str = None, newline: str = None,
+                       suffix: str = "", prefix: str = template,
                        dir: str = None, delete: bool = True) -> Any:
         """Create and return a temporary file.
         Arguments:
@@ -484,9 +490,10 @@ class SpooledTemporaryFile:
     _rolled = False
     _file = Undefined # type: Any # IO or TextIO
 
-    def __init__(self, max_size: int = 0, mode: str = 'w+b', buffering: int = -1,
-                  encoding: str = None, newline: str = None,
-                  suffix: str = "", prefix: str = template, dir: str = None) -> None:
+    def __init__(self, max_size: int = 0, mode: str = 'w+b',
+                 buffering: int = -1, encoding: str = None,
+                 newline: str = None, suffix: str = "",
+                 prefix: str = template, dir: str = None) -> None:
         if 'b' in mode:
             self._file = _io.BytesIO()
         else:
@@ -625,7 +632,8 @@ class TemporaryDirectory(object):
 
     name = ''
 
-    def __init__(self, suffix: str = "", prefix: str = template, dir: str = None) -> None:
+    def __init__(self, suffix: str = "", prefix: str = template,
+                 dir: str = None) -> None:
         self._closed = False
         self.name = None # Handle mkdtemp throwing an exception
         self.name = mkdtemp(suffix, prefix, dir)
