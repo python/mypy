@@ -64,7 +64,7 @@ RECIP_BPF = 2**-BPF
 # the Mersenne Twister  and os.urandom() core generators.
 
 import _random
-from typing import Any, typevar, Sequence, List, Function, overload, Set
+from typing import Any, typevar, Sequence, List, Function, overload, Set, cast
 
 t = typevar('t')
 
@@ -306,7 +306,7 @@ class Random(_random.Random):
         n = len(population)
         if not (0 <= k and k <= n):
             raise ValueError("Sample larger than population")
-        result = [None] * k
+        result = [cast(t, None)] * k
         setsize = 21        # size of a small set minus size of an empty list
         if k > 5:
             setsize += 4 ** _ceil(_log(k * 3, 4)) # table size for big sets
