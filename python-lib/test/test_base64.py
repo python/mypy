@@ -233,8 +233,6 @@ class TestMain(unittest.TestCase):
         return (Any(subprocess.check_output))(args, **options)
 
     def test_encode_decode(self):
-        # get_output does not work with mypy files
-        raise NotImplementedError()
         output = self.get_output('-t')
         self.assertSequenceEqual(output.splitlines(), (
             b"b'Aladdin:open sesame'",
@@ -243,7 +241,6 @@ class TestMain(unittest.TestCase):
         ))
 
     def test_encode_file(self):
-        raise NotImplementedError()
         with open(support.TESTFN, 'wb') as fp:
             fp.write(b'a\xffb\n')
 
@@ -255,7 +252,6 @@ class TestMain(unittest.TestCase):
         self.assertEqual(output.rstrip(), b'Yf9iCg==')
 
     def test_decode(self):
-        raise NotImplementedError()
         with open(support.TESTFN, 'wb') as fp:
             fp.write(b'Yf9iCg==')
         output = self.get_output('-d', support.TESTFN)
