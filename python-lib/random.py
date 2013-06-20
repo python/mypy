@@ -44,6 +44,8 @@ from os import urandom as _urandom
 from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
+from typing import Any, typevar, Sequence, List, Function, overload, Set, cast
+
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",
            "randrange","shuffle","normalvariate","lognormvariate",
            "expovariate","vonmisesvariate","gammavariate","triangular",
@@ -64,9 +66,8 @@ RECIP_BPF = 2**-BPF
 # the Mersenne Twister  and os.urandom() core generators.
 
 import _random
-from typing import Any, typevar, Sequence, List, Function, overload, Set, cast
 
-t = typevar('t')
+T = typevar('T')
 
 class Random(_random.Random):
     """Random number generator base class used by bound module functions.
@@ -128,7 +129,7 @@ class Random(_random.Random):
         """Return internal state; can be passed to setstate() later."""
         return self.VERSION, super().getstate(), self.gauss_next
 
-    def setstate(self, state: Any):
+    def setstate(self, state: Any) -> None:
         """Restore internal state from object returned by getstate()."""
         version = state[0]
         if version == 3:
@@ -161,12 +162,13 @@ class Random(_random.Random):
     def __setstate__(self, state: Any) -> None:  # for pickle
         self.setstate(state)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return self.__class__, (), self.getstate()
 
 ## -------------------- integer methods  -------------------
 
-    def randrange(self, start: int, stop: int = None, step: int = 1, int=int) -> int:
+    def randrange(self, start: int, stop: int = None, step: int = 1,
+                  int=int) -> int:
         """Choose a random item from range(start, stop[, step]).
 
         This fixes the problem with randint() which includes the
@@ -218,7 +220,8 @@ class Random(_random.Random):
         return self.randrange(a, b+1)
 
     def _randbelow(self, n: int, int=int, maxsize: int = 1<<BPF, type=type,
-                   Method=_MethodType, BuiltinMethod=_BuiltinMethodType) -> int:
+                   Method=_MethodType,
+                   BuiltinMethod=_BuiltinMethodType) -> int:
         "Return a random int in the range [0,n).  Raises ValueError if n==0."
 
         getrandbits = self.getrandbits
@@ -247,7 +250,7 @@ class Random(_random.Random):
 
 ## -------------------- sequence methods  -------------------
 
-    def choice(self, seq: Sequence[t]) -> t:
+    def choice(self, seq: Sequence[T]) -> T:
         """Choose a random element from a non-empty sequence."""
         try:
             i = self._randbelow(len(seq))
@@ -255,7 +258,8 @@ class Random(_random.Random):
             raise IndexError('Cannot choose from an empty sequence')
         return seq[i]
 
-    def shuffle(self, x: List[Any], random: Function[[], float] = None, int=int) -> None:
+    def shuffle(self, x: List[Any],
+                random: Function[[], float] = None, int=int) -> None:
         """x, random=random.random -> shuffle list x in place; return None.
 
         Optional arg random is a 0-argument function returning a random
@@ -272,7 +276,7 @@ class Random(_random.Random):
             x[i], x[j] = x[j], x[i]
 
     @overload
-    def sample(self, population: Sequence[t], k: int) -> List[t]:
+    def sample(self, population: Sequence[T], k: int) -> List[T]:
         """Chooses k unique random elements from a population sequence or set.
 
         Returns a new list containing elements from the population while
@@ -306,7 +310,7 @@ class Random(_random.Random):
         n = len(population)
         if not (0 <= k and k <= n):
             raise ValueError("Sample larger than population")
-        result = [cast(t, None)] * k
+        result = [cast(T, None)] * k
         setsize = 21        # size of a small set minus size of an empty list
         if k > 5:
             setsize += 4 ** _ceil(_log(k * 3, 4)) # table size for big sets
@@ -318,7 +322,7 @@ class Random(_random.Random):
                 result[i] = pool[j]
                 pool[j] = pool[n-i-1]   # move non-selected item into vacancy
         else:
-            selected = set() # type: Set[int]
+            selected = Set[int]()
             selected_add = selected.add
             for i in range(k):
                 j = randbelow(n)
@@ -329,7 +333,7 @@ class Random(_random.Random):
         return result
 
     @overload
-    def sample(self, population: Set[t], k: int) -> List[t]:
+    def sample(self, population: Set[T], k: int) -> List[T]:
         return self.sample(list(population), k)
         
 ## -------------------- real-valued distributions  -------------------
@@ -342,7 +346,8 @@ class Random(_random.Random):
 
 ## -------------------- triangular --------------------
 
-    def triangular(self, low: float = 0.0, high: float = 1.0, mode: float = None) -> float:
+    def triangular(self, low: float = 0.0, high: float = 1.0,
+                   mode: float = None) -> float:
         """Triangular distribution.
 
         Continuous distribution bounded by given lower and upper limits,
