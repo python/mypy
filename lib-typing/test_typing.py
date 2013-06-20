@@ -24,8 +24,8 @@ class TestTyping(unittest.TestCase):
 
     def test_Pattern(self):
         import re
-        self.assertIs(re.compile(''), Pattern)
-        self.assertIs(re.compile(b''), BytesPattern)
+        self.assertIs(type(re.compile('')), Pattern)
+        self.assertIs(type(re.compile(b'')), BytesPattern)
         # Note that actually Pattern is the same as BytesPattern, which is
         # a bit awkward.
         
