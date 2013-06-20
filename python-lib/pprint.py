@@ -50,14 +50,15 @@ _len = len
 _type = type
 
 
-def pprint(object: object, stream: TextIO = None, indent: int = 1, width: int = 80,
-            depth: int = None) -> None:
+def pprint(object: object, stream: TextIO = None, indent: int = 1,
+           width: int = 80, depth: int = None) -> None:
     """Pretty-print a Python object to a stream [default is sys.stdout]."""
     printer = PrettyPrinter(
         stream=stream, indent=indent, width=width, depth=depth)
     printer.pprint(object)
 
-def pformat(object: object, indent: int = 1, width: int = 80, depth: int = None) -> str:
+def pformat(object: object, indent: int = 1, width: int = 80,
+            depth: int = None) -> str:
     """Format a Python object into a pretty-printed representation."""
     return PrettyPrinter(indent=indent, width=width, depth=depth).pformat(object)
 
@@ -104,7 +105,7 @@ class PrettyPrinter:
     _readable = False
     
     def __init__(self, indent: int = 1, width: int = 80, depth: int = None,
-                  stream: TextIO = None) -> None:
+                 stream: TextIO = None) -> None:
         """Handle pretty printing operations onto a stream using a set of
         configured parameters.
 
@@ -151,8 +152,8 @@ class PrettyPrinter:
         s, readable, recursive = self.format(object, {}, 0, 0)
         return readable and not recursive
 
-    def _format(self, object: object, stream: TextIO, indent: int, allowance: int,
-                 context: Dict[int, int], level: int) -> None:
+    def _format(self, object: object, stream: TextIO, indent: int,
+                allowance: int, context: Dict[int, int], level: int) -> None:
         level = level + 1
         objid = _id(object)
         if objid in context:
@@ -252,7 +253,8 @@ class PrettyPrinter:
 
         write(rep)
 
-    def _repr(self, object: object, context: Dict[int, int], level: int) -> str:
+    def _repr(self, object: object, context: Dict[int, int],
+              level: int) -> str:
         repr, readable, recursive = self.format(object, context.copy(),
                                                 self._depth, level)
         if not readable:
@@ -262,7 +264,7 @@ class PrettyPrinter:
         return repr
 
     def format(self, object: object, context: Dict[int, int],
-                                  maxlevels: int, level: int) -> Tuple[str, bool, bool]:
+               maxlevels: int, level: int) -> Tuple[str, bool, bool]:
         """Format object for a specific context, returning a string
         and flags indicating whether the representation is 'readable'
         and whether the object represents a recursive construct.
@@ -273,7 +275,7 @@ class PrettyPrinter:
 # Return triple (repr_string, isreadable, isrecursive).
 
 def _safe_repr(object: object, context: Dict[int, int],
-                                  maxlevels: int, level: int) -> Tuple[str, bool, bool]:
+               maxlevels: int, level: int) -> Tuple[str, bool, bool]:
     typ = _type(object)
     if typ is str:
         s = cast(str, object)
@@ -307,7 +309,7 @@ def _safe_repr(object: object, context: Dict[int, int],
         context[objid] = 1
         readable = True
         recursive = False
-        components = [] # type: List[str]
+        components = List[str]()
         append = components.append
         level += 1
         saferepr = _safe_repr
