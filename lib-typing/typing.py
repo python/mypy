@@ -526,4 +526,7 @@ class TextIO(metaclass=ABCMeta):
     def __exit__(self, type, value, traceback) -> None: pass
 
 
+# TODO Register [Text]IO as the base class of file-like types.
+
+
 del t
