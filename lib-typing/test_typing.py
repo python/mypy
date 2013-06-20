@@ -4,7 +4,8 @@ import unittest
 from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Any, Function, Generic,
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
-    AbstractSet, Mapping, Undefined, cast, forwardref, overload, typevar
+    AbstractSet, Mapping, IO, TextIO, Undefined, cast, forwardref, overload,
+    typevar
 )
 
 
@@ -354,6 +355,10 @@ class TestTyping(unittest.TestCase):
     def test_mapping(self):
         self.assertIs(Mapping[int, str], Mapping)
         self.assertIsInstance({}, Mapping)
+
+    def test_io_types(self):
+        self.assertIsInstance(IO, type)
+        self.assertIsInstance(TextIO, type)
 
     def test_simple_protocol(self):
         class P(Protocol):
