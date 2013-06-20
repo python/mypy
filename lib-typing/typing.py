@@ -435,6 +435,10 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     def items(self) -> AbstractSet[Tuple[KT, VT]]: pass
 
 
+# TODO Consider more types: os.environ, etc. However, these add dependencies.
+Mapping.register(dict)
+
+
 # Note that the IO and TextIO classes must be in sync with typing module stubs.
 
 

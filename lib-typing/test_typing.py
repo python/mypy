@@ -4,7 +4,7 @@ import unittest
 from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Any, Function, Generic,
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
-    AbstractSet, Undefined, cast, forwardref, overload, typevar
+    AbstractSet, Mapping, Undefined, cast, forwardref, overload, typevar
 )
 
 
@@ -350,6 +350,10 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance({}.items(), AbstractSet)
         # This is consistent with collections.Set.
         self.assertNotIsInstance({}.values(), AbstractSet)
+
+    def test_mapping(self):
+        self.assertIs(Mapping[int, str], Mapping)
+        self.assertIsInstance({}, Mapping)
 
     def test_simple_protocol(self):
         class P(Protocol):
