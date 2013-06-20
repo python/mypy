@@ -3,6 +3,7 @@
 from abc import ABCMeta, abstractmethod
 import inspect
 import sys
+import re
 
 
 __all__ = [
@@ -10,10 +11,12 @@ __all__ = [
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
+    'BytesPattern',
     'Dict',
     'Generic',
     'GenericMeta',
     'List',
+    'Pattern',
     'Protocol',
     'Set',
     'Tuple',
@@ -135,6 +138,10 @@ Dict = TypeAlias(dict)
 Set = TypeAlias(set)
 Tuple = TypeAlias(tuple)
 Function = TypeAlias(callable)
+
+# Give names to some built-in types.
+Pattern = type(re.compile(''))
+BytesPattern = Pattern # TODO Pattern and BytesPattern shouldn't be the same!
 
 
 class typevar:

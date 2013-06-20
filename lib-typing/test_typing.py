@@ -2,9 +2,9 @@ from abc import abstractmethod, ABCMeta
 import unittest
 
 from typing import (
-    List, Dict, Tuple, Any, Function, Generic, AbstractGeneric, Protocol,
-    Sized, Iterable, Iterator, Sequence, Undefined, cast, forwardref, overload,
-    typevar
+    List, Dict, Tuple, Pattern, BytesPattern, Any, Function, Generic,
+    AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence, Undefined,
+    cast, forwardref, overload, typevar
 )
 
 
@@ -21,6 +21,13 @@ class TestTyping(unittest.TestCase):
         self.assertIs(Tuple[int], tuple)
         self.assertIs(Tuple[str, int], tuple)
         self.assertIs(Tuple[str, int, bool], tuple)
+
+    def test_Pattern(self):
+        import re
+        self.assertIs(re.compile(''), Pattern)
+        self.assertIs(re.compile(b''), BytesPattern)
+        # Note that actually Pattern is the same as BytesPattern, which is
+        # a bit awkward.
         
     def test_Any(self):
         o = object()

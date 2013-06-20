@@ -21,6 +21,12 @@ List = object()
 Dict = object()
 Set = object()
 
+# Defines aliases for built-in types.
+# Note that here 're' refers to the stub!  The Python 're' module does not
+# define Pattern or BytesPattern.  At runtime, these actually point to the
+# same type, which means that they can't be used for overloading reliably.
+from re import Pattern, BytesPattern
+
 
 # Abstract base classes.
 
