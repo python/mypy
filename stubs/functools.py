@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-import typing
+from typing import Function, Any
 
 # TODO implement as class; more precise typing
 # TODO cache_info and __wrapped__ attributes
