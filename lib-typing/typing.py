@@ -10,9 +10,13 @@ __all__ = [
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
+    'Dict',
     'Generic',
     'GenericMeta',
+    'List',
     'Protocol',
+    'Set',
+    'Tuple',
     'Undefined',
     'cast',
     'forwardref',
@@ -24,6 +28,10 @@ __all__ = [
     'Iterator',
     'Sequence',
     'Sized',
+    'AbstractSet',
+    'Mapping',
+    'IO',
+    'TextIO',
 ]
 
 
