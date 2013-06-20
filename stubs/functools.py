@@ -2,9 +2,11 @@
 
 # NOTE: These are incomplete!
 
+import typing
+
 # TODO implement as class; more precise typing
 # TODO cache_info and __wrapped__ attributes
 # TODO None valid as value for maxsize
-func<any(any)> lru_cache(int maxsize=100): pass
+def lru_cache(maxsize: int = 100) -> Function[[Any], Any]: pass
 
 
