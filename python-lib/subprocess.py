@@ -346,7 +346,10 @@ import signal
 import builtins
 import warnings
 import errno
-from typing import Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict
+
+from typing import (
+    Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict
+)
 
 # Exception classes used by this module.
 class CalledProcessError(Exception):
@@ -369,9 +372,9 @@ if mswindows:
     import _subprocess
     class STARTUPINFO:
         dwFlags = 0
-        hStdInput = None # type: Any
-        hStdOutput = None # type: Any
-        hStdError = None # type: Any
+        hStdInput = Any(None)
+        hStdOutput = Any(None)
+        hStdError = Any(None)
         wShowWindow = 0
 else:
     import select
@@ -419,7 +422,7 @@ if mswindows:
                     "STD_ERROR_HANDLE", "SW_HIDE",
                     "STARTF_USESTDHANDLES", "STARTF_USESHOWWINDOW"])
 try:
-    MAXFD = (Any(os)).sysconf("SC_OPEN_MAX") # type: int
+    MAXFD = Any(os).sysconf("SC_OPEN_MAX") # type: int
 except:
     MAXFD = 256
 
@@ -427,7 +430,7 @@ except:
 # exited at the time its __del__ method got called: those processes are wait()ed
 # for synchronously from _cleanup() when a new Popen object is created, to avoid
 # zombie processes.
-_active = [] # type: List[Popen]
+_active = List['Popen']()
 
 def _cleanup() -> None:
     for inst in _active[:]:
@@ -548,10 +551,10 @@ def list2cmdline(seq: Sequence[str]) -> str:
     # http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
     # or search http://msdn.microsoft.com for
     # "Parsing C++ Command-Line Arguments"
-    result = [] # type: List[str]
+    result = List[str]()
     needquote = False
     for arg in seq:
-        bs_buf = [] # type: List[str]
+        bs_buf = List[str]()
 
         # Add a space to separate this argument from the others
         if result:
@@ -634,22 +637,24 @@ _PLATFORM_DEFAULT_CLOSE_FDS = object()
 
 
 class Popen(object):
-    stdin = Undefined # type: Any
-    stdout = Undefined # type: Any
-    stderr = Undefined # type: Any
+    stdin = Undefined(Any)
+    stdout = Undefined(Any)
+    stderr = Undefined(Any)
     pid = 0
     returncode = 0
-    _handle = Undefined # type: Any # Windows only
+    _handle = Undefined(Any) # Windows only
     
-    def __init__(self, args: Sequence[str], bufsize: int = 0, executable: str = None,
-                  stdin: Any = None, stdout: Any = None, stderr: Any = None,
-                  preexec_fn: Function[[], Any] = None,
-                  close_fds: Any = _PLATFORM_DEFAULT_CLOSE_FDS,
-                  shell: bool = False, cwd: str = None, env: Mapping[str, str] = None,
-                  universal_newlines: bool = False,
-                  startupinfo: Any = None, creationflags: int = 0,
-                  restore_signals: bool = True, start_new_session: bool = False,
-                  pass_fds: Any = ()) -> None:
+    def __init__(self, args: Sequence[str], bufsize: int = 0,
+                 executable: str = None, stdin: Any = None,
+                 stdout: Any = None, stderr: Any = None,
+                 preexec_fn: Function[[], Any] = None,
+                 close_fds: Any = _PLATFORM_DEFAULT_CLOSE_FDS,
+                 shell: bool = False, cwd: str = None,
+                 env: Mapping[str, str] = None,
+                 universal_newlines: bool = False,
+                 startupinfo: Any = None, creationflags: int = 0,
+                 restore_signals: bool = True, start_new_session: bool = False,
+                 pass_fds: Any = ()) -> None:
         """Create new Popen instance."""
         _cleanup()
 
@@ -801,8 +806,8 @@ class Popen(object):
         # Optimization: If we are only using one pipe, or no pipe at
         # all, using select() or threads is unnecessary.
         if [self.stdin, self.stdout, self.stderr].count(None) >= 2:
-            stdout = None # type: Any
-            stderr = None # type: Any
+            stdout = Any(None)
+            stderr = Any(None)
             if self.stdin:
                 if input:
                     try:
@@ -831,8 +836,8 @@ class Popen(object):
         #
         # Windows methods
         #
-        def \
-                       _get_handles(self, stdin: Any, stdout: Any, stderr: Any) -> Tuple[Any, Any, Any, Any, Any, Any]:
+        def _get_handles(self, stdin: Any, stdout: Any,
+                         stderr: Any) -> Tuple[Any, Any, Any, Any, Any, Any]:
             """Construct and return tuple with IO objects:
             p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite
             """
@@ -914,14 +919,15 @@ class Popen(object):
 
 
         def _execute_child(self, args: Sequence[str], executable: str,
-                            preexec_fn: Function[[], Any], close_fds: Any,
-                            pass_fds: Any, cwd: str, env: Mapping[str, str],
-                            universal_newlines: bool,
-                            startupinfo: Any, creationflags: int, shell: bool,
-                            p2cread: Any, p2cwrite: Any,
-                            c2pread: Any, c2pwrite: Any,
-                            errread: Any, errwrite: Any,
-                            restore_signals: bool, start_new_session: bool) -> None:
+                           preexec_fn: Function[[], Any], close_fds: Any,
+                           pass_fds: Any, cwd: str, env: Mapping[str, str],
+                           universal_newlines: bool,
+                           startupinfo: Any, creationflags: int, shell: bool,
+                           p2cread: Any, p2cwrite: Any,
+                           c2pread: Any, c2pwrite: Any,
+                           errread: Any, errwrite: Any,
+                           restore_signals: bool,
+                           start_new_session: bool) -> None:
             """Execute program (MS Windows version)"""
 
             assert not pass_fds, "pass_fds not supported on Windows."
@@ -1032,8 +1038,8 @@ class Popen(object):
 
 
         def _communicate(self, input: Any) -> Tuple[Any, Any]:
-            stdout = None # type: Any # Return
-            stderr = None # type: Any # Return
+            stdout = Any(None) # Return
+            stderr = Any(None) # Return
 
             if self.stdout:
                 stdout = []
@@ -1097,8 +1103,8 @@ class Popen(object):
         #
         # POSIX methods
         #
-        def \
-                       _get_handles(self, stdin: Any, stdout: Any, stderr: Any) -> Tuple[Any, Any, Any, Any, Any, Any]:
+        def _get_handles(self, stdin: Any, stdout: Any,
+                         stderr: Any) -> Tuple[Any, Any, Any, Any, Any, Any]:
             """Construct and return tuple with IO objects:
             p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite
             """
@@ -1154,14 +1160,15 @@ class Popen(object):
 
 
         def _execute_child(self, args: Sequence[str], executable: str,
-                            preexec_fn: Function[[], Any], close_fds: Any,
-                            pass_fds: Any, cwd: str, env: Mapping[str, str],
-                            universal_newlines: bool,
-                            startupinfo: Any, creationflags: int, shell: bool,
-                            p2cread: Any, p2cwrite: Any,
-                            c2pread: Any, c2pwrite: Any,
-                            errread: Any, errwrite: Any,
-                            restore_signals: bool, start_new_session: bool) -> None:
+                           preexec_fn: Function[[], Any], close_fds: Any,
+                           pass_fds: Any, cwd: str, env: Mapping[str, str],
+                           universal_newlines: bool,
+                           startupinfo: Any, creationflags: int, shell: bool,
+                           p2cread: Any, p2cwrite: Any,
+                           c2pread: Any, c2pwrite: Any,
+                           errread: Any, errwrite: Any,
+                           restore_signals: bool,
+                           start_new_session: bool) -> None:
             """Execute program (POSIX version)"""
 
             if isinstance(args, str):
@@ -1264,7 +1271,7 @@ class Popen(object):
 
                                 # Close pipe fds.  Make sure we don't close the
                                 # same fd more than once, or standard fds.
-                                closed = set() # type: Set[int]
+                                closed = Set[int]()
                                 for fd in [p2cread, c2pwrite, errwrite]:
                                     if fd > 2 and fd not in closed:
                                         os.close(fd)
@@ -1405,7 +1412,8 @@ class Popen(object):
             return self._internal_poll_posix(_deadstate)
             
         def _internal_poll_posix(self, _deadstate=None, _waitpid=os.waitpid,
-                                 _WNOHANG=os.WNOHANG, _os_error=os.error) -> int:
+                                 _WNOHANG=os.WNOHANG,
+                                 _os_error=os.error) -> int:
             if self.returncode is None:
                 try:
                     pid, sts = _waitpid(self.pid, _WNOHANG)
@@ -1459,8 +1467,8 @@ class Popen(object):
 
             # Translate newlines, if requested.
             # This also turns bytes into strings.
-            stdout3 = stdout2 # type: Any
-            stderr3 = stderr2 # type: Any
+            stdout3 = Any(stdout2)
+            stderr3 = Any(stderr2)
             if self.universal_newlines:
                 if stdout is not None:
                     stdout3 = self._translate_newlines(stdout2,
@@ -1473,11 +1481,12 @@ class Popen(object):
             return (stdout3, stderr3)
 
 
-        def _communicate_with_poll(self, input: Any) -> Tuple[List[bytes], List[bytes]]:
+        def _communicate_with_poll(self, input: Any) -> Tuple[List[bytes],
+                                                              List[bytes]]:
             stdout = None # type: List[bytes] # Return
             stderr = None # type: List[bytes] # Return
-            fd2file = {} # type: Dict[int, Any]
-            fd2output = {} # type: Dict[int, List[bytes]]
+            fd2file = Dict[int, Any]()
+            fd2output = Dict[int, List[bytes]]()
 
             poller = select.poll()
             def register_and_append(file_obj, eventmask: int) -> None:
@@ -1537,9 +1546,10 @@ class Popen(object):
             return (stdout, stderr)
 
 
-        def _communicate_with_select(self, input: Any) -> Tuple[List[bytes], List[bytes]]:
-            read_set = [] # type: List[Any]
-            write_set = [] # type: List[Any]
+        def _communicate_with_select(self, input: Any) -> Tuple[List[bytes],
+                                                                List[bytes]]:
+            read_set = List[Any]()
+            write_set = List[Any]()
             stdout = None # type: List[bytes] # Return
             stderr = None # type: List[bytes] # Return
 
