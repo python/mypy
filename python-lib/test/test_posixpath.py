@@ -2,6 +2,12 @@ import unittest
 from test import support, test_genericpath
 
 import posixpath
+import genericpath
+
+import imp
+imp.reload(posixpath) # Make sure we are using the local copy
+imp.reload(genericpath)
+
 import os
 import sys
 from posixpath import realpath, abspath, dirname, basename
