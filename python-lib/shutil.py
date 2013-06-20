@@ -14,6 +14,8 @@ import errno
 import tarfile
 import builtins
 
+from typing import Any, List, Iterable, Function, Tuple, Dict, Sequence, cast
+
 try:
     import bz2
     _BZ2_SUPPORTED = True
@@ -23,7 +25,6 @@ except ImportError:
 from pwd import getpwnam
 
 from grp import getgrnam
-from typing import Any, List, Iterable, Function, Tuple, Dict, Sequence, cast
 
 __all__ = ["copyfileobj", "copyfile", "copymode", "copystat", "copy", "copy2",
            "copytree", "move", "rmtree", "Error", "SpecialFileError",
@@ -146,22 +147,23 @@ def copy2(src: str, dst: str) -> None:
     copyfile(src, dst)
     copystat(src, dst)
 
-def ignore_patterns( *patterns: str) -> Function[[str, List[str]], Iterable[str]]:
+def ignore_patterns(*patterns: str) -> Function[[str, List[str]],
+                                                Iterable[str]]:
     """Function that can be used as copytree() ignore parameter.
 
     Patterns is a sequence of glob-style patterns
     that are used to exclude files"""
     def _ignore_patterns(path: str, names: List[str]) -> Iterable[str]:
-        ignored_names = [] # type: List[str]
+        ignored_names = List[str]()
         for pattern in patterns:
             ignored_names.extend(fnmatch.filter(names, pattern))
         return set(ignored_names)
     return _ignore_patterns
 
 def copytree(src: str, dst: str, symlinks: bool = False,
-              ignore: Function[[str, List[str]], Iterable[str]] = None,
-              copy_function: Function[[str, str], None] = copy2,
-              ignore_dangling_symlinks: bool = False) -> None:
+             ignore: Function[[str, List[str]], Iterable[str]] = None,
+             copy_function: Function[[str, str], None] = copy2,
+             ignore_dangling_symlinks: bool = False) -> None:
     """Recursively copy a directory tree.
 
     The destination directory must not already exist.
@@ -203,7 +205,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
         ignored_names = set()
 
     os.makedirs(dst)
-    errors = [] # type: List[Tuple[str, str, str]]
+    errors = List[Tuple[str, str, str]]()
     for name in names:
         if name in ignored_names:
             continue
@@ -243,7 +245,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
         raise Error(errors)
 
 def rmtree(path: str, ignore_errors: bool = False,
-            onerror: Function[[Any, str, Any], None] = None) -> None:
+           onerror: Function[[Any, str, Any], None] = None) -> None:
     """Recursively delete a directory tree.
 
     If ignore_errors is set, errors are ignored; otherwise, if onerror
@@ -270,7 +272,7 @@ def rmtree(path: str, ignore_errors: bool = False,
         onerror(os.path.islink, path, sys.exc_info())
         # can't continue even if onerror hook returns
         return
-    names = [] # type: List[str]
+    names = List[str]()
     try:
         names = os.listdir(path)
     except os.error as err:
@@ -374,7 +376,8 @@ def _get_uid(name: str) -> int:
 
 def _make_tarball(base_name: str, base_dir: str, compress: str = "gzip",
                   verbose: bool = False, dry_run: bool = False,
-                  owner: str = None, group: str = None, logger: Any = None) -> str:
+                  owner: str = None, group: str = None,
+                  logger: Any = None) -> str:
     """Create a (possibly compressed) tar file from all the files under
     'base_dir'.
 
@@ -436,7 +439,7 @@ def _make_tarball(base_name: str, base_dir: str, compress: str = "gzip",
     return archive_name
 
 def _call_external_zip(base_dir: str, zip_filename: str, verbose: bool = False,
-                        dry_run: bool = False) -> None:
+                       dry_run: bool = False) -> None:
     # XXX see if we want to keep an external call here
     if verbose:
         zipoptions = "-r"
@@ -523,8 +526,8 @@ def get_archive_formats() -> List[Tuple[str, str]]:
     return formats
 
 def register_archive_format(name: str, function: Any,
-                             extra_args: Sequence[Tuple[str, Any]] = None,
-                             description: str = '') -> None:
+                            extra_args: Sequence[Tuple[str, Any]] = None,
+                            description: str = '') -> None:
     """Registers an archive format.
 
     name is the name of the format. function is the callable that will be
@@ -549,8 +552,9 @@ def unregister_archive_format(name: str) -> None:
     del _ARCHIVE_FORMATS[name]
 
 def make_archive(base_name: str, format: str, root_dir: str = None,
-                  base_dir: str = None, verbose: bool = False, dry_run: bool = False,
-                  owner: str = None, group: str = None, logger: Any = None) -> None:
+                 base_dir: str = None, verbose: bool = False,
+                 dry_run: bool = False, owner: str = None,
+                 group: str = None, logger: Any = None) -> None:
     """Create an archive file (eg. zip or tar).
 
     'base_name' is the name of the file to create, minus any format-specific
@@ -618,7 +622,7 @@ def get_unpack_formats() -> List[Tuple[str, List[str], str]]:
 def _check_unpack_options(extensions, function, extra_args) -> None:
     """Checks what gets registered as an unpacker."""
     # first make sure no other unpacker is registered for this extension
-    existing_extensions = {} # type: Dict[str, str]
+    existing_extensions = Dict[str, str]()
     for name, info in _UNPACK_FORMATS.items():
         for ext in info[0]:
             existing_extensions[ext] = name
@@ -634,8 +638,8 @@ def _check_unpack_options(extensions, function, extra_args) -> None:
 
 
 def register_unpack_format(name: str, extensions: List[str], function: Any,
-                            extra_args: Sequence[Tuple[str, Any]] = None,
-                            description: str = '') -> None:
+                           extra_args: Sequence[Tuple[str, Any]] = None,
+                           description: str = '') -> None:
     """Registers an unpack format.
 
     `name` is the name of the format. `extensions` is a list of extensions
@@ -733,7 +737,8 @@ def _find_unpack_format(filename: str) -> str:
                 return name
     return None
 
-def unpack_archive(filename: str, extract_dir: str = None, format: str = None) -> None:
+def unpack_archive(filename: str, extract_dir: str = None,
+                   format: str = None) -> None:
     """Unpack an archive.
 
     `filename` is the name of the archive.
