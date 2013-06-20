@@ -5,6 +5,7 @@ functions from this module themselves.
 """
 import os
 import stat
+
 from typing import overload as overload_, Any, List
 
 __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
