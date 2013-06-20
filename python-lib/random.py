@@ -304,8 +304,6 @@ class Random(_random.Random):
         # preferred since the list takes less space than the
         # set and it doesn't suffer from frequent reselections.
 
-        if not isinstance(population, _Sequence):
-            raise TypeError("Population must be a sequence or set.  For dicts, use list(d).")
         randbelow = self._randbelow
         n = len(population)
         if not (0 <= k and k <= n):
@@ -335,7 +333,11 @@ class Random(_random.Random):
     @overload
     def sample(self, population: Set[T], k: int) -> List[T]:
         return self.sample(list(population), k)
-        
+
+    @overload
+    def sample(self, population, k):
+        raise TypeError("Population must be a sequence or set.  For dicts, use list(d).")
+
 ## -------------------- real-valued distributions  -------------------
 
 ## -------------------- uniform distribution -------------------
