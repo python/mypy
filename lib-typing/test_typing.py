@@ -2,7 +2,7 @@ from abc import abstractmethod, ABCMeta
 import unittest
 
 from typing import (
-    List, Dict, Tuple, Pattern, BytesPattern, Any, Function, Generic,
+    List, Dict, Set, Tuple, Pattern, BytesPattern, Any, Function, Generic,
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence, Undefined,
     cast, forwardref, overload, typevar
 )
@@ -16,6 +16,10 @@ class TestTyping(unittest.TestCase):
     def test_Dict(self):
         self.assertIs(Dict[int, str], dict)
         self.assertIs(Dict[str, int], dict)
+        
+    def test_Set(self):
+        self.assertIs(Set[int], set)
+        self.assertIs(Set[str], set)
         
     def test_Tuple(self):
         self.assertIs(Tuple[int], tuple)
