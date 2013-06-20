@@ -37,7 +37,9 @@ import errno as _errno
 from random import Random as _Random
 
 from typing import (
-    Any, Function, Iterator, Undefined, List, Tuple, Dict, Iterable
+    Any as _Any, Function as _Function, Iterator as _Iterator,
+    Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
+    Iterable as _Iterable
 )
 
 import fcntl as _fcntl
@@ -57,16 +59,16 @@ _allocate_lock = _thread.allocate_lock
 
 _text_openflags = _os.O_RDWR | _os.O_CREAT | _os.O_EXCL
 if hasattr(_os, 'O_NOINHERIT'):
-    _text_openflags |= Any(_os).O_NOINHERIT
+    _text_openflags |= _Any(_os).O_NOINHERIT
 if hasattr(_os, 'O_NOFOLLOW'):
-    _text_openflags |= Any(_os).O_NOFOLLOW
+    _text_openflags |= _Any(_os).O_NOFOLLOW
 
 _bin_openflags = _text_openflags
 if hasattr(_os, 'O_BINARY'):
-    _bin_openflags |= Any(_os).O_BINARY
+    _bin_openflags |= _Any(_os).O_BINARY
 
 if hasattr(_os, 'TMP_MAX'):
-    TMP_MAX = Any(_os).TMP_MAX
+    TMP_MAX = _Any(_os).TMP_MAX
 else:
     TMP_MAX = 10000
 
@@ -77,7 +79,7 @@ template = "tmp"
 _once_lock = _allocate_lock()
 
 if hasattr(_os, "lstat"):
-    _stat = _os.lstat # type: Function[[str], _os.stat_result]
+    _stat = _os.lstat # type: _Function[[str], _os.stat_result]
 elif hasattr(_os, "stat"):
     _stat = _os.stat
 else:
@@ -99,7 +101,7 @@ def _exists(fn: str) -> bool:
     else:
         return True
 
-class _RandomNameSequence(Iterator[str]):
+class _RandomNameSequence(_Iterator[str]):
     """An instance of _RandomNameSequence generates an endless
     sequence of unpredictable strings which can safely be incorporated
     into file names.  Each string is six characters long.  Multiple
@@ -108,7 +110,7 @@ class _RandomNameSequence(Iterator[str]):
     _RandomNameSequence is an iterator."""
 
     characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
-    _rng = Undefined(_Random)
+    _rng = _Undefined(_Random)
     _rng_pid = 0
 
     def rng(self) -> _Random:
@@ -118,7 +120,7 @@ class _RandomNameSequence(Iterator[str]):
             self._rng_pid = cur_pid
         return self._rng
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> _Iterator[str]:
         return self
 
     def __next__(self) -> str:
@@ -127,11 +129,11 @@ class _RandomNameSequence(Iterator[str]):
         letters = [choose(c) for dummy in "123456"]
         return ''.join(letters)
 
-def _candidate_tempdir_list() -> List[str]:
+def _candidate_tempdir_list() -> _List[str]:
     """Generate a list of candidate temporary directories which
     _get_default_tempdir will try."""
 
-    dirlist = [] # type: List[str]
+    dirlist = [] # type: _List[str]
 
     # First, try the environment.
     for envname in ['TMPDIR', 'TEMP', 'TMP']:
@@ -203,7 +205,7 @@ def _get_candidate_names() -> _RandomNameSequence:
 
 
 def _mkstemp_inner(dir: str, pre: str, suf: str,
-                   flags: int) -> Tuple[int, str]:
+                   flags: int) -> _Tuple[int, str]:
     """Code common to mkstemp, TemporaryFile, and NamedTemporaryFile."""
 
     names = _get_candidate_names()
@@ -244,7 +246,7 @@ def gettempdir() -> str:
     return tempdir
 
 def mkstemp(suffix: str = "", prefix: str = template, dir: str = None,
-            text: bool = False) -> Tuple[int, str]:
+            text: bool = False) -> _Tuple[int, str]:
     """User-callable function to create and return a unique temporary
     file.  The return value is a pair (fd, name) where fd is the
     file descriptor returned by os.open, and name is the filename.
@@ -350,7 +352,7 @@ class _TemporaryFileWrapper:
     remove the file when it is no longer needed.
     """
 
-    def __init__(self, file: Any, name: str, delete: bool = True) -> None:
+    def __init__(self, file: _Any, name: str, delete: bool = True) -> None:
         self.file = file
         self.name = name
         self.close_called = False
@@ -364,11 +366,11 @@ class _TemporaryFileWrapper:
             # __del__ is called.
             self.unlink = _os.unlink
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> _Any:
         # Attribute lookups are delegated to the underlying file
         # and cached for non-numeric results
         # (i.e. methods are cached, closed and friends are not)
-        file = Any(self).__dict__['file']
+        file = _Any(self).__dict__['file']
         a = getattr(file, name)
         if not isinstance(a, int):
             setattr(self, name, a)
@@ -381,7 +383,7 @@ class _TemporaryFileWrapper:
         return self
 
     # iter() doesn't use __getattr__ to find the __iter__ method
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> _Iterator[_Any]:
         return iter(self.file)
 
     # NT provides delete-on-close as a primitive, so we don't need
@@ -412,7 +414,7 @@ class _TemporaryFileWrapper:
 def NamedTemporaryFile(mode: str = 'w+b', buffering: int = -1,
                        encoding: str = None, newline: str = None,
                        suffix: str = "", prefix: str = template,
-                       dir: str = None, delete: bool = True) -> Any:
+                       dir: str = None, delete: bool = True) -> _Any:
     """Create and return a temporary file.
     Arguments:
     'prefix', 'suffix', 'dir' -- as for mkstemp.
@@ -453,7 +455,7 @@ else:
     def _TemporaryFile(mode: str = 'w+b', buffering: int = -1,
                        encoding: str = None, newline: str = None,
                        suffix: str = "", prefix: str = template,
-                       dir: str = None, delete: bool = True) -> Any:
+                       dir: str = None, delete: bool = True) -> _Any:
         """Create and return a temporary file.
         Arguments:
         'prefix', 'suffix', 'dir' -- as for mkstemp.
@@ -488,7 +490,7 @@ class SpooledTemporaryFile:
     when a fileno is needed.
     """
     _rolled = False
-    _file = Undefined # type: Any # IO or TextIO
+    _file = _Undefined # type: _Any # IO or TextIO
 
     def __init__(self, max_size: int = 0, mode: str = 'w+b',
                  buffering: int = -1, encoding: str = None,
@@ -507,9 +509,9 @@ class SpooledTemporaryFile:
                                    'mode': mode, 'buffering': buffering,
                                    'suffix': suffix, 'prefix': prefix,
                                    'encoding': encoding, 'newline': newline,
-                                   'dir': dir} # type: Dict[str, Any]
+                                   'dir': dir} # type: Dict[str, _Any]
 
-    def _check(self, file: Any) -> None:
+    def _check(self, file: _Any) -> None:
         if self._rolled: return
         max_size = self._max_size
         if max_size and file.tell() > max_size:
@@ -541,7 +543,7 @@ class SpooledTemporaryFile:
         self._file.close()
 
     # file protocol
-    def __iter__(self) -> Iterable[Any]:
+    def __iter__(self) -> _Iterable[_Any]:
         return self._file.__iter__()
 
     def close(self) -> None:
@@ -580,13 +582,13 @@ class SpooledTemporaryFile:
     def next(self):
         return self._file.next
 
-    def read(self, *args) -> Any:
+    def read(self, *args) -> _Any:
         return self._file.read(*args)
 
-    def readline(self, *args) -> Any:
+    def readline(self, *args) -> _Any:
         return self._file.readline(*args)
 
-    def readlines(self, *args) -> List[Any]:
+    def readlines(self, *args) -> _List[_Any]:
         return self._file.readlines(*args)
 
     def seek(self, *args) -> None:
@@ -614,7 +616,7 @@ class SpooledTemporaryFile:
         self._check(file)
         return rv
 
-    def xreadlines(self, *args) -> Any:
+    def xreadlines(self, *args) -> _Any:
         return self._file.xreadlines(*args)
 
 
