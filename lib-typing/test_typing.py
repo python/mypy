@@ -4,7 +4,8 @@ import unittest
 from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
     Function, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
-    Sequence, AbstractSet, Mapping, IO, TextIO, Undefined, cast, forwardref,
+    Sequence, AbstractSet, Mapping, IO, TextIO, SupportsInt, SupportsFloat,
+    SupportsAbs, SupportsRound, Reversible, Undefined, cast, forwardref,
     overload, typevar
 )
 
@@ -366,6 +367,38 @@ class TestTyping(unittest.TestCase):
     def test_io_types(self):
         self.assertIsInstance(IO, type)
         self.assertIsInstance(TextIO, type)
+
+    def test_supports_int(self):
+        self.assertIsInstance(1, SupportsInt)
+        self.assertIsInstance(1.1, SupportsInt)
+        self.assertNotIsInstance('', SupportsInt)
+        self.assertNotIsInstance(b'', SupportsInt)
+        self.assertNotIsInstance((), SupportsInt)
+
+    def test_supports_float(self):
+        self.assertIsInstance(1.1, SupportsFloat)
+        self.assertIsInstance(1, SupportsFloat)
+        self.assertNotIsInstance('', SupportsFloat)
+        self.assertNotIsInstance(b'', SupportsFloat)
+        self.assertNotIsInstance((), SupportsFloat)
+
+    def test_supports_abs(self):
+        self.assertIsInstance(1.1, SupportsAbs)
+        self.assertIsInstance(1, SupportsAbs)
+        self.assertNotIsInstance('', SupportsAbs)
+        self.assertNotIsInstance((), SupportsAbs)
+
+    def test_supports_round(self):
+        self.assertIsInstance(1.1, SupportsRound)
+        self.assertIsInstance(1, SupportsRound)
+        self.assertNotIsInstance('', SupportsRound)
+        self.assertNotIsInstance((), SupportsRound)
+
+    def test_reversible(self):
+        self.assertIsInstance([], Reversible)
+        self.assertIsInstance(range(1), Reversible)
+        self.assertNotIsInstance((), Reversible)
+        self.assertNotIsInstance('', Reversible)
 
     def test_simple_protocol(self):
         class P(Protocol):

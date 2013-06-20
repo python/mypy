@@ -327,6 +327,31 @@ KT = typevar('KT')
 VT = typevar('VT')
 
 
+class SupportsInt(Protocol):
+    @abstractmethod
+    def __int__(self) -> int: pass
+
+
+class SupportsFloat(Protocol):
+    @abstractmethod
+    def __float__(self) -> float: pass
+
+
+class SupportsAbs(Protocol[T]):
+    @abstractmethod
+    def __abs__(self) -> T: pass
+
+
+class SupportsRound(Protocol[T]):
+    @abstractmethod
+    def __round__(self, ndigits: int = 0) -> T: pass
+
+
+class Reversible(Protocol[T]):
+    @abstractmethod
+    def __reversed__(self) -> 'Iterator[T]': pass
+
+
 class Sized(Protocol):
     @abstractmethod
     def __len__(self) -> int: pass
