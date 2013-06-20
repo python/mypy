@@ -366,9 +366,6 @@ for t in list, tuple, str, bytes, range:
     Sequence.register(t)
 
 
-del t
-
-
 class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
@@ -382,6 +379,10 @@ class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
     def __xor__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
     @abstractmethod
     def isdisjoint(self, s: 'AbstractSet[T]') -> bool: pass
+
+
+for t in set, frozenset, type({}.keys()), type({}.items()):
+    AbstractSet.register(t)
 
 
 class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
@@ -519,3 +520,6 @@ class TextIO(metaclass=ABCMeta):
     def __enter__(self) -> 'TextIO': pass
     @abstractmethod
     def __exit__(self, type, value, traceback) -> None: pass
+
+
+del t
