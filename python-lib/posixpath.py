@@ -94,9 +94,9 @@ str join(str a, str *p):
     """Join two or more pathname components, inserting '/' as needed.
     If any component is an absolute path, all previous path components
     will be discarded."""
-    return _join(a, p)
+    return _join(a, *p)
 bytes join(bytes a, bytes *p):
-    return _join(a, p)
+    return _join(a, *p)
 
 
 # Split a path in head (everything up to the last '/') and tail (the
