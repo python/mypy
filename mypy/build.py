@@ -787,6 +787,21 @@ class ParsedFile(State):
         self.semantic_analyzer().visit_file(self.tree, self.tree.path)
         self.switch_state(PartiallySemanticallyAnalyzedFile(self.info(),
                                                             self.tree))
+        
+    int num_incomplete_deps(self):        
+        """Return the number of dependencies that are incomplete.
+
+        Here complete means that their state is *later* than this module.
+        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
+        arbitrarily).
+        """
+        incomplete = 0
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
+            if (not earlier_state(self.state(), state) and
+                    not self.manager.is_dep(module, self.id)):
+                incomplete += 1
+        return incomplete
     
     int state(self):
         return PARSED_STATE
@@ -811,21 +826,6 @@ class SemanticallyAnalyzedFile(ParsedFile):
         # FIX remove from active state list to speed up processing
         
         self.switch_state(TypeCheckedFile(self.info(), self.tree))
-        
-    int num_incomplete_deps(self):        
-        """Return the number of dependencies that are incomplete.
-
-        Here complete means that their state is *later* than this module.
-        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
-        arbitrarily).
-        """
-        incomplete = 0
-        for module in self.dependencies:
-            state = self.manager.module_state(module)
-            if (not earlier_state(self.state(), state) and
-                    not self.manager.is_dep(module, self.id)):
-                incomplete += 1
-        return incomplete
     
     int state(self):
         return SEMANTICALLY_ANALYSED_STATE
