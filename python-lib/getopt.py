@@ -34,6 +34,7 @@ option involved with the exception.
 __all__ = ["GetoptError","error","getopt","gnu_getopt"]
 
 import os
+
 from typing import overload, List, Tuple, Iterable
 
 class GetoptError(Exception):
@@ -50,13 +51,14 @@ class GetoptError(Exception):
 error = GetoptError # backward compatibility
 
 @overload
-def \
-           getopt(args: List[str], shortopts: str, longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
+def getopt(args: List[str], shortopts: str,
+           longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
     return getopt(args, shortopts, [longopts])
     
 @overload
-def \
-           getopt(args: List[str], shortopts: str, longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]], List[str]]:
+def getopt(args: List[str], shortopts: str,
+           longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]],
+                                                    List[str]]:
     """getopt(args, options[, long_options]) -> opts, args
 
     Parses command line options and parameter list.  args is the
@@ -83,7 +85,7 @@ def \
 
     """
 
-    opts = [] # type: List[Tuple[str, str]]
+    opts = List[Tuple[str, str]]()
     llongopts = list(longopts)
     while args and args[0].startswith('-') and args[0] != '-':
         if args[0] == '--':
@@ -97,13 +99,14 @@ def \
     return opts, args
 
 @overload
-def \
-        gnu_getopt(args: List[str], shortopts: str, longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
+def gnu_getopt(args: List[str], shortopts: str,
+               longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
     return gnu_getopt(args, shortopts, [longopts])
 
 @overload
-def \
-        gnu_getopt(args: List[str], shortopts: str, longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]], List[str]]:
+def gnu_getopt(args: List[str], shortopts: str,
+               longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]],
+                                                        List[str]]:
     """getopt(args, options[, long_options]) -> opts, args
 
     This function works like getopt(), except that GNU style scanning
@@ -118,8 +121,8 @@ def \
 
     """
 
-    opts = [] # type: List[Tuple[str, str]]
-    prog_args = [] # type: List[str]
+    opts = List[Tuple[str, str]]()
+    prog_args = List[str]()
     llongopts = list(longopts)
 
     # Allow options after non-option arguments?
@@ -150,9 +153,9 @@ def \
 
     return opts, prog_args
 
-def \
-                      do_longs(opts: List[Tuple[str, str]], opt: str,
-                               longopts: List[str], args: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
+def do_longs(opts: List[Tuple[str, str]], opt: str,
+             longopts: List[str],
+             args: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
     try:
         i = opt.index('=')
     except ValueError:
@@ -195,9 +198,9 @@ def long_has_args(opt: str, longopts: List[str]) -> Tuple[bool, str]:
         unique_match = unique_match[:-1]
     return has_arg, unique_match
 
-def \
-                      do_shorts(opts: List[Tuple[str, str]], optstring: str,
-                                shortopts: str, args: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
+def do_shorts(opts: List[Tuple[str, str]], optstring: str,
+              shortopts: str, args: List[str]) -> Tuple[List[Tuple[str, str]],
+                                                        List[str]]:
     while optstring != '':
         opt, optstring = optstring[0], optstring[1:]
         if short_has_arg(opt, shortopts):
