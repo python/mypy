@@ -6,6 +6,7 @@
 # Written by Greg Ward <gward@python.net>
 
 import string, re
+
 from typing import Dict, List
 
 __all__ = ['TextWrapper', 'wrap', 'fill', 'dedent']
@@ -62,7 +63,7 @@ class TextWrapper:
         Drop leading and trailing whitespace from lines.
     """
 
-    unicode_whitespace_trans = {} # type: Dict[int, int]
+    unicode_whitespace_trans = Dict[int, int]()
     uspace = ord(' ')
     for x in _whitespace:
         unicode_whitespace_trans[ord(x)] = uspace
@@ -170,8 +171,9 @@ class TextWrapper:
             else:
                 i += 1
 
-    def _handle_long_word(self, reversed_chunks: List[str], cur_line: List[str],
-                           cur_len: int, width: int) -> None:
+    def _handle_long_word(self, reversed_chunks: List[str],
+                          cur_line: List[str], cur_len: int,
+                          width: int) -> None:
         """_handle_long_word(chunks : [string],
                              cur_line : [string],
                              cur_len : int, width : int)
@@ -204,7 +206,7 @@ class TextWrapper:
         # cur_len will be zero, so the next line will be entirely
         # devoted to the long word that we can't handle right now.
 
-    def _wrap_chunks(self, chunks: List[str]) -> 'List[str]':
+    def _wrap_chunks(self, chunks: List[str]) -> List[str]:
         """_wrap_chunks(chunks : [string]) -> [string]
 
         Wrap a sequence of text chunks and return a list of lines of
@@ -217,7 +219,7 @@ class TextWrapper:
         Whitespace chunks will be removed from the beginning and end of
         lines, but apart from that whitespace is preserved.
         """
-        lines = [] # type: List[str]
+        lines = List[str]()
         if self.width <= 0:
             raise ValueError("invalid width %r (must be > 0)" % self.width)
 
@@ -229,7 +231,7 @@ class TextWrapper:
 
             # Start the list of chunks that will make up the current line.
             # cur_len is just the length of all the chunks in cur_line.
-            cur_line = [] # type: List[str]
+            cur_line = List[str]()
             cur_len = 0
 
             # Figure out which static string will prefix this line.
