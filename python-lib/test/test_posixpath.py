@@ -13,7 +13,7 @@ import sys
 from posixpath import realpath, abspath, dirname, basename
 
 import posix
-import typing
+from typing import Any
 
 # An absolute path to a temporary filename for testing. We can't rely on TESTFN
 # being an absolute path, so we need this.
@@ -222,7 +222,7 @@ class PosixPathTest(unittest.TestCase):
         test_fn2 = support.TESTFN + "2"
         self._create_file(test_fn1)
         test_fns = (test_fn1, test_fn2)
-        os.symlink(*test_fns)
+        Any(os.symlink)(*test_fns)
         stats = map(os.stat, test_fns)
         self.assertTrue(posixpath.samestat(*stats))
         os.remove(test_fn2)
