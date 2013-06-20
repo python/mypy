@@ -1,10 +1,10 @@
-"""Test cases for running mypy programs using CPython 3.
+"""Test cases for running mypy programs using a Python interpreter.
 
-Each test cases translates a mypy program to Python and then runs it. The
-output (stdout) of the program is compared to expected output. The translation
-uses full builtins.
+Each test case type checks a program then runs it using Python. The
+output (stdout) of the program is compared to expected output. Type checking
+uses full builtins and other stubs.
 
-Note: Currently python interpreter and mypy implementation paths are hard coded
+Note: Currently Python interpreter and mypy implementation paths are hard coded
       (see python_path and mypy_path below).
 
 Note: These test cases are *not* included in the main test suite, as running
