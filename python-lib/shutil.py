@@ -119,7 +119,7 @@ def copystat(src: str, dst: str) -> None:
         os.chmod(dst, mode)
     if hasattr(os, 'chflags') and hasattr(st, 'st_flags'):
         try:
-            (Any(os)).chflags(dst, (Any(st)).st_flags)
+            Any(os).chflags(dst, Any(st).st_flags)
         except OSError as why:
             if (not hasattr(errno, 'EOPNOTSUPP') or
                 why.errno != errno.EOPNOTSUPP):
