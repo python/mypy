@@ -12,6 +12,7 @@ Note: These test cases are *not* included in the main test suite, as running
       slowness is due to translating the mypy implementation in each test case.
 """
 
+import os
 import os.path
 import subprocess
 import sys
@@ -48,6 +49,10 @@ def test_python_evaluation(testcase):
     for s in testcase.input:
         f.write('{}\n'.format(s))
     f.close()
+    # Set up module path.
+    typing_path = os.path.join(os.getcwd(), 'lib-typing')
+    assert os.path.isdir(typing_path)
+    os.environ['PYTHONPATH'] = typing_path
     # Run the program.
     outb = subprocess.check_output([python_path,
                                     os.path.expanduser(mypy_path),
