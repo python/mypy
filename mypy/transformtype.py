@@ -91,8 +91,8 @@ class TypeTransformer:
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
         
-        if tdef.is_generic() or (tdef.info.base and
-                                 tdef.info.base.is_generic()):
+        if tdef.is_generic() or (tdef.info.bases and
+                                 tdef.info.mro[1].is_generic()):
             self.make_instance_tvar_initializer(
                 (FuncDef)tdef.info.get_method('__init__'))
 
@@ -138,25 +138,27 @@ class TypeTransformer:
         info = tdef.info
         
         if '__init__' not in info.names and (
-                tdef.is_generic() or (info.base and info.base.is_generic())):
+                tdef.is_generic() or (info.bases and
+                                      info.mro[1].is_generic())):
             # Generic class with no explicit __init__ method
             # (i.e. __init__ inherited from superclass). Generate a
             # wrapper that initializes type variable slots and calls
             # the superclass __init__ method.
-            
+
+            base = info.mro[1]
             selftype = self_type(info)    
             callee_type = (Callable)analyse_member_access(
                 '__init__', selftype, None, False, True, None, None,
-                info.base)
+                base)
             
             # Now the callee type may contain the type variables of a
             # grandparent as bound type variables, but we want the
             # type variables of the parent class. Explicitly set the
             # bound type variables.
             callee_type = self.fix_bound_init_tvars(callee_type,
-                map_instance_to_supertype(selftype, info.base))
+                map_instance_to_supertype(selftype, base))
             
-            super_init = (FuncDef)info.base.get_method('__init__')
+            super_init = (FuncDef)base.get_method('__init__')
             
             # Build argument list.
             args = [Var('self')]
@@ -180,7 +182,7 @@ class TypeTransformer:
             # Insert a call to superclass constructor. If the
             # superclass is object, the constructor does nothing =>
             # omit the call.
-            if tdef.info.base.fullname() != 'builtins.object':
+            if base.fullname() != 'builtins.object':
                 creat.body.body.append(
                     self.make_superclass_constructor_call(tdef.info,
                                                           callee_type))
@@ -219,9 +221,10 @@ class TypeTransformer:
         # FIX default args / varargs
         
         # Map self type to the superclass context.
-        selftype = map_instance_to_supertype(selftype, info.base)
+        base = info.mro[1]
+        selftype = map_instance_to_supertype(selftype, base)
         
-        super_init = (FuncDef)info.base.get_method('__init__')
+        super_init = (FuncDef)base.get_method('__init__')
         
         # Add constructor arguments.
         args = <Node> []
@@ -385,7 +388,8 @@ class TypeTransformer:
         defs = <Node> []
         
         # Does the type have a superclass, other than builtins.object?
-        has_proper_superclass = tdef.info.base.fullname() != 'builtins.object'
+        base = tdef.info.mro[1]
+        has_proper_superclass = base.fullname() != 'builtins.object'
         
         if not has_proper_superclass or self.tf.is_java:
             # Generate member variables for wrapper object.
@@ -432,11 +436,11 @@ class TypeTransformer:
         return wrapper
     
     TypeInfo find_generic_base_class(self, TypeInfo info):
-        base = info.base
+        base = info.mro[1]
         while base:
             if base.type_vars != []:
                 return base
-            base = base.base
+            base = base.mro[1]
     
     Node[] make_generic_wrapper_member_vars(self, TypeDef tdef):
         """Generate member variable definition for wrapped object (__o).
@@ -460,12 +464,13 @@ class TypeTransformer:
         cdefs = <Node> []
         
         # Build superclass constructor call.
-        if info.base.fullname() != 'builtins.object' and self.tf.is_java:
+        base = info.mro[1]
+        if base.fullname() != 'builtins.object' and self.tf.is_java:
             s = SuperExpr('__init__')
             cargs = <Node> [NameExpr('__o')]
-            for n in range(num_slots(info.base)):
+            for n in range(num_slots(base)):
                 cargs.append(NameExpr(tvar_arg_name(n + 1)))
-            for n in range(num_slots(info.base)):
+            for n in range(num_slots(base)):
                 cargs.append(NameExpr(tvar_arg_name(n + 1, BOUND_VAR)))
             c = CallExpr(s, cargs, [nodes.ARG_POS] * len(cargs))
             cdefs.append(ExpressionStmt(c))
@@ -510,7 +515,7 @@ class TypeTransformer:
         type.
         """
         Node[] defs = []
-        base_slots = num_slots(info.base)
+        base_slots = num_slots(info.mro[1])
         for n in range(len(info.type_vars)):
             # Only include a type variable if it introduces a new slot.
             slot = get_tvar_access_path(info, n + 1)[0] - 1

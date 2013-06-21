@@ -26,7 +26,7 @@ from mypy.icode import FuncIcode
 #from mypy import cgen
 from mypy import icode
 from mypy import parse
-#from mypy import transform
+from mypy import transform
 
 
 debug = False
@@ -459,13 +459,16 @@ class BuildManager:
 
     void transform(self, MypyFile[] files):
         for f in files:
+            if f.fullname() == 'typing':
+                # The typing module is special and is currently not
+                # transformed.
+                continue
             # Transform parse tree and produce pretty-printed output.
-            pass # TODO enable
-            #v = transform.DyncheckTransformVisitor(
-            #    self.type_checker.type_map,
-            #    self.semantic_analyzer.modules,
-            #    is_pretty=True)
-            #f.accept(v)
+            v = transform.DyncheckTransformVisitor(
+                self.type_checker.type_map,
+                self.semantic_analyzer.modules,
+                is_pretty=True)
+            f.accept(v)
 
     void generate_icode(self, MypyFile[] files, dict<Node, Type> types):
         builder = icode.IcodeBuilder(types)
