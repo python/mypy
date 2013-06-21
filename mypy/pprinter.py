@@ -55,8 +55,7 @@ class PrettyPrintVisitor(NodeVisitor):
     void visit_func_def(self, FuncDef fdef):
         # FIX varargs, default args, keyword args etc.
         ftyp = (Callable)fdef.type
-        self.type(ftyp.ret_type)
-        self.string(' ')
+        self.string('def ')
         self.string(fdef.name())
         self.string('(')
         for i in range(len(fdef.args)):
@@ -69,7 +68,8 @@ class PrettyPrintVisitor(NodeVisitor):
             self.string(a.name())
             if i < len(fdef.args) - 1:
                 self.string(', ')
-        self.string(')')
+        self.string(') -> ')
+        self.type(ftyp.ret_type)
         fdef.body.accept(self)
     
     void visit_var_def(self, VarDef vdef):
@@ -260,16 +260,16 @@ class TypeErasedPrettyPrintVisitor(TypeVisitor<str>):
     """
     
     def visit_any(self, t):
-        return 'any'
+        return 'Any'
     
     def visit_void(self, t):
-        return 'void'
+        return 'None'
     
     def visit_instance(self, t):
         return t.type.name()
     
     def visit_type_var(self, t):
-        return 'any*'
+        return 'Any*'
     
     def visit_runtime_type_var(self, t):
         v = PrettyPrintVisitor()
@@ -287,20 +287,20 @@ class TypePrettyPrintVisitor(TypeVisitor<str>):
     """
     
     def visit_any(self, t):
-        return 'any'
+        return 'Any'
     
     def visit_void(self, t):
-        return 'void'
+        return 'None'
     
     def visit_instance(self, t):
         s = t.type.name()
         if t.args:
             argstr = ', '.join([a.accept(self) for a in t.args])
-            s += '<%s>' % argstr
+            s += '[%s]' % argstr
         return s
     
     def visit_type_var(self, t):
-        return 'any*'
+        return 'Any*'
     
     def visit_runtime_type_var(self, t):
         v = PrettyPrintVisitor()
