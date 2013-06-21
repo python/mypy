@@ -14,10 +14,10 @@ T = typevar('T')
 class A(Generic[T]):
     def f(self, t: T) -> None:
         pass
-class B('A[C]'):
+class C: pass
+class B(A[C]):
     def g(self, c: 'C') -> None:
         self.f(c)
-class C: pass
 [out]
 ...
 class B(A):
@@ -37,10 +37,10 @@ b.g(c)
 class A(Generic[T]):
     def f(self, t: T) -> None:
         pass
-class B('A[C]'):
+class C: pass
+class B(A[C]):
     def g(self, c: 'C') -> None:
         self.f(c)
-class C: pass
 [out]
 b: B
 c: C
@@ -59,10 +59,10 @@ b.f(c)
 class A(Generic[T]):
     def f(self, t: T) -> None:
         pass
-class B('A[C]'):
+class C: pass
+class B(A[C]):
     def f(self, c: 'C') -> None:
         pass
-class C: pass
 [out]
 ...
 a.f(c)
@@ -95,12 +95,12 @@ T = typevar('T')
 class A(Generic[T]):
     def f(self, a: 'C[T]', b: 'D') -> None:
         pass
-class B('A[E]'):
+class D: pass
+class E: pass
+class B(A[E]):
     def f(self, a: 'C[E]', b: 'D') -> None:
         pass
 class C(Generic[T]): pass
-class D: pass
-class E: pass
 [out]
 ...
 class B(A):
@@ -206,10 +206,10 @@ T = typevar('T')
 class A(Generic[S, T]):
     def f(self, s: S, t: T) -> None:
         pass
-class B('A[C, S]', Generic[S]):
+class C: pass
+class B(A[C, S], Generic[S]):
     def f(self, s: 'C', t: S) -> None:
         pass
-class C: pass
 [out]
 ...
 class B(A):
@@ -308,11 +308,11 @@ T = typevar('T')
 S = typevar('S')
 # More complex path to subtype type variable
 class A(Generic[T]): pass
-class B('A[C[X, A[T]]]', Generic[T]):
-    def f(self, a: T, d: Any) -> None:
-        a = d
 class C(Generic[S, T]): pass
 class X: pass
+class B(A[C[X, A[T]]], Generic[T]):
+    def f(self, a: T, d: Any) -> None:
+        a = d
 [out]
 ...
 class B(A):
@@ -450,8 +450,8 @@ T = typevar('T')
 S = typevar('S')
 U = typevar('U')
 class A(Generic[T, S]): pass
-class B('A[int, C[U]]', Generic[U]): pass
 class C(Generic[T]): pass
+class B(A[int, C[U]], Generic[U]): pass
 [out]
 ...
 class B(A):
@@ -526,8 +526,8 @@ S = typevar('S')
 U = typevar('U')
 # Generic class inherits another generic class
 class A(Generic[T, S]): pass
-class B('A[int, C[U]]', Generic[U]): pass
 class C(Generic[T]): pass
+class B(A[int, C[U]], Generic[U]): pass
 [out]
 ...
 class B**(A**):
@@ -839,12 +839,12 @@ class A(Generic[T]):
     def f(self, a: Any) -> None:
         self.x = a
         a = self.x
-class B('A[C[T]]', Generic[T]):
+class C(Generic[T]): pass
+class B(A[C[T]], Generic[T]):
     y = Undefined # type: T
     def g(self, a: Any) -> None:
         self.y = a
         a = self.y
-class C(Generic[T]): pass
 [out]
 ...
 class B(A):
