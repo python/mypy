@@ -21,9 +21,9 @@ class C: pass
 [out]
 ...
 class B(A):
-    void g(B self, C c):
+    def g(self: B, c: C) -> None:
         self.f(c)
-    any g*(any self, any c):
+    def g*(self: Any, c: Any) -> Any:
         {B self}.g({C c})
 ...
 
@@ -42,8 +42,8 @@ class B('A[C]'):
         self.f(c)
 class C: pass
 [out]
-B b
-C c
+b: B
+c: C
 b.f(c)
 b.g(c)
 ...
@@ -69,11 +69,11 @@ a.f(c)
 b.f`B(c)
 ...
 class B(A):
-    void f`B(B self, C c):
+    def f`B(self: B, c: C) -> None:
         pass
-    void f(A self, any t):
+    def f(self: A, t: Any) -> None:
         {B self}.f`B(t)
-    any f*(any self, any c):
+    def f*(self: Any, c: Any) -> Any:
         {B self}.f`B({C c})
 ...
 
@@ -104,12 +104,12 @@ class E: pass
 [out]
 ...
 class B(A):
-    void f`B(B self, C a, D b):
+    def f`B(self: B, a: C, b: D) -> None:
         pass
-    void f(A self, C a, D b):
+    def f(self: A, a: C, b: D) -> None:
         {B self}.f`B(a, b)
-    any f*(any self, any a, any b):
-        {B self}.f`B({C<E> a}, {D b})
+    def f*(self: Any, a: Any, b: Any) -> Any:
+        {B self}.f`B({C[E] a}, {D b})
 ...
 
 
@@ -131,21 +131,21 @@ class B(A[S], Generic[S]):
 [out]
 ...
 class B(A):
-    void f`B(B self, any* a, A b):
+    def f`B(self: B, a: Any*, b: A) -> None:
         pass
-    void f(A self, any a, A b):
-        {B<self.__tv> self}.f`B(a, b)
-    any f*(any self, any a, any b):
-        {B<self.__tv> self}.f`B({self.__tv a}, {A<self.__tv> b})
+    def f(self: A, a: Any, b: A) -> None:
+        {B[self.__tv] self}.f`B(a, b)
+    def f*(self: Any, a: Any, b: Any) -> Any:
+        {B[self.__tv] self}.f`B({self.__tv a}, {A[self.__tv] b})
 ...
 class B**(A**):
 ...
-    void f`B(B self, any a, A b):
+    def f`B(self: B, a: Any, b: A) -> None:
         self.__o.f`B({self.__o.__tv {self.__btv a}}, \
-                     {A<self.__o.__tv> {A<self.__btv> b}})
-    any f*(any self, any a, any b):
+                     {A[self.__o.__tv] {A[self.__btv] b}})
+    def f*(self: Any, a: Any, b: Any) -> Any:
         self.__o.f`B({self.__o.__tv {self.__btv a}}, \
-                     {A<self.__o.__tv> {A<self.__btv> b}})
+                     {A[self.__o.__tv] {A[self.__btv] b}})
 ...
 
 [case testGenericInheritanceWithIdenticalTypeVars2]
@@ -163,13 +163,13 @@ class B(A[T, S], Generic[T, S]):
 ...
 class B(A):
 ...
-    void f`B(B self, any* a, A b):
+    def f`B(self: B, a: Any*, b: A) -> None:
         pass
-    void f(A self, any a, A b):
-        {B<self.__tv, self.__tv2> self}.f`B(a, b)
-    any f*(any self, any a, any b):
-        {B<self.__tv, self.__tv2> self}.f`B({self.__tv a}, \
-                                            {A<self.__tv2, self.__tv> b})
+    def f(self: A, a: Any, b: A) -> None:
+        {B[self.__tv, self.__tv2] self}.f`B(a, b)
+    def f*(self: Any, a: Any, b: Any) -> Any:
+        {B[self.__tv, self.__tv2] self}.f`B({self.__tv a}, \
+                                            {A[self.__tv2, self.__tv] b})
 ...
 
 [case testGenericInheritanceWithDifferentSig]
@@ -186,12 +186,12 @@ class B(A[S], Generic[S]):
 [out]
 ...
 class B(A):
-    any f`B(B self, any a, any b, any i):
+    def f`B(self: B, a: Any, b: Any, i: Any) -> Any:
         return None
-    any f(A self, any a, A b, int i):
-        return {self.__tv {B<self.__tv> self}.f`B(a, b, {any <= int i})}
-    any f*(any self, any a, any b, any i):
-        return {B<self.__tv> self}.f`B(a, b, i)
+    def f(self: A, a: Any, b: A, i: int) -> Any:
+        return {self.__tv {B[self.__tv] self}.f`B(a, b, {Any <= int i})}
+    def f*(self: Any, a: Any, b: Any, i: Any) -> Any:
+        return {B[self.__tv] self}.f`B(a, b, i)
 ...
 
 
@@ -213,12 +213,12 @@ class C: pass
 [out]
 ...
 class B(A):
-    void f`B(B self, C s, any* t):
+    def f`B(self: B, s: C, t: Any*) -> None:
         pass
-    void f(A self, any s, any t):
-        {B<self.__tv2> self}.f`B(s, t)
-    any f*(any self, any s, any t):
-        {B<self.__tv2> self}.f`B({C s}, {self.__tv2 t})
+    def f(self: A, s: Any, t: Any) -> None:
+        {B[self.__tv2] self}.f`B(s, t)
+    def f*(self: Any, s: Any, t: Any) -> Any:
+        {B[self.__tv2] self}.f`B({C s}, {self.__tv2 t})
 ...
 
 [case testNonGenericClassInheritsGenericClass]
@@ -233,9 +233,9 @@ class B(A[int]):
 [out]
 ...
 class B(A):
-    void g(B self, any d):
+    def g(self: B, d: Any) -> None:
         self.f({int d})
-    any g*(any self, any d):
+    def g*(self: Any, d: Any) -> Any:
         {B self}.g(d)
 ...
 
@@ -257,20 +257,20 @@ class B(A[Y, X], Generic[X, Y]):
 [out]
 ...
 class B(A):
-    void g(B self, any* x, any* y):
+    def g(self: B, x: Any*, y: Any*) -> None:
         pass
-    any g*(any self, any x, any y):
-        {B<self.__tv2, self.__tv> self}.g({self.__tv2 x}, {self.__tv y})
-    void h(B self, any d):
+    def g*(self: Any, x: Any, y: Any) -> Any:
+        {B[self.__tv2, self.__tv] self}.g({self.__tv2 x}, {self.__tv y})
+    def h(self: B, d: Any) -> None:
         self.f({self.__tv d}, {self.__tv2 d})
         self.g({self.__tv2 d}, {self.__tv d})
 ...
 class B**(A**):
 ...
-    void g(B self, any x, any y):
+    def g(self: B, x: Any, y: Any) -> None:
         self.__o.g({self.__o.__tv2 {self.__btv2 x}}, \
                    {self.__o.__tv {self.__btv y}})
-    any g*(any self, any x, any y):
+    def g*(self: Any, x: Any, y: Any) -> Any:
         self.__o.g({self.__o.__tv2 {self.__btv2 x}}, \
                    {self.__o.__tv {self.__btv y}})
 ...
@@ -288,19 +288,19 @@ class B(A[A[S]], Generic[S]):
 [out]
 ...
 class B(A):
-    void f`B(B self, A s):
+    def f`B(self: B, s: A) -> None:
         pass
-    void f(A self, any t):
-        {B<self.__tv.args[0]> self}.f`B(t)
-    any f*(any self, any s):
-        {B<self.__tv.args[0]> self}.f`B({A<self.__tv.args[0]> s})
+    def f(self: A, t: Any) -> None:
+        {B[self.__tv.args[0]] self}.f`B(t)
+    def f*(self: Any, s: Any) -> Any:
+        {B[self.__tv.args[0]] self}.f`B({A[self.__tv.args[0]] s})
 ...
 class B**(A**):
 ...
-    void f`B(B self, A s):
-        self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
-    any f*(any self, any s):
-        self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
+    def f`B(self: B, s: A) -> None:
+        self.__o.f`B({A[self.__o.__tv.args[0]] {A[self.__btv.args[0]] s}})
+    def f*(self: Any, s: Any) -> Any:
+        self.__o.f`B({A[self.__o.__tv.args[0]] {A[self.__btv.args[0]] s}})
 
 [case testGenericInheritanceWithNestedArgs2]
 from typing import typevar, Generic, Any
@@ -317,7 +317,7 @@ class X: pass
 ...
 class B(A):
 ...
-    void f(B self, any* a, any d):
+    def f(self: B, a: Any*, d: Any) -> None:
         a = {self.__tv.args[1].args[0] d}
 ...
 
@@ -337,7 +337,7 @@ class C(B, Generic[T]):
 ...
 class C(B):
 ...
-    void g(C self, any* t, any d):
+    def g(self: C, t: Any*, d: Any) -> None:
         self.f({int d})
         t = {self.__tv2 d}
 ...
@@ -358,7 +358,7 @@ class B(A[int]): pass
 [out]
 ...
 class B(A):
-    void __init__(B self):
+    def __init__(self: B) -> None:
         self.__tv! = <int>
         super().__init__(<int>)
 ...
@@ -373,7 +373,7 @@ class B(A[int, object]): pass
 [out]
 ...
 class B(A):
-    void __init__(B self):
+    def __init__(self: B) -> None:
         self.__tv! = <int>
         self.__tv2! = <object>
         super().__init__(<int>, <object>)
@@ -389,7 +389,7 @@ class B(A[int]): pass
 [out]
 ...
 class B(A):
-    void __init__(B self, object o):
+    def __init__(self: B, o: object) -> None:
         self.__tv! = <int>
         super().__init__(<int>, o)
 ...
@@ -405,7 +405,7 @@ class B(A[int]): pass
 [out]
 ...
 class B(A):
-    void __init__(B self, int t, object o):
+    def __init__(self: B, t: int, o: object) -> None:
         self.__tv! = <int>
         super().__init__(<int>, t, o)
 ...
@@ -418,8 +418,8 @@ class B(A, Generic[T]): pass
 [out]
 ...
 class B(A):
-    any __tv
-    void __init__(B self, any __tv):
+    __tv: Any
+    def __init__(self: B, __tv: Any) -> None:
         self.__tv! = <__tv>
         super().__init__()
 ...
@@ -436,9 +436,9 @@ class B(A, Generic[T, S]): pass
 [out]
 ...
 class B(A):
-    any __tv
-    any __tv2
-    void __init__(B self, any __tv, any __tv2, int n):
+    __tv: Any
+    __tv2: Any
+    def __init__(self: B, __tv: Any, __tv2: Any, n: int) -> None:
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         super().__init__(n)
@@ -455,10 +455,10 @@ class C(Generic[T]): pass
 [out]
 ...
 class B(A):
-    void __init__(B self, any __tv):
+    def __init__(self: B, __tv: Any) -> None:
         self.__tv! = <int>
-        self.__tv2! = <C<__tv>>
-        super().__init__(<int>, <C<self.__tv2.args[0]>>)
+        self.__tv2! = <C[__tv]>
+        super().__init__(<int>, <C[self.__tv2.args[0]]>)
 ...
 
 [case testInitWrapperWithDeepHierarchy]
@@ -470,8 +470,8 @@ class C(B, Generic[T]): pass
 [out]
 ...
 class C(B):
-    any __tv2
-    void __init__(C self, any __tv):
+    __tv2: Any
+    def __init__(self: C, __tv: Any) -> None:
         self.__tv! = <int>
         self.__tv2! = <__tv>
         super().__init__()
@@ -486,8 +486,8 @@ class C(B, Generic[T]): pass
 [out]
 ...
 class C(B):
-    any __tv
-    void __init__(C self, any __tv):
+    __tv: Any
+    def __init__(self: C, __tv: Any) -> None:
         self.__tv! = <__tv>
         super().__init__()
 ...
@@ -508,7 +508,7 @@ class B(A[int, S], Generic[S]):
 [out]
 ...
 class B(A):
-    void __init__(B self, any __tv, int n):
+    def __init__(self: B, __tv: Any, n: int) -> None:
         self.__tv! = <int>
         self.__tv2! = <__tv>
         pass
@@ -531,8 +531,8 @@ class C(Generic[T]): pass
 [out]
 ...
 class B**(A**):
-    void __init__(any self, any __o, any __tv, any __tv2, \
-                  any __btv, any __btv2):
+    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, \
+                  __btv: Any, __btv2: Any):
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         self.__btv! = <__btv>
@@ -551,7 +551,7 @@ class B(A[T], Generic[T]): pass
 [out]
 ...
 class B**(A**):
-    void __init__(any self, any __o, any __tv, any __btv):
+    def __init__(self: Any, __o: Any, __tv: Any, __btv: Any) -> None:
 ...
 
 [case testInitInWrapperClassWithInheritance3]
@@ -566,12 +566,12 @@ class C(B, Generic[T, S]): pass
 [out]
 ...
 class C**(A**):
-    any __tv2
-    any __tv3
-    any __btv2
-    any __btv3
-    void __init__(any self, any __o, any __tv, any __tv2, any __tv3, \
-                  any __btv, any __btv2, any __btv3):
+    __tv2: Any
+    __tv3: Any
+    __btv2: Any
+    __btv3: Any
+    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, __tv3: Any, \
+                  __btv: Any, __btv2: Any, __btv3: Any):
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         self.__tv3! = <__tv3>
@@ -594,10 +594,10 @@ class B(A[T], Generic[T]): pass
 [out]
 ...
 class B(A):
-    void __init__(B self, any __tv):
+    def __init__(self: B, __tv: Any) -> None:
 ...
 class B**(A**):
-    void __init__(any self, any __o, any __tv, any __btv):
+    def __init__(self: Any, __o: Any, __tv: Any, __btv: Any) -> None:
 ...
 
 [case testTvarDefinitionsWithGenericInheritance]
@@ -610,14 +610,14 @@ class B(A[T], Generic[S, T]): pass
 [out]
 ...
 class B(A):
-    any __tv2
-    void __init__(B self, any __tv, any __tv2):
+    __tv2: Any
+    def __init__(self: B, __tv: Any, __tv2: Any) -> None:
 ...
 class B**(A**):
-    any __tv2
-    any __btv2
-    void __init__(any self, any __o, any __tv, any __tv2, \
-                  any __btv, any __btv2):
+    __tv2: Any
+    __btv2: Any
+    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, \
+                  __btv: Any, __btv2: Any):
 ...
 
 
@@ -641,7 +641,7 @@ class B(A[int]):
 [out]
 ...
 class B(A):
-    void __init__(B self):
+    def __init__(self: B) -> None:
         self.__tv! = <int>
         super().__init__(<int>, C())
 ...
@@ -658,7 +658,7 @@ class B(A[int]):
 [out]
 ...
 class B(A):
-    void __init__(B self):
+    def __init__(self: B) -> None:
         self.__tv! = <int>
         super().__init__(<int>)
 ...
@@ -678,7 +678,7 @@ class B(A[S, T], Generic[T, S]):
 [out]
 ...
 class B(A):
-    void __init__(B self, any __tv, any __tv2, any* t):
+    def __init__(self: B, __tv: Any, __tv2: Any, t: Any*) -> None:
         self.__tv! = <__tv2>
         self.__tv2! = <__tv>
         super().__init__(<self.__tv>, <self.__tv2>, t)
@@ -702,12 +702,12 @@ class B(A[int]):
 [out]
 ...
 class B(A):
-    any f`B(B self, any t):
+    def f`B(self: B, t: Any) -> Any:
         pass
-    any f(A self, any t):
+    def f(self: A, t: Any) -> Any:
 -- TODO not sure about the coercions...
-        return {any <= int {int {B self}.f`B({any <= int t})}}
-    any f*(any self, any t):
+        return {Any <= int {int {B self}.f`B({Any <= int t})}}
+    def f*(self: Any, t: Any) -> Any:
         return {B self}.f`B(t)
 ...
 
@@ -725,19 +725,19 @@ class B(A[S], Generic[T, S]):
 [out]
 ...
 class B(A):
-    any __tv2
-    any f`B(B self, any t):
+    __tv2: Any
+    def f`B(self: B, t: Any) -> Any:
         pass
-    any f(A self, any t):
-        return {self.__tv {B<self.__tv2, self.__tv> self}.f`B(t)}
-    any f*(any self, any t):
-        return {B<self.__tv2, self.__tv> self}.f`B(t)
+    def f(self: A, t: Any) -> Any:
+        return {self.__tv {B[self.__tv2, self.__tv] self}.f`B(t)}
+    def f*(self: Any, t: Any) -> Any:
+        return {B[self.__tv2, self.__tv] self}.f`B(t)
 ...
 class B**(A**):
 ...
-    any f`B(B self, any t):
+    def f`B(self: B, t: Any) -> Any:
         return self.__o.f`B(t)
-    any f*(any self, any t):
+    def f*(self: Any, t: Any) -> Any:
         return self.__o.f`B(t)
 
 
@@ -745,7 +745,7 @@ class B**(A**):
 -- ------------------------------------------------------------------
 
 
--- Example: class C<t>(D<t, t>): ...
+-- Example: class C[t](D[t, t]): ...
 
 
 [case testAmbiguousTvarMappingAndGenericInheritance]
@@ -762,22 +762,22 @@ class C(D[T, T], Generic[T]):
 ...
 class C(D):
 ...
-    void __init__(C self, any __tv):
+    def __init__(self: C, __tv: Any) -> None:
         self.__tv! = <__tv>
         self.__tv2! = <__tv>
         super().__init__(<self.__tv>, <self.__tv>)
 ...
 class C**(D**):
-    void __init__(any self, any __o, any __tv, any __tv2, \
-                  any __btv, any __btv2):
+    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, \
+                  __btv: Any, __btv2: Any):
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         self.__btv! = <__btv>
         self.__btv2! = <__btv2>
         self.__o! = __o
-    any f`C(C self):
+    def f`C(self: C) -> Any:
         return {self.__tv {self.__btv self.__o.f`C()}}
-    any f*(any self):
+    def f*(self: Any) -> Any:
         return {self.__btv self.__o.f`C()}
 
 
@@ -795,39 +795,39 @@ class A(Generic[T]):
         a = self.x
 [out]
 class A:
-    any __tv
-    any* x
-    any* $x(A self):
+    __tv: Any
+    x: Any*
+    def $x(self: A) -> Any*:
         return self.x!
-    void set$x(A self, any* x):
+    def set$x(self: A, x: Any*) -> None:
         self.x! = x
-    any $x*(A self):
+    def $x*(self: A) -> Any:
         return self.x!
-    void set$x*(A self, any x):
+    def set$x*(self: A, x: Any) -> None:
         self.x! = {self.__tv x}
-    void f(A self, any a):
+    def f(self: A, a: Any) -> None:
         self.x = {self.__tv a}
         a = self.x
 ...
 class A**:
-    any __o
-    any __tv
-    any __btv
-    void __init__(any self, any __o, any __tv, any __btv):
+    __o: Any
+    __tv: Any
+    __btv: Any
+    def __init__(self: Any, __o: Any, __tv: Any, __btv: Any) -> None:
         self.__tv! = <__tv>
         self.__btv! = <__btv>
         self.__o! = __o
-    any $x(A self):
+    def $x(self: A) -> Any:
         return {self.__tv {self.__btv self.__o.$x()}}
-    any $x*(any self):
+    def $x*(self: Any) -> Any:
         return {self.__btv self.__o.$x()}
-    void set$x(A self, any x):
+    def set$x(self: A, x: Any) -> None:
         self.__o.set$x({self.__o.__tv {self.__btv x}})
-    any set$x*(any self, any x):
+    def set$x*(self: Any, x: Any) -> Any:
         self.__o.set$x({self.__o.__tv {self.__btv x}})
-    void f(A self, any a):
+    def f(self: A, a: Any) -> None:
         self.__o.f(a)
-    any f*(any self, any a):
+    def f*(self: Any, a: Any) -> Any:
         self.__o.f(a)
 ...
 
@@ -848,16 +848,16 @@ class C(Generic[T]): pass
 [out]
 ...
 class B(A):
-    any* y
-    any* $y(B self):
+    y: Any*
+    def $y(self: B) -> Any*:
         return self.y!
-    void set$y(B self, any* y):
+    def set$y(self: B, y: Any*) -> None:
         self.y! = y
-    any $y*(B self):
+    def $y*(self: B) -> Any:
         return self.y!
-    void set$y*(B self, any y):
+    def set$y*(self: B, y: Any) -> None:
         self.y! = {self.__tv.args[0] y}
-    void g(B self, any a):
+    def g(self: B, a: Any) -> None:
         self.y = {self.__tv.args[0] a}
         a = self.y
 ...
