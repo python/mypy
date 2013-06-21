@@ -26,7 +26,6 @@ from mypy.icode import FuncIcode
 #from mypy import cgen
 from mypy import icode
 from mypy import parse
-from mypy import pythongen
 #from mypy import transform
 
 
@@ -36,14 +35,13 @@ debug = False
 # Build targets (for selecting compiler passes)
 SEMANTIC_ANALYSIS = 0   # Semantic analysis only
 TYPE_CHECK = 1          # Type check
-PYTHON = 2              # Type check and generate Python
 TRANSFORM = 3           # Type check and transform for runtime type checking
 ICODE = 4               # All TRANSFORM passes + generate icode
 C = 5                   # All ICODE passes + generate C and compile it
 
 
 # Build flags
-PYTHON2 = 'python2'             # Generate Python 2
+PYTHON2 = 'python2'             # Use Python 2 (TODO not working)
 COMPILE_ONLY = 'compile-only'   # Compile only to C, do not generate binary
 VERBOSE = 'verbose'             # More verbose messages (for troubleshooting)
 MODULE = 'module'               # Build/run module as a script
@@ -125,8 +123,6 @@ BuildResult build(str program_path,
     """
     flags = flags or []
     module = module or '__main__'
-    if target == PYTHON and not output_dir:
-        raise RuntimeError('output_dir must be set for Python target')
 
     if not mypy_base_dir:
         # Determine location of the mypy installation.
@@ -436,9 +432,7 @@ class BuildManager:
 
     void final_passes(self, MypyFile[] files, dict<Node, Type> types):
         """Perform the code generation passes for type checked files."""
-        if self.target == PYTHON:
-            self.generate_python(files)
-        elif self.target == TRANSFORM:
+        if self.target == TRANSFORM:
             self.transform(files)
         elif self.target == ICODE:
             self.transform(files)
@@ -462,25 +456,6 @@ class BuildManager:
             else:
                 components[-1] += '.py'
             return os.path.join(self.output_dir, *components)
-
-    void generate_python(self, MypyFile[] files):
-        """Translate each file to Python."""
-        # TODO support packages
-        for f in files:
-            if not is_stub(f.path):
-                out_path = self.get_python_out_path(f)
-                make_parent_dirs(out_path)
-                # TODO log translation of f.path to out_path
-                # TODO report compile error if failed
-                ver = 3
-                if PYTHON2 in self.flags:
-                    ver = 2
-                v = pythongen.PythonGenerator(ver)
-                f.accept(v)
-                self.log('translate %s to %s' % (f.path, out_path))
-                outfile = open(out_path, 'w')
-                outfile.write(v.output())
-                outfile.close()
 
     void transform(self, MypyFile[] files):
         for f in files:
