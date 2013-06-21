@@ -93,36 +93,25 @@ f(x *y, z=1)
 { x , y   ,  }
 
 [case testCasts]
-(x)y
-(any)z
-(c<a, x<d>>)foo.bar
-
-[case testTypeApplication]
-f<t>()
-f<s<x>, any>()
+from typing import cast, Any
+cast(x, y)
+Any(z)
+cast(c[a, x[d]], foo.bar)
 
 [case testLambdaExpression]
 lambda: 1
 lambda x: x
 lambda x, y: (x, y)
 lambda x, y=1, z = 2: 2
-lambda int x, list<x> y: 2
 lambda x, *y: y
-
-[case testLiteralsWithTypes]
-(  < x > [])
-(  < x  , y > {})
-
-[case testSetLiteralWithType]
-(  < x  > { y })
 
 [case testGeneratorExpression]
 x + 1 for x in z
 x for x in y if foo
 
 [case testListComprehension]
-a=[x + 1 for x in [1, 2, 3]]
-a=[x for x in y if z]
+a = [ x + 1 for x in [1, 2, 3]]
+a = [ x for x in y if z]
 
 
 -- Assignment
@@ -284,21 +273,29 @@ finally:
   bar
 
 [case testVarDefWithType]
-int x
-int z = 1 + 2
-any a
-x.y z
-list<int> l
-dict < x , c < any > > d
-c < d < e >> x
+from typing import Undefined, Any, List, Dict
+x = 0
+z = 1 + 2 # type: int
+a = Undefined # type: Any
+a = Undefined # type: x[y]   # Comment
+a = Undefined(Any)
+z = Undefined(x.y)
+l = Undefined(List[int])
+d = Undefined(Dict[x, c[ Any]])
+x = Undefined(c[ d[ e]])
 
 [case testMultipleVarDef]
-int x , list < c > y
-int x, x y , foobar z = 123
+from typing import Undefined, List
+x , y = Undefined, Undefined # type: (int, List[c])
+x , y = Undefined(int), Undefined(List[c])
+x, y , z = 123 # type: int, x, foobar
 
-[case testListTypes]
-int[] foo
-tuple < x , y >  [ ]  [  ]   t
+[case testListAndTupleTypes]
+from typing import Undefined, List, Tuple
+foo = Undefined # type: List[int]
+foo = Undefined(List[int])
+t = Undefined # type: List[List[Tuple[ x , y]]]
+t = Undefined(List[List[Tuple[ x , y]]])
 
 [case testForStatement]
 for x in y: pass
@@ -310,10 +307,6 @@ for x in y:
 else:
   y
   
-[case testForWithTypes]
-for int x in y: pass
-for int x, str y in z: pass
-
 [case testWith]
 with foo():
   pass
@@ -329,42 +322,65 @@ with f() as x, y() as z:
 
 [case testSimpleFunctions]
 def f(): pass
-def f ( x ) : pass
-def f(x, y): pass
-def f(x,y , z  ,  zz ) : 
+def g ( x ) : pass
+def h(x, y): pass
+def i(x,y , z  ,  zz ) : 
   z = y
   return 5
 
-[case testFunctionDefWithTypes]
-int f(): pass
-int f(int x): pass
-int f(int x, str y): pass
-void f(): pass
-c<l> f(p<g> x): pass
+[case testFunctionDefWithTypes-skip]
+import typing
+def f() -> int: pass
+def g(x: int) -> int: pass
+def h(x: int, y: str) -> int: pass
+def i() -> None: pass
+def j(x: p[g]) -> c[l]: pass
 
-[case testGenericFunctionDef]
-void f<t>(): pass
-void f < t , s , x > ( x<s> x ) : pass
+[case testGenericFunctionDef-skip]
+from typing import typevar
+t = typevar('t')
+s = typevar('s')
+x = typevar('x')
+def f() -> None: pass
+def g ( x: x[s] ) -> None : pass
 
-[case testInitializersInFunctionDefs]
+[case testInitializersInFunctionDefs-skip]
+import typing
 def f(x = 1 , y  = 2): pass
-def f(x, y=1): pass
-void f (int x=4, float z=2.2) : pass
+def g(x, y=1): pass
+def h (x: int = 4, z: float = 2.2) -> None : pass
 
-[case testFunctionWithPartialTypes]
-void f(x, y): pass
-def f(int x, y, str z): pass
+[case testFunctionWithPartialTypes-skip]
+import typing
+def f(x, y) -> None: pass
+def g(x: int, y, z: str): pass
 
-[case testFunctionWithVarArgs]
+[case testFunctionWithVarArgs-skip]
+import typing
 def f(*x): pass
-def f(x, y=1, *z): pass
-void f(int *x): pass
-void f(x, int *x): pass
-void f(int x, int y=2, str *z): pass
+def g(x, y=1, *z): pass
+def h( *x: int) -> None: pass
+def i(x, *x: int) -> None: pass
+def j(x: int, y: int = 2, *z: str) -> None: pass
 
-[case testOverloadedFunction]
-void f(): pass
-any f(any x): return x
+[case testOverloadedFunction-skip]
+from typing import overload, Any
+@overload
+def f() -> None: pass
+
+@overload
+def f(x: Any) -> Any: return x
+
+[case testOverloadedFunctionInBlock-skip]
+from typing import overload, Any
+if 1:
+  @overload
+  def f() -> None:
+    pass
+
+  @overload
+  def f(x: Any) -> Any:
+    return x
 
 
 -- Classes
@@ -381,13 +397,17 @@ class A(B): pass
 class A(B, C): pass
 class A(B, C, D): pass
 
-[case testGenericBaseClasses]
-class A(B<x>, C<y, D<z>>): pass
+[case testGenericBaseClasses-skip]
+import typing
+class A(B[x], C[y, D[z]]): pass
 
-[case testGenericClass]
-class C<t>:
+[case testGenericClass-skip]
+from typing import typevar, Generic
+t = typevar('t')
+x = typevar('x')
+class C(Generic[t]):
   pass
-class C<t, x>(foo<t, x>): pass
+class C(foo[t, x], Generic[t, x]): pass
 
 [case testClassBody]
 class C:
@@ -401,19 +421,18 @@ class C:
     super().__init__()
 
 
--- Interfaces
--- ----------
+-- Abstract base classes
+-- ---------------------
 
 
-[case testInterface]
-interface x:
-  def f(self, x)
-  void g(self): return self
-
-[case testInterface]
-interface x(y, z<x>):
-  def f(self, x)
-  void g(self): return self
+[case testABC-skip]
+from abc import abstractmethod, ABCMeta
+import typing
+class x(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self, x): pass
+  @abstractmethod
+  def g(self) -> None: return self
 
 
 -- Types
@@ -421,15 +440,22 @@ interface x(y, z<x>):
 
 
 [case testTupleType]
+from typing import Undefined, Any, Tuple
 class A:
-  tuple<object, any> t
+  t = Undefined # type: Tuple[object, Any]
+  t = Undefined(Tuple[object, Any])
 
 [case testFuncType]
+from typing import Undefined, Any, Function, List
 class A:
-  func<any()> t
-  func<void(object)> t
-  func <void ( any, any ) > t
-  func <a[] ( a, b , c[])>[] t
+  t = Undefined # type: Function[[], Any]
+  t = Undefined # type: Function[[object], None]
+  t = Undefined # type: Function[[ Any, Any], None]
+  t = Undefined # type: List[Function[[ a, b , List[c]], List[a]]]
+  t = Undefined(Function[[], Any])
+  t = Undefined(Function[[object], None])
+  t = Undefined([[ Any, Any], None])
+  t = Undefined(List[Function[[ a, b , List[c]], List[a]]])
 
 
 -- Decorators
@@ -437,6 +463,7 @@ class A:
 
 
 [case testFunctionDecorator]
+import typing
 @foo
 def f(): pass
 @foo(bar)
@@ -449,22 +476,27 @@ def g(x):
 -- -----------------
 
 
-[case testFunctionType_SemanticAnalyzer]
-void f( func < any ( object ) > x ): pass
+[case testFunctionType_SemanticAnalyzer-skip]
+from typing import Any, Function
+def f( x: Function[[ object],  Any] ) -> None: pass
 
-[case testTupleType_SemanticAnalyzer]
-void f ( tuple < object , any > x ): pass
+[case testTupleType_SemanticAnalyzer-skip]
+from typing import Any, Tuple
+def f ( x: Tuple[ object , Any] ) -> None: pass
 [builtins fixtures/tuple.py]
 
-[case testClasses]
+[case testClasses_SemanticAnalyzer-skip]
+from abc import abstractmethod, ABCMeta
+import typing
 class A: pass
 class B(A): pass
-interface I: pass
+class I(metaclass=ABCMeta): pass
 class C(I): pass
     
-[case testMethodWithSignature_SemanticAnalyzer]
+[case testMethodWithSignature_SemanticAnalyzer-skip]
+import typing
 class A:
-    void __init__(self, A x):
+    def __init__(self, x: 'A') -> None:
         self.x = x
 
 
@@ -472,10 +504,11 @@ class A:
 -- ------------
 
 
-[case testKeywordVarArgs]
+[case testKeywordVarArgs-skip]
+from typing import Undefined, Dict
 def f( ** x): pass
-void g(A x, A y=None, A **z): pass
-dict d
+def g(x: A, y: B = None, **z: C) -> None: pass
+d = Undefined(dict)
 g(**d)
 g( None , ** d)
 g( None , ** d)
