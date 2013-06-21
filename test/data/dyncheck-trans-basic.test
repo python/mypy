@@ -575,7 +575,7 @@ class A:
 [case testDataAttributeAccessors]
 import typing
 class A:
-    i = 0
+    i = Undefined(int)
 [out]
 class A:
     int i
@@ -593,7 +593,7 @@ any A*():
 [case testMemberVariableAccessViaInstanceType]
 from typing import Undefined, Any
 class A:
-    a = 0
+    a = Undefined(int)
     d = Undefined # type: Any
     def f(self) -> int:
         return self.d
@@ -612,7 +612,7 @@ class A:
 [case testMemberVariableAssignmentViaInstanceType]
 from typing import Undefined, Any
 class A:
-    a = 0
+    a = Undefined(int)
     d = Undefined # type: Any
     def __init__(self, d: Any) -> None:
         self.a = d
@@ -767,7 +767,7 @@ d = {any <= int f({int (any){any <= int 1}})}
 
 [case testAssignmentToGlobal]
 from typing import Undefined, Any
-a = 0
+a = Undefined(int)
 d = Undefined # type: Any
 a = a
 a = d
@@ -781,7 +781,7 @@ d = {any <= int a}
 
 [case testGlobalInitialization]
 from typing import Undefined, Any
-a = 0
+a = Undefined(int)
 d = Undefined # type: Any
 dd = a # type: Any
 aa = a # type: int
@@ -794,7 +794,7 @@ int aa = a
 [case testLocalVariableAssignmentAndInit]
 from typing import Any
 def f() -> None:
-    a = 0
+    a = Undefined(int)
     d = a # type: Any
     aa = a # type: int
     a = a
@@ -810,7 +810,7 @@ void f():
 [case testMemberInitialization]
 from typing import Any
 class A:
-    a = 0
+    a = Undefined(int)
     d = 1 # type: Any
     b = 1 # type: int
     
@@ -863,7 +863,7 @@ __print('hello')
 [case testComplexPrint]
 import typing
 def f(a): pass
-a = 0
+a = Undefined(int)
 __print(a, f(a))
 [out]
 ...
@@ -878,8 +878,8 @@ __print(a, f({any <= int a}))
 [case testCoercionFromPrimitiveToObject]
 from typing import Undefined
 o = Undefined # type: object
-i = 0
-f = 0.0
+i = Undefined(int)
+f = Undefined(float)
 a = Undefined # type: A
 o = i
 o = f
@@ -910,7 +910,7 @@ any d = {any <= int 1}
 
 [case testIntArithmetic]
 from typing import Undefined, Any
-i = 0
+i = Undefined(int)
 d = Undefined # type: Any
 i = 1 + 2
 i = (1 - 2) * 2
@@ -951,7 +951,7 @@ d = d // d
 [case testBinaryOperationOperands]
 from typing import Undefined, Any
 d = Undefined # type: Any
-i = 0
+i = Undefined(int)
 i = d.g() + d.f()
 i = d.g() * d.f()
 i = i + d.f()
@@ -1005,7 +1005,7 @@ b = not d
 
 [case testIntComparisons]
 from typing import Undefined, Any
-i = 0
+i = Undefined(int)
 b = False
 d = Undefined # type: Any
 b = 1 == 2
@@ -1147,7 +1147,7 @@ def f(x):
     x = g(o)
 def g(x: int) -> int:
     pass
-i = 0
+i = Undefined(int)
 o = Undefined # type: object
 [out]
 any f(any x):
@@ -1160,7 +1160,7 @@ any f(any x):
 [case testDynamicallyTypedMethodBody]
 import typing
 class A:
-    i = 0
+    i = Undefined(int)
     def f(self, x):
         x = self.g(x)
         x = self.z()
