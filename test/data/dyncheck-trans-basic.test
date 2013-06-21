@@ -14,6 +14,7 @@
 
 
 [case testEmptyClass]
+import typing
 class A: pass
 class B: pass
 [out]
@@ -27,11 +28,12 @@ any B*():
     return B()
 
 [case testSimpleMethod]
+import typing
 class A:
-    void __init__(self):
+    def __init__(self) -> None:
         pass
     
-    int f(self):
+    def f(self) -> int:
         pass
 [out]
 class A:
@@ -45,11 +47,12 @@ any A*():
     return A()
 
 [case testMethodWithArguments]
+import typing
 class A:
-    void __init__(self):
+    def __init__(self) -> None:
         pass
     
-    void f(self, A a):
+    def f(self, a: 'A') -> None:
         pass
 [out]
 class A:
@@ -63,8 +66,9 @@ any A*():
     return A()
 
 [case testMethodWithDynamicTypesInArguments]
+from typing import Any
 class A:
-    A f(self, any a, any b):
+    def f(self, a: Any, b: Any) -> 'A':
         pass
 [out]
 class A:
@@ -76,8 +80,9 @@ any A*():
     return A()
 
 [case testMethodWithDynamicReturnType]
+from typing import Any
 class A:
-    any f(self, A a):
+    def f(self, a: 'A') -> Any:
         pass
 [out]
 class A:
@@ -94,11 +99,12 @@ any A*():
 
 
 [case testOverridingStaticWithDynamic]
+from typing import Any
 class A:
-    int f(self, float a):
+    def f(self, a: float) -> int:
         pass
 class B(A):
-    any f(self, any a):
+    def f(self, a: Any) -> Any:
         pass
 [out]
 class A:
@@ -119,11 +125,12 @@ any B*():
     return B()
 
 [case testOverridingDynamicWithStatic]
+from typing import Any
 class A:
-    any f(self, any a):
+    def f(self, a: Any) -> Any:
         pass
 class B(A):
-    int f(self, A a):
+    def f(self, a: A) -> int:
         pass
 [out]
 class A:
@@ -142,11 +149,12 @@ class B(A):
 ...
 
 [case testNewMethodInSubclass]
+import typing
 class A:
-    B f(self, A a):
+    def f(self, a: 'A') -> 'B':
         pass
 class B(A):
-    A g(self, B b):
+    def g(self, b: 'B') -> A:
         pass
 [out]
 class A:
@@ -163,12 +171,13 @@ class B(A):
 ...
 
 [case testOverridingMethodInGrandparent]
+from typing import Any
 class A:
-    B f(self, int a):
+    def f(self, a: int) -> 'B':
         pass
 class B(A): pass
 class C(B):
-    any f(self, any a):
+    def f(self, a: Any) -> Any:
         pass
 [out]
 ...
@@ -185,14 +194,15 @@ class C(B):
 ...
 
 [case testOverridingMethodTwice]
+from typing import Any
 class A:
-    float f(self, int a):
+    def f(self, a: int) -> float:
         pass
 class B(A):
-    float f(self, any a):
+    def f(self, a: Any) -> float:
         pass
 class C(B):
-    any f(self, int a):
+    def f(self, a: int) -> Any:
         pass
 [out]
 ...
@@ -214,11 +224,12 @@ class C(B):
 ...
 
 [case testOverridingWithSameSig]
+import typing
 class A:
-    B f(self, A a):
+    def f(self, a: 'A') -> 'B':
         pass
 class B(A):
-    B f(self, A a):
+    def f(self, a: A) -> 'B':
         return None
 [out]
 ...
@@ -229,11 +240,12 @@ any B*():
 ...
 
 [case testOverridingDynamicWithDynamic]
+from typing import Any
 class A:
-    any f(self, any a):
+    def f(self, a: Any) -> Any:
         pass
 class B(A):
-    any f(self, any a):
+    def f(self, a: Any) -> Any:
         return None
 [out]
 ...
@@ -244,14 +256,15 @@ any B*():
 ...
 
 [case testOverridingFirstWithDynamicAndThenWithSameSig]
+from typing import Any
 class A:
-    void f(self, int a):
+    def f(self, a: int) -> None:
         self.f(a)
 class B(A):
-    void f(self, any a):
+    def f(self, a: Any) -> None:
         self.f(a)
 class C(B):
-    void f(self, any a):
+    def f(self, a: Any) -> None:
         self.f(a)
 [out]
 ...
@@ -275,11 +288,12 @@ any C*():
 
 
 [case testCallStaticallyTypedMethod]
+import typing
 class A:
-    A f(self, B b):
+    def f(self, b: 'B') -> 'A':
         return b.g()
 class B:
-    A g(self):
+    def g(self) -> A:
         pass
 [out]
 class A:
@@ -288,11 +302,12 @@ class A:
 ...
 
 [case testCallDynamicallyTypedMethod]
+from typing import Any
 class A:
-    any f(self, any b):
+    def f(self, b: Any) -> Any:
         return b.g()
 class B:
-    A g(self):
+    def g(self) -> A:
         pass
 [out]
 class A:
@@ -301,11 +316,12 @@ class A:
 ...
 
 [case testStaticCallWithArguments]
+from typing import Any
 class A:
-    A f(self, B b):
+    def f(self, b: 'B') -> 'A':
         return b.g(b, 1)
 class B:
-    A g(self, B b, any d):
+    def g(self, b: 'B', d: Any) -> A:
         pass
 [out]
 class A:
@@ -314,8 +330,9 @@ class A:
 ...
 
 [case testDynamicCallWithArguments]
+from typing import Any
 class A:
-    A f(self, any d, int i):
+    def f(self, d: Any, i: int) -> 'A':
         return d.g(d, i)
 [out]
 class A:
@@ -324,13 +341,14 @@ class A:
 ...
 
 [case testMethodCallWithInheritance]
+import typing
 class A:
-    A f1(self, B b):
+    def f1(self, b: 'B') -> 'A':
         return b.f1(b)
-    B f2(self, B b, A a):
+    def f2(self, b: 'B', a: 'A') -> 'B':
         return b.g(a)
 class B(A):
-    B g(self, A a):
+    def g(self, a: A) -> 'B':
         pass
 [out]
 class A:
@@ -342,13 +360,14 @@ class A:
 ...
 
 [case testMethodCallWithOverride]
+from typing import Any
 class A:
-    A f(self, B b):
+    def f(self, b: 'B') -> 'A':
         return b.f(b)
-    A f2(self, A a, B b):
+    def f2(self, a: 'A', b: 'B') -> 'A':
         return a.f(b)
 class B(A):
-    any f(self, B b):
+    def f(self, b: 'B') -> Any:
         pass
 [out]
 class A:
@@ -360,10 +379,11 @@ class A:
 ...
 
 [case testNestedMethodCalls]
+from typing import Any
 class A:
-    any f(self, A a):
+    def f(self, a: 'A') -> Any:
         return a.g(a.g(1))
-    int g(self, any a):
+    def g(self, a: Any) -> int:
         pass
 [out]
 class A:
@@ -372,10 +392,11 @@ class A:
 ...
 
 [case testMethodCallViaSelf]
+from typing import Any
 class A:
-    any f(self, int a):
+    def f(self, a: int) -> Any:
         return self.g(a)
-    int g(self, any a):
+    def g(self, a: Any) -> int:
         pass
 [out]
 class A:
@@ -389,11 +410,12 @@ class A:
 
 
 [case testReturnStatement1]
+from typing import Any
 class A:
-    any f(self, B b):
+    def f(self, b: 'B') -> Any:
         return b.g()
 class B:
-    A g(self):
+    def g(self) -> A:
         pass
 [out]
 class A:
@@ -404,11 +426,12 @@ class A:
 ...
 
 [case testReturnStatement2]
+from typing import Any
 class A:
-    A f(self, B b):
+    def f(self, b: 'B') -> 'A':
         return b.g()
 class B:
-    any g(self):
+    def g(self) -> Any:
         pass
 [out]
 class A:
@@ -419,8 +442,9 @@ class A:
 ...
 
 [case testIfStatement]
-bool b
-any d
+from typing import Undefined, Any
+b = False
+d = Undefined # type: Any
 if b:
     d = 1
 elif d:
@@ -438,8 +462,9 @@ else:
     d = {any <= int 3}
 
 [case testWhileStatement]
-bool b
-any d
+from typing import Undefined, Any
+b = False
+d = Undefined # type: Any
 while b:
     while d:
         d = 1
@@ -456,8 +481,9 @@ while b:
 
 
 [case testOmitSubtypeToSupertypeCast]
+import typing
 class A:
-    A f(self, B b):
+    def f(self, b: 'B') -> 'A':
         return b
 class B(A): pass
 [out]
@@ -472,11 +498,12 @@ class A:
 
 
 [case testConstructInstanceWithPreciseTypes]
+import typing
 class A:
-    void __init__(self, B b):
+    def __init__(self, b: 'B') -> None:
         pass
     
-    A f(self, B b):
+    def f(self, b: 'B') -> 'A':
         return A(b)
 class B: pass
 [out]
@@ -491,16 +518,18 @@ any A*(any b):
 ...
 
 [case testClassWrapperWithTwoArguments]
+from typing import Any
 class A:
-    void __init__(self, any a, int i): pass
+    def __init__(self, a: Any, i: int) -> None: pass
 [out]
 ...
 any A*(any a, any i):
     return A(a, {int i})
 
 [case testCreateInstanceWithTrivialReturnTypeCoercion]
+from typing import Any
 class A:
-    any f(self):
+    def f(self) -> Any:
         return A()
 [out]
 class A:
@@ -509,11 +538,12 @@ class A:
 ...
 
 [case testCreateInstanceWithArgumentCasts]
+from typing import Any
 class A:
-    B f(self, int b, any d):
+    def f(self, b: int, d: Any) -> 'B':
         return B(b, d)
 class B:
-    void __init__(self, any d, A a):
+    def __init__(self, d: Any, a: A) -> None:
         pass
 [out]
 class A:
@@ -527,8 +557,9 @@ class A:
 
 
 [case testSelf]
+from typing import Any
 class A:
-    void f(self, any a):
+    def f(self, a: Any) -> None:
         self.f(self)
 [out]
 class A:
@@ -542,8 +573,9 @@ class A:
 
 
 [case testDataAttributeAccessors]
+import typing
 class A:
-    int i
+    i = 0
 [out]
 class A:
     int i
@@ -559,12 +591,13 @@ any A*():
     return A()
 
 [case testMemberVariableAccessViaInstanceType]
+from typing import Undefined, Any
 class A:
-    int a
-    any d
-    int f(self):
+    a = 0
+    d = Undefined # type: Any
+    def f(self) -> int:
         return self.d
-    any g(self):
+    def g(self) -> Any:
         return self.a
 [out]
 class A:
@@ -577,10 +610,11 @@ class A:
 ...
 
 [case testMemberVariableAssignmentViaInstanceType]
+from typing import Undefined, Any
 class A:
-    int a
-    any d
-    void __init__(self, any d):
+    a = 0
+    d = Undefined # type: Any
+    def __init__(self, d: Any) -> None:
         self.a = d
         self.d = d
 [out]
@@ -591,8 +625,9 @@ class A:
 ...
 
 [case testMemberVariableAccessViaAny]
+from typing import Any
 class A:
-    A f(self, any d):
+    def f(self, d: Any) -> 'A':
         return d.x
 [out]
 class A:
@@ -601,15 +636,17 @@ class A:
 ...
 
 [case testMemberVariableAssignmentViaDynamic]
-any d
+from typing import Undefined, Any
+d = Undefined # type: Any
 d.x = 1
 [out]
 ...
 d.x* = {any <= int 1}
 
 [case testDataAttributeWithImplicitDefinition]
+import typing
 class A:
-    void __init__(self):
+    def __init__(self) -> None:
         self.x = 0
 [out]
 ...
@@ -631,9 +668,10 @@ class A:
 
 
 [case testCast]
+from typing import cast
 class A:
-    B f(self, A a):
-        return (B)a
+    def f(self, a: 'A') -> 'B':
+        return cast('B', a)
 class B(A): pass
 [out]
 class A:
@@ -642,9 +680,10 @@ class A:
 ...
 
 [case testDynamicCast]
+from typing import Any
 class A:
-    float f(self, int a):
-        return (any)a
+    def f(self, a: int) -> float:
+        return Any(a)
 [out]
 class A:
     float f(A self, int a):
@@ -652,7 +691,8 @@ class A:
 ...
 
 [case testNestedCasts]
-(int)(any)1
+from typing import cast, Any
+cast(int, Any(1))
 [out]
 (int)(any){any <= int 1}
 
@@ -662,8 +702,9 @@ class A:
 
 
 [case testGlobalExpression]
+from typing import Any
 class A:
-    void f(self, any a):
+    def f(self, a: Any) -> None:
         pass
 
 A().f(1)
@@ -677,11 +718,12 @@ A().f({any <= int 1})
 
 
 [case testVoidReturn]
+from typing import Any
 class A:
-    void f(self, any b):
+    def f(self, b: Any) -> None:
         pass
 class B(A):
-    void f(self, B b):
+    def f(self, b: 'B') -> None:
         pass
 [out]
 class A:
@@ -707,10 +749,11 @@ any B*():
 
 
 [case testFunctionDefinitionAndCall]
-int f(int a):
-    return (any)1
-any d
-d = f((any)1)
+from typing import Any, Undefined
+def f(a: int) -> int:
+    return Any(1)
+d = Undefined # type: Any
+d = f(Any(1))
 [out]
 int f(int a):
     return {int (any){any <= int 1}}
@@ -723,8 +766,9 @@ d = {any <= int f({int (any){any <= int 1}})}
 
 
 [case testAssignmentToGlobal]
-int a
-any d
+from typing import Undefined, Any
+a = 0
+d = Undefined # type: Any
 a = a
 a = d
 d = a
@@ -736,10 +780,11 @@ a = {int d}
 d = {any <= int a}
 
 [case testGlobalInitialization]
-int a
-any d
-any dd = a
-int aa = a
+from typing import Undefined, Any
+a = 0
+d = Undefined # type: Any
+dd = a # type: Any
+aa = a # type: int
 [out]
 int a
 any d
@@ -747,10 +792,11 @@ any dd = {any <= int a}
 int aa = a
 
 [case testLocalVariableAssignmentAndInit]
-void f():
-    int a
-    any d = a
-    int aa = a
+from typing import Any
+def f() -> None:
+    a = 0
+    d = a # type: Any
+    aa = a # type: int
     a = a
     d = a
 [out]
@@ -762,12 +808,13 @@ void f():
     d = {any <= int a}
 
 [case testMemberInitialization]
+from typing import Any
 class A:
-    int a
-    any d = 1
-    int b = 1
+    a = 0
+    d = 1 # type: Any
+    b = 1 # type: int
     
-    void __init__(self, int a):
+    def __init__(self, a: int) -> None:
         self.a = a
 [out]
 class A:
@@ -783,14 +830,16 @@ class A:
 
 
 [case testInitializationToNone]
-object a = None
-any d = None
+from typing import Any
+a = None # type: object
+d = None # type: Any
 [out]
 object a = None
 any d = None
 
 [case testNoneAsFunctionArgument]
-void f(A a):
+import typing
+def f(a: 'A') -> None:
     pass
 f(None)
 class A: pass
@@ -805,14 +854,16 @@ f(None)
 
 
 [case testSimplePrint]
+import typing
 # The arguments to debugging functions are not coerced.
 __print('hello')
 [out]
 __print('hello')
 
 [case testComplexPrint]
+import typing
 def f(a): pass
-int a
+a = 0
 __print(a, f(a))
 [out]
 ...
@@ -825,10 +876,11 @@ __print(a, f({any <= int a}))
 
 
 [case testCoercionFromPrimitiveToObject]
-object o
-int i
-float f
-A a
+from typing import Undefined
+o = Undefined # type: object
+i = 0
+f = 0.0
+a = Undefined # type: A
 o = i
 o = f
 o = a
@@ -849,15 +901,17 @@ i = i
 
 
 [case testIntLiterals]
-int a = 1
-any d = 1
+from typing import Any
+a = 1 # type: int
+d = 1 # type: Any
 [out]
 int a = 1
 any d = {any <= int 1}
 
 [case testIntArithmetic]
-int i
-any d
+from typing import Undefined, Any
+i = 0
+d = Undefined # type: Any
 i = 1 + 2
 i = (1 - 2) * 2
 i = 1 % 2
@@ -895,8 +949,9 @@ d = d % d
 d = d // d
 
 [case testBinaryOperationOperands]
-any d
-int i
+from typing import Undefined, Any
+d = Undefined # type: Any
+i = 0
 i = d.g() + d.f()
 i = d.g() * d.f()
 i = i + d.f()
@@ -910,8 +965,9 @@ i = i + {int d.f*()}
 i = {int -d.g*()}
 
 [case testBools]
-bool b
-any d
+from typing import Undefined, Any
+b = False
+d = Undefined # type: Any
 b = True
 b = False
 d = True
@@ -948,9 +1004,10 @@ d = d or d
 b = not d
 
 [case testIntComparisons]
-int i
-bool b
-any d
+from typing import Undefined, Any
+i = 0
+b = False
+d = Undefined # type: Any
 b = 1 == 2
 d = 1 != 2
 b = 1 < 2
@@ -978,8 +1035,9 @@ b = 1 < {int d}
 d = {any <= bool 1 > {int d}}
 
 [case testNoneComparison]
-bool b
-C c
+from typing import Undefined
+b = False
+c = Undefined # type: C
 b = b is None
 b = c is not None
 b = b == None
@@ -995,7 +1053,8 @@ b = c == None
 ...
 
 [case testStrLiterals]
-str s = 'foo'
+import typing
+s = 'foo' # type: str
 __print(s)
 __print('bar')
 [out]
@@ -1009,8 +1068,9 @@ __print('bar')
 
 
 [case testSimpleTypeInference]
+from typing import Any
 y = 1
-any a = y
+a = y # type: Any
 [out]
 y = 1
 any a = {any <= int y}
@@ -1021,10 +1081,11 @@ any a = {any <= int y}
 
 
 [case testImplicitFunctionSig]
+import typing
 def f(a, b):
     pass
-void g():
-    int i = f(1, 2)
+def g() -> None:
+    i = f(1, 2) # type: int
 [out]
 any f(any a, any b):
     pass
@@ -1032,12 +1093,13 @@ void g():
     int i = {int f({any <= int 1}, {any <= int 2})}
 
 [case testImplicitMethodSig]
+import typing
 class A:
     def f(self, a):
         pass
-    void g(self):
-        int i = self.f(1)
-        int j = self.f(1)
+    def g(self) -> None:
+        i = self.f(1) # type: int
+        j = self.f(1) # type: int
 [out]
 class A:
     any f(any self, any a):
@@ -1052,10 +1114,11 @@ class A:
 ...
 
 [case testImplicitMethodSigAndOverride]
+import typing
 class A:
     def f(self, a):
         pass
-    A g(self, A a):
+    def g(self, a: 'A') -> 'A':
         pass
 class B(A):
     def f(self, a):
@@ -1076,15 +1139,16 @@ class B(A):
 ...
 
 [case testDynamicallyTypedFunctionBody]
+from typing import Undefined
 def f(x):
     y = 1
     i + y
     o + o
     x = g(o)
-int g(int x):
+def g(x: int) -> int:
     pass
-int i
-object o
+i = 0
+o = Undefined # type: object
 [out]
 any f(any x):
     y = {any <= int 1}
@@ -1094,14 +1158,15 @@ any f(any x):
 ...
 
 [case testDynamicallyTypedMethodBody]
+import typing
 class A:
-    int i
+    i = 0
     def f(self, x):
         x = self.g(x)
         x = self.z()
         x = self.i
         x.y()
-    int g(self, int x):
+    def g(self, x: int) -> int:
         pass
 [out]
 class A:
@@ -1119,10 +1184,11 @@ class A:
 
 
 [case testBinaryOperatorOverloading]
+from typing import Undefined, Any
 class A:
-    int __add__(self, A x): pass
-any x
-A a
+    def __add__(self, x: 'A') -> int: pass
+x = Undefined # type: Any
+a = Undefined # type: A
 x = a + x
 [out]
 ...
@@ -1130,10 +1196,11 @@ A a
 x = {any <= int a + {A x}}
 
 [case testBinaryOperatorOverloading2]
+from typing import Undefined, Any
 class A:
-    A __mul__(self, int x): pass
-any x
-A a
+    def __mul__(self, x: int) -> 'A': pass
+x = Undefined # type: Any
+a = Undefined # type: A
 x = a * x
 [out]
 ...
@@ -1141,10 +1208,11 @@ A a
 x = a * {int x}
 
 [case testIndexedGet]
+from typing import Undefined, Any
 class A:
-    int __getitem__(self, A x): pass
-any x
-A a
+    def __getitem__(self, x: 'A') -> int: pass
+x = Undefined # type: Any
+a = Undefined # type: A
 x = a[x]
 [out]
 ...
@@ -1152,13 +1220,15 @@ A a
 x = {any <= int a[{A x}]}
 
 [case testIndexedGetWithAnyBase]
-any x
-int i = x[1]
+from typing import Undefined, Any
+x = Undefined # type: Any
+i = x[1] # type: int
 [out]
 any x
 int i = {int x[{any <= int 1}]}
 
 [case testIndexedGetInDynamicallyTypedFunction]
+import typing
 def f():
     1[2]
 [out]
@@ -1168,10 +1238,11 @@ any f():
 ...
 
 [case testIndexedSet]
+from typing import Undefined, Any
 class A:
-    int __setitem__(self, A x, int y): pass
-any x
-A a
+    def __setitem__(self, x: 'A', y: int) -> int: pass
+x = Undefined # type: Any
+a = Undefined # type: A
 a[x] = 1
 a[a] = x
 [out]
@@ -1181,6 +1252,7 @@ a[{A x}] = 1
 a[a] = {int x}
 
 [case testIndexedSetInDynamicallyTypedFunction]
+import typing
 def f():
     1[2] = 3
 [out]
@@ -1190,17 +1262,20 @@ any f():
 ...
 
 [case testIndexedSetWithAnyBase]
-any x
+from typing import Undefined, Any
+x = Undefined # type: Any
 x[1] = 2
 [out]
 any x
 x[{any <= int 1}] = {any <= int 2}
 
 [case testGenericOperatorMethod]
+from typing import typevar, Undefined, Any
+t = typevar('t')
 class A:
-    t __add__<t>(self, t x): pass
-any x
-A a
+    def __add__(self, x: t) -> t: pass
+x = Undefined # type: Any
+a = Undefined # type: A
 x = a + 1
 [out]
 ...
@@ -1208,22 +1283,25 @@ A a
 x = a + {any <= int 1}
 
 [case testGenericIndexedGet]
+from typing import typevar, Generic, Undefined, Any
+t = typevar('t')
 class A:
-    B<t> __getitem__<t>(self, t x): pass
-class B<t>: pass
-any x
-A a
-B<int> b = a[x]
+    def __getitem__(self, x: t) -> 'B[t]': pass
+class B(Generic[t]): pass
+x = Undefined # type: Any
+a = Undefined # type: A
+b = a[x] # type: B[int]
 [out]
 ...
 A a
 B b = a[{int x}]
 
 [case testInOperator]
+from typing import Undefined, Any
 class A:
-    int __contains__(self, A a): pass
-any x
-A a
+    def __contains__(self, a: 'A') -> int: pass
+x = Undefined # type: Any
+a = Undefined # type: A
 x = x in a
 [out]
 ...
@@ -1231,10 +1309,11 @@ A a
 x = {any <= int {A x} in a}
 
 [case testUnaryOperator]
+from typing import Undefined, Any
 class A:
-    bool __neg__(self): pass
-any x
-A a
+    def __neg__(self) -> bool: pass
+x = Undefined # type: Any
+a = Undefined # type: A
 x = -a
 [builtins fixtures/ops.py]
 [out]
@@ -1243,10 +1322,11 @@ A a
 x = {any <= bool -a}
 
 [case testTransformBinaryOpOperands]
+from typing import Any, Undefined
 class A:
-    int __add__(self, A x): pass
-A f(any x): pass
-A a
+    def __add__(self, x: 'A') -> int: pass
+def f(x: Any) -> A: pass
+a = Undefined # type: A
 a + f(1)
 [out]
 ...
@@ -1254,10 +1334,11 @@ A a
 a + f({any <= int 1})
 
 [case testTransformIndexExpr]
+from typing import Any, Undefined
 class A:
-    int __getitem__(self, A x): pass
-A f(any x): pass
-A a
+    def __getitem__(self, x: 'A') -> int: pass
+def f(x: Any) -> A: pass
+a = Undefined # type: A
 a[f(1)]
 [out]
 ...
@@ -1265,9 +1346,10 @@ A a
 a[f({any <= int 1})]
 
 [case testTransformUnaryOperand]
+from typing import Any
 class A:
-    int __neg__(self): pass
-A f(any x): pass
+    def __neg__(self) -> int: pass
+def f(x: Any) -> A: pass
 -f(1)
 [out]
 ...

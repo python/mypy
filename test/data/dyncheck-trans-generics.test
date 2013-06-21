@@ -14,7 +14,9 @@
 
 
 [case testSimplestGenericClass]
-class C<T>: pass
+from typing import typevar, Generic
+T = typevar('T')
+class C(Generic[T]): pass
 [out]
 class C:
     any __tv
@@ -32,13 +34,15 @@ class C**:
         self.__o! = __o
 
 [case testSimpleGenericClass]
-class C<T>:
-    T o
-    void __init__(self, T o):
+from typing import typevar, Generic, Undefined
+T = typevar('T')
+class C(Generic[T]):
+    o = Undefined # type: T
+    def __init__(self, o: T) -> None:
         self.o = o
-    T get(self):
+    def get(self) -> T:
         return self.o
-    int num(self):
+    def num(self) -> int:
         return 1
 [out]
 class C:
@@ -91,8 +95,10 @@ class C**:
         return {any <= int self.__o.num()}
 
 [case testGenericMethodWithArguments]
-class C<T>:
-    void f(self, A a, T t):
+from typing import typevar, Generic
+T = typevar('T')
+class C(Generic[T]):
+    def f(self, a: 'A', t: T) -> None:
         pass
 class A: pass
 [out]
@@ -112,24 +118,28 @@ class C**:
 ...
 
 [case testAccessingGenericClassMethodInTypedContext]
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
 class A: pass
 class B: pass
-class C<T>:
-    void __init__(self):
+class C(Generic[T]):
+    def __init__(self) -> None:
         pass
-    void f(self, A a):
+    def f(self, a: A) -> None:
         pass
-C<B> c
-c.f((any)A())
+c = Undefined # type: C[B]
+c.f(Any(A()))
 [out]
 ...
 C c
 c.f({A (any)A()})
 
 [case testAccessingMethodInGenericClassAndTypedContextViaSelf]
+from typing import typevar, Generic
+T = typevar('T')
 class A: pass
-class C<T>:
-    void f(self, A a):
+class C(Generic[T]):
+    def f(self, a: A) -> None:
         self.f(a)
 [out]
 ...
@@ -138,12 +148,14 @@ class C<T>:
 ...
 
 [case testConstructingGenericInstance]
-class C<T>:
-    void __init__(self):
+from typing import typevar, Generic, Any
+T = typevar('T')
+class C(Generic[T]):
+    def __init__(self) -> None:
         pass
 class A: pass
-C<A> a = C<A>()
-C<any> d = C<any>()
+a = C[A]() # type: C[A]
+d = C[Any]() # type: C[Any]
 [out]
 ...
 class A:
@@ -152,11 +164,13 @@ C a = C(<A>)
 C d = C(<any>)
 
 [case testConstructingGenericInstanceWithGenericArg]
-class C<T>:
-    void __init__(self):
+from typing import typevar, Generic
+T = typevar('T')
+class C(Generic[T]):
+    def __init__(self) -> None:
         pass
 class A: pass
-C<C<A>> a = C<C<A>>()
+a = C[C[A]]() # type: C[C[A]]
 [out]
 ...
 class A:
@@ -164,18 +178,20 @@ class A:
 C a = C(<C<A>>)
 
 [case testCastFromAnyToGenericType]
-class A<T>:
-    T a
-    void __init__(self, T a):
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]):
+    a = Undefined # type: T
+    def __init__(self, a: T) -> None:
         self.a = a
-    T f(self):
+    def f(self) -> T:
         return self.a
 class B: pass
 class C: pass
-any d = A<any>(B())
-B b
+d = A[Any](B()) # type: Any
+b = Undefined # type: B
 b = d.f()
-A<C> aa = d
+aa = d # type: A[C]
 aa.f()             # Failure at runtime
 [out]
 ...
@@ -186,10 +202,12 @@ A aa = {A<C> d}
 aa.f()
 
 [case testCastWithDynamicAndTypedArguments]
-class A<T>: pass
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]): pass
 class B: pass
-A<B> a
-A<any> d
+a = Undefined # type: A[B]
+d = Undefined # type: A[Any]
 a = d
 d = a
 [out]
@@ -199,12 +217,14 @@ a = {A<B> d}
 d = {A<any> a}
 
 [case testNestedGenerics]
-class A<T>:
-    void f(self):
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]):
+    def f(self) -> None:
         pass
 class B: pass
-A<A<B>> a
-A<any> d
+a = Undefined # type: A[A[B]]
+d = Undefined # type: A[Any]
 d = a
 a = d
 a.f()
@@ -218,10 +238,12 @@ a.f()
 d.f()
 
 [case testGenericWrapperWithNonGenericTypesInSignatures]
-class A<T>:
-    A<B> f(self, B b, A<B> ab):
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]):
+    def f(self, b: 'B', ab: 'A[B]') -> 'A[B]':
         pass
-    B g(self):
+    def g(self) -> 'B':
         pass
 class B: pass
 [out]
@@ -241,7 +263,10 @@ class A**:
 
 
 [case testSimplestClassWithTwoTypeArguments]
-class A<T, S>: pass
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T, S]): pass
 [out]
 class A:
     any __tv
@@ -265,22 +290,28 @@ class A**:
         self.__o! = __o
 
 [case testConstructingInstanceWithTwoTypeArguments]
-class A<T, S>: pass
-A<int, float> a
-a = A<int, float>()
+from typing import typevar, Generic, Undefined
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T, S]): pass
+a = Undefined # type: A[int, float]
+a = A[int, float]()
 [out]
 ...
 A a
 a = A(<int>, <float>)
 
 [case testCallingEmptyMethodWithTwoTypeArguments]
-class A<T, S>:
-    void f(self):
+from typing import typevar, Generic, Undefined
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T, S]):
+    def f(self) -> None:
         pass
 class B: pass
 class C: pass
 
-A<B, C> a
+a = Undefined # type: A[B, C]
 a.f()
 [out]
 ...
@@ -298,9 +329,12 @@ A a
 a.f()
 
 [case testAccessingMultipleTypeArguments]
-class A<T, S>:
-    T x
-    T f(self, S y):
+from typing import typevar, Generic, Undefined
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T, S]):
+    x = Undefined # type: T
+    def f(self, y: S) -> T:
         return self.x
 [out]
 ...
@@ -314,10 +348,13 @@ class A**:
 ...
 
 [case testAccessingGenericMethodInTypedContextViaSelfAndMultipleArgs]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 class A: pass
 class B: pass
-class C<T, S>:
-    void f(self, A a):
+class C(Generic[T, S]):
+    def f(self, a: A) -> None:
         self.f(a)
 [out]
 ...
@@ -335,11 +372,14 @@ class C<T, S>:
 
 
 [case testSimpleTypeVarCoercionWithMultipleTypeVariables]
-class A<T, S>:
-    T t
-    S s
-    void f(self):
-        any d
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T, S]):
+    t = Undefined # type: T
+    s = Undefined # type: S
+    def f(self) -> None:
+        d = Undefined # type: Any
         d = self.t
         self.t = d
         self.s = d
@@ -353,10 +393,12 @@ class A<T, S>:
 ...
 
 [case testTypeVarCoercionsWithGenericTypes]
-class A<T>:
-    A<T> a
-    void f(self):
-        any d
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]):
+    a = Undefined # type: A[T]
+    def f(self) -> None:
+        d = Undefined # type: Any
         d = self.a
         self.a = d
 [out]
@@ -368,10 +410,12 @@ class A<T>:
 ...
 
 [case testConstructGenericInstanceBasedOnTypeVar]
-class A<T>:
-    void f(self):
-        a = A<T>()
-        any d
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]):
+    def f(self) -> None:
+        a = A[T]()
+        d = Undefined # type: Any
         a = d
 [out]
 ...
@@ -387,11 +431,13 @@ class A<T>:
 
 
 [case testTypeErasureOfFunctionSignatures]
-class A<T>: pass
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]): pass
 class B:
-    void m(self, A<B> a):
+    def m(self, a: 'A[B]') -> None:
         pass
-A<B> f():
+def f() -> A[B]:
     pass
 [out]
 ...
@@ -411,28 +457,35 @@ A f():
 
 
 [case testSimpleGenericFunction]
-T f<T>(T x):
+from typing import typevar
+T = typevar('T')
+def f(x: T) -> T:
     return x
 [out]
 any* f(any __ftv, any* x):
     return x
 
 [case testGenericFunctionWithTwoTvars]
-T f<T, S>(T x):
+from typing import typevar
+T = typevar('T')
+S = typevar('S')
+def f(x: T) -> T:
     return x
 [out]
 any* f(any __ftv, any __ftv2, any* x):
     return x
 
 [case testCallingSimpleGenericFunction]
-T f<T>(T x):
+from typing import typevar, Any
+T = typevar('T')
+def f(x: T) -> T:
     return x
-void g():
-    C c = C()
-    c = f<C>(c)
-    any d = c
-    d = f<C>(d)
-    c = f<any>(c)
+def g() -> None:
+    c = C() # type: C
+    c = f['C'](c)
+    d = c # type: Any
+    d = f['C'](d)
+    c = f[Any](c)
 
 class C: pass
 class D: pass
@@ -447,12 +500,14 @@ void g():
 ...
 
 [case testTypeVarReferenceInGenericFunction]
-C<T> f<T>(any x):
-    a = C<T>()
-    f<T>(x)
+from typing import typevar, Any, Generic
+T = typevar('T')
+def f(x: Any) -> 'C[T]':
+    a = C[T]()
+    f[T](x)
     return x
 
-class C<T>: pass
+class C(Generic[T]): pass
 [out]
 C f(any __ftv, any x):
     a = C(<__ftv>)
@@ -466,8 +521,10 @@ C f(any __ftv, any x):
 
 
 [case testSimpleGenericMethod]
+from typing import typevar
+T = typevar('T')
 class A:
-    T f<T>(self, T x):
+    def f(self, x: T) -> T:
         return x
 [out]
 class A:
@@ -478,8 +535,11 @@ class A:
 ...
 
 [case testGenericMethodInGenericClass]
-class A<T>:
-    S f<S>(self, S x):
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T]):
+    def f(self, x: S) -> S:
         return x
 [out]
 class A:
@@ -506,12 +566,14 @@ class A**:
         return self.__o.f(<any>, x)
 
 [case testCalllingGenericMethod]
+from typing import typevar
+T = typevar('T')
 class A:
-    T f<T>(self):
+    def f(self) -> T:
         pass
-    C g(self):
-        return self.f<C>()
-C c = A().f<C>()
+    def g(self) -> 'C':
+        return self.f['C']()
+c = A().f['C']() # type: C
 class C: pass
 [out]
 ...
@@ -522,12 +584,15 @@ C c = A().f(<C>)
 ...
 
 [case testCalllingGenericMethod2]
-class A<S>:
-    T f<T>(self):
+from typing import typevar, Generic
+S = typevar('S')
+T = typevar('T')
+class A(Generic[S]):
+    def f(self) -> T:
         pass
-    S g(self):
-        return self.f<S>()
-C c = (A<D>()).f<C>()
+    def g(self) -> S:
+        return self.f[S]()
+c = (A['D']()).f['C']() # type: C
 class C: pass
 class D: pass
 [out]
@@ -539,10 +604,14 @@ C c = (A(<D>)).f(<C>)
 ...
 
 [case testAccessingGenericMethodTvars]
-class A<S>:
-    C<T, U, S> f<T, U>(self):
-        return C<T, U, S>()
-class C<T, S, U>: pass
+from typing import typevar, Generic
+S = typevar('S')
+T = typevar('T')
+U = typevar('U')
+class A(Generic[S]):
+    def f(self) -> 'C[T, U, S]':
+        return C[T, U, S]()
+class C(Generic[T, S, U]): pass
 [out]
 ...
     C f(A self, any __ftv, any __ftv2):
@@ -565,9 +634,11 @@ class A**:
 
 
 [case testCallGenericTypeInDynamicallyTypedFunction]
+from typing import typevar, Generic
+T = typevar('T')
 def f():
     A()
-class A<T>:
+class A(Generic[T]):
     pass
 [out]
 any f():
@@ -580,17 +651,20 @@ any f():
 
 
 [case testPairExample]
+from typing import typevar, Generic, Undefined
+H = typevar('H')
+T = typevar('T')
 # This test case is adapted from an early example program.
-class P<H, T>:
-    H head
-    T tail
-    Name name
-    void __init__(self, H head, T tail, Name name):
+class P(Generic[H, T]):
+    head = Undefined # type: H
+    tail = Undefined # type: T
+    name = Undefined # type: Name
+    def __init__(self, head: H, tail: T, name: 'Name') -> None:
         self.head = head
         self.tail = tail
         self.name = name
-    P<H, T> set_head(self, H new_head, Name new_name):
-        return P<H, T>(new_head, self.tail, new_name)
+    def set_head(self, new_head: H, new_name: 'Name') -> 'P[H, T]':
+        return P[H, T](new_head, self.tail, new_name)
 class Name: pass
 [out]
 class P:
@@ -616,12 +690,14 @@ class Name:
 ...
 
 [case testImplicitMethodSigInGenericClass]
-class A<T>:
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]):
     def f(self, a):
         pass
-    void g(self):
-        int i = self.f(1)
-        int j = self.f(1)
+    def g(self) -> None:
+        i = self.f(1) # type: int
+        j = self.f(1) # type: int
 [out]
 ...
 class A**:

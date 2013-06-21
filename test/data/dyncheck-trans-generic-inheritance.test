@@ -9,11 +9,13 @@
 
 
 [case testInheritingGenericClass]
-class A<T>:
-    void f(self, T t):
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]):
+    def f(self, t: T) -> None:
         pass
-class B(A<C>):
-    void g(self, C c):
+class B('A[C]'):
+    def g(self, c: 'C') -> None:
         self.f(c)
 class C: pass
 [out]
@@ -26,15 +28,17 @@ class B(A):
 ...
 
 [case testInheritingGenericClassAndExternalAccess]
-B b
-C c
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+b = Undefined # type: B
+c = Undefined # type: C
 b.f(c)
 b.g(c)
-class A<T>:
-    void f(self, T t):
+class A(Generic[T]):
+    def f(self, t: T) -> None:
         pass
-class B(A<C>):
-    void g(self, C c):
+class B('A[C]'):
+    def g(self, c: 'C') -> None:
         self.f(c)
 class C: pass
 [out]
@@ -45,16 +49,18 @@ b.g(c)
 ...
 
 [case testInheritingGenericClassAndOverriding]
-A<C> a
-B b
-C c
+from typing import Undefined, typevar, Generic
+T = typevar('T')
+a = Undefined # type: A[C]
+b = Undefined # type: B
+c = Undefined # type: C
 a.f(c)
 b.f(c)
-class A<T>:
-    void f(self, T t):
+class A(Generic[T]):
+    def f(self, t: T) -> None:
         pass
-class B(A<C>):
-    void f(self, C c):
+class B('A[C]'):
+    def f(self, c: 'C') -> None:
         pass
 class C: pass
 [out]
@@ -72,23 +78,27 @@ class B(A):
 ...
 
 [case testInheritGenericClassAndConstructInstance]
-A<float>()
+from typing import typevar, Generic
+T = typevar('T')
+A[float]()
 B()
-class A<T>: pass
-class B(A<int>): pass
+class A(Generic[T]): pass
+class B(A[int]): pass
 [out]
 A(<float>)
 B()
 ...
 
 [case testInheritingGenericClassAndOverriding2]
-class A<T>:
-    void f(self, C<T> a, D b):
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]):
+    def f(self, a: 'C[T]', b: 'D') -> None:
         pass
-class B(A<E>):
-    void f(self, C<E> a, D b):
+class B('A[E]'):
+    def f(self, a: 'C[E]', b: 'D') -> None:
         pass
-class C<T>: pass
+class C(Generic[T]): pass
 class D: pass
 class E: pass
 [out]
@@ -108,12 +118,15 @@ class B(A):
 
 
 [case testGenericInheritanceWithIdenticalTypeVars]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Single type variable
-class A<T>:
-    void f(self, T a, A<T> b):
+class A(Generic[T]):
+    def f(self, a: T, b: 'A[T]') -> None:
         pass
-class B<S>(A<S>):
-    void f(self, S a, A<S> b):
+class B(A[S], Generic[S]):
+    def f(self, a: S, b: A[S]) -> None:
         pass
 [out]
 ...
@@ -136,12 +149,15 @@ class B**(A**):
 ...
 
 [case testGenericInheritanceWithIdenticalTypeVars2]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Multiple type variables
-class A<T, S>:
-    void f(self, T a, A<S, T> b):
+class A(Generic[T, S]):
+    def f(self, a: T, b: 'A[S, T]') -> None:
         pass
-class B<T, S>(A<T, S>):
-    void f(self, T a, A<S, T> b):
+class B(A[T, S], Generic[T, S]):
+    def f(self, a: T, b: A[S, T]) -> None:
         pass
 [out]
 ...
@@ -157,12 +173,15 @@ class B(A):
 ...
 
 [case testGenericInheritanceWithDifferentSig]
+from typing import typevar, Generic, Any
+T = typevar('T')
+S = typevar('S')
 # Override with dynamic
-class A<T>:
-    T f(self, T a, A<T> b, int i):
+class A(Generic[T]):
+    def f(self, a: T, b: 'A[T]', i: int) -> T:
         pass
-class B<S>(A<S>):
-    any f(self, any a, any b, any i):
+class B(A[S], Generic[S]):
+    def f(self, a: Any, b: Any, i: Any) -> Any:
         return None
 [out]
 ...
@@ -181,11 +200,14 @@ class B(A):
 
 
 [case testGenericClassInheritsGenericsClassAndOverrides]
-class A<S, T>:
-    void f(self, S s, T t):
+from typing import typevar, Generic
+S = typevar('S')
+T = typevar('T')
+class A(Generic[S, T]):
+    def f(self, s: S, t: T) -> None:
         pass
-class B<S>(A<C, S>):
-    void f(self, C s, S t):
+class B('A[C, S]', Generic[S]):
+    def f(self, s: 'C', t: S) -> None:
         pass
 class C: pass
 [out]
@@ -200,11 +222,13 @@ class B(A):
 ...
 
 [case testNonGenericClassInheritsGenericClass]
-class A<T>:
-    void f(self, T t):
+from typing import typevar, Generic, Any
+T = typevar('T')
+class A(Generic[T]):
+    def f(self, t: T) -> None:
         pass
-class B(A<int>):
-    void g(self, any d):
+class B(A[int]):
+    def g(self, d: Any) -> None:
         self.f(d)
 [out]
 ...
@@ -216,13 +240,18 @@ class B(A):
 ...
 
 [case testGenericInheritanceAndCoercionsWithArgShuffling]
-class A<T, S>:
-    void f(self, T t, S s):
+from typing import typevar, Generic, Any
+T = typevar('T')
+S = typevar('S')
+X = typevar('X')
+Y = typevar('Y')
+class A(Generic[T, S]):
+    def f(self, t: T, s: S) -> None:
         pass
-class B<X, Y>(A<Y, X>):
-    void g(self, X x, Y y):
+class B(A[Y, X], Generic[X, Y]):
+    def g(self, x: X, y: Y) -> None:
         pass
-    void h(self, any d):
+    def h(self, d: Any) -> None:
         self.f(d, d)
         self.g(d, d)
 [out]
@@ -247,11 +276,14 @@ class B**(A**):
 ...
 
 [case testGenericInheritanceAndCoercionsWithNestedArg]
-class A<T>:
-    void f(self, T t):
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T]):
+    def f(self, t: T) -> None:
         pass
-class B<S>(A<A<S>>):
-    void f(self, A<S> s):
+class B(A[A[S]], Generic[S]):
+    def f(self, s: A[S]) -> None:
         pass
 [out]
 ...
@@ -271,12 +303,15 @@ class B**(A**):
         self.__o.f`B({A<self.__o.__tv.args[0]> {A<self.__btv.args[0]> s}})
 
 [case testGenericInheritanceWithNestedArgs2]
+from typing import typevar, Generic, Any
+T = typevar('T')
+S = typevar('S')
 # More complex path to subtype type variable
-class A<T>: pass
-class B<T>(A<C<X, A<T>>>):
-    void f(self, T a, any d):
+class A(Generic[T]): pass
+class B('A[C[X, A[T]]]', Generic[T]):
+    def f(self, a: T, d: Any) -> None:
         a = d
-class C<S, T>: pass
+class C(Generic[S, T]): pass
 class X: pass
 [out]
 ...
@@ -287,13 +322,15 @@ class B(A):
 ...
 
 [case testGenericInheritanceMultipleLevels]
+from typing import typevar, Generic, Any
+T = typevar('T')
 # Two levels of inheritance
-class A<T>:
-    void f(self, T t):
+class A(Generic[T]):
+    def f(self, t: T) -> None:
         pass
-class B(A<int>): pass
-class C<T>(B):
-    void g(self, T t, any d):
+class B(A[int]): pass
+class C(B, Generic[T]):
+    def g(self, t: T, d: Any) -> None:
         self.f(d)
         t = d
 [out]
@@ -314,8 +351,10 @@ class C(B):
 
 
 [case testInheritingGenericClassWithDefaultConstructor]
-class A<T>: pass
-class B(A<int>): pass
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]): pass
+class B(A[int]): pass
 [out]
 ...
 class B(A):
@@ -325,9 +364,12 @@ class B(A):
 ...
 
 [case testInheritingGenericClassWithDefaultConstructor2]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Two type arguments
-class A<T, S>: pass
-class B(A<int, object>): pass
+class A(Generic[T, S]): pass
+class B(A[int, object]): pass
 [out]
 ...
 class B(A):
@@ -338,10 +380,12 @@ class B(A):
 ...
 
 [case testInheritingGenericClassWithNonDefaultConstructor]
-class A<T>:
-    void __init__(self, object o):
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]):
+    def __init__(self, o: object) -> None:
         pass
-class B(A<int>): pass
+class B(A[int]): pass
 [out]
 ...
 class B(A):
@@ -351,11 +395,13 @@ class B(A):
 ...
 
 [case testInheritingGenericClassWithNonDefaultConstructor2]
+from typing import typevar, Generic
+T = typevar('T')
 # Two arguments, one with tvar type
-class A<T>:
-    void __init__(self, T t, object o):
+class A(Generic[T]):
+    def __init__(self, t: T, o: object) -> None:
         pass
-class B(A<int>): pass
+class B(A[int]): pass
 [out]
 ...
 class B(A):
@@ -365,8 +411,10 @@ class B(A):
 ...
 
 [case testInheritingGenericClassFromNonGenericWithDefaultConstructor]
+from typing import typevar, Generic
+T = typevar('T')
 class A: pass
-class B<T>(A): pass
+class B(A, Generic[T]): pass
 [out]
 ...
 class B(A):
@@ -377,11 +425,14 @@ class B(A):
 ...
 
 [case testInheritingGenericClassFromNonGenericWithDefaultConstructor2]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Superclass defines a non-trivial constructor; two tvars
 class A:
-    void __init__(self, int n):
+    def __init__(self, n: int) -> None:
         pass
-class B<T, S>(A): pass
+class B(A, Generic[T, S]): pass
 [out]
 ...
 class B(A):
@@ -394,9 +445,13 @@ class B(A):
 ...
 
 [case testInheritingGenericClassFromGenericWithDefaultConstructor]
-class A<T, S>: pass
-class B<U>(A<int, C<U>>): pass
-class C<T>: pass
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+U = typevar('U')
+class A(Generic[T, S]): pass
+class B('A[int, C[U]]', Generic[U]): pass
+class C(Generic[T]): pass
 [out]
 ...
 class B(A):
@@ -407,9 +462,11 @@ class B(A):
 ...
 
 [case testInitWrapperWithDeepHierarchy]
-class A<T>: pass
-class B(A<int>): pass
-class C<T>(B): pass
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]): pass
+class B(A[int]): pass
+class C(B, Generic[T]): pass
 [out]
 ...
 class C(B):
@@ -421,9 +478,11 @@ class C(B):
 ...
 
 [case testInitWrapperWithDeepHierarchy2]
+from typing import typevar, Generic
+T = typevar('T')
 class A: pass
 class B(A): pass
-class C<T>(B): pass
+class C(B, Generic[T]): pass
 [out]
 ...
 class C(B):
@@ -438,9 +497,13 @@ class C(B):
 
 
 [case testInitWithGenericInheritance]
-class A<T, U>: pass
-class B<S>(A<int, S>):
-    void __init__(self, int n):
+from typing import typevar, Generic
+T = typevar('T')
+U = typevar('U')
+S = typevar('S')
+class A(Generic[T, U]): pass
+class B(A[int, S], Generic[S]):
+    def __init__(self, n: int) -> None:
         pass
 [out]
 ...
@@ -457,10 +520,14 @@ class B(A):
 
 
 [case testInitInWrapperClassWithGenericInheritance]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+U = typevar('U')
 # Generic class inherits another generic class
-class A<T, S>: pass
-class B<U>(A<int, C<U>>): pass
-class C<T>: pass
+class A(Generic[T, S]): pass
+class B('A[int, C[U]]', Generic[U]): pass
+class C(Generic[T]): pass
 [out]
 ...
 class B**(A**):
@@ -474,11 +541,13 @@ class B**(A**):
 ...
 
 [case testInitInWrapperClassWithInheritance2]
+from typing import typevar, Generic
+T = typevar('T')
 # Original create has arguments; this does not affect the wrapper
-class A<T>:
-    void __init__(self, int n):
+class A(Generic[T]):
+    def __init__(self, n: int) -> None:
         pass
-class B<T>(A<T>): pass
+class B(A[T], Generic[T]): pass
 [out]
 ...
 class B**(A**):
@@ -486,11 +555,14 @@ class B**(A**):
 ...
 
 [case testInitInWrapperClassWithInheritance3]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Multi-level inheritance hierarchy; note that there is no wrapper class
 # for B.
-class A<T>: pass
-class B(A<int>): pass
-class C<T, S>(B): pass
+class A(Generic[T]): pass
+class B(A[int]): pass
+class C(B, Generic[T, S]): pass
 [out]
 ...
 class C**(A**):
@@ -514,9 +586,11 @@ class C**(A**):
 
 
 [case testTvarDefinitionsWithGenericInheritance]
+from typing import typevar, Generic
+T = typevar('T')
 # Generic class inherits generic class; no new type variables
-class A<T>: pass
-class B<T>(A<T>): pass
+class A(Generic[T]): pass
+class B(A[T], Generic[T]): pass
 [out]
 ...
 class B(A):
@@ -527,9 +601,12 @@ class B**(A**):
 ...
 
 [case testTvarDefinitionsWithGenericInheritance]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Generic class inherits generic class; introduce new type variable
-class A<T>: pass
-class B<S, T>(A<T>): pass
+class A(Generic[T]): pass
+class B(A[T], Generic[S, T]): pass
 [out]
 ...
 class B(A):
@@ -549,15 +626,17 @@ class B**(A**):
 
 
 [case testGenericInheritanceAndCallToSuperclassInit]
+from typing import typevar, Generic
+T = typevar('T')
 # Non-generic class inherits a generic class
-class A<T>:
-    void __init__(self, C n):
+class A(Generic[T]):
+    def __init__(self, n: 'C') -> None:
         pass
 
 class C: pass
 
-class B(A<int>):
-    void __init__(self):
+class B(A[int]):
+    def __init__(self) -> None:
         super().__init__(C())
 [out]
 ...
@@ -568,11 +647,13 @@ class B(A):
 ...
 
 [case testGenericInheritanceAndCallToSuperclassInit2-skip]
+from typing import typevar, Generic
+T = typevar('T')
 # Non-generic class inherits a generic class
-class A<T>: pass
+class A(Generic[T]): pass
 
-class B(A<int>):
-    void __init__(self):
+class B(A[int]):
+    def __init__(self) -> None:
         super().__init__()
 [out]
 ...
@@ -583,13 +664,16 @@ class B(A):
 ...
 
 [case testGenericInheritanceAndCallToSuperclassInit]
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
 # Generic class inherits a generic class
-class A<T, S>:
-    void __init__(self, T t):
+class A(Generic[T, S]):
+    def __init__(self, t: T) -> None:
         pass
 
-class B<T, S>(A<S, T>):
-    void __init__(self, S t):
+class B(A[S, T], Generic[T, S]):
+    def __init__(self, t: S) -> None:
         super().__init__(t)
 [out]
 ...
@@ -606,12 +690,14 @@ class B(A):
 
 
 [case testMixedGenericInheritance-skip]
+from typing import typevar, Generic, Any
+T = typevar('T')
 # Non-generic class extends generic
-class A<T>:
-    T f(self, T t):
+class A(Generic[T]):
+    def f(self, t: T) -> T:
         pass
-class B(A<int>):
-    any f(self, any t):
+class B(A[int]):
+    def f(self, t: Any) -> Any:
         pass
 [out]
 ...
@@ -626,12 +712,15 @@ class B(A):
 ...
 
 [case testMixedGenericInheritance2]
+from typing import typevar, Generic, Any
+T = typevar('T')
+S = typevar('S')
 # Generic class extends generic
-class A<T>:
-    T f(self, T t):
+class A(Generic[T]):
+    def f(self, t: T) -> T:
         pass
-class B<T, S>(A<S>):
-    any f(self, any t):
+class B(A[S], Generic[T, S]):
+    def f(self, t: Any) -> Any:
         pass
 [out]
 ...
@@ -660,11 +749,14 @@ class B**(A**):
 
 
 [case testAmbiguousTvarMappingAndGenericInheritance]
-class D<T, S>:
-    S f(self):
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class D(Generic[T, S]):
+    def f(self) -> S:
         pass
-class C<T>(D<T, T>):
-    T f(self):
+class C(D[T, T], Generic[T]):
+    def f(self) -> T:
         pass
 [out]
 ...
@@ -694,9 +786,11 @@ class C**(D**):
 
 
 [case testMemberVarsAndGenericClass]
-class A<T>:
-    T x
-    void f(self, any a):
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]):
+    x = Undefined # type: T
+    def f(self, a: Any) -> None:
         self.x = a
         a = self.x
 [out]
@@ -738,17 +832,19 @@ class A**:
 ...
 
 [case testMemberVarsAndGenericInheritance]
-class A<T>:
-    T x
-    void f(self, any a):
+from typing import typevar, Generic, Undefined, Any
+T = typevar('T')
+class A(Generic[T]):
+    x = Undefined # type: T
+    def f(self, a: Any) -> None:
         self.x = a
         a = self.x
-class B<T>(A<C<T>>):
-    T y
-    void g(self, any a):
+class B('A[C[T]]', Generic[T]):
+    y = Undefined # type: T
+    def g(self, a: Any) -> None:
         self.y = a
         a = self.y
-class C<T>: pass
+class C(Generic[T]): pass
 [out]
 ...
 class B(A):
