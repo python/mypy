@@ -39,7 +39,7 @@ class TypeTransformer:
         signatures.
       * Create wrapper methods for calling methods in dynamically typed code.
         These perform the necessary coercions for arguments and return values
-        to/from 'any'.
+        to/from 'Any'.
     
     This is used by DyncheckTransformVisitor and is logically aggregated within
     that class.
@@ -272,7 +272,7 @@ class TypeTransformer:
 
         The getter will be of this form:
         
-        . int $name*(C self):
+        . def $name*(self: C) -> type:
         .     return self.name!
         """
         scope = self.make_scope()
@@ -297,8 +297,8 @@ class TypeTransformer:
 
         The getter will be of this form:
         
-        . any $name*(C self):
-        .     return {any <= typ self.name!}
+        . def $name*(self: C) -> Any:
+        .     return {Any <= typ self.name!}
         """
         scope = self.make_scope()
         selft = self.self_type()
@@ -321,7 +321,7 @@ class TypeTransformer:
 
         The setter will be of this form:
         
-        . void set$name(C self, typ name):
+        . def set$name(self: C, name: typ) -> None:
         .     self.name! = name
         """
         scope = self.make_scope()
@@ -351,7 +351,7 @@ class TypeTransformer:
 
         The setter will be of this form:
         
-        . void set$name*(C self, any name):
+        . def set$name*(self: C, name; Any) -> None:
         .     self.name! = {typ name}
         """
         lvalue = MemberExpr(self_expr(), name, direct=True)
