@@ -47,15 +47,7 @@ class C(Generic[T]):
 [out]
 class C:
     __tv: Any
-    o: Any*
-    def $o(self: C) -> Any*:
-        return self.o!
-    def set$o(self: C, o: Any*) -> None:
-        self.o! = o
-    def $o*(self: C) -> Any:
-        return self.o!
-    def set$o*(self: C, o: Any) -> None:
-        self.o! = {self.__tv o}
+    o: Any* = Undefined
     def __init__(self: C, __tv: Any, o: Any*) -> None:
         self.__tv! = <__tv>
         self.o = o
@@ -67,6 +59,14 @@ class C:
         return 1
     def num*(self: Any) -> Any:
         return {Any <= int {C[self.__tv] self}.num()}
+    def $o(self: C) -> Any*:
+        return self.o!
+    def set$o(self: C, o: Any*) -> None:
+        self.o! = o
+    def $o*(self: C) -> Any:
+        return self.o!
+    def set$o*(self: C, o: Any) -> None:
+        self.o! = {self.__tv o}
 def C*(o: Any) -> Any:
     return C(<Any>, o)
 class C**:
@@ -669,16 +669,17 @@ class Name: pass
 [out]
 class P:
 ...
-    def set_head(self: P, new_head: Any*, Name new_name) -> P:
+    def set_head(self: P, new_head: Any*, new_name: Name) -> P:
         return P(<self.__tv>, <self.__tv2>, new_head, self.tail, new_name)
     def set_head*(self: Any, new_head: Any, new_name: Any) -> Any:
         return {P[self.__tv, self.__tv2] self}.set_head(\
                                   {self.__tv new_head}, {Name new_name})
+...
 def P*(head: Any, tail: Any, name: Any) -> Any:
     return P(<Any>, <Any>, head, tail, {Name name})
 class P**:
 ...
-    def set_head(self: P, new_head: Any, Name new_name) -> P:
+    def set_head(self: P, new_head: Any, new_name: Name) -> P:
         return {P[self.__tv, self.__tv2] \
                  {P[self.__btv, self.__btv2] self.__o.set_head(\
                          {self.__o.__tv {self.__btv new_head}}, new_name)}}

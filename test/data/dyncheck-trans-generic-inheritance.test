@@ -796,7 +796,11 @@ class A(Generic[T]):
 [out]
 class A:
     __tv: Any
-    x: Any*
+    x: Any* = Undefined
+    def f(self: A, a: Any) -> None:
+        self.x = {self.__tv a}
+        a = self.x
+...
     def $x(self: A) -> Any*:
         return self.x!
     def set$x(self: A, x: Any*) -> None:
@@ -805,9 +809,6 @@ class A:
         return self.x!
     def set$x*(self: A, x: Any) -> None:
         self.x! = {self.__tv x}
-    def f(self: A, a: Any) -> None:
-        self.x = {self.__tv a}
-        a = self.x
 ...
 class A**:
     __o: Any
@@ -848,7 +849,11 @@ class B(A[C[T]], Generic[T]):
 [out]
 ...
 class B(A):
-    y: Any*
+    y: Any* = Undefined
+    def g(self: B, a: Any) -> None:
+        self.y = {self.__tv.args[0] a}
+        a = self.y
+...
     def $y(self: B) -> Any*:
         return self.y!
     def set$y(self: B, y: Any*) -> None:
@@ -857,7 +862,4 @@ class B(A):
         return self.y!
     def set$y*(self: B, y: Any) -> None:
         self.y! = {self.__tv.args[0] y}
-    def g(self: B, a: Any) -> None:
-        self.y = {self.__tv.args[0] a}
-        a = self.y
 ...

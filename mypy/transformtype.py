@@ -383,6 +383,17 @@ class TypeTransformer:
                       self.make_setter_wrapper(n.name(), t)]:
                 res.extend(self.func_tf.generic_method_wrappers(fd))
         return res
+
+    Node[] generic_accessor_wrappers2(self, AssignmentStmt s):
+        res = <Node> []
+        assert len(s.lvalues) == 1
+        assert isinstance(s.lvalues[0], NameExpr)
+        assert s.type is not None
+        name = (NameExpr)s.lvalues[0]
+        for fd in [self.make_getter_wrapper(name.name, s.type),
+                   self.make_setter_wrapper(name.name, s.type)]:
+            res.extend(self.func_tf.generic_method_wrappers(fd))
+        return res
     
     TypeDef generic_class_wrapper(self, TypeDef tdef):
         """Construct a wrapper class for a generic type."""
@@ -412,6 +423,8 @@ class TypeTransformer:
                         (FuncDef)d))
             elif isinstance(d, VarDef):
                 defs.extend(self.generic_accessor_wrappers((VarDef)d))
+            elif isinstance(d, AssignmentStmt):
+                defs.extend(self.generic_accessor_wrappers2((AssignmentStmt)d))
             elif not isinstance(d, PassStmt):
                 raise RuntimeError(
                     'Definition {} at line {} not supported'.format(
