@@ -565,7 +565,7 @@ class A**:
     def f*(self: Any, x: Any) -> Any:
         return self.__o.f(<Any>, x)
 
-[case testCalllingGenericMethod]
+[case testCalllingGenericMethod-skip]
 from typing import typevar
 T = typevar('T')
 class A:
@@ -583,7 +583,7 @@ class C: pass
 c: C = A().f(<C>)
 ...
 
-[case testCalllingGenericMethod2]
+[case testCalllingGenericMethod2-skip]
 from typing import typevar, Generic
 S = typevar('S')
 T = typevar('T')
