@@ -136,7 +136,7 @@ int num_slots(TypeInfo typ):
 
     If type is None, the result is 0.
     """
-    if not typ:
+    if not typ or not typ.bases:
         return 0
     slots = num_slots(typ.bases[0].type)
     ntv = len(typ.type_vars)
