@@ -700,7 +700,7 @@ class A:
 [out]
 class A:
     def f(self: A, a: int) -> float:
-        return {float (Any){Any <= int a}}
+        return {float cast(Any, {Any <= int a})}
 ...
 
 [case testNestedCasts]
