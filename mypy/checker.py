@@ -543,6 +543,8 @@ class TypeChecker(NodeVisitor<Type>):
         if lvalue_type:
             if refers_to_fullname(rvalue, 'typing.Undefined'):
                 # The rvalue is just 'Undefined'; this is always valid.
+                # Infer the type of 'Undefined' from the lvalue type.
+                self.store_type(rvalue, lvalue_type)
                 return
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg)

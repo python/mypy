@@ -220,7 +220,12 @@ class DyncheckTransformVisitor(TraverserVisitor):
         
         # Do no coercions if this is a call to debugging facilities.
         if self.is_debugging_call_expr(e):
-            return 
+            return
+
+        if e.analyzed:
+            # This is not an ordinary call.
+            e.analyzed.accept(self)
+            return
         
         # Get the type of the callable (type variables in the context of the
         # enclosing class).

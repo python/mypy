@@ -409,6 +409,18 @@ class A:
 -- ----------
 
 
+[case testDeclareVariableUsingUndefinedWithComment]
+from typing import Undefined
+x = Undefined # type: int
+[out]
+x: int = Undefined
+
+[case testDeclareVariableUsingUndefinedWithArgument]
+from typing import Undefined
+x = Undefined(int)
+[out]
+x: int = Undefined(int)
+
 [case testReturnStatement1]
 from typing import Any
 class A:
