@@ -440,9 +440,11 @@ class TypeTransformer:
     
     TypeInfo find_generic_base_class(self, TypeInfo info):
         base = info.mro[1]
-        while base:
+        while True:
             if base.type_vars != []:
                 return base
+            if len(base.mro) <= 1:
+                return None
             base = base.mro[1]
     
     Node[] make_generic_wrapper_member_vars(self, TypeDef tdef):
