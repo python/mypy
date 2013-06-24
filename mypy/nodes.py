@@ -443,7 +443,7 @@ class ExpressionStmt(Node):
 class AssignmentStmt(Node):
     """Assignment statement
 
-    The same node is used for single assignment, multiple assignment
+    The same node class is used for single assignment, multiple assignment
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
     that define new names, and assignments with explicit types (# type).
 
