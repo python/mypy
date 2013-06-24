@@ -56,7 +56,6 @@ def test_transform(testcase):
             if (not f.path.endswith('/builtins.py') and
                 not f.path.endswith('/typing.py') and
                 not f.path.endswith('/abc.py') and '_skip.' not in f.path):
-                print(f.path)
                 if not first:
                     # Display path for files other than the first.
                     a.append('{}:'.format(remove_prefix(f.path,
