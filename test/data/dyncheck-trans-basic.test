@@ -1058,7 +1058,7 @@ s = 'foo' # type: str
 __print(s)
 __print('bar')
 [out]
-str s = 'foo'
+s: str = 'foo'
 __print(s)
 __print('bar')
 
