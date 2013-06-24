@@ -12,7 +12,7 @@ from mypy import testcheck
 from mypy import testtypegen
 from mypy import testoutput
 from mypy import testtransform
-#from mypy import testicodegen
+from mypy import testicodegen
 
 
 class AllSuite(Suite):
@@ -35,7 +35,7 @@ class AllSuite(Suite):
         self.test_typegen = testtypegen.TypeExportSuite()
         self.test_output = testoutput.OutputSuite()
         self.test_transform = testtransform.DyncheckTransformSuite()
-        #self.test_icodegen = testicodegen.IcodeGenerationSuite()
+        self.test_icodegen = testicodegen.IcodeGenerationSuite()
         super().__init__()
 
 

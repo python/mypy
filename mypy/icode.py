@@ -340,7 +340,8 @@ class IcodeBuilder(NodeVisitor<int>):
             if (isinstance(node, Var) and
                     name not in nodes.implicit_module_attrs):
                 v = (Var)node
-                if not is_named_instance(v.type, 'builtins.int'):
+                if (not is_named_instance(v.type, 'builtins.int')
+                        and v.fullname() != 'typing.Undefined'):
                     tmp = self.alloc_register()
                     self.add(SetRNone(tmp))
                     self.add(SetGR(v.fullname(), tmp))
@@ -465,6 +466,8 @@ class IcodeBuilder(NodeVisitor<int>):
         assert len(s.lvalues) == 1
         lvalue = s.lvalues[0]
 
+        undefined_rvalue = is_undefined_initializer(s.rvalue)
+
         if isinstance(lvalue, NameExpr):
             name = (NameExpr)lvalue
             if name.kind == nodes.LDEF:
@@ -472,13 +475,14 @@ class IcodeBuilder(NodeVisitor<int>):
                     reg = self.add_local((Var)name.node)
                 else:
                     reg = self.lvar_regs[name.node]
-                if not is_undefined_initializer(s.rvalue):
+                if not undefined_rvalue:
                     self.accept(s.rvalue, reg)
             elif name.kind == nodes.GDEF:
                 assert isinstance(name.node, Var)
-                var = (Var)name.node
-                rvalue = self.accept(s.rvalue)
-                self.add(SetGR(var.fullname(), rvalue))
+                if not undefined_rvalue:
+                    var = (Var)name.node
+                    rvalue = self.accept(s.rvalue)
+                    self.add(SetGR(var.fullname(), rvalue))
             else:
                 print(name, name.kind)
                 raise NotImplementedError()

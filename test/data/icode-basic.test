@@ -419,18 +419,38 @@ def f:
 
 [case testGlobalWithExplicitType]
 import typing
-class A: pass
 x = 2 # type: int
-y = 0
-y = 3
+x = 3
 [out]
 def __init:
     r0 = 2
     __main__.x = r0
     r1 = 3
-    __main__.y = r1
+    __main__.x = r1
     r2 = None
     return r2
+
+[case testGlobalWithExplicitType2]
+from typing import Undefined
+y = Undefined # type: int
+y = 3
+[out]
+def __init:
+    r0 = 3
+    __main__.y = r0
+    r1 = None
+    return r1
+
+[case testGlobalWithExplicitType3]
+from typing import Undefined
+x = Undefined(int)
+x = 3
+[out]
+def __init:
+    r0 = 3
+    __main__.x = r0
+    r1 = None
+    return r1
 
 [case testImplicitZeroReturn]
 import typing
