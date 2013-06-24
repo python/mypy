@@ -8,16 +8,18 @@
 
 
 [case testEmptyMethod]
+import typing
 class A:
-    void f(self): pass
+    def f(self) -> None: pass
 [out]
 def A.f:
     r1 = None
     return r1
 
 [case testMethodWithArguments]
+import typing
 class A:
-    int f(self, int x, int y):
+    def f(self, x: int, y: int) -> int:
         return x + y
 [out]
 def A.f:
@@ -25,9 +27,10 @@ def A.f:
     return r3
     
 [case testCallMethodWithoutArguments]
+import typing
 class A:
-    void f(self): pass
-void g(A a):
+    def f(self) -> None: pass
+def g(a: A) -> None:
     a.f()
 [out]
 def g:
@@ -36,9 +39,10 @@ def g:
     return r2
     
 [case testCallMethodWithArguments]
+import typing
 class A:
-    int f(self, int x, int y): return 1
-int g(A a):
+    def f(self, x: int, y: int) -> int: return 1
+def g(a: A) -> int:
     return a.f(1, 3)
 [out]
 def g:
@@ -48,8 +52,9 @@ def g:
     return r3
     
 [case testCallMethodViaSelf]
+import typing
 class A:
-    void f(self):
+    def f(self) -> None:
         self.f()
 [out]
 def A.f:
@@ -63,9 +68,10 @@ def A.f:
 
 
 [case testAttributeAccessors]
+import typing
 class A:
-    int x
-    int y
+    x = 0
+    y = 0
 [out]
 def A.$x:
     r1 = r0.x [A]
@@ -83,10 +89,11 @@ def A.set$y:
     return r2
 
 [case testSetAndQueryAttribute]
+import typing
 class A:
-    int x
-    int y
-void f(A a):
+    x = 0
+    y = 0
+def f(a: A) -> None:
     a.x = a.y
 [out]
 def f:
@@ -101,6 +108,7 @@ def f:
 
 
 [case testConstructInstanceWithDefaultConstructor]
+import typing
 class A:
     pass
 A()
@@ -114,8 +122,9 @@ def A:
     return r0
     
 [case testNonDefaultInit]
+import typing
 class A:
-    void __init__(self, int x):
+    def __init__(self, x: int) -> None:
         x = 2
 A(2)
 [out]
@@ -134,9 +143,10 @@ def A.__init__:
     return r2
 
 [case testInitializeAttributesWhenConstructing]
+from typing import Undefined
 class A:
-    int x
-    A a
+    x = 0
+    a = Undefined # type: A
 [out]
 def A:
     r0 = <construct A>
@@ -147,9 +157,10 @@ def A:
     return r0
     
 [case testAttributesAndInit]
+import typing
 class A:
-    int x
-    void __init__(self, int y): pass
+    x = 0
+    def __init__(self, y: int) -> None: pass
 [out]
 def A:
     r1 = <construct A>
@@ -159,8 +170,9 @@ def A:
     return r1
     
 [case testInheritedInit]
+import typing
 class A:
-    void __init__(self, int x):
+    def __init__(self, x: int) -> None:
         self.x = 2
 class B(A): pass
 [out]
@@ -175,8 +187,9 @@ def B:
 
 
 [case testNoneExpression]
+import typing
 class A: pass
-void f(A a):
+def f(a: A) -> None:
     a = None
 [out]
 def f:
@@ -190,10 +203,11 @@ def f:
 
 
 [case testCallSuperInit]
+import typing
 class A:
-    void __init__(self, int x): pass
+    def __init__(self, x: int) -> None: pass
 class B(A):
-    void __init__(self, int x, int y):
+    def __init__(self, x: int, y: int) -> None:
         super().__init__(y)
 [out]
 def B.__init__:
@@ -202,10 +216,11 @@ def B.__init__:
     return r4
 
 [case testCallSuperMethod]
+import typing
 class A:
-    void f(self, int x): pass
+    def f(self, x: int) -> None: pass
 class B(A):
-    void f(self, int x):
+    def f(self, x: int) -> None:
         super().f(x)
 [out]
 def B.f:
