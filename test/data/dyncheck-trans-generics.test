@@ -131,7 +131,7 @@ c = Undefined # type: C[B]
 c.f(Any(A()))
 [out]
 ...
-c: C
+c: C = Undefined
 c.f({A (Any)A()})
 
 [case testAccessingMethodInGenericClassAndTypedContextViaSelf]
@@ -196,7 +196,7 @@ aa.f()             # Failure at runtime
 [out]
 ...
 d: Any = A(<Any>, B())
-b: B
+b: B = Undefined
 b = {B d.f*()}
 aa: A = {A[C] d}
 aa.f()
@@ -212,7 +212,7 @@ a = d
 d = a
 [out]
 ...
-d: A
+d: A = Undefined
 a = {A[B] d}
 d = {A[Any] a}
 
@@ -231,7 +231,7 @@ a.f()
 d.f()
 [out]
 ...
-d: A
+d: A = Undefined
 d = {A[Any] a}
 a = {A[A[B]] d}
 a.f()
@@ -298,7 +298,7 @@ a = Undefined # type: A[int, float]
 a = A[int, float]()
 [out]
 ...
-a: A
+a: A = Undefined
 a = A(<int>, <float>)
 
 [case testCallingEmptyMethodWithTwoTypeArguments]
@@ -325,7 +325,7 @@ class A**:
     def f*(self: Any) -> Any:
         self.__o.f()
 ...
-a: A
+a: A = Undefined
 a.f()
 
 [case testAccessingMultipleTypeArguments]
@@ -386,7 +386,7 @@ class A(Generic[T, S]):
 [out]
 ...
     def f(self: A) -> None:
-        d: Any
+        d: Any = Undefined
         d = self.t
         self.t = {self.__tv d}
         self.s = {self.__tv2 d}
@@ -404,7 +404,7 @@ class A(Generic[T]):
 [out]
 ...
     def f(self: A) -> None:
-        d: Any
+        d: Any = Undefined
         d = self.a
         self.a = {A[self.__tv] d}
 ...
@@ -421,7 +421,7 @@ class A(Generic[T]):
 ...
     def f(self: A) -> None:
         a = A(<self.__tv>)
-        d: Any
+        d: Any = Undefined
         a = {A[self.__tv] d}
 ...
 

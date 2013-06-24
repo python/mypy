@@ -42,8 +42,8 @@ class B(A[C]):
     def g(self, c: 'C') -> None:
         self.f(c)
 [out]
-b: B
-c: C
+b: B = Undefined
+c: C = Undefined
 b.f(c)
 b.g(c)
 ...
