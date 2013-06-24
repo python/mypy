@@ -327,6 +327,11 @@ class IcodeBuilder(NodeVisitor<int>):
         self.types = types
 
     int visit_mypy_file(self, MypyFile mfile):
+        if mfile.fullname() in ('typing', 'abc'):
+            # These module are special; their contents are currently all
+            # built-in primitives.
+            return -1
+        
         self.enter()
         
         # Initialize non-int global variables.
