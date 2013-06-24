@@ -769,9 +769,9 @@ d = Undefined # type: Any
 d = f(Any(1))
 [out]
 def f(a: int) -> int:
-    return {int (Any){Any <= int 1}}
-d: Any
-d = {Any <= int f({int (Any){Any <= int 1}})}
+    return {int cast(Any, {Any <= int 1})}
+d: Any = Undefined
+d = {Any <= int f({int cast(Any, {Any <= int 1})})}
 
 
 -- Assignment and initialization
@@ -786,8 +786,8 @@ a = a
 a = d
 d = a
 [out]
-a: int
-d: Any
+a: int = Undefined
+d: Any = Undefined
 a = a
 a = {int d}
 d = {Any <= int a}
@@ -799,8 +799,8 @@ d = Undefined # type: Any
 dd = a # type: Any
 aa = a # type: int
 [out]
-a: int
-d: Any
+a: int = Undefined
+d: Any = Undefined
 dd: Any = {Any <= int a}
 aa: int = a
 
@@ -814,7 +814,7 @@ def f() -> None:
     d = a
 [out]
 def f() -> None:
-    a: int
+    a: int = Undefined
     d: Any = {Any <= int a}
     aa: int = a
     a = a
@@ -880,7 +880,7 @@ a = Undefined(int)
 __print(a, f(a))
 [out]
 ...
-a: int
+a: int = Undefined
 __print(a, f({Any <= int a}))
 
 
@@ -901,7 +901,7 @@ i = i
 class A: pass
 [out]
 ...
-a: A
+a: A = Undefined
 o = {object <= int i}
 o = {object <= float f}
 o = a
@@ -998,8 +998,8 @@ d = d or d
 b = not d
 [builtins fixtures/ops.py]
 [out]
-bool b
-d: Any
+b = False
+d: Any = Undefined
 b = True
 b = False
 d = {Any <= bool True}
@@ -1205,7 +1205,7 @@ a = Undefined # type: A
 x = a + x
 [out]
 ...
-a: A
+a: A = Undefined
 x = {Any <= int a + {A x}}
 
 [case testBinaryOperatorOverloading2]
@@ -1217,7 +1217,7 @@ a = Undefined # type: A
 x = a * x
 [out]
 ...
-a: A
+a: A = Undefined
 x = a * {int x}
 
 [case testIndexedGet]
@@ -1229,7 +1229,7 @@ a = Undefined # type: A
 x = a[x]
 [out]
 ...
-a: A
+a: A = Undefined
 x = {Any <= int a[{A x}]}
 
 [case testIndexedGetWithAnyBase]
@@ -1237,7 +1237,7 @@ from typing import Undefined, Any
 x = Undefined # type: Any
 i = x[1] # type: int
 [out]
-x: Any
+x: Any = Undefined
 i: int = {int x[{Any <= int 1}]}
 
 [case testIndexedGetInDynamicallyTypedFunction]
@@ -1260,7 +1260,7 @@ a[x] = 1
 a[a] = x
 [out]
 ...
-a: A
+a: A = Undefined
 a[{A x}] = 1
 a[a] = {int x}
 
@@ -1279,7 +1279,7 @@ from typing import Undefined, Any
 x = Undefined # type: Any
 x[1] = 2
 [out]
-x: Any
+x: Any = Undefined
 x[{Any <= int 1}] = {Any <= int 2}
 
 [case testGenericOperatorMethod]
@@ -1292,7 +1292,7 @@ a = Undefined # type: A
 x = a + 1
 [out]
 ...
-a: A
+a: A = Undefined
 x = a + {Any <= int 1}
 
 [case testGenericIndexedGet]
@@ -1306,7 +1306,7 @@ a = Undefined # type: A
 b = a[x] # type: B[int]
 [out]
 ...
-a: A
+a: A = Undefined
 b: B = a[{int x}]
 
 [case testInOperator]
@@ -1318,7 +1318,7 @@ a = Undefined # type: A
 x = x in a
 [out]
 ...
-a: A
+a: A = Undefined
 x = {Any <= int {A x} in a}
 
 [case testUnaryOperator]
@@ -1331,7 +1331,7 @@ x = -a
 [builtins fixtures/ops.py]
 [out]
 ...
-a: A
+a: A = Undefined
 x = {Any <= bool -a}
 
 [case testTransformBinaryOpOperands]
@@ -1343,7 +1343,7 @@ a = Undefined # type: A
 a + f(1)
 [out]
 ...
-a: A
+a: A = Undefined
 a + f({Any <= int 1})
 
 [case testTransformIndexExpr]
@@ -1355,7 +1355,7 @@ a = Undefined # type: A
 a[f(1)]
 [out]
 ...
-a: A
+a: A = Undefined
 a[f({Any <= int 1})]
 
 [case testTransformUnaryOperand]
