@@ -531,8 +531,8 @@ class B(A[int, C[U]], Generic[U]): pass
 [out]
 ...
 class B**(A**):
-    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, \
-                  __btv: Any, __btv2: Any):
+    def __init__(self: Any, __o: Any, __tv: Any, __tv2: Any, \
+                 __btv: Any, __btv2: Any) -> None:
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         self.__btv! = <__btv>
@@ -570,8 +570,8 @@ class C**(A**):
     __tv3: Any
     __btv2: Any
     __btv3: Any
-    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, __tv3: Any, \
-                  __btv: Any, __btv2: Any, __btv3: Any):
+    def __init__(self: Any, __o: Any, __tv: Any, __tv2: Any, __tv3: Any, \
+                 __btv: Any, __btv2: Any, __btv3: Any) -> None:
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         self.__tv3! = <__tv3>
@@ -616,8 +616,8 @@ class B(A):
 class B**(A**):
     __tv2: Any
     __btv2: Any
-    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, \
-                  __btv: Any, __btv2: Any):
+    def __init__(self: Any, __o: Any, __tv: Any, __tv2: Any, \
+                 __btv: Any, __btv2: Any) -> None:
 ...
 
 
@@ -768,8 +768,8 @@ class C(D):
         super().__init__(<self.__tv>, <self.__tv>)
 ...
 class C**(D**):
-    __init__: None(self: Any, __o: Any, __tv: Any, __tv2: Any, \
-                  __btv: Any, __btv2: Any):
+    def __init__(self: Any, __o: Any, __tv: Any, __tv2: Any, \
+                 __btv: Any, __btv2: Any) -> None:
         self.__tv! = <__tv>
         self.__tv2! = <__tv2>
         self.__btv! = <__btv>

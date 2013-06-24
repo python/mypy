@@ -132,7 +132,7 @@ c.f(Any(A()))
 [out]
 ...
 c: C = Undefined
-c.f({A (Any)A()})
+c.f({A cast(Any, A())})
 
 [case testAccessingMethodInGenericClassAndTypedContextViaSelf]
 from typing import typevar, Generic
