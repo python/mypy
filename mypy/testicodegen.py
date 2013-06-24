@@ -48,6 +48,7 @@ def test_transform(testcase):
         result = build.build(program_path='main',
                              target=build.ICODE,
                              program_text=src,
+                             flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
         for fn in func_names:
