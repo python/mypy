@@ -304,6 +304,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
                     e.right = operand
 
     void visit_index_expr(self, IndexExpr e):
+        if e.analyzed:
+            # Actually a type application, not indexing.
+            e.analyzed.accept(self)
+            return
         super().visit_index_expr(e)
         method_type = e.method_type
         if self.dynamic_funcs[-1] or isinstance(method_type, Any):

@@ -183,11 +183,14 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string('>')
     
     def visit_index_expr(self, o):
+        if o.analyzed:
+            o.analyzed.accept(self)
+            return
         self.node(o.base)
         self.string('[')
         self.node(o.index)
         self.string(']')
-    
+
     def visit_int_expr(self, o):
         self.string(str(o.value))
     
