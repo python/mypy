@@ -573,7 +573,7 @@ class A:
 
 
 [case testDataAttributeAccessors]
-import typing
+from typing import Undefined
 class A:
     i = Undefined(int)
 [out]
@@ -792,7 +792,7 @@ dd: Any = {Any <= int a}
 aa: int = a
 
 [case testLocalVariableAssignmentAndInit]
-from typing import Any
+from typing import Any, Undefined
 def f() -> None:
     a = Undefined(int)
     d = a # type: Any
@@ -808,7 +808,7 @@ def f() -> None:
     d = {Any <= int a}
 
 [case testMemberInitialization]
-from typing import Any
+from typing import Any, Undefined
 class A:
     a = Undefined(int)
     d = 1 # type: Any
@@ -861,7 +861,7 @@ __print('hello')
 __print('hello')
 
 [case testComplexPrint]
-import typing
+from typing import Undefined
 def f(a): pass
 a = Undefined(int)
 __print(a, f(a))
@@ -1158,7 +1158,7 @@ def f(x: Any) -> Any:
 ...
 
 [case testDynamicallyTypedMethodBody]
-import typing
+from typing import Undefined
 class A:
     i = Undefined(int)
     def f(self, x):
