@@ -707,7 +707,7 @@ class A:
 from typing import cast, Any
 cast(int, Any(1))
 [out]
-(int)(Any){Any <= int 1}
+cast(int, cast(Any, {Any <= int 1}))
 
 
 -- Global expressions
