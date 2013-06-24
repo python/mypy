@@ -43,17 +43,17 @@ class TypeExportSuite(Suite):
             nodes = map.keys()
 
             # Ignore NameExpr nodes of variables with explicit (trivial) types
-            # to simplify output.
-            searcher = VariableDefinitionSearcher()
+            # to simplify output. Also ignore 'Undefined' nodes.
+            searcher = VariableDefinitionNodeSearcher()
             for file in result.files.values():
                 file.accept(searcher)
-            ignore_defs = searcher.defs
+            ignored = searcher.nodes
 
             # Filter nodes that should be included in the output.
             keys = []
             for node in nodes:
                 if node.line is not None and node.line != -1 and map[node]:
-                    if ignore_node(node) or node in ignore_defs:
+                    if ignore_node(node) or node in ignored:
                         continue
                     if (re.match(mask, short_type(node))
                             or (isinstance(node, NameExpr)
@@ -75,15 +75,18 @@ class TypeExportSuite(Suite):
                                                                testcase.line))
 
 
-class VariableDefinitionSearcher(TraverserVisitor):
+class VariableDefinitionNodeSearcher(TraverserVisitor):
     def __init__(self):
-        self.defs = set()
+        self.nodes = set()
     
     def visit_assignment_stmt(self, s):
         if s.type or ignore_node(s.rvalue):
             for lvalue in s.lvalues:
                 if isinstance(lvalue, NameExpr):
-                    self.defs.add(lvalue)
+                    self.nodes.add(lvalue)
+            if (isinstance(s.rvalue, NameExpr)
+                    and s.rvalue.fullname == 'typing.Undefined'):
+                self.nodes.add(s.rvalue)
 
 
 def ignore_node(node):
