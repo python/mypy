@@ -387,14 +387,35 @@ L2:
 import typing
 def f() -> None:
     x = 2 # type: int
-    y = 0
-    y = 3
+    x = 3
 [out]
 def f:
     r0 = 2
-    r1 = 3
-    r2 = None
-    return r2
+    r0 = 3
+    r1 = None
+    return r1
+
+[case testLocalWithExplicitType2]
+from typing import Undefined
+def f() -> None:
+    x = Undefined # type: int
+    x = 5
+[out]
+def f:
+    r0 = 5
+    r1 = None
+    return r1
+
+[case testLocalWithExplicitType3]
+from typing import Undefined
+def f() -> None:
+    x = Undefined(int)
+    x = 6
+[out]
+def f:
+    r0 = 6
+    r1 = None
+    return r1
 
 [case testGlobalWithExplicitType]
 import typing

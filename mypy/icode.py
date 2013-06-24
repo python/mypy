@@ -5,7 +5,7 @@ from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
     UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo,
-    VarDef, SuperExpr, IndexExpr
+    VarDef, SuperExpr, IndexExpr, UndefinedExpr
 )
 from mypy import nodes
 from mypy.visitor import NodeVisitor
@@ -468,11 +468,12 @@ class IcodeBuilder(NodeVisitor<int>):
         if isinstance(lvalue, NameExpr):
             name = (NameExpr)lvalue
             if name.kind == nodes.LDEF:
-                if name.is_def:
+                if name.is_def or s.type:
                     reg = self.add_local((Var)name.node)
                 else:
                     reg = self.lvar_regs[name.node]
-                self.accept(s.rvalue, reg)
+                if not is_undefined_initializer(s.rvalue):
+                    self.accept(s.rvalue, reg)
             elif name.kind == nodes.GDEF:
                 assert isinstance(name.node, Var)
                 var = (Var)name.node
@@ -845,3 +846,10 @@ str operand(int n, int kind):
         return str(n)
     else:
         return 'r%d' % n
+
+
+bool is_undefined_initializer(Node node):
+    return ((isinstance(node, CallExpr) and
+             isinstance(((CallExpr)node).analyzed, UndefinedExpr)) or
+            (isinstance(node, NameExpr)
+             and ((NameExpr)node).fullname == 'typing.Undefined'))
