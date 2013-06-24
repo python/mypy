@@ -1,6 +1,7 @@
 from mypy.output import TypeOutputVisitor
 from mypy.nodes import (
-    Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr
+    Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr, CallExpr,
+    TypeVarExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.types import Void, TypeVisitor, Callable, Instance, Type, UnboundType
@@ -106,6 +107,10 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string('\n')
     
     def visit_assignment_stmt(self, o):
+        if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed,
+                                                         TypeVarExpr):
+            # Skip type variable definition 'x = typevar(...)'.
+            return
         self.node(o.lvalues[0]) # FIX multiple lvalues
         if o.type:
             self.string(': ')
