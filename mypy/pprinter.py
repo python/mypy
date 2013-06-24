@@ -60,12 +60,12 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string('(')
         for i in range(len(fdef.args)):
             a = fdef.args[i]
+            self.string(a.name())
             if i < len(ftyp.arg_types):
+                self.string(': ')
                 self.type(ftyp.arg_types[i])
-                self.string(' ')
             else:
                 self.string('xxx ')
-            self.string(a.name())
             if i < len(fdef.args) - 1:
                 self.string(', ')
         self.string(') -> ')
