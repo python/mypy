@@ -419,7 +419,7 @@ x: int = Undefined
 from typing import Undefined
 x = Undefined(int)
 [out]
-x: int = Undefined(int)
+x: int = Undefined
 
 [case testReturnStatement1]
 from typing import Any
@@ -590,7 +590,7 @@ class A:
     i = Undefined(int)
 [out]
 class A:
-    i: int
+    i: int = Undefined
     def $i(self: A) -> int:
         return self.i!
     def set$i(self: A, i: int) -> None:
@@ -686,9 +686,10 @@ class A:
         return cast('B', a)
 class B(A): pass
 [out]
+...
 class A:
     def f(self: A, a: A) -> B:
-        return (B)a
+        return cast(B, a)
 ...
 
 [case testDynamicCast]

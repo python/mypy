@@ -139,6 +139,9 @@ class PrettyPrintVisitor(NodeVisitor):
     #
     
     def visit_call_expr(self, o):
+        if o.analyzed:
+            o.analyzed.accept(self)
+            return
         self.node(o.callee)
         self.string('(')
         self.omit_next_space = True
@@ -207,14 +210,19 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string(o.name)
 
     def visit_cast_expr(self, o):
-        self.string('(')
+        self.string('cast(')
         self.type(o.type)
-        self.string(')')
+        self.string(', ')
         self.node(o.expr)
+        self.string(')')
 
     def visit_type_application(self, o):
         # Type arguments are erased in transformation.
         self.node(o.expr)
+
+    def visit_undefined_expr(self, o):
+        # Omit declared type as redundant.
+        self.string('Undefined')
     
     #
     # Helpers

@@ -80,6 +80,9 @@ class TypeTransformer:
                 defs.extend(self.transform_var_def(vdef))
                 for n in vdef.items:
                     vars.add(n)
+            elif isinstance(d, AssignmentStmt):
+                # TODO transform
+                defs.append(d)
 
         # Add accessors for implicitly defined attributes.
         for node in tdef.info.names.values():
