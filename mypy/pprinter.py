@@ -107,6 +107,9 @@ class PrettyPrintVisitor(NodeVisitor):
     
     def visit_assignment_stmt(self, o):
         self.node(o.lvalues[0]) # FIX multiple lvalues
+        if o.type:
+            self.string(': ')
+            self.type(o.type)
         self.string(' = ')
         self.node(o.rvalue)
         self.string('\n')
