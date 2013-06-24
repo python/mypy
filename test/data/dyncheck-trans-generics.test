@@ -469,10 +469,10 @@ def f(__ftv: Any, x: Any*) -> Any*:
 from typing import typevar
 T = typevar('T')
 S = typevar('S')
-def f(x: T) -> T:
+def f(x: T, y: S) -> T:
     return x
 [out]
-def f(__ftv: Any, __ftv2: Any, x: Any*) -> Any*:
+def f(__ftv: Any, __ftv2: Any, x: Any*, y: Any*) -> Any*:
     return x
 
 [case testCallingSimpleGenericFunction]
