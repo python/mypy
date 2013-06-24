@@ -75,9 +75,9 @@ class PrettyPrintVisitor(NodeVisitor):
     
     void visit_var_def(self, VarDef vdef):
         if vdef.items[0].name() not in nodes.implicit_module_attrs:
-            self.type(vdef.items[0].type)
-            self.string(' ')
             self.string(vdef.items[0].name())
+            self.string(': ')
+            self.type(vdef.items[0].type)
             if vdef.init:
                 self.string(' = ')
                 self.node(vdef.init)
