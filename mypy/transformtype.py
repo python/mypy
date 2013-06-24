@@ -81,8 +81,9 @@ class TypeTransformer:
                 for n in vdef.items:
                     vars.add(n)
             elif isinstance(d, AssignmentStmt):
-                # TODO transform
-                defs.append(d)
+                assignment = (AssignmentStmt)d
+                self.transform_assignment(assignment)
+                defs.append(assignment)
 
         # Add accessors for implicitly defined attributes.
         for node in tdef.info.names.values():
@@ -256,6 +257,10 @@ class TypeTransformer:
             res.extend(self.make_accessors(n))
         
         return res
+    
+    void transform_assignment(self, AssignmentStmt o):
+        """Transform an assignment statement in class body."""
+        self.tf.visit_assignment_stmt(o)
 
     Node[] make_accessors(self, Var n):
         if n.type:
