@@ -9,6 +9,7 @@ from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.errors import CompileError
 from mypy.testsemanal import normalize_error_messages
+import typing
 
 
 # List of files that contain test case descriptions.

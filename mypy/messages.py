@@ -5,6 +5,8 @@ improve code clarity and to simplify localization (in the future)."""
 
 import re
 
+from typing import Undefined, cast, List, Any, Sequence, Iterable
+
 from mypy.errors import Errors
 from mypy.types import (
     Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, AnyType,
@@ -66,11 +68,11 @@ class MessageBuilder:
     """
     # Report errors using this instance. It knows about the current file and
     # import context.
-    Errors errors
+    errors = Undefined # type: Errors
     # Number of times errors have been disabled.
-    int disable_count
+    disable_count = 0
     
-    void __init__(self, Errors errors):
+    def __init__(self, errors: Errors) -> None:
         self.errors = errors
         self.disable_count = 0
 
@@ -78,18 +80,18 @@ class MessageBuilder:
     # Helpers
     #
 
-    void disable_errors(self):
+    def disable_errors(self) -> None:
         self.disable_count += 1
 
-    void enable_errors(self):
+    def enable_errors(self) -> None:
         self.disable_count -= 1
     
-    void fail(self, str msg, Context context):
+    def fail(self, msg: str, context: Context) -> None:
         """Report an error message (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line(), msg.strip())
     
-    str format(self, Type typ):
+    def format(self, typ: Type) -> str:
         """Convert a type to a relatively short string that is
         suitable for error messages. Mostly behave like format_simple
         below, but never return an empty string.
@@ -99,11 +101,11 @@ class MessageBuilder:
             # If format_simple returns a non-trivial result, use that.
             return s
         elif isinstance(typ, FunctionLike):
-            func = (FunctionLike)typ
+            func = cast(FunctionLike, typ)
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
-                itype = (Instance)func.items()[0].ret_type
+                itype = cast(Instance, func.items()[0].ret_type)
                 return self.format(itype)                
             else:
                 # Use a simple representation for function types; proper
@@ -114,7 +116,7 @@ class MessageBuilder:
             # Default case; we simply have to return something meaningful here.
             return 'object'
     
-    str format_simple(self, Type typ):
+    def format_simple(self, typ: Type) -> str:
         """Convert simple types to string that is suitable for error messages,
         otherwise return "". Try to keep the length of the result relatively
         short to avoid overly long error messages.
@@ -126,7 +128,7 @@ class MessageBuilder:
           function type -> "" (empty string)
         """
         if isinstance(typ, Instance):
-            itype = (Instance)typ
+            itype = cast(Instance, typ)
             # Get the short name of the type.
             base_str = itype.type.name()
             if itype.args == []:
@@ -144,7 +146,7 @@ class MessageBuilder:
                 # (using format() instead of format_simple() to avoid empty
                 # strings). If the result is too long, replace arguments
                 # with [...].
-                str[] a = []
+                a = [] # type: List[str]
                 for arg in itype.args:
                     a.append(strip_quotes(self.format(arg)))
                 s = ', '.join(a)
@@ -154,10 +156,10 @@ class MessageBuilder:
                     return '{}[...]'.format(base_str)
         elif isinstance(typ, TypeVar):
             # This is similar to non-generic instance types.
-            return '"{}"'.format(((TypeVar)typ).name)
+            return '"{}"'.format((cast(TypeVar, typ)).name)
         elif isinstance(typ, TupleType):
             items = []
-            for t in ((TupleType)typ).items:
+            for t in (cast(TupleType, typ)).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
             if len(s) < 30:
@@ -186,14 +188,14 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
     
-    Type has_no_attr(self, Type typ, str member, Context context):
+    def has_no_attr(self, typ: Type, member: str, context: Context) -> Type:
         """Report a missing or non-accessible member.  The type
         argument is the base type. If member corresponds to an
         operator, use the corresponding operator name in the
         messages. Return type Any.
         """
         if (isinstance(typ, Instance) and
-                ((Instance)typ).type.has_readable_member(member)):
+                (cast(Instance, typ)).type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
         elif isinstance(typ, Void):
             self.check_void(typ, context)
@@ -226,8 +228,8 @@ class MessageBuilder:
                                                         member), context)
         return AnyType()
     
-    void unsupported_operand_types(self, str op, any left_type, any right_type,
-                                   Context context):
+    def unsupported_operand_types(self, op: str, left_type: Any, right_type: Any,
+                                   context: Context) -> None:
         """Report unsupported operand types for a binary operation.
         Types can be Type objects or strings.
         """
@@ -236,13 +238,13 @@ class MessageBuilder:
             self.check_void(right_type, context)
             return 
         
-        str left_str
+        left_str = ''
         if isinstance(left_type, str):
             left_str = left_type
         else:
             left_str = self.format(left_type)
         
-        str right_str
+        right_str = ''
         if isinstance(right_type, str):
             right_str = right_type
         else:
@@ -252,20 +254,20 @@ class MessageBuilder:
                                                     op, left_str, right_str)
         self.fail(msg, context)
     
-    void unsupported_left_operand(self, str op, Type typ, Context context):
+    def unsupported_left_operand(self, op: str, typ: Type, context: Context) -> None:
         if not self.check_void(typ, context):
             self.fail('Unsupported left operand type for {} ({})'.format(
                 op, self.format(typ)), context)
     
-    void type_expected_as_right_operand_of_is(self, Context context):
+    def type_expected_as_right_operand_of_is(self, context: Context) -> None:
         self.fail('Type expected as right operand of "is"', context)
     
-    Type not_callable(self, Type typ, Context context):
+    def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
         return AnyType()
     
-    void incompatible_argument(self, int n, Callable callee, Type arg_type,
-                               Context context):
+    def incompatible_argument(self, n: int, callee: Callable, arg_type: Type,
+                               context: Context) -> None:
         """Report an error about an incompatible type arg_type for
         argument n when calling a value with type callee. If the
         callee represents a method that corresponds to an operator,
@@ -299,7 +301,7 @@ class MessageBuilder:
             
             target = 'to {} '.format(name)
         
-        str msg
+        msg = ''
         if callee.name == '<list>':
             name = callee.name[1:-1]
             msg = '{} item {} has incompatible type {}'.format(
@@ -315,124 +317,124 @@ class MessageBuilder:
                 n, target, self.format_simple(arg_type))
         self.fail(msg, context)
     
-    void invalid_index_type(self, Type index_type, str base_str,
-                            Context context):
+    def invalid_index_type(self, index_type: Type, base_str: str,
+                            context: Context) -> None:
         self.fail('Invalid index type {} for {}'.format(
             self.format(index_type), base_str), context)
     
-    void invalid_argument_count(self, Callable callee, int num_args,
-                                Context context):
+    def invalid_argument_count(self, callee: Callable, num_args: int,
+                                context: Context) -> None:
         if num_args < len(callee.arg_types):
             self.too_few_arguments(callee, context)
         else:
             self.too_many_arguments(callee, context)
     
-    void too_few_arguments(self, Callable callee, Context context):
+    def too_few_arguments(self, callee: Callable, context: Context) -> None:
         msg = 'Too few arguments'
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
     
-    void too_many_arguments(self, Callable callee, Context context):
+    def too_many_arguments(self, callee: Callable, context: Context) -> None:
         msg = 'Too many arguments'
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
     
-    void too_many_positional_arguments(self, Callable callee, Context context):
+    def too_many_positional_arguments(self, callee: Callable, context: Context) -> None:
         msg = 'Too many positional arguments'
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
-    void unexpected_keyword_argument(self, Callable callee, str name,
-                                     Context context):
+    def unexpected_keyword_argument(self, callee: Callable, name: str,
+                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name)
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)            
 
-    void duplicate_argument_value(self, Callable callee, int index,
-                                  Context context):
+    def duplicate_argument_value(self, callee: Callable, index: int,
+                                  context: Context) -> None:
         f = 'Function'
         if callee.name:
             f = '{}'.format(callee.name)
         self.fail('{} gets multiple values for keyword argument "{}"'.
                   format(f, callee.arg_names[index]), context)
     
-    void does_not_return_value(self, Type void_type, Context context):
+    def does_not_return_value(self, void_type: Type, context: Context) -> None:
         """Report an error about a void type in a non-void
         context. The first argument must be a void type. If the void
         type has a source in it, report it in the error message. This
         allows giving messages such as 'Foo does not return a value'.
         """
-        if ((Void)void_type).source is None:
+        if (cast(Void, void_type)).source is None:
             self.fail('Function does not return a value', context)
         else:
             self.fail('{} does not return a value'.format(
-                capitalize(((Void)void_type).source)), context)
+                capitalize((cast(Void, void_type)).source)), context)
     
-    void no_variant_matches_arguments(self, Overloaded overload,
-                                      Context context):
+    def no_variant_matches_arguments(self, overload: Overloaded,
+                                      context: Context) -> None:
         if overload.name():
             self.fail('No overload variant of {} matches argument types'
                       .format(overload.name()), context)
         else:
             self.fail('No overload variant matches argument types', context)
     
-    void function_variants_overlap(self, int n1, int n2, Context context):
+    def function_variants_overlap(self, n1: int, n2: int, context: Context) -> None:
         self.fail('Function signature variants {} and {} overlap'.format(
             n1 + 1, n2 + 1), context)
     
-    void invalid_cast(self, Type target_type, Type source_type,
-                      Context context):
+    def invalid_cast(self, target_type: Type, source_type: Type,
+                      context: Context) -> None:
         if not self.check_void(source_type, context):
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
     
-    void incompatible_operator_assignment(self, str op, Context context):
+    def incompatible_operator_assignment(self, op: str, context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),
                   context)
     
-    void incompatible_value_count_in_assignment(self, int lvalue_count,
-                                                int rvalue_count,
-                                                Context context):
+    def incompatible_value_count_in_assignment(self, lvalue_count: int,
+                                                rvalue_count: int,
+                                                context: Context) -> None:
         if rvalue_count < lvalue_count:
             self.fail('Need {} values to assign'.format(lvalue_count), context)
         elif rvalue_count > lvalue_count:
             self.fail('Too many values to assign', context)
     
-    void type_incompatible_with_supertype(self, str name, TypeInfo supertype,
-                                          Context context):
+    def type_incompatible_with_supertype(self, name: str, supertype: TypeInfo,
+                                          context: Context) -> None:
         self.fail('Type of "{}" incompatible with supertype "{}"'.format(
             name, supertype.name), context)
     
-    void signature_incompatible_with_supertype(self, str name, str supertype,
-                                               Context context):
+    def signature_incompatible_with_supertype(self, name: str, supertype: str,
+                                               context: Context) -> None:
         self.fail('Signature of "{}" incompatible with supertype "{}"'.format(
             name, supertype), context)
     
-    void argument_incompatible_with_supertype(self, int arg_num, str name,
-                                              str supertype, Context context):
+    def argument_incompatible_with_supertype(self, arg_num: int, name: str,
+                                              supertype: str, context: Context) -> None:
         self.fail('Argument {} of "{}" incompatible with supertype "{}"'
                   .format(arg_num, name, supertype), context)
     
-    void return_type_incompatible_with_supertype(self, str name, str supertype,
-                                                 Context context):
+    def return_type_incompatible_with_supertype(self, name: str, supertype: str,
+                                                 context: Context) -> None:
         self.fail('Return type of "{}" incompatible with supertype "{}"'
                   .format(name, supertype), context)
     
-    void method_expected_as_operator_implementation(self, Type typ, str member,
-                                                    Context context):
+    def method_expected_as_operator_implementation(self, typ: Type, member: str,
+                                                    context: Context) -> None:
         self.fail('Expected operator method "{}" in {}'.format(
             member, self.format(typ)), context)
     
-    void boolean_return_value_expected(self, str method, Context context):
+    def boolean_return_value_expected(self, method: str, context: Context) -> None:
         self.fail('Boolean return value expected for method "{}"'.format(
             method), context)
     
-    void incompatible_type_application(self, int expected_arg_count,
-                                       int actual_arg_count, Context context):
+    def incompatible_type_application(self, expected_arg_count: int,
+                                       actual_arg_count: int, context: Context) -> None:
         if expected_arg_count == 0:
             self.fail('Type application targets a non-generic function',
                       context)
@@ -443,42 +445,42 @@ class MessageBuilder:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
     
-    void incompatible_array_item_type(self, Type typ, int index,
-                                      Context context):
+    def incompatible_array_item_type(self, typ: Type, index: int,
+                                      context: Context) -> None:
         self.fail('Array item {} has incompatible type {}'.format(
             index, self.format(typ)), context)
     
-    void could_not_infer_type_arguments(self, Callable callee_type, int n,
-                                        Context context):
+    def could_not_infer_type_arguments(self, callee_type: Callable, n: int,
+                                        context: Context) -> None:
         if callee_type.name and n > 0:
             self.fail('Cannot infer type argument {} of {}'.format(
                 n, callee_type.name), context)
         else:
             self.fail('Cannot infer function type argument', context)
     
-    void invalid_var_arg(self, Type typ, Context context):
+    def invalid_var_arg(self, typ: Type, context: Context) -> None:
         self.fail('List or tuple expected as variable arguments', context)
     
-    void invalid_keyword_var_arg(self, Type typ, Context context):
+    def invalid_keyword_var_arg(self, typ: Type, context: Context) -> None:
         if isinstance(typ, Instance) and (
-                ((Instance)typ).type.fullname() == 'builtins.dict'):
+                (cast(Instance, typ)).type.fullname() == 'builtins.dict'):
             self.fail('Keywords must be strings', context)
         else:
             self.fail('Argument after ** must be a dictionary',
                       context)
     
-    void incomplete_type_var_match(self, str member, Context context):
+    def incomplete_type_var_match(self, member: str, context: Context) -> None:
         self.fail('"{}" has incomplete match to supertype type variable'
                   .format(member), context)
     
-    Type not_implemented(self, str msg, Context context):
+    def not_implemented(self, msg: str, context: Context) -> Type:
         self.fail('Feature not implemented yet ({})'.format(msg), context)
         return AnyType()
     
-    void undefined_in_superclass(self, str member, Context context):
+    def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
     
-    bool check_void(self, Type typ, Context context):
+    def check_void(self, typ: Type, context: Context) -> bool:
         """If type is void, report an error such as '.. does not
         return a value' and return True. Otherwise, return False.
         """
@@ -488,19 +490,19 @@ class MessageBuilder:
         else:
             return False
 
-    void cannot_determine_type(self, str name, Context context):
+    def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
 
-    void invalid_method_type(self, Callable sig, Context context):
+    def invalid_method_type(self, sig: Callable, context: Context) -> None:
         self.fail('Invalid method type', context)
 
-    void incompatible_conditional_function_def(self, FuncDef defn):
+    def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
         self.fail('All conditional function variants must have identical '
                   'signatures', defn)
 
-    void cannot_instantiate_abstract_class(self, str class_name,
-                                           str[] abstract_attributes,
-                                           Context context):
+    def cannot_instantiate_abstract_class(self, class_name: str,
+                                           abstract_attributes: List[str],
+                                           context: Context) -> None:
         attrs = format_string_list("'%s'" % a for a in abstract_attributes[:5])
         self.fail("Cannot instantiate abstract class '%s' with abstract "
                   "method%s %s" % (class_name, plural_s(abstract_attributes),
@@ -508,7 +510,7 @@ class MessageBuilder:
                   context)
 
 
-str capitalize(str s):
+def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
     if s == '':
         return ''
@@ -516,7 +518,7 @@ str capitalize(str s):
         return s[0].upper() + s[1:]
 
 
-str extract_type(str name):
+def extract_type(name: str) -> str:
     """If the argument is the name of a method (of form C.m), return
     the type portion in quotes (e.g. "y"). Otherwise, return the string
     unmodified.
@@ -525,21 +527,21 @@ str extract_type(str name):
     return name
 
 
-str strip_quotes(str s):
+def strip_quotes(s: str) -> str:
     """Strip a double quote at the beginning and end of the string, if any."""
     s = re.sub('^"', '', s)
     s = re.sub('"$', '', s)
     return s
 
 
-str plural_s(Sequence s):
+def plural_s(s: Sequence[Any]) -> str:
     if len(s) > 1:
         return 's'
     else:
         return ''
 
 
-str format_string_list(Iterable<str> s):
+def format_string_list(s: Iterable[str]) -> str:
     l = list(s)
     assert len(l) > 0
     if len(l) == 1:

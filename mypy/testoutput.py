@@ -13,6 +13,7 @@ from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.parse import parse
 from mypy.output import OutputVisitor
 from mypy.errors import CompileError
+from typing import Undefined, Any
 
 
 # Files which contain test case descriptions.
@@ -37,7 +38,7 @@ def test_output(testcase):
         src = '\n'.join(testcase.input)
         # Parse and analyze the source program.
         # Parse and semantically analyze the source program.
-        any trees, any symtable, any infos, any types
+        trees, symtable, infos, types = Undefined, Undefined, Undefined, Undefined # type: (Any, Any, Any, Any)
         
         # Test case names with a special suffix get semantically analyzed. This
         # lets us test that semantic analysis does not break source code pretty

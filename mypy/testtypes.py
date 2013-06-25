@@ -13,6 +13,7 @@ from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
 from mypy.replacetvars import replace_type_vars
 from mypy.subtypes import is_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
+from typing import List
 
 
 class TypesSuite(Suite):
@@ -176,18 +177,17 @@ class TypeOpsSuite(Suite):
     def tuple(self, *a):
         return TupleType(a)
     
-    Callable callable(self, vars, *a):
+    def callable(self, vars, *a) -> Callable:
         """callable(args, a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r and type arguments
         vars.
         """
-        tv = <TypeVarDef> []
+        tv = [] # type: List[TypeVarDef]
         n = -1
         for v in vars:
             tv.append(TypeVarDef(v, n))
             n -= 1
-        return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
-                        <str> [None] * (len(a) - 1),
+        return Callable(a[:-1], [ARG_POS] * (len(a) - 1), [None] * (len(a) - 1),
                         a[-1],
                         False,
                         None,
@@ -411,7 +411,7 @@ class JoinSuite(Suite):
         a1, ... an and return type r.
         """
         n = len(a) - 1
-        return Callable(a[:-1], [ARG_POS] * n, <str> [None] * n,
+        return Callable(a[:-1], [ARG_POS] * n, [None] * n,
                         a[-1], False)
     
     def type_callable(self, *a):
@@ -420,7 +420,7 @@ class JoinSuite(Suite):
         represents a type.
         """
         n = len(a) - 1
-        return Callable(a[:-1], [ARG_POS] * n, <str> [None] * n,
+        return Callable(a[:-1], [ARG_POS] * n, [None] * n,
                         a[-1], True)
 
 
@@ -615,8 +615,7 @@ class MeetSuite(Suite):
         """
         n = len(a) - 1
         return Callable(a[:-1],
-                        [ARG_POS] * n,
-                        <str> [None] * n,
+                        [ARG_POS] * n, [None] * n,
                         a[-1], False)
 
 

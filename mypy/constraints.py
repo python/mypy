@@ -5,20 +5,21 @@ from mypy.types import (
 from mypy.expandtype import expand_caller_var_args
 from mypy.subtypes import map_instance_to_supertype
 from mypy import nodes
+from typing import List, cast, Undefined
 
 
 SUBTYPE_OF = 0
 SUPERTYPE_OF = 1
 
 
-Constraint[] infer_constraints_for_callable(
-                 Callable callee, Type[] arg_types, int[] arg_kinds,
-                 int[][] formal_to_actual):
+def infer_constraints_for_callable(
+                 callee: Callable, arg_types: List[Type], arg_kinds: List[int],
+                 formal_to_actual: List[List[int]]) -> 'List[Constraint]':
     """Infer type variable constraints for a callable and actual arguments.
     
     Return a list of constraints.
     """
-    Constraint[] constraints = []
+    constraints = [] # type: List[Constraint]
     tuple_counter = [0]
     
     for i, actuals in enumerate(formal_to_actual):
@@ -32,28 +33,28 @@ Constraint[] infer_constraints_for_callable(
     return constraints
 
 
-Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
+def get_actual_type(arg_type: Type, kind: int, tuple_counter: List[int]) -> Type:
     """Return the type of an actual argument with the given kind.
 
     If the argument is a *arg, return the individual argument item.
     """
     if kind == nodes.ARG_STAR:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).type.fullname() == 'builtins.list'):
+                (cast(Instance, arg_type)).type.fullname() == 'builtins.list'):
             # List *arg. TODO any iterable
-            return ((Instance)arg_type).args[0]
+            return (cast(Instance, arg_type)).args[0]
         elif isinstance(arg_type, TupleType):
             # Get the next tuple item of a tuple *arg.
-            tuplet = (TupleType)arg_type
+            tuplet = cast(TupleType, arg_type)
             tuple_counter[0] += 1
             return tuplet.items[tuple_counter[0] - 1]
         else:
             return AnyType()
     elif kind == nodes.ARG_STAR2:
         if isinstance(arg_type, Instance) and (
-                ((Instance)arg_type).type.fullname() == 'builtins.dict'):
+                (cast(Instance, arg_type)).type.fullname() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
-            return ((Instance)arg_type).args[1]
+            return (cast(Instance, arg_type)).args[1]
         else:
             return AnyType()
     else:
@@ -61,7 +62,7 @@ Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
         return arg_type
 
 
-Constraint[] infer_constraints(Type template, Type actual, int direction):
+def infer_constraints(template: Type, actual: Type, direction: int) -> 'List[Constraint]':
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -89,61 +90,61 @@ class Constraint:
     """A representation of a type constraint, either T <: type or T :>
     type (T is a type variable).
     """
-    int type_var   # Type variable id
-    int op         # SUBTYPE_OF or SUPERTYPE_OF
-    Type target
+    type_var = 0   # Type variable id
+    op = 0         # SUBTYPE_OF or SUPERTYPE_OF
+    target = Undefined # type: Type
     
-    str __repr__(self):
+    def __repr__(self) -> str:
         op_str = '<:'
         if self.op == SUPERTYPE_OF:
             op_str = ':>'
         return '{} {} {}'.format(self.type_var, op_str, self.target)
     
-    void __init__(self, int type_var, int op, Type target):
+    def __init__(self, type_var: int, op: int, target: Type) -> None:
         self.type_var = type_var
         self.op = op
         self.target = target
 
 
-class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
+class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     """Visitor class for inferring type constraints."""
     
-    Type actual # The type that is compared against a template
+    actual = Undefined # type: Type # The type that is compared against a template
     
-    void __init__(self, Type actual, int direction):
+    def __init__(self, actual: Type, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
     
     # Trivial leaf types
     
-    Constraint[] visit_unbound_type(self, UnboundType template):
+    def visit_unbound_type(self, template: UnboundType) -> List[Constraint]:
         return []
     
-    Constraint[] visit_any(self, AnyType template):
+    def visit_any(self, template: AnyType) -> List[Constraint]:
         return []
     
-    Constraint[] visit_void(self, Void template):
+    def visit_void(self, template: Void) -> List[Constraint]:
         return []
     
-    Constraint[] visit_none_type(self, NoneTyp template):
+    def visit_none_type(self, template: NoneTyp) -> List[Constraint]:
         return []
 
-    Constraint[] visit_erased_type(self, ErasedType template):
+    def visit_erased_type(self, template: ErasedType) -> List[Constraint]:
         return []
     
     # Non-trivial leaf type
     
-    Constraint[] visit_type_var(self, TypeVar template):
+    def visit_type_var(self, template: TypeVar) -> List[Constraint]:
         return [Constraint(template.id, SUPERTYPE_OF, self.actual)]
     
     # Non-leaf types
     
-    Constraint[] visit_instance(self, Instance template):
+    def visit_instance(self, template: Instance) -> List[Constraint]:
         actual = self.actual
         if isinstance(actual, Instance):
-            res = <Constraint> []
-            instance = (Instance)actual
+            res = [] # type: List[Constraint]
+            instance = cast(Instance, actual)
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
@@ -173,12 +174,12 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
         else:
             return []
     
-    Constraint[] visit_callable(self, Callable template):
+    def visit_callable(self, template: Callable) -> List[Constraint]:
         if isinstance(self.actual, Callable):
-            cactual = (Callable)self.actual
+            cactual = cast(Callable, self.actual)
             # FIX verify argument counts
             # FIX what if one of the functions is generic
-            Constraint[] res = []
+            res = [] # type: List[Constraint]
             for i in range(len(template.arg_types)):
                 # Negate constraints due function argument type contravariance.
                 res.extend(negate_constraints(infer_constraints(
@@ -194,13 +195,13 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
                                          self.direction))
             return res
         elif isinstance(self.actual, Overloaded):
-            return self.infer_against_overloaded((Overloaded)self.actual,
+            return self.infer_against_overloaded(cast(Overloaded, self.actual),
                                                  template)
         else:
             return []
 
-    Constraint[] infer_against_overloaded(self, Overloaded overloaded,
-                                          Callable template):
+    def infer_against_overloaded(self, overloaded: Overloaded,
+                                          template: Callable) -> List[Constraint]:
         # Create constraints by matching an overloaded type against a template.
         # This is tricky to do in general. We cheat by only matching against
         # the first overload item, and by only matching the return type. This
@@ -210,14 +211,14 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
         return infer_constraints(template.ret_type, item.ret_type,
                                  self.direction)
     
-    Constraint[] visit_tuple_type(self, TupleType template):
+    def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
         if (isinstance(actual, TupleType) and
-                len(((TupleType)actual).items) == len(template.items)):
-            Constraint[] res = []
+                len((cast(TupleType, actual)).items) == len(template.items)):
+            res = [] # type: List[Constraint]
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
-                                             ((TupleType)actual).items[i],
+                                             (cast(TupleType, actual)).items[i],
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):
@@ -225,21 +226,21 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
         else:
             return []
     
-    Constraint[] infer_against_any(self, Type[] types):
-        Constraint[] res = []
+    def infer_against_any(self, types: List[Type]) -> List[Constraint]:
+        res = [] # type: List[Constraint]
         for t in types:
             res.extend(infer_constraints(t, AnyType(), self.direction))
         return res
 
 
-Constraint[] negate_constraints(Constraint[] constraints):
-    Constraint[] res = []
+def negate_constraints(constraints: List[Constraint]) -> List[Constraint]:
+    res = [] # type: List[Constraint]
     for c in constraints:
         res.append(Constraint(c.type_var, neg_op(c.op), c.target))
     return res
 
 
-int neg_op(int op):
+def neg_op(op: int) -> int:
     """Map SubtypeOf to SupertypeOf and vice versa."""
     if op == SUBTYPE_OF:
         return SUPERTYPE_OF

@@ -3,9 +3,10 @@ from mypy.nodes import TypeInfo
 from mypy.semanal import self_type
 from mypy.subtypes import map_instance_to_supertype
 from mypy.maptypevar import num_slots, get_tvar_access_path
+from typing import List, Tuple
 
 
-Type[] compile_slot_mapping(TypeInfo typ):
+def compile_slot_mapping(typ: TypeInfo) -> List[Type]:
     """Return types that represent values of type variable slots of a type.
 
     The returned types are in terms of type variables of the type.
@@ -18,7 +19,7 @@ Type[] compile_slot_mapping(TypeInfo typ):
     Now slot mappings for C is [E<S>, T] (S and T refer to type variables of
     C).
     """
-    Type[] exprs = []
+    exprs = [] # type: List[Type]
     
     for slot in range(num_slots(typ)):
         # Figure out the superclass which defines the slot; also figure out
@@ -37,7 +38,7 @@ Type[] compile_slot_mapping(TypeInfo typ):
     return exprs
 
 
-tuple<TypeInfo, int> find_slot_origin(TypeInfo info, int slot):
+def find_slot_origin(info: TypeInfo, slot: int) -> Tuple[TypeInfo, int]:
     """Determine class and type variable index that directly maps to the slot.
 
     The result defines which class in inheritance hierarchy of info introduced

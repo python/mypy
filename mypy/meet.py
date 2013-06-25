@@ -5,21 +5,22 @@ from mypy.types import (
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
+from typing import cast, List
 
 
-Type meet_types(Type s, Type t, BasicTypes basic):
+def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
     if isinstance(s, AnyType) or isinstance(s, ErasedType):
         return s
     
     return t.accept(TypeMeetVisitor(s, basic))
 
 
-class TypeMeetVisitor(TypeVisitor<Type>):
-    void __init__(self, Type s, BasicTypes basic):
+class TypeMeetVisitor(TypeVisitor[Type]):
+    def __init__(self, s: Type, basic: BasicTypes) -> None:
         self.s = s
         self.basic = basic
     
-    Type visit_unbound_type(self, UnboundType t):
+    def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
         elif isinstance(self.s, NoneTyp):
@@ -27,44 +28,44 @@ class TypeMeetVisitor(TypeVisitor<Type>):
         else:
             return AnyType()
     
-    Type visit_error_type(self, ErrorType t):
+    def visit_error_type(self, t: ErrorType) -> Type:
         return t
     
-    Type visit_type_list(self, TypeList t):
+    def visit_type_list(self, t: TypeList) -> Type:
         assert False, 'Not supported'
     
-    Type visit_any(self, AnyType t):
+    def visit_any(self, t: AnyType) -> Type:
         return t
     
-    Type visit_void(self, Void t):
+    def visit_void(self, t: Void) -> Type:
         if isinstance(self.s, Void):
             return t
         else:
             return ErrorType()
     
-    Type visit_none_type(self, NoneTyp t):
+    def visit_none_type(self, t: NoneTyp) -> Type:
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             return t
         else:
             return ErrorType()
 
-    Type visit_erased_type(self, ErasedType t):
+    def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
     
-    Type visit_type_var(self, TypeVar t):
-        if isinstance(self.s, TypeVar) and ((TypeVar)self.s).id == t.id:
+    def visit_type_var(self, t: TypeVar) -> Type:
+        if isinstance(self.s, TypeVar) and (cast(TypeVar, self.s)).id == t.id:
             return self.s
         else:
             return self.default(self.s)
     
-    Type visit_instance(self, Instance t):
+    def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            si = (Instance)self.s
+            si = cast(Instance, self.s)
             if t.type == si.type:
                 if is_subtype(t, self.s):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    Type[] args = []
+                    args = [] # type: List[Type]
                     for i in range(len(t.args)):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.type, args)
@@ -81,20 +82,20 @@ class TypeMeetVisitor(TypeVisitor<Type>):
         else:
             return self.default(self.s)
     
-    Type visit_callable(self, Callable t):
+    def visit_callable(self, t: Callable) -> Type:
         if isinstance(self.s, Callable) and is_similar_callables(
-                                                        t, (Callable)self.s):
-            return combine_similar_callables(t, (Callable)self.s, self.basic)
+                                                        t, cast(Callable, self.s)):
+            return combine_similar_callables(t, cast(Callable, self.s), self.basic)
         else:
             return self.default(self.s)
     
-    Type visit_tuple_type(self, TupleType t):
-        if isinstance(self.s, TupleType) and (((TupleType)self.s).length() ==
+    def visit_tuple_type(self, t: TupleType) -> Type:
+        if isinstance(self.s, TupleType) and ((cast(TupleType, self.s)).length() ==
                                               t.length()):
-            Type[] items = []
+            items = [] # type: List[Type]
             for i in range(t.length()):
                 items.append(self.meet(t.items[i],
-                                       ((TupleType)self.s).items[i]))
+                                       (cast(TupleType, self.s)).items[i]))
             return TupleType(items)
         else:
             return self.default(self.s)

@@ -1,3 +1,5 @@
+from typing import cast, Any, List
+
 from mypy.types import (
     Callable, Type, AnyType, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR,
     replace_self_type
@@ -11,11 +13,11 @@ from mypy.sametypes import is_same_type
 from mypy.parse import none
 
 
-Callable prepend_arg_type(Callable t, Type arg_type):
+def prepend_arg_type(t: Callable, arg_type: Type) -> Callable:
     """Prepend an argument with the given type to a callable type."""
     return Callable([arg_type] + t.arg_types,
                     [nodes.ARG_POS] + t.arg_kinds,
-                    <str> [None] + t.arg_names,
+                    List[str]([None]) + t.arg_names,
                     t.ret_type,
                     t.is_type_obj(),
                     t.name,
@@ -24,7 +26,7 @@ Callable prepend_arg_type(Callable t, Type arg_type):
                     t.line, None)
 
 
-Callable add_arg_type_after_self(Callable t, Type arg_type):
+def add_arg_type_after_self(t: Callable, arg_type: Type) -> Callable:
     """Add an argument with the given type to a callable type after 'self'."""
     return Callable([t.arg_types[0], arg_type] + t.arg_types[1:],
                     [t.arg_kinds[0], nodes.ARG_POS] + t.arg_kinds[1:],
@@ -37,7 +39,7 @@ Callable add_arg_type_after_self(Callable t, Type arg_type):
                     t.line, None)
 
 
-Callable replace_ret_type(Callable t, Type ret_type):
+def replace_ret_type(t: Callable, ret_type: Type) -> Callable:
     """Return a copy of a callable type with a different return type."""
     return Callable(t.arg_types,
                     t.arg_kinds,
@@ -50,19 +52,19 @@ Callable replace_ret_type(Callable t, Type ret_type):
                     t.line, None)
 
 
-Callable dynamic_sig(Callable sig):
+def dynamic_sig(sig: Callable) -> Callable:
     """Translate callable type to type erased (dynamically-typed) callable.
 
     Preserve the number and kinds of arguments.
     """
-    return Callable(<Type> [AnyType()] * len(sig.arg_types),
+    return Callable( [AnyType()] * len(sig.arg_types),
                     sig.arg_kinds,
                     sig.arg_names,
                     AnyType(),
                     sig.is_type_obj())
 
 
-Type translate_type_vars_to_wrapper_vars(Type typ):
+def translate_type_vars_to_wrapper_vars(typ: Type) -> Type:
     """Translate any instance type variables in a type into wrapper tvars.
     
     (Wrapper tvars are type variables that refer to values stored in a generic
@@ -73,52 +75,52 @@ Type translate_type_vars_to_wrapper_vars(Type typ):
 
 class TranslateTypeVarsToWrapperVarsVisitor(TypeTranslator):
     """Visitor that implements TranslateTypeVarsToWrapperVarsVisitor."""
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0:
             return TypeVar(t.name, t.id, True, t.line, t.repr)
         else:
             return t
 
 
-Type translate_type_vars_to_bound_vars(Type typ):
+def translate_type_vars_to_bound_vars(typ: Type) -> Type:
     return typ.accept(TranslateTypeVarsToBoundVarsVisitor())
 
 
 class TranslateTypeVarsToBoundVarsVisitor(TypeTranslator):
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0:
             return TypeVar(t.name, t.id, BOUND_VAR, t.line, t.repr)
         else:
             return t
 
 
-Type translate_type_vars_to_wrapped_object_vars(Type typ):
+def translate_type_vars_to_wrapped_object_vars(typ: Type) -> Type:
     return typ.accept(TranslateTypeVarsToWrappedObjectVarsVisitor())
 
 
 class TranslateTypeVarsToWrappedObjectVarsVisitor(TypeTranslator):
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0:
             return TypeVar(t.name, t.id, OBJECT_VAR, t.line, t.repr)
         else:
             return t
 
 
-Type translate_function_type_vars_to_dynamic(Type typ):
+def translate_function_type_vars_to_dynamic(typ: Type) -> Type:
     """Translate any function type variables in a type into type 'Any'."""
     return typ.accept(TranslateFunctionTypeVarsToDynamicVisitor())
 
 
 class TranslateFunctionTypeVarsToDynamicVisitor(TypeTranslator):
     """Visitor that implements TranslateTypeVarsToWrapperVarsVisitor."""
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             return AnyType()
         else:
             return t
 
 
-bool is_generic(FuncDef fdef):
+def is_generic(fdef: FuncDef) -> bool:
     """Is a function a method of a generic type?
 
     (Note that this may return False even if the function itself is generic.)
@@ -126,7 +128,7 @@ bool is_generic(FuncDef fdef):
     return fdef.info is not None and fdef.info.type_vars != []
 
 
-bool is_simple_override(FuncDef fdef, TypeInfo info):
+def is_simple_override(fdef: FuncDef, info: TypeInfo) -> bool:
     """Is function an override with the same type precision as the original?
     
     Compare to the original method in the superclass of info.
@@ -143,14 +145,14 @@ bool is_simple_override(FuncDef fdef, TypeInfo info):
     orig = base.get_method(fdef.name())
     # Ignore the first argument (self) when determining type sameness.
     # TODO overloads
-    newtype = (Callable)function_type(fdef)
+    newtype = cast(Callable, function_type(fdef))
     newtype = replace_self_type(newtype, AnyType())
-    origtype = (Callable)function_type(orig)
+    origtype = cast(Callable, function_type(orig))
     origtype = replace_self_type(origtype, AnyType())
     return is_same_type(newtype, origtype)
 
 
-str tvar_slot_name(int n, any is_alt=False):
+def tvar_slot_name(n: int, is_alt: Any = False) -> str:
     """Return the name of the member that holds the runtime value of the given
     type variable slot.
     """
@@ -167,7 +169,7 @@ str tvar_slot_name(int n, any is_alt=False):
             return '__btv{}'.format(n + 1)
 
 
-str tvar_arg_name(int n, any is_alt=False):
+def tvar_arg_name(n: int, is_alt: Any = False) -> str:
     """Return the name of the implicit function/constructor argument that
     contains the runtime value of a type variable. n is 1, 2, ... for instance
     type variables and -1, -2, ... for function type variables.
@@ -190,7 +192,7 @@ str tvar_arg_name(int n, any is_alt=False):
             return '__bftv{}'.format(-n) # FIX do we need this?
 
 
-str dynamic_suffix(bool is_pretty):
+def dynamic_suffix(is_pretty: bool) -> str:
     """Return the suffix of the dynamic wrapper of a method or class."""
     if is_pretty:
         return '*'
@@ -198,7 +200,7 @@ str dynamic_suffix(bool is_pretty):
         return '___dyn'
 
 
-NameExpr self_expr():
+def self_expr() -> NameExpr:
     n = NameExpr('self')
     n.kind = LDEF
     return n

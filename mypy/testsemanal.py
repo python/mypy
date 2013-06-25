@@ -7,6 +7,7 @@ from mypy.testdata import parse_test_cases
 from mypy.errors import CompileError
 from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.nodes import TypeInfo
+from typing import Dict, List
 
 
 # Semantic analyser test cases: dump parse tree
@@ -181,9 +182,9 @@ class SemAnalTypeInfoSuite(Suite):
                 testcase.file, testcase.line))
 
 
-class TypeInfoMap(dict<str, TypeInfo>):
-    str __str__(self):
-        a = <str> ['TypeInfoMap(']
+class TypeInfoMap(Dict[str, TypeInfo]):
+    def __str__(self) -> str:
+        a = ['TypeInfoMap('] # type: List[str]
         for x, y in sorted(self.items()):
             if isinstance(x, str) and (not x.startswith('builtins.') and
                                        not x.startswith('typing.') and

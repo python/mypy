@@ -161,7 +161,7 @@ class ImportAll(Node):
 class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
     type = None # type: mypy.types.Type # Type signature (Callable or Overloaded)
-    info = Undefined # type: TypeInfo    # If method, reference to TypeInfo
+    info = None # type: TypeInfo    # If method, reference to TypeInfo
     def name(self) -> str:
         pass
     def fullname(self) -> str:
@@ -326,7 +326,7 @@ class Var(SymbolNode):
     _name = None # type: str       # Name without module prefix
     _fullname = None # type: str   # Name with module prefix
     info = Undefined # type: TypeInfo    # Defining class (for member variables)
-    type = Undefined # type: mypy.types.Type # Declared or inferred type, or None if none
+    type = None # type: mypy.types.Type # Declared or inferred type, or None if none
     is_self = False     # Is this the first argument to an ordinary method
                      # (usually "self")?
     is_ready = False    # If inferred, is the inferred type available?
@@ -355,12 +355,12 @@ class Var(SymbolNode):
 class TypeDef(Node):
     """Class definition"""
     name = Undefined # type: str        # Name of the class without module prefix
-    fullname = Undefined # type: str    # Fully qualified name of the class
+    fullname = None # type: str    # Fully qualified name of the class
     defs = Undefined # type: Block
     type_vars = Undefined # type: mypy.types.TypeVars
     # Base classes (Instance or UnboundType).
     base_types = Undefined # type: List[mypy.types.Type]
-    info = Undefined # type: TypeInfo    # Related TypeInfo
+    info = None # type: TypeInfo    # Related TypeInfo
     metaclass = ''
     
     def __init__(self, name: str, defs: 'Block',
@@ -463,7 +463,7 @@ class AssignmentStmt(Node):
     """
     lvalues = Undefined # type: List[Node]
     rvalue = Undefined # type: Node
-    type = Undefined # type: mypy.types.Type    # Declared type in a comment, may be None.
+    type = None # type: mypy.types.Type    # Declared type in a comment, may be None.
     
     def __init__(self, lvalues: List[Node], rvalue: Node,
                   type: 'mypy.types.Type' = None) -> None:
@@ -852,7 +852,7 @@ class OpExpr(Node):
     right = Undefined # type: Node
     # Inferred type for the operator method type (when relevant; None for
     # 'is').
-    method_type = Undefined # type: 'mypy.types.Type'
+    method_type = None # type: 'mypy.types.Type'
     
     def __init__(self, op: str, left: Node, right: Node) -> None:
         self.op = op

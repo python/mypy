@@ -5,10 +5,11 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_proper_subtype
 from mypy.rttypevars import translate_runtime_type_vars_in_context
+from typing import cast
 
 
-Node coerce(Node expr, Type target_type, Type source_type, TypeInfo context,
-            bool is_wrapper_class=False, bool is_java=False):
+def coerce(expr: Node, target_type: Type, source_type: Type, context: TypeInfo,
+            is_wrapper_class: bool = False, is_java: bool = False) -> Node:
     """Build an expression that coerces expr from source_type to target_type.
 
     Return bare expr if the coercion is trivial (always a no-op).
@@ -25,7 +26,7 @@ Node coerce(Node expr, Type target_type, Type source_type, TypeInfo context,
         res = CoerceExpr(expr, target, source, is_wrapper_class)
     
     if is_java and ((isinstance(source_type, Instance) and
-                     ((Instance)source_type).erased)
+                     (cast(Instance, source_type)).erased)
                     or (isinstance(res, CoerceExpr) and
                         isinstance(target_type, Instance))):
         res = JavaCast(res, target_type)
@@ -33,7 +34,7 @@ Node coerce(Node expr, Type target_type, Type source_type, TypeInfo context,
     return res                  
 
 
-bool is_trivial_coercion(Type target_type, Type source_type, bool is_java):
+def is_trivial_coercion(target_type: Type, source_type: Type, is_java: bool) -> bool:
     """Is an implicit coercion from source_type to target_type a no-op?
 
     Note that we omit coercions of form any <= C, unless C is a primitive that
@@ -53,7 +54,7 @@ bool is_trivial_coercion(Type target_type, Type source_type, bool is_java):
             or isinstance(target_type, AnyType))
 
 
-bool is_special_primitive(Type type):
+def is_special_primitive(type: Type) -> bool:
     """Is type a primitive with a special runtime representation?
 
     There needs to be explicit corcions to/from special primitive types. For
@@ -61,6 +62,6 @@ bool is_special_primitive(Type type):
     int, float and bool.
     """
     return (isinstance(type, Instance)
-            and ((Instance)type).type.fullname() in ['builtins.int',
+            and (cast(Instance, type)).type.fullname() in ['builtins.int',
                                                      'builtins.float',
                                                      'builtins.bool'])

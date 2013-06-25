@@ -27,6 +27,7 @@ from mypy import cgen
 from mypy import icode
 from mypy import parse
 from mypy import transform
+from typing import Undefined, Dict, List, Tuple, cast, Set
 
 
 debug = False
@@ -68,37 +69,37 @@ TYPE_CHECKED_STATE = 5
 final_state = TYPE_CHECKED_STATE
 
 
-bool earlier_state(int s, int t):
+def earlier_state(s: int, t: int) -> bool:
     return s < t
 
 
 class BuildResult:
     """The result of a successful build."""
     # Map module name to related AST node.
-    dict<str, MypyFile> files
+    files = Undefined # type: Dict[str, MypyFile]
     # Map parse tree node to its inferred type.
-    dict<Node, Type> types
+    types = Undefined # type: Dict[Node, Type]
     # Icode for functions
-    dict<str, FuncIcode> icode
+    icode = Undefined # type: Dict[str, FuncIcode]
     # Path of generated binary file (for the C back end, None otherwise)
-    str binary_path
+    binary_path = ''
 
-    void __init__(self, dict<str, MypyFile> files, dict<Node, Type> types,
-                  dict<str, FuncIcode> icode, str binary_path):
+    def __init__(self, files: Dict[str, MypyFile], types: Dict[Node, Type],
+                  icode: Dict[str, FuncIcode], binary_path: str) -> None:
         self.files = files
         self.types = types
         self.icode = icode
         self.binary_path = binary_path
 
 
-BuildResult build(str program_path,
-                  int target,
-                  str module=None,
-                  str program_text=None,
-                  str alt_lib_path=None,
-                  str mypy_base_dir=None,
-                  str output_dir=None,
-                  str[] flags=None):
+def build(program_path: str,
+                  target: int,
+                  module: str = None,
+                  program_text: str = None,
+                  alt_lib_path: str = None,
+                  mypy_base_dir: str = None,
+                  output_dir: str = None,
+                  flags: List[str] = None) -> BuildResult:
     """Build a mypy program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -134,7 +135,7 @@ BuildResult build(str program_path,
             mypy_base_dir = dirname(mypy_base_dir)
             
     # Determine the default module search path.
-    str[] lib_path = default_lib_path(mypy_base_dir, target)
+    lib_path = default_lib_path(mypy_base_dir, target) # type: List[str]
     
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -173,10 +174,10 @@ BuildResult build(str program_path,
     return manager.process(UnprocessedFile(info, program_text))
 
 
-str[] default_lib_path(str mypy_base_dir, int target):
+def default_lib_path(mypy_base_dir: str, target: int) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
-    str[] path = []
+    path = [] # type: List[str]
     
     # Add MYPYPATH environment variable to library path, if defined.
     path_env = os.getenv('MYPYPATH')
@@ -199,7 +200,7 @@ str[] default_lib_path(str mypy_base_dir, int target):
     return path
 
 
-str lookup_program(str module, str[] lib_path):
+def lookup_program(module: str, lib_path: List[str]) -> str:
     path = find_module(module, lib_path)
     if path:
         return path
@@ -208,7 +209,7 @@ str lookup_program(str module, str[] lib_path):
             "mypy: can't find module '{}'".format(module)])
 
 
-str read_program(str path):
+def read_program(path: str) -> str:
     try:
         f = open(path)
         text = f.read()
@@ -226,34 +227,34 @@ class BuildManager:
     type checking. It manages state objects that actually perform the
     build steps.
     """
-    str mypy_base_dir     # Mypy installation directory (contains mypy.py)
-    int target            # Build target; selects which passes to perform
-    str[] lib_path        # Library path for looking up modules
-    SemanticAnalyzer semantic_analyzer # Semantic analyzer
-    ThirdPass semantic_analyzer_pass3  # Semantic analyzer, pass 3
-    TypeChecker type_checker      # Type checker
-    Errors errors                 # For reporting all errors
-    str output_dir                # Store output files here (Python)
-    str[] flags                   # Build options
+    mypy_base_dir = ''     # Mypy installation directory (contains mypy.py)
+    target = 0            # Build target; selects which passes to perform
+    lib_path = Undefined # type: List[str]        # Library path for looking up modules
+    semantic_analyzer = Undefined # type: SemanticAnalyzer # Semantic analyzer
+    semantic_analyzer_pass3 = Undefined # type: ThirdPass  # Semantic analyzer, pass 3
+    type_checker = Undefined # type: TypeChecker      # Type checker
+    errors = Undefined # type: Errors                 # For reporting all errors
+    output_dir = ''                # Store output files here (Python)
+    flags = Undefined # type: List[str]                   # Build options
     
     # States of all individual files that are being processed. Each file in a
     # build is always represented by a single state object (after it has been
     # encountered for the first time). This is the only place where states are
     # stored.
-    State[] states
+    states = Undefined # type: List[State]
     # Map from module name to source file path. There is a 1:1 mapping between
     # modules and source files.
-    dict<str, str> module_files
+    module_files = Undefined # type: Dict[str, str]
     
-    dict<str, FuncIcode> icode
-    str binary_path
+    icode = Undefined # type: Dict[str, FuncIcode]
+    binary_path = ''
 
     # Cache for module dependencies (direct or indirect). Item (m, n)
     # indicates whether m depends on n (directly or indirectly).
-    dict<tuple<str, str>, bool> module_deps
+    module_deps = Undefined # type: Dict[Tuple[str, str], bool]
     
-    void __init__(self, str mypy_base_dir, str[] lib_path, int target,
-                  str output_dir, str[] flags):
+    def __init__(self, mypy_base_dir: str, lib_path: List[str], target: int,
+                  output_dir: str, flags: List[str]) -> None:
         self.mypy_base_dir = mypy_base_dir
         self.errors = Errors()
         self.lib_path = lib_path
@@ -270,7 +271,7 @@ class BuildManager:
         self.binary_path = None
         self.module_deps = {}
     
-    BuildResult process(self, UnprocessedFile initial_state):
+    def process(self, initial_state: 'UnprocessedFile') -> BuildResult:
         """Perform a build.
 
         The argument is a state that represents the main program
@@ -313,9 +314,9 @@ class BuildManager:
                 '{} still unprocessed'.format(s.path))
         
         # Collect a list of all files.
-        MypyFile[] trees = []
+        trees = [] # type: List[MypyFile]
         for state in self.states:
-            trees.append(((ParsedFile)state).tree)
+            trees.append((cast('ParsedFile', state)).tree)
 
         # Perform any additional passes after type checking for all the files.
         self.final_passes(trees, self.type_checker.type_map)
@@ -324,7 +325,7 @@ class BuildManager:
                            self.type_checker.type_map,
                            self.icode, self.binary_path)
     
-    State next_available_state(self):
+    def next_available_state(self) -> 'State':
         """Find a ready state (one that has all its dependencies met)."""
         i = len(self.states) - 1
         while i >= 0:
@@ -336,11 +337,11 @@ class BuildManager:
             i -= 1
         return None
     
-    bool has_module(self, str name):
+    def has_module(self, name: str) -> bool:
         """Have we seen a module yet?"""
         return name in self.module_files
     
-    int file_state(self, str path):
+    def file_state(self, path: str) -> int:
         """Return the state of a source file.
 
         In particular, return UNSEEN_STATE if the file has no associated
@@ -353,7 +354,7 @@ class BuildManager:
                 return s.state()
         return UNSEEN_STATE
     
-    int module_state(self, str name):
+    def module_state(self, name: str) -> int:
         """Return the state of a module.
 
         In particular, return UNSEEN_STATE if the file has no associated
@@ -369,7 +370,7 @@ class BuildManager:
             state = fs
         return state
 
-    bool is_dep(self, str m1, str m2, set<str> done=None):
+    def is_dep(self, m1: str, m2: str, done: Set[str] = None) -> bool:
         """Does m1 import m2 directly or indirectly?"""
         # Have we computed this previously?
         dep = self.module_deps.get((m1, m2))
@@ -396,26 +397,26 @@ class BuildManager:
         self.module_deps[m1, m2] = False
         return False
 
-    State lookup_state(self, str module):
+    def lookup_state(self, module: str) -> 'State':
         for state in self.states:
             if state.id == module:
                 return state
         raise RuntimeError('%s not found' % str)
     
-    tuple<str, int>[] all_imported_modules_in_file(self, MypyFile file):
+    def all_imported_modules_in_file(self, file: MypyFile) -> List[Tuple[str, int]]:
         """Find all import statements in a file.
 
         Return list of tuples (module id, import line number) for all modules
         imported in file.
         """
         # TODO also find imports not at the top level of the file
-        res = <tuple<str, int>> []
+        res = [] # type: List[Tuple[str, int]]
         for d in file.imports:
             if isinstance(d, Import):
-                for id, _ in ((Import)d).ids:
+                for id, _ in (cast(Import, d)).ids:
                     res.append((id, d.line))
             elif isinstance(d, ImportFrom):
-                imp = (ImportFrom)d
+                imp = cast(ImportFrom, d)
                 res.append((imp.id, imp.line))
                 # Also add any imported names that are submodules.
                 for name, __ in imp.names:
@@ -423,14 +424,14 @@ class BuildManager:
                     if self.is_module(sub_id):
                         res.append((sub_id, imp.line))
             elif isinstance(d, ImportAll):
-                res.append((((ImportAll)d).id, d.line))
+                res.append(((cast(ImportAll, d)).id, d.line))
         return res
     
-    bool is_module(self, str id):
+    def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
-    void final_passes(self, MypyFile[] files, dict<Node, Type> types):
+    def final_passes(self, files: List[MypyFile], types: Dict[Node, Type]) -> None:
         """Perform the code generation passes for type checked files."""
         if self.target == TRANSFORM:
             self.transform(files)
@@ -446,7 +447,7 @@ class BuildManager:
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
-    str get_python_out_path(self, MypyFile f):
+    def get_python_out_path(self, f: MypyFile) -> str:
         if f.fullname() == '__main__':
             return os.path.join(self.output_dir, basename(f.path))
         else:
@@ -457,7 +458,7 @@ class BuildManager:
                 components[-1] += '.py'
             return os.path.join(self.output_dir, *components)
 
-    void transform(self, MypyFile[] files):
+    def transform(self, files: List[MypyFile]) -> None:
         for f in files:
             if f.fullname() == 'typing':
                 # The typing module is special and is currently not
@@ -470,7 +471,7 @@ class BuildManager:
                 is_pretty=True)
             f.accept(v)
 
-    void generate_icode(self, MypyFile[] files, dict<Node, Type> types):
+    def generate_icode(self, files: List[MypyFile], types: Dict[Node, Type]) -> None:
         builder = icode.IcodeBuilder(types)
         for f in files:
             # TODO remove ugly builtins hack
@@ -478,7 +479,7 @@ class BuildManager:
                 f.accept(builder)
         self.icode = builder.generated
 
-    void generate_c_and_compile(self, MypyFile[] files):
+    def generate_c_and_compile(self, files: List[MypyFile]) -> None:
         gen = cgen.CGenerator()
         
         for fn, icode in self.icode.items():
@@ -510,12 +511,12 @@ class BuildManager:
             os.remove(c_file)
             self.binary_path = os.path.join('.', program_name)
 
-    void log(self, str message):
+    def log(self, message: str) -> None:
         if VERBOSE in self.flags:
             print('LOG: %s' % message)
 
 
-str remove_cwd_prefix_from_path(str p):
+def remove_cwd_prefix_from_path(p: str) -> str:
     """Remove current working directory prefix from p, if present.
 
     If the result would be empty, return '.' instead.
@@ -533,7 +534,7 @@ str remove_cwd_prefix_from_path(str p):
     return p
 
 
-bool is_stub(str path):
+def is_stub(path: str) -> bool:
     """Does path refer to a stubs file?
 
     Currently check if there is a 'stubs' directory component somewhere
@@ -550,17 +551,17 @@ bool is_stub(str path):
 class StateInfo:
     """Description of a source file that is being built."""
     # Path to the file
-    str path
+    path = ''
     # Module id, such as 'os.path' or '__main__' (for the main program file)
-    str id
+    id = ''
     # The import trail that caused this module to be imported (path, line)
     # tuples
-    tuple<str, int>[] import_context
+    import_context = Undefined # type: List[Tuple[str, int]]
     # The manager that manages this build
-    BuildManager manager
+    manager = Undefined # type: BuildManager
     
-    void __init__(self, str path, str id, tuple<str, int>[] import_context,
-                  BuildManager manager):
+    def __init__(self, path: str, id: str, import_context: List[Tuple[str, int]],
+                  manager: BuildManager) -> None:
         self.path = path
         self.id = id
         self.import_context = import_context
@@ -574,27 +575,27 @@ class State:
     """
 
     # The StateInfo attributes are duplicated here for convenience.
-    str path
-    str id   # Module id
-    tuple<str, int>[] import_context
-    BuildManager manager
+    path = ''
+    id = ''   # Module id
+    import_context = Undefined # type: List[Tuple[str, int]]
+    manager = Undefined # type: BuildManager
     # Modules that this file directly depends on (in no particular order).
-    str[] dependencies
+    dependencies = Undefined # type: List[str]
     
-    void __init__(self, StateInfo info):
+    def __init__(self, info: StateInfo) -> None:
         self.path = info.path
         self.id = info.id
         self.import_context = info.import_context
         self.manager = info.manager
         self.dependencies = []
     
-    StateInfo info(self):
+    def info(self) -> StateInfo:
         return StateInfo(self.path, self.id, self.import_context, self.manager)
     
-    void process(self):
+    def process(self) -> None:
         raise RuntimeError('Not implemented')
     
-    bool is_ready(self):
+    def is_ready(self) -> bool:
         """Return True if all dependencies are at least in the same state
         as this object (but not in the initial state).
         """
@@ -605,14 +606,14 @@ class State:
                 return False
         return True
 
-    int num_incomplete_deps(self):
+    def num_incomplete_deps(self) -> int:
         """Return the number of dependencies that are ready but incomplete."""
         return 0 # Does not matter in this state
     
-    int state(self):
+    def state(self) -> int:
         raise RuntimeError('Not implemented')
     
-    void switch_state(self, State state_object):
+    def switch_state(self, state_object: 'State') -> None:
         """Called by state objects to replace the state of the file.
 
         Also notify the manager.
@@ -623,28 +624,28 @@ class State:
                 return 
         raise RuntimeError('State for {} not found'.format(state_object.path))
     
-    Errors errors(self):
+    def errors(self) -> Errors:
         return self.manager.errors
     
-    SemanticAnalyzer semantic_analyzer(self):
+    def semantic_analyzer(self) -> SemanticAnalyzer:
         return self.manager.semantic_analyzer
     
-    ThirdPass semantic_analyzer_pass3(self):
+    def semantic_analyzer_pass3(self) -> ThirdPass:
         return self.manager.semantic_analyzer_pass3
     
-    TypeChecker type_checker(self):
+    def type_checker(self) -> TypeChecker:
         return self.manager.type_checker
     
-    void fail(self, str path, int line, str msg):
+    def fail(self, path: str, line: int, msg: str) -> None:
         """Report an error in the build (e.g. if could not find a module)."""
         self.errors().set_file(path)
         self.errors().report(line, msg)
 
 
 class UnprocessedFile(State):
-    str program_text # Program text (or None to read from file)
+    program_text = '' # Program text (or None to read from file)
     
-    void __init__(self, StateInfo info, str program_text):
+    def __init__(self, info: StateInfo, program_text: str) -> None:
         super().__init__(info)
         self.program_text = program_text
         trace('waiting {}'.format(info.path))
@@ -657,7 +658,7 @@ class UnprocessedFile(State):
                 self.fail(self.path, 1, "No module named '{}'".format(p))
             self.dependencies.append(p)
     
-    void process(self):
+    def process(self) -> None:
         """Parse the file, store global names and advance to the next state."""
         tree = self.parse(self.program_text, self.path)
 
@@ -701,7 +702,7 @@ class UnprocessedFile(State):
         # Replace this state object with a parsed state in BuildManager.
         self.switch_state(ParsedFile(self.info(), tree))
     
-    bool import_module(self, str id):
+    def import_module(self, id: str) -> bool:
         """Schedule a module to be processed.
 
         Add an unprocessed state object corresponding to the module to the
@@ -721,7 +722,7 @@ class UnprocessedFile(State):
         else:
             return False
     
-    MypyFile parse(self, str source_text, str fnam):
+    def parse(self, source_text: str, fnam: str) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
@@ -733,19 +734,19 @@ class UnprocessedFile(State):
             self.errors().raise_error()
         return tree
     
-    int state(self):
+    def state(self) -> int:
         return UNPROCESSED_STATE
 
 
 class ParsedFile(State):
-    MypyFile tree
+    tree = Undefined # type: MypyFile
     
-    void __init__(self, StateInfo info, MypyFile tree):
+    def __init__(self, info: StateInfo, tree: MypyFile) -> None:
         super().__init__(info)
         self.tree = tree
 
         # Build a list all directly imported moules (dependencies).
-        str[] imp = []
+        imp = [] # type: List[str]
         for id, line in self.manager.all_imported_modules_in_file(tree):
             imp.append(id)
         if self.id != 'builtins':
@@ -759,13 +760,13 @@ class ParsedFile(State):
         # os.path).
         self.dependencies.extend(imp)
     
-    void process(self):
+    def process(self) -> None:
         """Semantically analyze file and advance to the next state."""
         self.semantic_analyzer().visit_file(self.tree, self.tree.path)
         self.switch_state(PartiallySemanticallyAnalyzedFile(self.info(),
                                                             self.tree))
         
-    int num_incomplete_deps(self):        
+    def num_incomplete_deps(self) -> int:        
         """Return the number of dependencies that are incomplete.
 
         Here complete means that their state is *later* than this module.
@@ -780,22 +781,22 @@ class ParsedFile(State):
                 incomplete += 1
         return incomplete
     
-    int state(self):
+    def state(self) -> int:
         return PARSED_STATE
 
 
 class PartiallySemanticallyAnalyzedFile(ParsedFile):
-    void process(self):
+    def process(self) -> None:
         """Perform final pass of semantic analysis and advance state."""
         self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
 
-    int state(self):
+    def state(self) -> int:
         return PARTIAL_SEMANTIC_ANALYSIS_STATE
 
 
 class SemanticallyAnalyzedFile(ParsedFile):
-    void process(self):
+    def process(self) -> None:
         """Type check file and advance to the next state."""
         if self.manager.target >= TYPE_CHECK:
             self.type_checker().visit_file(self.tree, self.tree.path)
@@ -804,20 +805,20 @@ class SemanticallyAnalyzedFile(ParsedFile):
         
         self.switch_state(TypeCheckedFile(self.info(), self.tree))
     
-    int state(self):
+    def state(self) -> int:
         return SEMANTICALLY_ANALYSED_STATE
 
 
 class TypeCheckedFile(SemanticallyAnalyzedFile):
-    void process(self):
+    def process(self) -> None:
         """Finished, so cannot process."""
         raise RuntimeError('Cannot process TypeCheckedFile')
     
-    bool is_ready(self):
+    def is_ready(self) -> bool:
         """Finished, so cannot ever become ready."""
         return False
     
-    int state(self):
+    def state(self) -> int:
         return TYPE_CHECKED_STATE
 
 
@@ -826,7 +827,7 @@ def trace(s):
         print(s)
 
 
-tuple<str, str> read_module_source_from_file(str id, str[] lib_path):
+def read_module_source_from_file(id: str, lib_path: List[str]) -> Tuple[str, str]:
     """Find and read the source file of a module.
 
     Return a pair (path, file contents). Return (None, None) if the module
@@ -838,7 +839,7 @@ tuple<str, str> read_module_source_from_file(str id, str[] lib_path):
     """
     path = find_module(id, lib_path)
     if path is not None:
-        str text
+        text = ''
         try:
             f = open(path)
             try:
@@ -852,12 +853,12 @@ tuple<str, str> read_module_source_from_file(str id, str[] lib_path):
         return None, None
 
 
-str find_module(str id, str[] lib_path):
+def find_module(id: str, lib_path: List[str]) -> str:
     """Return the path of the module source file, or None if not found."""
     for pathitem in lib_path:
         comp = id.split('.')
         path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + '.py')
-        str text
+        text = ''
         if not os.path.isfile(path):
             path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
         if os.path.isfile(path) and verify_module(id, path):
@@ -865,7 +866,7 @@ str find_module(str id, str[] lib_path):
     return None
 
 
-bool verify_module(str id, str path):
+def verify_module(id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith('__init__.py'):
         path = dirname(path)
@@ -876,16 +877,16 @@ bool verify_module(str id, str path):
     return True
 
 
-str[] super_packages(str id):
+def super_packages(id: str) -> List[str]:
     """Return the surrounding packages of a module, e.g. ['os'] for os.path."""
     c = id.split('.')
-    str[] res = []
+    res = [] # type: List[str]
     for i in range(1, len(c)):
         res.append('.'.join(c[:i]))
     return res
 
 
-void make_parent_dirs(str path):
+def make_parent_dirs(path: str) -> None:
     parent = os.path.dirname(path)
     try:
         os.makedirs(parent)

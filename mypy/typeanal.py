@@ -7,20 +7,18 @@ from mypy.types import (
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
 from mypy import nodes
+from typing import Undefined, Function, cast, List, Tuple
 
 
-class TypeAnalyser(TypeVisitor<Type>):
+class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
-    func<SymbolTableNode(str, Context)> lookup
-    func<void(str, Context)> fail
-    
-    void __init__(self, func<SymbolTableNode(str, Context)> lookup_func,
-                  func<void(str, Context)> fail_func):
+    def __init__(self, lookup_func: Function[[str, Context], SymbolTableNode],
+                  fail_func: Function[[str, Context], None]) -> None:
         self.lookup = lookup_func
         self.fail = fail_func
     
-    Type visit_unbound_type(self, UnboundType t):
+    def visit_unbound_type(self, t: UnboundType) -> Type:
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.kind == TVAR:
@@ -46,7 +44,7 @@ class TypeAnalyser(TypeVisitor<Type>):
                     name = sym.node.name()
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
-            info = (TypeInfo)sym.node
+            info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args), t.line, t.repr)
             else:
@@ -59,25 +57,25 @@ class TypeAnalyser(TypeVisitor<Type>):
         else:
             return t
     
-    Type visit_any(self, AnyType t):
+    def visit_any(self, t: AnyType) -> Type:
         return t
     
-    Type visit_void(self, Void t):
+    def visit_void(self, t: Void) -> Type:
         return t
     
-    Type visit_none_type(self, NoneTyp t):
+    def visit_none_type(self, t: NoneTyp) -> Type:
         return t
 
-    Type visit_type_list(self, TypeList t):
+    def visit_type_list(self, t: TypeList) -> Type:
         self.fail('Invalid type', t)
     
-    Type visit_instance(self, Instance t):
+    def visit_instance(self, t: Instance) -> Type:
         return t
     
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         raise RuntimeError('TypeVar is already analysed')
     
-    Type visit_callable(self, Callable t):
+    def visit_callable(self, t: Callable) -> Type:
         res = Callable(self.anal_array(t.arg_types),
                        t.arg_kinds,
                        t.arg_names,
@@ -89,45 +87,44 @@ class TypeAnalyser(TypeVisitor<Type>):
         
         return res
     
-    Type visit_tuple_type(self, TupleType t):
+    def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.anal_array(t.items), t.line, t.repr)
 
-    Type analyze_function_type(self, UnboundType t):
+    def analyze_function_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
             self.fail('Invalid function type', t)
         if not isinstance(t.args[0], TypeList):
             self.fail('Invalid function type', t)
             return AnyType()
-        args = ((TypeList)t.args[0]).items
+        args = (cast(TypeList, t.args[0])).items
         return Callable(self.anal_array(args),
-                        [nodes.ARG_POS] * len(args),
-                        <str> [None] * len(args),
+                        [nodes.ARG_POS] * len(args), [None] * len(args),
                         ret_type=t.args[1].accept(self),
                         is_type_obj=False)
     
-    Type[] anal_array(self, Type[] a):
-        Type[] res = []
+    def anal_array(self, a: List[Type]) -> List[Type]:
+        res = [] # type: List[Type]
         for t in a:
             res.append(t.accept(self))
         return res
     
-    tuple<int, Type>[] anal_bound_vars(self, tuple<int, Type>[] a):
-        res = <tuple<int, Type>> []
+    def anal_bound_vars(self, a: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
+        res = [] # type: List[Tuple[int, Type]]
         for id, t in a:
             res.append((id, t.accept(self)))
         return res
     
-    TypeVars anal_var_defs(self, TypeVars var_defs):
-        TypeVarDef[] a = []
+    def anal_var_defs(self, var_defs: TypeVars) -> TypeVars:
+        a = [] # type: List[TypeVarDef]
         for vd in var_defs.items:
-            Type bound = None
+            bound = None # type: Type
             if vd.bound is not None:
                 bound = vd.bound.accept(self)
             a.append(TypeVarDef(vd.name, vd.id, bound, vd.line, vd.repr))
         return TypeVars(a, var_defs.repr)
 
 
-class TypeAnalyserPass3(TypeVisitor<void>):
+class TypeAnalyserPass3(TypeVisitor[None]):
     """Analyze type argument counts of types.
 
     This is semantic analysis pass 3 for types.
@@ -144,16 +141,16 @@ class TypeAnalyserPass3(TypeVisitor<void>):
     to types.
     """
 
-    void __init__(self, func<void(str, Context)> fail_func):
+    def __init__(self, fail_func: Function[[str, Context], None]) -> None:
         self.fail = fail_func
     
-    void visit_instance(self, Instance t):
+    def visit_instance(self, t: Instance) -> None:
         info = t.type
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 # Implicit 'Any' type arguments.
                 # TODO remove <Type> below
-                t.args = <Type> [AnyType()] * len(info.type_vars)
+                t.args = [AnyType()] * len(info.type_vars)
                 return
             # Invalid number of type parameters.
             n = len(info.type_vars)
@@ -170,31 +167,31 @@ class TypeAnalyserPass3(TypeVisitor<void>):
         for arg in t.args:
             arg.accept(self)
 
-    void visit_callable(self, Callable t):
+    def visit_callable(self, t: Callable) -> None:
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)
     
-    void visit_tuple_type(self, TupleType t):
+    def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
 
     # Other kinds of type are trivial, since they are atomic (or invalid).
 
-    void visit_unbound_type(self, UnboundType t):
+    def visit_unbound_type(self, t: UnboundType) -> None:
         pass
     
-    void visit_any(self, AnyType t):
+    def visit_any(self, t: AnyType) -> None:
         pass
     
-    void visit_void(self, Void t):
+    def visit_void(self, t: Void) -> None:
         pass
     
-    void visit_none_type(self, NoneTyp t):
+    def visit_none_type(self, t: NoneTyp) -> None:
         pass
 
-    void visit_type_list(self, TypeList t):
+    def visit_type_list(self, t: TypeList) -> None:
         self.fail('Invalid type', t)
     
-    void visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> None:
         pass

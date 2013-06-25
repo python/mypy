@@ -9,9 +9,10 @@ from mypy.types import Type, TypeTranslator, TypeVar, RuntimeTypeVar
 from mypy.nodes import NameExpr, TypeInfo
 from mypy.transutil import tvar_arg_name
 from mypy.maptypevar import get_tvar_access_expression
+from typing import Any
 
 
-Type translate_runtime_type_vars_locally(Type typ):
+def translate_runtime_type_vars_locally(typ: Type) -> Type:
     """Replace type variable references in a type with runtime type variables.
 
     The type variable references refer to runtime local variables (__tv* etc.),
@@ -22,13 +23,13 @@ Type translate_runtime_type_vars_locally(Type typ):
 
 class TranslateRuntimeTypeVarsLocallyVisitor(TypeTranslator):
     """Reuse most of the implementation by inheriting TypeTranslator."""
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         # FIX function type variables
         return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))
 
 
-Type translate_runtime_type_vars_in_context(Type typ, TypeInfo context,
-                                           any is_java):
+def translate_runtime_type_vars_in_context(typ: Type, context: TypeInfo,
+                                           is_java: Any) -> Type:
     """Replace type variable types within a type with runtime type variables.
 
     Perform the translation in the context of the given type.
@@ -47,7 +48,7 @@ class ContextualRuntimeTypeVarTranslator(TypeTranslator):
         self.context = context
         self.is_java = is_java
     
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             # Generic function type variable; always in a local variable.
             return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))

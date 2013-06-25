@@ -1,9 +1,10 @@
 from mypy.lex import Token
 from mypy.types import Type, AnyType, NoneTyp, TypeTranslator, TypeVar
 from mypy.typerepr import AnyRepr
+import typing
 
 
-Type replace_type_vars(Type typ, bool func_tvars=True):
+def replace_type_vars(typ: Type, func_tvars: bool = True) -> Type:
     """Replace type variable references in a type with the Any type. If
     func_tvars is false, only replace instance type variables.
     """
@@ -14,12 +15,12 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
     # Only override type variable handling; otherwise perform an indentity
     # transformation.
     
-    bool func_tvars
+    func_tvars = False
     
-    void __init__(self, bool func_tvars):
+    def __init__(self, func_tvars: bool) -> None:
         self.func_tvars = func_tvars
     
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0 or self.func_tvars:
             if t.repr is not None:
                 # Give a representation for the dynamic type.
@@ -32,16 +33,16 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
             return t
 
 
-Type replace_func_type_vars(Type typ, Type target_type):
+def replace_func_type_vars(typ: Type, target_type: Type) -> Type:
     """Replace function type variables in a type with the target type."""
     return typ.accept(ReplaceFuncTypeVarsVisitor(target_type))
 
 
 class ReplaceFuncTypeVarsVisitor(TypeTranslator):
-    void __init__(self, Type target_type):
+    def __init__(self, target_type: Type) -> None:
         self.target_type = target_type
     
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             return self.target_type
         else:

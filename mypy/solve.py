@@ -3,28 +3,29 @@ from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
+from typing import List, Dict
 
 
-Type[] solve_constraints(int[] vars, Constraint[] constraints,
-                         BasicTypes basic):
+def solve_constraints(vars: List[int], constraints: List[Constraint],
+                         basic: BasicTypes) -> List[Type]:
     """Solve type constraints.
 
     Return lower bound for each type variable or None if the variable could
     not be solved.
     """
     # Collect a list of constraints for each type variable.
-    dict<int, Constraint[]> cmap = {}
+    cmap = {} # type: Dict[int, List[Constraint]]
     for con in constraints:
         a = cmap.get(con.type_var, [])
         a.append(con)
         cmap[con.type_var] = a
     
-    Type[] res = []
+    res = [] # type: List[Type]
 
     # Solve each type variable separately.
     for tvar in vars:
-        Type bottom = None
-        Type top = None
+        bottom = None # type: Type
+        top = None # type: Type
         
         # Process each contraint separely, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the contraint

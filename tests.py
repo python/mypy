@@ -13,6 +13,7 @@ from mypy import testtypegen
 from mypy import testoutput
 from mypy import testtransform
 from mypy import testicodegen
+import typing
 
 
 class AllSuite(Suite):

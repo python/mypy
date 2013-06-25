@@ -1,3 +1,5 @@
+from typing import typevar, Generic
+
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, VarDef, FuncItem, CallExpr, TypeDef, Decorator, FuncDef,
@@ -9,8 +11,10 @@ from mypy.nodes import (
     FuncExpr, OverloadedFuncDef
 )
 
+T = typevar('T')
 
-class TraverserVisitor<T>(NodeVisitor<T>):
+
+class TraverserVisitor(NodeVisitor[T], Generic[T]):
     """A parse tree visitor that traverses the parse tree during visiting.
 
     It does not peform any actions outside the travelsal. Subclasses
@@ -21,15 +25,15 @@ class TraverserVisitor<T>(NodeVisitor<T>):
 
     # Visit methods
     
-    T visit_mypy_file(self, MypyFile o):
+    def visit_mypy_file(self, o: MypyFile) -> T:
         for d in o.defs:
             d.accept(self)
 
-    T visit_block(self, Block block):
+    def visit_block(self, block: Block) -> T:
         for s in block.body:
             s.accept(self)
     
-    T visit_func(self, FuncItem o):
+    def visit_func(self, o: FuncItem) -> T:
         for i in o.init:
             if i is not None:
                 i.accept(self)
@@ -37,47 +41,47 @@ class TraverserVisitor<T>(NodeVisitor<T>):
             self.visit_var(v)
         o.body.accept(self)
     
-    T visit_func_def(self, FuncDef o):
+    def visit_func_def(self, o: FuncDef) -> T:
         self.visit_func(o)
 
-    T visit_overloaded_func_def(self, OverloadedFuncDef o):
+    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> T:
         for item in o.items:
             item.accept(self)
     
-    T visit_type_def(self, TypeDef o):
+    def visit_type_def(self, o: TypeDef) -> T:
         o.defs.accept(self)
     
-    T visit_decorator(self, Decorator o):
+    def visit_decorator(self, o: Decorator) -> T:
         o.func.accept(self)
         o.var.accept(self)
         for decorator in o.decorators:
             decorator.accept(self)
     
-    T visit_var_def(self, VarDef o):
+    def visit_var_def(self, o: VarDef) -> T:
         if o.init is not None:
             o.init.accept(self)
         for v in o.items:
             self.visit_var(v)
     
-    T visit_expression_stmt(self, ExpressionStmt o):
+    def visit_expression_stmt(self, o: ExpressionStmt) -> T:
         o.expr.accept(self)
     
-    T visit_assignment_stmt(self, AssignmentStmt o):
+    def visit_assignment_stmt(self, o: AssignmentStmt) -> T:
         o.rvalue.accept(self)
         for l in o.lvalues:
             l.accept(self)
     
-    T visit_operator_assignment_stmt(self, OperatorAssignmentStmt o):
+    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> T:
         o.rvalue.accept(self)
         o.lvalue.accept(self)
     
-    T visit_while_stmt(self, WhileStmt o):
+    def visit_while_stmt(self, o: WhileStmt) -> T:
         o.expr.accept(self)
         o.body.accept(self)
         if o.else_body:
             o.else_body.accept(self)
     
-    T visit_for_stmt(self, ForStmt o):
+    def visit_for_stmt(self, o: ForStmt) -> T:
         for ind in o.index:
             ind.accept(self)
         o.expr.accept(self)
@@ -85,23 +89,23 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         if o.else_body:
             o.else_body.accept(self)
     
-    T visit_return_stmt(self, ReturnStmt o):
+    def visit_return_stmt(self, o: ReturnStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
     
-    T visit_assert_stmt(self, AssertStmt o):
+    def visit_assert_stmt(self, o: AssertStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
     
-    T visit_yield_stmt(self, YieldStmt o):
+    def visit_yield_stmt(self, o: YieldStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
     
-    T visit_del_stmt(self, DelStmt o):
+    def visit_del_stmt(self, o: DelStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
     
-    T visit_if_stmt(self, IfStmt o):
+    def visit_if_stmt(self, o: IfStmt) -> T:
         for e in o.expr:
             e.accept(self)
         for b in o.body:
@@ -109,13 +113,13 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         if o.else_body:
             o.else_body.accept(self)
     
-    T visit_raise_stmt(self, RaiseStmt o):
+    def visit_raise_stmt(self, o: RaiseStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
         if o.from_expr is not None:
             o.from_expr.accept(self)
     
-    T visit_try_stmt(self, TryStmt o):
+    def visit_try_stmt(self, o: TryStmt) -> T:
         o.body.accept(self)
         for i in range(len(o.types)):
             if o.types[i]:
@@ -126,31 +130,31 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         if o.finally_body is not None:
             o.finally_body.accept(self)
     
-    T visit_with_stmt(self, WithStmt o):
+    def visit_with_stmt(self, o: WithStmt) -> T:
         for i in range(len(o.expr)):
             o.expr[i].accept(self)
             if o.name[i] is not None:
                 o.name[i].accept(self)
         o.body.accept(self)
     
-    T visit_paren_expr(self, ParenExpr o):
+    def visit_paren_expr(self, o: ParenExpr) -> T:
         o.expr.accept(self)
     
-    T visit_member_expr(self, MemberExpr o):
+    def visit_member_expr(self, o: MemberExpr) -> T:
         o.expr.accept(self)
     
-    T visit_call_expr(self, CallExpr o):
+    def visit_call_expr(self, o: CallExpr) -> T:
         for a in o.args:
             a.accept(self)
         o.callee.accept(self)
         if o.analyzed:
             o.analyzed.accept(self)
     
-    T visit_op_expr(self, OpExpr o):
+    def visit_op_expr(self, o: OpExpr) -> T:
         o.left.accept(self)
         o.right.accept(self)
     
-    T visit_slice_expr(self, SliceExpr o):
+    def visit_slice_expr(self, o: SliceExpr) -> T:
         if o.begin_index is not None:
             o.begin_index.accept(self)
         if o.end_index is not None:
@@ -158,36 +162,36 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         if o.stride is not None:
             o.stride.accept(self)
     
-    T visit_cast_expr(self, CastExpr o):
+    def visit_cast_expr(self, o: CastExpr) -> T:
         o.expr.accept(self)
     
-    T visit_unary_expr(self, UnaryExpr o):
+    def visit_unary_expr(self, o: UnaryExpr) -> T:
         o.expr.accept(self)
     
-    T visit_list_expr(self, ListExpr o):
+    def visit_list_expr(self, o: ListExpr) -> T:
         for item in o.items:
             item.accept(self)
     
-    T visit_tuple_expr(self, TupleExpr o):
+    def visit_tuple_expr(self, o: TupleExpr) -> T:
         for item in o.items:
             item.accept(self)
     
-    T visit_dict_expr(self, DictExpr o):
+    def visit_dict_expr(self, o: DictExpr) -> T:
         for k, v in o.items:
             k.accept(self)
             v.accept(self)
     
-    T visit_set_expr(self, SetExpr o):
+    def visit_set_expr(self, o: SetExpr) -> T:
         for item in o.items:
             item.accept(self)
     
-    T visit_index_expr(self, IndexExpr o):
+    def visit_index_expr(self, o: IndexExpr) -> T:
         o.base.accept(self)
         o.index.accept(self)
         if o.analyzed:
             o.analyzed.accept(self)
     
-    T visit_generator_expr(self, GeneratorExpr o):
+    def visit_generator_expr(self, o: GeneratorExpr) -> T:
         o.left_expr.accept(self)
         o.right_expr.accept(self)
         if o.condition is not None:
@@ -195,16 +199,16 @@ class TraverserVisitor<T>(NodeVisitor<T>):
         for index in o.index:
             index.accept(self)
     
-    T visit_list_comprehension(self, ListComprehension o):
+    def visit_list_comprehension(self, o: ListComprehension) -> T:
         o.generator.accept(self)
     
-    T visit_conditional_expr(self, ConditionalExpr o):
+    def visit_conditional_expr(self, o: ConditionalExpr) -> T:
         o.cond.accept(self)
         o.if_expr.accept(self)
         o.else_expr.accept(self)
     
-    T visit_type_application(self, TypeApplication o):
+    def visit_type_application(self, o: TypeApplication) -> T:
         o.expr.accept(self)
     
-    T visit_func_expr(self, FuncExpr o):
+    def visit_func_expr(self, o: FuncExpr) -> T:
         self.visit_func(o)
