@@ -207,7 +207,7 @@ class FuncTransformer:
         """Return the signature of the wrapper method.
 
         The wrapper method signature has an additional type variable
-        argument (with type 'any'), and all type variables have been
+        argument (with type 'Any'), and all type variables have been
         erased.
         """
         sig = (Callable)function_type(act_as_func_def)
@@ -223,7 +223,7 @@ class FuncTransformer:
                           bool is_wrapper_class, bool is_override):
         """Return the source signature in a wrapped call.
         
-        It has type variables replaced with 'any', but as an
+        It has type variables replaced with 'Any', but as an
         exception, type variables are intact in the return type in
         generic wrapper classes. The exception allows omitting an
         extra return value coercion, as the target return type and the

@@ -127,12 +127,12 @@ class TypeTransformer:
 
         For example, assume these definitions:
         
-        . class A<T>: pass
-        . class B(A<int>): pass
+        . class A(Generic[T]): pass
+        . class B(A[int]): pass
         
         The constructor for B will be (equivalent to)
         
-        . void __init__(B self):
+        . def __init__(self: B) -> None:
         .     self.__tv = <int>
         .     super().__init__(<int>)
         """
@@ -519,7 +519,7 @@ class TypeTransformer:
     Node[] make_tvar_representation(self, TypeInfo info, any is_alt=False):
         """Return type variable slot member definitions.
 
-        There are of form 'any __tv*'. Only include new slots defined in the
+        There are of form '__tv*: Any'. Only include new slots defined in the
         type.
         """
         Node[] defs = []
@@ -572,9 +572,9 @@ class TypeTransformer:
         using the type arguments given to the constructor.
         
         Examples:
-          - In 'class C<T> ...', the initializer for the slot 0 is
+          - In 'class C(Generic[T]) ...', the initializer for the slot 0 is
             TypeExpr(RuntimeTypeVar(NameExpr('__tv'))).
-          - In 'class D(C<int>) ...', the initializer for the slot 0 is
+          - In 'class D(C[int]) ...', the initializer for the slot 0 is
             TypeExpr(<int instance>).
         """
         # Figure out the superclass which defines the slot; also figure out

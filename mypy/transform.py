@@ -8,7 +8,7 @@ The transform performs these main changes:
    in dynamically typed code
  - add wrapper methods for overrides with a different signature
  - add generic wrapper classes for coercions between generic types (e.g.
-   from any[] to str[])
+   from List[Any] to List[str])
 """
 
 from mypy.nodes import (
