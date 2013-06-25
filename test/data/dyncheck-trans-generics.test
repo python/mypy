@@ -583,24 +583,24 @@ c = A().f(C())
 c = A().f(<C>, C())
 ...
 
-[case testCalllingGenericMethod2-skip]
+[case testCalllingGenericMethod2]
 from typing import typevar, Generic
 S = typevar('S')
 T = typevar('T')
-class A(Generic[S]):
-    def f(self) -> T:
-        pass
-    def g(self) -> S:
-        return self.f[S]()
-c = (A['D']()).f['C']() # type: C
 class C: pass
 class D: pass
+class A(Generic[S]):
+    def f(self, x: T) -> T:
+        pass
+    def g(self, x: S) -> S:
+        return self.f(x)
+c = A[D]().f(C())
 [out]
 ...
-    def g(self: A) -> Any*:
-        return self.f(<self.__tv>)
+    def g(self: A, x: Any*) -> Any*:
+        return self.f(<self.__tv>, x)
 ...
-c: C = (A(<D>)).f(<C>)
+c = A(<D>).f(<C>, C())
 ...
 
 [case testAccessingGenericMethodTvars]
