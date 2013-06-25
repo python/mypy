@@ -1,18 +1,20 @@
 from nodes import TypeInfo
 from types import Instance, Type, TypeVar, AnyType
+from typing import Undefined, List, Tuple, cast
+from abc import abstractmethod, ABCMeta
 
 
-interface MapPremise: pass
+class MapPremise(metaclass=ABCMeta): pass
 
 
-interface MapExpr: pass
+class MapExpr(metaclass=ABCMeta): pass
 
 
 class AssertClass(MapPremise):
-    MapExpr i
-    TypeInfo c
+    i = Undefined # type: MapExpr
+    c = Undefined # type: TypeInfo
     
-    void __init__(self, MapExpr i, TypeInfo c):
+    def __init__(self, i: MapExpr, c: TypeInfo) -> None:
         self.i = i
         self.c = c
     
@@ -21,9 +23,9 @@ class AssertClass(MapPremise):
 
 
 class AssertDyn(MapPremise):
-    MapExpr i
+    i = Undefined # type: MapExpr
     
-    void __init__(self, MapExpr i):
+    def __init__(self, i: MapExpr) -> None:
         self.i = i
     
     def __str__(self):
@@ -31,10 +33,10 @@ class AssertDyn(MapPremise):
 
 
 class AssertEq(MapPremise):
-    MapExpr i1
-    MapExpr i2
+    i1 = Undefined # type: MapExpr
+    i2 = Undefined # type: MapExpr
     
-    void __init__(self, MapExpr i1, MapExpr i2):
+    def __init__(self, i1: MapExpr, i2: MapExpr) -> None:
         self.i1 = i1
         self.i2 = i2
     
@@ -43,9 +45,9 @@ class AssertEq(MapPremise):
 
 
 class TypeVarRef(MapExpr):
-    int n
+    n = 0
     
-    void __init__(self, int n):
+    def __init__(self, n: int) -> None:
         self.n = n
     
     def __str__(self):
@@ -53,10 +55,10 @@ class TypeVarRef(MapExpr):
 
 
 class TypeArgRef(MapExpr):
-    MapExpr base
-    int n
+    base = Undefined # type: MapExpr
+    n = 0
     
-    void __init__(self, MapExpr base, int n):
+    def __init__(self, base: MapExpr, n: int) -> None:
         self.base = base
         self.n = n
     
@@ -69,8 +71,8 @@ class DefaultArg(MapExpr):
         return 'd'
 
 
-tuple<MapPremise[], MapExpr[]> compile_subclass_mapping(
-                               int num_subtype_type_vars, Instance super_type):
+def compile_subclass_mapping(
+                               num_subtype_type_vars: int, super_type: Instance) -> Tuple[List[MapPremise], List[MapExpr]]:
     """Compile mapping from superclass to subclass type variables.
 
     Args:
@@ -79,7 +81,7 @@ tuple<MapPremise[], MapExpr[]> compile_subclass_mapping(
                           variable references
     """
     premises = find_eq_premises(super_type, None)
-    MapExpr[] exprs = []
+    exprs = [] # type: List[MapExpr]
     
     for i in range(1, num_subtype_type_vars + 1):
         paths = find_all_paths(i, super_type, None)
@@ -95,14 +97,14 @@ tuple<MapPremise[], MapExpr[]> compile_subclass_mapping(
     return premises, exprs  
 
 
-MapExpr[] find_all_paths(int tv, Type typ, MapExpr expr):
-    if isinstance(typ, TypeVar) and ((TypeVar)typ).id == tv:
+def find_all_paths(tv: int, typ: Type, expr: MapExpr) -> List[MapExpr]:
+    if isinstance(typ, TypeVar) and (cast(TypeVar, typ)).id == tv:
         return [expr]
-    elif isinstance(typ, Instance) and ((Instance)typ).args != []:
-        inst = (Instance)typ
-        MapExpr[] res = []
+    elif isinstance(typ, Instance) and (cast(Instance, typ)).args != []:
+        inst = cast(Instance, typ)
+        res = [] # type: List[MapExpr]
         for i in range(len(inst.args)):
-            MapExpr e
+            e = Undefined # type: MapExpr
             if not expr:
                 e = TypeVarRef(i + 1)
             else:
@@ -113,14 +115,14 @@ MapExpr[] find_all_paths(int tv, Type typ, MapExpr expr):
         return []
 
 
-MapPremise[] find_eq_premises(Type typ, MapExpr expr):
+def find_eq_premises(typ: Type, expr: MapExpr) -> List[MapPremise]:
     if isinstance(typ, Instance):
-        inst = (Instance)typ
-        MapPremise[] res = []
+        inst = cast(Instance, typ)
+        res = [] # type: List[MapPremise]
         if expr:
             res.append(AssertClass(expr, inst.type))
         for i in range(len(inst.args)):
-            MapExpr e
+            e = Undefined # type: MapExpr
             if not expr:
                 e = TypeVarRef(i + 1)
             else:
