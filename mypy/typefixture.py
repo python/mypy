@@ -1,6 +1,6 @@
 """Fixture used in type-related test cases.
 
-It contains class and interface objects and Type objects.
+It contains class TypeInfos and Type objects.
 """
 
 from mypy.types import (
@@ -10,13 +10,6 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
 )
-
-
-BASE = 0
-VARS = 1
-BASE_DEFS = 2
-IS_INTERFACE = 3
-INTERFACES = 4
 
 
 class TypeFixture:
