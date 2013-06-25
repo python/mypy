@@ -7,7 +7,7 @@ import re
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, Any,
+    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
 from mypy.nodes import (
@@ -121,7 +121,7 @@ class MessageBuilder:
         
         Examples:
           builtins.int -> 'int'
-          Any -> 'Any'
+          Any type -> 'Any'
           void -> None
           function type -> "" (empty string)
         """
@@ -168,7 +168,7 @@ class MessageBuilder:
             return 'None'
         elif isinstance(typ, NoneTyp):
             return 'None'
-        elif isinstance(typ, Any):
+        elif isinstance(typ, AnyType):
             return '"Any"'
         elif typ is None:
             raise RuntimeError('Type is None')
@@ -224,7 +224,7 @@ class MessageBuilder:
             # The non-special case: a missing ordinary attribute.
             self.fail('{} has no attribute "{}"'.format(self.format(typ),
                                                         member), context)
-        return Any()
+        return AnyType()
     
     void unsupported_operand_types(self, str op, any left_type, any right_type,
                                    Context context):
@@ -262,7 +262,7 @@ class MessageBuilder:
     
     Type not_callable(self, Type typ, Context context):
         self.fail('{} not callable'.format(self.format(typ)), context)
-        return Any()
+        return AnyType()
     
     void incompatible_argument(self, int n, Callable callee, Type arg_type,
                                Context context):
@@ -473,7 +473,7 @@ class MessageBuilder:
     
     Type not_implemented(self, str msg, Context context):
         self.fail('Feature not implemented yet ({})'.format(msg), context)
-        return Any()
+        return AnyType()
     
     void undefined_in_superclass(self, str member, Context context):
         self.fail('"{}" undefined in superclass'.format(member), context)

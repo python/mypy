@@ -1,6 +1,6 @@
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
-    Type, Any, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
+    Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
     Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList
 )
 from mypy.sametypes import is_same_type
@@ -8,7 +8,7 @@ from mypy.subtypes import is_subtype
 
 
 Type meet_types(Type s, Type t, BasicTypes basic):
-    if isinstance(s, Any) or isinstance(s, ErasedType):
+    if isinstance(s, AnyType) or isinstance(s, ErasedType):
         return s
     
     return t.accept(TypeMeetVisitor(s, basic))
@@ -25,7 +25,7 @@ class TypeMeetVisitor(TypeVisitor<Type>):
         elif isinstance(self.s, NoneTyp):
             return self.s
         else:
-            return Any()
+            return AnyType()
     
     Type visit_error_type(self, ErrorType t):
         return t
@@ -33,7 +33,7 @@ class TypeMeetVisitor(TypeVisitor<Type>):
     Type visit_type_list(self, TypeList t):
         assert False, 'Not supported'
     
-    Type visit_any(self, Any t):
+    Type visit_any(self, AnyType t):
         return t
     
     Type visit_void(self, Void t):
@@ -111,7 +111,7 @@ class TypeMeetVisitor(TypeVisitor<Type>):
     
     def default(self, typ):
         if isinstance(typ, UnboundType):
-            return Any()
+            return AnyType()
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
         else:

@@ -16,8 +16,8 @@ from mypy.nodes import (
 from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
-    Type, Any, Callable, Void, FunctionLike, Overloaded, TupleType, Instance,
-    NoneTyp, UnboundType, TypeTranslator, BasicTypes, strip_type
+    Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
+    Instance, NoneTyp, UnboundType, TypeTranslator, BasicTypes, strip_type
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -87,7 +87,7 @@ class TypeChecker(NodeVisitor<Type>):
         self.type_context.pop()
         self.store_type(node, typ)
         if self.is_dynamic_function():
-            return Any()
+            return AnyType()
         else:
             return typ
     
@@ -430,9 +430,9 @@ class TypeChecker(NodeVisitor<Type>):
                     item_type = ((Instance)init_type).args[0]
                     for i in range(len(names)):
                         self.set_inferred_type(names[i], lvalues[i], item_type)
-                elif isinstance(init_type, Any):
+                elif isinstance(init_type, AnyType):
                     for i in range(len(names)):
-                        self.set_inferred_type(names[i], lvalues[i], Any())
+                        self.set_inferred_type(names[i], lvalues[i], AnyType())
                 else:
                     self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                               context)
@@ -482,7 +482,7 @@ class TypeChecker(NodeVisitor<Type>):
             rvalue_type = self.accept(rvalue) # TODO maybe elsewhere; redundant
             undefined_rvalue = False
         # Try to expand rvalue to lvalue(s).
-        if isinstance(rvalue_type, Any):
+        if isinstance(rvalue_type, AnyType):
             pass
         elif isinstance(rvalue_type, TupleType):
             # Rvalue with tuple type.
@@ -564,7 +564,7 @@ class TypeChecker(NodeVisitor<Type>):
                 # Return with a value.
                 typ = self.accept(s.expr, self.return_types[-1])
                 # Returning a value of type dynamic is always fine.
-                if not isinstance(typ, Any):
+                if not isinstance(typ, AnyType):
                     if isinstance(self.return_types[-1], Void):
                         self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                     else:
@@ -585,8 +585,8 @@ class TypeChecker(NodeVisitor<Type>):
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
             expected_item_type = inst.args[0]
-        elif isinstance(return_type, Any):
-            expected_item_type = Any()
+        elif isinstance(return_type, AnyType):
+            expected_item_type = AnyType()
         else:
             self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
             return None
@@ -669,7 +669,7 @@ class TypeChecker(NodeVisitor<Type>):
             type = self.accept(n)
             return self.check_exception_type(type, n)
         self.fail('Unsupported exception', n)
-        return Any()
+        return AnyType()
 
     Type check_exception_type(self, FunctionLike type, Context context):
         item = type.items()[0]
@@ -679,14 +679,14 @@ class TypeChecker(NodeVisitor<Type>):
             return ret
         else:
             self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-            return Any()        
+            return AnyType()        
 
-    Type check_exception_type(self, Any type, Context context):
-        return Any()
+    Type check_exception_type(self, AnyType type, Context context):
+        return AnyType()
 
     Type check_exception_type(self, Type type, Context context):
         self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-        return Any()
+        return AnyType()
 
     Type visit_for_stmt(self, ForStmt s):
         """Type check a for statement."""
@@ -701,7 +701,7 @@ class TypeChecker(NodeVisitor<Type>):
         self.check_not_void(iterable, expr)
         self.check_subtype(iterable,
                            self.named_generic_type('builtins.Iterable',
-                                                   [Any()]),
+                                                   [AnyType()]),
                            expr, messages.ITERABLE_EXPECTED)
         
         echk = self.expr_checker
@@ -736,7 +736,7 @@ class TypeChecker(NodeVisitor<Type>):
                 if v.type:
                     t.append(v.type)
                 else:
-                    t.append(Any())
+                    t.append(AnyType())
             self.check_multi_assignment(t, <IndexExpr> [None] * len(index),
                                         self.temp_node(item_type), context,
                                         messages.INCOMPATIBLE_TYPES_IN_FOR)
@@ -775,7 +775,7 @@ class TypeChecker(NodeVisitor<Type>):
             if name:
                 self.check_assignments([name], self.temp_node(obj, expr))
             exit = echk.analyse_external_member_access('__exit__', ctx, expr)
-            arg = self.temp_node(Any(), expr)
+            arg = self.temp_node(AnyType(), expr)
             echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
         self.accept(s.body)
     
@@ -827,7 +827,7 @@ class TypeChecker(NodeVisitor<Type>):
 
     Type visit_type_var_expr(self, TypeVarExpr e):
         # TODO Perhaps return a special type used for type variables only?
-        return Any()
+        return AnyType()
     
     Type visit_list_expr(self, ListExpr e):
         return self.expr_checker.visit_list_expr(e)
@@ -1054,5 +1054,5 @@ Type get_undefined_tuple(Node rvalue):
             if not refers_to_fullname(item, 'typing.Undefined'):
                 break
         else:
-            return TupleType([Any()] * len(tuple_expr.items))
+            return TupleType([AnyType()] * len(tuple_expr.items))
     return None

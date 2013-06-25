@@ -1,7 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from mypy.types import (
-    Type, Any, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
+    Type, AnyType, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
     TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike
 )
 from mypy.nodes import (
@@ -76,7 +76,7 @@ class ExpressionChecker:
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
-            result = Any()
+            result = AnyType()
         return result
 
     Type analyse_var_ref(self, Var v, Context ctx):
@@ -84,7 +84,7 @@ class ExpressionChecker:
             if not v.is_ready:
                 self.msg.cannot_determine_type(v.name(), ctx)
             # Implicit 'Any' type.
-            return Any()
+            return AnyType()
         else:
             # A variable with type (inferred or explicit).
             return v.type
@@ -180,11 +180,11 @@ class ExpressionChecker:
             target = self.overload_call_target(arg_types, is_var_arg,
                                                (Overloaded)callee, context)
             return self.check_call(target, args, arg_kinds, context, arg_names)
-        elif isinstance(callee, Any) or self.chk.is_dynamic_function():
+        elif isinstance(callee, AnyType) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
-            return Any(), Any()
+            return AnyType(), AnyType()
         else:
-            return self.msg.not_callable(callee, context), Any()
+            return self.msg.not_callable(callee, context), AnyType()
     
     Type[] infer_arg_types_in_context(self, Callable callee,
                                      Node[] args):
@@ -312,7 +312,8 @@ class ExpressionChecker:
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
-            inferred_args = <Type> [Any()] * len(callee_type.variables.items)
+            inferred_args = <Type> [AnyType()] * len(
+                                              callee_type.variables.items)
         return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
 
@@ -390,7 +391,7 @@ class ExpressionChecker:
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1, context)
-                inferred_args = <Type> [Any()] * len(inferred_args)
+                inferred_args = <Type> [AnyType()] * len(inferred_args)
         
         # Apply the inferred types to the function type. In this case the
         # return type must be Callable, since we give the right number of type
@@ -515,7 +516,7 @@ class ExpressionChecker:
         match = <Callable> []
         for typ in overload.items():
             if self.matches_signature_erased(arg_types, is_var_arg, typ):
-                if match and (isinstance(match, Any) or
+                if match and (isinstance(match, AnyType) or
                               not is_same_type(((Callable)match[-1]).ret_type,
                                                typ.ret_type)):
                     # Ambiguous return type. Either the function overload is
@@ -525,12 +526,12 @@ class ExpressionChecker:
                     # not an error to use any types in calls.
                     # TODO overlapping overloads should be possible in some
                     #      cases
-                    return Any()
+                    return AnyType()
                 else:
                     match.append(typ)
         if not match:
             self.msg.no_variant_matches_arguments(overload, context)
-            return Any()
+            return AnyType()
         else:
             if len(match) == 1:
                 return match[0]
@@ -612,7 +613,7 @@ class ExpressionChecker:
         if len(tvars) != len(types):
             self.msg.incompatible_type_application(len(tvars), len(types),
                                                    context)
-            return Any()
+            return AnyType()
         
         # Create a map from type variable id to target type.
         id_to_type = <int, Type> {}
@@ -649,7 +650,7 @@ class ExpressionChecker:
                 items.append((Callable)applied)
             else:
                 # There was an error.
-                return Any()
+                return AnyType()
         return Overloaded(items)
     
     Type visit_member_expr(self, MemberExpr e):
@@ -805,10 +806,10 @@ class ExpressionChecker:
                     return tuple_type.items[n]
                 else:
                     self.chk.fail(messages.TUPLE_INDEX_OUT_OF_RANGE, e)
-                    return Any()
+                    return AnyType()
             else:
                 self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
-                return Any()
+                return AnyType()
         else:
             result, method_type = self.check_op('__getitem__', left_type,
                                                 e.index, e)
@@ -825,7 +826,7 @@ class ExpressionChecker:
     
     bool is_valid_cast(self, Type source_type, Type target_type):
         """Is a cast from source_type to target_type meaningful?"""
-        return (isinstance(target_type, Any) or
+        return (isinstance(target_type, AnyType) or
                 (not isinstance(source_type, Void) and
                  not isinstance(target_type, Void)))
     
@@ -844,7 +845,7 @@ class ExpressionChecker:
                                                      tapp.types, tapp)
         else:
             self.chk.fail(messages.INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
-            new_type = Any()
+            new_type = AnyType()
         self.chk.type_map[tapp.expr] = new_type
         return new_type
     
@@ -967,7 +968,7 @@ class ExpressionChecker:
                 # TODO: Consider reporting an error. However, this is fine if
                 # we are just doing the first pass in contextual type
                 # inference.
-                return Any()
+                return AnyType()
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=inferred_type)
@@ -1015,7 +1016,7 @@ class ExpressionChecker:
                                          e.info.mro[1])
         else:
             # Invalid super. This has been reported by the semantic analyser.
-            return Any()
+            return AnyType()
     
     Type visit_paren_expr(self, ParenExpr e):
         """Type check a parenthesised expression."""
@@ -1088,12 +1089,12 @@ class ExpressionChecker:
     bool is_valid_var_arg(self, Type typ):
         """Is a type valid as a *args argument?"""
         return (isinstance(typ, TupleType) or self.is_list_instance(typ) or
-                    isinstance(typ, Any))
+                    isinstance(typ, AnyType))
     
     bool is_valid_keyword_var_arg(self, Type typ):    
         """Is a type valid as a **kwargs argument?"""
         return is_subtype(typ, self.chk.named_generic_type(
-            'builtins.dict', [self.named_type('builtins.str'), Any()]))
+            'builtins.dict', [self.named_type('builtins.str'), AnyType()]))
     
     bool is_list_instance(self, Type t):
         """Is the argument an instance type List[...]?"""

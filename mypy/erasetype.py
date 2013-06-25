@@ -1,7 +1,7 @@
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, ErrorType, Any, Void, NoneTyp, Instance,
-    TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeTranslator,
-    BasicTypes, TypeList
+    Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
+    Instance, TypeVar, Callable, TupleType, Overloaded, ErasedType,
+    TypeTranslator, BasicTypes, TypeList
 )
 
 
@@ -33,7 +33,7 @@ class EraseTypeVisitor(TypeVisitor<Type>):
     Type visit_type_list(self, TypeList t):
         assert False, 'Not supported'
     
-    Type visit_any(self, Any t):
+    Type visit_any(self, AnyType t):
         return t
     
     Type visit_void(self, Void t):
@@ -47,10 +47,11 @@ class EraseTypeVisitor(TypeVisitor<Type>):
         raise RuntimeError()
     
     Type visit_instance(self, Instance t):
-        return Instance(t.type, <Type> [Any()] * len(t.args), t.line, t.repr)
+        return Instance(t.type, <Type> [AnyType()] * len(t.args), t.line,
+                        t.repr)
     
     Type visit_type_var(self, TypeVar t):
-        return Any()
+        return AnyType()
     
     Type visit_callable(self, Callable t):
         # We must preserve the type object flag for overload resolution to
@@ -81,7 +82,7 @@ class GenericTypeEraser(TypeTranslator):
     # FIX: What about generic function types?
     
     Type visit_type_var(self, TypeVar t):
-        return Any()
+        return AnyType()
     
     Type visit_instance(self, Instance t):
         return Instance(t.type, [], t.line)
@@ -96,4 +97,4 @@ class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
     
     Type visit_type_var(self, TypeVar t):
-        return Any()
+        return AnyType()

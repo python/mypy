@@ -1,5 +1,5 @@
 from nodes import TypeInfo
-from types import Instance, Type, TypeVar, Any
+from types import Instance, Type, TypeVar, AnyType
 
 
 interface MapPremise: pass
@@ -127,7 +127,7 @@ MapPremise[] find_eq_premises(Type typ, MapExpr expr):
                 e = TypeArgRef(expr, i + 1)
             res += find_eq_premises(inst.args[i], e)
         return res
-    elif isinstance(typ, Any):
+    elif isinstance(typ, AnyType):
         return [AssertDyn(expr)]
     else:
         return []

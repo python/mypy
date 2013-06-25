@@ -1,7 +1,7 @@
 """Calculation of the least upper bound types (joins)."""
 
 from mypy.types import (
-    Type, Any, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
+    Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType, ErrorType,
     TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList
 )
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
@@ -14,7 +14,7 @@ Type join_types(Type s, Type t, BasicTypes basic):
 
     If the join does not exist, return an ErrorType instance.
     """
-    if isinstance(s, Any):
+    if isinstance(s, AnyType):
         return s
     
     if isinstance(s, NoneTyp) and not isinstance(t, Void):
@@ -38,7 +38,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
         else:
-            return Any()
+            return AnyType()
     
     Type visit_error_type(self, ErrorType t):
         return t
@@ -46,7 +46,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
     Type visit_type_list(self, TypeList t):
         assert False, 'Not supported'
     
-    Type visit_any(self, Any t):
+    Type visit_any(self, AnyType t):
         return t
     
     Type visit_void(self, Void t):
@@ -107,7 +107,7 @@ class TypeJoinVisitor(TypeVisitor<Type>):
     
     Type default(self, Type typ):
         if isinstance(typ, UnboundType):
-            return Any()
+            return AnyType()
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
         else:

@@ -1,8 +1,8 @@
 """Semantic analysis of types"""
 
 from mypy.types import (
-    Type, UnboundType, TypeVar, TupleType, Instance, Any, Callable, TypeVars,
-    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
+    Type, UnboundType, TypeVar, TupleType, Instance, AnyType, Callable,
+    TypeVars, Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
@@ -35,7 +35,7 @@ class TypeAnalyser(TypeVisitor<Type>):
             elif sym.node.fullname() == 'builtins.None':
                 return Void()
             elif sym.node.fullname() == 'typing.Any':
-                return Any()
+                return AnyType()
             elif sym.node.fullname() == 'typing.Tuple':
                 return TupleType(self.anal_array(t.args))
             elif sym.node.fullname() == 'typing.Function':
@@ -59,7 +59,7 @@ class TypeAnalyser(TypeVisitor<Type>):
         else:
             return t
     
-    Type visit_any(self, Any t):
+    Type visit_any(self, AnyType t):
         return t
     
     Type visit_void(self, Void t):
@@ -97,7 +97,7 @@ class TypeAnalyser(TypeVisitor<Type>):
             self.fail('Invalid function type', t)
         if not isinstance(t.args[0], TypeList):
             self.fail('Invalid function type', t)
-            return Any()
+            return AnyType()
         args = ((TypeList)t.args[0]).items
         return Callable(self.anal_array(args),
                         [nodes.ARG_POS] * len(args),
@@ -153,7 +153,7 @@ class TypeAnalyserPass3(TypeVisitor<void>):
             if len(t.args) == 0:
                 # Implicit 'Any' type arguments.
                 # TODO remove <Type> below
-                t.args = <Type> [Any()] * len(info.type_vars)
+                t.args = <Type> [AnyType()] * len(info.type_vars)
                 return
             # Invalid number of type parameters.
             n = len(info.type_vars)
@@ -184,7 +184,7 @@ class TypeAnalyserPass3(TypeVisitor<void>):
     void visit_unbound_type(self, UnboundType t):
         pass
     
-    void visit_any(self, Any t):
+    void visit_any(self, AnyType t):
         pass
     
     void visit_void(self, Void t):

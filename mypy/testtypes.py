@@ -6,8 +6,8 @@ from mypy.expandtype import expand_type
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
-    UnboundType, Any, Void, Callable, TupleType, TypeVarDef, TypeVars, Type,
-    Instance, NoneTyp, ErrorType
+    UnboundType, AnyType, Void, Callable, TupleType, TypeVarDef, TypeVars,
+    Type, Instance, NoneTyp, ErrorType
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
 from mypy.replacetvars import replace_type_vars
@@ -22,14 +22,14 @@ class TypesSuite(Suite):
         self.y = UnboundType('Y')
     
     def test_any(self):
-        assert_equal(str(Any()), 'Any')
+        assert_equal(str(AnyType()), 'Any')
     
     def test_simple_unbound_type(self):
         u = UnboundType('Foo')
         assert_equal(str(u), 'Foo?')
     
     def test_generic_unbound_type(self):
-        u = UnboundType('Foo', [UnboundType('T'), Any()])
+        u = UnboundType('Foo', [UnboundType('T'), AnyType()])
         assert_equal(str(u), 'Foo?[T?, Any]')
     
     def test_void_type(self):
@@ -39,7 +39,7 @@ class TypesSuite(Suite):
         c = Callable([self.x, self.y],
                      [ARG_POS, ARG_POS],
                      [None, None],
-                     Any(), False)
+                     AnyType(), False)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
         
         c2 = Callable([], [], [], Void(None), False)
@@ -47,29 +47,29 @@ class TypesSuite(Suite):
     
     def test_callable_type_with_default_args(self):
         c = Callable([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
-                     Any(), False)
+                     AnyType(), False)
         assert_equal(str(c), 'def (X?, Y? =) -> Any')
         
         c2 = Callable([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
-                      Any(), False)
+                      AnyType(), False)
         assert_equal(str(c2), 'def (X? =, Y? =) -> Any')
     
     def test_callable_type_with_var_args(self):
-        c = Callable([self.x], [ARG_STAR], [None], Any(), False)
+        c = Callable([self.x], [ARG_STAR], [None], AnyType(), False)
         assert_equal(str(c), 'def (*X?) -> Any')
         
         c2 = Callable([self.x, self.y], [ARG_POS, ARG_STAR],
-                      [None, None], Any(), False)
+                      [None, None], AnyType(), False)
         assert_equal(str(c2), 'def (X?, *Y?) -> Any')
         
         c3 = Callable([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
-                      Any(), False)
+                      AnyType(), False)
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
     
     def test_tuple_type(self):
         assert_equal(str(TupleType([])), 'Tuple[]')
         assert_equal(str(TupleType([self.x])), 'Tuple[X?]')
-        assert_equal(str(TupleType([self.x, Any()])), 'Tuple[X?, Any]')
+        assert_equal(str(TupleType([self.x, AnyType()])), 'Tuple[X?, Any]')
     
     def test_type_variable_binding(self):
         assert_equal(str(TypeVarDef('X', 1)), 'X')

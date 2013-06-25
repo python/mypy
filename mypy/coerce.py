@@ -1,6 +1,6 @@
 from mypy.nodes import Node, TypeInfo, CoerceExpr, JavaCast
 from mypy.types import (
-    Type, Instance, Void, NoneTyp, Any
+    Type, Instance, Void, NoneTyp, AnyType
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_proper_subtype
@@ -50,7 +50,7 @@ bool is_trivial_coercion(Type target_type, Type source_type, bool is_java):
     
     return (is_proper_subtype(source_type, target_type)
             or isinstance(source_type, NoneTyp)
-            or isinstance(target_type, Any))
+            or isinstance(target_type, AnyType))
 
 
 bool is_special_primitive(Type type):

@@ -1,5 +1,5 @@
 from mypy.lex import Token
-from mypy.types import Type, Any, NoneTyp, TypeTranslator, TypeVar
+from mypy.types import Type, AnyType, NoneTyp, TypeTranslator, TypeVar
 from mypy.typerepr import AnyRepr
 
 
@@ -25,9 +25,9 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
                 # Give a representation for the dynamic type.
                 tok = Token('Any')
                 tok.pre = t.repr.name.pre
-                return Any(t.line, AnyRepr(tok))
+                return AnyType(t.line, AnyRepr(tok))
             else:
-                return Any()
+                return AnyType()
         else:
             return t
 

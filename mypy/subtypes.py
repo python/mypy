@@ -1,5 +1,5 @@
 from mypy.types import (
-    Type, Any, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
+    Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
     TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeList
 )
 from mypy.nodes import TypeInfo
@@ -8,7 +8,7 @@ from mypy.expandtype import expand_type
 
 bool is_subtype(Type left, Type right):
     """Is 'left' subtype of 'right'?"""
-    if (isinstance(right, Any) or isinstance(right, UnboundType)
+    if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
     else:
@@ -35,7 +35,7 @@ class SubtypeVisitor(TypeVisitor<bool>):
     bool visit_type_list(self, TypeList t):
         assert False, 'Not supported'
     
-    bool visit_any(self, Any left):
+    bool visit_any(self, AnyType left):
         return True
     
     bool visit_void(self, Void left):
@@ -182,10 +182,10 @@ Instance map_instance_to_direct_supertype(Instance instance,
             map = type_var_map(typ, instance.args)
             return (Instance)expand_type(base, map)
     
-    # Relationship with the supertype not specified explicitly. Use Any
+    # Relationship with the supertype not specified explicitly. Use AnyType
     # type arguments implicitly.
     # TODO Should this be an error instead?
-    return Instance(supertype, <Type> [Any()] * len(supertype.type_vars))
+    return Instance(supertype, <Type> [AnyType()] * len(supertype.type_vars))
 
 
 dict<int, Type> type_var_map(TypeInfo typ, Type[] args):
@@ -254,7 +254,7 @@ Instance[] map_instance_to_direct_supertypes(Instance instance,
     else:
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
-        return [Instance(supertype, <Type> [Any()] * len(supertype.type_vars))]
+        return [Instance(supertype, <Type> [AnyType()] * len(supertype.type_vars))]
 
 
 bool is_named_instance(Type t, str fullname):

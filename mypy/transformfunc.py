@@ -6,7 +6,7 @@ from mypy.nodes import (
 )
 from mypy import nodes
 from mypy.checker import map_type_from_supertype
-from mypy.types import Callable, Any, Void, RuntimeTypeVar, Type
+from mypy.types import Callable, AnyType, Void, RuntimeTypeVar, Type
 from mypy.replacetvars import replace_type_vars
 import mypy.transform
 from mypy.transutil import (
@@ -112,7 +112,7 @@ class FuncTransformer:
         ntvars = len(fdef.info.type_vars)
         for n in range(ntvars):
             tv.append(Var(tvar_arg_name(n + 1)))
-            typ = add_arg_type_after_self((Callable)typ, Any())
+            typ = add_arg_type_after_self((Callable)typ, AnyType())
         args = [args[0]] + tv + args[1:]
         arg_kinds = [arg_kinds[0]] + [nodes.ARG_POS] * ntvars + arg_kinds[1:]
         init = <Node> [None] * ntvars + init
@@ -346,7 +346,7 @@ class FuncTransformer:
                 args.insert(index,
                     TypeExpr(RuntimeTypeVar(NameExpr(tvar_arg_name(-i - 1)))))
             else:
-                args.insert(index, TypeExpr(Any()))
+                args.insert(index, TypeExpr(AnyType()))
         return args
     
     str get_wrapper_suffix(self, FuncDef func_def, bool is_dynamic):

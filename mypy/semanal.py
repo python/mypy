@@ -57,9 +57,9 @@ from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors
 from mypy.types import (
-    NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, Any, FunctionLike,
-    UnboundType, TypeList, ErrorType, TypeVars, TypeVarDef, replace_self_type,
-    TupleType
+    NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
+    FunctionLike, UnboundType, TypeList, ErrorType, TypeVars, TypeVarDef,
+    replace_self_type, TupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3
@@ -215,7 +215,7 @@ class SemanticAnalyzer(NodeVisitor):
             types = (TypeList)type
             for item in types.items:
                 result.extend(self.find_type_variables_in_type(item))
-        elif isinstance(type, Any):
+        elif isinstance(type, AnyType):
             pass
         else:
             assert False, 'Unsupported type %s' % type
@@ -991,7 +991,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Special form Any(...).
             if not self.check_fixed_args(expr, 1, 'Any'):
                 return            
-            expr.analyzed = CastExpr(expr.args[0], Any())
+            expr.analyzed = CastExpr(expr.args[0], AnyType())
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Undefined'):
@@ -1259,7 +1259,7 @@ class FirstPass(NodeVisitor):
     
         # Add implicit definitions of module '__name__' etc.
         for n in implicit_module_attrs:
-            name_def = VarDef([Var(n, Any())], True)
+            name_def = VarDef([Var(n, AnyType())], True)
             defs.insert(0, name_def)
         
         for d in defs:

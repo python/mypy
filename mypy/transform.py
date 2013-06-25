@@ -18,7 +18,7 @@ from mypy.nodes import (
     SymbolTableNode, IndexExpr, function_type
 )
 from mypy.traverser import TraverserVisitor
-from mypy.types import Type, Any, Callable, TypeVarDef, Instance
+from mypy.types import Type, AnyType, Callable, TypeVarDef, Instance
 from mypy.lex import Token
 from mypy.transformtype import TypeTransformer
 from mypy.transutil import (
@@ -101,7 +101,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             if o.items[0].type:
                 t = o.items[0].type
             else:
-                t = Any()
+                t = AnyType()
             o.init = self.coerce(o.init, t, self.get_type(o.init),
                                  self.type_context())
     
@@ -136,13 +136,14 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # For methods, add type variable arguments after the self arg.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                fdef.type = add_arg_type_after_self((Callable)fdef.type, Any())
+                fdef.type = add_arg_type_after_self((Callable)fdef.type,
+                                                    AnyType())
             fdef.args = [fdef.args[0]] + tv + fdef.args[1:]
         else:
             # For ordinary functions, prepend type variable arguments.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                fdef.type = prepend_arg_type((Callable)fdef.type, Any())
+                fdef.type = prepend_arg_type((Callable)fdef.type, AnyType())
             fdef.args = tv + fdef.args
         fdef.init = <AssignmentStmt> [None] * ntvars + fdef.init
     
@@ -164,8 +165,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         if isinstance(s.lvalues[0], IndexExpr):
             index = (IndexExpr)s.lvalues[0]
             method_type = index.method_type
-            if self.dynamic_funcs[-1] or isinstance(method_type, Any):
-                Type lvalue_type = Any()
+            if self.dynamic_funcs[-1] or isinstance(method_type, AnyType):
+                Type lvalue_type = AnyType()
             else:
                 method_callable = (Callable)method_type
                 # TODO arg_types[1] may not be reliable
@@ -187,7 +188,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         
         if self.dynamic_funcs[-1]:
             e.expr = self.coerce_to_dynamic(e.expr, typ, self.type_context())
-            typ = Any()
+            typ = AnyType()
         
         if isinstance(typ, Instance):
             # Reference to a statically-typed method variant with the suffix
@@ -233,7 +234,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
 
         # Add coercions for the arguments.
         for i in range(len(e.args)):
-            Type arg_type = Any()
+            Type arg_type = AnyType()
             if isinstance(ctype, Callable):
                 arg_type = ((Callable)ctype).arg_types[i]
             e.args[i] = self.coerce2(e.args[i], arg_type,
@@ -269,8 +270,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
     
     void visit_cast_expr(self, CastExpr e):
         super().visit_cast_expr(e)
-        if isinstance(self.get_type(e), Any):
-            e.expr = self.coerce(e.expr, Any(), self.get_type(e.expr),
+        if isinstance(self.get_type(e), AnyType):
+            e.expr = self.coerce(e.expr, AnyType(), self.get_type(e.expr),
                                  self.type_context())
     
     void visit_op_expr(self, OpExpr e):
@@ -283,10 +284,11 @@ class DyncheckTransformVisitor(TraverserVisitor):
                                   self.get_type(e.right), self.type_context())
         else:
             method_type = e.method_type
-            if self.dynamic_funcs[-1] or isinstance(method_type, Any):
+            if self.dynamic_funcs[-1] or isinstance(method_type, AnyType):
                 e.left = self.coerce_to_dynamic(e.left, self.get_type(e.left),
                                                 self.type_context())
-                e.right = self.coerce(e.right, Any(), self.get_type(e.right),
+                e.right = self.coerce(e.right, AnyType(),
+                                      self.get_type(e.right),
                                       self.type_context())
             elif method_type:
                 method_callable = (Callable)method_type
@@ -310,7 +312,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             return
         super().visit_index_expr(e)
         method_type = e.method_type
-        if self.dynamic_funcs[-1] or isinstance(method_type, Any):
+        if self.dynamic_funcs[-1] or isinstance(method_type, AnyType):
             e.base = self.coerce_to_dynamic(e.base, self.get_type(e.base),
                                             self.type_context())
             e.index = self.coerce_to_dynamic(e.index, self.get_type(e.index),
@@ -371,20 +373,21 @@ class DyncheckTransformVisitor(TraverserVisitor):
         typed function.
         """
         if self.dynamic_funcs[-1]:
-            return self.coerce(self.coerce(expr, Any(), source_type, context,
-                                           is_wrapper_class),
-                               target_type, Any(), context, is_wrapper_class)
+            return self.coerce(self.coerce(expr, AnyType(), source_type,
+                                           context, is_wrapper_class),
+                               target_type, AnyType(), context,
+                               is_wrapper_class)
         else:
             return self.coerce(expr, target_type, source_type, context,
                                is_wrapper_class)
     
     Node coerce_to_dynamic(self, Node expr, Type source_type,
                            TypeInfo context):
-        if isinstance(source_type, Any):
+        if isinstance(source_type, AnyType):
             return expr
         source_type = translate_runtime_type_vars_in_context(
             source_type, context, self.is_java)
-        return CoerceExpr(expr, Any(), source_type, False)
+        return CoerceExpr(expr, AnyType(), source_type, False)
     
     void add_line_mapping(self, Node orig_node, Node new_node):
         """Add a line mapping for a wrapper.

@@ -1,7 +1,7 @@
 """Type checking of attribute access"""
 
 from mypy.types import (
-    Type, Instance, Any, TupleType, Callable, FunctionLike, TypeVars,
+    Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVars,
     TypeVarDef, Overloaded, TypeVar, TypeTranslator, BasicTypes
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
@@ -33,7 +33,7 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
             # Accessing __init__ in statically typed code would compromise
             # type safety unless used via super().
             msg.fail(messages.CANNOT_ACCESS_INIT, node)
-            return Any()
+            return AnyType()
         
         # The base object has an instance type.
         itype = (Instance)typ
@@ -54,9 +54,9 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
             return analyse_member_var_access(name, itype, info, node,
                                              is_lvalue, is_super, msg,
                                              report_type=report_type)
-    elif isinstance(typ, Any):
+    elif isinstance(typ, AnyType):
         # The base object has dynamic type.
-        return Any()
+        return AnyType()
     elif isinstance(typ, TupleType):
         # Actually look up from the 'tuple' type.
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
@@ -112,7 +112,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
             if not var.is_ready:
                 msg.cannot_determine_type(var.name(), node)
             # Implicit 'Any' type.
-            return Any()
+            return AnyType()
     elif isinstance(v, FuncDef):
         # Found a getter or a setter.
         raise NotImplementedError()
@@ -120,7 +120,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
     # Could not find the member.
     if is_super:
         msg.undefined_in_superclass(name, node)
-        return Any()
+        return AnyType()
     else:
         return msg.has_no_attr(report_type or itype, name, node)
 
@@ -202,7 +202,7 @@ Type type_object_type(TypeInfo info, func<Type()> type_type):
     init_method = info.get_method('__init__')
     if not init_method:
         # Must be an invalid class definition.
-        return Any()
+        return AnyType()
     else:
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.

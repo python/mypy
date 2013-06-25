@@ -8,7 +8,8 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.semanal import self_type
 from mypy.types import (
-    Callable, Instance, Type, Any, BOUND_VAR, Void, RuntimeTypeVar, UnboundType
+    Callable, Instance, Type, AnyType, BOUND_VAR, Void, RuntimeTypeVar,
+    UnboundType
 )
 from mypy.checkmember import analyse_member_access
 from mypy.checkexpr import type_object_type
@@ -266,7 +267,7 @@ class TypeTransformer:
         if n.type:
             t = n.type
         else:
-            t = Any()
+            t = AnyType()
         return [self.make_getter_wrapper(n.name(), t),
                 self.make_setter_wrapper(n.name(), t),
                 self.make_dynamic_getter_wrapper(n.name(), t),
@@ -310,11 +311,12 @@ class TypeTransformer:
         selfv = scope.add('self', selft)
         
         member_expr = MemberExpr(scope.name_expr('self'), name, direct=True)
-        coerce_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
+        coerce_expr = coerce(member_expr, AnyType(), typ,
+                             self.tf.type_context())
         ret = ReturnStmt(coerce_expr)
 
         wrapper_name = '$' + name + self.tf.dynamic_suffix()
-        sig = Callable([selft], [nodes.ARG_POS], [None], Any(), False)
+        sig = Callable([selft], [nodes.ARG_POS], [None], AnyType(), False)
         return FuncDef(wrapper_name,
                        [selfv],
                        [nodes.ARG_POS],
@@ -361,12 +363,12 @@ class TypeTransformer:
         """
         lvalue = MemberExpr(self_expr(), name, direct=True)
         name_expr = NameExpr(name)
-        rvalue = coerce(name_expr, typ, Any(), self.tf.type_context())
+        rvalue = coerce(name_expr, typ, AnyType(), self.tf.type_context())
         ret = AssignmentStmt([lvalue], rvalue)
 
         wrapper_name = 'set$' + name + self.tf.dynamic_suffix()
         selft = self_type(self.tf.type_context())            
-        sig = Callable([selft, Any()],
+        sig = Callable([selft, AnyType()],
                        [nodes.ARG_POS, nodes.ARG_POS],
                        [None, None],
                        Void(), False)
@@ -457,7 +459,7 @@ class TypeTransformer:
         """
         # The type is 'Any' since it should behave covariantly in subclasses.
         return [VarDef([Var(self.object_member_name(tdef.info),
-                            Any())], False, None)]
+                            AnyType())], False, None)]
     
     str object_member_name(self, TypeInfo info):
         if self.tf.is_java:
@@ -505,7 +507,7 @@ class TypeTransformer:
                        [nodes.ARG_POS] * nargs,
                        init,
                        Block(cdefs),
-                       Callable(<Type> [Any()] * nargs,
+                       Callable(<Type> [AnyType()] * nargs,
                                 [nodes.ARG_POS] * nargs,
                                 <str> [None] * nargs,
                                 Void(),
@@ -529,7 +531,7 @@ class TypeTransformer:
             slot = get_tvar_access_path(info, n + 1)[0] - 1
             if slot >= base_slots:
                 defs.append(VarDef([Var(tvar_slot_name(slot, is_alt),
-                                        Any())], False, None))
+                                        AnyType())], False, None))
         return defs
     
     void make_instance_tvar_initializer(self, FuncDef creat):
@@ -543,8 +545,8 @@ class TypeTransformer:
                                               tvar_slot_name(n),
                                               direct=True)],
                                   rvalue)
-            self.tf.set_type(init.lvalues[0], Any())
-            self.tf.set_type(init.rvalue, Any())
+            self.tf.set_type(init.lvalues[0], AnyType())
+            self.tf.set_type(init.rvalue, AnyType())
             creat.body.body.insert(n, init)
     
     void make_wrapper_slot_initializer(self, FuncDef creat):
@@ -561,8 +563,8 @@ class TypeTransformer:
                     [MemberExpr(self_expr(),
                                 tvar_slot_name(n, alt), direct=True)],
                     rvalue)
-                self.tf.set_type(init.lvalues[0], Any())
-                self.tf.set_type(init.rvalue, Any())
+                self.tf.set_type(init.lvalues[0], AnyType())
+                self.tf.set_type(init.rvalue, AnyType())
                 creat.body.body.insert(n, init)
     
     TypeExpr make_tvar_init_expression(self, TypeInfo info, int slot):
@@ -610,10 +612,10 @@ class TypeTransformer:
         arg_kinds = type_sig.arg_kinds
 
         # The wrapper function has a dynamically typed signature.
-        wrapper_sig = Callable(<Type> [Any()] * len(arg_kinds),
+        wrapper_sig = Callable(<Type> [AnyType()] * len(arg_kinds),
                                arg_kinds,
                                <str> [None] * len(arg_kinds),
-                               Any(), False)
+                               AnyType(), False)
         
         n = NameExpr(tdef.name) # TODO full name
         args = self.func_tf.call_args(

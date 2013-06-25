@@ -25,7 +25,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
-from mypy.types import Void, Type, TypeVars, Callable, Any, UnboundType
+from mypy.types import Void, Type, TypeVars, Callable, AnyType, UnboundType
 from mypy.parsetype import parse_type, parse_types, TypeParseError
 
 
@@ -500,9 +500,9 @@ class Parser:
         arg_types = arg_types[:]
         for i in range(len(arg_types)):
             if arg_types[i] is None:
-                arg_types[i] = Any()
+                arg_types[i] = AnyType()
         if ret_type is None:
-            ret_type = Any()
+            ret_type = AnyType()
         return Callable(arg_types, kinds, names, ret_type, False, None,
                         None, [], line, None)
     

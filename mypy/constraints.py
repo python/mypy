@@ -1,5 +1,5 @@
 from mypy.types import (
-    Callable, Type, TypeVisitor, UnboundType, Any, Void, NoneTyp, TypeVar,
+    Callable, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
     Instance, TupleType, Overloaded, ErasedType
 )
 from mypy.expandtype import expand_caller_var_args
@@ -48,14 +48,14 @@ Type get_actual_type(Type arg_type, int kind, int[] tuple_counter):
             tuple_counter[0] += 1
             return tuplet.items[tuple_counter[0] - 1]
         else:
-            return Any()
+            return AnyType()
     elif kind == nodes.ARG_STAR2:
         if isinstance(arg_type, Instance) and (
                 ((Instance)arg_type).type.fullname() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
             return ((Instance)arg_type).args[1]
         else:
-            return Any()
+            return AnyType()
     else:
         # No translation for other kinds.
         return arg_type
@@ -120,7 +120,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
     Constraint[] visit_unbound_type(self, UnboundType template):
         return []
     
-    Constraint[] visit_any(self, Any template):
+    Constraint[] visit_any(self, AnyType template):
         return []
     
     Constraint[] visit_void(self, Void template):
@@ -167,7 +167,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
                     res.extend(cb)
                     res.extend(negate_constraints(cb))
                 return res
-        if isinstance(actual, Any):
+        if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args)
         else:
@@ -187,10 +187,10 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
             res.extend(infer_constraints(template.ret_type, cactual.ret_type,
                                          self.direction))
             return res
-        elif isinstance(self.actual, Any):
+        elif isinstance(self.actual, AnyType):
             # FIX what if generic
             res = self.infer_against_any(template.arg_types)
-            res.extend(infer_constraints(template.ret_type, Any(),
+            res.extend(infer_constraints(template.ret_type, AnyType(),
                                          self.direction))
             return res
         elif isinstance(self.actual, Overloaded):
@@ -220,7 +220,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
                                              ((TupleType)actual).items[i],
                                              self.direction))
             return res
-        elif isinstance(actual, Any):
+        elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items)
         else:
             return []
@@ -228,7 +228,7 @@ class ConstraintBuilderVisitor(TypeVisitor<Constraint[]>):
     Constraint[] infer_against_any(self, Type[] types):
         Constraint[] res = []
         for t in types:
-            res.extend(infer_constraints(t, Any(), self.direction))
+            res.extend(infer_constraints(t, AnyType(), self.direction))
         return res
 
 

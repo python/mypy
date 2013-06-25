@@ -1,5 +1,5 @@
 from mypy.types import (
-    Callable, Type, Any, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR,
+    Callable, Type, AnyType, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR,
     replace_self_type
 ) 
 from mypy.nodes import FuncDef, TypeInfo, NameExpr, LDEF
@@ -55,10 +55,10 @@ Callable dynamic_sig(Callable sig):
 
     Preserve the number and kinds of arguments.
     """
-    return Callable(<Type> [Any()] * len(sig.arg_types),
+    return Callable(<Type> [AnyType()] * len(sig.arg_types),
                     sig.arg_kinds,
                     sig.arg_names,
-                    Any(),
+                    AnyType(),
                     sig.is_type_obj())
 
 
@@ -113,7 +113,7 @@ class TranslateFunctionTypeVarsToDynamicVisitor(TypeTranslator):
     """Visitor that implements TranslateTypeVarsToWrapperVarsVisitor."""
     Type visit_type_var(self, TypeVar t):
         if t.id < 0:
-            return Any()
+            return AnyType()
         else:
             return t
 
@@ -144,9 +144,9 @@ bool is_simple_override(FuncDef fdef, TypeInfo info):
     # Ignore the first argument (self) when determining type sameness.
     # TODO overloads
     newtype = (Callable)function_type(fdef)
-    newtype = replace_self_type(newtype, Any())
+    newtype = replace_self_type(newtype, AnyType())
     origtype = (Callable)function_type(orig)
-    origtype = replace_self_type(origtype, Any())
+    origtype = replace_self_type(origtype, AnyType())
     return is_same_type(newtype, origtype)
 
 

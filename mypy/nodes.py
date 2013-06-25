@@ -1360,10 +1360,10 @@ mypy.types.FunctionLike function_type(FuncBase func):
         for arg in fdef.args:
             names.append(arg.name())
         return mypy.types.Callable(
-            <mypy.types.Type> [mypy.types.Any()] * len(fdef.args),
+            <mypy.types.Type> [mypy.types.AnyType()] * len(fdef.args),
             fdef.arg_kinds,
             names,
-            mypy.types.Any(),
+            mypy.types.AnyType(),
             False,
             name)
 

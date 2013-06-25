@@ -1,4 +1,4 @@
-from mypy.types import Type, Void, NoneTyp, Any, ErrorType, BasicTypes
+from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, BasicTypes
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
@@ -53,9 +53,9 @@ Type[] solve_constraints(int[] vars, Constraint[] constraints,
             else:
                 bottom = NoneTyp()
         
-        if isinstance(top, Any) or isinstance(bottom, Any):
-            top = Any()
-            bottom = Any()
+        if isinstance(top, AnyType) or isinstance(bottom, AnyType):
+            top = AnyType()
+            bottom = AnyType()
         
         # Pick the most specific type if it satisfies the constraints.
         if (not top or not bottom or is_subtype(bottom, top)) and (

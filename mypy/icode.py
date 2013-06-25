@@ -1,6 +1,6 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
-from mypy.types import Any, Instance, Type, Callable, FunctionLike
+from mypy.types import AnyType, Instance, Type, Callable, FunctionLike
 from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
@@ -675,7 +675,7 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_coerce_expr(self, CoerceExpr e):
         if (is_named_instance(e.source_type, 'builtins.int') and
-            isinstance(e.target_type, Any)):
+            isinstance(e.target_type, AnyType)):
             # This is a no-op currently.
             # TODO perhaps should do boxing in some cases...
             return e.expr.accept(self)

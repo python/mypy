@@ -1,5 +1,5 @@
 from mypy.types import (
-    Type, Instance, Callable, TypeVisitor, UnboundType, ErrorType, Any, Void,
+    Type, Instance, Callable, TypeVisitor, UnboundType, ErrorType, AnyType, Void,
     NoneTyp, TypeVar, Overloaded, TupleType, ErasedType, TypeList
 )
 
@@ -46,7 +46,7 @@ class ExpandTypeVisitor(TypeVisitor<Type>):
     Type visit_type_list(self, TypeList t):
         assert False, 'Not supported'
     
-    Type visit_any(self, Any t):
+    Type visit_any(self, AnyType t):
         return t
     
     Type visit_void(self, Void t):
@@ -132,8 +132,8 @@ tuple<Type[], Type> expand_caller_var_args(Type[] arg_types,
         return arg_types[:-1] + ((TupleType)arg_types[-1]).items, None
     else:
         Type item_type
-        if isinstance(arg_types[-1], Any):
-            item_type = Any()
+        if isinstance(arg_types[-1], AnyType):
+            item_type = AnyType()
         elif isinstance(arg_types[-1], Instance) and (
                 ((Instance)arg_types[-1]).type.fullname() == 'builtins.list'):
             # List.

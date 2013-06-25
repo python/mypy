@@ -62,8 +62,8 @@ class TypeList(Type):
         return visitor.visit_type_list(self)
 
 
-class Any(Type):
-    """The type "any"."""
+class AnyType(Type):
+    """The type 'Any'."""
     T accept<T>(self, TypeVisitor<T> visitor):
         return visitor.visit_any(self)
 
@@ -399,7 +399,7 @@ class TypeVisitor<T>:
     T visit_error_type(self, ErrorType t):
         pass
     
-    T visit_any(self, Any t):
+    T visit_any(self, AnyType t):
         pass
     
     T visit_void(self, Void t):
@@ -445,7 +445,7 @@ class TypeTranslator(TypeVisitor<Type>):
     Type visit_error_type(self, ErrorType t):
         return t
     
-    Type visit_any(self, Any t):
+    Type visit_any(self, AnyType t):
         return t
     
     Type visit_void(self, Void t):
@@ -641,7 +641,7 @@ class TypeQuery(TypeVisitor<bool>):
     bool visit_error_type(self, ErrorType t):
         return self.default
     
-    bool visit_any(self, Any t):
+    bool visit_any(self, AnyType t):
         return self.default
     
     bool visit_void(self, Void t):
