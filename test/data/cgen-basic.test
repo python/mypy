@@ -7,18 +7,21 @@
 -- to the expected output.
 
 [case testPrintOnly]
+import typing
 print(5)
 [out]
 5
 
 [case testCallWithoutArgs]
-void f():
+import typing
+def f() -> None:
     print(3)
 # The comment below adds the line '3' to the expected output.
 f() # 3
 
 [case testCallWithArgs]
-void f(int a, int b):
+import typing
+def f(a: int, b: int) -> None:
     print(a)
     print(b)
 f(3, 5)
@@ -27,7 +30,8 @@ f(3, 5)
 5
 
 [case testLoop]
-void f():
+import typing
+def f() -> None:
     i = 0
     while i < 3:
         print(i)
@@ -39,12 +43,14 @@ f()
 2
 
 [case testReturnValue]
-int f():
+import typing
+def f() -> int:
     return 5
 print(f()) # 5
 
 [case testIf]
-void f(int n):
+import typing
+def f(n: int) -> None:
     if n < 1:
         print(0)
     else:
@@ -54,7 +60,8 @@ f(1) # 1
 f(2) # 1
 
 [case testRecursion]
-int f(int n):
+import typing
+def f(n: int) -> int:
     if n <= 0:
         return 3
     else:
@@ -65,20 +72,23 @@ print(f(1)) # 4
 print(f(5)) # 18
 
 [case testGlobalVariables]
+import typing
 x = 1
 y = 2
 print(x) # 1
-int f():
+def f() -> int:
     return x + y
 y = y + 1
 print(f()) # 4
 
 [case testUninitializedGlobalVar]
+import typing
 if 1 > 2:
     x = 1
 print(x) # 0
 
 [case testInstanceCondition]
+import typing
 class A: pass
 a = A()
 if a:
@@ -92,8 +102,9 @@ if not a:
     print(4) # 4
 
 [case testLocalInitialization]
+import typing
 class A: pass
-void f():
+def f() -> None:
     if 1 > 2:
         a = A()
         i = 1
@@ -106,27 +117,29 @@ void f():
 f()
 
 [case testLocalWithExplicitType]
+from typing import Undefined
 class A: pass
-void f():
-    int x = 2
+def f() -> None:
+    x = 2 # type: int
     print(x) # 2
-    int y
+    y = 0
     print(y) # 0
     y = 3
     print(y) # 3
-    A a
+    a = Undefined # type: A
     print(a) # None
 f()
 
 [case testGlobalWithExplicitType]
+from typing import Undefined
 class A: pass
-int x = 2
+x = 2 # type: int
 print(x) # 2
-int y
+y = 0
 print(y) # 0
 y = 3
 print(y) # 3
-A a
+a = Undefined # type: A
 print(a) # None
 
 -- TODO

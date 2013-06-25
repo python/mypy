@@ -3,14 +3,16 @@
 -- See comment on top of cgen-basic.test for more information.
 
 [case testIntUnaryMinus]
-void p(int n):
+import typing
+def p(n: int) -> None:
     print(-n)
 p(0)  # 0
 p(3)  # -3
 p(-1) # 1
 
 [case testIntPlus]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x + y)
 p(0, 0)   # 0
 p(1, 2)   # 3
@@ -19,7 +21,8 @@ p(-2, 3)  # 1
 p(3, -4)  # -1
 
 [case testIntMinus]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x - y)
 p(0, 0)   # 0
 p(3, 1)   # 2
@@ -28,7 +31,8 @@ p(-2, 3)  # -5
 p(3, -4)  # 7
 
 [case testIntMul]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x * y)
 p(0, 0)   # 0
 p(2, 1)   # 2
@@ -36,7 +40,8 @@ p(3, 5)   # 15
 # Negative operands currently not supported
 
 [case testIntDiv]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x // y)
 p(0, 1)   # 0
 p(7, 8)   # 0
@@ -49,7 +54,8 @@ p(30, 4)  # 7
 # Negative operands currently not supported
 
 [case testIntMod]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x % y)
 p(0, 1)   # 0
 p(1, 7)   # 1
@@ -60,7 +66,8 @@ p(37, 13) # 11
 # Negative operands currently not supported
 
 [case testBitwiseAnd]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x & y)
 p(0, 0) # 0
 p(1, 0) # 0
@@ -72,7 +79,8 @@ p(-1, -1) # -1
 p(-13, 47) # 35
 
 [case testBitwiseOr]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x | y)
 p(0, 0) # 0
 p(1, 0) # 1
@@ -83,7 +91,8 @@ p(3, 3) # 3
 p(-13, 47) # -1
 
 [case testBitwiseXor]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x ^ y)
 p(0, 0) # 0
 p(1, 0) # 1
@@ -94,7 +103,8 @@ p(3, 3) # 0
 p(-13, 47) # -36
 
 [case testIntShiftLeft]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x << y)
 p(0, 0) # 0
 p(1, 0) # 1
@@ -104,7 +114,8 @@ p(3, 6) # 192
 # Negative operands currently not supported
 
 [case testIntShiftRight]
-void p(int x, int y):
+import typing
+def p(x: int, y: int) -> None:
     print(x >> y)
 p(0, 0) # 0
 p(1, 0) # 1
@@ -116,7 +127,8 @@ p(30, 2)  # 7
 # Negative operands currently not supported
 
 [case testBitwiseNegation]
-void p(int x):
+import typing
+def p(x: int) -> None:
     print(~x)
 p(0)  # -1
 p(-1) # 0
@@ -124,7 +136,8 @@ p(6)  # -7
 p(-5) # 4
 
 [case testIntEq]
-void eq(int x, int y):
+import typing
+def eq(x: int, y: int) -> None:
      if x == y:
          print(1)
      else:
@@ -137,7 +150,8 @@ eq(-1, 1) # 0
 eq(-1, 0) # 0
 
 [case testIntNe]
-void ne(int x, int y):
+import typing
+def ne(x: int, y: int) -> None:
      if x != y:
          print(1)
      else:
@@ -150,7 +164,8 @@ ne(-1, 1) # 1
 ne(-1, 0) # 1
 
 [case testIntLt]
-void lt(int x, int y):
+import typing
+def lt(x: int, y: int) -> None:
      if x < y:
          print(1)
      else:
@@ -163,7 +178,8 @@ lt(-1, 1) # 1
 lt(0, -1) # 0
 
 [case testIntGt]
-void gt(int x, int y):
+import typing
+def gt(x: int, y: int) -> None:
      if x > y:
          print(1)
      else:
@@ -176,7 +192,8 @@ gt(-1, 1) # 0
 gt(0, -1) # 1
 
 [case testIntLe]
-void le(int x, int y):
+import typing
+def le(x: int, y: int) -> None:
      if x <= y:
          print(1)
      else:
@@ -190,7 +207,8 @@ le(-1, 1)  # 1
 le(0, -1)  # 0
 
 [case testIntGe]
-void ge(int x, int y):
+import typing
+def ge(x: int, y: int) -> None:
      if x >= y:
          print(1)
      else:
