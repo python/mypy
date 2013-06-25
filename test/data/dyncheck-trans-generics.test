@@ -565,22 +565,22 @@ class A**:
     def f*(self: Any, x: Any) -> Any:
         return self.__o.f(<Any>, x)
 
-[case testCalllingGenericMethod-skip]
+[case testCalllingGenericMethod]
 from typing import typevar
 T = typevar('T')
-class A:
-    def f(self) -> T:
-        pass
-    def g(self) -> 'C':
-        return self.f['C']()
-c = A().f['C']() # type: C
 class C: pass
+class A:
+    def f(self, x: T) -> T:
+        pass
+    def g(self) -> C:
+        return self.f(C())
+c = A().f(C())
 [out]
 ...
     def g(self: A) -> C:
-        return self.f(<C>)
+        return self.f(<C>, C())
 ...
-c: C = A().f(<C>)
+c = A().f(<C>, C())
 ...
 
 [case testCalllingGenericMethod2-skip]
