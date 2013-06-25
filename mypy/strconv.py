@@ -6,9 +6,10 @@ import os
 from mypy.util import dump_tagged, short_type
 import mypy.nodes
 from mypy.visitor import NodeVisitor
+import typing
 
 
-class StrConv(NodeVisitor<str>):
+class StrConv(NodeVisitor[str]):
     """Visitor for converting a Node to a human-readable string.
     
     For example, an MypyFile node from program '1' is converted into

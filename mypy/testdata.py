@@ -4,14 +4,15 @@ import re
 from os import remove, rmdir
 
 from mypy.myunit import TestCase, SkipTestCaseException
+from typing import Function, List, Tuple, Undefined
 
 
-DataDrivenTestCase[] parse_test_cases(
-            str path,
-            func<void(DataDrivenTestCase)> perform,
-            str base_path='.',
-            bool optional_out=False,
-            str include_path=None):
+def parse_test_cases(
+            path: str,
+            perform: 'Function[[DataDrivenTestCase], None]',
+            base_path: str = '.',
+            optional_out: bool = False,
+            include_path: str = None) -> 'List[DataDrivenTestCase]':
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
@@ -22,7 +23,7 @@ DataDrivenTestCase[] parse_test_cases(
     for i in range(len(l)):
         l[i] = l[i].rstrip('\n')
     p = parse_test_data(l, path)
-    DataDrivenTestCase[] out = []
+    out = [] # type: List[DataDrivenTestCase]
     
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
@@ -33,7 +34,7 @@ DataDrivenTestCase[] parse_test_cases(
         if p[i].id == 'case':
             i += 1
             
-            files = <tuple<str, str>> [] # path and contents
+            files = [] # type: List[Tuple[str, str]] # path and contents
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
@@ -52,7 +53,7 @@ DataDrivenTestCase[] parse_test_cases(
                             p[i].id, path, p[i].line))
                 i += 1
             
-            str[] tcout = []
+            tcout = [] # type: List[str]
             if i < len(p) and p[i].id == 'out':
                 tcout = p[i].data
                 ok = True
@@ -75,13 +76,13 @@ DataDrivenTestCase[] parse_test_cases(
 
 
 class DataDrivenTestCase(TestCase):
-    str[] input
-    str[] output
-    str file
-    int line
-    func<void(DataDrivenTestCase)> perform
-    tuple<str, str>[] files # Tuples (file path, file content)
-    tuple<bool, str>[] clean_up
+    input = Undefined # type: List[str]
+    output = Undefined # type: List[str]
+    file = ''
+    line = 0
+    perform = Undefined # type: Function[[DataDrivenTestCase], None]
+    files = Undefined # type: List[Tuple[str, str]] # Tuples (file path, file content)
+    clean_up = Undefined # type: List[Tuple[bool, str]]
     
     def __init__(self, name, input, output, file, line, perform, files):
         super().__init__(name)
@@ -92,7 +93,7 @@ class DataDrivenTestCase(TestCase):
         self.perform = perform
         self.files = files
     
-    void set_up(self):
+    def set_up(self) -> None:
         super().set_up()
         self.clean_up = []
         for path, content in self.files:
@@ -104,7 +105,7 @@ class DataDrivenTestCase(TestCase):
             f.close()
             self.clean_up.append((False, path))
     
-    str[] add_dirs(self, str dir):
+    def add_dirs(self, dir: str) -> List[str]:
         """Add all subdirectories required to create dir.
 
         Return an array of the created directories in the order of creation.
@@ -122,7 +123,7 @@ class DataDrivenTestCase(TestCase):
         else:
             self.perform(self)
     
-    void tear_down(self):
+    def tear_down(self) -> None:
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
                 rmdir(path)
@@ -138,13 +139,13 @@ class TestItem:
       [id arg]
       .. data ..
     """
-    str id
-    str arg
-    str[] data # Text data, array of 8-bit strings
-    str file
-    int line # Line number in file
+    id = ''
+    arg = ''
+    data = Undefined # type: List[str] # Text data, array of 8-bit strings
+    file = ''
+    line = 0 # Line number in file
     
-    void __init__(self, str id, str arg, str[] data, str file, int line):
+    def __init__(self, id: str, arg: str, data: List[str], file: str, line: int) -> None:
         self.id = id
         self.arg = arg
         self.data = data
@@ -152,13 +153,13 @@ class TestItem:
         self.line = line
 
 
-TestItem[] parse_test_data(str[] l, str fnam):
+def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     """Parse a list of lines that represent a sequence of test items."""
-    ret = <TestItem> []
-    data = <str> []
+    ret = [] # type: List[TestItem]
+    data = [] # type: List[str]
     
-    str id = None
-    str arg = None
+    id = None # type: str
+    arg = None # type: str
     
     i = 0
     i0 = 0
@@ -194,13 +195,13 @@ TestItem[] parse_test_data(str[] l, str fnam):
     return ret
 
 
-str[] strip_list(str[] l):
+def strip_list(l: List[str]) -> List[str]:
     """Return a stripped copy of l.
 
     Strip whitespace at the end of all lines, and strip all empty
     lines from the end of the array.
     """
-    str[] r = []
+    r = [] # type: List[str]
     for s in l:
         # Strip spaces at end of line
         r.append(re.sub(r'\s+$', '', s))
@@ -211,8 +212,8 @@ str[] strip_list(str[] l):
     return r
 
 
-str[] collapse_line_continuation(str[] l):
-    r = <str> []
+def collapse_line_continuation(l: List[str]) -> List[str]:
+    r = [] # type: List[str]
     cont = False
     for s in l:
         ss = re.sub(r'\\$', '', s)
@@ -224,12 +225,12 @@ str[] collapse_line_continuation(str[] l):
     return r
 
 
-str[] expand_includes(str[] a, str base_path):
+def expand_includes(a: List[str], base_path: str) -> List[str]:
     """Replace all lies starting with @include with the contents of
     the file name following the prefix. Look for the files in
     base_path.
     """
-    res = <str> []
+    res = [] # type: List[str]
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()

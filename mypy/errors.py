@@ -1,24 +1,29 @@
+import os
 import os.path
+
+from typing import Undefined, Tuple, List, typevar, Sequence, Any, Function
+
+T = typevar('T')
 
 
 class ErrorInfo:
     """Representation of a single error message."""
     # Description of a sequence of imports that refer to the source file
     # related to this error. Each item is a (path, line number) tuple.
-    list<tuple<str, int>> import_ctx
+    import_ctx = Undefined # type: List[Tuple[str, int]]
     # The source file that was the source of this error.
-    str file
+    file = ''
     # The name of the type in which this error is located at.
-    str type     # Unqualified, may be None
+    type = ''     # Unqualified, may be None
     # The name of the function or member in which this error is located at.
-    str function_or_member     # Unqualified, may be None
+    function_or_member = ''     # Unqualified, may be None
     # The line number related to this error within file.
-    int line     # -1 if unknown
+    line = 0     # -1 if unknown
     # The error message.
-    str message
+    message = ''
     
-    void __init__(self, list<tuple<str, int>> import_ctx, str file, str typ,
-                  str function_or_member, int line, str message):
+    def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
+                  function_or_member: str, line: int, message: str) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
@@ -34,26 +39,26 @@ class Errors:
     current error context (nested imports).
     """
     # List of generated error messages.
-    ErrorInfo[] error_info
+    error_info = Undefined # type: List[ErrorInfo]
     
     # Current error context.
     # Import context, as a list of (path, line) pairs.
-    list<tuple<str, int>> import_ctx
+    import_ctx = Undefined # type: List[Tuple[str, int]]
     # Path name prefix that is removed from all paths, if set.
-    str ignore_prefix = None
-    str file = None     # Path to current file.
+    ignore_prefix = None # type: str
+    file = None # type: str     # Path to current file.
     # Statck of short names of currents types (or None).
-    str[] type_name
+    type_name = Undefined # type: List[str]
     # Stack of short names of current functions or members (or None).
-    str[] function_or_member
+    function_or_member = Undefined # type: List[str]
     
-    void __init__(self):
+    def __init__(self) -> None:
         self.error_info = []
         self.import_ctx = []
         self.type_name = [None]
         self.function_or_member = [None]
     
-    void set_ignore_prefix(self, str prefix):
+    def set_ignore_prefix(self, prefix: str) -> None:
         """Set path prefix that will be removed from all paths."""
         prefix = os.path.normpath(prefix)
         # Add separator to the end, if not given.
@@ -61,42 +66,42 @@ class Errors:
             prefix += os.sep
         self.ignore_prefix = prefix
     
-    void set_file(self, str file):
+    def set_file(self, file: str) -> None:
         """Set the path of the current file."""
         file = os.path.normpath(file)
         self.file = remove_path_prefix(file, self.ignore_prefix)
     
-    void push_function(self, str name):
+    def push_function(self, name: str) -> None:
         """Set the current function or member short name (it can be None)."""
         self.function_or_member.append(name)
 
-    void pop_function(self):
+    def pop_function(self) -> None:
         self.function_or_member.pop()
     
-    void push_type(self, str name):
+    def push_type(self, name: str) -> None:
         """Set the short name of the current type (it can be None)."""
         self.type_name.append(name)
 
-    void pop_type(self):
+    def pop_type(self) -> None:
         self.type_name.pop()
     
-    void push_import_context(self, str path, int line):
+    def push_import_context(self, path: str, line: int) -> None:
         """Add a (file, line) tuple to the import context."""
         self.import_ctx.append((os.path.normpath(path), line))
     
-    void pop_import_context(self):
+    def pop_import_context(self) -> None:
         """Remove the topmost item from the import context."""
         self.import_ctx.pop()
     
-    list<tuple<str, int>> import_context(self):
+    def import_context(self) -> List[Tuple[str, int]]:
         """Return a copy of the import context."""
         return self.import_ctx[:]
     
-    void set_import_context(self, list<tuple<str, int>> ctx):
+    def set_import_context(self, ctx: List[Tuple[str, int]]) -> None:
         """Replace the entire import context with a new value."""
         self.import_ctx = ctx[:]
     
-    void report(self, int line, str message):
+    def report(self, line: int, message: str) -> None:
         """Report a message at the given line using the current error
         context."""
         type = self.type_name[-1]
@@ -106,29 +111,29 @@ class Errors:
                          self.function_or_member[-1], line, message)
         self.error_info.append(info)
     
-    int num_messages(self):
+    def num_messages(self) -> int:
         """Return the number of generated messages."""
         return len(self.error_info)
     
-    bool is_errors(self):
+    def is_errors(self) -> bool:
         """Are there any generated errors?"""
         return len(self.error_info) > 0
     
-    void raise_error(self):
+    def raise_error(self) -> None:
         """Raise a CompileError with the generated messages. Render
         the messages suitable for displaying.
         """
         raise CompileError(self.messages())
     
-    str[] messages(self):
+    def messages(self) -> List[str]:
         """Return a string array that represents the error messages in a form
         suitable for displaying to the user.
         """
-        str[] a = []
+        a = [] # type: List[str]
         errors = self.render_messages(self.sort_messages(self.error_info))
         errors = self.remove_duplicates(errors)
         for file, line, message in errors:
-            str s
+            s = ''
             if file is not None:
                 if line is not None and line >= 0:
                     s = '{}, line {}: {}'.format(file, line, message)
@@ -139,18 +144,18 @@ class Errors:
             a.append(s)
         return a
     
-    list<tuple<str, int, str>> render_messages(self, ErrorInfo[] errors):
+    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[str, int, str]]:
         """Translate the messages into a sequence of (path, line,
         message) tuples.  The rendered sequence includes information
         about error contexts. The path item may be None. If the line
         item is negative, the line number is not defined for the
         tuple.
         """
-        list<tuple<str, int, str>> result = [] # (path, line, message)
+        result = [] # type: List[Tuple[str, int, str]] # (path, line, message)
         
-        list<tuple<str, int>> prev_import_context = []
-        str prev_function_or_member = None
-        str prev_type = None
+        prev_import_context = [] # type: List[Tuple[str, int]]
+        prev_function_or_member = None # type: str
+        prev_type = None # type: str
         
         for e in errors:
             # Report module import context, if different from previous message.
@@ -205,12 +210,12 @@ class Errors:
         
         return result
     
-    ErrorInfo[] sort_messages(self, ErrorInfo[] errors):
+    def sort_messages(self, errors: List[ErrorInfo]) -> List[ErrorInfo]:
         """Sort an array of error messages locally by line number, i.e. sort a
         run of consecutive messages with the same file context by line number,
         but otherwise retain the general ordering of the messages.
         """
-        ErrorInfo[] result = []
+        result = [] # type: List[ErrorInfo]
         i = 0
         while i < len(errors):
             i0 = i
@@ -226,10 +231,10 @@ class Errors:
             result.extend(a)
         return result
     
-    list<tuple<str, int, str>> remove_duplicates(
-                                  self, list<tuple<str, int, str>> errors):
+    def remove_duplicates(
+                                  self, errors: List[Tuple[str, int, str]]) -> List[Tuple[str, int, str]]:
         """Remove duplicates from a sorted error list."""
-        list<tuple<str, int, str>> res = []
+        res = [] # type: List[Tuple[str, int, str]]
         i = 0
         while i < len(errors):
             dup = False
@@ -250,29 +255,29 @@ class CompileError(Exception):
     """Exception raised when there is a parse, semantic analysis, type check or
     other compilation-related error.
     """
-    str[] messages
+    messages = Undefined # type: List[str]
     
-    void __init__(self, str[] messages):
+    def __init__(self, messages: List[str]) -> None:
         super().__init__()
         self.messages = messages
 
 
-T[] stable_sort<T>(Sequence<T> a, func<any(T)> key):
+def stable_sort(a: Sequence[T], key: Function[[T], Any]) -> List[T]:
     """Perform a stable sort of a sequence, i.e. if the original sequence has
     a[n] == a[n+m] (when comparing using the comparison function f), in the
     sorted sequence item a[n] will be at an earlier index than a[n + m].
     """
     # TODO use sorted with key (need support for keyword arguments)
-    l = <tuple<any, int, T>> []
+    l = List[Tuple[Any, int, T]]()
     for i, x in enumerate(a):
         l.append((key(x), i, x))
-    result = <T> []
+    result = List[T]()
     for k, j, y in sorted(l):
         result.append(y)        
     return result
 
 
-str remove_path_prefix(str path, str prefix):
+def remove_path_prefix(path: str, prefix: str) -> str:
     """If path starts with prefix, return copy of path with the prefix removed.
     Otherwise, return path. If path is None, return None.
     """
