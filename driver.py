@@ -17,7 +17,6 @@ import tempfile
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.pythongen import PythonGenerator
 
 
 # Fallback options
