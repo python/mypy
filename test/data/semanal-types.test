@@ -110,7 +110,7 @@ MypyFile:1(
   TypeDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(x)
+      NameExpr(x [m])
       NameExpr(None [builtins.None])
       builtins.int)
     AssignmentStmt:4(
@@ -1251,7 +1251,7 @@ MypyFile:1(
   TypeDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(T*)
+      NameExpr(T* [m])
       TypeVarExpr:3())
     FuncDef:4(
       g
@@ -1279,7 +1279,7 @@ MypyFile:1(
     TypeVars(
       T)
     AssignmentStmt:4(
-      NameExpr(y)
+      NameExpr(y [m])
       NameExpr(None [builtins.None])
       T`1)))
 
@@ -1302,7 +1302,7 @@ MypyFile:1(
     TypeVars(
       _m.T)
     AssignmentStmt:4(
-      NameExpr(a)
+      NameExpr(a [m])
       NameExpr(None [builtins.None])
       _m.T`1)
     FuncDef:5(

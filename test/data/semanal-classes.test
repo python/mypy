@@ -226,7 +226,7 @@ MypyFile:1(
   TypeDef:1(
     A
     AssignmentStmt:2(
-      NameExpr(a*)
+      NameExpr(a* [m])
       NameExpr(object [builtins.object]))))
 
 [case testDataAttributeRefInClassBody]
@@ -238,10 +238,10 @@ MypyFile:1(
   TypeDef:1(
     A
     AssignmentStmt:2(
-      NameExpr(x*)
+      NameExpr(x* [m])
       IntExpr(1))
     AssignmentStmt:3(
-      NameExpr(y*)
+      NameExpr(y* [m])
       NameExpr(x [m]))))
 
 [case testMethodRefInClassBody]
@@ -259,7 +259,7 @@ MypyFile:1(
       Block:2(
         PassStmt:2()))
     AssignmentStmt:3(
-      NameExpr(g*)
+      NameExpr(g* [m])
       NameExpr(f [m]))))
 
 [case testIfStatementInClassBody]
@@ -277,7 +277,7 @@ MypyFile:1(
         NameExpr(A [__main__.A]))
       Then(
         AssignmentStmt:3(
-          NameExpr(x*)
+          NameExpr(x* [m])
           IntExpr(1)))
       Else(
         AssignmentStmt:5(
@@ -293,13 +293,13 @@ MypyFile:1(
   TypeDef:1(
     A
     ForStmt:2(
-      NameExpr(x*)
+      NameExpr(x* [m])
       ListExpr:2(
         IntExpr(1)
         IntExpr(2))
       Block:2(
         AssignmentStmt:3(
-          NameExpr(y*)
+          NameExpr(y* [m])
           NameExpr(x [m]))))))
 
 [case testReferenceToClassWithinFunction]
@@ -365,7 +365,7 @@ MypyFile:1(
       TypeDef:2(
         A
         AssignmentStmt:3(
-          NameExpr(y*)
+          NameExpr(y* [m])
           NameExpr(x [l]))
         FuncDef:4(
           g

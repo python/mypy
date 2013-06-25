@@ -588,7 +588,7 @@ MypyFile:1(
     A
     ImportFrom:2(_x, [y : y])
     AssignmentStmt:3(
-      NameExpr(z*)
+      NameExpr(z* [m])
       NameExpr(y [_x.y]))))
 
 [case testImportInClassBody2]
@@ -603,7 +603,7 @@ MypyFile:1(
     A
     Import:2(_x : _x)
     AssignmentStmt:3(
-      NameExpr(z*)
+      NameExpr(z* [m])
       MemberExpr:3(
         NameExpr(_x)
         y [_x.y]))))
