@@ -107,29 +107,29 @@ class TypeFixture:
 
         # Generic instance types
 
-        self.ga = Instance(self.gi, [self.a])        # G<A>
-        self.gb = Instance(self.gi, [self.b])        # G<B>
-        self.go = Instance(self.gi, [self.o])        # G<object>
-        self.gt = Instance(self.gi, [self.t])        # G<T`1>
-        self.gtf = Instance(self.gi, [self.tf])      # G<T`-1>
-        self.gtf2 = Instance(self.gi, [self.tf2])    # G<T`-2>
-        self.gs = Instance(self.gi, [self.s])        # G<S>
-        self.gdyn = Instance(self.gi, [self.anyt])    # G<any>
+        self.ga = Instance(self.gi, [self.a])        # G[A]
+        self.gb = Instance(self.gi, [self.b])        # G[B]
+        self.go = Instance(self.gi, [self.o])        # G[object]
+        self.gt = Instance(self.gi, [self.t])        # G[T`1]
+        self.gtf = Instance(self.gi, [self.tf])      # G[T`-1]
+        self.gtf2 = Instance(self.gi, [self.tf2])    # G[T`-2]
+        self.gs = Instance(self.gi, [self.s])        # G[S]
+        self.gdyn = Instance(self.gi, [self.anyt])    # G[Any]
 
-        self.g2a = Instance(self.g2i, [self.a])      # G2<A>
+        self.g2a = Instance(self.g2i, [self.a])      # G2[A]
 
-        self.gsab = Instance(self.gsi, [self.a, self.b])  # GS<A, B>
-        self.gsba = Instance(self.gsi, [self.b, self.a])  # GS<B, A>
+        self.gsab = Instance(self.gsi, [self.a, self.b])  # GS[A, B]
+        self.gsba = Instance(self.gsi, [self.b, self.a])  # GS[B, A]
 
-        self.gs2a = Instance(self.gs2i, [self.a])    # GS2<A>
+        self.gs2a = Instance(self.gs2i, [self.a])    # GS2[A]
 
-        self.hab = Instance(self.hi, [self.a, self.b])    # H<A, B>
-        self.haa = Instance(self.hi, [self.a, self.a])    # H<A, A>
-        self.hbb = Instance(self.hi, [self.b, self.b])    # H<B, B>
-        self.hts = Instance(self.hi, [self.t, self.s])    # H<T, S>
+        self.hab = Instance(self.hi, [self.a, self.b])    # H[A, B]
+        self.haa = Instance(self.hi, [self.a, self.a])    # H[A, A]
+        self.hbb = Instance(self.hi, [self.b, self.b])    # H[B, B]
+        self.hts = Instance(self.hi, [self.t, self.s])    # H[T, S]
 
-        self.lsta = Instance(self.std_listi, [self.a])  # A[]
-        self.lstb = Instance(self.std_listi, [self.b])  # B[]
+        self.lsta = Instance(self.std_listi, [self.a])  # List[A]
+        self.lstb = Instance(self.std_listi, [self.b])  # List[B]
 
         # Basic types
         self.basic = BasicTypes(self.o, self.type_type, self.std_tuple,

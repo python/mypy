@@ -1022,15 +1022,15 @@ Type map_type_from_supertype(Type typ, TypeInfo sub_info, TypeInfo super_info):
     
     For example, assume
     
-      class D<S> ...
-      class C<T> is D<E<T>> ...
+      class D(Generic[S]) ...
+      class C(D[E[T]], Generic[T]) ...
     
-    Now S in the context of D would be mapped to E<T> in the context of C.
+    Now S in the context of D would be mapped to E[T] in the context of C.
     """
-    # Create the type of self in subtype, of form t<a1, ...>.
+    # Create the type of self in subtype, of form t[a1, ...].
     inst_type = self_type(sub_info)
     # Map the type of self to supertype. This gets us a description of the
-    # supertype type variables in terms of subtype variables, i.e. t<t1, ...>
+    # supertype type variables in terms of subtype variables, i.e. t[t1, ...]
     # so that any type variables in tN are to be interpreted in subtype
     # context.
     inst_type = map_instance_to_supertype(inst_type, super_info)

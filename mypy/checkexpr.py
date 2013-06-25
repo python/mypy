@@ -602,7 +602,7 @@ class ExpressionChecker:
                                 Context context):
         """Apply generic type arguments to a callable type.
 
-        For example, applying [int] to 'def <T> (T) -> T' results in
+        For example, applying [int] to 'def [T] (T) -> T' results in
         'def [int] (int) -> int'. Here '[int]' is an implicit bound type
         variable.
         
@@ -830,7 +830,7 @@ class ExpressionChecker:
                  not isinstance(target_type, Void)))
     
     Type visit_type_application(self, TypeApplication tapp):
-        """Type check a type application (expr<...>)."""
+        """Type check a type application (expr[type, ...])."""
         expr_type = self.accept(tapp.expr)
         if isinstance(expr_type, Callable):
             new_type = self.apply_generic_arguments((Callable)expr_type,
@@ -849,7 +849,7 @@ class ExpressionChecker:
         return new_type
     
     Type visit_list_expr(self, ListExpr e):
-        """Type check a list expression [...] or <t> [...]."""
+        """Type check a list expression [...]."""
         return self.check_list_or_set_expr(e.items, e.type, 'builtins.list',
                                            '<list>', e)
 
@@ -908,7 +908,8 @@ class ExpressionChecker:
                 items.append(tt)
             return TupleType(items)
         else:
-            # Explicit item types, i.e. expression of form <t, ...> (e, ...).
+            # Explicit item types.
+            # TODO not supported any more
             for j in range(len(e.types)):
                 item = e.items[j]
                 itemtype = self.accept(item)
@@ -925,7 +926,7 @@ class ExpressionChecker:
             Callable constructor
             # The callable type represents a function like this:
             #
-            #   dict<kt, vt> make_dict<kt, vt>(tuple<kt, vt> *v): ...
+            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
             constructor = Callable([TupleType([tv1, tv2])],
                                    [nodes.ARG_STAR],
                                    [None],
@@ -1095,7 +1096,7 @@ class ExpressionChecker:
             'builtins.dict', [self.named_type('builtins.str'), Any()]))
     
     bool is_list_instance(self, Type t):
-        """Is the argument an instance type ...[]?"""
+        """Is the argument an instance type List[...]?"""
         return (isinstance(t, Instance) and
                 ((Instance)t).type.fullname() == 'builtins.list')
     
@@ -1124,7 +1125,7 @@ class ExpressionChecker:
         return r
 
     Type erase(self, Type type):
-        """Replace type variable types in type with any."""
+        """Replace type variable types in type with Any."""
         return erasetype.erase_type(type, self.chk.basic_types())
 
 
@@ -1244,8 +1245,8 @@ class ArgInferSecondPassQuery(types.TypeQuery):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
-    type anywhere. For example, the result for func<t()> is True if t is a
-    type variable.
+    type anywhere. For example, the result for Function[[], T] is True if t is
+    a type variable.
     """    
     void __init__(self):
         super().__init__(False, types.ANY_TYPE_STRATEGY)
