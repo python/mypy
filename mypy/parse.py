@@ -241,7 +241,7 @@ class Parser:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
                 
-                self.errors.push_type(name, False)
+                self.errors.push_type(name)
                 
                 if self.current_str() == '(':
                     lparen = self.skip()

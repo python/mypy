@@ -307,7 +307,7 @@ class TypeChecker(NodeVisitor<Type>):
     Type visit_type_def(self, TypeDef defn):
         """Type check a class definition."""
         typ = defn.info
-        self.errors.push_type(defn.name, defn.is_interface)
+        self.errors.push_type(defn.name)
         self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.errors.pop_type()

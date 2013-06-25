@@ -10,8 +10,6 @@ class ErrorInfo:
     str file
     # The name of the type in which this error is located at.
     str type     # Unqualified, may be None
-    # It the error located within an interface?
-    bool is_interface
     # The name of the function or member in which this error is located at.
     str function_or_member     # Unqualified, may be None
     # The line number related to this error within file.
@@ -19,22 +17,11 @@ class ErrorInfo:
     # The error message.
     str message
     
-    str type_id(self):
-        """Return 'interface' or 'class' depending on the context of the error.
-        Call this method only if the type member != None.
-        """
-        if self.is_interface:
-            return 'interface'
-        else:
-            return 'class'
-    
     void __init__(self, list<tuple<str, int>> import_ctx, str file, str typ,
-                  bool is_interface, str function_or_member, int line,
-                  str message):
+                  str function_or_member, int line, str message):
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
-        self.is_interface = is_interface
         self.function_or_member = function_or_member
         self.line = line
         self.message = message
@@ -57,8 +44,6 @@ class Errors:
     str file = None     # Path to current file.
     # Statck of short names of currents types (or None).
     str[] type_name
-    # Stack of flags: is the corresponding type_name an interface?
-    bool[] is_interface
     # Stack of short names of current functions or members (or None).
     str[] function_or_member
     
@@ -66,7 +51,6 @@ class Errors:
         self.error_info = []
         self.import_ctx = []
         self.type_name = [None]
-        self.is_interface = [False]
         self.function_or_member = [None]
     
     void set_ignore_prefix(self, str prefix):
@@ -89,14 +73,12 @@ class Errors:
     void pop_function(self):
         self.function_or_member.pop()
     
-    void push_type(self, str name, bool is_interface):
+    void push_type(self, str name):
         """Set the short name of the current type (it can be None)."""
         self.type_name.append(name)
-        self.is_interface.append(is_interface)
 
     void pop_type(self):
         self.type_name.pop()
-        self.is_interface.pop()
     
     void push_import_context(self, str path, int line):
         """Add a (file, line) tuple to the import context."""
@@ -121,8 +103,7 @@ class Errors:
         if len(self.function_or_member) > 2:
             type = None # Omit type context if nested function
         info = ErrorInfo(self.import_context(), self.file, type,
-                         self.is_interface[-1], self.function_or_member[-1],
-                         line, message)
+                         self.function_or_member[-1], line, message)
         self.error_info.append(info)
     
     int num_messages(self):
@@ -198,8 +179,8 @@ class Errors:
                     if e.type is None:
                         result.append((e.file, -1, 'At top level:'))
                     else:
-                        result.append((e.file, -1, 'In {} "{}":'.format(
-                            e.type_id(), e.type)))
+                        result.append((e.file, -1, 'In class "{}":'.format(
+                            e.type)))
                 else:
                     if e.type is None:
                         result.append((e.file, -1,
@@ -207,15 +188,14 @@ class Errors:
                                            e.function_or_member)))
                     else:
                         result.append((e.file, -1,
-                                       'In member "{}" of {} "{}":'.format(
-                                           e.function_or_member, e.type_id(),
-                                           e.type)))
+                                       'In member "{}" of class "{}":'.format(
+                                           e.function_or_member, e.type)))
             elif e.type != prev_type:
                 if e.type is None:
                     result.append((e.file, -1, 'At top level:'))
                 else:
                     result.append((e.file, -1,
-                                   'In {} "{}":'.format(e.type_id(), e.type)))
+                                   'In class "{}":'.format(e.type)))
             
             result.append((e.file, e.line, e.message))
             
