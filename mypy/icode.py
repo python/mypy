@@ -391,7 +391,7 @@ class IcodeBuilder(NodeVisitor<int>):
 
     int visit_type_def(self, TypeDef tdef):
         # TODO assignments in the body
-        # TODO interfaces
+        # TODO multiple inheritance
         tdef.defs.accept(self)
 
         # Generate icode for the function that constructs an instance.
