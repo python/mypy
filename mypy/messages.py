@@ -475,11 +475,6 @@ class MessageBuilder:
         self.fail('Feature not implemented yet ({})'.format(msg), context)
         return Any()
     
-    void interface_member_not_implemented(self, TypeInfo typ, TypeInfo iface,
-                                          str member):
-        self.fail('"{}" does not implement "{}" defined in "{}"'.format(
-            typ.defn.name, member, iface.defn.name), typ)
-    
     void undefined_in_superclass(self, str member, Context context):
         self.fail('"{}" undefined in superclass'.format(member), context)
     
@@ -492,9 +487,6 @@ class MessageBuilder:
             return True
         else:
             return False
-
-    void interface_has_constructor(self, Context context):
-        self.fail('An interface must not define a constructor', context)
 
     void cannot_determine_type(self, str name, Context context):
         self.fail("Cannot determine type of '%s'" % name, context)

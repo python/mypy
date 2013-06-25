@@ -308,17 +308,8 @@ class TypeChecker(NodeVisitor<Type>):
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)
-        self.check_no_constructor_if_interface(typ)
         self.accept(defn.defs)
         self.errors.pop_type()
-
-    void check_no_constructor_if_interface(self, TypeInfo typ):
-        if not typ.is_interface:
-            return
-        ctor = typ.get_method('__init__')
-        if ctor is None:
-            return
-        self.msg.interface_has_constructor(ctor)
     
     #
     # Statements
