@@ -434,8 +434,7 @@ class TypeTransformer:
         wrapper = TypeDef(tdef.name + self.tf.wrapper_class_suffix(),
                           Block(defs),
                           None,
-                          [base_type],
-                          False)          # Interface?
+                          [base_type])
         # FIX fullname
         
         self.tf.add_line_mapping(tdef, wrapper)

@@ -199,8 +199,6 @@ Type type_object_type(TypeInfo info, func<Type()> type_type):
 
     where ... are argument types for the __init__ method.
     """
-    if info.is_interface:
-        return type_type()
     init_method = info.get_method('__init__')
     if not init_method:
         # Must be an invalid class definition.

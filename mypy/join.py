@@ -135,13 +135,11 @@ Type join_instances(Instance t, Instance s, bool allow_interfaces,
         else:
             # Incompatible; return trivial result object.
             return basic.object
-    elif t.type.is_interface != s.type.is_interface:
-        return join_instances_as_interface(t, s, basic)
     elif t.type.bases and is_subtype(t, s):
         return join_instances_via_supertype(t, s, allow_interfaces, basic)
     elif s.type.bases:
         return join_instances_via_supertype(s, t, allow_interfaces, basic)
-    elif allow_interfaces and not t.type.is_interface:
+    elif allow_interfaces:
         return join_instances_as_interface(t, s, basic)
     else:
         return basic.object

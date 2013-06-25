@@ -349,13 +349,11 @@ class TypeDef(Node):
     # Base classes (Instance or UnboundType).
     mypy.types.Type[] base_types
     TypeInfo info    # Related TypeInfo
-    bool is_interface
     str metaclass
     
     void __init__(self, str name, Block defs,
                   mypy.types.TypeVars type_vars=None,
                   mypy.types.Type[] base_types=None,
-                  bool is_interface=False,
                   str metaclass=None):
         if not base_types:
             base_types = []
@@ -363,7 +361,6 @@ class TypeDef(Node):
         self.defs = defs
         self.type_vars = type_vars
         self.base_types = base_types
-        self.is_interface = is_interface
         self.metaclass = metaclass
     
     T accept<T>(self, NodeVisitor<T> visitor):
@@ -1114,7 +1111,6 @@ class TypeInfo(SymbolNode):
     the class.
     """
     str _fullname     # Fully qualified name
-    bool is_interface  # Is this a interface type?
     TypeDef defn       # Corresponding TypeDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to self.
@@ -1148,7 +1144,6 @@ class TypeInfo(SymbolNode):
         self.bounds = []
         self.bases = []
         self._fullname = defn.fullname
-        self.is_interface = defn.is_interface
         self.is_abstract = False
         self.abstract_attributes = []
         if defn.type_vars:

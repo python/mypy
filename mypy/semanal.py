@@ -439,8 +439,7 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.base_types[i] = base
                 bases.append((Instance)base)
         # Add 'object' as implicit base if there is no other base class.
-        if (not defn.is_interface and not bases and
-                defn.fullname != 'builtins.object'):
+        if (not bases and defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
             bases.append(obj)
@@ -503,7 +502,7 @@ class SemanticAnalyzer(NodeVisitor):
         return Instance((TypeInfo)sym.node, [])
     
     bool is_instance_type(self, Type t):
-        return isinstance(t, Instance) and not ((Instance)t).type.is_interface
+        return isinstance(t, Instance)
     
     SymbolTableNode[] add_class_type_variables_to_symbol_table(self,
                                                                TypeInfo info):

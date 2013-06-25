@@ -122,8 +122,6 @@ class StrConv(NodeVisitor<str>):
             a.insert(1, ('BaseType', o.base_types))
         if o.type_vars:
             a.insert(1, ('TypeVars', o.type_vars.items))
-        if o.is_interface:
-            a.insert(1, 'Interface')
         if o.metaclass:
             a.insert(1, 'Metaclass({})'.format(o.metaclass))
         return self.dump(a, o)

@@ -259,8 +259,7 @@ class Parser:
             
             defs = self.parse_block()
             
-            node = TypeDef(name, defs, None, base_types,
-                           is_interface=False, metaclass=metaclass)
+            node = TypeDef(name, defs, None, base_types, metaclass=metaclass)
             self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
                                                      lparen, commas, rparen))
             return node
