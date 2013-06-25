@@ -195,7 +195,7 @@ Type type_object_type(TypeInfo info, func<Type()> type_type):
 
     For a generic type G with type variables T and S the type is of form
 
-      def <T, S>(...) as G<T, S>,
+      def [T, S](...) -> G[T, S],
 
     where ... are argument types for the __init__ method.
     """
