@@ -88,11 +88,11 @@ def A.set$y:
     r2 = None
     return r2
 
-[case testSetAndQueryAttribute-skip]
-import typing
+[case testSetAndQueryAttribute]
+from typing import Undefined
 class A:
-    x = 0
-    y = 0
+    x = Undefined(int)
+    y = Undefined(int)
 def f(a: A) -> None:
     a.x = a.y
 [out]
@@ -142,10 +142,10 @@ def A.__init__:
     r2 = None
     return r2
 
-[case testInitializeAttributesWhenConstructing-skip]
+[case testInitializeAttributesWhenConstructing]
 from typing import Undefined
 class A:
-    x = 0
+    x = Undefined(int)
     a = Undefined # type: A
 [out]
 def A:
@@ -156,10 +156,10 @@ def A:
     r0.x = r2 [A]
     return r0
     
-[case testAttributesAndInit-skip]
-import typing
+[case testAttributesAndInit]
+from typing import Undefined
 class A:
-    x = 0
+    x = Undefined(int)
     def __init__(self, y: int) -> None: pass
 [out]
 def A:
