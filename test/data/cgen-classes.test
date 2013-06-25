@@ -35,20 +35,20 @@ a.twice(5)         # 10
 print(a.add(4, 7)) # 11
 
 [case testSimpleAttributeAccess]
-import typing
+from typing import Undefined
 class A:
-    x = 0
+    x = Undefined(int)
 a = A()
 a.x = 5
 print(a.x + 1) # 6
 
 [case testMultipleAttributes]
-import typing
+from typing import Undefined
 class A:
-    x = 0
-    y = 0
+    x = Undefined(int)
+    y = Undefined(int)
 class B:
-    y = 0
+    y = Undefined(int)
 a = A()
 a.x = 5
 a.y = 6
@@ -60,8 +60,8 @@ print(b.y)       # 3
 [case testDefaultAttributeValues]
 from typing import Undefined
 class A:
-    a = Undefined # type: A
-    n = 0
+    a = Undefined(A)
+    n = Undefined(int)
 a = A()
 print(a.a) # None
 print(a.n) # 0
@@ -95,9 +95,9 @@ a = None
 print(a) # None
 
 [case testInitMethod]
-import typing
+from typing import Undefined
 class A:
-    x = 0
+    x = Undefined(int)
     def __init__(self, x: int) -> None:
         self.x = x
 a = A(5)
@@ -108,8 +108,8 @@ print(a.x) # 3
 [case testInitMethodWithTwoArguments]
 from typing import Undefined
 class A:
-    x = 0
-    a = Undefined # type: A
+    x = Undefined(int)
+    a = Undefined(A)
     def __init__(self, x: int, a: 'A') -> None:
         self.x = x
         self.a = a
@@ -144,16 +144,16 @@ a.f()   # 2
 B().a() # 3
 
 [case testSimpleInheritance2]
-import typing
+from typing import Undefined
 class A:
-    x = 0
-    y = 0
+    x = Undefined(int)
+    y = Undefined(int)
     def f(self) -> None:
         print(self.x)
     def g(self) -> None:
         print(self.y)
 class B(A):
-    z = 0
+    z = Undefined(int)
     def f(self) -> None:
         print(self.x + 1)
     def h(self) -> None:
@@ -178,7 +178,7 @@ class B(A):
 class C(A):
     def f2(self) -> None: print(22)
     def f3(self) -> None: print(333)
-a = Undefined # type: A
+a = Undefined(A)
 a = A()
 a.f2() # 2
 a.f3() # 3
@@ -222,12 +222,12 @@ print(b.x) # 5
 print(b.y) # 6
 
 [case testInheritInit]
-import typing
+from typing import Undefined
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
 class B(A): 
-    y = 0
+    y = Undefined(int)
 b = B(4)
 b.y = 5
 print(b.x) # 4
