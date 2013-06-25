@@ -13,9 +13,9 @@ Type erase_type(Type typ, BasicTypes basic):
     
     Examples:
       A -> A
-      B<X> -> B<any>
-      tuple<A, B> -> tuple
-      func<...> -> func<void>
+      B[X] -> B[Any]
+      Tuple[A, B] -> tuple
+      Function[...] -> Function[[], None]
       """
     return typ.accept(EraseTypeVisitor(basic))
 
@@ -67,8 +67,8 @@ class EraseTypeVisitor(TypeVisitor<Type>):
 Type erase_generic_types(Type t):
     """Remove generic type arguments and type variables from a type.
 
-    Replace all types A<...> with simply A, and all type variables
-    with 'any'.
+    Replace all types A[...] with simply A, and all type variables
+    with 'Any'.
     """
     if t:
         return t.accept(GenericTypeEraser())

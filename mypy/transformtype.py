@@ -455,7 +455,7 @@ class TypeTransformer:
         
         This is added to a generic wrapper class.
         """
-        # The type is 'any' since it should behave covariantly in subclasses.
+        # The type is 'Any' since it should behave covariantly in subclasses.
         return [VarDef([Var(self.object_member_name(tdef.info),
                             Any())], False, None)]
     

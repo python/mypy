@@ -272,7 +272,7 @@ class JoinSuite(Suite):
             self.assert_join(t, UnboundType('X'), self.fx.anyt)
     
     def test_any_type(self):
-        # Join against 'any' type always results in 'any'.
+        # Join against 'Any' type always results in 'Any'.
         for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneTyp(),
                   UnboundType('x'), self.fx.void, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:

@@ -105,7 +105,7 @@ class TranslateTypeVarsToWrappedObjectVarsVisitor(TypeTranslator):
 
 
 Type translate_function_type_vars_to_dynamic(Type typ):
-    """Translate any function type variables in a type into type 'any'."""
+    """Translate any function type variables in a type into type 'Any'."""
     return typ.accept(TranslateFunctionTypeVarsToDynamicVisitor())
 
 

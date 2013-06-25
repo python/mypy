@@ -367,7 +367,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
                  TypeInfo context, bool is_wrapper_class=False):
         """Create coercion from source_type to target_type.
 
-        Also include middle coercion do 'any' if transforming a dynamically
+        Also include middle coercion do 'Any' if transforming a dynamically
         typed function.
         """
         if self.dynamic_funcs[-1]:

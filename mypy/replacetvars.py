@@ -4,7 +4,7 @@ from mypy.typerepr import AnyRepr
 
 
 Type replace_type_vars(Type typ, bool func_tvars=True):
-    """Replace type variable references in a type with the any type. If
+    """Replace type variable references in a type with the Any type. If
     func_tvars is false, only replace instance type variables.
     """
     return typ.accept(ReplaceTypeVarsVisitor(func_tvars))
@@ -23,7 +23,7 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
         if t.id > 0 or self.func_tvars:
             if t.repr is not None:
                 # Give a representation for the dynamic type.
-                tok = Token('any')
+                tok = Token('Any')
                 tok.pre = t.repr.name.pre
                 return Any(t.line, AnyRepr(tok))
             else:

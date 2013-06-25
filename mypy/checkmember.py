@@ -111,7 +111,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
         else:
             if not var.is_ready:
                 msg.cannot_determine_type(var.name(), node)
-            # Implicit 'any' type.
+            # Implicit 'Any' type.
             return Any()
     elif isinstance(v, FuncDef):
         # Found a getter or a setter.
@@ -143,7 +143,7 @@ void check_method_type(FunctionLike functype, Instance itype, Context context,
             # No positional first (self) argument.
             msg.invalid_method_type(item, context)
         else:
-            # Check that self argument has type 'any' or valid instance type.
+            # Check that self argument has type 'Any' or valid instance type.
             selfarg = item.arg_types[0]
             if not subtypes.is_equivalent(selfarg, itype):
                 msg.invalid_method_type(item, context)

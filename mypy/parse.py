@@ -1349,7 +1349,7 @@ class Parser:
             names.append(arg.name())
 
         # Use 'object' as the placeholder return type; it will be inferred
-        # later. We can't use 'any' since it could make type inference results
+        # later. We can't use 'Any' since it could make type inference results
         # less precise.
         ret_type = UnboundType('__builtins__.object')
         typ = self.build_func_annotation(ret_type, arg_types, kinds, names,

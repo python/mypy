@@ -310,7 +310,7 @@ class ExpressionChecker:
                     callee_type, args, arg_kinds, formal_to_actual,
                     inferred_args, context)
         else:
-            # In dynamically typed functions use implicit 'any' types for
+            # In dynamically typed functions use implicit 'Any' types for
             # type variables.
             inferred_args = <Type> [Any()] * len(callee_type.variables.items)
         return self.apply_inferred_arguments(callee_type, inferred_args,
@@ -511,7 +511,7 @@ class ExpressionChecker:
         """
         # TODO also consider argument names and kinds
         # TODO for overlapping signatures we should try to get a more precise
-        #      result than 'any'
+        #      result than 'Any'
         match = <Callable> []
         for typ in overload.items():
             if self.matches_signature_erased(arg_types, is_var_arg, typ):
