@@ -245,9 +245,7 @@ class TypeChecker(NodeVisitor<Type>):
                     # Construct the type of the overriding method.
                     typ = method_type(defn)
                     # Map the overridden method type to subtype context so that
-                    # it can be checked for compatibility. Note that multiple
-                    # types from multiple implemented interface instances may
-                    # be present.
+                    # it can be checked for compatibility.
                     original_type = base_attr.type()
                     if original_type is None and isinstance(base_attr.node,
                                                             FuncDef):
@@ -307,7 +305,7 @@ class TypeChecker(NodeVisitor<Type>):
                     name, supertype, node)
     
     Type visit_type_def(self, TypeDef defn):
-        """Type check a type definition (class or interface)."""
+        """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name, defn.is_interface)
         self.check_no_constructor_if_interface(typ)
