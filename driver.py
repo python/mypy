@@ -17,15 +17,16 @@ import tempfile
 
 from mypy import build
 from mypy.errors import CompileError
+from typing import List, Tuple
 
 
 # Fallback options
 target = build.TYPE_CHECK
-build_flags = <str> []
+build_flags = [] # type: List[str]
 interpreter = 'python'
 
 
-void main():
+def main() -> None:
     path, module, args = process_options(sys.argv[1:])
     try:
         if target == build.TYPE_CHECK:
@@ -40,7 +41,7 @@ void main():
         sys.exit(1)
 
 
-void type_check_only(str path, str module, str[] args):
+def type_check_only(path: str, module: str, args: List[str]) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
@@ -57,7 +58,7 @@ void type_check_only(str path, str module, str[] args):
         sys.exit(status)
 
 
-void compile_to_c(str path, str module, str[] args):
+def compile_to_c(path: str, module: str, args: List[str]) -> None:
     assert not module # Not supported yet
     assert not args   # Not supported yet
     
@@ -71,7 +72,7 @@ void compile_to_c(str path, str module, str[] args):
         sys.exit(status)
 
 
-tuple<str, str, str[]> process_options(str[] args):
+def process_options(args: List[str]) -> Tuple[str, str, List[str]]:
     if sys.executable:
         global interpreter
         interpreter = sys.executable
@@ -103,7 +104,7 @@ tuple<str, str, str[]> process_options(str[] args):
     return args[0], None, args[1:]
 
 
-void usage(str msg=None):
+def usage(msg: str = None) -> None:
     if msg:
         sys.stderr.write('%s\n' % msg)
     sys.stderr.write(
@@ -123,7 +124,7 @@ Environment variables:
     sys.exit(2)
 
 
-void fail(str msg):
+def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
     sys.exit(1)
 
