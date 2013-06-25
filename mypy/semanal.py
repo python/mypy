@@ -654,6 +654,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.is_initialized_in_class = True
                 n.node = v
                 n.is_def = True
+                n.kind = MDEF
                 n.fullname = n.name
                 self.type.names[n.name] = SymbolTableNode(MDEF, v)
             else:

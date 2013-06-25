@@ -483,8 +483,10 @@ class IcodeBuilder(NodeVisitor<int>):
                     var = (Var)name.node
                     rvalue = self.accept(s.rvalue)
                     self.add(SetGR(var.fullname(), rvalue))
+            elif name.kind == nodes.MDEF and undefined_rvalue:
+                # Attribute initializers not supported yet.
+                pass
             else:
-                print(name, name.kind)
                 raise NotImplementedError()
         elif isinstance(lvalue, MemberExpr):
             member = (MemberExpr)lvalue
