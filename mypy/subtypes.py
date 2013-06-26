@@ -1,10 +1,11 @@
+from typing import cast, List, Dict
+
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp, Instance,
-    TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeList
+    Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
+    Instance, TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeList
 )
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
-from typing import cast, List, Dict
 
 
 def is_subtype(left: Type, right: Type) -> bool:
@@ -158,7 +159,8 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     return True
 
 
-def map_instance_to_supertype(instance: Instance, supertype: TypeInfo) -> Instance:
+def map_instance_to_supertype(instance: Instance,
+                              supertype: TypeInfo) -> Instance:
     """Map an Instance type, including the type arguments, to compatible
     Instance of a specific supertype.
     
@@ -175,7 +177,7 @@ def map_instance_to_supertype(instance: Instance, supertype: TypeInfo) -> Instan
 
 
 def map_instance_to_direct_supertype(instance: Instance,
-                                          supertype: TypeInfo) -> Instance:
+                                     supertype: TypeInfo) -> Instance:
     typ = instance.type
     
     for base in typ.bases:
@@ -200,7 +202,7 @@ def type_var_map(typ: TypeInfo, args: List[Type]) -> Dict[int, Type]:
 
 
 def map_instance_to_supertypes(instance: Instance,
-                                      supertype: TypeInfo) -> List[Instance]:
+                               supertype: TypeInfo) -> List[Instance]:
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
     result = [] # type: List[Instance]
@@ -216,7 +218,7 @@ def map_instance_to_supertypes(instance: Instance,
 
 
 def class_derivation_paths(typ: TypeInfo,
-                                    supertype: TypeInfo) -> List[List[TypeInfo]]:
+                           supertype: TypeInfo) -> List[List[TypeInfo]]:
     """Return an array of non-empty paths of direct base classes from
     type to supertype.  Return [] if no such path could be found.
     
@@ -240,7 +242,7 @@ def class_derivation_paths(typ: TypeInfo,
 
 
 def map_instance_to_direct_supertypes(instance: Instance,
-                                                 supertype: TypeInfo) -> List[Instance]:
+                                      supertype: TypeInfo) -> List[Instance]:
     # FIX: There should only be one supertypes, always.
     typ = instance.type
     result = [] # type: List[Instance]
@@ -259,8 +261,8 @@ def map_instance_to_direct_supertypes(instance: Instance,
 
 
 def is_named_instance(t: Type, fullname: str) -> bool:
-    return isinstance(t,
-                      Instance) and (cast(Instance, t)).type.fullname() == fullname
+    return (isinstance(t, Instance) and
+            cast(Instance, t).type.fullname() == fullname)
 
 
 def is_proper_subtype(t, s):

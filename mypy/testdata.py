@@ -1,22 +1,26 @@
+"""Utilities for processing .test files containing test case descriptions."""
+
 import os.path
 import os
 import re
 from os import remove, rmdir
 
-from mypy.myunit import TestCase, SkipTestCaseException
 from typing import Function, List, Tuple, Undefined
+
+from mypy.myunit import TestCase, SkipTestCaseException
 
 
 def parse_test_cases(
             path: str,
-            perform: 'Function[[DataDrivenTestCase], None]',
+            perform: Function[['DataDrivenTestCase'], None],
             base_path: str = '.',
             optional_out: bool = False,
-            include_path: str = None) -> 'List[DataDrivenTestCase]':
+            include_path: str = None) -> List['DataDrivenTestCase']:
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
     """
+    
     if not include_path:
         include_path = os.path.dirname(path)
     l = open(path).readlines()
@@ -76,13 +80,18 @@ def parse_test_cases(
 
 
 class DataDrivenTestCase(TestCase):
-    input = Undefined # type: List[str]
-    output = Undefined # type: List[str]
+    input = Undefined(List[str])
+    output = Undefined(List[str])
+    
     file = ''
     line = 0
-    perform = Undefined # type: Function[[DataDrivenTestCase], None]
-    files = Undefined # type: List[Tuple[str, str]] # Tuples (file path, file content)
-    clean_up = Undefined # type: List[Tuple[bool, str]]
+    
+    perform = Undefined(Function[['DataDrivenTestCase'], None])
+
+    # (file path, file content) tuples 
+    files = Undefined(List[Tuple[str, str]] )
+    
+    clean_up = Undefined(List[Tuple[bool, str]])
     
     def __init__(self, name, input, output, file, line, perform, files):
         super().__init__(name)
@@ -139,13 +148,18 @@ class TestItem:
       [id arg]
       .. data ..
     """
+    
     id = ''
     arg = ''
-    data = Undefined # type: List[str] # Text data, array of 8-bit strings
+    
+    # Text data, array of 8-bit strings    
+    data = Undefined(List[str])
+    
     file = ''
     line = 0 # Line number in file
     
-    def __init__(self, id: str, arg: str, data: List[str], file: str, line: int) -> None:
+    def __init__(self, id: str, arg: str, data: List[str], file: str,
+                 line: int) -> None:
         self.id = id
         self.arg = arg
         self.data = data
@@ -155,6 +169,7 @@ class TestItem:
 
 def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     """Parse a list of lines that represent a sequence of test items."""
+    
     ret = [] # type: List[TestItem]
     data = [] # type: List[str]
     
@@ -201,6 +216,7 @@ def strip_list(l: List[str]) -> List[str]:
     Strip whitespace at the end of all lines, and strip all empty
     lines from the end of the array.
     """
+    
     r = [] # type: List[str]
     for s in l:
         # Strip spaces at end of line
@@ -226,10 +242,12 @@ def collapse_line_continuation(l: List[str]) -> List[str]:
 
 
 def expand_includes(a: List[str], base_path: str) -> List[str]:
-    """Replace all lies starting with @include with the contents of
-    the file name following the prefix. Look for the files in
-    base_path.
+    """Expand @includes within a list of lines.
+
+    Replace all lies starting with @include with the contents of the
+    file name following the prefix. Look for the files in base_path.
     """
+    
     res = [] # type: List[str]
     for s in a:
         if s.startswith('@include '):
@@ -243,9 +261,11 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
 
 
 def expand_errors(input, output, fnam):
-    """Transform comments such as '# E: message' in input to to lines like
-    'fnam, line N: message' in the output.
+    """Transform comments such as '# E: message' in input.
+
+    The result is lines like 'fnam, line N: message'.
     """
+    
     for i in range(len(input)):
         m = re.search('# E: (.*)$', input[i])
         if m:

@@ -1,5 +1,7 @@
 """Type checking of attribute access"""
 
+from typing import cast, Function, List
+
 from mypy.types import (
     Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVars,
     TypeVarDef, Overloaded, TypeVar, TypeTranslator, BasicTypes
@@ -13,13 +15,12 @@ from mypy.nodes import method_type
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
-from typing import cast, Function, List
 
 
 def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
-                           is_super: bool, basic_types: BasicTypes,
-                           msg: MessageBuilder, override_info: TypeInfo = None,
-                           report_type: Type = None) -> Type:
+                          is_super: bool, basic_types: BasicTypes,
+                          msg: MessageBuilder, override_info: TypeInfo = None,
+                          report_type: Type = None) -> Type:
     """Analyse attribute access.
 
     This is a general operation that supports various different variations:
@@ -62,7 +63,8 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # Actually look up from the 'tuple' type.
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
                                      is_super, basic_types, msg)
-    elif isinstance(typ, FunctionLike) and (cast(FunctionLike, typ)).is_type_obj():
+    elif (isinstance(typ, FunctionLike) and
+              cast(FunctionLike, typ).is_type_obj()):
         # TODO super?
         sig = cast(FunctionLike, typ)
         itype = cast(Instance, sig.items()[0].ret_type)
@@ -83,8 +85,9 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
 
 
 def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
-                               node: Context, is_lvalue: bool, is_super: bool,
-                               msg: MessageBuilder, report_type: Type = None) -> Type:
+                              node: Context, is_lvalue: bool, is_super: bool,
+                              msg: MessageBuilder,
+                              report_type: Type = None) -> Type:
     """Analyse attribute access that does not target a method.
 
     This is logically part of analyse_member_access and the arguments are
@@ -95,7 +98,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
     
     if isinstance(v, Decorator):
         # The associated Var node of a decorator contains the type.
-        v = (cast(Decorator, v)).var
+        v = cast(Decorator, v).var
     
     if isinstance(v, Var):
         # Found a member variable.
@@ -127,7 +130,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str,
-                                         is_lvalue: bool) -> SymbolNode:
+                                  is_lvalue: bool) -> SymbolNode:
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     node = info.get(name)
@@ -137,8 +140,8 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance, context: Context,
-                       msg: MessageBuilder) -> None:
+def check_method_type(functype: FunctionLike, itype: Instance,
+                      context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] != ARG_POS:
             # No positional first (self) argument.
@@ -150,8 +153,9 @@ def check_method_type(functype: FunctionLike, itype: Instance, context: Context,
                 msg.invalid_method_type(item, context)
 
 
-def analyse_class_attribute_access(itype: Instance, name: str, context: Context,
-                                    is_lvalue: bool, msg: MessageBuilder) -> Type:
+def analyse_class_attribute_access(itype: Instance, name: str,
+                                   context: Context, is_lvalue: bool,
+                                   msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
     if node:
         if is_lvalue and isinstance(node.node, FuncDef):
@@ -213,7 +217,7 @@ def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
         else:
             # Overloaded __init__.
             items = [] # type: List[Callable]
-            for it in (cast(Overloaded, init_type)).items():
+            for it in cast(Overloaded, init_type).items():
                 items.append(class_callable(it, info))
             return Overloaded(items)
     
@@ -239,7 +243,7 @@ def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
 
 
 def convert_class_tvars_to_func_tvars(callable: Callable,
-                                           num_func_tvars: int) -> Callable:
+                                      num_func_tvars: int) -> Callable:
     return cast(Callable, callable.accept(TvarTranslator(num_func_tvars)))
 
 
