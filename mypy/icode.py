@@ -1,5 +1,7 @@
 """icode: Register-based intermediate representation of mypy programs."""
 
+from typing import List, Undefined, Dict, Tuple, cast, overload
+
 from mypy.types import AnyType, Instance, Type, Callable, FunctionLike
 from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
@@ -10,7 +12,6 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
-from typing import List, Undefined, Dict, Tuple, cast, overload
 
 
 # Operand kinds
@@ -36,7 +37,7 @@ class BasicBlock:
     as exits.
     """
     def __init__(self, label: int) -> None:
-        self.ops = [] # type: List[Opcode]
+        self.ops = List[Opcode]()
         self.label = label
 
 
@@ -98,7 +99,8 @@ class SetRG(Opcode):
 
 class GetAttr(Opcode):
     """Look up an attribute directly (rN = rN.x [C])."""
-    def __init__(self, target: int, object: int, attr: str, type: TypeInfo) -> None:
+    def __init__(self, target: int, object: int, attr: str,
+                 type: TypeInfo) -> None:
         self.target = target
         self.object = object
         self.attr = attr
@@ -111,7 +113,8 @@ class GetAttr(Opcode):
 
 class SetAttr(Opcode):
     """Assign to an attribute directly (rN.x = rN [C])."""
-    def __init__(self, object: int, attr: str, source: int, type: TypeInfo) -> None:
+    def __init__(self, object: int, attr: str, source: int,
+                 type: TypeInfo) -> None:
         self.object = object
         self.attr = attr
         self.source = source
@@ -146,7 +149,7 @@ class CallMethod(Opcode):
       static: resolve method statically (be default, at runtime)
     """
     def __init__(self, target: int, object: int, method: str, type: TypeInfo,
-                  args: List[int], static: bool = False) -> None:
+                 args: List[int], static: bool = False) -> None:
         self.target = target
         self.object = object
         self.method = method
@@ -203,10 +206,10 @@ class IfOp(Branch):
     
     """Conditional operator branch (e.g. if r0 < r1 goto L2 else goto L3)."""
     def __init__(self,
-                  left: int, left_kind: int,
-                  right: int, right_kind: int,
-                  op: str, true_block: BasicBlock,
-                  false_block: BasicBlock) -> None:
+                 left: int, left_kind: int,
+                 right: int, right_kind: int,
+                 op: str, true_block: BasicBlock,
+                 false_block: BasicBlock) -> None:
         self.left = left
         self.left_kind = left_kind
         self.right = right
@@ -231,7 +234,7 @@ class IfR(Branch):
     negated = False
     
     def __init__(self, value: int,
-                  true_block: BasicBlock, false_block: BasicBlock) -> None:
+                 true_block: BasicBlock, false_block: BasicBlock) -> None:
         self.value = value
         self.true_block = true_block
         self.false_block = false_block
@@ -267,9 +270,9 @@ class Goto(Opcode):
 class BinOp(Opcode):
     """Primitive binary operation (e.g. r0 = r1 + r2 [int])."""
     def __init__(self, target: int,
-                  left: int, left_kind: int,
-                  right: int, right_kind: int,
-                  op: str) -> None:
+                 left: int, left_kind: int,
+                 right: int, right_kind: int,
+                 op: str) -> None:
         self.target = target
         self.left = left
         self.left_kind = left_kind
@@ -303,23 +306,23 @@ REF = 1 # Arbitrary reference, initialized to None
 class IcodeBuilder(NodeVisitor[int]):
     """Generate icode from a parse tree."""
 
-    generated = Undefined # type: Dict[str, FuncIcode]
+    generated = Undefined(Dict[str, FuncIcode])
     
     # List of generated blocks in the current scope
-    blocks = Undefined # type: List[BasicBlock]
+    blocks = Undefined(List[BasicBlock])
     # Current basic block
-    current = Undefined # type: BasicBlock
+    current = Undefined(BasicBlock)
     # Number of registers allocated in the current scope
     num_registers = 0
     # Map local variable to allocated register
-    lvar_regs = Undefined # type: Dict[Node, int]
+    lvar_regs = Undefined(Dict[Node, int])
     # Stack of expression target registers (-1 => create new register)
-    targets = Undefined # type: List[int]
+    targets = Undefined(List[int])
     # Storage type for each register (REG_* values)
-    register_types = Undefined # type: List[int]
+    register_types = Undefined(List[int])
 
     # Stack of inactive scopes
-    scopes = Undefined # type: List[Tuple[List[BasicBlock], int, Dict[Node, int]]]
+    scopes = Undefined(List[Tuple[List[BasicBlock], int, Dict[Node, int]]])
 
     def __init__(self, types: Dict[Node, Type]) -> None:
         self.generated = {}
@@ -815,7 +818,7 @@ class IcodeBuilder(NodeVisitor[int]):
         return reg
     
     def set_branches(self, branches: List[Branch], condition: bool,
-                      target: BasicBlock) -> None:
+                     target: BasicBlock) -> None:
         """Set branch targets for the given condition (True or False).
 
         If the target has already been set for a branch, skip the branch.
