@@ -1,5 +1,7 @@
 """Semantic analysis of types"""
 
+from typing import Undefined, Function, cast, List, Tuple
+
 from mypy.types import (
     Type, UnboundType, TypeVar, TupleType, Instance, AnyType, Callable,
     TypeVars, Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
@@ -7,14 +9,13 @@ from mypy.types import (
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
 from mypy import nodes
-from typing import Undefined, Function, cast, List, Tuple
 
 
 class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
     def __init__(self, lookup_func: Function[[str, Context], SymbolTableNode],
-                  fail_func: Function[[str, Context], None]) -> None:
+                 fail_func: Function[[str, Context], None]) -> None:
         self.lookup = lookup_func
         self.fail = fail_func
     
@@ -103,19 +104,20 @@ class TypeAnalyser(TypeVisitor[Type]):
                         is_type_obj=False)
     
     def anal_array(self, a: List[Type]) -> List[Type]:
-        res = [] # type: List[Type]
+        res = List[Type]()
         for t in a:
             res.append(t.accept(self))
         return res
     
-    def anal_bound_vars(self, a: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
-        res = [] # type: List[Tuple[int, Type]]
+    def anal_bound_vars(self,
+                        a: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
+        res = List[Tuple[int, Type]]()
         for id, t in a:
             res.append((id, t.accept(self)))
         return res
     
     def anal_var_defs(self, var_defs: TypeVars) -> TypeVars:
-        a = [] # type: List[TypeVarDef]
+        a = List[TypeVarDef]()
         for vd in var_defs.items:
             bound = None # type: Type
             if vd.bound is not None:

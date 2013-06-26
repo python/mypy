@@ -1,10 +1,11 @@
 """Type parser"""
 
+from typing import List, Tuple, cast
+
 from mypy.types import Type, UnboundType, TupleType, TypeList
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
-from typing import List, Tuple, cast
 
 
 none = Token('') # Empty token
@@ -22,6 +23,7 @@ def parse_type(tok: List[Token], index: int) -> Tuple[Type, int]:
 
     Return (type, index after type).
     """
+    
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
 
@@ -29,8 +31,9 @@ def parse_type(tok: List[Token], index: int) -> Tuple[Type, int]:
 def parse_types(tok: List[Token], index: int) -> Tuple[Type, int]:
     """Parse one or more types separated by commas (optional parentheses).
 
-    Return (type, index after type).
+    Return (type, index after type).    
     """
+    
     p = TypeParser(tok, index)
     return p.parse_types(), p.index()
 
@@ -162,6 +165,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
 
     Raise TypeParseError on parse error.
     """
+    
     typestr = typestr.strip()
     tokens = lex(typestr, line)
     result, i = parse_type(tokens, 0)
