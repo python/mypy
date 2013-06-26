@@ -2,14 +2,15 @@ import sys
 import re
 import time
 import traceback
+
 from typing import List, Tuple, Any, Function, overload, Undefined
 
 
 # TODO remove global state
 is_verbose = False
 is_quiet = False
-patterns = [] # type: List[str]
-times = [] # type: List[Tuple[float, str]]
+patterns = List[str]()
+times = List[Tuple[float, str]]()
 
 
 class AssertionFailure(Exception):
@@ -80,7 +81,8 @@ def fail() -> None:
 
 
 class TestCase:
-    def __init__(self, name: str, suite: 'Suite' = None, func: Function[[], None] = None) -> None:
+    def __init__(self, name: str, suite: 'Suite' = None,
+                 func: Function[[], None] = None) -> None:
         self.func = func
         self.name = name
         self.suite = suite
@@ -174,8 +176,8 @@ def run_test(t: Suite, args: List[str] = None) -> None:
         sys.stderr.write('*** FAILURE ***\n')
 
 
-def run_test_recursive(test: Any, num_total: int, num_fail: int,
-                                        num_skip: int, prefix: str, depth: int) -> Tuple[int, int, int]:
+def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
+                       prefix: str, depth: int) -> Tuple[int, int, int]:
     """The first argument may be TestCase, Suite or (str, Suite)."""
     if isinstance(test, TestCase):
         name = prefix + test.name

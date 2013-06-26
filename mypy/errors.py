@@ -3,22 +3,29 @@ import os.path
 
 from typing import Undefined, Tuple, List, typevar, Sequence, Any, Function
 
+
 T = typevar('T')
 
 
 class ErrorInfo:
     """Representation of a single error message."""
+    
     # Description of a sequence of imports that refer to the source file
     # related to this error. Each item is a (path, line number) tuple.
-    import_ctx = Undefined # type: List[Tuple[str, int]]
+    import_ctx = Undefined(List[Tuple[str, int]])
+    
     # The source file that was the source of this error.
     file = ''
+    
     # The name of the type in which this error is located at.
     type = ''     # Unqualified, may be None
+    
     # The name of the function or member in which this error is located at.
     function_or_member = ''     # Unqualified, may be None
+    
     # The line number related to this error within file.
     line = 0     # -1 if unknown
+    
     # The error message.
     message = ''
     
@@ -38,19 +45,25 @@ class Errors:
     This class generates and keeps tracks of compile errors and the
     current error context (nested imports).
     """
+    
     # List of generated error messages.
-    error_info = Undefined # type: List[ErrorInfo]
+    error_info = Undefined(List[ErrorInfo])
     
     # Current error context.
     # Import context, as a list of (path, line) pairs.
-    import_ctx = Undefined # type: List[Tuple[str, int]]
+    import_ctx = Undefined(List[Tuple[str, int]])
+    
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None # type: str
-    file = None # type: str     # Path to current file.
-    # Statck of short names of currents types (or None).
-    type_name = Undefined # type: List[str]
+
+    # Path to current file.
+    file = None # type: str
+    
+    # Stack of short names of currents types (or None).
+    type_name = Undefined(List[str])
+    
     # Stack of short names of current functions or members (or None).
-    function_or_member = Undefined # type: List[str]
+    function_or_member = Undefined(List[str])
     
     def __init__(self) -> None:
         self.error_info = []
@@ -102,8 +115,7 @@ class Errors:
         self.import_ctx = ctx[:]
     
     def report(self, line: int, message: str) -> None:
-        """Report a message at the given line using the current error
-        context."""
+        """Report message at the given line using the current error context."""
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
             type = None # Omit type context if nested function
@@ -120,14 +132,16 @@ class Errors:
         return len(self.error_info) > 0
     
     def raise_error(self) -> None:
-        """Raise a CompileError with the generated messages. Render
-        the messages suitable for displaying.
+        """Raise a CompileError with the generated messages.
+
+        Render the messages suitable for displaying.
         """
         raise CompileError(self.messages())
     
     def messages(self) -> List[str]:
-        """Return a string array that represents the error messages in a form
-        suitable for displaying to the user.
+        """Return a string list that represents the error messages.
+
+        Use a form suitable for displaying to the user.
         """
         a = [] # type: List[str]
         errors = self.render_messages(self.sort_messages(self.error_info))
@@ -144,12 +158,14 @@ class Errors:
             a.append(s)
         return a
     
-    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[str, int, str]]:
-        """Translate the messages into a sequence of (path, line,
-        message) tuples.  The rendered sequence includes information
-        about error contexts. The path item may be None. If the line
-        item is negative, the line number is not defined for the
-        tuple.
+    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[str, int,
+                                                                     str]]:
+        """Translate the messages into a sequence of tuples.
+
+        Each tuple is of form (path, line, message.  The rendered
+        sequence includes information about error contexts. The path
+        item may be None. If the line item is negative, the line
+        number is not defined for the tuple.
         """
         result = [] # type: List[Tuple[str, int, str]] # (path, line, message)
         
@@ -211,9 +227,11 @@ class Errors:
         return result
     
     def sort_messages(self, errors: List[ErrorInfo]) -> List[ErrorInfo]:
-        """Sort an array of error messages locally by line number, i.e. sort a
-        run of consecutive messages with the same file context by line number,
-        but otherwise retain the general ordering of the messages.
+        """Sort an array of error messages locally by line number.
+        
+        I.e., sort a run of consecutive messages with the same file
+        context by line number, but otherwise retain the general
+        ordering of the messages.
         """
         result = [] # type: List[ErrorInfo]
         i = 0
@@ -231,8 +249,8 @@ class Errors:
             result.extend(a)
         return result
     
-    def remove_duplicates(
-                                  self, errors: List[Tuple[str, int, str]]) -> List[Tuple[str, int, str]]:
+    def remove_duplicates(self, errors: List[Tuple[str, int, str]]
+                          ) -> List[Tuple[str, int, str]]:
         """Remove duplicates from a sorted error list."""
         res = [] # type: List[Tuple[str, int, str]]
         i = 0
@@ -252,10 +270,13 @@ class Errors:
 
 
 class CompileError(Exception):
-    """Exception raised when there is a parse, semantic analysis, type check or
-    other compilation-related error.
+    """Exception raised when there is a compile error.
+
+    It can be a parse, semantic analysis, type check or other
+    compilation-related error.
     """
-    messages = Undefined # type: List[str]
+    
+    messages = Undefined(List[str])
     
     def __init__(self, messages: List[str]) -> None:
         super().__init__()
@@ -263,9 +284,11 @@ class CompileError(Exception):
 
 
 def stable_sort(a: Sequence[T], key: Function[[T], Any]) -> List[T]:
-    """Perform a stable sort of a sequence, i.e. if the original sequence has
-    a[n] == a[n+m] (when comparing using the comparison function f), in the
-    sorted sequence item a[n] will be at an earlier index than a[n + m].
+    """Perform a stable sort of a sequence.
+
+    If the original sequence has a[n] == a[n+m] (when comparing using
+    the comparison function f), in the sorted sequence item a[n] will
+    be at an earlier index than a[n + m].
     """
     # TODO use sorted with key (need support for keyword arguments)
     l = List[Tuple[Any, int, T]]()
