@@ -16,6 +16,8 @@ import subprocess
 import sys
 from os.path import dirname, basename
 
+from typing import Undefined, Dict, List, Tuple, cast, Set
+
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
 from mypy.nodes import SymbolTableNode, MODULE_REF
@@ -27,7 +29,6 @@ from mypy import cgen
 from mypy import icode
 from mypy import parse
 from mypy import transform
-from typing import Undefined, Dict, List, Tuple, cast, Set
 
 
 debug = False
@@ -74,18 +75,20 @@ def earlier_state(s: int, t: int) -> bool:
 
 
 class BuildResult:
-    """The result of a successful build."""
-    # Map module name to related AST node.
-    files = Undefined # type: Dict[str, MypyFile]
-    # Map parse tree node to its inferred type.
-    types = Undefined # type: Dict[Node, Type]
-    # Icode for functions
-    icode = Undefined # type: Dict[str, FuncIcode]
-    # Path of generated binary file (for the C back end, None otherwise)
-    binary_path = ''
+    """The result of a successful build.
 
-    def __init__(self, files: Dict[str, MypyFile], types: Dict[Node, Type],
-                  icode: Dict[str, FuncIcode], binary_path: str) -> None:
+    Attributes:
+      files:  Dictionary from module name to related AST node.
+      types:  Dictionary from parse tree node to its inferred type.
+      icode:  Dictionary from function name to related Icode.
+      binary_path: Path of generated binary file (for the C back end,
+                   None otherwise)
+    """
+
+    def __init__(self, files: Dict[str, MypyFile],
+                 types: Dict[Node, Type],
+                 icode: Dict[str, FuncIcode],
+                 binary_path: str) -> None:
         self.files = files
         self.types = types
         self.icode = icode
@@ -93,13 +96,13 @@ class BuildResult:
 
 
 def build(program_path: str,
-                  target: int,
-                  module: str = None,
-                  program_text: str = None,
-                  alt_lib_path: str = None,
-                  mypy_base_dir: str = None,
-                  output_dir: str = None,
-                  flags: List[str] = None) -> BuildResult:
+          target: int,
+          module: str = None,
+          program_text: str = None,
+          alt_lib_path: str = None,
+          mypy_base_dir: str = None,
+          output_dir: str = None,
+          flags: List[str] = None) -> BuildResult:
     """Build a mypy program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -135,7 +138,7 @@ def build(program_path: str,
             mypy_base_dir = dirname(mypy_base_dir)
             
     # Determine the default module search path.
-    lib_path = default_lib_path(mypy_base_dir, target) # type: List[str]
+    lib_path = default_lib_path(mypy_base_dir, target)
     
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -156,10 +159,10 @@ def build(program_path: str,
     
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
-    manager = BuildManager(mypy_base_dir, lib_path, target, output_dir, flags)
-    
+    #
     # Ignore current directory prefix in error messages.
-    manager.errors.set_ignore_prefix(os.getcwd())
+    manager = BuildManager(mypy_base_dir, lib_path, target, output_dir, flags,
+                           ignore_prefix=os.getcwd())
 
     program_path = program_path or lookup_program(module, lib_path)
     if program_text is None:
@@ -177,7 +180,7 @@ def build(program_path: str,
 def default_lib_path(mypy_base_dir: str, target: int) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
-    path = [] # type: List[str]
+    path = List[str]()
     
     # Add MYPYPATH environment variable to library path, if defined.
     path_env = os.getenv('MYPYPATH')
@@ -226,37 +229,45 @@ class BuildManager:
     It coordinates parsing, import processing, semantic analysis and
     type checking. It manages state objects that actually perform the
     build steps.
-    """
-    mypy_base_dir = ''     # Mypy installation directory (contains mypy.py)
-    target = 0            # Build target; selects which passes to perform
-    lib_path = Undefined # type: List[str]        # Library path for looking up modules
-    semantic_analyzer = Undefined # type: SemanticAnalyzer # Semantic analyzer
-    semantic_analyzer_pass3 = Undefined # type: ThirdPass  # Semantic analyzer, pass 3
-    type_checker = Undefined # type: TypeChecker      # Type checker
-    errors = Undefined # type: Errors                 # For reporting all errors
-    output_dir = ''                # Store output files here (Python)
-    flags = Undefined # type: List[str]                   # Build options
-    
-    # States of all individual files that are being processed. Each file in a
-    # build is always represented by a single state object (after it has been
-    # encountered for the first time). This is the only place where states are
-    # stored.
-    states = Undefined # type: List[State]
-    # Map from module name to source file path. There is a 1:1 mapping between
-    # modules and source files.
-    module_files = Undefined # type: Dict[str, str]
-    
-    icode = Undefined # type: Dict[str, FuncIcode]
-    binary_path = ''
 
-    # Cache for module dependencies (direct or indirect). Item (m, n)
-    # indicates whether m depends on n (directly or indirectly).
-    module_deps = Undefined # type: Dict[Tuple[str, str], bool]
+    Attributes:
+      mypy_base_dir:   Mypy installation directory (contains driver.py)
+      target:          Build target; selects which passes to perform
+      lib_path:        Library path for looking up modules
+      semantic_analyzer:
+                       Semantic analyzer, pass 2
+      semantic_analyzer_pass3:
+                       Semantic analyzer, pass 3
+      type_checker:    Type checker
+      errors:          Used for reporting all errors
+      output_dir:      Store output files here (Python)
+      flags:           Build options
+      states:          States of all individual files that are being
+                       processed. Each file in a build is always represented
+                       by a single state object (after it has been encountered
+                       for the first time). This is the only place where
+                       states are stored.
+      module_files:    Map from module name to source file path. There is a
+                       1:1 mapping between modules and source files.
+      icode:           Generated icode (when compiling via C)
+      binary_path:     Path of the generated binary (or None)
+      module_deps:     Cache for module dependencies (direct or indirect).
+                       Item (m, n) indicates whether m depends on n (directly
+                       or indirectly).
+
+    TODO Refactor code related to transformation, icode generation etc. to
+         external objects.  This module should not directly depend on them.
+    """
     
-    def __init__(self, mypy_base_dir: str, lib_path: List[str], target: int,
-                  output_dir: str, flags: List[str]) -> None:
+    def __init__(self, mypy_base_dir: str,
+                 lib_path: List[str],
+                 target: int,
+                 output_dir: str,
+                 flags: List[str],
+                 ignore_prefix: str) -> None:
         self.mypy_base_dir = mypy_base_dir
         self.errors = Errors()
+        self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = lib_path
         self.target = target
         self.output_dir = output_dir
@@ -265,11 +276,11 @@ class BuildManager:
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules)
-        self.states = []
-        self.module_files = {}
-        self.icode = None
-        self.binary_path = None
-        self.module_deps = {}
+        self.states = List[State]()
+        self.module_files = Dict[str, str]()
+        self.icode = Dict[str, FuncIcode]()
+        self.binary_path = None # type: str
+        self.module_deps = Dict[Tuple[str, str], bool]()
     
     def process(self, initial_state: 'UnprocessedFile') -> BuildResult:
         """Perform a build.
@@ -314,7 +325,7 @@ class BuildManager:
                 '{} still unprocessed'.format(s.path))
         
         # Collect a list of all files.
-        trees = [] # type: List[MypyFile]
+        trees = List[MypyFile]()
         for state in self.states:
             trees.append((cast('ParsedFile', state)).tree)
 
@@ -403,14 +414,15 @@ class BuildManager:
                 return state
         raise RuntimeError('%s not found' % str)
     
-    def all_imported_modules_in_file(self, file: MypyFile) -> List[Tuple[str, int]]:
+    def all_imported_modules_in_file(self,
+                                     file: MypyFile) -> List[Tuple[str, int]]:
         """Find all import statements in a file.
 
         Return list of tuples (module id, import line number) for all modules
         imported in file.
         """
         # TODO also find imports not at the top level of the file
-        res = [] # type: List[Tuple[str, int]]
+        res = List[Tuple[str, int]]()
         for d in file.imports:
             if isinstance(d, Import):
                 for id, _ in (cast(Import, d)).ids:
@@ -431,7 +443,8 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
-    def final_passes(self, files: List[MypyFile], types: Dict[Node, Type]) -> None:
+    def final_passes(self, files: List[MypyFile],
+                     types: Dict[Node, Type]) -> None:
         """Perform the code generation passes for type checked files."""
         if self.target == TRANSFORM:
             self.transform(files)
@@ -471,7 +484,8 @@ class BuildManager:
                 is_pretty=True)
             f.accept(v)
 
-    def generate_icode(self, files: List[MypyFile], types: Dict[Node, Type]) -> None:
+    def generate_icode(self, files: List[MypyFile],
+                       types: Dict[Node, Type]) -> None:
         builder = icode.IcodeBuilder(types)
         for f in files:
             # TODO remove ugly builtins hack
@@ -538,7 +552,8 @@ def is_stub(path: str) -> bool:
     """Does path refer to a stubs file?
 
     Currently check if there is a 'stubs' directory component somewhere
-    in the path."""
+    in the path.
+    """
     # TODO more precise check
     dirname, basename = os.path.split(path)
     if basename == '':
@@ -550,18 +565,21 @@ def is_stub(path: str) -> bool:
 
 class StateInfo:
     """Description of a source file that is being built."""
-    # Path to the file
-    path = ''
-    # Module id, such as 'os.path' or '__main__' (for the main program file)
-    id = ''
-    # The import trail that caused this module to be imported (path, line)
-    # tuples
-    import_context = Undefined # type: List[Tuple[str, int]]
-    # The manager that manages this build
-    manager = Undefined # type: BuildManager
     
-    def __init__(self, path: str, id: str, import_context: List[Tuple[str, int]],
-                  manager: BuildManager) -> None:
+    def __init__(self, path: str, id: str,
+                 import_context: List[Tuple[str, int]],
+                 manager: BuildManager) -> None:
+        """Initialize state information.
+
+        Arguments:
+          path:    Path to the file
+          id:      Module id, such as 'os.path' or '__main__' (for the main
+                   program file)
+          import_context:
+                   The import trail that caused this module to be
+                   imported (path, line) tuples
+          manager: The manager that manages this build
+        """
         self.path = path
         self.id = id
         self.import_context = import_context
@@ -575,12 +593,12 @@ class State:
     """
 
     # The StateInfo attributes are duplicated here for convenience.
-    path = ''
-    id = ''   # Module id
-    import_context = Undefined # type: List[Tuple[str, int]]
-    manager = Undefined # type: BuildManager
+    path = Undefined(str)
+    id = Undefined(str)
+    import_context = Undefined(List[Tuple[str, int]])
+    manager = Undefined(BuildManager)
     # Modules that this file directly depends on (in no particular order).
-    dependencies = Undefined # type: List[str]
+    dependencies = Undefined(List[str])
     
     def __init__(self, info: StateInfo) -> None:
         self.path = info.path
@@ -643,8 +661,6 @@ class State:
 
 
 class UnprocessedFile(State):
-    program_text = '' # Program text (or None to read from file)
-    
     def __init__(self, info: StateInfo, program_text: str) -> None:
         super().__init__(info)
         self.program_text = program_text
@@ -739,14 +755,14 @@ class UnprocessedFile(State):
 
 
 class ParsedFile(State):
-    tree = Undefined # type: MypyFile
+    tree = Undefined(MypyFile)
     
     def __init__(self, info: StateInfo, tree: MypyFile) -> None:
         super().__init__(info)
         self.tree = tree
 
         # Build a list all directly imported moules (dependencies).
-        imp = [] # type: List[str]
+        imp = List[str]()
         for id, line in self.manager.all_imported_modules_in_file(tree):
             imp.append(id)
         if self.id != 'builtins':
@@ -827,14 +843,15 @@ def trace(s):
         print(s)
 
 
-def read_module_source_from_file(id: str, lib_path: List[str]) -> Tuple[str, str]:
+def read_module_source_from_file(id: str,
+                                 lib_path: List[str]) -> Tuple[str, str]:
     """Find and read the source file of a module.
 
     Return a pair (path, file contents). Return (None, None) if the module
     could not be found or read.
 
-    Args:
-      id: module name, a string of form 'foo' or 'foo.bar'
+    Arguments:
+      id:       module name, a string of form 'foo' or 'foo.bar'
       lib_path: library search path
     """
     path = find_module(id, lib_path)
