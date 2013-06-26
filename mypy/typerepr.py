@@ -4,8 +4,9 @@ These are used for source-source transformation that preserves original
 formatting and comments.
 """
 
-from mypy.lex import Token
 from typing import List, Any
+
+from mypy.lex import Token
 
 
 class CommonTypeRepr:
@@ -33,7 +34,7 @@ class AnyRepr:
 
 
 class VoidRepr:
-    """Representation of Void."""
+    """Representation of the 'None' type."""
     def __init__(self, void: Any) -> None:
         self.void = void
 

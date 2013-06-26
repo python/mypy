@@ -18,7 +18,8 @@ def erase_type(typ: Type, basic: BasicTypes) -> Type:
       B[X] -> B[Any]
       Tuple[A, B] -> tuple
       Function[...] -> Function[[], None]
-      """
+    """
+    
     return typ.accept(EraseTypeVisitor(basic))
 
 
@@ -73,6 +74,7 @@ def erase_generic_types(t: Type) -> Type:
     Replace all types A[...] with simply A, and all type variables
     with 'Any'.
     """
+    
     if t:
         return t.accept(GenericTypeEraser())
     else:
@@ -81,6 +83,7 @@ def erase_generic_types(t: Type) -> Type:
 
 class GenericTypeEraser(TypeTranslator):
     """Implementation of type erasure"""
+    
     # FIX: What about generic function types?
     
     def visit_type_var(self, t: TypeVar) -> Type:
@@ -91,7 +94,7 @@ class GenericTypeEraser(TypeTranslator):
 
 
 def erase_typevars(t: Type) -> Type:
-    """Replace all type variables in a type with any."""
+    """Replace all type variables in a type with any."""    
     return t.accept(TypeVarEraser())
 
 

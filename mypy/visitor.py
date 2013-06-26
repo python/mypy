@@ -1,5 +1,9 @@
-import mypy.nodes
+"""Generic abstract syntax tree node visitor"""
+
 from typing import typevar, Generic
+
+import mypy.nodes
+
 
 T = typevar('T')
 
@@ -10,6 +14,8 @@ class NodeVisitor(Generic[T]):
     The T type argument specifies the return type of the visit
     methods. As all methods defined here return None by default,
     subclasses do not always need to override all the methods.
+
+    TODO make the default return value explicit
     """
     
     # Top-level structures

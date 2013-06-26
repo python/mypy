@@ -2,6 +2,8 @@ import os
 import os.path
 import shutil
 
+import typing
+
 from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.testhelpers import assert_string_arrays_equal_wildcards

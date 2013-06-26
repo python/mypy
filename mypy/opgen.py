@@ -1,4 +1,10 @@
-"""Alore code generation for runtime type operations (OBSOLETE)."""
+"""Alore code generation for runtime type operations.
+
+TODO This is mostly obsolete, but this is kept anyway, since some of the
+     code or at least some ideas can probably be reused.
+"""
+
+from typing import List, cast
 
 from nodes import MypyFile, TypeDef, TypeInfo
 from types import Instance, TypeVar, BOUND_VAR, Type
@@ -6,7 +12,6 @@ import transform
 from maptypevar import num_slots, get_tvar_access_path
 from compileslotmap import compile_slot_mapping
 from transutil import dynamic_suffix, tvar_slot_name
-from typing import List, cast
 
 
 def generate_runtime_support(f: MypyFile) -> str:
@@ -38,8 +43,8 @@ def add_slot_map_data(map: List[str], ops: List[str], typ: TypeInfo) -> None:
         base = base.base
 
 
-def add_slot_map_support_for_type_pair(map: List[str], ops: List[str], base: TypeInfo,
-                                        typ: TypeInfo) -> None:
+def add_slot_map_support_for_type_pair(map: List[str], ops: List[str],
+                                       base: TypeInfo, typ: TypeInfo) -> None:
     op = '__{}TypeTo{}Slots'.format(base.name(), typ.name())
     map.append('    ({}, {}) : {},'.format(base.name(), typ.name(), op))
     if typ.is_generic():
@@ -49,7 +54,8 @@ def add_slot_map_support_for_type_pair(map: List[str], ops: List[str], base: Typ
     generate_slot_map_op(ops, op, base, typ)
 
 
-def generate_slot_map_op(ops: List[str], op: str, base: TypeInfo, typ: TypeInfo) -> None:
+def generate_slot_map_op(ops: List[str], op: str, base: TypeInfo,
+                         typ: TypeInfo) -> None:
     ops.append('def {}(t)'.format(op))
     nslots = num_slots(typ)
     slots = compile_slot_mapping(base)
@@ -99,8 +105,8 @@ def generate_type_map(f: MypyFile) -> str:
     return '\n'.join(map) + '\n' + '\n'.join(ops)
 
 
-def add_type_map_support_for_type(map: List[str], ops: List[str], typ: TypeInfo, alt,
-                                   suffix: str) -> None:
+def add_type_map_support_for_type(map: List[str], ops: List[str],
+                                  typ: TypeInfo, alt, suffix: str) -> None:
     op = '__{}ValueToType{}'.format(typ.name(), suffix)
     map.append('    {} : {},'.format(typ.name(), op))
     if typ.is_generic():

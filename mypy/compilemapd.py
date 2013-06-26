@@ -1,40 +1,40 @@
+from typing import Undefined, List, Tuple, cast
+
 from nodes import TypeInfo
 from types import Instance, Type, TypeVar, AnyType
-from typing import Undefined, List, Tuple, cast
-from abc import abstractmethod, ABCMeta
 
 
-class MapPremise(metaclass=ABCMeta): pass
+class MapPremise: pass
 
 
-class MapExpr(metaclass=ABCMeta): pass
+class MapExpr: pass
 
 
 class AssertClass(MapPremise):
-    i = Undefined # type: MapExpr
-    c = Undefined # type: TypeInfo
+    i = Undefined(MapExpr)
+    c = Undefined(TypeInfo)
     
     def __init__(self, i: MapExpr, c: TypeInfo) -> None:
         self.i = i
         self.c = c
     
     def __str__(self):
-        return str(self.i) + ' = ' + self.c.name + '<...>'
+        return str(self.i) + ' = ' + self.c.name + '[...]'
 
 
 class AssertDyn(MapPremise):
-    i = Undefined # type: MapExpr
+    i = Undefined(MapExpr)
     
     def __init__(self, i: MapExpr) -> None:
         self.i = i
     
     def __str__(self):
-        return str(self.i) + ' = dyn'
+        return str(self.i) + ' = Any'
 
 
 class AssertEq(MapPremise):
-    i1 = Undefined # type: MapExpr
-    i2 = Undefined # type: MapExpr
+    i1 = Undefined(MapExpr)
+    i2 = Undefined(MapExpr)
     
     def __init__(self, i1: MapExpr, i2: MapExpr) -> None:
         self.i1 = i1
@@ -55,7 +55,7 @@ class TypeVarRef(MapExpr):
 
 
 class TypeArgRef(MapExpr):
-    base = Undefined # type: MapExpr
+    base = Undefined(MapExpr)
     n = 0
     
     def __init__(self, base: MapExpr, n: int) -> None:
@@ -71,8 +71,9 @@ class DefaultArg(MapExpr):
         return 'd'
 
 
-def compile_subclass_mapping(
-                               num_subtype_type_vars: int, super_type: Instance) -> Tuple[List[MapPremise], List[MapExpr]]:
+def compile_subclass_mapping(num_subtype_type_vars: int,
+                             super_type: Instance) -> Tuple[List[MapPremise],
+                                                            List[MapExpr]]:
     """Compile mapping from superclass to subclass type variables.
 
     Args:
@@ -80,6 +81,9 @@ def compile_subclass_mapping(
       super_type:         definition of supertype; this may contain type
                           variable references
     """
+    
+    # TODO describe what's going on
+    
     premises = find_eq_premises(super_type, None)
     exprs = [] # type: List[MapExpr]
     

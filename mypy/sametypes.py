@@ -8,6 +8,7 @@ from mypy.types import (
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+    
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
         # generated spurious error messages.
@@ -27,6 +28,7 @@ def is_same_types(a1: List[Type], a2: List[Type]) -> bool:
 
 class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
+    
     def __init__(self, right: Type) -> None:
         self.right = right
     
@@ -63,7 +65,8 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVar) -> bool:
         return (isinstance(self.right, TypeVar) and
                 left.id == (cast(TypeVar, self.right)).id and
-                left.is_wrapper_var == (cast(TypeVar, self.right)).is_wrapper_var)
+                left.is_wrapper_var ==
+                    cast(TypeVar, self.right).is_wrapper_var)
     
     def visit_callable(self, left: Callable) -> bool:
         # FIX generics
@@ -79,6 +82,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
     
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return is_same_types(left.items, (cast(TupleType, self.right)).items)
+            return is_same_types(left.items, cast(TupleType, self.right).items)
         else:
             return False

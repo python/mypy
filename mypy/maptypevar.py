@@ -1,11 +1,12 @@
+from typing import Any, List, cast
+
 from mypy.types import RuntimeTypeVar, OBJECT_VAR, Instance, Type, TypeVar
 from mypy.nodes import TypeInfo, Node, MemberExpr, IndexExpr, IntExpr
 from mypy.transutil import self_expr, tvar_slot_name
-from typing import Any, List, cast
 
 
 def get_tvar_access_expression(typ: TypeInfo, tvindex: int, alt: Any,
-                                          is_java: Any) -> RuntimeTypeVar:
+                               is_java: Any) -> RuntimeTypeVar:
     """Return a type expression that maps from runtime type variable slots
     to the type variable in the given class with the given index.
     

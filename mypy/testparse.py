@@ -4,6 +4,8 @@ Test case descriptions are in files test/data/parse[-errors].test."""
 
 import os.path
 
+import typing
+
 from mypy.myunit import Suite, AssertionFailure, run_test
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.testdata import parse_test_cases
@@ -21,9 +23,11 @@ class ParserSuite(Suite):
 
 
 def test_parser(testcase):
-    """Perform a single parser test case. The argument contains the description
-    of the test case.
+    """Perform a single parser test case.
+
+    The argument contains the description of the test case.
     """
+    
     try:
         n = parse('\n'.join(testcase.input))
         a = str(n).split('\n')

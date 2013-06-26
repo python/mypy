@@ -1,9 +1,12 @@
 """Tests for parse tree pretty printing that preserves formatting
 
-Test case descriptions are in file test/data/output.test."""
+Test case descriptions are in file test/data/output.test.
+"""
 
 import os.path
 import re
+
+from typing import Undefined, Any
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -13,7 +16,6 @@ from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.parse import parse
 from mypy.output import OutputVisitor
 from mypy.errors import CompileError
-from typing import Undefined, Any
 
 
 # Files which contain test case descriptions.
@@ -36,9 +38,7 @@ def test_output(testcase):
         expected = testcase.input
     try:
         src = '\n'.join(testcase.input)
-        # Parse and analyze the source program.
         # Parse and semantically analyze the source program.
-        trees, symtable, infos, types = Undefined, Undefined, Undefined, Undefined # type: (Any, Any, Any, Any)
         
         # Test case names with a special suffix get semantically analyzed. This
         # lets us test that semantic analysis does not break source code pretty
@@ -54,6 +54,7 @@ def test_output(testcase):
             files = {'main': parse(src, 'main')}
         a = []
         first = True
+        
         # Produce an output containing the pretty-printed forms (with original
         # formatting) of all the relevant source files.
         for fnam in sorted(files.keys()):

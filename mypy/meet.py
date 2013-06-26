@@ -1,3 +1,5 @@
+from typing import cast, List
+
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
@@ -5,7 +7,9 @@ from mypy.types import (
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
-from typing import cast, List
+
+
+# TODO Describe this module.
 
 
 def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
@@ -84,14 +88,15 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     
     def visit_callable(self, t: Callable) -> Type:
         if isinstance(self.s, Callable) and is_similar_callables(
-                                                        t, cast(Callable, self.s)):
-            return combine_similar_callables(t, cast(Callable, self.s), self.basic)
+                                                   t, cast(Callable, self.s)):
+            return combine_similar_callables(t, cast(Callable, self.s),
+                                             self.basic)
         else:
             return self.default(self.s)
     
     def visit_tuple_type(self, t: TupleType) -> Type:
-        if isinstance(self.s, TupleType) and ((cast(TupleType, self.s)).length() ==
-                                              t.length()):
+        if isinstance(self.s, TupleType) and (
+                             cast(TupleType, self.s).length() == t.length()):
             items = [] # type: List[Type]
             for i in range(t.length()):
                 items.append(self.meet(t.items[i],
@@ -101,6 +106,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.default(self.s)
     
     def visit_intersection(self, t):
+        # TODO Obsolete; target overload types instead?
         # Only support very rudimentary meets between intersection types.
         if is_same_type(self.s, t):
             return self.s

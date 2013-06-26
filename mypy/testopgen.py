@@ -2,6 +2,8 @@
 
 import os.path
 
+import typing
+
 from build import build
 from myunit import Suite, run_test
 from testconfig import test_data_prefix, test_temp_dir

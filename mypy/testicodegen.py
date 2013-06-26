@@ -3,6 +3,8 @@
 import os.path
 import re
 
+import typing
+
 from mypy import build
 from mypy import icode
 from mypy.myunit import Suite, run_test
@@ -37,6 +39,7 @@ class IcodeGenerationSuite(Suite):
 
 def test_transform(testcase):
     """Perform a runtime checking transformation test case."""
+    
     expected = remove_comment_lines(testcase.output)
 
     func_names = get_func_names(expected)
