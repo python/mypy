@@ -1,3 +1,5 @@
+"""Generic node traverser visitor"""
+
 from typing import typevar, Generic
 
 from mypy.visitor import NodeVisitor
@@ -10,6 +12,7 @@ from mypy.nodes import (
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
     FuncExpr, OverloadedFuncDef
 )
+
 
 T = typevar('T')
 

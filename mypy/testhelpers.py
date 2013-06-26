@@ -2,9 +2,10 @@ import sys
 import re
 import os
 
+from typing import List
+
 from mypy.myunit import AssertionFailure
 from mypy import testconfig
-from typing import List
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if
@@ -12,10 +13,13 @@ from typing import List
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
 
 
-def assert_string_arrays_equal(expected: List[str], actual: List[str], msg: str) -> None:
-    """Assert that two string arrays are equal. Display any differences in a
-    human-readable form.
+def assert_string_arrays_equal(expected: List[str], actual: List[str],
+                               msg: str) -> None:
+    """Assert that two string arrays are equal.
+
+    Display any differences in a human-readable form.
     """
+    
     actual = clean_up(actual)
     
     if actual != expected:
@@ -81,8 +85,10 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str], msg: str)
 
 
 def show_align_message(s1: str, s2: str) -> None:
-    """Align s1 and s2 so that the their first difference is highlighted. For
-    example, if s1 is 'foobar' and s2 is 'fobar', display the following lines:
+    """Align s1 and s2 so that the their first difference is highlighted.
+
+    For example, if s1 is 'foobar' and s2 is 'fobar', display the
+    following lines:
     
       E: foobar
       A: fobar
@@ -91,6 +97,7 @@ def show_align_message(s1: str, s2: str) -> None:
     If s1 and s2 are long, only display a fragment of the strings around the
     first difference. If s1 is very short, do nothing.
     """
+    
     # Seeing what went wrong is trivial even without alignment if the expected
     # string is very short. In this case do nothing to simplify output.
     if len(s1) < 4:
@@ -129,8 +136,9 @@ def show_align_message(s1: str, s2: str) -> None:
     sys.stderr.write('\n')
 
 
-def assert_string_arrays_equal_wildcards(expected: List[str], actual: List[str],
-                                          msg: str) -> None:
+def assert_string_arrays_equal_wildcards(expected: List[str],
+                                         actual: List[str],
+                                         msg: str) -> None:
     # Like above, but let a line with only '...' in expected match any number
     # of lines in actual.
     actual = clean_up(actual)
@@ -144,9 +152,10 @@ def assert_string_arrays_equal_wildcards(expected: List[str], actual: List[str],
 
 
 def clean_up(a):
-    """Remove common directory prefix from all strings in a (perform a
-    naive string replace; it seems to work well enough). Also remove
-    trailing carriage returns.
+    """Remove common directory prefix from all strings in a.
+
+    This uses a naive string replace; it seems to work well enough. Also
+    remove trailing carriage returns.
     """
     res = []
     for s in a:
@@ -163,6 +172,7 @@ def clean_up(a):
 
 def match_array(pattern: List[str], target: List[str]) -> List[str]:
     """Expand '...' wildcards in pattern by matching against target."""
+    
     res = [] # type: List[str]
     i = 0
     j = 0

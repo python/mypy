@@ -1,4 +1,8 @@
+"""Semantic analyzer test cases"""
+
 import os.path
+
+from typing import Dict, List
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -7,7 +11,6 @@ from mypy.testdata import parse_test_cases
 from mypy.errors import CompileError
 from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.nodes import TypeInfo
-from typing import Dict, List
 
 
 # Semantic analyser test cases: dump parse tree
@@ -21,6 +24,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-statements.test',
                  'semanal-abstractclasses.test']
 
+
 class SemAnalSuite(Suite):
     def cases(self):
         c = []
@@ -29,10 +33,14 @@ class SemAnalSuite(Suite):
                                   test_semanal, test_temp_dir)
         return c
 
+
 def test_semanal(testcase):
-    """Perform a semantic analysis test case. The testcase argument contains a
-    description of the test case (inputs and output).
+    """Perform a semantic analysis test case.
+
+    The testcase argument contains a description of the test case
+    (inputs and output).
     """
+    
     try:
         src = '\n'.join(testcase.input)
         result = build.build('main',
@@ -67,6 +75,7 @@ def test_semanal(testcase):
 # Paths to files containing test case descriptions.
 semanal_error_files = ['semanal-errors.test']
 
+
 class SemAnalErrorSuite(Suite):
     def cases(self):
         # Read test cases from test case description files.
@@ -75,9 +84,11 @@ class SemAnalErrorSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_semanal_error, test_temp_dir)
         return c
+    
 
 def test_semanal_error(testcase):
     """Perform a test case."""
+    
     try:
         src = '\n'.join(testcase.input)
         build.build('main',
@@ -95,8 +106,10 @@ def test_semanal_error(testcase):
             'Invalid compiler output ({}, line {})'.format(testcase.file,
                                                            testcase.line))
 
+
 def normalize_error_messages(messages):
     """Translate an array of error messages to use / as path separator."""
+    
     a = []
     for m in messages:
         a.append(m.replace(os.sep, '/'))
@@ -107,6 +120,7 @@ def normalize_error_messages(messages):
 
 # Test case descriptions
 semanal_symtable_files = ['semanal-symtable.test']
+
     
 class SemAnalSymtableSuite(Suite):
     def cases(self):
@@ -144,6 +158,7 @@ class SemAnalSymtableSuite(Suite):
 # Type info export test cases
 
 semanal_typeinfo_files = ['semanal-typeinfo.test']
+
     
 class SemAnalTypeInfoSuite(Suite):
     def cases(self):
