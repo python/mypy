@@ -1,15 +1,19 @@
 """Classes for representing mypy types."""
 
-import mypy.nodes
+from abc import abstractmethod
 from typing import Undefined, Any, typevar, List, Tuple, cast, Generic
+
+import mypy.nodes
+
 
 T = typevar('T')
 
 
 class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
+    
     line = 0
-    repr = Undefined # type: Any
+    repr = Undefined(Any)
     
     def __init__(self, line: int = -1, repr=None) -> None:
         self.line = line
@@ -27,11 +31,12 @@ class Type(mypy.nodes.Context):
 
 class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
+    
     name = ''
-    args = Undefined # type: List[Type]
+    args = Undefined(List[Type])
     
     def __init__(self, name: str, args: List[Type] = None, line: int = -1,
-                  repr: Any = None) -> None:
+                 repr: Any = None) -> None:
         if not args:
             args = []
         self.name = name
@@ -44,6 +49,7 @@ class UnboundType(Type):
 
 class ErrorType(Type):
     """The error type is used as the result of failed type operations."""
+    
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_error_type(self)
 
@@ -55,9 +61,10 @@ class TypeList(Type):
     [arg, ...] in Function[[arg, ...], ret].
     """
 
-    items = Undefined # type: List[Type]
+    items = Undefined(List[Type])
 
-    def __init__(self, items: List[Type], line: int = -1, repr: Any = None) -> None:
+    def __init__(self, items: List[Type], line: int = -1,
+                 repr: Any = None) -> None:
         super().__init__(line, repr)
         self.items = items
     
@@ -67,17 +74,22 @@ class TypeList(Type):
 
 class AnyType(Type):
     """The type 'Any'."""
+    
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 
 
 class Void(Type):
-    """The return type 'void'. This can only be used as the return type in a
-    callable type and as the result type of calling such callable.
+    """The return type 'None'.
+
+    This can only be used as the return type in a callable type and as
+    the result type of calling such callable.
     """
+    
     source = ''   # May be None; function that generated this value
     
-    def __init__(self, source: str = None, line: int = -1, repr: Any = None) -> None:
+    def __init__(self, source: str = None, line: int = -1,
+                 repr: Any = None) -> None:
         self.source = source
         super().__init__(line, repr)
     
@@ -89,15 +101,18 @@ class Void(Type):
 
 
 class NoneTyp(Type):
-    """The type of 'None'. This is only used internally during type
-    inference.  Programs cannot declare a variable of this type, and
-    the type checker refuses to infer this type for a
-    variable. However, subexpressions often have this type. Note that
-    this is not used as the result type when calling a function with a
-    void type, even though semantically such a function returns a None
-    value; the void type is used instead so that we can report an
-    error if the caller tries to do anything with the return value.
+    """The type of 'None'.
+
+    This is only used internally during type inference.  Programs
+    cannot declare a variable of this type, and the type checker
+    refuses to infer this type for a variable. However, subexpressions
+    often have this type. Note that this is not used as the result
+    type when calling a function with a void type, even though
+    semantically such a function returns a None value; the void type
+    is used instead so that we can report an error if the caller tries
+    to do anything with the return value.
     """
+    
     def __init__(self, line: int = -1, repr=None) -> None:
         super().__init__(line, repr)
     
@@ -117,14 +132,18 @@ class ErasedType(Type):
 
 
 class Instance(Type):
-    """An instance type of form C<T1, ..., Tn>. Type variables Tn may
-    be empty"""
-    type = Undefined # type: mypy.nodes.TypeInfo
-    args = Undefined # type: List[Type]
+    """An instance type of form C[T1, ..., Tn].
+
+    The list of type variables may be empty.
+    """
+    
+    type = Undefined(mypy.nodes.TypeInfo)
+    args = Undefined(List[Type])
     erased = False      # True if result of type variable substitution
     
-    def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type], line: int = -1,
-                  repr: Any = None, erased: Any = False) -> None:
+    def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
+                 line: int = -1, repr: Any = None,
+                 erased: Any = False) -> None:
         self.type = typ
         self.args = args
         self.erased = erased
@@ -139,9 +158,12 @@ OBJECT_VAR = 3
 
 
 class TypeVar(Type):
-    """A type variable type. This refers to either a class type variable
-    (id > 0) or a function type variable (id < 0).
+    """A type variable type.
+
+    This refers to either a class type variable (id > 0) or a function
+    type variable (id < 0).
     """
+    
     name = '' # Name of the type variable (for messages and debugging)
     id = 0 # 1, 2, ... for type-related, -1, ... for function-related
     
@@ -151,10 +173,10 @@ class TypeVar(Type):
     # implicit type variable argument.
     #
     # Can also be BoundVar/ObjectVar TODO better representation
-    is_wrapper_var = Undefined # type: Any
+    is_wrapper_var = Undefined(Any)
     
     def __init__(self, name: str, id: int, is_wrapper_var: Any = False,
-                  line: int = -1, repr: Any = None) -> None:
+                 line: int = -1, repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.is_wrapper_var = is_wrapper_var
@@ -165,28 +187,29 @@ class TypeVar(Type):
 
 
 class FunctionLike(Type):
-    """Abstract base class for function types (Callable and
-    OverloadedCallable)."""
-    def is_type_obj(self) -> bool: # Abstract
-        pass
-    
-    def items(self) -> 'List[Callable]': # Abstract
-        pass
-    
-    def with_name(self, name: str) -> Type: # Abstract
-        pass
+    """Abstract base class for function types."""
+
+    @abstractmethod
+    def is_type_obj(self) -> bool: pass
+
+    @abstractmethod
+    def items(self) -> List['Callable']: pass
+
+    @abstractmethod
+    def with_name(self, name: str) -> Type: pass
 
 
 class Callable(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
-    arg_types = Undefined # type: List[Type] # Types of function arguments
-    arg_kinds = Undefined # type: List[int]  # mypy.nodes.ARG_ constants
-    arg_names = Undefined # type: List[str]  # None if not a keyword argument
-    minargs = 0         # Minimum number of arguments
-    is_var_arg = False     # Is it a varargs function?
-    ret_type = Undefined # type: Type       # Return value type
-    name = ''            # Name (may be None; for error messages)
-    variables = Undefined # type: TypeVars  # Type variables for a generic function
+    
+    arg_types = Undefined(List[Type]) # Types of function arguments
+    arg_kinds = Undefined(List[int])  # mypy.nodes.ARG_ constants
+    arg_names = Undefined(List[str])  # None if not a keyword argument
+    minargs = 0                # Minimum number of arguments
+    is_var_arg = False         # Is it a varargs function?
+    ret_type = Undefined(Type) # Return value type
+    name = ''                  # Name (may be None; for error messages)
+    variables = Undefined('TypeVars') # Type variables for a generic function
     
     # Implicit bound values of type variables. These can be either for
     # class type variables or for generic function type variables.
@@ -200,15 +223,15 @@ class Callable(FunctionLike):
     # (absolute value this time).
     #
     # Stored as tuples (id, type).
-    bound_vars = Undefined # type: 'List[Tuple[int, Type]]'
+    bound_vars = Undefined(List[Tuple[int, Type]])
     
     _is_type_obj = False # Does this represent a type object?
     
-    def __init__(self, arg_types: List[Type], arg_kinds: List[int], arg_names: List[str],
-                  ret_type: Type, is_type_obj: bool, name: str = None,
-                  variables: 'TypeVars' = None,
-                  bound_vars: List[Tuple[int, Type]] = None,
-                  line: int = -1, repr: Any = None) -> None:
+    def __init__(self, arg_types: List[Type], arg_kinds: List[int],
+                 arg_names: List[str], ret_type: Type, is_type_obj: bool,
+                 name: str = None, variables: 'TypeVars' = None,
+                 bound_vars: List[Tuple[int, Type]] = None,
+                 line: int = -1, repr: Any = None) -> None:
         if not variables:
             variables = TypeVars([])
         if not bound_vars:
@@ -257,14 +280,14 @@ class Callable(FunctionLike):
             n -= 1
         return n
     
-    def items(self) -> 'List[Callable]':
+    def items(self) -> List['Callable']:
         return [self]
     
     def is_generic(self) -> bool:
         return self.variables.items != []
     
     def type_var_ids(self) -> List[int]:
-        a = [] # type: List[int]
+        a = List[int]()
         for tv in self.variables.items:
             a.append(tv.id)
         return a
@@ -276,7 +299,8 @@ class Overloaded(FunctionLike):
     The variant to call is chosen based on runtime argument types; the first
     matching signature is the target.
     """
-    _items = Undefined # type: List[Callable] # Must not be empty
+    
+    _items = Undefined(List[Callable]) # Must not be empty
     
     def __init__(self, items: List[Callable]) -> None:
         self._items = items
@@ -294,7 +318,7 @@ class Overloaded(FunctionLike):
         return self._items[0].is_type_obj()
     
     def with_name(self, name: str) -> 'Overloaded':
-        ni = [] # type: List[Callable]
+        ni = List[Callable]()
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
@@ -304,10 +328,12 @@ class Overloaded(FunctionLike):
 
 
 class TupleType(Type):
-    """The tuple type tuple<T1, ..., Tn> (at least one type argument)."""
-    items = Undefined # type: List[Type]
+    """The tuple type Tuple[T1, ..., Tn] (at least one type argument)."""
     
-    def __init__(self, items: List[Type], line: int = -1, repr: Any = None) -> None:
+    items = Undefined(List[Type])
+    
+    def __init__(self, items: List[Type], line: int = -1,
+                 repr: Any = None) -> None:
         self.items = items
         super().__init__(line, repr)
     
@@ -323,8 +349,9 @@ class TypeVars:
 
     TODO bounds are not supported currently
     """
-    items = Undefined # type: List[TypeVarDef]
-    repr = Undefined # type: Any
+    
+    items = Undefined(List['TypeVarDef'])
+    repr = Undefined(Any)
     
     def __init__(self, items: 'List[TypeVarDef]', repr: Any = None) -> None:
         self.items = items
@@ -333,24 +360,23 @@ class TypeVars:
     def __repr__(self) -> str:
         if self.items == []:
             return ''
-        a = [] # type: List[str]
+        a = List[str]()
         for v in self.items:
             a.append(str(v))
         return '[{}]'.format(', '.join(a))
 
 
 class TypeVarDef(mypy.nodes.Context):
-    """Definition of a single type variable, with an optional bound
-    (for bounded polymorphism).
-    """
+    """Definition of a single type variable, with an optional bound."""
+    
     name = ''
     id = 0
-    bound = Undefined # type: Type  # May be None
+    bound = Undefined(Type) # May be None
     line = 0
-    repr = Undefined # type: Any
+    repr = Undefined(Any)
     
     def __init__(self, name: str, id: int, bound: Type = None, line: int = -1,
-                  repr: Any = None) -> None:
+                 repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.bound = bound
@@ -368,12 +394,14 @@ class TypeVarDef(mypy.nodes.Context):
 
 
 class RuntimeTypeVar(Type):
-    """Reference to a runtime variable that represents the value of a type
-    variable. The reference can must be a expression node, but only some
-    node types are properly supported (NameExpr, MemberExpr and IndexExpr
+    """Reference to a runtime variable with the value of a type variable.
+
+    The reference can must be a expression node, but only some node
+    types are properly supported (NameExpr, MemberExpr and IndexExpr
     mainly).
     """
-    node = Undefined # type: mypy.nodes.Node
+    
+    node = Undefined(mypy.nodes.Node)
     
     def __init__(self, node: mypy.nodes.Node) -> None:
         self.node = node
@@ -393,6 +421,7 @@ class TypeVisitor(Generic[T]):
 
     The parameter T is the return type of the visit methods.
     """
+    
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
 
@@ -439,6 +468,7 @@ class TypeTranslator(TypeVisitor[Type]):
     Subclass this and override some methods to implement a non-trivial
     transformation.
     """
+    
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
 
@@ -483,8 +513,8 @@ class TypeTranslator(TypeVisitor[Type]):
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
     
-    def translate_bound_vars(self,
-                                            types: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
+    def translate_bound_vars(
+            self, types: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
         return [(id, t.accept(self)) for id, t in types]
 
     def translate_variables(self, variables: TypeVars) -> TypeVars:
@@ -501,6 +531,7 @@ class TypeStrVisitor(TypeVisitor[str]):
      - Represent unbound types as Foo? or Foo?[...].
      - Represent the NoneTyp type as None.
     """
+    
     def visit_unbound_type(self, t):
         s = t.name + '?'
         if t.args != []:
@@ -624,12 +655,15 @@ class TypeQuery(TypeVisitor[bool]):
     This class allows defining the default value for leafs to simplify the
     implementation of many queries.
     """
+    
     default = False  # Default result
-    strategy = 0  # Strategy for combining multiple values
+    strategy = 0     # Strategy for combining multiple values
     
     def __init__(self, default: bool, strategy: int) -> None:
-        """Construct a query visitor with the given default result and
-        strategy for combining multiple results. The strategy must be either
+        """Construct a query visitor.
+
+        Use the given default result and strategy for combining
+        multiple results. The strategy must be either
         ANY_TYPE_STRATEGY or ALL_TYPES_STRATEGY.
         """
         self.default = default
@@ -700,6 +734,7 @@ class TypeQuery(TypeVisitor[bool]):
 
 class BasicTypes:
     """Collection of Instance types of basic types (object, type, etc.)."""
+    
     def __init__(self, object: Instance, type_type: Instance, tuple: Type,
                   function: Type) -> None:
         self.object = object
@@ -710,6 +745,7 @@ class BasicTypes:
 
 def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
+    
     if isinstance(typ, Callable):
         ctyp = cast(Callable, typ)
         return Callable(ctyp.arg_types,
