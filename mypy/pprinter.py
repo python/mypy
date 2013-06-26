@@ -1,3 +1,5 @@
+from typing import List, cast
+
 from mypy.output import TypeOutputVisitor
 from mypy.nodes import (
     Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr, CallExpr,
@@ -9,7 +11,6 @@ from mypy.maptypevar import num_slots
 from mypy.transutil import tvar_arg_name
 from mypy import coerce
 from mypy import nodes
-from typing import List, cast
 
 
 class PrettyPrintVisitor(NodeVisitor):
@@ -273,7 +274,7 @@ class PrettyPrintVisitor(NodeVisitor):
 class TypeErasedPrettyPrintVisitor(TypeVisitor[str]):
     """Pretty-print types.
 
-    Omit type variables (e.g. C instead of C<int>).
+    Omit type variables (e.g. C instead of C[int]).
 
     Note that the translation does not preserve all information about the
     types, but this is fine since this is only used in test case output.
