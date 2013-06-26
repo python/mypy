@@ -1,5 +1,7 @@
 """Transform classes for runtime type checking."""
 
+from typing import Undefined, List, Set, Any, cast, Tuple, Dict
+
 from mypy.nodes import (
     TypeDef, Node, FuncDef, VarDef, Block, Var, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
@@ -24,7 +26,6 @@ from mypy.compileslotmap import find_slot_origin
 from mypy.coerce import coerce
 from mypy.maptypevar import num_slots, get_tvar_access_path
 from mypy import erasetype
-from typing import Undefined, List, Set, Any, cast, Tuple, Dict
 
 
 class TypeTransformer:
@@ -48,9 +49,9 @@ class TypeTransformer:
     """
     
     # Used for common transformation operations.
-    tf = Undefined # type: mypy.transform.DyncheckTransformVisitor
+    tf = Undefined('mypy.transform.DyncheckTransformVisitor')
     # Used for transforming methods.
-    func_tf = Undefined # type: FuncTransformer
+    func_tf = Undefined(FuncTransformer)
     
     def __init__(self, tf: 'mypy.transform.DyncheckTransformVisitor') -> None:
         self.tf = tf
@@ -76,7 +77,8 @@ class TypeTransformer:
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
                 # Implicit cast from FuncDef[] to Node[] is safe below.
-                defs.extend(Any(self.func_tf.transform_method(cast(FuncDef, d))))
+                defs.extend(Any(self.func_tf.transform_method(cast(FuncDef,
+                                                                   d))))
             elif isinstance(d, VarDef):
                 vdef = cast(VarDef, d)
                 defs.extend(self.transform_var_def(vdef))
@@ -197,7 +199,8 @@ class TypeTransformer:
         else:
             return []
     
-    def fix_bound_init_tvars(self, callable: Callable, typ: Instance) -> Callable:
+    def fix_bound_init_tvars(self, callable: Callable,
+                             typ: Instance) -> Callable:
         """Replace bound type vars of callable with args from instance type."""
         a = [] # type: List[Tuple[int, Type]]
         for i in range(len(typ.args)):
@@ -207,8 +210,8 @@ class TypeTransformer:
                         callable.is_type_obj(), callable.name,
                         callable.variables, a)
     
-    def make_superclass_constructor_call(self, info: TypeInfo,
-                                                    callee_type: Callable) -> ExpressionStmt:
+    def make_superclass_constructor_call(
+            self, info: TypeInfo, callee_type: Callable) -> ExpressionStmt:
         """Construct a statement that calls the superclass constructor.
 
         In particular, it passes any type variables arguments as needed.
@@ -417,7 +420,8 @@ class TypeTransformer:
                     defs.extend(self.func_tf.generic_method_wrappers(
                         cast(FuncDef, d)))
             elif isinstance(d, AssignmentStmt):
-                defs.extend(self.generic_accessor_wrappers(cast(AssignmentStmt, d)))
+                defs.extend(self.generic_accessor_wrappers(
+                                                  cast(AssignmentStmt, d)))
             elif not isinstance(d, PassStmt):
                 raise RuntimeError(
                     'Definition {} at line {} not supported'.format(
@@ -517,7 +521,8 @@ class TypeTransformer:
         
         return fdef
     
-    def make_tvar_representation(self, info: TypeInfo, is_alt: Any = False) -> List[Node]:
+    def make_tvar_representation(self, info: TypeInfo,
+                                 is_alt: Any = False) -> List[Node]:
         """Return type variable slot member definitions.
 
         There are of form '__tv*: Any'. Only include new slots defined in the

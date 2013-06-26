@@ -1,5 +1,7 @@
 """Test cases for mypy types and type operations."""
 
+from typing import List
+
 from mypy.myunit import Suite, assert_equal, assert_true, run_test
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
@@ -13,7 +15,6 @@ from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
 from mypy.replacetvars import replace_type_vars
 from mypy.subtypes import is_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
-from typing import List
 
 
 class TypesSuite(Suite):
@@ -187,7 +188,9 @@ class TypeOpsSuite(Suite):
         for v in vars:
             tv.append(TypeVarDef(v, n))
             n -= 1
-        return Callable(a[:-1], [ARG_POS] * (len(a) - 1), [None] * (len(a) - 1),
+        return Callable(a[:-1],
+                        [ARG_POS] * (len(a) - 1),
+                        [None] * (len(a) - 1),
                         a[-1],
                         False,
                         None,
@@ -375,7 +378,8 @@ class JoinSuite(Suite):
         
         self.assert_join(t1, t2, self.fx.type_type)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
-        self.assert_join(self.fx.type_type, self.fx.type_type, self.fx.type_type)
+        self.assert_join(self.fx.type_type, self.fx.type_type,
+                         self.fx.type_type)
     
     # There are additional test cases in check-inference.test.
     
