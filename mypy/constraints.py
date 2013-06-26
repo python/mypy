@@ -1,3 +1,7 @@
+"""Type inference constraints."""
+
+from typing import List, cast, Undefined
+
 from mypy.types import (
     Callable, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
     Instance, TupleType, Overloaded, ErasedType
@@ -5,20 +9,43 @@ from mypy.types import (
 from mypy.expandtype import expand_caller_var_args
 from mypy.subtypes import map_instance_to_supertype
 from mypy import nodes
-from typing import List, cast, Undefined
 
 
 SUBTYPE_OF = 0
 SUPERTYPE_OF = 1
 
 
+class Constraint:
+    """A representation of a type constraint.
+
+    It can be either T <: type or T :> type (T is a type variable).
+    """
+    
+    type_var = 0   # Type variable id
+    op = 0         # SUBTYPE_OF or SUPERTYPE_OF
+    
+    target = Undefined(Type)
+    
+    def __repr__(self) -> str:
+        op_str = '<:'
+        if self.op == SUPERTYPE_OF:
+            op_str = ':>'
+        return '{} {} {}'.format(self.type_var, op_str, self.target)
+    
+    def __init__(self, type_var: int, op: int, target: Type) -> None:
+        self.type_var = type_var
+        self.op = op
+        self.target = target
+
+
 def infer_constraints_for_callable(
                  callee: Callable, arg_types: List[Type], arg_kinds: List[int],
-                 formal_to_actual: List[List[int]]) -> 'List[Constraint]':
+                 formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
     
     Return a list of constraints.
     """
+    
     constraints = [] # type: List[Constraint]
     tuple_counter = [0]
     
@@ -33,11 +60,13 @@ def infer_constraints_for_callable(
     return constraints
 
 
-def get_actual_type(arg_type: Type, kind: int, tuple_counter: List[int]) -> Type:
+def get_actual_type(arg_type: Type, kind: int,
+                    tuple_counter: List[int]) -> Type:
     """Return the type of an actual argument with the given kind.
 
     If the argument is a *arg, return the individual argument item.
     """
+    
     if kind == nodes.ARG_STAR:
         if isinstance(arg_type, Instance) and (
                 (cast(Instance, arg_type)).type.fullname() == 'builtins.list'):
@@ -62,7 +91,8 @@ def get_actual_type(arg_type: Type, kind: int, tuple_counter: List[int]) -> Type
         return arg_type
 
 
-def infer_constraints(template: Type, actual: Type, direction: int) -> 'List[Constraint]':
+def infer_constraints(template: Type, actual: Type,
+                      direction: int) -> List[Constraint]:
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -76,40 +106,22 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> 'List[Con
     calculated (read as '(template, actual) --> result'):
     
       (T, X)            -->  T :> X
-      (X<T>, X<Y>)      -->  T <: Y and T :> Y
+      (X[T], X[Y])      -->  T <: Y and T :> Y
       ((T, T), (X, Y))  -->  T :> X and T :> Y
       ((T, S), (X, Y))  -->  T :> X and S :> Y
-      (X<T>, dynamic)   -->  T <: dynamic and T :> dynamic
+      (X[T], Any)       -->  T <: Any and T :> Any
     
     The constraints are represented as Constraint objects.
     """
+    
     return template.accept(ConstraintBuilderVisitor(actual, direction))
-
-
-class Constraint:
-    """A representation of a type constraint, either T <: type or T :>
-    type (T is a type variable).
-    """
-    type_var = 0   # Type variable id
-    op = 0         # SUBTYPE_OF or SUPERTYPE_OF
-    target = Undefined # type: Type
-    
-    def __repr__(self) -> str:
-        op_str = '<:'
-        if self.op == SUPERTYPE_OF:
-            op_str = ':>'
-        return '{} {} {}'.format(self.type_var, op_str, self.target)
-    
-    def __init__(self, type_var: int, op: int, target: Type) -> None:
-        self.type_var = type_var
-        self.op = op
-        self.target = target
 
 
 class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     """Visitor class for inferring type constraints."""
-    
-    actual = Undefined # type: Type # The type that is compared against a template
+
+    # The type that is compared against a template
+    actual = Undefined(Type)
     
     def __init__(self, actual: Type, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
@@ -201,7 +213,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return []
 
     def infer_against_overloaded(self, overloaded: Overloaded,
-                                          template: Callable) -> List[Constraint]:
+                                 template: Callable) -> List[Constraint]:
         # Create constraints by matching an overloaded type against a template.
         # This is tricky to do in general. We cheat by only matching against
         # the first overload item, and by only matching the return type. This
@@ -218,7 +230,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res = [] # type: List[Constraint]
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
-                                             (cast(TupleType, actual)).items[i],
+                                             cast(TupleType, actual).items[i],
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):
@@ -242,6 +254,7 @@ def negate_constraints(constraints: List[Constraint]) -> List[Constraint]:
 
 def neg_op(op: int) -> int:
     """Map SubtypeOf to SupertypeOf and vice versa."""
+    
     if op == SUBTYPE_OF:
         return SUPERTYPE_OF
     elif op == SUPERTYPE_OF:
