@@ -2,6 +2,8 @@
 
 import os
 
+from typing import Undefined, List, Dict, overload
+
 from mypy import errors
 from mypy import icode
 from mypy.icode import (
@@ -11,7 +13,6 @@ from mypy.icode import (
 )
 from mypy.nodes import TypeInfo, FuncBase
 from mypy import transform
-from typing import Undefined, List, Dict, overload
 
 
 INDENT = 4
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
 class CGenerator:
     """Translate icode to C."""
     
-    func = Undefined # type: FuncIcode
+    func = Undefined(FuncIcode)
 
     def __init__(self) -> None:
         self.prolog = ['#include "mypy.h"\n']
@@ -393,11 +394,15 @@ class ClassRepresentation:
 
     cname = ''
     fullname = ''
-    slotmap = Undefined # type: Dict[str, int]
+    
+    slotmap = Undefined(Dict[str, int])
+    
     # Map method name to/from vtable index
-    vtable_index = Undefined # type: Dict[str, int]
-    defining_class = Undefined # type: Dict[str, str]
-    vtable_methods = Undefined # type: List[str]
+    vtable_index = Undefined(Dict[str, int])
+    
+    defining_class = Undefined(Dict[str, str])
+    
+    vtable_methods = Undefined(List[str])
 
     def __init__(self, type: TypeInfo, base: 'ClassRepresentation') -> None:
         self.cname = 'MR_%s' % type.name()

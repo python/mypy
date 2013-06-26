@@ -2,6 +2,8 @@
 
 import re
 
+import typing
+
 from mypy import nodes
 from mypy.visitor import NodeVisitor
 from mypy.typerepr import CommonTypeRepr
