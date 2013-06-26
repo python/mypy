@@ -1,6 +1,9 @@
+"""Lexical analyzer test cases"""
+
+import typing
+
 from mypy.myunit import Suite, assert_equal
 from mypy.lex import lex
-import typing
 
 
 class LexerSuite(Suite):

@@ -11,6 +11,8 @@ The transform performs these main changes:
    from List[Any] to List[str])
 """
 
+from typing import Undefined, Dict, List, Tuple, cast
+
 from mypy.nodes import (
     Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
@@ -27,7 +29,6 @@ from mypy.transutil import (
 )
 from mypy.coerce import coerce
 from mypy.rttypevars import translate_runtime_type_vars_in_context
-from typing import Undefined, Dict, List, Tuple, cast
 
 
 class DyncheckTransformVisitor(TraverserVisitor):
@@ -41,18 +42,18 @@ class DyncheckTransformVisitor(TraverserVisitor):
     This visitor modifies the parse tree in-place.
     """
 
-    type_map = Undefined # type: Dict[Node, Type]
-    modules = Undefined # type: Dict[str, MypyFile]
+    type_map = Undefined(Dict[Node, Type])
+    modules = Undefined(Dict[str, MypyFile])
     is_pretty = False
-    type_tf = Undefined # type: TypeTransformer
+    type_tf = Undefined(TypeTransformer)
     
     # Stack of function return types
-    return_types = Undefined # type: List[Type]
+    return_types = Undefined(List[Type])
     # Stack of dynamically typed function flags
-    dynamic_funcs = Undefined # type: List[bool]
+    dynamic_funcs = Undefined(List[bool])
     
     # Associate a Node with its start end line numbers.
-    line_map = Undefined # type: Dict[Node, Tuple[int, int]]
+    line_map = Undefined(Dict[Node, Tuple[int, int]])
     
     is_java = False
     
@@ -62,8 +63,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
     def type_context(self) -> TypeInfo:
         return self._type_context
     
-    def __init__(self, type_map: Dict[Node, Type], modules: Dict[str, MypyFile],
-                  is_pretty: bool, is_java: bool = False) -> None:
+    def __init__(self, type_map: Dict[Node, Type],
+                 modules: Dict[str, MypyFile], is_pretty: bool,
+                 is_java: bool = False) -> None:
         self.type_tf = TypeTransformer(self)
         self.return_types = []
         self.dynamic_funcs = [False]
@@ -119,7 +121,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """Transform the body of a function."""
         self.dynamic_funcs.append(fdef.is_implicit)
         # FIX overloads
-        self.return_types.append((cast(Callable, function_type(fdef))).ret_type)
+        self.return_types.append(cast(Callable, function_type(fdef)).ret_type)
         super().visit_func_def(fdef)
         self.return_types.pop()
         self.dynamic_funcs.pop()
@@ -144,7 +146,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # For ordinary functions, prepend type variable arguments.
             for n in range(ntvars):
                 tv.append(Var(tvar_arg_name(-1 - n)))
-                fdef.type = prepend_arg_type(cast(Callable, fdef.type), AnyType())
+                fdef.type = prepend_arg_type(cast(Callable, fdef.type),
+                                             AnyType())
             fdef.args = tv + fdef.args
         fdef.init = List[AssignmentStmt]([None]) * ntvars + fdef.init
     
@@ -195,7 +198,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
             # Reference to a statically-typed method variant with the suffix
             # derived from the base object type.
             suffix = self.get_member_reference_suffix(e.name,
-                                                      (cast(Instance, typ)).type)
+                                                      cast(Instance, typ).type)
         else:
             # Reference to a dynamically-typed method variant.
             suffix = self.dynamic_suffix()
@@ -243,7 +246,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
                                      self.type_context())
         
         # Prepend type argument values to the call as needed.
-        if isinstance(ctype, Callable) and (cast(Callable, ctype)).bound_vars != []:
+        if isinstance(ctype, Callable) and cast(Callable,
+                                                ctype).bound_vars != []:
             bound_vars = (cast(Callable, ctype)).bound_vars
 
             # If this is a constructor call (target is the constructor
@@ -362,12 +366,12 @@ class DyncheckTransformVisitor(TraverserVisitor):
         return '**'
     
     def coerce(self, expr: Node, target_type: Type, source_type: Type,
-                context: TypeInfo, is_wrapper_class: bool = False) -> Node:
+               context: TypeInfo, is_wrapper_class: bool = False) -> Node:
         return coerce(expr, target_type, source_type, context,
                       is_wrapper_class, self.is_java)
     
     def coerce2(self, expr: Node, target_type: Type, source_type: Type,
-                 context: TypeInfo, is_wrapper_class: bool = False) -> Node:
+                context: TypeInfo, is_wrapper_class: bool = False) -> Node:
         """Create coercion from source_type to target_type.
 
         Also include middle coercion do 'Any' if transforming a dynamically
@@ -383,7 +387,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
                                is_wrapper_class)
     
     def coerce_to_dynamic(self, expr: Node, source_type: Type,
-                           context: TypeInfo) -> Node:
+                          context: TypeInfo) -> Node:
         if isinstance(source_type, AnyType):
             return expr
         source_type = translate_runtime_type_vars_in_context(

@@ -3,10 +3,11 @@
 import re
 import os
 
+import typing
+
 from mypy.util import dump_tagged, short_type
 import mypy.nodes
 from mypy.visitor import NodeVisitor
-import typing
 
 
 class StrConv(NodeVisitor[str]):
@@ -21,15 +22,16 @@ class StrConv(NodeVisitor[str]):
           IntExpr(1)))
     """
     def dump(self, nodes, obj):
-        """Convert an array of items to a multiline pretty-printed
-        string. The tag is produced from the type name of obj and its
-        line number. See util::DumpTagged for a description of the
-        nodes argument.
+        """Convert a list of items to a multiline pretty-printed string.
+
+        The tag is produced from the type name of obj and its line
+        number. See mypy.util.dump_tagged for a description of the nodes
+        argument.
         """
         return dump_tagged(nodes, short_type(obj) + ':' + str(obj.line))
     
     def func_helper(self, o):
-        """Return an array in a format suitable for dump() that represents the
+        """Return a list in a format suitable for dump() that represents the
         arguments and the body of a function. The caller can then decorate the
         array with information specific to methods, global functions or
         anonymous functions.
@@ -58,9 +60,7 @@ class StrConv(NodeVisitor[str]):
         a.append(o.body)
         return a                    
     
-    
     # Top-level structures
-    
     
     def visit_mypy_file(self, o):
         # Skip implicit definitions.
@@ -95,9 +95,7 @@ class StrConv(NodeVisitor[str]):
     def visit_import_all(self, o):
         return 'ImportAll:{}({})'.format(o.line, o.id)
     
-    
     # Definitions
-    
     
     def visit_func_def(self, o):
         a = self.func_helper(o)
@@ -153,9 +151,7 @@ class StrConv(NodeVisitor[str]):
     def visit_annotation(self, o):
         return 'Type:{}({})'.format(o.line, o.type)
     
-    
     # Statements
-    
     
     def visit_block(self, o):
         return self.dump(o.body, o)
@@ -250,9 +246,7 @@ class StrConv(NodeVisitor[str]):
                 a.append(('Name', [o.name[i]]))
         return self.dump(a + [o.body], o)
     
-    
     # Expressions
-    
     
     # Simple expressions
     
@@ -285,7 +279,8 @@ class StrConv(NodeVisitor[str]):
         n = name
         if is_def:
             n += '*'
-        if kind == mypy.nodes.GDEF or (fullname != name and fullname is not None):
+        if kind == mypy.nodes.GDEF or (fullname != name and
+                                       fullname is not None):
             # Append fully qualified name for global references.
             n += ' [{}]'.format(fullname)
         elif kind == mypy.nodes.LDEF:
