@@ -1,9 +1,10 @@
+from typing import List, Tuple
+
 from mypy.types import Type
 from mypy.nodes import TypeInfo
 from mypy.semanal import self_type
 from mypy.subtypes import map_instance_to_supertype
 from mypy.maptypevar import num_slots, get_tvar_access_path
-from typing import List, Tuple
 
 
 def compile_slot_mapping(typ: TypeInfo) -> List[Type]:
@@ -13,10 +14,10 @@ def compile_slot_mapping(typ: TypeInfo) -> List[Type]:
     
     For example, assume these definitions:
     
-    . class C<T, S>(D<E<S>>): ...
-    . class D<S>(object): ...
+      class D(Generic[S]): ...
+      class C(D[E[S]], Generic[T, S]): ...
     
-    Now slot mappings for C is [E<S>, T] (S and T refer to type variables of
+    Now slot mappings for C is [E[S], T] (S and T refer to type variables of
     C).
     """
     exprs = [] # type: List[Type]
@@ -46,9 +47,11 @@ def find_slot_origin(info: TypeInfo, slot: int) -> Tuple[TypeInfo, int]:
     refers to one of the base classes of info (or info itself).
 
     Examples:
-      - In 'class C<T>: ...', the slot 0 in C is mapped to type var 1 (T) in C.
-      - In 'class D<S, U>(C<U>): ...', the slot 0 in D is mapped to type var
-        1 (T) in C; the slot 1 of D is mapped to type variable 1 of D.
+      - In 'class C(Generic[T]): ...', the slot 0 in C is mapped to
+        type var 1 (T) in C.
+      - In 'class D(C[U], Generic[S, U]): ...', the slot 0 in D is mapped
+        to type var 1 (T) in C; the slot 1 of D is mapped to type variable 1
+        of D.
     """
     base = info.bases[0].type
     super_slots = num_slots(base)

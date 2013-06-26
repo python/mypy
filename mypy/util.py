@@ -1,13 +1,15 @@
+"""Utility functions."""
+
 from typing import typevar, List, Any
+
 
 T = typevar('T')
 
-# Utility functions
-
 
 def short_type(obj: object) -> str:
-    """Return the last component of the type name of an object. If obj is None,
-    return 'nil'. For example, if obj is 1, return 'int'.
+    """Return the last component of the type name of an object.
+
+    If obj is None, return 'nil'. For example, if obj is 1, return 'int'.
     """
     if obj is None:
         return 'nil'
@@ -32,6 +34,7 @@ def array_repr(a: List[T]) -> List[str]:
 
 def dump_tagged(nodes: List[Any], tag: str) -> str:
     """Convert an array into a pretty-printed multiline string representation.
+    
     The format is
       tag(
         item1..
@@ -40,7 +43,7 @@ def dump_tagged(nodes: List[Any], tag: str) -> str:
      - arrays are flattened
      - pairs (str : array) are converted recursively, so that str is the tag
      - other items are converted to strings and indented
-     """
+    """
     a = [] # type: List[str]
     if tag:
         a.append(tag + '(')

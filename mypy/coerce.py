@@ -1,3 +1,5 @@
+from typing import cast
+
 from mypy.nodes import Node, TypeInfo, CoerceExpr, JavaCast
 from mypy.types import (
     Type, Instance, Void, NoneTyp, AnyType
@@ -5,11 +7,10 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_proper_subtype
 from mypy.rttypevars import translate_runtime_type_vars_in_context
-from typing import cast
 
 
 def coerce(expr: Node, target_type: Type, source_type: Type, context: TypeInfo,
-            is_wrapper_class: bool = False, is_java: bool = False) -> Node:
+           is_wrapper_class: bool = False, is_java: bool = False) -> Node:
     """Build an expression that coerces expr from source_type to target_type.
 
     Return bare expr if the coercion is trivial (always a no-op).
@@ -34,7 +35,8 @@ def coerce(expr: Node, target_type: Type, source_type: Type, context: TypeInfo,
     return res                  
 
 
-def is_trivial_coercion(target_type: Type, source_type: Type, is_java: bool) -> bool:
+def is_trivial_coercion(target_type: Type, source_type: Type,
+                        is_java: bool) -> bool:
     """Is an implicit coercion from source_type to target_type a no-op?
 
     Note that we omit coercions of form any <= C, unless C is a primitive that

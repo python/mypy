@@ -1,20 +1,23 @@
+"""Type inference constraint solving"""
+
+from typing import List, Dict
+
 from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, BasicTypes
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
-from typing import List, Dict
 
 
 def solve_constraints(vars: List[int], constraints: List[Constraint],
-                         basic: BasicTypes) -> List[Type]:
+                      basic: BasicTypes) -> List[Type]:
     """Solve type constraints.
 
     Return lower bound for each type variable or None if the variable could
     not be solved.
     """
     # Collect a list of constraints for each type variable.
-    cmap = {} # type: Dict[int, List[Constraint]]
+    cmap = Dict[int, List[Constraint]]()
     for con in constraints:
         a = cmap.get(con.type_var, [])
         a.append(con)

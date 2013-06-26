@@ -5,11 +5,12 @@ in instancse or local variables that contain the runtime values of type
 variables.
 """
 
+from typing import Any
+
 from mypy.types import Type, TypeTranslator, TypeVar, RuntimeTypeVar
 from mypy.nodes import NameExpr, TypeInfo
 from mypy.transutil import tvar_arg_name
 from mypy.maptypevar import get_tvar_access_expression
-from typing import Any
 
 
 def translate_runtime_type_vars_locally(typ: Type) -> Type:

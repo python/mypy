@@ -2,6 +2,8 @@
 
 import os.path
 
+import typing
+
 from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.testconfig import test_temp_dir, test_data_prefix
@@ -9,7 +11,6 @@ from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.errors import CompileError
 from mypy.testsemanal import normalize_error_messages
-import typing
 
 
 # List of files that contain test case descriptions.

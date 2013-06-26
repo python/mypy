@@ -1,7 +1,10 @@
+"""Type operations"""
+
+import typing
+
 from mypy.lex import Token
 from mypy.types import Type, AnyType, NoneTyp, TypeTranslator, TypeVar
 from mypy.typerepr import AnyRepr
-import typing
 
 
 def replace_type_vars(typ: Type, func_tvars: bool = True) -> Type:
