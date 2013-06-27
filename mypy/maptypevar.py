@@ -10,7 +10,8 @@ def get_tvar_access_expression(typ: TypeInfo, tvindex: int, alt: Any,
     """Return a type expression that maps from runtime type variable slots
     to the type variable in the given class with the given index.
     
-    For example, assume class A<T, S>: ... and class B<U>(A<X, Y<U>>): ...:
+    For example, assuming class A(Generic[T, S]): ... and
+    class B(A[X, Y[U]], Generic[U]): ...:
     
       get_tvar_access_expression(<B>, 1) ==
         RuntimeTypeVar(<self.__tv2.args[0]>)  (with <...> represented as nodes)
@@ -58,8 +59,8 @@ def get_tvar_access_path(typ: TypeInfo, tvindex: int) -> List[int]:
     
     For example, assume these definitions:
     
-      class A<S, U>: ...
-      class B<T>(A<X, Y<T>>): ...
+      class A(Generic[S, U]): ...
+      class B(A[X, Y[T]], Generic[T]): ...
     
     Now we can query the access path to type variable 1 (T) of B:
     

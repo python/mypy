@@ -243,8 +243,8 @@ class ExpressionChecker:
             self, callable: Callable) -> Callable:
         """Unify callable return type to type context to infer type vars.
 
-        For example, if the return type is set<t> where 't' is a type variable
-        of callable, and if the context is set<int>, return callable modified
+        For example, if the return type is set[t] where 't' is a type variable
+        of callable, and if the context is set[int], return callable modified
         by substituting 't' with 'int'.
         """
         ctx = self.chk.type_context[-1]

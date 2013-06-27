@@ -35,10 +35,11 @@ def translate_runtime_type_vars_in_context(typ: Type, context: TypeInfo,
 
     Perform the translation in the context of the given type.
     
-    For example, assume class A<T, S> ... and class B<U>(A<X, Y<U>>) ...:
+    For example, assuming class A(Generic[T, S]) ... and
+    class B(A[X, Y[U]], Generic[U]) ...:
     
-      TranslateRuntimeTypeVarsInContext(C<U`1>, <B>) ==
-        C<RuntimeTypeVar(<self.__tv2.args[0]>)>  (<...> uses node repr.)
+      TranslateRuntimeTypeVarsInContext(C[U`1], <B>) ==
+        C[RuntimeTypeVar(<self.__tv2.args[0]>)]  (<...> uses node repr.)
     """
     return typ.accept(ContextualRuntimeTypeVarTranslator(context, is_java))
 
