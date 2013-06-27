@@ -67,19 +67,23 @@ the above as root. For example, in Ubuntu and Mac OS X:
 
 This installs the 'mypy' script and dependencies to system-dependent
 locations.  Sometimes the script directory will not be in PATH,
-and you may have to add the target directory to PATH manually or
+and you have to add the target directory to PATH manually or
 create a symbolic link to the script.  In particular, on Mac OS X, the
-script may be installed under /Library:
+script may be installed under /Library/Frameworks:
 
     /Library/Frameworks/Python.framework/Versions/<version>/bin
 
-Using virtualenv may simplify the installation.
-
-Now you can type check and run programs:
+Now, on a Unix-like system, you can type check and run programs:
 
     $ mypy PROGRAM
 
-Mypy programs are valid Python programs, so you can use your Python
+In Windows, the script is generally installed in
+\PythonNN\Scripts. So, type check and run a program like this (replace
+\Python33 with your Python installation path):
+
+    C:\>\Python33\python \Python33\Scripts\mypy PROGRAM
+    
+Mypy programs are valid Python programs, so you can use the Python
 interpreter to run them without type checking:
 
     $ python3 PROGRAM
