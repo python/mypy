@@ -306,6 +306,10 @@ for x in y:
   x
 else:
   y
+
+[case testForWithParensAroundIndexVars-skip]
+for ( x ) in y: pass
+for ( x, y ) in y: pass
   
 [case testWith]
 with foo():
