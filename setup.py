@@ -3,8 +3,13 @@
 import glob
 import os
 import os.path
+import sys
 
 from distutils.core import setup
+
+if sys.version_info < (3, 2, 0):
+    sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
+    exit(1)
 
 version = '0.0.1.dev1'
 description = 'Optional static type checker for Python'
