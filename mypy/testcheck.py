@@ -2,6 +2,8 @@
 
 import os.path
 
+import typing
+
 from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.testconfig import test_temp_dir, test_data_prefix

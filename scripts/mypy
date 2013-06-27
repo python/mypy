@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Mypy compiler and runner.
+"""Mypy type checker, runner and prototype compiler.
 
-Type check and program, compile it to Python or C and run it. Note that you
-must use a translated mypy translator to run this program.
+Type check and program and run it using a Python interpreter, or
+compile it to C and run it.
 
-Note that the C back end is early in development and has a very limited feature
-set.
+Note that the C back end is early in development and has a very
+limited feature set.
 """
 
 import os
@@ -17,15 +17,20 @@ import tempfile
 
 from mypy import build
 from mypy.errors import CompileError
+from typing import List, Tuple
 
 
 # Fallback options
 target = build.TYPE_CHECK
-build_flags = <str> []
+build_flags = [] # type: List[str]
 interpreter = 'python'
 
 
-void main():
+# The stubs directory is found relative to the bin/scripts directory.
+bin_dir = os.path.dirname(__file__)
+
+
+def main() -> None:
     path, module, args = process_options(sys.argv[1:])
     try:
         if target == build.TYPE_CHECK:
@@ -40,10 +45,11 @@ void main():
         sys.exit(1)
 
 
-void type_check_only(str path, str module, str[] args):
+def type_check_only(path: str, module: str, args: List[str]) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
+                bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
                 flags=build_flags)
 
@@ -57,12 +63,13 @@ void type_check_only(str path, str module, str[] args):
         sys.exit(status)
 
 
-void compile_to_c(str path, str module, str[] args):
+def compile_to_c(path: str, module: str, args: List[str]) -> None:
     assert not module # Not supported yet
     assert not args   # Not supported yet
     
     # Compile the program to C (also generate binary by default).
-    result = build.build(path, target=build.C, flags=build_flags)
+    result = build.build(path, target=build.C, bin_dir=bin_dir,
+                         flags=build_flags)
 
     if build.COMPILE_ONLY not in build_flags:
         # Run the compiled program.
@@ -71,7 +78,7 @@ void compile_to_c(str path, str module, str[] args):
         sys.exit(status)
 
 
-tuple<str, str, str[]> process_options(str[] args):
+def process_options(args: List[str]) -> Tuple[str, str, List[str]]:
     if sys.executable:
         global interpreter
         interpreter = sys.executable
@@ -103,7 +110,7 @@ tuple<str, str, str[]> process_options(str[] args):
     return args[0], None, args[1:]
 
 
-void usage(str msg=None):
+def usage(msg: str = None) -> None:
     if msg:
         sys.stderr.write('%s\n' % msg)
     sys.stderr.write(
@@ -112,7 +119,7 @@ void usage(str msg=None):
 Options:
   -c          compile to native code (EXPERIMENTAL)
   -m mod      run module as a script (terminates option list)
-  -S          compile only to C; do not generate a binary or run the program
+  -S          do not run the program or generate a binary
   --verbose   more verbose messages
   
 Environment variables:
@@ -123,7 +130,7 @@ Environment variables:
     sys.exit(2)
 
 
-void fail(str msg):
+def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
     sys.exit(1)
 

@@ -1,3 +1,5 @@
+from typing import List, cast
+
 from mypy.output import TypeOutputVisitor
 from mypy.nodes import (
     Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr, CallExpr,
@@ -17,33 +19,33 @@ class PrettyPrintVisitor(NodeVisitor):
     Use automatic formatting (i.e. omit original formatting).
     """
 
-    void __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.result = <str> []
+        self.result = [] # type: List[str]
         self.indent = 0
 
-    str output(self):
+    def output(self) -> str:
         return ''.join(self.result)
     
     #
     # Definitions
     #
 
-    void visit_mypy_file(self, MypyFile file):
+    def visit_mypy_file(self, file: MypyFile) -> None:
         for d in file.defs:
             d.accept(self)
     
-    void visit_type_def(self, TypeDef tdef):
+    def visit_type_def(self, tdef: TypeDef) -> None:
         self.string('class ')
         self.string(tdef.name)
         if tdef.base_types:
-            b = <str> []
+            b = [] # type: List[str]
             for bt in tdef.base_types:
                 if not bt:
                     continue
                 elif isinstance(bt, UnboundType):
-                    b.append(((UnboundType)bt).name)
-                elif ((Instance)bt).type.fullname() != 'builtins.object':
+                    b.append((cast(UnboundType, bt)).name)
+                elif (cast(Instance, bt)).type.fullname() != 'builtins.object':
                     typestr = bt.accept(TypeErasedPrettyPrintVisitor())
                     b.append(typestr)
             if b:
@@ -53,9 +55,9 @@ class PrettyPrintVisitor(NodeVisitor):
             d.accept(self)
         self.dedent()
     
-    void visit_func_def(self, FuncDef fdef):
+    def visit_func_def(self, fdef: FuncDef) -> None:
         # FIX varargs, default args, keyword args etc.
-        ftyp = (Callable)fdef.type
+        ftyp = cast(Callable, fdef.type)
         self.string('def ')
         self.string(fdef.name())
         self.string('(')
@@ -73,7 +75,7 @@ class PrettyPrintVisitor(NodeVisitor):
         self.type(ftyp.ret_type)
         fdef.body.accept(self)
     
-    void visit_var_def(self, VarDef vdef):
+    def visit_var_def(self, vdef: VarDef) -> None:
         if vdef.items[0].name() not in nodes.implicit_module_attrs:
             self.string(vdef.items[0].name())
             self.string(': ')
@@ -165,7 +167,7 @@ class PrettyPrintVisitor(NodeVisitor):
     def visit_name_expr(self, o):
         self.string(o.name)
     
-    void visit_coerce_expr(self, CoerceExpr o):
+    def visit_coerce_expr(self, o: CoerceExpr) -> None:
         self.string('{')
         self.full_type(o.target_type)
         if coerce.is_special_primitive(o.source_type):
@@ -175,7 +177,7 @@ class PrettyPrintVisitor(NodeVisitor):
         self.node(o.expr)
         self.string('}')
     
-    void visit_type_expr(self, TypeExpr o):
+    def visit_type_expr(self, o: TypeExpr) -> None:
         # Type expressions are only generated during transformation, so we must
         # use automatic formatting.
         self.string('<')
@@ -236,7 +238,7 @@ class PrettyPrintVisitor(NodeVisitor):
     # Helpers
     #
 
-    void string(self, str s):
+    def string(self, s: str) -> None:
         if not s:
             return
         if self.last_output_char() == '\n':
@@ -245,13 +247,13 @@ class PrettyPrintVisitor(NodeVisitor):
         if s.endswith(':\n'):
             self.indent += 4
 
-    void dedent(self):
+    def dedent(self) -> None:
         self.indent -= 4
 
-    void node(self, Node n):
+    def node(self, n: Node) -> None:
         n.accept(self)
 
-    str last_output_char(self):
+    def last_output_char(self) -> str:
         if self.result:
             return self.result[-1][-1]
         return ''
@@ -269,10 +271,10 @@ class PrettyPrintVisitor(NodeVisitor):
             self.string(t.accept(v))
 
 
-class TypeErasedPrettyPrintVisitor(TypeVisitor<str>):
+class TypeErasedPrettyPrintVisitor(TypeVisitor[str]):
     """Pretty-print types.
 
-    Omit type variables (e.g. C instead of C<int>).
+    Omit type variables (e.g. C instead of C[int]).
 
     Note that the translation does not preserve all information about the
     types, but this is fine since this is only used in test case output.
@@ -296,7 +298,7 @@ class TypeErasedPrettyPrintVisitor(TypeVisitor<str>):
         return v.output()
 
 
-class TypePrettyPrintVisitor(TypeVisitor<str>):
+class TypePrettyPrintVisitor(TypeVisitor[str]):
     """Pretty-print types.
 
     Include type variables.

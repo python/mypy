@@ -1,5 +1,7 @@
 """Test cases for the constraint solver used in type inference."""
 
+import typing
+
 from mypy.myunit import Suite, assert_equal, run_test
 from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
 from mypy.solve import solve_constraints

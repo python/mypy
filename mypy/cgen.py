@@ -2,6 +2,8 @@
 
 import os
 
+from typing import Undefined, List, Dict, overload
+
 from mypy import errors
 from mypy import icode
 from mypy.icode import (
@@ -37,20 +39,20 @@ int main(int argc, char **argv) {
 class CGenerator:
     """Translate icode to C."""
     
-    FuncIcode func
+    func = Undefined(FuncIcode)
 
-    void __init__(self):
+    def __init__(self) -> None:
         self.prolog = ['#include "mypy.h"\n']
-        self.types = <str> []
-        self.out = <str> []
+        self.types = [] # type: List[str]
+        self.out = [] # type: List[str]
         self.indent = 0
         self.frame_size = 0
-        self.global_vars = <str, int> {}
-        self.classes = <TypeInfo, ClassRepresentation> {}
+        self.global_vars = {} # type: Dict[str, int]
+        self.classes = {} # type: Dict[TypeInfo, ClassRepresentation]
         # Count temp labels.
         self.num_labels = 0
 
-    str[] output(self):
+    def output(self) -> List[str]:
         result = self.prolog[:]
         result.append('MValue Mglobals[%d];' % max(len(self.global_vars), 1))
         result.append('\n')
@@ -59,7 +61,7 @@ class CGenerator:
         result.append(MAIN_FRAGMENT)
         return result
     
-    void generate_function(self, str name, FuncIcode func):
+    def generate_function(self, name: str, func: FuncIcode) -> None:
         # Initialize function-specific state information.
         self.func = func
         self.num_labels = 0
@@ -123,24 +125,30 @@ class CGenerator:
         '>>': ('>>', 'MIsShrOverflow', 'MIntShr', SHR_OPERAND | CLEAR_LSB)
     }
 
-    void opcode(self, SetRI opcode):
+    @overload
+    def opcode(self, opcode: SetRI) -> None:
         self.emit('%s = %d;' % (reg(opcode.target), 2 * opcode.intval))
 
-    void opcode(self, SetRR opcode):
+    @overload
+    def opcode(self, opcode: SetRR) -> None:
         self.emit('%s = %s;' % (reg(opcode.target), reg(opcode.source)))
 
-    void opcode(self, SetRNone opcode):
+    @overload
+    def opcode(self, opcode: SetRNone) -> None:
         self.emit('%s = MNone;' % reg(opcode.target))
 
-    void opcode(self, SetGR opcode):
+    @overload
+    def opcode(self, opcode: SetGR) -> None:
         self.emit('%s = %s;' % (self.globalvar(opcode.target),
                                 reg(opcode.source)))
 
-    void opcode(self, SetRG opcode):
+    @overload
+    def opcode(self, opcode: SetRG) -> None:
         self.emit('%s = %s;' % (reg(opcode.target),
                                 self.globalvar(opcode.source)))
 
-    void opcode(self, IfOp opcode):
+    @overload
+    def opcode(self, opcode: IfOp) -> None:
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
         op = self.int_conditionals[opcode.op]
@@ -149,7 +157,8 @@ class CGenerator:
         self.emit('else')
         self.emit('    goto %s;' % (label(opcode.false_block.label)))
 
-    void opcode(self, IfR opcode):
+    @overload
+    def opcode(self, opcode: IfR) -> None:
         op = '!='
         if opcode.negated:
             op = '=='
@@ -158,7 +167,8 @@ class CGenerator:
         self.emit('else')
         self.emit('    goto %s;' % (label(opcode.false_block.label)))
 
-    void opcode(self, BinOp opcode):
+    @overload
+    def opcode(self, opcode: BinOp) -> None:
         target = reg(opcode.target)
         left = operand(opcode.left, opcode.left_kind)
         right = operand(opcode.right, opcode.right_kind)
@@ -200,7 +210,8 @@ class CGenerator:
             self.emit_error_check(target)
             self.emit('}')
 
-    void opcode(self, UnaryOp opcode):
+    @overload
+    def opcode(self, opcode: UnaryOp) -> None:
         target = reg(opcode.target)
         operand = reg(opcode.operand)
         if opcode.op == '-':
@@ -221,18 +232,22 @@ class CGenerator:
         else:
             raise NotImplementedError('UnaryOp %s' % opcode.op)
 
-    void opcode(self, Goto opcode):
+    @overload
+    def opcode(self, opcode: Goto) -> None:
         self.emit('goto %s;' % label(opcode.next_block.label))
 
-    void opcode(self, Return opcode):
+    @overload
+    def opcode(self, opcode: Return) -> None:
         self.emit_return(reg(opcode.retval))
 
-    void opcode(self, CallDirect opcode):
+    @overload
+    def opcode(self, opcode: CallDirect) -> None:
         for i, arg in enumerate(opcode.args):
             self.emit('%s = %s;' % (reg(self.frame_size + i), reg(arg)))
         self.direct_call(opcode.target, opcode.func)
 
-    void opcode(self, CallMethod opcode):
+    @overload
+    def opcode(self, opcode: CallMethod) -> None:
         recv = reg(opcode.object)
         self.emit('%s = %s;' % (reg(self.frame_size), recv))
         for i, arg in enumerate(opcode.args):
@@ -251,26 +266,30 @@ class CGenerator:
             self.emit('    return MError;')
             self.emit('%s = t;' % reg(opcode.target))
 
-    void opcode(self, Construct opcode):
+    @overload
+    def opcode(self, opcode: Construct) -> None:
         rep = self.get_class_representation(opcode.type)
         self.emit('t = MAlloc(e, sizeof(MInstanceHeader) + '
                   '%d * sizeof(MValue));' % len(rep.slotmap))
         self.emit('MInitInstance(t, &%s);' % rep.cname)
         self.emit('%s = t;' % reg(opcode.target))
 
-    void opcode(self, SetAttr opcode):
+    @overload
+    def opcode(self, opcode: SetAttr) -> None:
         rep = self.get_class_representation(opcode.type)
         slot = rep.slotmap[opcode.attr]
         self.emit('MSetSlot(%s, %d, %s);' % (reg(opcode.object),
                                              slot, reg(opcode.source)))
 
-    void opcode(self, GetAttr opcode):
+    @overload
+    def opcode(self, opcode: GetAttr) -> None:
         rep = self.get_class_representation(opcode.type)
         slot = rep.slotmap[opcode.attr]
         self.emit('%s = MGetSlot(%s, %d);' % (reg(opcode.target),
                                               reg(opcode.object), slot))
 
-    void opcode(self, Opcode opcode):
+    @overload
+    def opcode(self, opcode: Opcode) -> None:
         """Default case."""
         raise NotImplementedError(type(opcode))
 
@@ -278,13 +297,13 @@ class CGenerator:
     # Helpers
     #
 
-    ClassRepresentation get_class_representation(self, TypeInfo cls):
+    def get_class_representation(self, cls: TypeInfo) -> 'ClassRepresentation':
         rep = self.classes.get(cls)
         if not rep:
             rep = self.generate_class(cls)
         return rep
 
-    ClassRepresentation generate_class(self, TypeInfo cls):
+    def generate_class(self, cls: TypeInfo) -> 'ClassRepresentation':
         if cls.bases:
             baserep = self.get_class_representation(cls.bases[0].type)
         else:
@@ -309,13 +328,13 @@ class CGenerator:
         
         return rep
 
-    void direct_call(self, int target, str funcname):
+    def direct_call(self, target: int, funcname: str) -> None:
         self.emit('t = M%s(e);' % funcname)
         self.emit('if (t == MError)')
         self.emit('    return MError;')
         self.emit('%s = t;' % reg(target))
 
-    void emit(self, str s):
+    def emit(self, s: str) -> None:
         if '}' in s:
             self.indent -= INDENT
         indent = self.indent
@@ -325,27 +344,27 @@ class CGenerator:
         if '{' in s:
             self.indent += INDENT
 
-    void emit_return(self, str retval):
+    def emit_return(self, retval: str) -> None:
         self.emit('e->frame = frame;')
         self.emit('return %s;' % retval)
 
-    void emit_error_check(self, str value):
+    def emit_error_check(self, value: str) -> None:
         self.emit('if (%s == MError) {' % value)
         self.emit_return('MError')
         self.emit('}')
 
-    void emit_prolog(self, str s):
+    def emit_prolog(self, s: str) -> None:
         self.prolog.append(s + '\n')
 
-    void emit_types(self, str s):
+    def emit_types(self, s: str) -> None:
         self.types.append(s + '\n')
 
-    str label(self):
+    def label(self) -> str:
         n = self.num_labels
         self.num_labels = n + 1
         return 'T%d' % n
 
-    str globalvar(self, str name):
+    def globalvar(self, name: str) -> str:
         num = self.global_vars.get(name, -1)
         if num < 0:
             num = len(self.global_vars)
@@ -353,15 +372,15 @@ class CGenerator:
         return 'Mglobals[%d]' % num
 
 
-str reg(int n):
+def reg(n: int) -> str:
     return 'frame[%d]' % n
 
 
-str label(int n):
+def label(n: int) -> str:
     return 'L%d' % n
 
 
-str operand(int n, int kind):
+def operand(n: int, kind: int) -> str:
     if kind == icode.INT_KIND:
         return str(n * 2)
     else:
@@ -373,15 +392,19 @@ class ClassRepresentation:
     # TODO add methods
     # TODO add base class
 
-    str cname
-    str fullname
-    dict<str, int> slotmap
+    cname = ''
+    fullname = ''
+    
+    slotmap = Undefined(Dict[str, int])
+    
     # Map method name to/from vtable index
-    dict<str, int> vtable_index
-    dict<str, str> defining_class
-    str[] vtable_methods
+    vtable_index = Undefined(Dict[str, int])
+    
+    defining_class = Undefined(Dict[str, str])
+    
+    vtable_methods = Undefined(List[str])
 
-    void __init__(self, TypeInfo type, ClassRepresentation base):
+    def __init__(self, type: TypeInfo, base: 'ClassRepresentation') -> None:
         self.cname = 'MR_%s' % type.name()
         self.fullname = type.fullname()
         self.slotmap = {}
@@ -398,13 +421,13 @@ class ClassRepresentation:
                 self.add_method('_' + m, type)    # Getter TODO refactor
                 self.add_method('set_' + m, type) # Setter # TODO refactor
 
-    void add_method(self, str method, TypeInfo defining_class):
+    def add_method(self, method: str, defining_class: TypeInfo) -> None:
         self.defining_class[method] = defining_class.name()
         if method not in self.vtable_index:
             self.vtable_index[method] = len(self.vtable_methods)
             self.vtable_methods.append(method)
 
-    void inherit_from_base(self, ClassRepresentation base):
+    def inherit_from_base(self, base: 'ClassRepresentation') -> None:
         # TODO use dict.update
         for k, v in base.vtable_index.items():
             self.vtable_index[k] = v

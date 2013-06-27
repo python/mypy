@@ -1,7 +1,9 @@
 """Type checking of attribute access"""
 
+from typing import cast, Function, List
+
 from mypy.types import (
-    Type, Instance, Any, TupleType, Callable, FunctionLike, TypeVars,
+    Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVars,
     TypeVarDef, Overloaded, TypeVar, TypeTranslator, BasicTypes
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
@@ -15,10 +17,10 @@ from mypy import messages
 from mypy import subtypes
 
 
-Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
-                           bool is_super, BasicTypes basic_types,
-                           MessageBuilder msg, TypeInfo override_info=None,
-                           Type report_type=None):
+def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
+                          is_super: bool, basic_types: BasicTypes,
+                          msg: MessageBuilder, override_info: TypeInfo = None,
+                          report_type: Type = None) -> Type:
     """Analyse attribute access.
 
     This is a general operation that supports various different variations:
@@ -33,10 +35,10 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
             # Accessing __init__ in statically typed code would compromise
             # type safety unless used via super().
             msg.fail(messages.CANNOT_ACCESS_INIT, node)
-            return Any()
+            return AnyType()
         
         # The base object has an instance type.
-        itype = (Instance)typ
+        itype = cast(Instance, typ)
         
         info = itype.type
         if override_info:
@@ -54,17 +56,18 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
             return analyse_member_var_access(name, itype, info, node,
                                              is_lvalue, is_super, msg,
                                              report_type=report_type)
-    elif isinstance(typ, Any):
+    elif isinstance(typ, AnyType):
         # The base object has dynamic type.
-        return Any()
+        return AnyType()
     elif isinstance(typ, TupleType):
         # Actually look up from the 'tuple' type.
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
                                      is_super, basic_types, msg)
-    elif isinstance(typ, FunctionLike) and ((FunctionLike)typ).is_type_obj():
+    elif (isinstance(typ, FunctionLike) and
+              cast(FunctionLike, typ).is_type_obj()):
         # TODO super?
-        sig = (FunctionLike)typ
-        itype = (Instance)sig.items()[0].ret_type
+        sig = cast(FunctionLike, typ)
+        itype = cast(Instance, sig.items()[0].ret_type)
         result = analyse_class_attribute_access(itype, name, node, is_lvalue,
                                                 msg)
         if result:
@@ -81,9 +84,10 @@ Type analyse_member_access(str name, Type typ, Context node, bool is_lvalue,
     return msg.has_no_attr(report_type, name, node)
 
 
-Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
-                               Context node, bool is_lvalue, bool is_super,
-                               MessageBuilder msg, Type report_type=None):
+def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
+                              node: Context, is_lvalue: bool, is_super: bool,
+                              msg: MessageBuilder,
+                              report_type: Type = None) -> Type:
     """Analyse attribute access that does not target a method.
 
     This is logically part of analyse_member_access and the arguments are
@@ -94,17 +98,17 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
     
     if isinstance(v, Decorator):
         # The associated Var node of a decorator contains the type.
-        v = ((Decorator)v).var
+        v = cast(Decorator, v).var
     
     if isinstance(v, Var):
         # Found a member variable.
-        var = (Var)v
+        var = cast(Var, v)
         itype = map_instance_to_supertype(itype, var.info)
         if var.type:
             t = expand_type_by_instance(var.type, itype)
             if var.is_initialized_in_class and isinstance(t, FunctionLike):
                 # Class-level function object becomes a bound method.
-                functype = (FunctionLike)t
+                functype = cast(FunctionLike, t)
                 check_method_type(functype, itype, node, msg)
                 return method_type(functype)
             return t
@@ -112,7 +116,7 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
             if not var.is_ready:
                 msg.cannot_determine_type(var.name(), node)
             # Implicit 'Any' type.
-            return Any()
+            return AnyType()
     elif isinstance(v, FuncDef):
         # Found a getter or a setter.
         raise NotImplementedError()
@@ -120,13 +124,13 @@ Type analyse_member_var_access(str name, Instance itype, TypeInfo info,
     # Could not find the member.
     if is_super:
         msg.undefined_in_superclass(name, node)
-        return Any()
+        return AnyType()
     else:
         return msg.has_no_attr(report_type or itype, name, node)
 
 
-SymbolNode lookup_member_var_or_accessor(TypeInfo info, str name,
-                                         bool is_lvalue):
+def lookup_member_var_or_accessor(info: TypeInfo, name: str,
+                                  is_lvalue: bool) -> SymbolNode:
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     node = info.get(name)
@@ -136,8 +140,8 @@ SymbolNode lookup_member_var_or_accessor(TypeInfo info, str name,
         return None
 
 
-void check_method_type(FunctionLike functype, Instance itype, Context context,
-                       MessageBuilder msg):
+def check_method_type(functype: FunctionLike, itype: Instance,
+                      context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] != ARG_POS:
             # No positional first (self) argument.
@@ -149,8 +153,9 @@ void check_method_type(FunctionLike functype, Instance itype, Context context,
                 msg.invalid_method_type(item, context)
 
 
-Type analyse_class_attribute_access(Instance itype, str name, Context context,
-                                    bool is_lvalue, MessageBuilder msg):
+def analyse_class_attribute_access(itype: Instance, name: str,
+                                   context: Context, is_lvalue: bool,
+                                   msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
     if node:
         if is_lvalue and isinstance(node.node, FuncDef):
@@ -162,16 +167,16 @@ Type analyse_class_attribute_access(Instance itype, str name, Context context,
             return add_class_tvars(t, itype.type)
         elif isinstance(node.node, TypeInfo):
             # TODO add second argument
-            return type_object_type((TypeInfo)node.node, None)
+            return type_object_type(cast(TypeInfo, node.node), None)
         else:
-            return function_type((FuncBase)node.node)
+            return function_type(cast(FuncBase, node.node))
     else:
         return None
 
 
-Type add_class_tvars(Type t, TypeInfo info):
+def add_class_tvars(t: Type, info: TypeInfo) -> Type:
     if isinstance(t, Callable):
-        c = (Callable)t
+        c = cast(Callable, t)
         vars = TypeVars([TypeVarDef(n, i + 1)
                          for i, n in enumerate(info.type_vars)])
         return Callable(c.arg_types,
@@ -184,13 +189,13 @@ Type add_class_tvars(Type t, TypeInfo info):
                         c.bound_vars,
                         c.line, None)
     elif isinstance(t, Overloaded):
-        o = (Overloaded)t
-        return Overloaded([(Callable)add_class_tvars(i, info)
+        o = cast(Overloaded, t)
+        return Overloaded([cast(Callable, add_class_tvars(i, info))
                            for i in o.items()])
     return t
 
 
-Type type_object_type(TypeInfo info, func<Type()> type_type):
+def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
     """Return the type of a type object.
 
     For a generic type G with type variables T and S the type is of form
@@ -202,24 +207,24 @@ Type type_object_type(TypeInfo info, func<Type()> type_type):
     init_method = info.get_method('__init__')
     if not init_method:
         # Must be an invalid class definition.
-        return Any()
+        return AnyType()
     else:
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
         init_type = method_type(init_method)
         if isinstance(init_type, Callable):
-            return class_callable((Callable)init_type, info)
+            return class_callable(cast(Callable, init_type), info)
         else:
             # Overloaded __init__.
-            Callable[] items = []
-            for it in ((Overloaded)init_type).items():
+            items = [] # type: List[Callable]
+            for it in cast(Overloaded, init_type).items():
                 items.append(class_callable(it, info))
             return Overloaded(items)
     
 
-Callable class_callable(Callable init_type, TypeInfo info):
+def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
     """Create a type object type based on the signature of __init__."""
-    variables = <TypeVarDef> []
+    variables = [] # type: List[TypeVarDef]
     for i in range(len(info.type_vars)): # TODO bounds
         variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
 
@@ -237,26 +242,26 @@ Callable class_callable(Callable init_type, TypeInfo info):
     return convert_class_tvars_to_func_tvars(c, len(initvars))
 
 
-Callable convert_class_tvars_to_func_tvars(Callable callable,
-                                           int num_func_tvars):
-    return (Callable)callable.accept(TvarTranslator(num_func_tvars))
+def convert_class_tvars_to_func_tvars(callable: Callable,
+                                      num_func_tvars: int) -> Callable:
+    return cast(Callable, callable.accept(TvarTranslator(num_func_tvars)))
 
 
 class TvarTranslator(TypeTranslator):
-    void __init__(self, int num_func_tvars):
+    def __init__(self, num_func_tvars: int) -> None:
         super().__init__()
         self.num_func_tvars = num_func_tvars
     
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             return t
         else:
             return TypeVar(t.name, -t.id - self.num_func_tvars)
     
-    TypeVars translate_variables(self, TypeVars variables):
+    def translate_variables(self, variables: TypeVars) -> TypeVars:
         if not variables.items:
             return variables
-        items = <TypeVarDef> []
+        items = [] # type: List[TypeVarDef]
         for v in variables.items:
             if v.id > 0:
                 # TODO translate bound

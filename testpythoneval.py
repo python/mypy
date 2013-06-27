@@ -21,6 +21,7 @@ from mypy.myunit import Suite, run_test
 from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
+import typing
 
 
 # Files which contain test case descriptions.
@@ -28,8 +29,6 @@ python_eval_files = ['pythoneval.test']
 
 # Path to Python 3 interpreter
 python_path = 'python3'
-# Path to mypy implementation translated to Python.
-mypy_path = '~/mypy-py/driver.py'
 
 
 class PythonEvaluationSuite(Suite):
@@ -52,11 +51,11 @@ def test_python_evaluation(testcase):
     # Set up module path.
     typing_path = os.path.join(os.getcwd(), 'lib-typing')
     assert os.path.isdir(typing_path)
-    os.environ['PYTHONPATH'] = typing_path
+    os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
+    os.environ['MYPYPATH'] = '.'
     # Run the program.
     outb = subprocess.check_output([python_path,
-                                    os.path.expanduser(mypy_path),
-                                    'driver.py',
+                                    os.path.join('scripts', 'mypy'),
                                     program])
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]

@@ -17,6 +17,7 @@ from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.testhelpers import assert_string_arrays_equal_wildcards
+import typing
 
 
 class CGenCompileSuite(Suite):

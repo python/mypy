@@ -4,13 +4,15 @@ These are used for source-source transformation that preserves original
 formatting and comments.
 """
 
+from typing import List, Any
+
 from mypy.lex import Token
 
 
 class CommonTypeRepr:
     """Representation of UnboundType, Instance and Callable."""
-    void __init__(self, Token[] components,  langle, Token[] commas,
-                  any rangle):
+    def __init__(self, components: List[Token],  langle, commas: List[Token],
+                  rangle: Any) -> None:
         # Note: langle and rangle may be empty.
         self.components = components
         self.langle = langle
@@ -20,27 +22,27 @@ class CommonTypeRepr:
 
 class ListTypeRepr:
     """Representation of list type t[]."""
-    void __init__(self, lbracket, rbracket):
+    def __init__(self, lbracket, rbracket) -> None:
         self.lbracket = lbracket
         self.rbracket = rbracket
 
 
 class AnyRepr:
     """Representation of Any."""
-    void __init__(self, any any_tok):
+    def __init__(self, any_tok: Any) -> None:
         self.any_tok = any_tok
 
 
 class VoidRepr:
-    """Representation of Void."""
-    void __init__(self, any void):
+    """Representation of the 'None' type."""
+    def __init__(self, void: Any) -> None:
         self.void = void
 
 
 class CallableRepr:
     """Representation of Callable."""
-    void __init__(self, any func, any langle, any lparen, any commas,
-                  any rparen, any rangle):
+    def __init__(self, func: Any, langle: Any, lparen: Any, commas: Any,
+                  rparen: Any, rangle: Any) -> None:
         self.func = func
         self.langle = langle
         self.lparen = lparen
@@ -51,13 +53,13 @@ class CallableRepr:
 
 class TypeVarRepr:
     """Representation of TypeVar."""
-    void __init__(self, any name):
+    def __init__(self, name: Any) -> None:
         self.name = name
 
 
 class TypeVarsRepr:
     """Representation of TypeVars."""
-    void __init__(self, any langle, Token[] commas, any rangle):
+    def __init__(self, langle: Any, commas: List[Token], rangle: Any) -> None:
         self.langle = langle
         self.commas = commas
         self.rangle = rangle
@@ -65,7 +67,7 @@ class TypeVarsRepr:
 
 class TypeVarDefRepr:
     """Representation of TypeVarDef."""
-    void __init__(self, any name, any is_tok):
+    def __init__(self, name: Any, is_tok: Any) -> None:
         # TODO remove is_tok
         self.name = name
         self.is_tok = is_tok

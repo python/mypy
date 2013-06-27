@@ -1,6 +1,11 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import re
+from abc import abstractmethod, ABCMeta
+
+from typing import (
+    Any, overload, typevar, Undefined, List, Tuple, cast, Set, Dict
+)
 
 from mypy.lex import Token
 import mypy.strconv
@@ -8,27 +13,31 @@ from mypy.visitor import NodeVisitor
 from mypy.util import dump_tagged, short_type
 
 
-interface Context:
+class Context(metaclass=ABCMeta):
     """Base type for objects that are valid as error message locations."""
-    int get_line(self)
+    #@abstractmethod
+    def get_line(self) -> int: pass
 
 
 import mypy.types
 
 
+T = typevar('T')
+
+
 # Variable kind constants
 # TODO rename to use more descriptive names
 
-int LDEF = 0
-int GDEF = 1
-int MDEF = 2
-int MODULE_REF = 3
+LDEF = 0 # type: int
+GDEF = 1 # type: int
+MDEF = 2 # type: int
+MODULE_REF = 3 # type: int
 # Type variable declared using typevar(...) has kind UNBOUND_TVAR. It's not
 # valid as a type. A type variable is valid as a type (kind TVAR) within 
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-int UNBOUND_TVAR = 4
-int TVAR = 5
+UNBOUND_TVAR = 4 # type: 'int'
+TVAR = 5 # type: int
 
 
 node_kinds = {
@@ -57,106 +66,119 @@ reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
     
-    int line = -1
-    any repr = None # Textual representation
+    line = -1
+    # Textual representation
+    repr = None # type: Any
     
-    str __str__(self):
+    def __str__(self) -> str:
         return self.accept(mypy.strconv.StrConv())
     
-    Node set_line(self, Token tok):
+    @overload
+    def set_line(self, tok: Token) -> 'Node':
         self.line = tok.line
         return self
     
-    Node set_line(self, int line):
+    @overload
+    def set_line(self, line: int) -> 'Node':
         self.line = line
         return self
 
-    int get_line(self):
+    def get_line(self) -> int:
         # TODO this should be just 'line'
         return self.line
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
+    
     # TODO do not use methods for these
-    str name(self): pass
-    str fullname(self): pass
+    
+    @abstractmethod
+    def name(self) -> str: pass
+
+    @abstractmethod
+    def fullname(self) -> str: pass
 
 
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
     
-    str _name         # Module name ('__main__' for initial file)
-    str _fullname    # Qualified module name
-    str path          # Path to the file (None if not known)
-    Node[] defs       # Global definitions and statements
-    bool is_bom       # Is there a UTF-8 BOM at the start?
-    SymbolTable names
-    Node[] imports    # All import nodes within the file
+    _name = None     # type: str    # Module name ('__main__' for initial file)
+    _fullname = None # type: str    # Qualified module name
+    path = ''        # Path to the file (None if not known)
+    defs = Undefined # type: List[Node]  # Global definitions and statements
+    is_bom = False   # Is there a UTF-8 BOM at the start?
+    names = Undefined('SymbolTable')
+    imports = Undefined(List[Node])    # All import nodes within the file
     
-    void __init__(self, Node[] defs, Node[] imports, bool is_bom=False):
+    def __init__(self, defs: List[Node], imports: List[Node],
+                 is_bom: bool = False) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
 
-    str name(self):
+    def name(self) -> str:
         return self._name
 
-    str fullname(self):
+    def fullname(self) -> str:
         return self._fullname
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
 
 class Import(Node):
-    """import m [as n]"""    
-    tuple<str, str>[] ids     # (module id, as id)
+    """import m [as n]"""
     
-    void __init__(self, tuple<str, str>[] ids):
+    ids = Undefined(List[Tuple[str, str]])     # (module id, as id)
+    
+    def __init__(self, ids: List[Tuple[str, str]]) -> None:
         self.ids = ids
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import(self)
 
 
 class ImportFrom(Node):
     """from m import x, ..."""
-    str id
-    tuple<str, str>[] names # Tuples (name, as name)
     
-    void __init__(self, str id, tuple<str, str>[] names):
+    names = Undefined(List[Tuple[str, str]]) # Tuples (name, as name)
+    
+    def __init__(self, id: str, names: List[Tuple[str, str]]) -> None:
         self.id = id
         self.names = names
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
 
 class ImportAll(Node):
     """from m import *"""
-    str id
     
-    void __init__(self, str id):
+    def __init__(self, id: str) -> None:
         self.id = id
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 
 
 class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
-    mypy.types.Type type # Type signature (Callable or Overloaded)
-    TypeInfo info    # If method, reference to TypeInfo
-    str name(self):
+    
+    # Type signature (Callable or Overloaded)
+    type = None # type: mypy.types.Type
+    # If method, reference to TypeInfo
+    info = None # type: TypeInfo
+    
+    def name(self) -> str:
         pass
-    str fullname(self):
+    def fullname(self) -> str:
         pass
-    bool is_method(self):
+    def is_method(self) -> bool:
         return bool(self.info)
 
 
@@ -166,39 +188,41 @@ class OverloadedFuncDef(FuncBase):
     This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
     """
-    Decorator[] items
-    str _fullname
     
-    void __init__(self, Decorator[] items):
+    items = Undefined(List['Decorator'])
+    _fullname = None # type: str
+    
+    def __init__(self, items: List['Decorator']) -> None:
         self.items = items
         self.set_line(items[0].line)
     
-    str name(self):
+    def name(self) -> str:
         return self.items[1].func.name()
 
-    str fullname(self):
+    def fullname(self) -> str:
         return self._fullname
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
 
 class FuncItem(FuncBase):
-    Var[] args      # Argument names
-    int[] arg_kinds # Kinds of arguments (ARG_*)
+    args = Undefined(List['Var'])    # Argument names
+    arg_kinds = Undefined(List[int]) # Kinds of arguments (ARG_*)
     
     # Initialization expessions for fixed args; None if no initialiser
-    AssignmentStmt[] init
-    int min_args           # Minimum number of arguments
-    int max_pos            # Maximum number of positional arguments, -1 if
+    init = Undefined(List['AssignmentStmt'])
+    min_args = 0           # Minimum number of arguments
+    max_pos = 0            # Maximum number of positional arguments, -1 if
                            # no explicit limit (*args not included)
-    Block body
-    bool is_implicit    # Implicit dynamic types?
-    bool is_overload    # Is this an overload variant of function with
-                        # more than one overload variant?
+    body = Undefined('Block')
+    is_implicit = False    # Implicit dynamic types?
+    is_overload = False    # Is this an overload variant of function with
+                           # more than one overload variant?
     
-    void __init__(self, Var[] args, int[] arg_kinds, Node[] init,
-                  Block body, mypy.types.Type typ=None):
+    def __init__(self, args: List['Var'], arg_kinds: List[int],
+                 init: List[Node], body: 'Block',
+                 typ: 'mypy.types.Type' = None) -> None:
         self.args = args
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
@@ -207,7 +231,7 @@ class FuncItem(FuncBase):
         self.is_implicit = typ is None
         self.is_overload = False
         
-        AssignmentStmt[] i2 = []
+        i2 = List[AssignmentStmt]()
         self.min_args = 0
         for i in range(len(init)):
             if init[i] is not None:
@@ -222,23 +246,25 @@ class FuncItem(FuncBase):
                     self.min_args = i + 1
         self.init = i2
     
-    int max_fixed_argc(self):
+    def max_fixed_argc(self) -> int:
         return self.max_pos
     
-    Node set_line(self, Token tok):
+    @overload
+    def set_line(self, tok: Token) -> Node:
         super().set_line(tok)
         for n in self.args:
             n.line = self.line
         return self
     
-    Node set_line(self, int tok):
+    @overload
+    def set_line(self, tok: int) -> Node:
         super().set_line(tok)
         for n in self.args:
             n.line = self.line
         return self
     
-    Node[] init_expressions(self):
-        Node[] res = []
+    def init_expressions(self) -> List[Node]:
+        res = List[Node]()
         for i in self.init:
             if i is not None:
                 res.append(i.rvalue)
@@ -248,61 +274,62 @@ class FuncItem(FuncBase):
 
 
 class FuncDef(FuncItem):
-    str _fullname       # Name with module prefix
-    bool is_decorated
-    bool is_conditional    # Defined conditionally (within block)?
-    bool is_abstract
-    FuncDef original_def   # Original conditional definition
+    _fullname = None # type: str       # Name with module prefix
+    is_decorated = False
+    is_conditional = False             # Defined conditionally (within block)?
+    is_abstract = False
+    original_def = Undefined('FuncDef') # Original conditional definition
     
-    void __init__(self,
-                  str name,          # Function name
-                  Var[] args,        # Argument names
-                  int[] arg_kinds,   # Arguments kinds (nodes.ARG_*)
-                  Node[] init,       # Initializers (each may be None)
-                  Block body,
-                  mypy.types.Type typ=None):
+    def __init__(self,
+                 name: str,              # Function name
+                 args: List['Var'],      # Argument names
+                 arg_kinds: List[int],   # Arguments kinds (nodes.ARG_*)
+                 init: List[Node],       # Initializers (each may be None)
+                 body: 'Block',
+                 typ: 'mypy.types.Type' = None) -> None:
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
         self.is_decorated = False
         self.is_abstract = False
         self.original_def = None
 
-    str name(self):
+    def name(self) -> str:
         return self._name
     
-    str fullname(self):
+    def fullname(self) -> str:
         return self._fullname
 
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_def(self)
     
-    bool is_constructor(self):
+    def is_constructor(self) -> bool:
         return self.info is not None and self._name == '__init__'
 
-    str get_name(self):
+    def get_name(self) -> str:
         """TODO merge with name()"""
         return self._name
 
 
 class Decorator(SymbolNode):
-    FuncDef func        # Decorated function
-    Node[] decorators   # Decorators, at least one
-    Var var             # Represents the decorated function value
-    bool is_overload
+    func = Undefined(FuncDef)          # Decorated function
+    decorators = Undefined(List[Node]) # Decorators, at least one
+    var = Undefined('Var')             # Represents the decorated function obj
+    is_overload = False
     
-    void __init__(self, FuncDef func, Node[] decorators, Var var):
+    def __init__(self, func: FuncDef, decorators: List[Node],
+                 var: 'Var') -> None:
         self.func = func
         self.decorators = decorators
         self.var = var
         self.is_overload = False
 
-    str name(self):
+    def name(self) -> str:
         return self.func.name()
 
-    str fullname(self):
+    def fullname(self) -> str:
         return self.func.fullname()
 
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_decorator(self)
 
 
@@ -311,18 +338,19 @@ class Var(SymbolNode):
 
     It can refer to global/local variable or a data attribute.
     """
-    str _name        # Name without module prefix
-    str _fullname   # Name with module prefix
-    TypeInfo info    # Defining class (for member variables)
-    mypy.types.Type type # Declared or inferred type, or None if none
-    bool is_self     # Is this the first argument to an ordinary method
-                     # (usually "self")?
-    bool is_ready    # If inferred, is the inferred type available?
-    # Is this initialized explicitly to a non-None value in class body?
-    bool is_initialized_in_class
-    bool is_typevar
     
-    void __init__(self, str name, mypy.types.Type type=None):
+    _name = None     # type: str   # Name without module prefix
+    _fullname = None # type: str   # Name with module prefix
+    info = Undefined('TypeInfo')   # Defining class (for member variables)
+    type = None # type: mypy.types.Type # Declared or inferred type, or None
+    is_self = False  # Is this the first argument to an ordinary method
+                     # (usually "self")?
+    is_ready = False # If inferred, is the inferred type available?
+    # Is this initialized explicitly to a non-None value in class body?
+    is_initialized_in_class = False
+    is_typevar = False
+    
+    def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name
         self.type = type
         self.is_self = False
@@ -330,31 +358,32 @@ class Var(SymbolNode):
         self.is_initialized_in_class = False
         self.is_typevar = False
 
-    str name(self):
+    def name(self) -> str:
         return self._name
 
-    str fullname(self):
+    def fullname(self) -> str:
         return self._fullname
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
 
 class TypeDef(Node):
     """Class definition"""
-    str name        # Name of the class without module prefix
-    str fullname    # Fully qualified name of the class
-    Block defs
-    mypy.types.TypeVars type_vars
-    # Base classes (Instance or UnboundType).
-    mypy.types.Type[] base_types
-    TypeInfo info    # Related TypeInfo
-    str metaclass
     
-    void __init__(self, str name, Block defs,
-                  mypy.types.TypeVars type_vars=None,
-                  mypy.types.Type[] base_types=None,
-                  str metaclass=None):
+    name = Undefined(str)         # Name of the class without module prefix
+    fullname = None # type: str   # Fully qualified name of the class
+    defs = Undefined('Block')
+    type_vars = Undefined('mypy.types.TypeVars')
+    # Base classes (Instance or UnboundType).
+    base_types = Undefined(List['mypy.types.Type'])
+    info = None # type: TypeInfo  # Related TypeInfo
+    metaclass = ''
+    
+    def __init__(self, name: str, defs: 'Block',
+                 type_vars: 'mypy.types.TypeVars' = None,
+                 base_types: List['mypy.types.Type'] = None,
+                 metaclass: str = None) -> None:
         if not base_types:
             base_types = []
         self.name = name
@@ -363,63 +392,68 @@ class TypeDef(Node):
         self.base_types = base_types
         self.metaclass = metaclass
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_def(self)
     
-    bool is_generic(self):
+    def is_generic(self) -> bool:
         return self.info.is_generic()
 
 
 class VarDef(Node):
     """Variable definition with explicit types"""
-    Var[] items
-    int kind          # LDEF/GDEF/MDEF/...
-    Node init         # Expression or None
-    bool is_top_level # Is the definition at the top level (not within
-                      # a function or a type)?
     
-    void __init__(self, Var[] items, bool is_top_level, Node init=None):
+    items = Undefined(List[Var])
+    kind = None # type: int          # LDEF/GDEF/MDEF/...
+    init = Undefined(Node)           # Expression or None
+    is_top_level = False # Is the definition at the top level (not within
+                         # a function or a type)?
+    
+    def __init__(self, items: List[Var], is_top_level: bool,
+                 init: Node = None) -> None:
         self.items = items
         self.is_top_level = is_top_level
         self.init = init
     
-    TypeInfo info(self):
+    def info(self) -> 'TypeInfo':
         return self.items[0].info
     
-    Node set_line(self, Token tok):
+    @overload
+    def set_line(self, tok: Token) -> Node:
         super().set_line(tok)
         for n in self.items:
             n.line = self.line
         return self
     
-    Node set_line(self, int tok):
+    @overload
+    def set_line(self, tok: int) -> Node:
         super().set_line(tok)
         for n in self.items:
             n.line = self.line
         return self
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var_def(self)
 
 
 class GlobalDecl(Node):
     """Declaration global x, y, ..."""
-    str[] names
     
-    void __init__(self, str[] names):
+    names = Undefined(List[str])
+    
+    def __init__(self, names: List[str]) -> None:
         self.names = names
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_global_decl(self)
 
 
 class Block(Node):
-    Node[] body
+    body = Undefined(List[Node])
     
-    void __init__(self, Node[] body):
+    def __init__(self, body: List[Node]) -> None:
         self.body = body
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_block(self)
 
 
@@ -428,12 +462,12 @@ class Block(Node):
 
 class ExpressionStmt(Node):
     """An expression as a statament, such as print(s)."""
-    Node expr
+    expr = Undefined(Node)
     
-    void __init__(self, Node expr):
+    def __init__(self, expr: Node) -> None:
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
 
@@ -447,68 +481,75 @@ class AssignmentStmt(Node):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr or
     ParenExpr.
     """
-    Node[] lvalues
-    Node rvalue
-    mypy.types.Type type    # Declared type in a comment, may be None.
     
-    void __init__(self, Node[] lvalues, Node rvalue,
-                  mypy.types.Type type=None):
+    lvalues = Undefined(List[Node])
+    rvalue = Undefined(Node)
+    type = None # type: mypy.types.Type # Declared type in a comment,
+                                        # may be None.
+    
+    def __init__(self, lvalues: List[Node], rvalue: Node,
+                 type: 'mypy.types.Type' = None) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
 
 
 class OperatorAssignmentStmt(Node):
     """Operator assignment statement such as x += 1"""
-    str op
-    Node lvalue
-    Node rvalue
     
-    void __init__(self, str op, Node lvalue, Node rvalue):
+    op = ''
+    lvalue = Undefined(Node)
+    rvalue = Undefined(Node)
+    
+    def __init__(self, op: str, lvalue: Node, rvalue: Node) -> None:
         self.op = op
         self.lvalue = lvalue
         self.rvalue = rvalue
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_operator_assignment_stmt(self)
 
 
 class WhileStmt(Node):
-    Node expr
-    Block body
-    Block else_body
+    expr = Undefined(Node)
+    body = Undefined(Block)
+    else_body = Undefined(Block)
     
-    void __init__(self, Node expr, Block body, Block else_body):
+    def __init__(self, expr: Node, body: Block, else_body: Block) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_while_stmt(self)
 
 
 class ForStmt(Node):
-    NameExpr[] index   # Index variables
-    mypy.types.Type[] types    # Index variable types (each may be None)
-    Node expr              # Expression to iterate
-    Block body
-    Block else_body
+    # Index variables
+    index = Undefined(List['NameExpr'])
+    # Index variable types (each may be None)
+    types = Undefined(List['mypy.types.Type'])
+    # Expression to iterate
+    expr = Undefined(Node)
+    body = Undefined(Block)
+    else_body = Undefined(Block)
     
-    void __init__(self, NameExpr[] index, Node expr, Block body,
-                  Block else_body, mypy.types.Type[] types=None):
+    def __init__(self, index: List['NameExpr'], expr: Node, body: Block,
+                 else_body: Block,
+                 types: List['mypy.types.Type'] = None) -> None:
         self.index = index
         self.expr = expr
         self.body = body
         self.else_body = else_body
         self.types = types
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
     
-    bool is_annotated(self):
+    def is_annotated(self) -> bool:
         ann = False
         for t in self.types:
             if t is not None:
@@ -517,96 +558,98 @@ class ForStmt(Node):
 
 
 class ReturnStmt(Node):
-    Node expr   # Expression or None
+    expr = Undefined(Node)   # Expression or None
     
-    void __init__(self, Node expr):
+    def __init__(self, expr: Node) -> None:
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
 class AssertStmt(Node):
-    Node expr
+    expr = Undefined(Node)
     
-    void __init__(self, Node expr):
+    def __init__(self, expr: Node) -> None:
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
 class YieldStmt(Node):
-    Node expr
+    expr = Undefined(Node)
     
-    void __init__(self, Node expr):
+    def __init__(self, expr: Node) -> None:
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_stmt(self)
 
 
 class DelStmt(Node):
-    Node expr
+    expr = Undefined(Node)
     
-    void __init__(self, Node expr):
+    def __init__(self, expr: Node) -> None:
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
 
 class BreakStmt(Node):
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
 class ContinueStmt(Node):
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
 class PassStmt(Node):
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
 class IfStmt(Node):
-    Node[] expr
-    Block[] body
-    Block else_body
+    expr = Undefined(List[Node])
+    body = Undefined(List[Block])
+    else_body = Undefined(Block)
     
-    void __init__(self, Node[] expr, Block[] body, Block else_body):
+    def __init__(self, expr: List[Node], body: List[Block],
+                 else_body: Block) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
 
 
 class RaiseStmt(Node):
-    Node expr
-    Node from_expr
+    expr = Undefined(Node)
+    from_expr = Undefined(Node)
     
-    void __init__(self, Node expr, Node from_expr=None):
+    def __init__(self, expr: Node, from_expr: Node = None) -> None:
         self.expr = expr
         self.from_expr = from_expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
 
 
 class TryStmt(Node):
-    Block body            # Try body
-    Node[] types          # Except type expressions
-    NameExpr[] vars       # Except variable names
-    Block[] handlers      # Except bodies
-    Block else_body
-    Block finally_body
+    body = Undefined(Block)                # Try body
+    types = Undefined(List[Node])          # Except type expressions
+    vars = Undefined(List['NameExpr'])     # Except variable names
+    handlers = Undefined(List[Block])      # Except bodies
+    else_body = Undefined(Block)
+    finally_body = Undefined(Block)
     
-    void __init__(self, Block body, NameExpr[] vars, Node[] types,
-                  Block[] handlers, Block else_body, Block finally_body):
+    def __init__(self, body: Block, vars: List['NameExpr'], types: List[Node],
+                 handlers: List[Block], else_body: Block,
+                 finally_body: Block) -> None:
         self.body = body
         self.vars = vars
         self.types = types
@@ -614,21 +657,22 @@ class TryStmt(Node):
         self.else_body = else_body
         self.finally_body = finally_body
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
 
 
 class WithStmt(Node):
-    Node[] expr
-    NameExpr[] name
-    Block body
+    expr = Undefined(List[Node])
+    name = Undefined(List['NameExpr'])
+    body = Undefined(Block)
     
-    void __init__(self, Node[] expr, NameExpr[] name, Block body):
+    def __init__(self, expr: List[Node], name: List['NameExpr'],
+                 body: Block) -> None:
         self.expr = expr
         self.name = name
         self.body = body
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
 
 
@@ -637,70 +681,76 @@ class WithStmt(Node):
 
 class IntExpr(Node):
     """Integer literal"""
-    int value
     
-    void __init__(self, int value):
+    value = 0
+    
+    def __init__(self, value: int) -> None:
         self.value = value
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
 
 
 class StrExpr(Node):
     """String literal"""
-    str value
     
-    void __init__(self, str value):
+    value = ''
+    
+    def __init__(self, value: str) -> None:
         self.value = value
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
 
 
 class BytesExpr(Node):
     """Bytes literal"""
-    str value # TODO use bytes
     
-    void __init__(self, str value):
+    value = '' # TODO use bytes
+    
+    def __init__(self, value: str) -> None:
         self.value = value
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
 
 
 class FloatExpr(Node):
     """Float literal"""
-    float value
     
-    void __init__(self, float value):
+    value = 0.0
+    
+    def __init__(self, value: float) -> None:
         self.value = value
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
 
 
 class ParenExpr(Node):
     """Parenthesised expression"""
-    Node expr
     
-    void __init__(self, Node expr):
+    expr = Undefined(Node)
+    
+    def __init__(self, expr: Node) -> None:
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_paren_expr(self)
 
 
 class RefExpr(Node):
     """Abstract base class for name-like constructs"""
-    int kind      # LDEF/GDEF/MDEF/... (None if not available)
-    Node node     # Var, FuncDef or TypeInfo that describes this
-    str fullname  # Fully qualified name (or name if not global)
+    
+    kind = None # type: int      # LDEF/GDEF/MDEF/... (None if not available)
+    node = Undefined(Node)       # Var, FuncDef or TypeInfo that describes this
+    fullname = None # type: str  # Fully qualified name (or name if not global)
     
     # Does this define a new name with inferred type?
     #
     # For members, after semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
-    bool is_def = False
+    is_def = False
 
 
 class NameExpr(RefExpr):
@@ -708,43 +758,52 @@ class NameExpr(RefExpr):
 
     This refers to a local name, global name or a module.
     """
-    str name      # Name referred to (may be qualified)
-    TypeInfo info # TypeInfo of class surrounding expression (may be None)
     
-    void __init__(self, str name):
+    name = None # type: str      # Name referred to (may be qualified)
+    info = Undefined('TypeInfo') # TypeInfo of class surrounding expression
+                                 # (may be None)
+    
+    def __init__(self, name: str) -> None:
         self.name = name
     
     def type_node(self):
-        return (TypeInfo)self.node
+        return cast('TypeInfo', self.node)
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
 
 
 class MemberExpr(RefExpr):
     """Member access expression x.y"""
-    Node expr
-    str name
-    # The variable node related to a definition.
-    Var def_var = None
-    # Is this direct assignment to a data member (bypassing accessors)?
-    bool direct
     
-    void __init__(self, Node expr, str name, bool direct=False):
+    expr = Undefined(Node)
+    name = None # type: str
+    # The variable node related to a definition.
+    def_var = None # type: Var
+    # Is this direct assignment to a data member (bypassing accessors)?
+    direct = False
+    
+    def __init__(self, expr: Node, name: str, direct: bool = False) -> None:
         self.expr = expr
         self.name = name
         self.direct = direct
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
 
 
 # Kinds of arguments
-int ARG_POS = 0   # Positional argument
-int ARG_OPT = 1   # Positional, optional argument (functions only, not calls)
-int ARG_STAR = 2  # *arg argument
-int ARG_NAMED = 3 # Keyword argument x=y in call, or keyword-only function arg
-int ARG_STAR2 = 4 # **arg argument
+
+# Positional argument
+ARG_POS = 0 # type: int
+# Positional, optional argument (functions only, not calls)
+ARG_OPT = 1 # type: int
+# *arg argument
+ARG_STAR = 2 # type: int
+# Keyword argument x=y in call, or keyword-only function arg
+ARG_NAMED = 3 # type: int
+# **arg argument
+ARG_STAR2 = 4 # type: int
 
 
 class CallExpr(Node):
@@ -753,23 +812,26 @@ class CallExpr(Node):
     This can also represent several special forms that are syntactically calls
     such as cast(...) and Undefined(...).
     """
-    Node callee
-    Node[] args
-    int[] arg_kinds # ARG_ constants
-    str[] arg_names # Each name can be None if not a keyword argument.
-    Node analyzed   # If not None, the node that represents the meaning of the
-                    # CallExpr. For cast(...) this is a CastExpr.
     
-    void __init__(self, Node callee, Node[] args, int[] arg_kinds,
-                  str[] arg_names=None):
+    callee = Undefined(Node)
+    args = Undefined(List[Node])
+    arg_kinds = Undefined(List[int]) # ARG_ constants
+    arg_names = Undefined(List[str]) # Each name can be None if not a keyword
+                                     # argument.
+    analyzed = None # type: Node     # If not None, the node that represents
+                                     # the meaning of the CallExpr. For
+                                     # cast(...) this is a CastExpr.
+    
+    def __init__(self, callee: Node, args: List[Node], arg_kinds: List[int],
+                 arg_names: List[str] = None) -> None:
         if not arg_names:
-            arg_names = <str> [None] * len(args)
+            arg_names = [None] * len(args)
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
 
 
@@ -778,32 +840,36 @@ class IndexExpr(Node):
 
     Also wraps type application as a special form.
     """
-    Node base
-    Node index
-    mypy.types.Type method_type  # Inferred __getitem__ method type
-    TypeApplication analyzed     # If not None, this is actually semantically
-                                 # a type application Class[type, ...].
     
-    void __init__(self, Node base, Node index):
+    base = Undefined(Node)
+    index = Undefined(Node)
+    # Inferred __getitem__ method type
+    method_type = Undefined('mypy.types.Type')
+    # If not None, this is actually semantically a type application
+    # Class[type, ...].
+    analyzed = Undefined('TypeApplication')
+    
+    def __init__(self, base: Node, index: Node) -> None:
         self.base = base
         self.index = index
         self.analyzed = None
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
 
 
 class UnaryExpr(Node):
     """Unary operation"""
-    str op
-    Node expr
-    mypy.types.Type method_type  # Inferred operator method type
     
-    void __init__(self, str op, Node expr):
+    op = ''
+    expr = Undefined(Node)
+    method_type = Undefined('mypy.types.Type') # Inferred operator method type
+    
+    def __init__(self, op: str, expr: Node) -> None:
         self.op = op
         self.expr = expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
 
 
@@ -832,20 +898,21 @@ op_methods = {
 
 
 class OpExpr(Node):
-    """Binary operation (other than . or [], which have specific nodes)"""
-    str op
-    Node left
-    Node right
+    """Binary operation (other than . or [], which have specific nodes)."""
+    
+    op = ''
+    left = Undefined(Node)
+    right = Undefined(Node)
     # Inferred type for the operator method type (when relevant; None for
     # 'is').
-    mypy.types.Type method_type
+    method_type = None # type: mypy.types.Type
     
-    void __init__(self, str op, Node left, Node right):
+    def __init__(self, op: str, left: Node, right: Node) -> None:
         self.op = op
         self.left = left
         self.right = right
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
 
@@ -854,151 +921,166 @@ class SliceExpr(Node):
 
     This is only valid as index in index expressions.
     """
-    Node begin_index  # May be None
-    Node end_index    # May be None
-    Node stride       # May be None
     
-    void __init__(self, Node begin_index, Node end_index, Node stride):
+    begin_index = Undefined(Node)  # May be None
+    end_index = Undefined(Node)    # May be None
+    stride = Undefined(Node)       # May be None
+    
+    def __init__(self, begin_index: Node, end_index: Node,
+                 stride: Node) -> None:
         self.begin_index = begin_index
         self.end_index = end_index
         self.stride = stride
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_slice_expr(self)
 
 
 class CastExpr(Node):
-    """Cast expression (type)expr"""
-    Node expr
-    mypy.types.Type type
+    """Cast expression cast(type, expr)."""
     
-    void __init__(self, Node expr, mypy.types.Type typ):
+    expr = Undefined(Node)
+    type = Undefined('mypy.types.Type')
+    
+    def __init__(self, expr: Node, typ: 'mypy.types.Type') -> None:
         self.expr = expr
         self.type = typ
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
 
 
 class SuperExpr(Node):
     """Expression super().name"""
-    str name
-    TypeInfo info # Type that contains this super expression
     
-    void __init__(self, str name):
+    name = ''
+    info = Undefined('TypeInfo') # Type that contains this super expression
+    
+    def __init__(self, name: str) -> None:
         self.name = name
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_super_expr(self)
 
 
 class FuncExpr(FuncItem):
     """Lambda expression"""
     
-    Node expr(self):
+    def expr(self) -> Node:
         """Return the expression (the body) of the lambda."""
-        ret = (ReturnStmt)self.body.body[0]
+        ret = cast(ReturnStmt, self.body.body[0])
         return ret.expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_expr(self)
 
 
 class ListExpr(Node):
-    """List literal expression [...] or <type> [...]"""
-    Node[] items 
-    mypy.types.Type type # None if implicit type
+    """List literal expression [...]."""
     
-    void __init__(self, Node[] items, mypy.types.Type typ=None):
+    items = Undefined(List[Node] )
+    type = Undefined('mypy.types.Type') # None if implicit type
+    
+    def __init__(self, items: List[Node],
+                 typ: 'mypy.types.Type' = None) -> None:
         self.items = items
         self.type = typ
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
 
 
 class DictExpr(Node):
-    """Dictionary literal expression {key:value, ...} or <kt, vt> {...}."""
-    tuple<Node, Node>[] items
-    mypy.types.Type key_type    # None if implicit type
-    mypy.types.Type value_type  # None if implicit type
+    """Dictionary literal expression {key: value, ...}."""
     
-    void __init__(self, tuple<Node, Node>[] items):
+    items = Undefined(List[Tuple[Node, Node]])
+    key_type = None   # type: mypy.types.Type  # None if implicit type
+    value_type = None # type: mypy.types.Type  # None if implicit type
+    
+    def __init__(self, items: List[Tuple[Node, Node]]) -> None:
         self.items = items
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
 
 
 class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
-    Node[] items
-    mypy.types.Type[] types
     
-    void __init__(self, Node[] items, mypy.types.Type[] types=None):
+    items = Undefined(List[Node])
+    types = Undefined(List['mypy.types.Type'])
+    
+    def __init__(self, items: List[Node],
+                 types: List['mypy.types.Type'] = None) -> None:
         self.items = items
         self.types = types
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
 
 
 class SetExpr(Node):
     """Set literal expression {value, ...}."""
-    Node[] items
-    mypy.types.Type type
     
-    void __init__(self, Node[] items, mypy.types.Type type=None):
+    items = Undefined(List[Node])
+    type = Undefined('mypy.types.Type')
+    
+    def __init__(self, items: List[Node],
+                 type: 'mypy.types.Type' = None) -> None:
         self.items = items
         self.type = type
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
 
 
 class GeneratorExpr(Node):
     """Generator expression ... for ... in ... [ if ... ]."""
-    Node left_expr
-    Node right_expr
-    Node condition   # May be None
-    NameExpr[] index
-    mypy.types.Type[] types
     
-    void __init__(self, Node left_expr, NameExpr[] index,
-                  mypy.types.Type[] types, Node right_expr, Node condition):
+    left_expr = Undefined(Node)
+    right_expr = Undefined(Node)
+    condition = Undefined(Node)   # May be None
+    index = Undefined(List[NameExpr])
+    types = Undefined(List['mypy.types.Type'])
+    
+    def __init__(self, left_expr: Node, index: List[NameExpr],
+                  types: List['mypy.types.Type'], right_expr: Node,
+                 condition: Node) -> None:
         self.left_expr = left_expr
         self.right_expr = right_expr
         self.condition = condition
         self.index = index
         self.types = types
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
 
 
 class ListComprehension(Node):
     """List comprehension (e.g. [x + 1 for x in a])"""
-    GeneratorExpr generator
     
-    void __init__(self, GeneratorExpr generator):
+    generator = Undefined(GeneratorExpr)
+    
+    def __init__(self, generator: GeneratorExpr) -> None:
         self.generator = generator
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_comprehension(self)
 
 
 class ConditionalExpr(Node):
     """Conditional expression (e.g. x if y else z)"""
-    Node cond
-    Node if_expr
-    Node else_expr
     
-    void __init__(self, Node cond, Node if_expr, Node else_expr):
+    cond = Undefined(Node)
+    if_expr = Undefined(Node)
+    else_expr = Undefined(Node)
+    
+    def __init__(self, cond: Node, if_expr: Node, else_expr: Node) -> None:
         self.cond = cond
         self.if_expr = if_expr
         self.else_expr = else_expr
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
 
 
@@ -1011,65 +1093,68 @@ class UndefinedExpr(Node):
       x = Undefined(List[int])
     """
     
-    void __init__(self, mypy.types.Type type):
+    def __init__(self, type: 'mypy.types.Type') -> None:
         self.type = type
 
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_undefined_expr(self)
 
 
 class TypeApplication(Node):
     """Type application expr[type, ...]"""
-    Node expr
-    mypy.types.Type[] types
     
-    void __init__(self, Node expr, mypy.types.Type[] types):
+    expr = Undefined(Node)
+    types = Undefined(List['mypy.types.Type'])
+    
+    def __init__(self, expr: Node, types: List['mypy.types.Type']) -> None:
         self.expr = expr
         self.types = types
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_application(self)
 
 
 class TypeVarExpr(Node):
     """Type variable expression typevar(...)."""
-    void __init__(self):
-        pass
-
-    T accept<T>(self, NodeVisitor<T> visitor):
+    
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
 
 class CoerceExpr(Node):
-    """Implicit coercion expression (used only when compiling/transforming;
-    inserted after type checking).
+    """Implicit coercion expression.
+
+    This is used only when compiling/transforming.  These are inserted
+    after type checking.
     """
-    Node expr
-    mypy.types.Type target_type
-    mypy.types.Type source_type
-    bool is_wrapper_class
     
-    void __init__(self, Node expr, mypy.types.Type target_type,
-                  mypy.types.Type source_type, bool is_wrapper_class):
+    expr = Undefined(Node)
+    target_type = Undefined('mypy.types.Type')
+    source_type = Undefined('mypy.types.Type')
+    is_wrapper_class = False
+    
+    def __init__(self, expr: Node, target_type: 'mypy.types.Type',
+                 source_type: 'mypy.types.Type',
+                 is_wrapper_class: bool) -> None:
         self.expr = expr
         self.target_type = target_type
         self.source_type = source_type
         self.is_wrapper_class = is_wrapper_class
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_coerce_expr(self)
 
 
 class JavaCast(Node):
     # TODO obsolete; remove
-    Node expr
-    mypy.types.Type target
+    expr = Undefined(Node)
+    target = Undefined('mypy.types.Type')    
     
-    void __init__(self, Node expr, mypy.types.Type target):
+    def __init__(self, expr: Node, target: 'mypy.types.Type') -> None:
         self.expr = expr
         self.target = target
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_java_cast(self)
 
 
@@ -1079,12 +1164,13 @@ class TypeExpr(Node):
     This is used only for runtime type checking. This node is always generated
     only after type checking.
     """
-    mypy.types.Type type
     
-    void __init__(self, mypy.types.Type typ):
+    type = Undefined('mypy.types.Type')    
+    
+    def __init__(self, typ: 'mypy.types.Type') -> None:
         self.type = typ
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_expr(self)
 
 
@@ -1095,12 +1181,13 @@ class TempNode(Node):
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
-    mypy.types.Type type
     
-    void __init__(self, mypy.types.Type typ):
+    type = Undefined('mypy.types.Type')
+    
+    def __init__(self, typ: 'mypy.types.Type') -> None:
         self.type = typ
     
-    T accept<T>(self, NodeVisitor<T> visitor):
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
 
 
@@ -1110,32 +1197,31 @@ class TypeInfo(SymbolNode):
     The corresponding TypeDef instance represents the parse tree of
     the class.
     """
-    str _fullname     # Fully qualified name
-    TypeDef defn       # Corresponding TypeDef
+    
+    _fullname = None # type: str     # Fully qualified name
+    defn = Undefined(TypeDef)        # Corresponding TypeDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to self.
-    TypeInfo[] mro
-    set<TypeInfo> subtypes # Direct subclasses
-
-    SymbolTable names      # Names defined directly in this type
-    
-    bool is_abstract       # Does the class have any abstract attributes?
-    str[] abstract_attributes
+    mro = Undefined(List['TypeInfo'])
+    subtypes = Undefined(Set['TypeInfo']) # Direct subclasses
+    names = Undefined('SymbolTable')      # Names defined directly in this type
+    is_abstract = False       # Does the class have any abstract attributes?
+    abstract_attributes = Undefined(List[str])
     
     # Information related to type annotations.
     
     # Generic type variable names
-    str[] type_vars
+    type_vars = Undefined(List[str])
     
     # Type variable bounds (each may be None)
-    # TODO implement these
-    mypy.types.Type[] bounds
+    # TODO implement these or remove
+    bounds = Undefined(List['mypy.types.Type'])
     
     # Direct base classes.
-    mypy.types.Instance[] bases
+    bases = Undefined(List['mypy.types.Instance'])
     
-    void __init__(self, SymbolTable names, TypeDef defn):
-        """Construct a TypeInfo."""
+    def __init__(self, names: 'SymbolTable', defn: TypeDef) -> None:
+        """Initialize a TypeInfo."""
         self.names = names
         self.defn = defn
         self.subtypes = set()
@@ -1150,90 +1236,90 @@ class TypeInfo(SymbolNode):
             for vd in defn.type_vars.items:
                 self.type_vars.append(vd.name)
     
-    str name(self):
+    def name(self) -> str:
         """Short name."""
         return self.defn.name
 
-    str fullname(self):
+    def fullname(self) -> str:
         return self._fullname
     
-    bool is_generic(self):
+    def is_generic(self) -> bool:
         """Is the type generic (i.e. does it have type variables)?"""
         return self.type_vars is not None and len(self.type_vars) > 0
     
-    void set_type_bounds(self, mypy.types.TypeVarDef[] a):
+    def set_type_bounds(self, a: List['mypy.types.TypeVarDef']) -> None:
         for vd in a:
             self.bounds.append(vd.bound)
 
-    SymbolTableNode get(self, str name):
+    def get(self, name: str) -> 'SymbolTableNode':
         for cls in self.mro:
             n = cls.names.get(name)
             if n:
                 return n
         return None
 
-    SymbolTableNode __getitem__(self, str name):
+    def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
             return n
         else:
             raise KeyError(name)
 
-    str __repr__(self):
+    def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
         
     
     # IDEA: Refactor the has* methods to be more consistent and document
     #       them.
     
-    bool has_readable_member(self, str name):
+    def has_readable_member(self, name: str) -> bool:
         return self.has_var(name) or self.has_method(name)
     
-    bool has_writable_member(self, str name):
+    def has_writable_member(self, name: str) -> bool:
         return self.has_var(name)
     
-    bool has_var(self, str name):
+    def has_var(self, name: str) -> bool:
         return self.get_var(name) is not None
     
-    bool has_method(self, str name):
+    def has_method(self, name: str) -> bool:
         return self.get_method(name) is not None
     
-    Var get_var(self, str name):
+    def get_var(self, name: str) -> Var:
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
                 if isinstance(node, Var):
-                    return (Var)node
+                    return cast(Var, node)
                 else:
                     return None
         return None
     
-    SymbolNode get_var_or_getter(self, str name):
+    def get_var_or_getter(self, name: str) -> SymbolNode:
         # TODO getter
         return self.get_var(name)
     
-    SymbolNode get_var_or_setter(self, str name):
+    def get_var_or_setter(self, name: str) -> SymbolNode:
         # TODO setter
         return self.get_var(name)
     
-    FuncBase get_method(self, str name):
+    def get_method(self, name: str) -> FuncBase:
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
                 if isinstance(node, FuncBase):
-                    return (FuncBase)node
+                    return cast(FuncBase, node)
                 else:
                     return None
         return None
 
-    void calculate_mro(self):
+    def calculate_mro(self) -> None:
         """Calculate and set mro (method resolution order).
 
         Raise MroError if cannot determine mro.
         """
         self.mro = linearize_hierarchy(self)
     
-    bool has_base(self, str fullname):
+    def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.
 
         This can be either via extension or via implementation.
@@ -1243,7 +1329,7 @@ class TypeInfo(SymbolNode):
                 return True
         return False
     
-    set<TypeInfo> all_subtypes(self):
+    def all_subtypes(self) -> 'Set[TypeInfo]':
         """Return TypeInfos of all subtypes, including this type, as a set."""
         set = set([self])
         for subt in self.subtypes:
@@ -1251,23 +1337,23 @@ class TypeInfo(SymbolNode):
                 set.add(t)
         return set
     
-    TypeInfo[] all_base_classes(self):
+    def all_base_classes(self) -> 'List[TypeInfo]':
         """Return a list of base classes, including indirect bases."""
         assert False
     
-    TypeInfo[] direct_base_classes(self):
+    def direct_base_classes(self) -> 'List[TypeInfo]':
         """Return a direct base classes.
 
         Omit base classes of other base classes.
         """
         return [base.type for base in self.bases]
     
-    str __str__(self):
+    def __str__(self) -> str:
         """Return a string representation of the type.
 
         This includes the most important information about the type.
         """
-        str base = None
+        base = None # type: str
         if self.bases:
             base = 'Bases({})'.format(', '.join(str(base)
                                                 for base in self.bases))
@@ -1277,9 +1363,55 @@ class TypeInfo(SymbolNode):
                            'TypeInfo')
 
 
-class SymbolTable(dict<str, SymbolTableNode>):
-    str __str__(self):
-        str[] a = []
+class SymbolTableNode:
+    kind = None # type: int      # LDEF/GDEF/MDEF/TVAR/...
+    node = Undefined(SymbolNode) # Parse tree node of definition (FuncDef/Var/
+                                 # TypeInfo/Decorator), None for Tvar
+    tvar_id = 0    # Type variable id (for Tvars only)
+    mod_id = ''    # Module id (e.g. "foo.bar") or None
+    # If None, fall back to type of node    
+    type_override = Undefined('mypy.types.Type')
+    
+    def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,
+                 typ: 'mypy.types.Type' = None, tvar_id: int = 0) -> None:
+        self.kind = kind
+        self.node = node
+        self.type_override = typ
+        self.mod_id = mod_id
+        self.tvar_id = tvar_id
+    
+    def fullname(self) -> str:
+        if self.node is not None:
+            return self.node.fullname()
+        else:
+            return None
+    
+    def type(self) -> 'mypy.types.Type':
+        # IDEA: Get rid of the any type.
+        node = self.node # type: Any
+        if self.type_override is not None:
+            return self.type_override
+        elif ((isinstance(node, Var) or isinstance(node, FuncDef))
+              and node.type is not None):
+            return node.type
+        elif isinstance(node, Decorator):
+            return (cast(Decorator, node)).var.type
+        else:
+            return None
+    
+    def __str__(self) -> str:
+        s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
+        if self.mod_id is not None:
+            s += ' ({})'.format(self.mod_id)
+        # Include declared type of variables and functions.
+        if self.type() is not None:
+            s += ' : {}'.format(self.type())
+        return s
+
+
+class SymbolTable(Dict[str, SymbolTableNode]):
+    def __str__(self) -> str:
+        a = List[str]()
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
@@ -1295,96 +1427,52 @@ class SymbolTable(dict<str, SymbolTableNode>):
         return '\n'.join(a)
 
 
-class SymbolTableNode:
-    int kind      # LDEF/GDEF/MDEF/TVAR/...
-    SymbolNode node  # Parse tree node of definition (FuncDef/Var/
-                     # TypeInfo/Decorator), None for Tvar
-    int tvar_id   # Type variable id (for Tvars only)
-    str mod_id    # Module id (e.g. "foo.bar") or None
-    
-    mypy.types.Type type_override  # If None, fall back to type of node
-    
-    void __init__(self, int kind, SymbolNode node, str mod_id=None,
-                  mypy.types.Type typ=None, int tvar_id=0):
-        self.kind = kind
-        self.node = node
-        self.type_override = typ
-        self.mod_id = mod_id
-        self.tvar_id = tvar_id
-    
-    str fullname(self):
-        if self.node is not None:
-            return self.node.fullname()
-        else:
-            return None
-    
-    mypy.types.Type type(self):
-        # IDEA: Get rid of the any type.
-        any node = self.node
-        if self.type_override is not None:
-            return self.type_override
-        elif ((isinstance(node, Var) or isinstance(node, FuncDef))
-              and node.type is not None):
-            return node.type
-        elif isinstance(node, Decorator):
-            return ((Decorator)node).var.type
-        else:
-            return None
-    
-    str __str__(self):
-        s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
-        if self.mod_id is not None:
-            s += ' ({})'.format(self.mod_id)
-        # Include declared type of variables and functions.
-        if self.type() is not None:
-            s += ' : {}'.format(self.type())
-        return s
-
-
-str clean_up(str s):
+def clean_up(s: str) -> str:
+    # TODO remove
     return re.sub('.*::', '', s)
         
 
-mypy.types.FunctionLike function_type(FuncBase func):
+def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
     if func.type:
-        return (mypy.types.FunctionLike)func.type
+        return cast(mypy.types.FunctionLike, func.type)
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an
         # ordinary function.
-        fdef = (FuncDef)func        
+        fdef = cast(FuncDef, func)        
         name = func.name()
         if name:
             name = '"{}"'.format(name)
-        names = <str> []
+        names = [] # type: List[str]
         for arg in fdef.args:
             names.append(arg.name())
-        return mypy.types.Callable(
-            <mypy.types.Type> [mypy.types.Any()] * len(fdef.args),
+        return mypy.types.Callable([mypy.types.AnyType()] * len(fdef.args),
             fdef.arg_kinds,
             names,
-            mypy.types.Any(),
+            mypy.types.AnyType(),
             False,
             name)
 
 
-mypy.types.FunctionLike method_type(FuncBase func):
+@overload
+def method_type(func: FuncBase) -> 'mypy.types.FunctionLike':
     """Return the signature of a method (omit self)."""
     return method_type(function_type(func))
 
-mypy.types.FunctionLike method_type(mypy.types.FunctionLike sig):
+@overload
+def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
     if isinstance(sig, mypy.types.Callable):
-        csig = (mypy.types.Callable)sig
+        csig = cast(mypy.types.Callable, sig)
         return method_callable(csig)
     else:
-        osig = (mypy.types.Overloaded)sig
-        mypy.types.Callable[] items = []
+        osig = cast(mypy.types.Overloaded, sig)
+        items = List[mypy.types.Callable]()
         for c in osig.items():
             items.append(method_callable(c))
         return mypy.types.Overloaded(items)
 
 
-mypy.types.Callable method_callable(mypy.types.Callable c):
+def method_callable(c: 'mypy.types.Callable') -> 'mypy.types.Callable':
     return mypy.types.Callable(c.arg_types[1:],
                            c.arg_kinds[1:],
                            c.arg_names[1:],
@@ -1399,7 +1487,8 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-TypeInfo[] linearize_hierarchy(TypeInfo info):
+def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+    # TODO describe
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
@@ -1407,9 +1496,9 @@ TypeInfo[] linearize_hierarchy(TypeInfo info):
                           [bases])
 
 
-TypeInfo[] merge(TypeInfo[][] seqs):
+def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
     seqs = [s[:] for s in seqs]
-    result = <TypeInfo> []
+    result = List[TypeInfo]()
     while True:
         seqs = [s for s in seqs if s]
         if not seqs:

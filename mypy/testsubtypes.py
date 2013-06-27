@@ -1,3 +1,5 @@
+import typing
+
 from mypy.myunit import Suite, assert_true, run_test
 from mypy.subtypes import is_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture

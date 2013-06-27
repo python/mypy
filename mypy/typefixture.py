@@ -3,8 +3,10 @@
 It contains class TypeInfos and Type objects.
 """
 
+from typing import List
+
 from mypy.types import (
-    TypeVar, Any, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
+    TypeVar, AnyType, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
     TypeVars, BasicTypes
 )
 from mypy.nodes import (
@@ -17,6 +19,7 @@ class TypeFixture:
 
     The members are initialized to contain various type-related values.
     """
+    
     def __init__(self):
         # Type variables
 
@@ -30,7 +33,7 @@ class TypeFixture:
 
         # Simple types
 
-        self.anyt = Any()
+        self.anyt = AnyType()
         self.void = Void()
         self.err = ErrorType()
         self.nonet = NoneTyp()
@@ -142,7 +145,7 @@ class TypeFixture:
         a1, ... an and return type r.
         """
         return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
-                        <str> [None] * (len(a) - 1), a[-1], False)
+                        [None] * (len(a) - 1), a[-1], False)
     
     def callable_type(self, *a):
         """callable_type(a1, ..., an, r) constructs a callable with
@@ -150,7 +153,7 @@ class TypeFixture:
         represents a type.
         """
         return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
-                        <str> [None] * (len(a) - 1), a[-1], True)
+                        [None] * (len(a) - 1), a[-1], True)
     
     def callable_default(self, min_args, *a):
         """callable_default(min_args, a1, ..., an, r) constructs a
@@ -160,7 +163,7 @@ class TypeFixture:
         n = len(a) - 1
         return Callable(a[:-1],
                         [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
-                        <str> [None]  * n,
+                        [None]  * n,
                         a[-1], False)
     
     def callable_var_arg(self, min_args, *a):
@@ -171,14 +174,14 @@ class TypeFixture:
         return Callable(a[:-1],
                         [ARG_POS] * min_args +
                         [ARG_OPT] * (n - 1 - min_args) +
-                        [ARG_STAR],
-                        <str> [None] * n,
+                        [ARG_STAR], [None] * n,
                         a[-1], False)
 
 
 class InterfaceTypeFixture(TypeFixture):
     """Extension of TypeFixture that contains additional generic
     interface types."""
+    
     def __init__(self):
         super().__init__()
         # GF[T]
@@ -196,17 +199,18 @@ class InterfaceTypeFixture(TypeFixture):
         self.m1 = Instance(self.m1i, []) # M1
 
 
-TypeInfo make_type_info(str name,
-                        bool is_abstract=False,
-                        TypeInfo[] mro=None,
-                        Instance[] bases=None,
-                        str[] typevars=None):
+def make_type_info(name: str,
+                   is_abstract: bool = False,
+                   mro: List[TypeInfo] = None,
+                   bases: List[Instance] = None,
+                   typevars: List[str] = None) -> TypeInfo:
     """Make a TypeInfo suitable for use in unit tests."""
+    
     type_def = TypeDef(name, Block([]), None, [])
     type_def.fullname = name
     
     if typevars:
-        TypeVarDef[] v = []
+        v = [] # type: List[TypeVarDef]
         id = 1
         for n in typevars:
             v.append(TypeVarDef(n, id))

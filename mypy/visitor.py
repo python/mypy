@@ -1,142 +1,152 @@
+"""Generic abstract syntax tree node visitor"""
+
+from typing import typevar, Generic
+
 import mypy.nodes
 
 
-class NodeVisitor<T>:
+T = typevar('T')
+
+
+class NodeVisitor(Generic[T]):
     """Empty base class for parse tree node visitors.
 
     The T type argument specifies the return type of the visit
     methods. As all methods defined here return None by default,
     subclasses do not always need to override all the methods.
+
+    TODO make the default return value explicit
     """
     
     # Top-level structures
     
-    T visit_mypy_file(self, mypy.nodes.MypyFile o):
+    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
         pass
     
-    T visit_import(self, mypy.nodes.Import o):
+    def visit_import(self, o: 'mypy.nodes.Import') -> T:
         pass
-    T visit_import_from(self, mypy.nodes.ImportFrom o):
+    def visit_import_from(self, o: 'mypy.nodes.ImportFrom') -> T:
         pass
-    T visit_import_all(self, mypy.nodes.ImportAll o):
+    def visit_import_all(self, o: 'mypy.nodes.ImportAll') -> T:
         pass
     
     # Definitions
     
-    T visit_func_def(self, mypy.nodes.FuncDef o):
+    def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> T:
         pass
-    T visit_overloaded_func_def(self, mypy.nodes.OverloadedFuncDef o):
+    def visit_overloaded_func_def(self,
+                                  o: 'mypy.nodes.OverloadedFuncDef') -> T:
         pass
-    T visit_type_def(self, mypy.nodes.TypeDef o):
+    def visit_type_def(self, o: 'mypy.nodes.TypeDef') -> T:
         pass
-    T visit_var_def(self, mypy.nodes.VarDef o):
+    def visit_var_def(self, o: 'mypy.nodes.VarDef') -> T:
         pass
-    T visit_global_decl(self, mypy.nodes.GlobalDecl o):
+    def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> T:
         pass
-    T visit_decorator(self, mypy.nodes.Decorator o):
+    def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
         pass
     
-    T visit_var(self, mypy.nodes.Var o):
+    def visit_var(self, o: 'mypy.nodes.Var') -> T:
         pass
     
     # Statements
     
-    T visit_block(self, mypy.nodes.Block o):
+    def visit_block(self, o: 'mypy.nodes.Block') -> T:
         pass
     
-    T visit_expression_stmt(self, mypy.nodes.ExpressionStmt o):
+    def visit_expression_stmt(self, o: 'mypy.nodes.ExpressionStmt') -> T:
         pass
-    T visit_assignment_stmt(self, mypy.nodes.AssignmentStmt o):
+    def visit_assignment_stmt(self, o: 'mypy.nodes.AssignmentStmt') -> T:
         pass
-    T visit_operator_assignment_stmt(self,
-                                     mypy.nodes.OperatorAssignmentStmt o):
+    def visit_operator_assignment_stmt(self,
+                                 o: 'mypy.nodes.OperatorAssignmentStmt') -> T:
         pass
-    T visit_while_stmt(self, mypy.nodes.WhileStmt o):
+    def visit_while_stmt(self, o: 'mypy.nodes.WhileStmt') -> T:
         pass
-    T visit_for_stmt(self, mypy.nodes.ForStmt o):
+    def visit_for_stmt(self, o: 'mypy.nodes.ForStmt') -> T:
         pass
-    T visit_return_stmt(self, mypy.nodes.ReturnStmt o):
+    def visit_return_stmt(self, o: 'mypy.nodes.ReturnStmt') -> T:
         pass
-    T visit_assert_stmt(self, mypy.nodes.AssertStmt o):
+    def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> T:
         pass
-    T visit_yield_stmt(self, mypy.nodes.YieldStmt o):
+    def visit_yield_stmt(self, o: 'mypy.nodes.YieldStmt') -> T:
         pass
-    T visit_del_stmt(self, mypy.nodes.DelStmt o):
+    def visit_del_stmt(self, o: 'mypy.nodes.DelStmt') -> T:
         pass
-    T visit_if_stmt(self, mypy.nodes.IfStmt o):
+    def visit_if_stmt(self, o: 'mypy.nodes.IfStmt') -> T:
         pass
-    T visit_break_stmt(self, mypy.nodes.BreakStmt o):
+    def visit_break_stmt(self, o: 'mypy.nodes.BreakStmt') -> T:
         pass
-    T visit_continue_stmt(self, mypy.nodes.ContinueStmt o):
+    def visit_continue_stmt(self, o: 'mypy.nodes.ContinueStmt') -> T:
         pass
-    T visit_pass_stmt(self, mypy.nodes.PassStmt o):
+    def visit_pass_stmt(self, o: 'mypy.nodes.PassStmt') -> T:
         pass
-    T visit_raise_stmt(self, mypy.nodes.RaiseStmt o):
+    def visit_raise_stmt(self, o: 'mypy.nodes.RaiseStmt') -> T:
         pass
-    T visit_try_stmt(self, mypy.nodes.TryStmt o):
+    def visit_try_stmt(self, o: 'mypy.nodes.TryStmt') -> T:
         pass
-    T visit_with_stmt(self, mypy.nodes.WithStmt o):
+    def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> T:
         pass
     
     # Expressions
     
-    T visit_int_expr(self, mypy.nodes.IntExpr o):
+    def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
         pass
-    T visit_str_expr(self, mypy.nodes.StrExpr o):
+    def visit_str_expr(self, o: 'mypy.nodes.StrExpr') -> T:
         pass
-    T visit_bytes_expr(self, mypy.nodes.BytesExpr o):
+    def visit_bytes_expr(self, o: 'mypy.nodes.BytesExpr') -> T:
         pass
-    T visit_float_expr(self, mypy.nodes.FloatExpr o):
+    def visit_float_expr(self, o: 'mypy.nodes.FloatExpr') -> T:
         pass
-    T visit_paren_expr(self, mypy.nodes.ParenExpr o):
+    def visit_paren_expr(self, o: 'mypy.nodes.ParenExpr') -> T:
         pass
-    T visit_name_expr(self, mypy.nodes.NameExpr o):
+    def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> T:
         pass
-    T visit_member_expr(self, mypy.nodes.MemberExpr o):
+    def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> T:
         pass
-    T visit_call_expr(self, mypy.nodes.CallExpr o):
+    def visit_call_expr(self, o: 'mypy.nodes.CallExpr') -> T:
         pass
-    T visit_op_expr(self, mypy.nodes.OpExpr o):
+    def visit_op_expr(self, o: 'mypy.nodes.OpExpr') -> T:
         pass
-    T visit_cast_expr(self, mypy.nodes.CastExpr o):
+    def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> T:
         pass
-    T visit_super_expr(self, mypy.nodes.SuperExpr o):
+    def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:
         pass
-    T visit_unary_expr(self, mypy.nodes.UnaryExpr o):
+    def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> T:
         pass
-    T visit_list_expr(self, mypy.nodes.ListExpr o):
+    def visit_list_expr(self, o: 'mypy.nodes.ListExpr') -> T:
         pass
-    T visit_dict_expr(self, mypy.nodes.DictExpr o):
+    def visit_dict_expr(self, o: 'mypy.nodes.DictExpr') -> T:
         pass
-    T visit_tuple_expr(self, mypy.nodes.TupleExpr o):
+    def visit_tuple_expr(self, o: 'mypy.nodes.TupleExpr') -> T:
         pass
-    T visit_set_expr(self, mypy.nodes.SetExpr o):
+    def visit_set_expr(self, o: 'mypy.nodes.SetExpr') -> T:
         pass
-    T visit_index_expr(self, mypy.nodes.IndexExpr o):
+    def visit_index_expr(self, o: 'mypy.nodes.IndexExpr') -> T:
         pass
-    T visit_undefined_expr(self, mypy.nodes.UndefinedExpr o):
+    def visit_undefined_expr(self, o: 'mypy.nodes.UndefinedExpr') -> T:
         pass
-    T visit_type_application(self, mypy.nodes.TypeApplication o):
+    def visit_type_application(self, o: 'mypy.nodes.TypeApplication') -> T:
         pass
-    T visit_func_expr(self, mypy.nodes.FuncExpr o):
+    def visit_func_expr(self, o: 'mypy.nodes.FuncExpr') -> T:
         pass
-    T visit_list_comprehension(self, mypy.nodes.ListComprehension o):
+    def visit_list_comprehension(self, o: 'mypy.nodes.ListComprehension') -> T:
         pass
-    T visit_generator_expr(self, mypy.nodes.GeneratorExpr o):
+    def visit_generator_expr(self, o: 'mypy.nodes.GeneratorExpr') -> T:
         pass
-    T visit_slice_expr(self, mypy.nodes.SliceExpr o):
+    def visit_slice_expr(self, o: 'mypy.nodes.SliceExpr') -> T:
         pass
-    T visit_conditional_expr(self, mypy.nodes.ConditionalExpr o):
+    def visit_conditional_expr(self, o: 'mypy.nodes.ConditionalExpr') -> T:
         pass
-    T visit_type_var_expr(self, mypy.nodes.TypeVarExpr o):
-        pass
-    
-    T visit_coerce_expr(self, mypy.nodes.CoerceExpr o):
-        pass
-    T visit_type_expr(self, mypy.nodes.TypeExpr o):
-        pass
-    T visit_java_cast(self, mypy.nodes.JavaCast o):
+    def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
         pass
     
-    T visit_temp_node(self, mypy.nodes.TempNode o):
+    def visit_coerce_expr(self, o: 'mypy.nodes.CoerceExpr') -> T:
+        pass
+    def visit_type_expr(self, o: 'mypy.nodes.TypeExpr') -> T:
+        pass
+    def visit_java_cast(self, o: 'mypy.nodes.JavaCast') -> T:
+        pass
+    
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
         pass

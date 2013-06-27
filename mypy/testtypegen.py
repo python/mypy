@@ -3,6 +3,8 @@
 import os.path
 import re
 
+import typing
+
 from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy import testconfig
@@ -91,6 +93,7 @@ class VariableDefinitionNodeSearcher(TraverserVisitor):
 
 def ignore_node(node):
     """Return True if node is to be omitted from test case output."""
+    
     # We want to get rid of object() expressions in the typing module stub
     # and also typevar(...) expressions. Since detecting whether a node comes
     # from the typing module is not easy, we just to strip them all away.

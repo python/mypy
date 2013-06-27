@@ -3,16 +3,18 @@ import re
 import time
 import traceback
 
+from typing import List, Tuple, Any, Function, overload, Undefined
+
 
 # TODO remove global state
 is_verbose = False
 is_quiet = False
-patterns = <str> []
-times = <tuple<float, str>> []
+patterns = List[str]()
+times = List[Tuple[float, str]]()
 
 
 class AssertionFailure(Exception):
-    void __init__(self, str s=None):
+    def __init__(self, s: str = None) -> None:
         if s:
             super().__init__(s)
         else:
@@ -22,23 +24,23 @@ class AssertionFailure(Exception):
 class SkipTestCaseException(Exception): pass
 
 
-void assert_true(bool b, str msg=None):
+def assert_true(b: bool, msg: str = None) -> None:
     """Exception used to signal skipped test cases."""
     if not b:
         raise AssertionFailure(msg)
 
 
-void assert_equal(object a, object b, str fmt='{} != {}'):
+def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
 
 
-void assert_not_equal(object a, object b, str fmt='{} == {}'):
+def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
     if a == b:
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
 
 
-void assert_raises(type typ, any *rest):
+def assert_raises(typ: type, *rest: Any) -> None:
     """Usage: assert_raises(exception class[, message], function[, args])
     
     Call function with the given arguments and expect an exception of the given
@@ -47,12 +49,12 @@ void assert_raises(type typ, any *rest):
     TODO use overloads for better type checking
     """
     # Parse arguments.
-    str msg = None
+    msg = None # type: str
     if isinstance(rest[0], str) or rest[0] is None:
         msg = rest[0]
         rest = rest[1:]
     f = rest[0]
-    args = <any> []
+    args = [] # type: List[Any]
     if len(rest) > 1:
         args = rest[1]
         assert len(rest) <= 2
@@ -68,49 +70,50 @@ void assert_raises(type typ, any *rest):
         raise AssertionFailure('No exception raised')
 
 
-void assert_type(type typ, object value):
+def assert_type(typ: type, value: object) -> None:
     if type(value) != typ:
         raise AssertionFailure('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))
 
 
-void fail():
+def fail() -> None:
     raise AssertionFailure()
 
 
 class TestCase:
-    void __init__(self, str name, Suite suite=None, func<void()> func=None):
+    def __init__(self, name: str, suite: 'Suite' = None,
+                 func: Function[[], None] = None) -> None:
         self.func = func
         self.name = name
         self.suite = suite
     
-    void run(self):
+    def run(self) -> None:
         if self.func:
             self.func()
     
-    void set_up(self):
+    def set_up(self) -> None:
         if self.suite:
             self.suite.set_up()
     
-    void tear_down(self):
+    def tear_down(self) -> None:
         if self.suite:
             self.suite.tear_down()
 
 
 class Suite:
-    void __init__(self):
+    def __init__(self) -> None:
         self.prefix = typename(type(self)) + '.'
         # Each test case is either a TestCase object or (str, function).
-        self._test_cases = <any> []
+        self._test_cases = [] # type: List[Any]
         self.init()
     
-    void set_up(self):
+    def set_up(self) -> None:
         pass
     
-    void tear_down(self):
+    def tear_down(self) -> None:
         pass
     
-    void init(self):
+    def init(self) -> None:
         for m in dir(self):
             if m.startswith('test'):
                 t = getattr(self, m)
@@ -119,20 +122,22 @@ class Suite:
                 else:
                     self.add_test(TestCase(m, self, getattr(self, m)))
     
-    void add_test(self, TestCase test):
+    @overload
+    def add_test(self, test: TestCase) -> None:
         self._test_cases.append(test)
     
-    void add_test(self, tuple<str, func<void()>> test):
+    @overload
+    def add_test(self, test: Tuple[str, Function[[], None]]) -> None:
         self._test_cases.append(test)
     
-    any[] cases(self):
+    def cases(self) -> List[Any]:
         return self._test_cases[:]
     
-    void skip(self):
+    def skip(self) -> None:
         raise SkipTestCaseException()
 
 
-void run_test(Suite t, str[] args=None):
+def run_test(t: Suite, args: List[str] = None) -> None:
     global patterns, is_verbose, is_quiet
     if not args:
         args = []
@@ -171,8 +176,8 @@ void run_test(Suite t, str[] args=None):
         sys.stderr.write('*** FAILURE ***\n')
 
 
-tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
-                                        int num_skip, str prefix, int depth):
+def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
+                       prefix: str, depth: int) -> Tuple[int, int, int]:
     """The first argument may be TestCase, Suite or (str, Suite)."""
     if isinstance(test, TestCase):
         name = prefix + test.name
@@ -188,8 +193,8 @@ tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
             if is_skip: num_skip += 1
             num_total += 1
     else:
-        Suite suite
-        str suite_prefix
+        suite = Undefined # type: Suite
+        suite_prefix = ''
         if isinstance(test, list) or isinstance(test, tuple):
             suite = test[1]
             suite_prefix = test[0]
@@ -206,7 +211,7 @@ tuple<int, int, int> run_test_recursive(any test, int num_total, int num_fail,
     return num_total, num_fail, num_skip
 
 
-tuple<bool, bool> run_single_test(str name, any test):
+def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
     if is_verbose:
         sys.stderr.write(name)
         sys.stderr.flush()
@@ -236,11 +241,11 @@ tuple<bool, bool> run_single_test(str name, any test):
     return False, False
 
 
-void handle_failure(name, exc_type, exc_value, exc_traceback):
+def handle_failure(name, exc_type, exc_value, exc_traceback) -> None:
     # Report failed test case.
     if is_verbose:
         sys.stderr.write('\n\n')
-    str msg
+    msg = ''
     if exc_value.args and exc_value.args[0]:
         msg = ': ' + str(exc_value)
     else:
@@ -255,14 +260,14 @@ void handle_failure(name, exc_type, exc_value, exc_traceback):
     sys.stderr.write('{} failed\n\n'.format(name))
 
 
-str typename(type t):
+def typename(t: type) -> str:
     if '.' in str(t):
         return str(t).split('.')[-1].rstrip("'>")
     else:
         return str(t)[8:-2]
 
 
-bool match_pattern(str s, str p):
+def match_pattern(s: str, p: str) -> bool:
     if len(p) == 0:
         return len(s) == 0
     elif p[0] == '*':
@@ -279,7 +284,7 @@ bool match_pattern(str s, str p):
         return s[0] == p[0] and match_pattern(s[1:], p[1:])
 
 
-str[] clean_traceback(str[] tb):
+def clean_traceback(tb: List[str]) -> List[str]:
     # Remove clutter from the traceback.
     start = 0
     for i, s in enumerate(tb):
