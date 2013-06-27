@@ -20,6 +20,7 @@ def __InitTypeMap()
 end
 
 [case testNonGenericClass]
+import typing
 class A: pass
 [out]
 def __InitSlotMap()
@@ -50,7 +51,9 @@ def __AValueToTypeB(v)
 end
 
 [case testSimpleGenericClass]
-class A<T>: pass
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]): pass
 [out]
 def __InitSlotMap()
   __SlotMap = std::Map(
@@ -84,8 +87,11 @@ def __AValueToTypeB(v)
 end
 
 [case testGenericInheritance]
-class A<T>: pass
-class B<T, S>(A<A<S>>): pass
+from typing import typevar, Generic
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T]): pass
+class B(A[A[S]], Generic[T, S]): pass
 [out]
 ...
     (B, B) : __BTypeToBSlots,
