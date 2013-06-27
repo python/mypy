@@ -44,7 +44,7 @@ For other Linux flavors, OS X and Windows, packages are available at
   http://www.python.org/getit/
 
 
-Quick Start
+Quick start
 -----------
 
 If you have git, first clone the mypy git repository:
@@ -61,9 +61,19 @@ Run the supplied setup.py script to install mypy:
     $ python3 setup.py install
 
 Replace 'python3' with your Python 3 interpreter.  You may have to do
-the above as root. In Ubuntu and OS X:
+the above as root. For example, in Ubuntu and Mac OS X:
 
     $ sudo python3 setup.py install
+
+This installs the 'mypy' script and dependencies to system-dependent
+locations.  Sometimes the script directory will not be in PATH,
+and you may have to add the target directory to PATH manually or
+create a symbolic link to the script.  In particular, on Mac OS X, the
+script may be installed under /Library:
+
+    /Library/Frameworks/Python.framework/Versions/<version>/bin
+
+Using virtualenv may simplify the installation.
 
 Now you can type check and run programs:
 
