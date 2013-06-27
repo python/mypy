@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Mypy type checker, compiler and runner.
+"""Mypy type checker, runner and prototype compiler.
 
-Type check and program, compile it to Python or C and run it. Note that you
-must use a translated mypy translator to run this program.
+Type check and program and run it using a Python interpreter, or
+compile it to C and run it.
 
-Note that the C back end is early in development and has a very limited feature
-set.
+Note that the C back end is early in development and has a very
+limited feature set.
 """
 
 import os
