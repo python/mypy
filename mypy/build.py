@@ -100,7 +100,7 @@ def build(program_path: str,
           module: str = None,
           program_text: str = None,
           alt_lib_path: str = None,
-          mypy_base_dir: str = None,
+          bin_dir: str = None,
           output_dir: str = None,
           flags: List[str] = None) -> BuildResult:
     """Build a mypy program.
@@ -128,17 +128,10 @@ def build(program_path: str,
     flags = flags or []
     module = module or '__main__'
 
-    if not mypy_base_dir:
-        # Determine location of the mypy installation.
-        mypy_base_dir = dirname(sys.argv[0])
-        if basename(mypy_base_dir) == '__mycache__':
-            # If we have been translated to Python, the Python code is in the
-            # __mycache__ subdirectory of the actual directory. Strip off
-            # __mycache__.
-            mypy_base_dir = dirname(mypy_base_dir)
-            
+    data_dir = default_data_dir(bin_dir)
+    
     # Determine the default module search path.
-    lib_path = default_lib_path(mypy_base_dir, target)
+    lib_path = default_lib_path(data_dir, target)
     
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -161,7 +154,7 @@ def build(program_path: str,
     # build in the correct order.
     #
     # Ignore current directory prefix in error messages.
-    manager = BuildManager(mypy_base_dir, lib_path, target, output_dir, flags,
+    manager = BuildManager(data_dir, lib_path, target, output_dir, flags,
                            ignore_prefix=os.getcwd())
 
     program_path = program_path or lookup_program(module, lib_path)
@@ -177,7 +170,22 @@ def build(program_path: str,
     return manager.process(UnprocessedFile(info, program_text))
 
 
-def default_lib_path(mypy_base_dir: str, target: int) -> List[str]:
+def default_data_dir(bin_dir: str) -> str:
+    if not bin_dir:
+        # Default to current directory.
+        return ''
+    if os.path.basename(bin_dir) == 'scripts':
+        # Assume that we have a repo check out or unpacked source tarball.
+        return os.path.dirname(bin_dir)
+    elif os.path.basename(bin_dir) == 'bin':
+        # Installed to somewhere (can be under /usr/local or anywhere).
+        return os.path.join(os.path.dirname(bin_dir), 'lib', 'mypy')
+    else:
+        # Don't know where to find the data files!
+        raise RuntimeError("Broken installation: can't determine base dir")
+
+
+def default_lib_path(data_dir: str, target: int) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = List[str]()
@@ -189,12 +197,12 @@ def default_lib_path(mypy_base_dir: str, target: int) -> List[str]:
 
     if target in [ICODE, C]:
         # Add C back end library directory.
-        path.append(os.path.join(mypy_base_dir, 'lib'))
+        path.append(os.path.join(data_dir, 'lib'))
     else:
         # Add library stubs directory. By convention, they are stored in the
         # stubs directory of the mypy implementation.
-        path.append(os.path.join(mypy_base_dir, 'stubs'))
-        path.append(os.path.join(mypy_base_dir, 'stubs-auto'))
+        path.append(os.path.join(data_dir, 'stubs'))
+        path.append(os.path.join(data_dir, 'stubs-auto'))
     
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -231,7 +239,7 @@ class BuildManager:
     build steps.
 
     Attributes:
-      mypy_base_dir:   Mypy installation directory (contains driver.py)
+      data_dir:        Mypy data directory (contains stubs)
       target:          Build target; selects which passes to perform
       lib_path:        Library path for looking up modules
       semantic_analyzer:
@@ -259,13 +267,13 @@ class BuildManager:
          external objects.  This module should not directly depend on them.
     """
     
-    def __init__(self, mypy_base_dir: str,
+    def __init__(self, data_dir: str,
                  lib_path: List[str],
                  target: int,
                  output_dir: str,
                  flags: List[str],
                  ignore_prefix: str) -> None:
-        self.mypy_base_dir = mypy_base_dir
+        self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = lib_path
@@ -510,8 +518,8 @@ class BuildManager:
 
         if COMPILE_ONLY not in self.flags:
             # Generate binary file.
-            base_dir = self.mypy_base_dir
-            vm_dir = os.path.join(base_dir, 'vm')
+            data_dir = self.data_dir
+            vm_dir = os.path.join(data_dir, 'vm')
             cc = os.getenv('CC', 'gcc')
             cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
             cmdline = [cc] + cflags +['-I%s' % vm_dir,

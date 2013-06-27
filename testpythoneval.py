@@ -51,10 +51,11 @@ def test_python_evaluation(testcase):
     # Set up module path.
     typing_path = os.path.join(os.getcwd(), 'lib-typing')
     assert os.path.isdir(typing_path)
-    os.environ['PYTHONPATH'] = typing_path
+    os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
+    os.environ['MYPYPATH'] = '.'
     # Run the program.
     outb = subprocess.check_output([python_path,
-                                    'driver.py',
+                                    os.path.join('scripts', 'mypy'),
                                     program])
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]

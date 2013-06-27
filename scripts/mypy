@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Mypy compiler and runner.
+"""Mypy type checker, compiler and runner.
 
 Type check and program, compile it to Python or C and run it. Note that you
 must use a translated mypy translator to run this program.
@@ -26,6 +26,10 @@ build_flags = [] # type: List[str]
 interpreter = 'python'
 
 
+# The stubs directory is found relative to the bin/scripts directory.
+bin_dir = os.path.dirname(__file__)
+
+
 def main() -> None:
     path, module, args = process_options(sys.argv[1:])
     try:
@@ -45,6 +49,7 @@ def type_check_only(path: str, module: str, args: List[str]) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
+                bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
                 flags=build_flags)
 
@@ -63,7 +68,8 @@ def compile_to_c(path: str, module: str, args: List[str]) -> None:
     assert not args   # Not supported yet
     
     # Compile the program to C (also generate binary by default).
-    result = build.build(path, target=build.C, flags=build_flags)
+    result = build.build(path, target=build.C, bin_dir=bin_dir,
+                         flags=build_flags)
 
     if build.COMPILE_ONLY not in build_flags:
         # Run the compiled program.
