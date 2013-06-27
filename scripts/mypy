@@ -119,7 +119,7 @@ def usage(msg: str = None) -> None:
 Options:
   -c          compile to native code (EXPERIMENTAL)
   -m mod      run module as a script (terminates option list)
-  -S          compile only to C; do not generate a binary or run the program
+  -S          do not run the program or generate a binary
   --verbose   more verbose messages
   
 Environment variables:
