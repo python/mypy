@@ -174,12 +174,18 @@ def default_data_dir(bin_dir: str) -> str:
     if not bin_dir:
         # Default to current directory.
         return ''
-    if os.path.basename(bin_dir) == 'scripts':
+    base = os.path.basename(bin_dir)
+    dir = os.path.dirname(bin_dir)
+    if (sys.platform == 'win32' and base.lower() == 'scripts'
+            and not os.path.isdir(os.path.join(dir, 'stubs'))):
+        # Installed, on Windows.
+        return os.path.join(dir, 'Lib', 'mypy')
+    elif base == 'scripts':
         # Assume that we have a repo check out or unpacked source tarball.
         return os.path.dirname(bin_dir)
-    elif os.path.basename(bin_dir) == 'bin':
+    elif base == 'bin':
         # Installed to somewhere (can be under /usr/local or anywhere).
-        return os.path.join(os.path.dirname(bin_dir), 'lib', 'mypy')
+        return os.path.join(dir, 'lib', 'mypy')
     else:
         # Don't know where to find the data files!
         raise RuntimeError("Broken installation: can't determine base dir")
