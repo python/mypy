@@ -1,8 +1,8 @@
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 
 class type:
-    def __init__(self, x): pass
+    def __init__(self, x) -> None: pass
 
 # These aren't really required, but provided here for convenience.
 class int: pass

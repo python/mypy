@@ -6,6 +6,8 @@ functions from this module themselves.
 import os
 import stat
 
+from typing import overload as overload_, Any, List
+
 __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
            'getsize', 'isdir', 'isfile']
 
@@ -19,11 +21,13 @@ def _exists(path):
         return False
     return True
 
-bool exists(str path):
+@overload_
+def exists(path: str) -> bool:
     """Test whether a path exists.  Returns False for broken symbolic links"""
     return _exists(path)
 
-bool exists(bytes path):
+@overload_
+def exists(path: bytes) -> bool:
     return _exists(path)
 
 
@@ -37,11 +41,13 @@ def _isfile(path):
         return False
     return stat.S_ISREG(st.st_mode)
 
-bool isfile(str path):
+@overload_
+def isfile(path: str) -> bool:
     """Test whether a path is a regular file"""
     return _isfile(path)
 
-bool isfile(bytes path):
+@overload_
+def isfile(path: bytes) -> bool:
     return _isfile(path)
 
 
@@ -55,43 +61,53 @@ def _isdir(s):
         return False
     return stat.S_ISDIR(st.st_mode)
 
-bool isdir(str s):
+@overload_
+def isdir(s: str) -> bool:
     """Return true if the pathname refers to an existing directory."""
     return _isdir(s)
 
-bool isdir(bytes s):
+@overload_
+def isdir(s: bytes) -> bool:
     return _isdir(s)
 
 
-int getsize(str filename):
+@overload_
+def getsize(filename: str) -> int:
     """Return the size of a file, reported by os.stat()."""
     return os.stat(filename).st_size
 
-int getsize(bytes filename):
+@overload_
+def getsize(filename: bytes) -> int:
     return os.stat(filename).st_size
 
 
-any getmtime(str filename):
+@overload_
+def getmtime(filename: str) -> Any:
     """Return the last modification time of a file, reported by os.stat()."""
     return os.stat(filename).st_mtime
 
-any getmtime(bytes filename):
+@overload_
+def getmtime(filename: bytes) -> Any:
     return os.stat(filename).st_mtime
 
 
-any getatime(str filename):
+@overload_
+def getatime(filename: str) -> Any:
     """Return the last access time of a file, reported by os.stat()."""
     return os.stat(filename).st_atime
 
-any getatime(bytes filename):
+@overload_
+def getatime(filename: bytes) -> Any:
     return os.stat(filename).st_atime
 
 
-any getctime(str filename):
+@overload_
+def getctime(filename: str) -> Any:
     """Return the metadata change time of a file, reported by os.stat()."""
     return os.stat(filename).st_ctime
 
-any getctime(bytes filename):
+@overload_
+def getctime(filename: bytes) -> Any:
     return os.stat(filename).st_ctime
 
 
@@ -105,11 +121,13 @@ def _commonprefix(m):
             return s1[:i]
     return s1
 
-str commonprefix(str[] m):
+@overload_
+def commonprefix(m: List[str]) -> str:
     "Given a list of pathnames, returns the longest common leading component"
     return _commonprefix(m)
 
-bytes commonprefix(bytes[] m):
+@overload_
+def commonprefix(m: List[bytes]) -> bytes:
     return _commonprefix(m)
 
 

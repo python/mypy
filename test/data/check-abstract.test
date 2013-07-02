@@ -1,0 +1,457 @@
+-- Type checker test cases for abstract classes.
+
+
+-- Subtyping with abstract classes
+-- -------------------------------
+
+
+[case testAbstractClassSubclasses]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i = Undefined # type: I
+j = Undefined # type: J
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
+
+j = c  # E: Incompatible types in assignment
+a = i  # E: Incompatible types in assignment
+a = j  # E: Incompatible types in assignment
+b = i  # E: Incompatible types in assignment
+
+i = a
+i = b
+i = c
+j = a
+j = b
+a = b
+
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+class J(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self): pass
+class A(I, J): pass
+class B(A): pass
+class C(I): pass
+
+[case testAbstractClassSubtypingViaExtension]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i = Undefined # type: I
+j = Undefined # type: J
+a = Undefined # type: A
+o = Undefined # type: object
+
+j = i # E: Incompatible types in assignment
+a = i # E: Incompatible types in assignment
+a = j # E: Incompatible types in assignment
+i = o # E: Incompatible types in assignment
+j = o # E: Incompatible types in assignment
+
+i = a
+j = a
+i = j
+o = i
+o = j
+
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+class J(I): pass
+class A(J): pass
+
+[case testInheritingAbstractClassInSubclass]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+i = Undefined # type: I
+a = Undefined # type: A
+b = Undefined # type: B
+
+i = a # E: Incompatible types in assignment
+b = a # E: Incompatible types in assignment
+
+a = b
+i = b
+
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+class A: pass
+class B(A, I): pass
+
+
+-- Abstract class objects
+-- ----------------------
+
+
+[case testAbstractClassAsTypeObject]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+o = Undefined # type: object
+t = Undefined # type: type
+
+o = I
+t = I
+
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+
+[case testAbstractClassInCasts]
+from typing import Undefined, cast
+from abc import abstractmethod, ABCMeta
+
+class I(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+class A(I): pass
+class B: pass
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
+o = Undefined # type: object
+
+a = cast(I, o) # E: Incompatible types in assignment
+b = cast(B, i) # Ok; a subclass of B might inherit I
+i = cast(I, b) # Ok; a subclass of B might inherit I
+
+i = cast(I, o)
+i = cast(I, a)
+
+[case testInstantiatingClassThatImplementsAbstractMethod]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+class B(A):
+  def f(self): pass
+B()
+[out]
+
+[case testInstantiatingAbstractClass]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta): pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+A() # OK
+B() # E: Cannot instantiate abstract class 'B' with abstract method 'f'
+[out]
+
+[case testInstantiatingClassWithInheritedAbstractMethod]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self): pass
+  @abstractmethod
+  def g(self): pass
+class B(A): pass
+B()# E: Cannot instantiate abstract class 'B' with abstract methods 'f' and 'g'
+[out]
+
+
+-- Implementing abstract methods
+-- -----------------------------
+
+
+[case testImplementingAbstractMethod]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: int) -> int: pass
+    @abstractmethod
+    def g(self, x: int) -> int: pass
+class B(A):
+    def f(self, x: str) -> int: \
+            # E: Argument 1 of "f" incompatible with supertype "A"
+        pass
+    def g(self, x: int) -> int: pass
+[out]
+main: In class "B":
+
+[case testImplementingAbstractMethodWithMultipleBaseClasses]
+from abc import abstractmethod, ABCMeta
+import typing
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: int) -> int: pass
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def g(self, x: str) -> str: pass
+class A(I, J):
+    def f(self, x: str) -> int: pass \
+        # E: Argument 1 of "f" incompatible with supertype "I"
+    def g(self, x: str) -> int: pass \
+        # E: Return type of "g" incompatible with supertype "J"
+    def h(self) -> int: pass # Not related to any base class
+[out]
+main: In class "A":
+
+[case testImplementingAbstractMethodWithExtension]
+from abc import abstractmethod, ABCMeta
+import typing
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: int) -> int: pass
+class I(J): pass
+class A(I):
+    def f(self, x: str) -> int: pass \
+        # E: Argument 1 of "f" incompatible with supertype "J"
+[out]
+main: In class "A":
+
+[case testInvalidOverridingAbstractMethod]
+from abc import abstractmethod, ABCMeta
+import typing
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: 'J') -> None: pass
+class I(J):
+    @abstractmethod
+    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" incompatible with supertype "J"
+[out]
+main: In class "I":
+
+[case testAbstractClassCoAndContraVariance]
+from abc import abstractmethod, ABCMeta
+import typing
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: A) -> 'I': pass
+    @abstractmethod
+    def g(self, a: A) -> 'I': pass
+    @abstractmethod
+    def h(self, a: 'I') -> A: pass
+class A(I):
+    def h(self, a: 'A') -> 'I': # Fail
+        pass
+    def f(self, a: 'I') -> 'I': # Fail
+        pass
+    def g(self, a: 'A') -> 'A':
+        pass
+[out]
+main: In class "A":
+main, line 11: Argument 1 of "h" incompatible with supertype "I"
+main, line 11: Return type of "h" incompatible with supertype "I"
+main, line 13: Argument 1 of "f" incompatible with supertype "I"
+
+
+-- Accessing abstract members
+-- --------------------------
+
+
+[case testAccessingAbstractMethod]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: int) -> str: pass
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
+
+a = i.f(a) # E: Incompatible types in assignment
+b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"
+i.g()      # E: "I" has no attribute "g"
+
+b = i.f(a)
+
+[case testAccessingInheritedAbstractMethod]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+class J(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, a: int) -> str: pass
+class I(J): pass
+
+i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
+
+a = i.f(1) # E: Incompatible types in assignment
+b = i.f(1)
+
+
+-- Any (dynamic) types
+-- -------------------
+
+
+[case testAbstractClassWithAllDynamicTypes]
+from abc import abstractmethod, ABCMeta
+import typing
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x): pass
+    @abstractmethod
+    def g(self, x): pass
+class A(I):
+    def f(self, x): pass
+    def g(self, x, y): pass \
+        # E: Signature of "g" incompatible with supertype "I"
+[out]
+main: In class "A":
+
+[case testAbstractClassWithImplementationUsingDynamicTypes]
+from abc import abstractmethod, ABCMeta
+import typing
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x: int) -> None: pass
+    @abstractmethod
+    def g(self, x: int) -> None: pass
+class A(I):
+    def f(self, x): pass
+    def g(self, x, y): pass \
+        # E: Signature of "g" incompatible with supertype "I"
+[out]
+main: In class "A":
+
+
+-- Special cases
+-- -------------
+
+
+[case testMultipleAbstractBases]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self) -> None: pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self) -> None: pass
+class C(A, B):
+  @abstractmethod
+  def h(self) -> None: pass
+
+[case testMemberAccessWithMultipleAbstractBaseClasses]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+class B(metaclass=ABCMeta):
+    @abstractmethod
+    def g(self) -> None: pass
+class C(A, B): pass
+x = Undefined # type: C
+x.f()
+x.g()
+x.f(x) # E: Too many arguments for "f" of "A"
+x.g(x) # E: Too many arguments for "g" of "B"
+
+[case testInstantiatingAbstractClassWithMultipleBaseClasses]
+from typing import Undefined
+from abc import abstractmethod, ABCMeta
+
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self) -> None: pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def g(self) -> None: pass
+class C(A, B):
+  def f(self) -> None: pass
+class D(A, B):
+  def g(self) -> None: pass
+class E(A, B):
+  def f(self) -> None: pass
+  def g(self) -> None: pass
+C() # E: Cannot instantiate abstract class 'C' with abstract method 'g'
+D() # E: Cannot instantiate abstract class 'D' with abstract method 'f'
+E()
+
+[case testInconsistentMro]
+from abc import abstractmethod, ABCMeta
+import typing
+
+class A(metaclass=ABCMeta): pass
+class B(object, A): pass \
+      # E: Cannot determine consistent method resolution order (MRO) for "B"
+
+[case testOverloadedAbstractMethod]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @abstractmethod
+  @overload
+  def f(self, x: int) -> int: pass
+  @abstractmethod
+  @overload
+  def f(self, x: str) -> str: pass
+
+class B(A):
+  @overload
+  def f(self, x: int) -> int: pass
+  @overload
+  def f(self, x: str) -> str: pass
+A() # E: Cannot instantiate abstract class 'A' with abstract method 'f'
+B()
+B().f(1)
+a = B() # type: A
+a.f(1)
+a.f('')
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types
+
+[case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @overload
+  @abstractmethod
+  def f(self, x: int) -> int: pass
+  @overload
+  @abstractmethod
+  def f(self, x: str) -> str: pass
+
+class B(A):
+  @overload
+  def f(self, x: int) -> int: pass
+  @overload
+  def f(self, x: str) -> str: pass
+A() # E: Cannot instantiate abstract class 'A' with abstract method 'f'
+B()
+B().f(1)
+a = B() # type: A
+a.f(1)
+a.f('')
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types
+
+[case testOverloadedAbstractMethodVariantMissingDecorator1]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @abstractmethod \
+    # E: Overloaded method has both abstract and non-abstract variants
+  @overload
+  def f(self, x: int) -> int: pass
+  @overload
+  def f(self, x: str) -> str: pass
+[out]
+main: In class "A":
+
+[case testOverloadedAbstractMethodVariantMissingDecorator1]
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class A(metaclass=ABCMeta):
+  @overload \
+    # E: Overloaded method has both abstract and non-abstract variants
+  def f(self, x: int) -> int: pass
+  @abstractmethod
+  @overload
+  def f(self, x: str) -> str: pass
+[out]
+main: In class "A":

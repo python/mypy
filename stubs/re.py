@@ -5,130 +5,213 @@
 # based on: http://docs.python.org/3.2/library/re.html
 # and http://hg.python.org/cpython/file/618ea5612e83/Lib/re.py
 
+from typing import (
+    Undefined, List, Iterator, overload, Function, Tuple, Sequence, Dict
+)
+
 # ----- re variables and constants -----
-int A
-int ASCII
-int DEBUG
-int I
-int IGNORECASE
-int L
-int LOCALE
-int M
-int MULTILINE
-int S
-int DOTALL
-int X
-int VERBOSE
+A = 0
+ASCII = 0
+DEBUG = 0
+I = 0
+IGNORECASE = 0
+L = 0
+LOCALE = 0
+M = 0
+MULTILINE = 0
+S = 0
+DOTALL = 0
+X = 0
+VERBOSE = 0
 
 class error(Exception): pass
 
-# ----- re classes -----
-class Pattern:
-    int flags, groupindex, groups
-    str pattern
-
-    Match search(self, str string, int pos=0, int endpos=-1): pass
-    Match match(self, str string, int pos=0, int endpos=-1): pass
-    str[] split(self, str string, int maxsplit=0): pass
-    str[] findall(self, str string, int pos=0, int endpos=-1): pass
-    Iterator<Match> finditer(self, str string, int pos=0, int endpos=-1): pass
-    str sub(self, str repl, str string, int count=0): pass
-    str sub(self, func<str(Match)> repl, str string, int count=0): pass
-    tuple<str, int> subn(self, str repl, str string, int count=0): pass
-    tuple<str, int> subn(self, func<str(Match)> repl, str string,
-                         int count=0): pass
-
-class BytesPattern:
-    int flags, groupindex, groups
-    bytes pattern
-
-    BytesMatch search(self, bytes string, int pos=0, int endpos=-1): pass
-    BytesMatch match(self, bytes string, int pos=0, int endpos=-1): pass
-    bytes[] split(self, bytes string, int maxsplit=0): pass
-    bytes[] findall(self, bytes string, int pos=0, int endpos=-1): pass
-    Iterator<BytesMatch> finditer(self, bytes string, int pos=0,
-                                  int endpos=-1): pass
-    bytes sub(self, bytes repl, bytes string, int count=0): pass
-    bytes sub(self, func<bytes(BytesMatch)> repl, bytes string,
-              int count=0): pass
-    tuple<bytes, int> subn(self, bytes repl, bytes string, int count=0): pass
-    tuple<bytes, int> subn(self, func<bytes(BytesMatch)> repl, bytes string,
-                           int count=0): pass
-
 class Match:
-    int pos, int endpos, int lastindex
-    str lastgroup, str string
+    pos = 0
+    endpos = 0
+    lastindex = 0
+    lastgroup = ''
+    string = ''
     
     # The regular expression object whose match() or search() method produced
     # this match instance.
-    Pattern re
+    re = Undefined('Pattern')
     
-    str expand(self, str template): pass
-    str group(self, int group1=0): pass
-    str group(self, str group1): pass
-    Sequence<str> group(self, int group1, int group2, int *groups): pass
-    Sequence<str> group(self, str group1, str group2, str *groups): pass    
-    Sequence<str> groups(self, str default=None): pass
-    dict<str, str> groupdict(self, str default=None): pass
-    int start(self, int group=0): pass
-    int end(self, int group=0): pass
-    tuple<int, int> span(self, int group=0): pass
+    def expand(self, template: str) -> str: pass
+    
+    @overload
+    def group(self, group1: int = 0) -> str: pass
+    @overload
+    def group(self, group1: str) -> str: pass
+    @overload
+    def group(self, group1: int, group2: int,
+              *groups: int) -> Sequence[str]: pass
+    @overload
+    def group(self, group1: str, group2: str,
+              *groups: str) -> Sequence[str]: pass
+    
+    def groups(self, default: str = None) -> Sequence[str]: pass
+    def groupdict(self, default: str = None) -> Dict[str, str]: pass
+    def start(self, group: int = 0) -> int: pass
+    def end(self, group: int = 0) -> int: pass
+    def span(self, group: int = 0) -> Tuple[int, int]: pass
 
 class BytesMatch:
-    int pos, int endpos, int lastindex
-    bytes lastgroup, bytes string
+    pos = 0
+    endpos = 0
+    lastindex = 0
+    lastgroup = b''
+    string = b''
     
     # The regular expression object whose match() or search() method produced
     # this match instance.
-    BytesPattern re
+    re = Undefined('BytesPattern')
     
-    bytes expand(self, bytes template): pass
-    str group(self, int group1=0): pass
-    str group(self, str group1): pass
-    Sequence<bytes> group(self, int group1, int group2, int *groups): pass
-    Sequence<bytes> group(self, bytes group1, bytes group2,
-                          bytes *groups): pass    
-    Sequence<bytes> groups(self, bytes default=None): pass
-    dict<bytes, bytes> groupdict(self, bytes default=None): pass
-    int start(self, int group=0): pass
-    int end(self, int group=0): pass
-    tuple<int, int> span(self, int group=0): pass
+    def expand(self, template: bytes) -> bytes: pass
+    
+    @overload
+    def group(self, group1: int = 0) -> str: pass
+    @overload
+    def group(self, group1: str) -> str: pass
+    @overload
+    def group(self, group1: int, group2: int,
+              *groups: int) -> Sequence[bytes]: pass
+    @overload
+    def group(self, group1: bytes, group2: bytes,
+              *groups: bytes) -> Sequence[bytes]: pass
+    
+    def groups(self, default: bytes = None) -> Sequence[bytes]: pass
+    def groupdict(self, default: bytes = None) -> Dict[bytes, bytes]: pass
+    def start(self, group: int = 0) -> int: pass
+    def end(self, group: int = 0) -> int: pass
+    def span(self, group: int = 0) -> Tuple[int, int]: pass
 
-Pattern compile(str pattern, int flags=0): pass
-BytesPattern compile(bytes pattern, int flags=0): pass
-Match search(str pattern, str string, int flags=0): pass
-BytesMatch search(bytes pattern, bytes string, int flags=0): pass
-Match match(str pattern, str string, int flags=0): pass
-BytesMatch match(bytes pattern, bytes string, int flags=0): pass
-str[] split(str pattern, str string, int maxsplit=0, int flags=0): pass
-bytes[] split(bytes pattern, bytes string, int maxsplit=0, int flags=0): pass
-str[] findall(str pattern, str string, int flags=0): pass
-bytes[] findall(bytes pattern, bytes string, int flags=0): pass
+# ----- re classes -----
+class Pattern:
+    flags = 0
+    groupindex = 0
+    groups = 0
+    pattern = ''
+
+    def search(self, string: str, pos: int = 0,
+               endpos: int = -1) -> Match: pass
+    def match(self, string: str, pos: int = 0, endpos: int = -1) -> Match: pass
+    def split(self, string: str, maxsplit: int = 0) -> List[str]: pass
+    def findall(self, string: str, pos: int = 0,
+                endpos: int = -1) -> List[str]: pass
+    def finditer(self, string: str, pos: int = 0,
+                 endpos: int = -1) -> Iterator[Match]: pass
+    
+    @overload
+    def sub(self, repl: str, string: str, count: int = 0) -> str: pass
+    @overload
+    def sub(self, repl: Function[[Match], str], string: str,
+            count: int = 0) -> str: pass
+    
+    @overload
+    def subn(self, repl: str, string: str, count: int = 0) -> Tuple[str,
+                                                                    int]: pass
+    @overload
+    def subn(self, repl: Function[[Match], str], string: str,
+             count: int = 0) -> Tuple[str, int]: pass
+
+class BytesPattern:
+    flags = 0
+    groupindex = 0
+    groups = 0
+    pattern = b''
+
+    def search(self, string: bytes, pos: int = 0,
+               endpos: int = -1) -> BytesMatch: pass
+    def match(self, string: bytes, pos: int = 0,
+              endpos: int = -1) -> BytesMatch: pass
+    def split(self, string: bytes, maxsplit: int = 0) -> List[bytes]: pass
+    def findall(self, string: bytes, pos: int = 0,
+                endpos: int = -1) -> List[bytes]: pass
+    def finditer(self, string: bytes, pos: int = 0,
+                 endpos: int = -1) -> Iterator[BytesMatch]: pass
+    
+    @overload
+    def sub(self, repl: bytes, string: bytes, count: int = 0) -> bytes: pass
+    @overload
+    def sub(self, repl: Function[[BytesMatch], bytes], string: bytes,
+            count: int = 0) -> bytes: pass
+    
+    @overload
+    def subn(self, repl: bytes, string: bytes,
+             count: int = 0) -> Tuple[bytes, int]: pass
+    @overload
+    def subn(self, repl: Function[[BytesMatch], bytes], string: bytes,
+             count: int = 0) -> Tuple[bytes, int]: pass
+
+@overload
+def compile(pattern: str, flags: int = 0) -> Pattern: pass
+@overload
+def compile(pattern: bytes, flags: int = 0) -> BytesPattern: pass
+
+@overload
+def search(pattern: str, string: str, flags: int = 0) -> Match: pass
+@overload
+def search(pattern: bytes, string: bytes, flags: int = 0) -> BytesMatch: pass
+
+@overload
+def match(pattern: str, string: str, flags: int = 0) -> Match: pass
+@overload
+def match(pattern: bytes, string: bytes, flags: int = 0) -> BytesMatch: pass
+
+@overload
+def split(pattern: str, string: str, maxsplit: int = 0,
+          flags: int = 0) -> List[str]: pass
+@overload
+def split(pattern: bytes, string: bytes, maxsplit: int = 0,
+          flags: int = 0) -> List[bytes]: pass
+
+@overload
+def findall(pattern: str, string: str, flags: int = 0) -> List[str]: pass
+@overload
+def findall(pattern: bytes, string: bytes, flags: int = 0) -> List[bytes]: pass
 
 # Return an iterator yielding match objects over all non-overlapping matches 
 # for the RE pattern in string. The string is scanned left-to-right, and 
 # matches are returned in the order found. Empty matches are included in the 
 # result unless they touch the beginning of another match.
-Iterator<Match> finditer(str pattern, str string, int flags=0): pass
-Iterator<BytesMatch> finditer(bytes pattern, bytes string, int flags=0): pass
+@overload
+def finditer(pattern: str, string: str,
+             flags: int = 0) -> Iterator[Match]: pass
+@overload
+def finditer(pattern: bytes, string: bytes,
+             flags: int = 0) -> Iterator[BytesMatch]: pass
 
-str sub(str pattern, str repl, str string, int count=0, int flags=0): pass
-str sub(str pattern, func<str(Match)> repl, str string, int count=0,
-        int flags=0): pass
-bytes sub(bytes pattern, bytes repl, bytes string, int count=0,
-          int flags=0): pass
-bytes sub(bytes pattern, func<bytes(BytesMatch)> repl, bytes string,
-          int count=0, int flags=0): pass
+@overload
+def sub(pattern: str, repl: str, string: str, count: int = 0,
+        flags: int = 0) -> str: pass
+@overload
+def sub(pattern: str, repl: Function[[Match], str], string: str,
+        count: int = 0, flags: int = 0) -> str: pass
+@overload
+def sub(pattern: bytes, repl: bytes, string: bytes, count: int = 0,
+        flags: int = 0) -> bytes: pass
+@overload
+def sub(pattern: bytes, repl: Function[[BytesMatch], bytes], string: bytes,
+        count: int = 0, flags: int = 0) -> bytes: pass
 
-tuple<str, int> subn(str pattern, str repl, str string, int count=0, 
-                     int flags=0): pass
-tuple<str, int> subn(str pattern, func<str(Match)> repl, str string, 
-                     int count=0, int flags=0): pass
-tuple<bytes, int> subn(bytes pattern, bytes repl, bytes string, int count=0, 
-                       int flags=0): pass
-tuple<bytes, int> subn(bytes pattern, func<bytes(BytesMatch)> repl,
-                       bytes string, int count=0, int flags=0): pass
+@overload
+def subn(pattern: str, repl: str, string: str, count: int = 0,
+         flags: int = 0) -> Tuple[str, int]: pass
+@overload
+def subn(pattern: str, repl: Function[[Match], str], string: str, 
+         count: int = 0, flags: int = 0) -> Tuple[str, int]: pass
+@overload
+def subn(pattern: bytes, repl: bytes, string: bytes, count: int = 0, 
+         flags: int = 0) -> Tuple[bytes, int]: pass
+@overload
+def subn(pattern: bytes, repl: Function[[BytesMatch], bytes],
+         string: bytes, count: int = 0, flags: int = 0) -> Tuple[bytes,
+                                                                 int]: pass
 
-str escape(str string): pass
-bytes escape(bytes string): pass
-void purge(): pass
+@overload
+def escape(string: str) -> str: pass
+@overload
+def escape(string: bytes) -> bytes: pass
+
+def purge() -> None: pass

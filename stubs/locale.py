@@ -2,5 +2,9 @@
 
 # NOTE: These are incomplete!
 
-str setlocale(int category, str locale=None): pass
-str setlocale(int category, Iterable<str> locale): pass
+from typing import overload, Iterable
+
+@overload
+def setlocale(category: int, locale: str = None) -> str: pass
+@overload
+def setlocale(category: int, locale: Iterable[str]) -> str: pass

@@ -2,6 +2,7 @@
 
 [case testAccessImportedDefinitions]
 import m
+import typing
 m.f()           # E: Too few arguments for "f"
 m.f(object())   # E: Argument 1 to "f" has incompatible type "object"
 m.x = object()  # E: Incompatible types in assignment
@@ -9,27 +10,30 @@ m.f(m.A())
 m.x = m.A()
 [file m.py]
 class A: pass
-void f(A a): pass
-A x
+def f(a: A) -> None: pass
+x = A()
 
 [case testAccessImportedDefinitions]
 import m
+import typing
 m.f(object()) # E: Argument 1 to "f" has incompatible type "object"
 m.f(m.A())
 [file m.py]
 class A: pass
-void f(A a): pass
+def f(a: A) -> None: pass
 
 [case testAccessImportedDefinitions2]
 from m import f, A
+import typing
 f(object()) # E: Argument 1 to "f" has incompatible type "object"
 f(A())
 [file m.py]
 class A: pass
-void f(A a): pass
+def f(a: A) -> None: pass
 
 [case testImportedExceptionType]
 import m
+import typing
 try: 
     pass
 except m.Err:
@@ -43,6 +47,7 @@ class Bad: pass
 
 [case testImportedExceptionType2]
 from m import Err, Bad
+import typing
 try: 
     pass
 except Err:
@@ -55,6 +60,7 @@ class Bad: pass
 [builtins fixtures/exception.py]
 
 [case testImportWithinBlock]
+import typing
 if None:
     import m
     m.a = m.b   # E: Incompatible types in assignment
@@ -68,10 +74,11 @@ class A: pass
 class B: pass
 a = A()
 b = B()
-void f(): pass
+def f() -> None: pass
 
 [case testImportWithinFunction]
-void f():
+import typing
+def f() -> None:
     from m import a, b, f, A, B
     a = b   # E: Incompatible types in assignment
     a = a
@@ -84,13 +91,14 @@ class A: pass
 class B: pass
 a = A()
 b = B()
-void f(): pass
+def f() -> None: pass
 [out]
 main: In function "f":
 
 [case testImportWithinMethod]
+import typing
 class C:
-    void f(self):
+    def f(self) -> None:
         from m import *
         a = b   # E: Incompatible types in assignment
         a = a
@@ -103,41 +111,45 @@ class A: pass
 class B: pass
 a = A()
 b = B()
-void f(): pass
+def f() -> None: pass
 [out]
 main: In member "f" of class "C":
 
 [case testImportWithinClassBody]
+import typing
 class C:
     import m
     m.f()
     m.f(C) # E: Too many arguments for "f"
 [file m.py]
-void f(): pass
+def f() -> None: pass
 [out]
 main: In class "C":
 
 [case testImportWithinClassBody2]
+import typing
 class C:
     from m import f
     f()
     f(C) # E: Too many arguments for "f"
 [file m.py]
-void f(): pass
+def f() -> None: pass
 [out]
 main: In class "C":
 
 [case testInvalidOperationsOnModules]
 import m
+import typing
 class A: pass
 m()      # E: "module" not callable
-A a = m  # E: Incompatible types in assignment
+a = m # type: A  # E: Incompatible types in assignment
 m + None # E: Unsupported left operand type for + ("module")
 [file m.py]
 [builtins fixtures/module.py]
 
 [case testNameDefinedInDifferentModule]
 import m, n
+import typing
 m.x # E: "module" has no attribute "x"
 [file m.py]
 y = object()
@@ -147,7 +159,8 @@ x = object()
 
 [case testChainedAssignmentAndImports]
 import m
-int i, str s
+from typing import Undefined
+i, s = Undefined, Undefined # type: (int, str)
 i = m.x
 i = m.y
 s = m.x # E: Incompatible types in assignment
@@ -158,11 +171,12 @@ x = y = 1
 
 [case testConditionalFunctionDefinitionAndImports]
 import m
+import typing
 m.f(1)
 m.f('x') # E: Argument 1 to "f" has incompatible type "str"
 [file m.py]
-any x
+x = object()
 if x:
-    void f(int x): pass
+    def f(x: int) -> None: pass
 else:
-    void f(int x): pass
+    def f(x: int) -> None: pass

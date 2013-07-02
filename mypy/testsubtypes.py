@@ -1,4 +1,6 @@
-from mypy.myunit import Suite, assert_true
+import typing
+
+from mypy.myunit import Suite, assert_true, run_test
 from mypy.subtypes import is_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
@@ -145,3 +147,8 @@ class SubtypingSuite(Suite):
     def assert_unrelated(self, s, t):
         self.assert_not_subtype(s, t)
         self.assert_not_subtype(t, s)
+
+
+if __name__ == '__main__':
+    import sys
+    run_test(SubtypingSuite(), sys.argv[1:])

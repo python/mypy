@@ -2,4 +2,6 @@
 
 # NOTE: These are incomplete!
 
-str normalize(str form, str unistr): pass
+import typing
+
+def normalize(form: str, unistr: str) -> str: pass

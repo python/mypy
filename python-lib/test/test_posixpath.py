@@ -2,11 +2,18 @@ import unittest
 from test import support, test_genericpath
 
 import posixpath
+import genericpath
+
+import imp
+imp.reload(posixpath) # Make sure we are using the local copy
+imp.reload(genericpath)
+
 import os
 import sys
 from posixpath import realpath, abspath, dirname, basename
 
 import posix
+from typing import Any
 
 # An absolute path to a temporary filename for testing. We can't rely on TESTFN
 # being an absolute path, so we need this.
@@ -215,7 +222,7 @@ class PosixPathTest(unittest.TestCase):
         test_fn2 = support.TESTFN + "2"
         self._create_file(test_fn1)
         test_fns = (test_fn1, test_fn2)
-        os.symlink(*test_fns)
+        Any(os.symlink)(*test_fns)
         stats = map(os.stat, test_fns)
         self.assertTrue(posixpath.samestat(*stats))
         os.remove(test_fn2)
@@ -251,7 +258,6 @@ class PosixPathTest(unittest.TestCase):
 
     @unittest.skipIf(posix is None, "Test requires posix module")
     def test_ismount_different_device(self):
-        raise NotImplementedError() # cannot modify os.lstat currently
         # Simulate the path being on a different device from its parent by
         # mocking out st_dev.
         save_lstat = os.lstat
@@ -263,11 +269,10 @@ class PosixPathTest(unittest.TestCase):
                 st_ino = 1
             return posix.stat_result((0, st_ino, st_dev, 0, 0, 0, 0, 0, 0, 0))
         try:
-            #os.lstat = fake_lstat
+            setattr(os, 'lstat', fake_lstat) # mypy: can't modify os directly
             self.assertIs(posixpath.ismount(ABSTFN), True)
         finally:
-            pass
-            #os.lstat = save_lstat
+            os.lstat = save_lstat
 
     def test_expanduser(self):
         self.assertEqual(posixpath.expanduser("foo"), "foo")
@@ -445,8 +450,9 @@ class PosixPathTest(unittest.TestCase):
             safe_rmdir(ABSTFN)
 
     def test_relpath(self):
-        raise NotImplementedError() # cannot modify os.getcwd
-        #(real_getcwd, os.getcwd) = (os.getcwd, lambda: r"/home/user/bar")
+        real_getcwd = os.getcwd
+        # mypy: can't modify os directly
+        setattr(os, 'getcwd', lambda: r"/home/user/bar")
         try:
             curdir = os.path.split(os.getcwd())[-1]
             self.assertRaises(ValueError, posixpath.relpath, "")
@@ -469,12 +475,12 @@ class PosixPathTest(unittest.TestCase):
             self.assertEqual(posixpath.relpath("/a", "/a"), '.')
             self.assertEqual(posixpath.relpath("/a/b", "/a/b"), '.')
         finally:
-            pass
-            #os.getcwd = real_getcwd
+            setattr(os, 'getcwd', real_getcwd)
 
     def test_relpath_bytes(self):
-        raise NotImplementedError() # cannot modify os.getcwdb
-        #(real_getcwdb, os.getcwdb) = (os.getcwdb, lambda: br"/home/user/bar")
+        real_getcwdb = os.getcwdb
+        # mypy: can't modify os directly
+        setattr(os, 'getcwdb', lambda: br"/home/user/bar")
         try:
             curdir = os.path.split(os.getcwdb())[-1]
             self.assertRaises(ValueError, posixpath.relpath, b"")
@@ -501,8 +507,7 @@ class PosixPathTest(unittest.TestCase):
             self.assertRaises(TypeError, posixpath.relpath, b"bytes", "str")
             self.assertRaises(TypeError, posixpath.relpath, "str", b"bytes")
         finally:
-            pass
-            #os.getcwdb = real_getcwdb
+            setattr(os, 'getcwdb', real_getcwdb)
 
     def test_sameopenfile(self):
         fname = support.TESTFN + "1"

@@ -6,35 +6,45 @@
 # sometimes they only work partially (broken exception messages), and the test
 # cases don't use them.
 
-void copyfileobj(IO fsrc, IO fdst, int length=None): pass
-void copyfileobj(TextIO fsrc, TextIO fdst, int length=None): pass
-void copyfile(str src, str dst): pass
-void copymode(str src, str dst): pass
-void copystat(str src, str dst): pass
-void copy(str src, str dst): pass
-void copy2(str src, str dst): pass
-func<Iterable<str>(str, str[])> ignore_patterns(str *patterns): pass
-void copytree(str src, str dst, bool symlinks=False,
-              func<Iterable<str>(str, str[])> ignore=None,
-              func<void(str, str)> copy_function=copy2,
-              bool ignore_dangling_symlinks=False): pass
-void rmtree(str path, bool ignore_errors=False,
-            func<void(any, str, any)> onerror=None): pass
-void move(str src, str dst): pass
+from typing import (
+    overload, List, Iterable, Function, Any, Tuple, Sequence, IO, TextIO
+)
+
+@overload
+def copyfileobj(fsrc: IO, fdst: IO, length: int = None) -> None: pass
+@overload
+def copyfileobj(fsrc: TextIO, fdst: TextIO, length: int = None) -> None: pass
+
+def copyfile(src: str, dst: str) -> None: pass
+def copymode(src: str, dst: str) -> None: pass
+def copystat(src: str, dst: str) -> None: pass
+def copy(src: str, dst: str) -> None: pass
+def copy2(src: str, dst: str) -> None: pass
+def ignore_patterns( *patterns: str) -> Function[[str, List[str]],
+                                                 Iterable[str]]: pass
+def copytree(src: str, dst: str, symlinks: bool = False,
+             ignore: Function[[str, List[str]], Iterable[str]] = None,
+             copy_function: Function[[str, str], None] = copy2,
+             ignore_dangling_symlinks: bool = False) -> None: pass
+def rmtree(path: str, ignore_errors: bool = False,
+           onerror: Function[[Any, str, Any], None] = None) -> None: pass
+def move(src: str, dst: str) -> None: pass
 
 class Error(Exception): pass
 
-void make_archive(str base_name, str format, str root_dir=None,
-                  str base_dir=None, bool verbose=False, bool dry_run=False,
-                  str owner=None, str group=None, any logger=None): pass
-tuple<str, str>[] get_archive_formats(): pass
-void register_archive_format(str name, any function,
-                             Sequence<tuple<str, any>> extra_args=None,
-                             str description=None): pass
-void unregister_archive_format(str name): pass
-void unpack_archive(str filename, str extract_dir=None, str format=None): pass
-void register_unpack_format(str name, str[] extensions, any function,
-                            Sequence<tuple<str, any>> extra_args=None,
-                            str description=None): pass
-void unregister_unpack_format(str name): pass
-tuple<str, str[], str>[] get_unpack_formats(): pass
+def make_archive(base_name: str, format: str, root_dir: str = None,
+                 base_dir: str = None, verbose: bool = False,
+                 dry_run: bool = False, owner: str = None, group: str = None,
+                 logger: Any = None) -> None: pass
+def get_archive_formats() -> List[Tuple[str, str]]: pass
+def register_archive_format(name: str, function: Any,
+                            extra_args: Sequence[Tuple[str, Any]] = None,
+                            description: str = None) -> None: pass
+def unregister_archive_format(name: str) -> None: pass
+def unpack_archive(filename: str, extract_dir: str = None,
+                   format: str = None) -> None: pass
+def register_unpack_format(name: str, extensions: List[str], function: Any,
+                           extra_args: Sequence[Tuple[str, Any]] = None,
+                           description: str = None) -> None: pass
+def unregister_unpack_format(name: str) -> None: pass
+def get_unpack_formats() -> List[Tuple[str, List[str], str]]: pass

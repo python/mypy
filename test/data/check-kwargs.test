@@ -2,17 +2,20 @@
 
 
 [case testTypeErrorInKeywordArgument]
-void f(object o): pass
+import typing
+def f(o: object) -> None: pass
 f(o=None()) # E: None not callable
 
 [case testSimpleKeywordArgument]
-void f(A a): pass
+import typing
+def f(a: 'A') -> None: pass
 f(a=A())
 f(a=object()) # E: Argument 1 to "f" has incompatible type "object"
 class A: pass
 
 [case testTwoKeywordArgumentsNotInOrder]
-void f(A a, B b): pass
+import typing
+def f(a: 'A', b: 'B') -> None: pass
 f(b=A(), a=A()) # E: Argument 1 to "f" has incompatible type "A"
 f(b=B(), a=B()) # E: Argument 2 to "f" has incompatible type "B"
 f(a=A(), b=B())
@@ -21,7 +24,8 @@ class A: pass
 class B: pass
 
 [case testOneOfSeveralOptionalKeywordArguments]
-void f(A a=None, B b=None, C c=None): pass
+import typing
+def f(a: 'A' = None, b: 'B' = None, c: 'C' = None) -> None: pass
 f(a=A())
 f(b=B())
 f(c=C())
@@ -35,66 +39,76 @@ class B: pass
 class C: pass
 
 [case testBothPositionalAndKeywordArguments]
-void f(A a, B b): pass
+import typing
+def f(a: 'A', b: 'B') -> None: pass
 f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"
 f(A(), b=B())
 class A: pass
 class B: pass
 
 [case testContextSensitiveTypeInferenceForKeywordArg]
-void f(A a, A[] b): pass
+from typing import List
+def f(a: 'A', b: 'List[A]') -> None: pass
 f(b=[], a=A())
 class A: pass
 [builtins fixtures/list.py]
 
 [case testGivingSameKeywordArgumentTwice]
-void f(A a, B b): pass
+import typing
+def f(a: 'A', b: 'B') -> None: pass
 f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 f(b=B(), a=A(), b=B()) # E: "f" gets multiple values for keyword argument "b"
 class A: pass
 class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg]
-void f(A a, B b=None): pass
+import typing
+def f(a: 'A', b: 'B' = None) -> None: pass
 f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg2]
-void f(A a=None, B b=None): pass
+import typing
+def f(a: 'A' = None, b: 'B' = None) -> None: pass
 f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
 [case testInvalidKeywordArgument]
-void f(A a): pass
+import typing
+def f(a: 'A') -> None: pass
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
-any f
+from typing import Undefined, Any
+f = Undefined # type: Any
 f(x=f(), z=None()) # E: None not callable
 f(f, zz=None()) # E: None not callable
 f(x=None)
 
 [case testDuplicateKeywordArgumentWithDynamicallyTypedCallable]
-any f
+from typing import Undefined, Any
+f = Undefined # type: Any
 # Postpone checking to runtime
 f(x=None, x=None)
 
 [case testKeywordArgumentWithFunctionObject]
-func<void(A, B)> f
+from typing import Undefined, Function
+f = Undefined # type: Function[[A, B], None]
 f(a=A(), b=B())
 f(A(), b=B())
 class A: pass
 class B: pass
 [out]
-main, line 2: Unexpected keyword argument "a"
-main, line 2: Unexpected keyword argument "b"
+main, line 3: Unexpected keyword argument "a"
 main, line 3: Unexpected keyword argument "b"
+main, line 4: Unexpected keyword argument "b"
 
 [case testKeywordOnlyArguments]
-void f(A a, *, B b=None): pass
+import typing
+def f(a: 'A', *, b: 'B' = None) -> None: pass
 f(A(), b=B())
 f(b=B(), a=A())
 f(A())
@@ -102,8 +116,9 @@ f(A(), B()) # E: Too many positional arguments for "f"
 class A: pass
 class B: pass
 
-[case testBareAsteriskWithVarArgs]
-void f(A *a, *, B b=None): pass
+[case testKeywordArgAfterVarArgs]
+import typing
+def f(*a: 'A', b: 'B' = None,) -> None: pass
 f()
 f(A())
 f(A(), A())
@@ -117,9 +132,10 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
-[case testBareAsteriskWithBothCallerAndCalleeVarArgs]
-void f(A *a, *, B b=None): pass
-A[] a
+[case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
+from typing import Undefined, List
+def f(*a: 'A', b: 'B' = None) -> None: pass
+a = Undefined # type: List[A]
 f(*a)
 f(A(), *a)
 f(b=B())
@@ -133,6 +149,7 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
+import typing
 def f(x, y=A()): pass
 f(x=A(), y=A())
 f(y=A(), x=A())
@@ -141,27 +158,30 @@ f(A(), z=A()) # E: Unexpected keyword argument "z" for "f"
 class A: pass
 
 [case testKwargsArgumentInFunctionBody]
-void f(A **kwargs):
-    dict<str, A> d1 = kwargs
-    dict<A, any> d2 = kwargs # E: Incompatible types in assignment
-    dict<any, str> d3 = kwargs # E: Incompatible types in assignment
+from typing import Dict, Any
+def f( **kwargs: 'A') -> None:
+    d1 = kwargs # type: Dict[str, A]
+    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment
+    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment
 class A: pass
 [builtins fixtures/dict.py]
 [out]
 main: In function "f":
 
 [case testKwargsArgumentInFunctionBodyWithImplicitAny]
-void f(**kwargs):
-    dict<str, A> d1 = kwargs
-    dict<str, str> d2 = kwargs
-    dict<A, any> d3 = kwargs # E: Incompatible types in assignment
+from typing import Dict, Any
+def f(**kwargs) -> None:
+    d1 = kwargs # type: Dict[str, A]
+    d2 = kwargs # type: Dict[str, str]
+    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment
 class A: pass
 [builtins fixtures/dict.py]
 [out]
 main: In function "f":
 
 [case testCallingFunctionThatAcceptsVarKwargs]
-void f(A **kwargs): pass
+import typing
+def f( **kwargs: 'A') -> None: pass
 f()
 f(x=A())
 f(y=A(), z=A())
@@ -173,39 +193,43 @@ class B: pass
 [builtins fixtures/dict.py]
 
 [case testCallingFunctionWithKeywordVarArgs]
-void f(A **kwargs): pass
-dict<str, A> d
+from typing import Undefined, Dict
+def f( **kwargs: 'A') -> None: pass
+d = Undefined # type: Dict[str, A]
 f(**d)
 f(x=A(), **d)
-dict<str, B> d2
-f(**d2)        # E: Argument 1 to "f" has incompatible type dict<str, B>
-f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type dict<str, B>
+d2 = Undefined # type: Dict[str, B]
+f(**d2)        # E: Argument 1 to "f" has incompatible type Dict[str, B]
+f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type Dict[str, B]
 class A: pass
 class B: pass
 [builtins fixtures/dict.py]
 
 [case testInvalidTypeForKeywordVarArg]
-void f(A **kwargs): pass
-dict<A, A> d
+from typing import Undefined, Dict
+def f( **kwargs: 'A') -> None: pass
+d = Undefined # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a dictionary
 class A: pass
 [builtins fixtures/dict.py]
 
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
-void f(A a, B b): pass
-dict<str, any> d
+from typing import Undefined, Any, Dict
+def f(a: 'A', b: 'B') -> None: pass
+d = Undefined # type: Dict[str, Any]
 f(**d)
-dict<str, A> d2
-f(**d2) # E: Argument 1 to "f" has incompatible type dict<str, A>
+d2 = Undefined # type: Dict[str, A]
+f(**d2) # E: Argument 1 to "f" has incompatible type Dict[str, A]
 class A: pass
 class B: pass
 [builtins fixtures/dict.py]
 
 [case testBothKindsOfVarArgs]
-void f(A a, A b): pass
-list<any> l
-dict<any, any> d
+from typing import Undefined, Any, List, Dict
+def f(a: 'A', b: 'A') -> None: pass
+l = Undefined # type: List[Any]
+d = Undefined # type: Dict[Any, Any]
 f(*l, **d)
 class A: pass
 [builtins fixtures/dict.py]

@@ -1,5 +1,7 @@
 """Transform classes for runtime type checking."""
 
+from typing import Undefined, List, Set, Any, cast, Tuple, Dict
+
 from mypy.nodes import (
     TypeDef, Node, FuncDef, VarDef, Block, Var, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
@@ -8,7 +10,8 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.semanal import self_type
 from mypy.types import (
-    Callable, Instance, Type, Any, BOUND_VAR, Void, RuntimeTypeVar, UnboundType
+    Callable, Instance, Type, AnyType, BOUND_VAR, Void, RuntimeTypeVar,
+    UnboundType
 )
 from mypy.checkmember import analyse_member_access
 from mypy.checkexpr import type_object_type
@@ -39,29 +42,29 @@ class TypeTransformer:
         signatures.
       * Create wrapper methods for calling methods in dynamically typed code.
         These perform the necessary coercions for arguments and return values
-        to/from 'any'.
+        to/from 'Any'.
     
     This is used by DyncheckTransformVisitor and is logically aggregated within
     that class.
     """
     
     # Used for common transformation operations.
-    mypy.transform.DyncheckTransformVisitor tf
+    tf = Undefined('mypy.transform.DyncheckTransformVisitor')
     # Used for transforming methods.
-    FuncTransformer func_tf
+    func_tf = Undefined(FuncTransformer)
     
-    void __init__(self, mypy.transform.DyncheckTransformVisitor tf):
+    def __init__(self, tf: 'mypy.transform.DyncheckTransformVisitor') -> None:
         self.tf = tf
         self.func_tf = FuncTransformer(tf)
     
-    Node[] transform_type_def(self, TypeDef tdef):        
+    def transform_type_def(self, tdef: TypeDef) -> List[Node]:        
         """Transform a type definition.
 
         The result may be one or two definitions.  The first is the
         transformation of the original TypeDef. The second is a
         wrapper type, which is generated for generic types only.
         """
-        defs = <Node> []
+        defs = [] # type: List[Node]
         
         if tdef.info.type_vars:
             # This is a generic type. Insert type variable slots in
@@ -70,31 +73,36 @@ class TypeTransformer:
             defs.extend(self.make_tvar_representation(tdef.info))
         
         # Iterate over definitions and transform each of them.
-        vars = set<Var>()
+        vars = set() # type: Set[Var]
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
                 # Implicit cast from FuncDef[] to Node[] is safe below.
-                defs.extend((any)self.func_tf.transform_method((FuncDef)d))
+                defs.extend(Any(self.func_tf.transform_method(cast(FuncDef,
+                                                                   d))))
             elif isinstance(d, VarDef):
-                vdef = (VarDef)d
+                vdef = cast(VarDef, d)
                 defs.extend(self.transform_var_def(vdef))
                 for n in vdef.items:
                     vars.add(n)
+            elif isinstance(d, AssignmentStmt):
+                assignment = cast(AssignmentStmt, d)
+                self.transform_assignment(assignment)
+                defs.append(assignment)
 
         # Add accessors for implicitly defined attributes.
         for node in tdef.info.names.values():
             if isinstance(node.node, Var):
-                v = (Var)node.node
+                v = cast(Var, node.node)
                 if v.info == tdef.info and v not in vars:
                     defs.extend(self.make_accessors(v))
         
         # For generic classes, add an implicit __init__ wrapper.
         defs.extend(self.make_init_wrapper(tdef))
         
-        if tdef.is_generic() or (tdef.info.base and
-                                 tdef.info.base.is_generic()):
+        if tdef.is_generic() or (tdef.info.bases and
+                                 tdef.info.mro[1].is_generic()):
             self.make_instance_tvar_initializer(
-                (FuncDef)tdef.info.get_method('__init__'))
+                cast(FuncDef, tdef.info.get_method('__init__')))
 
         if not defs:
             defs.append(PassStmt())
@@ -111,7 +119,7 @@ class TypeTransformer:
         else:
             return [tdef, dyn_wrapper, gen_wrapper]
     
-    Node[] make_init_wrapper(self, TypeDef tdef):
+    def make_init_wrapper(self, tdef: TypeDef) -> List[Node]:
         """Make and return an implicit __init__ if class needs it.
         
         Otherwise, return an empty list. We include an implicit
@@ -123,12 +131,12 @@ class TypeTransformer:
 
         For example, assume these definitions:
         
-        . class A<T>: pass
-        . class B(A<int>): pass
+        . class A(Generic[T]): pass
+        . class B(A[int]): pass
         
         The constructor for B will be (equivalent to)
         
-        . void __init__(B self):
+        . def __init__(self: B) -> None:
         .     self.__tv = <int>
         .     super().__init__(<int>)
         """
@@ -138,25 +146,27 @@ class TypeTransformer:
         info = tdef.info
         
         if '__init__' not in info.names and (
-                tdef.is_generic() or (info.base and info.base.is_generic())):
+                tdef.is_generic() or (info.bases and
+                                      info.mro[1].is_generic())):
             # Generic class with no explicit __init__ method
             # (i.e. __init__ inherited from superclass). Generate a
             # wrapper that initializes type variable slots and calls
             # the superclass __init__ method.
-            
+
+            base = info.mro[1]
             selftype = self_type(info)    
-            callee_type = (Callable)analyse_member_access(
+            callee_type = cast(Callable, analyse_member_access(
                 '__init__', selftype, None, False, True, None, None,
-                info.base)
+                base))
             
             # Now the callee type may contain the type variables of a
             # grandparent as bound type variables, but we want the
             # type variables of the parent class. Explicitly set the
             # bound type variables.
             callee_type = self.fix_bound_init_tvars(callee_type,
-                map_instance_to_supertype(selftype, info.base))
+                map_instance_to_supertype(selftype, base))
             
-            super_init = (FuncDef)info.base.get_method('__init__')
+            super_init = cast(FuncDef, base.get_method('__init__'))
             
             # Build argument list.
             args = [Var('self')]
@@ -168,8 +178,7 @@ class TypeTransformer:
             callee_type = prepend_arg_type(callee_type, selft)
             
             creat = FuncDef('__init__', args,
-                            super_init.arg_kinds,
-                            <Node> [None] * len(args),
+                            super_init.arg_kinds, [None] * len(args),
                             Block([]))
             creat.info = tdef.info
             creat.type = callee_type
@@ -180,19 +189,20 @@ class TypeTransformer:
             # Insert a call to superclass constructor. If the
             # superclass is object, the constructor does nothing =>
             # omit the call.
-            if tdef.info.base.fullname() != 'builtins.object':
+            if base.fullname() != 'builtins.object':
                 creat.body.body.append(
                     self.make_superclass_constructor_call(tdef.info,
                                                           callee_type))
             
             # Implicit cast from FuncDef[] to Node[] is safe below.
-            return (any)self.func_tf.transform_method(creat)
+            return Any(self.func_tf.transform_method(creat))
         else:
             return []
     
-    Callable fix_bound_init_tvars(self, Callable callable, Instance typ):
+    def fix_bound_init_tvars(self, callable: Callable,
+                             typ: Instance) -> Callable:
         """Replace bound type vars of callable with args from instance type."""
-        a = <tuple<int, Type>> []
+        a = [] # type: List[Tuple[int, Type]]
         for i in range(len(typ.args)):
             a.append((i + 1, typ.args[i]))
         return Callable(callable.arg_types, callable.arg_kinds,
@@ -200,8 +210,8 @@ class TypeTransformer:
                         callable.is_type_obj(), callable.name,
                         callable.variables, a)
     
-    ExpressionStmt make_superclass_constructor_call(self, TypeInfo info,
-                                                    Callable callee_type):
+    def make_superclass_constructor_call(
+            self, info: TypeInfo, callee_type: Callable) -> ExpressionStmt:
         """Construct a statement that calls the superclass constructor.
 
         In particular, it passes any type variables arguments as needed.
@@ -219,12 +229,13 @@ class TypeTransformer:
         # FIX default args / varargs
         
         # Map self type to the superclass context.
-        selftype = map_instance_to_supertype(selftype, info.base)
+        base = info.mro[1]
+        selftype = map_instance_to_supertype(selftype, base)
         
-        super_init = (FuncDef)info.base.get_method('__init__')
+        super_init = cast(FuncDef, base.get_method('__init__'))
         
         # Add constructor arguments.
-        args = <Node> []
+        args = [] # type: List[Node]
         for n in range(1, callee_type.min_args):            
             args.append(NameExpr(super_init.args[n].name()))
             self.tf.set_type(args[-1], callee_type.arg_types[n])
@@ -235,12 +246,12 @@ class TypeTransformer:
         call = CallExpr(callee, args, [nodes.ARG_POS] * len(args))
         return ExpressionStmt(call)
     
-    Node[] transform_var_def(self, VarDef o):
+    def transform_var_def(self, o: VarDef) -> List[Node]:
         """Transform a member variable definition.
 
         The result may be one or more definitions.
         """
-        res = <Node> [o]
+        res = [o] # type: List[Node]
         
         self.tf.visit_var_def(o)
         
@@ -250,23 +261,27 @@ class TypeTransformer:
             res.extend(self.make_accessors(n))
         
         return res
+    
+    def transform_assignment(self, o: AssignmentStmt) -> None:
+        """Transform an assignment statement in class body."""
+        self.tf.visit_assignment_stmt(o)
 
-    Node[] make_accessors(self, Var n):
+    def make_accessors(self, n: Var) -> List[Node]:
         if n.type:
             t = n.type
         else:
-            t = Any()
+            t = AnyType()
         return [self.make_getter_wrapper(n.name(), t),
                 self.make_setter_wrapper(n.name(), t),
                 self.make_dynamic_getter_wrapper(n.name(), t),
                 self.make_dynamic_setter_wrapper(n.name(), t)]
     
-    FuncDef make_getter_wrapper(self, str name, Type typ):
+    def make_getter_wrapper(self, name: str, typ: Type) -> FuncDef:
         """Create a getter wrapper for a data attribute.
 
         The getter will be of this form:
         
-        . int $name*(C self):
+        . def $name*(self: C) -> type:
         .     return self.name!
         """
         scope = self.make_scope()
@@ -286,36 +301,37 @@ class TypeTransformer:
         fdef.info = self.tf.type_context()
         return fdef
     
-    FuncDef make_dynamic_getter_wrapper(self, str name, Type typ):
+    def make_dynamic_getter_wrapper(self, name: str, typ: Type) -> FuncDef:
         """Create a dynamically-typed getter wrapper for a data attribute.
 
         The getter will be of this form:
         
-        . any $name*(C self):
-        .     return {any <= typ self.name!}
+        . def $name*(self: C) -> Any:
+        .     return {Any <= typ self.name!}
         """
         scope = self.make_scope()
         selft = self.self_type()
         selfv = scope.add('self', selft)
         
         member_expr = MemberExpr(scope.name_expr('self'), name, direct=True)
-        coerce_expr = coerce(member_expr, Any(), typ, self.tf.type_context())
+        coerce_expr = coerce(member_expr, AnyType(), typ,
+                             self.tf.type_context())
         ret = ReturnStmt(coerce_expr)
 
         wrapper_name = '$' + name + self.tf.dynamic_suffix()
-        sig = Callable([selft], [nodes.ARG_POS], [None], Any(), False)
+        sig = Callable([selft], [nodes.ARG_POS], [None], AnyType(), False)
         return FuncDef(wrapper_name,
                        [selfv],
                        [nodes.ARG_POS],
                        [None],
                        Block([ret]), sig)
     
-    FuncDef make_setter_wrapper(self, str name, Type typ):
+    def make_setter_wrapper(self, name: str, typ: Type) -> FuncDef:
         """Create a setter wrapper for a data attribute.
 
         The setter will be of this form:
         
-        . void set$name(C self, typ name):
+        . def set$name(self: C, name: typ) -> None:
         .     self.name! = name
         """
         scope = self.make_scope()
@@ -340,22 +356,22 @@ class TypeTransformer:
         fdef.info = self.tf.type_context()
         return fdef
     
-    FuncDef make_dynamic_setter_wrapper(self, str name, Type typ):
+    def make_dynamic_setter_wrapper(self, name: str, typ: Type) -> FuncDef:
         """Create a dynamically-typed setter wrapper for a data attribute.
 
         The setter will be of this form:
         
-        . void set$name*(C self, any name):
+        . def set$name*(self: C, name; Any) -> None:
         .     self.name! = {typ name}
         """
         lvalue = MemberExpr(self_expr(), name, direct=True)
         name_expr = NameExpr(name)
-        rvalue = coerce(name_expr, typ, Any(), self.tf.type_context())
+        rvalue = coerce(name_expr, typ, AnyType(), self.tf.type_context())
         ret = AssignmentStmt([lvalue], rvalue)
 
         wrapper_name = 'set$' + name + self.tf.dynamic_suffix()
         selft = self_type(self.tf.type_context())            
-        sig = Callable([selft, Any()],
+        sig = Callable([selft, AnyType()],
                        [nodes.ARG_POS, nodes.ARG_POS],
                        [None, None],
                        Void(), False)
@@ -365,33 +381,33 @@ class TypeTransformer:
                        [None, None],
                        Block([ret]), sig)
     
-    Node[] generic_accessor_wrappers(self, VarDef vdef):
+    def generic_accessor_wrappers(self, s: AssignmentStmt) -> List[Node]:
         """Construct wrapper class methods for attribute accessors."""
-        res = <Node> []
-        for n in vdef.items:
-            if n.type:
-                t = n.type
-            else:
-                t = Any()
-            for fd in [self.make_getter_wrapper(n.name(), t),
-                      self.make_setter_wrapper(n.name(), t)]:
-                res.extend(self.func_tf.generic_method_wrappers(fd))
+        res = [] # type: List[Node]
+        assert len(s.lvalues) == 1
+        assert isinstance(s.lvalues[0], NameExpr)
+        assert s.type is not None
+        name = cast(NameExpr, s.lvalues[0])
+        for fd in [self.make_getter_wrapper(name.name, s.type),
+                   self.make_setter_wrapper(name.name, s.type)]:
+            res.extend(self.func_tf.generic_method_wrappers(fd))
         return res
     
-    TypeDef generic_class_wrapper(self, TypeDef tdef):
+    def generic_class_wrapper(self, tdef: TypeDef) -> TypeDef:
         """Construct a wrapper class for a generic type."""
         # FIX semanal meta-info for nodes + TypeInfo
         
-        defs = <Node> []
+        defs = [] # type: List[Node]
         
         # Does the type have a superclass, other than builtins.object?
-        has_proper_superclass = tdef.info.base.fullname() != 'builtins.object'
+        base = tdef.info.mro[1]
+        has_proper_superclass = base.fullname() != 'builtins.object'
         
         if not has_proper_superclass or self.tf.is_java:
             # Generate member variables for wrapper object.
             defs.extend(self.make_generic_wrapper_member_vars(tdef))
         
-        for alt in <any> [False, BOUND_VAR]:
+        for alt in [False, BOUND_VAR]:
             defs.extend(self.make_tvar_representation(tdef.info, alt))
         
         # Generate constructor.
@@ -400,17 +416,18 @@ class TypeTransformer:
         # Generate method wrappers.
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
-                if not ((FuncDef)d).is_constructor():
+                if not (cast(FuncDef, d)).is_constructor():
                     defs.extend(self.func_tf.generic_method_wrappers(
-                        (FuncDef)d))
-            elif isinstance(d, VarDef):
-                defs.extend(self.generic_accessor_wrappers((VarDef)d))
+                        cast(FuncDef, d)))
+            elif isinstance(d, AssignmentStmt):
+                defs.extend(self.generic_accessor_wrappers(
+                                                  cast(AssignmentStmt, d)))
             elif not isinstance(d, PassStmt):
                 raise RuntimeError(
                     'Definition {} at line {} not supported'.format(
                         type(d), d.line))
         
-        Type base_type = self.tf.named_type('builtins.object')
+        base_type = self.tf.named_type('builtins.object') # type: Type
         # Inherit superclass wrapper if there is one.
         if has_proper_superclass:
             base = self.find_generic_base_class(tdef.info)
@@ -423,49 +440,51 @@ class TypeTransformer:
         wrapper = TypeDef(tdef.name + self.tf.wrapper_class_suffix(),
                           Block(defs),
                           None,
-                          [base_type],
-                          False)          # Interface?
+                          [base_type])
         # FIX fullname
         
         self.tf.add_line_mapping(tdef, wrapper)
         
         return wrapper
     
-    TypeInfo find_generic_base_class(self, TypeInfo info):
-        base = info.base
-        while base:
+    def find_generic_base_class(self, info: TypeInfo) -> TypeInfo:
+        base = info.mro[1]
+        while True:
             if base.type_vars != []:
                 return base
-            base = base.base
+            if len(base.mro) <= 1:
+                return None
+            base = base.mro[1]
     
-    Node[] make_generic_wrapper_member_vars(self, TypeDef tdef):
+    def make_generic_wrapper_member_vars(self, tdef: TypeDef) -> List[Node]:
         """Generate member variable definition for wrapped object (__o).
         
         This is added to a generic wrapper class.
         """
-        # The type is 'any' since it should behave covariantly in subclasses.
+        # The type is 'Any' since it should behave covariantly in subclasses.
         return [VarDef([Var(self.object_member_name(tdef.info),
-                            Any())], False, None)]
+                            AnyType())], False, None)]
     
-    str object_member_name(self, TypeInfo info):
+    def object_member_name(self, info: TypeInfo) -> str:
         if self.tf.is_java:
             return '__o_{}'.format(info.name)
         else:
             return '__o'
     
-    FuncDef make_generic_wrapper_init(self, TypeInfo info):
+    def make_generic_wrapper_init(self, info: TypeInfo) -> FuncDef:
         """Build constructor of a generic wrapper class."""
         nslots = num_slots(info)
         
-        cdefs = <Node> []
+        cdefs = [] # type: List[Node]
         
         # Build superclass constructor call.
-        if info.base.fullname() != 'builtins.object' and self.tf.is_java:
+        base = info.mro[1]
+        if base.fullname() != 'builtins.object' and self.tf.is_java:
             s = SuperExpr('__init__')
-            cargs = <Node> [NameExpr('__o')]
-            for n in range(num_slots(info.base)):
+            cargs = [NameExpr('__o')] # type: List[Node]
+            for n in range(num_slots(base)):
                 cargs.append(NameExpr(tvar_arg_name(n + 1)))
-            for n in range(num_slots(info.base)):
+            for n in range(num_slots(base)):
                 cargs.append(NameExpr(tvar_arg_name(n + 1, BOUND_VAR)))
             c = CallExpr(s, cargs, [nodes.ARG_POS] * len(cargs))
             cdefs.append(ExpressionStmt(c))
@@ -479,9 +498,9 @@ class TypeTransformer:
         
         # Build constructor arguments.
         args = [Var('self'), Var('__o')]
-        Node[] init = [None, None]
+        init = [None, None] # type: List[Node]
         
-        for alt in <any> [False, BOUND_VAR]:
+        for alt in [False, BOUND_VAR]:
             for n in range(nslots):
                 args.append(Var(tvar_arg_name(n + 1, alt)))
                 init.append(None)
@@ -492,9 +511,8 @@ class TypeTransformer:
                        [nodes.ARG_POS] * nargs,
                        init,
                        Block(cdefs),
-                       Callable(<Type> [Any()] * nargs,
-                                [nodes.ARG_POS] * nargs,
-                                <str> [None] * nargs,
+                       Callable( [AnyType()] * nargs,
+                                [nodes.ARG_POS] * nargs, [None] * nargs,
                                 Void(),
                                 is_type_obj=False))
         fdef.info = info
@@ -503,23 +521,24 @@ class TypeTransformer:
         
         return fdef
     
-    Node[] make_tvar_representation(self, TypeInfo info, any is_alt=False):
+    def make_tvar_representation(self, info: TypeInfo,
+                                 is_alt: Any = False) -> List[Node]:
         """Return type variable slot member definitions.
 
-        There are of form 'any __tv*'. Only include new slots defined in the
+        There are of form '__tv*: Any'. Only include new slots defined in the
         type.
         """
-        Node[] defs = []
-        base_slots = num_slots(info.base)
+        defs = [] # type: List[Node]
+        base_slots = num_slots(info.mro[1])
         for n in range(len(info.type_vars)):
             # Only include a type variable if it introduces a new slot.
             slot = get_tvar_access_path(info, n + 1)[0] - 1
             if slot >= base_slots:
                 defs.append(VarDef([Var(tvar_slot_name(slot, is_alt),
-                                        Any())], False, None))
+                                        AnyType())], False, None))
         return defs
     
-    void make_instance_tvar_initializer(self, FuncDef creat):
+    def make_instance_tvar_initializer(self, creat: FuncDef) -> None:
         """Add type variable member initialization code to a constructor.
 
         Modify the constructor body directly.
@@ -530,17 +549,17 @@ class TypeTransformer:
                                               tvar_slot_name(n),
                                               direct=True)],
                                   rvalue)
-            self.tf.set_type(init.lvalues[0], Any())
-            self.tf.set_type(init.rvalue, Any())
+            self.tf.set_type(init.lvalues[0], AnyType())
+            self.tf.set_type(init.rvalue, AnyType())
             creat.body.body.insert(n, init)
     
-    void make_wrapper_slot_initializer(self, FuncDef creat):
+    def make_wrapper_slot_initializer(self, creat: FuncDef) -> None:
         """Add type variable member initializations to a wrapper constructor.
 
         The function must be a constructor of a generic wrapper class. Modify
         the constructor body directly.
         """
-        for alt in <any> [BOUND_VAR, False]:
+        for alt in [BOUND_VAR, False]:
             for n in range(num_slots(creat.info)):
                 rvalue = TypeExpr(
                     RuntimeTypeVar(NameExpr(tvar_slot_name(n, alt))))
@@ -548,20 +567,20 @@ class TypeTransformer:
                     [MemberExpr(self_expr(),
                                 tvar_slot_name(n, alt), direct=True)],
                     rvalue)
-                self.tf.set_type(init.lvalues[0], Any())
-                self.tf.set_type(init.rvalue, Any())
+                self.tf.set_type(init.lvalues[0], AnyType())
+                self.tf.set_type(init.rvalue, AnyType())
                 creat.body.body.insert(n, init)
     
-    TypeExpr make_tvar_init_expression(self, TypeInfo info, int slot):
+    def make_tvar_init_expression(self, info: TypeInfo, slot: int) -> TypeExpr:
         """Return the initializer for the given slot in the given type.
         
         This is the type expression that initializes the given slot
         using the type arguments given to the constructor.
         
         Examples:
-          - In 'class C<T> ...', the initializer for the slot 0 is
+          - In 'class C(Generic[T]) ...', the initializer for the slot 0 is
             TypeExpr(RuntimeTypeVar(NameExpr('__tv'))).
-          - In 'class D(C<int>) ...', the initializer for the slot 0 is
+          - In 'class D(C[int]) ...', the initializer for the slot 0 is
             TypeExpr(<int instance>).
         """
         # Figure out the superclass which defines the slot; also figure out
@@ -581,7 +600,7 @@ class TypeTransformer:
         # Build the rvalue (initializer) expression
         return TypeExpr(tvar)
 
-    FuncDef make_type_object_wrapper(self, TypeDef tdef):
+    def make_type_object_wrapper(self, tdef: TypeDef) -> FuncDef:
         """Construct dynamically typed wrapper function for a class.
 
         It simple calls the type object and returns the result.
@@ -590,17 +609,16 @@ class TypeTransformer:
         # TODO keyword args, default args and varargs
         # TODO overloads
 
-        type_sig = (Callable)type_object_type(tdef.info, None)
-        type_sig = (Callable)erasetype.erase_typevars(type_sig)
+        type_sig = cast(Callable, type_object_type(tdef.info, None))
+        type_sig = cast(Callable, erasetype.erase_typevars(type_sig))
         
-        init = (FuncDef)tdef.info.get_method('__init__')
+        init = cast(FuncDef, tdef.info.get_method('__init__'))
         arg_kinds = type_sig.arg_kinds
 
         # The wrapper function has a dynamically typed signature.
-        wrapper_sig = Callable(<Type> [Any()] * len(arg_kinds),
-                               arg_kinds,
-                               <str> [None] * len(arg_kinds),
-                               Any(), False)
+        wrapper_sig = Callable( [AnyType()] * len(arg_kinds),
+                               arg_kinds, [None] * len(arg_kinds),
+                               AnyType(), False)
         
         n = NameExpr(tdef.name) # TODO full name
         args = self.func_tf.call_args(
@@ -614,33 +632,32 @@ class TypeTransformer:
 
         fdef = FuncDef(tdef.name + self.tf.dynamic_suffix(),
                        init.args[1:],
-                       arg_kinds,
-                       <Node> [None] * len(arg_kinds),
+                       arg_kinds, [None] * len(arg_kinds),
                        Block([ret]))
         
         fdef.type = wrapper_sig
         return fdef
 
-    Instance self_type(self):
+    def self_type(self) -> Instance:
         return self_type(self.tf.type_context())
 
-    Scope make_scope(self):
+    def make_scope(self) -> 'Scope':
         return Scope(self.tf.type_map)
         
 
 class Scope:
     """Maintain a temporary local scope during transformation."""
-    void __init__(self, dict<Node, Type> type_map):
-        self.names = <str, Var> {}
+    def __init__(self, type_map: Dict[Node, Type]) -> None:
+        self.names = {} # type: Dict[str, Var]
         self.type_map = type_map
 
-    Var add(self, str name, Type type):
+    def add(self, name: str, type: Type) -> Var:
         v = Var(name)
         v.type = type
         self.names[name] = v
         return v
 
-    NameExpr name_expr(self, str name):
+    def name_expr(self, name: str) -> NameExpr:
         nexpr = NameExpr(name)
         nexpr.kind = nodes.LDEF
         node = self.names[name]

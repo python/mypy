@@ -38,6 +38,8 @@ import sys as _sys
 from collections import OrderedDict as _OrderedDict
 from io import StringIO as _StringIO
 
+from typing import Any, Tuple, Dict, TextIO, cast, List
+
 __all__ = ["pprint","pformat","isreadable","isrecursive","saferepr",
            "PrettyPrinter"]
 
@@ -48,26 +50,27 @@ _len = len
 _type = type
 
 
-void pprint(object object, TextIO stream=None, int indent=1, int width=80,
-            int depth=None):
+def pprint(object: object, stream: TextIO = None, indent: int = 1,
+           width: int = 80, depth: int = None) -> None:
     """Pretty-print a Python object to a stream [default is sys.stdout]."""
     printer = PrettyPrinter(
         stream=stream, indent=indent, width=width, depth=depth)
     printer.pprint(object)
 
-str pformat(object object, int indent=1, int width=80, int depth=None):
+def pformat(object: object, indent: int = 1, width: int = 80,
+            depth: int = None) -> str:
     """Format a Python object into a pretty-printed representation."""
     return PrettyPrinter(indent=indent, width=width, depth=depth).pformat(object)
 
-str saferepr(object object):
+def saferepr(object: object) -> str:
     """Version of repr() which can handle recursive data structures."""
     return _safe_repr(object, {}, None, 0)[0]
 
-bool isreadable(object object):
+def isreadable(object: object) -> bool:
     """Determine if saferepr(object) is readable by eval()."""
     return _safe_repr(object, {}, None, 0)[1]
 
-bool isrecursive(object object):
+def isrecursive(object: object) -> bool:
     """Determine if object requires a recursive representation."""
     return _safe_repr(object, {}, None, 0)[2]
 
@@ -83,26 +86,26 @@ class _safe_key:
 
     __slots__ = ['obj']
 
-    void __init__(self, any obj):
+    def __init__(self, obj: Any) -> None:
         self.obj = obj
 
-    bool __lt__(self, any other):
-        any rv = self.obj.__lt__(other.obj)
+    def __lt__(self, other: Any) -> bool:
+        rv = self.obj.__lt__(other.obj) # type: Any
         if rv is NotImplemented:
             rv = (str(type(self.obj)), id(self.obj)) < \
                  (str(type(other.obj)), id(other.obj))
         return rv
 
-tuple<_safe_key, _safe_key> _safe_tuple(tuple<any, any> t):
+def _safe_tuple(t: Tuple[Any, Any]) -> Tuple[_safe_key, _safe_key]:
     "Helper function for comparing 2-tuples"
     return _safe_key(t[0]), _safe_key(t[1])
 
 class PrettyPrinter:
-    bool _recursive
-    bool _readable
+    _recursive = False
+    _readable = False
     
-    void __init__(self, int indent=1, int width=80, int depth=None,
-                  TextIO stream=None):
+    def __init__(self, indent: int = 1, width: int = 80, depth: int = None,
+                 stream: TextIO = None) -> None:
         """Handle pretty printing operations onto a stream using a set of
         configured parameters.
 
@@ -133,24 +136,24 @@ class PrettyPrinter:
         else:
             self._stream = _sys.stdout
 
-    void pprint(self, object object):
+    def pprint(self, object: object) -> None:
         self._format(object, self._stream, 0, 0, {}, 0)
         self._stream.write("\n")
 
-    str pformat(self, object object):
+    def pformat(self, object: object) -> str:
         sio = _StringIO()
         self._format(object, sio, 0, 0, {}, 0)
         return sio.getvalue()
 
-    bool isrecursive(self, object object):
+    def isrecursive(self, object: object) -> bool:
         return self.format(object, {}, 0, 0)[2]
 
-    bool isreadable(self, object object):
+    def isreadable(self, object: object) -> bool:
         s, readable, recursive = self.format(object, {}, 0, 0)
         return readable and not recursive
 
-    void _format(self, object object, TextIO stream, int indent, int allowance,
-                 dict<int, int> context, int level):
+    def _format(self, object: object, stream: TextIO, indent: int,
+                allowance: int, context: Dict[int, int], level: int) -> None:
         level = level + 1
         objid = _id(object)
         if objid in context:
@@ -170,7 +173,7 @@ class PrettyPrinter:
         if sepLines:
             r = getattr(typ, "__repr__", None)
             if issubclass(typ, dict):
-                dictobj = (dict)object
+                dictobj = cast(dict, object)
                 write('{')
                 if self._indent_per_level > 1:
                     write((self._indent_per_level - 1) * ' ')
@@ -204,7 +207,7 @@ class PrettyPrinter:
                 (issubclass(typ, set) and r is set.__repr__) or
                 (issubclass(typ, frozenset) and r is frozenset.__repr__)
                ):
-                anyobj = (any)object # TODO Collection?
+                anyobj = Any(object) # TODO Collection?
                 length = _len(anyobj)
                 if issubclass(typ, list):
                     write('[')
@@ -250,7 +253,8 @@ class PrettyPrinter:
 
         write(rep)
 
-    str _repr(self, object object, dict<int, int> context, int level):
+    def _repr(self, object: object, context: Dict[int, int],
+              level: int) -> str:
         repr, readable, recursive = self.format(object, context.copy(),
                                                 self._depth, level)
         if not readable:
@@ -259,8 +263,8 @@ class PrettyPrinter:
             self._recursive = True
         return repr
 
-    tuple<str, bool, bool> format(self, object object, dict<int, int> context,
-                                  int maxlevels, int level):
+    def format(self, object: object, context: Dict[int, int],
+               maxlevels: int, level: int) -> Tuple[str, bool, bool]:
         """Format object for a specific context, returning a string
         and flags indicating whether the representation is 'readable'
         and whether the object represents a recursive construct.
@@ -270,11 +274,11 @@ class PrettyPrinter:
 
 # Return triple (repr_string, isreadable, isrecursive).
 
-tuple<str, bool, bool> _safe_repr(object object, dict<int, int> context,
-                                  int maxlevels, int level):
+def _safe_repr(object: object, context: Dict[int, int],
+               maxlevels: int, level: int) -> Tuple[str, bool, bool]:
     typ = _type(object)
     if typ is str:
-        s = (str)object
+        s = cast(str, object)
         if 'locale' not in _sys.modules:
             return repr(object), True, False
         if "'" in s and '"' not in s:
@@ -305,11 +309,11 @@ tuple<str, bool, bool> _safe_repr(object object, dict<int, int> context,
         context[objid] = 1
         readable = True
         recursive = False
-        components = <str> []
+        components = List[str]()
         append = components.append
         level += 1
         saferepr = _safe_repr
-        items = sorted(((dict)object).items(), key=_safe_tuple)
+        items = sorted((cast(dict, object)).items(), key=_safe_tuple)
         for k, v in items:
             krepr, kreadable, krecur = saferepr(k, context, maxlevels, level)
             vrepr, vreadable, vrecur = saferepr(v, context, maxlevels, level)
@@ -322,7 +326,7 @@ tuple<str, bool, bool> _safe_repr(object object, dict<int, int> context,
 
     if (issubclass(typ, list) and r is list.__repr__) or \
        (issubclass(typ, tuple) and r is tuple.__repr__):
-        anyobj = (any)object # TODO Sequence?
+        anyobj = Any(object) # TODO Sequence?
         if issubclass(typ, list):
             if not object:
                 return "[]", True, False
@@ -358,12 +362,12 @@ tuple<str, bool, bool> _safe_repr(object object, dict<int, int> context,
     return rep, bool(rep and not rep.startswith('<')), False
 
 
-str _recursion(object object):
+def _recursion(object: object) -> str:
     return ("<Recursion on %s with id=%s>"
             % (_type(object).__name__, _id(object)))
 
 
-void _perfcheck(object object=None):
+def _perfcheck(object: object = None) -> None:
     import time
     if object is None:
         object = [("string", (1, 2), [3, 4], {5: 6, 7: 8})] * 100000

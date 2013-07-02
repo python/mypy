@@ -1,37 +1,39 @@
+from typing import Undefined
+
 # This is an extension of transform builtins with additional operations.
 
 class object:
-    void __init__(self): pass
-    bool __eq__(self, object o): pass
-    bool __ne__(self, object o): pass
+    def __init__(self) -> None: pass
+    def __eq__(self, o: 'object') -> 'bool': pass
+    def __ne__(self, o: 'object') -> 'bool': pass
 
 class type: pass
 
+class bool: pass
+
 class str:
-    void __init__(self, int x): pass
-    str __add__(self, str x): pass
+    def __init__(self, x: 'int') -> None: pass
+    def __add__(self, x: 'str') -> 'str': pass
 
 class int:
-    int __add__(self, int x): pass
-    int __sub__(self, int x): pass
-    int __mul__(self, int x): pass
-    int __mod__(self, int x): pass
-    int __floordiv__(self, int x): pass
-    int __neg__(self): pass
-    bool __eq__(self, object x): pass
-    bool __ne__(self, object x): pass
-    bool __lt__(self, int x): pass
-    bool __le__(self, int x): pass
-    bool __gt__(self, int x): pass
-    bool __ge__(self, int x): pass
+    def __add__(self, x: 'int') -> 'int': pass
+    def __sub__(self, x: 'int') -> 'int': pass
+    def __mul__(self, x: 'int') -> 'int': pass
+    def __mod__(self, x: 'int') -> 'int': pass
+    def __floordiv__(self, x: 'int') -> 'int': pass
+    def __neg__(self) -> 'int': pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
+    def __lt__(self, x: 'int') -> bool: pass
+    def __le__(self, x: 'int') -> bool: pass
+    def __gt__(self, x: 'int') -> bool: pass
+    def __ge__(self, x: 'int') -> bool: pass
 
 class float: pass
 
-class bool: pass
-
 class BaseException: pass
 
-bool True
-bool False
+True = Undefined(bool)
+False = Undefined(bool)
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass

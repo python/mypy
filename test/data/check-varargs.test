@@ -6,9 +6,10 @@
 
 
 [case testVarArgsWithinFunction]
-void f(B *b):
-    list<B> ab
-    list<C> ac
+from typing import Undefined, List
+def f( *b: 'B') -> None:
+    ab = Undefined # type: List[B]
+    ac = Undefined # type: List[C]
     b = ac # E: Incompatible types in assignment
     ac = b # E: Incompatible types in assignment
     b = ab
@@ -26,9 +27,10 @@ main: In function "f":
 
 
 [case testCallingVarArgsFunction]
-A a
-B b
-C c
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
 
 f(c)       # E: Argument 1 to "f" has incompatible type "C"
 f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"
@@ -39,9 +41,9 @@ f(a)
 f(b)
 f(a, b, a, b)
 
-void f(A *a): pass
+def f( *a: 'A') -> None: pass
 
-void g(): pass
+def g() -> None: pass
 
 class A: pass
 class B(A): pass
@@ -49,9 +51,10 @@ class C: pass
 [builtins fixtures/list.py]
 
 [case testCallingVarArgsFunctionWithAlsoNormalArgs]
-A a
-B b
-C c
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
 
 f(a)       # E: Argument 1 to "f" has incompatible type "A"
 f(c, c)    # E: Argument 2 to "f" has incompatible type "C"
@@ -60,7 +63,7 @@ f(c)
 f(c, a)
 f(c, b, b, a, b)
 
-void f(C a, A *b): pass
+def f(a: 'C', *b: 'A') -> None: pass
 
 class A: pass
 class B(A): pass
@@ -68,9 +71,10 @@ class C: pass
 [builtins fixtures/list.py]
 
 [case testCallingVarArgsFunctionWithDefaultArgs]
-A a
-B b
-C c
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
 
 f(a)           # E: Argument 1 to "f" has incompatible type "A"
 f(c, c)        # E: Argument 2 to "f" has incompatible type "C"
@@ -80,7 +84,7 @@ f(c)
 f(c, a)
 f(c, b, b, a, b)
 
-void f(C a=None, A *b):
+def f(a: 'C' = None, *b: 'A') -> None:
     pass
 
 class A: pass
@@ -94,10 +98,12 @@ class C: pass
 
 
 [case testTypeInferenceWithCalleeVarArgs]
-A a
-B b
-C c
-object o
+from typing import Undefined, typevar
+T = typevar('T')
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
+o = Undefined # type: object
 
 a = f(o) # E: Argument 1 to "f" has incompatible type "object"
 b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"
@@ -110,7 +116,7 @@ a = f(a, b, a)
 o = f(a, b, o)
 c = f(c)
 
-T f<T>(T *a):
+def f( *a: T) -> T:
     pass
 
 class A: pass
@@ -119,8 +125,10 @@ class C: pass
 [builtins fixtures/list.py]
 
 [case testTypeInferenceWithCalleeVarArgsAndDefaultArgs]
-A a
-object o
+from typing import Undefined, typevar
+T = typevar('T')
+a = Undefined # type: A
+o = Undefined # type: object
 
 a = f(o) # E: Argument 1 to "f" has incompatible type "object"
 a = f(a, o) # E: Argument 2 to "f" has incompatible type "object"
@@ -131,7 +139,7 @@ a = f(a)
 a = f(a, a)
 a = f(a, a, a)
 
-T f<T>(T a, T b=None, T *c):
+def f(a: T, b: T = None, *c: T) -> T:
     pass
 
 class A: pass
@@ -143,35 +151,37 @@ class A: pass
 
 
 [case testCallingWithListVarArgs]
-list<A> aa
-list<B> ab
-A a
-B b
+from typing import Undefined, List, Any
+aa = Undefined # type: List[A]
+ab = Undefined # type: List[B]
+a = Undefined # type: A
+b = Undefined # type: B
 
 f(*aa)    # Fail
 f(a, *ab) # Ok
 f(a, b)
-((any)f)(*aa)     # IDEA: Move to check-dynamic?
-((any)f)(a, *ab)  # IDEA: Move to check-dynamic?
+(Any(f))(*aa)     # IDEA: Move to check-dynamic?
+(Any(f))(a, *ab)  # IDEA: Move to check-dynamic?
 
-void f(A a, B b):
+def f(a: 'A', b: 'B') -> None:
     pass
 
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 6: Argument 1 to "f" has incompatible type A[]
+main, line 7: Argument 1 to "f" has incompatible type List[A]
 
 [case testCallingWithTupleVarArgs]
-A a
-B b
-C c
-CC cc
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: B
+c = Undefined # type: C
+cc = Undefined # type: CC
 
-f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "tuple<A, B, B>"
-f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "tuple<B, B, C>"
-f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "tuple<B, B>"
+f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "Tuple[A, B, B]"
+f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "Tuple[B, B, C]"
+f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "Tuple[B, B]"
 f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"
 f(*(a, b))    # E: Too few arguments for "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
@@ -181,7 +191,7 @@ f(a, *(b, c))
 f(a, b, *(c,))
 f(a, *(b, cc))
 
-void f(A a, B b, C c): pass
+def f(a: 'A', b: 'B', c: 'C') -> None: pass
 
 class A: pass
 class B: pass
@@ -190,13 +200,14 @@ class CC(C): pass
 [builtins fixtures/tuple.py]
 
 [case testInvalidVarArg]
-A a
+from typing import Undefined
+a = Undefined # type: A
 
 f(*None) # E: List or tuple expected as variable arguments
 f(*a)    # E: List or tuple expected as variable arguments
 f(*(a,))
 
-void f(A a):
+def f(a: 'A') -> None:
     pass
 
 class A: pass
@@ -208,7 +219,8 @@ class A: pass
 
 
 [case testCallingVarArgsFunctionWithListVarArgs]
-list<A> aa, list<B> ab, A a, B b
+from typing import Undefined, List
+aa, ab, a, b = Undefined, Undefined, Undefined, Undefined # type: (List[A], List[B], A, B)
 f(*aa)           # Fail
 f(a, *aa)        # Fail
 f(b, *ab)        # Fail
@@ -221,37 +233,38 @@ f(a, b, *ab)
 f(a, b, b, *ab)
 g(*aa)
 
-void f(A a, B *b): pass
-void g(A a, A *b): pass
+def f(a: 'A', *b: 'B') -> None: pass
+def g(a: 'A', *b: 'A') -> None: pass
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 2: Argument 1 to "f" has incompatible type A[]
-main, line 3: Argument 2 to "f" has incompatible type A[]
-main, line 4: Argument 1 to "f" has incompatible type "B"
-main, line 5: Argument 2 to "f" has incompatible type "A"
-main, line 6: Argument 3 to "f" has incompatible type A[]
-main, line 7: Argument 1 to "f" has incompatible type "B"
-main, line 8: Argument 1 to "g" has incompatible type B[]
+main, line 3: Argument 1 to "f" has incompatible type List[A]
+main, line 4: Argument 2 to "f" has incompatible type List[A]
+main, line 5: Argument 1 to "f" has incompatible type "B"
+main, line 6: Argument 2 to "f" has incompatible type "A"
+main, line 7: Argument 3 to "f" has incompatible type List[A]
+main, line 8: Argument 1 to "f" has incompatible type "B"
+main, line 9: Argument 1 to "g" has incompatible type List[B]
 
 [case testCallingVarArgsFunctionWithTupleVarArgs]
-A a, B b, C c, CC cc
+from typing import Undefined
+a, b, c, cc = Undefined, Undefined, Undefined, Undefined # type: (A, B, C, CC)
 
-f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "tuple<B, B, B>"
-f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "tuple<A, A, B>"
-f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "tuple<A, B, A>"
-f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "tuple<A, B>"
+f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "Tuple[B, B, B]"
+f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
+f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B, A]"
+f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "Tuple[A, B]"
 f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"
 f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"
 f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"
-f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "tuple<A>"
+f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "Tuple[A]"
 f(*())          # E: Too few arguments for "f"
 f(*(a, b, b))
 f(a, *(b, b))
 f(a, b, *(b,))
 
-void f(A a, B *b):
+def f(a: 'A', *b: 'B') -> None:
     pass
 
 class A: pass
@@ -266,7 +279,8 @@ class CC(C): pass
 
 
 [case testDynamicVarArg]
-any d, A a
+from typing import Undefined, Any
+d, a = Undefined, Undefined # type: (Any, A)
 f(a, a, *d) # Fail
 f(a, *d)    # Fail
 f(*d)       # Ok
@@ -275,27 +289,28 @@ g(*d)
 g(a, *d)
 g(a, a, *d)
 
-void f(A a): pass
-void g(A a, A *b): pass
+def f(a: 'A') -> None: pass
+def g(a: 'A', *b: 'A') -> None: pass
 class A: pass
 [builtins fixtures/list.py]
 [out]
-main, line 2: Too many arguments for "f"
 main, line 3: Too many arguments for "f"
+main, line 4: Too many arguments for "f"
 
 [case testListVarArgsAndSubtyping]
-list<A> aa
-list<B> ab
+from typing import Undefined, List
+aa = Undefined # type: List[A]
+ab = Undefined # type: List[B]
 
-g(*aa) # E: Argument 1 to "g" has incompatible type A[]
+g(*aa) # E: Argument 1 to "g" has incompatible type List[A]
 f(*aa)
 f(*ab)
 g(*ab)
 
-void f(A *a):
+def f( *a: 'A') -> None:
     pass
 
-void g(B *a):
+def g( *a: 'B') -> None:
     pass
 
 class A: pass
@@ -303,7 +318,8 @@ class B(A): pass
 [builtins fixtures/list.py]
 
 [case testCallerVarArgsAndDefaultArgs]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 f(*())        # Fail
 f(a, *[a])    # Fail
 f(a, b, *[a]) # Fail
@@ -315,17 +331,17 @@ f(a, *[])
 f(a, *[b])
 f(a, *[b, b])
 
-void f(A a, B b=None, B *c):
+def f(a: 'A', b: 'B' = None, *c: 'B') -> None:
     pass
 
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 2: Too few arguments for "f"
-main, line 3: Argument 2 to "f" has incompatible type A[]
-main, line 4: Argument 3 to "f" has incompatible type A[]
-main, line 5: Argument 1 to "f" has incompatible type "tuple<A, A, B>"
+main, line 3: Too few arguments for "f"
+main, line 4: Argument 2 to "f" has incompatible type List[A]
+main, line 5: Argument 3 to "f" has incompatible type List[A]
+main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
 
 
 -- Overloads + varargs
@@ -333,7 +349,8 @@ main, line 5: Argument 1 to "f" has incompatible type "tuple<A, A, B>"
 
 
 [case testIntersectionTypesAndVarArgs]
-A a, B b
+from typing import Undefined, overload
+a, b = Undefined, Undefined # type: (A, B)
 
 b = f()        # E: Incompatible types in assignment
 b = f(a)       # E: Incompatible types in assignment
@@ -361,9 +378,11 @@ b = f(*(b,))
 b = f(*(b, b))
 b = f(*[b])
 
-A f(A a=None, B *b): pass
+@overload
+def f(a: 'A' = None, *b: 'B') -> 'A': pass
 
-B f(B a, B *b): pass
+@overload
+def f(a: 'B', *b: 'B') -> 'B': pass
 
 class A: pass
 class B: pass
@@ -375,7 +394,10 @@ class B: pass
 
 
 [case testCallerVarArgsListWithTypeInference]
-A a, B b, list<A> aa
+from typing import Undefined, List, typevar, Tuple
+S = typevar('S')
+T = typevar('T')
+a, b, aa = Undefined, Undefined, Undefined # type: (A, B, List[A])
 
 a, b = f(*aa)    # Fail
 b, b = f(*aa)    # Fail
@@ -389,44 +411,50 @@ a, a = f(*aa)
 b, a = f(b, *aa)
 b, a = f(b, a, *aa)
 
-tuple<S, T> f<S, T>(S a, T *b):
+def f(a: S, *b: T) -> Tuple[S, T]:
     pass
 
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 3: Argument 1 to "f" has incompatible type A[]
-main, line 4: Argument 1 to "f" has incompatible type A[]
-main, line 5: Argument 1 to "f" has incompatible type "B"
-main, line 6: Argument 2 to "f" has incompatible type A[]
-main, line 7: Argument 3 to "f" has incompatible type A[]
-main, line 8: List or tuple expected as variable arguments
-main, line 9: List or tuple expected as variable arguments
+main, line 6: Argument 1 to "f" has incompatible type List[A]
+main, line 7: Argument 1 to "f" has incompatible type List[A]
+main, line 8: Argument 1 to "f" has incompatible type "B"
+main, line 9: Argument 2 to "f" has incompatible type List[A]
+main, line 10: Argument 3 to "f" has incompatible type List[A]
+main, line 11: List or tuple expected as variable arguments
+main, line 12: List or tuple expected as variable arguments
 
 [case testCallerVarArgsTupleWithTypeInference]
-A a, B b
+from typing import Undefined, typevar, Tuple
+S = typevar('S')
+T = typevar('T')
+a, b = Undefined, Undefined # type: (A, B)
 
-a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "tuple<A, B>"
+a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"
 b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
-a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "tuple<A, B>"
+a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"
 b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
 a, b = f(*(a, b, b)) # E: Too many arguments for "f"
 
 a, b = f(*(a, b))
 a, b = f(a, *(b,))
 
-tuple<S, T> f<S, T>(S a, T b): pass
+def f(a: S, b: T) -> Tuple[S, T]: pass
 
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
 
 [case testCallerVarargsAndComplexTypeInference]
-A a, B b
-list<object> ao
-list<A> aa
-list<B> ab
+from typing import Undefined, List, typevar, Generic, Tuple
+T = typevar('T')
+S = typevar('S')
+a, b = Undefined, Undefined # type: (A, B)
+ao = Undefined # type: List[object]
+aa = Undefined # type: List[A]
+ab = Undefined # type: List[B]
 
 a, aa = G().f(*[a])  # Fail
 aa, a = G().f(*[a])  # Fail
@@ -435,15 +463,15 @@ ab, aa = G().f(*[a]) # Fail
 ao, ao = G().f(*[a]) # E: Incompatible types in assignment
 aa, aa = G().f(*[a]) # E: Incompatible types in assignment
 
-class G<T>:
-    tuple<list<S>, list<T>> f<S>(self, S *a):
+class G(Generic[T]):
+    def f(self, *a: S) -> Tuple[List[S], List[T]]:
         pass
 
 class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 6: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
-main, line 8: Argument 1 to "f" of "G" has incompatible type A[]
-main, line 8: Incompatible types in assignment
+main, line 9: Incompatible types in assignment
+main, line 10: Incompatible types in assignment
+main, line 11: Argument 1 to "f" of "G" has incompatible type List[A]
+main, line 11: Incompatible types in assignment

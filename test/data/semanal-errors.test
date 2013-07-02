@@ -8,131 +8,236 @@ main: In function "f":
 main, line 3: Parse error before numeric literal
 
 [case testUndefinedVariableInGlobalStatement]
+import typing
 x
 y
 [out]
-main, line 1: Name 'x' is not defined
-main, line 2: Name 'y' is not defined
+main, line 2: Name 'x' is not defined
+main, line 3: Name 'y' is not defined
 
 [case testUndefinedVariableWithinFunctionContext]
+import typing
 def f():
   x
 y
 [out]
 main: In function "f":
-main, line 2: Name 'x' is not defined
+main, line 3: Name 'x' is not defined
 main: At top level:
-main, line 3: Name 'y' is not defined
+main, line 4: Name 'y' is not defined
 
 [case testMethodScope]
+import typing
 class A:
   def f(self): pass
 f
 [out]
-main, line 3: Name 'f' is not defined
+main, line 4: Name 'f' is not defined
 
 [case testMethodScope2]
+import typing
 class A:
   def f(self): pass
 class B:
   def g(self):
-    f
-    g
+    f # error
+    g # error
 [out]
 main: In function "g":
-main, line 5: Name 'f' is not defined
-main, line 6: Name 'g' is not defined
+main, line 6: Name 'f' is not defined
+main, line 7: Name 'g' is not defined
 
 [case testInvalidType]
-X x
+import typing
+x = None # type: X
 [out]
-main, line 1: Name 'X' is not defined
+main, line 2: Name 'X' is not defined
 
 [case testInvalidGenericArg]
-class A<t>: pass
-A<y> x
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+x = 0 # type: A[y]
 [out]
-main, line 2: Name 'y' is not defined
+main, line 4: Name 'y' is not defined
 
-[case testInvalidNumberOfGenericArgs]
+[case testInvalidNumberOfGenericArgsInTypeDecl]
+from typing import typevar, Generic
+t = typevar('t')
 class A: pass
-class B<t>: pass
-B<A, A> x
-A<A> y
+class B(Generic[t]): pass
+x = 0 # type: B[A, A]
+y = 0 # type: A[A]
 [out]
-main, line 3: "B" expects 1 type argument, but 2 given
-main, line 4: "A" expects no type arguments, but 1 given
+main, line 5: "B" expects 1 type argument, but 2 given
+main, line 6: "A" expects no type arguments, but 1 given
 
-[case testVarOrFuncAsType]
-def f(): pass
-x = 1
-f y
-x z
-[out]
-main, line 3: Invalid type "__main__.f"
-main, line 4: Invalid type "__main__.x"
-
-[case testMultipleVarDefinitions]
+[case testInvalidNumberOfGenericArgsInUndefinedArg]
+from typing import Undefined
 class A: pass
-A x
-A x
+x = Undefined(A[int]) # E: "A" expects no type arguments, but 1 given
 [out]
-main, line 3: Name 'x' already defined
 
-[case testMultipleVarDefinitions2]
+[case testInvalidNumberOfGenericArgsInNestedBlock]
+from typing import Undefined
 class A: pass
-def f():
-  A x
-  A x
+class B:
+    def f(self) -> None:
+        while 1:
+            x = Undefined(A[int]) \
+                # E: "A" expects no type arguments, but 1 given
 [out]
 main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInSignature]
+import typing
+class A: pass
+def f() -> A[int]: pass # E: "A" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInOverloadedSignature]
+from typing import overload
+class A: pass
+@overload
+def f(): pass
+@overload
+def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInBaseType]
+import typing
+class A: pass
+class B(A[int]): pass # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInCast]
+from typing import cast
+class A: pass
+x = cast(A[int], 1) # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInTypeApplication]
+import typing
+class A: pass
+class B: pass
+x = A[B[int]]() # E: "B" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInNestedGenericType]
+from typing import typevar, Generic
+T = typevar('T')
+class A(Generic[T]): pass
+class B: pass
+def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
+[out]
+main: In function "f":
+
+[case testInvalidNumberOfGenericArgsInTupleType]
+from typing import Tuple, Undefined
+class A: pass
+x = Undefined(Tuple[A[int]]) # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfGenericArgsInFunctionType]
+from typing import Function, Undefined
+class A: pass
+x = Undefined(Function[[A[int]], int]) \
+              # E: "A" expects no type arguments, but 1 given
+x = Undefined(Function[[], A[int]]) \
+              # E: "A" expects no type arguments, but 1 given
+[out]
+
+[case testVarOrFuncAsType]
+import typing
+def f(): pass
+x = 1
+y = 0 # type: f
+z = 0 # type: x
+[out]
+main, line 4: Invalid type "__main__.f"
+main, line 5: Invalid type "__main__.x"
+
+[case testGlobalVarRedefinition]
+import typing
+class A: pass
+x = 0 # type: A
+x = 0 # type: A
+[out]
+main, line 4: Name 'x' already defined
+
+[case testLocalVarRedefinition]
+import typing
+class A: pass
+def f():
+  x = 0 # type: A
+  x = 0 # type: A
+[out]
+main: In function "f":
+main, line 5: Name 'x' already defined
+
+[case testClassVarRedefinition]
+import typing
+class A:
+  x = 0 # type: object
+  x = 0 # type: object
+[out]
 main, line 4: Name 'x' already defined
 
 [case testMultipleClassDefinitions]
+import typing
 class A: pass
 class A: pass
 [out]
-main, line 2: Name 'A' already defined
+main, line 3: Name 'A' already defined
 
 [case testMultipleMixedDefinitions]
+import typing
 x = 1
 def x(): pass
 class x: pass
 [out]
-main, line 2: Name 'x' already defined
 main, line 3: Name 'x' already defined
+main, line 4: Name 'x' already defined
 
 [case testNameNotImported]
+import typing
 from m import y
 x
 [file m.py]
 x = y = 1
 [out]
-main, line 2: Name 'x' is not defined
+main, line 3: Name 'x' is not defined
 
 [case testMissingNameInImportFrom]
+import typing
 from m import y
 [file m.py]
 x = 1
 [out]
-main, line 1: Module has no attribute 'y'
+main, line 2: Module has no attribute 'y'
 
 [case testMissingModule]
+import typing
 import m
 [out]
-main, line 1: No module named 'm'
+main, line 2: No module named 'm'
 
 [case testMissingModule2]
+import typing
 from m import x
 [out]
-main, line 1: No module named 'm'
+main, line 2: No module named 'm'
 
 [case testMissingModule2]
+import typing
 from m import *
 [out]
-main, line 1: No module named 'm'
+main, line 2: No module named 'm'
 
 [case testModuleNotImported]
+import typing
 import _m
 _n.x
 [file _m.py]
@@ -140,46 +245,53 @@ import _n
 [file _n.py]
 x = 1
 [out]
-main, line 2: Name '_n' is not defined
+main, line 3: Name '_n' is not defined
 
 [case testImportAsteriskPlusUnderscore]
+import typing
 from _m import *
 _x
 __x__
 [file _m.py]
 _x = __x__ = 1
 [out]
-main, line 2: Name '_x' is not defined
-main, line 3: Name '__x__' is not defined
+main, line 3: Name '_x' is not defined
+main, line 4: Name '__x__' is not defined
 
 [case testUndefinedTypeWithQualifiedName]
+import typing
 import m
-m.c a
-n.c b
+def f() -> m.c: pass
+def g() -> n.c: pass
 [file m.py]
 [out]
-main, line 2: Name 'm.c' is not defined
-main, line 3: Name 'n' is not defined
+main: In function "f":
+main, line 3: Name 'm.c' is not defined
+main: In function "g":
+main, line 4: Name 'n' is not defined
 
 [case testMissingPackage]
+import typing
 import m.n
 [out]
-main, line 1: No module named 'm.n'
+main, line 2: No module named 'm.n'
 
 [case testMissingPackage]
+import typing
 from m.n import x
 from a.b import *
 [out]
-main, line 1: No module named 'm.n'
-main, line 2: No module named 'a.b'
+main, line 2: No module named 'm.n'
+main, line 3: No module named 'a.b'
 
 [case testErrorInImportedModule]
 import m
 [file m.py]
+import typing
 x = y
 [out]
 In module imported in main, line 1:
-tmp/m.py, line 1: Name 'y' is not defined
+tmp/m.py, line 2: Name 'y' is not defined
 
 [case testErrorInImportedModule2]
 import m.n
@@ -187,19 +299,21 @@ import m.n
 [file m/n.py]
 import k
 [file k.py]
+import typing
 x = y
 [out]
 In module imported in tmp/m/n.py, line 1,
                    in main, line 1:
-tmp/k.py, line 1: Name 'y' is not defined
+tmp/k.py, line 2: Name 'y' is not defined
 
 [case testPackageWithoutInitFile]
+import typing
 import m.n
 m.n.x
 [file m/n.py]
 x = 1
 [out]
-main, line 1: No module named 'm.n'
+main, line 2: No module named 'm.n'
 
 [case testBreakOutsideLoop]
 break
@@ -269,65 +383,55 @@ main, line 5: Invalid assignment target
 main, line 6: Invalid assignment target
 
 [case testInvalidDel]
+import typing
 x = 1
-del x # not suppoerted yet
+del x # not supported yet
 del x.y # not supported
 del x + 1
 [out]
-main, line 2: Invalid delete target
 main, line 3: Invalid delete target
 main, line 4: Invalid delete target
+main, line 5: Invalid delete target
 
 [case testFunctionTvarScope]
-void f<t>(): pass
-t x
+from typing import typevar
+t = typevar('t')
+def f(x: t) -> t: pass
+x = 0 # type: t
 [out]
-main, line 2: Name 't' is not defined
+main, line 4: Invalid type "__main__.t"
 
 [case testClassTvarScope]
-class c<t>: pass
-t x
+from typing import Generic, typevar
+t = typevar('t')
+class c(Generic[t]): pass
+x = 0 # type: t
 [out]
-main, line 2: Name 't' is not defined
-
-[case testFunctionAndClassTvarNameClash]
-class c<t>:
-  def f<s>(self): pass
-  def g<t>(self): pass
-[out]
-main: In function "g":
-main, line 3: Name 't' already defined
+main, line 4: Invalid type "__main__.t"
 
 [case testExpressionRefersToTypeVariable]
-class c<t>:
-  def f(self): x = t
-def f<t>(): x = t
+from typing import typevar, Generic
+t = typevar('t')
+class c(Generic[t]):
+    def f(self): x = t
+def f(y: t): x = t
 [out]
 main: In function "f":
-main, line 2: 't' is a type variable and only valid in type context
-main, line 3: 't' is a type variable and only valid in type context
+main, line 4: 't' is a type variable and only valid in type context
+main, line 5: 't' is a type variable and only valid in type context
 
 [case testMissingSelf]
+import typing
 class A:
   def f(): pass
 [out]
-main, line 2: Method must have at least one argument
+main, line 3: Method must have at least one argument
 
 [case testInvalidBaseClass]
+import typing
 class A(B): pass
 [out]
-main, line 1: Name 'B' is not defined
-
-[case testInvalidSuperinterface]
-interface A(B): pass
-[out]
-main, line 1: Name 'B' is not defined
-
-[case testMissingSelfInInterface]
-interface A:
-    def f()
-[out]
-main, line 2: Method must have at least one argument
+main, line 2: Name 'B' is not defined
 
 [case testSuperOutsideClass]
 class A: pass
@@ -339,36 +443,34 @@ main: In function "f":
 main, line 3: "super" used outside class
 
 [case testMissingSelfInMethod]
+import typing
 class A:
-  void f(): pass
+  def f() -> None: pass
   def g(): pass
 [out]
-main, line 2: Method must have at least one argument
 main, line 3: Method must have at least one argument
-
-[case testMissingSelfInInterfaceWithSignature]
-interface A:
-  void f()
-[out]
-main, line 2: Method must have at least one argument
+main, line 4: Method must have at least one argument
 
 [case testMultipleMethodDefinition]
+import typing
 class A:
-  void f(self): pass
-  void g(self): pass
-  void f(self, any x): pass
+  def f(self) -> None: pass
+  def g(self) -> None: pass
+  def f(self, x: object) -> None: pass
 [out]
-main, line 4: Name 'f' already defined
+main, line 5: Name 'f' already defined
 
 [case testInvalidGlobalDecl]
+import typing
 def f():
     global x
     x = None
 [out]
 main: In function "f":
-main, line 3: Name 'x' is not defined
+main, line 4: Name 'x' is not defined
 
 [case testNestedFunctionAndScoping]
+import typing
 def f(x):
     def g(y):
         z = x
@@ -377,29 +479,34 @@ def f(x):
     x
 [out]
 main: In function "f":
-main, line 4: Name 'z' is not defined
-main, line 5: Name 'y' is not defined
+main, line 5: Name 'z' is not defined
+main, line 6: Name 'y' is not defined
 
 [case testMultipleNestedFunctionDef]
+import typing
 def f(x):
     def g(): pass
     x = 1
     def g(): pass
 [out]
 main: In function "f":
-main, line 4: Name 'g' already defined
+main, line 5: Name 'g' already defined
 
 [case testRedefinedOverloadedFunction]
+from typing import overload, Any
 def f():
-    void p(object o): pass # no error
-    void p(any o): pass    # no error
+    @overload
+    def p(o: object) -> None: pass # no error
+    @overload
+    def p(o: Any) -> None: pass    # no error
     x = 1
     def p(): pass # fail
 [out]
 main: In function "f":
-main, line 5: Name 'p' already defined
+main, line 8: Name 'p' already defined
 
 [case testNestedFunctionInMethod]
+import typing
 class A:
    def f(self):
        def g():
@@ -407,12 +514,13 @@ class A:
        y
 [out]
 main: In function "g":
-main, line 4: Name 'x' is not defined
+main, line 5: Name 'x' is not defined
 main: In function "f":
-main, line 5: Name 'y' is not defined
+main, line 6: Name 'y' is not defined
 
 [case testImportScope]
-void f():
+import typing
+def f() -> None:
     import x
 x.y # E: Name 'x' is not defined
 [file x.py]
@@ -420,7 +528,8 @@ y = 1
 [out]
 
 [case testImportScope2]
-void f():
+import typing
+def f() -> None:
     from x import y
     y
 y # E: Name 'y' is not defined
@@ -429,7 +538,8 @@ y = 1
 [out]
 
 [case testImportScope3]
-void f():
+import typing
+def f() -> None:
     from x import *
     y
 y # E: Name 'y' is not defined
@@ -438,6 +548,7 @@ y = 1
 [out]
 
 [case testImportScope4]
+import typing
 class A:
     from x import *
     y
@@ -447,8 +558,9 @@ y = 1
 [out]
 
 [case testImportTwice]
+import typing
 from x import a, a
-void f():
+def f() -> None:
     from x import a
     from x import a
 import x
@@ -456,11 +568,12 @@ import x # ok, since we may import multiple submodules of a package
 [file x.py]
 a = 1
 [out]
-main, line 1: Name 'a' already defined
+main, line 2: Name 'a' already defined
 main: In function "f":
-main, line 4: Name 'a' already defined
+main, line 5: Name 'a' already defined
 
 [case testScopeOfNestedClass]
+import typing
 def f():
     class A: pass
     A
@@ -468,12 +581,14 @@ A # E: Name 'A' is not defined
 [out]
 
 [case testScopeOfNestedClass2]
+import typing
 class A:
     class B: pass
 B # E: Name 'B' is not defined
 [out]
 
 [case testScopeOfNestedClass3]
+import typing
 class A:
     def f(self):
         class B: pass
@@ -482,22 +597,21 @@ B # E: Name 'B' is not defined
 [out]
 
 [case testInvalidNestedClassReferenceInDecl]
+import typing
 class A: pass
-A.x foo # E: Name 'A.x' is not defined
+foo = 0 # type: A.x      # E: Name 'A.x' is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
-class A<t>:
-    class B<s>:
-        A<s> x
-        A<t> x # E: Name 't' is not defined
-    A<s> y # E: Name 's' is not defined
-[out]
-
-[case testExtendMultipleClasses]
-class A: pass
-class B: pass
-class C(A, B): pass # E: Class has multiple base classes ('A' and 'B')
+from typing import typevar, Generic
+t = typevar('t')
+s = typevar('s')
+class A(Generic[t]):
+    class B(Generic[s]):
+        x = 0 # type: A[s]
+        y = 0 # type: A[t]        # E: Invalid type "__main__.t"
+    z = 0 # type: A[s]            # E: Invalid type "__main__.s"
+    a = 0 # type: A[t]
 [out]
 
 [case testTestExtendPrimitives]
@@ -547,8 +661,9 @@ def f(): pass
 [out]
 
 [case testAssignToFuncDefViaGlobalDecl2]
+import typing
 from m import f
-void g():
+def g() -> None:
     global f
     f = None # E: Invalid assignment target
 [file m.py]
@@ -557,11 +672,321 @@ def f(): pass
 main: In function "g":
 
 [case testAssignToTypeDef]
+import typing
 class A: pass
 A = None # E: Invalid assignment target
 [out]
 
 [case testInvalidQualifiedName]
-any x
-x.y z # E: Invalid type "__main__.x"
+from typing import Any
+x = 0 # type: Any
+z = 0 # type: x.y    # E: Invalid type "__main__.x"
+[out]
+
+[case testInvalidCastTargetSyntax]
+from typing import cast, typevar, Generic
+t = typevar('t')
+class C(Generic[t]): pass
+cast(str + str, None)    # E: Cast target is not a type
+cast(C[str][str], None)  # E: Cast target is not a type
+cast((str).str, None)    # E: Cast target is not a type
+cast(C[str + str], None) # E: Cast target is not a type
+cast([int, str], None)   # E: Invalid type
+[out]
+
+[case testInvalidCastTargetType]
+from typing import cast
+x = 0
+cast(x, None)        # E: Invalid type "__main__.x"
+cast(t, None)        # E: Name 't' is not defined
+cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
+[out]
+
+[case testInvalidCastTargetType2]
+from typing import cast
+x = 0
+cast(str[str], None) # E: "str" expects no type arguments, but 1 given
+[out]
+
+[case testInvalidNumberOfArgsToCast]
+from typing import cast
+cast(str) # E: 'cast' expects 2 arguments
+cast(str, None, None) # E: 'cast' expects 2 arguments
+[out]
+
+[case testInvalidKindsOfArgsToCast]
+from typing import cast
+cast(str, *None) # E: 'cast' must be called with 2 positional arguments
+cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
+[out]
+
+[case testInvalidArgsToAny]
+from typing import Any
+Any(str, None) # E: 'Any' expects 1 argument
+Any(arg=str)   # E: 'Any' must be called with 1 positional argument
+[out]
+
+[case testTypeListAsType]
+def f(x:[int, str]) -> None: # E: Invalid type
+    pass
+[out]
+main: In function "f":
+
+[case testInvalidFunctionType]
+from typing import Function
+x = None # type: Function[int, str]
+y = None # type: Function[int]
+z = None # type: Function[int, int, int]
+[out]
+main, line 2: Invalid function type
+main, line 3: Invalid function type
+main, line 4: Invalid function type
+
+[case testAbstractGlobalFunction]
+import typing
+from abc import abstractmethod
+@abstractmethod
+def foo(): pass
+[out]
+main, line 3: 'abstractmethod' used with a non-method
+
+[case testAbstractNestedFunction]
+import typing
+from abc import abstractmethod
+def g():
+  @abstractmethod
+  def foo(): pass
+[out]
+main: In function "g":
+main, line 4: 'abstractmethod' used with a non-method
+
+[case testInvalidTypeDeclaration]
+import typing
+def f(): pass
+f() = 1 # type: int
+[out]
+main, line 3: Invalid assignment target
+
+[case testIndexedAssignmentWithTypeDeclaration]
+import typing
+None[1] = 1 # type: int
+[out]
+main, line 2: Unexpected type declaration
+
+[case testNonSelfMemberAssignmentWithTypeDeclaration]
+import typing
+None.x = 1 # type: int
+[out]
+main, line 2: Type cannot be declared in assignment to non-self attribute
+
+[case testNonSelfMemberAssignmentWithTypeDeclarationInMethod]
+import typing
+class A:
+  def f(self, x) -> None:
+    x.y = 1 # type: int
+[out]
+main: In function "f":
+main, line 4: Type cannot be declared in assignment to non-self attribute
+
+[case testInvalidUndefined]
+from typing import Undefined
+y = 1
+x = Undefined(Undefined) # E: Invalid type "typing.Undefined"
+[out]
+
+[case testInvalidTypeInTypeApplication]
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+A[typevar] # E: Invalid type "typing.typevar"
+[out]
+
+[case testInvalidTypeInTypeApplication2]
+from typing import typevar, Generic
+t = typevar('t')
+class A(Generic[t]): pass
+A[1] # E: Type expected within [...]
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypes]
+from typing import Undefined
+x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidType]
+from typing import Undefined
+x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
+[out]
+
+[case testInvalidLvalueWithExplicitType]
+from typing import Undefined
+a = 1
+a[1] = Undefined # type: int # E: Unexpected type declaration
+a.x = Undefined # type: int \
+    # E: Type cannot be declared in assignment to non-self attribute
+a() = Undefined # type: int  # E: Invalid assignment target
+[out]
+
+[case testInvalidLvalueWithExplicitType2]
+from typing import Undefined
+a = 1
+a[1] = Undefined(int) # TODO: Disallow this?
+a() = Undefined(int)  # E: Invalid assignment target
+[out]
+
+[case testInvalidLvalueWithExplicitType3]
+from typing import Undefined
+a = 1
+a.y, a.x = Undefined, Undefined # type: int, int \
+    # E: Type cannot be declared in assignment to non-self attribute
+a[1], a[2] = Undefined, Undefined # type: int, int \
+    # E: Unexpected type declaration
+[out]
+
+[case testMissingGenericImport]
+from typing import typevar
+T = typevar('T')
+class A(Generic[T]): pass
+[out]
+main, line 3: Name 'Generic' is not defined
+
+[case testMissingAbstractGenericImport]
+from typing import typevar, Generic
+T = typevar('T')
+class A(AbstractGeneric[T]): pass
+[out]
+main, line 3: Name 'AbstractGeneric' is not defined
+
+[case testInvalidTypeWithinGeneric]
+from typing import Generic
+class A(Generic[int]): pass # E: Free type variable expected in Generic[...]
+[out]
+
+[case testInvalidTypeWithinAbstractGeneric]
+from typing import AbstractGeneric, typevar
+T = typevar('T')
+class A(AbstractGeneric[T]):
+    class B(AbstractGeneric[T]): pass \
+          # E: Free type variable expected in AbstractGeneric[...]
+[out]
+
+[case testIncludingGenericTwiceInBaseClassList]
+from typing import Generic, AbstractGeneric, typevar
+T = typevar('T')
+S = typevar('S')
+class A(Generic[T], Generic[S]): pass \
+      # E: Duplicate Generic or AbstractGeneric in bases
+class B(Generic[T], AbstractGeneric[T]): pass \
+      # E: Duplicate Generic or AbstractGeneric in bases
+[out]
+
+[case testInvalidMetaclass]
+class A(metaclass=x): pass # E: Name 'x' is not defined
+[out]
+
+[case testInvalidQualifiedMetaclass]
+import abc
+class A(metaclass=abc.Foo): pass # E: Name 'abc.Foo' is not defined
+[out]
+
+[case testNonClassMetaclass]
+def f(): pass
+class A(metaclass=f): pass # E: Invalid metaclass 'f'
+[out]
+
+[case testInvalidTypevarArguments]
+from typing import typevar
+a = typevar('a', 1) # E: typevar() takes exactly one argument
+b = typevar()       # E: typevar() takes exactly one argument
+c = typevar(x='c')  # E: Unexpected arguments to typevar()
+d = typevar(1)      # E: typevar() expects a string literal argument
+e = typevar('E')    # E: Unexpected typevar() argument value
+[out]
+
+[case testLocalTypevarScope]
+from typing import typevar
+def f() -> None:
+    T = typevar('T')
+def g(x: T) -> None: pass # E: Name 'T' is not defined
+[out]
+main: In function "g":
+
+[case testClassTypevarScope]
+from typing import typevar
+class A:
+    T = typevar('T')
+def g(x: T) -> None: pass # E: Name 'T' is not defined
+[out]
+main: In function "g":
+
+[case testRedefineVariableAsTypevar]
+from typing import typevar
+x = 0
+x = typevar('x') # E: Cannot redefine 'x' as a type variable
+[out]
+
+[case testTypevarWithType]
+from typing import typevar
+x = typevar('x') # type: int # E: Cannot declare the type of a type variable
+[out]
+
+[case testRedefineTypevar]
+from typing import typevar
+t = typevar('t')
+t = 1 # E: Invalid assignment target
+[out]
+
+[case testRedefineTypevar2]
+from typing import typevar
+t = typevar('t')
+def t(): pass # E: Name 't' already defined
+[out]
+
+[case testRedefineTypevar3]
+from typing import typevar
+t = typevar('t')
+class t: pass # E: Name 't' already defined
+[out]
+
+[case testRedefineTypevar4]
+from typing import typevar
+t = typevar('t')
+from typing import Generic as t # E: Name 't' already defined
+[out]
+
+[case testInvalidStrLiteralType]
+from typing import Undefined
+x = Undefined('foo') # E: Name 'foo' is not defined
+[out]
+
+[case testInvalidStrLiteralType2]
+from typing import Undefined
+x = Undefined('int[') # E: Argument to Undefined is not a type
+[out]
+
+[case testInconsistentOverload]
+from typing import overload
+def dec(x): pass
+@overload
+def f(): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+[out]
+
+[case testInconsistentOverload2]
+from typing import overload
+def dec(x): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+@overload
+def f(): pass
+[out]
+
+[case testMissingOverloadDecorator]
+from typing import overload
+def dec(x): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
+@dec  # E: 'overload' decorator expected
+def f(): pass
 [out]

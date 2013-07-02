@@ -2,17 +2,19 @@
 [out]
 
 [case testAssignmentAndVarDef]
-A a
-B b
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: B
 a = a 
 a = b # Fail
 class A: pass
 class B: pass
 [out]
-main, line 4: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
 
 [case testConstructionAndAssignment]
-A x
+from typing import Undefined
+x = Undefined # type: A
 x = A()
 x = B()
 class A: 
@@ -20,47 +22,58 @@ class A:
 class B:
     def __init__(self): pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 
 [case testInheritInitFromObject]
-A x
+from typing import Undefined
+x = Undefined # type: A
 x = A()
 x = B()
 class A(object): pass
 class B(object): pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 
 [case testImplicitInheritInitFromObject]
-A x
-object o
+from typing import Undefined
+x = Undefined # type: A
+o = Undefined # type: object
 x = A()
 o = x
 x = o # Fail
 class A: pass
 class B: pass
 [out]
-main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
 
 [case testTooManyConstructorArgs]
+import typing
 object(object())
 [out]
-main, line 1: Too many arguments for "object"
+main, line 2: Too many arguments for "object"
 
 [case testVarDefWithInit]
-A a = A()
-A b = object()
+import typing
+a = A() # type: A
+b = object() # type: A
 class A: pass
 [out]
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 
 [case testInheritanceBasedSubtyping]
-A x = B()
-B y = A() # Fail
+import typing
+x = B() # type: A
+y = A() # type: B # Fail
 class A: pass
 class B(A): pass
 [out]
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+
+[case testDeclaredVariableInParentheses]
+from typing import Undefined
+(x) = Undefined # type: int
+x = '' # E: Incompatible types in assignment
+x = 1
 
 
 -- Simple functions and calling
@@ -68,37 +81,41 @@ main, line 2: Incompatible types in assignment
 
 
 [case testFunction]
-void f(A x): pass
+import typing
+def f(x: 'A') -> None: pass
 f(A())
 f(B()) # Fail
 class A: pass
 class B: pass
 [out]
-main, line 3: Argument 1 to "f" has incompatible type "B"
+main, line 4: Argument 1 to "f" has incompatible type "B"
 
 [case testNotCallable]
+import typing
 A()()
 class A: pass
 [out]
-main, line 1: "A" not callable
+main, line 2: "A" not callable
 
 [case testSubtypeArgument]
-void f(A x, B y): pass
+import typing
+def f(x: 'A', y: 'B') -> None: pass
 f(B(), A()) # Fail
 f(B(), B())
 
 class A: pass
 class B(A): pass
 [out]
-main, line 2: Argument 2 to "f" has incompatible type "A"
+main, line 3: Argument 2 to "f" has incompatible type "A"
 
 [case testInvalidArgumentCount]
-void f(x, y): pass
+import typing
+def f(x, y) -> None: pass
 f(object())
 f(object(), object(), object())
 [out]
-main, line 2: Too few arguments for "f"
-main, line 3: Too many arguments for "f"
+main, line 3: Too few arguments for "f"
+main, line 4: Too many arguments for "f"
 
 
 -- Locals
@@ -106,32 +123,35 @@ main, line 3: Too many arguments for "f"
 
 
 [case testLocalVariables]
-void f():
-  A x
-  B y
+from typing import Undefined
+def f() -> None:
+  x = Undefined # type: A
+  y = Undefined # type: B
   x = x
   x = y # Fail
 class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
 
 [case testLocalVariableScope]
-void f():
-  A x
+from typing import Undefined
+def f() -> None:
+  x = Undefined # type: A
   x = A()
-void g():
-  B x
+def g() -> None:
+  x = Undefined # type: B
   x = A() # Fail
 class A: pass
 class B: pass
 [out]
 main: In function "g":
-main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 
 [case testFunctionArguments]
-void f(A x, B y):
+import typing
+def f(x: 'A', y: 'B') -> None:
   x = y # Fail
   x = x
   y = B()
@@ -139,25 +159,27 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 
 [case testLocalVariableInitialization]
-void f():
-  A a = A()
-  A b = B() # Fail
+import typing
+def f() -> None:
+  a = A() # type: A
+  b = B() # type: A # Fail
 class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 
 [case testVariableInitializationWithSubtype]
-A x = B()
-B y = A() # Fail
+import typing
+x = B() # type: A
+y = A() # type: B # Fail
 class A: pass
 class B(A): pass
 [out]
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 
 
 -- Misc
@@ -165,41 +187,46 @@ main, line 2: Incompatible types in assignment
 
 
 [case testInvalidReturn]
-A f():
+import typing
+def f() -> 'A':
   return B()
 class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 2: Incompatible return value type
+main, line 3: Incompatible return value type
 
 [case testTopLevelContextAndInvalidReturn]
-A f():
+import typing
+def f() -> 'A':
   return B()
-A a = B()
+a = B() # type: A
 class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 2: Incompatible return value type
+main, line 3: Incompatible return value type
 main: At top level:
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 
 [case testModule__name__]
-str x = __name__
-A a = __name__ # TODO should be an error
+import typing
+x = __name__ # type: str
+a = __name__ # type: A # TODO should be an error
 class A: pass
 [builtins fixtures/primitives.py]
 
 [case testModule__doc__]
-str x = __doc__
-A a = __doc__ # TODO should be an error
+import typing
+x = __doc__ # type: str
+a = __doc__ # type: A # TODO should be an error
 class A: pass
 [builtins fixtures/primitives.py]
 
 [case testModule__file__]
-str x = __file__
-A a = __file__ # TODO should be an error
+import typing
+x = __file__ # type: str
+a = __file__ # type: A # TODO should be an error
 class A: pass
 [builtins fixtures/primitives.py]
 
@@ -209,11 +236,12 @@ class A: pass
 
 
 [case testLocalVariableShadowing]
-A a
+from typing import Undefined
+a = Undefined # type: A
 a = B()       # Fail
 a = A()
-void f():
-  B a
+def f() -> None:
+  a = Undefined # type: B
   a = A()     # Fail
   a = B()
 a = B()       # Fail
@@ -222,15 +250,55 @@ a = A()
 class A: pass
 class B: pass
 [out]
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 main: In function "f":
-main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 main: At top level:
-main, line 8: Incompatible types in assignment
+main, line 9: Incompatible types in assignment
 
 [case testGlobalDefinedInBlockWithType]
+from typing import Undefined
 class A: pass
 while A:
-    A a
+    a = Undefined # type: A
     a = A()
     a = object() # E: Incompatible types in assignment
+
+
+-- Using Undefined with a type argument
+-- ------------------------------------
+
+
+[case testDeclareGlobalUsingUndefindWithArgument]
+from typing import Undefined
+a = Undefined(int)
+a = 1
+a = '' # E: Incompatible types in assignment
+
+[case testDeclareGlobalUsingUndefindWithAnyArgument]
+from typing import Undefined, Any
+a = Undefined(Any)
+a = 1
+a = ''
+a = None
+
+[case testDeclareLocalUsingUndefinedWithArgument]
+from typing import Undefined
+def f() -> None:
+    a = Undefined(int)
+    a = 1
+    a = '' # E: Incompatible types in assignment
+[out]
+main: In function "f":
+
+[case testDeclareTypeUsingUndefinedAndComment]
+from typing import Undefined
+x = Undefined(int) # type: str # E: Incompatible types in assignment
+
+[case testDeclareMultipleVarsUsingUndefinedWithArgument]
+from typing import Undefined
+x = y = Undefined(int)
+x = '' # E: Incompatible types in assignment
+y = '' # E: Incompatible types in assignment
+x = 1
+y = 1

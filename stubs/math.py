@@ -3,86 +3,154 @@
 
 # based on: http://docs.python.org/3.2/library/math.html
 
+from typing import overload, Tuple, Iterable
+
 # ----- variables and constants -----
-float e
-float pi
+e = 0.0
+pi = 0.0
 
 # ----- functions -----
-int ceil(int x): pass
-int ceil(float x): pass
-float copysign(int x, int y): pass
-float copysign(float x, float y): pass
-float fabs(int x): pass
-float fabs(float x): pass
-int factorial(int x): pass
-int floor(int x): pass
-int floor(float x): pass
-float fmod(int x, int y): pass
-float fmod(float x, float y): pass
-tuple<float, int> frexp(int x): pass
-tuple<float, int> frexp(float x): pass
-float fsum(Iterable iterable): pass
-bool isfinite(float x): pass
-bool isinf(float x): pass
-bool isnan(float x): pass
-float ldexp(float x, int i): pass
-tuple<float, float> modf(float x): pass
-float trunc(float x): pass
-float exp(int x): pass
-float exp(float x): pass
-float expm1(int x): pass
-float expm1(float x): pass
-float log(int x, float base=e): pass
-float log(float x, float base=e): pass
-float log(int x, int base): pass
-float log(float x, int base): pass
-float log1p(int x): pass
-float log1p(float x): pass
-float log10(int x): pass
-float log10(float x): pass
-float pow(int x, int y): pass
-float pow(int x, float y): pass
-float pow(float x, int y): pass
-float pow(float x, float y): pass
-float sqrt(int x): pass
-float sqrt(float x): pass
-float acos(int x): pass
-float acos(float x): pass
-float asin(int x): pass
-float asin(float x): pass
-float atan(int x): pass
-float atan(float x): pass
-float atan2(int y, int x): pass
-float atan2(int y, float x): pass
-float atan2(float y, int x): pass
-float atan2(float y, float x): pass
-float cos(int x): pass
-float cos(float x): pass
-float hypot(int x, int y): pass
-float hypot(int x, float y): pass
-float hypot(float x, int y): pass
-float hypot(float x, float y): pass
-float sin(int x): pass
-float sin(float x): pass
-float tan(int x): pass
-float tan(float x): pass
-float degrees(int x): pass
-float degrees(float x): pass
-float radians(int x): pass
-float radians(float x): pass
-float acosh(int x): pass
-float acosh(float x): pass
-float asinh(int x): pass
-float asinh(float x): pass
-float atanh(int x): pass
-float atanh(float x): pass
-float cosh(int x): pass
-float cosh(float x): pass
-float sinh(int x): pass
-float sinh(float x): pass
-float tanh(int x): pass
-float tanh(float x): pass
-float erf(object x): pass  # x is an arbitrary expression
-float erfc(object x): pass  # x is an arbitrary expression
-float gamma(object x): pass  # x is an arbitrary expression
-float lgamma(object x): pass  # x is an arbitrary expression
+@overload
+def ceil(x: int) -> int: pass
+@overload
+def ceil(x: float) -> int: pass
+@overload
+def copysign(x: int, y: int) -> float: pass
+@overload
+def copysign(x: float, y: float) -> float: pass
+@overload
+def fabs(x: int) -> float: pass
+@overload
+def fabs(x: float) -> float: pass
+def factorial(x: int) -> int: pass
+@overload
+def floor(x: int) -> int: pass
+@overload
+def floor(x: float) -> int: pass
+@overload
+def fmod(x: int, y: int) -> float: pass
+@overload
+def fmod(x: float, y: float) -> float: pass
+@overload
+def frexp(x: int) -> Tuple[float, int]: pass
+@overload
+def frexp(x: float) -> Tuple[float, int]: pass
+def fsum(iterable: Iterable) -> float: pass
+def isfinite(x: float) -> bool: pass
+def isinf(x: float) -> bool: pass
+def isnan(x: float) -> bool: pass
+def ldexp(x: float, i: int) -> float: pass
+def modf(x: float) -> Tuple[float, float]: pass
+def trunc(x: float) -> float: pass
+@overload
+def exp(x: int) -> float: pass
+@overload
+def exp(x: float) -> float: pass
+@overload
+def expm1(x: int) -> float: pass
+@overload
+def expm1(x: float) -> float: pass
+@overload
+def log(x: int, base: float = e) -> float: pass
+@overload
+def log(x: float, base: float = e) -> float: pass
+@overload
+def log(x: int, base: int) -> float: pass
+@overload
+def log(x: float, base: int) -> float: pass
+@overload
+def log1p(x: int) -> float: pass
+@overload
+def log1p(x: float) -> float: pass
+@overload
+def log10(x: int) -> float: pass
+@overload
+def log10(x: float) -> float: pass
+@overload
+def pow(x: int, y: int) -> float: pass
+@overload
+def pow(x: int, y: float) -> float: pass
+@overload
+def pow(x: float, y: int) -> float: pass
+@overload
+def pow(x: float, y: float) -> float: pass
+@overload
+def sqrt(x: int) -> float: pass
+@overload
+def sqrt(x: float) -> float: pass
+@overload
+def acos(x: int) -> float: pass
+@overload
+def acos(x: float) -> float: pass
+@overload
+def asin(x: int) -> float: pass
+@overload
+def asin(x: float) -> float: pass
+@overload
+def atan(x: int) -> float: pass
+@overload
+def atan(x: float) -> float: pass
+@overload
+def atan2(y: int, x: int) -> float: pass
+@overload
+def atan2(y: int, x: float) -> float: pass
+@overload
+def atan2(y: float, x: int) -> float: pass
+@overload
+def atan2(y: float, x: float) -> float: pass
+@overload
+def cos(x: int) -> float: pass
+@overload
+def cos(x: float) -> float: pass
+@overload
+def hypot(x: int, y: int) -> float: pass
+@overload
+def hypot(x: int, y: float) -> float: pass
+@overload
+def hypot(x: float, y: int) -> float: pass
+@overload
+def hypot(x: float, y: float) -> float: pass
+@overload
+def sin(x: int) -> float: pass
+@overload
+def sin(x: float) -> float: pass
+@overload
+def tan(x: int) -> float: pass
+@overload
+def tan(x: float) -> float: pass
+@overload
+def degrees(x: int) -> float: pass
+@overload
+def degrees(x: float) -> float: pass
+@overload
+def radians(x: int) -> float: pass
+@overload
+def radians(x: float) -> float: pass
+@overload
+def acosh(x: int) -> float: pass
+@overload
+def acosh(x: float) -> float: pass
+@overload
+def asinh(x: int) -> float: pass
+@overload
+def asinh(x: float) -> float: pass
+@overload
+def atanh(x: int) -> float: pass
+@overload
+def atanh(x: float) -> float: pass
+@overload
+def cosh(x: int) -> float: pass
+@overload
+def cosh(x: float) -> float: pass
+@overload
+def sinh(x: int) -> float: pass
+@overload
+def sinh(x: float) -> float: pass
+@overload
+def tanh(x: int) -> float: pass
+@overload
+def tanh(x: float) -> float: pass
+def erf(x: object) -> float: pass  # x is an arbitrary expression
+def erfc(x: object) -> float: pass  # x is an arbitrary expression
+def gamma(x: object) -> float: pass  # x is an arbitrary expression
+def lgamma(x: object) -> float: pass  # x is an arbitrary expression

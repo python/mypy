@@ -1,4 +1,4 @@
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 class module: pass
 class type: pass

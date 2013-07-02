@@ -1,8 +1,12 @@
 # These builtins stubs are used implicitly in parse-tree to icode generation
 # test cases (testicodegen.py and test/data/icode-basic.test).
 
+from typing import typevar, Generic
+
+t = typevar('t')
+
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 
 class type: pass
 class str: pass
@@ -10,20 +14,20 @@ class str: pass
 # Primitive types are special in generated code.
 
 class int:
-    int __add__(self, int n): pass
-    int __sub__(self, int n): pass
-    int __mul__(self, int n): pass
-    int __neg__(self): pass
-    bool __eq__(self, int n): pass
-    bool __ne__(self, int n): pass
-    bool __lt__(self, int n): pass
-    bool __gt__(self, int n): pass
-    bool __le__(self, int n): pass
-    bool __ge__(self, int n): pass
+    def __add__(self, n: int) -> int: pass
+    def __sub__(self, n: int) -> int: pass
+    def __mul__(self, n: int) -> int: pass
+    def __neg__(self) -> int: pass
+    def __eq__(self, n: int) -> bool: pass
+    def __ne__(self, n: int) -> bool: pass
+    def __lt__(self, n: int) -> bool: pass
+    def __gt__(self, n: int) -> bool: pass
+    def __le__(self, n: int) -> bool: pass
+    def __ge__(self, n: int) -> bool: pass
 
 class float: pass
 class bool: pass
 
-class list<t>: pass
+class list(Generic[t]): pass
 
-void print(*object): pass
+def print(*object) -> None: pass

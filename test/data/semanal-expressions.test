@@ -15,8 +15,7 @@ x.y
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   ExpressionStmt:2(
     MemberExpr:2(
@@ -81,8 +80,7 @@ not x
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   ExpressionStmt:2(
     UnaryExpr:2(
@@ -185,13 +183,13 @@ MypyFile:1(
       NameExpr(x [__main__.x]))))
 
 [case testListComprehension]
-any a
+a = 0
 ([x + 1 for x in a])
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(a)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
   ExpressionStmt:2(
     ParenExpr:2(
       ListComprehension:2(
@@ -204,7 +202,7 @@ MypyFile:1(
           NameExpr(a [__main__.a]))))))
 
 [case testListComprehensionInFunction]
-void f(a):
+def f(a) -> None:
     [x for x in a]
 [out]
 MypyFile:1(
@@ -212,7 +210,7 @@ MypyFile:1(
     f
     Args(
       Var(a))
-    def (any a)
+    def (a: Any)
     Block:1(
       ExpressionStmt:2(
         ListComprehension:2(
@@ -222,16 +220,15 @@ MypyFile:1(
             NameExpr(a [l])))))))
 
 [case testListComprehensionWithCondition]
-any a
-a=[x for x in a if x]
+a = 0
+a = [x for x in a if x]
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(a)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(a [__main__.a]))
+    NameExpr(a [__main__.a])
     ListComprehension:2(
       GeneratorExpr:2(
         NameExpr(x [l])
@@ -240,13 +237,13 @@ MypyFile:1(
         NameExpr(x [l])))))
 
 [case testGeneratorExpression]
-any a
+a = 0
 x for x in a
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(a)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
   ExpressionStmt:2(
     GeneratorExpr:2(
       NameExpr(x [l])
@@ -254,13 +251,13 @@ MypyFile:1(
       NameExpr(a [__main__.a]))))
 
 [case testLambda]
-any x
+x = 0
 lambda: x
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(x)
-    Type(any))
+  AssignmentStmt:1(
+    NameExpr(x* [__main__.x])
+    IntExpr(0))
   ExpressionStmt:2(
     FuncExpr:2(
       Block:2(
@@ -282,20 +279,3 @@ MypyFile:1(
             +
             NameExpr(x [l])
             NameExpr(y [l])))))))
-
-[case testLambdaWithSignature]
-lambda A x: x
-class A: pass
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    FuncExpr:1(
-      Args(
-        Var(x))
-      def (__main__.A x) -> builtins.object
-      Block:1(
-        ReturnStmt:1(
-          NameExpr(x [l])))))
-  TypeDef:2(
-    A
-    PassStmt:2()))

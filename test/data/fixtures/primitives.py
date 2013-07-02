@@ -1,7 +1,7 @@
 # builtins stub with non-generic primitive types
 
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 
 class int: pass
 class str: pass

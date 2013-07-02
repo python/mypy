@@ -2,9 +2,11 @@
 
 # NOTE: These are incomplete!
 
+from typing import Any
+
 class Random:
-    void seed(self, any x=None): pass
-    tuple getstate(self): pass
-    void setstate(self, tuple state): pass
-    float random(self): pass
-    int getrandbits(self, int k): pass
+    def seed(self, x: Any = None) -> None: pass
+    def getstate(self) -> tuple: pass
+    def setstate(self, state: tuple) -> None: pass
+    def random(self) -> float: pass
+    def getrandbits(self, k: int) -> int: pass

@@ -5,8 +5,9 @@
 
 
 [case testAssignmentWithDynamic]
-any d
-A a
+from typing import Undefined, Any
+d = Undefined # type: Any
+a = Undefined # type: A
 
 a = d # Everything ok
 d = a
@@ -17,8 +18,9 @@ d.x = d
 class A: pass
 
 [case testMultipleAssignmentWithDynamic]
-any d
-A a, B b
+from typing import Undefined, Any
+d = Undefined # type: Any
+a, b = Undefined, Undefined # type: (A, B)
 
 d, a = b, b    # E: Incompatible types in assignment
 d, d = d, d, d # E: Too many values to assign
@@ -37,7 +39,8 @@ class B: pass
 
 
 [case testCallingFunctionWithDynamicArgumentTypes]
-A a, B b
+from typing import Undefined, Any
+a, b = Undefined, Undefined # type: (A, B)
 
 b = f(a) # E: Incompatible types in assignment
 
@@ -46,32 +49,34 @@ a = f(b)
 a = f(None)
 a = f(f)
 
-A f(any x):
+def f(x: Any) -> 'A':
     pass
 
 class A: pass
 class B: pass
 
 [case testCallingWithDynamicReturnType]
-A a, B b
+from typing import Undefined, Any
+a, b = Undefined, Undefined # type: (A, B)
 
 a = f(b) # E: Argument 1 to "f" has incompatible type "B"
 
 a = f(a)
 b = f(a)
 
-any f(A x):
+def f(x: 'A') -> Any:
     pass
 
 class A: pass
 class B: pass
 
 [case testBinaryOperationsWithDynamicLeftOperand]
-any d
-A a
-C c
-bool b
-int n
+from typing import Undefined, Any
+d = Undefined # type: Any
+a = Undefined # type: A
+c = Undefined # type: C
+b = Undefined # type: bool
+n = 0
 
 d in a  # E: Unsupported right operand type for in ("A")
 d and a
@@ -98,7 +103,7 @@ b = d or b
 
 class A: pass
 class C:
-    bool __contains__(self, A a):
+    def __contains__(self, a: A) -> bool:
         pass
 [file builtins.py]
 class object:
@@ -108,12 +113,12 @@ class int: pass
 class type: pass
 
 [case testBinaryOperationsWithDynamicAsRightOperand]
--- TODO: relational operations
-any d
-A a
-C c
-bool b
-int n
+from typing import Undefined, Any
+d = Undefined # type: Any
+a = Undefined # type: A
+c = Undefined # type: C
+b = Undefined # type: bool
+n = 0
 
 a and d
 a or d
@@ -135,23 +140,23 @@ b = b and d
 b = b or d
 
 class A:
-    C __add__(self, A a):
+    def __add__(self, a: 'A') -> 'C':
         pass
-    C __sub__(self, A a):
+    def __sub__(self, a: 'A') -> 'C':
         pass
-    C __mul__(self, A a):
+    def __mul__(self, a: 'A') -> 'C':
         pass
-    C __truediv__(self, A a):
+    def __truediv__(self, a: 'A') -> 'C':
         pass
-    C __floordiv__(self, A a):
+    def __floordiv__(self, a: 'A') -> 'C':
         pass
-    C __mod__(self, A a):
+    def __mod__(self, a: 'A') -> 'C':
         pass
-    C __pow__(self, A a):
+    def __pow__(self, a: 'A') -> 'C':
         pass
-    bool _lt(self, A a):
+    def _lt(self, a: 'A') -> bool:
         pass
-    bool _gt(self, A a):
+    def _gt(self, a: 'A') -> bool:
         pass
 
 class C: pass
@@ -163,22 +168,21 @@ class int: pass
 class type: pass
 
 [case testDynamicWithUnaryExpressions]
-any d
-A a
-bool b
-
+from typing import Undefined, Any
+d = Undefined # type: Any
+a = Undefined # type: A
+b = Undefined # type: bool
 a = not d # E: Incompatible types in assignment
-
 b = not d
 a = -d
-
 class A: pass
 [builtins fixtures/bool.py]
 [out]
 
 [case testDynamicWithMemberAccess]
-any d
-A a
+from typing import Undefined, Any
+d = Undefined # type: Any
+a = Undefined # type: A
 
 a = d.foo(a()) # E: "A" not callable
 
@@ -191,8 +195,9 @@ class A: pass
 [out]
 
 [case testIndexingWithDynamic]
-any d
-A a
+from typing import Undefined, Any
+d = Undefined # type: Any
+a = Undefined # type: A
 
 a = d[a()] # E: "A" not callable
 d[a()] = a # E: "A" not callable
@@ -204,8 +209,9 @@ d[a], d[a] = a, a
 class A: pass
 
 [case testTupleExpressionsWithDynamci]
-tuple<A, A> t2
-any d
+from typing import Undefined, Tuple, Any
+t2 = Undefined # type: Tuple[A, A]
+d = Undefined # type: Any
 
 t2 = (d, d, d)  # E: Incompatible types in assignment
 t2 = (d, d)
@@ -214,24 +220,21 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testCastsWithDynamicType]
-any d
-A a
-B b
-
-b = (A)d # E: Incompatible types in assignment
-
-a = (A)d
-b = (any)d
-a = (any)f()
-
-void f(): pass
-
+from typing import Undefined, Any, cast
 class A: pass
 class B: pass
-
+d = Undefined # type: Any
+a = Undefined # type: A
+b = Undefined # type: B
+b = cast(A, d) # E: Incompatible types in assignment
+a = cast(A, d)
+b = Any(d)
+a = Any(f())
+def f() -> None: pass
 [case testCompatibilityOfDynamicWithOtherTypes]
-any d
-tuple<A, A> t
+from typing import Undefined, Any, Tuple
+d = Undefined # type: Any
+t = Undefined # type: Tuple[A, A]
 # TODO: callable types, overloaded functions
 
 d = None # All ok
@@ -241,7 +244,7 @@ d = A
 t = d
 f = d
 
-void g(A a):
+def g(a: 'A') -> None:
     pass
 
 class A: pass
@@ -254,7 +257,8 @@ class B: pass
 
 
 [case testDynamicCondition]
-any d
+from typing import Undefined, Any
+d = Undefined # type: Any
 while d:
     pass
 if d:
@@ -264,17 +268,19 @@ elif d:
 [builtins fixtures/bool.py]
 
 [case testRaiseWithDynamic]
-any d
+from typing import Undefined, Any
+d = Undefined # type: Any
 raise d
 [builtins fixtures/exception.py]
 
 [case testReturnWithDynamic]
-any d
+from typing import Undefined, Any
+d = Undefined # type: Any
 
-void f():
+def f() -> None:
     return d # Ok
 
-A g():
+def g() -> 'A':
     return d # Ok
 
 class A: pass
@@ -285,10 +291,11 @@ class A: pass
 
 
 [case testImplicitGlobalFunctionSignature]
-any x
-A a
-func<void()> g
-func<void(A)> h
+from typing import Undefined, Any, Function
+x = Undefined # type: Any
+a = Undefined # type: A
+g = Undefined # type: Function[[], None]
+h = Undefined # type: Function[[A], None]
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
@@ -303,10 +310,11 @@ def f(x): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDifferentArgCounts]
-func<void()> g0
-func<void(A)> g1
-func<void(A, A)> g2
-A a
+from typing import Undefined, Function
+g0 = Undefined # type: Function[[], None]
+g1 = Undefined # type: Function[[A], None]
+g2 = Undefined # type: Function[[A, A], None]
+a = Undefined # type: A
 
 g1 = f0 # E: Incompatible types in assignment
 g2 = f0 # E: Incompatible types in assignment
@@ -325,13 +333,14 @@ def f2(x, y): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDefaultArgs]
-A a, B b
+from typing import Undefined, Function
+a, b = Undefined, Undefined # type: (A, B)
 
-func<void()> g0
-func<void(A)> g1
-func<void(A, A)> g2
-func<void(A, A, A)> g3
-func<void(A, A, A, A)> g4
+g0 = Undefined # type: Function[[], None]
+g1 = Undefined # type: Function[[A], None]
+g2 = Undefined # type: Function[[A, A], None]
+g3 = Undefined # type: Function[[A, A, A], None]
+g4 = Undefined # type: Function[[A, A, A, A], None]
 
 f01(a, a)       # Fail
 f13()           # Fail
@@ -358,15 +367,16 @@ def f13(x, y = b, z = b): pass
 class A: pass
 class B: pass
 [out]
-main, line 9: Too many arguments for "f01"
-main, line 10: Too few arguments for "f13"
-main, line 11: Too many arguments for "f13"
-main, line 12: Incompatible types in assignment
+main, line 10: Too many arguments for "f01"
+main, line 11: Too few arguments for "f13"
+main, line 12: Too many arguments for "f13"
 main, line 13: Incompatible types in assignment
 main, line 14: Incompatible types in assignment
+main, line 15: Incompatible types in assignment
 
 [case testSkipTypeCheckingWithImplicitSignature]
-A a
+from typing import Undefined
+a = Undefined # type: A
 def f():
     a()
 def g(x):
@@ -379,7 +389,8 @@ class A: pass
 [builtins fixtures/bool.py]
 
 [case testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs]
-A a
+from typing import Undefined
+a = Undefined # type: A
 def f(x=a()):
     a()
 def g(x, y=a, z=a()):
@@ -387,17 +398,18 @@ def g(x, y=a, z=a()):
 class A: pass
 
 [case testImplicitMethodSignature]
-func<void()> g0
-func<void(A)> g1
-func<void(A, A)> g2
-A a
+from typing import Undefined, Function
+g0 = Undefined # type: Function[[], None]
+g1 = Undefined # type: Function[[A], None]
+g2 = Undefined # type: Function[[A, A], None]
+a = Undefined # type: A
 
 g0 = a.f # E: Incompatible types in assignment
 g2 = a.f # E: Incompatible types in assignment
 a = a.f  # E: Incompatible types in assignment
 
 class A:
-    void g(self):
+    def g(self) -> None:
         a = self.f(a)
     def f(self, x): pass
 
@@ -405,7 +417,8 @@ g1 = a.f
 a = a.f(a)
 
 [case testSkipTypeCheckingImplicitMethod]
-A a
+from typing import Undefined
+a = Undefined # type: A
 class A:
     def f(self):
         a()
@@ -413,23 +426,25 @@ class A:
         a()
 
 [case testImplicitInheritedMethod]
-func<void()> g0
-func<void(A)> g1
-A a
+from typing import Undefined, Function
+g0 = Undefined # type: Function[[], None]
+g1 = Undefined # type: Function[[A], None]
+a = Undefined # type: A
 
 g0 = a.f # E: Incompatible types in assignment
 
 g1 = a.f
 a = a.f(a)
 
-class A(B):
-    void g(self):
-        a = self.f(a)
 class B:
     def f(self, x):
         pass
+class A(B):
+    def g(self) -> None:
+        a = self.f(a)
 
 [case testEmptyReturnWithImplicitSignature]
+import typing
 def f():
     return 
 class A:
@@ -437,7 +452,8 @@ class A:
         return 
         
 [case testVarArgsWithImplicitSignature]
-any o
+from typing import Undefined, Any
+o = Undefined # type: Any
 def f(x, *a): pass
 f() # E: Too few arguments for "f"
 f(o)
@@ -451,9 +467,10 @@ f(o, o, o)
 
 
 [case testInitMethodWithImplicitSignature]
-func<A(A)> f1
-func<A(A, A)> f2
-A a
+from typing import Undefined, Function
+f1 = Undefined # type: Function[[A], A]
+f2 = Undefined # type: Function[[A, A], A]
+a = Undefined # type: A
 
 A(a)   # Fail
 f1 = A # Fail
@@ -464,11 +481,12 @@ f2 = A
 class A:
   def __init__(self, a, b): pass
 [out]
-main, line 5: Too few arguments for "A"
-main, line 6: Incompatible types in assignment
+main, line 6: Too few arguments for "A"
+main, line 7: Incompatible types in assignment
 
 [case testUsingImplicitTypeObjectWithIs]
-type t 
+from typing import Undefined
+t = Undefined # type: type 
 t = A
 t = B
 
@@ -482,11 +500,12 @@ class B:
 
 
 [case testTupleTypeCompatibility]
-tuple<any, A> t1
-tuple<A, any> t2
-tuple<any, any> t3
-tuple<A, A> t4
-tuple<any, any, any> t5
+from typing import Undefined, Any, Tuple
+t1 = Undefined # type: Tuple[Any, A]
+t2 = Undefined # type: Tuple[A, Any]
+t3 = Undefined # type: Tuple[Any, Any]
+t4 = Undefined # type: Tuple[A, A]
+t5 = Undefined # type: Tuple[Any, Any, Any]
 
 t3 = t5 # E: Incompatible types in assignment
 t5 = t4 # E: Incompatible types in assignment
@@ -509,9 +528,10 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testFunctionTypeCompatibilityAndReturnTypes]
-func<any()> f1
-func<A()> f2
-func<void()> f3
+from typing import Undefined, Any, Function
+f1 = Undefined # type: Function[[], Any]
+f2 = Undefined # type: Function[[], A]
+f3 = Undefined # type: Function[[], None]
 
 f2 = f3 # E: Incompatible types in assignment
 
@@ -523,9 +543,10 @@ f3 = f1
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentTypes]
-func<void(A, any)> f1
-func<void(any, A)> f2
-func<void(A, A)> f3
+from typing import Undefined, Any, Function
+f1 = Undefined # type: Function[[A, Any], None]
+f2 = Undefined # type: Function[[Any, A], None]
+f3 = Undefined # type: Function[[A, A], None]
 
 f1 = f1
 f1 = f2
@@ -542,8 +563,9 @@ f3 = f3
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentCounts]
-func<void(any)> f1
-func<void(any, any)> f2
+from typing import Undefined, Any, Function
+f1 = Undefined # type: Function[[Any], None]
+f2 = Undefined # type: Function[[Any, Any], None]
 
 f1 = f2 # E: Incompatible types in assignment
 
@@ -553,75 +575,71 @@ f1 = f2 # E: Incompatible types in assignment
 
 
 [case testOverridingMethodWithDynamicTypes]
-A a, B b
+from typing import Undefined, Any
+a, b = Undefined, Undefined # type: (A, B)
 
 b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
 a = a.f(b)
 
-class A(B):
-    any f(self, any x):
-        pass
-    
-    void g(self, any x):
-        pass
 class B:
-    B f(self, A x):
+    def f(self, x: 'A') -> 'B':
         pass
-    void g(self, B x):
+    def g(self, x: 'B') -> None:
+        pass
+class A(B):
+    def f(self, x: Any) -> Any:
+        pass
+    def g(self, x: Any) -> None:
         pass
 
 [case testOverridingMethodWithImplicitDynamicTypes]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 
 b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
 a = a.f(b)
 
+class B:
+    def f(self, x: 'A') -> 'B':
+        pass
+    def g(self, x: 'B') -> None:
+        pass
 class A(B):
     def f(self, x):
         pass
-    
     def g(self, x):
-        pass
-class B:
-    B f(self, A x):
-        pass
-    void g(self, B x):
         pass
 
 [case testOverridingMethodAcrossHierarchy]
-class A(B):
-    void f(self, D a): # E: Argument 1 of "f" incompatible with supertype "C"
-        pass
-
-class B(C):
-    def f(self, a):
-        pass
-
+import typing
 class C:
-    void f(self, A a):
+    def f(self, a: 'A') -> None: pass
+class B(C):
+    def f(self, a): pass
+class A(B):
+    def f(self, a: 'D') -> None: # E: Argument 1 of "f" incompatible with supertype "C"
         pass
-
 class D: pass
 [out]
 main: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature1]
-class A(B):
-    def f(self, x, y):
-        x()
+import typing
 class B:
-    void f(self, A x):
-        pass
+    def f(self, x: A) -> None: pass
+class A(B):
+    def f(self, x, y): # Fail
+        x()
 [out]
 main: In class "A":
-main, line 2: Signature of "f" incompatible with supertype "B"
+main, line 5: Signature of "f" incompatible with supertype "B"
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature2]
-class A(B):
-    void f(self, A x): # E: Signature of "f" incompatible with supertype "B"
-        pass
+import typing
 class B:
-    def f(self, x, y):
+    def f(self, x, y): pass
+class A(B):
+    def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
         pass
 [out]
 main: In class "A":

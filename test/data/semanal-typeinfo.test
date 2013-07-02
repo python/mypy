@@ -8,8 +8,7 @@ class c: pass
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
-    Interfaces()
+    Bases(builtins.object)
     Names()))
 
 [case testClassWithMethod]
@@ -19,8 +18,7 @@ class c:
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
-    Interfaces()
+    Bases(builtins.object)
     Names(
       f)))
 
@@ -33,8 +31,7 @@ class c:
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
-    Interfaces()
+    Bases(builtins.object)
     Names(
       __init__
       y
@@ -47,30 +44,28 @@ class c(base): pass
 TypeInfoMap(
   __main__.base : TypeInfo(
     Name(__main__.base)
-    Base(builtins.object)
-    Interfaces()
+    Bases(builtins.object)
     Names())
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(__main__.base)
-    Interfaces()
+    Bases(__main__.base)
     Names()))
 
-[case testClassWithInterface]
-interface i: pass
+[case testClassAndAbstractClass]
+from abc import abstractmethod, ABCMeta
+import typing
+
+class i(metaclass=ABCMeta): pass
 class c(i): pass
 [out]
 TypeInfoMap(
   __main__.c : TypeInfo(
     Name(__main__.c)
-    Base(builtins.object)
-    Interfaces(
-      __main__.i)
+    Bases(__main__.i)
     Names())
   __main__.i : TypeInfo(
     Name(__main__.i)
-    Interface
-    Interfaces()
+    Bases(builtins.object)
     Names()))
 
 [case testAttributeWithoutType]
@@ -80,7 +75,6 @@ class A:
 TypeInfoMap(
   __main__.A : TypeInfo(
     Name(__main__.A)
-    Base(builtins.object)
-    Interfaces()
+    Bases(builtins.object)
     Names(
       a)))

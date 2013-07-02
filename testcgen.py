@@ -17,6 +17,7 @@ from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
 from mypy.testhelpers import assert_string_arrays_equal_wildcards
+import typing
 
 
 class CGenCompileSuite(Suite):
@@ -40,7 +41,7 @@ def test_cgen_compile(testcase):
                     target=build.C,
                     program_text=text, 
                     alt_lib_path='lib',
-                    flags=[build.COMPILE_ONLY])
+                    flags=[build.COMPILE_ONLY, build.TEST_BUILTINS])
         outfile = '_program.c'
         f = open(outfile)
         out = [s.rstrip('\n\r') for s in f.readlines()]
@@ -81,6 +82,7 @@ def test_cgen(testcase):
         build.build(program,
                     target=build.C,
                     program_text=text,
+                    flags=[build.TEST_BUILTINS],
                     alt_lib_path='lib')
         # Run the program.
         outfile = './_program'
@@ -94,7 +96,7 @@ def test_cgen(testcase):
     # Include line-end comments in the expected output.
     # Note: # characters in string literals can confuse this.
     for s in testcase.input:
-        m = re.search(' #(.*)', s)
+        m = re.search(' #(?! type:)(.*)', s)
         if m:
             testcase.output.append(m.group(1).strip())
     # Verify output.

@@ -2,7 +2,8 @@
 
 # NOTE: These are incomplete!
 
-tuple<str, tuple<str, str, str>, str> \
-           mac_ver(str release='',
-                   tuple<str, str, str> version_info=('', '', ''),
-                   str machine=''): pass
+from typing import Tuple
+
+def mac_ver(release: str = '',
+            version_info: Tuple[str, str, str] = ('', '', ''),
+            machine: str = '') -> Tuple[str, Tuple[str, str, str], str]: pass

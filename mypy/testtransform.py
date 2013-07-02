@@ -2,6 +2,8 @@ import os
 import os.path
 import shutil
 
+import typing
+
 from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.testhelpers import assert_string_arrays_equal_wildcards
@@ -45,6 +47,7 @@ def test_transform(testcase):
         result = build.build(program_path='main',
                              target=build.TRANSFORM,
                              program_text=src,
+                             flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
         first = True
@@ -52,7 +55,9 @@ def test_transform(testcase):
         for fnam in sorted(result.files.keys()):
             f = result.files[fnam]
             # Skip the builtins module and files with '_skip.' in the path.
-            if not f.path.endswith('/builtins.py') and '_skip.' not in f.path:
+            if (not f.path.endswith('/builtins.py') and
+                not f.path.endswith('/typing.py') and
+                not f.path.endswith('/abc.py') and '_skip.' not in f.path):
                 if not first:
                     # Display path for files other than the first.
                     a.append('{}:'.format(remove_prefix(f.path,

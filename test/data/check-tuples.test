@@ -3,11 +3,12 @@
 
 
 [case testAssignmentWithTupleTypes]
-tuple<A> t1
-tuple<B> t2
-tuple<A, A> t3
-tuple<A, B> t4
-tuple<B, A> t5
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A]
+t2 = Undefined # type: Tuple[B]
+t3 = Undefined # type: Tuple[A, A]
+t4 = Undefined # type: Tuple[A, B]
+t5 = Undefined # type: Tuple[B, A]
 
 t1 = t2 # E: Incompatible types in assignment
 t1 = t3 # E: Incompatible types in assignment
@@ -27,9 +28,10 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testTupleSubtyping]
-tuple<A, A> t1
-tuple<A, B> t2
-tuple<B, A> t3
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A, A]
+t2 = Undefined # type: Tuple[A, B]
+t3 = Undefined # type: Tuple[B, A]
 
 t2 = t1  # E: Incompatible types in assignment
 t2 = t3  # E: Incompatible types in assignment
@@ -44,8 +46,9 @@ class B(A): pass
 [builtins fixtures/tuple.py]
 
 [case testTupleCompatibilityWithOtherTypes]
-A a, object o
-tuple<A, A> t
+from typing import Undefined, Tuple
+a, o = Undefined, Undefined # type: (A, object)
+t = Undefined # type: Tuple[A, A]
 
 a = t # E: Incompatible types in assignment
 t = o # E: Incompatible types in assignment
@@ -60,8 +63,9 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testNestedTupleTypes]
-tuple<A, tuple<A, A>> t1
-tuple<B, tuple<B, B>> t2
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A, Tuple[A, A]]
+t2 = Undefined # type: Tuple[B, Tuple[B, B]]
 
 t2 = t1 # E: Incompatible types in assignment
 t1 = t2
@@ -71,8 +75,9 @@ class B(A): pass
 [builtins fixtures/tuple.py]
 
 [case testSubtypingWithNamedTupleType]
-tuple<A, A> t1
-tuple t2
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A, A]
+t2 = Undefined # type: tuple
 
 t1 = t2 # E: Incompatible types in assignment
 t2 = t1
@@ -81,7 +86,8 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testTupleInitializationWithNone]
-tuple<A, A> t = None
+from typing import Tuple
+t = None # type: Tuple[A, A]
 t = None
 class A: pass
 [builtins fixtures/tuple.py]
@@ -92,11 +98,12 @@ class A: pass
 
 
 [case testTupleExpressions]
-tuple t1
-tuple<A> t2
-tuple<A, B> t3
+from typing import Undefined, Tuple
+t1 = Undefined # type: tuple
+t2 = Undefined # type: Tuple[A]
+t3 = Undefined # type: Tuple[A, B]
 
-A a, B b, C c
+a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
 t2 = ()        # E: Incompatible types in assignment
 t2 = (a, a)    # E: Incompatible types in assignment
@@ -117,10 +124,11 @@ class C(B): pass
 [builtins fixtures/tuple.py]
 
 [case testVoidValueInTuple]
+import typing
 (None, f()) # E: "f" does not return a value
 (f(), None) # E: "f" does not return a value
 
-void f(): pass
+def f() -> None: pass
 [builtins fixtures/tuple.py]
 
 
@@ -129,10 +137,11 @@ void f(): pass
 
 
 [case testIndexingTuples]
-tuple<A, B> t1
-tuple<A> t2
-A a, B b
-int n
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A, B]
+t2 = Undefined # type: Tuple[A]
+a, b = Undefined, Undefined # type: (A, B)
+n = 0
 
 a = t1[1] # E: Incompatible types in assignment
 b = t1[0] # E: Incompatible types in assignment
@@ -151,8 +160,9 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testAssigningToTupleItems]
-tuple<A, B> t
-int n
+from typing import Undefined, Tuple
+t = Undefined # type: Tuple[A, B]
+n = 0
 
 t[0] = A() # E: Unsupported target for indexed assignment
 t[2] = A() # E: Unsupported target for indexed assignment
@@ -168,9 +178,10 @@ class B: pass
 
 
 [case testMultipleAssignmentWithTuples]
-tuple<A, B> t1
-tuple<A, B, A> t2
-A a, B b
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A, B]
+t2 = Undefined # type: Tuple[A, B, A]
+a, b = Undefined, Undefined # type: (A, B)
 
 a, a = t1 # E: Incompatible types in assignment
 b, b = t1 # E: Incompatible types in assignment
@@ -184,8 +195,9 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testMultipleAssignmentWithInvalidNumberOfValues]
-tuple<A, A, A> t1
-A a
+from typing import Undefined, Tuple
+t1 = Undefined # type: Tuple[A, A, A]
+a = Undefined # type: A
 
 a, a = t1       # E: Too many values to assign
 a, a, a, a = t1 # E: Need 4 values to assign
@@ -196,7 +208,8 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testMultipleAssignmentWithTupleExpressionRvalue]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 
 a, b = a, a # E: Incompatible types in assignment
 a, b = b, a # E: Incompatible types in assignment
@@ -209,7 +222,8 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testSubtypingInMultipleAssignment]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 
 b, b = a, b # E: Incompatible types in assignment
 b, b = b, a # E: Incompatible types in assignment
@@ -222,22 +236,24 @@ class B(A): pass
 [builtins fixtures/tuple.py]
 
 [case testInitializationWithMultipleValues]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 
-A a1, B b1 = a, a  # E: Incompatible types in assignment
-A a2, B b2 = b, b  # E: Incompatible types in assignment
-A a3, B b3 = a     # E: Incompatible types in assignment
-A a4, B b4 = None  # E: Incompatible types in assignment
-A a5, B b5 = a, b, a  # E: Too many values to assign
+a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment
+a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment
+a3, b3 = a # type: (A, B)     # E: Incompatible types in assignment
+a4, b4 = None # type: (A, B)  # E: Incompatible types in assignment
+a5, b5 = a, b, a # type: (A, B)  # E: Too many values to assign
 
-A ax, B bx = a, b
+ax, bx = a, b # type: (A, B)
 
 class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
 
 [case testMultipleAssignmentWithNonTupleRvalue]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 # TODO callable f
 
 a, b = None # E: Incompatible types in assignment
@@ -249,8 +265,9 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testMultipleAssignmentWithIndexedLvalues]
-A a, B b
-AA aa, BB bb
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
+aa, bb = Undefined, Undefined # type: (AA, BB)
 
 a[a], b[b] = a, bb   # E: Incompatible types in assignment
 a[a], b[b] = aa, b   # E: Incompatible types in assignment
@@ -259,16 +276,25 @@ a[a], b[bb] = aa, bb # E: Invalid index type "BB" for "B"
 a[a], b[b] = aa, bb
 
 class A:
-    void __setitem__(self, A x, AA y): pass
+    def __setitem__(self, x: 'A', y: 'AA') -> None: pass
 class B:
-    void __setitem__(self, B x, BB y): pass
+    def __setitem__(self, x: 'B', y: 'BB') -> None: pass
 
 class AA: pass
 class BB: pass
 [builtins fixtures/tuple.py]
 
+[case testMultipleDeclarationWithParentheses]
+from typing import Undefined
+(a, b) = (None, None) # type: int, str
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+a = 1
+b = ''
+
 [case testMultipleAssignmentWithExtraParentheses]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 
 (a, b) = (a, a) # E: Incompatible types in assignment
 (a, b) = (b, b) # E: Incompatible types in assignment
@@ -285,34 +311,60 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
 
+[case testMultipleAssignmentUsingUndefinedWithArgument]
+from typing import Undefined, Tuple
+a, b = Undefined(Tuple[int, str])
+a = 1
+b = ''
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+
+[case testMultipleAssignmentUsingRepeatedUndefinedWithArgument]
+from typing import Undefined
+a, b = Undefined(int), Undefined(str)
+a = 1
+b = ''
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+
+[case testMultipleAssignmentUsingUndefinedWithArgumentAndNormalExpression]
+from typing import Undefined
+a, b = Undefined(int), ''
+a = 1
+b = ''
+a = '' # E: Incompatible types in assignment
+b = 1  # E: Incompatible types in assignment
+
 
 -- Error messages
 -- --------------
 
 
 [case testTupleErrorMessages]
-A a
+from typing import Undefined
+a = Undefined # type: A
 
 (a, a) + a  # E: Unsupported left operand type for + ("tuple")
-a + (a, a)  # E: Unsupported operand types for + ("A" and "tuple<A, A>")
-f((a, a))   # E: Argument 1 to "f" has incompatible type "tuple<A, A>"
+a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
+f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"
 (a, a).foo  # E: "tuple" has no attribute "foo"
 
-void f(A x): pass
+def f(x: 'A') -> None: pass
 
 class A:
-    A __add__(self, A x): pass
+    def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/tuple.py]
 
 [case testLargeTuplesInErrorMessages]
-LongTypeName a
+from typing import Undefined
+a = Undefined # type: LongTypeName
 a + (a, a, a, a, a, a, a) # Fail
 
 class LongTypeName:
-    LongTypeName __add__(self, LongTypeName x): pass
+    def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 2: Unsupported operand types for + ("LongTypeName" and tuple)
+main, line 3: Unsupported operand types for + ("LongTypeName" and tuple)
 
 
 -- Tuple methods
@@ -320,10 +372,11 @@ main, line 2: Unsupported operand types for + ("LongTypeName" and tuple)
 
 
 [case testTupleMethods]
-tuple<int, str> t
-int i
-str s
-bool b
+from typing import Undefined, Tuple
+t = Undefined # type: Tuple[int, str]
+i = 0
+s = ''
+b = bool()
 
 s = t.__len__()  # E: Incompatible types in assignment
 i = t.__str__()  # E: Incompatible types in assignment
@@ -336,11 +389,11 @@ b = s in t
 
 [file builtins.py]
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 class tuple:
-    int __len__(self): pass
-    str __str__(self): pass
-    bool __contains__(self, object o): pass
+    def __len__(self) -> int: pass
+    def __str__(self) -> str: pass
+    def __contains__(self, o: object) -> bool: pass
 class int: pass
 class str: pass
 class bool: pass

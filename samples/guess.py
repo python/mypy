@@ -1,6 +1,7 @@
 # "Guess the Number" Game (edited) from http://inventwithpython.com
 
 import random
+import typing
 
 guesses_made = 0
 

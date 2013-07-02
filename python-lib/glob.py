@@ -4,9 +4,12 @@ import os
 import re
 import fnmatch
 
+from typing import overload, List, Iterator
+
 __all__ = ["glob", "iglob"]
 
-str[] glob(str pathname):
+@overload
+def glob(pathname: str) -> List[str]:
     """Return a list of paths matching a pathname pattern.
 
     The pattern may contain simple shell-style wildcards a la fnmatch.
@@ -14,7 +17,8 @@ str[] glob(str pathname):
     """
     return list(iglob(pathname))
 
-bytes[] glob(bytes pathname):
+@overload
+def glob(pathname: bytes) -> List[bytes]:
     return list(iglob(pathname))
 
 def _iglob(pathname):
@@ -39,7 +43,8 @@ def _iglob(pathname):
         for name in glob_in_dir(dirname, basename):
             yield os.path.join(dirname, name)
 
-Iterator<str> iglob(str pathname):
+@overload
+def iglob(pathname: str) -> Iterator[str]:
     """Return an iterator which yields the paths matching a pathname pattern.
 
     The pattern may contain simple shell-style wildcards a la fnmatch.
@@ -47,7 +52,8 @@ Iterator<str> iglob(str pathname):
     """
     return _iglob(pathname)
 
-Iterator<bytes> iglob(bytes pathname):
+@overload
+def iglob(pathname: bytes) -> Iterator[bytes]:
     return _iglob(pathname)
 
 # These 2 helper functions non-recursively glob inside a literal directory.

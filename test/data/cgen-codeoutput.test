@@ -6,6 +6,7 @@
 -- The runner is testcgen.CGenCompileSuite.
 
 [case testTypeRepr]
+import typing
 class A: pass
 [out]
 ...
@@ -13,8 +14,9 @@ MTypeRepr MR_A = {
 ...
 
 [case testMethodInVtable]
+import typing
 class A:
-    void f(self): pass
+    def f(self) -> None: pass
 [out]
 ...
 MFunction MVT_A[] = {
@@ -27,8 +29,9 @@ MTypeRepr MR_A = {
 ...
 
 [case testMethodDeclarationAndDefinition]
+import typing
 class A:
-    void f(self): pass
+    def f(self) -> None: pass
 [out]
 ...
 MValue MA_f(MEnv *e);
@@ -38,8 +41,9 @@ MValue MA_f(MEnv *e)
 ...
 
 [case testAttributeAccessorInVtable]
+from typing import Undefined
 class A:
-    int x
+    x = Undefined(int)
 [out]
 ...
 MFunction MVT_A[] = {
@@ -50,8 +54,9 @@ MFunction MVT_A[] = {
 ...
 
 [case testAttributeGetterDeclarationAndDefinition]
+from typing import Undefined
 class A:
-    int x
+    x = Undefined(int)
 [out]
 ...
 MValue MA__x(MEnv *e);
@@ -61,8 +66,9 @@ MValue MA__x(MEnv *e)
 ...
 
 [case testAttributeSetterDeclarationAndDefinition]
+from typing import Undefined
 class A:
-    int x
+    x = Undefined(int)
 [out]
 ...
 MValue MA_set_x(MEnv *e);
@@ -72,12 +78,13 @@ MValue MA_set_x(MEnv *e)
 ...
 
 [case testVtableWhenOverridingAndAddingMethod]
+import typing
 class A:
-    void f(self): pass
-    void g(self): pass
+    def f(self) -> None: pass
+    def g(self) -> None: pass
 class B(A):
-    void f(self): pass
-    void h(self): pass
+    def f(self) -> None: pass
+    def h(self) -> None: pass
 [out]
 ...
 MFunction MVT_B[] = {

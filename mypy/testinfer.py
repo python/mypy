@@ -1,9 +1,11 @@
 """Test cases for type inference helper functions."""
 
+import typing
+
 from mypy.myunit import Suite, assert_equal, assert_true, run_test
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
-from mypy.types import Any, TupleType
+from mypy.types import AnyType, TupleType
 
 
 class MapActualsToFormalsSuite(Suite):
@@ -72,17 +74,17 @@ class MapActualsToFormalsSuite(Suite):
             [ARG_STAR],
             [ARG_POS],
             [[0]],
-            TupleType([Any()]))
+            TupleType([AnyType()]))
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS, ARG_POS],
             [[0], [0]],
-            TupleType([Any(), Any()]))
+            TupleType([AnyType(), AnyType()]))
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS, ARG_OPT, ARG_OPT],
             [[0], [0], []],
-            TupleType([Any(), Any()]))
+            TupleType([AnyType(), AnyType()]))
 
     def test_named_args(self):
         self.assert_map(
@@ -162,7 +164,7 @@ class MapActualsToFormalsSuite(Suite):
             caller_names,
             callee_kinds,
             callee_names,
-            lambda i: Any())
+            lambda i: AnyType())
         assert_equal(result, expected)
 
     def assert_vararg_map(self, caller_kinds, callee_kinds, expected,

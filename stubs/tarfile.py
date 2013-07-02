@@ -1,21 +1,30 @@
 # TODO these are incomplete
 
+from typing import Any, List, overload, Function
+
 class TarError(Exception): pass
 
-TarFile open(str name, str mode='r', any fileobj=None, int bufsize=10240,
-             **kwargs): pass
+class TarInfo:
+    name = ''
+    size = 0
 
 class TarFile:
-    TarInfo getmember(self, str name): pass
-    TarInfo[] getmembers(self): pass
-    void extractall(self, str path=".", TarInfo[] members=None): pass
-    void extract(self, str member, str path="", bool set_attrs=True): pass
-    void extract(self, TarInfo member, str path="", bool set_attrs=True): pass
-    void add(self, str name, str arcname=None, bool recursive=True,
-             func<bool(str)> exclude=None, *,
-             func<TarFile(TarFile)> filter=None): pass
-    void close(self): pass
+    def getmember(self, name: str) -> TarInfo: pass
+    def getmembers(self) -> List[TarInfo]: pass
+    def extractall(self, path: str = ".",
+                   members: List[TarInfo] = None) -> None: pass
+    
+    @overload
+    def extract(self, member: str, path: str = "",
+                set_attrs: bool = True) -> None: pass
+    @overload
+    def extract(self, member: TarInfo, path: str = "",
+                set_attrs: bool = True) -> None: pass
+    
+    def add(self, name: str, arcname: str = None, recursive: bool = True,
+            exclude: Function[[str], bool] = None, *,
+            filter: 'Function[[TarFile], TarFile]' = None) -> None: pass
+    def close(self) -> None: pass
 
-class TarInfo:
-    str name
-    int size
+def open(name: str, mode: str = 'r', fileobj: Any = None, bufsize: int = 10240,
+         **kwargs) -> TarFile: pass

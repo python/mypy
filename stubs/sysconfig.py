@@ -2,5 +2,7 @@
 
 # NOTE: These are incomplete!
 
-str get_config_var(str name): pass
-bool is_python_build(): pass
+import typing
+
+def get_config_var(name: str) -> str: pass
+def is_python_build() -> bool: pass

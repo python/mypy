@@ -3,10 +3,11 @@
 
 
 [case testReturnValue]
-A f():
+import typing
+def f() -> 'A':
     return A()
     return B()
-B g():
+def g() -> 'B':
     return A()
 class A:
     pass
@@ -14,14 +15,15 @@ class B:
     pass
 [out]
 main: In function "f":
-main, line 3: Incompatible return value type
+main, line 4: Incompatible return value type
 main: In function "g":
-main, line 5: Incompatible return value type
+main, line 6: Incompatible return value type
 
 [case testReturnSubtype]
-B f():
+import typing
+def f() -> 'B':
     return A()
-A g():
+def g() -> 'A':
     return B()
 class A:
     pass
@@ -29,18 +31,19 @@ class B(A):
     pass
 [out]
 main: In function "f":
-main, line 2: Incompatible return value type
+main, line 3: Incompatible return value type
 
 [case testReturnWithoutAValue]
-A f():
+import typing
+def f() -> 'A':
     return 
-void g():
+def g() -> None:
     return 
 class A:
     pass
 [out]
 main: In function "f":
-main, line 2: Return value expected
+main, line 3: Return value expected
 
 
 -- If statement
@@ -48,8 +51,9 @@ main, line 2: Return value expected
 
 
 [case testIfStatement]
-A a
-bool b
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: bool
 if a:
     a = b # Fail
 elif a:
@@ -68,10 +72,10 @@ if b:
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 4: Incompatible types in assignment
-main, line 6: Incompatible types in assignment
-main, line 8: Incompatible types in assignment
-main, line 10: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
+main, line 9: Incompatible types in assignment
+main, line 11: Incompatible types in assignment
 
 
 -- Loops
@@ -79,8 +83,9 @@ main, line 10: Incompatible types in assignment
 
 
 [case testWhileStatement]
-A a
-bool b
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: bool
 while a:
     a = b    # Fail
 else:
@@ -91,16 +96,18 @@ while b:
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 4: Incompatible types in assignment
-main, line 6: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 
 [case testBreakStatement]
+import typing
 while None:
     break
 [builtins fixtures/bool.py]
 [out]
 
 [case testContinueStatement]
+import typing
 while None:
     continue
 [builtins fixtures/bool.py]
@@ -112,99 +119,106 @@ while None:
 
 
 [case testPlusAssign]
-A a, B b, C c
+from typing import Undefined
+a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 a += b   # Fail
 b += a   # Fail
 c += a   # Fail
 a += c
 
 class A:
-    A __add__(self, C x): pass
+    def __add__(self, x: 'C') -> 'A': pass
 
 class B:
-    C __add__(self, A x): pass
+    def __add__(self, x: A) -> 'C': pass
 
 class C: pass
 [out]
-main, line 2: Unsupported operand types for + ("A" and "B")
-main, line 3: Result type of + incompatible in assignment
-main, line 4: Unsupported left operand type for + ("C")
+main, line 3: Unsupported operand types for + ("A" and "B")
+main, line 4: Result type of + incompatible in assignment
+main, line 5: Unsupported left operand type for + ("C")
 
 [case testMinusAssign]
-A a, B b, C c
+from typing import Undefined
+a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 a -= b   # Fail
 b -= a   # Fail
 c -= a   # Fail
 a -= c
 
 class A:
-    A __sub__(self, C x): pass
+    def __sub__(self, x: 'C') -> 'A': pass
 
 class B:
-    C __sub__(self, A x): pass
+    def __sub__(self, x: A) -> 'C': pass
 
 class C: pass
 [out]
-main, line 2: Unsupported operand types for - ("A" and "B")
-main, line 3: Result type of - incompatible in assignment
-main, line 4: Unsupported left operand type for - ("C")
+main, line 3: Unsupported operand types for - ("A" and "B")
+main, line 4: Result type of - incompatible in assignment
+main, line 5: Unsupported left operand type for - ("C")
 
 [case testMulAssign]
-A a, C c
+from typing import Undefined
+a, c = Undefined, Undefined # type: (A, C)
 a *= a   # Fail
 c *= a   # Fail
 a *= c
 
 class A:
-    A __mul__(self, C x): pass
+    def __mul__(self, x: 'C') -> 'A': pass
 
 class C: pass
 [out]
-main, line 2: Unsupported operand types for * ("A" and "A")
-main, line 3: Unsupported left operand type for * ("C")
+main, line 3: Unsupported operand types for * ("A" and "A")
+main, line 4: Unsupported left operand type for * ("C")
 
 [case testDivAssign]
-A a, C c
+from typing import Undefined
+a, c = Undefined, Undefined # type: (A, C)
 a /= a   # Fail
 c /= a   # Fail
 a /= c
 
 class A:
-    A __truediv__(self, C x): pass
+    def __truediv__(self, x: 'C') -> 'A': pass
 
 class C: pass
 [out]
-main, line 2: Unsupported operand types for / ("A" and "A")
-main, line 3: Unsupported left operand type for / ("C")
+main, line 3: Unsupported operand types for / ("A" and "A")
+main, line 4: Unsupported left operand type for / ("C")
 
 [case testPowAssign]
-A a, C c
+from typing import Undefined
+a, c = Undefined, Undefined # type: (A, C)
 a **= a   # Fail
 c **= a   # Fail
 a **= c
 
 class A:
-    A __pow__(self, C x): pass
+    def __pow__(self, x: 'C') -> 'A': pass
 
 class C: pass
 [out]
-main, line 2: Unsupported operand types for ** ("A" and "A")
-main, line 3: Unsupported left operand type for ** ("C")
+main, line 3: Unsupported operand types for ** ("A" and "A")
+main, line 4: Unsupported left operand type for ** ("C")
 
 [case testSubtypesInOperatorAssignment]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 b += b
 b += a
 a += b
 
 class A:
-    B __add__(self, A x): pass
+    def __add__(self, x: 'A') -> 'B': pass
 
 class B(A): pass
 [out]
 
 [case testAdditionalOperatorsInOpAssign]
-A a, C c
+from typing import Undefined
+a, c = Undefined, Undefined # type: (A, C)
 a &= a  # Fail
 a >>= a # Fail
 a //= a # Fail
@@ -212,14 +226,14 @@ a &= c
 a >>= c
 a //= c
 class A:
-    A __and__(self, C x): pass
-    A __rshift__(self, C x): pass
-    A __floordiv__(self, C x): pass
+    def __and__(self, x: 'C') -> 'A': pass
+    def __rshift__(self, x: 'C') -> 'A': pass
+    def __floordiv__(self, x: 'C') -> 'A': pass
 class C: pass
 [out]
-main, line 2: Unsupported operand types for & ("A" and "A")
-main, line 3: Unsupported operand types for >> ("A" and "A")
-main, line 4: Unsupported operand types for // ("A" and "A")
+main, line 3: Unsupported operand types for & ("A" and "A")
+main, line 4: Unsupported operand types for >> ("A" and "A")
+main, line 5: Unsupported operand types for // ("A" and "A")
 
 
 -- Assert statement
@@ -227,10 +241,11 @@ main, line 4: Unsupported operand types for // ("A" and "A")
 
 
 [case testAssert]
+import typing
 assert None + None # Fail
 assert None
 [out]
-main, line 1: Unsupported left operand type for + (None)
+main, line 2: Unsupported left operand type for + (None)
 
 
 -- Exception handling
@@ -238,9 +253,10 @@ main, line 1: Unsupported left operand type for + (None)
 
 
 [case testRaiseStatement]
-BaseException e
-MyError f
-A a
+from typing import Undefined
+e = Undefined # type: BaseException
+f = Undefined # type: MyError
+a = Undefined # type: A
 raise a # Fail
 raise e
 raise f
@@ -248,44 +264,48 @@ class A: pass
 class MyError(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 4: Invalid exception type
+main, line 5: Invalid exception type
 
 [case testTryFinallyStatement]
+import typing
 try:
-    A b = object() # Fail
+    b = object() # type: A # Fail
 finally:
-    A c = object() # Fail
+    c = object() # type: A # Fail
 class A: pass
 [out]
-main, line 2: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
 
 [case testSimpleTryExcept]
+from typing import Undefined
 try:
   pass
 except BaseException as e:
-  BaseException a, object o
+  a, o = Undefined, Undefined # type: (BaseException, object)
   e = a
   e = o # Fail
 class A: pass
 class B: pass
 [builtins fixtures/exception.py]
 [out]
-main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 
 [case testTypeErrorInBlock]
+from typing import Undefined
 while object:
-  A x
+  x = Undefined # type: A
   x = object()
   x = B()
 class A: pass
 class B: pass
 [out]
-main, line 3: Incompatible types in assignment
 main, line 4: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
 
 [case testTypeErrorInvolvingBaseException]
-BaseException x, A a
+from typing import Undefined
+x, a = Undefined, Undefined # type: (BaseException, A)
 a = BaseException()  # Fail
 a = object()         # Fail
 x = object()         # Fail
@@ -294,12 +314,13 @@ x = BaseException()
 class A: pass
 [builtins fixtures/exception.py]
 [out]
-main, line 2: Incompatible types in assignment
 main, line 3: Incompatible types in assignment
 main, line 4: Incompatible types in assignment
 main, line 5: Incompatible types in assignment
+main, line 6: Incompatible types in assignment
 
 [case testSimpleTryExcept2]
+import typing
 try:
   pass
 except BaseException as e:
@@ -307,9 +328,10 @@ except BaseException as e:
   e = BaseException()
 [builtins fixtures/exception.py]
 [out]
-main, line 4: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
 
 [case testBaseClassAsExceptionTypeInExcept]
+import typing
 try:
   pass
 except Err as e:
@@ -318,9 +340,10 @@ except Err as e:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 4: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
 
 [case testMultipleExceptHandlers]
+import typing
 try:
     pass
 except BaseException as e:
@@ -331,11 +354,12 @@ except Err as f:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 6: Incompatible types in assignment
+main, line 7: Incompatible types in assignment
 
 [case testTryExceptStatement]
+import typing
 try:
-    A a = B()       # Fail
+    a = B() # type: A       # Fail
 except BaseException as e:
     e = A()             # Fail
     e = Err()
@@ -347,12 +371,13 @@ class B: pass
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 2: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+main, line 8: Incompatible types in assignment
 
 [case testTryExceptWithinFunction]
-void f():
+import typing
+def f() -> None:
   try: pass
   except BaseException as e:
     e = object() # Fail
@@ -364,10 +389,11 @@ class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
 main: In function "f":
-main, line 4: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+main, line 8: Incompatible types in assignment
 
 [case testTryWithElse]
+import typing
 try: pass
 except BaseException: pass
 else:
@@ -375,6 +401,7 @@ else:
 [builtins fixtures/exception.py]
 
 [case testExceptWithoutType]
+import typing
 try: 
     -None # E: Unsupported operand type for unary - (None)
 except:
@@ -382,6 +409,7 @@ except:
 [builtins fixtures/exception.py]
 
 [case testRaiseWithoutArgument]
+import typing
 try:
     None
 except:
@@ -389,6 +417,7 @@ except:
 [builtins fixtures/exception.py]
 
 [case testExceptWithMultipleTypes]
+import typing
 class E1(BaseException): pass
 class E2(E1): pass
 try:
@@ -399,19 +428,21 @@ except (object, E2): pass # E: Invalid exception type
 [builtins fixtures/exception.py]
 
 [case testExceptWithMultipleTypes2]
+import typing
 class E1(BaseException): pass
 class E2(E1): pass
 try:
     pass
 except (E1, E2) as e1:
-    E1 x = e1
-    E2 y = e1 # E: Incompatible types in assignment
+    x = e1 # type: E1
+    y = e1 # type: E2 # E: Incompatible types in assignment
 except (E2, E1) as e2:
-    E1 a = e2
-    E2 b = e2 # E: Incompatible types in assignment
+    a = e2 # type: E1
+    b = e2 # type: E2 # E: Incompatible types in assignment
 [builtins fixtures/exception.py]
 
 [case testReuseTryExceptionVariable]
+import typing
 class E1(BaseException): pass
 class E2(BaseException): pass
 try: pass
@@ -423,6 +454,7 @@ except E2 as e: pass # E: Incompatible types in assignment
 [builtins fixtures/exception.py]
 
 [case testArbitraryExpressionAsExceptionType]
+import typing
 a = BaseException
 try: pass
 except a as b:
@@ -431,16 +463,20 @@ except a as b:
 [builtins fixtures/exception.py]
 
 [case testInvalidExceptionCallable]
-BaseException exc(): pass
+import typing
+def exc() -> BaseException: pass
 try: pass
 except exc as e: pass             # E: Invalid exception type
 except BaseException() as b: pass # E: Invalid exception type
 [builtins fixtures/exception.py]
 
 [case testOverloadedExceptionType]
+from typing import overload
 class E(BaseException):
-    void __init__(self): pass
-    void __init__(self, x): pass
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x) -> None: pass
 try: 
     pass
 except E as e:
@@ -454,13 +490,14 @@ except E as e:
 
 
 [case testDelStmtWithIndex]
-A a, B b
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
 del b[a]
 del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"
 del a[a] # E: "A" has no attribute "__delitem__"
 del a[b] # E: "A" has no attribute "__delitem__"
 class B:
-  def __delitem__(self, A index): pass
+  def __delitem__(self, index: 'A'): pass
 class A: pass
 
 
@@ -469,43 +506,45 @@ class A: pass
 
 
 [case testSimpleYield]
-Iterator<A> f():
-    yield A()
-    yield B() # E: Incompatible types
-class A: pass
-class B: pass
+from typing import Iterator
+def f() -> Iterator[int]:
+    yield 1
+    yield '' # E: Incompatible types
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
 
 [case testYieldInFunctionReturningAny]
-any f():
+from typing import Any
+def f() -> Any:
     yield object()
 [out]
 
 [case testYieldInFunctionReturningFunction]
-func<void()> f():
+from typing import Function
+def f() -> Function[[], None]:
     yield object() # E: Iterator function return type expected for "yield"
 [out]
 main: In function "f":
 
 [case testYieldInDynamicallyTypedFunction]
+import typing
 def f():
     yield f
 
 [case testWithInvalidInstanceReturnType]
-A f():
-    yield A() # E: Iterator function return type expected for "yield"
-class A: pass
+import typing
+def f() -> int:
+    yield 1 # E: Iterator function return type expected for "yield"
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
 
 [case testTypeInferenceContextAndYield]
-Iterator<A[]> f():
+from typing import List, Iterator
+def f() -> 'Iterator[List[int]]':
     yield []
     yield [object()] # E: List item 1 has incompatible type "object"
-class A: pass
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
@@ -518,65 +557,74 @@ main: In function "f":
 
 
 [case testSimpleWith]
+import typing
 class A:
-    void __enter__(self): pass
-    void __exit__(self, x, y, z): pass
+    def __enter__(self) -> None: pass
+    def __exit__(self, x, y, z) -> None: pass
 with A():
     object(A) # E: Too many arguments for "object"
 
 [case testWithStmtAndInvalidExit]
+import typing
 class A:
-    void __enter__(self): pass
-    void __exit__(self, x, y): pass
+    def __enter__(self) -> None: pass
+    def __exit__(self, x, y) -> None: pass
 with A(): # E: Too many arguments for "__exit__" of "A"
     pass
 
 [case testWithStmtAndMissingExit]
+import typing
 class A:
-    void __enter__(self): pass
+    def __enter__(self) -> None: pass
 with A(): # E: "A" has no attribute "__exit__"
     pass
 
 [case testWithStmtAndInvalidEnter]
+import typing
 class A:
-    void __enter__(self, x): pass
-    void __exit__(self, x, y, z): pass
+    def __enter__(self, x) -> None: pass
+    def __exit__(self, x, y, z) -> None: pass
 with A(): # E: Too few arguments for "__enter__" of "A"
     pass
 
 [case testWithStmtAndMissingEnter]
+import typing
 class A:
-    void __exit__(self, x, y, z): pass
+    def __exit__(self, x, y, z) -> None: pass
 with A(): # E: "A" has no attribute "__enter__"
     pass
 
 [case testWithStmtAndMultipleExprs]
+import typing
 class A:
-    void __enter__(self): pass
-    void __exit__(self, x, y, z): pass
+    def __enter__(self) -> None: pass
+    def __exit__(self, x, y, z) -> None: pass
 class B:
-    void __enter__(self): pass
+    def __enter__(self) -> None: pass
 with A(), B(): # E: "B" has no attribute "__exit__"
     pass
 with B(), A(): # E: "B" has no attribute "__exit__"
     pass
 
 [case testWithStmtAndResult]
+import typing
 class B: pass
 class A:
-    B __enter__(self): pass
+    def __enter__(self) -> B: pass
     def __exit__(self, x, y, z): pass
 with A() as b:
     b = B()
     b = A() # E: Incompatible types in assignment
 
 [case testWithStmtAndMultipleResults]
+from typing import typevar, Generic
+t = typevar('t')
 class B: pass
 class C: pass
-class A<t>:
-    t __enter__(self): pass
+class A(Generic[t]):
+    def __enter__(self) -> t: pass
     def __exit__(self, x, y, z): pass
-with A<B>() as b, A<C>() as c:
+with A[B]() as b, A[C]() as c:
     b = B()
     c = C()
     b = c # E: Incompatible types in assignment
@@ -588,6 +636,7 @@ with A<B>() as b, A<C>() as c:
 
 
 [case testChainedAssignment]
+import typing
 class A: pass
 class B: pass
 x = y = A()
@@ -597,7 +646,8 @@ x = B() # E: Incompatible types in assignment
 y = B() # E: Incompatible types in assignment
 
 [case testChainedAssignment2]
-void f():
+import typing
+def f() -> None:
     x = 1
     y = 'x'
     x = y = 'x' # E: Incompatible types in assignment
@@ -605,3 +655,11 @@ void f():
 [builtins fixtures/primitives.py]
 [out]
 main: In function "f":
+
+[case testChainedAssignmentWithType]
+from typing import Undefined
+x = y = None # type: int
+x = '' # E: Incompatible types in assignment
+y = '' # E: Incompatible types in assignment
+x = 1
+y = 1

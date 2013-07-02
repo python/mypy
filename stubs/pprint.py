@@ -2,19 +2,22 @@
 
 # Based on http://docs.python.org/3.2/library/pprint.html
 
-str pformat(object o, int indent=1, int width=80, int depth=None): pass
-void pprint(object o, TextIO stream=None, int indent=1, int width=80,
-            int depth=None): pass
-bool isreadable(object o): pass
-bool isrecursive(object o): pass
-str saferepr(object o): pass
+from typing import Any, Dict, Tuple, TextIO
+
+def pformat(o: object, indent: int = 1, width: int = 80,
+            depth: int = None) -> str: pass
+def pprint(o: object, stream: TextIO = None, indent: int = 1, width: int = 80,
+           depth: int = None) -> None: pass
+def isreadable(o: object) -> bool: pass
+def isrecursive(o: object) -> bool: pass
+def saferepr(o: object) -> str: pass
 
 class PrettyPrinter:
-    void __init__(self, int indent=1, int width=80, int depth=None,
-                  TextIO stream=None): pass
-    str pformat(self, object o): pass
-    void pprint(self, object o): pass
-    bool isreadable(self, object o): pass
-    bool isrecursive(self, object o): pass
-    tuple<str, bool, bool> format(self, object o, dict<int, any> context,
-                                  int maxlevels, int level): pass
+    def __init__(self, indent: int = 1, width: int = 80, depth: int = None,
+                 stream: TextIO = None) -> None: pass
+    def pformat(self, o: object) -> str: pass
+    def pprint(self, o: object) -> None: pass
+    def isreadable(self, o: object) -> bool: pass
+    def isrecursive(self, o: object) -> bool: pass
+    def format(self, o: object, context: Dict[int, Any], maxlevels: int,
+               level: int) -> Tuple[str, bool, bool]: pass

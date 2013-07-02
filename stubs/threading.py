@@ -2,36 +2,40 @@
 
 # NOTE: These are incomplete!
 
+from typing import Any, Dict
+
 class Thread:
-    str name
-    int ident
-    bool daemon
+    name = ''
+    ident = 0
+    daemon = False
     
-    void __init__(self, any group=None, any target=None, any args=(),
-                  dict<any, any> kwargs=None, any verbose=None): pass
-    void start(self): pass
-    void run(self): pass
+    def __init__(self, group: Any = None, target: Any = None, args: Any = (),
+                 kwargs: Dict[Any, Any] = None,
+                 verbose: Any = None) -> None: pass
+    def start(self) -> None: pass
+    def run(self) -> None: pass
     # TODO None value for float
-    void join(self, float timeout=None): pass
-    bool is_alive(self): pass
+    def join(self, timeout: float = None) -> None: pass
+    def is_alive(self) -> bool: pass
 
     # Legacy methods
-    str getName(self): pass
-    void setName(self, str name): pass
-    bool isDaemon(self): pass
-    void setDaemon(self, bool daemon): pass
+    def getName(self) -> str: pass
+    def setName(self, name: str) -> None: pass
+    def isDaemon(self) -> bool: pass
+    def setDaemon(self, daemon: bool) -> None: pass
 
 class Event:
-    bool is_set(self): pass
-    void set(self): pass
-    void clear(self): pass
+    def is_set(self) -> bool: pass
+    def set(self) -> None: pass
+    def clear(self) -> None: pass
     # TODO can it return None?
     # TOOD None value for float
-    bool wait(self, float timeout=None): pass
+    def wait(self, timeout: float = None) -> bool: pass
 
 class RLock:
     # TODO may return None
-    bool acquire(self, bool blocking=True, float timeout=-1.0): pass
-    void release(self): pass
-    bool __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+    def acquire(self, blocking: bool = True,
+                timeout: float = -1.0) -> bool: pass
+    def release(self) -> None: pass
+    def __enter__(self) -> bool: pass
+    def __exit__(self, type, value, traceback) -> None: pass

@@ -2,5 +2,7 @@
 
 # NOTE: These are incomplete!
 
+from typing import Any
+
 # TODO more precise type?
-any import_module(str name, str package=None): pass
+def import_module(name: str, package: str = None) -> Any: pass

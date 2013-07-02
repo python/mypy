@@ -1,4 +1,8 @@
+"""Semantic analyzer test cases"""
+
 import os.path
+
+from typing import Dict, List
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -18,7 +22,8 @@ semanal_files = ['semanal-basic.test',
                  'semanal-types.test',
                  'semanal-modules.test',
                  'semanal-statements.test',
-                 'semanal-interfaces.test']
+                 'semanal-abstractclasses.test']
+
 
 class SemAnalSuite(Suite):
     def cases(self):
@@ -28,10 +33,14 @@ class SemAnalSuite(Suite):
                                   test_semanal, test_temp_dir)
         return c
 
+
 def test_semanal(testcase):
-    """Perform a semantic analysis test case. The testcase argument contains a
-    description of the test case (inputs and output).
+    """Perform a semantic analysis test case.
+
+    The testcase argument contains a description of the test case
+    (inputs and output).
     """
+    
     try:
         src = '\n'.join(testcase.input)
         result = build.build('main',
@@ -47,7 +56,9 @@ def test_semanal(testcase):
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
-            if (not f.path.endswith(os.sep + 'builtins.py')
+            if (not f.path.endswith((os.sep + 'builtins.py',
+                                     'typing.py',
+                                     'abc.py'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
@@ -64,6 +75,7 @@ def test_semanal(testcase):
 # Paths to files containing test case descriptions.
 semanal_error_files = ['semanal-errors.test']
 
+
 class SemAnalErrorSuite(Suite):
     def cases(self):
         # Read test cases from test case description files.
@@ -72,9 +84,11 @@ class SemAnalErrorSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_semanal_error, test_temp_dir)
         return c
+    
 
 def test_semanal_error(testcase):
     """Perform a test case."""
+    
     try:
         src = '\n'.join(testcase.input)
         build.build('main',
@@ -92,8 +106,10 @@ def test_semanal_error(testcase):
             'Invalid compiler output ({}, line {})'.format(testcase.file,
                                                            testcase.line))
 
+
 def normalize_error_messages(messages):
     """Translate an array of error messages to use / as path separator."""
+    
     a = []
     for m in messages:
         a.append(m.replace(os.sep, '/'))
@@ -104,6 +120,7 @@ def normalize_error_messages(messages):
 
 # Test case descriptions
 semanal_symtable_files = ['semanal-symtable.test']
+
     
 class SemAnalSymtableSuite(Suite):
     def cases(self):
@@ -141,6 +158,7 @@ class SemAnalSymtableSuite(Suite):
 # Type info export test cases
 
 semanal_typeinfo_files = ['semanal-typeinfo.test']
+
     
 class SemAnalTypeInfoSuite(Suite):
     def cases(self):
@@ -179,11 +197,13 @@ class SemAnalTypeInfoSuite(Suite):
                 testcase.file, testcase.line))
 
 
-class TypeInfoMap(dict<str, TypeInfo>):
-    str __str__(self):
-        a = <str> ['TypeInfoMap(']
+class TypeInfoMap(Dict[str, TypeInfo]):
+    def __str__(self) -> str:
+        a = ['TypeInfoMap('] # type: List[str]
         for x, y in sorted(self.items()):
-            if isinstance(x, str) and not x.startswith('builtins.'):
+            if isinstance(x, str) and (not x.startswith('builtins.') and
+                                       not x.startswith('typing.') and
+                                       not x.startswith('abc.')):
                 ti = ('\n' + '  ').join(str(y).split('\n'))
                 a.append('  {} : {}'.format(x, ti))
         a[-1] += ')'

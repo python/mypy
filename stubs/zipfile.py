@@ -1,30 +1,43 @@
 # TODO these are incomplete
 
-int ZIP_STORED
-int ZIP_DEFLATED
+from typing import overload, List, Undefined, Tuple, IO
 
-bool is_zipfile(str filename): pass
-bool is_zipfile(IO filename): pass
+ZIP_STORED = 0
+ZIP_DEFLATED = 0
 
-class ZipFile:
-    void __init__(self, str file, str mode='r',
-                  int compression=ZIP_STORED, bool allowZip64=False): pass
-    void __init__(self, IO file, str mode='r',
-                  int compression=ZIP_STORED, bool allowZip64=False): pass
-    void close(self): pass
-    ZipInfo getinfo(str name): pass
-    ZipInfo[] infolist(self): pass
-    str[] namelist(self): pass
-    bytes read(self, str name, str pwd=None): pass
-    bytes read(self, ZipInfo name, str pwd=None): pass
-    void write(self, str filename, str arcname=None,
-               int compress_type=None): pass
-    
-    ZipFile __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+@overload
+def is_zipfile(filename: str) -> bool: pass
+@overload
+def is_zipfile(filename: IO) -> bool: pass
 
 class ZipInfo:
-    str filename
-    tuple<int, int, int, int, int, int> date_time
-    int compressed_size
-    int file_size
+    filename = ''
+    date_time = Undefined(Tuple[int, int, int, int, int, int])
+    compressed_size = 0
+    file_size = 0
+
+class ZipFile:
+    @overload
+    def __init__(self, file: str, mode: str = 'r',
+                 compression: int = ZIP_STORED,
+                 allowZip64: bool = False) -> None: pass
+    @overload
+    def __init__(self, file: IO, mode: str = 'r',
+                  compression: int = ZIP_STORED,
+                 allowZip64: bool = False) -> None: pass
+    
+    def close(self) -> None: pass
+    def getinfo(name: str) -> ZipInfo: pass
+    def infolist(self) -> List[ZipInfo]: pass
+    def namelist(self) -> List[str]: pass
+    
+    @overload
+    def read(self, name: str, pwd: str = None) -> bytes: pass
+    @overload
+    def read(self, name: ZipInfo, pwd: str = None) -> bytes: pass
+    
+    def write(self, filename: str, arcname: str = None,
+              compress_type: int = None) -> None: pass
+    
+    def __enter__(self) -> 'ZipFile': pass
+    def __exit__(self, type, value, traceback) -> None: pass

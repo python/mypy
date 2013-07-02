@@ -5,13 +5,15 @@ in instancse or local variables that contain the runtime values of type
 variables.
 """
 
+from typing import Any
+
 from mypy.types import Type, TypeTranslator, TypeVar, RuntimeTypeVar
 from mypy.nodes import NameExpr, TypeInfo
 from mypy.transutil import tvar_arg_name
 from mypy.maptypevar import get_tvar_access_expression
 
 
-Type translate_runtime_type_vars_locally(Type typ):
+def translate_runtime_type_vars_locally(typ: Type) -> Type:
     """Replace type variable references in a type with runtime type variables.
 
     The type variable references refer to runtime local variables (__tv* etc.),
@@ -22,21 +24,22 @@ Type translate_runtime_type_vars_locally(Type typ):
 
 class TranslateRuntimeTypeVarsLocallyVisitor(TypeTranslator):
     """Reuse most of the implementation by inheriting TypeTranslator."""
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         # FIX function type variables
         return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))
 
 
-Type translate_runtime_type_vars_in_context(Type typ, TypeInfo context,
-                                           any is_java):
+def translate_runtime_type_vars_in_context(typ: Type, context: TypeInfo,
+                                           is_java: Any) -> Type:
     """Replace type variable types within a type with runtime type variables.
 
     Perform the translation in the context of the given type.
     
-    For example, assume class A<T, S> ... and class B<U>(A<X, Y<U>>) ...:
+    For example, assuming class A(Generic[T, S]) ... and
+    class B(A[X, Y[U]], Generic[U]) ...:
     
-      TranslateRuntimeTypeVarsInContext(C<U`1>, <B>) ==
-        C<RuntimeTypeVar(<self.__tv2.args[0]>)>  (<...> uses node repr.)
+      TranslateRuntimeTypeVarsInContext(C[U`1], <B>) ==
+        C[RuntimeTypeVar(<self.__tv2.args[0]>)]  (<...> uses node repr.)
     """
     return typ.accept(ContextualRuntimeTypeVarTranslator(context, is_java))
 
@@ -47,7 +50,7 @@ class ContextualRuntimeTypeVarTranslator(TypeTranslator):
         self.context = context
         self.is_java = is_java
     
-    Type visit_type_var(self, TypeVar t):
+    def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             # Generic function type variable; always in a local variable.
             return RuntimeTypeVar(NameExpr(tvar_arg_name(t.id)))

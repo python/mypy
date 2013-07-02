@@ -8,6 +8,7 @@ import warnings
 
 import unittest
 from test import support
+from typing import Any
 
 
 if hasattr(os, 'stat'):
@@ -68,7 +69,7 @@ class TC(unittest.TestCase):
                      "random string '%s' does not match /^[a-zA-Z0-9_-]{6}$/"
                      % nbase)
 
-any test_classes = []
+test_classes = [] # type: Any
 
 class test_exports(TC):
     def test_exports(self):

@@ -8,64 +8,92 @@
 # TODO UserString
 # TODO more abstract base classes (interfaces in mypy)
 
-from builtins import Set, Sequence, Sized
+from typing import (
+    typevar, Iterable, AbstractGeneric, Iterator, Dict, Generic, overload,
+    Mapping, List, Tuple, Undefined, Function, Set, Sequence, Sized
+)
+
+T = typevar('T')
+KT = typevar('KT')
+VT = typevar('VT')
 
 
-class deque<t>(Sized, Iterable<t>):
+class deque(Sized, Iterable[T], AbstractGeneric[T]):
     # TODO int with None default
-    int maxlen # TODO readonly
-    void __init__(self, Iterable<t> iterable=None, int maxlen=None): pass
-    void append(self, t x): pass
-    void appendleft(self, t x): pass
-    void clear(self): pass
-    int count(self, t x): pass
-    void extend(self, Iterable<t> iterable): pass
-    void extendleft(self, Iterable<t> iterable): pass
-    t pop(self): pass
-    t popleft(self): pass
-    void remove(self, t value): pass
-    void reverse(self): pass
-    void rotate(self, int n): pass
+    maxlen = 0 # TODO readonly
+    def __init__(self, iterable: Iterable[T] = None,
+                 maxlen: int = None) -> None: pass
+    def append(self, x: T) -> None: pass
+    def appendleft(self, x: T) -> None: pass
+    def clear(self) -> None: pass
+    def count(self, x: T) -> int: pass
+    def extend(self, iterable: Iterable[T]) -> None: pass
+    def extendleft(self, iterable: Iterable[T]) -> None: pass
+    def pop(self) -> T: pass
+    def popleft(self) -> T: pass
+    def remove(self, value: T) -> None: pass
+    def reverse(self) -> None: pass
+    def rotate(self, n: int) -> None: pass
     
-    int __len__(self): pass
-    Iterator<t> __iter__(self): pass
-    str __str__(self): pass
-    int __hash__(self): pass
+    def __len__(self) -> int: pass
+    def __iter__(self) -> Iterator[T]: pass
+    def __str__(self) -> str: pass
+    def __hash__(self) -> int: pass
     
-    t __getitem__(self, int i): pass
-    void __setitem__(self, int i, t x): pass
-    bool __contains__(self, t o): pass
+    def __getitem__(self, i: int) -> T: pass
+    def __setitem__(self, i: int, x: T) -> None: pass
+    def __contains__(self, o: T) -> bool: pass
 
     # TODO __reversed__
 
     
-class Counter<t>(dict<t, int>):
-    void __init__(self): pass
-    void __init__(self, Mapping<t, int> Mapping): pass
-    void __init__(self, Iterable<t> iterable): pass
+class Counter(Dict[T, int], Generic[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, Mapping: Mapping[T, int]) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[T]) -> None: pass
     # TODO keyword arguments
-    Iterator<t> elements(self): pass
-    t[] most_common(self): pass
-    t[] most_common(self, int n): pass
-    void subtract(self, Mapping<t, int> Mapping): pass
-    void subtract(self, Iterable<t> iterable): pass
+    
+    def elements(self) -> Iterator[T]: pass
+    
+    @overload
+    def most_common(self) -> List[T]: pass
+    @overload
+    def most_common(self, n: int) -> List[T]: pass
+    
+    @overload
+    def subtract(self, Mapping: Mapping[T, int]) -> None: pass
+    @overload
+    def subtract(self, iterable: Iterable[T]) -> None: pass
+    
     # TODO update
 
 
-class OrderedDict<kt, vt>(dict<kt, vt>):
-    tuple<kt, vt> popitem(self, bool last=True): pass
-    void move_to_end(self, kt key, bool last=True): pass
+class OrderedDict(Dict[KT, VT], Generic[KT, VT]):
+    def popitem(self, last: bool = True) -> Tuple[KT, VT]: pass
+    def move_to_end(self, key: KT, last: bool = True) -> None: pass
 
 
-class defaultdict<kt, vt>(dict<kt, vt>):
-    func<vt()> default_factory
-    void __init__(self): pass
-    void __init__(self, Mapping<kt, vt> map): pass
-    void __init__(self, Iterable<tuple<kt, vt>> iterable): pass
-    void __init__(self, func<vt()> default_factory): pass
-    void __init__(self, func<vt()> default_factory, Mapping<kt, vt> map): pass
-    void __init__(self, func<vt()> default_factory,
-                  Iterable<tuple<kt, vt>> iterable): pass
+class defaultdict(Dict[KT, VT], Generic[KT, VT]):
+    default_factory = Undefined(Function[[], VT])
+    
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, map: Mapping[KT, VT]) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[Tuple[KT, VT]]) -> None: pass
+    @overload
+    def __init__(self, default_factory: Function[[], VT]) -> None: pass
+    @overload
+    def __init__(self, default_factory: Function[[], VT],
+                 map: Mapping[KT, VT]) -> None: pass
+    @overload
+    def __init__(self, default_factory: Function[[], VT],
+                 iterable: Iterable[Tuple[KT, VT]]) -> None: pass
     # TODO __init__ keyword args
-    vt __missing__(self, kt key): pass
+    
+    def __missing__(self, key: KT) -> VT: pass
     # TODO __reversed__

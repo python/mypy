@@ -5,8 +5,13 @@ Tests common to genericpath, macpath, ntpath and posixpath
 import unittest
 from test import support
 import os
+
 import genericpath
+import imp
+imp.reload(genericpath) # Make sure we are using the local copy
+
 import sys
+from typing import Any
 
 
 def safe_rmdir(dirname):
@@ -21,7 +26,7 @@ class GenericTest(unittest.TestCase):
     pathmodule = genericpath
     common_attributes = ['commonprefix', 'getsize', 'getatime', 'getctime',
                          'getmtime', 'exists', 'isdir', 'isfile']
-    any attributes = []
+    attributes = [] # type: Any
 
     def test_no_argument(self):
         for attr in self.common_attributes + self.attributes:
@@ -185,7 +190,7 @@ class GenericTest(unittest.TestCase):
 
 class CommonTest(GenericTest):
     # The path module to be tested
-    any pathmodule = None
+    pathmodule = None # type: Any
     common_attributes = GenericTest.common_attributes + [
         # Properties
         'curdir', 'pardir', 'extsep', 'sep',

@@ -1,159 +1,105 @@
-from mypy.types import Type, TypeVars, TypeVarDef, Any, Void, UnboundType, Callable
-from mypy.typerepr import (
-    TypeVarsRepr, TypeVarDefRepr, AnyRepr, VoidRepr, CommonTypeRepr,
-    ListTypeRepr, CallableRepr
-)
-from mypy.lex import Token, Name
+"""Type parser"""
+
+from typing import List, Tuple, cast
+
+from mypy.types import Type, UnboundType, TupleType, TypeList
+from mypy.typerepr import CommonTypeRepr, ListTypeRepr
+from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
 
 
 none = Token('') # Empty token
 
 
-tuple<Type, int> parse_type(Token[] tok, int index):
+class TypeParseError(Exception):
+    def __init__(self, token: Token, index: int) -> None:
+        super().__init__()
+        self.token = token
+        self.index = index
+
+
+def parse_type(tok: List[Token], index: int) -> Tuple[Type, int]:
     """Parse a type.
 
     Return (type, index after type).
     """
+    
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
 
 
-tuple<TypeVars, int> parse_type_variables(Token[] tok, int index,
-                                          bool is_func):
-    """Parse type variables and optional bounds (<...>).
+def parse_types(tok: List[Token], index: int) -> Tuple[Type, int]:
+    """Parse one or more types separated by commas (optional parentheses).
 
-    Return (bounds, index after bounds).
+    Return (type, index after type).    
     """
+    
     p = TypeParser(tok, index)
-    return p.parse_type_variables(is_func), p.index()
-
-
-tuple<Type[], Token, Token, \
-      Token[], int> parse_type_args(Token[] tok, int index):
-    """Parse type arguments within angle brackets (<...>).
-
-    Return types, '<' token, '>' token, comma tokens, token index after '>').
-    """
-    p = TypeParser(tok, index)
-    types, lparen, rparen, commas = p.parse_type_args()
-    return types, lparen, rparen, commas, p.index()
+    return p.parse_types(), p.index()
 
 
 class TypeParser:
-    Token[] tok
-    int ind
-    # Have we consumed only the first '>' of a '>>' token?
-    bool partial_shr
-    
-    void __init__(self, Token[] tok, int ind):
+    def __init__(self, tok: List[Token], ind: int) -> None:
         self.tok = tok
         self.ind = ind
-        self.partial_shr = False
     
-    int index(self):
+    def index(self) -> int:
         return self.ind
     
-    Type parse_type(self):
+    def parse_type(self) -> Type:
         """Parse a type."""
         t = self.current_token()
-        if t.string == 'any':
-            return self.parse_any_type()
-        elif t.string == 'void':
-            return self.parse_void_type()
-        elif t.string == 'func':
-            return self.parse_func_type()
-        elif isinstance(t, Name):
+        if isinstance(t, Name):
             return self.parse_named_type()
+        elif t.string == '[':
+            return self.parse_type_list()
+        elif isinstance(t, StrLit):
+            # Type escaped as string literal.
+            typestr = (cast(StrLit, t)).parsed()
+            line = t.line
+            self.skip()
+            try:
+                result = parse_str_as_type(typestr, line)
+            except TypeParseError as e:
+                raise TypeParseError(e.token, self.ind)
+            return result
         else:
             self.parse_error()
-    
-    TypeVars parse_type_variables(self, bool is_func):
-        """Parse type variables and optional bounds (<...>)."""
-        langle = self.expect('<')
-        
-        Token[] commas = []
-        TypeVarDef[] items = []
-        n = 1
-        while True:
-            t = self.parse_type_variable(n, is_func)
+
+    def parse_types(self) -> Type:
+        parens = False
+        if self.current_token_str() == '(':
+            self.skip()
+            parens = True
+        type = self.parse_type()
+        if self.current_token_str() == ',':
+            items = [type]
+            while self.current_token_str() == ',':
+                self.skip()
+                items.append(self.parse_type())
+            type = TupleType(items)
+        if parens:
+            self.expect(')')
+        return type
+
+    def parse_type_list(self) -> TypeList:
+        """Parse type list [t, ...]."""
+        lbracket = self.expect('[')
+        commas = [] # type: List[Token]
+        items = [] # type: List[Type]
+        while self.current_token_str() != ']':
+            t = self.parse_type()
             items.append(t)
             if self.current_token_str() != ',':
                 break
             commas.append(self.skip())
-            n += 1
-        
-        rangle = self.expect('>')
-        return TypeVars(items, TypeVarsRepr(langle, commas, rangle))
+        rbracket = self.expect(']')
+        return TypeList(items, line=lbracket.line)
     
-    TypeVarDef parse_type_variable(self, int n, bool is_func):
-        t = self.expect_type(Name)
-        
-        line = t.line
-        name = t.string
-        
-        is_tok = none
-        Type bound = None
-        if self.current_token_str() == 'is':
-            is_tok = self.skip()
-            bound = self.parse_type()
-        
-        if is_func:
-            n = -n
-        
-        return TypeVarDef(name, n, bound, line, TypeVarDefRepr(t, is_tok))
-    
-    tuple<Type[], Token, Token, Token[]> parse_type_args(self):
-        """Parse type arguments within angle brackets (<...>)."""
-        langle = self.expect('<')
-        Token[] commas = []
-        Type[] types = []
-        while True:
-            types.append(self.parse_type())
-            if self.current_token_str() != ',':
-                break
-            commas.append(self.skip())
-        rangle = self.expect('>')
-        return types, langle, rangle, commas
-    
-    Type parse_any_type(self):
-        """Parse 'any' type (or list of ... of any)."""
-        tok = self.skip()
-        anyt = Any(tok.line, AnyRepr(tok))
-        return self.parse_optional_list_type(anyt)
-    
-    Void parse_void_type(self):
-        """Parse 'void' type."""
-        tok = self.skip()
-        return Void(None, tok.line, VoidRepr(tok))
-
-    Type parse_func_type(self):
-        """Parse func<...> type."""
-        func_tok = self.skip()
-        langle = self.expect('<')
-        return_type = self.parse_type()
-        lparen = self.expect('(')
-        arg_types = <Type> []
-        commas = <Token> []
-        while self.current_token_str() != ')':
-            arg_types.append(self.parse_type())
-            if self.current_token_str() != ',':
-                break
-            commas.append(self.expect(','))
-        rparen = self.expect(')')
-        rangle = self.expect('>')
-        typ = Callable(arg_types,
-                       [nodes.ARG_POS] * len(arg_types),
-                       <str> [None] * len(arg_types),
-                       return_type, is_type_obj=False,
-                       repr=CallableRepr(func_tok, langle, lparen, commas,
-                                         rparen, rangle))
-        return self.parse_optional_list_type(typ)
-    
-    Type parse_named_type(self):
+    def parse_named_type(self) -> Type:
         line = self.current_token().line
         name = ''
-        Token[] components = []
+        components = [] # type: List[Token]
         
         components.append(self.expect_type(Name))
         name += components[-1].string
@@ -165,10 +111,10 @@ class TypeParser:
             name += '.' + t.string
         
         langle, rangle = none, none
-        Token[] commas = []
-        Type[] args = []
-        if self.current_token_str() == '<':
-            langle = self.skip()
+        commas = [] # type: List[Token]
+        args = [] # type: List[Type]
+        if self.current_token_str() == '[':
+            lbracket = self.skip()
             
             while True:
                 typ = self.parse_type()
@@ -177,73 +123,52 @@ class TypeParser:
                     break
                 commas.append(self.skip())
             
-            rangle = self.expect('>')
+            rbracket = self.expect(']')
         
         typ = UnboundType(name, args, line, CommonTypeRepr(components,
                                                            langle,
                                                            commas, rangle))
-        return self.parse_optional_list_type(typ)
-
-    Type parse_optional_list_type(self, Type typ):
-        """Try to parse list types t[]."""
-        while self.current_token_str() == '[':
-            line = self.current_token().line
-            # TODO representation
-            lbracket = self.skip()
-            rbracket = self.expect(']')
-            typ = UnboundType('__builtins__.list', [typ], line,
-                              ListTypeRepr(lbracket, rbracket))
         return typ
     
     # Helpers
     
-    Token skip(self):
+    def skip(self) -> Token:
         self.ind += 1
         return self.tok[self.ind - 1]
     
-    Token expect(self, str string):
-        if string == '>' and self.partial_shr:
-            self.partial_shr = False
-            self.ind += 1
-            return Token('')
-        elif string == '>' and self.tok[self.ind].string == '>>':
-            self.partial_shr = True
-            return self.tok[self.ind]
-        elif self.partial_shr:
-            self.parse_error()
-        elif self.tok[self.ind].string == string:
+    def expect(self, string: str) -> Token:
+        if self.tok[self.ind].string == string:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
     
-    Token expect_type(self, type typ):
-        if self.partial_shr:
-            self.parse_error()
-        elif isinstance(self.current_token(), typ):
+    def expect_type(self, typ: type) -> Token:
+        if isinstance(self.current_token(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
     
-    Token current_token(self):
+    def current_token(self) -> Token:
         return self.tok[self.ind]
     
-    str current_token_str(self):
-        s = self.current_token().string
-        if s == '>>':
-            s = '>'
-        return s
+    def current_token_str(self) -> str:
+        return self.current_token().string
     
-    void parse_error(self):
-        raise TypeParseError(self.tok, self.ind)
+    def parse_error(self) -> None:
+        raise TypeParseError(self.tok[self.ind], self.ind)
 
 
-class TypeParseError(Exception):
-    int index
-    Token token
+def parse_str_as_type(typestr: str, line: int) -> Type:
+    """Parse a type represented as a string.
+
+    Raise TypeParseError on parse error.
+    """
     
-    void __init__(self, Token[] token, int index):
-        self.token = token[index]
-        self.index = index
-        super().__init__()
+    typestr = typestr.strip()
+    tokens = lex(typestr, line)
+    result, i = parse_type(tokens, 0)
+    if i < len(tokens) - 2:
+        raise TypeParseError(tokens[i], i)
+    return result

@@ -2,31 +2,35 @@
 
 # Based on http://docs.python.org/3.2/library/shlex.html
 
-str[] split(str s, bool comments=False, bool posix=True): pass
+from typing import List, Undefined, Tuple, Any, TextIO
+
+def split(s: str, comments: bool = False,
+          posix: bool = True) -> List[str]: pass
 
 class shlex:
-    str commenters
-    str wordchars
-    str whitespace
-    str escape
-    str quotes
-    str escapedquotes
-    str whitespace_split
-    str infile
-    TextIO instream
-    str source
-    int debug
-    int lineno
-    str token
-    str eof
+    commenters = ''
+    wordchars = ''
+    whitespace = ''
+    escape = ''
+    quotes = ''
+    escapedquotes = ''
+    whitespace_split = ''
+    infile = ''
+    instream = Undefined(TextIO)
+    source = ''
+    debug = 0
+    lineno = 0
+    token = ''
+    eof = ''
     
-    void __init__(self, instream=None, infile=None, bool posix=False): pass
-    str get_token(self): pass
-    void push_token(self, str tok): pass
-    str read_token(self): pass
-    tuple<str, TextIO> sourcehook(self, str filename): pass
+    def __init__(self, instream=None, infile=None,
+                 posix: bool = False) -> None: pass
+    def get_token(self) -> str: pass
+    def push_token(self, tok: str) -> None: pass
+    def read_token(self) -> str: pass
+    def sourcehook(self, filename: str) -> Tuple[str, TextIO]: pass
     # TODO argument types
-    void push_source(self, any newstream, any newfile=None): pass
-    void pop_source(self): pass
-    # TODO int with None default
-    void error_leader(self, str infile=None, int lineno=None): pass
+    def push_source(self, newstream: Any, newfile: Any = None) -> None: pass
+    def pop_source(self) -> None: pass
+    def error_leader(self, infile: str = None,
+                     lineno: int = None) -> None: pass

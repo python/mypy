@@ -16,6 +16,8 @@ import stat
 import genericpath
 from genericpath import *
 
+from typing import overload, Tuple, IO, TextIO, Pattern, BytesPattern
+
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
            "basename","dirname","commonprefix","getsize","getmtime",
            "getatime","getctime","islink","exists","lexists","isdir","isfile",
@@ -32,7 +34,7 @@ extsep = '.'
 sep = '/'
 pathsep = ':'
 defpath = ':/bin:/usr/bin'
-str altsep = None
+altsep = None # type: str
 devnull = '/dev/null'
 
 def _get_sep(path):
@@ -53,10 +55,12 @@ def _normcase(s):
                         "not '{}'".format(s.__class__.__name__))
     return s
 
-str normcase(str s):
+@overload
+def normcase(s: str) -> str:
     """Normalize case of pathname.  Has no effect under Posix"""
     return _normcase(s)
-bytes normcase(bytes s):
+@overload
+def normcase(s: bytes) -> bytes:
     return _normcase(s)
 
 
@@ -67,10 +71,12 @@ def _isabs(s):
     sep = _get_sep(s)
     return s.startswith(sep)
 
-bool isabs(str s):
+@overload
+def isabs(s: str) -> bool:
     """Test whether a path is absolute"""
     return _isabs(s)
-bool isabs(bytes s):
+@overload
+def isabs(s: bytes) -> bool:
     return _isabs(s)
 
 
@@ -90,13 +96,15 @@ def _join(a, *p):
             path += sep + b
     return path
 
-str join(str a, str *p):
+@overload
+def join(a: str, *p: str) -> str:
     """Join two or more pathname components, inserting '/' as needed.
     If any component is an absolute path, all previous path components
     will be discarded."""
-    return _join(a, p)
-bytes join(bytes a, bytes *p):
-    return _join(a, p)
+    return _join(a, *p)
+@overload
+def join(a: bytes, *p: bytes) -> bytes:
+    return _join(a, *p)
 
 
 # Split a path in head (everything up to the last '/') and tail (the
@@ -112,11 +120,13 @@ def _split(p):
         head = head.rstrip(sep)
     return head, tail
 
-tuple<str, str> split(str p):
+@overload
+def split(p: str) -> Tuple[str, str]:
     """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
     everything after the final slash.  Either part may be empty."""
     return _split(p)
-tuple<bytes, bytes> split(bytes p):
+@overload
+def split(p: bytes) -> Tuple[bytes, bytes]:
     return _split(p)
 
 
@@ -134,9 +144,11 @@ def _splitext(p):
         extsep = '.'
     return genericpath._splitext(p, sep, None, extsep)
 
-tuple<str, str> splitext(str p):
+@overload
+def splitext(p: str) -> Tuple[str, str]:
     return _splitext(p)
-tuple<bytes, bytes> splitext(bytes p):
+@overload
+def splitext(p: bytes) -> Tuple[bytes, bytes]:
     return _splitext(p)
 splitext.__doc__ = genericpath._splitext.__doc__
 
@@ -146,11 +158,13 @@ splitext.__doc__ = genericpath._splitext.__doc__
 def _splitdrive(p):
     return p[:0], p
 
-tuple<str, str> splitdrive(str p):
+@overload
+def splitdrive(p: str) -> Tuple[str, str]:
     """Split a pathname into drive and path. On Posix, drive is always
     empty."""
     return _splitdrive(p)
-tuple<bytes, bytes> splitdrive(bytes p):
+@overload
+def splitdrive(p: bytes) -> Tuple[bytes, bytes]:
     return _splitdrive(p)
 
 
@@ -161,10 +175,12 @@ def _basename(p):
     i = p.rfind(sep) + 1
     return p[i:]
 
-str basename(str p):
+@overload
+def basename(p: str) -> str:
     """Returns the final component of a pathname"""
     return _basename(p)
-bytes basename(bytes p):
+@overload
+def basename(p: bytes) -> bytes:
     return _basename(p)
 
 
@@ -178,10 +194,12 @@ def _dirname(p):
         head = head.rstrip(sep)
     return head
 
-str dirname(str p):
+@overload
+def dirname(p: str) -> str:
     """Returns the directory component of a pathname"""
     return _dirname(p)
-bytes dirname(bytes p):
+@overload
+def dirname(p: bytes) -> bytes:
     return _dirname(p)
 
 
@@ -195,10 +213,12 @@ def _islink(path):
         return False
     return stat.S_ISLNK(st.st_mode)
 
-bool islink(str path):
+@overload
+def islink(path: str) -> bool:
     """Test whether a path is a symbolic link"""
     return _islink(path)
-bool islink(bytes path):
+@overload
+def islink(path: bytes) -> bool:
     return _islink(path)
 
 # Being true for dangling symbolic links is also useful.
@@ -210,10 +230,12 @@ def _lexists(path):
         return False
     return True
 
-bool lexists(str path):
+@overload
+def lexists(path: str) -> bool:
     """Test whether a path exists.  Returns True for broken symbolic links"""
     return _lexists(path)
-bool lexists(bytes path):
+@overload
+def lexists(path: bytes) -> bool:
     return _lexists(path)
 
 
@@ -224,10 +246,12 @@ def _samefile(f1, f2):
     s2 = os.stat(f2)
     return samestat(s1, s2)
 
-bool samefile(str path1, str path2):
+@overload
+def samefile(path1: str, path2: str) -> bool:
     """Test whether two pathnames reference the same actual file"""
     return _samefile(path1, path2)
-bool samefile(bytes path1, bytes path2):
+@overload
+def samefile(path1: bytes, path2: bytes) -> bool:
     return _samefile(path1, path2)
 
 
@@ -239,17 +263,19 @@ def _sameopenfile(fp1, fp2):
     s2 = os.fstat(fp2)
     return samestat(s1, s2)
 
-bool sameopenfile(IO fp1, IO fp2):
+@overload
+def sameopenfile(fp1: IO, fp2: IO) -> bool:
     """Test whether two open file objects reference the same file"""
     return _sameopenfile(fp1, fp2)
-bool sameopenfile(TextIO fp1, TextIO fp2):
+@overload
+def sameopenfile(fp1: TextIO, fp2: TextIO) -> bool:
     return _sameopenfile(fp1, fp2)
 
 
 # Are two stat buffers (obtained from stat, fstat or lstat)
 # describing the same file?
 
-bool samestat(os.stat_result s1, os.stat_result s2):
+def samestat(s1: os.stat_result, s2: os.stat_result) -> bool:
     """Test whether two stat buffers reference the same file"""
     return s1.st_ino == s2.st_ino and \
            s1.st_dev == s2.st_dev
@@ -281,10 +307,12 @@ def _ismount(path):
         return True     # path/.. is the same i-node as path
     return False
 
-bool ismount(str path):
+@overload
+def ismount(path: str) -> bool:
     """Test whether a path is a mount point"""
     return _ismount(path)
-bool ismount(bytes path):
+@overload
+def ismount(path: bytes) -> bool:
     return _ismount(path)
 
 
@@ -331,11 +359,13 @@ def _expanduser(path):
     userhome = userhome.rstrip(root) or userhome
     return userhome + path[i:]
 
-str expanduser(str path):
+@overload
+def expanduser(path: str) -> str:
     """Expand ~ and ~user constructions.  If user or $HOME is unknown,
     do nothing."""
     return _expanduser(path)
-bytes expanduser(bytes path):
+@overload
+def expanduser(path: bytes) -> bytes:
     return _expanduser(path)
 
 
@@ -343,9 +373,8 @@ bytes expanduser(bytes path):
 # This expands the forms $variable and ${variable} only.
 # Non-existent variables are left unchanged.
 
-from re import Pattern, BytesPattern
-Pattern _varprog = None
-BytesPattern _varprogb = None
+_varprog = None # type: Pattern
+_varprogb = None # type: BytesPattern
 
 def _expandvars(path):
     global _varprog, _varprogb
@@ -389,11 +418,13 @@ def _expandvars(path):
             i = j
     return path
 
-str expandvars(str path):
+@overload
+def expandvars(path: str) -> str:
     """Expand shell variables of form $var and ${var}.  Unknown variables
     are left unchanged."""
     return _expandvars(path)
-bytes expandvars(bytes path):
+@overload
+def expandvars(path: bytes) -> bytes:
     return _expandvars(path)
 
 
@@ -436,10 +467,12 @@ def _normpath(path):
         path = sep*initial_slashes + path
     return path or dot
 
-str normpath(str path):
+@overload
+def normpath(path: str) -> str:
     """Normalize path, eliminating double slashes, etc."""
     return _normpath(path)
-bytes normpath(bytes path):
+@overload
+def normpath(path: bytes) -> bytes:
     return _normpath(path)
 
 
@@ -452,10 +485,12 @@ def _abspath(path):
         path = join(cwd, path)
     return normpath(path)
 
-str abspath(str path):
+@overload
+def abspath(path: str) -> str:
     """Return an absolute path."""
     return _abspath(path)
-bytes abspath(bytes path):
+@overload
+def abspath(path: bytes) -> bytes:
     return _abspath(path)
 
 
@@ -488,11 +523,13 @@ def _realpath(filename):
 
     return abspath(filename)
 
-str realpath(str filename):
+@overload
+def realpath(filename: str) -> str:
     """Return the canonical path of the specified filename, eliminating any
     symbolic links encountered in the path."""
     return _realpath(filename)
-bytes realpath(bytes filename):
+@overload
+def realpath(filename: bytes) -> bytes:
     return _realpath(filename)
 
 
@@ -545,8 +582,10 @@ def _relpath(path, start=None):
         return curdir
     return join(*rel_list)
 
-str relpath(str path, str start=None):
+@overload
+def relpath(path: str, start: str = None) -> str:
     """Return a relative version of a path"""
     return _relpath(path, start)
-bytes relpath(bytes path, bytes start=None):
+@overload
+def relpath(path: bytes, start: bytes = None) -> bytes:
     return _relpath(path, start)

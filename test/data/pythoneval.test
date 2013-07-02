@@ -4,12 +4,14 @@
 
 
 [case testHello]
+import typing
 print('hello, world')
 [out]
 hello, world
 
-[case testCheckTypesOfSpecialInterfaces]
+[case testAbstractBaseClasses]
 import re
+from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
 def check(o, t):
     rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
@@ -22,36 +24,40 @@ def f():
     check(iter('x'), Iterator)
     check('x', Iterable)
     check({}, Mapping)
-    check(set([1]), Set)
+    check(set([1]), AbstractSet)
 
 f()
 [out]
-'x' <class '_abcoll.Sized'> True
-[1] <class '_abcoll.Sequence'> True
-{1: 3} <class '_abcoll.Sequence'> False
-<str_iterator object at 0x...> <class '_abcoll.Iterator'> True
-'x' <class '_abcoll.Iterable'> True
-{} <class '_abcoll.Mapping'> True
-{1} <class '_abcoll.Set'> True
+'x' <class 'typing.Sized'> True
+[1] <class 'typing.Sequence'> True
+{1: 3} <class 'typing.Sequence'> False
+<str_iterator object at 0x...> <class 'typing.Iterator'> True
+'x' <class 'typing.Iterable'> True
+{} <class 'typing.Mapping'> True
+{1} <class 'typing.AbstractSet'> True
 
-[case testSpecialInterfaceAsBase]
+[case testSized]
+from typing import Sized
 class A(Sized):
     def __len__(self): return 5
 print(len(A()))
 [out]
 5
 
-[case testSpecialInterfaceInOverload]
+[case testAbstractClassInOverload]
+from typing import overload, Sized
 class A(Sized):
     def __len__(self): return 5
 class B:
     def __len__(self): return 6
-void f(Sized s): print('sized')
-void f(s): print('other')
+@overload
+def f(s: Sized) -> None: print('sized')
+@overload
+def f(s) -> None: print('other')
 f('x')
 f(A())
 f(1)
-f(B())  # Python: implicit base class Sized
+f(B())  # Sized is actually a Protocol
 [out]
 sized
 sized
@@ -60,15 +66,19 @@ sized
 
 [case testOverloadUsingMatchAndPattern]
 import re
-
-void f(re.Match x): print('match')
-void f(any x): print('something else')
+from typing import overload, Any, Match, Pattern
+@overload
+def f(x: Match) -> None: print('match')
+@overload
+def f(x: Any) -> None: print('something else')
 
 f(1)
 f(re.match('x', 'x'))
 
-void g(re.Pattern x): print('pattern')
-void g(any x): print('something else')
+@overload
+def g(x: Pattern) -> None: print('pattern')
+@overload
+def g(x: Any) -> None: print('something else')
 
 g(1)
 g(re.compile(''))
@@ -79,9 +89,9 @@ something else
 pattern
 
 [case testReversed]
-class A(reversed_t):
+from typing import Reversible
+class A(Reversible):
     def __reversed__(self): return iter('foo')
-
 print(list(reversed(range(5))))
 print(list(reversed([1,2,3])))
 print(list(reversed('abc')))
@@ -94,12 +104,11 @@ print(list(reversed(A())))
 [['f', 'o', 'o']
 
 [case testIntAndFloatConversion]
-class A(int_t):
+from typing import SupportsInt, SupportsFloat
+class A(SupportsInt):
     def __int__(self): return 5
-
-class B(float_t):
+class B(SupportsFloat):
     def __float__(self): return 1.2
-
 print(int(1))
 print(int(6.2))
 print(int('3'))
@@ -117,21 +126,22 @@ print(float(B()))
 1.2
 
 [case testAbs]
-class A(abs_t<float>):
-    float __abs__(self): return 5.5
+from typing import SupportsAbs
+class A(SupportsAbs[float]):
+    def __abs__(self) -> float: return 5.5
     
 print(abs(-1))
 print(abs(-1.2))
-print(abs<float>(A())) # TODO fix type inference
+print(abs(A())) # TODO fix type inference
 [out]
 1
 1.2
 5.5
 
 [case testRound]
-class A(round_t):
+from typing import SupportsRound
+class A(SupportsRound):
     def __round__(self, ndigits=0): return 'x%d' % ndigits
-
 print(round(1.6))
 print(round(A()))
 print(round(A(), 2))
@@ -140,22 +150,28 @@ print(round(A(), 2))
 x0
 x2
 
-[case testOverloadUsingIntT]
-void f(int_t i): print('int_t')
-void f(i): print('other')
+[case testOverloadUsingSupportsInt]
+from typing import overload, SupportsInt
+@overload
+def f(i: SupportsInt) -> None: print('int-like')
+@overload
+def f(i) -> None: print('other')
 f(1.2)
 f(3)
 f('x')
 f([2])
 [out]
-int_t
-int_t
+int-like
+int-like
 other
 other
 
 [case testOverloadWithOptionalArg]
-void f(int x, str y='x'): print(x, y)
-void f(str x): print(x)
+from typing import overload
+@overload
+def f(x: int, y: str = 'x') -> None: print(x, y)
+@overload
+def f(x: str) -> None: print(x)
 f(1)
 f('x')
 f(1, 'y')
@@ -164,9 +180,12 @@ f(1, 'y')
 x
 1 y
 
-[case testOverloadWithOptionalArg2]
-void f(int x, str y='x'): print(x, y)
-void f(str x): print(x)
+[case testOverloadWithOptionalArg2-skip]
+from typing import overload
+@overload
+def f(x: int, y: str = 'x') -> None: print(x, y)
+@overload
+def f(x: str) -> None: print(x)
 f(x=1)
 f(x='x')
 f(x=1, y='y')
@@ -176,11 +195,13 @@ x
 1 y
 
 [case testCallMethodViaTypeObject]
+import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
 [[1, 2, 3, 4]
 
 [case testClassDataAttribute]
+import typing
 class A:
     x = 0
 print(A.x)
@@ -191,9 +212,10 @@ print(A.x)
 1
 
 [case testInheritedClassAttribute]
+import typing
 class A:
     x = 1
-    void f(self): print('f')
+    def f(self) -> None: print('f')
 class B(A):
     pass
 B.f(None)
@@ -203,16 +225,18 @@ f
 1
 
 [case testFunctionDecorator]
-ftype logged<ftype>(ftype f):
+from typing import typevar, cast
+ftype = typevar('ftype')
+def logged(f: ftype) -> ftype:
     def g(*args, **kwargs):
         print('enter', f.__name__)
         r = f(*args, **kwargs)
         print('exit', f.__name__)
         return r
-    return (ftype)g
+    return cast(ftype, g)
 
 @logged
-str foo(str s):
+def foo(s: str) -> str:
     print('foo', s)
     return s + '!'
 
@@ -230,6 +254,7 @@ x!
 
 [case testModuleAttributes]
 import math
+import typing
 print(math.__name__)
 print(type(math.__dict__))
 print(type(math.__doc__))
@@ -241,6 +266,7 @@ math
 <class 'module'>
 
 [case testSpecialAttributes]
+import typing
 class A: pass
 print(object().__doc__)
 print(A().__class__)
@@ -249,6 +275,7 @@ The most base type
 <class '__main__.A'>
 
 [case testFunctionAttributes]
+import typing
 print(ord.__class__)
 print(ord.__doc__[:10])
 print(ord.__name__)
@@ -260,6 +287,7 @@ ord
 builtins
 
 [case testTypeAttributes]
+import typing
 print(str.__class__)
 print(str.__doc__[:10])
 print(str.__name__)

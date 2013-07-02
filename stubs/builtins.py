@@ -1,849 +1,998 @@
-# Stubs for builtins
+"""Stubs for builtins"""
+
+from typing import (
+    Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
+    Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
+    AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
+    SupportsRound, TextIO
+)
+from abc import abstractmethod, ABCMeta
+
+T = typevar('T')
+KT = typevar('KT')
+VT = typevar('VT')
+S = typevar('S')
+T1 = typevar('T1')
+T2 = typevar('T2')
+T3 = typevar('T3')
+T4 = typevar('T4')
 
 
 class object:
-    str __doc__
-    type __class__
+    __doc__ = ''
+    __class__ = Undefined # type: type
     
-    void __init__(self): pass
+    def __init__(self) -> None: pass
     
-    bool __eq__(self, object o): pass
-    bool __ne__(self, object o): pass
+    def __eq__(self, o: object) -> bool: pass
+    def __ne__(self, o: object) -> bool: pass
     
-    str __str__(self): pass
-    str __repr__(self): pass
+    def __str__(self) -> str: pass
+    def __repr__(self) -> str: pass
 
-    int __hash__(self): pass
-
-
-# Interfacess
-
-
-# TODO Container etc.
-
-
-interface int_t: # TODO rename?
-    int __int__(self)
-    
-interface float_t: # TODO rename?
-    float __float__(self)
-
-interface reversed_t<t>: # TODO rename?
-    Iterator<t> __reversed__(self)
-
-interface abs_t<t>: # TODO rename?
-    t __abs__(self)
-
-interface round_t<t>: # TODO rename?
-    t __round__(self, int ndigits=0)
-
-
-interface Sized:
-    int __len__(self)
-
-interface Iterable<t>:
-    Iterator<t> __iter__(self)
-
-interface Iterator<t>(Iterable<t>):
-    t __next__(self)
-
-interface Sequence<t>(Sized, Iterable<t>):
-    bool __contains__(self, object x)
-    t __getitem__(self, int i)
-    Sequence<t> __getitem__(self, slice s)
-
-interface Mapping<kt, vt>(Sized, Iterable<kt>):
-    vt __getitem__(self, kt k)
-    void __setitem__(self, kt k, vt v)
-    void __delitem__(self, kt v)
-    bool __contains__(self, object o)
-
-    void clear(self)
-    Mapping<kt, vt> copy(self)
-    vt get(self, kt k)
-    vt get(self, kt k, vt default)
-    vt pop(self, kt k)
-    vt pop(self, kt k, vt default)
-    tuple<kt, vt> popitem(self)
-    vt setdefault(self, kt k)
-    vt setdefault(self, kt k, vt default)
-    
-    # TODO keyword arguments
-    void update(self, Mapping<kt, vt> m)
-    void update(self, Iterable<tuple<kt, vt>> m)
-    
-    # TODO use views for the return values instead
-    Set<kt> keys(self)
-    Set<vt> values(self)
-    Set<tuple<kt, vt>> items(self)
-    
-interface Set<t>(Sized, Iterable<t>):
-    bool __contains__(self, object x)
-    # TODO __le__, __lt__, __gt__, __ge__
-    Set<t> __and__(self, Set<t> s)
-    Set<t> __or__(self, Set<t> s)
-    Set<t> __sub__(self, Set<t> s)
-    Set<t> __xor__(self, Set<t> s)
-    # TODO argument can be any container?
-    bool isdisjoint(self, Set<t> s)
-
-interface IO:    
-    # TODO iteration
-    # TODO mode
-    # TODO name
-    # TODO detach
-    # TODO readinto
-    # TODO read1?
-    # TODO peek?
-    void close(self)
-    bool closed(self)
-    int fileno(self)
-    void flush(self)
-    bool isatty(self)
-    # TODO what if n is None?
-    bytes read(self, int n=-1)
-    bool readable(self)
-    bytes readline(self, int limit=-1)
-    bytes[] readlines(self, int hint=-1)
-    int seek(self, int offset, int whence=0)
-    bool seekable(self)
-    int tell(self)
-    # TODO None should not be compatible with int
-    int truncate(self, int size=None)
-    bool writable(self)
-    # TODO buffer objects
-    int write(self, bytes s)
-    int write(self, bytearray s)
-    void writelines(self, bytes[] lines)
-
-    IO __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
-
-interface TextIO:
-    # TODO iteration
-    # TODO buffer?
-    # TODO str encoding
-    # TODO str errors
-    # TODO line_buffering
-    # TODO mode
-    # TODO name
-    # TODO any newlines
-    # TODO detach(self)
-    void close(self)
-    bool closed(self)
-    int fileno(self)
-    void flush(self)
-    bool isatty(self)
-    # TODO what if n is None?
-    str read(self, int n=-1)
-    bool readable(self)
-    str readline(self, int limit=-1)
-    str[] readlines(self, int hint=-1)
-    int seek(self, int offset, int whence=0)
-    bool seekable(self)
-    int tell(self)
-    # TODO is None compatible with int?
-    int truncate(self, int size=None)
-    bool writable(self)
-    # TODO buffer objects
-    int write(self, str s)
-    void writelines(self, str[] lines)
-
-    TextIO __enter__(self): pass
-    void __exit__(self, type, value, traceback): pass
+    def __hash__(self) -> int: pass
 
 
 # Classes
 
 
 class type:
-    str __name__
-    str __module__
-    dict<str, any> __dict__
+    __name__ = ''
+    __module__ = ''
+    __dict__ = Undefined # type: Dict[str, Any]
     
-    void __init__(self, object o): pass
+    def __init__(self, o: object) -> None: pass
 
 
-class int(int_t, float_t):
-    void __init__(self, int_t x): pass
-    void __init__(self, str x): pass
-    void __init__(self, bytes x): pass
-    void __init__(self, bytearray x): pass
-    void __init__(self, str string, int base): pass
-    void __init__(self, bytes string, int base): pass
-    void __init__(self, bytearray string, int base): pass
+class int(SupportsInt, SupportsFloat):
+    @overload
+    def __init__(self, x: SupportsInt) -> None: pass
+    @overload
+    def __init__(self, x: str) -> None: pass
+    @overload
+    def __init__(self, x: bytes) -> None: pass
+    @overload
+    def __init__(self, x: bytearray) -> None: pass
+    @overload
+    def __init__(self, string: str, base: int) -> None: pass
+    @overload
+    def __init__(self, string: bytes, base: int) -> None: pass
+    @overload
+    def __init__(self, string: bytearray, base: int) -> None: pass
 
-    int bit_length(self): pass
+    def bit_length(self) -> int: pass
 
-    # Operators
-    # TODO other __r* methods
+    # TODO all __r* methods
     
-    int __add__(self, int x): pass
-    float __add__(self, float x): pass
+    @overload
+    def __add__(self, x: int) -> int: pass
+    @overload
+    def __add__(self, x: float) -> float: pass
     
-    int __sub__(self, int x): pass
-    float __sub__(self, float x): pass
+    @overload
+    def __sub__(self, x: int) -> int: pass
+    @overload
+    def __sub__(self, x: float) -> float: pass
     
-    int __mul__(self, int x): pass
-    float __mul__(self, float x): pass
-    str __mul__<t>(self, str s): pass
-    t[] __mul__<t>(self, t[] l): pass
+    @overload
+    def __mul__(self, x: int) -> int: pass
+    @overload
+    def __mul__(self, x: float) -> float: pass
+    @overload
+    def __mul__(self, s: str) -> str: pass
+    @overload
+    def __mul__(self, l: List[T]) -> List[T]: pass
     
-    int __floordiv__(self, int x): pass
-    float __floordiv__(self, float x): pass
+    @overload
+    def __floordiv__(self, x: int) -> int: pass
+    @overload
+    def __floordiv__(self, x: float) -> float: pass
     
-    int __truediv__(self, int x): pass
-    float __truediv__(self, float x): pass
+    @overload
+    def __truediv__(self, x: int) -> int: pass
+    @overload
+    def __truediv__(self, x: float) -> float: pass
     
-    int __mod__(self, int x): pass
-    float __mod__(self, float x): pass
-    int __rmod__(self, int x): pass
+    @overload
+    def __mod__(self, x: int) -> int: pass
+    @overload
+    def __mod__(self, x: float) -> float: pass
+    def __rmod__(self, x: int) -> int: pass
 
     # Return type can be int or float, depending on the value of x.
-    any __pow__(self, int x): pass
-    float __pow__(self, float x): pass
+    @overload
+    def __pow__(self, x: int) -> Any: pass
+    @overload
+    def __pow__(self, x: float) -> float: pass
 
-    int __and__(self, int n): pass
-    int __or__(self, int n): pass
-    int __xor__(self, int n): pass
-    int __lshift__(self, int n): pass
-    int __rshift__(self, int n): pass
+    def __and__(self, n: int) -> int: pass
+    def __or__(self, n: int) -> int: pass
+    def __xor__(self, n: int) -> int: pass
+    def __lshift__(self, n: int) -> int: pass
+    def __rshift__(self, n: int) -> int: pass
 
-    int __neg__(self): pass
-    int __invert__(self): pass
+    def __neg__(self) -> int: pass
+    def __invert__(self) -> int: pass
 
-    bool __eq__(self, object x): pass
-    bool __ne__(self, object x): pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operand
-    bool __lt__(self, object x): pass
-    bool __le__(self, object x): pass
-    bool __gt__(self, object x): pass
-    bool __ge__(self, object x): pass
+    def __lt__(self, x: object) -> bool: pass
+    def __le__(self, x: object) -> bool: pass
+    def __gt__(self, x: object) -> bool: pass
+    def __ge__(self, x: object) -> bool: pass
 
     # Conversions
 
-    str __str__(self): pass
-    float __float__(self): pass
-    int __int__(self): return self
+    def __str__(self) -> str: pass
+    def __float__(self) -> float: pass
+    def __int__(self) -> int: return self
     
-    int __hash__(self): pass
+    def __hash__(self) -> int: pass
 
     
-class float(float_t, int_t):
-    void __init__(self, float_t x): pass
-    void __init__(self, str x): pass
-    void __init__(self, bytes x): pass
-    void __init__(self, bytearray x): pass
+class float(SupportsFloat, SupportsInt):
+    @overload
+    def __init__(self, x: SupportsFloat) -> None: pass
+    @overload
+    def __init__(self, x: str) -> None: pass
+    @overload
+    def __init__(self, x: bytes) -> None: pass
+    @overload
+    def __init__(self, x: bytearray) -> None: pass
 
     # Operators
     
-    float __add__(self, float x): pass
-    float __add__(self, int x): pass
-    float __sub__(self, float x): pass
-    float __sub__(self, int x): pass
-    float __mul__(self, float x): pass
-    float __mul__(self, int x): pass
-    float __floordiv__(self, float x): pass
-    float __floordiv__(self, int x): pass
-    float __truediv__(self, float x): pass
-    float __truediv__(self, int x): pass
-    float __mod__(self, float x): pass
-    float __mod__(self, int x): pass
-    float __pow__(self, float x): pass
-    float __pow__(self, int x): pass
+    @overload
+    def __add__(self, x: float) -> float: pass
+    @overload
+    def __add__(self, x: int) -> float: pass
+    @overload
+    def __sub__(self, x: float) -> float: pass
+    @overload
+    def __sub__(self, x: int) -> float: pass
+    @overload
+    def __mul__(self, x: float) -> float: pass
+    @overload
+    def __mul__(self, x: int) -> float: pass
+    @overload
+    def __floordiv__(self, x: float) -> float: pass
+    @overload
+    def __floordiv__(self, x: int) -> float: pass
+    @overload
+    def __truediv__(self, x: float) -> float: pass
+    @overload
+    def __truediv__(self, x: int) -> float: pass
+    @overload
+    def __mod__(self, x: float) -> float: pass
+    @overload
+    def __mod__(self, x: int) -> float: pass
+    @overload
+    def __pow__(self, x: float) -> float: pass
+    @overload
+    def __pow__(self, x: int) -> float: pass
     
-    bool __eq__(self, object x): pass
-    bool __ne__(self, object x): pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operand
-    bool __lt__(self, object x): pass
-    bool __le__(self, object x): pass
-    bool __gt__(self, object x): pass
-    bool __ge__(self, object x): pass
+    def __lt__(self, x: object) -> bool: pass
+    def __le__(self, x: object) -> bool: pass
+    def __gt__(self, x: object) -> bool: pass
+    def __ge__(self, x: object) -> bool: pass
+    def __neg__(self) -> float: pass
 
-    float __neg__(self): pass
-
-    # Conversions
-
-    str __str__(self): pass
-    int __int__(self): pass
-    float __float__(self): return self
-    
-    int __hash__(self): pass
+    def __str__(self) -> str: pass
+    def __int__(self) -> int: pass
+    def __float__(self) -> float: return self
+    def __hash__(self) -> int: pass
 
 
 class complex:
     # TODO this is just a placeholder; add more members
-    void __init__(self, float re, float im=0.0): pass
+    def __init__(self, re: float, im: float = 0.0) -> None: pass
 
 
-class str(Sequence<str>):
+class str(Sequence[str]):
     # TODO maketrans
     
-    void __init__(self, object o): pass
-    void __init__(self, bytes o, str encoding=None, str errors='strict'): pass
-    void __init__(self, bytearray o, str encoding=None,
-                  str errors='strict'): pass
+    @overload
+    def __init__(self, o: object) -> None: pass
+    @overload
+    def __init__(self, o: bytes, encoding: str = None,
+                 errors: str = 'strict') -> None: pass
+    @overload
+    def __init__(self, o: bytearray, encoding: str = None,
+                 errors: str = 'strict') -> None: pass
 
-    str capitalize(self): pass
-    str center(self, int width, str fillchar=' '): pass
-    int count(self, str x): pass
-    bytes encode(self, str encoding='utf-8', str errors='strict'): pass
+    def capitalize(self) -> str: pass
+    def center(self, width: int, fillchar: str = ' ') -> str: pass
+    def count(self, x: str) -> int: pass
+    def encode(self, encoding: str = 'utf-8',
+               errors: str = 'strict') -> bytes: pass
     # TODO tuple suffix; None value for int
-    bool endswith(self, str suffix, int start=0, int end=None): pass
-    str expandtabs(self, int tabsize=8): pass
-    int find(self, str sub, int start=0): pass
-    int find(self, str sub, int start, int end): pass
-    str format(self, any *args, any **kwargs): pass
-    str format_map(self, Mapping<str, any> map): pass
-    int index(self, str sub, int start=0): pass
-    int index(self, str sub, int start, int end): pass
-    bool isalnum(self): pass
-    bool isalpha(self): pass
-    bool isdecimal(self): pass
-    bool isdigit(self): pass
-    bool isidentifier(self): pass
-    bool islower(self): pass
-    bool isnumeric(self): pass
-    bool isprintable(self): pass
-    bool isspace(self): pass
-    bool istitle(self): pass
-    bool isupper(self): pass
-    str join(self, Iterable<str> iterable): pass
-    str ljust(self, int width, str fillchar=' '): pass
-    str lower(self): pass
-    str lstrip(self, str chars=None): pass
-    tuple<str, str, str> partition(self, str sep): pass
-    str replace(self, str old, str new, int count=-1): pass
-    int rfind(self, str sub, int start=0): pass
-    int rfind(self, str sub, int start, int end): pass
-    int rindex(self, str sub, int start=0): pass
-    int rindex(self, str sub, int start, int end): pass
-    str rjust(self, int width, str fillchar=' '): pass
-    tuple<str, str, str> rpartition(self, str sep): pass
-    str[] rsplit(self, str sep=None, int maxsplit=-1): pass
-    str rstrip(self, str chars=None): pass
-    str[] split(self, str sep=None, int maxsplit=-1): pass
-    str[] splitlines(self, bool keepends=False): pass
+    def endswith(self, suffix: str, start: int = 0,
+                 end: int = None) -> bool: pass
+    def expandtabs(self, tabsize: int = 8) -> str: pass
+    
+    @overload
+    def find(self, sub: str, start: int = 0) -> int: pass
+    @overload
+    def find(self, sub: str, start: int, end: int) -> int: pass
+    
+    def format(self, *args: Any, **kwargs: Any) -> str: pass
+    def format_map(self, map: Mapping[str, Any]) -> str: pass
+    
+    @overload
+    def index(self, sub: str, start: int = 0) -> int: pass
+    @overload
+    def index(self, sub: str, start: int, end: int) -> int: pass
+    
+    def isalnum(self) -> bool: pass
+    def isalpha(self) -> bool: pass
+    def isdecimal(self) -> bool: pass
+    def isdigit(self) -> bool: pass
+    def isidentifier(self) -> bool: pass
+    def islower(self) -> bool: pass
+    def isnumeric(self) -> bool: pass
+    def isprintable(self) -> bool: pass
+    def isspace(self) -> bool: pass
+    def istitle(self) -> bool: pass
+    def isupper(self) -> bool: pass
+    def join(self, iterable: Iterable[str]) -> str: pass
+    def ljust(self, width: int, fillchar: str = ' ') -> str: pass
+    def lower(self) -> str: pass
+    def lstrip(self, chars: str = None) -> str: pass
+    def partition(self, sep: str) -> Tuple[str, str, str]: pass
+    def replace(self, old: str, new: str, count: int = -1) -> str: pass
+    
+    @overload
+    def rfind(self, sub: str, start: int = 0) -> int: pass
+    @overload
+    def rfind(self, sub: str, start: int, end: int) -> int: pass
+    @overload
+    def rindex(self, sub: str, start: int = 0) -> int: pass
+    @overload
+    def rindex(self, sub: str, start: int, end: int) -> int: pass
+    
+    def rjust(self, width: int, fillchar: str = ' ') -> str: pass
+    def rpartition(self, sep: str) -> Tuple[str, str, str]: pass
+    def rsplit(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass
+    def rstrip(self, chars: str = None) -> str: pass
+    def split(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass
+    def splitlines(self, keepends: bool = False) -> List[str]: pass
     # TODO tuple prefix; None value for int
-    bool startswith(self, str prefix, int start=0, int end=None): pass
-    str strip(self, str chars=None): pass
-    str swapcase(self): pass
-    str title(self): pass
-    str translate(self, dict<int, any> table): pass
-    str upper(self): pass
-    str zfill(self, int width): pass
+    def startswith(self, prefix: str, start: int = 0,
+                   end: int = None) -> bool: pass
+    def strip(self, chars: str = None) -> str: pass
+    def swapcase(self) -> str: pass
+    def title(self) -> str: pass
+    def translate(self, table: Dict[int, Any]) -> str: pass
+    def upper(self) -> str: pass
+    def zfill(self, width: int) -> str: pass
     
-    int __len__(self): pass
-    
-    str __getitem__(self, int i): pass
-    str __getitem__(self, slice s): pass
+    @overload
+    def __getitem__(self, i: int) -> str: pass
+    @overload
+    def __getitem__(self, s: slice) -> str: pass
 
-    str __add__(self, str s): pass
-    
-    str __mul__(self, int n): pass
-    str __mod__(self, any *args): pass
-    
-    bool __eq__(self, object x): pass
-    bool __ne__(self, object x): pass
+    def __add__(self, s: str) -> str: pass
+    def __mul__(self, n: int) -> str: pass
+    def __mod__(self, *args: Any) -> str: pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operands
-    bool __lt__(self, object x): pass
-    bool __le__(self, object x): pass
-    bool __gt__(self, object x): pass
-    bool __ge__(self, object x): pass
-
-    bool __contains__(self, object s): pass
-
-    Iterator<str> __iter__(self): pass
-
-    str __str__(self): return self
-    str __repr__(self): pass
-    int __int__(self): pass
-    float __float__(self): pass
+    def __lt__(self, x: object) -> bool: pass
+    def __le__(self, x: object) -> bool: pass
+    def __gt__(self, x: object) -> bool: pass
+    def __ge__(self, x: object) -> bool: pass
     
-    int __hash__(self): pass
+    def __len__(self) -> int: pass
+    def __contains__(self, s: object) -> bool: pass
+    def __iter__(self) -> Iterator[str]: pass
+    def __str__(self) -> str: return self
+    def __repr__(self) -> str: pass
+    def __int__(self) -> int: pass
+    def __float__(self) -> float: pass
+    def __hash__(self) -> int: pass
     
 
-class bytes(Sequence<int>):
+class bytes(Sequence[int]):
     # TODO fromhex
     # TODO maketrans
     
-    void __init__(self, Iterable<int> ints): pass
-    void __init__(self, str string, str encoding, str errors='strict'): pass
-    void __init__(self, int length): pass
-    void __init__(self): pass
+    @overload
+    def __init__(self, ints: Iterable[int]) -> None: pass
+    @overload
+    def __init__(self, string: str, encoding: str,
+                 errors: str = 'strict') -> None: pass
+    @overload
+    def __init__(self, length: int) -> None: pass
+    @overload
+    def __init__(self) -> None: pass
 
-    bytes capitalize(self): pass
-    bytes center(self, int width, bytes fillchar=None): pass
-    bytes center(self, int width, bytearray fillchar=None): pass
-    int count(self, bytes x): pass
-    int count(self, bytearray x): pass
-    str decode(self, str encoding='utf-8', str errors='strict'): pass
-    bool endswith(self, bytes suffix): pass
-    bool endswith(self, bytearray suffix): pass
-    bytes expandtabs(self, int tabsize=8): pass
-    int find(self, bytes sub, int start=0): pass
-    int find(self, bytes sub, int start, int end): pass
-    int find(self, bytearray sub, int start=0): pass
-    int find(self, bytearray sub, int start, int end): pass
-    int index(self, bytes sub, int start=0): pass
-    int index(self, bytes sub, int start, int end): pass
-    int index(self, bytearray sub, int start=0): pass
-    int index(self, bytearray sub, int start, int end): pass
-    bool isalnum(self): pass
-    bool isalpha(self): pass
-    bool isdigit(self): pass
-    bool islower(self): pass
-    bool isspace(self): pass
-    bool istitle(self): pass
-    bool isupper(self): pass
-    bytes join(self, Iterable<bytes> iterable): pass
-    bytes join(self, Iterable<bytearray> iterable): pass
-    bytes ljust(self, int width, bytes fillchar=None): pass
-    bytes ljust(self, int width, bytearray fillchar=None): pass
-    bytes lower(self): pass
-    bytes lstrip(self, bytes chars=None): pass
-    bytes lstrip(self, bytearray chars=None): pass
-    tuple<bytes, bytes, bytes> partition(self, bytes sep): pass
-    tuple<bytes, bytes, bytes> partition(self, bytearray sep): pass
-    bytes replace(self, bytes old, bytes new, int count=-1): pass
-    bytes replace(self, bytearray old, bytearray new, int count=-1): pass
-    int rfind(self, bytes sub, int start=0): pass
-    int rfind(self, bytes sub, int start, int end): pass
-    int rfind(self, bytearray sub, int start=0): pass
-    int rfind(self, bytearray sub, int start, int end): pass
-    int rindex(self, bytes sub, int start=0): pass
-    int rindex(self, bytes sub, int start, int end): pass
-    int rindex(self, bytearray sub, int start=0): pass
-    int rindex(self, bytearray sub, int start, int end): pass
-    bytes rjust(self, int width, bytes fillchar=None): pass
-    bytes rjust(self, int width, bytearray fillchar=None): pass
-    tuple<bytes, bytes, bytes> rpartition(self, bytes sep): pass
-    tuple<bytes, bytes, bytes> rpartition(self, bytearray sep): pass
-    bytes[] rsplit(self, bytes sep=None, int maxsplit=-1): pass
-    bytes[] rsplit(self, bytearray sep=None, int maxsplit=-1): pass
-    bytes rstrip(self, bytes chars=None): pass
-    bytes rstrip(self, bytearray chars=None): pass
-    bytes[] split(self, bytes sep=None, int maxsplit=-1): pass
-    bytes[] split(self, bytearray sep=None, int maxsplit=-1): pass
-    bytes[] splitlines(self, bool keepends=False): pass
-    bool startswith(self, bytes prefix): pass
-    bool startswith(self, bytearray prefix): pass
-    bytes strip(self, bytes chars=None): pass
-    bytes strip(self, bytearray chars=None): pass
-    bytes swapcase(self): pass
-    bytes title(self): pass
-    bytes translate(self, bytes table): pass
-    bytes translate(self, bytearray table): pass
-    bytes upper(self): pass
-    bytes zfill(self, int width): pass
+    def capitalize(self) -> bytes: pass
     
-    int __len__(self): pass
-    Iterator<int> __iter__(self): pass
-    str __str__(self): pass
-    str __repr__(self): pass
-    int __int__(self): pass
-    float __float__(self): pass
-    int __hash__(self): pass
+    @overload
+    def center(self, width: int, fillchar: bytes = None) -> bytes: pass
+    @overload
+    def center(self, width: int, fillchar: bytearray = None) -> bytes: pass
+    @overload
+    def count(self, x: bytes) -> int: pass
+    @overload
+    def count(self, x: bytearray) -> int: pass
+    def decode(self, encoding: str = 'utf-8',
+               errors: str = 'strict') -> str: pass
+    @overload
+    def endswith(self, suffix: bytes) -> bool: pass
+    @overload
+    def endswith(self, suffix: bytearray) -> bool: pass
+    def expandtabs(self, tabsize: int = 8) -> bytes: pass
+    @overload
+    def find(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def find(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def find(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def find(self, sub: bytearray, start: int, end: int) -> int: pass
+    @overload
+    def index(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def index(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def index(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def index(self, sub: bytearray, start: int, end: int) -> int: pass
+    def isalnum(self) -> bool: pass
+    def isalpha(self) -> bool: pass
+    def isdigit(self) -> bool: pass
+    def islower(self) -> bool: pass
+    def isspace(self) -> bool: pass
+    def istitle(self) -> bool: pass
+    def isupper(self) -> bool: pass
+    @overload
+    def join(self, iterable: Iterable[bytes]) -> bytes: pass
+    @overload
+    def join(self, iterable: Iterable[bytearray]) -> bytes: pass
+    @overload
+    def ljust(self, width: int, fillchar: bytes = None) -> bytes: pass
+    @overload
+    def ljust(self, width: int, fillchar: bytearray = None) -> bytes: pass
+    def lower(self) -> bytes: pass
+    @overload
+    def lstrip(self, chars: bytes = None) -> bytes: pass
+    @overload
+    def lstrip(self, chars: bytearray = None) -> bytes: pass
+    @overload
+    def partition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
+    @overload
+    def partition(self, sep: bytearray) -> Tuple[bytes, bytes, bytes]: pass
+    @overload
+    def replace(self, old: bytes, new: bytes, count: int = -1) -> bytes: pass
+    @overload
+    def replace(self, old: bytearray, new: bytearray,
+                count: int = -1) -> bytes: pass
+    @overload
+    def rfind(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def rfind(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def rfind(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
+    @overload
+    def rindex(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def rindex(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def rindex(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
+    @overload
+    def rjust(self, width: int, fillchar: bytes = None) -> bytes: pass
+    @overload
+    def rjust(self, width: int, fillchar: bytearray = None) -> bytes: pass
+    @overload
+    def rpartition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
+    @overload
+    def rpartition(self, sep: bytearray) -> Tuple[bytes, bytes, bytes]: pass
+    @overload
+    def rsplit(self, sep: bytes = None,
+               maxsplit: int = -1) -> List[bytes]: pass
+    @overload
+    def rsplit(self, sep: bytearray = None,
+               maxsplit: int = -1) -> List[bytes]: pass
+    @overload
+    def rstrip(self, chars: bytes = None) -> bytes: pass
+    @overload
+    def rstrip(self, chars: bytearray = None) -> bytes: pass
+    @overload
+    def split(self, sep: bytes = None, maxsplit: int = -1) -> List[bytes]: pass
+    @overload
+    def split(self, sep: bytearray = None,
+              maxsplit: int = -1) -> List[bytes]: pass
+    def splitlines(self, keepends: bool = False) -> List[bytes]: pass
+    @overload
+    def startswith(self, prefix: bytes) -> bool: pass
+    @overload
+    def startswith(self, prefix: bytearray) -> bool: pass
+    @overload
+    def strip(self, chars: bytes = None) -> bytes: pass
+    @overload
+    def strip(self, chars: bytearray = None) -> bytes: pass
+    def swapcase(self) -> bytes: pass
+    def title(self) -> bytes: pass
+    @overload
+    def translate(self, table: bytes) -> bytes: pass
+    @overload
+    def translate(self, table: bytearray) -> bytes: pass
+    def upper(self) -> bytes: pass
+    def zfill(self, width: int) -> bytes: pass
     
-    int __getitem__(self, int i): pass
-    bytes __getitem__(self, slice s): pass
-    bytes __add__(self, bytes s): pass    
-    bytes __add__(self, bytearray s): pass
-    bytes __mul__(self, int n): pass
-    bool __contains__(self, object o): pass
+    def __len__(self) -> int: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __str__(self) -> str: pass
+    def __repr__(self) -> str: pass
+    def __int__(self) -> int: pass
+    def __float__(self) -> float: pass
+    def __hash__(self) -> int: pass
     
-    bool __eq__(self, object x): pass
-    bool __ne__(self, object x): pass
+    @overload
+    def __getitem__(self, i: int) -> int: pass
+    @overload
+    def __getitem__(self, s: slice) -> bytes: pass
+    @overload
+    def __add__(self, s: bytes) -> bytes: pass    
+    @overload
+    def __add__(self, s: bytearray) -> bytes: pass
+    
+    def __mul__(self, n: int) -> bytes: pass
+    def __contains__(self, o: object) -> bool: pass    
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operands
-    bool __lt__(self, object x): pass
-    bool __le__(self, object x): pass
-    bool __gt__(self, object x): pass
-    bool __ge__(self, object x): pass
+    def __lt__(self, x: object) -> bool: pass
+    def __le__(self, x: object) -> bool: pass
+    def __gt__(self, x: object) -> bool: pass
+    def __ge__(self, x: object) -> bool: pass
 
 
-class bytearray(Sequence<int>):
+class bytearray(Sequence[int]):
     # TODO fromhex
     # TODO maketrans
     
-    void __init__(self, Iterable<int> ints): pass
-    void __init__(self, str string, str encoding, str errors='strict'): pass
-    void __init__(self, int length): pass
-    void __init__(self): pass
+    @overload
+    def __init__(self, ints: Iterable[int]) -> None: pass
+    @overload
+    def __init__(self, string: str, encoding: str,
+                 errors: str = 'strict') -> None: pass
+    @overload
+    def __init__(self, length: int) -> None: pass
+    @overload
+    def __init__(self) -> None: pass
 
-    bytearray capitalize(self): pass
-    bytearray center(self, int width, bytes fillchar=None): pass
-    bytearray center(self, int width, bytearray fillchar=None): pass
-    int count(self, bytes x): pass
-    int count(self, bytearray x): pass
-    str decode(self, str encoding='utf-8', str errors='strict'): pass
-    bool endswith(self, bytes suffix): pass
-    bool endswith(self, bytearray suffix): pass
-    bytearray expandtabs(self, int tabsize=8): pass
-    int find(self, bytes sub, int start=0): pass
-    int find(self, bytes sub, int start, int end): pass
-    int find(self, bytearray sub, int start=0): pass
-    int find(self, bytearray sub, int start, int end): pass
-    int index(self, bytes sub, int start=0): pass
-    int index(self, bytes sub, int start, int end): pass
-    int index(self, bytearray sub, int start=0): pass
-    int index(self, bytearray sub, int start, int end): pass
-    bool isalnum(self): pass
-    bool isalpha(self): pass
-    bool isdigit(self): pass
-    bool islower(self): pass
-    bool isspace(self): pass
-    bool istitle(self): pass
-    bool isupper(self): pass
-    bytearray join(self, Iterable<bytes> iterable): pass
-    bytearray join(self, Iterable<bytearray> iterable): pass
-    bytearray ljust(self, int width, bytes fillchar=None): pass
-    bytearray ljust(self, int width, bytearray fillchar=None): pass
-    bytearray lower(self): pass
-    bytearray lstrip(self, bytes chars=None): pass
-    bytearray lstrip(self, bytearray chars=None): pass
-    tuple<bytearray, bytearray, bytearray> partition(self, bytes sep): pass
-    tuple<bytearray, bytearray, bytearray> partition(self, bytearray sep): pass
-    bytearray replace(self, bytes old, bytes new, int count=-1): pass
-    bytearray replace(self, bytearray old, bytearray new, int count=-1): pass
-    int rfind(self, bytes sub, int start=0): pass
-    int rfind(self, bytes sub, int start, int end): pass
-    int rfind(self, bytearray sub, int start=0): pass
-    int rfind(self, bytearray sub, int start, int end): pass
-    int rindex(self, bytes sub, int start=0): pass
-    int rindex(self, bytes sub, int start, int end): pass
-    int rindex(self, bytearray sub, int start=0): pass
-    int rindex(self, bytearray sub, int start, int end): pass
-    bytearray rjust(self, int width, bytes fillchar=None): pass
-    bytearray rjust(self, int width, bytearray fillchar=None): pass
-    tuple<bytearray, bytearray, bytearray> rpartition(self, bytes sep): pass
-    tuple<bytearray, bytearray, bytearray> rpartition(self, bytearray sep):pass
-    bytearray[] rsplit(self, bytes sep=None, int maxsplit=-1): pass
-    bytearray[] rsplit(self, bytearray sep=None, int maxsplit=-1): pass
-    bytearray rstrip(self, bytes chars=None): pass
-    bytearray rstrip(self, bytearray chars=None): pass
-    bytearray[] split(self, bytes sep=None, int maxsplit=-1): pass
-    bytearray[] split(self, bytearray sep=None, int maxsplit=-1): pass
-    bytearray[] splitlines(self, bool keepends=False): pass
-    bool startswith(self, bytes prefix): pass
-    bool startswith(self, bytearray prefix): pass
-    bytearray strip(self, bytes chars=None): pass
-    bytearray strip(self, bytearray chars=None): pass
-    bytearray swapcase(self): pass
-    bytearray title(self): pass
-    bytearray translate(self, bytes table): pass
-    bytearray translate(self, bytearray table): pass
-    bytearray upper(self): pass
-    bytearray zfill(self, int width): pass
+    def capitalize(self) -> bytearray: pass
+    @overload
+    def center(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    @overload
+    def center(self, width: int, fillchar: bytearray = None) -> bytearray: pass
+    @overload
+    def count(self, x: bytes) -> int: pass
+    @overload
+    def count(self, x: bytearray) -> int: pass
+    def decode(self, encoding: str = 'utf-8',
+               errors: str = 'strict') -> str: pass
+    @overload
+    def endswith(self, suffix: bytes) -> bool: pass
+    @overload
+    def endswith(self, suffix: bytearray) -> bool: pass
+    def expandtabs(self, tabsize: int = 8) -> bytearray: pass
+    @overload
+    def find(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def find(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def find(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def find(self, sub: bytearray, start: int, end: int) -> int: pass
+    @overload
+    def index(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def index(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def index(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def index(self, sub: bytearray, start: int, end: int) -> int: pass
+    def isalnum(self) -> bool: pass
+    def isalpha(self) -> bool: pass
+    def isdigit(self) -> bool: pass
+    def islower(self) -> bool: pass
+    def isspace(self) -> bool: pass
+    def istitle(self) -> bool: pass
+    def isupper(self) -> bool: pass
+    @overload
+    def join(self, iterable: Iterable[bytes]) -> bytearray: pass
+    @overload
+    def join(self, iterable: Iterable[bytearray]) -> bytearray: pass
+    @overload
+    def ljust(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    @overload
+    def ljust(self, width: int, fillchar: bytearray = None) -> bytearray: pass
+    def lower(self) -> bytearray: pass
+    @overload
+    def lstrip(self, chars: bytes = None) -> bytearray: pass
+    @overload
+    def lstrip(self, chars: bytearray = None) -> bytearray: pass
+    @overload
+    def partition(self, sep: bytes) -> Tuple[bytearray, bytearray,
+                                             bytearray]: pass
+    @overload
+    def partition(self, sep: bytearray) -> Tuple[bytearray, bytearray,
+                                                 bytearray]: pass
+    @overload
+    def replace(self, old: bytes, new: bytes,
+                count: int = -1) -> bytearray: pass
+    @overload
+    def replace(self, old: bytearray, new: bytearray,
+                count: int = -1) -> bytearray: pass
+    @overload
+    def rfind(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def rfind(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def rfind(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
+    @overload
+    def rindex(self, sub: bytes, start: int = 0) -> int: pass
+    @overload
+    def rindex(self, sub: bytes, start: int, end: int) -> int: pass
+    @overload
+    def rindex(self, sub: bytearray, start: int = 0) -> int: pass
+    @overload
+    def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
+    @overload
+    def rjust(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    @overload
+    def rjust(self, width: int, fillchar: bytearray = None) -> bytearray: pass
+    @overload
+    def rpartition(self, sep: bytes) -> Tuple[bytearray, bytearray,
+                                              bytearray]: pass
+    @overload
+    def rpartition(self, sep: bytearray) -> Tuple[bytearray, bytearray,
+                                                  bytearray]:pass
+    @overload
+    def rsplit(self, sep: bytes = None,
+               maxsplit: int = -1) -> List[bytearray]: pass
+    @overload
+    def rsplit(self, sep: bytearray = None,
+               maxsplit: int = -1) -> List[bytearray]: pass
+    @overload
+    def rstrip(self, chars: bytes = None) -> bytearray: pass
+    @overload
+    def rstrip(self, chars: bytearray = None) -> bytearray: pass
+    @overload
+    def split(self, sep: bytes = None,
+              maxsplit: int = -1) -> List[bytearray]: pass
+    @overload
+    def split(self, sep: bytearray = None,
+              maxsplit: int = -1) -> List[bytearray]: pass
+    def splitlines(self, keepends: bool = False) -> List[bytearray]: pass
+    @overload
+    def startswith(self, prefix: bytes) -> bool: pass
+    @overload
+    def startswith(self, prefix: bytearray) -> bool: pass
+    @overload
+    def strip(self, chars: bytes = None) -> bytearray: pass
+    @overload
+    def strip(self, chars: bytearray = None) -> bytearray: pass
+    def swapcase(self) -> bytearray: pass
+    def title(self) -> bytearray: pass
+    @overload
+    def translate(self, table: bytes) -> bytearray: pass
+    @overload
+    def translate(self, table: bytearray) -> bytearray: pass
+    def upper(self) -> bytearray: pass
+    def zfill(self, width: int) -> bytearray: pass
     
-    int __len__(self): pass
-    Iterator<int> __iter__(self): pass
-    str __str__(self): pass
-    str __repr__(self): pass
-    int __int__(self): pass
-    float __float__(self): pass
-    int __hash__(self): pass
+    def __len__(self) -> int: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __str__(self) -> str: pass
+    def __repr__(self) -> str: pass
+    def __int__(self) -> int: pass
+    def __float__(self) -> float: pass
+    def __hash__(self) -> int: pass
     
-    int __getitem__(self, int i): pass
-    bytearray __getitem__(self, slice s): pass
-    bytearray __add__(self, bytes s): pass    
-    bytearray __add__(self, bytearray s): pass
-    bytearray __mul__(self, int n): pass
-    bool __contains__(self, object o): pass
+    @overload
+    def __getitem__(self, i: int) -> int: pass
+    @overload
+    def __getitem__(self, s: slice) -> bytearray: pass
+    @overload
+    def __setitem__(self, i: int, x: int) -> None: pass
+    @overload
+    def __setitem__(self, s: slice, x: Sequence[int]) -> None: pass
+    @overload
+    def __delitem__(self, i: int) -> None: pass
+    @overload
+    def __delitem__(self, s: slice) -> None: pass
     
-    bool __eq__(self, object x): pass
-    bool __ne__(self, object x): pass
+    @overload
+    def __add__(self, s: bytes) -> bytearray: pass    
+    @overload
+    def __add__(self, s: bytearray) -> bytearray: pass
+    
+    def __mul__(self, n: int) -> bytearray: pass
+    def __contains__(self, o: object) -> bool: pass    
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operands
-    bool __lt__(self, object x): pass
-    bool __le__(self, object x): pass
-    bool __gt__(self, object x): pass
-    bool __ge__(self, object x): pass
-
-    void __setitem__(self, int i, int x): pass
-    void __setitem__(self, slice s, Sequence<int> x): pass
-    void __delitem__(self, int i): pass
-    void __delitem__(self, slice s): pass
+    def __lt__(self, x: object) -> bool: pass
+    def __le__(self, x: object) -> bool: pass
+    def __gt__(self, x: object) -> bool: pass
+    def __ge__(self, x: object) -> bool: pass
 
 
-class bool(int_t, float_t):
-    void __init__(self, object o): pass
-    str __str__(self): pass
-    int __int__(self): pass
-    float __float__(self): pass
+class bool(SupportsInt, SupportsFloat):
+    def __init__(self, o: object) -> None: pass
+    def __str__(self) -> str: pass
+    def __int__(self) -> int: pass
+    def __float__(self) -> float: pass
 
 
 class slice:
-    int start
-    int step
-    int stop
-    
-    void __init__(self, int start, int stop, int step): pass
+    start = 0
+    step = 0
+    stop = 0
+    def __init__(self, start: int, stop: int, step: int) -> None: pass
 
 
 class tuple(Sized):
-    void __init__(self): pass
-    void __init__(self, Iterable<any> iterable): pass
-    int __len__(self): pass
-    bool __contains__(self, object x): pass
-    bool __lt__(self, tuple x): pass
-    bool __le__(self, tuple x): pass
-    bool __gt__(self, tuple x): pass
-    bool __ge__(self, tuple x): pass
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[Any]) -> None: pass
+    
+    def __len__(self) -> int: pass
+    def __contains__(self, x: object) -> bool: pass
+    def __lt__(self, x: tuple) -> bool: pass
+    def __le__(self, x: tuple) -> bool: pass
+    def __gt__(self, x: tuple) -> bool: pass
+    def __ge__(self, x: tuple) -> bool: pass
 
 
 class function:
     # TODO name of the class (corresponds to Python 'function' class)
-    str __name__
-    str __module__
+    __name__ = ''
+    __module__ = ''
 
 
-class list<t>(Sequence<t>, reversed_t<t>):
-    void __init__(self): pass
-    void __init__(self, Iterable<t> iterable): pass
+class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[T]) -> None: pass
     
-    void append(self, t object): pass
-    void extend(self, Iterable<t> iterable): pass
-    t pop(self): pass
-    int index(self, t object): pass
-    int count(self, t object): pass
-    void insert(self, int index, t object): pass
-    void remove(self, t object): pass
-    void reverse(self): pass
-    void sort(self, *, func<any(t)> key=None, bool reverse=False): pass
+    def append(self, object: T) -> None: pass
+    def extend(self, iterable: Iterable[T]) -> None: pass
+    def pop(self) -> T: pass
+    def index(self, object: T) -> int: pass
+    def count(self, object: T) -> int: pass
+    def insert(self, index: int, object: T) -> None: pass
+    def remove(self, object: T) -> None: pass
+    def reverse(self) -> None: pass
+    def sort(self, *, key: Function[[T], Any] = None,
+             reverse: bool = False) -> None: pass
     
-    int __len__(self): pass
-    Iterator<t> __iter__(self): pass
-    str __str__(self): pass
-    int __hash__(self): pass
+    def __len__(self) -> int: pass
+    def __iter__(self) -> Iterator[T]: pass
+    def __str__(self) -> str: pass
+    def __hash__(self) -> int: pass
     
-    t __getitem__(self, int i): pass
-    t[] __getitem__(self, slice s): pass    
-    void __setitem__(self, int i, t o): pass
-    void __setitem__(self, slice s, Sequence<t> o): pass
-    void __delitem__(self, int i): pass
-    void __delitem__(self, slice s): pass
-    t[] __add__(self, t[] x): pass
-    t[] __mul__(self, int n): pass
-    bool __contains__(self, object o): pass
-    Iterator<t> __reversed__(self): pass
+    @overload
+    def __getitem__(self, i: int) -> T: pass
+    @overload
+    def __getitem__(self, s: slice) -> List[T]: pass    
+    @overload
+    def __setitem__(self, i: int, o: T) -> None: pass
+    @overload
+    def __setitem__(self, s: slice, o: Sequence[T]) -> None: pass
+    @overload
+    def __delitem__(self, i: int) -> None: pass
+    @overload
+    def __delitem__(self, s: slice) -> None: pass
+    
+    def __add__(self, x: List[T]) -> List[T]: pass
+    def __mul__(self, n: int) -> List[T]: pass
+    def __contains__(self, o: object) -> bool: pass
+    def __reversed__(self) -> Iterator[T]: pass
 
 
-class dict<kt, vt>(Mapping<kt, vt>):
-    void __init__(self): pass
-    void __init__(self, Mapping<kt, vt> map): pass
-    void __init__(self, Iterable<tuple<kt, vt>> iterable): pass
+class dict(Mapping[KT, VT], Generic[KT, VT]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, map: Mapping[KT, VT]) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[Tuple[KT, VT]]) -> None: pass
     # TODO __init__ keyword args
     
-    int __len__(self): pass
+    def __len__(self) -> int: pass
+    def __getitem__(self, k: KT) -> VT: pass
+    def __setitem__(self, k: KT, v: VT) -> None: pass
+    def __delitem__(self, v: KT) -> None: pass
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[KT]: pass
+    def __str__(self) -> str: pass
     
-    vt __getitem__(self, kt k): pass
-    void __setitem__(self, kt k, vt v): pass
-
-    void __delitem__(self, kt v): pass
-
-    bool __contains__(self, object o): pass
-
-    Iterator<kt> __iter__(self): pass
+    def clear(self) -> None: pass
+    def copy(self) -> Dict[KT, VT]: pass
     
-    void clear(self): pass
-    dict<kt, vt> copy(self): pass
-    vt get(self, kt k): pass
-    vt get(self, kt k, vt default): pass
-    vt pop(self, kt k): pass
-    vt pop(self, kt k, vt default): pass
-    tuple<kt, vt> popitem(self): pass
-    vt setdefault(self, kt k): pass
-    vt setdefault(self, kt k, vt default): pass
+    @overload
+    def get(self, k: KT) -> VT: pass
+    @overload
+    def get(self, k: KT, default: VT) -> VT: pass
+    @overload
+    def pop(self, k: KT) -> VT: pass
+    @overload
+    def pop(self, k: KT, default: VT) -> VT: pass
+    def popitem(self) -> Tuple[KT, VT]: pass
+    @overload
+    def setdefault(self, k: KT) -> VT: pass
+    @overload
+    def setdefault(self, k: KT, default: VT) -> VT: pass
     
-    void update(self, Mapping<kt, vt> m): pass
-    void update(self, Iterable<tuple<kt, vt>> m): pass
+    @overload
+    def update(self, m: Mapping[KT, VT]) -> None: pass
+    @overload
+    def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
 
-    Set<kt> keys(self): pass
-    Set<vt> values(self): pass
-    Set<tuple<kt, vt>> items(self): pass
-
-    str __str__(self): pass
+    def keys(self) -> Set[KT]: pass
+    def values(self) -> Set[VT]: pass
+    def items(self) -> Set[Tuple[KT, VT]]: pass
 
 
-class set<t>(Set<t>):
-    void __init__(self): pass
-    void __init__(self, Iterable<t> iterable): pass
+class set(AbstractSet[T], Generic[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[T]) -> None: pass
     
-    void add(self, t element): pass
-    void remove(self, t element): pass
-    set<t> copy(self): pass
-    bool isdisjoint(self, Set<t> s): pass
+    def add(self, element: T) -> None: pass
+    def remove(self, element: T) -> None: pass
+    def copy(self) -> AbstractSet[T]: pass
+    def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
     
-    int __len__(self): pass
-    bool __contains__(self, object o): pass
-    Iterator<t> __iter__(self): pass    
-    str __str__(self): pass
-
-    set<t> __and__(self, Set<t> s): pass
-    set<t> __or__(self, Set<t> s): pass
-    set<t> __sub__(self, Set<t> s): pass
-    set<t> __xor__(self, Set<t> s): pass
+    def __len__(self) -> int: pass
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[T]: pass    
+    def __str__(self) -> str: pass
+    def __and__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
+    def __or__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
+    def __sub__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
+    def __xor__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
     # TODO more set operations
 
 
-class frozenset<t>(Set<t>):
-    void __init__(self): pass
-    void __init__(self, Iterable<t> iterable): pass
+class frozenset(AbstractSet[T], Generic[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, iterable: Iterable[T]) -> None: pass
 
-    bool isdisjoint(self, Set<t> s): pass
+    def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
     
-    int __len__(self): pass
-    bool __contains__(self, object o): pass
-    Iterator<t> __iter__(self): pass    
-    str __str__(self): pass
-
-    frozenset<t> __and__(self, Set<t> s): pass
-    frozenset<t> __or__(self, Set<t> s): pass
-    frozenset<t> __sub__(self, Set<t> s): pass
-    frozenset<t> __xor__(self, Set<t> s): pass
+    def __len__(self) -> int: pass
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[T]: pass    
+    def __str__(self) -> str: pass
+    def __and__(self, s: AbstractSet[T]) -> frozenset[T]: pass
+    def __or__(self, s: AbstractSet[T]) -> frozenset[T]: pass
+    def __sub__(self, s: AbstractSet[T]) -> frozenset[T]: pass
+    def __xor__(self, s: AbstractSet[T]) -> frozenset[T]: pass
     # TODO more set operations
 
 
-class enumerate<t>(Iterator<tuple<int, t>>):
-    void __init__(self, Iterable<t> iterable, int start=0): pass
-    Iterator<tuple<int, t>> __iter__(self): pass
-    tuple<int, t> __next__(self): pass
+class enumerate(Iterator[Tuple[int, T]], Generic[T]):
+    def __init__(self, iterable: Iterable[T], start: int = 0) -> None: pass
+    def __iter__(self) -> Iterator[Tuple[int, T]]: pass
+    def __next__(self) -> Tuple[int, T]: pass
     # TODO __getattribute__
 
 
-class range(Sized, Iterable<int>, Sequence<int>, reversed_t<int>):
-    void __init__(self, int stop): pass
-    void __init__(self, int start, int stop, int step=1): pass
+class range(Sequence[int], Reversible[int]):
+    @overload
+    def __init__(self, stop: int) -> None: pass
+    @overload
+    def __init__(self, start: int, stop: int, step: int = 1) -> None: pass
     
-    int count(self, int value): pass
-    # None with int
-    int index(self, int value, int start=0, int stop=None): pass
+    def count(self, value: int) -> int: pass
+    def index(self, value: int, start: int = 0, stop: int = None) -> int: pass
     
-    int __len__(self): pass
-    bool __contains__(self, object o): pass
-    Iterator<int> __iter__(self): pass
-    int __getitem__(self, int i): pass
-    range __getitem__(self, slice s): pass
-    str __repr__(self): pass
-    Iterator<int> __reversed__(self): pass
+    def __len__(self) -> int: pass
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[int]: pass
+    @overload
+    def __getitem__(self, i: int) -> int: pass
+    @overload
+    def __getitem__(self, s: slice) -> range: pass
+    def __repr__(self) -> str: pass
+    def __reversed__(self) -> Iterator[int]: pass
 
 
 class module:
-    str __name__
-    str __file__
-    dict<str, any> __dict__
+    __name__ = ''
+    __file__ = ''
+    __dict__ = Undefined # type: Dict[str, Any]
 
 
-bool True
-bool False
-bool __debug__
+True = Undefined # type: bool
+False = Undefined # type: bool
+__debug__ = False
+
 
 class _NotImplementedType: pass # TODO name of the class
-_NotImplementedType NotImplemented
+NotImplemented = Undefined # type: _NotImplementedType
 
 
-int abs(int n): pass
-float abs(float n): pass
-t abs<t>(abs_t<t> n): pass
-bool all(Iterable i): pass
-# TODO name clash with 'any' type
-#bool any(Iterable i): pass
-str ascii(object o): pass
-bool callable(object o): pass
-str chr(int code): pass
-void delattr(any o, str name): pass
-str[] dir(): pass
-str[] dir(object o): pass
-tuple<int, int> divmod(int a, int b): pass
-tuple<float, float> divmod(float a, float b): pass
-Iterator<t> filter<t>(func<any(t)> function, Iterable<t> iterable): pass
-str format(object o, str format_spec=''): pass
-any getattr(any o, str name): pass
-any getattr(any o, str name, any default): pass
-bool hasattr(any o, str name): pass
-int hash(object o): pass
+@overload
+def abs(n: int) -> int: pass
+@overload
+def abs(n: float) -> float: pass
+@overload
+def abs(n: SupportsAbs[T]) -> T: pass
+
+def all(i: Iterable) -> bool: pass
+def any(i: Iterable) -> bool: pass
+def ascii(o: object) -> str: pass
+def callable(o: object) -> bool: pass
+def chr(code: int) -> str: pass
+def delattr(o: Any, name: str) -> None: pass
+def dir(o: object = None) -> List[str]: pass
+
+@overload
+def divmod(a: int, b: int) -> Tuple[int, int]: pass
+@overload
+def divmod(a: float, b: float) -> Tuple[float, float]: pass
+
+def filter(function: Function[[T], Any],
+           iterable: Iterable[T]) -> Iterator[T]: pass
+def format(o: object, format_spec: str = '') -> str: pass
+def getattr(o: Any, name: str, default: Any = None) -> Any: pass
+def hasattr(o: Any, name: str) -> bool: pass
+def hash(o: object) -> int: pass
 # TODO __index__
-str hex(int i): pass
-int id(object o): pass
-str input(str prompt=None): pass
-Iterator<t> iter<t>(Iterable<t> iterable): pass
-Iterator<t> iter<t>(func<t()> function, t sentinel): pass
-bool isinstance(object o, type t): pass
-bool isinstance(object o, tuple t): pass
-bool issubclass(type cls, type classinfo): pass
+def hex(i: int) -> str: pass
+def id(o: object) -> int: pass
+def input(prompt: str = None) -> str: pass
+
+@overload
+def iter(iterable: Iterable[T]) -> Iterator[T]: pass
+@overload
+def iter(function: Function[[], T], sentinel: T) -> Iterator[T]: pass
+
+@overload
+def isinstance(o: object, t: type) -> bool: pass
+@overload
+def isinstance(o: object, t: tuple) -> bool: pass
+
+def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO perhaps support this
-#bool issubclass(type cld, Sequence<type> classinfo): pass
-int len(Sized o): pass
-# TODO more than two iterables
-Iterator<s> map<t1, s>(func<s(t1)> func, Iterable<t1> iter1): pass
-Iterator<s> map<t1, t2, s>(func<s(t1, t2)> func,
-                         Iterable<t1> iter1,
-                         Iterable<t2> iter2): pass
-# TODO keyword argument key
-t max<t>(Iterable<t> iterable): pass
-t max<t>(t arg1, t arg2, t *args): pass
-# TODO memoryview
-t min<t>(Iterable<t> iterable): pass
-t min<t>(t arg1, t arg2, t *args): pass
-t next<t>(Iterator<t> i): pass
-t next<t>(Iterator<t> i, t default): pass
-# TODO __index__
-str oct(int i): pass
-# TODO return type
-any open(str file, str mode='r', int buffering=-1, str encoding=None,
-         str errors=None, str newline=None, bool closefd=True): pass
-any open(bytes file, str mode='r', int buffering=-1, str encoding=None,
-         str errors=None, str newline=None, bool closefd=True): pass
-any open(int file, str mode='r', int buffering=-1, str encoding=None,
-         str errors=None, str newline=None, bool closefd=True): pass
-int ord(str c): pass
-int ord(bytes c): pass
-int ord(bytearray c): pass
-void print(any *values, *, str sep=' ', str end='\n',
-           TextIO file=None): pass # Actual default for file is sys.stdout
-# The return type can be int or float, depending on the value of y.
-any pow(int x, int y): pass
-any pow(int x, int y, int z): pass
-float pow(float x, float y): pass
-float pow(float x, float y, float z): pass
-# TODO property
-Iterator<t> reversed<t>(reversed_t<t> object): pass
-Iterator<t> reversed<t>(Sequence<t> object): pass
-str repr(object o): pass
-# Always return a float if ndigits is present.
-int round(float number): pass
-float round(float number, int ndigits): pass
-t round<t>(round_t<t> number): pass
-t round<t>(round_t<t> number, int ndigits): pass
-void setattr(any object, str name, any value): pass
-t[] sorted<t>(Iterable<t> iterable, *, func<any(t)> key=None,
-              bool reverse=False): pass
-t sum<t>(Iterable<t> iterable, t start=None): pass
-# TODO more than four iterables
-Iterator<tuple<t1>> zip<t1>(Iterable<t1> iter1): pass
-Iterator<tuple<t1, t2>> zip<t1, t2>(Iterable<t1> iter1,
-                                    Iterable<t2> iter2): pass
-Iterator<tuple<t1, t2, t3>> zip<t1, t2, t3>(Iterable<t1> iter1,
-                                            Iterable<t2> iter2,
-                                            Iterable<t3> iter3): pass
-Iterator<tuple<t1, t2, t3, t4>> zip<t1, t2, t3, t4>(Iterable<t1> iter1,
-                                                    Iterable<t2> iter2,
-                                                    Iterable<t3> iter3,
-                                                    Iterable<t4> iter4): pass
+#def issubclass(type cld, classinfo: Sequence[type]) -> bool: pass
+def len(o: Sized) -> int: pass
 
-any __import__(str name,
-               dict<str, any> globals={},
-               dict<str, any> locals={},
-               str[] fromlist=[], int level=-1): pass
+# TODO more than two iterables
+@overload
+def map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]: pass
+@overload
+def map(func: Function[[T1, T2], S],
+        iter1: Iterable[T1],
+        iter2: Iterable[T2]) -> Iterator[S]: pass
+
+# TODO keyword argument key
+@overload
+def max(iterable: Iterable[T]) -> T: pass
+@overload
+def max(arg1: T, arg2: T, *args: T) -> T: pass
+
+# TODO memoryview
+
+@overload
+def min(iterable: Iterable[T]) -> T: pass
+@overload
+def min(arg1: T, arg2: T, *args: T) -> T: pass
+
+@overload
+def next(i: Iterator[T]) -> T: pass
+@overload
+def next(i: Iterator[T], default: T) -> T: pass
+
+# TODO __index__
+def oct(i: int) -> str: pass
+
+# TODO return type
+@overload
+def open(file: str, mode: str = 'r', buffering: int = -1, encoding: str = None,
+         errors: str = None, newline: str = None,
+         closefd: bool = True) -> Any: pass
+@overload
+def open(file: bytes, mode: str = 'r', buffering: int = -1,
+         encoding: str = None, errors: str = None, newline: str = None,
+         closefd: bool = True) -> Any: pass
+@overload
+def open(file: int, mode: str = 'r', buffering: int = -1, encoding: str = None,
+         errors: str = None, newline: str = None,
+         closefd: bool = True) -> Any: pass
+
+@overload
+def ord(c: str) -> int: pass
+@overload
+def ord(c: bytes) -> int: pass
+@overload
+def ord(c: bytearray) -> int: pass
+
+def print(*values: Any, *, sep: str = ' ', end: str = '\n',
+           file: TextIO = None) -> None: pass
+
+# The return type can be int or float, depending on the value of y.
+@overload
+def pow(x: int, y: int) -> Any: pass
+@overload
+def pow(x: int, y: int, z: int) -> Any: pass
+@overload
+def pow(x: float, y: float) -> float: pass
+@overload
+def pow(x: float, y: float, z: float) -> float: pass
+
+# TODO property
+
+@overload
+def reversed(object: Reversible[T]) -> Iterator[T]: pass
+@overload
+def reversed(object: Sequence[T]) -> Iterator[T]: pass
+
+def repr(o: object) -> str: pass
+
+# Always return a float if ndigits is present.
+@overload
+def round(number: float) -> int: pass
+@overload
+def round(number: float, ndigits: int) -> float: pass
+@overload
+def round(number: SupportsRound[T]) -> T: pass
+@overload
+def round(number: SupportsRound[T], ndigits: int) -> T: pass
+
+def setattr(object: Any, name: str, value: Any) -> None: pass
+def sorted(iterable: Iterable[T], *, key: Function[[T], Any] = None,
+           reverse: bool = False) -> List[T]: pass
+def sum(iterable: Iterable[T], start: T = None) -> T: pass
+
+# TODO more than four iterables
+@overload
+def zip(iter1: Iterable[T1]) -> Iterator[Tuple[T1]]: pass
+@overload
+def zip(iter1: Iterable[T1],
+        iter2: Iterable[T2]) -> Iterator[Tuple[T1, T2]]: pass
+@overload
+def zip(iter1: Iterable[T1], iter2: Iterable[T2],
+        iter3: Iterable[T3]) -> Iterator[Tuple[T1, T2, T3]]: pass
+@overload
+def zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3],
+        iter4: Iterable[T4]) -> Iterator[Tuple[T1, T2, T3, T4]]: pass
+
+def __import__(name: str,
+               globals: Dict[str, Any] = {},
+               locals: Dict[str, Any] = {},
+               fromlist: List[str] = [], level: int = -1) -> Any: pass
 
 
 # Exceptions
 
 
 class BaseException:
-    any args
-    
-    void __init__(self, any *args): pass
-    BaseException with_traceback(self, any tb): pass
+    args = Undefined # type: Any
+    def __init__(self, *args: Any) -> None: pass
+    def with_traceback(self, tb: Any) -> BaseException: pass
 
 class GeneratorExit(BaseException): pass
 class KeyboardInterrupt(BaseException): pass
@@ -853,9 +1002,9 @@ class SystemExit(BaseException): pass
 class Exception(BaseException): pass
 class ArithmeticError(Exception): pass
 class EnvironmentError(Exception):
-    int errno
-    str strerror
-    str filename # TODO can this be bytes?
+    errno = 0
+    strerror = ''
+    filename = '' # TODO can this be bytes?
 class LookupError(Exception): pass
 class RuntimeError(Exception): pass
 class ValueError(Exception): pass
@@ -902,5 +1051,4 @@ class ResourceWarning(Warning): pass
 # TODO Windows-only
 class WindowsError(OSError): pass
 
-# TODO
-#   VMSError
+# TODO: VMSError

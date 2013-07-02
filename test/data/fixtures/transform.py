@@ -1,7 +1,7 @@
 # Builtins stubs used implicitly in program transformation test cases.
 
 class object:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 
 class type: pass
 

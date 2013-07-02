@@ -2,6 +2,8 @@
 
 import os.path
 
+import typing
+
 from build import build
 from myunit import Suite, run_test
 from testconfig import test_data_prefix, test_temp_dir
@@ -33,7 +35,6 @@ class DyncheckOpGenSuite(Suite):
 
 def test_op_gen(testcase):
     """Perform a type operation support data and code genereation test case."""
-    any a
     expected = remove_comment_lines(testcase.output)
     try:
         src = '\n'.join(testcase.input)

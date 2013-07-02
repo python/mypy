@@ -2,6 +2,8 @@
 
 import os.path
 
+import typing
+
 from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.testconfig import test_temp_dir, test_data_prefix
@@ -12,24 +14,26 @@ from mypy.testsemanal import normalize_error_messages
 
 
 # List of files that contain test case descriptions.
-files = ['check-basic.test',
-         'check-generics.test',
-         'check-classes.test',
-         'check-expressions.test',
-         'check-statements.test',
-         'check-tuples.test',
-         'check-inference.test',
-         'check-inference-context.test',
-         'check-dynamic.test',
-         'check-functions.test',
-         'check-varargs.test',
-         'check-kwargs.test',
-         'check-overloading.test',
-         'check-interfaces.test',
-         'check-super.test',
-         'check-modules.test',
-         'check-generic-subtyping.test',
-         'check-unsupported.test']
+files = [
+    'check-basic.test',
+    'check-classes.test',
+    'check-expressions.test',
+    'check-statements.test',
+    'check-generics.test',
+    'check-tuples.test',
+    'check-dynamic-typing.test',
+    'check-functions.test',
+    'check-inference.test',
+    'check-inference-context.test',
+    'check-varargs.test',
+    'check-kwargs.test',
+    'check-overloading.test',
+    'check-abstract.test',
+    'check-super.test',
+    'check-modules.test',
+    'check-generic-subtyping.test',
+    'check-unsupported.test',
+]
 
 
 class TypeCheckSuite(Suite):

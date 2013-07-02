@@ -121,27 +121,6 @@ MypyFile:1(
           NameExpr(x [__main__.x])
           NameExpr(y [__main__.y]))))))
 
-[case testForWithTypes]
-class c: pass
-for object x, c y in []:
-  x, y
-[out]
-MypyFile:1(
-  TypeDef:1(
-    c
-    PassStmt:1())
-  ForStmt:2(
-    NameExpr(x* [__main__.x])
-    NameExpr(y* [__main__.y])
-    builtins.object
-    __main__.c
-    ListExpr:2()
-    Block:2(
-      ExpressionStmt:3(
-        TupleExpr:3(
-          NameExpr(x [__main__.x])
-          NameExpr(y [__main__.y]))))))
-
 [case testForIndexVarScope]
 for x in []:
   pass
@@ -288,8 +267,7 @@ else:
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   IfStmt:2(
     If(
@@ -339,39 +317,33 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      NameExpr(x [__main__.x]))
+    NameExpr(x [__main__.x])
     IntExpr(1))
   AssignmentStmt:3(
-    Lvalues(
-      MemberExpr:3(
-        NameExpr(x [__main__.x])
-        m))
+    MemberExpr:3(
+      NameExpr(x [__main__.x])
+      m)
     IntExpr(1))
   AssignmentStmt:4(
-    Lvalues(
-      IndexExpr:4(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    IndexExpr:4(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:5(
-    Lvalues(
-      TupleExpr:5(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    TupleExpr:5(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:6(
-    Lvalues(
-      ListExpr:6(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    ListExpr:6(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:7(
-    Lvalues(
-      ParenExpr:7(
-        TupleExpr:7(
-          NameExpr(x [__main__.x])
-          NameExpr(y [__main__.y]))))
+    ParenExpr:7(
+      TupleExpr:7(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))
     IntExpr(1)))
 
 [case testMultipleDefinition]
@@ -380,16 +352,14 @@ x, y = 2
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      TupleExpr:1(
-        NameExpr(x* [__main__.x])
-        NameExpr(y* [__main__.y])))
+    TupleExpr:1(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      TupleExpr:2(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    TupleExpr:2(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(2)))
 
 [case testComplexDefinitions]
@@ -398,15 +368,13 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      ParenExpr:1(
-        NameExpr(x* [__main__.x])))
+    ParenExpr:1(
+      NameExpr(x* [__main__.x]))
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      ParenExpr:2(
-        ListExpr:2(
-          NameExpr(y* [__main__.y]))))
+    ParenExpr:2(
+      ListExpr:2(
+        NameExpr(y* [__main__.y])))
     IntExpr(2)))
 
 [case testLocalComplexDefinition]
@@ -419,9 +387,8 @@ MypyFile:1(
     f
     Block:1(
       AssignmentStmt:2(
-        Lvalues(
-          ParenExpr:2(
-            NameExpr(x* [l])))
+        ParenExpr:2(
+          NameExpr(x* [l]))
         IntExpr(1))
       ExpressionStmt:3(
         NameExpr(x [l])))))
@@ -432,14 +399,12 @@ y, x = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    Lvalues(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
-    Lvalues(
-      TupleExpr:2(
-        NameExpr(y* [__main__.y])
-        NameExpr(x [__main__.x])))
+    TupleExpr:2(
+      NameExpr(y* [__main__.y])
+      NameExpr(x [__main__.x]))
     IntExpr(1)))
 
 [case testIndexedDel]
@@ -626,26 +591,25 @@ MypyFile:1(
 
 [case testVariableInBlock]
 while object:
-  object x 
+  x = None
   x = x
 [out]
 MypyFile:1(
   WhileStmt:1(
     NameExpr(object [builtins.object])
     Block:1(
-      VarDef:2(
-        Var(x)
-        Type(builtins.object))
+      AssignmentStmt:2(
+        NameExpr(x* [__main__.x])
+        NameExpr(None [builtins.None]))
       AssignmentStmt:3(
-        Lvalues(
-          NameExpr(x [__main__.x]))
+        NameExpr(x [__main__.x])
         NameExpr(x [__main__.x])))))
 
 [case testVariableInExceptHandler]
 try:
   pass
 except object as o:
-  object x
+  x = None
   o = x
 [out]
 MypyFile:1(
@@ -655,12 +619,11 @@ MypyFile:1(
     NameExpr(object [builtins.object])
     NameExpr(o* [__main__.o])
     Block:3(
-      VarDef:4(
-        Var(x)
-        Type(builtins.object))
+      AssignmentStmt:4(
+        NameExpr(x* [__main__.x])
+        NameExpr(None [builtins.None]))
       AssignmentStmt:5(
-        Lvalues(
-          NameExpr(o [__main__.o]))
+        NameExpr(o [__main__.o])
         NameExpr(x [__main__.x])))))
 
 [case testCallInExceptHandler]
@@ -677,8 +640,7 @@ MypyFile:1(
     NameExpr(o* [__main__.o])
     Block:3(
       AssignmentStmt:4(
-        Lvalues(
-          NameExpr(o [__main__.o]))
+        NameExpr(o [__main__.o])
         CallExpr:4(
           NameExpr(object [builtins.object])
           Args())))))
@@ -706,14 +668,12 @@ MypyFile:1(
     NameExpr(f* [__main__.f])
     Block:5(
       AssignmentStmt:6(
-        Lvalues(
-          NameExpr(f [__main__.f]))
+        NameExpr(f [__main__.f])
         CallExpr:6(
           NameExpr(BaseException [builtins.BaseException])
           Args()))
       AssignmentStmt:7(
-        Lvalues(
-          NameExpr(f [__main__.f]))
+        NameExpr(f [__main__.f])
         CallExpr:7(
           NameExpr(Err [__main__.Err])
           Args()))))
@@ -724,18 +684,17 @@ MypyFile:1(
     PassStmt:8()))
 
 [case testMultipleAssignmentWithPartialNewDef]
-object o
+o = None
 x, o = o, o
 [out]
 MypyFile:1(
-  VarDef:1(
-    Var(o)
-    Type(builtins.object))
+  AssignmentStmt:1(
+    NameExpr(o* [__main__.o])
+    NameExpr(None [builtins.None]))
   AssignmentStmt:2(
-    Lvalues(
-      TupleExpr:2(
-        NameExpr(x* [__main__.x])
-        NameExpr(o [__main__.o])))
+    TupleExpr:2(
+      NameExpr(x* [__main__.x])
+      NameExpr(o [__main__.o]))
     TupleExpr:2(
       NameExpr(o [__main__.o])
       NameExpr(o [__main__.o]))))
@@ -765,7 +724,7 @@ MypyFile:1(
             Args()))))))
 
 [case testTryWithinFunction]
-void f():
+def f() -> None:
     try:
         pass
     except object as o:
@@ -785,7 +744,7 @@ MypyFile:1(
           PassStmt:5())))))
 
 [case testReuseExceptionVariable]
-void f():
+def f() -> None:
     try:
         pass
     except object as o:

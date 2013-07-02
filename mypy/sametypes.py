@@ -1,11 +1,14 @@
+from typing import List, cast
+
 from mypy.types import (
-    Type, UnboundType, ErrorType, Any, NoneTyp, Void, TupleType, Callable,
-    TypeVar, Instance, TypeVisitor, ErasedType
+    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, Callable,
+    TypeVar, Instance, TypeVisitor, ErasedType, TypeList
 )
 
 
-bool is_same_type(Type left, Type right):
+def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+    
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
         # generated spurious error messages.
@@ -14,7 +17,7 @@ bool is_same_type(Type left, Type right):
         return left.accept(SameTypeVisitor(right))
 
 
-bool is_same_types(Type[] a1, Type[] a2):
+def is_same_types(a1: List[Type], a2: List[Type]) -> bool:
     if len(a1) != len(a2):
         return False
     for i in range(len(a1)):
@@ -23,47 +26,52 @@ bool is_same_types(Type[] a1, Type[] a2):
     return True
 
 
-class SameTypeVisitor(TypeVisitor<bool>):
+class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
-    void __init__(self, Type right):
+    
+    def __init__(self, right: Type) -> None:
         self.right = right
     
     # visit_x(left) means: is left (which is an instance of X) the same type as
     # right?
     
-    bool visit_unbound_type(self, UnboundType left):
+    def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
     
-    bool visit_error_type(self, ErrorType left):
+    def visit_error_type(self, left: ErrorType) -> bool:
         return False
     
-    bool visit_any(self, Any left):
-        return isinstance(self.right, Any)
+    def visit_type_list(self, t: TypeList) -> bool:
+        assert False, 'Not supported'
     
-    bool visit_void(self, Void left):
+    def visit_any(self, left: AnyType) -> bool:
+        return isinstance(self.right, AnyType)
+    
+    def visit_void(self, left: Void) -> bool:
         return isinstance(self.right, Void)
     
-    bool visit_none_type(self, NoneTyp left):
+    def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)
     
-    bool visit_erased_type(self, ErasedType left):
+    def visit_erased_type(self, left: ErasedType) -> bool:
         # Should not get here.
         raise RuntimeError()
     
-    bool visit_instance(self, Instance left):
+    def visit_instance(self, left: Instance) -> bool:
         return (isinstance(self.right, Instance) and
-                left.type == ((Instance)self.right).type and
-                is_same_types(left.args, ((Instance)self.right).args))
+                left.type == (cast(Instance, self.right)).type and
+                is_same_types(left.args, (cast(Instance, self.right)).args))
     
-    bool visit_type_var(self, TypeVar left):
+    def visit_type_var(self, left: TypeVar) -> bool:
         return (isinstance(self.right, TypeVar) and
-                left.id == ((TypeVar)self.right).id and
-                left.is_wrapper_var == ((TypeVar)self.right).is_wrapper_var)
+                left.id == (cast(TypeVar, self.right)).id and
+                left.is_wrapper_var ==
+                    cast(TypeVar, self.right).is_wrapper_var)
     
-    bool visit_callable(self, Callable left):
+    def visit_callable(self, left: Callable) -> bool:
         # FIX generics
         if isinstance(self.right, Callable):
-            cright = (Callable)self.right
+            cright = cast(Callable, self.right)
             return (is_same_type(left.ret_type, cright.ret_type) and
                     is_same_types(left.arg_types, cright.arg_types)  and
                     left.arg_names == cright.arg_names and
@@ -72,8 +80,8 @@ class SameTypeVisitor(TypeVisitor<bool>):
         else:
             return False
     
-    bool visit_tuple_type(self, TupleType left):
+    def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return is_same_types(left.items, ((TupleType)self.right).items)
+            return is_same_types(left.items, cast(TupleType, self.right).items)
         else:
             return False

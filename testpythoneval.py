@@ -1,10 +1,10 @@
-"""Test cases for running mypy programs using CPython 3.
+"""Test cases for running mypy programs using a Python interpreter.
 
-Each test cases translates a mypy program to Python and then runs it. The
-output (stdout) of the program is compared to expected output. The translation
-uses full builtins.
+Each test case type checks a program then runs it using Python. The
+output (stdout) of the program is compared to expected output. Type checking
+uses full builtins and other stubs.
 
-Note: Currently python interpreter and mypy implementation paths are hard coded
+Note: Currently Python interpreter and mypy implementation paths are hard coded
       (see python_path and mypy_path below).
 
 Note: These test cases are *not* included in the main test suite, as running
@@ -12,6 +12,7 @@ Note: These test cases are *not* included in the main test suite, as running
       slowness is due to translating the mypy implementation in each test case.
 """
 
+import os
 import os.path
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from mypy.myunit import Suite, run_test
 from mypy.testconfig import test_data_prefix, test_temp_dir
 from mypy.testdata import parse_test_cases
 from mypy.testhelpers import assert_string_arrays_equal
+import typing
 
 
 # Files which contain test case descriptions.
@@ -27,8 +29,6 @@ python_eval_files = ['pythoneval.test']
 
 # Path to Python 3 interpreter
 python_path = 'python3'
-# Path to mypy implementation translated to Python.
-mypy_path = '~/mypy-py/driver.py'
 
 
 class PythonEvaluationSuite(Suite):
@@ -48,10 +48,14 @@ def test_python_evaluation(testcase):
     for s in testcase.input:
         f.write('{}\n'.format(s))
     f.close()
+    # Set up module path.
+    typing_path = os.path.join(os.getcwd(), 'lib-typing')
+    assert os.path.isdir(typing_path)
+    os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
+    os.environ['MYPYPATH'] = '.'
     # Run the program.
     outb = subprocess.check_output([python_path,
-                                    os.path.expanduser(mypy_path),
-                                    'driver.py',
+                                    os.path.join('scripts', 'mypy'),
                                     program])
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]

@@ -4,6 +4,7 @@ from test import support
 import unittest
 
 from fnmatch import fnmatch, fnmatchcase, translate, filter
+import typing
 
 class FnmatchTestCase(unittest.TestCase):
 

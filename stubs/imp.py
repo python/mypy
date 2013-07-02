@@ -2,5 +2,9 @@
 
 # NOTE: These are incomplete!
 
-# TODO None value for bool
-str cache_from_source(str path, bool debug_override=None): pass
+from typing import typevar
+
+T = typevar('T')
+
+def cache_from_source(path: str, debug_override: bool = None) -> str: pass
+def reload(module: T) -> T: pass # TODO imprecise signature

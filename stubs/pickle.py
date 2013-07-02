@@ -2,6 +2,9 @@
 
 # NOTE: These are incomplete!
 
-bytes dumps(any obj, int protocol=None, *, bool fix_imports=True): pass
-any loads(bytes p, *, bool fix_imports=True, str encoding='ASCII',
-          str errors='strict'): pass
+from typing import Any
+
+def dumps(obj: Any, protocol: int = None, *,
+          fix_imports: bool = True) -> bytes: pass
+def loads(p: bytes, *, fix_imports: bool = True,
+          encoding: str = 'ASCII', errors: str = 'strict') -> Any: pass

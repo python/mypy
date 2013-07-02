@@ -3,8 +3,9 @@
 
 
 [case testMethodCall]
-A a
-B b
+from typing import Undefined
+a = Undefined # type: A
+b = Undefined # type: B
 
 a.foo(B())        # Fail
 a.bar(B(), A())   # Fail
@@ -13,61 +14,66 @@ a.foo(A())
 b.bar(B(), A())
 
 class A:
-  void foo(self, A x): pass
+  def foo(self, x: 'A') -> None: pass
 class B:
-  void bar(self, B x, A y): pass
+  def bar(self, x: 'B', y: A) -> None: pass
 [out]
-main, line 4: Argument 1 to "foo" of "A" has incompatible type "B"
-main, line 5: "A" has no attribute "bar"
+main, line 5: Argument 1 to "foo" of "A" has incompatible type "B"
+main, line 6: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]
-A a
+from typing import Undefined
+a = Undefined # type: A
 a.foo(A())
 a.foo(B())
 a.bar(A()) # Fail
 a.bar(B())
 
 class A:
-  void foo(self, A x): pass
-  void bar(self, B x): pass
+  def foo(self, x: 'A') -> None: pass
+  def bar(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main, line 4: Argument 1 to "bar" of "A" has incompatible type "A"
+main, line 5: Argument 1 to "bar" of "A" has incompatible type "A"
 
 [case testInheritingMethod]
-B a
+from typing import Undefined
+a = Undefined # type: B
 a.foo(A()) # Fail
 a.foo(B())
 
 class A:
-  void foo(self, B x): pass
+  def foo(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main, line 2: Argument 1 to "foo" of "A" has incompatible type "A"
+main, line 3: Argument 1 to "foo" of "A" has incompatible type "A"
 
 [case testMethodCallWithInvalidNumberOfArguments]
-A a
+from typing import Undefined
+a = Undefined # type: A
 a.foo()               # Fail
 a.foo(object(), A())  # Fail
 
 class A:
-  void foo(self, A x): pass
+  def foo(self, x: 'A') -> None: pass
 [out]
-main, line 2: Too few arguments for "foo" of "A"
-main, line 3: Too many arguments for "foo" of "A"
-main, line 3: Argument 1 to "foo" of "A" has incompatible type "object"
+main, line 3: Too few arguments for "foo" of "A"
+main, line 4: Too many arguments for "foo" of "A"
+main, line 4: Argument 1 to "foo" of "A" has incompatible type "object"
 
 [case testMethodBody]
+import typing
 class A:
-  void f(self):
-    A a = object()    # Fail
+  def f(self) -> None:
+    a = object() # type: A    # Fail
 [out]
 main: In member "f" of class "A":
-main, line 3: Incompatible types in assignment
+main, line 4: Incompatible types in assignment
 
 [case testMethodArguments]
+import typing
 class A:
-  void f(self, A a, B b):
+  def f(self, a: 'A', b: 'B') -> None:
     a = B() # Fail
     b = A() # Fail
     a = A()
@@ -77,82 +83,86 @@ class A:
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 3: Incompatible types in assignment
 main, line 4: Incompatible types in assignment
-main, line 8: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
+main, line 9: Incompatible types in assignment
 
 [case testReturnFromMethod]
+import typing
 class A:
-  A f(self):
+  def f(self) -> 'A':
     return B() # Fail
     return A()
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 3: Incompatible return value type
+main, line 4: Incompatible return value type
 
 [case testSelfArgument]
+import typing
 class A:
-  void f(self):
-    B o = self    # Fail
+  def f(self) -> None:
+    o = self # type: B    # Fail
     self.g()      # Fail
-    A a = self
+    a = self # type: A
     self.f()
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 3: Incompatible types in assignment
-main, line 4: "A" has no attribute "g"
+main, line 4: Incompatible types in assignment
+main, line 5: "A" has no attribute "g"
 
 [case testAssignToMethodViaInstance]
+import typing
 class A:
     def f(self): pass
 A().f = None # E: Cannot assign to a method
 
 
--- Attributes
--- ----------
 
 
 [case testReferToInvalidAttribute]
+from typing import Undefined
 class A:
   def __init__(self):
     self.x = object()
-A a
+a = Undefined # type: A
 a.y
 a.y = object()
 a.x
 a.x = object()
 [out]
-main, line 5: "A" has no attribute "y"
 main, line 6: "A" has no attribute "y"
+main, line 7: "A" has no attribute "y"
 
 [case testArgumentTypeInference]
+from typing import Undefined
 class A:
-  void __init__(self, A aa, B bb):
+  def __init__(self, aa: 'A', bb: 'B') -> None:
     self.a = aa
     self.b = bb
 class B: pass
-A a
-B b
+a = Undefined # type: A
+b = Undefined # type: B
 a.a = b # Fail
 a.b = a # Fail
 b.a     # Fail
 a.a = a
 a.b = b
 [out]
-main, line 8: Incompatible types in assignment
 main, line 9: Incompatible types in assignment
-main, line 10: "B" has no attribute "a"
+main, line 10: Incompatible types in assignment
+main, line 11: "B" has no attribute "a"
 
 [case testExplicitAttributeInBody]
-A a
+from typing import Undefined
+a = Undefined # type: A
 a.x = object() # Fail
 a.x = A()
 class A:
-  A x
+  x = Undefined # type: A
 [out]
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 
 
 -- Method overriding
@@ -160,92 +170,91 @@ main, line 2: Incompatible types in assignment
 
 
 [case testMethodOverridingWithIdenticalSignature]
+import typing
 class A:
-  void f(self, A x): pass
-  A g(self, B x , object y): pass
-  void h(self): pass
+  def f(self, x: 'A') -> None: pass
+  def g(self, x: 'B' , y: object) -> 'A': pass
+  def h(self) -> None: pass
 class B(A):
-  void f(self, A x): pass
-  A g(self, B x , object y): pass
-  void h(self): pass
+  def f(self, x: A) -> None: pass
+  def g(self, x: 'B' , y: object) -> A: pass
+  def h(self) -> None: pass
 [out]
 
 [case testMethodOverridingWithReturnTypeCoVariance]
+import typing
 class A:
-  A f(self, A x, B y): pass
+  def f(self, x: 'A', y: 'B') -> 'A': pass
 class B(A):
-  B f(self, A x, B y): pass
+  def f(self, x: A, y: 'B') -> 'B': pass
 [out]
 
 [case testMethodOverridingWithIncompatibleTypes]
+import typing
 class A:
-  A f(self, A x, B y): pass
-  A g(self, A x, B y): pass
-  A h(self, A x, B y): pass
+  def f(self, x: 'A', y: 'B') -> 'A': pass
+  def g(self, x: 'A', y: 'B') -> 'A': pass
+  def h(self, x: 'A', y: 'B') -> 'A': pass
 class B(A):
-  A f(self, B x, B y): pass  # Fail
-  A g(self, A x, A y): pass  # Fail
-  object h(self, A x, B y): pass  # Fail
+  def f(self, x: 'B', y: 'B') -> A: pass  # Fail
+  def g(self, x: A, y: A) -> A: pass  # Fail
+  def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
 main: In class "B":
-main, line 6: Argument 1 of "f" incompatible with supertype "A"
-main, line 7: Argument 2 of "g" incompatible with supertype "A"
-main, line 8: Return type of "h" incompatible with supertype "A"
+main, line 7: Argument 1 of "f" incompatible with supertype "A"
+main, line 8: Argument 2 of "g" incompatible with supertype "A"
+main, line 9: Return type of "h" incompatible with supertype "A"
 
 [case testMethodOverridingWithIncompatibleArgumentCount]
+import typing
 class A:
-    void f(self, A x): pass
-    A g(self, A x, B y): pass
+    def f(self, x: 'A') -> None: pass
+    def g(self, x: 'A', y: 'B') -> 'A': pass
 class B(A):
-    void f(self, A x, A y): pass # Fail
-    A g(self, A x): pass # Fail
+    def f(self, x: A, y: A) -> None: pass # Fail
+    def g(self, x: A) -> A: pass # Fail
 [out]
 main: In class "B":
-main, line 5: Signature of "f" incompatible with supertype "A"
-main, line 6: Signature of "g" incompatible with supertype "A"
+main, line 6: Signature of "f" incompatible with supertype "A"
+main, line 7: Signature of "g" incompatible with supertype "A"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy1]
-class C(B): # with gap in implementations
-    void f(self, C x):  # Fail
-        pass
-class B(A):
-    pass
+import typing
 class A:
-    void f(self, B x):
+    def f(self, x: 'B') -> None: pass
+class B(A): pass
+class C(B): # with gap in implementations
+    def f(self, x: 'C') -> None:  # Fail
         pass
 [out]
 main: In class "C":
-main, line 2: Argument 1 of "f" incompatible with supertype "A"
+main, line 6: Argument 1 of "f" incompatible with supertype "A"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy2]
-class C(B): # with multiple implementations
-    B f(self):  # Fail
-        pass
-class B(A):
-    C f(self):
-        pass
+import typing
 class A:
-    B f(self):
+    def f(self) -> 'B': pass
+class B(A):
+    def f(self) -> 'C': pass
+class C(B): # with multiple implementations
+    def f(self) -> B:  # Fail
         pass
 [out]
 main: In class "C":
-main, line 2: Return type of "f" incompatible with supertype "B"
+main, line 7: Return type of "f" incompatible with supertype "B"
 
 [case testMethodOverridingWithVoidReturnValue]
-class B(A):
-    A f(self):  # Fail
-        pass
-    void g(self):  # Fail
-        pass
+import typing
 class A:
-    void f(self):
-        pass
-    A g(self):
-        pass
+    def f(self) -> None: pass
+    def g(self) -> 'A': pass
+class B(A):
+    def f(self) -> A: pass  # Fail
+    def g(self) -> None: pass  # Fail
 [out]
 main: In class "B":
-main, line 2: Return type of "f" incompatible with supertype "A"
-main, line 4: Return type of "g" incompatible with supertype "A"
+main, line 6: Return type of "f" incompatible with supertype "A"
+main, line 7: Return type of "g" incompatible with supertype "A"
 
 
 -- Constructors
@@ -253,96 +262,100 @@ main, line 4: Return type of "g" incompatible with supertype "A"
 
 
 [case testTrivialConstructor]
-A a = A()
-B b = A() # Fail
+import typing
+a = A() # type: A
+b = A() # type: B # Fail
 class A:
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 class B: pass
 [out]
-main, line 2: Incompatible types in assignment
-
-[case testConstructor]
-A a = A(B())
-A aa = A(object())  # Fail
-B b = A(B())       # Fail
-class A:
-    void __init__(self, B x): pass
-class B: pass
-[out]
-main, line 2: Argument 1 to "A" has incompatible type "object"
 main, line 3: Incompatible types in assignment
 
+[case testConstructor]
+import typing
+a = A(B()) # type: A
+aa = A(object()) # type: A  # Fail
+b = A(B()) # type: B       # Fail
+class A:
+    def __init__(self, x: 'B') -> None: pass
+class B: pass
+[out]
+main, line 3: Argument 1 to "A" has incompatible type "object"
+main, line 4: Incompatible types in assignment
+
 [case testConstructorWithTwoArguments]
-A a = A(C(), B())  # Fail
+import typing
+a = A(C(), B()) # type: A  # Fail
 
 class A:
-    void __init__(self, B x, C y): pass
+    def __init__(self, x: 'B', y: 'C') -> None: pass
 class B: pass
 class C(B): pass
 [out]
-main, line 1: Argument 2 to "A" has incompatible type "B"
+main, line 2: Argument 2 to "A" has incompatible type "B"
 
 [case testInheritedConstructor]
-B b = B(C())
-A a = B(D()) # Fail
+import typing
+b = B(C()) # type: B
+a = B(D()) # type: A # Fail
 class A:
-    void __init__(self, C x): pass
+    def __init__(self, x: 'C') -> None: pass
 class B(A): pass
 class C: pass
 class D: pass
 [out]
-main, line 2: Argument 1 to "B" has incompatible type "D"
+main, line 3: Argument 1 to "B" has incompatible type "D"
 
 [case testOverridingWithIncompatibleConstructor]
+import typing
 A()    # Fail
 B(C()) # Fail
 A(C())
 B()
 class A:
-    void __init__(self, C x): pass
+    def __init__(self, x: 'C') -> None: pass
 class B(A):
-    void __init__(self): pass
+    def __init__(self) -> None: pass
 class C: pass
 [out]
-main, line 1: Too few arguments for "A"
-main, line 2: Too many arguments for "B"
+main, line 2: Too few arguments for "A"
+main, line 3: Too many arguments for "B"
 
 [case testConstructorWithReturnValueType]
+import typing
 class A:
-    A __init__(self): pass
+    def __init__(self) -> 'A': pass
 [out]
 main: In member "__init__" of class "A":
-main, line 2: Cannot define return type for "__init__"
+main, line 3: Cannot define return type for "__init__"
 
 [case testGlobalFunctionInitWithReturnType]
-A a = __init__()
-B b = __init__() # Fail
-A __init__(): pass
+import typing
+a = __init__() # type: A
+b = __init__() # type: B # Fail
+def __init__() -> 'A': pass
 class A: pass
 class B: pass
 [out]
-main, line 2: Incompatible types in assignment
+main, line 3: Incompatible types in assignment
 
 [case testAccessingInit]
+from typing import Undefined, Any
 class A:
-    void __init__(self, A a): pass
-A a
+    def __init__(self, a: 'A') -> None: pass
+a = Undefined # type: A
 a.__init__(a)  # E: Cannot access "__init__" directly
-((any)a).__init__(a)
-
-
--- Inheritance
--- -----------
-
+(Any(a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]
-D d = C()  # Fail
+import typing
+d = C() # type: D  # Fail
 d = B()      # Fail
 d = A()      # Fail
 d = D2()     # Fail
-A a = D()
+a = D() # type: A
 a = D2()
-B b = D()
+b = D() # type: B
 b = D2()
 
 class A: pass
@@ -351,10 +364,10 @@ class C(B): pass
 class D(C): pass
 class D2(C): pass
 [out]
-main, line 1: Incompatible types in assignment
 main, line 2: Incompatible types in assignment
 main, line 3: Incompatible types in assignment
 main, line 4: Incompatible types in assignment
+main, line 5: Incompatible types in assignment
 
 
 -- Attribute access in class body
@@ -362,26 +375,28 @@ main, line 4: Incompatible types in assignment
 
 
 [case testDataAttributeRefInClassBody]
+import typing
 class B: pass
 class A:
     x = B()
     y = x
-    B b = x
+    b = x # type: B
     b = x
-    A c = x # E: Incompatible types in assignment
+    c = x # type: A # E: Incompatible types in assignment
     c = b   # E: Incompatible types in assignment
 [out]
 main: In class "A":
 
 [case testMethodRefInClassBody]
+from typing import Function
 class B: pass
 class A:
-    void f(self): pass
+    def f(self) -> None: pass
     g = f
-    func<void(A)> h = f
+    h = f # type: Function[[A], None]
     h = f
     g = h
-    func<void(B)> ff = f  # E: Incompatible types in assignment
+    ff = f # type: Function[[B], None]  # E: Incompatible types in assignment
     g = ff                # E: Incompatible types in assignment
 [out]
 main: In class "A":
@@ -392,6 +407,7 @@ main: In class "A":
 
 
 [case testStatementsInClassBody]
+import typing
 class B: pass
 class A:
     for x in [A()]:
@@ -410,46 +426,57 @@ main: In class "A":
 
 
 [case testAccessMethodViaClass]
+import typing
 class A:
-    void f(self): pass
+    def f(self) -> None: pass
 A.f(A())
 A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"
 A.f()             # E: Too few arguments for "f" of "A"
 A.f(None, None)   # E: Too many arguments for "f" of "A"
 
 [case testAccessAttributeViaClass]
+import typing
 class B: pass
 class A:
-    A x = None
-A a = A.x
-B b = A.x # E: Incompatible types in assignment
+    x = None # type: A
+a = A.x # type: A
+b = A.x # type: B # E: Incompatible types in assignment
 
 [case testAccessingUndefinedAttributeViaClass]
+import typing
 class A: pass
 A.x # E: "A" has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
+from typing import overload
 class A: 
+    @overload
     def __init__(self): pass
+    @overload
     def __init__(self, x): pass
 A.x # E: "A" has no attribute "x"
 
 [case testAccessMethodOfClassWithOverloadedInit]
+from typing import overload, Any
 class A:
-    void __init__(self): pass
-    void __init__(self, any x): pass
-    void f(self): pass
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: Any) -> None: pass
+    def f(self) -> None: pass
 A.f(A())
 A.f()    # E: Too few arguments for "f" of "A"
 
 [case testAssignmentToClassDataAttribute]
+import typing
 class B: pass
 class A:
-    B x = None
+    x = None # type: B
 A.x = B()
 A.x = object()  # E: Incompatible types in assignment
 
 [case testAssignmentToInferredClassDataAttribute]
+import typing
 class B: pass
 class A:
      x = B()
@@ -457,20 +484,24 @@ A.x = B()
 A.x = A()   # E: Incompatible types in assignment
 
 [case testInitMethodUnbound]
+from typing import Undefined
 class B: pass
 class A:
-    void __init__(self, B b): pass
-A a, B b
+    def __init__(self, b: B) -> None: pass
+a = Undefined # type: A
+b = Undefined # type: B
 A.__init__(a, b)
 A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"
 A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"
 
 [case testAssignToMethodViaClass]
+import typing
 class A:
     def f(self): pass
 A.f = None # E: Cannot assign to a method
 
 [case testAssignToNestedClassViaClass]
+import typing
 class A:
     class B: pass
 A.B = None # E: Cannot assign to a type
@@ -481,16 +512,18 @@ A.B = None # E: Cannot assign to a type
 
 
 [case testClassWithinFunction]
-void f():
+from typing import Undefined
+def f() -> None:
     class A:
-        void g(self): pass
-    A a
+        def g(self) -> None: pass
+    a = Undefined # type: A
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
 [out]
 main: In function "f":
 
 [case testConstructNestedClass]
+import typing
 class A:
     class B: pass
     b = B()
@@ -500,10 +533,11 @@ class A:
 main: In class "A":
 
 [case testConstructNestedClassWithCustomInit]
+import typing
 class A:
-    void f(self):
+    def f(self) -> None:
         class B:
-            void __init__(self, A a): pass
+            def __init__(self, a: 'A') -> None: pass
         b = B(A())
         b = A() # E: Incompatible types in assignment
         b = B() # E: Too few arguments for "B"
@@ -511,21 +545,46 @@ class A:
 main: In member "f" of class "A":
 
 [case testDeclareVariableWithNestedClassType]
-void f():
+from typing import Undefined
+def f() -> None:
     class A: pass
-    A a
+    a = Undefined # type: A
     a = A()
     a = object() # E: Incompatible types in assignment
 [out]
 main: In function "f":
 
 [case testExternalReferenceToClassWithinClass]
+from typing import Undefined
 class A:
     class B: pass
-A.B b
+b = Undefined # type: A.B
 b = A.B()
 b = A() # E: Incompatible types in assignment
 b = A.B(b) # E: Too many arguments for "B"
+
+
+-- Declaring attribute type in method
+-- ----------------------------------
+
+
+[case testDeclareAttributeTypeInInit]
+from typing import Undefined
+class A:
+    def __init__(self):
+        self.x = None # type: int
+a = Undefined # type: A
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+
+[case testAccessAttributeDeclaredInInitBeforeDeclaration]
+from typing import Undefined
+a = Undefined # type: A
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+class A:
+    def __init__(self):
+        self.x = None # type: int
 
 
 -- Special cases
@@ -533,13 +592,15 @@ b = A.B(b) # E: Too many arguments for "B"
 
 
 [case testMultipleClassDefinition]
+import typing
 A()
 class A: pass
 class A: pass
 [out]
-main, line 3: Name 'A' already defined
+main, line 4: Name 'A' already defined
 
 [case testDocstringInClass]
+import typing
 class A:
     """Foo"""
 class B:
@@ -548,16 +609,50 @@ class B:
 [builtins fixtures/primitives.py]
 
 [case testErrorMessageInFunctionNestedWithinMethod]
+import typing
 class A:
-    void f(self):
-        void g():
+    def f(self) -> None:
+        def g() -> None:
             a = None
         b = None
 [out]
 main: In function "g":
-main, line 4: Need type annotation for variable
-main: In member "f" of class "A":
 main, line 5: Need type annotation for variable
+main: In member "f" of class "A":
+main, line 6: Need type annotation for variable
+
+
+-- Using Undefined(type) to declare attributes
+-- -------------------------------------------
+
+
+[case testDeclareClassVariableUsingUndefinedWithArgument]
+from typing import Undefined
+class A:
+    x = Undefined(int)
+a = Undefined(A)
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+
+[case testDeclareInstanceVariableUsingUndefinedWithArgument]
+from typing import Undefined
+class A:
+    def __init__(self):
+        self.x = Undefined(int)
+a = Undefined(A)
+a.x = 1
+a.x = '' # E: Incompatible types in assignment
+
+[case testAccessInstanceVariableDeclaredUsingUndefinedWithArgumentBeforeDecl]
+from typing import Undefined
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.x = '' # E: Incompatible types in assignment
+    def __init__(self):
+        self.x = Undefined(int)
+[out]
+main: In member "f" of class "A":
 
 
 -- TODO

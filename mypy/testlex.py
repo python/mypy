@@ -1,3 +1,7 @@
+"""Lexical analyzer test cases"""
+
+import typing
+
 from mypy.myunit import Suite, assert_equal
 from mypy.lex import lex
 
@@ -13,17 +17,19 @@ class LexerSuite(Suite):
             'Keyword( return) Keyword( pass) Break() Eof()')
         
         self.assert_lex(
-            'from import as class global any',
+            'from import as class global',
             'Keyword(from) Keyword( import) Keyword( as) Keyword( class) '
-            'Keyword( global) Keyword( any) ...')
-        
-        self.assert_lex('interface', 'Keyword(interface) ...')
+            'Keyword( global) ...')
     
     def test_identifiers(self):
         self.assert_lex(
             'i x FooBar FOO_BAR __x var',
             'Name(i) Name( x) Name( FooBar) Name( FOO_BAR) Name( __x) '
             'Name( var) Break() Eof()')
+        
+        self.assert_lex(
+            'any interface void',
+            'Name(any) Name( interface) Name( void) Break() Eof()')
     
     def test_int_literals(self):
         self.assert_lex(

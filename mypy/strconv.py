@@ -3,12 +3,14 @@
 import re
 import os
 
+import typing
+
 from mypy.util import dump_tagged, short_type
 import mypy.nodes
 from mypy.visitor import NodeVisitor
 
 
-class StrConv(NodeVisitor<str>):
+class StrConv(NodeVisitor[str]):
     """Visitor for converting a Node to a human-readable string.
     
     For example, an MypyFile node from program '1' is converted into
@@ -20,15 +22,16 @@ class StrConv(NodeVisitor<str>):
           IntExpr(1)))
     """
     def dump(self, nodes, obj):
-        """Convert an array of items to a multiline pretty-printed
-        string. The tag is produced from the type name of obj and its
-        line number. See util::DumpTagged for a description of the
-        nodes argument.
+        """Convert a list of items to a multiline pretty-printed string.
+
+        The tag is produced from the type name of obj and its line
+        number. See mypy.util.dump_tagged for a description of the nodes
+        argument.
         """
         return dump_tagged(nodes, short_type(obj) + ':' + str(obj.line))
     
     def func_helper(self, o):
-        """Return an array in a format suitable for dump() that represents the
+        """Return a list in a format suitable for dump() that represents the
         arguments and the body of a function. The caller can then decorate the
         array with information specific to methods, global functions or
         anonymous functions.
@@ -57,9 +60,7 @@ class StrConv(NodeVisitor<str>):
         a.append(o.body)
         return a                    
     
-    
     # Top-level structures
-    
     
     def visit_mypy_file(self, o):
         # Skip implicit definitions.
@@ -94,15 +95,15 @@ class StrConv(NodeVisitor<str>):
     def visit_import_all(self, o):
         return 'ImportAll:{}({})'.format(o.line, o.id)
     
-    
     # Definitions
-    
     
     def visit_func_def(self, o):
         a = self.func_helper(o)
         a.insert(0, o.name())
         if mypy.nodes.ARG_NAMED in o.arg_kinds:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
+        if o.is_abstract:
+            a.insert(-1, 'Abstract')
         return self.dump(a, o)
     
     def visit_overloaded_func_def(self, o):
@@ -120,8 +121,8 @@ class StrConv(NodeVisitor<str>):
             a.insert(1, ('BaseType', o.base_types))
         if o.type_vars:
             a.insert(1, ('TypeVars', o.type_vars.items))
-        if o.is_interface:
-            a.insert(1, 'Interface')
+        if o.metaclass:
+            a.insert(1, 'Metaclass({})'.format(o.metaclass))
         return self.dump(a, o)
     
     def visit_var_def(self, o):
@@ -150,9 +151,7 @@ class StrConv(NodeVisitor<str>):
     def visit_annotation(self, o):
         return 'Type:{}({})'.format(o.line, o.type)
     
-    
     # Statements
-    
     
     def visit_block(self, o):
         return self.dump(o.body, o)
@@ -161,7 +160,14 @@ class StrConv(NodeVisitor<str>):
         return self.dump([o.expr], o)
     
     def visit_assignment_stmt(self, o):
-        return self.dump([('Lvalues', o.lvalues), o.rvalue], o)
+        if len(o.lvalues) > 1:
+            a = [('Lvalues', o.lvalues)]
+        else:
+            a = [o.lvalues[0]]
+        a.append(o.rvalue)
+        if o.type:
+            a.append(o.type)
+        return self.dump(a, o)
     
     def visit_operator_assignment_stmt(self, o):
         return self.dump([o.op, o.lvalue, o.rvalue], o)
@@ -240,9 +246,7 @@ class StrConv(NodeVisitor<str>):
                 a.append(('Name', [o.name[i]]))
         return self.dump(a + [o.body], o)
     
-    
     # Expressions
-    
     
     # Simple expressions
     
@@ -275,7 +279,8 @@ class StrConv(NodeVisitor<str>):
         n = name
         if is_def:
             n += '*'
-        if kind == mypy.nodes.GDEF or (fullname != name and fullname is not None):
+        if kind == mypy.nodes.GDEF or (fullname != name and
+                                       fullname is not None):
             # Append fully qualified name for global references.
             n += ' [{}]'.format(fullname)
         elif kind == mypy.nodes.LDEF:
@@ -291,6 +296,8 @@ class StrConv(NodeVisitor<str>):
                                                    o.is_def)], o)
     
     def visit_call_expr(self, o):
+        if o.analyzed:
+            return o.analyzed.accept(self)
         args = []
         extra = []
         for i, kind in enumerate(o.arg_kinds):
@@ -344,13 +351,21 @@ class StrConv(NodeVisitor<str>):
         return self.dump(a, o)
     
     def visit_index_expr(self, o):
+        if o.analyzed:
+            return o.analyzed.accept(self)
         return self.dump([o.base, o.index], o)
     
     def visit_super_expr(self, o):
         return self.dump([o.name], o)
+
+    def visit_undefined_expr(self, o):
+        return 'UndefinedExpr:{}({})'.format(o.line, o.type)
     
     def visit_type_application(self, o):
         return self.dump([o.expr, ('Types', o.types)], o)
+
+    def visit_type_var_expr(self, o):
+        return 'TypeVarExpr:{}()'.format(o.line)
     
     def visit_func_expr(self, o):
         a = self.func_helper(o)

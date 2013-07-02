@@ -2,8 +2,10 @@
 
 # NOTE: These are incomplete!
 
-int FD_CLOEXEC
-int F_GETFD
-int F_SETFD
+import typing
 
-int fcntl(int fd, int op, int arg=0): pass
+FD_CLOEXEC = 0
+F_GETFD = 0
+F_SETFD = 0
+
+def fcntl(fd: int, op: int, arg: int = 0) -> int: pass

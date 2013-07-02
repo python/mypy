@@ -17,20 +17,6 @@ file, line 1: Parse error before end of line
 file: At top level:
 file, line 2: Inconsistent indentation
 
-[case testExtraGtInType]
-a<b>> c
-int f(a<b>> c):
-  pass
-[out]
--- IDEA: Most of these errors are bogus
-file, line 1: Parse error before >>
-file: In function "f":
-file, line 2: Parse error before >>
-file, line 2: Parse error before )
-file: At top level:
-file, line 2: Parse error before :
-file, line 3: Inconsistent indentation
-
 [case testMissingIndent]
 if x:
 1
@@ -57,11 +43,6 @@ if x:
 [out]
 file, line 3: Inconsistent indentation
 
-[case testInvalidCast]
-(a<b>>)x
-[out]
-file, line 1: Parse error before )
-
 [case testInvalidBinaryOp]
 1>
 a*
@@ -71,21 +52,13 @@ file, line 1: Parse error before end of line
 file, line 2: Parse error before end of line
 file, line 3: Parse error before end of line
 
-[case testInvalidTypeApplication]
-f<x>
-f<y>>()
-f<x>(
-[out]
-file, line 1: Parse error before end of line
-file, line 2: Parse error before >>
-file, line 3: Parse error before end of line
-
 [case testInvalidSuperClass]
-class A(C<):
+class A(C[):
   pass
 [out]
 file: In class "A":
 file, line 1: Parse error before )
+file, line 2: Parse error before end of file
 
 [case testEmptySuperClass]
 class A():
@@ -106,24 +79,6 @@ file, line 2: Parse error before end of file
 if 1:
 [out]
 file, line 1: Expected an indented block
-
-[case testInvalidTypePrefix]
-<t, s> []
-<t> 1
-<t> x
-<t, s> {x}
-[out]
-file, line 1: Expected a single type before list literal
-file, line 2: Expected a list, dictionary, non-empty tuple or set after <...>
-file, line 3: Expected a list, dictionary, non-empty tuple or set after <...>
-file, line 4: Expected a single type before set literal
-
-[case testInvalidTypeForTuple]
-<t, s> ()
-<t> (1, 2)
-[out]
-file, line 1: Expected a list, dictionary, non-empty tuple or set after <...>
-file, line 2: Wrong number of types for a tuple literal
 
 [case testInvalidKeywordArguments1]
 f(x=y, z)
@@ -156,14 +111,20 @@ def f(*x, y):
     pass
 [out]
 file: In function "f":
-file, line 1: Invalid argument list
+file, line 1: Parse error before )
+file: At top level:
+file, line 1: Parse error before :
+file, line 2: Inconsistent indentation
 
 [case testInvalidFuncDefArgs3]
 def f(**x, y): 
    pass
 [out]
 file: In function "f":
-file, line 1: Invalid argument list
+file, line 1: Parse error before )
+file: At top level:
+file, line 1: Parse error before :
+file, line 2: Inconsistent indentation
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x): 
@@ -171,3 +132,46 @@ def f(**x, y=x):
 [out]
 file: In function "f":
 file, line 1: Invalid argument list
+
+[case testInvalidStringLiteralType]
+def f(x: 
+     'A['
+     ) -> None: pass
+[out]
+file: In function "f":
+file, line 2: Parse error before end of line
+file, line 3: Parse error before end of line
+
+[case testInvalidStringLiteralType2]
+def f(x: 
+      'A B'
+      ) -> None: pass
+[out]
+file: In function "f":
+file, line 2: Parse error before "B"
+file, line 3: Parse error before end of line
+
+[case testInvalidTypeComment]
+0
+x = 0 # type: A A
+[out]
+file, line 2: Parse error before "A"
+
+[case testInvalidTypeComment2]
+0
+x = 0 # type: A[
+[out]
+file, line 2: Parse error before end of line
+
+[case testInvalidMultilineLiteralType]
+def f() -> "A\nB": pass
+[out]
+file: In function "f":
+file, line 1: Parse error before end of line
+
+[case testInvalidMetaclass]
+class A(metaclass=1): pass
+[out]
+file: In class "A":
+file, line 1: Parse error before numeric literal
+file, line 1: Parse error before end of file

@@ -3,75 +3,132 @@
 
 # based on http://docs.python.org/3.2/library/os.path.html
 
+from typing import overload, List, Any, Tuple, IO, TextIO
+
 # ----- os.path variables -----
-bool supports_unicode_filenames
+supports_unicode_filenames = False
 # aliases (also in os)
-str curdir
-str pardir
-str sep
-str altsep
-str extsep
-str pathsep
-str defpath
-str devnull
+curdir = ''
+pardir = ''
+sep = ''
+altsep = ''
+extsep = ''
+pathsep = ''
+defpath = ''
+devnull = ''
 
 # ----- os.path function stubs -----
-str abspath(str path): pass
-bytes abspath(bytes path): pass
-str basename(str path): pass
-bytes basename(bytes path): pass
-str commonprefix(str[] list): pass
-bytes commonprefix(bytes[] list): pass
-str dirname(str path): pass
-bytes dirname(bytes path): pass
-bool exists(str path): pass
-bool exists(bytes path): pass
-bool lexists(str path): pass
-bool lexists(bytes path): pass
-str expanduser(str path): pass
-bytes expanduser(bytes path): pass
-str expandvars(str path): pass
-bytes expandvars(bytes path): pass
+@overload
+def abspath(path: str) -> str: pass
+@overload
+def abspath(path: bytes) -> bytes: pass
+@overload
+def basename(path: str) -> str: pass
+@overload
+def basename(path: bytes) -> bytes: pass
+@overload
+def commonprefix(list: List[str]) -> str: pass
+@overload
+def commonprefix(list: List[bytes]) -> bytes: pass
+@overload
+def dirname(path: str) -> str: pass
+@overload
+def dirname(path: bytes) -> bytes: pass
+@overload
+def exists(path: str) -> bool: pass
+@overload
+def exists(path: bytes) -> bool: pass
+@overload
+def lexists(path: str) -> bool: pass
+@overload
+def lexists(path: bytes) -> bool: pass
+@overload
+def expanduser(path: str) -> str: pass
+@overload
+def expanduser(path: bytes) -> bytes: pass
+@overload
+def expandvars(path: str) -> str: pass
+@overload
+def expandvars(path: bytes) -> bytes: pass
 
 # These return float if os.stat_float_times() == True
-any getatime(str path): pass
-any getatime(bytes path): pass
-any getmtime(str path): pass
-any getmtime(bytes path): pass
-any getctime(str path): pass
-any getctime(bytes path): pass
+@overload
+def getatime(path: str) -> Any: pass
+@overload
+def getatime(path: bytes) -> Any: pass
+@overload
+def getmtime(path: str) -> Any: pass
+@overload
+def getmtime(path: bytes) -> Any: pass
+@overload
+def getctime(path: str) -> Any: pass
+@overload
+def getctime(path: bytes) -> Any: pass
 
-int getsize(str path): pass
-int getsize(bytes path): pass
-bool isabs(str path): pass
-bool isabs(bytes path): pass
-bool isfile(str path): pass
-bool isfile(bytes path): pass
-bool isdir(str path): pass
-bool isdir(bytes path): pass
-bool islink(str path): pass
-bool islink(bytes path): pass
-bool ismount(str path): pass
-bool ismount(bytes path): pass
-str join(str path, str *paths): pass
-bytes join(bytes path, bytes *paths): pass
-str normcase(str path): pass
-bytes normcase(bytes path): pass
-str normpath(str path): pass
-bytes normpath(bytes path): pass
-str realpath(str path): pass
-bytes realpath(bytes path): pass
-str relpath(str path, str start=None): pass
-bytes relpath(bytes path, bytes start=None): pass
-bool samefile(str path1, str path2): pass
-bool samefile(bytes path1, bytes path2): pass
-bool sameopenfile(IO fp1, IO fp2): pass
-bool sameopenfile(TextIO fp1, TextIO fp2): pass
-#bool samestat(stat_result stat1, stat_result stat2): pass  # Unix only
-tuple<str, str> split(str path): pass
-tuple<bytes, bytes> split(bytes path): pass
-tuple<str, str> splitdrive(str path): pass
-tuple<bytes, bytes> splitdrive(bytes path): pass
-tuple<str, str> splitext(str path): pass
-tuple<bytes, bytes> splitext(bytes path): pass
-#tuple<str, str> splitunc(str path): pass  # Windows only, deprecated
+@overload
+def getsize(path: str) -> int: pass
+@overload
+def getsize(path: bytes) -> int: pass
+@overload
+def isabs(path: str) -> bool: pass
+@overload
+def isabs(path: bytes) -> bool: pass
+@overload
+def isfile(path: str) -> bool: pass
+@overload
+def isfile(path: bytes) -> bool: pass
+@overload
+def isdir(path: str) -> bool: pass
+@overload
+def isdir(path: bytes) -> bool: pass
+@overload
+def islink(path: str) -> bool: pass
+@overload
+def islink(path: bytes) -> bool: pass
+@overload
+def ismount(path: str) -> bool: pass
+@overload
+def ismount(path: bytes) -> bool: pass
+@overload
+def join(path: str, *paths: str) -> str: pass
+@overload
+def join(path: bytes, *paths: bytes) -> bytes: pass
+@overload
+def normcase(path: str) -> str: pass
+@overload
+def normcase(path: bytes) -> bytes: pass
+@overload
+def normpath(path: str) -> str: pass
+@overload
+def normpath(path: bytes) -> bytes: pass
+@overload
+def realpath(path: str) -> str: pass
+@overload
+def realpath(path: bytes) -> bytes: pass
+@overload
+def relpath(path: str, start: str = None) -> str: pass
+@overload
+def relpath(path: bytes, start: bytes = None) -> bytes: pass
+@overload
+def samefile(path1: str, path2: str) -> bool: pass
+@overload
+def samefile(path1: bytes, path2: bytes) -> bool: pass
+@overload
+def sameopenfile(fp1: IO, fp2: IO) -> bool: pass
+@overload
+def sameopenfile(fp1: TextIO, fp2: TextIO) -> bool: pass
+#def samestat(stat1: stat_result,
+#             stat2: stat_result) -> bool: pass  # Unix only
+@overload
+def split(path: str) -> Tuple[str, str]: pass
+@overload
+def split(path: bytes) -> Tuple[bytes, bytes]: pass
+@overload
+def splitdrive(path: str) -> Tuple[str, str]: pass
+@overload
+def splitdrive(path: bytes) -> Tuple[bytes, bytes]: pass
+@overload
+def splitext(path: str) -> Tuple[str, str]: pass
+@overload
+def splitext(path: bytes) -> Tuple[bytes, bytes]: pass
+#def splitunc(path: str) -> Tuple[str, str]: pass  # Windows only, deprecated

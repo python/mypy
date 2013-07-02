@@ -11,14 +11,16 @@
 
 
 [case testEmptyFunction]
-void f(): pass
+import typing
+def f() -> None: pass
 [out]
 def f:
     r0 = None
     return r0
 
 [case testReturnIntLiteral]
-int f():
+import typing
+def f() -> int:
     return 2
 [out]
 def f:
@@ -26,7 +28,8 @@ def f:
     return r0
     
 [case testAssignAndReturnLocalVar]
-int f():
+import typing
+def f() -> int:
     i = 2
     return i
 [out]
@@ -35,7 +38,8 @@ def f:
     return r0
     
 [case testAssignTwice]
-int f():
+import typing
+def f() -> int:
     i = 2
     i = 3
     return i
@@ -46,7 +50,8 @@ def f:
     return r0
     
 [case testAssignLocalToLocal]
-int f():
+import typing
+def f() -> int:
     i = 2
     j = i
     return j
@@ -57,7 +62,8 @@ def f:
     return r1
     
 [case testFunctionArgs]
-int f(int a, int b):
+import typing
+def f(a: int, b: int) -> int:
     c = a
     a = b
     return a
@@ -73,7 +79,8 @@ def f:
 
 
 [case testSimpleWhileLoop]
-void f():
+import typing
+def f() -> None:
     i = 0
     while i < 100:
         i = i + 1
@@ -90,7 +97,8 @@ L3:
     return r1
 
 [case testIfWithoutElse]
-void f():
+import typing
+def f() -> None:
     if 2 < 3:
         i = 1
 [out]
@@ -103,7 +111,8 @@ L2:
     return r1
 
 [case testIfWithElse]
-void f():
+import typing
+def f() -> None:
     if 2 < 3:
         i = 1
     else:
@@ -126,7 +135,8 @@ L3:
 
 
 [case testComplexArithmeticExpression]
-int f():
+import typing
+def f() -> int:
     return 3 * (1 + 2) - 4
 [out]
 def f:
@@ -136,7 +146,8 @@ def f:
     return r2
     
 [case testUnaryExpression]
-int f():
+import typing
+def f() -> int:
     return -1 + -(4 + 5)
 [out]
 def f:
@@ -153,7 +164,8 @@ def f:
 
 
 [case testBooleanAnd]
-void f():
+import typing
+def f() -> None:
     if 1 == 2 and 3 > 4:
         i = 1
 [out]
@@ -168,7 +180,8 @@ L3:
     return r1
     
 [case testBooleanOr]
-void f():
+import typing
+def f() -> None:
     if 1 == 2 or 3 > 4:
         i = 1
 [out]
@@ -183,7 +196,8 @@ L3:
     return r1
     
 [case testSimpleBooleanNot]
-void f():
+import typing
+def f() -> None:
     if not 1 == 2:
         i = 1
 [out]
@@ -196,7 +210,8 @@ L2:
     return r1
     
 [case testNotAnd]
-void f():
+import typing
+def f() -> None:
     if not (1 == 2 and 3 == 4):
         i = 1
 [out]
@@ -211,7 +226,8 @@ L3:
     return r1
 
 [case testNotOr]
-void f():
+import typing
+def f() -> None:
     if not (1 == 2 or 3 == 4):
         i = 1
 [out]
@@ -231,7 +247,8 @@ L3:
 
 
 [case testCallFunctionWithoutArgs]
-int f():
+import typing
+def f() -> int:
     return f()
 [out]
 def f:
@@ -239,7 +256,8 @@ def f:
     return r0
     
 [case testCallWithArgument]
-void f(int a):
+import typing
+def f(a: int) -> None:
     f(a + 1)
 [out]
 def f:
@@ -249,7 +267,8 @@ def f:
     return r3
 
 [case testCallWithArguments]
-int f(int a, int b):
+import typing
+def f(a: int, b: int) -> int:
     return f(2, a + 1)
 [out]
 def f:
@@ -264,8 +283,9 @@ def f:
 
 
 [case testTopLevel]
+import typing
 f()
-int f():
+def f() -> int:
     return 1
 f()
 [out]
@@ -284,6 +304,7 @@ def f:
 
 
 [case testPrintInt]
+import typing
 print(5)
 [out]
 def __init:
@@ -298,9 +319,10 @@ def __init:
 
 
 [case testGlobalVariable]
+import typing
 x = 1
 y = x + 1
-int f():
+def f() -> int:
     return y
 [out]
 def __init:
@@ -316,6 +338,7 @@ def f:
     return r0
 
 [case testGlobalVariableInitialize]
+import typing
 class A: pass
 n = 1
 a = A()
@@ -331,8 +354,9 @@ def __init:
     return r3
 
 [case testValueConditionalCheck]
+import typing
 class A: pass
-void f(A a):
+def f(a: A) -> None:
     if a:
         a = A()
 [out]
@@ -345,8 +369,9 @@ L2:
     return r1
 
 [case testNegatedValueConditionalCheck]
+import typing
 class A: pass
-void f(A a):
+def f(a: A) -> None:
     if not a:
         a = A()
 [out]
@@ -359,33 +384,77 @@ L2:
     return r1
 
 [case testLocalWithExplicitType]
-void f():
-    int x = 2
-    int y
-    y = 3
+import typing
+def f() -> None:
+    x = 2 # type: int
+    x = 3
 [out]
 def f:
     r0 = 2
-    r1 = 3
-    r2 = None
-    return r2
+    r0 = 3
+    r1 = None
+    return r1
+
+[case testLocalWithExplicitType2]
+from typing import Undefined
+def f() -> None:
+    x = Undefined # type: int
+    x = 5
+[out]
+def f:
+    r0 = 5
+    r1 = None
+    return r1
+
+[case testLocalWithExplicitType3]
+from typing import Undefined
+def f() -> None:
+    x = Undefined(int)
+    x = 6
+[out]
+def f:
+    r0 = 6
+    r1 = None
+    return r1
 
 [case testGlobalWithExplicitType]
-class A: pass
-int x = 2
-int y
-y = 3
+import typing
+x = 2 # type: int
+x = 3
 [out]
 def __init:
     r0 = 2
     __main__.x = r0
     r1 = 3
-    __main__.y = r1
+    __main__.x = r1
     r2 = None
     return r2
 
+[case testGlobalWithExplicitType2]
+from typing import Undefined
+y = Undefined # type: int
+y = 3
+[out]
+def __init:
+    r0 = 3
+    __main__.y = r0
+    r1 = None
+    return r1
+
+[case testGlobalWithExplicitType3]
+from typing import Undefined
+x = Undefined(int)
+x = 3
+[out]
+def __init:
+    r0 = 3
+    __main__.x = r0
+    r1 = None
+    return r1
+
 [case testImplicitZeroReturn]
-int f(): pass
+import typing
+def f() -> int: pass
 [out]
 def f:
     r0 = 0
@@ -397,9 +466,10 @@ def f:
 
 
 [case testOverloadedAdd]
+import typing
 class A:
-    int __add__(self, int x): pass
-int f():
+    def __add__(self, x: int) -> int: pass
+def f() -> int:
     return A() + 2
 [out]
 def f:
@@ -409,9 +479,10 @@ def f:
     return r2
 
 [case testOverloadedMul]
+import typing
 class A:
-    int __mul__(self, int x): pass
-int f():
+    def __mul__(self, x: int) -> int: pass
+def f() -> int:
     return A() * 2
 [out]
 def f:
@@ -421,9 +492,10 @@ def f:
     return r2
 
 [case testOverloadedIn]
+import typing
 class A:
-    int __contains__(self, int x): pass
-int f():
+    def __contains__(self, x: int) -> int: pass
+def f() -> int:
     return 2 in A()
 [out]
 def f:
@@ -433,9 +505,10 @@ def f:
     return r2
 
 [case testIndexedGet]
+import typing
 class A:
-    int __getitem__(self, int x): pass
-int f(A a, int n):
+    def __getitem__(self, x: int) -> int: pass
+def f(a: A, n: int) -> int:
     return a[n]
 [out]
 def f:
@@ -443,9 +516,10 @@ def f:
     return r2
 
 [case testIndexedSet]
+import typing
 class A:
-    void __setitem__(self, int x, int y): pass
-void f(A a, int n, int m):
+    def __setitem__(self, x: int, y: int) -> None: pass
+def f(a: A, n: int, m: int) -> None:
     a[m] = n
 [out]
 def f:
@@ -454,12 +528,13 @@ def f:
     return r4
 
 [case testOverloadedUnaryOps]
+import typing
 class A:
-    int __neg__(self): pass
-    int __invert__(self): pass
-int f(A a):
+    def __neg__(self) -> int: pass
+    def __invert__(self) -> int: pass
+def f(a: A) -> int:
     return -a
-int g(A a):
+def g(a: A) -> int:
     return ~a
 [out]
 def f:

@@ -1,14 +1,17 @@
+from typing import Any, List, cast
+
 from mypy.types import RuntimeTypeVar, OBJECT_VAR, Instance, Type, TypeVar
 from mypy.nodes import TypeInfo, Node, MemberExpr, IndexExpr, IntExpr
 from mypy.transutil import self_expr, tvar_slot_name
 
 
-RuntimeTypeVar get_tvar_access_expression(TypeInfo typ, int tvindex, any alt,
-                                          any is_java):
+def get_tvar_access_expression(typ: TypeInfo, tvindex: int, alt: Any,
+                               is_java: Any) -> RuntimeTypeVar:
     """Return a type expression that maps from runtime type variable slots
     to the type variable in the given class with the given index.
     
-    For example, assume class A<T, S>: ... and class B<U>(A<X, Y<U>>): ...:
+    For example, assuming class A(Generic[T, S]): ... and
+    class B(A[X, Y[U]], Generic[U]): ...:
     
       get_tvar_access_expression(<B>, 1) ==
         RuntimeTypeVar(<self.__tv2.args[0]>)  (with <...> represented as nodes)
@@ -26,13 +29,13 @@ RuntimeTypeVar get_tvar_access_expression(TypeInfo typ, int tvindex, any alt,
     # progressively.
     
     # First read the value of a supertype runtime type variable slot.
-    Node s = self_expr()
+    s = self_expr() # type: Node
     if alt == OBJECT_VAR:
         o = '__o'
         if is_java:
             o = '__o_{}'.format(typ.name)
         s = MemberExpr(s, o)
-    Node expr = MemberExpr(s, tvar_slot_name(mapping[0] - 1, alt))
+    expr = MemberExpr(s, tvar_slot_name(mapping[0] - 1, alt)) # type: Node
     
     # Then, optionally look into arguments based on the description.
     for i in mapping[1:]:
@@ -43,7 +46,7 @@ RuntimeTypeVar get_tvar_access_expression(TypeInfo typ, int tvindex, any alt,
     return RuntimeTypeVar(expr)
 
 
-int[] get_tvar_access_path(TypeInfo typ, int tvindex):
+def get_tvar_access_path(typ: TypeInfo, tvindex: int) -> List[int]:
     """Determine how to calculate the value of a type variable of a type.
     
     The description is based on operations on type variable slot values
@@ -56,14 +59,14 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     
     For example, assume these definitions:
     
-      class A<S, U>: ...
-      class B<T>(A<X, Y<T>>): ...
+      class A(Generic[S, U]): ...
+      class B(A[X, Y[T]], Generic[T]): ...
     
     Now we can query the access path to type variable 1 (T) of B:
     
       get_tvar_access_path(<B>, 1) == [2, 1] (slot 2, lookup type argument 1).
     """
-    if not typ.base:
+    if not typ.bases:
         return None
     
     # Check argument range.
@@ -72,20 +75,14 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
                                                               tvindex))
     
     # Figure out the superclass instance type.
-    Instance base
-    if not typ.bases[0]:
-        # Non-generic superclass.
-        base = Instance(typ.base, [])
-    else:
-        # The cast will succeed if we get here.
-        base = ((Instance)typ.bases[0])
+    base = typ.bases[0]
     
     # Go through all the supertype tvars to find a match.
-    int[] mapping = None
+    mapping = None # type: List[int]
     for i in range(len(base.args)):
         mapping = find_tvar_mapping(base.args[i], tvindex)
         if mapping is not None:
-            if base.type.base:
+            if base.type.bases[0]:
                 return get_tvar_access_path(base.type, i + 1) + mapping
             else:
                 return [i + 1] + mapping
@@ -94,7 +91,7 @@ int[] get_tvar_access_path(TypeInfo typ, int tvindex):
     return [tvar_slot_index(typ, tvindex)]
 
 
-int[] find_tvar_mapping(Type t, int index):
+def find_tvar_mapping(t: Type, index: int) -> List[int]:
     """Recursively search for a type variable instance (with given index)
     within the type t, which represents a supertype definition. Return the
     path to the first found instance.
@@ -111,24 +108,24 @@ int[] find_tvar_mapping(Type t, int index):
       find_tvar_mapping(A<T`2>, T`1) == None               (no T`1 within t)
       find_tvar_mapping(A<T`1, T`1>, T`1) == [0]           (first match)
     """
-    if isinstance(t, Instance) and ((Instance)t).args != []:
-        inst = (Instance)t
+    if isinstance(t, Instance) and (cast(Instance, t)).args != []:
+        inst = cast(Instance, t)
         for argi in range(len(inst.args)):
             mapping = find_tvar_mapping(inst.args[argi], index)
             if mapping is not None:
                 return get_tvar_access_path(inst.type, argi + 1) + mapping
         return None
-    elif isinstance(t, TypeVar) and ((TypeVar)t).id == index:
+    elif isinstance(t, TypeVar) and (cast(TypeVar, t)).id == index:
         return []
     else:
         return None
 
 
-int tvar_slot_index(TypeInfo typ, int tvindex):
+def tvar_slot_index(typ: TypeInfo, tvindex: int) -> int:
     """If the specified type variable was introduced as a new variable in type,
     return the slot index (1 = first type varible slot) of the type variable.
     """
-    base_slots = num_slots(typ.base)
+    base_slots = num_slots(typ.bases[0].type)
     
     for i in range(1, tvindex):
         if get_tvar_access_path(typ, i)[0] > base_slots:
@@ -137,14 +134,14 @@ int tvar_slot_index(TypeInfo typ, int tvindex):
     return base_slots + 1  
 
 
-int num_slots(TypeInfo typ):
+def num_slots(typ: TypeInfo) -> int:
     """Return the number of type variable slots used by a type.
 
     If type is None, the result is 0.
     """
-    if not typ:
+    if not typ or not typ.bases:
         return 0
-    slots = num_slots(typ.base)
+    slots = num_slots(typ.bases[0].type)
     ntv = len(typ.type_vars)
     for i in range(ntv):
         n = get_tvar_access_path(typ, i + 1)[0]
