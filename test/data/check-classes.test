@@ -119,6 +119,8 @@ class A:
 A().f = None # E: Cannot assign to a method
 
 
+-- Attributes
+-- ----------
 
 
 [case testReferToInvalidAttribute]
