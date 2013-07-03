@@ -28,7 +28,9 @@ from mypy import nodes
 from mypy import noderepr
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, TypeVars, Callable, AnyType, UnboundType
-from mypy.parsetype import parse_type, parse_types, TypeParseError
+from mypy.parsetype import (
+    parse_type, parse_types, parse_signature, TypeParseError
+)
 
 
 precedence = {
@@ -259,7 +261,7 @@ class Parser:
             except ParseError:
                 pass
             
-            defs = self.parse_block()
+            defs, _ = self.parse_block()
             
             node = TypeDef(name, defs, None, base_types, metaclass=metaclass)
             self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
@@ -305,7 +307,14 @@ class Parser:
             (name, args, init, kinds,
              typ, is_error, toks) = self.parse_function_header()
             
-            body = self.parse_block()
+            body, comment_type = self.parse_block(allow_type=True)
+            if comment_type:
+                sig = cast(Callable, comment_type)
+                typ = Callable(sig.arg_types,
+                               kinds,
+                               [arg.name() for arg in args],
+                               sig.ret_type,
+                               False)
             
             # If there was a serious error, we really cannot build a parse tree
             # node.
@@ -357,7 +366,7 @@ class Parser:
     
     def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Type,
                                   noderepr.FuncArgsRepr]:
-        """Parse a function type signature."""
+        """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
         
         # Parse the argument list (everything within '(' and ')').
@@ -513,16 +522,17 @@ class Parser:
     
     # Parsing statements
     
-    def parse_block(self) -> Block:
+    def parse_block(self, allow_type: bool = False) -> Tuple[Block, Type]:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
             node = Block([self.parse_statement()]).set_line(colon)
             self.set_repr(node, noderepr.BlockRepr(colon, none, none, none))
-            return cast(Block, node)
+            return cast(Block, node), None
         else:
             # Indented block.
             br = self.expect_break()
+            type = self.parse_type_comment(br, signature=True)
             indent = self.expect_indent()
             stmt = [] # type: List[Node]
             # Always allow a doc string at the beginning of a block.
@@ -543,7 +553,7 @@ class Parser:
                 dedent = self.skip()
             node = Block(stmt).set_line(colon) 
             self.set_repr(node, noderepr.BlockRepr(colon, br, indent, dedent))
-            return cast(Block, node)
+            return cast(Block, node), type
 
     def try_combine_overloads(self, s: Node, stmt: List[Node]) -> bool:
         if isinstance(s, Decorator) and stmt:
@@ -644,7 +654,7 @@ class Parser:
             e = self.parse_expression()
         br = self.expect_break()
 
-        type = self.parse_type_comment(br)
+        type = self.parse_type_comment(br, signature=False)
         assignment = AssignmentStmt(lvalues, e, type)
         self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
         return assignment
@@ -746,10 +756,10 @@ class Parser:
             expr = self.parse_expression()
         except ParseError:
             is_error = True
-        body = self.parse_block()
+        body, _ = self.parse_block()
         if self.current_str() == 'else':
             else_tok = self.expect('else')
-            else_body = self.parse_block()
+            else_body, _ = self.parse_block()
         else:
             else_body = None
             else_tok = none
@@ -766,11 +776,11 @@ class Parser:
         in_tok = self.expect('in')
         expr = self.parse_expression()
         
-        body = self.parse_block()
+        body, _ = self.parse_block()
         
         if self.current_str() == 'else':
             else_tok = self.expect('else')
-            else_body = self.parse_block()
+            else_body, _ = self.parse_block()
         else:
             else_body = None
             else_tok = none
@@ -815,7 +825,7 @@ class Parser:
         except ParseError:
             is_error = True
         
-        body = [self.parse_block()]
+        body = [self.parse_block()[0]]
         
         elif_toks = List[Token]()
         while self.current_str() == 'elif':
@@ -824,11 +834,11 @@ class Parser:
                 expr.append(self.parse_expression())
             except ParseError:
                 is_error = True
-            body.append(self.parse_block())
+            body.append(self.parse_block()[0])
         
         if self.current_str() == 'else':
             else_tok = self.expect('else')
-            else_body = self.parse_block()
+            else_body, _ = self.parse_block()
         else:
             else_tok = none
             else_body = None
@@ -843,7 +853,7 @@ class Parser:
     
     def parse_try_stmt(self) -> Node:
         try_tok = self.expect('try')
-        body = self.parse_block()
+        body, _ = self.parse_block()
         is_error = False
         vars = List[NameExpr]()
         types = List[Node]()
@@ -871,17 +881,17 @@ class Parser:
                 types.append(None)
                 vars.append(None)
                 as_toks.append(none)
-            handlers.append(self.parse_block())
+            handlers.append(self.parse_block()[0])
         if not is_error:
             if self.current_str() == 'else':
                 else_tok = self.skip()
-                else_body = self.parse_block()
+                else_body, _ = self.parse_block()
             else:
                 else_tok = none
                 else_body = None
             if self.current_str() == 'finally':
                 finally_tok = self.expect('finally')
-                finally_body = self.parse_block()
+                finally_body, _ = self.parse_block()
             else:
                 finally_tok = none
                 finally_body = None
@@ -913,7 +923,7 @@ class Parser:
             if self.current_str() != ',':
                 break
             commas.append(self.expect(','))
-        body = self.parse_block()
+        body, _ = self.parse_block()
         node = WithStmt(expr, name, body)
         self.set_repr(node, noderepr.WithStmtRepr(with_tok, as_toks, commas))
         return node
@@ -1486,17 +1496,21 @@ class Parser:
 
     annotation_prefix_re = re.compile(r'#\s*type:')
 
-    def parse_type_comment(self, token: Token) -> Type:
+    def parse_type_comment(self, token: Token, signature: bool) -> Type:
         """Parse a '# type: ...' annotation.
 
-        Return None if no annotation found.
+        Return None if no annotation found. If signature is True, expect
+        a type signature of form (...) -> t.
         """
         whitespace_or_comments = token.pre.strip()
         if self.annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
             tokens = lex.lex(type_as_str, token.line)
             try:
-                type, index = parse_types(tokens, 0)
+                if signature:
+                    type, index = parse_signature(tokens)
+                else:
+                    type, index = parse_types(tokens, 0)
             except TypeParseError as e:
                 self.parse_error_at(e.token)
             if index < len(tokens) - 2:

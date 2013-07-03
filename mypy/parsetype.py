@@ -2,7 +2,9 @@
 
 from typing import List, Tuple, cast
 
-from mypy.types import Type, UnboundType, TupleType, TypeList
+from mypy.types import (
+    Type, UnboundType, TupleType, TypeList, AnyType, Callable
+)
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
@@ -172,3 +174,29 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
     if i < len(tokens) - 2:
         raise TypeParseError(tokens[i], i)
     return result
+
+
+def parse_signature(tokens: List[Token]) -> Tuple[Type, int]:
+    """Parse signature of form (...) -> ..."""
+    i = 0
+    if tokens[i].string != '(':
+        raise TypeParseError(tokens[i], i)
+    i += 1
+    arg_types = List[Type]()
+    while tokens[i].string != ')':
+        arg, i = parse_type(tokens, i)
+        arg_types.append(arg)
+        next = tokens[i].string
+        if next not in ',)':
+            raise TypeParseError(tokens[i], i)
+        if next == ',':
+            i += 1            
+    i += 1
+    if tokens[i].string != '-' or tokens[i + 1].string != '>':
+        raise TypeParseError(tokens[i], i)
+    i += 2
+    ret_type, i = parse_type(tokens, i)
+    return Callable(arg_types,
+                    [nodes.ARG_POS] * len(arg_types),
+                    [None] * len(arg_types),
+                    ret_type, False), i

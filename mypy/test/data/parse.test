@@ -2401,3 +2401,22 @@ MypyFile:1(
             Block:5(
               PassStmt:5())))))))
 
+[case testCommentFunctionAnnotation]
+def f(): # type: () -> A
+  pass
+def g(x): # type: (A) -> B
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def () -> A?
+    Block:1(
+      PassStmt:2()))
+  FuncDef:3(
+    g
+    Args(
+      Var(x))
+    def (x: A?) -> B?
+    Block:3(
+      PassStmt:4())))
