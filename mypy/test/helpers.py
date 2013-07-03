@@ -5,7 +5,7 @@ import os
 from typing import List
 
 from mypy.myunit import AssertionFailure
-from mypy.test import testconfig
+from mypy.test import config
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if
@@ -159,7 +159,7 @@ def clean_up(a):
     """
     res = []
     for s in a:
-        prefix = testconfig.PREFIX + os.sep
+        prefix = config.PREFIX + os.sep
         ss = s
         for p in prefix, prefix.replace(os.sep, '/'):
             if p != '/' and p != '//' and p != '\\' and p != '\\\\':

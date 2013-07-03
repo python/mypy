@@ -17,11 +17,12 @@ import os.path
 import subprocess
 import sys
 
-from mypy.myunit import Suite, run_test
-from mypy.testconfig import test_data_prefix, test_temp_dir
-from mypy.testdata import parse_test_cases
-from mypy.testhelpers import assert_string_arrays_equal
 import typing
+
+from mypy.myunit import Suite, run_test
+from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.data import parse_test_cases
+from mypy.test.helpers import assert_string_arrays_equal
 
 
 # Files which contain test case descriptions.

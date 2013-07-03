@@ -7,9 +7,9 @@ import os.path
 import typing
 
 from mypy.myunit import Suite, AssertionFailure, run_test
-from mypy.test.testhelpers import assert_string_arrays_equal
-from mypy.test.testdata import parse_test_cases
-from mypy.test import testconfig
+from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.data import parse_test_cases
+from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
 
@@ -18,7 +18,7 @@ class ParserSuite(Suite):
     def cases(self):
         # The test case descriptions are stored in an external file.
         return parse_test_cases(
-            os.path.join(testconfig.test_data_prefix, 'parse.test'),
+            os.path.join(config.test_data_prefix, 'parse.test'),
             test_parser)
 
 
@@ -46,7 +46,7 @@ INPUT_FILE_NAME = 'file'
 class ParseErrorSuite(Suite):
     def cases(self):
         # Test case descriptions are in an external file.
-        return parse_test_cases(os.path.join(testconfig.test_data_prefix,
+        return parse_test_cases(os.path.join(config.test_data_prefix,
                                              'parse-errors.test'),
                                 test_parse_error)
 

@@ -6,9 +6,9 @@ import typing
 
 from mypy import build
 from mypy.myunit import Suite, run_test
-from mypy.test.testconfig import test_temp_dir, test_data_prefix
-from mypy.test.testdata import parse_test_cases
-from mypy.test.testhelpers import assert_string_arrays_equal
+from mypy.test.config import test_temp_dir, test_data_prefix
+from mypy.test.data import parse_test_cases
+from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
 

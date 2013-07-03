@@ -6,9 +6,9 @@ import typing
 
 from build import build
 from myunit import Suite, run_test
-from testconfig import test_data_prefix, test_temp_dir
-from testhelpers import assert_string_arrays_equal_wildcards
-from testdata import parse_test_cases
+from config import test_data_prefix, test_temp_dir
+from helpers import assert_string_arrays_equal_wildcards
+from data import parse_test_cases
 from testoutput import remove_prefix
 from testtransform import (
     remove_comment_lines, builtins_wrapper, TRANSFORM_BUILTINS

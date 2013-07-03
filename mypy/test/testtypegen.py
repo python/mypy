@@ -7,9 +7,9 @@ import typing
 
 from mypy import build
 from mypy.myunit import Suite, run_test
-from mypy.test import testconfig
-from mypy.test.testdata import parse_test_cases
-from mypy.test.testhelpers import assert_string_arrays_equal
+from mypy.test import config
+from mypy.test.data import parse_test_cases
+from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import short_type
 from mypy.nodes import NameExpr, TypeVarExpr, CallExpr
 from mypy.traverser import TraverserVisitor
@@ -23,8 +23,8 @@ class TypeExportSuite(Suite):
     def cases(self):
         c = []
         for f in self.files:
-            c += parse_test_cases(os.path.join(testconfig.test_data_prefix, f),
-                                  self.run_test, testconfig.test_temp_dir)
+            c += parse_test_cases(os.path.join(config.test_data_prefix, f),
+                                  self.run_test, config.test_temp_dir)
         return c
     
     def run_test(self, testcase):
@@ -40,7 +40,7 @@ class TypeExportSuite(Suite):
                                  target=build.TYPE_CHECK,
                                  program_text=src,
                                  flags=[build.TEST_BUILTINS],
-                                 alt_lib_path=testconfig.test_temp_dir)
+                                 alt_lib_path=config.test_temp_dir)
             map = result.types
             nodes = map.keys()
 

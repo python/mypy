@@ -8,9 +8,9 @@ import typing
 from mypy import build
 from mypy import icode
 from mypy.myunit import Suite, run_test
-from mypy.test.testhelpers import assert_string_arrays_equal_wildcards
-from mypy.test.testdata import parse_test_cases
-from mypy.test.testconfig import test_data_prefix, test_temp_dir
+from mypy.test.helpers import assert_string_arrays_equal_wildcards
+from mypy.test.data import parse_test_cases
+from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.testoutput import remove_prefix
 from mypy.test.testtransform import builtins_wrapper, remove_comment_lines
 from mypy.transform import DyncheckTransformVisitor
