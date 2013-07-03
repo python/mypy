@@ -1,5 +1,6 @@
--- Test cases for running mypy programs with the Python back end.
---
+-- Test cases for running mypy programs using CPython and type checking using
+-- full stubs.
+-- 
 -- These are mostly regression tests.
 
 
