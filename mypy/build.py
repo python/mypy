@@ -199,7 +199,7 @@ def default_lib_path(data_dir: str, target: int) -> List[str]:
     # Add MYPYPATH environment variable to library path, if defined.
     path_env = os.getenv('MYPYPATH')
     if path_env is not None:
-        path.append(path_env)
+        path[:0] = path_env.split(os.pathsep)
 
     if target in [ICODE, C]:
         # Add C back end library directory.
