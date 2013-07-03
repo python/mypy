@@ -300,3 +300,12 @@ str(string
 str
 builtins
 <class 'dict_proxy'>
+
+[case testBoolCompatibilityWithInt]
+x = 0
+x = True
+print(bool('x'))
+print(bool(''))
+[out]
+True
+False

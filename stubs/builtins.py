@@ -632,11 +632,8 @@ class bytearray(Sequence[int]):
     def __ge__(self, x: object) -> bool: pass
 
 
-class bool(SupportsInt, SupportsFloat):
+class bool(int, SupportsInt, SupportsFloat):
     def __init__(self, o: object) -> None: pass
-    def __str__(self) -> str: pass
-    def __int__(self) -> int: pass
-    def __float__(self) -> float: pass
 
 
 class slice:
