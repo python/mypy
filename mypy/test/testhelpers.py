@@ -5,7 +5,7 @@ import os
 from typing import List
 
 from mypy.myunit import AssertionFailure
-from mypy import testconfig
+from mypy.test import testconfig
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if

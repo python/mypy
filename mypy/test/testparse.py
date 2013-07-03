@@ -7,9 +7,9 @@ import os.path
 import typing
 
 from mypy.myunit import Suite, AssertionFailure, run_test
-from mypy.testhelpers import assert_string_arrays_equal
-from mypy.testdata import parse_test_cases
-from mypy import testconfig
+from mypy.test.testhelpers import assert_string_arrays_equal
+from mypy.test.testdata import parse_test_cases
+from mypy.test import testconfig
 from mypy.parse import parse
 from mypy.errors import CompileError
 

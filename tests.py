@@ -1,19 +1,20 @@
 import sys
 
-from mypy.myunit import Suite, run_test
-from mypy import testtypes
-from mypy import testsubtypes
-from mypy import testsolve
-from mypy import testinfer
-from mypy import testlex
-from mypy import testparse
-from mypy import testsemanal
-from mypy import testcheck
-from mypy import testtypegen
-from mypy import testoutput
-from mypy import testtransform
-from mypy import testicodegen
 import typing
+
+from mypy.myunit import Suite, run_test
+from mypy.test import testtypes
+from mypy.test import testsubtypes
+from mypy.test import testsolve
+from mypy.test import testinfer
+from mypy.test import testlex
+from mypy.test import testparse
+from mypy.test import testsemanal
+from mypy.test import testcheck
+from mypy.test import testtypegen
+from mypy.test import testoutput
+from mypy.test import testtransform
+from mypy.test import testicodegen
 
 
 class AllSuite(Suite):

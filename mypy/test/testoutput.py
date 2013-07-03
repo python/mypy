@@ -10,9 +10,9 @@ from typing import Undefined, Any
 
 from mypy import build
 from mypy.myunit import Suite, run_test
-from mypy.testhelpers import assert_string_arrays_equal
-from mypy.testdata import parse_test_cases
-from mypy.testconfig import test_data_prefix, test_temp_dir
+from mypy.test.testhelpers import assert_string_arrays_equal
+from mypy.test.testdata import parse_test_cases
+from mypy.test.testconfig import test_data_prefix, test_temp_dir
 from mypy.parse import parse
 from mypy.output import OutputVisitor
 from mypy.errors import CompileError
