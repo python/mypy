@@ -267,7 +267,7 @@ a.x = bc
 a.f(bc)
 [out]
 
-[case testInheritanceFromGenericWithImplicitDynamicAndDirectAccess]
+[case testInheritanceFromGenericWithImplicitDynamic]
 from typing import Undefined, typevar, Generic
 T = typevar('T')
 a = Undefined # type: A
