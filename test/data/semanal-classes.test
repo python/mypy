@@ -83,7 +83,7 @@ MypyFile:1(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
-            x)
+            x*)
           IntExpr(1)))))
   FuncDef:4(
     __init__

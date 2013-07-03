@@ -166,6 +166,45 @@ class A:
 [out]
 main, line 3: Incompatible types in assignment
 
+[case testAttributeDefinedInNonInitMethod]
+import typing
+class A:
+  def f(self) -> None:
+    self.x = 1
+    self.y = ''
+    self.x = 1
+a = A()
+a.x = 1
+a.y = ''
+a.x = '' # E: Incompatible types in assignment
+a.z = 0  # E: "A" has no attribute "z"
+
+[case testInheritanceAndAttributeAssignment]
+import typing
+class A:
+  def f(self) -> None:
+    self.x = 0
+class B(A):
+  def f(self) -> None:
+    self.x = '' # E: Incompatible types in assignment
+[out]
+main: In member "f" of class "B":
+
+[case testAssignmentToAttributeInMultipleMethods]
+import typing
+class A:
+  def f(self) -> None:
+    self.x = 0
+  def g(self) -> None:
+    self.x = '' # Fail
+  def __init__(self) -> None:
+    self.x = '' # Fail
+[out]
+main: In member "g" of class "A":
+main, line 6: Incompatible types in assignment
+main: In member "__init__" of class "A":
+main, line 8: Incompatible types in assignment
+
 
 -- Method overriding
 -- -----------------
@@ -662,6 +701,7 @@ main: In member "f" of class "A":
 
 
 [case testSubclassInt]
+import typing
 class A(int): pass
 n = 0
 n = A()

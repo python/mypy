@@ -697,8 +697,8 @@ class SemanticAnalyzer(NodeVisitor):
     
     def analyse_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
-        if self.is_init_method and (self.is_self_member_ref(lval) and
-                                    lval.name not in self.type.names):
+        if (self.is_self_member_ref(lval) and
+                self.type.get(lval.name) is None):
             # Implicit attribute definition in __init__.
             lval.is_def = True
             v = Var(lval.name)
