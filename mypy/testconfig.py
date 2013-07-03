@@ -7,7 +7,7 @@ import typing
 PREFIX = ''
 
 # Location of test data files such as test case descriptions.
-test_data_prefix = os.path.join(PREFIX, 'test', 'data')
+test_data_prefix = os.path.join(PREFIX, 'mypy', 'test', 'data')
 
 assert os.path.isdir(test_data_prefix), \
         'Test data prefix ({}) not set correctly'.format(test_data_prefix)

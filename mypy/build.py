@@ -136,7 +136,7 @@ def build(program_path: str,
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
-        lib_path.insert(0, 'test/data/lib-stub')
+        lib_path.insert(0, os.path.join('mypy', 'test', 'data', 'lib-stub'))
     elif program_path:
         # Include directory of the program file in the module search path.
         lib_path.insert(
