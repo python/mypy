@@ -471,9 +471,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Cycle in inheritance hierarchy', defn)
                 # Clear bases to forcefully get rid of the cycle.
                 info.bases = []
-            if baseinfo.fullname() in ['builtins.int',
-                                       'builtins.bool',
-                                       'builtins.float']:
+            if baseinfo.fullname() == 'builtins.bool':
                 self.fail("'%s' is not a valid base class" %
                           baseinfo.name(), defn)
                 return False

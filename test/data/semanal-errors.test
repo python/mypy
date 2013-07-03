@@ -615,9 +615,9 @@ class A(Generic[t]):
 [out]
 
 [case testTestExtendPrimitives]
-class A(int): pass # E: 'int' is not a valid base class
-class B(float): pass # E: 'float' is not a valid base class
 class C(bool): pass # E: 'bool' is not a valid base class
+class A(int): pass # ok
+class B(float): pass # ok
 class D(str): pass # ok
 [builtins fixtures/primitives.py]
 [out]

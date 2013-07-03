@@ -655,8 +655,19 @@ class A:
 main: In member "f" of class "A":
 
 
+-- Special cases
+-- -------------
+
+
+[case testSubclassInt]
+class A(int): pass
+n = 0
+n = A()
+a = A()
+a = 0 # E: Incompatible types in assignment
+
+
 -- TODO
 --   attribute inherited from superclass; assign in __init__
 --   refer to attribute before type has been inferred (the initialization in
 --   __init__ has not been analysed)
-
