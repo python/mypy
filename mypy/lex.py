@@ -327,6 +327,11 @@ class Lexer:
                                   not isinstance(self.tok[-1], Dedent)):
             self.add_token(Break(''))
 
+        # Attack any dangling comments/whitespace to a final Break token.
+        if self.tok and isinstance(self.tok[-1], Break):
+            self.tok[-1].string += self.pre_whitespace
+            self.pre_whitespace = ''
+
         # Close remaining open blocks with Dedent tokens.
         self.lex_indent()
         

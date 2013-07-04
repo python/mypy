@@ -289,6 +289,8 @@ class LexerSuite(Suite):
     def test_comment_after_linebreak(self):
         self.assert_lex('1\n# foo\n2',
                         'IntLit(1) Break(\\n# foo\\n) IntLit(2) ...')
+        self.assert_lex('1\n# foo',
+                        'IntLit(1) Break(\\n# foo) Eof()')
     
     def test_line_numbers(self):
         self.assert_line('a\\nb', [1, 1, 2, 2, 2])
