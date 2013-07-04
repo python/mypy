@@ -615,7 +615,12 @@ class Lexer:
     def lex_break(self) -> None:
         """Analyse a line break."""
         s = self.match(self.break_exp)
-        if self.ignore_break():
+        if self.tok and isinstance(self.tok[-1], Break):
+            self.tok[-1].string += self.pre_whitespace + s
+            self.i += len(s)
+            self.line += 1
+            self.pre_whitespace = ''
+        elif self.ignore_break():
             self.add_pre_whitespace(s)
             self.line += 1
         else:

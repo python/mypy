@@ -61,9 +61,9 @@ class LexerSuite(Suite):
                         'Name(# foo "" bar\\nx) Break( #x) Eof()')
     
     def test_empty_lines(self):
-        self.assert_lex('\\n1', 'IntLit(\\n1) ...')
-        self.assert_lex('\\n\\n1', 'IntLit(\\n\\n1) ...')
-        self.assert_lex('1\\n\\n2', 'IntLit(1) Break(\\n) IntLit(\\n2) ...')
+        self.assert_lex(r'\n1', r'IntLit(\n1) ...')
+        self.assert_lex(r'\n\n1', r'IntLit(\n\n1) ...')
+        self.assert_lex(r'1\n\n2', r'IntLit(1) Break(\n\n) IntLit(2) ...')
     
     def test_line_breaks(self):
         self.assert_lex('1\\r2', 'IntLit(1) Break(\\r) IntLit(2) ...')
@@ -137,12 +137,13 @@ class LexerSuite(Suite):
                         'Dedent() Eof()')
     
     def test_comment_after_dedent(self):
-        self.assert_lex('y' + '\n' +
-                        '  x' + '\n' +
-                        '# Foo' + '\n' +
+        self.assert_lex('y\n'
+                        '  x\n'
+                        '# Foo\n'
                         'z',
-                        'Name(y) Break(\\n) Indent(  ) Name(x) Break(\\n) ' +
-                        'Dedent() Name(# Foo\\nz) Break() Eof()')
+                        r'Name(y) Break(\n) Indent(  ) Name(x) '
+                        r'Break(\n# Foo\n) '
+                        r'Dedent() Name(z) Break() Eof()')
     
     def test_parens(self):
         self.assert_lex('( x )', 'Punct(() Name( x) Punct( )) Break() Eof()')
@@ -271,19 +272,23 @@ class LexerSuite(Suite):
     
     def test_empty_line(self):
         self.assert_lex('1' + '\n' + ' 1' + '\n' + '\n',
-                        'IntLit(1) Break(\\n) Indent( ) IntLit(1) '
-                        'Break(\\n) Dedent() Eof(\\n)')
+                        r'IntLit(1) Break(\n) Indent( ) IntLit(1) '
+                        r'Break(\n\n) Dedent() Eof()')
     
     def test_comments_and_indents(self):
         self.assert_lex('1' + '\n' + ' #x' + '\n' + ' y',
-                        'IntLit(1) Break(\\n) Indent( #x\\n ) Name(y) '
-                        'Break() Dedent() Eof()')
+                        r'IntLit(1) Break(\n #x\n) Indent( ) Name(y) '
+                        r'Break() Dedent() Eof()')
         self.assert_lex('1' + '\n' + '#x' + '\n' + ' y',
-                        'IntLit(1) Break(\\n) Indent(#x\\n ) Name(y) '
-                        'Break() Dedent() Eof()')
+                        r'IntLit(1) Break(\n#x\n) Indent( ) Name(y) '
+                        r'Break() Dedent() Eof()')
     
     def test_form_feed(self):
         self.assert_lex('\x0c' + '\n' + 'x', 'Name(\x0c\\nx) ...')
+
+    def test_comment_after_linebreak(self):
+        self.assert_lex('1\n# foo\n2',
+                        'IntLit(1) Break(\\n# foo\\n) IntLit(2) ...')
     
     def test_line_numbers(self):
         self.assert_line('a\\nb', [1, 1, 2, 2, 2])
