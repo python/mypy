@@ -309,6 +309,9 @@ class Parser:
             
             body, comment_type = self.parse_block(allow_type=True)
             if comment_type:
+                if typ:
+                    self.errors.report(
+                        def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(Callable, comment_type)
                 typ = Callable(sig.arg_types,
                                kinds,

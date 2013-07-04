@@ -244,3 +244,19 @@ def f(): # type: (x) -> .
 [out]
 file: In function "f":
 file, line 1: Parse error before .
+
+[case testDuplicateSignatures1]
+def f() -> None: # type: () -> None
+  pass
+def f(): # type: () -> None
+    pass
+[out]
+file: In function "f":
+file, line 1: Function has duplicate type signatures
+
+[case testDuplicateSignatures2]
+def f(x, y: Z): # type: (x, y) -> z
+  pass
+[out]
+file: In function "f":
+file, line 1: Function has duplicate type signatures
