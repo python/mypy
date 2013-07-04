@@ -1354,3 +1354,24 @@ MypyFile:1(
       AssignmentStmt:3(
         NameExpr(x [l])
         IntExpr(1)))))
+
+[case testMethodCommentAnnotation]
+import typing
+class A:
+  def f(self, x): # type: (int) -> str
+    x = 1
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  TypeDef:2(
+    A
+    FuncDef:3(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: __main__.A, x: builtins.int) -> builtins.str
+      Block:3(
+        AssignmentStmt:4(
+          NameExpr(x [l])
+          IntExpr(1))))))
