@@ -259,6 +259,23 @@ class B: pass
 [out]
 main: In function "g":
 
+[case testDefaultArgumentsAndSignatureAsComment]
+import typing
+def f(x = 1): # type: (int) -> str
+    pass
+f()
+f(1)
+f('') # E: Argument 1 to "f" has incompatible type "str"
+
+[case testMethodDefaultArgumentsAndSignatureAsComment]
+import typing
+class A:
+    def f(self, x = 1): # type: (int) -> str
+        pass
+A().f()
+A().f(1)
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+
 
 -- Access to method defined as a data attribute
 -- --------------------------------------------
