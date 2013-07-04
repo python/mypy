@@ -186,54 +186,6 @@ class C: pass
 -- -----------------------
 
 
-[case testDefaultArgumentExpressions]
-import typing
-def f(x: 'A' = A()) -> None:
-    b = x # type: B # Fail
-    a = x # type: A
-
-def g(x: 'A' = B()) -> None: # Fail
-    b = x # type: B # Fail
-    a = x # type: A
-
-class B: pass
-class A: pass
-[out]
-main: In function "f":
-main, line 3: Incompatible types in assignment
-main: In function "g":
-main, line 6: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
-
-[case testDefaultArgumentsWithSubtypes]
-import typing
-def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment
-    pass
-def g(x: 'A' = B()) -> None:
-    pass
-
-class A: pass
-class B(A): pass
-[out]
-main: In function "f":
-
-[case testMultipleDefaultArgumentExpressions]
-import typing
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # Fail
-    pass
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # Fail
-    pass
-def h(x: 'A' = A(), y: 'B' = B()) -> None:
-    pass
-
-class A: pass
-class B: pass
-[out]
-main: In function "f":
-main, line 2: Incompatible types in assignment
-main: In function "g":
-main, line 4: Incompatible types in assignment
-
 [case testCallingFunctionsWithDefaultArgumentValues]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
@@ -251,11 +203,6 @@ class A: pass
 class AA(A): pass
 class B: pass
 
-
--- Default argument values
--- -----------------------
-
-
 [case testDefaultArgumentExpressions]
 import typing
 def f(x: 'A' = A()) -> None:
@@ -267,7 +214,7 @@ class A: pass
 [out]
 main: In function "f":
 
-[case testDefaultArgumentExpressions]
+[case testDefaultArgumentExpressions2]
 import typing
 def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment
     b = x # type: B      # E: Incompatible types in assignment
@@ -311,27 +258,6 @@ class A: pass
 class B: pass
 [out]
 main: In function "g":
-
-[case testCallingFunctionsWithDefaultArgumentValues]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
-a = f()     # Fail
-b = f(b)    # Fail
-b = f(a, a) # Fail
-
-b = f()
-b = f(a)
-b = f(AA())
-
-def f(x: 'A' = None) -> 'B': pass
-
-class A: pass
-class AA(A): pass 
-class B: pass
-[out]
-main, line 3: Incompatible types in assignment
-main, line 4: Argument 1 to "f" has incompatible type "B"
-main, line 5: Too many arguments for "f"
 
 
 -- Access to method defined as a data attribute
