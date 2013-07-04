@@ -1446,6 +1446,7 @@ class Parser:
     
     def parse_error(self) -> None:
         self.parse_error_at(self.current())
+        raise ParseError()
     
     def parse_error_at(self, tok: Token, skip: bool = True) -> None:
         msg = ''
@@ -1461,8 +1462,6 @@ class Parser:
         
         if skip:
             self.skip_until_next_line()
-        
-        raise ParseError()
     
     def skip_until_break(self) -> None:
         n = 0
@@ -1492,6 +1491,7 @@ class Parser:
             typ, self.ind = parse_type(self.tok, self.ind)
         except TypeParseError as e:
             self.parse_error_at(e.token)
+            raise ParseError()
         return typ
 
     annotation_prefix_re = re.compile(r'#\s*type:')
@@ -1509,16 +1509,18 @@ class Parser:
             if len(tokens) < 2:
                 # Empty annotation (only Eof token)
                 self.errors.report(token.line, 'Empty type annotation')
-                raise ParseError()
+                return None
             try:
                 if signature:
                     type, index = parse_signature(tokens)
                 else:
                     type, index = parse_types(tokens, 0)
             except TypeParseError as e:
-                self.parse_error_at(e.token)
+                self.parse_error_at(e.token, skip=False)
+                return None
             if index < len(tokens) - 2:
-                self.parse_error_at(tokens[index])
+                self.parse_error_at(tokens[index], skip=False)
+                return None
             return type
         else:
             return None                          

@@ -188,8 +188,6 @@ def f(): # type: x
 [out]
 file: In function "f":
 file, line 1: Parse error before "x"
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment2]
 def f(): # type:
@@ -197,8 +195,6 @@ def f(): # type:
 [out]
 file: In function "f":
 file, line 1: Empty type annotation
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment3]
 def f(): # type: (
@@ -206,8 +202,6 @@ def f(): # type: (
 [out]
 file: In function "f":
 file, line 1: Parse error before end of line
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment4]
 def f(): # type: (.
@@ -215,8 +209,6 @@ def f(): # type: (.
 [out]
 file: In function "f":
 file, line 1: Parse error before .
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment5]
 def f(): # type: (x
@@ -224,8 +216,6 @@ def f(): # type: (x
 [out]
 file: In function "f":
 file, line 1: Parse error before end of line
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment6]
 def f(): # type: (x)
@@ -233,8 +223,6 @@ def f(): # type: (x)
 [out]
 file: In function "f":
 file, line 1: Parse error before end of line
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment7]
 def f(): # type: (x) -
@@ -242,8 +230,6 @@ def f(): # type: (x) -
 [out]
 file: In function "f":
 file, line 1: Parse error before -
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment8]
 def f(): # type: (x) ->
@@ -251,8 +237,6 @@ def f(): # type: (x) ->
 [out]
 file: In function "f":
 file, line 1: Parse error before end of line
-file: At top level:
-file, line 2: Inconsistent indentation
 
 [case testInvalidSignatureInComment9]
 def f(): # type: (x) -> .
@@ -260,5 +244,3 @@ def f(): # type: (x) -> .
 [out]
 file: In function "f":
 file, line 1: Parse error before .
-file: At top level:
-file, line 2: Inconsistent indentation
