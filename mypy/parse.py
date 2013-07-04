@@ -78,8 +78,6 @@ class Parser:
     errors = Undefined(Errors)
     raise_on_error = False
     
-    # Are we currently parsing a function definition?
-    is_function = False
     # Are we currently parsing the body of a class definition?
     is_class_body = False
     # All import nodes encountered so far in this parse unit.
@@ -304,7 +302,6 @@ class Parser:
     def parse_function(self) -> FuncDef:
         def_tok = self.expect('def')
         is_method = self.is_class_body
-        self.is_function = True
         self.is_class_body = False
         try:
             (name, args, init, kinds,
@@ -344,7 +341,6 @@ class Parser:
             return node
         finally:
             self.errors.pop_function()
-            self.is_function = False
             self.is_class_body = is_method
     
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
