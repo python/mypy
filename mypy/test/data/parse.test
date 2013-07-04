@@ -2483,3 +2483,19 @@ MypyFile:1(
     def (x: X?) -> Y?
     Block:1(
       PassStmt:3())))
+
+[case testCommentFunctionAnnotationOnSeparateLine2]
+def f(x):
+  
+     # type: (X) -> Y       # bar
+  
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    def (x: X?) -> Y?
+    Block:1(
+      PassStmt:5())))
