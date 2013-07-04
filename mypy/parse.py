@@ -1506,6 +1506,10 @@ class Parser:
         if self.annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
             tokens = lex.lex(type_as_str, token.line)
+            if len(tokens) < 2:
+                # Empty annotation (only Eof token)
+                self.errors.report(token.line, 'Empty type annotation')
+                raise ParseError()
             try:
                 if signature:
                     type, index = parse_signature(tokens)
