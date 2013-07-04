@@ -429,6 +429,16 @@ MypyFile:1(
         NameExpr(None)
         Any?))))
 
+[case testLocalVarWithTypeOnNextLine]
+x = 0
+  # type: int
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(0)
+    int?))
+
 [case testFunctionDefWithType]
 def f(y: str) -> int:
   return
