@@ -2420,3 +2420,30 @@ MypyFile:1(
     def (x: A?) -> B?
     Block:3(
       PassStmt:4())))
+
+[case testCommentMethodAnnotation]
+class A:
+  def f(self): # type: () -> A
+    pass
+  def g(xself, x): # type: (A) -> B
+    pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      def (self: Any) -> A?
+      Block:2(
+        PassStmt:3()))
+    FuncDef:4(
+      g
+      Args(
+        Var(xself)
+        Var(x))
+      def (xself: Any, x: A?) -> B?
+      Block:4(
+        PassStmt:5()))))
+

@@ -313,11 +313,18 @@ class Parser:
                     self.errors.report(
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(Callable, comment_type)
-                typ = Callable(sig.arg_types,
-                               kinds,
-                               [arg.name() for arg in args],
-                               sig.ret_type,
-                               False)
+                if self.is_type:
+                    typ = Callable(List[Type]([AnyType()]) + sig.arg_types,
+                                   [nodes.ARG_POS] + kinds,
+                                   [arg.name() for arg in args],
+                                   sig.ret_type,
+                                   False)
+                else:
+                    typ = Callable(sig.arg_types,
+                                   kinds,
+                                   [arg.name() for arg in args],
+                                   sig.ret_type,
+                                   False)
             
             # If there was a serious error, we really cannot build a parse tree
             # node.
