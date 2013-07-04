@@ -1337,3 +1337,20 @@ MypyFile:1(
         NameExpr(a [l])
         NameExpr(None [builtins.None])
         _m.T`-1))))
+
+[case testFunctionCommentAnnotation]
+from typing import Any
+def f(x): # type: (int) -> Any
+  x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any : Any])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int) -> Any
+    Block:2(
+      AssignmentStmt:3(
+        NameExpr(x [l])
+        IntExpr(1)))))
