@@ -1556,15 +1556,6 @@ class Parser:
         else:
             return [], []
 
-    # Helpers
-    
-    def is_at_top_level(self) -> bool:
-        """Are we currently parsing at the top level of a file?
-
-        (I.e. not within a class or a function.)
-        """
-        return not self.is_function and not self.is_type
-
 
 class ParseError(Exception): pass
 
