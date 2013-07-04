@@ -235,6 +235,7 @@ class A: pass
 [builtins fixtures/dict.py]
 
 [case testKeywordArgumentAndCommentSignature]
+import typing
 def f(x): # type: (int) -> str
     pass
 f(x='') # E: Argument 1 to "f" has incompatible type "str"
@@ -242,6 +243,7 @@ f(x=0)
 f(y=0) # E: Unexpected keyword argument "y" for "f"
 
 [case testKeywordArgumentAndCommentSignature2]
+import typing
 class A:
     def f(self, x): # type: (int) -> str
         pass
