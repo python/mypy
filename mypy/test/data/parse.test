@@ -2447,3 +2447,25 @@ MypyFile:1(
       Block:4(
         PassStmt:5()))))
 
+[case testCommentMethodAnnotationAndNestedFunction]
+class A:
+  def f(self): # type: () -> A
+    def g(x): # type: (A) -> B
+      pass
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      def (self: Any) -> A?
+      Block:2(
+        FuncDef:3(
+          g
+          Args(
+            Var(x))
+          def (x: A?) -> B?
+          Block:3(
+            PassStmt:4()))))))

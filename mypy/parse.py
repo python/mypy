@@ -80,8 +80,8 @@ class Parser:
     
     # Are we currently parsing a function definition?
     is_function = False
-    # Are we currently parsing a type definition?
-    is_type = False
+    # Are we currently parsing the body of a class definition?
+    is_class_body = False
     # All import nodes encountered so far in this parse unit.
     imports = Undefined(List[Node])
     
@@ -232,7 +232,8 @@ class Parser:
         return defs
     
     def parse_class_def(self) -> TypeDef:
-        self.is_type = True
+        old_is_class_body = self.is_class_body
+        self.is_class_body = True
         
         type_tok = self.expect('class')
         lparen = none
@@ -269,7 +270,7 @@ class Parser:
             return node
         finally:
             self.errors.pop_type()
-            self.is_type = False
+            self.is_class_body = old_is_class_body
     
     def parse_super_type(self) -> Type:
         if (isinstance(self.current(), Name) and self.current_str() != 'void'):
@@ -302,18 +303,22 @@ class Parser:
     
     def parse_function(self) -> FuncDef:
         def_tok = self.expect('def')
+        is_method = self.is_class_body
         self.is_function = True
+        self.is_class_body = False
         try:
             (name, args, init, kinds,
              typ, is_error, toks) = self.parse_function_header()
             
             body, comment_type = self.parse_block(allow_type=True)
             if comment_type:
+                # The function has a # type: ... signature.
                 if typ:
                     self.errors.report(
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(Callable, comment_type)
-                if self.is_type:
+                if is_method:
+                    # Add implicit 'self' argument to signature.
                     typ = Callable(List[Type]([AnyType()]) + sig.arg_types,
                                    [nodes.ARG_POS] + kinds,
                                    [arg.name() for arg in args],
@@ -340,6 +345,7 @@ class Parser:
         finally:
             self.errors.pop_function()
             self.is_function = False
+            self.is_class_body = is_method
     
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
                                              List[int], Type, bool,
