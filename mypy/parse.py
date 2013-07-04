@@ -317,7 +317,7 @@ class Parser:
                 if is_method:
                     # Add implicit 'self' argument to signature.
                     typ = Callable(List[Type]([AnyType()]) + sig.arg_types,
-                                   [nodes.ARG_POS] + kinds,
+                                   kinds,
                                    [arg.name() for arg in args],
                                    sig.ret_type,
                                    False)
