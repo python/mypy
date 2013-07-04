@@ -990,3 +990,14 @@ def f(): pass
 @dec  # E: 'overload' decorator expected
 def f(): pass
 [out]
+
+[case testIncompatibleSignatureInComment]
+def f(): # type: (int) -> int
+  pass
+def g(x): # type: () -> int
+  pass
+[out]
+main: In function "f":
+main, line 1: Type signature has too many arguments
+main: In function "g":
+main, line 3: Type signature has too few arguments

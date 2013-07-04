@@ -262,6 +262,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
             defn.type = self.anal_type(defn.type)
+            self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
                 fdef = cast(FuncDef, defn)
                 fdef.info = self.type
@@ -316,6 +317,13 @@ class SemanticAnalyzer(NodeVisitor):
         node.kind = TVAR
         node.tvar_id = id
         return node
+
+    def check_function_signature(self, fdef: FuncItem) -> None:
+        sig = cast(Callable, fdef.type)
+        if len(sig.arg_types) < len(fdef.args):
+            self.fail('Type signature has too few arguments', fdef)
+        elif len(sig.arg_types) > len(fdef.args):
+            self.fail('Type signature has too many arguments', fdef)
     
     def visit_type_def(self, defn: TypeDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
