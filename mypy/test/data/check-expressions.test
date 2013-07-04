@@ -715,7 +715,7 @@ main, line 4: Incompatible types in assignment
 from typing import Undefined, List
 a = Undefined # type: List[A]
 a = [x for x in a]
-b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type A[]
+b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type List[A]
 class A: pass
 class B: pass
 [builtins fixtures/for.py]
@@ -725,7 +725,7 @@ from typing import Undefined, List
 a = Undefined # type: List[A]
 b = Undefined # type: List[B]
 b = [f(x) for x in a]
-a = [f(x) for x in a] # E: List comprehension has incompatible type B[]
+a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]
 ([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"
 class A: pass
 class B: pass
