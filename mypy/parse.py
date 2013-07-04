@@ -1514,7 +1514,7 @@ class Parser:
         Return None if no annotation found. If signature is True, expect
         a type signature of form (...) -> t.
         """
-        whitespace_or_comments = token.pre.strip()
+        whitespace_or_comments = token.rep().strip()
         if self.annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
             tokens = lex.lex(type_as_str, token.line)
