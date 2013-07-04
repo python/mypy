@@ -302,3 +302,34 @@ x = '' # E: Incompatible types in assignment
 y = '' # E: Incompatible types in assignment
 x = 1
 y = 1
+
+
+-- # type: signatures
+-- ------------------
+
+
+[case testFunctionSignatureAsComment]
+def f(x): # type: (int) -> str
+    return 1
+f('')
+[out]
+main: In function "f":
+main, line 2: Incompatible return value type
+main: At top level:
+main, line 3: Argument 1 to "f" has incompatible type "str"
+
+[case testMethodSignatureAsComment]
+class A:
+    def f(self, x):
+        # type: (int) -> str
+        self.f('') # Fail
+        return 1
+A().f('') # Fail
+[out]
+main: In member "f" of class "A":
+main, line 4: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 5: Incompatible return value type
+main: At top level:
+main, line 6: Argument 1 to "f" of "A" has incompatible type "str"
+
+
