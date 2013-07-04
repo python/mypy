@@ -250,3 +250,13 @@ class A:
 A().f(x='') # E: Argument 1 to "f" of "A" has incompatible type "str"
 A().f(x=0)
 A().f(y=0) # E: Unexpected keyword argument "y" for "f" of "A"
+
+[case testVarArgsAndCommentSignature]
+import typing
+def f(*x): # type: (int) -> None
+    pass
+f(1)
+f(1, 2)
+f('') # E: Argument 1 to "f" has incompatible type "str"
+f(1, '') # E: Argument 2 to "f" has incompatible type "str"
+[builtins fixtures/list.py]
