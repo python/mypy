@@ -260,3 +260,13 @@ f(1, 2)
 f('') # E: Argument 1 to "f" has incompatible type "str"
 f(1, '') # E: Argument 2 to "f" has incompatible type "str"
 [builtins fixtures/list.py]
+
+[case testKeywordVarArgsAndCommentSignature]
+import typing
+def f(**kwargs): # type: (int) -> None
+    pass
+f(z=1)
+f(x=1, y=1)
+f(x='', y=1) # E: Argument 1 to "f" has incompatible type "str"
+f(x=1, y='') # E: Argument 2 to "f" has incompatible type "str"
+[builtins fixtures/dict.py]
