@@ -46,11 +46,15 @@ class TypeCheckSuite(Suite):
     
     def run_test(self, testcase):
         a = []
+        pyversion = 3
+        if testcase.file.endswith('python2.test'):
+            pyversion = 2
         try:
             src = '\n'.join(testcase.input)
             build.build('main',
                         target=build.TYPE_CHECK,
                         program_text=src,
+                        pyversion=pyversion,
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:
