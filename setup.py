@@ -24,7 +24,7 @@ interpreter.
 
 stubs = []
 
-for version in ['3.2']:
+for version in ['3.2', '2.7']:
     base = os.path.join('stubs', version)
     stub_dirs = [''] + [name for name in os.listdir(base)
                         if os.path.isdir(os.path.join(base, name))]
