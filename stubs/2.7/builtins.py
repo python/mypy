@@ -829,6 +829,10 @@ False = Undefined # type: bool
 __debug__ = False
 
 
+long = int
+bytes = str
+
+
 class _NotImplementedType: pass # TODO name of the class
 NotImplemented = Undefined # type: _NotImplementedType
 
