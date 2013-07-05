@@ -214,6 +214,8 @@ class LexerSuite(Suite):
                         'UnicodeLit(u"") UnicodeLit( u"foo") ...')
         self.assert_lex('ur"" ur"foo"',
                         'UnicodeLit(ur"") UnicodeLit( ur"foo") ...')
+        self.assert_lex('u"""foo\n"""',
+                        r'UnicodeLit(u"""foo\n""") ...')
     
     def test_semicolons(self):
         self.assert_lex('a;b', 'Name(a) Break(;) Name(b) ...')

@@ -526,6 +526,8 @@ class Lexer:
         lit = Undefined # type: Token
         if 'b' in prefix:
             lit = BytesLit(ss + m.group(0))
+        elif 'u' in prefix:
+            lit = UnicodeLit(ss + m.group(0))
         else:
             lit = StrLit(ss + m.group(0))
         self.add_special_token(lit, line, len(m.group(0)))
