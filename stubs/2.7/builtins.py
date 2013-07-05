@@ -51,17 +51,11 @@ class int(SupportsInt, SupportsFloat):
     @overload
     def __init__(self, x: SupportsInt) -> None: pass
     @overload
-    def __init__(self, x: str) -> None: pass
+    def __init__(self, x: str, base: int = 10) -> None: pass
     @overload
-    def __init__(self, x: unicode) -> None: pass
+    def __init__(self, x: unicode, base: int = 10) -> None: pass
     @overload
-    def __init__(self, x: bytearray) -> None: pass
-    @overload
-    def __init__(self, string: str, base: int) -> None: pass
-    @overload
-    def __init__(self, string: unicode, base: int) -> None: pass
-    @overload
-    def __init__(self, string: bytearray, base: int) -> None: pass
+    def __init__(self, x: bytearray, base: int = 10) -> None: pass
 
     def bit_length(self) -> int: pass
 
