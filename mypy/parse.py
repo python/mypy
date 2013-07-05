@@ -569,10 +569,6 @@ class Parser:
             type = self.parse_type_comment(br, signature=True)
             indent = self.expect_indent()
             stmt = [] # type: List[Node]
-            # Always allow a doc string at the beginning of a block.
-            if (isinstance(self.current(), StrLit) and
-                    isinstance(self.peek(), Break)):
-                stmt.append(self.parse_statement())
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:
