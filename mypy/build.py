@@ -132,7 +132,7 @@ def build(program_path: str,
     data_dir = default_data_dir(bin_dir)
     
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, target)
+    lib_path = default_lib_path(data_dir, target, pyversion)
     
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -193,7 +193,7 @@ def default_data_dir(bin_dir: str) -> str:
         raise RuntimeError("Broken installation: can't determine base dir")
 
 
-def default_lib_path(data_dir: str, target: int) -> List[str]:
+def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = List[str]()
@@ -209,8 +209,11 @@ def default_lib_path(data_dir: str, target: int) -> List[str]:
     else:
         # Add library stubs directory. By convention, they are stored in the
         # stubs/x.y directory of the mypy installation.
-        path.append(os.path.join(data_dir, 'stubs/3.2'))
-        path.append(os.path.join(data_dir, 'stubs-auto/3.2'))
+        version_dir = '3.2'
+        if pyversion < 3:
+            version_dir = '2.7'
+        path.append(os.path.join(data_dir, 'stubs', version_dir))
+        path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
     
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
