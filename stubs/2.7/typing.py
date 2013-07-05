@@ -26,7 +26,7 @@ Set = object()
 # define Pattern, etc.  At runtime, the string and bytes variants actually
 # point to the same type, which means that they can't be used for overloading
 # reliably.
-from re import Pattern, BytesPattern, Match, BytesMatch
+from re import Pattern, UnicodePattern, Match, UnicodeMatch
 
 
 # Abstract base classes.
@@ -141,11 +141,11 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     
     # TODO use views for the return values instead
     @abstractmethod
-    def keys(self) -> AbstractSet[KT]: pass
+    def keys(self) -> list[KT]: pass
     @abstractmethod
-    def values(self) -> AbstractSet[VT]: pass
+    def values(self) -> list[VT]: pass
     @abstractmethod
-    def items(self) -> AbstractSet[Tuple[KT, VT]]: pass
+    def items(self) -> list[Tuple[KT, VT]]: pass
 
 class IO(metaclass=ABCMeta):    
     # TODO iteration
@@ -167,13 +167,13 @@ class IO(metaclass=ABCMeta):
     def isatty(self) -> bool: pass
     # TODO what if n is None?
     @abstractmethod
-    def read(self, n: int = -1) -> bytes: pass
+    def read(self, n: int = -1) -> str: pass
     @abstractmethod
     def readable(self) -> bool: pass
     @abstractmethod
-    def readline(self, limit: int = -1) -> bytes: pass
+    def readline(self, limit: int = -1) -> str: pass
     @abstractmethod
-    def readlines(self, hint: int = -1) -> list[bytes]: pass
+    def readlines(self, hint: int = -1) -> list[str]: pass
     @abstractmethod
     def seek(self, offset: int, whence: int = 0) -> int: pass
     @abstractmethod
@@ -188,12 +188,12 @@ class IO(metaclass=ABCMeta):
     # TODO buffer objects
     @overload
     @abstractmethod
-    def write(self, s: bytes) -> int: pass
+    def write(self, s: str) -> int: pass
     @overload
     @abstractmethod
     def write(self, s: bytearray) -> int: pass
     @abstractmethod
-    def writelines(self, lines: list[bytes]) -> None: pass
+    def writelines(self, lines: list[str]) -> None: pass
 
     @abstractmethod
     def __enter__(self) -> IO: pass
@@ -222,13 +222,13 @@ class TextIO(metaclass=ABCMeta):
     def isatty(self) -> bool: pass
     # TODO what if n is None?
     @abstractmethod
-    def read(self, n: int = -1) -> str: pass
+    def read(self, n: int = -1) -> unicode: pass
     @abstractmethod
     def readable(self) -> bool: pass
     @abstractmethod
-    def readline(self, limit: int = -1) -> str: pass
+    def readline(self, limit: int = -1) -> unicode: pass
     @abstractmethod
-    def readlines(self, hint: int = -1) -> list[str]: pass
+    def readlines(self, hint: int = -1) -> list[unicode]: pass
     @abstractmethod
     def seek(self, offset: int, whence: int = 0) -> int: pass
     @abstractmethod
@@ -242,9 +242,9 @@ class TextIO(metaclass=ABCMeta):
     def writable(self) -> bool: pass
     # TODO buffer objects
     @abstractmethod
-    def write(self, s: str) -> int: pass
+    def write(self, s: unicode) -> int: pass
     @abstractmethod
-    def writelines(self, lines: list[str]) -> None: pass
+    def writelines(self, lines: list[unicode]) -> None: pass
 
     @abstractmethod
     def __enter__(self) -> TextIO: pass

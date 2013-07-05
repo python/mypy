@@ -2,8 +2,7 @@
 # Ron Murawski <ron@horizonchess.com>
 # 'bytes' support added by Jukka Lehtosalo
 
-# based on: http://docs.python.org/3.2/library/re.html
-# and http://hg.python.org/cpython/file/618ea5612e83/Lib/re.py
+# based on: http://docs.python.org/2.7/library/re.html
 
 from typing import (
     Undefined, List, Iterator, overload, Function, Tuple, Sequence, Dict
@@ -56,32 +55,33 @@ class Match:
     def end(self, group: int = 0) -> int: pass
     def span(self, group: int = 0) -> Tuple[int, int]: pass
 
-class BytesMatch:
+class UnicodeMatch:
     pos = 0
     endpos = 0
     lastindex = 0
-    lastgroup = b''
-    string = b''
+    lastgroup = u''
+    string = u''
     
     # The regular expression object whose match() or search() method produced
     # this match instance.
-    re = Undefined('BytesPattern')
+    re = Undefined('UnicodePattern')
     
-    def expand(self, template: bytes) -> bytes: pass
+    def expand(self, template: unicode) -> unicode: pass
     
     @overload
-    def group(self, group1: int = 0) -> str: pass
+    def group(self, group1: int = 0) -> unicode: pass
     @overload
-    def group(self, group1: str) -> str: pass
+    def group(self, group1: unicode) -> unicode: pass
     @overload
     def group(self, group1: int, group2: int,
-              *groups: int) -> Sequence[bytes]: pass
+              *groups: int) -> Sequence[unicode]: pass
     @overload
-    def group(self, group1: bytes, group2: bytes,
-              *groups: bytes) -> Sequence[bytes]: pass
+    def group(self, group1: unicode, group2: unicode,
+              *groups: unicode) -> Sequence[unicode]: pass
     
-    def groups(self, default: bytes = None) -> Sequence[bytes]: pass
-    def groupdict(self, default: bytes = None) -> Dict[bytes, bytes]: pass
+    def groups(self, default: unicode = None) -> Sequence[unicode]: pass
+    def groupdict(self, default: unicode = None) -> Dict[unicode,
+                                                         unicode]: pass
     def start(self, group: int = 0) -> int: pass
     def end(self, group: int = 0) -> int: pass
     def span(self, group: int = 0) -> Tuple[int, int]: pass
@@ -115,61 +115,65 @@ class Pattern:
     def subn(self, repl: Function[[Match], str], string: str,
              count: int = 0) -> Tuple[str, int]: pass
 
-class BytesPattern:
+class UnicodePattern:
     flags = 0
     groupindex = 0
     groups = 0
-    pattern = b''
+    pattern = u''
 
-    def search(self, string: bytes, pos: int = 0,
-               endpos: int = -1) -> BytesMatch: pass
-    def match(self, string: bytes, pos: int = 0,
-              endpos: int = -1) -> BytesMatch: pass
-    def split(self, string: bytes, maxsplit: int = 0) -> List[bytes]: pass
-    def findall(self, string: bytes, pos: int = 0,
-                endpos: int = -1) -> List[bytes]: pass
-    def finditer(self, string: bytes, pos: int = 0,
-                 endpos: int = -1) -> Iterator[BytesMatch]: pass
+    def search(self, string: unicode, pos: int = 0,
+               endpos: int = -1) -> UnicodeMatch: pass
+    def match(self, string: unicode, pos: int = 0,
+              endpos: int = -1) -> UnicodeMatch: pass
+    def split(self, string: unicode, maxsplit: int = 0) -> List[unicode]: pass
+    def findall(self, string: unicode, pos: int = 0,
+                endpos: int = -1) -> List[unicode]: pass
+    def finditer(self, string: unicode, pos: int = 0,
+                 endpos: int = -1) -> Iterator[UnicodeMatch]: pass
     
     @overload
-    def sub(self, repl: bytes, string: bytes, count: int = 0) -> bytes: pass
+    def sub(self, repl: unicode, string: unicode,
+            count: int = 0) -> unicode: pass
     @overload
-    def sub(self, repl: Function[[BytesMatch], bytes], string: bytes,
-            count: int = 0) -> bytes: pass
+    def sub(self, repl: Function[[UnicodeMatch], unicode], string: unicode,
+            count: int = 0) -> unicode: pass
     
     @overload
-    def subn(self, repl: bytes, string: bytes,
-             count: int = 0) -> Tuple[bytes, int]: pass
+    def subn(self, repl: unicode, string: unicode,
+             count: int = 0) -> Tuple[unicode, int]: pass
     @overload
-    def subn(self, repl: Function[[BytesMatch], bytes], string: bytes,
-             count: int = 0) -> Tuple[bytes, int]: pass
+    def subn(self, repl: Function[[UnicodeMatch], unicode], string: unicode,
+             count: int = 0) -> Tuple[unicode, int]: pass
 
 @overload
 def compile(pattern: str, flags: int = 0) -> Pattern: pass
 @overload
-def compile(pattern: bytes, flags: int = 0) -> BytesPattern: pass
+def compile(pattern: unicode, flags: int = 0) -> UnicodePattern: pass
 
 @overload
 def search(pattern: str, string: str, flags: int = 0) -> Match: pass
 @overload
-def search(pattern: bytes, string: bytes, flags: int = 0) -> BytesMatch: pass
+def search(pattern: unicode, string: unicode,
+           flags: int = 0) -> UnicodeMatch: pass
 
 @overload
 def match(pattern: str, string: str, flags: int = 0) -> Match: pass
 @overload
-def match(pattern: bytes, string: bytes, flags: int = 0) -> BytesMatch: pass
+def match(pattern: unicode, string: unicode,
+          flags: int = 0) -> UnicodeMatch: pass
 
 @overload
 def split(pattern: str, string: str, maxsplit: int = 0,
           flags: int = 0) -> List[str]: pass
 @overload
-def split(pattern: bytes, string: bytes, maxsplit: int = 0,
-          flags: int = 0) -> List[bytes]: pass
+def split(pattern: unicode, string: unicode, maxsplit: int = 0,
+          flags: int = 0) -> List[unicode]: pass
 
 @overload
 def findall(pattern: str, string: str, flags: int = 0) -> List[str]: pass
 @overload
-def findall(pattern: bytes, string: bytes, flags: int = 0) -> List[bytes]: pass
+def findall(pattern: unicode, string: unicode,
+            flags: int = 0) -> List[unicode]: pass
 
 # Return an iterator yielding match objects over all non-overlapping matches 
 # for the RE pattern in string. The string is scanned left-to-right, and 
@@ -179,8 +183,8 @@ def findall(pattern: bytes, string: bytes, flags: int = 0) -> List[bytes]: pass
 def finditer(pattern: str, string: str,
              flags: int = 0) -> Iterator[Match]: pass
 @overload
-def finditer(pattern: bytes, string: bytes,
-             flags: int = 0) -> Iterator[BytesMatch]: pass
+def finditer(pattern: unicode, string: unicode,
+             flags: int = 0) -> Iterator[UnicodeMatch]: pass
 
 @overload
 def sub(pattern: str, repl: str, string: str, count: int = 0,
@@ -189,11 +193,11 @@ def sub(pattern: str, repl: str, string: str, count: int = 0,
 def sub(pattern: str, repl: Function[[Match], str], string: str,
         count: int = 0, flags: int = 0) -> str: pass
 @overload
-def sub(pattern: bytes, repl: bytes, string: bytes, count: int = 0,
-        flags: int = 0) -> bytes: pass
+def sub(pattern: unicode, repl: unicode, string: unicode, count: int = 0,
+        flags: int = 0) -> unicode: pass
 @overload
-def sub(pattern: bytes, repl: Function[[BytesMatch], bytes], string: bytes,
-        count: int = 0, flags: int = 0) -> bytes: pass
+def sub(pattern: unicode, repl: Function[[UnicodeMatch], unicode],
+        string: unicode, count: int = 0, flags: int = 0) -> unicode: pass
 
 @overload
 def subn(pattern: str, repl: str, string: str, count: int = 0,
@@ -202,16 +206,16 @@ def subn(pattern: str, repl: str, string: str, count: int = 0,
 def subn(pattern: str, repl: Function[[Match], str], string: str, 
          count: int = 0, flags: int = 0) -> Tuple[str, int]: pass
 @overload
-def subn(pattern: bytes, repl: bytes, string: bytes, count: int = 0, 
-         flags: int = 0) -> Tuple[bytes, int]: pass
+def subn(pattern: unicode, repl: unicode, string: unicode, count: int = 0, 
+         flags: int = 0) -> Tuple[unicode, int]: pass
 @overload
-def subn(pattern: bytes, repl: Function[[BytesMatch], bytes],
-         string: bytes, count: int = 0, flags: int = 0) -> Tuple[bytes,
-                                                                 int]: pass
+def subn(pattern: unicode, repl: Function[[UnicodeMatch], unicode],
+         string: unicode, count: int = 0, flags: int = 0) -> Tuple[unicode,
+                                                                   int]: pass
 
 @overload
 def escape(string: str) -> str: pass
 @overload
-def escape(string: bytes) -> bytes: pass
+def escape(string: unicode) -> unicode: pass
 
 def purge() -> None: pass
