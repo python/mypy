@@ -43,7 +43,6 @@ C = 5                   # All ICODE passes + generate C and compile it
 
 
 # Build flags
-PYTHON2 = 'python2'             # Use Python 2 (TODO not working)
 COMPILE_ONLY = 'compile-only'   # Compile only to C, do not generate binary
 VERBOSE = 'verbose'             # More verbose messages (for troubleshooting)
 MODULE = 'module'               # Build/run module as a script
@@ -102,6 +101,7 @@ def build(program_path: str,
           alt_lib_path: str = None,
           bin_dir: str = None,
           output_dir: str = None,
+          pyversion: int = 3,
           flags: List[str] = None) -> BuildResult:
     """Build a mypy program.
 
@@ -123,6 +123,7 @@ def build(program_path: str,
       mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
         derived from sys.argv[0]
       output_dir: directory where the output (Python) is stored
+      pyversion: Python version (2 for 2.x or 3 for 3.x)
       flags: list of build options (e.g. COMPILE_ONLY)
     """
     flags = flags or []
@@ -154,7 +155,8 @@ def build(program_path: str,
     # build in the correct order.
     #
     # Ignore current directory prefix in error messages.
-    manager = BuildManager(data_dir, lib_path, target, output_dir, flags,
+    manager = BuildManager(data_dir, lib_path, target, output_dir,
+                           pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd())
 
     program_path = program_path or lookup_program(module, lib_path)
@@ -255,6 +257,7 @@ class BuildManager:
       type_checker:    Type checker
       errors:          Used for reporting all errors
       output_dir:      Store output files here (Python)
+      pyversion:       Python version (2 or 3)
       flags:           Build options
       states:          States of all individual files that are being
                        processed. Each file in a build is always represented
@@ -277,6 +280,7 @@ class BuildManager:
                  lib_path: List[str],
                  target: int,
                  output_dir: str,
+                 pyversion: int,
                  flags: List[str],
                  ignore_prefix: str) -> None:
         self.data_dir = data_dir
@@ -285,6 +289,7 @@ class BuildManager:
         self.lib_path = lib_path
         self.target = target
         self.output_dir = output_dir
+        self.pyversion = pyversion
         self.flags = flags
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
@@ -758,7 +763,8 @@ class UnprocessedFile(State):
         Raise CompileError if there is a parse error.
         """
         num_errs = self.errors().num_messages()
-        tree = parse.parse(source_text, fnam, self.errors())
+        tree = parse.parse(source_text, fnam, self.errors(),
+                           pyversion=self.manager.pyversion)
         tree._fullname = self.id
         if self.errors().num_messages() != num_errs:
             self.errors().raise_error()

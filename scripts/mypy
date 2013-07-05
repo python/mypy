@@ -55,6 +55,7 @@ def type_check_only(path: str, module: str, args: List[str],
                 module=module,
                 bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
+                pyversion=options.pyversion,
                 flags=options.build_flags)
 
     if build.COMPILE_ONLY not in options.build_flags:
@@ -71,6 +72,7 @@ def compile_to_c(path: str, module: str, args: List[str],
                  options: Options) -> None:
     assert not module # Not supported yet
     assert not args   # Not supported yet
+    assert options.pyversion == 3
     
     # Compile the program to C (also generate binary by default).
     result = build.build(path, target=build.C, bin_dir=bin_dir,
@@ -93,7 +95,7 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
             args = args[1:]
         elif args[0] == '--py2' and args[1:]:
             # Generate Python 2 (but this is very incomplete).
-            options.build_flags.append(build.PYTHON2)
+            options.pyversion = 2
             options.interpreter = args[1]
             args = args[2:]
         elif args[0] == '-c':
