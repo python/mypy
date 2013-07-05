@@ -206,9 +206,9 @@ def default_lib_path(data_dir: str, target: int) -> List[str]:
         path.append(os.path.join(data_dir, 'lib'))
     else:
         # Add library stubs directory. By convention, they are stored in the
-        # stubs directory of the mypy implementation.
-        path.append(os.path.join(data_dir, 'stubs'))
-        path.append(os.path.join(data_dir, 'stubs-auto'))
+        # stubs/x.y directory of the mypy installation.
+        path.append(os.path.join(data_dir, 'stubs/3.2'))
+        path.append(os.path.join(data_dir, 'stubs-auto/3.2'))
     
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':

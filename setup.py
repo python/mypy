@@ -22,15 +22,18 @@ without running them, and run the programs using a standard Python 3
 interpreter.
 '''.lstrip()
 
-stub_dirs = [''] + [name for name in os.listdir('stubs')
-                    if os.path.isdir(os.path.join('stubs', name))]
-
 stubs = []
-for stub_dir in stub_dirs:
-    target = os.path.join('lib', 'mypy', 'stubs', stub_dir)
-    files = glob.glob(os.path.join('stubs', stub_dir, '*.py'))
-    stubs.append((target, files))
-    
+
+for version in ['3.2']:
+    base = os.path.join('stubs', version)
+    stub_dirs = [''] + [name for name in os.listdir(base)
+                        if os.path.isdir(os.path.join(base, name))]
+
+    for stub_dir in stub_dirs:
+        target = os.path.join('lib', 'mypy', 'stubs', version, stub_dir)
+        files = glob.glob(os.path.join(base, stub_dir, '*.py'))
+        stubs.append((target, files))
+
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
     'Environment :: Console',
