@@ -8,9 +8,9 @@ from mypy.types import (
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
-    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, FloatExpr, OpExpr,
-    UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr, TupleExpr,
-    DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
+    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
+    OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
+    TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     UndefinedExpr
 )
@@ -695,6 +695,10 @@ class ExpressionChecker:
     def visit_bytes_expr(self, e: BytesExpr) -> Type:
         """Type check a bytes literal (trivial)."""
         return self.named_type('builtins.bytes')
+    
+    def visit_unicode_expr(self, e: UnicodeExpr) -> Type:
+        """Type check a unicode literal (trivial)."""
+        return self.named_type('builtins.unicode')
     
     def visit_float_expr(self, e: FloatExpr) -> Type:
         """Type check a float literal (trivial)."""

@@ -90,6 +90,14 @@ class object:
     def __init__(self): pass
 class bytes: pass
 
+[case testUnicodeLiteralInPython3]
+from typing import Undefined
+s = Undefined(str)
+s = u'foo'
+b = Undefined(bytes)
+b = u'foo' # E: Incompatible types in assignment
+[builtins fixtures/primitives.py]
+
 
 -- Binary operators
 -- ----------------

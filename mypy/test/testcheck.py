@@ -32,6 +32,7 @@ files = [
     'check-super.test',
     'check-modules.test',
     'check-generic-subtyping.test',
+    'check-python2.test',
     'check-unsupported.test',
 ]
 

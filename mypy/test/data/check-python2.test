@@ -1,0 +1,11 @@
+-- Type checker test cases for Python 2.x mode.
+
+
+[case testUnicode]
+import typing
+u = u'foo'
+u = unicode()
+s = ''
+s = u'foo' # E: Incompatible types in assignment
+s = b'foo'
+[builtins fixtures/python2.py]
