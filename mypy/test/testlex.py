@@ -206,6 +206,14 @@ class LexerSuite(Suite):
                         "StrLit('''x\\nxyz\\n''x''') ...")
         
         self.assert_lex('"""x' + '\n' + 'y"""', 'StrLit("""x\\ny""") ...')
+
+    def test_unicode_literals(self):
+        self.assert_lex("u'' u'foo'",
+                        "UnicodeLit(u'') UnicodeLit( u'foo') ...")
+        self.assert_lex('u"" u"foo"',
+                        'UnicodeLit(u"") UnicodeLit( u"foo") ...')
+        self.assert_lex('ur"" ur"foo"',
+                        'UnicodeLit(ur"") UnicodeLit( ur"foo") ...')
     
     def test_semicolons(self):
         self.assert_lex('a;b', 'Name(a) Break(;) Name(b) ...')

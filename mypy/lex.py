@@ -93,6 +93,14 @@ class BytesLit(Token):
         return _parse_str_literal(self.string)
 
 
+class UnicodeLit(Token):
+    """Unicode literal (Python 2.x)"""
+    
+    def parsed(self) -> str:
+        """Return the parsed contents of the literal."""
+        return _parse_str_literal(self.string)
+
+
 class FloatLit(Token):
     """Float literal"""
 
@@ -161,7 +169,7 @@ keywords = set([
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-str_prefixes = set(['r', 'b', 'br'])  
+str_prefixes = set(['r', 'b', 'br', 'u', 'ur'])  
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
@@ -489,6 +497,8 @@ class Lexer:
                     self.verify_encoding(s, STR_CONTEXT)
                     if 'b' in prefix:
                         self.add_token(BytesLit(s))
+                    elif 'u' in prefix:
+                        self.add_token(UnicodeLit(s))
                     else:
                         self.add_token(StrLit(s))
             else:
