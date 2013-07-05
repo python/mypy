@@ -20,10 +20,13 @@ from mypy.errors import CompileError
 from typing import List, Tuple
 
 
-# Fallback options
-target = build.TYPE_CHECK
-build_flags = [] # type: List[str]
-interpreter = 'python'
+class Options:
+    def __init__(self) -> None:
+        # Set default options.
+        self.target = build.TYPE_CHECK
+        self.build_flags = List[str]()
+        self.interpreter = 'python'
+        self.pyversion = 3
 
 
 # The stubs directory is found relative to the bin/scripts directory.
@@ -31,83 +34,84 @@ bin_dir = os.path.dirname(__file__)
 
 
 def main() -> None:
-    path, module, args = process_options(sys.argv[1:])
+    path, module, args, options = process_options(sys.argv[1:])
     try:
-        if target == build.TYPE_CHECK:
-            type_check_only(path, module, args)
-        elif target == build.C:
-            compile_to_c(path, module, args)
+        if options.target == build.TYPE_CHECK:
+            type_check_only(path, module, args, options)
+        elif options.target == build.C:
+            compile_to_c(path, module, args, options)
         else:
-            raise RuntimeError('unsupported target %d' % target)
+            raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
         for m in e.messages:
             print(m)
         sys.exit(1)
 
 
-def type_check_only(path: str, module: str, args: List[str]) -> None:
+def type_check_only(path: str, module: str, args: List[str],
+                    options: Options) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
                 bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
-                flags=build_flags)
+                flags=options.build_flags)
 
-    if build.COMPILE_ONLY not in build_flags:
+    if build.COMPILE_ONLY not in options.build_flags:
         # Run the translated program.
         if module:
             opts = ['-m', module]
         else:
             opts = [path]
-        status = subprocess.call([interpreter] + opts + args)
+        status = subprocess.call([options.interpreter] + opts + args)
         sys.exit(status)
 
 
-def compile_to_c(path: str, module: str, args: List[str]) -> None:
+def compile_to_c(path: str, module: str, args: List[str],
+                 options: Options) -> None:
     assert not module # Not supported yet
     assert not args   # Not supported yet
     
     # Compile the program to C (also generate binary by default).
     result = build.build(path, target=build.C, bin_dir=bin_dir,
-                         flags=build_flags)
+                         flags=options.build_flags)
 
-    if build.COMPILE_ONLY not in build_flags:
+    if build.COMPILE_ONLY not in options.build_flags:
         # Run the compiled program.
         # TODO command line arguments
         status = subprocess.call([result.binary_path])
         sys.exit(status)
 
 
-def process_options(args: List[str]) -> Tuple[str, str, List[str]]:
+def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
+    options = Options()
     if sys.executable:
-        global interpreter
-        interpreter = sys.executable
+        options.interpreter = sys.executable
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
-            build_flags.append(build.VERBOSE)
+            options.build_flags.append(build.VERBOSE)
             args = args[1:]
         elif args[0] == '--py2' and args[1:]:
             # Generate Python 2 (but this is very incomplete).
-            build_flags.append(build.PYTHON2)
-            interpreter = args[1]
+            options.build_flags.append(build.PYTHON2)
+            options.interpreter = args[1]
             args = args[2:]
         elif args[0] == '-c':
-            global target
-            target = build.C
+            options.target = build.C
             args = args[1:]
         elif args[0] == '-S':
-            build_flags.append(build.COMPILE_ONLY)
+            options.build_flags.append(build.COMPILE_ONLY)
             args = args[1:]
         elif args[0] == '-m' and args[1:]:
-            build_flags.append(build.MODULE)
-            return None, args[1], args[2:]
+            options.build_flags.append(build.MODULE)
+            return None, args[1], args[2:], options
         else:
             usage('Invalid option {}'.format(args[0]))
     
     if not args:
         usage()
     
-    return args[0], None, args[1:]
+    return args[0], None, args[1:], options
 
 
 def usage(msg: str = None) -> None:
