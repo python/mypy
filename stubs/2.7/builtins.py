@@ -1,4 +1,4 @@
-"""Stubs for builtins"""
+"""Stubs for builtins (Python 2.7)"""
 
 from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
@@ -7,6 +7,7 @@ from typing import (
     SupportsRound, TextIO
 )
 from abc import abstractmethod, ABCMeta
+
 
 T = typevar('T')
 KT = typevar('KT')
@@ -52,13 +53,13 @@ class int(SupportsInt, SupportsFloat):
     @overload
     def __init__(self, x: str) -> None: pass
     @overload
-    def __init__(self, x: bytes) -> None: pass
+    def __init__(self, x: unicode) -> None: pass
     @overload
     def __init__(self, x: bytearray) -> None: pass
     @overload
     def __init__(self, string: str, base: int) -> None: pass
     @overload
-    def __init__(self, string: bytes, base: int) -> None: pass
+    def __init__(self, string: unicode, base: int) -> None: pass
     @overload
     def __init__(self, string: bytearray, base: int) -> None: pass
 
@@ -141,7 +142,7 @@ class float(SupportsFloat, SupportsInt):
     @overload
     def __init__(self, x: str) -> None: pass
     @overload
-    def __init__(self, x: bytes) -> None: pass
+    def __init__(self, x: unicode) -> None: pass
     @overload
     def __init__(self, x: bytearray) -> None: pass
 
@@ -196,7 +197,7 @@ class complex:
     def __init__(self, re: float, im: float = 0.0) -> None: pass
 
 
-class str(Sequence[str]):
+class unicode(Sequence[unicode]):
     # TODO maketrans
     
     @overload
@@ -204,34 +205,34 @@ class str(Sequence[str]):
     @overload
     def __init__(self, o: object) -> None: pass
     @overload
-    def __init__(self, o: bytes, encoding: str = None,
-                 errors: str = 'strict') -> None: pass
+    def __init__(self, o: str, encoding: str = None,
+                 errors: str = u'strict') -> None: pass
     @overload
     def __init__(self, o: bytearray, encoding: str = None,
-                 errors: str = 'strict') -> None: pass
+                 errors: str = u'strict') -> None: pass
 
-    def capitalize(self) -> str: pass
-    def center(self, width: int, fillchar: str = ' ') -> str: pass
-    def count(self, x: str) -> int: pass
-    def encode(self, encoding: str = 'utf-8',
-               errors: str = 'strict') -> bytes: pass
+    def capitalize(self) -> unicode: pass
+    def center(self, width: int, fillchar: unicode = u' ') -> unicode: pass
+    def count(self, x: unicode) -> int: pass
+    def encode(self, encoding: unicode = u'utf-8',
+               errors: unicode = u'strict') -> str: pass
     # TODO tuple suffix; None value for int
-    def endswith(self, suffix: str, start: int = 0,
+    def endswith(self, suffix: unicode, start: int = 0,
                  end: int = None) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> str: pass
     
     @overload
-    def find(self, sub: str, start: int = 0) -> int: pass
+    def find(self, sub: unicode, start: int = 0) -> int: pass
     @overload
-    def find(self, sub: str, start: int, end: int) -> int: pass
+    def find(self, sub: unicode, start: int, end: int) -> int: pass
     
-    def format(self, *args: Any, **kwargs: Any) -> str: pass
-    def format_map(self, map: Mapping[str, Any]) -> str: pass
+    def format(self, *args: Any, **kwargs: Any) -> unicode: pass
+    def format_map(self, map: Mapping[unicode, Any]) -> unicode: pass
     
     @overload
-    def index(self, sub: str, start: int = 0) -> int: pass
+    def index(self, sub: unicode, start: int = 0) -> int: pass
     @overload
-    def index(self, sub: str, start: int, end: int) -> int: pass
+    def index(self, sub: unicode, start: int, end: int) -> int: pass
     
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
@@ -244,46 +245,52 @@ class str(Sequence[str]):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    def join(self, iterable: Iterable[str]) -> str: pass
-    def ljust(self, width: int, fillchar: str = ' ') -> str: pass
-    def lower(self) -> str: pass
-    def lstrip(self, chars: str = None) -> str: pass
-    def partition(self, sep: str) -> Tuple[str, str, str]: pass
-    def replace(self, old: str, new: str, count: int = -1) -> str: pass
+    def join(self, iterable: Iterable[unicode]) -> unicode: pass
+    def ljust(self, width: int, fillchar: unicode = ' ') -> unicode: pass
+    def lower(self) -> unicode: pass
+    def lstrip(self, chars: unicode = None) -> unicode: pass
+    def partition(self, sep: unicode) -> Tuple[unicode, unicode, unicode]: pass
+    def replace(self, old: unicode, new: unicode,
+                count: int = -1) -> unicode: pass
     
     @overload
-    def rfind(self, sub: str, start: int = 0) -> int: pass
+    def rfind(self, sub: unicode, start: int = 0) -> int: pass
     @overload
-    def rfind(self, sub: str, start: int, end: int) -> int: pass
+    def rfind(self, sub: unicode, start: int, end: int) -> int: pass
     @overload
-    def rindex(self, sub: str, start: int = 0) -> int: pass
+    def rindex(self, sub: unicode, start: int = 0) -> int: pass
     @overload
-    def rindex(self, sub: str, start: int, end: int) -> int: pass
+    def rindex(self, sub: unicode, start: int, end: int) -> int: pass
     
-    def rjust(self, width: int, fillchar: str = ' ') -> str: pass
-    def rpartition(self, sep: str) -> Tuple[str, str, str]: pass
-    def rsplit(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass
-    def rstrip(self, chars: str = None) -> str: pass
-    def split(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass
-    def splitlines(self, keepends: bool = False) -> List[str]: pass
+    def rjust(self, width: int, fillchar: unicode = u' ') -> unicode: pass
+    def rpartition(self, sep: unicode) -> Tuple[unicode, unicode,
+                                                unicode]: pass
+    def rsplit(self, sep: unicode = None,
+               maxsplit: int = -1) -> List[unicode]: pass
+    def rstrip(self, chars: unicode = None) -> unicode: pass
+    def split(self, sep: unicode = None,
+              maxsplit: int = -1) -> List[unicode]: pass
+    def splitlines(self, keepends: bool = False) -> List[unicode]: pass
     # TODO tuple prefix; None value for int
-    def startswith(self, prefix: str, start: int = 0,
+    def startswith(self, prefix: unicode, start: int = 0,
                    end: int = None) -> bool: pass
-    def strip(self, chars: str = None) -> str: pass
-    def swapcase(self) -> str: pass
-    def title(self) -> str: pass
-    def translate(self, table: Dict[int, Any]) -> str: pass
-    def upper(self) -> str: pass
-    def zfill(self, width: int) -> str: pass
+    def strip(self, chars: unicode = None) -> unicode: pass
+    def swapcase(self) -> unicode: pass
+    def title(self) -> unicode: pass
+    def translate(self, table: Dict[int, Any]) -> unicode: pass
+    def upper(self) -> unicode: pass
+    def zfill(self, width: int) -> unicode: pass
     
     @overload
-    def __getitem__(self, i: int) -> str: pass
+    def __getitem__(self, i: int) -> unicode: pass
     @overload
-    def __getitem__(self, s: slice) -> str: pass
+    def __getitem__(self, s: slice) -> unicode: pass
 
-    def __add__(self, s: str) -> str: pass
+    def __getslice__(self, start: int, stop: int) -> unicode: pass
+
+    def __add__(self, s: unicode) -> unicode: pass
     def __mul__(self, n: int) -> str: pass
-    def __mod__(self, *args: Any) -> str: pass
+    def __mod__(self, *args: Any) -> unicode: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operands
@@ -294,7 +301,7 @@ class str(Sequence[str]):
     
     def __len__(self) -> int: pass
     def __contains__(self, s: object) -> bool: pass
-    def __iter__(self) -> Iterator[str]: pass
+    def __iter__(self) -> Iterator[unicode]: pass
     def __str__(self) -> str: return self
     def __repr__(self) -> str: pass
     def __int__(self) -> int: pass
@@ -302,49 +309,41 @@ class str(Sequence[str]):
     def __hash__(self) -> int: pass
     
 
-class bytes(Sequence[int]):
+class str(Sequence[str]):
     # TODO fromhex
     # TODO maketrans
     
-    @overload
-    def __init__(self, ints: Iterable[int]) -> None: pass
-    @overload
-    def __init__(self, string: str, encoding: str,
-                 errors: str = 'strict') -> None: pass
-    @overload
-    def __init__(self, length: int) -> None: pass
-    @overload
-    def __init__(self) -> None: pass
+    def __init__(self, object: object) -> None: pass
 
-    def capitalize(self) -> bytes: pass
+    def capitalize(self) -> str: pass
     
     @overload
-    def center(self, width: int, fillchar: bytes = None) -> bytes: pass
+    def center(self, width: int, fillchar: str = None) -> str: pass
     @overload
-    def center(self, width: int, fillchar: bytearray = None) -> bytes: pass
+    def center(self, width: int, fillchar: bytearray = None) -> str: pass
     @overload
-    def count(self, x: bytes) -> int: pass
+    def count(self, x: str) -> int: pass
     @overload
     def count(self, x: bytearray) -> int: pass
     def decode(self, encoding: str = 'utf-8',
-               errors: str = 'strict') -> str: pass
+               errors: str = 'strict') -> unicode: pass
     @overload
-    def endswith(self, suffix: bytes) -> bool: pass
+    def endswith(self, suffix: str) -> bool: pass
     @overload
     def endswith(self, suffix: bytearray) -> bool: pass
-    def expandtabs(self, tabsize: int = 8) -> bytes: pass
+    def expandtabs(self, tabsize: int = 8) -> str: pass
     @overload
-    def find(self, sub: bytes, start: int = 0) -> int: pass
+    def find(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def find(self, sub: bytes, start: int, end: int) -> int: pass
+    def find(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def find(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def find(self, sub: bytearray, start: int, end: int) -> int: pass
     @overload
-    def index(self, sub: bytes, start: int = 0) -> int: pass
+    def index(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def index(self, sub: bytes, start: int, end: int) -> int: pass
+    def index(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def index(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
@@ -357,83 +356,83 @@ class bytes(Sequence[int]):
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
     @overload
-    def join(self, iterable: Iterable[bytes]) -> bytes: pass
+    def join(self, iterable: Iterable[str]) -> str: pass
     @overload
-    def join(self, iterable: Iterable[bytearray]) -> bytes: pass
+    def join(self, iterable: Iterable[bytearray]) -> str: pass
     @overload
-    def ljust(self, width: int, fillchar: bytes = None) -> bytes: pass
+    def ljust(self, width: int, fillchar: str = None) -> str: pass
     @overload
-    def ljust(self, width: int, fillchar: bytearray = None) -> bytes: pass
-    def lower(self) -> bytes: pass
+    def ljust(self, width: int, fillchar: bytearray = None) -> str: pass
+    def lower(self) -> str: pass
     @overload
-    def lstrip(self, chars: bytes = None) -> bytes: pass
+    def lstrip(self, chars: str = None) -> str: pass
     @overload
-    def lstrip(self, chars: bytearray = None) -> bytes: pass
+    def lstrip(self, chars: bytearray = None) -> str: pass
     @overload
-    def partition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
+    def partition(self, sep: str) -> Tuple[str, str, str]: pass
     @overload
-    def partition(self, sep: bytearray) -> Tuple[bytes, bytes, bytes]: pass
+    def partition(self, sep: bytearray) -> Tuple[str, str, str]: pass
     @overload
-    def replace(self, old: bytes, new: bytes, count: int = -1) -> bytes: pass
+    def replace(self, old: str, new: str, count: int = -1) -> str: pass
     @overload
     def replace(self, old: bytearray, new: bytearray,
-                count: int = -1) -> bytes: pass
+                count: int = -1) -> str: pass
     @overload
-    def rfind(self, sub: bytes, start: int = 0) -> int: pass
+    def rfind(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def rfind(self, sub: bytes, start: int, end: int) -> int: pass
+    def rfind(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def rfind(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
     @overload
-    def rindex(self, sub: bytes, start: int = 0) -> int: pass
+    def rindex(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def rindex(self, sub: bytes, start: int, end: int) -> int: pass
+    def rindex(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def rindex(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
     @overload
-    def rjust(self, width: int, fillchar: bytes = None) -> bytes: pass
+    def rjust(self, width: int, fillchar: str = None) -> str: pass
     @overload
-    def rjust(self, width: int, fillchar: bytearray = None) -> bytes: pass
+    def rjust(self, width: int, fillchar: bytearray = None) -> str: pass
     @overload
-    def rpartition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
+    def rpartition(self, sep: str) -> Tuple[str, str, str]: pass
     @overload
-    def rpartition(self, sep: bytearray) -> Tuple[bytes, bytes, bytes]: pass
+    def rpartition(self, sep: bytearray) -> Tuple[str, str, str]: pass
     @overload
-    def rsplit(self, sep: bytes = None,
-               maxsplit: int = -1) -> List[bytes]: pass
+    def rsplit(self, sep: str = None,
+               maxsplit: int = -1) -> List[str]: pass
     @overload
     def rsplit(self, sep: bytearray = None,
-               maxsplit: int = -1) -> List[bytes]: pass
+               maxsplit: int = -1) -> List[str]: pass
     @overload
-    def rstrip(self, chars: bytes = None) -> bytes: pass
+    def rstrip(self, chars: str = None) -> str: pass
     @overload
-    def rstrip(self, chars: bytearray = None) -> bytes: pass
+    def rstrip(self, chars: bytearray = None) -> str: pass
     @overload
-    def split(self, sep: bytes = None, maxsplit: int = -1) -> List[bytes]: pass
+    def split(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass
     @overload
     def split(self, sep: bytearray = None,
-              maxsplit: int = -1) -> List[bytes]: pass
-    def splitlines(self, keepends: bool = False) -> List[bytes]: pass
+              maxsplit: int = -1) -> List[str]: pass
+    def splitlines(self, keepends: bool = False) -> List[str]: pass
     @overload
-    def startswith(self, prefix: bytes) -> bool: pass
+    def startswith(self, prefix: str) -> bool: pass
     @overload
     def startswith(self, prefix: bytearray) -> bool: pass
     @overload
-    def strip(self, chars: bytes = None) -> bytes: pass
+    def strip(self, chars: str = None) -> str: pass
     @overload
-    def strip(self, chars: bytearray = None) -> bytes: pass
-    def swapcase(self) -> bytes: pass
-    def title(self) -> bytes: pass
+    def strip(self, chars: bytearray = None) -> str: pass
+    def swapcase(self) -> str: pass
+    def title(self) -> str: pass
     @overload
-    def translate(self, table: bytes) -> bytes: pass
+    def translate(self, table: str) -> str: pass
     @overload
-    def translate(self, table: bytearray) -> bytes: pass
-    def upper(self) -> bytes: pass
-    def zfill(self, width: int) -> bytes: pass
+    def translate(self, table: bytearray) -> str: pass
+    def upper(self) -> str: pass
+    def zfill(self, width: int) -> str: pass
     
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[int]: pass
@@ -446,13 +445,16 @@ class bytes(Sequence[int]):
     @overload
     def __getitem__(self, i: int) -> int: pass
     @overload
-    def __getitem__(self, s: slice) -> bytes: pass
-    @overload
-    def __add__(self, s: bytes) -> bytes: pass    
-    @overload
-    def __add__(self, s: bytearray) -> bytes: pass
+    def __getitem__(self, s: slice) -> str: pass
+
+    def __getslice__(self, start: int, stop: int) -> str: pass
     
-    def __mul__(self, n: int) -> bytes: pass
+    @overload
+    def __add__(self, s: str) -> str: pass    
+    @overload
+    def __add__(self, s: bytearray) -> str: pass
+    
+    def __mul__(self, n: int) -> str: pass
     def __contains__(self, o: object) -> bool: pass    
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
@@ -473,38 +475,41 @@ class bytearray(Sequence[int]):
     def __init__(self, string: str, encoding: str,
                  errors: str = 'strict') -> None: pass
     @overload
+    def __init__(self, string: unicode, encoding: str,
+                 errors: str = 'strict') -> None: pass
+    @overload
     def __init__(self, length: int) -> None: pass
     @overload
     def __init__(self) -> None: pass
 
     def capitalize(self) -> bytearray: pass
     @overload
-    def center(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    def center(self, width: int, fillchar: str = None) -> bytearray: pass
     @overload
     def center(self, width: int, fillchar: bytearray = None) -> bytearray: pass
     @overload
-    def count(self, x: bytes) -> int: pass
+    def count(self, x: str) -> int: pass
     @overload
     def count(self, x: bytearray) -> int: pass
     def decode(self, encoding: str = 'utf-8',
                errors: str = 'strict') -> str: pass
     @overload
-    def endswith(self, suffix: bytes) -> bool: pass
+    def endswith(self, suffix: str) -> bool: pass
     @overload
     def endswith(self, suffix: bytearray) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytearray: pass
     @overload
-    def find(self, sub: bytes, start: int = 0) -> int: pass
+    def find(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def find(self, sub: bytes, start: int, end: int) -> int: pass
+    def find(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def find(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def find(self, sub: bytearray, start: int, end: int) -> int: pass
     @overload
-    def index(self, sub: bytes, start: int = 0) -> int: pass
+    def index(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def index(self, sub: bytes, start: int, end: int) -> int: pass
+    def index(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def index(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
@@ -517,85 +522,85 @@ class bytearray(Sequence[int]):
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
     @overload
-    def join(self, iterable: Iterable[bytes]) -> bytearray: pass
+    def join(self, iterable: Iterable[str]) -> bytearray: pass
     @overload
     def join(self, iterable: Iterable[bytearray]) -> bytearray: pass
     @overload
-    def ljust(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    def ljust(self, width: int, fillchar: str = None) -> bytearray: pass
     @overload
     def ljust(self, width: int, fillchar: bytearray = None) -> bytearray: pass
     def lower(self) -> bytearray: pass
     @overload
-    def lstrip(self, chars: bytes = None) -> bytearray: pass
+    def lstrip(self, chars: str = None) -> bytearray: pass
     @overload
     def lstrip(self, chars: bytearray = None) -> bytearray: pass
     @overload
-    def partition(self, sep: bytes) -> Tuple[bytearray, bytearray,
+    def partition(self, sep: str) -> Tuple[bytearray, bytearray,
                                              bytearray]: pass
     @overload
     def partition(self, sep: bytearray) -> Tuple[bytearray, bytearray,
                                                  bytearray]: pass
     @overload
-    def replace(self, old: bytes, new: bytes,
+    def replace(self, old: str, new: str,
                 count: int = -1) -> bytearray: pass
     @overload
     def replace(self, old: bytearray, new: bytearray,
                 count: int = -1) -> bytearray: pass
     @overload
-    def rfind(self, sub: bytes, start: int = 0) -> int: pass
+    def rfind(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def rfind(self, sub: bytes, start: int, end: int) -> int: pass
+    def rfind(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def rfind(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
     @overload
-    def rindex(self, sub: bytes, start: int = 0) -> int: pass
+    def rindex(self, sub: str, start: int = 0) -> int: pass
     @overload
-    def rindex(self, sub: bytes, start: int, end: int) -> int: pass
+    def rindex(self, sub: str, start: int, end: int) -> int: pass
     @overload
     def rindex(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
     @overload
-    def rjust(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    def rjust(self, width: int, fillchar: str = None) -> bytearray: pass
     @overload
     def rjust(self, width: int, fillchar: bytearray = None) -> bytearray: pass
     @overload
-    def rpartition(self, sep: bytes) -> Tuple[bytearray, bytearray,
+    def rpartition(self, sep: str) -> Tuple[bytearray, bytearray,
                                               bytearray]: pass
     @overload
     def rpartition(self, sep: bytearray) -> Tuple[bytearray, bytearray,
                                                   bytearray]:pass
     @overload
-    def rsplit(self, sep: bytes = None,
+    def rsplit(self, sep: str = None,
                maxsplit: int = -1) -> List[bytearray]: pass
     @overload
     def rsplit(self, sep: bytearray = None,
                maxsplit: int = -1) -> List[bytearray]: pass
     @overload
-    def rstrip(self, chars: bytes = None) -> bytearray: pass
+    def rstrip(self, chars: str = None) -> bytearray: pass
     @overload
     def rstrip(self, chars: bytearray = None) -> bytearray: pass
     @overload
-    def split(self, sep: bytes = None,
+    def split(self, sep: str = None,
               maxsplit: int = -1) -> List[bytearray]: pass
     @overload
     def split(self, sep: bytearray = None,
               maxsplit: int = -1) -> List[bytearray]: pass
     def splitlines(self, keepends: bool = False) -> List[bytearray]: pass
     @overload
-    def startswith(self, prefix: bytes) -> bool: pass
+    def startswith(self, prefix: str) -> bool: pass
     @overload
     def startswith(self, prefix: bytearray) -> bool: pass
     @overload
-    def strip(self, chars: bytes = None) -> bytearray: pass
+    def strip(self, chars: str = None) -> bytearray: pass
     @overload
     def strip(self, chars: bytearray = None) -> bytearray: pass
     def swapcase(self) -> bytearray: pass
     def title(self) -> bytearray: pass
     @overload
-    def translate(self, table: bytes) -> bytearray: pass
+    def translate(self, table: str) -> bytearray: pass
     @overload
     def translate(self, table: bytearray) -> bytearray: pass
     def upper(self) -> bytearray: pass
@@ -613,17 +618,26 @@ class bytearray(Sequence[int]):
     def __getitem__(self, i: int) -> int: pass
     @overload
     def __getitem__(self, s: slice) -> bytearray: pass
+
+    def __getslice__(self, start: int, stop: int) -> bytearray: pass
+    
     @overload
     def __setitem__(self, i: int, x: int) -> None: pass
     @overload
     def __setitem__(self, s: slice, x: Sequence[int]) -> None: pass
+
+    def __setslice__(self, start: int, stop: int,
+                     x: Sequence[int]) -> None: pass
+    
     @overload
     def __delitem__(self, i: int) -> None: pass
     @overload
     def __delitem__(self, s: slice) -> None: pass
     
+    def __delslice__(self, start: int, stop: int) -> None: pass
+    
     @overload
-    def __add__(self, s: bytes) -> bytearray: pass    
+    def __add__(self, s: str) -> bytearray: pass    
     @overload
     def __add__(self, s: bytearray) -> bytearray: pass
     
@@ -694,15 +708,23 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     @overload
     def __getitem__(self, i: int) -> T: pass
     @overload
-    def __getitem__(self, s: slice) -> List[T]: pass    
+    def __getitem__(self, s: slice) -> List[T]: pass
+    
+    def __getslice__(self, start: int, stop: int) -> List[T]: pass
+    
     @overload
     def __setitem__(self, i: int, o: T) -> None: pass
     @overload
     def __setitem__(self, s: slice, o: Sequence[T]) -> None: pass
+    
+    def __setslice__(self, start: int, stop: int, o: Sequence[T]) -> None: pass
+    
     @overload
     def __delitem__(self, i: int) -> None: pass
     @overload
     def __delitem__(self, s: slice) -> None: pass
+
+    def __delslice(self, start: int, stop: int) -> None: pass
     
     def __add__(self, x: List[T]) -> List[T]: pass
     def __mul__(self, n: int) -> List[T]: pass
@@ -749,9 +771,9 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     @overload
     def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
 
-    def keys(self) -> Set[KT]: pass
-    def values(self) -> Set[VT]: pass
-    def items(self) -> Set[Tuple[KT, VT]]: pass
+    def keys(self) -> List[KT]: pass
+    def values(self) -> List[VT]: pass
+    def items(self) -> List[Tuple[KT, VT]]: pass
 
 
 class set(AbstractSet[T], Generic[T]):
@@ -802,26 +824,6 @@ class enumerate(Iterator[Tuple[int, T]], Generic[T]):
     # TODO __getattribute__
 
 
-class range(Sequence[int], Reversible[int]):
-    @overload
-    def __init__(self, stop: int) -> None: pass
-    @overload
-    def __init__(self, start: int, stop: int, step: int = 1) -> None: pass
-    
-    def count(self, value: int) -> int: pass
-    def index(self, value: int, start: int = 0, stop: int = None) -> int: pass
-    
-    def __len__(self) -> int: pass
-    def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[int]: pass
-    @overload
-    def __getitem__(self, i: int) -> int: pass
-    @overload
-    def __getitem__(self, s: slice) -> range: pass
-    def __repr__(self) -> str: pass
-    def __reversed__(self) -> Iterator[int]: pass
-
-
 class module:
     __name__ = ''
     __file__ = ''
@@ -846,7 +848,6 @@ def abs(n: SupportsAbs[T]) -> T: pass
 
 def all(i: Iterable) -> bool: pass
 def any(i: Iterable) -> bool: pass
-def ascii(o: object) -> str: pass
 def callable(o: object) -> bool: pass
 def chr(code: int) -> str: pass
 def delattr(o: Any, name: str) -> None: pass
@@ -858,7 +859,7 @@ def divmod(a: int, b: int) -> Tuple[int, int]: pass
 def divmod(a: float, b: float) -> Tuple[float, float]: pass
 
 def filter(function: Function[[T], Any],
-           iterable: Iterable[T]) -> Iterator[T]: pass
+           iterable: Iterable[T]) -> List[T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
 def getattr(o: Any, name: str, default: Any = None) -> Any: pass
 def hasattr(o: Any, name: str) -> bool: pass
@@ -866,7 +867,7 @@ def hash(o: object) -> int: pass
 # TODO __index__
 def hex(i: int) -> str: pass
 def id(o: object) -> int: pass
-def input(prompt: str = None) -> str: pass
+def input(prompt: str = None) -> Any: pass
 
 @overload
 def iter(iterable: Iterable[T]) -> Iterator[T]: pass
@@ -885,11 +886,11 @@ def len(o: Sized) -> int: pass
 
 # TODO more than two iterables
 @overload
-def map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]: pass
+def map(func: Function[[T1], S], iter1: Iterable[T1]) -> List[S]: pass
 @overload
 def map(func: Function[[T1, T2], S],
         iter1: Iterable[T1],
-        iter2: Iterable[T2]) -> Iterator[S]: pass
+        iter2: Iterable[T2]) -> List[S]: pass
 
 # TODO keyword argument key
 @overload
@@ -929,12 +930,9 @@ def open(file: int, mode: str = 'r', buffering: int = -1, encoding: str = None,
 @overload
 def ord(c: str) -> int: pass
 @overload
-def ord(c: bytes) -> int: pass
+def ord(c: unicode) -> int: pass
 @overload
 def ord(c: bytearray) -> int: pass
-
-def print(*values: Any, *, sep: str = ' ', end: str = '\n',
-           file: TextIO = None) -> None: pass
 
 # The return type can be int or float, depending on the value of y.
 @overload
@@ -947,6 +945,9 @@ def pow(x: float, y: float) -> float: pass
 def pow(x: float, y: float, z: float) -> float: pass
 
 # TODO property
+
+def range(x: int, y: int = 0, step: int = 1) -> List[int]: pass
+def raw_input(prompt: str = None) -> str: pass
 
 @overload
 def reversed(object: Reversible[T]) -> Iterator[T]: pass
@@ -966,22 +967,24 @@ def round(number: SupportsRound[T]) -> T: pass
 def round(number: SupportsRound[T], ndigits: int) -> T: pass
 
 def setattr(object: Any, name: str, value: Any) -> None: pass
-def sorted(iterable: Iterable[T], *, key: Function[[T], Any] = None,
+def sorted(iterable: Iterable[T], *,
+           cmp: Function[[T, T], int] = None,
+           key: Function[[T], Any] = None,
            reverse: bool = False) -> List[T]: pass
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
 
 # TODO more than four iterables
 @overload
-def zip(iter1: Iterable[T1]) -> Iterator[Tuple[T1]]: pass
+def zip(iter1: Iterable[T1]) -> List[Tuple[T1]]: pass
 @overload
 def zip(iter1: Iterable[T1],
-        iter2: Iterable[T2]) -> Iterator[Tuple[T1, T2]]: pass
+        iter2: Iterable[T2]) -> List[Tuple[T1, T2]]: pass
 @overload
 def zip(iter1: Iterable[T1], iter2: Iterable[T2],
-        iter3: Iterable[T3]) -> Iterator[Tuple[T1, T2, T3]]: pass
+        iter3: Iterable[T3]) -> List[Tuple[T1, T2, T3]]: pass
 @overload
 def zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3],
-        iter4: Iterable[T4]) -> Iterator[Tuple[T1, T2, T3, T4]]: pass
+        iter4: Iterable[T4]) -> List[Tuple[T1, T2, T3, T4]]: pass
 
 def __import__(name: str,
                globals: Dict[str, Any] = {},
@@ -1001,37 +1004,38 @@ class GeneratorExit(BaseException): pass
 class KeyboardInterrupt(BaseException): pass
 class SystemExit(BaseException): pass
 
-# Base classes
 class Exception(BaseException): pass
-class ArithmeticError(Exception): pass
-class EnvironmentError(Exception):
+class StopIteration(Exception): pass
+class StandardError(Exception): pass
+
+class ArithmeticError(StandardError): pass
+class EnvironmentError(StandardError):
     errno = 0
     strerror = ''
-    filename = '' # TODO can this be bytes?
-class LookupError(Exception): pass
-class RuntimeError(Exception): pass
-class ValueError(Exception): pass
+    filename = '' # TODO can this be unicode?
+class LookupError(StandardError): pass
+class RuntimeError(StandardError): pass
+class ValueError(StandardError): pass
 
-class AssertionError(Exception): pass
-class AttributeError(Exception): pass
-class EOFError(Exception): pass
+class AssertionError(StandardError): pass
+class AttributeError(StandardError): pass
+class EOFError(StandardError): pass
 class FloatingPointError(ArithmeticError): pass
 class IOError(EnvironmentError): pass
-class ImportError(Exception): pass
+class ImportError(StandardError): pass
 class IndexError(LookupError): pass
 class KeyError(LookupError): pass
-class MemoryError(Exception): pass
-class NameError(Exception): pass
+class MemoryError(StandardError): pass
+class NameError(StandardError): pass
 class NotImplementedError(RuntimeError): pass
 class OSError(EnvironmentError): pass
 class OverflowError(ArithmeticError): pass
-class ReferenceError(Exception): pass
-class StopIteration(Exception): pass
-class SyntaxError(Exception): pass
+class ReferenceError(StandardError): pass
+class SyntaxError(StandardError): pass
 class IndentationError(SyntaxError): pass
 class TabError(IndentationError): pass
-class SystemError(Exception): pass
-class TypeError(Exception): pass
+class SystemError(StandardError): pass
+class TypeError(StandardError): pass
 class UnboundLocalError(NameError): pass
 class UnicodeError(ValueError): pass
 class UnicodeDecodeError(UnicodeError): pass
