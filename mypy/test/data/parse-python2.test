@@ -1,0 +1,26 @@
+-- Test cases for parser -- Python 2 syntax.
+--
+-- See parse.test for a description of this file format.
+
+[case testEmptyFile]
+[out]
+MypyFile:1()
+
+[case testStringLiterals]
+'bar'
+u'foo'
+ur'foo'
+u'''bar'''
+b'foo'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(bar))
+  ExpressionStmt:2(
+    UnicodeExpr(foo))
+  ExpressionStmt:3(
+    UnicodeExpr(foo))
+  ExpressionStmt:4(
+    UnicodeExpr(bar))
+  ExpressionStmt:5(
+    StrExpr(foo)))

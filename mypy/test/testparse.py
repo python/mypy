@@ -15,11 +15,16 @@ from mypy.errors import CompileError
 
 
 class ParserSuite(Suite):
+    parse_files = ['parse.test',
+                   'parse-python2.test']
+
     def cases(self):
-        # The test case descriptions are stored in an external file.
-        return parse_test_cases(
-            os.path.join(config.test_data_prefix, 'parse.test'),
-            test_parser)
+        # The test case descriptions are stored in data files.
+        c = []
+        for f in self.parse_files:
+            c += parse_test_cases(
+                os.path.join(config.test_data_prefix, f), test_parser)
+        return c
 
 
 def test_parser(testcase):
@@ -28,8 +33,12 @@ def test_parser(testcase):
     The argument contains the description of the test case.
     """
     
+    pyversion = 3
+    if testcase.file.endswith('python2.test'):
+        pyversion = 2
+    
     try:
-        n = parse('\n'.join(testcase.input))
+        n = parse('\n'.join(testcase.input), pyversion=pyversion)
         a = str(n).split('\n')
     except CompileError as e:
         a = e.messages

@@ -715,6 +715,18 @@ class BytesExpr(Node):
         return visitor.visit_bytes_expr(self)
 
 
+class UnicodeExpr(Node):
+    """Unicode literal (Python 2.x)"""
+    
+    value = '' # TODO use bytes
+    
+    def __init__(self, value: str) -> None:
+        self.value = value
+    
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_unicode_expr(self)
+
+
 class FloatExpr(Node):
     """Float literal"""
     

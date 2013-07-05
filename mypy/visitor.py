@@ -96,6 +96,8 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_bytes_expr(self, o: 'mypy.nodes.BytesExpr') -> T:
         pass
+    def visit_unicode_expr(self, o: 'mypy.nodes.UnicodeExpr') -> T:
+        pass
     def visit_float_expr(self, o: 'mypy.nodes.FloatExpr') -> T:
         pass
     def visit_paren_expr(self, o: 'mypy.nodes.ParenExpr') -> T:

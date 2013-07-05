@@ -9,9 +9,10 @@ import re
 from typing import Undefined, List, Tuple, Any, Set, cast
 
 from mypy import lex
-from mypy.lex import (Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit,
-                 StrLit, BytesLit, FloatLit, Op, Indent, Keyword, Punct,
-                 LexError)
+from mypy.lex import (
+    Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
+    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError
+)
 import mypy.types
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
@@ -20,9 +21,9 @@ from mypy.nodes import (
     YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr, ParenExpr,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
-    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, FloatExpr,
-    CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr, UnaryExpr,
-    FuncExpr, TypeApplication
+    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
+    FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
+    UnaryExpr, FuncExpr, TypeApplication
 )
 from mypy import nodes
 from mypy import noderepr
@@ -60,13 +61,17 @@ op_assign = set([
 none = Token('') # Empty token
 
 
-def parse(s: str, fnam: str = None, errors: Errors = None) -> MypyFile:
+def parse(s: str, fnam: str = None, errors: Errors = None,
+          pyversion: int = 3) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
+
+    The pyversion argument determines the Python syntax variant (2 for 2.x and
+    3 for 3.x).
     """
-    parser = Parser(fnam, errors)
+    parser = Parser(fnam, errors, pyversion)
     tree = parser.parse(s)
     tree.path = fnam
     return tree
@@ -83,8 +88,9 @@ class Parser:
     # All import nodes encountered so far in this parse unit.
     imports = Undefined(List[Node])
     
-    def __init__(self, fnam: str, errors: Errors) -> None:
+    def __init__(self, fnam: str, errors: Errors, pyversion: int) -> None:
         self.raise_on_error = errors is None
+        self.pyversion = pyversion
         if errors is not None:
             self.errors = errors
         else:
@@ -985,16 +991,14 @@ class Parser:
                 # Name expression.
                 expr = self.parse_name_expr()
             elif isinstance(self.current(), IntLit):
-                # Integer literal.
                 expr = self.parse_int_expr()
             elif isinstance(self.current(), StrLit):
-                # String literal.
                 expr = self.parse_str_expr()
             elif isinstance(self.current(), BytesLit):
-                # Bytes literal.
-                expr = self.parse_bytes_expr()
+                expr = self.parse_bytes_literal()
+            elif isinstance(self.current(), UnicodeLit):
+                expr = self.parse_unicode_expr()
             elif isinstance(self.current(), FloatLit):
-                # Float literal.
                 expr = self.parse_float_expr()
             else:
                 # Invalid expression.
@@ -1230,7 +1234,7 @@ class Parser:
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     
-    def parse_bytes_expr(self) -> BytesExpr:
+    def parse_bytes_literal(self) -> Node:
         # XXX \uxxxx literals
         tok = [self.expect_type(BytesLit)]
         value = (cast(BytesLit, tok[0])).parsed()
@@ -1238,7 +1242,22 @@ class Parser:
             t = cast(BytesLit, self.skip())
             tok.append(t)
             value += t.parsed()
-        node = BytesExpr(value)
+        if self.pyversion >= 3:
+            node = BytesExpr(value) # type: Node
+        else:
+            node = StrExpr(value)
+        self.set_repr(node, noderepr.StrExprRepr(tok))
+        return node
+    
+    def parse_unicode_expr(self) -> UnicodeExpr:
+        # XXX \uxxxx literals
+        tok = [self.expect_type(UnicodeLit)]
+        value = (cast(UnicodeLit, tok[0])).parsed()
+        while isinstance(self.current(), UnicodeLit):
+            t = cast(UnicodeLit, self.skip())
+            tok.append(t)
+            value += t.parsed()
+        node = UnicodeExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     

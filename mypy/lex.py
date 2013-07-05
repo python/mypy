@@ -203,7 +203,7 @@ escape_map = {'a': '\x07',
 
 
 # Matches the optional prefix of a string literal, e.g. the 'r' in r"foo".
-str_prefix_re = re.compile('[rRbB]*')
+str_prefix_re = re.compile('[rRbBuU]*')
 
 # Matches an escape sequence in a string, e.g. \n or \x4F.
 escape_re = re.compile(
