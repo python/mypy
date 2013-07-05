@@ -206,10 +206,10 @@ class unicode(Sequence[unicode]):
     def __init__(self, o: object) -> None: pass
     @overload
     def __init__(self, o: str, encoding: str = None,
-                 errors: str = u'strict') -> None: pass
+                 errors: str = 'strict') -> None: pass
     @overload
     def __init__(self, o: bytearray, encoding: str = None,
-                 errors: str = u'strict') -> None: pass
+                 errors: str = 'strict') -> None: pass
 
     def capitalize(self) -> unicode: pass
     def center(self, width: int, fillchar: unicode = u' ') -> unicode: pass
@@ -246,7 +246,7 @@ class unicode(Sequence[unicode]):
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
     def join(self, iterable: Iterable[unicode]) -> unicode: pass
-    def ljust(self, width: int, fillchar: unicode = ' ') -> unicode: pass
+    def ljust(self, width: int, fillchar: unicode = u' ') -> unicode: pass
     def lower(self) -> unicode: pass
     def lstrip(self, chars: unicode = None) -> unicode: pass
     def partition(self, sep: unicode) -> Tuple[unicode, unicode, unicode]: pass
@@ -302,7 +302,7 @@ class unicode(Sequence[unicode]):
     def __len__(self) -> int: pass
     def __contains__(self, s: object) -> bool: pass
     def __iter__(self) -> Iterator[unicode]: pass
-    def __str__(self) -> str: return self
+    def __str__(self) -> str: pass
     def __repr__(self) -> str: pass
     def __int__(self) -> int: pass
     def __float__(self) -> float: pass
@@ -435,7 +435,7 @@ class str(Sequence[str]):
     def zfill(self, width: int) -> str: pass
     
     def __len__(self) -> int: pass
-    def __iter__(self) -> Iterator[int]: pass
+    def __iter__(self) -> Iterator[str]: pass
     def __str__(self) -> str: pass
     def __repr__(self) -> str: pass
     def __int__(self) -> int: pass
@@ -443,7 +443,7 @@ class str(Sequence[str]):
     def __hash__(self) -> int: pass
     
     @overload
-    def __getitem__(self, i: int) -> int: pass
+    def __getitem__(self, i: int) -> str: pass
     @overload
     def __getitem__(self, s: slice) -> str: pass
 
@@ -919,7 +919,7 @@ def open(file: str, mode: str = 'r', buffering: int = -1, encoding: str = None,
          errors: str = None, newline: str = None,
          closefd: bool = True) -> Any: pass
 @overload
-def open(file: bytes, mode: str = 'r', buffering: int = -1,
+def open(file: unicode, mode: str = 'r', buffering: int = -1,
          encoding: str = None, errors: str = None, newline: str = None,
          closefd: bool = True) -> Any: pass
 @overload
