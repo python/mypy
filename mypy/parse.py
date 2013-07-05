@@ -997,7 +997,7 @@ class Parser:
             elif isinstance(self.current(), BytesLit):
                 expr = self.parse_bytes_literal()
             elif isinstance(self.current(), UnicodeLit):
-                expr = self.parse_unicode_expr()
+                expr = self.parse_unicode_literal()
             elif isinstance(self.current(), FloatLit):
                 expr = self.parse_float_expr()
             else:
@@ -1249,7 +1249,7 @@ class Parser:
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     
-    def parse_unicode_expr(self) -> UnicodeExpr:
+    def parse_unicode_literal(self) -> Node:
         # XXX \uxxxx literals
         tok = [self.expect_type(UnicodeLit)]
         value = (cast(UnicodeLit, tok[0])).parsed()
@@ -1257,7 +1257,11 @@ class Parser:
             t = cast(UnicodeLit, self.skip())
             tok.append(t)
             value += t.parsed()
-        node = UnicodeExpr(value)
+        if self.pyversion >= 3:
+            # Python 3.3 supports u'...' as an alias of '...'.
+            node = StrExpr(value) # type: Node
+        else:
+            node = UnicodeExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     

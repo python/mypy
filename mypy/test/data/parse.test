@@ -179,6 +179,13 @@ MypyFile:1(
   ExpressionStmt:2(
     BytesExpr(\u0001>)))
 
+[case testUnicodeLiteralInPython3]
+u'foo'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StrExpr(foo)))
+
 [case testArrays]
 a = []
 a = [1, 2]
