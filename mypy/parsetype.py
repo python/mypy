@@ -176,14 +176,26 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
     return result
 
 
-def parse_signature(tokens: List[Token]) -> Tuple[Type, int]:
-    """Parse signature of form (...) -> ..."""
+def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
+    """Parse signature of form (...) -> ...
+
+    Return tuple (signature type, token index).
+    """
     i = 0
     if tokens[i].string != '(':
         raise TypeParseError(tokens[i], i)
     i += 1
     arg_types = List[Type]()
+    arg_kinds = List[int]()
     while tokens[i].string != ')':
+        if tokens[i].string == '*':
+            arg_kinds.append(nodes.ARG_STAR)
+            i += 1
+        elif tokens[i].string == '**':
+            arg_kinds.append(nodes.ARG_STAR2)
+            i += 1
+        else:
+            arg_kinds.append(nodes.ARG_POS)
         arg, i = parse_type(tokens, i)
         arg_types.append(arg)
         next = tokens[i].string
@@ -197,6 +209,6 @@ def parse_signature(tokens: List[Token]) -> Tuple[Type, int]:
     i += 2
     ret_type, i = parse_type(tokens, i)
     return Callable(arg_types,
-                    [nodes.ARG_POS] * len(arg_types),
+                    arg_kinds,
                     [None] * len(arg_types),
                     ret_type, False), i

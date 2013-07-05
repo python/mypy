@@ -475,3 +475,18 @@ main, line 9: Incompatible types in assignment
 main, line 10: Incompatible types in assignment
 main, line 11: Argument 1 to "f" of "G" has incompatible type List[A]
 main, line 11: Incompatible types in assignment
+
+
+-- Comment signatures
+-- ------------------
+
+
+[case testVarArgsAndCommentSignature]
+import typing
+def f(*x): # type: (*int) -> None
+    pass
+f(1)
+f(1, 2)
+f('') # E: Argument 1 to "f" has incompatible type "str"
+f(1, '') # E: Argument 2 to "f" has incompatible type "str"
+[builtins fixtures/list.py]

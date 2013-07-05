@@ -2509,3 +2509,35 @@ MypyFile:1(
     def (x: X?) -> Y?
     Block:1(
       PassStmt:5())))
+
+[case testCommentFunctionAnnotationAndVarArg]
+def f(x, *y): # type: (X, *Y) -> Z
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    def (x: X?, *y: Y?) -> Z?
+    VarArg(
+      Var(y))
+    Block:1(
+      PassStmt:2())))
+
+[case testCommentFunctionAnnotationAndAllVarArgs]
+def f(x, *y, **z): # type: (X, *Y, **Z) -> A
+  pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    def (x: X?, *y: Y?, **z: Z?) -> A?
+    VarArg(
+      Var(y))
+    DictVarArg(
+      Var(z))
+    Block:1(
+      PassStmt:2())))

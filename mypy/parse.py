@@ -315,6 +315,9 @@ class Parser:
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(Callable, comment_type)
                 if is_method:
+                    self.check_argument_kinds(kinds,
+                                              [nodes.ARG_POS] + sig.arg_kinds,
+                                              def_tok.line)
                     # Add implicit 'self' argument to signature.
                     typ = Callable(List[Type]([AnyType()]) + sig.arg_types,
                                    kinds,
@@ -322,6 +325,8 @@ class Parser:
                                    sig.ret_type,
                                    False)
                 else:
+                    self.check_argument_kinds(kinds, sig.arg_kinds,
+                                              def_tok.line)
                     typ = Callable(sig.arg_types,
                                    kinds,
                                    [arg.name() for arg in args],
@@ -342,6 +347,23 @@ class Parser:
         finally:
             self.errors.pop_function()
             self.is_class_body = is_method
+
+    def check_argument_kinds(self, funckinds: List[int], sigkinds: List[int],
+                             line: int) -> None:
+        """Check that * and ** arguments are consistent.
+
+        Arguments:
+          funckinds: kinds of arguments in function definition
+          sigkinds:  kinds of arguments in signature (after # type:)
+        """
+        for kind, token in [(nodes.ARG_STAR, '*'),
+                            (nodes.ARG_STAR2, '**')]:
+            if ((kind in funckinds and
+                 sigkinds[funckinds.index(kind)] != kind) or
+                (funckinds.count(kind) != sigkinds.count(kind))):
+                self.fail(
+                    "Inconsistent use of '{}' in function "
+                    "signature".format(token), line)
     
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
                                              List[int], Type, bool,
@@ -1523,10 +1545,10 @@ class Parser:
                 self.errors.report(token.line, 'Empty type annotation')
                 return None
             try:
-                if signature:
-                    type, index = parse_signature(tokens)
-                else:
+                if not signature:
                     type, index = parse_types(tokens, 0)
+                else:
+                    type, index = parse_signature(tokens)
             except TypeParseError as e:
                 self.parse_error_at(e.token, skip=False)
                 return None

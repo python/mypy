@@ -245,6 +245,13 @@ def f(): # type: (x) -> .
 file: In function "f":
 file, line 1: Parse error before .
 
+[case testInvalidSignatureInComment10]
+def f(): # type: (x) -> x x
+  pass
+[out]
+file: In function "f":
+file, line 1: Parse error before "x"
+
 [case testDuplicateSignatures1]
 def f() -> None: # type: () -> None
   pass
@@ -260,3 +267,28 @@ def f(x, y: Z): # type: (x, y) -> z
 [out]
 file: In function "f":
 file, line 1: Function has duplicate type signatures
+
+[case testCommentFunctionAnnotationVarArgMispatch]
+def f(x): # type: (*X) -> Y
+    pass
+def g(*x): # type: (X) -> Y
+    pass
+[out]
+file: In function "f":
+file, line 1: Inconsistent use of '*' in function signature
+file: In function "g":
+file, line 3: Inconsistent use of '*' in function signature
+
+[case testCommentFunctionAnnotationVarArgMispatch2]
+def f(*x, **y): # type: (**X, *Y) -> Z
+    pass
+def g(*x, **y): # type: (*X, *Y) -> Z
+    pass
+[out]
+file: In function "f":
+file, line 1: Inconsistent use of '*' in function signature
+file, line 1: Inconsistent use of '**' in function signature
+file: In function "g":
+file, line 3: Inconsistent use of '*' in function signature
+file, line 3: Inconsistent use of '**' in function signature
+
