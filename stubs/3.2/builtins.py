@@ -46,6 +46,8 @@ class type:
 
 class int(SupportsInt, SupportsFloat):
     @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: SupportsInt) -> None: pass
     @overload
     def __init__(self, x: str) -> None: pass
@@ -133,6 +135,8 @@ class int(SupportsInt, SupportsFloat):
     
 class float(SupportsFloat, SupportsInt):
     @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: SupportsFloat) -> None: pass
     @overload
     def __init__(self, x: str) -> None: pass
@@ -195,6 +199,8 @@ class complex:
 class str(Sequence[str]):
     # TODO maketrans
     
+    @overload
+    def __init__(self) -> None: pass
     @overload
     def __init__(self, o: object) -> None: pass
     @overload
@@ -633,7 +639,7 @@ class bytearray(Sequence[int]):
 
 
 class bool(int, SupportsInt, SupportsFloat):
-    def __init__(self, o: object) -> None: pass
+    def __init__(self, o: object = False) -> None: pass
 
 
 class slice:

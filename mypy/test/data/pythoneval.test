@@ -309,3 +309,16 @@ print(bool(''))
 [out]
 True
 False
+
+[case testCallBuiltinTypeObjectsWithoutArguments]
+print(int())
+print(repr(str()))
+print(repr(bytes()))
+print(float())
+print(bool())
+[out]
+0
+''
+b''
+0.0
+False
