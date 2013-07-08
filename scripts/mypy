@@ -44,7 +44,7 @@ def main() -> None:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
         for m in e.messages:
-            print(m)
+            sys.stderr.write(m + '\n')
         sys.exit(1)
 
 
