@@ -56,7 +56,8 @@ class TypeChecker(NodeVisitor[Type]):
     locals = Undefined(SymbolTable)
     modules = Undefined(Dict[str, MypyFile])
     
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
+                 pyversion: int = 3) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -65,6 +66,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.expr_checker
         self.errors = errors
         self.modules = modules
+        self.pyversion = pyversion
         self.msg = MessageBuilder(errors)
         self.type_map = {}
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)

@@ -297,7 +297,8 @@ class BuildManager:
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
         self.type_checker = TypeChecker(self.errors,
-                                        self.semantic_analyzer.modules)
+                                        self.semantic_analyzer.modules,
+                                        self.pyversion)
         self.states = List[State]()
         self.module_files = Dict[str, str]()
         self.icode = Dict[str, FuncIcode]()
