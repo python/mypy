@@ -746,6 +746,8 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def __contains__(self, o: object) -> bool: pass
     def __iter__(self) -> Iterator[KT]: pass
     def __str__(self) -> str: pass
+
+    def has_key(self, k: KT) -> bool: pass
     
     def clear(self) -> None: pass
     def copy(self) -> Dict[KT, VT]: pass
