@@ -15,9 +15,11 @@ import subprocess
 import sys
 import tempfile
 
+import typing
+from typing import List, Tuple
+
 from mypy import build
 from mypy.errors import CompileError
-from typing import List, Tuple
 
 
 class Options:
@@ -64,6 +66,13 @@ def type_check_only(path: str, module: str, args: List[str],
             opts = ['-m', module]
         else:
             opts = [path]
+        if (options.pyversion == 2 and
+                os.path.dirname(typing.__file__).endswith(
+                    os.path.join('lib-typing', '3.2')) and
+                os.path.isdir('lib-typing')):            
+            # We are running Python 2.x test cases and we must force the 2.x
+            # typing module to be used.
+            os.environ['PYTHONPATH'] = os.path.join('lib-typing', '2.7')
         status = subprocess.call([options.interpreter] + opts + args)
         sys.exit(status)
 

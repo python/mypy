@@ -29,7 +29,9 @@ from mypy.test.helpers import assert_string_arrays_equal
 python_eval_files = ['pythoneval.test']
 
 # Path to Python 3 interpreter
-python_path = 'python3'
+python3_path = 'python3'
+# Path to Python 2 interpreter
+python2_path = 'python'
 
 
 class PythonEvaluationSuite(Suite):
@@ -49,15 +51,21 @@ def test_python_evaluation(testcase):
     for s in testcase.input:
         f.write('{}\n'.format(s))
     f.close()
+    # Use Python 2 interpreter if running a Python 2 test case.
+    if testcase.name.lower().endswith('python2'):
+        args = ['--py2', python2_path]
+    else:
+        args = []
     # Set up module path.
     typing_path = os.path.join(os.getcwd(), 'lib-typing', '3.2')
     assert os.path.isdir(typing_path)
     os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
     os.environ['MYPYPATH'] = '.'
     # Run the program.
-    outb = subprocess.check_output([python_path,
-                                    os.path.join('scripts', 'mypy'),
-                                    program])
+    outb = subprocess.check_output([python3_path,
+                                    os.path.join('scripts', 'mypy')] +
+                                   args +
+                                   [program])
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
