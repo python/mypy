@@ -68,7 +68,7 @@ class Iterable(AbstractGeneric[T]):
 
 class Iterator(Iterable[T], AbstractGeneric[T]):
     @abstractmethod
-    def __next__(self) -> T: pass
+    def next(self) -> T: pass
 
 class Sequence(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod

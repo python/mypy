@@ -339,3 +339,11 @@ for i in range(3):
 sys.stdout.write('\n')
 [out]
 01012
+
+[case testIterator_python2]
+import typing, sys
+x = iter('bar')
+sys.stdout.write(x.next())
+sys.stdout.write(x.next())
+[out]
+ba

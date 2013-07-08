@@ -722,7 +722,11 @@ class TypeChecker(NodeVisitor[Type]):
         method = echk.analyse_external_member_access('__iter__', iterable,
                                                      expr)
         iterator = echk.check_call(method, [], [], expr)[0]
-        method = echk.analyse_external_member_access('__next__', iterator,
+        if self.pyversion >= 3:
+            nextmethod = '__next__'
+        else:
+            nextmethod = 'next'
+        method = echk.analyse_external_member_access(nextmethod, iterator,
                                                      expr)
         return echk.check_call(method, [], [], expr)[0]
 

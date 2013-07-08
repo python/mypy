@@ -817,7 +817,7 @@ class frozenset(AbstractSet[T], Generic[T]):
 class enumerate(Iterator[Tuple[int, T]], Generic[T]):
     def __init__(self, iterable: Iterable[T], start: int = 0) -> None: pass
     def __iter__(self) -> Iterator[Tuple[int, T]]: pass
-    def __next__(self) -> Tuple[int, T]: pass
+    def next(self) -> Tuple[int, T]: pass
     # TODO __getattribute__
 
 
