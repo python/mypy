@@ -50,7 +50,7 @@ def test_python_evaluation(testcase):
         f.write('{}\n'.format(s))
     f.close()
     # Set up module path.
-    typing_path = os.path.join(os.getcwd(), 'lib-typing')
+    typing_path = os.path.join(os.getcwd(), 'lib-typing', '3.2')
     assert os.path.isdir(typing_path)
     os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
     os.environ['MYPYPATH'] = '.'
