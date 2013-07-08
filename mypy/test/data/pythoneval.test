@@ -328,3 +328,14 @@ import typing
 x = unicode('xyz', 'latin1')
 x = u'foo'
 [out]
+
+[case testXrangeAndRange_python2]
+import typing
+import sys
+for i in xrange(2):
+    sys.stdout.write(str(i))
+for i in range(3):
+    sys.stdout.write(str(i))
+sys.stdout.write('\n')
+[out]
+01012
