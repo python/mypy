@@ -322,3 +322,9 @@ print(bool())
 b''
 0.0
 False
+
+[case testUnicode_python2]
+import typing
+x = unicode('xyz', 'latin1')
+x = u'foo'
+[out]
