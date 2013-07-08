@@ -139,13 +139,18 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
     def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
     
-    # TODO use views for the return values instead
     @abstractmethod
     def keys(self) -> list[KT]: pass
     @abstractmethod
     def values(self) -> list[VT]: pass
     @abstractmethod
     def items(self) -> list[Tuple[KT, VT]]: pass
+    @abstractmethod
+    def iterkeys(self) -> Iterator[KT]: pass
+    @abstractmethod
+    def itervalues(self) -> Iterator[VT]: pass
+    @abstractmethod
+    def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
 
 class IO(metaclass=ABCMeta):    
     # TODO iteration

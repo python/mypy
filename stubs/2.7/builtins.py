@@ -768,6 +768,9 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def keys(self) -> List[KT]: pass
     def values(self) -> List[VT]: pass
     def items(self) -> List[Tuple[KT, VT]]: pass
+    def iterkeys(self) -> Iterator[KT]: pass
+    def itervalues(self) -> Iterator[VT]: pass
+    def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
 
 
 class set(AbstractSet[T], Generic[T]):
