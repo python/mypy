@@ -311,11 +311,17 @@ class Undefined(object):
     def __eq__(self, other):
         raise TypeError("'Undefined' object cannot be compared")
 
+    def __ne__(self, other):
+        raise TypeError("'Undefined' object cannot be compared")
+
     def __call__(self, type):
         return self
 
     def __nonzero__(self):
         raise TypeError("'Undefined' object is not valid as a boolean")
+
+    def __hash__(self):
+        raise TypeError("'Undefined' object is not hashable")
 
 
 Undefined = Undefined()
