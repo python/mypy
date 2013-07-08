@@ -1,4 +1,4 @@
-"""Static type checking helpers"""
+u"""Static type checking helpers"""
 
 from abc import ABCMeta, abstractmethod
 import inspect
@@ -8,61 +8,62 @@ import re
 
 __all__ = [
     # Type system related
-    'AbstractGeneric',
-    'AbstractGenericMeta',
-    'Any',
-    'BytesMatch',
-    'BytesPattern',
-    'Dict',
-    'Generic',
-    'GenericMeta',
-    'List',
-    'Match',
-    'Pattern',
-    'Protocol',
-    'Set',
-    'Tuple',
-    'Undefined',
-    'cast',
-    'forwardref',
-    'overload',
-    'typevar',
+    u'AbstractGeneric',
+    u'AbstractGenericMeta',
+    u'Any',
+    u'BytesMatch',
+    u'BytesPattern',
+    u'Dict',
+    u'Generic',
+    u'GenericMeta',
+    u'List',
+    u'Match',
+    u'Pattern',
+    u'Protocol',
+    u'Set',
+    u'Tuple',
+    u'Undefined',
+    u'cast',
+    u'forwardref',
+    u'overload',
+    u'typevar',
     # Protocols and abstract base classes
-    'Container',
-    'Iterable',
-    'Iterator',
-    'Sequence',
-    'Sized',
-    'AbstractSet',
-    'Mapping',
-    'IO',
-    'TextIO',
+    u'Container',
+    u'Iterable',
+    u'Iterator',
+    u'Sequence',
+    u'Sized',
+    u'AbstractSet',
+    u'Mapping',
+    u'IO',
+    u'TextIO',
 ]
 
 
 class GenericMeta(type):
-    """Metaclass for generic classes that support indexing by types."""
+    u"""Metaclass for generic classes that support indexing by types."""
     
     def __getitem__(self, args):
         # Just ignore args; they are for compile-time checks only.
         return self
 
 
-class Generic(metaclass=GenericMeta):
-    """Base class for generic classes."""
+class Generic():
+    __metaclass__ = GenericMeta
+    u"""Base class for generic classes."""
 
 
 class AbstractGenericMeta(ABCMeta):
-    """Metaclass for abstract generic classes that support type indexing.
+    u"""Metaclass for abstract generic classes that support type indexing.
 
     This is used for both protocols and ordinary abstract classes.
     """
     
     def __new__(mcls, name, bases, namespace):
-        cls = super().__new__(mcls, name, bases, namespace)
+        cls = super(mcls.__class__, mcls).__new__(mcls, name, bases, namespace)
         # 'Protocol' must be an explicit base class in order for a class to
         # be a protocol.
-        cls._is_protocol = name == 'Protocol' or Protocol in bases
+        cls._is_protocol = name == u'Protocol' or Protocol in bases
         return cls
     
     def __getitem__(self, args):
@@ -70,8 +71,9 @@ class AbstractGenericMeta(ABCMeta):
         return self
 
 
-class Protocol(metaclass=AbstractGenericMeta):
-    """Base class for protocol classes."""
+class Protocol():
+    __metaclass__ = AbstractGenericMeta
+    u"""Base class for protocol classes."""
 
     @classmethod
     def __subclasshook__(cls, c):
@@ -96,7 +98,7 @@ class Protocol(metaclass=AbstractGenericMeta):
         # Get all Protocol base classes.
         protocol_bases = []
         for c in cls.__mro__:
-            if getattr(c, '_is_protocol', False) and c.__name__ != 'Protocol':
+            if getattr(c, u'_is_protocol', False) and c.__name__ != u'Protocol':
                 protocol_bases.append(c)
         
         # Get attributes included in protocol.
@@ -106,26 +108,27 @@ class Protocol(metaclass=AbstractGenericMeta):
                 # Include attributes not defined in any non-protocol bases.
                 for c in cls.__mro__:
                     if (c is not base and attr in c.__dict__ and
-                            not getattr(c, '_is_protocol', False)):
+                            not getattr(c, u'_is_protocol', False)):
                         break
                 else:
-                    if (not attr.startswith('_abc_') and
-                        attr != '__abstractmethods__' and
-                        attr != '_is_protocol' and
-                        attr != '__dict__' and
-                        attr != '_get_protocol_attrs' and
-                        attr != '__module__'):
+                    if (not attr.startswith(u'_abc_') and
+                        attr != u'__abstractmethods__' and
+                        attr != u'_is_protocol' and
+                        attr != u'__dict__' and
+                        attr != u'_get_protocol_attrs' and
+                        attr != u'__module__'):
                         attrs.add(attr)
         
         return attrs
 
 
-class AbstractGeneric(metaclass=AbstractGenericMeta):
-    """Base class for abstract generic classes."""
+class AbstractGeneric():
+    __metaclass__ = AbstractGenericMeta
+    u"""Base class for abstract generic classes."""
 
 
-class TypeAlias:
-    """Class for defining generic aliases for library types."""
+class TypeAlias(object):
+    u"""Class for defining generic aliases for library types."""
     
     def __init__(self, target_type):
         self.target_type = target_type
@@ -142,29 +145,29 @@ Tuple = TypeAlias(tuple)
 Function = TypeAlias(callable)
 
 # Give names to some built-in types.
-Pattern = type(re.compile(''))
+Pattern = type(re.compile(u''))
 BytesPattern = Pattern # TODO Pattern and BytesPattern shouldn't be the same!
-Match = type(re.match('', ''))
+Match = type(re.match(u'', u''))
 BytesMatch = Match # TODO See above.
 
 
-class typevar:
+class typevar(object):
     def __init__(self, name):
         self.name = name
 
 
-class forwardref:
+class forwardref(object):
     def __init__(self, name):
         self.name = name
 
 
 def Any(x):
-    """The Any type; can also be used to cast a value to type Any."""
+    u"""The Any type; can also be used to cast a value to type Any."""
     return x
 
 
 def cast(type, object):
-    """Cast a value to a type.
+    u"""Cast a value to a type.
 
     This only affects static checking; simply return object at runtime.
     """
@@ -172,7 +175,7 @@ def cast(type, object):
 
 
 def overload(func):
-    """Function decorator for defining overloaded functions."""
+    u"""Function decorator for defining overloaded functions."""
     frame = sys._getframe(1)
     locals = frame.f_locals
     # See if there is a previous overload variant available.  Also verify
@@ -180,7 +183,7 @@ def overload(func):
     # the definition.  The latter is actually important if we want to reload
     # a library module such as genericpath with a custom one that uses
     # overloading in the implementation.
-    if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
+    if func.__name__ in locals and hasattr(locals[func.__name__], u'dispatch'):
         orig_func = locals[func.__name__]
         
         def wrapper(*args, **kwargs):
@@ -192,7 +195,7 @@ def overload(func):
         wrapper.dispatch = make_dispatcher(func, orig_func.dispatch)
         wrapper.next = orig_func
         wrapper.__name__ = func.__name__
-        if hasattr(func, '__isabstractmethod__'):
+        if hasattr(func, u'__isabstractmethod__'):
             # Note that we can't reliably check that abstractmethod is
             # used consistently across overload variants, so we let a
             # static checker do it.
@@ -211,12 +214,12 @@ def is_erased_type(t):
 
 
 def make_dispatcher(func, previous=None):
-    """Create argument dispatcher for an overloaded function.
+    u"""Create argument dispatcher for an overloaded function.
 
     Also handle chaining of multiple overload variants.
     """
     (args, varargs, varkw, defaults,
-     kwonlyargs, kwonlydefaults, annotations) = inspect.getfullargspec(func)
+     kwonlyargs, kwonlydefaults, annotations) = inspect.getargspec(func)
     
     argtypes = []
     for arg in args:
@@ -225,7 +228,7 @@ def make_dispatcher(func, previous=None):
             ann = ann.name
         if is_erased_type(ann):
             ann = None
-        elif isinstance(ann, str):
+        elif isinstance(ann, unicode):
             # The annotation is a string => evaluate it lazily when the
             # overloaded function is first called.
             frame = sys._getframe(2)
@@ -261,7 +264,7 @@ def make_dispatcher(func, previous=None):
             # Invalid argument count.
             return None, False
         
-        for i in range(nargs):
+        for i in xrange(nargs):
             argtype = argtypes[i]
             if argtype:
                 if isinstance(argtype, type):
@@ -276,8 +279,8 @@ def make_dispatcher(func, previous=None):
     return dispatch
 
 
-class Undefined:
-    """Class that represents an undefined value with a specified type.
+class Undefined(object):
+    u"""Class that represents an undefined value with a specified type.
 
     At runtime the name Undefined is bound to an instance of this
     class.  The intent is that any operation on an Undefined object
@@ -301,19 +304,19 @@ class Undefined:
     """
     
     def __repr__(self):
-        return '<typing.Undefined>'
+        return u'<typing.Undefined>'
 
     def __setattr__(self, attr, value):
-        raise AttributeError("'Undefined' object has no attribute '%s'" % attr)
+        raise AttributeError(u"'Undefined' object has no attribute '%s'" % attr)
 
     def __eq__(self, other):
-        raise TypeError("'Undefined' object cannot be compared")
+        raise TypeError(u"'Undefined' object cannot be compared")
 
     def __call__(self, type):
         return self
 
-    def __bool__(self):
-        raise TypeError("'Undefined' object is not valid as a boolean")
+    def __nonzero__(self):
+        raise TypeError(u"'Undefined' object is not valid as a boolean")
 
 
 Undefined = Undefined()
@@ -322,92 +325,92 @@ Undefined = Undefined()
 # Abstract classes
 
 
-T = typevar('T')
-KT = typevar('KT')
-VT = typevar('VT')
+T = typevar(u'T')
+KT = typevar(u'KT')
+VT = typevar(u'VT')
 
 
 class SupportsInt(Protocol):
     @abstractmethod
-    def __int__(self) -> int: pass
+    def __int__(self): pass
 
 
 class SupportsFloat(Protocol):
     @abstractmethod
-    def __float__(self) -> float: pass
+    def __float__(self): pass
 
 
 class SupportsAbs(Protocol[T]):
     @abstractmethod
-    def __abs__(self) -> T: pass
+    def __abs__(self): pass
 
 
 class SupportsRound(Protocol[T]):
     @abstractmethod
-    def __round__(self, ndigits: int = 0) -> T: pass
+    def __round__(self, ndigits = 0): pass
 
 
 class Reversible(Protocol[T]):
     @abstractmethod
-    def __reversed__(self) -> 'Iterator[T]': pass
+    def __reversed__(self): pass
 
 
 class Sized(Protocol):
     @abstractmethod
-    def __len__(self) -> int: pass
+    def __len__(self): pass
 
 
 class Container(Protocol[T]):
     @abstractmethod
-    def __contains__(self, x) -> bool: pass
+    def __contains__(self, x): pass
 
 
 class Iterable(Protocol[T]):
     @abstractmethod
-    def __iter__(self) -> 'Iterator[T]': pass
+    def __iter__(self): pass
 
 
 class Iterator(Iterable[T], Protocol[T]):
     @abstractmethod
-    def __next__(self) -> T: pass
+    def __next__(self): pass
 
 
 class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     @abstractmethod
     @overload
-    def __getitem__(self, i: int) -> T: pass
+    def __getitem__(self, i): pass
     
     @abstractmethod
     @overload
-    def __getitem__(self, s: slice) -> 'Sequence[T]': pass
+    def __getitem__(self, s): pass
     
     @abstractmethod
-    def __reversed__(self, s: slice) -> Iterator[T]: pass
+    def __reversed__(self, s): pass
     
     @abstractmethod
-    def index(self, x) -> int: pass
+    def index(self, x): pass
     
     @abstractmethod
-    def count(self, x) -> int: pass
+    def count(self, x): pass
 
 
-for t in list, tuple, str, bytes, range:
+for t in list, tuple, unicode, str, range:
     Sequence.register(t)
 
 
 class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod
-    def __contains__(self, x: object) -> bool: pass
+    def __contains__(self, x): pass
     @abstractmethod
-    def __and__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    def __and__(self, s): pass
     @abstractmethod
-    def __or__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    def __or__(self, s): pass
     @abstractmethod
-    def __sub__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    def __sub__(self, s): pass
     @abstractmethod
-    def __xor__(self, s: 'AbstractSet[T]') -> 'AbstractSet[T]': pass
+    def __xor__(self, s): pass
     @abstractmethod
-    def isdisjoint(self, s: 'AbstractSet[T]') -> bool: pass
+    def isdisjoint(self, s): pass
 
 
 for t in set, frozenset, type({}.keys()), type({}.items()):
@@ -416,52 +419,52 @@ for t in set, frozenset, type({}.keys()), type({}.items()):
 
 class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
-    def __getitem__(self, k: KT) -> VT: pass
+    def __getitem__(self, k): pass
     @abstractmethod
-    def __setitem__(self, k: KT, v: VT) -> None: pass
+    def __setitem__(self, k, v): pass
     @abstractmethod
-    def __delitem__(self, v: KT) -> None: pass
+    def __delitem__(self, v): pass
     @abstractmethod
-    def __contains__(self, o: object) -> bool: pass
+    def __contains__(self, o): pass
 
     @abstractmethod
-    def clear(self) -> None: pass
+    def clear(self): pass
     @abstractmethod
-    def copy(self) -> 'Mapping[KT, VT]': pass
+    def copy(self): pass
     @overload
     @abstractmethod
-    def get(self, k: KT) -> VT: pass
+    def get(self, k): pass
     @overload
     @abstractmethod
-    def get(self, k: KT, default: VT) -> VT: pass
+    def get(self, k, default): pass
     @overload
     @abstractmethod
-    def pop(self, k: KT) -> VT: pass
+    def pop(self, k): pass
     @overload
     @abstractmethod
-    def pop(self, k: KT, default: VT) -> VT: pass
+    def pop(self, k, default): pass
     @abstractmethod
-    def popitem(self) -> Tuple[KT, VT]: pass
+    def popitem(self): pass
     @overload
     @abstractmethod
-    def setdefault(self, k: KT) -> VT: pass
+    def setdefault(self, k): pass
     @overload
     @abstractmethod
-    def setdefault(self, k: KT, default: VT) -> VT: pass
+    def setdefault(self, k, default): pass
     
     @overload
     @abstractmethod
-    def update(self, m: 'Mapping[KT, VT]') -> None: pass
+    def update(self, m): pass
     @overload
     @abstractmethod
-    def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
+    def update(self, m): pass
     
     @abstractmethod
-    def keys(self) -> AbstractSet[KT]: pass
+    def keys(self): pass
     @abstractmethod
-    def values(self) -> AbstractSet[VT]: pass
+    def values(self): pass
     @abstractmethod
-    def items(self) -> AbstractSet[Tuple[KT, VT]]: pass
+    def items(self): pass
 
 
 # TODO Consider more types: os.environ, etc. However, these add dependencies.
@@ -471,88 +474,90 @@ Mapping.register(dict)
 # Note that the IO and TextIO classes must be in sync with typing module stubs.
 
 
-class IO(metaclass=ABCMeta):
+class IO():
+    __metaclass__ = ABCMeta
     @abstractmethod
-    def close(self) -> None: pass
+    def close(self): pass
     @abstractmethod
-    def closed(self) -> bool: pass
+    def closed(self): pass
     @abstractmethod
-    def fileno(self) -> int: pass
+    def fileno(self): pass
     @abstractmethod
-    def flush(self) -> None: pass
+    def flush(self): pass
     @abstractmethod
-    def isatty(self) -> bool: pass
+    def isatty(self): pass
     @abstractmethod
-    def read(self, n: int = -1) -> bytes: pass
+    def read(self, n = -1): pass
     @abstractmethod
-    def readable(self) -> bool: pass
+    def readable(self): pass
     @abstractmethod
-    def readline(self, limit: int = -1) -> bytes: pass
+    def readline(self, limit = -1): pass
     @abstractmethod
-    def readlines(self, hint: int = -1) -> List[bytes]: pass
+    def readlines(self, hint = -1): pass
     @abstractmethod
-    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seek(self, offset, whence = 0): pass
     @abstractmethod
-    def seekable(self) -> bool: pass
+    def seekable(self): pass
     @abstractmethod
-    def tell(self) -> int: pass
+    def tell(self): pass
     @abstractmethod
-    def truncate(self, size: int = None) -> int: pass
+    def truncate(self, size = None): pass
     @abstractmethod
-    def writable(self) -> bool: pass
+    def writable(self): pass
     @overload
     @abstractmethod
-    def write(self, s: bytes) -> int: pass
+    def write(self, s): pass
     @overload
     @abstractmethod
-    def write(self, s: bytearray) -> int: pass
+    def write(self, s): pass
     @abstractmethod
-    def writelines(self, lines: List[bytes]) -> None: pass
+    def writelines(self, lines): pass
 
     @abstractmethod
-    def __enter__(self) -> 'IO': pass
+    def __enter__(self): pass
     @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback): pass
 
 
-class TextIO(metaclass=ABCMeta):
+class TextIO():
+    __metaclass__ = ABCMeta
     @abstractmethod
-    def close(self) -> None: pass
+    def close(self): pass
     @abstractmethod
-    def closed(self) -> bool: pass
+    def closed(self): pass
     @abstractmethod
-    def fileno(self) -> int: pass
+    def fileno(self): pass
     @abstractmethod
-    def flush(self) -> None: pass
+    def flush(self): pass
     @abstractmethod
-    def isatty(self) -> bool: pass
+    def isatty(self): pass
     @abstractmethod
-    def read(self, n: int = -1) -> str: pass
+    def read(self, n = -1): pass
     @abstractmethod
-    def readable(self) -> bool: pass
+    def readable(self): pass
     @abstractmethod
-    def readline(self, limit: int = -1) -> str: pass
+    def readline(self, limit = -1): pass
     @abstractmethod
-    def readlines(self, hint: int = -1) -> List[str]: pass
+    def readlines(self, hint = -1): pass
     @abstractmethod
-    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seek(self, offset, whence = 0): pass
     @abstractmethod
-    def seekable(self) -> bool: pass
+    def seekable(self): pass
     @abstractmethod
-    def tell(self) -> int: pass
+    def tell(self): pass
     @abstractmethod
-    def truncate(self, size: int = None) -> int: pass
+    def truncate(self, size = None): pass
     @abstractmethod
-    def writable(self) -> bool: pass
+    def writable(self): pass
     @abstractmethod
-    def write(self, s: str) -> int: pass
+    def write(self, s): pass
     @abstractmethod
-    def writelines(self, lines: List[str]) -> None: pass
+    def writelines(self, lines): pass
 
     @abstractmethod
-    def __enter__(self) -> 'TextIO': pass
+    def __enter__(self): pass
     @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback): pass
 
 
 # TODO Register [Text]IO as the base class of file-like types.
