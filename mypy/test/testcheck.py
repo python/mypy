@@ -8,7 +8,7 @@ from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
 from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
 
@@ -47,15 +47,12 @@ class TypeCheckSuite(Suite):
     
     def run_test(self, testcase):
         a = []
-        pyversion = 3
-        if testcase.file.endswith('python2.test'):
-            pyversion = 2
         try:
             src = '\n'.join(testcase.input)
             build.build('main',
                         target=build.TYPE_CHECK,
                         program_text=src,
-                        pyversion=pyversion,
+                        pyversion=testfile_pyversion(testcase.file),
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:

@@ -229,3 +229,10 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
            and a1[-num_eq - 1] == a2[-num_eq - 1]):
         num_eq += 1
     return max(0, num_eq - 4)
+
+
+def testfile_pyversion(path: str) -> int:
+    if path.endswith('python2.test'):
+        return 2
+    else:
+        return 3
