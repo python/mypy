@@ -821,6 +821,18 @@ class enumerate(Iterator[Tuple[int, T]], Generic[T]):
     # TODO __getattribute__
 
 
+class xrange(Sized, Iterable[int], Reversible[int]):
+    @overload
+    def __init__(self, stop: int) -> None: pass
+    @overload
+    def __init__(self, start: int, stop: int, step: int = 1) -> None: pass
+    
+    def __len__(self) -> int: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __getitem__(self, i: int) -> int: pass
+    def __reversed__(self) -> Iterator[int]: pass
+
+
 class module:
     __name__ = ''
     __file__ = ''
