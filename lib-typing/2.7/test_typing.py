@@ -6,8 +6,7 @@ from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
     Function, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
     Sequence, AbstractSet, Mapping, IO, TextIO, SupportsInt, SupportsFloat,
-    SupportsAbs, SupportsRound, Reversible, Undefined, cast, forwardref,
-    overload, typevar
+    SupportsAbs, Reversible, Undefined, cast, forwardref, overload, typevar
 )
 
 
@@ -401,12 +400,6 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(1, SupportsAbs)
         self.assertNotIsInstance(u'', SupportsAbs)
         self.assertNotIsInstance((), SupportsAbs)
-
-    def test_supports_round(self):
-        self.assertIsInstance(1.1, SupportsRound)
-        self.assertIsInstance(1, SupportsRound)
-        self.assertNotIsInstance(u'', SupportsRound)
-        self.assertNotIsInstance((), SupportsRound)
 
     def test_reversible(self):
         self.assertIsInstance([], Reversible)

@@ -350,11 +350,6 @@ class SupportsAbs(Protocol[T]):
     def __abs__(self): pass
 
 
-class SupportsRound(Protocol[T]):
-    @abstractmethod
-    def __round__(self, ndigits = 0): pass
-
-
 class Reversible(Protocol[T]):
     @abstractmethod
     def __reversed__(self): pass
