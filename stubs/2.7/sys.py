@@ -1,10 +1,12 @@
 # Stubs for sys
 # Ron Murawski <ron@horizonchess.com>
 
-# based on http://docs.python.org/3.2/library/sys.html
+# based on http://docs.python.org/2.7/library/sys.html
+
+# Partially adapted to Python 2.7 by Jukka Lehtosalo.
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload
+    Undefined, List, Sequence, Any, Dict, Tuple, IO, overload
 )
 
 # ----- sys variables -----
@@ -35,13 +37,12 @@ platform = ''
 prefix = ''
 ps1 = ''
 ps2 = ''
-stdin = Undefined(TextIO)
-stdout = Undefined(TextIO)
-stderr = Undefined(TextIO)
-__stdin__ = Undefined(TextIO)
-__stdout__ = Undefined(TextIO)
-__stderr__ = Undefined(TextIO)
-# deprecated and removed in Python 3.3:
+stdin = Undefined(IO)
+stdout = Undefined(IO)
+stderr = Undefined(IO)
+__stdin__ = Undefined(IO)
+__stdout__ = Undefined(IO)
+__stderr__ = Undefined(IO)
 subversion = Undefined(Tuple[str, str, str])
 tracebacklimit = 0
 version = ''
