@@ -899,7 +899,7 @@ class UnaryExpr(Node):
         return visitor.visit_unary_expr(self)
 
 
-# Map from binary operator id to related method name.
+# Map from binary operator id to related method name (in Python 3).
 op_methods = {
     '+': '__add__',
     '-': '__sub__',

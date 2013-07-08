@@ -721,7 +721,7 @@ class ExpressionChecker:
             else:
                 return self.chk.bool_type()
         elif e.op in nodes.op_methods:
-            method = nodes.op_methods[e.op]
+            method = self.get_operator_method(e.op)
             result, method_type = self.check_op(method, left_type, e.right, e)
             e.method_type = method_type
             return result
@@ -729,6 +729,13 @@ class ExpressionChecker:
             return self.chk.bool_type()
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
+
+    def get_operator_method(self, op: str) -> str:
+        if op == '/' and self.chk.pyversion == 2:
+            # TODO also check for "from __future__ import division"
+            return '__div__'
+        else:
+            return nodes.op_methods[op]
     
     def check_op(self, method: str, base_type: Type, arg: Node,
                  context: Context) -> Tuple[Type, Type]:

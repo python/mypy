@@ -14,3 +14,11 @@ s = b'foo'
 import typing
 print ''() # E: "str" not callable
 print 1, 1() # E: "int" not callable
+
+[case testDivision]
+import typing
+class A:
+    def __div__(self, x: int) -> str: pass
+s = A() / 1
+s = ''
+s = 1 # E: Incompatible types in assignment
