@@ -326,24 +326,29 @@ False
 [case testUnicode_python2]
 import typing
 x = unicode('xyz', 'latin1')
+print x
 x = u'foo'
+print x
 [out]
+xyz
+foo
 
 [case testXrangeAndRange_python2]
 import typing
-import sys
 for i in xrange(2):
-    sys.stdout.write(str(i))
+    print i
 for i in range(3):
-    sys.stdout.write(str(i))
-sys.stdout.write('\n')
+    print i
 [out]
-01012
+0
+1
+0
+1
+2
 
 [case testIterator_python2]
 import typing, sys
 x = iter('bar')
-sys.stdout.write(x.next())
-sys.stdout.write(x.next())
+print x.next(), x.next()
 [out]
-ba
+b a
