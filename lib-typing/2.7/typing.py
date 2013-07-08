@@ -8,59 +8,59 @@ import re
 
 __all__ = [
     # Type system related
-    u'AbstractGeneric',
-    u'AbstractGenericMeta',
-    u'Any',
-    u'BytesMatch',
-    u'BytesPattern',
-    u'Dict',
-    u'Generic',
-    u'GenericMeta',
-    u'List',
-    u'Match',
-    u'Pattern',
-    u'Protocol',
-    u'Set',
-    u'Tuple',
-    u'Undefined',
-    u'cast',
-    u'forwardref',
-    u'overload',
-    u'typevar',
+    'AbstractGeneric',
+    'AbstractGenericMeta',
+    'Any',
+    'BytesMatch',
+    'BytesPattern',
+    'Dict',
+    'Generic',
+    'GenericMeta',
+    'List',
+    'Match',
+    'Pattern',
+    'Protocol',
+    'Set',
+    'Tuple',
+    'Undefined',
+    'cast',
+    'forwardref',
+    'overload',
+    'typevar',
     # Protocols and abstract base classes
-    u'Container',
-    u'Iterable',
-    u'Iterator',
-    u'Sequence',
-    u'Sized',
-    u'AbstractSet',
-    u'Mapping',
-    u'IO',
-    u'TextIO',
+    'Container',
+    'Iterable',
+    'Iterator',
+    'Sequence',
+    'Sized',
+    'AbstractSet',
+    'Mapping',
+    'IO',
+    'TextIO',
 ]
 
 
 class GenericMeta(type):
-    u"""Metaclass for generic classes that support indexing by types."""
+    """Metaclass for generic classes that support indexing by types."""
     
     def __getitem__(self, args):
         # Just ignore args; they are for compile-time checks only.
         return self
 
 
-class Generic():
+class Generic(object):
     __metaclass__ = GenericMeta
-    u"""Base class for generic classes."""
+    """Base class for generic classes."""
 
 
 class AbstractGenericMeta(ABCMeta):
-    u"""Metaclass for abstract generic classes that support type indexing.
+    """Metaclass for abstract generic classes that support type indexing.
 
     This is used for both protocols and ordinary abstract classes.
     """
     
     def __new__(mcls, name, bases, namespace):
-        cls = super(mcls.__class__, mcls).__new__(mcls, name, bases, namespace)
+        cls = ABCMeta.__new__(mcls, name, bases, namespace)
         # 'Protocol' must be an explicit base class in order for a class to
         # be a protocol.
         cls._is_protocol = name == u'Protocol' or Protocol in bases
@@ -71,9 +71,9 @@ class AbstractGenericMeta(ABCMeta):
         return self
 
 
-class Protocol():
+class Protocol(object):
     __metaclass__ = AbstractGenericMeta
-    u"""Base class for protocol classes."""
+    """Base class for protocol classes."""
 
     @classmethod
     def __subclasshook__(cls, c):
@@ -98,7 +98,7 @@ class Protocol():
         # Get all Protocol base classes.
         protocol_bases = []
         for c in cls.__mro__:
-            if getattr(c, u'_is_protocol', False) and c.__name__ != u'Protocol':
+            if getattr(c, '_is_protocol', False) and c.__name__ != 'Protocol':
                 protocol_bases.append(c)
         
         # Get attributes included in protocol.
@@ -108,27 +108,27 @@ class Protocol():
                 # Include attributes not defined in any non-protocol bases.
                 for c in cls.__mro__:
                     if (c is not base and attr in c.__dict__ and
-                            not getattr(c, u'_is_protocol', False)):
+                            not getattr(c, '_is_protocol', False)):
                         break
                 else:
                     if (not attr.startswith(u'_abc_') and
-                        attr != u'__abstractmethods__' and
-                        attr != u'_is_protocol' and
-                        attr != u'__dict__' and
-                        attr != u'_get_protocol_attrs' and
-                        attr != u'__module__'):
+                        attr != '__abstractmethods__' and
+                        attr != '_is_protocol' and
+                        attr != '__dict__' and
+                        attr != '_get_protocol_attrs' and
+                        attr != '__module__'):
                         attrs.add(attr)
         
         return attrs
 
 
-class AbstractGeneric():
+class AbstractGeneric(object):
     __metaclass__ = AbstractGenericMeta
-    u"""Base class for abstract generic classes."""
+    """Base class for abstract generic classes."""
 
 
 class TypeAlias(object):
-    u"""Class for defining generic aliases for library types."""
+    """Class for defining generic aliases for library types."""
     
     def __init__(self, target_type):
         self.target_type = target_type
@@ -162,12 +162,12 @@ class forwardref(object):
 
 
 def Any(x):
-    u"""The Any type; can also be used to cast a value to type Any."""
+    """The Any type; can also be used to cast a value to type Any."""
     return x
 
 
 def cast(type, object):
-    u"""Cast a value to a type.
+    """Cast a value to a type.
 
     This only affects static checking; simply return object at runtime.
     """
@@ -175,7 +175,7 @@ def cast(type, object):
 
 
 def overload(func):
-    u"""Function decorator for defining overloaded functions."""
+    """Function decorator for defining overloaded functions."""
     frame = sys._getframe(1)
     locals = frame.f_locals
     # See if there is a previous overload variant available.  Also verify
@@ -183,7 +183,7 @@ def overload(func):
     # the definition.  The latter is actually important if we want to reload
     # a library module such as genericpath with a custom one that uses
     # overloading in the implementation.
-    if func.__name__ in locals and hasattr(locals[func.__name__], u'dispatch'):
+    if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
         orig_func = locals[func.__name__]
         
         def wrapper(*args, **kwargs):
@@ -195,7 +195,7 @@ def overload(func):
         wrapper.dispatch = make_dispatcher(func, orig_func.dispatch)
         wrapper.next = orig_func
         wrapper.__name__ = func.__name__
-        if hasattr(func, u'__isabstractmethod__'):
+        if hasattr(func, '__isabstractmethod__'):
             # Note that we can't reliably check that abstractmethod is
             # used consistently across overload variants, so we let a
             # static checker do it.
@@ -214,16 +214,15 @@ def is_erased_type(t):
 
 
 def make_dispatcher(func, previous=None):
-    u"""Create argument dispatcher for an overloaded function.
+    """Create argument dispatcher for an overloaded function.
 
     Also handle chaining of multiple overload variants.
     """
-    (args, varargs, varkw, defaults,
-     kwonlyargs, kwonlydefaults, annotations) = inspect.getargspec(func)
+    (args, varargs, varkw, defaults) = inspect.getargspec(func)
     
     argtypes = []
     for arg in args:
-        ann = annotations.get(arg)
+        ann = None # annotations.get(arg)
         if isinstance(ann, forwardref):
             ann = ann.name
         if is_erased_type(ann):
@@ -280,7 +279,7 @@ def make_dispatcher(func, previous=None):
 
 
 class Undefined(object):
-    u"""Class that represents an undefined value with a specified type.
+    """Class that represents an undefined value with a specified type.
 
     At runtime the name Undefined is bound to an instance of this
     class.  The intent is that any operation on an Undefined object
@@ -304,19 +303,19 @@ class Undefined(object):
     """
     
     def __repr__(self):
-        return u'<typing.Undefined>'
+        return '<typing.Undefined>'
 
     def __setattr__(self, attr, value):
-        raise AttributeError(u"'Undefined' object has no attribute '%s'" % attr)
+        raise AttributeError("'Undefined' object has no attribute '%s'" % attr)
 
     def __eq__(self, other):
-        raise TypeError(u"'Undefined' object cannot be compared")
+        raise TypeError("'Undefined' object cannot be compared")
 
     def __call__(self, type):
         return self
 
     def __nonzero__(self):
-        raise TypeError(u"'Undefined' object is not valid as a boolean")
+        raise TypeError("'Undefined' object is not valid as a boolean")
 
 
 Undefined = Undefined()
@@ -325,9 +324,9 @@ Undefined = Undefined()
 # Abstract classes
 
 
-T = typevar(u'T')
-KT = typevar(u'KT')
-VT = typevar(u'VT')
+T = typevar('T')
+KT = typevar('KT')
+VT = typevar('VT')
 
 
 class SupportsInt(Protocol):
@@ -377,11 +376,9 @@ class Iterator(Iterable[T], Protocol[T]):
 
 class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     @abstractmethod
-    @overload
     def __getitem__(self, i): pass
     
     @abstractmethod
-    @overload
     def __getitem__(self, s): pass
     
     @abstractmethod
@@ -394,7 +391,7 @@ class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     def count(self, x): pass
 
 
-for t in list, tuple, unicode, str, range:
+for t in list, tuple, unicode, str:
     Sequence.register(t)
 
 
@@ -431,31 +428,23 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     def clear(self): pass
     @abstractmethod
     def copy(self): pass
-    @overload
     @abstractmethod
     def get(self, k): pass
-    @overload
     @abstractmethod
     def get(self, k, default): pass
-    @overload
     @abstractmethod
     def pop(self, k): pass
-    @overload
     @abstractmethod
     def pop(self, k, default): pass
     @abstractmethod
     def popitem(self): pass
-    @overload
     @abstractmethod
     def setdefault(self, k): pass
-    @overload
     @abstractmethod
     def setdefault(self, k, default): pass
     
-    @overload
     @abstractmethod
     def update(self, m): pass
-    @overload
     @abstractmethod
     def update(self, m): pass
     
@@ -474,7 +463,7 @@ Mapping.register(dict)
 # Note that the IO and TextIO classes must be in sync with typing module stubs.
 
 
-class IO():
+class IO(object):
     __metaclass__ = ABCMeta
     @abstractmethod
     def close(self): pass
@@ -519,7 +508,7 @@ class IO():
     def __exit__(self, type, value, traceback): pass
 
 
-class TextIO():
+class TextIO(object):
     __metaclass__ = ABCMeta
     @abstractmethod
     def close(self): pass
