@@ -397,7 +397,7 @@ class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     def count(self, x): pass
 
 
-for t in list, tuple, unicode, str:
+for t in list, tuple, unicode, str, xrange:
     Sequence.register(t)
 
 
