@@ -377,3 +377,15 @@ print d.has_key(2)
 [out]
 True
 False
+
+[case testIntegerDivision_python2]
+x = 1 / 2
+x = 2
+[out]
+
+[case testFloatDivision_python2]
+x = 1.0 / 2.0
+x = 1.0 / 2
+x = 1 / 2.0
+x = 1.5
+[out]

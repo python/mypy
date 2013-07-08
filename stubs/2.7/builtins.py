@@ -86,7 +86,12 @@ class int(SupportsInt, SupportsFloat):
     def __floordiv__(self, x: float) -> float: pass
     
     @overload
-    def __truediv__(self, x: int) -> int: pass
+    def __div__(self, x: int) -> int: pass
+    @overload
+    def __div__(self, x: float) -> float: pass
+    
+    @overload
+    def __truediv__(self, x: int) -> float: pass
     @overload
     def __truediv__(self, x: float) -> float: pass
     
@@ -158,6 +163,10 @@ class float(SupportsFloat, SupportsInt):
     def __floordiv__(self, x: float) -> float: pass
     @overload
     def __floordiv__(self, x: int) -> float: pass
+    @overload
+    def __div__(self, x: float) -> float: pass
+    @overload
+    def __div__(self, x: int) -> float: pass
     @overload
     def __truediv__(self, x: float) -> float: pass
     @overload
