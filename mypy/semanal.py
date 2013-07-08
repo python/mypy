@@ -55,7 +55,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, ARG_POS, MroError, type_aliases
+    StrExpr, PrintStmt, ARG_POS, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -934,6 +934,10 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_global_decl(self, g: GlobalDecl) -> None:
         for n in g.names:
             self.global_decls[-1].add(n)
+
+    def visit_print_stmt(self, s: PrintStmt) -> None:
+        for arg in s.args:
+            arg.accept(self)
     
     #
     # Expressions

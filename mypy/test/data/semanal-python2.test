@@ -1,0 +1,10 @@
+-- Python 2 semantic analysis test cases.
+
+[case testPrintStatement]
+print int, None
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(int [builtins.int])
+    NameExpr(None [builtins.None])
+    Newline))
