@@ -208,8 +208,10 @@ class unicode(Sequence[unicode]):
     def capitalize(self) -> unicode: pass
     def center(self, width: int, fillchar: unicode = u' ') -> unicode: pass
     def count(self, x: unicode) -> int: pass
-    def encode(self, encoding: unicode = u'utf-8',
-               errors: unicode = u'strict') -> str: pass
+    def decode(self, encoding: str = 'utf-8',
+               errors: str = 'strict') -> unicode: pass
+    def encode(self, encoding: str = 'utf-8',
+               errors: str = 'strict') -> str: pass
     # TODO tuple suffix; None value for int
     def endswith(self, suffix: unicode, start: int = 0,
                  end: int = None) -> bool: pass
@@ -321,6 +323,8 @@ class str(Sequence[str]):
     def count(self, x: bytearray) -> int: pass
     def decode(self, encoding: str = 'utf-8',
                errors: str = 'strict') -> unicode: pass
+    def encode(self, encoding: str = 'utf-8',
+               errors: str = 'strict') -> str: pass
     @overload
     def endswith(self, suffix: str) -> bool: pass
     @overload
