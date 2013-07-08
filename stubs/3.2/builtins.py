@@ -91,7 +91,7 @@ class int(SupportsInt, SupportsFloat):
     def __floordiv__(self, x: float) -> float: pass
     
     @overload
-    def __truediv__(self, x: int) -> int: pass
+    def __truediv__(self, x: int) -> float: pass
     @overload
     def __truediv__(self, x: float) -> float: pass
     
