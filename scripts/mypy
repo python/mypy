@@ -86,6 +86,13 @@ def compile_to_c(path: str, module: str, args: List[str],
 
 
 def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
+    """Process command line arguments.
+
+    Return (mypy program path (or None),
+            module to run as script (or None),
+            remaining arguments, passed to mypy program
+            parsed flags)
+    """
     options = Options()
     if sys.executable:
         options.interpreter = sys.executable
