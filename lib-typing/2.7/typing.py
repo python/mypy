@@ -377,7 +377,7 @@ class Iterable(Protocol[T]):
 
 class Iterator(Iterable[T], Protocol[T]):
     @abstractmethod
-    def __next__(self): pass
+    def next(self): pass
 
 
 class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
