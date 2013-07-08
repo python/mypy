@@ -373,10 +373,6 @@ class TestTyping(unittest.TestCase):
         
         self.assertIsInstance(set(), AbstractSet)
         self.assertIsInstance(frozenset(), AbstractSet)
-        self.assertIsInstance({}.keys(), AbstractSet)
-        self.assertIsInstance({}.items(), AbstractSet)
-        # This is consistent with collections.Set.
-        self.assertNotIsInstance({}.values(), AbstractSet)
 
     def test_mapping(self):
         self.assertIs(Mapping[int, unicode], Mapping)
