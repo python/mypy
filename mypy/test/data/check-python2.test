@@ -9,3 +9,8 @@ s = ''
 s = u'foo' # E: Incompatible types in assignment
 s = b'foo'
 [builtins fixtures/python2.py]
+
+[case testPrintStatement]
+import typing
+print ''() # E: "str" not callable
+print 1, 1() # E: "int" not callable

@@ -13,7 +13,7 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr
+    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -797,6 +797,10 @@ class TypeChecker(NodeVisitor[Type]):
             arg = self.temp_node(AnyType(), expr)
             echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
         self.accept(s.body)
+
+    def visit_print_stmt(self, s: PrintStmt) -> Type:
+        for arg in s.args:
+            self.accept(arg)            
     
     #
     # Expressions
