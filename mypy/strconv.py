@@ -245,6 +245,12 @@ class StrConv(NodeVisitor[str]):
             if o.name[i]:
                 a.append(('Name', [o.name[i]]))
         return self.dump(a + [o.body], o)
+
+    def visit_print_stmt(self, o):
+        a = o.args[:]
+        if o.newline:
+            a.append('Newline')
+        return self.dump(a, o)
     
     # Expressions
     

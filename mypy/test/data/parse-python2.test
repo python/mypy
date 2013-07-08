@@ -24,3 +24,40 @@ MypyFile:1(
     UnicodeExpr(bar))
   ExpressionStmt:5(
     StrExpr(foo)))
+
+[case testSimplePrint]
+print 1
+print 2, 3
+print (4, 5)
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    IntExpr(1)
+    Newline)
+  PrintStmt:2(
+    IntExpr(2)
+    IntExpr(3)
+    Newline)
+  PrintStmt:3(
+    ParenExpr:3(
+      TupleExpr:3(
+        IntExpr(4)
+        IntExpr(5)))
+    Newline))
+
+[case testSimpleWithTrailingComma]
+print 1,
+print 2, 3,
+print (4, 5),
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    IntExpr(1))
+  PrintStmt:2(
+    IntExpr(2)
+    IntExpr(3))
+  PrintStmt:3(
+    ParenExpr:3(
+      TupleExpr:3(
+        IntExpr(4)
+        IntExpr(5)))))

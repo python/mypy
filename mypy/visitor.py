@@ -87,6 +87,8 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> T:
         pass
+    def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> T:
+        pass
     
     # Expressions
     

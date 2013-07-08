@@ -23,7 +23,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, TypeApplication
+    UnaryExpr, FuncExpr, TypeApplication, PrintStmt
 )
 from mypy import nodes
 from mypy import noderepr
@@ -647,6 +647,8 @@ class Parser:
             stmt = self.parse_with_stmt()
         elif ts == '@':
             stmt = self.parse_decorated_function()
+        elif ts == 'print' and self.pyversion == 2:
+            stmt = self.parse_print_stmt()
         else:
             stmt = self.parse_expression_or_assignment()
         if stmt is not None:
@@ -963,6 +965,20 @@ class Parser:
         node = WithStmt(expr, name, body)
         self.set_repr(node, noderepr.WithStmtRepr(with_tok, as_toks, commas))
         return node
+
+    def parse_print_stmt(self) -> PrintStmt:
+        self.expect('print')
+        args = List[Node]()
+        while not isinstance(self.current(), Break):
+            args.append(self.parse_expression(precedence[',']))
+            if self.current_str() == ',':
+                comma = True
+                self.skip()
+            else:
+                comma = False
+                break
+        self.expect_break()
+        return PrintStmt(args, newline=not comma)
     
     # Parsing expressions
     

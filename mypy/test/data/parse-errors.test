@@ -291,3 +291,8 @@ file, line 1: Inconsistent use of '**' in function signature
 file: In function "g":
 file, line 3: Inconsistent use of '*' in function signature
 file, line 3: Inconsistent use of '**' in function signature
+
+[case testPrintStatementInPython3]
+print 1
+[out]
+file, line 1: Parse error before numeric literal

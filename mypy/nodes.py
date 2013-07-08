@@ -676,6 +676,20 @@ class WithStmt(Node):
         return visitor.visit_with_stmt(self)
 
 
+class PrintStmt(Node):
+    """Python 2 print statement"""
+    
+    args = Undefined(List[Node])
+    newline = False
+
+    def __init__(self, args: List[Node], newline: bool) -> None:
+        self.args = args
+        self.newline = newline
+    
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_print_stmt(self)
+
+
 # Expressions
 
 
