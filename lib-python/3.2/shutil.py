@@ -657,7 +657,7 @@ def register_unpack_format(name: str, extensions: List[str], function: Any,
     if extra_args is None:
         extra_args = []
     _check_unpack_options(extensions, function, extra_args)
-    _UNPACK_FORMATS[name] = extensions, function, list(extra_args), description
+    _UNPACK_FORMATS[name] = extensions, function, extra_args, description
 
 def unregister_unpack_format(name: str) -> None:
     """Removes the pack format from the registery."""
@@ -723,7 +723,7 @@ _UNPACK_FORMATS = {
     'gztar': (['.tar.gz', '.tgz'], _unpack_tarfile, [], "gzip'ed tar-file"),
     'tar':   (['.tar'], _unpack_tarfile, [], "uncompressed tar file"),
     'zip':   (['.zip'], _unpack_zipfile, [], "ZIP file")
-    } # type: Dict[str, Tuple[List[str], Any, List[Tuple[str, Any]], str]]
+    } # type: Dict[str, Tuple[List[str], Any, Sequence[Tuple[str, Any]], str]]
 
 if _BZ2_SUPPORTED:
     _UNPACK_FORMATS['bztar'] = (['.bz2'], _unpack_tarfile, [],
