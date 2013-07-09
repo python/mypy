@@ -637,13 +637,6 @@ _PLATFORM_DEFAULT_CLOSE_FDS = object()
 
 
 class Popen(object):
-    stdin = Undefined(Any)
-    stdout = Undefined(Any)
-    stderr = Undefined(Any)
-    pid = 0
-    returncode = 0
-    _handle = Undefined(Any) # Windows only
-    
     def __init__(self, args: Sequence[str], bufsize: int = 0,
                  executable: str = None, stdin: Any = None,
                  stdout: Any = None, stderr: Any = None,
@@ -693,11 +686,11 @@ class Popen(object):
                 raise ValueError("creationflags is only supported on Windows "
                                  "platforms")
 
-        self.stdin = None
-        self.stdout = None
-        self.stderr = None
-        self.pid = None
-        self.returncode = None
+        self.stdin = None # type: Any
+        self.stdout = None # type: Any
+        self.stderr = None # type: Any
+        self.pid = None # type: int
+        self.returncode = None # type: int
         self.universal_newlines = universal_newlines
 
         # Input and output objects. The general principle is like
