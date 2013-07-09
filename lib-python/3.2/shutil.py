@@ -506,10 +506,9 @@ def _make_zipfile(base_name: str, base_dir: str, verbose: bool = False,
 
 _ARCHIVE_FORMATS = {
     'gztar': (_make_tarball, [('compress', 'gzip')], "gzip'ed tar-file"),
-    'tar':   (_make_tarball, [('compress', None)],
-              "uncompressed tar file"),
+    'tar':   (_make_tarball, [('compress', None)], "uncompressed tar file"),
     'zip':   (_make_zipfile, [],"ZIP file")
-    } # type: Dict[str, Tuple[Any, List[Tuple[str, str]], str]]
+    } # type: Dict[str, Tuple[Any, Sequence[Tuple[str, str]], str]]
 
 if _BZ2_SUPPORTED:
     _ARCHIVE_FORMATS['bztar'] = (_make_tarball, [('compress', 'bzip2')],
@@ -546,7 +545,7 @@ def register_archive_format(name: str, function: Any,
         if not isinstance(element, (tuple, list)) or len(cast(tuple, element)) !=2 :
             raise TypeError('extra_args elements are : (arg_name, value)')
 
-    _ARCHIVE_FORMATS[name] = (function, list(extra_args), description)
+    _ARCHIVE_FORMATS[name] = (function, extra_args, description)
 
 def unregister_archive_format(name: str) -> None:
     del _ARCHIVE_FORMATS[name]
