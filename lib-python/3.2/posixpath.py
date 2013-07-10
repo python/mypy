@@ -37,11 +37,13 @@ defpath = ':/bin:/usr/bin'
 altsep = None # type: str
 devnull = '/dev/null'
 
-def _get_sep(path):
-    if isinstance(path, bytes):
-        return b'/'
-    else:
-        return '/'
+@overload
+def _get_sep(path: bytes) -> bytes:
+    return b'/'
+
+@overload
+def _get_sep(path) -> str:
+    return '/'
 
 # Normalize the case of a pathname.  Trivial in Posix, string.lower on Mac.
 # On MS-DOS this may also turn slashes into backslashes; however, other
