@@ -687,16 +687,16 @@ class TemporaryDirectory(object):
             fullname = self._path_join(path, name)
             try:
                 isdir = self._isdir(fullname) and not self._islink(fullname)
-            except OSError:
+            except self._os_error:
                 isdir = False
             if isdir:
                 self._rmtree(fullname)
             else:
                 try:
                     self._remove(fullname)
-                except OSError:
+                except self._os_error:
                     pass
         try:
             self._rmdir(path)
-        except OSError:
+        except self._os_error:
             pass
