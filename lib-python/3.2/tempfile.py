@@ -59,16 +59,16 @@ _allocate_lock = _thread.allocate_lock
 
 _text_openflags = _os.O_RDWR | _os.O_CREAT | _os.O_EXCL
 if hasattr(_os, 'O_NOINHERIT'):
-    _text_openflags |= _Any(_os).O_NOINHERIT
+    _text_openflags |= _os.O_NOINHERIT
 if hasattr(_os, 'O_NOFOLLOW'):
-    _text_openflags |= _Any(_os).O_NOFOLLOW
+    _text_openflags |= _os.O_NOFOLLOW
 
 _bin_openflags = _text_openflags
 if hasattr(_os, 'O_BINARY'):
-    _bin_openflags |= _Any(_os).O_BINARY
+    _bin_openflags |= _os.O_BINARY
 
 if hasattr(_os, 'TMP_MAX'):
-    TMP_MAX = _Any(_os).TMP_MAX
+    TMP_MAX = _os.TMP_MAX
 else:
     TMP_MAX = 10000
 
