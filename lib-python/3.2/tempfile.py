@@ -110,8 +110,6 @@ class _RandomNameSequence(_Iterator[str]):
     _RandomNameSequence is an iterator."""
 
     characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
-    _rng = _Undefined(_Random)
-    _rng_pid = 0
 
     def rng(self) -> _Random:
         cur_pid = _os.getpid()
@@ -632,12 +630,10 @@ class TemporaryDirectory(object):
     in it are removed.
     """
 
-    name = ''
-
     def __init__(self, suffix: str = "", prefix: str = template,
                  dir: str = None) -> None:
         self._closed = False
-        self.name = None # Handle mkdtemp throwing an exception
+        self.name = None # type: str # Handle mkdtemp throwing an exception
         self.name = mkdtemp(suffix, prefix, dir)
 
         # XXX (ncoghlan): The following code attempts to make
