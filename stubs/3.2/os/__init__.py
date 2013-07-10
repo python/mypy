@@ -120,20 +120,20 @@ class stat_result:
 
     # On some Unix systems (such as Linux), the following attributes may also 
     # be available:
-    #st_blocks = 0 # number of blocks allocated for file
-    #st_blksize = 0 # filesystem blocksize
-    #st_rdev = 0 # type of device if an inode device
-    #st_flags = 0 # user defined flags for file
+    st_blocks = 0 # number of blocks allocated for file
+    st_blksize = 0 # filesystem blocksize
+    st_rdev = 0 # type of device if an inode device
+    st_flags = 0 # user defined flags for file
 
     # On other Unix systems (such as FreeBSD), the following attributes may be
     # available (but may be only filled out if root tries to use them):
-    #st_gen = 0 # file generation number
-    #st_birthtime = 0 # time of file creation
+    st_gen = 0 # file generation number
+    st_birthtime = 0 # time of file creation
 
     # On Mac OS systems, the following attributes may also be available:
-    #st_rsize = 0
-    #st_creator = 0
-    #st_type = 0
+    st_rsize = 0
+    st_creator = 0
+    st_type = 0
 
 class statvfs_result:  # Unix only
     f_bsize = 0
