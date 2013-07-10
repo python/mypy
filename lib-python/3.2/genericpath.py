@@ -17,7 +17,7 @@ __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
 def _exists(path):
     try:
         os.stat(path)
-    except OSError:
+    except os.error:
         return False
     return True
 
@@ -37,7 +37,7 @@ def _isfile(path):
     """Test whether a path is a regular file"""
     try:
         st = os.stat(path)
-    except OSError:
+    except os.error:
         return False
     return stat.S_ISREG(st.st_mode)
 
@@ -57,7 +57,7 @@ def isfile(path: bytes) -> bool:
 def _isdir(s):
     try:
         st = os.stat(s)
-    except OSError:
+    except os.error:
         return False
     return stat.S_ISDIR(st.st_mode)
 
