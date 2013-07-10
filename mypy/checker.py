@@ -37,7 +37,8 @@ class TypeChecker(NodeVisitor[Type]):
 
     Type check mypy source files that have been semantically analysed.
     """
-    
+
+    pyversion = 3                      # Target Python major version
     errors = Undefined(Errors)         # Error message reporting
     symtable = Undefined(SymbolTable)  # SymbolNode table for the whole program
     msg = Undefined(MessageBuilder)    # Utility for generating messages
