@@ -42,20 +42,31 @@ from typing import (
     Iterable as _Iterable
 )
 
-import fcntl as _fcntl
-def _set_cloexec(fd: int) -> None:
-    try:
-        flags = _fcntl.fcntl(fd, _fcntl.F_GETFD, 0)
-    except IOError:
+try:
+    import fcntl as _fcntl
+except ImportError:
+    def __set_cloexec(fd: int) -> None:
         pass
-    else:
-        # flags read successfully, modify
-        flags |= _fcntl.FD_CLOEXEC
-        _fcntl.fcntl(fd, _fcntl.F_SETFD, flags)
+    _set_cloexec = __set_cloexec
+else:
+    def ___set_cloexec(fd: int) -> None:
+        try:
+            flags = _fcntl.fcntl(fd, _fcntl.F_GETFD, 0)
+        except IOError:
+            pass
+        else:
+            # flags read successfully, modify
+            flags |= _fcntl.FD_CLOEXEC
+            _fcntl.fcntl(fd, _fcntl.F_SETFD, flags)
+    _set_cloexec = ___set_cloexec
 
 
-import _thread
-_allocate_lock = _thread.allocate_lock
+try:
+    import _thread
+    _allocate_lock = _thread.allocate_lock # type: Function[[], Any]
+except ImportError:
+    import _dummy_thread
+    _allocate_lock = _dummy_thread.allocate_lock
 
 _text_openflags = _os.O_RDWR | _os.O_CREAT | _os.O_EXCL
 if hasattr(_os, 'O_NOINHERIT'):
@@ -79,13 +90,13 @@ template = "tmp"
 _once_lock = _allocate_lock()
 
 if hasattr(_os, "lstat"):
-    _stat = _os.lstat # type: _Function[[str], _os.stat_result]
+    _stat = _os.lstat # type: _Function[[str], object]
 elif hasattr(_os, "stat"):
     _stat = _os.stat
 else:
     # Fallback.  All we need is something that raises os.error if the
     # file doesn't exist.
-    def __stat(fn):
+    def __stat(fn: str) -> object:
         try:
             f = open(fn)
         except IOError:
