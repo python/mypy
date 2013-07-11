@@ -382,7 +382,14 @@ else:
     import fcntl
     import pickle
 
-    import _posixsubprocess
+    try:
+        import _posixsubprocess
+        have_posixsubprocess = True
+    except ImportError:
+        have_posixsubprocess = False
+        warnings.warn("The _posixsubprocess module is not being used. "
+                      "Child process reliability may suffer if your "
+                      "program uses threads.", RuntimeWarning)
 
     # When select or poll has indicated that the file is writable,
     # we can write up to _PIPE_BUF bytes without risk of blocking.
@@ -398,7 +405,7 @@ else:
         else:
             fcntl.fcntl(fd, fcntl.F_SETFD, old & ~_FD_CLOEXEC)
 
-    if _posixsubprocess:
+    if have_posixsubprocess:
         _create_pipe = _posixsubprocess.cloexec_pipe
     else:
         def __create_pipe() -> Tuple[int, int]:
@@ -1184,7 +1191,7 @@ class Popen(object):
             try:
                 try:
 
-                    if _posixsubprocess:
+                    if have_posixsubprocess:
                         # We must avoid complex work that could involve
                         # malloc or free in the child process to avoid
                         # potential deadlocks, thus we do all this here.
