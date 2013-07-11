@@ -45,11 +45,10 @@ from typing import (
 try:
     import fcntl as _fcntl
 except ImportError:
-    def __set_cloexec(fd: int) -> None:
+    def _set_cloexec(fd: int) -> None:
         pass
-    _set_cloexec = __set_cloexec
 else:
-    def ___set_cloexec(fd: int) -> None:
+    def _set_cloexec(fd: int) -> None:
         try:
             flags = _fcntl.fcntl(fd, _fcntl.F_GETFD, 0)
         except IOError:
@@ -58,7 +57,6 @@ else:
             # flags read successfully, modify
             flags |= _fcntl.FD_CLOEXEC
             _fcntl.fcntl(fd, _fcntl.F_SETFD, flags)
-    _set_cloexec = ___set_cloexec
 
 
 try:
