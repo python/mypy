@@ -399,3 +399,13 @@ print(A().f('34'))
 [out]
 12
 34
+
+[case testIntMethods]
+print(int.from_bytes(b'ab', 'big'))
+n = 0
+print(n.from_bytes(b'ac', 'big'))
+print(n.to_bytes(2, 'big'))
+[out]
+24930
+24931
+b'\x00\x00'

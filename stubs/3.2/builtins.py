@@ -66,6 +66,13 @@ class int(SupportsInt, SupportsFloat):
     def __init__(self, string: bytearray, base: int) -> None: pass
 
     def bit_length(self) -> int: pass
+    def to_bytes(self, length: int, byteorder: str, *,
+                 signed: bool = False): pass
+
+    # TODO actually classmethod
+    @staticmethod
+    def from_bytes(bytes: bytes, byteorder: str, *,
+                   signed: bool = False) -> int: pass
 
     # TODO all __r* methods
     
