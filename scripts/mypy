@@ -31,7 +31,7 @@ class Options:
         self.pyversion = 3
 
 
-# The stubs directory is found relative to the bin/scripts directory.
+# The stubs directory is found relative to the bin / scripts directory.
 bin_dir = os.path.dirname(__file__)
 
 

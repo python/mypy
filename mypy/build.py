@@ -120,8 +120,8 @@ def build(program_path: str,
       program_text: the main source file contents; if omitted, read from file
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
-      mypy_base_dir: directory of mypy implementation (mypy.py); if omitted,
-        derived from sys.argv[0]
+      bin_dir: directory containing the mypy script, used for finding data
+        directories; if omitted, use '.' as the data directory
       output_dir: directory where the output (Python) is stored
       pyversion: Python version (2 for 2.x or 3 for 3.x)
       flags: list of build options (e.g. COMPILE_ONLY)
