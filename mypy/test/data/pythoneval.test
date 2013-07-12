@@ -412,10 +412,12 @@ import typing
 print(int.from_bytes(b'ab', 'big'))
 n = 0
 print(n.from_bytes(b'ac', 'big'))
+print(n.from_bytes([2, 3], 'big'))
 print(n.to_bytes(2, 'big'))
 [out]
 24930
 24931
+515
 b'\x00\x00'
 
 [case testFloatMethods]

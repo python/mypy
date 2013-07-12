@@ -67,11 +67,12 @@ class int(SupportsInt, SupportsFloat):
 
     def bit_length(self) -> int: pass
     def to_bytes(self, length: int, byteorder: str, *,
-                 signed: bool = False): pass
+                 signed: bool = False) -> bytes: pass
 
     # TODO actually classmethod
+    # TODO buffer object argument
     @staticmethod
-    def from_bytes(bytes: bytes, byteorder: str, *,
+    def from_bytes(bytes: Sequence[int], byteorder: str, *,
                    signed: bool = False) -> int: pass
 
     # TODO all __r* methods
