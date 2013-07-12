@@ -155,6 +155,14 @@ class float(SupportsFloat, SupportsInt):
     @overload
     def __init__(self, x: bytearray) -> None: pass
 
+    def as_integer_ratio(self) -> Tuple[int, int]: pass
+    def hex(self) -> str: pass
+    def is_integer(self) -> bool: pass
+
+    # TODO actually classmethod
+    @staticmethod
+    def fromhex(s: str) -> float: pass
+
     # Operators
     
     @overload

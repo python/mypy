@@ -417,3 +417,15 @@ print(n.to_bytes(2, 'big'))
 24930
 24931
 b'\x00\x00'
+
+[case testFloatMethods]
+import typing
+print(1.5.as_integer_ratio())
+print(1.5.hex())
+print(2.0.is_integer())
+print(float.fromhex('0x1.8'))
+[out]
+(3, 2)
+0x1.8000000000000p+0
+True
+1.5
