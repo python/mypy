@@ -711,6 +711,12 @@ A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
 A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
 [builtins fixtures/staticmethod.py]
 
+[case testBuiltinStaticMethod]
+import typing
+int.from_bytes(b'', '')
+int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"
+[builtins fixtures/staticmethod.py]
+
 
 -- Special cases
 -- -------------
