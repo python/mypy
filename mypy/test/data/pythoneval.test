@@ -431,3 +431,10 @@ print(float.fromhex('0x1.8'))
 0x1.8000000000000p+0
 True
 1.5
+
+[case testArray]
+import typing
+import array
+print(type(array.typecodes))
+[out]
+<class 'str'>

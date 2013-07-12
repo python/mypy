@@ -4,13 +4,13 @@
 
 from typing import Any, Iterable, Tuple, List, Iterator, IO, overload
 
+typecodes = ''
+
 class array:
-    typecodes = '' # TODO static
-    typecode = ''
-    itemsize = 0
-    
     def __init__(self, typecode: str,
-                 initializer: Iterable[Any] = None) -> None: pass
+                 initializer: Iterable[Any] = None) -> None:
+        typecode = ''
+        itemsize = 0
 
     def append(self, x: Any) -> None: pass
     def buffer_info(self) -> Tuple[int, int]: pass
