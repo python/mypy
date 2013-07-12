@@ -18,6 +18,9 @@ T3 = typevar('T3')
 T4 = typevar('T4')
 
 
+staticmethod = object() # Only valid as a decorator.
+
+
 class object:
     __doc__ = ''
     __class__ = Undefined # type: type

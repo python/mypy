@@ -389,3 +389,13 @@ x = 1.0 / 2
 x = 1 / 2.0
 x = 1.5
 [out]
+
+[case testStaticmethod]
+class A:
+    @staticmethod
+    def f(x: str) -> int: return int(x)
+print(A.f('12'))
+print(A().f('34'))
+[out]
+12
+34
