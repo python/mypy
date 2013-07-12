@@ -347,6 +347,7 @@ class Var(SymbolNode):
     # Is this initialized explicitly to a non-None value in class body?
     is_initialized_in_class = False
     is_typevar = False
+    is_staticmethod = False
     
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name

@@ -106,7 +106,8 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
         itype = map_instance_to_supertype(itype, var.info)
         if var.type:
             t = expand_type_by_instance(var.type, itype)
-            if var.is_initialized_in_class and isinstance(t, FunctionLike):
+            if (var.is_initialized_in_class and isinstance(t, FunctionLike)
+                    and not var.is_staticmethod):
                 # Class-level function object becomes a bound method.
                 functype = cast(FunctionLike, t)
                 check_method_type(functype, itype, node, msg)

@@ -696,6 +696,22 @@ class A:
 main: In member "f" of class "A":
 
 
+-- Static methods
+-- --------------
+
+
+[case testSimpleStaticMethod]
+import typing
+class A:
+  @staticmethod
+  def f(x: int) -> None: pass
+A.f(1)
+A().f(1)
+A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+[builtins fixtures/staticmethod.py]
+
+
 -- Special cases
 -- -------------
 
