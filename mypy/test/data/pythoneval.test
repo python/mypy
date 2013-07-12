@@ -302,6 +302,7 @@ builtins
 <class 'dict_proxy'>
 
 [case testBoolCompatibilityWithInt]
+import typing
 x = 0
 x = True
 print(bool('x'))
@@ -311,6 +312,7 @@ True
 False
 
 [case testCallBuiltinTypeObjectsWithoutArguments]
+import typing
 print(int())
 print(repr(str()))
 print(repr(bytes()))
@@ -347,6 +349,7 @@ for i in range(3):
 2
 
 [case testIntegerDivision]
+import typing
 x = 1 / 2
 x = 1.5
 [out]
@@ -371,6 +374,7 @@ c
 d
 
 [case testHasKey_python2]
+import typing
 d = {1: 'x'}
 print d.has_key(1)
 print d.has_key(2)
@@ -379,11 +383,13 @@ True
 False
 
 [case testIntegerDivision_python2]
+import typing
 x = 1 / 2
 x = 2
 [out]
 
 [case testFloatDivision_python2]
+import typing
 x = 1.0 / 2.0
 x = 1.0 / 2
 x = 1 / 2.0
@@ -391,6 +397,7 @@ x = 1.5
 [out]
 
 [case testStaticmethod]
+import typing
 class A:
     @staticmethod
     def f(x: str) -> int: return int(x)
@@ -401,6 +408,7 @@ print(A().f('34'))
 34
 
 [case testIntMethods]
+import typing
 print(int.from_bytes(b'ab', 'big'))
 n = 0
 print(n.from_bytes(b'ac', 'big'))
