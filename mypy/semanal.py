@@ -162,12 +162,13 @@ class SemanticAnalyzer(NodeVisitor):
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             if defn.name() == '__init__':
                 self.is_init_method = True
-            if defn.args == []:
-                self.fail('Method must have at least one argument', defn)
-            elif defn.type:
-                sig = cast(FunctionLike, defn.type)
-                defn.type = replace_implicit_self_type(sig,
-                                                       self_type(self.type))
+            if not defn.is_static:
+                if not defn.args:
+                    self.fail('Method must have at least one argument', defn)
+                elif defn.type:
+                    sig = cast(FunctionLike, defn.type)
+                    defn.type = replace_implicit_self_type(
+                        sig, self_type(self.type))
 
         if self.is_func_scope() and (not defn.is_decorated and
                                      not defn.is_overload):
@@ -267,9 +268,6 @@ class SemanticAnalyzer(NodeVisitor):
                 fdef = cast(FuncDef, defn)
                 fdef.info = self.type
                 defn.type = set_callable_name(defn.type, fdef)
-                if is_method and cast(Callable, defn.type).arg_types != []:
-                    cast(Callable, defn.type).arg_types[0] = self_type(
-                        fdef.info)
         self.enter()
         for init in defn.init:
             if init:
@@ -815,16 +813,26 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.var.is_initialized_in_class = True
                 self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
                                 dec)
-        dec.func.accept(self)
         for d in dec.decorators:
             d.accept(self)
+        removed = List[int]()
         for i, d in enumerate(dec.decorators):
             if refers_to_fullname(d, 'abc.abstractmethod'):
-                dec.decorators.remove(d)
+                removed.append(i)
                 dec.func.is_abstract = True
-                if not self.type or self.is_func_scope():
-                    self.fail("'abstractmethod' used with a non-method", dec)
-                break
+                self.check_decorated_function_is_method('abstractmethod', dec)
+            elif refers_to_fullname(d, 'builtins.staticmethod'):
+                removed.append(i)
+                dec.func.is_static = True
+                self.check_decorated_function_is_method('staticmethod', dec)
+        for i in reversed(removed):
+            del dec.decorators[i]
+        dec.func.accept(self)
+
+    def check_decorated_function_is_method(self, decorator: str,
+                                           context: Context) -> None:
+        if not self.type or self.is_func_scope():
+            self.fail("'%s' used with a non-method" % decorator, context)
     
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         s.expr.accept(self)

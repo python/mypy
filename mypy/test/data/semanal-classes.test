@@ -386,3 +386,41 @@ MypyFile:1(
     A
     Metaclass(abc.ABCMeta)
     PassStmt:2()))
+
+[case testStaticMethod]
+class A:
+  @staticmethod
+  def f(z: int) -> str: pass
+[builtins fixtures/staticmethod.py]
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Decorator:2(
+      Var(f)
+      FuncDef:3(
+        f
+        Args(
+          Var(z))
+        def (z: builtins.int) -> builtins.str
+        Static
+        Block:3(
+          PassStmt:3())))))
+
+[case testStaticMethodWithNoArgs]
+class A:
+  @staticmethod
+  def f() -> str: pass
+[builtins fixtures/staticmethod.py]
+[out]
+MypyFile:1(
+  TypeDef:1(
+    A
+    Decorator:2(
+      Var(f)
+      FuncDef:3(
+        f
+        def () -> builtins.str
+        Static
+        Block:3(
+          PassStmt:3())))))

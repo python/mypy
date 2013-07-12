@@ -104,6 +104,8 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         if o.is_abstract:
             a.insert(-1, 'Abstract')
+        if o.is_static:
+            a.insert(-1, 'Static')
         return self.dump(a, o)
     
     def visit_overloaded_func_def(self, o):

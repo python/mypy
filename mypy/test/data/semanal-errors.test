@@ -1001,3 +1001,16 @@ main: In function "f":
 main, line 1: Type signature has too many arguments
 main: In function "g":
 main, line 3: Type signature has too few arguments
+
+[case testStaticmethodAndNonMethod]
+@staticmethod
+def f(): pass
+class A:
+  def g(self):
+    @staticmethod
+    def h(): pass
+[builtins fixtures/staticmethod.py]
+[out]
+main, line 1: 'staticmethod' used with a non-method
+main: In function "g":
+main, line 5: 'staticmethod' used with a non-method
