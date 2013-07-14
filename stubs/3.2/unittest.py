@@ -67,13 +67,22 @@ class TestCase(Testable):
     def failIfEqual(self, first: Any, second: Any,
                     msg: str = None) -> None: pass
     def assertAlmostEqual(self, first: float, second: float, places: int = 7,
-                          msg: str = None) -> None: pass
+                          msg: str = None, delta: float = None) -> None: pass
     def failUnlessAlmostEqual(self, first: float, second: float,
                               places: int = 7, msg: str = None) -> None: pass
     def assertNotAlmostEqual(self, first: float, second: float,
-                             places: int = 7, msg: str = None) -> None: pass
+                             places: int = 7, msg: str = None,
+                             delta: float = None) -> None: pass
     def failIfAlmostEqual(self, first: float, second: float, places: int = 7,
                           msg: str = None) -> None: pass
+    def assertGreater(self, first: Any, second: Any,
+                      msg: str = None) -> None: pass
+    def assertGreaterEqual(self, first: Any, second: Any,
+                      msg: str = None) -> None: pass
+    def assertLess(self, first: Any, second: Any,
+                   msg: str = None) -> None: pass
+    def assertLessEqual(self, first: Any, second: Any,
+                        msg: str = None) -> None: pass
     @overload
     def assertRaises(self, exception: type, callable: Any,
                      *args: Any, **kwargs: Any) -> None: pass
