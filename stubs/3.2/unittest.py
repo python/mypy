@@ -82,6 +82,20 @@ class TestCase(Testable):
                      *args: Any, **kwargs: Any) -> _AssertRaisesContext: pass
     def failIf(self, expr: Any, msg: str = None) -> None: pass
     def assertFalse(self, expr: Any, msg: str = None) -> None: pass
+    def assertIs(self, first: object, second: object,
+                 msg: str = None) -> None: pass
+    def assertIsNot(self, first: object, second: object,
+                    msg: str = None) -> None: pass
+    def assertIsNone(self, expr: Any, msg: str = None) -> None: pass
+    def assertIsNotNone(self, expr: Any, msg: str = None) -> None: pass
+    def assertIn(self, first: T, second: Iterable[T],
+                 msg: str = None) -> None: pass
+    def assertNotIn(self, first: T, second: Iterable[T],
+                    msg: str = None) -> None: pass
+    def assertIsInstance(self, obj: Any, cls: type,
+                         msg: str = None) -> None: pass
+    def assertNotIsInstance(self, obj: Any, cls: type,
+                            msg: str = None) -> None: pass
     def fail(self, msg: str = None) -> None: pass
     def countTestCases(self) -> int: pass
     def defaultTestResult(self) -> TestResult: pass
