@@ -4,11 +4,13 @@ from test import support
 import unittest
 
 from fnmatch import fnmatch, fnmatchcase, translate, filter
-import typing
+
+from typing import Any, Function
 
 class FnmatchTestCase(unittest.TestCase):
 
-    def check_match(self, filename, pattern, should_match=1, fn=fnmatch):
+    def check_match(self, filename: Any, pattern: Any, should_match: int = 1,
+                    fn: Function[[Any, Any], bool] = fnmatch) -> None:
         if should_match:
             self.assertTrue(fn(filename, pattern),
                          "expected %r to match pattern %r"
@@ -18,7 +20,7 @@ class FnmatchTestCase(unittest.TestCase):
                          "expected %r not to match pattern %r"
                          % (filename, pattern))
 
-    def test_fnmatch(self):
+    def test_fnmatch(self) -> None:
         check = self.check_match
         check('abc', 'abc')
         check('abc', '?*?')
@@ -45,25 +47,25 @@ class FnmatchTestCase(unittest.TestCase):
         check('\nfoo', 'foo*', False)
         check('\n', '*')
 
-    def test_mix_bytes_str(self):
+    def test_mix_bytes_str(self) -> None:
         self.assertRaises(TypeError, fnmatch, 'test', b'*')
         self.assertRaises(TypeError, fnmatch, b'test', '*')
         self.assertRaises(TypeError, fnmatchcase, 'test', b'*')
         self.assertRaises(TypeError, fnmatchcase, b'test', '*')
 
-    def test_fnmatchcase(self):
+    def test_fnmatchcase(self) -> None:
         check = self.check_match
         check('AbC', 'abc', 0, fnmatchcase)
         check('abc', 'AbC', 0, fnmatchcase)
 
-    def test_bytes(self):
+    def test_bytes(self) -> None:
         self.check_match(b'test', b'te*')
         self.check_match(b'test\xff', b'te*\xff')
         self.check_match(b'foo\nbar', b'foo*')
 
 class TranslateTestCase(unittest.TestCase):
 
-    def test_translate(self):
+    def test_translate(self) -> None:
         self.assertEqual(translate('*'), '.*\Z(?ms)')
         self.assertEqual(translate('?'), '.\Z(?ms)')
         self.assertEqual(translate('a?b*'), 'a.b.*\Z(?ms)')
@@ -76,11 +78,11 @@ class TranslateTestCase(unittest.TestCase):
 
 class FilterTestCase(unittest.TestCase):
 
-    def test_filter(self):
+    def test_filter(self) -> None:
         self.assertEqual(filter(['a', 'b'], 'a'), ['a'])
 
 
-def test_main():
+def test_main() -> None:
     support.run_unittest(FnmatchTestCase,
                          TranslateTestCase,
                          FilterTestCase)
