@@ -150,3 +150,5 @@ def settrace(tracefunc: Any) -> None: pass # TODO type
 # 'exception', 'c_call', 'c_return', or 'c_exception'. arg depends on the 
 # event type.
 def settscdump(on_flag: bool) -> None: pass
+
+def gettotalrefcount() -> int: pass # Debug builds only
