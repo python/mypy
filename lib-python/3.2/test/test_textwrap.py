@@ -11,7 +11,7 @@
 import unittest
 from test import support
 
-import typing
+from typing import List, Sequence, Undefined
 
 from textwrap import TextWrapper, wrap, fill, dedent
 
@@ -19,27 +19,29 @@ from textwrap import TextWrapper, wrap, fill, dedent
 class BaseTestCase(unittest.TestCase):
     '''Parent class with utility methods for textwrap tests.'''
 
-    def show(self, textin):
+    wrapper = Undefined(TextWrapper)
+
+    def show(self, textin: Sequence[str]) -> str:
         if isinstance(textin, list):
-            result = []
+            results = List[str]()
             for i in range(len(textin)):
-                result.append("  %d: %r" % (i, textin[i]))
-            result = '\n'.join(result)
+                results.append("  %d: %r" % (i, textin[i]))
+            result = '\n'.join(results)
         elif isinstance(textin, str):
             result = "  %s\n" % repr(textin)
         return result
 
 
-    def check(self, result, expect):
+    def check(self, result, expect) -> None:
         self.assertEqual(result, expect,
             'expected:\n%s\nbut got:\n%s' % (
                 self.show(expect), self.show(result)))
 
-    def check_wrap(self, text, width, expect, **kwargs):
+    def check_wrap(self, text, width, expect, **kwargs) -> None:
         result = wrap(text, width, **kwargs)
         self.check(result, expect)
 
-    def check_split(self, text, expect):
+    def check_split(self, text, expect) -> None:
         result = self.wrapper._split(text)
         self.assertEqual(result, expect,
                          "\nexpected %r\n"
@@ -48,10 +50,10 @@ class BaseTestCase(unittest.TestCase):
 
 class WrapTestCase(BaseTestCase):
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.wrapper = TextWrapper(width=45)
 
-    def test_simple(self):
+    def test_simple(self) -> None:
         # Simple case: just words, spaces, and a bit of punctuation
 
         text = "Hello there, how are you this fine day?  I'm glad to hear it!"
@@ -69,7 +71,7 @@ class WrapTestCase(BaseTestCase):
         self.check_wrap(text, 80, [text])
 
 
-    def test_whitespace(self):
+    def test_whitespace(self) -> None:
         # Whitespace munging and end-of-sentence detection
 
         text = """\
@@ -90,10 +92,10 @@ What a mess!
         result = wrapper.wrap(text)
         self.check(result, expect)
 
-        result = wrapper.fill(text)
-        self.check(result, '\n'.join(expect))
+        results = wrapper.fill(text)
+        self.check(results, '\n'.join(expect))
 
-    def test_fix_sentence_endings(self):
+    def test_fix_sentence_endings(self) -> None:
         wrapper = TextWrapper(60, fix_sentence_endings=True)
 
         # SF #847346: ensure that fix_sentence_endings=True does the
@@ -135,7 +137,7 @@ What a mess!
         expect = ['File stdio.h is nice.']
         self.check(wrapper.wrap(text), expect)
 
-    def test_wrap_short(self):
+    def test_wrap_short(self) -> None:
         # Wrapping to make short lines longer
 
         text = "This is a\nshort paragraph."
@@ -145,7 +147,7 @@ What a mess!
         self.check_wrap(text, 40, ["This is a short paragraph."])
 
 
-    def test_wrap_short_1line(self):
+    def test_wrap_short_1line(self) -> None:
         # Test endcases
 
         text = "This is a short line."
@@ -155,7 +157,7 @@ What a mess!
                         initial_indent="(1) ")
 
 
-    def test_hyphenated(self):
+    def test_hyphenated(self) -> None:
         # Test breaking hyphenated words
 
         text = ("this-is-a-useful-feature-for-"
@@ -171,7 +173,7 @@ What a mess!
                         ["this-is-a-useful-feature-for-reformatting-",
                          "posts-from-tim-peters'ly"])
 
-    def test_hyphenated_numbers(self):
+    def test_hyphenated_numbers(self) -> None:
         # Test that hyphenated numbers (eg. dates) are not broken like words.
         text = ("Python 1.0.0 was released on 1994-01-26.  Python 1.0.1 was\n"
                 "released on 1994-02-15.")
@@ -189,7 +191,7 @@ What a mess!
                                    "7-11."])
         self.check_wrap(text, 29, ["I do all my shopping at 7-11."])
 
-    def test_em_dash(self):
+    def test_em_dash(self) -> None:
         # Test text with em-dashes
         text = "Em-dashes should be written -- thus."
         self.check_wrap(text, 25,
@@ -244,7 +246,7 @@ What a mess!
         self.check_split(text, expect)
 
 
-    def test_unix_options (self):
+    def test_unix_options (self) -> None:
         # Test that Unix-style command-line options are wrapped correctly.
         # Both Optik (OptionParser) and Docutils rely on this behaviour!
 
@@ -278,7 +280,7 @@ What a mess!
                   "--dry-", "run", " ", "or", " ", "--dryrun"]
         self.check_split(text, expect)
 
-    def test_funky_hyphens (self):
+    def test_funky_hyphens (self) -> None:
         # Screwy edge cases cooked up by David Goodger.  All reported
         # in SF bug #596434.
         self.check_split("what the--hey!", ["what", " ", "the", "--", "hey!"])
@@ -295,7 +297,7 @@ What a mess!
         self.check_split("foo --option-opt bar",
                          ["foo", " ", "--option-", "opt", " ", "bar"])
 
-    def test_punct_hyphens(self):
+    def test_punct_hyphens(self) -> None:
         # Oh bother, SF #965425 found another problem with hyphens --
         # hyphenated words in single quotes weren't handled correctly.
         # In fact, the bug is that *any* punctuation around a hyphenated
@@ -312,7 +314,7 @@ What a mess!
         self.check_split("the ['wibble-wobble'] widget",
                          ['the', ' ', "['wibble-", "wobble']", ' ', 'widget'])
 
-    def test_funky_parens (self):
+    def test_funky_parens (self) -> None:
         # Second part of SF bug #596434: long option strings inside
         # parentheses.
         self.check_split("foo (--option) bar",
@@ -325,7 +327,7 @@ What a mess!
                          ["blah", " ", "(ding", " ", "dong),",
                           " ", "wubba"])
 
-    def test_initial_whitespace(self):
+    def test_initial_whitespace(self) -> None:
         # SF bug #622849 reported inconsistent handling of leading
         # whitespace; let's test that a bit, shall we?
         text = " This is a sentence with leading whitespace."
@@ -334,7 +336,7 @@ What a mess!
         self.check_wrap(text, 30,
                         [" This is a sentence with", "leading whitespace."])
 
-    def test_no_drop_whitespace(self):
+    def test_no_drop_whitespace(self) -> None:
         # SF patch #1581073
         text = " This is a    sentence with     much whitespace."
         self.check_wrap(text, 10,
@@ -342,7 +344,7 @@ What a mess!
                          "with     ", "much white", "space."],
                         drop_whitespace=False)
 
-    def test_split(self):
+    def test_split(self) -> None:
         # Ensure that the standard _split() method works as advertised
         # in the comments
 
@@ -353,7 +355,7 @@ What a mess!
              ["Hello", " ", "there", " ", "--", " ", "you", " ", "goof-",
               "ball,", " ", "use", " ", "the", " ", "-b", " ",  "option!"])
 
-    def test_break_on_hyphens(self):
+    def test_break_on_hyphens(self) -> None:
         # Ensure that the break_on_hyphens attributes work
         text = "yaba daba-doo"
         self.check_wrap(text, 10, ["yaba daba-", "doo"],
@@ -361,30 +363,30 @@ What a mess!
         self.check_wrap(text, 10, ["yaba", "daba-doo"],
                         break_on_hyphens=False)
 
-    def test_bad_width(self):
+    def test_bad_width(self) -> None:
         # Ensure that width <= 0 is caught.
         text = "Whatever, it doesn't matter."
         self.assertRaises(ValueError, wrap, text, 0)
         self.assertRaises(ValueError, wrap, text, -1)
 
-    def test_no_split_at_umlaut(self):
+    def test_no_split_at_umlaut(self) -> None:
         text = "Die Empf\xe4nger-Auswahl"
         self.check_wrap(text, 13, ["Die", "Empf\xe4nger-", "Auswahl"])
 
-    def test_umlaut_followed_by_dash(self):
+    def test_umlaut_followed_by_dash(self) -> None:
         text = "aa \xe4\xe4-\xe4\xe4"
         self.check_wrap(text, 7, ["aa \xe4\xe4-", "\xe4\xe4"])
 
 
 class LongWordTestCase (BaseTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.wrapper = TextWrapper()
         self.text = '''\
 Did you say "supercalifragilisticexpialidocious?"
 How *do* you spell that odd word, anyways?
 '''
 
-    def test_break_long(self):
+    def test_break_long(self) -> None:
         # Wrap text with long words and lots of punctuation
 
         self.check_wrap(self.text, 30,
@@ -420,9 +422,9 @@ How *do* you spell that odd word, anyways?
                          'word,',
                          'anyways?'])
 
-    def test_nobreak_long(self):
+    def test_nobreak_long(self) -> None:
         # Test with break_long_words disabled
-        self.wrapper.break_long_words = 0
+        self.wrapper.break_long_words = False
         self.wrapper.width = 30
         expect = ['Did you say',
                   '"supercalifragilisticexpialidocious?"',
@@ -440,13 +442,13 @@ How *do* you spell that odd word, anyways?
 class IndentTestCases(BaseTestCase):
 
     # called before each test method
-    def setUp(self):
+    def setUp(self) -> None:
         self.text = '''\
 This paragraph will be filled, first without any indentation,
 and then with some (including a hanging indent).'''
 
 
-    def test_fill(self):
+    def test_fill(self) -> None:
         # Test the fill() method
 
         expect = '''\
@@ -458,7 +460,7 @@ some (including a hanging indent).'''
         self.check(result, expect)
 
 
-    def test_initial_indent(self):
+    def test_initial_indent(self) -> None:
         # Test initial_indent parameter
 
         expect = ["     This paragraph will be filled,",
@@ -467,12 +469,12 @@ some (including a hanging indent).'''
         result = wrap(self.text, 40, initial_indent="     ")
         self.check(result, expect)
 
-        expect = "\n".join(expect)
-        result = fill(self.text, 40, initial_indent="     ")
-        self.check(result, expect)
+        expects = "\n".join(expect)
+        results = fill(self.text, 40, initial_indent="     ")
+        self.check(results, expects)
 
 
-    def test_subsequent_indent(self):
+    def test_subsequent_indent(self) -> None:
         # Test subsequent_indent parameter
 
         expect = '''\
@@ -490,11 +492,11 @@ some (including a hanging indent).'''
 # of IndentTestCase!
 class DedentTestCase(unittest.TestCase):
 
-    def assertUnchanged(self, text):
+    def assertUnchanged(self, text: str) -> None:
         """assert that dedent() has no effect on 'text'"""
         self.assertEqual(text, dedent(text))
 
-    def test_dedent_nomargin(self):
+    def test_dedent_nomargin(self) -> None:
         # No lines indented.
         text = "Hello there.\nHow are you?\nOh good, I'm glad."
         self.assertUnchanged(text)
@@ -511,7 +513,7 @@ class DedentTestCase(unittest.TestCase):
         text = "Hello there.\n\n  Boo!\n"
         self.assertUnchanged(text)
 
-    def test_dedent_even(self):
+    def test_dedent_even(self) -> None:
         # All lines indented by two spaces.
         text = "  Hello there.\n  How are ya?\n  Oh good."
         expect = "Hello there.\nHow are ya?\nOh good."
@@ -527,7 +529,7 @@ class DedentTestCase(unittest.TestCase):
         expect = "Hello there.\n\nHow are ya?\nOh good.\n"
         self.assertEqual(expect, dedent(text))
 
-    def test_dedent_uneven(self):
+    def test_dedent_uneven(self) -> None:
         # Lines indented unevenly.
         text = '''\
         def foo():
@@ -552,7 +554,7 @@ def foo():
         self.assertEqual(expect, dedent(text))
 
     # dedent() should not mangle internal tabs
-    def test_dedent_preserve_internal_tabs(self):
+    def test_dedent_preserve_internal_tabs(self) -> None:
         text = "  hello\tthere\n  how are\tyou?"
         expect = "hello\tthere\nhow are\tyou?"
         self.assertEqual(expect, dedent(text))
@@ -564,7 +566,7 @@ def foo():
     # dedent() should not mangle tabs in the margin (i.e.
     # tabs and spaces both count as margin, but are *not*
     # considered equivalent)
-    def test_dedent_preserve_margin_tabs(self):
+    def test_dedent_preserve_margin_tabs(self) -> None:
         text = "  hello there\n\thow are you?"
         self.assertUnchanged(text)
 
@@ -588,7 +590,7 @@ def foo():
         self.assertEqual(expect, dedent(text))
 
 
-def test_main():
+def test_main() -> None:
     support.run_unittest(WrapTestCase,
                               LongWordTestCase,
                               IndentTestCases,
