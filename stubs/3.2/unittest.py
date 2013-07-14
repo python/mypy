@@ -67,7 +67,7 @@ class TestCase(Testable):
     def failIfAlmostEqual(self, first: float, second: float, places: int = 7,
                           msg: str = None) -> None: pass
     def assertRaises(self, exception: type, callable: Any,
-                     *args: Any) -> None: pass
+                     *args: Any, **kwargs: Any) -> None: pass
     def failIf(self, expr: Any, msg: str = None) -> None: pass
     def assertFalse(self, expr: Any, msg: str = None) -> None: pass
     def fail(self, msg: str = None) -> None: pass
