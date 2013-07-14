@@ -5,29 +5,31 @@ from test.support import verbose, run_doctest, run_unittest, EnvironmentVarGuard
 import unittest
 
 import getopt
-import typing
+
+from typing import Any
 
 sentinel = object()
 
 class GetoptTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.env = EnvironmentVarGuard()
         if "POSIXLY_CORRECT" in self.env:
             del self.env["POSIXLY_CORRECT"]
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.env.__exit__()
         self.env = None
 
-    def assertError(self, *args, **kwargs):
-        self.assertRaises(getopt.GetoptError, *args, **kwargs)
+    def assertError(self, *args: Any, **kwargs: Any) -> None:
+        # JLe: work around mypy bug #229
+        Any(self.assertRaises)(getopt.GetoptError, *args, **kwargs)
 
-    def test_short_has_arg(self):
+    def test_short_has_arg(self) -> None:
         self.assertTrue(getopt.short_has_arg('a', 'a:'))
         self.assertFalse(getopt.short_has_arg('a', 'a'))
         self.assertError(getopt.short_has_arg, 'a', 'b')
 
-    def test_long_has_args(self):
+    def test_long_has_args(self) -> None:
         has_arg, option = getopt.long_has_args('abc', ['abc='])
         self.assertTrue(has_arg)
         self.assertEqual(option, 'abc')
@@ -44,7 +46,7 @@ class GetoptTests(unittest.TestCase):
         self.assertError(getopt.long_has_args, 'abc', [])
         self.assertError(getopt.long_has_args, 'abc', ['abcd','abcde'])
 
-    def test_do_shorts(self):
+    def test_do_shorts(self) -> None:
         opts, args = getopt.do_shorts([], 'a', 'a', [])
         self.assertEqual(opts, [('-a', '')])
         self.assertEqual(args, [])
@@ -68,7 +70,7 @@ class GetoptTests(unittest.TestCase):
         self.assertError(getopt.do_shorts, [], 'a1', 'a', [])
         self.assertError(getopt.do_shorts, [], 'a', 'a:', [])
 
-    def test_do_longs(self):
+    def test_do_longs(self) -> None:
         opts, args = getopt.do_longs([], 'abc', ['abc'], [])
         self.assertEqual(opts, [('--abc', '')])
         self.assertEqual(args, [])
@@ -95,7 +97,7 @@ class GetoptTests(unittest.TestCase):
         self.assertError(getopt.do_longs, [], 'abc=1', ['abc'], [])
         self.assertError(getopt.do_longs, [], 'abc', ['abc='], [])
 
-    def test_getopt(self):
+    def test_getopt(self) -> None:
         # note: the empty string between '-a' and '--beta' is significant:
         # it simulates an empty string option argument ('-a ""') on the
         # command line.
@@ -112,7 +114,7 @@ class GetoptTests(unittest.TestCase):
 
         self.assertError(getopt.getopt, cmdline, 'a:b', ['alpha', 'beta'])
 
-    def test_gnu_getopt(self):
+    def test_gnu_getopt(self) -> None:
         # Test handling of GNU style scanning mode.
         cmdline = ['-a', 'arg1', '-b', '1', '--alpha', '--beta=2']
 
@@ -138,7 +140,7 @@ class GetoptTests(unittest.TestCase):
         self.assertEqual(opts, [('-a', '')])
         self.assertEqual(args, ['arg1', '-b', '1', '--alpha', '--beta=2'])
 
-    def test_libref_examples(self):
+    def test_libref_examples(self) -> None:
         s = """
         Examples from the Library Reference:  Doc/lib/libgetopt.tex
 
@@ -174,14 +176,14 @@ class GetoptTests(unittest.TestCase):
         m = types.ModuleType("libreftest", s)
         run_doctest(m, verbose)
 
-    def test_issue4629(self):
+    def test_issue4629(self) -> None:
         longopts, shortopts = getopt.getopt(['--help='], '', ['help='])
         self.assertEqual(longopts, [('--help', '')])
         longopts, shortopts = getopt.getopt(['--help=x'], '', ['help='])
         self.assertEqual(longopts, [('--help', 'x')])
         self.assertRaises(getopt.GetoptError, getopt.getopt, ['--help='], '', ['help'])
 
-def test_main():
+def test_main() -> None:
     run_unittest(GetoptTests)
 
 if __name__ == "__main__":
