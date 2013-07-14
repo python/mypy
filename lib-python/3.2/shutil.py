@@ -561,7 +561,7 @@ def unregister_archive_format(name: str) -> None:
 def make_archive(base_name: str, format: str, root_dir: str = None,
                  base_dir: str = None, verbose: bool = False,
                  dry_run: bool = False, owner: str = None,
-                 group: str = None, logger: Any = None) -> None:
+                 group: str = None, logger: Any = None) -> str:
     """Create an archive file (eg. zip or tar).
 
     'base_name' is the name of the file to create, minus any format-specific

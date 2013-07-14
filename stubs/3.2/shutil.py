@@ -35,7 +35,7 @@ class Error(Exception): pass
 def make_archive(base_name: str, format: str, root_dir: str = None,
                  base_dir: str = None, verbose: bool = False,
                  dry_run: bool = False, owner: str = None, group: str = None,
-                 logger: Any = None) -> None: pass
+                 logger: Any = None) -> str: pass
 def get_archive_formats() -> List[Tuple[str, str]]: pass
 def register_archive_format(name: str, function: Any,
                             extra_args: Sequence[Tuple[str, Any]] = None,
