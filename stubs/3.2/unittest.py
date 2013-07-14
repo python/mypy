@@ -40,6 +40,11 @@ class TestResult:
                     err: Tuple[type, Any, Any]) -> None: pass # TODO
     def addSuccess(self, test: Testable) -> None: pass
 
+class _AssertRaisesContext:
+    exception = Undefined(Any) # TODO precise type
+    def __enter__(self) -> _AssertRaisesContext: pass
+    def __exit__(self, exc_type, exc_value, tb) -> bool: pass
+
 class TestCase(Testable):
     def __init__(self, methodName: str = 'runTest') -> None: pass
     # TODO failureException
@@ -66,8 +71,12 @@ class TestCase(Testable):
                              places: int = 7, msg: str = None) -> None: pass
     def failIfAlmostEqual(self, first: float, second: float, places: int = 7,
                           msg: str = None) -> None: pass
+    @overload
     def assertRaises(self, exception: type, callable: Any,
                      *args: Any, **kwargs: Any) -> None: pass
+    @overload
+    def assertRaises(self, exception: type, msg: str = None,
+                     *args: Any, **kwargs: Any) -> _AssertRaisesContext: pass
     def failIf(self, expr: Any, msg: str = None) -> None: pass
     def assertFalse(self, expr: Any, msg: str = None) -> None: pass
     def fail(self, msg: str = None) -> None: pass
