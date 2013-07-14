@@ -61,6 +61,9 @@ class TestCase(Testable):
                         msg: str = None) -> None: pass
     def assertNotEqual(self, first: Any, second: Any,
                        msg: str = None) -> None: pass
+    def assertSequenceEqual(self, first: Sequence[Any], second: Sequence[Any],
+                            msg: str = None,
+                            seq_type: type = None) -> None: pass
     def failIfEqual(self, first: Any, second: Any,
                     msg: str = None) -> None: pass
     def assertAlmostEqual(self, first: float, second: float, places: int = 7,
