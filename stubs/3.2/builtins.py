@@ -788,18 +788,36 @@ class set(AbstractSet[T], Generic[T]):
     def __init__(self, iterable: Iterable[T]) -> None: pass
     
     def add(self, element: T) -> None: pass
+    def clear(self) -> None: pass
+    def copy(self) -> set[T]: pass
+    def difference(self, s: AbstractSet[Any]) -> set[T]: pass
+    def difference_update(self, s: AbstractSet[Any]) -> None: pass
+    def discard(self, element: T) -> None: pass
+    def intersection(self, s: AbstractSet[Any]) -> set[T]: pass
+    def intersection_update(self, s: AbstractSet[Any]) -> None: pass
+    def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
+    def issubset(self, s: AbstractSet[Any]) -> bool: pass
+    def issuperset(self, s: AbstractSet[Any]) -> bool: pass
+    def pop(self) -> T: pass
     def remove(self, element: T) -> None: pass
-    def copy(self) -> AbstractSet[T]: pass
-    def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
+    def symmetric_difference(self, s: AbstractSet[T]) -> set[T]: pass
+    def symmetric_difference_update(self, s: AbstractSet[T]) -> None: pass
+    def union(self, s: AbstractSet[T]) -> set[T]: pass
+    def update(self, s: AbstractSet[T]) -> None: pass
     
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
     def __iter__(self) -> Iterator[T]: pass    
     def __str__(self) -> str: pass
-    def __and__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
-    def __or__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
-    def __sub__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
-    def __xor__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
+    def __and__(self, s: AbstractSet[Any]) -> set[T]: pass
+    def __or__(self, s: AbstractSet[T]) -> set[T]: pass
+    def __sub__(self, s: AbstractSet[Any]) -> set[T]: pass
+    def __xor__(self, s: AbstractSet[T]) -> set[T]: pass
+    def __le__(self, s: AbstractSet[Any]) -> bool: pass
+    def __lt__(self, s: AbstractSet[Any]) -> bool: pass
+    def __ge__(self, s: AbstractSet[Any]) -> bool: pass
+    def __gt__(self, s: AbstractSet[Any]) -> bool: pass
+    
     # TODO more set operations
 
 
@@ -809,7 +827,14 @@ class frozenset(AbstractSet[T], Generic[T]):
     @overload
     def __init__(self, iterable: Iterable[T]) -> None: pass
 
+    def copy(self) -> frozenset[T]: pass
+    def difference(self, s: AbstractSet[Any]) -> frozenset[T]: pass
+    def intersection(self, s: AbstractSet[Any]) -> frozenset[T]: pass
     def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
+    def issubset(self, s: AbstractSet[Any]) -> bool: pass
+    def issuperset(self, s: AbstractSet[Any]) -> bool: pass
+    def symmetric_difference(self, s: AbstractSet[T]) -> frozenset[T]: pass
+    def union(self, s: AbstractSet[T]) -> frozenset[T]: pass
     
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
@@ -819,7 +844,10 @@ class frozenset(AbstractSet[T], Generic[T]):
     def __or__(self, s: AbstractSet[T]) -> frozenset[T]: pass
     def __sub__(self, s: AbstractSet[T]) -> frozenset[T]: pass
     def __xor__(self, s: AbstractSet[T]) -> frozenset[T]: pass
-    # TODO more set operations
+    def __le__(self, s: AbstractSet[Any]) -> bool: pass
+    def __lt__(self, s: AbstractSet[Any]) -> bool: pass
+    def __ge__(self, s: AbstractSet[Any]) -> bool: pass
+    def __gt__(self, s: AbstractSet[Any]) -> bool: pass
 
 
 class enumerate(Iterator[Tuple[int, T]], Generic[T]):

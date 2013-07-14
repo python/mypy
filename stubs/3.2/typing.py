@@ -83,18 +83,27 @@ class Sequence(Sized, Iterable[T], AbstractGeneric[T]):
 class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
-    # TODO __le__, __lt__, __gt__, __ge__
     @abstractmethod
-    def __and__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
+    def __le__(self, s: AbstractSet[Any]) -> bool: pass
+    @abstractmethod
+    def __lt__(self, s: AbstractSet[Any]) -> bool: pass
+    @abstractmethod
+    def __gt__(self, s: AbstractSet[Any]) -> bool: pass
+    @abstractmethod
+    def __ge__(self, s: AbstractSet[Any]) -> bool: pass
+    @abstractmethod
+    def __and__(self, s: AbstractSet[Any]) -> AbstractSet[T]: pass
+    # In order to support covariance, T should not be used within an argument
+    # type. We need union types to properly model this.
     @abstractmethod
     def __or__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
     @abstractmethod
-    def __sub__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
+    def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[T]: pass
     @abstractmethod
     def __xor__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
     # TODO argument can be any container?
     @abstractmethod
-    def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
+    def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
 class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
