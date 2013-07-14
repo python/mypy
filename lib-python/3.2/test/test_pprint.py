@@ -5,7 +5,8 @@ import test.test_set
 import random
 import collections
 import itertools
-import typing
+
+from typing import List, Any, Dict, Tuple, cast
 
 # list, tuple and dict subclasses that do or don't overwrite __repr__
 class list2(list):
@@ -35,16 +36,16 @@ class Unorderable:
 
 class QueryTestCase(unittest.TestCase):
 
-    def setUp(self):
-        self.a = list(range(100))
-        self.b = list(range(200))
+    def setUp(self) -> None:
+        self.a = List[Any](range(100))
+        self.b = List[Any](range(200))
         self.a[-12] = self.b
 
-    def test_basic(self):
+    def test_basic(self) -> None:
         # Verify .isrecursive() and .isreadable() w/o recursion
         pp = pprint.PrettyPrinter()
-        for safe in (2, 2.0, complex(0.0, 2.0), "abc", [3], (2,2), {3: 3}, "yaddayadda",
-                     self.a, self.b):
+        for safe in [2, 2.0, complex(0.0, 2.0), "abc", [3], (2,2), {3: 3}, "yaddayadda",
+                     self.a, self.b]:
             # module-level convenience functions
             self.assertFalse(pprint.isrecursive(safe),
                              "expected not isrecursive for %r" % (safe,))
@@ -56,17 +57,17 @@ class QueryTestCase(unittest.TestCase):
             self.assertTrue(pp.isreadable(safe),
                             "expected isreadable for %r" % (safe,))
 
-    def test_knotted(self):
+    def test_knotted(self) -> None:
         # Verify .isrecursive() and .isreadable() w/ recursion
         # Tie a knot.
         self.b[67] = self.a
         # Messy dict.
-        self.d = {}
+        self.d = Dict[int, dict]()
         self.d[0] = self.d[1] = self.d[2] = self.d
 
         pp = pprint.PrettyPrinter()
 
-        for icky in self.a, self.b, self.d, (self.d, self.d):
+        for icky in [self.a, self.b, self.d, (self.d, self.d)]:
             self.assertTrue(pprint.isrecursive(icky), "expected isrecursive")
             self.assertFalse(pprint.isreadable(icky), "expected not isreadable")
             self.assertTrue(pp.isrecursive(icky), "expected isrecursive")
@@ -77,7 +78,7 @@ class QueryTestCase(unittest.TestCase):
         del self.a[:]
         del self.b[:]
 
-        for safe in self.a, self.b, self.d, (self.d, self.d):
+        for safe in [self.a, self.b, self.d, (self.d, self.d)]:
             # module-level convenience functions
             self.assertFalse(pprint.isrecursive(safe),
                              "expected not isrecursive for %r" % (safe,))
@@ -89,10 +90,10 @@ class QueryTestCase(unittest.TestCase):
             self.assertTrue(pp.isreadable(safe),
                             "expected isreadable for %r" % (safe,))
 
-    def test_unreadable(self):
+    def test_unreadable(self) -> None:
         # Not recursive but not readable anyway
         pp = pprint.PrettyPrinter()
-        for unreadable in type(3), pprint, pprint.isrecursive:
+        for unreadable in [type(3), pprint, pprint.isrecursive]:
             # module-level convenience functions
             self.assertFalse(pprint.isrecursive(unreadable),
                              "expected not isrecursive for %r" % (unreadable,))
@@ -104,7 +105,7 @@ class QueryTestCase(unittest.TestCase):
             self.assertFalse(pp.isreadable(unreadable),
                              "expected not isreadable for %r" % (unreadable,))
 
-    def test_same_as_repr(self):
+    def test_same_as_repr(self) -> None:
         # Simple objects, small containers and classes that overwrite __repr__
         # For those the result should be the same as repr().
         # Ahem.  The docs don't say anything about that -- this appears to
@@ -113,7 +114,7 @@ class QueryTestCase(unittest.TestCase):
         # it sorted a dict display if and only if the display required
         # multiple lines.  For that reason, dicts with more than one element
         # aren't tested here.
-        for simple in (0, 0, complex(0.0), 0.0, "", b"",
+        for simple in [0, 0, complex(0.0), 0.0, "", b"",
                        (), tuple2(), tuple3(),
                        [], list2(), list3(),
                        {}, dict2(), dict3(),
@@ -121,19 +122,19 @@ class QueryTestCase(unittest.TestCase):
                        -6, -6, complex(-6.,-6.), -1.5, "x", b"x", (3,), [3], {3: 6},
                        (1,2), [3,4], {5: 6},
                        tuple2((1,2)), tuple3((1,2)), tuple3(range(100)),
-                       [3,4], list2([3,4]), list3([3,4]), list3(range(100)),
-                       dict2({5: 6}), dict3({5: 6}),
+                       [3,4], list2(Any([3,4])), list3(Any([3,4])), list3(Any(range(100))),
+                       dict2(Any({5: 6})), dict3(Any({5: 6})), # JLe: work around mypy issue #233
                        range(10, -11, -1)
-                      ):
+                      ]:
             native = repr(simple)
-            for function in "pformat", "saferepr":
+            for function in ["pformat", "saferepr"]:
                 f = getattr(pprint, function)
                 got = f(simple)
                 self.assertEqual(native, got,
                                  "expected %s got %s from pprint.%s" %
                                  (native, got, function))
 
-    def test_basic_line_wrap(self):
+    def test_basic_line_wrap(self) -> None:
         # verify basic line-wrapping operation
         o = {'RPM_cal': 0,
              'RPM_cal2': 48059,
@@ -150,26 +151,27 @@ class QueryTestCase(unittest.TestCase):
  'main_code_runtime_us': 0,
  'read_io_runtime_us': 0,
  'write_io_runtime_us': 43690}"""
-        for type in [dict, dict2]:
+        # JLe: work around mypy issue #232
+        for type in List[Any]([dict, dict2]):
             self.assertEqual(pprint.pformat(type(o)), exp)
 
-        o = range(100)
-        exp = '[%s]' % ',\n '.join(map(str, o))
-        for type in [list, list2]:
-            self.assertEqual(pprint.pformat(type(o)), exp)
+        o2 = range(100)
+        exp = '[%s]' % ',\n '.join(map(str, o2))
+        for type in List[Any]([list, list2]):
+            self.assertEqual(pprint.pformat(type(o2)), exp)
 
-        o = tuple(range(100))
-        exp = '(%s)' % ',\n '.join(map(str, o))
-        for type in [tuple, tuple2]:
-            self.assertEqual(pprint.pformat(type(o)), exp)
+        o3 = tuple(range(100))
+        exp = '(%s)' % ',\n '.join(map(str, o3))
+        for type in List[Any]([tuple, tuple2]):
+            self.assertEqual(pprint.pformat(type(o3)), exp)
 
         # indent parameter
-        o = range(100)
-        exp = '[   %s]' % ',\n    '.join(map(str, o))
-        for type in [list, list2]:
-            self.assertEqual(pprint.pformat(type(o), indent=4), exp)
+        o4 = range(100)
+        exp = '[   %s]' % ',\n    '.join(map(str, o4))
+        for type in List[Any]([list, list2]):
+            self.assertEqual(pprint.pformat(type(o4), indent=4), exp)
 
-    def test_nested_indentations(self):
+    def test_nested_indentations(self) -> None:
         o1 = list(range(10))
         o2 = {'first':1, 'second':2, 'third':3}
         o = [o1, o2]
@@ -198,7 +200,7 @@ class QueryTestCase(unittest.TestCase):
         self.assertEqual(pprint.pformat({"xy\tab\n": (3,), 5: [[]], (): {}}),
             r"{5: [[]], 'xy\tab\n': (3,), (): {}}")
 
-    def test_ordered_dict(self):
+    def test_ordered_dict(self) -> None:
         words = 'the quick brown fox jumped over a lazy dog'.split()
         d = collections.OrderedDict(zip(words, itertools.count()))
         self.assertEqual(pprint.pformat(d),
@@ -212,7 +214,7 @@ class QueryTestCase(unittest.TestCase):
  'a': 6,
  'lazy': 7,
  'dog': 8}""")
-    def test_subclassing(self):
+    def test_subclassing(self) -> None:
         o = {'names with spaces': 'should be presented using repr()',
              'others.should.not.be': 'like.this'}
         exp = """\
@@ -221,7 +223,7 @@ class QueryTestCase(unittest.TestCase):
         self.assertEqual(DottedPrettyPrinter().pformat(o), exp)
 
     @test.support.cpython_only
-    def test_set_reprs(self):
+    def test_set_reprs(self) -> None:
         # This test creates a complex arrangement of frozensets and
         # compares the pretty-printed repr against a string hard-coded in
         # the test.  The hard-coded repr depends on the sort order of
@@ -433,7 +435,7 @@ class QueryTestCase(unittest.TestCase):
         cubo = test.test_set.linegraph(cube)
         self.assertEqual(pprint.pformat(cubo), cubo_repr_tgt)
 
-    def test_depth(self):
+    def test_depth(self) -> None:
         nested_tuple = (1, (2, (3, (4, (5, 6)))))
         nested_dict = {1: {2: {3: {4: {5: {6: 6}}}}}}
         nested_list = [1, [2, [3, [4, [5, [6, []]]]]]]
@@ -448,7 +450,7 @@ class QueryTestCase(unittest.TestCase):
         self.assertEqual(pprint.pformat(nested_dict, depth=1), lv1_dict)
         self.assertEqual(pprint.pformat(nested_list, depth=1), lv1_list)
 
-    def test_sort_unorderable_values(self):
+    def test_sort_unorderable_values(self) -> None:
         # Issue 3976:  sorted pprints fail for unorderable values.
         n = 20
         keys = [Unorderable() for i in range(n)]
@@ -465,18 +467,20 @@ class QueryTestCase(unittest.TestCase):
 
 class DottedPrettyPrinter(pprint.PrettyPrinter):
 
-    def format(self, object, context, maxlevels, level):
+    def format(self, object: object, context: Dict[int, Any], maxlevels: int,
+               level: int) -> Tuple[str, bool, bool]:
         if isinstance(object, str):
-            if ' ' in object:
-                return repr(object), 1, 0
+            s = cast(str, object)
+            if ' ' in s:
+                return repr(s), True, False
             else:
-                return object, 0, 0
+                return s, False, False
         else:
             return pprint.PrettyPrinter.format(
                 self, object, context, maxlevels, level)
 
 
-def test_main():
+def test_main() -> None:
     test.support.run_unittest(QueryTestCase)
 
 
