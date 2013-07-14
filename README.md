@@ -118,6 +118,7 @@ right now (but all of these will improve):
  - no properties
  - no static or class methods
  - int is not compatible with float
+ - tuples are not well-supported as immutable lists 
  - somewhat limited operator overloading
  - only a subset of Python standard library modules are supported, and some
    only partially
