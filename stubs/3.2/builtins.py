@@ -668,14 +668,17 @@ class slice:
     def __init__(self, start: int, stop: int, step: int) -> None: pass
 
 
-class tuple(Sized):
+class tuple(Sized, Iterable[Any]):
     @overload
     def __init__(self) -> None: pass
     @overload
     def __init__(self, iterable: Iterable[Any]) -> None: pass
+    @overload
+    def __init__(self, iterable: tuple) -> None: pass
     
     def __len__(self) -> int: pass
     def __contains__(self, x: object) -> bool: pass
+    def __iter__(self) -> Iterator[Any]: pass
     def __lt__(self, x: tuple) -> bool: pass
     def __le__(self, x: tuple) -> bool: pass
     def __gt__(self, x: tuple) -> bool: pass
