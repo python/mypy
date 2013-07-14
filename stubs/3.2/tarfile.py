@@ -7,10 +7,13 @@ class TarError(Exception): pass
 class TarInfo:
     name = ''
     size = 0
+    uid = 0
+    gid = 0
 
 class TarFile:
     def getmember(self, name: str) -> TarInfo: pass
     def getmembers(self) -> List[TarInfo]: pass
+    def getnames(self) -> List[str]: pass
     def extractall(self, path: str = ".",
                    members: List[TarInfo] = None) -> None: pass
     
