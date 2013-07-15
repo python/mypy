@@ -106,4 +106,22 @@ class A:
     def f(self, x: int) -> None: pass
 class B:
     def f(self, x: str) -> None: pass
-class C(A, B): pass
+class C(A, B): pass # E: TODO
+
+[case testInstanceVarNameOverlapInMultipleInheritanceWithInvalidTypes-skip]
+import typing
+class A:
+    def f(self) -> None:
+        self.x = 1
+class B:
+    def g(self) -> None:
+        self.x = ''
+class C(A, B): pass # E: TODO
+
+[case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes-skip]
+import typing
+class A:
+    x = 1
+class B:
+    x = ''
+class C(A, B): pass # E: TODO
