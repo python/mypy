@@ -55,7 +55,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ARG_POS, MroError, type_aliases
+    StrExpr, PrintStmt, ConditionalExpr, ARG_POS, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1146,6 +1146,11 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_func_expr(self, expr: FuncExpr) -> None:
         self.analyse_function(expr)
+
+    def visit_conditional_expr(self, expr: ConditionalExpr) -> None:
+        expr.if_expr.accept(self)
+        expr.cond.accept(self)
+        expr.else_expr.accept(self)
     
     #
     # Helpers

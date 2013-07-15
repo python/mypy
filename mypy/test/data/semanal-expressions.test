@@ -279,3 +279,14 @@ MypyFile:1(
             +
             NameExpr(x [l])
             NameExpr(y [l])))))))
+
+[case testConditionalExpression]
+int if None else str
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ConditionalExpr:1(
+      Condition(
+        NameExpr(None [builtins.None]))
+      NameExpr(int [builtins.int])
+      NameExpr(str [builtins.str]))))
