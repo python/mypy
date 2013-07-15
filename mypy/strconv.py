@@ -390,7 +390,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.generator], o)
     
     def visit_conditional_expr(self, o):
-        return self.dump([o.cond, o.if_expr, o.else_expr], o)
+        return self.dump([('Condition', [o.cond]), o.if_expr, o.else_expr], o)
     
     def visit_slice_expr(self, o):
         a = [o.begin_index, o.end_index, o.stride]

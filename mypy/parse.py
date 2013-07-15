@@ -1163,7 +1163,7 @@ class Parser:
         cond = self.parse_expression()
         self.expect('else')
         else_expr = self.parse_expression()
-        return ConditionalExpr(left_expr, cond, else_expr)
+        return ConditionalExpr(cond, left_expr, else_expr)
     
     def parse_dict_or_set_expr(self) -> Node:
         items = List[Tuple[Node, Node]]()

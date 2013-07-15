@@ -1874,8 +1874,9 @@ x if y else z
 MypyFile:1(
   ExpressionStmt:1(
     ConditionalExpr:1(
+      Condition(
+        NameExpr(y))
       NameExpr(x)
-      NameExpr(y)
       NameExpr(z))))
 
 [case testSetLiteral]
