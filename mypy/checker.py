@@ -340,16 +340,16 @@ class TypeChecker(NodeVisitor[Type]):
             return
         first = base1[name]
         second = base2[name]
-        if (isinstance(first.node, FuncDef) and
-                isinstance(second.node, FuncDef)):
+        first_type = first.type()
+        second_type = second.type()
+        if (isinstance(first_type, FunctionLike) and
+                isinstance(second_type, FunctionLike)):
             # Method override
-            first_sig = method_type(cast(FuncDef, first.node))
-            second_sig = method_type(cast(FuncDef, second.node))
+            first_sig = method_type(cast(FunctionLike, first_type))
+            second_sig = method_type(cast(FunctionLike, second_type))
             # TODO Can we relax the equivalency requirement?
             ok = is_equivalent(first_sig, second_sig)
         else:
-            first_type = first.type()
-            second_type = second.type()
             ok = is_equivalent(first_type, second_type)
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,

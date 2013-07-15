@@ -1,4 +1,6 @@
 -- Test cases for multiple inheritance.
+--
+-- Related: check-abstract.test
 
 
 -- No name collisions

@@ -455,3 +455,26 @@ class A(metaclass=ABCMeta):
   def f(self, x: str) -> str: pass
 [out]
 main: In class "A":
+
+[case testMultipleInheritanceAndAbstractMethod]
+import typing
+from abc import abstractmethod, ABCMeta
+class A:
+  def f(self, x: str) -> None: pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self, x: str) -> None: pass
+class C(A, B): pass
+
+[case testMultipleInheritanceAndAbstractMethod2]
+import typing
+from abc import abstractmethod, ABCMeta
+class A:
+  def f(self, x: str) -> None: pass
+class B(metaclass=ABCMeta):
+  @abstractmethod
+  def f(self, x: int) -> None: pass
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 8: Definition of "f" in base class "A" is incompatible with definition in base class "B"
