@@ -18,6 +18,19 @@ c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
 c.g('')
 c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"
 
+[case testSimpleMultipleInheritanceAndMethods2]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def g(self, x): pass
+class C(A, B): pass
+c = C()
+c.f(1)
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.g('')
+c.g(1)
+
 [case testSimpleMultipleInheritanceAndInstanceVariables]
 import typing
 class A:
@@ -106,6 +119,17 @@ class A:
     def f(self, x: int) -> None: pass
 class B:
     def f(self, x: str) -> None: pass
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs2]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x, y): pass
 class C(A, B): pass
 [out]
 main: In class "C":
