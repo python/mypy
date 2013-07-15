@@ -143,7 +143,7 @@ def _candidate_tempdir_list() -> _List[str]:
     dirlist = [] # type: _List[str]
 
     # First, try the environment.
-    for envname in ['TMPDIR', 'TEMP', 'TMP']:
+    for envname in 'TMPDIR', 'TEMP', 'TMP':
         dirname = _os.getenv(envname)
         if dirname: dirlist.append(dirname)
 

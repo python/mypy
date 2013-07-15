@@ -1293,7 +1293,7 @@ class Popen(object):
                                 # better.. but this pure python implementation
                                 # isn't likely to be used much anymore.
                                 if restore_signals:
-                                    signals = ['SIGPIPE', 'SIGXFZ', 'SIGXFSZ']
+                                    signals = ('SIGPIPE', 'SIGXFZ', 'SIGXFSZ')
                                     for sig in signals:
                                         if hasattr(signal, sig):
                                             signal.signal(getattr(signal, sig),
@@ -1373,7 +1373,7 @@ class Popen(object):
                 child_exception_type = getattr(
                         builtins, exception_name.decode('ascii'),
                         RuntimeError)
-                for fd in [p2cwrite, c2pread, errread]:
+                for fd in (p2cwrite, c2pread, errread):
                     if fd != -1:
                         os.close(fd)
                 err_msg = err_msg_b.decode(errors="surrogatepass")
