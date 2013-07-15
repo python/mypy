@@ -770,6 +770,41 @@ b = x for x in a # E: Generator has incompatible item type "int"
 [builtins fixtures/for.py]
 
 
+-- Conditional expressions
+-- -----------------------
+
+
+[case testSimpleConditionalExpression]
+import typing
+y = ''
+x = 1 if y else 2
+x = 3
+x = '' # E: Incompatible types in assignment
+
+[case testConditionalExpressionWithEmptyCondition]
+import typing
+def f() -> None: pass
+x = 1 if f() else 2 # E: "f" does not return a value
+
+[case testConditionalExpressionWithSubtyping]
+import typing
+class A: pass
+class B(A): pass
+x = B() if None else A()
+x = A()
+x = '' # E: Incompatible types in assignment
+y = A() if None else B()
+y = A()
+y = '' # E: Incompatible types in assignment
+
+[case testConditionalExpressionAndTypeContext]
+import typing
+x = [1] if None else []
+x = [1]
+x = ['x'] # E: List item 1 has incompatible type "str"
+[builtins fixtures/list.py]
+
+
 -- Special cases
 -- -------------
 

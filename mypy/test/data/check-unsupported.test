@@ -1,11 +1,6 @@
 -- Tests for unsupported features
 
 
-[case testConditionalExpression]
-a = None if None else None
-[out]
-main, line 1: Feature not implemented yet (conditional expression) 
-
 [case testDecorateOverloadedFunction]
 # The error messages are not the most informative ever.
 def d(x): pass

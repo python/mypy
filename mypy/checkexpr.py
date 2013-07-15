@@ -12,7 +12,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr
+    UndefinedExpr, ConditionalExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1083,6 +1083,13 @@ class ExpressionChecker:
 
     def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
         return e.type
+
+    def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
+        cond_type = self.accept(e.cond)
+        self.check_not_void(cond_type, e)
+        if_type = self.accept(e.if_expr)
+        else_type = self.accept(e.else_expr, context=if_type)
+        return join.join_types(if_type, else_type, self.chk.basic_types())
     
     #
     # Helpers

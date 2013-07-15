@@ -898,12 +898,8 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type
 
-    #
-    # Currently unsupported features
-    #
-
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
-        return self.msg.not_implemented('conditional expression', e)
+        return self.expr_checker.visit_conditional_expr(e)
     
     #
     # Helpers
