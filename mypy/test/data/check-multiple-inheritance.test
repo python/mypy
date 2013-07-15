@@ -46,6 +46,18 @@ c.x = '' # E: Incompatible types in assignment
 c.y = ''
 c.y = 1  # E: Incompatible types in assignment
 
+[case testSimpleMultipleInheritanceAndClassVariable]
+import typing
+class A:
+    x = 1
+class B:
+    y = ''
+class C(A, B): pass
+C.x = 1
+C.x = '' # E: Incompatible types in assignment
+C.y = ''
+C.y = 1  # E: Incompatible types in assignment
+
 
 -- Name collisions
 -- ---------------
