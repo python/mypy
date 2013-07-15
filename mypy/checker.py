@@ -19,7 +19,8 @@ from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, TypeTranslator, BasicTypes, strip_type
+    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, BasicTypes,
+    strip_type
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -714,22 +715,33 @@ class TypeChecker(NodeVisitor[Type]):
         iterable = self.accept(expr)
         
         self.check_not_void(iterable, expr)
-        self.check_subtype(iterable,
-                           self.named_generic_type('builtins.Iterable',
-                                                   [AnyType()]),
-                           expr, messages.ITERABLE_EXPECTED)
-        
-        echk = self.expr_checker
-        method = echk.analyse_external_member_access('__iter__', iterable,
-                                                     expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
-        if self.pyversion >= 3:
-            nextmethod = '__next__'
+        if isinstance(iterable, TupleType):
+            tuple = cast(TupleType, iterable)
+            joined = NoneTyp() # type: Type
+            for item in tuple.items:
+                joined = join_types(joined, item, self.basic_types())
+            if isinstance(joined, ErrorType):
+                self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
+                joined = AnyType()
+            return joined
         else:
-            nextmethod = 'next'
-        method = echk.analyse_external_member_access(nextmethod, iterator,
-                                                     expr)
-        return echk.check_call(method, [], [], expr)[0]
+            # Non-tuple iterable.
+            self.check_subtype(iterable,
+                               self.named_generic_type('builtins.Iterable',
+                                                       [AnyType()]),
+                               expr, messages.ITERABLE_EXPECTED)
+
+            echk = self.expr_checker
+            method = echk.analyse_external_member_access('__iter__', iterable,
+                                                         expr)
+            iterator = echk.check_call(method, [], [], expr)[0]
+            if self.pyversion >= 3:
+                nextmethod = '__next__'
+            else:
+                nextmethod = 'next'
+            method = echk.analyse_external_member_access(nextmethod, iterator,
+                                                         expr)
+            return echk.check_call(method, [], [], expr)[0]
 
     def analyse_index_variables(self, index: List[NameExpr],
                                 is_annotated: bool,

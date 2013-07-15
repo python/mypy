@@ -398,3 +398,38 @@ class int: pass
 class str: pass
 class bool: pass
 class type: pass
+
+
+-- For loop over tuple
+-- -------------------
+
+
+[case testForLoopOverTuple]
+import typing
+t = 1, 2
+for x in t:
+    x = 1
+    x = '' # E: Incompatible types in assignment
+[builtins fixtures/for.py]
+
+[case testForLoopOverEmptyTuple]
+import typing
+t = ()
+for x in t: pass # E: Need type annotation for variable
+[builtins fixtures/for.py]
+
+[case testForLoopOverNoneValuedTuple]
+import typing
+t = ()
+for x in None, None: pass # E: Need type annotation for variable
+[builtins fixtures/for.py]
+
+[case testForLoopOverTupleAndSubtyping]
+import typing
+class A: pass
+class B(A): pass
+for x in B(), A():
+    x = A()
+    x = B()
+    x = '' # E: Incompatible types in assignment
+[builtins fixtures/for.py]
