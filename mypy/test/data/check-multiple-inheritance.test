@@ -1,0 +1,64 @@
+-- Test cases for multiple inheritance.
+
+
+-- No name collisions
+-- ------------------
+
+
+[case testSimpleMultipleInheritanceAndMethods]
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def g(self, x: str) -> None: pass
+class C(A, B): pass
+c = C()
+c.f(1)
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.g('')
+c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"
+
+[case testSimpleMultipleInheritanceAndInstanceVariables]
+import typing
+class A:
+    def f(self) -> None:
+        self.x = 1
+class B:
+    def g(self) -> None:
+        self.y = ''
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment
+c.y = ''
+c.y = 1  # E: Incompatible types in assignment
+
+[case testSimpleMultipleInheritanceAndInstanceVariableInClassBody]
+import typing
+class A:
+    x = 1
+class B:
+    y = ''
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment
+c.y = ''
+c.y = 1  # E: Incompatible types in assignment
+
+
+-- Name collisions
+-- ---------------
+
+
+[case testMethodNameCollisionInMultipleInheritanceWithValidSigs]
+import typing
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x: int) -> None: pass
+class C(A, B): pass
+c = C()
+c.f(1)
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
