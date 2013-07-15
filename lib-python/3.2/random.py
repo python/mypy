@@ -269,10 +269,7 @@ class Random(_random.Random):
         randbelow = self._randbelow
         for i in reversed(range(1, len(x))):
             # pick an element in x[:i+1] with which to exchange x[i]
-            if random is None:
-                j = randbelow(i+1)
-            else:
-                j = int(random() * (i+1))
+            j = randbelow(i+1) if random is None else int(random() * (i+1))
             x[i], x[j] = x[j], x[i]
 
     @overload
@@ -359,10 +356,7 @@ class Random(_random.Random):
 
         """
         u = self.random()
-        if mode is None:
-            c = 0.5
-        else:
-            c = (mode - low) / (high - low)
+        c = 0.5 if mode is None else (mode - low) / (high - low)
         if u > c:
             u = 1.0 - u
             c = 1.0 - c
