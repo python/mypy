@@ -1412,7 +1412,7 @@ class SymbolTableNode:
             return None
     
     def type(self) -> 'mypy.types.Type':
-        # IDEA: Get rid of the any type.
+        # IDEA: Get rid of the Any type.
         node = self.node # type: Any
         if self.type_override is not None:
             return self.type_override
