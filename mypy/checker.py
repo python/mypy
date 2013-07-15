@@ -340,8 +340,6 @@ class TypeChecker(NodeVisitor[Type]):
             return
         first = base1[name]
         second = base2[name]
-        first_type = first.type()
-        second_type = second.type()
         if (isinstance(first.node, FuncDef) and
                 isinstance(second.node, FuncDef)):
             # Method override
