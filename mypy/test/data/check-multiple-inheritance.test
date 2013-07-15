@@ -100,15 +100,18 @@ c.x = '' # E: Incompatible types in assignment
 C.x = 1
 C.x = '' # E: Incompatible types in assignment
 
-[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs-skip]
+[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs]
 import typing
 class A:
     def f(self, x: int) -> None: pass
 class B:
     def f(self, x: str) -> None: pass
-class C(A, B): pass # E: TODO
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
-[case testInstanceVarNameOverlapInMultipleInheritanceWithInvalidTypes-skip]
+[case testInstanceVarNameOverlapInMultipleInheritanceWithInvalidTypes]
 import typing
 class A:
     def f(self) -> None:
@@ -116,12 +119,18 @@ class A:
 class B:
     def g(self) -> None:
         self.x = ''
-class C(A, B): pass # E: TODO
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 8: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
-[case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes-skip]
+[case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes]
 import typing
 class A:
     x = 1
 class B:
     x = ''
-class C(A, B): pass # E: TODO
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 6: Definition of "x" in base class "A" is incompatible with definition in base class "B"

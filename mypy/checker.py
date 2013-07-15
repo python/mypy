@@ -318,7 +318,41 @@ class TypeChecker(NodeVisitor[Type]):
         typ = defn.info
         self.errors.push_type(defn.name)
         self.accept(defn.defs)
+        self.check_multiple_inheritance(typ)
         self.errors.pop_type()
+
+    def check_multiple_inheritance(self, typ: TypeInfo) -> None:
+        """Verify that multiply inherited attributes are compatible."""
+        if len(typ.bases) <= 1:
+            # No multiple inheritance.
+            return
+        mro = typ.mro[1:]
+        for i, base in enumerate(mro):
+            for name in base.names:
+                for base2 in mro[i + 1:]:
+                    if name in base2.names:
+                        self.check_compatibility(name, base, base2, typ)
+
+    def check_compatibility(self, name: str, base1: TypeInfo,
+                            base2: TypeInfo, ctx: Context) -> None:
+        first = base1[name]
+        second = base2[name]
+        first_type = first.type()
+        second_type = second.type()
+        if (isinstance(first.node, FuncDef) and
+                isinstance(second.node, FuncDef)):
+            # Method override
+            first_sig = method_type(cast(FuncDef, first.node))
+            second_sig = method_type(cast(FuncDef, second.node))
+            # TODO Can we relax the equivalency requirement?
+            ok = is_equivalent(first_sig, second_sig)
+        else:
+            first_type = first.type()
+            second_type = second.type()
+            ok = is_equivalent(first_type, second_type)
+        if not ok:
+            self.msg.base_class_definitions_incompatible(name, base1, base2,
+                                                         ctx)
     
     #
     # Statements

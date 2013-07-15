@@ -528,6 +528,13 @@ class MessageBuilder:
                                    attrs),
                   context)
 
+    def base_class_definitions_incompatible(self, name: str, base1: TypeInfo,
+                                            base2: TypeInfo,
+                                            context: Context) -> None:
+        self.fail('Definition of "{}" in base class "{}" is incompatible '
+                  'with definition in base class "{}"'.format(
+                      name, base1.name(), base2.name()), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
