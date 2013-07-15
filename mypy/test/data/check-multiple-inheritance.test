@@ -65,7 +65,6 @@ C.y = 1  # E: Incompatible types in assignment
 
 [case testMethodNameCollisionInMultipleInheritanceWithValidSigs]
 import typing
-import typing
 class A:
     def f(self, x: int) -> None: pass
 class B:
@@ -75,8 +74,33 @@ c = C()
 c.f(1)
 c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
 
-[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs-skip]
+[case testInstanceVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
 import typing
+class A:
+    def f(self) -> None:
+        self.x = 1
+class B:
+    def g(self) -> None:
+        self.x = 1
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment
+
+[case testClassVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
+import typing
+class A:
+    x = 1
+class B:
+    x = 1
+class C(A, B): pass
+c = C()
+c.x = 1
+c.x = '' # E: Incompatible types in assignment
+C.x = 1
+C.x = '' # E: Incompatible types in assignment
+
+[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs-skip]
 import typing
 class A:
     def f(self, x: int) -> None: pass
