@@ -158,3 +158,26 @@ class C(A, B): pass
 [out]
 main: In class "C":
 main, line 6: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+
+[case testMethodOverlapsWithClassVariableInMultipleInheritance]
+from typing import Function
+class A:
+    def f(self) -> None: pass
+class B:
+    f = ''
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testMethodOverlapsWithInstanceVariableInMultipleInheritance]
+from typing import Function
+class A:
+    def f(self) -> None: pass
+class B:
+    def g(self) -> None:
+        self.f = ''
+class C(A, B): pass
+[out]
+main: In class "C":
+main, line 7: Definition of "f" in base class "A" is incompatible with definition in base class "B"
