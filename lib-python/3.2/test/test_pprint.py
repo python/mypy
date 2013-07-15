@@ -44,8 +44,8 @@ class QueryTestCase(unittest.TestCase):
     def test_basic(self) -> None:
         # Verify .isrecursive() and .isreadable() w/o recursion
         pp = pprint.PrettyPrinter()
-        for safe in [2, 2.0, complex(0.0, 2.0), "abc", [3], (2,2), {3: 3}, "yaddayadda",
-                     self.a, self.b]:
+        for safe in (2, 2.0, complex(0.0, 2.0), "abc", [3], (2,2), {3: 3}, "yaddayadda",
+                     self.a, self.b):
             # module-level convenience functions
             self.assertFalse(pprint.isrecursive(safe),
                              "expected not isrecursive for %r" % (safe,))
@@ -67,7 +67,7 @@ class QueryTestCase(unittest.TestCase):
 
         pp = pprint.PrettyPrinter()
 
-        for icky in [self.a, self.b, self.d, (self.d, self.d)]:
+        for icky in self.a, self.b, self.d, (self.d, self.d):
             self.assertTrue(pprint.isrecursive(icky), "expected isrecursive")
             self.assertFalse(pprint.isreadable(icky), "expected not isreadable")
             self.assertTrue(pp.isrecursive(icky), "expected isrecursive")
@@ -78,7 +78,7 @@ class QueryTestCase(unittest.TestCase):
         del self.a[:]
         del self.b[:]
 
-        for safe in [self.a, self.b, self.d, (self.d, self.d)]:
+        for safe in self.a, self.b, self.d, (self.d, self.d):
             # module-level convenience functions
             self.assertFalse(pprint.isrecursive(safe),
                              "expected not isrecursive for %r" % (safe,))
@@ -93,7 +93,7 @@ class QueryTestCase(unittest.TestCase):
     def test_unreadable(self) -> None:
         # Not recursive but not readable anyway
         pp = pprint.PrettyPrinter()
-        for unreadable in [type(3), pprint, pprint.isrecursive]:
+        for unreadable in type(3), pprint, pprint.isrecursive:
             # module-level convenience functions
             self.assertFalse(pprint.isrecursive(unreadable),
                              "expected not isrecursive for %r" % (unreadable,))
@@ -114,7 +114,7 @@ class QueryTestCase(unittest.TestCase):
         # it sorted a dict display if and only if the display required
         # multiple lines.  For that reason, dicts with more than one element
         # aren't tested here.
-        for simple in [0, 0, complex(0.0), 0.0, "", b"",
+        for simple in (0, 0, complex(0.0), 0.0, "", b"",
                        (), tuple2(), tuple3(),
                        [], list2(), list3(),
                        {}, dict2(), dict3(),
@@ -125,9 +125,9 @@ class QueryTestCase(unittest.TestCase):
                        [3,4], list2(Any([3,4])), list3(Any([3,4])), list3(Any(range(100))),
                        dict2(Any({5: 6})), dict3(Any({5: 6})), # JLe: work around mypy issue #233
                        range(10, -11, -1)
-                      ]:
+                      ):
             native = repr(simple)
-            for function in ["pformat", "saferepr"]:
+            for function in "pformat", "saferepr":
                 f = getattr(pprint, function)
                 got = f(simple)
                 self.assertEqual(native, got,

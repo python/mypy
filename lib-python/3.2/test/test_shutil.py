@@ -189,17 +189,17 @@ class TestShutil(unittest.TestCase):
             actual = read_data(os.path.join(dst_dir, 'test_dir', 'test.txt'))
             self.assertEqual(actual, '456')
         finally:
-            for path in [
+            for path in (
                     os.path.join(src_dir, 'test.txt'),
                     os.path.join(dst_dir, 'test.txt'),
                     os.path.join(src_dir, 'test_dir', 'test.txt'),
                     os.path.join(dst_dir, 'test_dir', 'test.txt'),
-                ]:
+                ):
                 if os.path.exists(path):
                     os.remove(path)
-            for path in [src_dir,
+            for path in (src_dir,
                     os.path.dirname(dst_dir)
-                ]:
+                ):
                 if os.path.exists(path):
                     shutil.rmtree(path)
 
@@ -431,7 +431,7 @@ class TestShutil(unittest.TestCase):
         file1_stat = os.stat(file1)
         file2_stat = os.stat(file2)
         self.assertEqual(file1_stat.st_mode, file2_stat.st_mode)
-        for attr in ['st_atime', 'st_mtime']:
+        for attr in 'st_atime', 'st_mtime':
             # The modification times may be truncated in the new file.
             self.assertLessEqual(getattr(file1_stat, attr),
                                  getattr(file2_stat, attr) + 1)
@@ -744,7 +744,7 @@ class TestMove(unittest.TestCase):
             f.write(b"spam")
 
     def tearDown(self) -> None:
-        for d in [self.src_dir, self.dst_dir]:
+        for d in (self.src_dir, self.dst_dir):
             try:
                 if d:
                     shutil.rmtree(d)

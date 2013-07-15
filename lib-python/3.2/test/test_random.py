@@ -102,7 +102,7 @@ class TestBasicOps(unittest.TestCase):
         # particular, through 2.2.1 it failed to reset a piece of state used
         # by (and only by) the .gauss() method.
 
-        for seed in [1, 12, 123, 1234, 12345, 123456, 654321]:
+        for seed in 1, 12, 123, 1234, 12345, 123456, 654321:
             self.gen.seed(seed)
             x1 = self.gen.random()
             y1 = self.gen.gauss(0, 1)

@@ -145,7 +145,7 @@ class BaseXYTestCase(unittest.TestCase):
 
     def test_b64decode_invalid_chars(self) -> None:
         # issue 1466065: Test some invalid characters.
-        tests = [(b'%3d==', b'\xdd'),
+        tests = ((b'%3d==', b'\xdd'),
                  (b'$3d==', b'\xdd'),
                  (b'[==', b''),
                  (b'YW]3=', b'am'),
@@ -153,7 +153,7 @@ class BaseXYTestCase(unittest.TestCase):
                  (b'3d}==', b'\xdd'),
                  (b'@@', b''),
                  (b'!', b''),
-                 (b'YWJj\nYWI=', b'abcab')]
+                 (b'YWJj\nYWI=', b'abcab'))
         for bstr, res in tests:
             self.assertEqual(base64.b64decode(bstr), res)
             with self.assertRaises(binascii.Error):
