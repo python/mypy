@@ -62,3 +62,12 @@ class C(A, B): pass
 c = C()
 c.f(1)
 c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+
+[case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs-skip]
+import typing
+import typing
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x: str) -> None: pass
+class C(A, B): pass
