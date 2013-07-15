@@ -335,6 +335,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
+        if name == '__init__':
+            # __init__ can be incompatible -- it's a special case.
+            return
         first = base1[name]
         second = base2[name]
         first_type = first.type()

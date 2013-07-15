@@ -181,3 +181,11 @@ class C(A, B): pass
 [out]
 main: In class "C":
 main, line 7: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testMultipleInheritanceAndInit]
+import typing
+class A:
+    def __init__(self, x: int) -> None: pass
+class B:
+    def __init__(self) -> None: pass
+class C(A, B): pass
