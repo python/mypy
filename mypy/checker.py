@@ -37,16 +37,20 @@ class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self) -> None:
-        self.types = Dict[Var, Type]()
+        self.types = Dict[Var, List[Type]]()
 
     def push(self, var: Var, type: Type) -> None:
-        self.types[var] = type
+        self.types.setdefault(var, []).append(type)
         
     def pop(self, var: Var) -> None:
-        del self.types[var]
+        self.types[var].pop()
         
     def get(self, var: Var) -> Type:
-        return self.types.get(var, var.type)
+        values = self.types.get(var)
+        if values:
+            return values[-1]
+        else:
+            return var.type
 
 
 class TypeChecker(NodeVisitor[Type]):

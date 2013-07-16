@@ -14,7 +14,7 @@ n = x # E: Incompatible types in assignment
 [builtins fixtures/isinstance.py]
 
 [case testSimpleIsinstance2]
-from typing import Undefined
+import typing
 def f(x: object, n: int, s: str) -> None:
     n = x # E: Incompatible types in assignment
     if isinstance(x, int):
@@ -35,7 +35,23 @@ class A:
     if isinstance(x, int):
         n = x
         s = x # E: Incompatible types in assignment
-    n = x # E: Incompatible types in assignment
+    else:
+        n = x # E: Incompatible types in assignment
 [builtins fixtures/isinstance.py]
 [out]
 main: In class "A":
+
+[case testMultipleIsinstanceTests]
+import typing
+class A: pass
+class B(A): pass
+def f(x: object, a: A, b: B, c: int) -> None:
+    if isinstance(x, A):
+        if isinstance(x, B):
+            b = x
+            x = a # E: Incompatible types in assignment
+        a = x
+        c = x # E: Incompatible types in assignment
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
