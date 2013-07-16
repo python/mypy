@@ -679,6 +679,12 @@ class tuple(Sized, Iterable[Any]):
     
     def __len__(self) -> int: pass
     def __contains__(self, x: object) -> bool: pass
+    
+    @overload
+    def __getitem__(self, x: int) -> Any: pass
+    @overload
+    def __getitem__(self, x: slice) -> tuple: pass
+    
     def __iter__(self) -> Iterator[Any]: pass
     def __lt__(self, x: tuple) -> bool: pass
     def __le__(self, x: tuple) -> bool: pass

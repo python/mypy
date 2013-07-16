@@ -456,3 +456,11 @@ class A:
 print(A().f)
 [out]
 3
+
+[case testIsinstanceWithTuple]
+from typing import Any
+x = Any((1, 'x'))
+if isinstance(x, tuple):
+    print(x[0], x[1])
+[out]
+1 x
