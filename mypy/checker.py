@@ -132,7 +132,7 @@ class TypeChecker(NodeVisitor[Type]):
                 init_type = self.accept(defn.init)
                 if defn.kind == LDEF and not defn.is_top_level:
                     # Infer local variable type if there is an initializer
-                    # except if the# definition is at the top level (outside a
+                    # except if the definition is at the top level (outside a
                     # function).
                     self.infer_local_variable_type(defn.items, init_type, defn)
         else:
