@@ -646,10 +646,9 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
-        for e in s.expr:
+        for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
-        for b in s.body:
             self.accept(b)
         if s.else_body:
             self.accept(s.else_body)
