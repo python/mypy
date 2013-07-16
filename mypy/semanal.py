@@ -831,6 +831,8 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.func.is_property = True
                 dec.var.is_property = True
                 self.check_decorated_function_is_method('property', dec)
+                if len(dec.func.args) > 1:
+                    self.fail('Too many arguments', dec.func)
         for i in reversed(removed):
             del dec.decorators[i]
         dec.func.accept(self)

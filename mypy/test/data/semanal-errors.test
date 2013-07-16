@@ -1020,3 +1020,12 @@ main, line 5: 'staticmethod' used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.py]
 [out]
+
+[case testInvalidArgCountForProperty]
+class A:
+    @property
+    def f(self, x) -> int: pass  # E: Too many arguments
+    @property
+    def g() -> int: pass   # E: Method must have at least one argument
+[builtins fixtures/property.py]
+[out]
