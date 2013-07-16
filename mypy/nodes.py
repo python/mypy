@@ -274,6 +274,11 @@ class FuncItem(FuncBase):
 
 
 class FuncDef(FuncItem):
+    """Function definition.
+
+    This is a non-lambda function defined using 'def'. 
+    """
+    
     _fullname = None # type: str       # Name with module prefix
     is_decorated = False
     is_conditional = False             # Defined conditionally (within block)?
@@ -310,6 +315,11 @@ class FuncDef(FuncItem):
 
 
 class Decorator(SymbolNode):
+    """A decorated function.
+
+    A single Decorator object can include any number of function decorators.
+    """
+    
     func = Undefined(FuncDef)          # Decorated function
     decorators = Undefined(List[Node]) # Decorators, at least one
     var = Undefined('Var')             # Represents the decorated function obj
