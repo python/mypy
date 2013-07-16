@@ -198,7 +198,7 @@ class TypeChecker(NodeVisitor[Type]):
         # the first case, set up another reference with the precise type.
         fdef = None # type: FuncDef
         if isinstance(defn, FuncDef):
-            fdef = cast(FuncDef, defn)
+            fdef = defn
         
         self.dynamic_funcs.append(defn.type is None and not type_override)
         
@@ -223,7 +223,7 @@ class TypeChecker(NodeVisitor[Type]):
         # We may be checking a function definition or an anonymous function. In
         # the first case, set up another reference with the precise type.
         if isinstance(defn, FuncDef):
-            fdef = cast(FuncDef, defn)
+            fdef = defn
         else:
             fdef = None
         
@@ -292,7 +292,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                            base_attr.node))
                     if isinstance(original_type, FunctionLike):
                         original = map_type_from_supertype(
-                            method_type(cast(FunctionLike, original_type)),
+                            method_type(original_type),
                             defn.info, base)
                         # Check that the types are compatible.
                         # TODO overloaded signatures
@@ -422,8 +422,7 @@ class TypeChecker(NodeVisitor[Type]):
             if self.is_definition(lv):
                 is_inferred = True
                 if isinstance(lv, NameExpr):
-                    n = cast(NameExpr, lv)
-                    inferred.append(cast(Var, n.node))
+                    inferred.append(cast(Var, lv.node))
                 else:
                     m = cast(MemberExpr, lv)
                     self.accept(m.expr)
@@ -431,16 +430,14 @@ class TypeChecker(NodeVisitor[Type]):
                 lvalue_types.append(None)
                 index_lvalues.append(None)
             elif isinstance(lv, IndexExpr):
-                ilv = cast(IndexExpr, lv)
                 lvalue_types.append(None)
-                index_lvalues.append(ilv)
+                index_lvalues.append(lv)
                 inferred.append(None)
             elif isinstance(lv, MemberExpr):
-                mlv = cast(MemberExpr, lv)
                 lvalue_types.append(
-                    self.expr_checker.analyse_ordinary_member_access(mlv,
+                    self.expr_checker.analyse_ordinary_member_access(lv,
                                                                      True))
-                self.store_type(mlv, lvalue_types[-1])
+                self.store_type(lv, lvalue_types[-1])
                 index_lvalues.append(None)
                 inferred.append(None)
             else:
@@ -465,11 +462,11 @@ class TypeChecker(NodeVisitor[Type]):
     
     def expand_lvalues(self, n: Node) -> List[Node]:
         if isinstance(n, TupleExpr):
-            return self.expr_checker.unwrap_list(cast(TupleExpr, n).items)
+            return self.expr_checker.unwrap_list(n.items)
         elif isinstance(n, ListExpr):
-            return self.expr_checker.unwrap_list(cast(ListExpr, n).items)
+            return self.expr_checker.unwrap_list(n.items)
         elif isinstance(n, ParenExpr):
-            return self.expand_lvalues(cast(ParenExpr, n).expr)
+            return self.expand_lvalues(n.expr)
         else:
             return [n]
     
@@ -490,15 +487,14 @@ class TypeChecker(NodeVisitor[Type]):
             
             if len(names) > 1:
                 if isinstance(init_type, TupleType):
-                    tinit_type = cast(TupleType, init_type)
                     # Initializer with a tuple type.
-                    if len(tinit_type.items) == len(names):
+                    if len(init_type.items) == len(names):
                         for i in range(len(names)):
                             self.set_inferred_type(names[i], lvalues[i],
-                                                   tinit_type.items[i])
+                                                   init_type.items[i])
                     else:
                         self.msg.incompatible_value_count_in_assignment(
-                            len(names), len(tinit_type.items), context)
+                            len(names), len(init_type.items), context)
                 elif (isinstance(init_type, Instance) and
                         cast(Instance, init_type).type.fullname() ==
                             'builtins.list'):
@@ -534,11 +530,11 @@ class TypeChecker(NodeVisitor[Type]):
         if is_same_type(typ, NoneTyp()):
             return False
         elif isinstance(typ, Instance):
-            for arg in cast(Instance, typ).args:
+            for arg in typ.args:
                 if not self.is_valid_inferred_type(arg):
                     return False
         elif isinstance(typ, TupleType):
-            for item in cast(TupleType, typ).items:
+            for item in typ.items:
                 if not self.is_valid_inferred_type(item):
                     return False
         return True
@@ -562,28 +558,27 @@ class TypeChecker(NodeVisitor[Type]):
             pass
         elif isinstance(rvalue_type, TupleType):
             # Rvalue with tuple type.
-            trvalue = cast(TupleType, rvalue_type)
             items = [] # type: List[Type]
             for i in range(len(lvalue_types)):
                 if lvalue_types[i]:
                     items.append(lvalue_types[i])
-                elif i < len(trvalue.items):
+                elif i < len(rvalue_type.items):
                     # TODO Figure out more precise type context, probably
                     #      based on the type signature of the _set method.
-                    items.append(trvalue.items[i])
+                    items.append(rvalue_type.items[i])
             if not undefined_rvalue:
                 # Infer rvalue again, now in the correct type context.
-                trvalue = cast(TupleType, self.accept(rvalue,
-                                                      TupleType(items)))
-            if len(trvalue.items) != len(lvalue_types):
+                rvalue_type = cast(TupleType, self.accept(rvalue,
+                                                          TupleType(items)))
+            if len(rvalue_type.items) != len(lvalue_types):
                 self.msg.incompatible_value_count_in_assignment(
-                    len(lvalue_types), len(trvalue.items), context)
+                    len(lvalue_types), len(rvalue_type.items), context)
             else:
                 # The number of values is compatible. Check their types.
                 for j in range(len(lvalue_types)):
                     self.check_single_assignment(
                         lvalue_types[j], index_lvalues[j],
-                        self.temp_node(trvalue.items[j]), context, msg)
+                        self.temp_node(rvalue_type.items[j]), context, msg)
         elif (isinstance(rvalue_type, Instance) and
                cast(Instance, rvalue_type).type.fullname() == 'builtins.list'):
             # Rvalue with list type.
