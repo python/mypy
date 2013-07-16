@@ -1608,7 +1608,7 @@ class Parser:
         right-paren tokens.  Otherwise, return [], [].
         """
         if isinstance(e, ParenExpr):
-            lp, rp = self.paren_repr((cast(ParenExpr, e)).expr)
+            lp, rp = self.paren_repr(e.expr)
             lp.insert(0, self.repr(e).lparen)
             rp.append(self.repr(e).rparen)
             return lp, rp
@@ -1642,7 +1642,7 @@ def token_repr(tok: Token) -> str:
         return 'dedent'
     else:
         if isinstance(tok, LexError):
-            t = (cast(LexError, tok)).type
+            t = tok.type
             if t == lex.NUMERIC_LITERAL_ERROR:
                 return 'invalid numeric literal'
             elif t == lex.UNTERMINATED_STRING_LITERAL:
@@ -1670,7 +1670,7 @@ def unwrap_parens(node: Node) -> Node:
     non-parenthesised subexpression and return that. Otherwise, return node.
     """
     if isinstance(node, ParenExpr):
-        return unwrap_parens((cast(ParenExpr, node)).expr)
+        return unwrap_parens(node.expr)
     else:
         return node
 
