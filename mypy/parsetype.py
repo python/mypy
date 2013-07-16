@@ -57,7 +57,7 @@ class TypeParser:
             return self.parse_type_list()
         elif isinstance(t, StrLit):
             # Type escaped as string literal.
-            typestr = (cast(StrLit, t)).parsed()
+            typestr = t.parsed()
             line = t.line
             self.skip()
             try:
