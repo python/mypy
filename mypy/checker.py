@@ -57,7 +57,7 @@ class TypeChecker(NodeVisitor[Type]):
     return_types = Undefined(List[Type])
     # Type context for type inference
     type_context = Undefined(List[Type])
-    # Flags; true for dynamically typed functions-
+    # Flags; true for dynamically typed functions
     dynamic_funcs = Undefined(List[bool])
     
     globals = Undefined(SymbolTable)
