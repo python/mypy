@@ -28,6 +28,7 @@ import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
+from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
@@ -1182,5 +1183,7 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
     if isinstance(type, FunctionLike):
         function = cast(FunctionLike, type)
         if function.is_type_obj():
-            return function.items()[0].ret_type
+            # Type variables may be present -- erase them, which is the best
+            # we can do (outside disallowing them here).
+            return erase_typevars(function.items()[0].ret_type)
     return None
