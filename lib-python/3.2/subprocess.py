@@ -1172,7 +1172,7 @@ class Popen(object):
             """Execute program (POSIX version)"""
 
             if isinstance(args, str):
-                arglist = [cast(str, args)]
+                arglist = [args]
             else:
                 arglist = list(args)
 
