@@ -171,7 +171,7 @@ def analyse_class_attribute_access(itype: Instance, name: str,
             msg.fail(messages.CANNOT_ASSIGN_TO_METHOD, context)
         if is_lvalue and isinstance(node.node, TypeInfo):
             msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
-        t = node.type()
+        t = node.type
         if t:
             return add_class_tvars(t, itype.type)
         elif isinstance(node.node, TypeInfo):

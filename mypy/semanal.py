@@ -555,9 +555,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def normalize_type_alias(self, node: SymbolTableNode,
                                          ctx: Context) -> SymbolTableNode:
-        if node.fullname() in type_aliases:
+        if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
-            node = self.lookup_qualified(type_aliases[node.fullname()], ctx)
+            node = self.lookup_qualified(type_aliases[node.fullname], ctx)
         return node
     
     def visit_import_all(self, i: ImportAll) -> None:
@@ -970,7 +970,7 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 expr.kind = n.kind
                 expr.node = (cast(Node, n.node))
-                expr.fullname = n.fullname()
+                expr.fullname = n.fullname
     
     def visit_super_expr(self, expr: SuperExpr) -> None:
         if not self.type:
@@ -1083,7 +1083,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if not n:
                     return
                 expr.kind = n.kind
-                expr.fullname = n.fullname()
+                expr.fullname = n.fullname
                 expr.node = n.node
     
     def visit_op_expr(self, expr: OpExpr) -> None:

@@ -187,7 +187,7 @@ class SemAnalTypeInfoSuite(Suite):
             for f in result.files.values():
                 for n in f.names.values():
                     if isinstance(n.node, TypeInfo):
-                        typeinfos[n.fullname()] = n.node
+                        typeinfos[n.fullname] = n.node
             
             # The output is the symbol table converted into a string.
             a = str(typeinfos).split('\n')

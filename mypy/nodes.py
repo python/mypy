@@ -1416,13 +1416,15 @@ class SymbolTableNode:
         self.type_override = typ
         self.mod_id = mod_id
         self.tvar_id = tvar_id
-    
+
+    @property
     def fullname(self) -> str:
         if self.node is not None:
             return self.node.fullname()
         else:
             return None
-    
+
+    @property
     def type(self) -> 'mypy.types.Type':
         # IDEA: Get rid of the Any type.
         node = self.node # type: Any
@@ -1441,8 +1443,8 @@ class SymbolTableNode:
         if self.mod_id is not None:
             s += ' ({})'.format(self.mod_id)
         # Include declared type of variables and functions.
-        if self.type() is not None:
-            s += ' : {}'.format(self.type())
+        if self.type is not None:
+            s += ' : {}'.format(self.type)
         return s
 
 
@@ -1452,8 +1454,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
-                if (value.fullname() != 'builtins' and
-                        value.fullname().split('.')[-1] not in
+                if (value.fullname != 'builtins' and
+                        value.fullname.split('.')[-1] not in
                             implicit_module_attrs):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:

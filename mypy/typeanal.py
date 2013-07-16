@@ -40,7 +40,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif sym.node.fullname() == 'typing.Function':
                 return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):
-                name = sym.fullname()
+                name = sym.fullname
                 if name is None:
                     name = sym.node.name()
                 self.fail('Invalid type "{}"'.format(name), t)

@@ -254,7 +254,7 @@ class TypeChecker(NodeVisitor[Type]):
                     typ = method_type(defn)
                     # Map the overridden method type to subtype context so that
                     # it can be checked for compatibility.
-                    original_type = base_attr.type()
+                    original_type = base_attr.type
                     if original_type is None and isinstance(base_attr.node,
                                                             FuncDef):
                         original_type = function_type(cast(FuncDef,
@@ -340,8 +340,8 @@ class TypeChecker(NodeVisitor[Type]):
             return
         first = base1[name]
         second = base2[name]
-        first_type = first.type()
-        second_type = second.type()
+        first_type = first.type
+        second_type = second.type
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
