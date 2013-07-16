@@ -263,7 +263,7 @@ class Callable(FunctionLike):
         """Return a copy of this type with the specified name."""
         ret = self.ret_type
         if isinstance(ret, Void):
-            ret = (cast(Void, ret)).with_source(name)
+            ret = ret.with_source(name)
         return Callable(self.arg_types,
                         self.arg_kinds,
                         self.arg_names,
@@ -747,18 +747,16 @@ def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
     
     if isinstance(typ, Callable):
-        ctyp = cast(Callable, typ)
-        return Callable(ctyp.arg_types,
-                        ctyp.arg_kinds,
-                        ctyp.arg_names,
-                        ctyp.ret_type,
-                        ctyp.is_type_obj(),
+        return Callable(typ.arg_types,
+                        typ.arg_kinds,
+                        typ.arg_names,
+                        typ.ret_type,
+                        typ.is_type_obj(),
                         None,
-                        ctyp.variables)
+                        typ.variables)
     elif isinstance(typ, Overloaded):
-        overload = cast(Overloaded, typ)
-        return Overloaded([cast(Callable, strip_type(t))
-                           for t in overload.items()])
+        return Overloaded([cast(Callable, strip_type(item))
+                           for item in typ.items()])
     else:
         return typ
 
