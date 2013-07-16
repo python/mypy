@@ -535,6 +535,11 @@ class MessageBuilder:
                   'with definition in base class "{}"'.format(
                       name, base1.name(), base2.name()), context)
 
+    def read_only_property(self, name: str, type: TypeInfo,
+                           context: Context) -> None:
+        self.fail('Property "{}" defined in "{}" is read-only'.format(
+            name, type.name()), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

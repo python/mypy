@@ -112,7 +112,15 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
                 # Class-level function object becomes a bound method.
                 functype = cast(FunctionLike, t)
                 check_method_type(functype, itype, node, msg)
-                return method_type(functype)
+                signature = method_type(functype)
+                if var.is_property:
+                    if is_lvalue:
+                        msg.read_only_property(name, info, node)
+                    # A property cannot have an overloaded type => the cast
+                    # is fine.
+                    return cast(Callable, signature).ret_type
+                else:
+                    return signature
             return t
         else:
             if not var.is_ready:
@@ -120,8 +128,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
             # Implicit 'Any' type.
             return AnyType()
     elif isinstance(v, FuncDef):
-        # Found a getter or a setter.
-        raise NotImplementedError()
+        assert False, "Did not expect a function"
     
     # Could not find the member.
     if is_super:

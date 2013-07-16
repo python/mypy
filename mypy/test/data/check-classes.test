@@ -718,6 +718,41 @@ int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible
 [builtins fixtures/staticmethod.py]
 
 
+-- Properties
+-- ----------
+
+
+[case testAccessingReadOnlyProperty]
+import typing
+class A:
+    @property
+    def f(self) -> str: pass
+a = A() # type. A
+s = ''  # type: str
+s = a.f
+a = a.f  # E: Incompatible types in assignment
+[builtins fixtures/property.py]
+
+[case testAssigningToReadOnlyProperty]
+import typing
+class A:
+    @property
+    def f(self) -> str: pass
+A().f = '' # E: Property "f" defined in "A" is read-only
+[builtins fixtures/property.py]
+
+[case testPropertyGetterBody]
+import typing
+class A:
+    @property
+    def f(self) -> str:
+        self.x = 1
+        self.x = '' # E: Incompatible types in assignment
+[builtins fixtures/property.py]
+[out]
+main: In member "f" of class "A":
+
+
 -- Special cases
 -- -------------
 
