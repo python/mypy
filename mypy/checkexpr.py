@@ -62,22 +62,20 @@ class ExpressionChecker:
         node = e.node
         if isinstance(node, Var):
             # Variable reference.
-            result = self.analyse_var_ref(cast(Var, node), e)
+            result = self.analyse_var_ref(node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
-            f = cast(FuncDef, node)
-            result = function_type(f)
+            result = function_type(node)
         elif isinstance(node, OverloadedFuncDef):
-            o = cast(OverloadedFuncDef, node)
-            result = o.type
+            result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = type_object_type(cast(TypeInfo, node), self.chk.type_type)
+            result = type_object_type(node, self.chk.type_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
             result = self.chk.named_type('builtins.module')
         elif isinstance(node, Decorator):
-            result = self.analyse_var_ref(cast(Decorator, node).var, e)
+            result = self.analyse_var_ref(node.var, e)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
@@ -137,39 +135,37 @@ class ExpressionChecker:
         """
         is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, Callable):
-            callable = cast(Callable, callee)
-
-            if callable.is_type_obj():
-                t = callable.type_object()
-            if callable.is_type_obj() and callable.type_object().is_abstract:
-                type = callable.type_object()
+            if callee.is_type_obj():
+                t = callee.type_object()
+            if callee.is_type_obj() and callee.type_object().is_abstract:
+                type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
-                    callable.type_object().name(), type.abstract_attributes,
+                    callee.type_object().name(), type.abstract_attributes,
                     context)
             
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
-                callable.arg_kinds, callable.arg_names,
+                callee.arg_kinds, callee.arg_names,
                 lambda i: self.accept(args[i]))
             
-            if callable.is_generic():
-                callable = self.infer_function_type_arguments_using_context(
-                    callable)
-                callable = self.infer_function_type_arguments(
-                    callable, args, arg_kinds, formal_to_actual, context)
+            if callee.is_generic():
+                callee = self.infer_function_type_arguments_using_context(
+                    callee)
+                callee = self.infer_function_type_arguments(
+                    callee, args, arg_kinds, formal_to_actual, context)
             
             arg_types = self.infer_arg_types_in_context2(
-                callable, args, arg_kinds, formal_to_actual)
+                callee, args, arg_kinds, formal_to_actual)
 
-            self.check_argument_count(callable, arg_types, arg_kinds,
+            self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context)
             
-            self.check_argument_types(arg_types, arg_kinds, callable,
+            self.check_argument_types(arg_types, arg_kinds, callee,
                                       formal_to_actual, context)
             if callable_node:
                 # Store the inferred callable type.
-                self.chk.store_type(callable_node, callable)
-            return callable.ret_type, callable
+                self.chk.store_type(callable_node, callee)
+            return callee.ret_type, callee
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again
             # later in a context derived from the signature; these types are
@@ -179,8 +175,7 @@ class ExpressionChecker:
             self.msg.enable_errors()
             
             target = self.overload_call_target(arg_types, is_var_arg,
-                                               cast(Overloaded, callee),
-                                               context)
+                                               callee, context)
             return self.check_call(target, args, arg_kinds, context, arg_names)
         elif isinstance(callee, AnyType) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
@@ -432,8 +427,7 @@ class ExpressionChecker:
                     nodes.ARG_STAR not in formal_kinds):
                 actual_type = actual_types[i]
                 if isinstance(actual_type, TupleType):
-                    tuplet = cast(TupleType, actual_type)
-                    if all_actuals.count(i) < len(tuplet.items):
+                    if all_actuals.count(i) < len(actual_type.items):
                         # Too many tuple items as some did not match.
                         self.msg.too_many_arguments(callee, context)
                 # *args can be applied even if the function takes a fixed
@@ -653,7 +647,7 @@ class ExpressionChecker:
         for item in overload.items():
             applied = self.apply_generic_arguments(item, types, context)
             if isinstance(applied, Callable):
-                items.append(cast(Callable, applied))
+                items.append(applied)
             else:
                 # There was an error.
                 return AnyType()
@@ -818,8 +812,8 @@ class ExpressionChecker:
             # literals.
             index = self.unwrap(e.index)
             if isinstance(index, IntExpr):
-                n = cast(IntExpr, index).value
-                tuple_type = cast(TupleType, left_type)
+                n = index.value
+                tuple_type = left_type
                 if n < len(tuple_type.items):
                     return tuple_type.items[n]
                 else:
@@ -852,10 +846,10 @@ class ExpressionChecker:
         """Type check a type application (expr[type, ...])."""
         expr_type = self.accept(tapp.expr)
         if isinstance(expr_type, Callable):
-            new_type = self.apply_generic_arguments(cast(Callable, expr_type),
+            new_type = self.apply_generic_arguments(expr_type,
                                                     tapp.types, tapp)
         elif isinstance(expr_type, Overloaded):
-            overload = cast(Overloaded, expr_type)
+            overload = expr_type
             # Only target items with the right number of generic type args.
             items = [c for c in overload.items()
                      if len(c.variables.items) == len(tapp.types)]
@@ -1131,16 +1125,15 @@ class ExpressionChecker:
     def has_non_method(self, typ: Type, member: str) -> bool:
         """Does type have a member variable / property with the given name?"""
         if isinstance(typ, Instance):
-            itype = cast(Instance, typ)
-            return (not itype.type.has_method(member) and
-                    itype.type.has_readable_member(member))
+            return (not typ.type.has_method(member) and
+                    typ.type.has_readable_member(member))
         else:
             return False
     
     def unwrap(self, e: Node) -> Node:
         """Unwrap parentheses from an expression node."""
         if isinstance(e, ParenExpr):
-            return self.unwrap(cast(ParenExpr, e).expr)
+            return self.unwrap(e.expr)
         else:
             return e
     
@@ -1206,8 +1199,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
             argt = caller_arg_type(i)
             if isinstance(argt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
-                tuplet = cast(TupleType, argt)
-                for k in range(len(tuplet.items)):
+                for k in range(len(argt.items)):
                     if j < ncallee:
                         if callee_kinds[j] != nodes.ARG_STAR2:
                             map[j].append(i)
