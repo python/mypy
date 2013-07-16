@@ -50,8 +50,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
     
     def visit_instance(self, left: Instance) -> bool:
-        if isinstance(self.right, Instance):
-            right = cast(Instance, self.right)
+        right = self.right
+        if isinstance(right, Instance):
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
@@ -68,10 +68,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
     
     def visit_type_var(self, left: TypeVar) -> bool:
-        if isinstance(self.right, TypeVar):
-            tvar = cast(TypeVar, self.right)
-            return (left.name == tvar.name and
-                    left.is_wrapper_var == tvar.is_wrapper_var)
+        right = self.right
+        if isinstance(right, TypeVar):
+            return (left.name == right.name and
+                    left.is_wrapper_var == right.is_wrapper_var)
         else:
             return is_named_instance(self.right, 'builtins.object')
     
@@ -87,40 +87,40 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
     
     def visit_tuple_type(self, left: TupleType) -> bool:
-        if isinstance(self.right, Instance) and (
-                is_named_instance(self.right, 'builtins.object') or
-                is_named_instance(self.right, 'builtins.tuple')):
+        right = self.right
+        if isinstance(right, Instance) and (
+                is_named_instance(right, 'builtins.object') or
+                is_named_instance(right, 'builtins.tuple')):
             return True
-        elif isinstance(self.right, TupleType):
-            tright = cast(TupleType, self.right)
-            if len(left.items) != len(tright.items):
+        elif isinstance(right, TupleType):
+            if len(left.items) != len(right.items):
                 return False
             for i in range(len(left.items)):
-                if not is_subtype(left.items[i], tright.items[i]):
+                if not is_subtype(left.items[i], right.items[i]):
                     return False
             return True
         else:
             return False
     
     def visit_overloaded(self, left: Overloaded) -> bool:
-        if is_named_instance(self.right, 'builtins.object'):
+        right = self.right
+        if is_named_instance(right, 'builtins.object'):
             return True
-        elif isinstance(self.right, Callable) or is_named_instance(
-                                                 self.right, 'builtins.type'):
+        elif isinstance(right, Callable) or is_named_instance(
+                                                 right, 'builtins.type'):
             for item in left.items():
-                if is_subtype(item, self.right):
+                if is_subtype(item, right):
                     return True
             return False
-        elif isinstance(self.right, Overloaded):
+        elif isinstance(right, Overloaded):
             # TODO: this may be too restrictive
-            oright = cast(Overloaded, self.right)
-            if len(left.items()) != len(oright.items()):
+            if len(left.items()) != len(right.items()):
                 return False
             for i in range(len(left.items())):
-                if not is_subtype(left.items()[i], oright.items()[i]):
+                if not is_subtype(left.items()[i], right.items()[i]):
                     return False
             return True
-        elif isinstance(self.right, UnboundType):
+        elif isinstance(right, UnboundType):
             return True
         else:
             return False
