@@ -652,11 +652,10 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_stmt(self, s: YieldStmt) -> Type:
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):
-            inst = cast(Instance, return_type)
-            if inst.type.fullname() != 'typing.Iterator':
+            if return_type.type.fullname() != 'typing.Iterator':
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
-            expected_item_type = inst.args[0]
+            expected_item_type = return_type.args[0]
         elif isinstance(return_type, AnyType):
             expected_item_type = AnyType()
         else:
@@ -732,9 +731,8 @@ class TypeChecker(NodeVisitor[Type]):
             # Multiple exception types (...).
             unwrapped = self.expr_checker.unwrap(n)
             if isinstance(unwrapped, TupleExpr):
-                tupleexpr = cast(TupleExpr, unwrapped)
                 t = None # type: Type
-                for item in tupleexpr.items:
+                for item in unwrapped.items:
                     tt = self.exception_type(item)
                     if t:
                         t = join_types(t, tt, self.basic_types())
@@ -781,9 +779,8 @@ class TypeChecker(NodeVisitor[Type]):
         
         self.check_not_void(iterable, expr)
         if isinstance(iterable, TupleType):
-            tuple = cast(TupleType, iterable)
             joined = NoneTyp() # type: Type
-            for item in tuple.items:
+            for item in iterable.items:
                 joined = join_types(joined, item, self.basic_types())
             if isinstance(joined, ErrorType):
                 self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
@@ -1149,26 +1146,23 @@ def get_undefined_tuple(rvalue: Node) -> Type:
     None.
     """
     if isinstance(rvalue, TupleExpr):
-        tuple_expr = cast(TupleExpr, rvalue)
-        for item in tuple_expr.items:
+        for item in rvalue.items:
             if not refers_to_fullname(item, 'typing.Undefined'):
                 break
         else:
-            return TupleType([AnyType()] * len(tuple_expr.items))
+            return TupleType([AnyType()] * len(rvalue.items))
     return None
 
 
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type]) -> Tuple[Var, Type]:
     if isinstance(node, CallExpr):
-        call = cast(CallExpr, node)
-        if refers_to_fullname(call.callee, 'builtins.isinstance'):
-            expr = call.args[0]
+        if refers_to_fullname(node.callee, 'builtins.isinstance'):
+            expr = node.args[0]
             if isinstance(expr, NameExpr):
-                name = cast(NameExpr, expr)
-                type = get_isinstance_type(call.args[1], type_map)
-                if type and isinstance(name.node, Var):
-                    return cast(Var, name.node), type
+                type = get_isinstance_type(node.args[1], type_map)
+                if type and isinstance(expr.node, Var):
+                    return cast(Var, expr.node), type
     # Not a supported isinstance check
     return None, AnyType()
 
@@ -1176,9 +1170,8 @@ def find_isinstance_check(node: Node,
 def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
     type = type_map[node]
     if isinstance(type, FunctionLike):
-        function = cast(FunctionLike, type)
-        if function.is_type_obj():
+        if type.is_type_obj():
             # Type variables may be present -- erase them, which is the best
             # we can do (outside disallowing them here).
-            return erase_typevars(function.items()[0].ret_type)
+            return erase_typevars(type.items()[0].ret_type)
     return None
