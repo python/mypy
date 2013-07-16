@@ -77,17 +77,14 @@ class TypeTransformer:
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
                 # Implicit cast from FuncDef[] to Node[] is safe below.
-                defs.extend(Any(self.func_tf.transform_method(cast(FuncDef,
-                                                                   d))))
+                defs.extend(Any(self.func_tf.transform_method(d)))
             elif isinstance(d, VarDef):
-                vdef = cast(VarDef, d)
-                defs.extend(self.transform_var_def(vdef))
-                for n in vdef.items:
+                defs.extend(self.transform_var_def(d))
+                for n in d.items:
                     vars.add(n)
             elif isinstance(d, AssignmentStmt):
-                assignment = cast(AssignmentStmt, d)
-                self.transform_assignment(assignment)
-                defs.append(assignment)
+                self.transform_assignment(d)
+                defs.append(d)
 
         # Add accessors for implicitly defined attributes.
         for node in tdef.info.names.values():
@@ -416,12 +413,10 @@ class TypeTransformer:
         # Generate method wrappers.
         for d in tdef.defs.body:
             if isinstance(d, FuncDef):
-                if not (cast(FuncDef, d)).is_constructor():
-                    defs.extend(self.func_tf.generic_method_wrappers(
-                        cast(FuncDef, d)))
+                if not d.is_constructor():
+                    defs.extend(self.func_tf.generic_method_wrappers(d))
             elif isinstance(d, AssignmentStmt):
-                defs.extend(self.generic_accessor_wrappers(
-                                                  cast(AssignmentStmt, d)))
+                defs.extend(self.generic_accessor_wrappers(d))
             elif not isinstance(d, PassStmt):
                 raise RuntimeError(
                     'Definition {} at line {} not supported'.format(
