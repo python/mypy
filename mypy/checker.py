@@ -61,7 +61,6 @@ class TypeChecker(NodeVisitor[Type]):
     dynamic_funcs = Undefined(List[bool])
     
     globals = Undefined(SymbolTable)
-    class_tvars = Undefined(SymbolTable)
     locals = Undefined(SymbolTable)
     modules = Undefined(Dict[str, MypyFile])
     
@@ -89,7 +88,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.errors.set_file(path)
         self.globals = file_node.names
         self.locals = None
-        self.class_tvars = None
         
         for d in file_node.defs:
             self.accept(d)
@@ -1033,8 +1031,6 @@ class TypeChecker(NodeVisitor[Type]):
         """
         if self.locals is not None and name in self.locals:
             return self.locals[name]
-        elif self.class_tvars is not None and name in self.class_tvars:
-            return self.class_tvars[name]
         elif name in self.globals:
             return self.globals[name]
         else:
