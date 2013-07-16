@@ -1014,3 +1014,9 @@ class A:
 main, line 1: 'staticmethod' used with a non-method
 main: In function "g":
 main, line 5: 'staticmethod' used with a non-method
+
+[case testNonMethodProperty]
+@property  # E: 'property' used with a non-method
+def f() -> int: pass
+[builtins fixtures/property.py]
+[out]
