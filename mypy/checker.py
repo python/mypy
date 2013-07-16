@@ -291,13 +291,13 @@ class TypeChecker(NodeVisitor[Type]):
                         original_type = function_type(cast(FuncDef,
                                                            base_attr.node))
                     if isinstance(original_type, FunctionLike):
-                        original_type = map_type_from_supertype(
+                        original = map_type_from_supertype(
                             method_type(cast(FunctionLike, original_type)),
                             defn.info, base)
                         # Check that the types are compatible.
                         # TODO overloaded signatures
                         self.check_override(cast(FunctionLike, typ),
-                                            cast(FunctionLike, original_type),
+                                            cast(FunctionLike, original),
                                             defn.name(),
                                             base.name(),
                                             defn)
@@ -739,8 +739,8 @@ class TypeChecker(NodeVisitor[Type]):
             if isinstance(unwrapped, TupleExpr):
                 tupleexpr = cast(TupleExpr, unwrapped)
                 t = None # type: Type
-                for n in tupleexpr.items:
-                    tt = self.exception_type(n)
+                for item in tupleexpr.items:
+                    tt = self.exception_type(item)
                     if t:
                         t = join_types(t, tt, self.basic_types())
                     else:
@@ -792,7 +792,7 @@ class TypeChecker(NodeVisitor[Type]):
                 joined = join_types(joined, item, self.basic_types())
             if isinstance(joined, ErrorType):
                 self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
-                joined = AnyType()
+                return AnyType()
             return joined
         else:
             # Non-tuple iterable.

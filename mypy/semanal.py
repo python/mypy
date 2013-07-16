@@ -360,9 +360,11 @@ class SemanticAnalyzer(NodeVisitor):
                     # different items have a different abstract status, there
                     # should be an error reported elsewhere.
                     overload = cast(OverloadedFuncDef, node)
-                    node = overload.items[0]
-                if isinstance(node, Decorator):
-                    fdef = cast(Decorator, node).func
+                    func = overload.items[0] # type: Node
+                else:
+                    func = node
+                if isinstance(func, Decorator):
+                    fdef = cast(Decorator, func).func
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)

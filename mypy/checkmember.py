@@ -96,10 +96,11 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
     """
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
-    
-    if isinstance(v, Decorator):
+
+    vv = v
+    if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
-        v = cast(Decorator, v).var
+        v = cast(Decorator, vv).var
     
     if isinstance(v, Var):
         # Found a member variable.
