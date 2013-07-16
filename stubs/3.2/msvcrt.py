@@ -4,9 +4,5 @@
 
 from typing import overload, IO, TextIO
 
-@overload
-def get_osfhandle(file: IO) -> int: pass
-@overload
-def get_osfhandle(file: TextIO) -> int: pass
-
+def get_osfhandle(file: int) -> int: pass
 def open_osfhandle(handle: int, flags: int) -> int: pass
