@@ -39,19 +39,26 @@ class TypeChecker(NodeVisitor[Type]):
     Type check mypy source files that have been semantically analysed.
     """
 
-    pyversion = 3                      # Target Python major version
-    errors = Undefined(Errors)         # Error message reporting
-    symtable = Undefined(SymbolTable)  # SymbolNode table for the whole program
-    msg = Undefined(MessageBuilder)    # Utility for generating messages
-    type_map = Undefined(Dict[Node, Type])  # Types of type checked nodes
+    # Target Python major version
+    pyversion = 3
+    # Error message reporting
+    errors = Undefined(Errors)
+    # SymbolNode table for the whole program
+    symtable = Undefined(SymbolTable)
+    # Utility for generating messages
+    msg = Undefined(MessageBuilder)
+    # Types of type checked nodes
+    type_map = Undefined(Dict[Node, Type])
     expr_checker = Undefined('mypy.checkexpr.ExpressionChecker')
     
-    stack = Undefined(List[str]) # Stack of local variable definitions
-                                 # None separates nested functions
-    return_types = Undefined(List[Type])  # Stack of function return types
-    type_context = Undefined(List[Type])  # Type context for type inference
-    dynamic_funcs = Undefined(List[bool]) # Flags; true for dynamically typed
-                                          # functions
+    # Stack of local variable definitions. 'None' separates nested functions.
+    stack = Undefined(List[str])
+    # Stack of function return types
+    return_types = Undefined(List[Type])
+    # Type context for type inference
+    type_context = Undefined(List[Type])
+    # Flags; true for dynamically typed functions-
+    dynamic_funcs = Undefined(List[bool])
     
     globals = Undefined(SymbolTable)
     class_tvars = Undefined(SymbolTable)
