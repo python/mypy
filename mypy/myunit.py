@@ -130,6 +130,10 @@ class Suite:
     def add_test(self, test: Tuple[str, Function[[], None]]) -> None:
         self._test_cases.append(test)
     
+    @overload
+    def add_test(self, test: Tuple[str, 'Suite']) -> None:
+        self._test_cases.append(test)
+    
     def cases(self) -> List[Any]:
         return self._test_cases[:]
     
