@@ -65,6 +65,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                                      is_super, basic_types, msg)
     elif (isinstance(typ, FunctionLike) and
               cast(FunctionLike, typ).is_type_obj()):
+        # Class attribute.
         # TODO super?
         sig = cast(FunctionLike, typ)
         itype = cast(Instance, sig.items()[0].ret_type)
