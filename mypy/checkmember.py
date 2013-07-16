@@ -38,9 +38,8 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             return AnyType()
         
         # The base object has an instance type.
-        itype = cast(Instance, typ)
         
-        info = itype.type
+        info = typ.type
         if override_info:
             info = override_info
         
@@ -49,11 +48,11 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         if method:
             if is_lvalue:
                 msg.fail(messages.CANNOT_ASSIGN_TO_METHOD, node)
-            itype = map_instance_to_supertype(itype, method.info)
-            return expand_type_by_instance(method_type(method), itype)
+            typ = map_instance_to_supertype(typ, method.info)
+            return expand_type_by_instance(method_type(method), typ)
         else:
             # Not a method.
-            return analyse_member_var_access(name, itype, info, node,
+            return analyse_member_var_access(name, typ, info, node,
                                              is_lvalue, is_super, msg,
                                              report_type=report_type)
     elif isinstance(typ, AnyType):
@@ -100,11 +99,11 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
     vv = v
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
-        v = cast(Decorator, vv).var
+        v = vv.var
     
     if isinstance(v, Var):
         # Found a member variable.
-        var = cast(Var, v)
+        var = v
         itype = map_instance_to_supertype(itype, var.info)
         if var.type:
             t = expand_type_by_instance(var.type, itype)
@@ -186,22 +185,20 @@ def analyse_class_attribute_access(itype: Instance, name: str,
 
 def add_class_tvars(t: Type, info: TypeInfo) -> Type:
     if isinstance(t, Callable):
-        c = cast(Callable, t)
         vars = TypeVars([TypeVarDef(n, i + 1)
                          for i, n in enumerate(info.type_vars)])
-        return Callable(c.arg_types,
-                        c.arg_kinds,
-                        c.arg_names,
-                        c.ret_type,
-                        c.is_type_obj(),
-                        c.name,
-                        TypeVars(vars.items + c.variables.items),
-                        c.bound_vars,
-                        c.line, None)
+        return Callable(t.arg_types,
+                        t.arg_kinds,
+                        t.arg_names,
+                        t.ret_type,
+                        t.is_type_obj(),
+                        t.name,
+                        TypeVars(vars.items + t.variables.items),
+                        t.bound_vars,
+                        t.line, None)
     elif isinstance(t, Overloaded):
-        o = cast(Overloaded, t)
         return Overloaded([cast(Callable, add_class_tvars(i, info))
-                           for i in o.items()])
+                           for i in t.items()])
     return t
 
 
@@ -223,7 +220,7 @@ def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
         # return type and insert type arguments.
         init_type = method_type(init_method)
         if isinstance(init_type, Callable):
-            return class_callable(cast(Callable, init_type), info)
+            return class_callable(init_type, info)
         else:
             # Overloaded __init__.
             items = [] # type: List[Callable]
