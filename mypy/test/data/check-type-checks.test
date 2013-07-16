@@ -1,0 +1,41 @@
+-- Conditional type checks.
+
+
+[case testSimpleIsinstance]
+from typing import Undefined
+x = Undefined(object)
+n = Undefined(int)
+s = Undefined(str)
+n = x # E: Incompatible types in assignment
+if isinstance(x, int):
+    n = x
+    s = x # E: Incompatible types in assignment
+n = x # E: Incompatible types in assignment
+[builtins fixtures/isinstance.py]
+
+[case testSimpleIsinstance2]
+from typing import Undefined
+def f(x: object, n: int, s: str) -> None:
+    n = x # E: Incompatible types in assignment
+    if isinstance(x, int):
+        n = x
+        s = x # E: Incompatible types in assignment
+    n = x # E: Incompatible types in assignment
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
+[case testSimpleIsinstance3]
+from typing import Undefined
+class A:
+    x = Undefined(object)
+    n = Undefined(int)
+    s = Undefined(str)
+    n = x # E: Incompatible types in assignment
+    if isinstance(x, int):
+        n = x
+        s = x # E: Incompatible types in assignment
+    n = x # E: Incompatible types in assignment
+[builtins fixtures/isinstance.py]
+[out]
+main: In class "A":

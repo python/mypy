@@ -28,6 +28,7 @@ files = [
     'check-varargs.test',
     'check-kwargs.test',
     'check-overloading.test',
+    'check-type-checks.test',
     'check-abstract.test',
     'check-multiple-inheritance.test',
     'check-super.test',

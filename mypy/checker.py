@@ -1,6 +1,6 @@
 """Mypy type checker."""
 
-from typing import Undefined, Dict, List, cast, overload
+from typing import Undefined, Dict, List, cast, overload, Tuple
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -33,6 +33,22 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 
 
+class ConditionalTypeBinder:
+    """Keep track of conditional types of variables."""
+
+    def __init__(self) -> None:
+        self.types = Dict[Var, Type]()
+
+    def push(self, var: Var, type: Type) -> None:
+        self.types[var] = type
+        
+    def pop(self, var: Var) -> None:
+        del self.types[var]
+        
+    def get(self, var: Var) -> Type:
+        return self.types.get(var, var.type)
+
+
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
@@ -49,6 +65,10 @@ class TypeChecker(NodeVisitor[Type]):
     msg = Undefined(MessageBuilder)
     # Types of type checked nodes
     type_map = Undefined(Dict[Node, Type])
+
+    # Helper for managing conditional types
+    binder = Undefined(ConditionalTypeBinder)
+    # Helper for type checking expressions
     expr_checker = Undefined('mypy.checkexpr.ExpressionChecker')
     
     # Stack of local variable definitions. 'None' separates nested functions.
@@ -77,6 +97,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pyversion = pyversion
         self.msg = MessageBuilder(errors)
         self.type_map = {}
+        self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.stack = [None]
         self.return_types = []
@@ -649,7 +670,12 @@ class TypeChecker(NodeVisitor[Type]):
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
+            var, type = find_isinstance_check(e, self.type_map)
+            if var:
+                self.binder.push(var, type)
             self.accept(b)
+            if var:
+                self.binder.pop(var)
         if s.else_body:
             self.accept(s.else_body)
     
@@ -1129,4 +1155,28 @@ def get_undefined_tuple(rvalue: Node) -> Type:
                 break
         else:
             return TupleType([AnyType()] * len(tuple_expr.items))
+    return None
+
+
+def find_isinstance_check(node: Node,
+                          type_map: Dict[Node, Type]) -> Tuple[Var, Type]:
+    if isinstance(node, CallExpr):
+        call = cast(CallExpr, node)
+        if refers_to_fullname(call.callee, 'builtins.isinstance'):
+            expr = call.args[0]
+            if isinstance(expr, NameExpr):
+                name = cast(NameExpr, expr)
+                type = get_isinstance_type(call.args[1], type_map)
+                if type and isinstance(name.node, Var):
+                    return cast(Var, name.node), type
+    # Not a supported isinstance check
+    return None, AnyType()
+
+
+def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
+    type = type_map[node]
+    if isinstance(type, FunctionLike):
+        function = cast(FunctionLike, type)
+        if function.is_type_obj():
+            return function.items()[0].ret_type
     return None
