@@ -732,29 +732,24 @@ class SemanticAnalyzer(NodeVisitor):
 
     def store_declared_types(self, lvalue: Node, typ: Type) -> None:
         if isinstance(lvalue, RefExpr):
-            ref = cast(RefExpr, lvalue)
-            ref.is_def = False
-            if isinstance(ref.node, Var):
-                var = cast(Var, ref.node)
+            lvalue.is_def = False
+            if isinstance(lvalue.node, Var):
+                var = cast(Var, lvalue.node)
                 var.type = typ
                 var.is_ready = True
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):
             if isinstance(typ, TupleType):
-                tuple_expr = cast(TupleExpr, lvalue)
-                tuple_type = cast(TupleType, typ)
-                if len(tuple_expr.items) != len(tuple_type.items):
+                if len(lvalue.items) != len(typ.items):
                     self.fail('Incompatible number of tuple items', lvalue)
                     return
-                for item, itemtype in zip(tuple_expr.items,
-                                          tuple_type.items):
+                for item, itemtype in zip(lvalue.items, typ.items):
                     self.store_declared_types(item, itemtype)
             else:
                 self.fail('Tuple type expected for multiple variables',
                           lvalue) 
         elif isinstance(lvalue, ParenExpr):
-            paren = cast(ParenExpr, lvalue)
-            self.store_declared_types(paren.expr, typ)
+            self.store_declared_types(lvalue.expr, typ)
         else:
             raise RuntimeError('Internal error (%s)' % type(lvalue))
 
@@ -1461,11 +1456,10 @@ def replace_implicit_self_type(sig: FunctionLike, new: Type) -> FunctionLike:
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
-            return cast(FunctionLike, sig).with_name(
+            return sig.with_name(
                 '"{}" of "{}"'.format(fdef.name(), fdef.info.name()))
         else:
-            return cast(FunctionLike, sig).with_name(
-                '"{}"'.format(fdef.name()))
+            return sig.with_name('"{}"'.format(fdef.name()))
     else:
         return sig
 
@@ -1490,39 +1484,34 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
     Raise TypeTranslationError if the expression cannot represent a type.
     """
     if isinstance(expr, NameExpr):
-        name = cast(NameExpr, expr).name
+        name = expr.name
         return UnboundType(name, line=expr.line)
     elif isinstance(expr, MemberExpr):
-        memberexpr = cast(MemberExpr, expr)
-        fullname = get_member_expr_fullname(memberexpr)
+        fullname = get_member_expr_fullname(expr)
         if fullname:
             return UnboundType(fullname, line=expr.line)
         else:
             raise TypeTranslationError()
     elif isinstance(expr, IndexExpr):
-        indexexpr = cast(IndexExpr, expr)
-        base = expr_to_unanalyzed_type(indexexpr.base)
+        base = expr_to_unanalyzed_type(expr.base)
         if isinstance(base, UnboundType):
-            basetype = cast(UnboundType, base)
-            if basetype.args:
+            if base.args:
                 raise TypeTranslationError()
-            if isinstance(indexexpr.index, TupleExpr):
-                args = cast(TupleExpr, indexexpr.index).items
+            if isinstance(expr.index, TupleExpr):
+                args = cast(TupleExpr, expr.index).items
             else:
-                args = [indexexpr.index]
-            basetype.args = [expr_to_unanalyzed_type(arg) for arg in args]
-            return basetype
+                args = [expr.index]
+            base.args = [expr_to_unanalyzed_type(arg) for arg in args]
+            return base
         else:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
-        lst = cast(ListExpr, expr)
-        return TypeList([expr_to_unanalyzed_type(t) for t in lst.items],
+        return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
                         line=expr.line)
     elif isinstance(expr, StrExpr):
         # Parse string literal type.
-        strlit = cast(StrExpr, expr)
         try:
-            result = parse_str_as_type(strlit.value, strlit.line)
+            result = parse_str_as_type(expr.value, expr.line)
         except TypeParseError:
             raise TypeTranslationError()
         return result
