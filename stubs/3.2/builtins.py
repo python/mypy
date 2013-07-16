@@ -19,6 +19,7 @@ T4 = typevar('T4')
 
 
 staticmethod = object() # Only valid as a decorator.
+property = object()
 
 
 class object:

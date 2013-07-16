@@ -446,3 +446,13 @@ d['x'] = 2
 d2 = dict.fromkeys([1, 2], b'')
 d2[2] = b'foo'
 [out]
+
+[case testReadOnlyProperty]
+class A:
+    x = 2
+    @property
+    def f(self) -> int:
+        return self.x + 1
+print(A().f)
+[out]
+3
