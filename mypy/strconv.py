@@ -106,6 +106,8 @@ class StrConv(NodeVisitor[str]):
             a.insert(-1, 'Abstract')
         if o.is_static:
             a.insert(-1, 'Static')
+        if o.is_property:
+            a.insert(-1, 'Property')
         return self.dump(a, o)
     
     def visit_overloaded_func_def(self, o):

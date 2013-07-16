@@ -826,6 +826,11 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.func.is_static = True
                 dec.var.is_staticmethod = True
                 self.check_decorated_function_is_method('staticmethod', dec)
+            elif refers_to_fullname(d, 'builtins.property'):
+                removed.append(i)
+                dec.func.is_property = True
+                dec.var.is_property = True
+                self.check_decorated_function_is_method('property', dec)
         for i in reversed(removed):
             del dec.decorators[i]
         dec.func.accept(self)

@@ -424,3 +424,25 @@ MypyFile:1(
         Static
         Block:3(
           PassStmt:3())))))
+
+[case testProperty]
+import typing
+class A:
+  @property
+  def f(self) -> str: pass
+[builtins fixtures/property.py]
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  TypeDef:2(
+    A
+    Decorator:3(
+      Var(f)
+      FuncDef:4(
+        f
+        Args(
+          Var(self))
+        def (self: __main__.A) -> builtins.str
+        Property
+        Block:4(
+          PassStmt:4())))))

@@ -279,6 +279,7 @@ class FuncDef(FuncItem):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_static = False
+    is_property = False
     original_def = None # type: FuncDef  # Original conditional definition
     
     def __init__(self,
@@ -348,6 +349,7 @@ class Var(SymbolNode):
     is_initialized_in_class = False
     is_typevar = False
     is_staticmethod = False
+    is_property = False
     
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name
