@@ -84,8 +84,8 @@ class DyncheckTransformVisitor(TraverserVisitor):
         res = [] # type: List[Node]
         for d in o.defs:
             if isinstance(d, TypeDef):
-                self._type_context = (cast(TypeDef, d)).info
-                res.extend(self.type_tf.transform_type_def(cast(TypeDef, d)))
+                self._type_context = d.info
+                res.extend(self.type_tf.transform_type_def(d))
                 self._type_context = None
             else:
                 d.accept(self)
@@ -197,8 +197,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         if isinstance(typ, Instance):
             # Reference to a statically-typed method variant with the suffix
             # derived from the base object type.
-            suffix = self.get_member_reference_suffix(e.name,
-                                                      cast(Instance, typ).type)
+            suffix = self.get_member_reference_suffix(e.name, typ.type)
         else:
             # Reference to a dynamically-typed method variant.
             suffix = self.dynamic_suffix()
@@ -240,7 +239,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         for i in range(len(e.args)):
             arg_type = AnyType() # type: Type
             if isinstance(ctype, Callable):
-                arg_type = (cast(Callable, ctype)).arg_types[i]
+                arg_type = ctype.arg_types[i]
             e.args[i] = self.coerce2(e.args[i], arg_type,
                                      self.get_type(e.args[i]),
                                      self.type_context())
