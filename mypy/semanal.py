@@ -830,6 +830,8 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
+                if dec.is_overload:
+                    self.fail('A property cannot be overloaded', dec)
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.args) > 1:
                     self.fail('Too many arguments', dec.func)

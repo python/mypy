@@ -1029,3 +1029,15 @@ class A:
     def g() -> int: pass   # E: Method must have at least one argument
 [builtins fixtures/property.py]
 [out]
+
+[case testOverloadedProperty]
+from typing import overload
+class A:
+    @overload  # E: A property cannot be overloaded
+    @property
+    def f(self) -> int: pass
+    @property  # E: A property cannot be overloaded
+    @overload
+    def f(self) -> int: pass
+[builtins fixtures/property.py]
+[out]
