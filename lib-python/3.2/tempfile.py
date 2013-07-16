@@ -120,6 +120,7 @@ class _RandomNameSequence(_Iterator[str]):
 
     characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
 
+    @property
     def rng(self) -> _Random:
         cur_pid = _os.getpid()
         if cur_pid != getattr(self, '_rng_pid', None):
@@ -132,7 +133,7 @@ class _RandomNameSequence(_Iterator[str]):
 
     def __next__(self) -> str:
         c = self.characters
-        choose = self.rng().choice
+        choose = self.rng.choice
         letters = [choose(c) for dummy in "123456"]
         return ''.join(letters)
 
@@ -556,13 +557,13 @@ class SpooledTemporaryFile:
     def close(self) -> None:
         self._file.close()
 
-    #@property
-    #def closed(self):
-    #    return self._file.closed
+    @property
+    def closed(self) -> bool:
+        return self._file.closed
 
-    #@property
-    #def encoding(self):
-    #    return self._file.encoding
+    @property
+    def encoding(self) -> str:
+        return self._file.encoding
 
     def fileno(self) -> int:
         self.rollover()
@@ -574,17 +575,17 @@ class SpooledTemporaryFile:
     def isatty(self) -> bool:
         return self._file.isatty()
 
-    #@property
-    #def mode(self):
-    #    return self._file.mode
+    @property
+    def mode(self) -> str:
+        return self._file.mode
 
-    #@property
-    #def name(self):
-    #    return self._file.name
+    @property
+    def name(self) -> str:
+        return self._file.name
 
-    #@property
-    #def newlines(self):
-    #    return self._file.newlines
+    @property
+    def newlines(self) -> _Any:
+        return self._file.newlines
 
     def next(self):
         return self._file.next
@@ -601,9 +602,9 @@ class SpooledTemporaryFile:
     def seek(self, *args) -> None:
         self._file.seek(*args)
 
-    #@property
-    #def softspace(self):
-    #    return self._file.softspace
+    @property
+    def softspace(self) -> bool:
+        return self._file.softspace
 
     def tell(self) -> int:
         return self._file.tell()
