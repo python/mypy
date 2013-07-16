@@ -173,11 +173,13 @@ class FuncBase(SymbolNode):
     type = None # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None # type: TypeInfo
+
+    @abstractmethod
+    def name(self) -> str: pass
     
-    def name(self) -> str:
-        pass
     def fullname(self) -> str:
-        pass
+        return self.name()
+    
     def is_method(self) -> bool:
         return bool(self.info)
 
@@ -1002,6 +1004,9 @@ class SuperExpr(Node):
 
 class FuncExpr(FuncItem):
     """Lambda expression"""
+
+    def name(self) -> str:
+        return '<lambda>'
     
     def expr(self) -> Node:
         """Return the expression (the body) of the lambda."""
