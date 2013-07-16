@@ -752,6 +752,16 @@ class A:
 [out]
 main: In member "f" of class "A":
 
+[case testDynamicallyTypedProperty]
+import typing
+class A:
+    @property
+    def f(self): pass
+a = A() # type. A
+a.f.xx
+a.f = '' # E: Property "f" defined in "A" is read-only
+[builtins fixtures/property.py]
+
 
 -- Special cases
 -- -------------
