@@ -214,16 +214,14 @@ class SemanticAnalyzer(NodeVisitor):
         """Return a list of all unique type variable references in type."""
         result = List[str]()
         if isinstance(type, UnboundType):
-            unbound = cast(UnboundType, type)
-            name = unbound.name
+            name = type.name
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
                 result.append(name)
-            for arg in unbound.args:
+            for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
-            types = cast(TypeList, type)
-            for item in types.items:
+            for item in type.items:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
@@ -265,9 +263,8 @@ class SemanticAnalyzer(NodeVisitor):
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
-                fdef = cast(FuncDef, defn)
-                fdef.info = self.type
-                defn.type = set_callable_name(defn.type, fdef)
+                defn.info = self.type
+                defn.type = set_callable_name(defn.type, defn)
         self.enter()
         for init in defn.init:
             if init:
@@ -359,12 +356,11 @@ class SemanticAnalyzer(NodeVisitor):
                     # check arbitrarily the first overload item. If the
                     # different items have a different abstract status, there
                     # should be an error reported elsewhere.
-                    overload = cast(OverloadedFuncDef, node)
-                    func = overload.items[0] # type: Node
+                    func = node.items[0] # type: Node
                 else:
                     func = node
                 if isinstance(func, Decorator):
-                    fdef = cast(Decorator, func).func
+                    fdef = func.func
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
@@ -455,7 +451,7 @@ class SemanticAnalyzer(NodeVisitor):
             base = self.anal_type(defn.base_types[i])
             if isinstance(base, Instance):
                 defn.base_types[i] = base
-                bases.append(cast(Instance, base))
+                bases.append(base)
         # Add 'object' as implicit base if there is no other base class.
         if (not bases and defn.fullname != 'builtins.object'):
             obj = self.object_type()
@@ -633,57 +629,55 @@ class SemanticAnalyzer(NodeVisitor):
         is true, the lvalue is within a tuple or list lvalue expression.
         """
         if isinstance(lval, NameExpr):
-            n = cast(NameExpr, lval)
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and
                              not self.type)
-            if (add_global or nested_global) and n.name not in self.globals:
+            if (add_global or nested_global) and lval.name not in self.globals:
                 # Define new global name.
-                v = Var(n.name)
-                v._fullname = self.qualified_name(n.name)
+                v = Var(lval.name)
+                v._fullname = self.qualified_name(lval.name)
                 v.is_ready = False # Type not inferred yet
-                n.node = v
-                n.is_def = True
-                n.kind = GDEF
-                n.fullname = v._fullname
-                self.globals[n.name] = SymbolTableNode(GDEF, v,
-                                                       self.cur_mod_id)
-            elif isinstance(n.node, Var) and n.is_def:
+                lval.node = v
+                lval.is_def = True
+                lval.kind = GDEF
+                lval.fullname = v._fullname
+                self.globals[lval.name] = SymbolTableNode(GDEF, v,
+                                                          self.cur_mod_id)
+            elif isinstance(lval.node, Var) and lval.is_def:
                 # Since the is_def flag is set, this must have been analyzed
                 # already in the first pass and added to the symbol table.
-                v = cast(Var, n.node)
+                v = cast(Var, lval.node)
                 assert v.name() in self.globals
-            elif (self.is_func_scope() and n.name not in self.locals[-1] and
-                  n.name not in self.global_decls[-1]):
+            elif (self.is_func_scope() and lval.name not in self.locals[-1] and
+                  lval.name not in self.global_decls[-1]):
                 # Define new local name.
-                v = Var(n.name)
-                n.node = v
-                n.is_def = True
-                n.kind = LDEF
-                n.fullname = n.name
-                self.add_local(v, n)
+                v = Var(lval.name)
+                lval.node = v
+                lval.is_def = True
+                lval.kind = LDEF
+                lval.fullname = lval.name
+                self.add_local(v, lval)
             elif not self.is_func_scope() and (self.type and
-                                               n.name not in self.type.names):
+                                            lval.name not in self.type.names):
                 # Define a new attribute within class body.
-                v = Var(n.name)
+                v = Var(lval.name)
                 v.info = self.type
                 v.is_initialized_in_class = True
-                n.node = v
-                n.is_def = True
-                n.kind = MDEF
-                n.fullname = n.name
-                self.type.names[n.name] = SymbolTableNode(MDEF, v)
+                lval.node = v
+                lval.is_def = True
+                lval.kind = MDEF
+                lval.fullname = lval.name
+                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
             else:
                 # Bind to an existing name.
                 if explicit_type:
-                    self.name_already_defined(n.name, lval)
-                n.accept(self)
-                self.check_lvalue_validity(n.node, n)
+                    self.name_already_defined(lval.name, lval)
+                lval.accept(self)
+                self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
-            memberexpr = cast(MemberExpr, lval)
             if not add_global:
-                self.analyse_member_lvalue(memberexpr)
-            if explicit_type and not self.is_self_member_ref(memberexpr):
+                self.analyse_member_lvalue(lval)
+            if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
         elif isinstance(lval, IndexExpr):
@@ -692,8 +686,7 @@ class SemanticAnalyzer(NodeVisitor):
             if not add_global:
                 lval.accept(self)
         elif isinstance(lval, ParenExpr):
-            self.analyse_lvalue(cast(ParenExpr, lval).expr, nested, add_global,
-                                explicit_type)
+            self.analyse_lvalue(lval.expr, nested, add_global, explicit_type)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)) and not nested:
             items = (Any(lval)).items
@@ -732,9 +725,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def infer_type_from_undefined(self, rvalue: Node) -> Type:
         if isinstance(rvalue, CallExpr):
-            call = cast(CallExpr, rvalue)
-            if isinstance(call.analyzed, UndefinedExpr):
-                undef = cast(UndefinedExpr, call.analyzed)
+            if isinstance(rvalue.analyzed, UndefinedExpr):
+                undef = cast(UndefinedExpr, rvalue.analyzed)
                 return undef.type
         return None
 
