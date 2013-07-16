@@ -446,20 +446,19 @@ class BuildManager:
         """
         # TODO also find imports not at the top level of the file
         res = List[Tuple[str, int]]()
-        for d in file.imports:
-            if isinstance(d, Import):
-                for id, _ in (cast(Import, d)).ids:
-                    res.append((id, d.line))
-            elif isinstance(d, ImportFrom):
-                imp = cast(ImportFrom, d)
+        for imp in file.imports:
+            if isinstance(imp, Import):
+                for id, _ in imp.ids:
+                    res.append((id, imp.line))
+            elif isinstance(imp, ImportFrom):
                 res.append((imp.id, imp.line))
                 # Also add any imported names that are submodules.
                 for name, __ in imp.names:
                     sub_id = imp.id + '.' + name
                     if self.is_module(sub_id):
                         res.append((sub_id, imp.line))
-            elif isinstance(d, ImportAll):
-                res.append(((cast(ImportAll, d)).id, d.line))
+            elif isinstance(imp, ImportAll):
+                res.append((imp.id, imp.line))
         return res
     
     def is_module(self, id: str) -> bool:
