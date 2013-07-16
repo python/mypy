@@ -55,3 +55,51 @@ def f(x: object, a: A, b: B, c: int) -> None:
 [builtins fixtures/isinstance.py]
 [out]
 main: In function "f":
+
+[case testMultipleIsinstanceTests2]
+import typing
+class A: pass
+class B(A): pass
+def f(x: object, y: object, n: int, s: str) -> None:
+    if isinstance(x, int):
+        if isinstance(y, str):
+            n = x
+            s = y
+            s = x # E: Incompatible types in assignment
+            n = y # E: Incompatible types in assignment
+        s = y # E: Incompatible types in assignment
+        n = y # E: Incompatible types in assignment
+        n = x
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
+[case testIsinstanceAndElif]
+import typing
+def f(x: object, n: int, s: str) -> None:
+    n = x # E: Incompatible types in assignment
+    if isinstance(x, int):
+        n = x
+        s = x # E: Incompatible types in assignment
+    elif isinstance(x, str):
+        s = x
+        n = x # E: Incompatible types in assignment
+    else:
+        n = x # E: Incompatible types in assignment
+        s = x # E: Incompatible types in assignment
+    n = x # E: Incompatible types in assignment
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
+[case testIsinstanceAndAnyType]
+from typing import Any
+def f(x: Any, n: int, s: str) -> None:
+    s = x
+    if isinstance(x, int):
+        n = x
+        s = x # E: Incompatible types in assignment
+    s = x
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
