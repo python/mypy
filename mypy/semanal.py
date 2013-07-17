@@ -792,6 +792,10 @@ class SemanticAnalyzer(NodeVisitor):
             return
         if len(call.args) == 2:
             # Analyze values=(...) argument.
+            if call.arg_names[1] != 'values':
+                self.fail("Unexpected keyword argument '{}' to typevar()".
+                          format(call.arg_names[1]), s)
+                return
             if isinstance(call.args[1], ParenExpr):
                 expr = cast(ParenExpr, call.args[1]).expr
                 if isinstance(expr, TupleExpr):
