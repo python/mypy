@@ -797,7 +797,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if isinstance(expr, TupleExpr):
                     values = self.analyze_types(expr.items)
                 else:
-                    self.fail('The values must be a tuple literal', s)
+                    self.fail('The values argument must be a tuple literal', s)
                     return
             else:                  
                 self.fail('The values argument must be in parentheses (...)',
@@ -813,7 +813,14 @@ class SemanticAnalyzer(NodeVisitor):
         call.analyzed.line = call.line
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
-        return [expr_to_unanalyzed_type(node) for node in items]
+        result = List[Node]()
+        for node in items:
+            try:
+                result.append(expr_to_unanalyzed_type(node))
+            except TypeTranslationError:
+                self.fail('Type expected', node)
+                result.append(AnyType())
+        return result
 
     def visit_decorator(self, dec: Decorator) -> None:
         if not dec.is_overload:
