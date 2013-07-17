@@ -896,8 +896,8 @@ class A(metaclass=f): pass # E: Invalid metaclass 'f'
 
 [case testInvalidTypevarArguments]
 from typing import typevar
-a = typevar('a', 1) # E: typevar() takes exactly one argument
-b = typevar()       # E: typevar() takes exactly one argument
+a = typevar('a', values=(int, str), x=1) # E: Too many arguments for typevar()
+b = typevar()       # E: Too few arguments for typevar()
 c = typevar(x='c')  # E: Unexpected arguments to typevar()
 d = typevar(1)      # E: typevar() expects a string literal argument
 e = typevar('E')    # E: Unexpected typevar() argument value

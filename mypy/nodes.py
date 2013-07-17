@@ -1158,6 +1158,11 @@ class TypeApplication(Node):
 
 class TypeVarExpr(Node):
     """Type variable expression typevar(...)."""
+
+    values = Undefined(List['mypy.types.Type'])
+
+    def __init__(self, values: List['mypy.types.Type']) -> None:
+        self.values = values
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)

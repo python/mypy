@@ -55,7 +55,8 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ConditionalExpr, ARG_POS, MroError, type_aliases
+    StrExpr, PrintStmt, ConditionalExpr, ARG_POS, ARG_NAMED, MroError,
+    type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -765,10 +766,14 @@ class SemanticAnalyzer(NodeVisitor):
         callee = cast(RefExpr, call.callee)
         if callee.fullname != 'typing.typevar':
             return
-        if len(call.args) != 1:
-            self.fail("typevar() takes exactly one argument", s)
+        # TODO Share code with check_argument_count in checkexpr.py?
+        if len(call.args) < 1:
+            self.fail("Too few arguments for typevar()", s)
             return
-        if call.arg_kinds != [ARG_POS]:
+        if len(call.args) > 2:
+            self.fail("Too many arguments for typevar()", s)
+            return
+        if call.arg_kinds not in ([ARG_POS], [ARG_POS, ARG_NAMED]):
             self.fail("Unexpected arguments to typevar()", s)
             return
         if not isinstance(call.args[0], StrExpr):
@@ -785,12 +790,30 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return
+        if len(call.args) == 2:
+            # Analyze values=(...) argument.
+            if isinstance(call.args[1], ParenExpr):
+                expr = cast(ParenExpr, call.args[1]).expr
+                if isinstance(expr, TupleExpr):
+                    values = self.analyze_types(expr.items)
+                else:
+                    self.fail('The values must be a tuple literal', s)
+                    return
+            else:                  
+                self.fail('The values argument must be in parentheses (...)',
+                          s)
+                return
+        else:
+            values = []
         # Yes, it's a valid type variable definition!
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
         cast(Var, lvalue.node).is_typevar = True
-        call.analyzed = TypeVarExpr()
+        call.analyzed = TypeVarExpr(values)
         call.analyzed.line = call.line
+
+    def analyze_types(self, items: List[Node]) -> List[Type]:
+        return [expr_to_unanalyzed_type(node) for node in items]
 
     def visit_decorator(self, dec: Decorator) -> None:
         if not dec.is_overload:

@@ -1375,3 +1375,24 @@ MypyFile:1(
         AssignmentStmt:4(
           NameExpr(x [l])
           IntExpr(1))))))
+
+[case testTypevarWithValues]
+from typing import typevar, Any
+T = typevar('T', values=(int, str))
+S = typevar('S', values=(Any, int, str))
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Any : Any])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Values(
+        int?
+        str?)))
+  AssignmentStmt:3(
+    NameExpr(S* [__main__.S])
+    TypeVarExpr:3(
+      Values(
+        Any?
+        int?
+        str?))))
