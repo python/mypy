@@ -387,14 +387,14 @@ class TypeDef(Node):
     name = Undefined(str)         # Name of the class without module prefix
     fullname = None # type: str   # Fully qualified name of the class
     defs = Undefined('Block')
-    type_vars = Undefined('mypy.types.TypeVars')
+    type_vars = Undefined(List['mypy.types.TypeVarDef'])
     # Base classes (Instance or UnboundType).
     base_types = Undefined(List['mypy.types.Type'])
     info = None # type: TypeInfo  # Related TypeInfo
     metaclass = ''
     
     def __init__(self, name: str, defs: 'Block',
-                 type_vars: 'mypy.types.TypeVars' = None,
+                 type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_types: List['mypy.types.Type'] = None,
                  metaclass: str = None) -> None:
         if not base_types:
@@ -1275,7 +1275,7 @@ class TypeInfo(SymbolNode):
         self.is_abstract = False
         self.abstract_attributes = []
         if defn.type_vars:
-            for vd in defn.type_vars.items:
+            for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
     
     def name(self) -> str:

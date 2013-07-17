@@ -7,7 +7,7 @@ from typing import List
 
 from mypy.types import (
     TypeVar, AnyType, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef,
-    TypeVars, BasicTypes
+    BasicTypes
 )
 from mypy.nodes import (
     TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
@@ -215,7 +215,7 @@ def make_type_info(name: str,
         for n in typevars:
             v.append(TypeVarDef(n, id))
             id += 1
-        type_def.type_vars = TypeVars(v)
+        type_def.type_vars = v
     
     info = TypeInfo(SymbolTable(), type_def)
     if mro is None:

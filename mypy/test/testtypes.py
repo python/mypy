@@ -8,8 +8,8 @@ from mypy.expandtype import expand_type
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
-    UnboundType, AnyType, Void, Callable, TupleType, TypeVarDef, TypeVars,
-    Type, Instance, NoneTyp, ErrorType
+    UnboundType, AnyType, Void, Callable, TupleType, TypeVarDef, Type,
+    Instance, NoneTyp, ErrorType
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
 from mypy.replacetvars import replace_type_vars
@@ -80,11 +80,10 @@ class TypesSuite(Suite):
     def test_generic_function_type(self):
         c = Callable([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
                      self.y, False, None,
-                     TypeVars([TypeVarDef('X', -1)]))
+                     [TypeVarDef('X', -1)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
         
-        v = TypeVars([TypeVarDef('Y', -1, UnboundType('X')),
-                      TypeVarDef('X', -2)])
+        v = [TypeVarDef('Y', -1, UnboundType('X')), TypeVarDef('X', -2)]
         c2 = Callable([], [], [], Void(None), False, None, v)
         assert_equal(str(c2), 'def [Y is X?, X] ()')
 
@@ -194,7 +193,7 @@ class TypeOpsSuite(Suite):
                         a[-1],
                         False,
                         None,
-                        TypeVars(tv))
+                        tv)
 
 
 class JoinSuite(Suite):

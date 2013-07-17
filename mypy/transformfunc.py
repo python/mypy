@@ -347,7 +347,7 @@ class FuncTransformer:
                                            self.tf.type_context(),
                                            is_wrapper_class))
         # Add type variable arguments for a generic function.
-        for i in range(len(target_ann.variables.items)):
+        for i in range(len(target_ann.variables)):
             # Non-dynamic wrapper method in a wrapper class passes
             # generic function type arguments to the target function;
             # otherwise use dynamic types.

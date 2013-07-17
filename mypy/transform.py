@@ -129,7 +129,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
     def prepend_generic_function_tvar_args(self, fdef: FuncDef) -> None:
         """Add implicit function type variable arguments if fdef is generic."""
         sig = cast(Callable, function_type(fdef))
-        tvars = sig.variables.items # type: List[TypeVarDef]
+        tvars = sig.variables
         if not fdef.type:
             fdef.type = sig
         

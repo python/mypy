@@ -3,8 +3,8 @@
 from typing import cast, Function, List
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVars,
-    TypeVarDef, Overloaded, TypeVar, TypeTranslator, BasicTypes
+    Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVarDef,
+    Overloaded, TypeVar, TypeTranslator, BasicTypes
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type, Decorator
@@ -185,15 +185,15 @@ def analyse_class_attribute_access(itype: Instance, name: str,
 
 def add_class_tvars(t: Type, info: TypeInfo) -> Type:
     if isinstance(t, Callable):
-        vars = TypeVars([TypeVarDef(n, i + 1)
-                         for i, n in enumerate(info.type_vars)])
+        vars = [TypeVarDef(n, i + 1)
+                for i, n in enumerate(info.type_vars)]
         return Callable(t.arg_types,
                         t.arg_kinds,
                         t.arg_names,
                         t.ret_type,
                         t.is_type_obj(),
                         t.name,
-                        TypeVars(vars.items + t.variables.items),
+                        vars + t.variables,
                         t.bound_vars,
                         t.line, None)
     elif isinstance(t, Overloaded):
@@ -235,7 +235,7 @@ def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
     for i in range(len(info.type_vars)): # TODO bounds
         variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
 
-    initvars = init_type.variables.items
+    initvars = init_type.variables
     variables.extend(initvars)
 
     c = Callable(init_type.arg_types,
@@ -244,8 +244,7 @@ def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
                  self_type(info),
                  True,
                  None,
-                 TypeVars(variables)).with_name(
-                                      '"{}"'.format(info.name()))
+                 variables).with_name('"{}"'.format(info.name()))
     return convert_class_tvars_to_func_tvars(c, len(initvars))
 
 
@@ -265,15 +264,16 @@ class TvarTranslator(TypeTranslator):
         else:
             return TypeVar(t.name, -t.id - self.num_func_tvars)
     
-    def translate_variables(self, variables: TypeVars) -> TypeVars:
-        if not variables.items:
+    def translate_variables(self,
+                            variables: List[TypeVarDef]) -> List[TypeVarDef]:
+        if not variables:
             return variables
         items = [] # type: List[TypeVarDef]
-        for v in variables.items:
+        for v in variables:
             if v.id > 0:
                 # TODO translate bound
                 items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
                                         v.bound))
             else:
                 items.append(v)
-        return TypeVars(items)
+        return items

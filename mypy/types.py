@@ -29,6 +29,33 @@ class Type(mypy.nodes.Context):
         return self.accept(TypeStrVisitor())
 
 
+class TypeVarDef(mypy.nodes.Context):
+    """Definition of a single type variable, with an optional bound."""
+    
+    name = ''
+    id = 0
+    bound = Undefined(Type) # May be None
+    line = 0
+    repr = Undefined(Any)
+    
+    def __init__(self, name: str, id: int, bound: Type = None, line: int = -1,
+                 repr: Any = None) -> None:
+        self.name = name
+        self.id = id
+        self.bound = bound
+        self.line = line
+        self.repr = repr
+
+    def get_line(self) -> int:
+        return self.line
+    
+    def __repr__(self) -> str:
+        if self.bound is None:
+            return str(self.name)
+        else:
+            return '{} is {}'.format(self.name, self.bound)
+
+
 class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
     
@@ -209,7 +236,8 @@ class Callable(FunctionLike):
     is_var_arg = False         # Is it a varargs function?
     ret_type = Undefined(Type) # Return value type
     name = ''                  # Name (may be None; for error messages)
-    variables = Undefined('TypeVars') # Type variables for a generic function
+    # Type variables for a generic function
+    variables = Undefined(List[TypeVarDef])
     
     # Implicit bound values of type variables. These can be either for
     # class type variables or for generic function type variables.
@@ -229,11 +257,11 @@ class Callable(FunctionLike):
     
     def __init__(self, arg_types: List[Type], arg_kinds: List[int],
                  arg_names: List[str], ret_type: Type, is_type_obj: bool,
-                 name: str = None, variables: 'TypeVars' = None,
+                 name: str = None, variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1, repr: Any = None) -> None:
-        if not variables:
-            variables = TypeVars([])
+        if variables is None:
+            variables = []
         if not bound_vars:
             bound_vars = []
         self.arg_types = arg_types
@@ -284,11 +312,11 @@ class Callable(FunctionLike):
         return [self]
     
     def is_generic(self) -> bool:
-        return self.variables.items != []
+        return bool(self.variables)
     
     def type_var_ids(self) -> List[int]:
         a = List[int]()
-        for tv in self.variables.items:
+        for tv in self.variables:
             a.append(tv.id)
         return a
 
@@ -342,55 +370,6 @@ class TupleType(Type):
     
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_tuple_type(self)
-
-
-class TypeVars:
-    """Collection of type variables related to a generic function or type.
-
-    TODO bounds are not supported currently
-    """
-    
-    items = Undefined(List['TypeVarDef'])
-    repr = Undefined(Any)
-    
-    def __init__(self, items: 'List[TypeVarDef]', repr: Any = None) -> None:
-        self.items = items
-        self.repr = repr
-    
-    def __repr__(self) -> str:
-        if self.items == []:
-            return ''
-        a = List[str]()
-        for v in self.items:
-            a.append(str(v))
-        return '[{}]'.format(', '.join(a))
-
-
-class TypeVarDef(mypy.nodes.Context):
-    """Definition of a single type variable, with an optional bound."""
-    
-    name = ''
-    id = 0
-    bound = Undefined(Type) # May be None
-    line = 0
-    repr = Undefined(Any)
-    
-    def __init__(self, name: str, id: int, bound: Type = None, line: int = -1,
-                 repr: Any = None) -> None:
-        self.name = name
-        self.id = id
-        self.bound = bound
-        self.line = line
-        self.repr = repr
-
-    def get_line(self) -> int:
-        return self.line
-    
-    def __repr__(self) -> str:
-        if self.bound is None:
-            return str(self.name)
-        else:
-            return '{} is {}'.format(self.name, self.bound)
 
 
 class RuntimeTypeVar(Type):
@@ -517,7 +496,8 @@ class TypeTranslator(TypeVisitor[Type]):
             self, types: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
         return [(id, t.accept(self)) for id, t in types]
 
-    def translate_variables(self, variables: TypeVars) -> TypeVars:
+    def translate_variables(self,
+                            variables: List[TypeVarDef]) -> List[TypeVarDef]:
         return variables
 
 
@@ -604,7 +584,7 @@ class TypeStrVisitor(TypeVisitor[str]):
         if not isinstance(t.ret_type, Void):
             s += ' -> {}'.format(t.ret_type)
         
-        if t.variables.items != []:
+        if t.variables:
             s = '{} {}'.format(t.variables, s)
         
         if t.bound_vars != []:

@@ -3,7 +3,7 @@
 from typing import Undefined, cast, List, Tuple, Dict, Function
 
 from mypy.types import (
-    Type, AnyType, Callable, Overloaded, NoneTyp, Void, TypeVarDef, TypeVars,
+    Type, AnyType, Callable, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike
 )
 from mypy.nodes import (
@@ -309,8 +309,7 @@ class ExpressionChecker:
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
-            inferred_args = [AnyType()] * len(
-                                              callee_type.variables.items)
+            inferred_args = [AnyType()] * len(callee_type.variables)
         return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
 
@@ -609,7 +608,7 @@ class ExpressionChecker:
         
         Note that each type can be None; in this case, it will not be applied.
         """
-        tvars = callable.variables.items        
+        tvars = callable.variables
         if len(tvars) != len(types):
             self.msg.incompatible_type_application(len(tvars), len(types),
                                                    context)
@@ -637,7 +636,7 @@ class ExpressionChecker:
                         expand_type(callable.ret_type, id_to_type),
                         callable.is_type_obj(),
                         callable.name,
-                        TypeVars(remaining_tvars),
+                        remaining_tvars,
                         callable.bound_vars + bound_vars,
                         callable.line, callable.repr)
     
@@ -852,7 +851,7 @@ class ExpressionChecker:
             overload = expr_type
             # Only target items with the right number of generic type args.
             items = [c for c in overload.items()
-                     if len(c.variables.items) == len(tapp.types)]
+                     if len(c.variables) == len(tapp.types)]
             new_type = self.apply_generic_arguments2(Overloaded(items),
                                                      tapp.types, tapp)
         else:
@@ -895,7 +894,7 @@ class ExpressionChecker:
                                                                [tv]),
                                    False,
                                    tag,
-                                   TypeVars([TypeVarDef('T', -1)]))
+                                   [TypeVarDef('T', -1)])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -948,8 +947,8 @@ class ExpressionChecker:
                                                                [tv1, tv2]),
                                    False,
                                    '<list>',
-                                   TypeVars([TypeVarDef('KT', -1),
-                                             TypeVarDef('VT', -2)]))
+                                   [TypeVarDef('KT', -1),
+                                    TypeVarDef('VT', -2)])
             # Synthesize function arguments.
             args = List[Node]()
             for key, value in e.items:
@@ -1071,7 +1070,7 @@ class ExpressionChecker:
                                self.chk.named_generic_type(type_name, [tv]),
                                False,
                                id_for_messages,
-                               TypeVars([TypeVarDef('T', -1)]))
+                               [TypeVarDef('T', -1)])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 

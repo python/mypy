@@ -130,7 +130,7 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     # TODO support named arguments, **args etc.
     
     # Subtyping is not currently supported for generic functions.
-    if left.variables.items or right.variables.items:
+    if left.variables or right.variables:
         return False
     
     # Non-type cannot be a subtype of type.

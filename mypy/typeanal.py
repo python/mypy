@@ -4,7 +4,7 @@ from typing import Undefined, Function, cast, List, Tuple
 
 from mypy.types import (
     Type, UnboundType, TypeVar, TupleType, Instance, AnyType, Callable,
-    TypeVars, Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
+    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
@@ -116,14 +116,14 @@ class TypeAnalyser(TypeVisitor[Type]):
             res.append((id, t.accept(self)))
         return res
     
-    def anal_var_defs(self, var_defs: TypeVars) -> TypeVars:
+    def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = List[TypeVarDef]()
-        for vd in var_defs.items:
+        for vd in var_defs:
             bound = None # type: Type
             if vd.bound is not None:
                 bound = vd.bound.accept(self)
             a.append(TypeVarDef(vd.name, vd.id, bound, vd.line, vd.repr))
-        return TypeVars(a, var_defs.repr)
+        return a
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):

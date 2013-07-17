@@ -124,7 +124,7 @@ class StrConv(NodeVisitor[str]):
                                      and o.base_types[0].repr):
             a.insert(1, ('BaseType', o.base_types))
         if o.type_vars:
-            a.insert(1, ('TypeVars', o.type_vars.items))
+            a.insert(1, ('TypeVars', o.type_vars))
         if o.metaclass:
             a.insert(1, 'Metaclass({})'.format(o.metaclass))
         return self.dump(a, o)

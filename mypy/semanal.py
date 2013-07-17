@@ -62,7 +62,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVars, TypeVarDef,
+    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
     replace_self_type, TupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
@@ -199,7 +199,7 @@ class SemanticAnalyzer(NodeVisitor):
             if typevars:
                 defs = [TypeVarDef(name, -i - 1)
                         for i, name in enumerate(typevars)]
-                functype.variables = TypeVars(defs)
+                functype.variables = defs
 
     def infer_type_variables(self, type: Callable) -> List[str]:
         """Return list of unique type variables referred to in a callable."""
@@ -290,7 +290,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.type:
             tt = defn.type
             names = self.type_var_names()
-            items = cast(Callable, tt).variables.items
+            items = cast(Callable, tt).variables
             for i, item in enumerate(items):
                 name = item.name
                 if name in names:
@@ -389,7 +389,7 @@ class SemanticAnalyzer(NodeVisitor):
                 for j, name in enumerate(tvars):
                     type_vars.append(TypeVarDef(name, j + 1))
         if type_vars:
-            defn.type_vars = TypeVars(type_vars)
+            defn.type_vars = type_vars
             if defn.info:
                 defn.info.type_vars = [tv.name for tv in type_vars]
         for i in reversed(removed):
