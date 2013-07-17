@@ -813,7 +813,7 @@ class SemanticAnalyzer(NodeVisitor):
         call.analyzed.line = call.line
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
-        result = List[Node]()
+        result = List[Type]()
         for node in items:
             try:
                 result.append(expr_to_unanalyzed_type(node))
