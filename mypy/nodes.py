@@ -1255,10 +1255,6 @@ class TypeInfo(SymbolNode):
     # Generic type variable names
     type_vars = Undefined(List[str])
     
-    # Type variable bounds (each may be None)
-    # TODO implement these or remove
-    bounds = Undefined(List['mypy.types.Type'])
-    
     # Direct base classes.
     bases = Undefined(List['mypy.types.Instance'])
     
@@ -1269,7 +1265,6 @@ class TypeInfo(SymbolNode):
         self.subtypes = set()
         self.mro = []
         self.type_vars = []
-        self.bounds = []
         self.bases = []
         self._fullname = defn.fullname
         self.is_abstract = False
@@ -1289,10 +1284,6 @@ class TypeInfo(SymbolNode):
         """Is the type generic (i.e. does it have type variables)?"""
         return self.type_vars is not None and len(self.type_vars) > 0
     
-    def set_type_bounds(self, a: List['mypy.types.TypeVarDef']) -> None:
-        for vd in a:
-            self.bounds.append(vd.bound)
-
     def get(self, name: str) -> 'SymbolTableNode':
         for cls in self.mro:
             n = cls.names.get(name)

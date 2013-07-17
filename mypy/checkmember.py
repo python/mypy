@@ -271,9 +271,7 @@ class TvarTranslator(TypeTranslator):
         items = [] # type: List[TypeVarDef]
         for v in variables:
             if v.id > 0:
-                # TODO translate bound
-                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        v.bound))
+                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars))
             else:
                 items.append(v)
         return items

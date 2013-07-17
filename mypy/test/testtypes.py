@@ -75,7 +75,6 @@ class TypesSuite(Suite):
     
     def test_type_variable_binding(self):
         assert_equal(str(TypeVarDef('X', 1)), 'X')
-        assert_equal(str(TypeVarDef('X', 1, UnboundType('Y'))), 'X is Y?')
     
     def test_generic_function_type(self):
         c = Callable([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
@@ -83,9 +82,9 @@ class TypesSuite(Suite):
                      [TypeVarDef('X', -1)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
         
-        v = [TypeVarDef('Y', -1, UnboundType('X')), TypeVarDef('X', -2)]
+        v = [TypeVarDef('Y', -1), TypeVarDef('X', -2)]
         c2 = Callable([], [], [], Void(None), False, None, v)
-        assert_equal(str(c2), 'def [Y is X?, X] ()')
+        assert_equal(str(c2), 'def [Y, X] ()')
 
 
 class TypeOpsSuite(Suite):

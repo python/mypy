@@ -30,19 +30,17 @@ class Type(mypy.nodes.Context):
 
 
 class TypeVarDef(mypy.nodes.Context):
-    """Definition of a single type variable, with an optional bound."""
+    """Definition of a single type variable."""
     
     name = ''
     id = 0
-    bound = Undefined(Type) # May be None
     line = 0
     repr = Undefined(Any)
     
-    def __init__(self, name: str, id: int, bound: Type = None, line: int = -1,
+    def __init__(self, name: str, id: int, line: int = -1,
                  repr: Any = None) -> None:
         self.name = name
         self.id = id
-        self.bound = bound
         self.line = line
         self.repr = repr
 
@@ -50,10 +48,7 @@ class TypeVarDef(mypy.nodes.Context):
         return self.line
     
     def __repr__(self) -> str:
-        if self.bound is None:
-            return str(self.name)
-        else:
-            return '{} is {}'.format(self.name, self.bound)
+        return self.name
 
 
 class UnboundType(Type):

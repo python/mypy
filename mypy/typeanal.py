@@ -119,10 +119,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = List[TypeVarDef]()
         for vd in var_defs:
-            bound = None # type: Type
-            if vd.bound is not None:
-                bound = vd.bound.accept(self)
-            a.append(TypeVarDef(vd.name, vd.id, bound, vd.line, vd.repr))
+            a.append(TypeVarDef(vd.name, vd.id, vd.line, vd.repr))
         return a
 
 
