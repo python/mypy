@@ -357,8 +357,8 @@ class ExpressionChecker:
         For each actual, the pass number is either 1 (first pass) or 2 (second
         pass).
 
-        Two-pass argument type inference primarily lets us infer lambdas
-        better.
+        Two-pass argument type inference primarily lets us infer types of
+        lambdas more effectively.
         """
         res = [1] * num_actuals
         for i, arg in enumerate(arg_types):
@@ -372,14 +372,10 @@ class ExpressionChecker:
                                       context: Context) -> Callable:
         """Apply inferred values of type arguments to a generic function.
 
-        If implicit_type_vars are given, they correspond to the ids of
-        the implicit instance type variables; they are stored as the
-        prefix of inferred_args.  Inferred_args contains first the
-        values of implicit instance type vars (if any), and then
-        values of function type variables, concatenated together.
+        Inferred_args contains the values of function type arguments.
         """
         # Report error if some of the variables could not be solved. In that
-        # case assume that all variables have type dynamic to avoid extra
+        # case assume that all variables have type Any to avoid extra
         # bogus error messages.
         for i in range(len(inferred_args)):
             inferred_type = inferred_args[i]
