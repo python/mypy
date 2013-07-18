@@ -368,8 +368,8 @@ class ExpressionChecker:
         return res
     
     def apply_inferred_arguments(self, callee_type: Callable,
-                                      inferred_args: List[Type],
-                                      context: Context) -> Callable:
+                                 inferred_args: List[Type],
+                                 context: Context) -> Callable:
         """Apply inferred values of type arguments to a generic function.
 
         Inferred_args contains the values of function type arguments.
