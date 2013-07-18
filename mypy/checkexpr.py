@@ -187,9 +187,10 @@ class ExpressionChecker:
                                    args: List[Node]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
 
-        For example, if callee argument 2 has type int[], infer the argument
-        expression with int[] type context.
+        For example, if callee argument 2 has type List[int], infer the
+        argument expression with List[int] type context.
         """
+        # TODO Always called with callee as None, i.e. empty context.
         res = [] # type: List[Type]
         
         fixed = len(args)
@@ -216,8 +217,8 @@ class ExpressionChecker:
             formal_to_actual: List[List[int]]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
 
-        For example, if callee argument 2 has type int[], infer the argument
-        exprsession with int[] type context.
+        For example, if callee argument 2 has type List[int], infer the
+        argument exprsession with List[int] type context.
 
         Returns the inferred types of *actual arguments*.
         """
