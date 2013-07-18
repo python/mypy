@@ -8,3 +8,15 @@ def f(x: T) -> None: pass
 f(1)
 f('x')
 f(object()) # E: Type argument 1 of "f" has incompatible value "object"
+
+[case testCallGenericFunctionWithTypeVarValueRestrictionUsingContext]
+from typing import typevar, List
+T = typevar('T', values=(int, str))
+def f(x: T) -> List[T]: pass
+i = [1]
+s = ['x']
+o = [object()]
+i = f(1)
+s = f('')
+o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
+[builtins fixtures/list.py]

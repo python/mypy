@@ -150,7 +150,7 @@ class ExpressionChecker:
             
             if callee.is_generic():
                 callee = self.infer_function_type_arguments_using_context(
-                    callee)
+                    callee, context)
                 callee = self.infer_function_type_arguments(
                     callee, args, arg_kinds, formal_to_actual, context)
             
@@ -236,7 +236,7 @@ class ExpressionChecker:
         return res
     
     def infer_function_type_arguments_using_context(
-            self, callable: Callable) -> Callable:
+            self, callable: Callable, error_context: Context) -> Callable:
         """Unify callable return type to type context to infer type vars.
 
         For example, if the return type is set[t] where 't' is a type variable
@@ -261,7 +261,7 @@ class ExpressionChecker:
             else:
                 new_args.append(arg)
         return cast(Callable, self.apply_generic_arguments(callable, new_args,
-                                                           None))
+                                                           error_context))
     
     def infer_function_type_arguments(self, callee_type: Callable,
                                       args: List[Node],
@@ -384,20 +384,11 @@ class ExpressionChecker:
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1, context)
                 inferred_args = [AnyType()] * len(inferred_args)
-        # Check that inferred type variable values are compatible with allowed
-        # values.
-        for i, inferred_type in enumerate(inferred_args):
-            values = callee_type.variables[i].values
-            if values:
-                if not any(is_subtype(inferred_type, value)
-                           for value in values):
-                    self.msg.incompatible_typevar_value(
-                        callee_type, i + 1, inferred_type, context)
         # Apply the inferred types to the function type. In this case the
         # return type must be Callable, since we give the right number of type
         # arguments.
         return cast(Callable, self.apply_generic_arguments(callee_type,
-                                                      inferred_args, None))
+                                                      inferred_args, context))
 
     def check_argument_count(self, callee: Callable, actual_types: List[Type],
                              actual_kinds: List[int],  actual_names: List[str],
@@ -617,6 +608,16 @@ class ExpressionChecker:
             self.msg.incompatible_type_application(len(tvars), len(types),
                                                    context)
             return AnyType()
+        
+        # Check that inferred type variable values are compatible with allowed
+        # values.
+        for i, type in enumerate(types):
+            values = callable.variables[i].values
+            if values:
+                if not any(is_subtype(type, value)
+                           for value in values):
+                    self.msg.incompatible_typevar_value(
+                        callable, i + 1, type, context)
         
         # Create a map from type variable id to target type.
         id_to_type = {} # type: Dict[int, Type]
