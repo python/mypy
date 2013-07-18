@@ -377,8 +377,7 @@ class ExpressionChecker:
         # Report error if some of the variables could not be solved. In that
         # case assume that all variables have type Any to avoid extra
         # bogus error messages.
-        for i in range(len(inferred_args)):
-            inferred_type = inferred_args[i]
+        for i, inferred_type in enumerate(inferred_args):
             if not inferred_type:
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
