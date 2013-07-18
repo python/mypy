@@ -359,7 +359,6 @@ class Var(SymbolNode):
     is_ready = False # If inferred, is the inferred type available?
     # Is this initialized explicitly to a non-None value in class body?
     is_initialized_in_class = False
-    is_typevar = False
     is_staticmethod = False
     is_property = False
     
@@ -369,7 +368,6 @@ class Var(SymbolNode):
         self.is_self = False
         self.is_ready = True
         self.is_initialized_in_class = False
-        self.is_typevar = False
 
     def name(self) -> str:
         return self._name
@@ -1156,13 +1154,24 @@ class TypeApplication(Node):
         return visitor.visit_type_application(self)
 
 
-class TypeVarExpr(Node):
+class TypeVarExpr(SymbolNode):
     """Type variable expression typevar(...)."""
 
+    _name = ''
+    _fullname = ''
     values = Undefined(List['mypy.types.Type'])
 
-    def __init__(self, values: List['mypy.types.Type']) -> None:
+    def __init__(self, name: str, fullname: str,
+                 values: List['mypy.types.Type']) -> None:
+        self._name = name
+        self._fullname = fullname
         self.values = values
+
+    def name(self) -> str:
+        return self._name
+
+    def fullname(self) -> str:
+        return self._fullname
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
@@ -1402,11 +1411,15 @@ class TypeInfo(SymbolNode):
 
 
 class SymbolTableNode:
-    kind = None # type: int      # LDEF/GDEF/MDEF/TVAR/...
-    node = Undefined(SymbolNode) # Parse tree node of definition (FuncDef/Var/
-                                 # TypeInfo/Decorator), None for Tvar
-    tvar_id = 0    # Type variable id (for Tvars only)
-    mod_id = ''    # Module id (e.g. "foo.bar") or None
+    # LDEF/GDEF/MDEF/UNBOUND_TVAR/TVAR/...
+    kind = None # type: int
+    # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
+    # or None for a bound type variable).
+    node = Undefined(SymbolNode)
+    # Type variable id (for bound type variables only)
+    tvar_id = 0
+    # Module id (e.g. "foo.bar") or None
+    mod_id = ''
     # If None, fall back to type of node    
     type_override = Undefined('mypy.types.Type')
     

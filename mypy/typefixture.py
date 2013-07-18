@@ -213,7 +213,7 @@ def make_type_info(name: str,
         v = [] # type: List[TypeVarDef]
         id = 1
         for n in typevars:
-            v.append(TypeVarDef(n, id))
+            v.append(TypeVarDef(n, id, None))
             id += 1
         type_def.type_vars = v
     

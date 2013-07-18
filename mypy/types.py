@@ -37,10 +37,11 @@ class TypeVarDef(mypy.nodes.Context):
     line = 0
     repr = Undefined(Any)
     
-    def __init__(self, name: str, id: int, line: int = -1,
+    def __init__(self, name: str, id: int, values: List[Type], line: int = -1,
                  repr: Any = None) -> None:
         self.name = name
         self.id = id
+        self.values = values
         self.line = line
         self.repr = repr
 
@@ -48,7 +49,10 @@ class TypeVarDef(mypy.nodes.Context):
         return self.line
     
     def __repr__(self) -> str:
-        return self.name
+        if self.values:
+            return '{} in {}'.format(self.name, tuple(self.values))
+        else:
+            return self.name
 
 
 class UnboundType(Type):

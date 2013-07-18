@@ -1396,3 +1396,24 @@ MypyFile:1(
         Any?
         int?
         str?))))
+
+[case testGenericFunctionWithValueSet]
+from typing import typevar
+T = typevar('T', values=(int, str))
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Values(
+        int?
+        str?)))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T in (builtins.int, builtins.str)] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))

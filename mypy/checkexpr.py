@@ -894,7 +894,7 @@ class ExpressionChecker:
                                                                [tv]),
                                    False,
                                    tag,
-                                   [TypeVarDef('T', -1)])
+                                   [TypeVarDef('T', -1, None)])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -947,8 +947,8 @@ class ExpressionChecker:
                                                                [tv1, tv2]),
                                    False,
                                    '<list>',
-                                   [TypeVarDef('KT', -1),
-                                    TypeVarDef('VT', -2)])
+                                   [TypeVarDef('KT', -1, None),
+                                    TypeVarDef('VT', -2, None)])
             # Synthesize function arguments.
             args = List[Node]()
             for key, value in e.items:
@@ -1070,7 +1070,7 @@ class ExpressionChecker:
                                self.chk.named_generic_type(type_name, [tv]),
                                False,
                                id_for_messages,
-                               [TypeVarDef('T', -1)])
+                               [TypeVarDef('T', -1, None)])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 

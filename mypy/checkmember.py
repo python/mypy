@@ -185,7 +185,7 @@ def analyse_class_attribute_access(itype: Instance, name: str,
 
 def add_class_tvars(t: Type, info: TypeInfo) -> Type:
     if isinstance(t, Callable):
-        vars = [TypeVarDef(n, i + 1)
+        vars = [TypeVarDef(n, i + 1, None)
                 for i, n in enumerate(info.type_vars)]
         return Callable(t.arg_types,
                         t.arg_kinds,
@@ -271,7 +271,8 @@ class TvarTranslator(TypeTranslator):
         items = [] # type: List[TypeVarDef]
         for v in variables:
             if v.id > 0:
-                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars))
+                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
+                                        None))
             else:
                 items.append(v)
         return items

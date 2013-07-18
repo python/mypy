@@ -195,30 +195,34 @@ class SemanticAnalyzer(NodeVisitor):
             functype = cast(Callable, defn.type)
             typevars = self.infer_type_variables(functype)
             # Do not define a new type variable if already defined in scope.
-            typevars = [tvar for tvar in typevars
+            typevars = [(tvar, values) for tvar, values in typevars
                         if not self.is_defined_type_var(tvar, defn)]
             if typevars:
-                defs = [TypeVarDef(name, -i - 1)
-                        for i, name in enumerate(typevars)]
+                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1])
+                        for i, tvar in enumerate(typevars)]
                 functype.variables = defs
 
-    def infer_type_variables(self, type: Callable) -> List[str]:
+    def infer_type_variables(self,
+                             type: Callable) -> List[Tuple[str, List[Type]]]:
         """Return list of unique type variables referred to in a callable."""
-        result = List[str]()
+        names = List[str]()
+        values = List[List[Type]]()
         for arg in type.arg_types + [type.ret_type]:
-            for tvar in self.find_type_variables_in_type(arg):
-                if tvar not in result:
-                    result.append(tvar)
-        return result
+            for tvar, vals in self.find_type_variables_in_type(arg):
+                if tvar not in names:
+                    names.append(tvar)
+                    values.append(vals)
+        return list(zip(names, values))
 
-    def find_type_variables_in_type(self, type: Type) -> List[str]:
+    def find_type_variables_in_type(
+            self, type: Type) -> List[Tuple[str, List[Type]]]:
         """Return a list of all unique type variable references in type."""
-        result = List[str]()
+        result = List[Tuple[str, List[Type]]]()
         if isinstance(type, UnboundType):
             name = type.name
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
-                result.append(name)
+                result.append((name, cast(TypeVarExpr, node.node).values))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
@@ -388,7 +392,7 @@ class SemanticAnalyzer(NodeVisitor):
                               defn)
                 removed.append(i)
                 for j, name in enumerate(tvars):
-                    type_vars.append(TypeVarDef(name, j + 1))
+                    type_vars.append(TypeVarDef(name, j + 1, None))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -719,9 +723,7 @@ class SemanticAnalyzer(NodeVisitor):
         return isinstance(node, Var) and (cast(Var, node)).is_self
 
     def check_lvalue_validity(self, node: Node, ctx: Context) -> None:
-        if (isinstance(node, FuncDef) or
-                isinstance(node, TypeInfo) or
-                (isinstance(node, Var) and (cast(Var, node)).is_typevar)):
+        if isinstance(node, (FuncDef, TypeInfo, TypeVarExpr)):
             self.fail('Invalid assignment target', ctx)
 
     def infer_type_from_undefined(self, rvalue: Node) -> Type:
@@ -812,9 +814,10 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid type variable definition!
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
-        cast(Var, lvalue.node).is_typevar = True
-        call.analyzed = TypeVarExpr(values)
-        call.analyzed.line = call.line
+        typevar = TypeVarExpr(name, node.fullname, values)
+        typevar.line = call.line
+        call.analyzed = typevar
+        node.node = typevar
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = List[Type]()
