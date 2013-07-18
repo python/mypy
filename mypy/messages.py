@@ -538,6 +538,11 @@ class MessageBuilder:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
             name, type.name()), context)
 
+    def incompatible_typevar_value(self, callee: Callable, index: int,
+                                   type: Type, context: Context) -> None:
+        self.fail('Type argument {} of {} has incompatible value {}'.format(
+            index, callable_name(callee), self.format(type)), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

@@ -1,0 +1,10 @@
+-- Test cases for type variables with values restriction.
+
+
+[case testCallGenericFunctionWithTypeVarValueRestriction]
+from typing import typevar
+T = typevar('T', values=(int, str))
+def f(x: T) -> None: pass
+f(1)
+f('x')
+f(object()) # E: Type argument 1 of "f" has incompatible value "object"

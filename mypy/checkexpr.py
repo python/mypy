@@ -383,7 +383,15 @@ class ExpressionChecker:
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1, context)
                 inferred_args = [AnyType()] * len(inferred_args)
-        
+        # Check that inferred type variable values are compatible with allowed
+        # values.
+        for i, inferred_type in enumerate(inferred_args):
+            values = callee_type.variables[i].values
+            if values:
+                if not any(is_subtype(inferred_type, value)
+                           for value in values):
+                    self.msg.incompatible_typevar_value(
+                        callee_type, i + 1, inferred_type, context)
         # Apply the inferred types to the function type. In this case the
         # return type must be Callable, since we give the right number of type
         # arguments.
