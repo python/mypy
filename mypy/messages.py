@@ -367,11 +367,9 @@ class MessageBuilder:
 
     def duplicate_argument_value(self, callee: Callable, index: int,
                                  context: Context) -> None:
-        f = 'Function'
-        if callee.name:
-            f = '{}'.format(callee.name)
         self.fail('{} gets multiple values for keyword argument "{}"'.
-                  format(f, callee.arg_names[index]), context)
+                  format(capitalize(callable_name(callee)),
+                         callee.arg_names[index]), context)
     
     def does_not_return_value(self, void_type: Type, context: Context) -> None:
         """Report an error about a void type in a non-void context.
@@ -579,3 +577,10 @@ def format_string_list(s: Iterable[str]) -> str:
         return l[0]
     else:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
+
+
+def callable_name(type: Callable) -> str:
+    if type.name:
+        return type.name
+    else:
+        return 'function'
