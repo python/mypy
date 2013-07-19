@@ -10,6 +10,7 @@ from mypy.test import testinfer
 from mypy.test import testlex
 from mypy.test import testparse
 from mypy.test import testsemanal
+from mypy.test import testtransform
 from mypy.test import testcheck
 from mypy.test import testtypegen
 from mypy.test import testoutput
@@ -33,6 +34,7 @@ class AllSuite(Suite):
         self.test_semanal_errors = testsemanal.SemAnalErrorSuite()
         self.test_semanal_symtable = testsemanal.SemAnalSymtableSuite()
         self.test_semanal_typeinfos = testsemanal.SemAnalTypeInfoSuite()
+        self.test_transform = testtransform.TransformSuite()
         self.test_check = testcheck.TypeCheckSuite()
         self.test_typegen = testtypegen.TypeExportSuite()
         self.test_output = testoutput.OutputSuite()

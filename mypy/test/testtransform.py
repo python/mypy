@@ -1,0 +1,75 @@
+"""Identity AST transform test cases"""
+
+import os.path
+
+from typing import Dict, List
+
+from mypy import build
+from mypy.myunit import Suite, run_test
+from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
+from mypy.test.data import parse_test_cases
+from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.errors import CompileError
+from mypy.nodes import TypeInfo
+from mypy.treetransform import TransformVisitor
+
+
+class TransformSuite(Suite):
+    # Reuse semantic analysis test cases.
+    transform_files = ['semanal-basic.test',
+                       'semanal-expressions.test',
+                       'semanal-classes.test',
+                       'semanal-types.test',
+                       'semanal-modules.test',
+                       'semanal-statements.test',
+                       'semanal-abstractclasses.test',
+                       'semanal-python2.test']
+
+    def cases(self):
+        c = []
+        for f in self.transform_files:
+            c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  test_transform, test_temp_dir)
+        return c
+
+
+def test_transform(testcase):
+    """Perform an identity transform test case."""
+    
+    try:
+        src = '\n'.join(testcase.input)
+        result = build.build('main',
+                             target=build.SEMANTIC_ANALYSIS,
+                             program_text=src,
+                             pyversion=testfile_pyversion(testcase.file),
+                             flags=[build.TEST_BUILTINS],
+                             alt_lib_path=test_temp_dir)
+        a = []
+        # Include string representations of the source files in the actual
+        # output.
+        for fnam in sorted(result.files.keys()):
+            f = result.files[fnam]
+
+            # Omit the builtins module and files with a special marker in the
+            # path.
+            # TODO the test is not reliable
+            if (not f.path.endswith((os.sep + 'builtins.py',
+                                     'typing.py',
+                                     'abc.py'))
+                    and not os.path.basename(f.path).startswith('_')
+                    and not os.path.splitext(
+                        os.path.basename(f.path))[0].endswith('_')):
+                t = TransformVisitor()
+                f = t.node(f)
+                a += str(f).split('\n')
+    except CompileError as e:
+        a = e.messages
+    assert_string_arrays_equal(
+        testcase.output, a,
+        'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
+                                                                testcase.line))
+
+
+if __name__ == '__main__':
+    import sys
+    run_test(TransformSuite(), sys.argv[1:])
