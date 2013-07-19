@@ -598,7 +598,7 @@ class ExpressionChecker:
         """Apply generic type arguments to a callable type.
 
         For example, applying [int] to 'def [T] (T) -> T' results in
-        'def [int] (int) -> int'. Here '[int]' is an implicit bound type
+        'def [-1:int] (int) -> int'. Here '[-1:int]' is an implicit bound type
         variable.
         
         Note that each type can be None; in this case, it will not be applied.
