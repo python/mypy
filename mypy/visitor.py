@@ -18,7 +18,7 @@ class NodeVisitor(Generic[T]):
     TODO make the default return value explicit
     """
     
-    # Top-level structures
+    # Module structure
     
     def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
         pass
