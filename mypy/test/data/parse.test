@@ -1879,6 +1879,35 @@ MypyFile:1(
       NameExpr(x)
       NameExpr(z))))
 
+[case testConditionalExpressionInListComprehension]
+a = [x if y else z for a in b]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    ListComprehension:1(
+      GeneratorExpr:1(
+        ConditionalExpr:1(
+          Condition(
+            NameExpr(y))
+          NameExpr(x)
+          NameExpr(z))
+        NameExpr(a)
+        NameExpr(b)))))
+
+[case testConditionalExpressionInTuple]
+1 if 2 else 3, 4
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      ConditionalExpr:1(
+        Condition(
+          IntExpr(2))
+        IntExpr(1)
+        IntExpr(3))
+      IntExpr(4))))
+
 [case testSetLiteral]
 {x or y}
 {1, 2}

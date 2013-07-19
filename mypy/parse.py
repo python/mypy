@@ -35,20 +35,20 @@ from mypy.parsetype import (
 
 
 precedence = {
-    '**': 15,
-    '-u': 14, '+u': 14, '~': 14,   # unary operators (-, + and ~)
-    '<cast>': 13,
-    '*': 12, '/': 12, '//': 12, '%': 12,
-    '+': 11, '-': 11,
-    '>>': 10, '<<': 10,
-    '&': 9,
-    '^': 8,
-    '|': 7,
-    '==': 6, '!=': 6, '<': 6, '>': 6, '<=': 6, '>=': 6, 'is': 6, 'in': 6,
-    'not': 5,
-    'and': 4,
-    'or': 3,
-    '<if>': 2, # conditional expression
+    '**': 16,
+    '-u': 15, '+u': 15, '~': 15,   # unary operators (-, + and ~)
+    '<cast>': 14,
+    '*': 13, '/': 13, '//': 13, '%': 13,
+    '+': 12, '-': 12,
+    '>>': 11, '<<': 11,
+    '&': 10,
+    '^': 9,
+    '|': 8,
+    '==': 7, '!=': 7, '<': 7, '>': 7, '<=': 7, '>=': 7, 'is': 7, 'in': 7,
+    'not': 6,
+    'and': 5,
+    'or': 4,
+    '<if>': 3, # conditional expression
     '<for>': 2, # list comprehension
     ',': 1}
 
@@ -1162,7 +1162,7 @@ class Parser:
         self.expect('if')
         cond = self.parse_expression()
         self.expect('else')
-        else_expr = self.parse_expression()
+        else_expr = self.parse_expression(precedence['<if>'])
         return ConditionalExpr(cond, left_expr, else_expr)
     
     def parse_dict_or_set_expr(self) -> Node:
