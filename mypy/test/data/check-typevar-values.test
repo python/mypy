@@ -20,3 +20,26 @@ i = f(1)
 s = f('')
 o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.py]
+
+[case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
+from typing import typevar, Any
+T = typevar('T', values=(int, str))
+def f(x: T) -> None: pass
+f(Any(object()))
+[out]
+
+[case testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc]
+from typing import typevar, Any
+T = typevar('T', values=(int, str))
+def f(x: T) -> None: pass
+def g():
+    f(object())
+[out]
+
+[case testCallGenericFunctionWithTypeVarValueRestrictionUsingSubtype]
+from typing import typevar
+T = typevar('T', values=(int, str))
+def f(x: T) -> None: pass
+class S(str): pass
+f(S())
+[out]
