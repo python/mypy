@@ -296,3 +296,18 @@ file, line 3: Inconsistent use of '**' in function signature
 print 1
 [out]
 file, line 1: Parse error before numeric literal
+
+[case testInvalidConditionInConditionalExpression]
+1 if 2, 3 else 4
+[out]
+file, line 1: Parse error before ,
+
+[case testInvalidConditionInConditionalExpression2]
+1 if x for y in z else 4
+[out]
+file, line 1: Parse error before "for"
+
+[case testInvalidConditionInConditionalExpression2]
+1 if x else for y in z
+[out]
+file, line 1: Parse error before "for"

@@ -1160,7 +1160,7 @@ class Parser:
     
     def parse_conditional_expr(self, left_expr: Node) -> ConditionalExpr:
         self.expect('if')
-        cond = self.parse_expression()
+        cond = self.parse_expression(precedence['<if>'])
         self.expect('else')
         else_expr = self.parse_expression(precedence['<if>'])
         return ConditionalExpr(cond, left_expr, else_expr)
