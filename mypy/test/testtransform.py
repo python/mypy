@@ -1,3 +1,5 @@
+"""Test case runner for runtime type checking transform."""
+
 import os
 import os.path
 import shutil
