@@ -1026,6 +1026,19 @@ f('x')
 NameExpr(5) : def [-1:builtins.int] (x: builtins.int)
 NameExpr(6) : def [-1:builtins.str] (x: builtins.str)
 
+[case testTypeVariableWithValueRestrictionAndSubtype]
+## NameExpr|CallExpr
+from typing import typevar, Undefined
+T = typevar('T', values=(int, str))
+def f(x: T) -> T: pass
+class S(str): pass
+s = Undefined # type: S
+f(s)
+[out]
+CallExpr(7) : builtins.str
+NameExpr(7) : def [-1:builtins.str] (x: builtins.str) -> builtins.str
+NameExpr(7) : S
+
 
 -- Special cases
 -- -------------

@@ -610,15 +610,21 @@ class ExpressionChecker:
             return AnyType()
         
         # Check that inferred type variable values are compatible with allowed
-        # values.
+        # values.  Also, promote subtype values to allowed values.
+        types = types[:]
         for i, type in enumerate(types):
             values = callable.variables[i].values
             if values:
-                if not any(is_subtype(type, value)
-                           for value in values):
+                if isinstance(type, AnyType):
+                    continue
+                for value in values:
+                    if is_subtype(type, value):
+                        types[i] = value
+                        break
+                else:
                     self.msg.incompatible_typevar_value(
                         callable, i + 1, type, context)
-        
+
         # Create a map from type variable id to target type.
         id_to_type = {} # type: Dict[int, Type]
         for i, tv in enumerate(tvars):
