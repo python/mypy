@@ -873,110 +873,73 @@ class ExpressionChecker:
     
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
-        return self.check_list_or_set_expr(e.items, e.type, 'builtins.list',
-                                           '<list>', e)
+        return self.check_list_or_set_expr(e.items, 'builtins.list', '<list>',
+                                           e)
 
     def visit_set_expr(self, e: SetExpr) -> Type:
-        return self.check_list_or_set_expr(e.items, e.type, 'builtins.set',
-                                           '<set>', e)
+        return self.check_list_or_set_expr(e.items, 'builtins.set', '<set>', e)
 
-    def check_list_or_set_expr(self, items: List[Node], type: Type,
-                               fullname: str, tag: str,
-                               context: Context) -> Type:
-        constructor = Undefined(Callable)
-        if type:
-            # A literal with an explicit item type; translate into type
-            # checking a function call.
-            constructor = Callable([type],
-                                   [nodes.ARG_STAR],
-                                   [None],
-                                   self.chk.named_generic_type(fullname,
-                                                               [type]),
-                                   False,
-                                   tag)
-        else:
-            # A literal without an explicit type; translate into type
-            # checking a generic function call.
-            tv = TypeVar('T', -1)
-            constructor = Callable([tv],
-                                   [nodes.ARG_STAR],
-                                   [None],
-                                   self.chk.named_generic_type(fullname,
-                                                               [tv]),
-                                   False,
-                                   tag,
-                                   [TypeVarDef('T', -1, None)])
+    def check_list_or_set_expr(self, items: List[Node], fullname: str,
+                               tag: str, context: Context) -> Type:
+        # Translate into type checking a generic function call.
+        tv = TypeVar('T', -1)
+        constructor = Callable([tv],
+                               [nodes.ARG_STAR],
+                               [None],
+                               self.chk.named_generic_type(fullname,
+                                                           [tv]),
+                               False,
+                               tag,
+                               [TypeVarDef('T', -1, None)])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
     
     def visit_tuple_expr(self, e: TupleExpr) -> Type:    
         """Type check a tuple expression."""
-        if e.types is None:
-            ctx = None # type: TupleType
-            # Try to determine type context for type inference.
-            if isinstance(self.chk.type_context[-1], TupleType):
-                t = cast(TupleType, self.chk.type_context[-1])
-                if len(t.items) == len(e.items):
-                    ctx = t
-            # Infer item types.
-            items = [] # type: List[Type]
-            for i in range(len(e.items)):
-                item = e.items[i]
-                tt = Undefined # type: Type
-                if not ctx:
-                    tt = self.accept(item)
-                else:
-                    tt = self.accept(item, ctx.items[i])
-                self.check_not_void(tt, e)
-                items.append(tt)
-            return TupleType(items)
-        else:
-            # Explicit item types.
-            # TODO not supported any more
-            for j in range(len(e.types)):
-                item = e.items[j]
-                itemtype = self.accept(item)
-                self.chk.check_subtype(itemtype, e.types[j], item,
-                                       messages.INCOMPATIBLE_TUPLE_ITEM_TYPE)
-            return TupleType(e.types)
+        ctx = None # type: TupleType
+        # Try to determine type context for type inference.
+        if isinstance(self.chk.type_context[-1], TupleType):
+            t = cast(TupleType, self.chk.type_context[-1])
+            if len(t.items) == len(e.items):
+                ctx = t
+        # Infer item types.
+        items = [] # type: List[Type]
+        for i in range(len(e.items)):
+            item = e.items[i]
+            tt = Undefined # type: Type
+            if not ctx:
+                tt = self.accept(item)
+            else:
+                tt = self.accept(item, ctx.items[i])
+            self.check_not_void(tt, e)
+            items.append(tt)
+        return TupleType(items)
     
     def visit_dict_expr(self, e: DictExpr) -> Type:
-        if not e.key_type:
-            # A dict expression without an explicit type; translate into type
-            # checking a generic function call.
-            tv1 = TypeVar('KT', -1)
-            tv2 = TypeVar('VT', -2)
-            constructor = Undefined(Callable)
-            # The callable type represents a function like this:
-            #
-            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-            constructor = Callable([TupleType([tv1, tv2])],
-                                   [nodes.ARG_STAR],
-                                   [None],
-                                   self.chk.named_generic_type('builtins.dict',
-                                                               [tv1, tv2]),
-                                   False,
-                                   '<list>',
-                                   [TypeVarDef('KT', -1, None),
-                                    TypeVarDef('VT', -2, None)])
-            # Synthesize function arguments.
-            args = List[Node]()
-            for key, value in e.items:
-                args.append(TupleExpr([key, value]))
-            return self.check_call(constructor,
-                                   args,
-                                   [nodes.ARG_POS] * len(args), e)[0]
-        else:
-            for key_, value_ in e.items:
-                kt = self.accept(key_)
-                vt = self.accept(value_)
-                self.chk.check_subtype(kt, e.key_type, key_,
-                                       messages.INCOMPATIBLE_KEY_TYPE)
-                self.chk.check_subtype(vt, e.value_type, value_,
-                                       messages.INCOMPATIBLE_VALUE_TYPE)
-            return self.chk.named_generic_type('builtins.dict', [e.key_type,
-                                                                 e.value_type])
+        # Translate into type checking a generic function call.
+        tv1 = TypeVar('KT', -1)
+        tv2 = TypeVar('VT', -2)
+        constructor = Undefined(Callable)
+        # The callable type represents a function like this:
+        #
+        #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
+        constructor = Callable([TupleType([tv1, tv2])],
+                               [nodes.ARG_STAR],
+                               [None],
+                               self.chk.named_generic_type('builtins.dict',
+                                                           [tv1, tv2]),
+                               False,
+                               '<list>',
+                               [TypeVarDef('KT', -1, None),
+                                TypeVarDef('VT', -2, None)])
+        # Synthesize function arguments.
+        args = List[Node]()
+        for key, value in e.items:
+            args.append(TupleExpr([key, value]))
+        return self.check_call(constructor,
+                               args,
+                               [nodes.ARG_POS] * len(args), e)[0]
     
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""

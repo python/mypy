@@ -396,10 +396,6 @@ class OutputVisitor(NodeVisitor):
     
     def visit_list_expr(self, o):
         r = o.repr
-        if o.type:
-            self.token(r.langle)
-            self.type(o.type)
-            self.token(r.rangle)
         self.token(r.lbracket)
         self.comma_list(o.items, r.commas)
         self.token(r.rbracket)
@@ -415,12 +411,6 @@ class OutputVisitor(NodeVisitor):
     
     def visit_dict_expr(self, o):
         r = o.repr
-        if o.key_type:
-            self.token(r.langle)
-            self.type(o.key_type)
-            self.token(r.type_comma)
-            self.type(o.value_type)
-            self.token(r.rangle)
         self.token(r.lbrace)
         i = 0
         for k, v in o.items:

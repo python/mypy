@@ -855,18 +855,19 @@ class CallExpr(Node):
     arg_kinds = Undefined(List[int]) # ARG_ constants
     arg_names = Undefined(List[str]) # Each name can be None if not a keyword
                                      # argument.
-    analyzed = None # type: Node     # If not None, the node that represents
+    analyzed = Undefined(Node)       # If not None, the node that represents
                                      # the meaning of the CallExpr. For
                                      # cast(...) this is a CastExpr.
     
     def __init__(self, callee: Node, args: List[Node], arg_kinds: List[int],
-                 arg_names: List[str] = None) -> None:
+                 arg_names: List[str] = None, analyzed: Node = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
+        self.analyzed = analyzed
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
@@ -1019,12 +1020,9 @@ class ListExpr(Node):
     """List literal expression [...]."""
     
     items = Undefined(List[Node] )
-    type = Undefined('mypy.types.Type') # None if implicit type
     
-    def __init__(self, items: List[Node],
-                 typ: 'mypy.types.Type' = None) -> None:
+    def __init__(self, items: List[Node]) -> None:
         self.items = items
-        self.type = typ
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
@@ -1034,8 +1032,6 @@ class DictExpr(Node):
     """Dictionary literal expression {key: value, ...}."""
     
     items = Undefined(List[Tuple[Node, Node]])
-    key_type = None   # type: mypy.types.Type  # None if implicit type
-    value_type = None # type: mypy.types.Type  # None if implicit type
     
     def __init__(self, items: List[Tuple[Node, Node]]) -> None:
         self.items = items
@@ -1048,12 +1044,9 @@ class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
     
     items = Undefined(List[Node])
-    types = Undefined(List['mypy.types.Type'])
     
-    def __init__(self, items: List[Node],
-                 types: List['mypy.types.Type'] = None) -> None:
+    def __init__(self, items: List[Node]) -> None:
         self.items = items
-        self.types = types
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
@@ -1063,12 +1056,9 @@ class SetExpr(Node):
     """Set literal expression {value, ...}."""
     
     items = Undefined(List[Node])
-    type = Undefined('mypy.types.Type')
     
-    def __init__(self, items: List[Node],
-                 type: 'mypy.types.Type' = None) -> None:
+    def __init__(self, items: List[Node]) -> None:
         self.items = items
-        self.type = type
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_expr(self)

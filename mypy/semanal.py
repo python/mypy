@@ -1007,26 +1007,19 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_tuple_expr(self, expr: TupleExpr) -> None:
         for item in expr.items:
             item.accept(self)
-        if expr.types:
-            for i in range(len(expr.types)):
-                expr.types[i] = self.anal_type(expr.types[i])
     
     def visit_list_expr(self, expr: ListExpr) -> None:
         for item in expr.items:
             item.accept(self)
-        expr.type = self.anal_type(expr.type)
     
     def visit_set_expr(self, expr: SetExpr) -> None:
         for item in expr.items:
             item.accept(self)
-        expr.type = self.anal_type(expr.type)
     
     def visit_dict_expr(self, expr: DictExpr) -> None:
         for key, value in expr.items:
             key.accept(self)
             value.accept(self)
-        expr.key_type = self.anal_type(expr.key_type)
-        expr.value_type = self.anal_type(expr.value_type)
     
     def visit_paren_expr(self, expr: ParenExpr) -> None:
         expr.expr.accept(self)

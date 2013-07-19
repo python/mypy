@@ -337,31 +337,16 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.op, o.expr], o)
     
     def visit_list_expr(self, o):
-        a = o.items[:]
-        if o.type:
-            a.insert(0, ('Type', [o.type]))
-        return self.dump(a, o)
+        return self.dump(o.items, o)
     
     def visit_dict_expr(self, o):
-        a = []
-        for k, v in o.items:
-            a.append([k, v])
-        if o.key_type:
-            a.insert(0, ('ValueType', [o.value_type]))
-            a.insert(0, ('KeyType', [o.key_type]))
-        return self.dump(a, o)
+        return self.dump([[k, v] for k, v in o.items], o)
     
     def visit_set_expr(self, o):
-        a = o.items[:]
-        if o.type:
-            a.insert(0, ('Type', [o.type]))
-        return self.dump(a, o)
+        return self.dump(o.items, o)
     
     def visit_tuple_expr(self, o):
-        a = o.items[:]
-        if o.types is not None:
-            a.insert(0, ('Type', o.types))
-        return self.dump(a, o)
+        return self.dump(o.items, o)
     
     def visit_index_expr(self, o):
         if o.analyzed:
