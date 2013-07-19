@@ -882,7 +882,7 @@ class IndexExpr(Node):
     base = Undefined(Node)
     index = Undefined(Node)
     # Inferred __getitem__ method type
-    method_type = Undefined('mypy.types.Type')
+    method_type = None # type: mypy.types.Type
     # If not None, this is actually semantically a type application
     # Class[type, ...].
     analyzed = Undefined('TypeApplication')
@@ -901,7 +901,8 @@ class UnaryExpr(Node):
     
     op = ''
     expr = Undefined(Node)
-    method_type = Undefined('mypy.types.Type') # Inferred operator method type
+    # Inferred operator method type
+    method_type = None # type: mypy.types.Type
     
     def __init__(self, op: str, expr: Node) -> None:
         self.op = op
