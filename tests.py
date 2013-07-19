@@ -13,7 +13,7 @@ from mypy.test import testsemanal
 from mypy.test import testcheck
 from mypy.test import testtypegen
 from mypy.test import testoutput
-from mypy.test import testtransform
+from mypy.test import testdyncheck
 from mypy.test import testicodegen
 
 
@@ -36,7 +36,7 @@ class AllSuite(Suite):
         self.test_check = testcheck.TypeCheckSuite()
         self.test_typegen = testtypegen.TypeExportSuite()
         self.test_output = testoutput.OutputSuite()
-        self.test_transform = testtransform.DyncheckTransformSuite()
+        self.test_dyncheck = testdyncheck.DyncheckTransformSuite()
         self.test_icodegen = testicodegen.IcodeGenerationSuite()
         super().__init__()
 
