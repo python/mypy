@@ -188,6 +188,9 @@ def default_data_dir(bin_dir: str) -> str:
     elif base == 'bin':
         # Installed to somewhere (can be under /usr/local or anywhere).
         return os.path.join(dir, 'lib', 'mypy')
+    elif base == 'python3':
+        # Assume we installed python3 with brew on os x
+        return os.path.join(os.path.dirname(dir), 'lib', 'mypy')
     else:
         # Don't know where to find the data files!
         raise RuntimeError("Broken installation: can't determine base dir")
