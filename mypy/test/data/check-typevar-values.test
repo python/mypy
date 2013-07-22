@@ -73,3 +73,21 @@ main: In function "f":
 main, line 10: Incompatible return value type
 main: In function "g":
 main, line 12: Incompatible return value type
+
+[case testTypeInferenceAndTypeVarValues]
+from typing import typevar
+class A:
+    def f(self) -> A: return self
+    def g(self) -> B: return B()
+class B:
+    def f(self) -> B: return self
+    def g(self) -> B: return B()
+AB = typevar('AB', values=(A, B))
+def f(x: AB) -> AB:
+    y = x
+    if y:
+        return y.f()
+    else:
+        return y.g() # E: Incompatible return value type
+[out]
+main: In function "f":
