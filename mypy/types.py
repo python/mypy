@@ -34,6 +34,7 @@ class TypeVarDef(mypy.nodes.Context):
     
     name = ''
     id = 0
+    values = Undefined(List[Type])
     line = 0
     repr = Undefined(Any)
     
@@ -255,8 +256,11 @@ class Callable(FunctionLike):
     
     _is_type_obj = False # Does this represent a type object?
     
-    def __init__(self, arg_types: List[Type], arg_kinds: List[int],
-                 arg_names: List[str], ret_type: Type, is_type_obj: bool,
+    def __init__(self, arg_types: List[Type],
+                 arg_kinds: List[int],
+                 arg_names: List[str],
+                 ret_type: Type,
+                 is_type_obj: bool,
                  name: str = None, variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1, repr: Any = None) -> None:
