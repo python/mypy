@@ -269,7 +269,7 @@ def is_proper_subtype(t, s):
     """Check if t is a proper subtype of s?
 
     For proper subtypes, there's no need to rely on compatibility due to
-    any types.
+    Any types. Any instance type t is also a proper subtype of t.
     """
     # FIX support generic types, tuple types etc.
     return (isinstance(t, Instance) and isinstance(s, Instance)
