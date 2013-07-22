@@ -26,13 +26,21 @@ from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
-from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
+from mypy.subtypes import (
+    is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype
+)
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
+
+
+# Kinds of isinstance checks.
+ISINSTANCE_OVERLAPPING = 0
+ISINSTANCE_ALWAYS_TRUE = 1
+ISINSTANCE_ALWAYS_FALSE = 2
 
 
 class ConditionalTypeBinder:
@@ -690,14 +698,21 @@ class TypeChecker(NodeVisitor[Type]):
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
-            var, type = find_isinstance_check(e, self.type_map)
-            if var:
-                self.binder.push(var, type)
-            self.accept(b)
-            if var:
-                self.binder.pop(var)
-        if s.else_body:
-            self.accept(s.else_body)
+            var, type, kind = find_isinstance_check(e, self.type_map)
+            if kind != ISINSTANCE_ALWAYS_FALSE:
+                # Only type check body if the if condition can be true.
+                if var:
+                    self.binder.push(var, type)
+                self.accept(b)
+                if var:
+                    self.binder.pop(var)
+            if kind == ISINSTANCE_ALWAYS_TRUE:
+                # The condition is always true => remaining elif/else blocks
+                # can never be reached.
+                break
+        else:
+            if s.else_body:
+                self.accept(s.else_body)
     
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
@@ -1176,16 +1191,37 @@ def get_undefined_tuple(rvalue: Node) -> Type:
 
 
 def find_isinstance_check(node: Node,
-                          type_map: Dict[Node, Type]) -> Tuple[Var, Type]:
+                          type_map: Dict[Node, Type]) -> Tuple[Var, Type, int]:
+    """Check if node is an isinstance(variable, type) check.
+
+    If successful, return tuple (variable, target-type, kind); otherwise,
+    return (None, AnyType, -1).
+
+    When successful, the kind takes one of these values:
+
+      ISINSTANCE_OVERLAPPING: The type of variable and the target type are
+          partially overlapping => the test result can be True or False.
+      ISINSTANCE_ALWAYS_TRUE: The target type at least as general as the
+          variable type => the test is always True.
+      ISINSTANCE_ALWAYS_FALSE: The target type and the variable type are not
+          overlapping => the test is always False.
+    """
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
             if isinstance(expr, NameExpr):
                 type = get_isinstance_type(node.args[1], type_map)
                 if type and isinstance(expr.node, Var):
-                    return cast(Var, expr.node), type
+                    var = cast(Var, expr.node)
+                    kind = ISINSTANCE_OVERLAPPING
+                    if var.type:
+                        if is_proper_subtype(var.type, type):
+                            kind = ISINSTANCE_ALWAYS_TRUE
+                        elif not is_overlapping_types(var.type, type):
+                            kind = ISINSTANCE_ALWAYS_FALSE
+                    return cast(Var, expr.node), type, kind
     # Not a supported isinstance check
-    return None, AnyType()
+    return None, AnyType(), -1
 
 
 def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
@@ -1196,6 +1232,26 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
             # we can do (outside disallowing them here).
             return erase_typevars(type.items()[0].ret_type)
     return None
+
+
+primitive_types = {'builtins.int',
+                   'builtins.float',
+                   'builtins.str',
+                   'builtins.bytes'}
+
+
+def is_overlapping_types(t: Type, s: Type) -> bool:
+    """Can a value of type t be a value of type s, or vice versa?
+
+    TODO Currently only certain primitive types are considered non-overlapping.
+    """
+    if isinstance(t, Instance):
+        if isinstance(s, Instance):
+            if (t.type != s.type and
+                t.type.fullname() in primitive_types and
+                s.type.fullname() in primitive_types):
+                return False
+    return True
 
 
 def expand_func(defn: FuncItem, map: Dict[int, Type]) -> FuncItem:
