@@ -29,6 +29,10 @@ Set = object()
 from re import Pattern, BytesPattern, Match, BytesMatch
 
 
+# Predefined type variables.
+AnyStr = typevar('AnyStr', values=(str, bytes))
+
+
 # Abstract base classes.
 
 T = typevar('T')

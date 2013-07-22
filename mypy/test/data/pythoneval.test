@@ -478,3 +478,16 @@ print(f(b''))
 [out]
 foo
 b'bar'
+
+[case testAnyStr]
+from typing import AnyStr
+def f(x: AnyStr) -> AnyStr:
+    if isinstance(x, str):
+        return 'foo'
+    else:
+        return b'zar'
+print(f(''))
+print(f(b''))
+[out]
+foo
+b'zar'
