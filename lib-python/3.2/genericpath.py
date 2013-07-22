@@ -6,7 +6,10 @@ functions from this module themselves.
 import os
 import stat
 
-from typing import overload as overload_, Any, List, AnyStr, Tuple as Tuple_
+from typing import (
+    overload as overload_, Any as Any_, List as List_, AnyStr as AnyStr_,
+    Tuple as Tuple_
+)
 
 __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
            'getsize', 'isdir', 'isfile']
@@ -14,7 +17,7 @@ __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
 
 # Does a path exist?
 # This is false for dangling symbolic links on systems that support them.
-def exists(path: AnyStr) -> bool:
+def exists(path: AnyStr_) -> bool:
     """Test whether a path exists.  Returns False for broken symbolic links"""
     try:
         os.stat(path)
@@ -25,7 +28,7 @@ def exists(path: AnyStr) -> bool:
 
 # This follows symbolic links, so both islink() and isdir() can be true
 # for the same path ono systems that support symlinks
-def isfile(path: AnyStr) -> bool:
+def isfile(path: AnyStr_) -> bool:
     """Test whether a path is a regular file"""
     try:
         st = os.stat(path)
@@ -37,7 +40,7 @@ def isfile(path: AnyStr) -> bool:
 # Is a path a directory?
 # This follows symbolic links, so both islink() and isdir()
 # can be true for the same path on systems that support symlinks
-def isdir(s: AnyStr) -> bool:
+def isdir(s: AnyStr_) -> bool:
     """Return true if the pathname refers to an existing directory."""
     try:
         st = os.stat(s)
@@ -46,28 +49,28 @@ def isdir(s: AnyStr) -> bool:
     return stat.S_ISDIR(st.st_mode)
 
 
-def getsize(filename: AnyStr) -> int:
+def getsize(filename: AnyStr_) -> int:
     """Return the size of a file, reported by os.stat()."""
     return os.stat(filename).st_size
 
 
-def getmtime(filename: AnyStr) -> float:
+def getmtime(filename: AnyStr_) -> float:
     """Return the last modification time of a file, reported by os.stat()."""
     return os.stat(filename).st_mtime
 
 
-def getatime(filename: AnyStr) -> float:
+def getatime(filename: AnyStr_) -> float:
     """Return the last access time of a file, reported by os.stat()."""
     return os.stat(filename).st_atime
 
 
-def getctime(filename: AnyStr) -> float:
+def getctime(filename: AnyStr_) -> float:
     """Return the metadata change time of a file, reported by os.stat()."""
     return os.stat(filename).st_ctime
 
 
 # Return the longest prefix of all list elements.
-def commonprefix(m: List[str]) -> str:
+def commonprefix(m: List_[AnyStr_]) -> Any_:
     "Given a list of pathnames, returns the longest common leading component"
     if not m: return ''
     s1 = min(m)
@@ -85,8 +88,8 @@ def commonprefix(m: List[str]) -> str:
 
 # Generic implementation of splitext, to be parametrized with
 # the separators
-def _splitext(p: AnyStr, sep: AnyStr, altsep: AnyStr,
-              extsep: AnyStr) -> Tuple_[AnyStr, AnyStr]:
+def _splitext(p: AnyStr_, sep: AnyStr_, altsep: AnyStr_,
+              extsep: AnyStr_) -> Tuple_[AnyStr_, AnyStr_]:
     """Split the extension from a pathname.
 
     Extension is everything from the last dot to the end, ignoring
