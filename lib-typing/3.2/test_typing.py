@@ -296,6 +296,12 @@ class TestTyping(unittest.TestCase):
     def test_typevar(self):
         t = typevar('t')
         self.assertEqual(t.name, 't')
+        self.assertIsNone(t.values)
+
+    def test_typevar_values(self):
+        t = typevar('t', values=(int, str))
+        self.assertEqual(t.name, 't')
+        self.assertEqual(t.values, (int, str))
 
     def test_typevar_in_overload(self):
         t = typevar('t')

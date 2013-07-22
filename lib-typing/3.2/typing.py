@@ -149,8 +149,9 @@ BytesMatch = Match # TODO See above.
 
 
 class typevar:
-    def __init__(self, name):
+    def __init__(self, name, *, values=None):
         self.name = name
+        self.values = values
 
 
 class forwardref:
