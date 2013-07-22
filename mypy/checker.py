@@ -249,7 +249,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.return_types.append(typ.ret_type)
 
             # Store argument types.
-            nargs = len(defn.args)
+            nargs = len(item.args)
             for i in range(len(typ.arg_types)):
                 arg_type = typ.arg_types[i]
                 if typ.arg_kinds[i] == nodes.ARG_STAR:
@@ -259,7 +259,7 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = self.named_generic_type('builtins.dict',
                                                        [self.str_type(),
                                                         arg_type])
-                defn.args[i].type = arg_type
+                item.args[i].type = arg_type
 
             # Type check initialization expressions.
             for j in range(len(defn.init)):
@@ -267,7 +267,7 @@ class TypeChecker(NodeVisitor[Type]):
                     self.accept(defn.init[j])
 
             # Type check body.
-            self.accept(defn.body)
+            self.accept(item.body)
 
             # Pop return type.
             self.return_types.pop()

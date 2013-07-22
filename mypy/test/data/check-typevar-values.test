@@ -91,3 +91,14 @@ def f(x: AB) -> AB:
         return y.g() # E: Incompatible return value type
 [out]
 main: In function "f":
+
+[case testTypeApplicationAndTypeVarValues]
+from typing import typevar, List
+T = typevar('T', values=(int, str))
+def f(x: T) -> List[T]:
+    return List[T]()
+def g(x: T) -> List[T]:
+    return List[int]() # E: Incompatible return value type
+[builtins fixtures/list.py]
+[out]
+main: In function "g":
