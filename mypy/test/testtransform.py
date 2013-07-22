@@ -59,7 +59,7 @@ def test_transform(testcase):
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
-                t = TransformVisitor()
+                t = TestTransformVisitor()
                 f = t.node(f)
                 a += str(f).split('\n')
     except CompileError as e:
@@ -68,6 +68,12 @@ def test_transform(testcase):
         testcase.output, a,
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
                                                                 testcase.line))
+
+
+class TestTransformVisitor(TransformVisitor):
+    def type(self, type):
+        assert type is not None
+        return type
 
 
 if __name__ == '__main__':

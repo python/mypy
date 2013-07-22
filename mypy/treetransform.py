@@ -69,7 +69,7 @@ class TransformVisitor(NodeVisitor[Node]):
                       node.arg_kinds[:],
                       [None] * len(node.init),
                       self.block(node.body),
-                      self.type(node.type))
+                      self.optional_type(node.type))
 
         self.copy_function_attributes(new, node)
         
@@ -87,7 +87,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        node.arg_kinds[:],
                        [None] * len(node.init),
                        self.block(node.body),
-                       self.type(node.type))
+                       self.optional_type(node.type))
         self.copy_function_attributes(new, node)
         return new
 
@@ -157,7 +157,7 @@ class TransformVisitor(NodeVisitor[Node]):
         # Note that a Var must be transformed to a Var.
         if node in self.var_map:
             return self.var_map[node]
-        new = Var(node.name(), self.type(node.type))
+        new = Var(node.name(), self.optional_type(node.type))
         new.line = node.line
         new._fullname = node._fullname
         new.info = node.info
@@ -179,7 +179,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
         new = AssignmentStmt(self.nodes(node.lvalues),
                              self.node(node.rvalue),
-                             self.type(node.type))
+                             self.optional_type(node.type))
         new.line = node.line
         return new
     
@@ -199,7 +199,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.node(node.expr),
                        self.block(node.body),
                        self.optional_block(node.else_body),
-                       self.types(node.types))
+                       self.optional_types(node.types))
     
     def visit_return_stmt(self, node: ReturnStmt) -> Node:
         return ReturnStmt(self.optional_node(node.expr))
@@ -303,7 +303,7 @@ class TransformVisitor(NodeVisitor[Node]):
     
     def visit_op_expr(self, node: OpExpr) -> Node:
         new = OpExpr(node.op, self.node(node.left), self.node(node.right))
-        new.method_type = self.type(node.method_type)
+        new.method_type = self.optional_type(node.method_type)
         return new
     
     def visit_cast_expr(self, node: CastExpr) -> Node:
@@ -317,8 +317,7 @@ class TransformVisitor(NodeVisitor[Node]):
     
     def visit_unary_expr(self, node: UnaryExpr) -> Node:
         new = UnaryExpr(node.op, self.node(node.expr))
-        if node.method_type:
-            new.method_type = self.type(node.method_type)
+        new.method_type = self.optional_type(node.method_type)
         return new
     
     def visit_list_expr(self, node: ListExpr) -> Node:
@@ -361,7 +360,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.node(node.left_expr),
                              self.names(node.index),
-                             self.types(node.types),
+                             self.optional_types(node.types),
                              self.node(node.right_expr),
                              self.optional_node(node.condition))
     
@@ -442,5 +441,14 @@ class TransformVisitor(NodeVisitor[Node]):
         # Override this method to transform types.
         return type
 
+    def optional_type(self, type: Type) -> Type:
+        if type:
+            return self.type(type)
+        else:
+            return None
+
     def types(self, types: List[Type]) -> List[Type]:
         return [self.type(type) for type in types]
+
+    def optional_types(self, types: List[Type]) -> List[Type]:
+        return [self.optional_type(type) for type in types]
