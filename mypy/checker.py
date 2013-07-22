@@ -194,6 +194,10 @@ class TypeChecker(NodeVisitor[Type]):
     
     def check_func_item(self, defn: FuncItem,
                         type_override: Callable = None) -> Type:
+        """Type check a function.
+
+        If type_override is provided, use it as the function type.
+        """
         # We may be checking a function definition or an anonymous function. In
         # the first case, set up another reference with the precise type.
         fdef = None # type: FuncDef
