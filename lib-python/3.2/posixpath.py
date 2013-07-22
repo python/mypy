@@ -16,7 +16,9 @@ import stat
 import genericpath
 from genericpath import *
 
-from typing import overload, Tuple, IO, TextIO, Pattern, BytesPattern
+from typing import (
+    overload, Tuple, IO, TextIO, Pattern, BytesPattern, AnyStr, List, Set, Any
+)
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
            "basename","dirname","commonprefix","getsize","getmtime",
@@ -37,56 +39,43 @@ defpath = ':/bin:/usr/bin'
 altsep = None # type: str
 devnull = '/dev/null'
 
-@overload
-def _get_sep(path: bytes) -> bytes:
-    return b'/'
-
-@overload
-def _get_sep(path) -> str:
-    return '/'
+def _get_sep(path: AnyStr) -> AnyStr:
+    if isinstance(path, bytes):
+        return b'/'
+    else:
+        return '/'
 
 # Normalize the case of a pathname.  Trivial in Posix, string.lower on Mac.
 # On MS-DOS this may also turn slashes into backslashes; however, other
 # normalizations (such as optimizing '../' away) are not allowed
 # (another function should be defined to do that).
 
-def _normcase(s):
+def normcase(s: AnyStr) -> AnyStr:
+    """Normalize case of pathname.  Has no effect under Posix"""
     # TODO: on Mac OS X, this should really return s.lower().
     if not isinstance(s, (bytes, str)):
         raise TypeError("normcase() argument must be str or bytes, "
                         "not '{}'".format(s.__class__.__name__))
     return s
 
-@overload
-def normcase(s: str) -> str:
-    """Normalize case of pathname.  Has no effect under Posix"""
-    return _normcase(s)
-@overload
-def normcase(s: bytes) -> bytes:
-    return _normcase(s)
-
 
 # Return whether a path is absolute.
 # Trivial in Posix, harder on the Mac or MS-DOS.
 
-def _isabs(s):
+def isabs(s: AnyStr) -> bool:
+    """Test whether a path is absolute"""
     sep = _get_sep(s)
     return s.startswith(sep)
-
-@overload
-def isabs(s: str) -> bool:
-    """Test whether a path is absolute"""
-    return _isabs(s)
-@overload
-def isabs(s: bytes) -> bool:
-    return _isabs(s)
 
 
 # Join pathnames.
 # Ignore the previous parts if a part is absolute.
 # Insert a '/' unless the first part is empty or already ends in '/'.
 
-def _join(a, *p):
+def join(a: AnyStr, *p: AnyStr) -> AnyStr:
+    """Join two or more pathname components, inserting '/' as needed.
+    If any component is an absolute path, all previous path components
+    will be discarded."""
     sep = _get_sep(a)
     path = a
     for b in p:
@@ -98,23 +87,15 @@ def _join(a, *p):
             path += sep + b
     return path
 
-@overload
-def join(a: str, *p: str) -> str:
-    """Join two or more pathname components, inserting '/' as needed.
-    If any component is an absolute path, all previous path components
-    will be discarded."""
-    return _join(a, *p)
-@overload
-def join(a: bytes, *p: bytes) -> bytes:
-    return _join(a, *p)
-
 
 # Split a path in head (everything up to the last '/') and tail (the
 # rest).  If the path ends in '/', tail will be empty.  If there is no
 # '/' in the path, head  will be empty.
 # Trailing '/'es are stripped from head unless it is the root.
 
-def _split(p):
+def split(p: AnyStr) -> Tuple[AnyStr, AnyStr]:
+    """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+    everything after the final slash.  Either part may be empty."""
     sep = _get_sep(p)
     i = p.rfind(sep) + 1
     head, tail = p[:i], p[i:]
@@ -122,22 +103,13 @@ def _split(p):
         head = head.rstrip(sep)
     return head, tail
 
-@overload
-def split(p: str) -> Tuple[str, str]:
-    """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
-    everything after the final slash.  Either part may be empty."""
-    return _split(p)
-@overload
-def split(p: bytes) -> Tuple[bytes, bytes]:
-    return _split(p)
-
 
 # Split a path in root and extension.
 # The extension is everything starting at the last dot in the last
 # pathname component; the root is everything before that.
 # It is always true that root + ext == p.
 
-def _splitext(p):
+def splitext(p: AnyStr) -> Tuple[AnyStr, AnyStr]:
     if isinstance(p, bytes):
         sep = b'/'
         extsep = b'.'
@@ -145,50 +117,30 @@ def _splitext(p):
         sep = '/'
         extsep = '.'
     return genericpath._splitext(p, sep, None, extsep)
-
-@overload
-def splitext(p: str) -> Tuple[str, str]:
-    return _splitext(p)
-@overload
-def splitext(p: bytes) -> Tuple[bytes, bytes]:
-    return _splitext(p)
 splitext.__doc__ = genericpath._splitext.__doc__
 
 # Split a pathname into a drive specification and the rest of the
 # path.  Useful on DOS/Windows/NT; on Unix, the drive is always empty.
 
-def _splitdrive(p):
-    return p[:0], p
-
-@overload
-def splitdrive(p: str) -> Tuple[str, str]:
+def splitdrive(p: AnyStr) -> Tuple[AnyStr, AnyStr]:
     """Split a pathname into drive and path. On Posix, drive is always
     empty."""
-    return _splitdrive(p)
-@overload
-def splitdrive(p: bytes) -> Tuple[bytes, bytes]:
-    return _splitdrive(p)
+    return p[:0], p
 
 
 # Return the tail (basename) part of a path, same as split(path)[1].
 
-def _basename(p):
+def basename(p: AnyStr) -> AnyStr:
+    """Returns the final component of a pathname"""
     sep = _get_sep(p)
     i = p.rfind(sep) + 1
     return p[i:]
 
-@overload
-def basename(p: str) -> str:
-    """Returns the final component of a pathname"""
-    return _basename(p)
-@overload
-def basename(p: bytes) -> bytes:
-    return _basename(p)
-
 
 # Return the head (dirname) part of a path, same as split(path)[0].
 
-def _dirname(p):
+def dirname(p: AnyStr) -> AnyStr:
+    """Returns the directory component of a pathname"""
     sep = _get_sep(p)
     i = p.rfind(sep) + 1
     head = p[:i]
@@ -196,65 +148,36 @@ def _dirname(p):
         head = head.rstrip(sep)
     return head
 
-@overload
-def dirname(p: str) -> str:
-    """Returns the directory component of a pathname"""
-    return _dirname(p)
-@overload
-def dirname(p: bytes) -> bytes:
-    return _dirname(p)
-
 
 # Is a path a symbolic link?
 # This will always return false on systems where os.lstat doesn't exist.
 
-def _islink(path):
+def islink(path: AnyStr) -> bool:
+    """Test whether a path is a symbolic link"""
     try:
         st = os.lstat(path)
     except (os.error, AttributeError):
         return False
     return stat.S_ISLNK(st.st_mode)
 
-@overload
-def islink(path: str) -> bool:
-    """Test whether a path is a symbolic link"""
-    return _islink(path)
-@overload
-def islink(path: bytes) -> bool:
-    return _islink(path)
-
 # Being true for dangling symbolic links is also useful.
 
-def _lexists(path):
+def lexists(path: AnyStr) -> bool:
+    """Test whether a path exists.  Returns True for broken symbolic links"""
     try:
         os.lstat(path)
     except os.error:
         return False
     return True
 
-@overload
-def lexists(path: str) -> bool:
-    """Test whether a path exists.  Returns True for broken symbolic links"""
-    return _lexists(path)
-@overload
-def lexists(path: bytes) -> bool:
-    return _lexists(path)
-
 
 # Are two filenames really pointing to the same file?
 
-def _samefile(f1, f2):
+def samefile(f1: AnyStr, f2: AnyStr) -> bool:
+    """Test whether two pathnames reference the same actual file"""
     s1 = os.stat(f1)
     s2 = os.stat(f2)
     return samestat(s1, s2)
-
-@overload
-def samefile(path1: str, path2: str) -> bool:
-    """Test whether two pathnames reference the same actual file"""
-    return _samefile(path1, path2)
-@overload
-def samefile(path1: bytes, path2: bytes) -> bool:
-    return _samefile(path1, path2)
 
 
 # Are two open files really referencing the same file?
@@ -286,7 +209,8 @@ def samestat(s1: os.stat_result, s2: os.stat_result) -> bool:
 # Is a path a mount point?
 # (Does this work for all UNIXes?  Is it even guaranteed to work by Posix?)
 
-def _ismount(path):
+def ismount(path: AnyStr) -> bool:
+    """Test whether a path is a mount point"""
     if islink(path):
         # A symlink can never be a mount point
         return False
@@ -309,14 +233,6 @@ def _ismount(path):
         return True     # path/.. is the same i-node as path
     return False
 
-@overload
-def ismount(path: str) -> bool:
-    """Test whether a path is a mount point"""
-    return _ismount(path)
-@overload
-def ismount(path: bytes) -> bool:
-    return _ismount(path)
-
 
 # Expand paths beginning with '~' or '~user'.
 # '~' means $HOME; '~user' means that user's home directory.
@@ -327,7 +243,9 @@ def ismount(path: bytes) -> bool:
 # (A function should also be defined to do full *sh-style environment
 # variable expansion.)
 
-def _expanduser(path):
+def expanduser(path: AnyStr) -> AnyStr:
+    """Expand ~ and ~user constructions.  If user or $HOME is unknown,
+    do nothing."""
     if isinstance(path, bytes):
         tilde = b'~'
     else:
@@ -347,9 +265,11 @@ def _expanduser(path):
     else:
         name = path[1:i]
         if isinstance(name, bytes):
-            name = str(name, 'ASCII')
+            name2 = str(name, 'ASCII')
+        else:
+            name2 = name
         try:
-            pwent = pwd.getpwnam(name)
+            pwent = pwd.getpwnam(name2)
         except KeyError:
             return path
         userhome = pwent.pw_dir
@@ -360,15 +280,6 @@ def _expanduser(path):
         root = '/'
     userhome = userhome.rstrip(root) or userhome
     return userhome + path[i:]
-
-@overload
-def expanduser(path: str) -> str:
-    """Expand ~ and ~user constructions.  If user or $HOME is unknown,
-    do nothing."""
-    return _expanduser(path)
-@overload
-def expanduser(path: bytes) -> bytes:
-    return _expanduser(path)
 
 
 # Expand paths containing shell variable substitutions.
@@ -434,7 +345,8 @@ def expandvars(path: bytes) -> bytes:
 # It should be understood that this may change the meaning of the path
 # if it contains symbolic links!
 
-def _normpath(path):
+def normpath(path: AnyStr) -> AnyStr:
+    """Normalize path, eliminating double slashes, etc."""
     if isinstance(path, bytes):
         sep = b'/'
         empty = b''
@@ -447,14 +359,14 @@ def _normpath(path):
         dotdot = '..'
     if path == empty:
         return dot
-    initial_slashes = path.startswith(sep)
+    initial_slashes = int(path.startswith(sep))
     # POSIX allows one or two initial slashes, but treats three or more
     # as single slash.
     if (initial_slashes and
         path.startswith(sep*2) and not path.startswith(sep*3)):
         initial_slashes = 2
     comps = path.split(sep)
-    new_comps = []
+    new_comps = List[AnyStr]()
     for comp in comps:
         if comp in (empty, dot):
             continue
@@ -469,16 +381,9 @@ def _normpath(path):
         path = sep*initial_slashes + path
     return path or dot
 
-@overload
-def normpath(path: str) -> str:
-    """Normalize path, eliminating double slashes, etc."""
-    return _normpath(path)
-@overload
-def normpath(path: bytes) -> bytes:
-    return _normpath(path)
 
-
-def _abspath(path):
+def abspath(path: AnyStr) -> AnyStr:
+    """Return an absolute path."""
     if not isabs(path):
         if isinstance(path, bytes):
             cwd = os.getcwdb()
@@ -487,19 +392,13 @@ def _abspath(path):
         path = join(cwd, path)
     return normpath(path)
 
-@overload
-def abspath(path: str) -> str:
-    """Return an absolute path."""
-    return _abspath(path)
-@overload
-def abspath(path: bytes) -> bytes:
-    return _abspath(path)
-
 
 # Return a canonical path (i.e. the absolute location of a file on the
 # filesystem).
 
-def _realpath(filename):
+def realpath(filename: AnyStr) -> AnyStr:
+    """Return the canonical path of the specified filename, eliminating any
+symbolic links encountered in the path."""
     if isinstance(filename, bytes):
         sep = b'/'
         empty = b''
@@ -525,22 +424,13 @@ def _realpath(filename):
 
     return abspath(filename)
 
-@overload
-def realpath(filename: str) -> str:
-    """Return the canonical path of the specified filename, eliminating any
-    symbolic links encountered in the path."""
-    return _realpath(filename)
-@overload
-def realpath(filename: bytes) -> bytes:
-    return _realpath(filename)
 
-
-def _resolve_link(path):
+def _resolve_link(path: AnyStr) -> AnyStr:
     """Internal helper function.  Takes a path and follows symlinks
     until we either arrive at something that isn't a symlink, or
     encounter a path we've seen before (meaning that there's a loop).
     """
-    paths_seen = set()
+    paths_seen = Set[AnyStr]()
     while islink(path):
         if path in paths_seen:
             # Already seen this path, so we must have a symlink loop
@@ -557,7 +447,9 @@ def _resolve_link(path):
 
 supports_unicode_filenames = (sys.platform == 'darwin')
 
-def _relpath(path, start=None):
+def relpath(path: AnyStr, start: AnyStr = None) -> AnyStr:
+    """Return a relative version of a path"""
+    
     if not path:
         raise ValueError("no path specified")
 
@@ -577,17 +469,9 @@ def _relpath(path, start=None):
     path_list = [x for x in abspath(path).split(sep) if x]
 
     # Work out how much of the filepath is shared by start and path.
-    i = len(commonprefix([start_list, path_list]))
+    i = len(commonprefix(Any([start_list, path_list])))
 
     rel_list = [pardir] * (len(start_list)-i) + path_list[i:]
     if not rel_list:
         return curdir
     return join(*rel_list)
-
-@overload
-def relpath(path: str, start: str = None) -> str:
-    """Return a relative version of a path"""
-    return _relpath(path, start)
-@overload
-def relpath(path: bytes, start: bytes = None) -> bytes:
-    return _relpath(path, start)
