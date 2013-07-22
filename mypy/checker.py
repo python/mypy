@@ -29,9 +29,10 @@ from mypy import messages
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type_by_instance
+from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
+from mypy.treetransform import TransformVisitor
 
 
 class ConditionalTypeBinder:
@@ -275,7 +276,15 @@ class TypeChecker(NodeVisitor[Type]):
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:
-        return [(defn, typ)]
+        if typ.variables and typ.variables[0].values:
+            var = typ.variables[0]
+            result = List[Tuple[FuncItem, Callable]]()
+            for value in var.values:
+                expanded = cast(Callable, expand_type(typ, {var.id: value}))
+                result.append((expand_func(defn, {var.id: value}), expanded))
+            return result
+        else:
+            return [(defn, typ)]
     
     def check_method_override(self, defn: FuncBase) -> None:
         """Check if function definition is compatible with base classes."""
@@ -1187,3 +1196,18 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
             # we can do (outside disallowing them here).
             return erase_typevars(type.items()[0].ret_type)
     return None
+
+
+def expand_func(defn: FuncItem, map: Dict[int, Type]) -> FuncItem:
+    visitor = TypeTransformVisitor(map)
+    result = defn.accept(visitor)
+    return cast(FuncItem, result)
+
+
+class TypeTransformVisitor(TransformVisitor):
+    def __init__(self, map: Dict[int, Type]) -> None:
+        super().__init__()
+        self.map = map
+    
+    def type(self, type: Type) -> Type:
+        return expand_type(type, self.map)

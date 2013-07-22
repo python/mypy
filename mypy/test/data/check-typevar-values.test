@@ -43,3 +43,33 @@ def f(x: T) -> None: pass
 class S(str): pass
 f(S())
 [out]
+
+[case testCheckGenericFunctionBodyWithTypeVarValues]
+from typing import typevar
+class A:
+    def f(self, x: int) -> A: return self
+class B:
+    def f(self, x: int) -> B: return self
+AB = typevar('AB', values=(A, B))
+def f(x: AB) -> AB:
+    x = x.f(1)
+    return x.f(1)
+
+[case testCheckGenericFunctionBodyWithTypeVarValues2]
+from typing import typevar
+class A:
+    def f(self) -> A: return A()
+    def g(self) -> B: return B()
+class B:
+    def f(self) -> A: return A()
+    def g(self) -> B: return B()
+AB = typevar('AB', values=(A, B))
+def f(x: AB) -> AB:
+    return x.f() # Error
+def g(x: AB) -> AB:
+    return x.g() # Error
+[out]
+main: In function "f":
+main, line 10: Incompatible return value type
+main: In function "g":
+main, line 12: Incompatible return value type
