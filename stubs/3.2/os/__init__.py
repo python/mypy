@@ -111,10 +111,10 @@ class stat_result:
     st_uid = 0 # user id of owner,
     st_gid = 0 # group id of owner,
     st_size = 0 # size of file, in bytes,
-    st_atime = 0 # time of most recent access,
-    st_mtime = 0 # time of most recent content modification,
-    st_ctime = 0 # platform dependent (time of most recent metadata change on 
-                 # Unix, or the time of creation on Windows)
+    st_atime = 0.0 # time of most recent access,
+    st_mtime = 0.0 # time of most recent content modification,
+    st_ctime = 0.0 # platform dependent (time of most recent metadata change
+                   # on  Unix, or the time of creation on Windows)
 
     def __init__(self, tuple) -> None: pass
 
