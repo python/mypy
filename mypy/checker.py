@@ -222,52 +222,60 @@ class TypeChecker(NodeVisitor[Type]):
         
         self.dynamic_funcs.pop()
     
-    def check_func_def(self, defn: FuncItem, typ: Type) -> None:
-        """Check a function definition."""
-        # We may be checking a function definition or an anonymous function. In
-        # the first case, set up another reference with the precise type.
-        if isinstance(defn, FuncDef):
-            fdef = defn
-        else:
-            fdef = None
-        
-        self.enter()
-        
-        if fdef:
-            # The cast below will work since non-method create will cause
-            # semantic analysis to fail, and type checking won't be done.
-            if (fdef.info and fdef.name() == '__init__' and
-                    not isinstance(cast(Callable, typ).ret_type, Void) and
-                    not self.dynamic_funcs[-1]):
-                self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE, defn.type)
-        
-        # Push return type.
-        self.return_types.append(cast(Callable, typ).ret_type)
-        
-        # Store argument types.
-        ctype = cast(Callable, typ)
-        nargs = len(defn.args)
-        for i in range(len(ctype.arg_types)):
-            arg_type = ctype.arg_types[i]
-            if ctype.arg_kinds[i] == nodes.ARG_STAR:
-                arg_type = self.named_generic_type('builtins.list', [arg_type])
-            elif ctype.arg_kinds[i] == nodes.ARG_STAR2:
-                arg_type = self.named_generic_type('builtins.dict',
-                                                   [self.str_type(), arg_type])
-            defn.args[i].type = arg_type
-        
-        # Type check initialization expressions.
-        for j in range(len(defn.init)):
-            if defn.init[j]:
-                self.accept(defn.init[j])
-        
-        # Type check body.
-        self.accept(defn.body)
-        
-        # Pop return type.
-        self.return_types.pop()
-        
-        self.leave()
+    def check_func_def(self, defn: FuncItem, typ: Callable) -> None:
+        """Type check a function definition."""
+        # Expand type variables with value restrictions to ordinary types.
+        for item, typ in self.expand_typevars(defn, typ):
+            # We may be checking a function definition or an anonymous
+            # function. In the first case, set up another reference with the
+            # precise type.
+            if isinstance(defn, FuncDef):
+                fdef = defn
+            else:
+                fdef = None
+
+            self.enter()
+
+            if fdef:
+                # Check if __init__ has an invalid, non-None return type.
+                if (fdef.info and fdef.name() == '__init__' and
+                        not isinstance(typ.ret_type, Void) and
+                        not self.dynamic_funcs[-1]):
+                    self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE,
+                              defn.type)
+
+            # Push return type.
+            self.return_types.append(typ.ret_type)
+
+            # Store argument types.
+            nargs = len(defn.args)
+            for i in range(len(typ.arg_types)):
+                arg_type = typ.arg_types[i]
+                if typ.arg_kinds[i] == nodes.ARG_STAR:
+                    arg_type = self.named_generic_type('builtins.list',
+                                                       [arg_type])
+                elif typ.arg_kinds[i] == nodes.ARG_STAR2:
+                    arg_type = self.named_generic_type('builtins.dict',
+                                                       [self.str_type(),
+                                                        arg_type])
+                defn.args[i].type = arg_type
+
+            # Type check initialization expressions.
+            for j in range(len(defn.init)):
+                if defn.init[j]:
+                    self.accept(defn.init[j])
+
+            # Type check body.
+            self.accept(defn.body)
+
+            # Pop return type.
+            self.return_types.pop()
+
+            self.leave()
+
+    def expand_typevars(self, defn: FuncItem,
+                        typ: Callable) -> List[Tuple[FuncItem, Callable]]:
+        return [(defn, typ)]
     
     def check_method_override(self, defn: FuncBase) -> None:
         """Check if function definition is compatible with base classes."""
