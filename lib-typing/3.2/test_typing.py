@@ -5,8 +5,8 @@ from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
     Function, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
     Sequence, AbstractSet, Mapping, IO, TextIO, SupportsInt, SupportsFloat,
-    SupportsAbs, SupportsRound, Reversible, Undefined, cast, forwardref,
-    overload, typevar
+    SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, cast,
+    forwardref, overload, typevar
 )
 
 
@@ -302,6 +302,10 @@ class TestTyping(unittest.TestCase):
         t = typevar('t', values=(int, str))
         self.assertEqual(t.name, 't')
         self.assertEqual(t.values, (int, str))
+
+    def test_predefined_typevars(self):
+        self.assertEqual(AnyStr.name, 'AnyStr')
+        self.assertEqual(AnyStr.values, (str, bytes))
 
     def test_typevar_in_overload(self):
         t = typevar('t')

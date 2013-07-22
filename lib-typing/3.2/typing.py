@@ -154,6 +154,10 @@ class typevar:
         self.values = values
 
 
+# Predefined type variables.
+AnyStr = typevar('AnyStr', values=(str, bytes))
+
+
 class forwardref:
     def __init__(self, name):
         self.name = name
