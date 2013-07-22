@@ -4,21 +4,16 @@ import os
 import re
 import fnmatch
 
-from typing import overload, List, Iterator
+from typing import overload, List, Iterator, AnyStr
 
 __all__ = ["glob", "iglob"]
 
-@overload
-def glob(pathname: str) -> List[str]:
+def glob(pathname: AnyStr) -> List[AnyStr]:
     """Return a list of paths matching a pathname pattern.
 
     The pattern may contain simple shell-style wildcards a la fnmatch.
 
     """
-    return list(iglob(pathname))
-
-@overload
-def glob(pathname: bytes) -> List[bytes]:
     return list(iglob(pathname))
 
 def _iglob(pathname):
