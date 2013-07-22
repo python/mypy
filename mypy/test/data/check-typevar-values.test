@@ -102,3 +102,16 @@ def g(x: T) -> List[T]:
 [builtins fixtures/list.py]
 [out]
 main: In function "g":
+
+[case testTypeDeclaredBasedOnTypeVarWithValues]
+from typing import typevar, Undefined
+T = typevar('T', values=(int, str))
+def f(x: T) -> T:
+    a = Undefined(T)
+    b = None # type: T
+    a = x
+    b = x
+    a = '' # E: Incompatible types in assignment
+    b = 1  # E: Incompatible types in assignment
+[out]
+main: In function "f":
