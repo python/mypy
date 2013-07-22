@@ -10,7 +10,7 @@ from typing import Any, Function
 class FnmatchTestCase(unittest.TestCase):
 
     def check_match(self, filename: Any, pattern: Any, should_match: int = 1,
-                    fn: Function[[Any, Any], bool] = fnmatch) -> None:
+                    fn: Any = fnmatch) -> None:
         if should_match:
             self.assertTrue(fn(filename, pattern),
                          "expected %r to match pattern %r"

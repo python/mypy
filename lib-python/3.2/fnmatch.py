@@ -14,17 +14,11 @@ import posixpath
 import re
 import functools
 
-from typing import overload, Iterable, List
+from typing import overload, Iterable, List, AnyStr
 
 __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
 
-def _fnmatch(name, pat):
-    name = os.path.normcase(name)
-    pat = os.path.normcase(pat)
-    return fnmatchcase(name, pat)
-
-@overload
-def fnmatch(name: str, pat: str) -> bool:
+def fnmatch(name: AnyStr, pat: AnyStr) -> bool:
     """Test whether FILENAME matches PATTERN.
 
     Patterns are Unix shell style:
@@ -39,11 +33,9 @@ def fnmatch(name: str, pat: str) -> bool:
     if the operating system requires it.
     If you don't want this, use fnmatchcase(FILENAME, PATTERN).
     """
-    return _fnmatch(name, pat)
-
-@overload
-def fnmatch(name: bytes, pat: bytes) -> bool:
-    return _fnmatch(name, pat)
+    name = os.path.normcase(name)
+    pat = os.path.normcase(pat)
+    return fnmatchcase(name, pat)
 
 @functools.lru_cache(maxsize=250)
 def _compile_pattern(pat, is_bytes=False):
