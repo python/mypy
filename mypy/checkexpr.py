@@ -614,7 +614,7 @@ class ExpressionChecker:
         types = types[:]
         for i, type in enumerate(types):
             values = callable.variables[i].values
-            if values:
+            if values and type:
                 if isinstance(type, AnyType):
                     continue
                 for value in values:

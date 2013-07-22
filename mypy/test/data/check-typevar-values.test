@@ -147,3 +147,12 @@ def f(x: T) -> T:
 [builtins fixtures/isinstance.py]
 [out]
 main: In function "f":
+
+[case testTypeVarValuesAndNestedCalls]
+from typing import typevar
+T = typevar('T', values=(int, str))
+def f(m: T) -> int: pass
+def h(x: int) -> int: pass
+def g(a: T) -> None:
+    h(f(a))
+[out]
