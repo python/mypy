@@ -464,3 +464,17 @@ if isinstance(x, tuple):
     print(x[0], x[1])
 [out]
 1 x
+
+[case testTypevarValues]
+from typing import typevar
+T = typevar('T', values=(str, bytes))
+def f(x: T) -> T:
+    if isinstance(x, str):
+        return 'foo'
+    else:
+        return b'bar'
+print(f(''))
+print(f(b''))
+[out]
+foo
+b'bar'
