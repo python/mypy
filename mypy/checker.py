@@ -85,8 +85,6 @@ class TypeChecker(NodeVisitor[Type]):
     # Helper for type checking expressions
     expr_checker = Undefined('mypy.checkexpr.ExpressionChecker')
     
-    # Stack of local variable definitions. 'None' separates nested functions.
-    stack = Undefined(List[str])
     # Stack of function return types
     return_types = Undefined(List[Type])
     # Type context for type inference
@@ -113,7 +111,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_map = {}
         self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
-        self.stack = [None]
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
