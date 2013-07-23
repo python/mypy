@@ -70,9 +70,9 @@ class BytesMatch:
     def expand(self, template: bytes) -> bytes: pass
     
     @overload
-    def group(self, group1: int = 0) -> str: pass
+    def group(self, group1: int = 0) -> bytes: pass
     @overload
-    def group(self, group1: str) -> str: pass
+    def group(self, group1: str) -> bytes: pass
     @overload
     def group(self, group1: int, group2: int,
               *groups: int) -> Sequence[bytes]: pass
