@@ -104,6 +104,8 @@ class SemanticAnalyzer(NodeVisitor):
     type = Undefined(TypeInfo)
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = Undefined(List[Tuple[TypeInfo, List[SymbolTableNode]]])
+    # Stack of functions being analyzed
+    function_stack = Undefined(FuncItem)
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
@@ -120,6 +122,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.imports = set()
         self.type = None
         self.type_stack = []
+        self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
         self.lib_path = lib_path
@@ -263,6 +266,7 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(defn, FuncDef):
                 defn.info = self.type
                 defn.type = set_callable_name(defn.type, defn)
+        self.function_stack.append(defn)
         self.enter()
         for init in defn.init:
             if init:
@@ -281,6 +285,7 @@ class SemanticAnalyzer(NodeVisitor):
         defn.body.accept(self)
         disable_typevars(tvarnodes)
         self.leave()
+        self.function_stack.pop()
     
     def add_func_type_variables_to_symbol_table(
             self, defn: FuncItem) -> List[SymbolTableNode]:
