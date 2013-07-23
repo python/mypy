@@ -14,7 +14,7 @@ import posixpath
 import re
 import functools
 
-from typing import overload, Iterable, List, AnyStr
+from typing import overload, Iterable, List, AnyStr, Any, Function
 
 __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
 
@@ -38,8 +38,9 @@ def fnmatch(name: AnyStr, pat: AnyStr) -> bool:
     return fnmatchcase(name, pat)
 
 @functools.lru_cache(maxsize=250)
-def _compile_pattern(pat, is_bytes=False):
-    if is_bytes:
+def _compile_pattern(pat: AnyStr,
+                     is_bytes: bool = False) -> Function[[AnyStr], Any]:
+    if isinstance(pat, bytes):
         pat_str = str(pat, 'ISO-8859-1')
         res_str = translate(pat_str)
         res = bytes(res_str, 'ISO-8859-1')
@@ -47,8 +48,9 @@ def _compile_pattern(pat, is_bytes=False):
         res = translate(pat)
     return re.compile(res).match
 
-def _filter(names, pat):
-    result = []
+def filter(names: Iterable[AnyStr], pat: AnyStr) -> List[AnyStr]:
+    """Return the subset of the list NAMES that match PAT."""
+    result = List[AnyStr]()
     pat = os.path.normcase(pat)
     match = _compile_pattern(pat, isinstance(pat, bytes))
     if os.path is posixpath:
@@ -62,31 +64,14 @@ def _filter(names, pat):
                 result.append(name)
     return result
 
-@overload
-def filter(names: Iterable[str], pat: str) -> List[str]:
-    """Return the subset of the list NAMES that match PAT."""
-    return _filter(names, pat)
-
-@overload
-def filter(names: Iterable[bytes], pat: bytes) -> List[bytes]:
-    return _filter(names, pat)
-
-def _fnmatchcase(name, pat):
-    match = _compile_pattern(pat, isinstance(pat, bytes))
-    return match(name) is not None
-
-@overload
-def fnmatchcase(name: str, pat: str) -> bool:
+def fnmatchcase(name: AnyStr, pat: AnyStr) -> bool:
     """Test whether FILENAME matches PATTERN, including case.
 
     This is a version of fnmatch() which doesn't case-normalize
     its arguments.
     """
-    return _fnmatchcase(name, pat)
-
-@overload
-def fnmatchcase(name: bytes, pat: bytes) -> bool:
-    return _fnmatchcase(name, pat)
+    match = _compile_pattern(pat, isinstance(pat, bytes))
+    return match(name) is not None
 
 def translate(pat: str) -> str:
     """Translate a shell PATTERN to a regular expression.
