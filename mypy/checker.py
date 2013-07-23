@@ -674,10 +674,11 @@ class TypeChecker(NodeVisitor[Type]):
                             typ, self.return_types[-1], s,
                             messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
-                # Return without a value.
-                if (not isinstance(self.return_types[-1], Void) and
+                # Return without a value. It's valid in a generator function.
+                if not self.function_stack[-1].is_generator:
+                    if (not isinstance(self.return_types[-1], Void) and
                         not self.is_dynamic_function()):
-                    self.fail(messages.RETURN_VALUE_EXPECTED, s)
+                        self.fail(messages.RETURN_VALUE_EXPECTED, s)
     
     def visit_yield_stmt(self, s: YieldStmt) -> Type:
         return_type = self.return_types[-1]

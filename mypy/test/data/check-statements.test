@@ -548,8 +548,13 @@ def f() -> 'Iterator[List[int]]':
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
-
--- TODO both return and yield
+    
+[case testYieldAndReturnWithoutValue]
+from typing import Iterator
+def f() -> Iterator[int]:
+    yield 1
+    return
+[builtins fixtures/for.py]
 
 
 -- With statement
