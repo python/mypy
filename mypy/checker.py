@@ -91,6 +91,8 @@ class TypeChecker(NodeVisitor[Type]):
     type_context = Undefined(List[Type])
     # Flags; true for dynamically typed functions
     dynamic_funcs = Undefined(List[bool])
+    # Stack of functions being type checked
+    function_stack = Undefined(List[FuncItem])
     
     globals = Undefined(SymbolTable)
     locals = Undefined(SymbolTable)
@@ -114,6 +116,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
+        self.function_stack = []
     
     def visit_file(self, file_node: MypyFile, path: str) -> None:  
         """Type check a mypy file with the given path."""
@@ -209,7 +212,8 @@ class TypeChecker(NodeVisitor[Type]):
         fdef = None # type: FuncDef
         if isinstance(defn, FuncDef):
             fdef = defn
-        
+
+        self.function_stack.append(defn)
         self.dynamic_funcs.append(defn.type is None and not type_override)
         
         if fdef:
@@ -227,6 +231,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.errors.pop_function()
         
         self.dynamic_funcs.pop()
+        self.function_stack.pop()
     
     def check_func_def(self, defn: FuncItem, typ: Callable) -> None:
         """Type check a function definition."""
