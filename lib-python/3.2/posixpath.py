@@ -289,7 +289,9 @@ def expanduser(path: AnyStr) -> AnyStr:
 _varprog = None # type: Pattern
 _varprogb = None # type: BytesPattern
 
-def _expandvars(path):
+def expandvars(path: AnyStr) -> AnyStr:
+    """Expand shell variables of form $var and ${var}.  Unknown variables
+    are left unchanged."""
     global _varprog, _varprogb
     import re
     if isinstance(path, bytes):
@@ -318,27 +320,22 @@ def _expandvars(path):
         if name.startswith(start) and name.endswith(end):
             name = name[1:-1]
         if isinstance(name, bytes):
-            name = str(name, 'ASCII')
-        if name in os.environ:
+            namestr = str(name, 'ASCII')
+        else:
+            namestr = name
+        if namestr in os.environ:
             tail = path[j:]
-            value = os.environ[name]
+            valuestr = os.environ[namestr]
             if isinstance(path, bytes):
-                value = value.encode('ASCII')
+                value = valuestr.encode('ASCII')
+            else:
+                value = valuestr
             path = path[:i] + value
             i = len(path)
             path += tail
         else:
             i = j
     return path
-
-@overload
-def expandvars(path: str) -> str:
-    """Expand shell variables of form $var and ${var}.  Unknown variables
-    are left unchanged."""
-    return _expandvars(path)
-@overload
-def expandvars(path: bytes) -> bytes:
-    return _expandvars(path)
 
 
 # Normalize a path, e.g. A//B, A/./B and A/foo/../B all become A/B.
@@ -449,7 +446,7 @@ supports_unicode_filenames = (sys.platform == 'darwin')
 
 def relpath(path: AnyStr, start: AnyStr = None) -> AnyStr:
     """Return a relative version of a path"""
-    
+
     if not path:
         raise ValueError("no path specified")
 
