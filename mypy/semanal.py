@@ -105,7 +105,7 @@ class SemanticAnalyzer(NodeVisitor):
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = Undefined(List[Tuple[TypeInfo, List[SymbolTableNode]]])
     # Stack of functions being analyzed
-    function_stack = Undefined(FuncItem)
+    function_stack = Undefined(List[FuncItem])
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
@@ -884,6 +884,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_yield_stmt(self, s: YieldStmt) -> None:
         if not self.is_func_scope():
             self.fail("'yield' outside function", s)
+        else:
+            self.function_stack[-1].is_generator = True
         if s.expr:
             s.expr.accept(self)
     

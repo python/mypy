@@ -98,6 +98,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.max_pos = original.max_pos
         new.is_implicit = original.is_implicit
         new.is_overload = original.is_overload
+        new.is_generator = original.is_generator
         new.init = self.duplicate_inits(original.init)
 
     def duplicate_inits(self,

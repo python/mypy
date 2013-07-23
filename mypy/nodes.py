@@ -221,6 +221,7 @@ class FuncItem(FuncBase):
     is_implicit = False    # Implicit dynamic types?
     is_overload = False    # Is this an overload variant of function with
                            # more than one overload variant?
+    is_generator = False   # Contains a yield statement?
     
     def __init__(self, args: List['Var'], arg_kinds: List[int],
                  init: List[Node], body: 'Block',

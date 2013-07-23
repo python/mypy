@@ -30,6 +30,7 @@ def f(): yield f
 MypyFile:1(
   FuncDef:1(
     f
+    Generator
     Block:1(
       YieldStmt:1(
         NameExpr(f [__main__.f])))))

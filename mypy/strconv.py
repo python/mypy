@@ -56,6 +56,8 @@ class StrConv(NodeVisitor[str]):
             a.append(o.type)
         if init:
             a.append(('Init', init))
+        if o.is_generator:
+            a.append('Generator')
         a.extend(extra)
         a.append(o.body)
         return a                    
