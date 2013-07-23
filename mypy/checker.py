@@ -274,7 +274,6 @@ class TypeChecker(NodeVisitor[Type]):
             # Type check body.
             self.accept(item.body)
 
-            # Pop return type.
             self.return_types.pop()
 
             self.leave()
@@ -661,7 +660,7 @@ class TypeChecker(NodeVisitor[Type]):
             if s.expr:
                 # Return with a value.
                 typ = self.accept(s.expr, self.return_types[-1])
-                # Returning a value of type dynamic is always fine.
+                # Returning a value of type Any is always fine.
                 if not isinstance(typ, AnyType):
                     if isinstance(self.return_types[-1], Void):
                         self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
