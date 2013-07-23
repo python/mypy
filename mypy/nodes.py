@@ -230,8 +230,6 @@ class FuncItem(FuncBase):
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
-        self.is_implicit = typ is None
-        self.is_overload = False
         
         i2 = List[AssignmentStmt]()
         self.min_args = 0
