@@ -105,8 +105,6 @@ class SemanticAnalyzer(NodeVisitor):
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = Undefined(List[Tuple[TypeInfo, List[SymbolTableNode]]])
 
-    is_init_method = False # Are we now analysing __init__?
-    is_function = False    # Are we now analysing a function/method?
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     imports = Undefined(Set[str])  # Imported modules (during phase 2 analysis)
@@ -127,8 +125,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
-        self.is_init_method = False
-        self.is_function = False
     
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -161,8 +157,6 @@ class SemanticAnalyzer(NodeVisitor):
                         else:
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            if defn.name() == '__init__':
-                self.is_init_method = True
             if not defn.is_static:
                 if not defn.args:
                     self.fail('Method must have at least one argument', defn)
@@ -179,7 +173,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.push_function(defn.name())
         self.analyse_function(defn)
         self.errors.pop_function()
-        self.is_init_method = False
 
     def is_conditional_func(self, n: Node, defn: FuncDef) -> bool:
         return (isinstance(n, FuncDef) and cast(FuncDef, n).is_conditional and
