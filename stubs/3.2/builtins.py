@@ -926,6 +926,7 @@ def filter(function: Function[[T], Any],
            iterable: Iterable[T]) -> Iterator[T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
 def getattr(o: Any, name: str, default: Any = None) -> Any: pass
+def globals() -> Dict[str, Any]: pass
 def hasattr(o: Any, name: str) -> bool: pass
 def hash(o: object) -> int: pass
 # TODO __index__
