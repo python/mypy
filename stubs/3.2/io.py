@@ -73,7 +73,7 @@ class StringIO(TextIO):
     def __enter__(self) -> 'StringIO': pass
     def __exit__(self, type, value, traceback) -> None: pass
     
-class TextIOWrapper:
+class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
     def __init__(buffer: IO, encoding: str = None, errors: str = None,
                   newline: str = None, line_buffering: bool = False,
