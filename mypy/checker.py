@@ -612,9 +612,12 @@ class TypeChecker(NodeVisitor[Type]):
         elif (is_subtype(rvalue_type,
                          self.named_generic_type('builtins.Iterable',
                                                  [AnyType()])) and
-              not isinstance(rvalue_type, NoneTyp)):
-            # Iterable rvalue.
-            item_type = cast(Instance, rvalue_type).args[0]
+              isinstance(rvalue_type, Instance)):
+            # Rvalue is iterable.
+            iterable = map_instance_to_supertype(
+                cast(Instance, rvalue_type),
+                self.lookup_typeinfo('builtins.Iterable'))
+            item_type = iterable.args[0]
             for k in range(len(lvalue_types)):
                 self.check_single_assignment(lvalue_types[k],
                                              index_lvalues[k],
@@ -1042,12 +1045,17 @@ class TypeChecker(NodeVisitor[Type]):
             return UnboundType(name)
     
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
-        """Return an instance with the given name and type
-        arguments. Assume that the number of arguments is correct.
+        """Return an instance with the given name and type arguments.
+
+        Assume that the number of arguments is correct.  Assume that
+        the name refers to a compatible generic type.
         """
-        # Assume that the name refers to a compatible generic type.
-        sym = self.lookup_qualified(name)
-        return Instance(cast(TypeInfo, sym.node), args)
+        return Instance(self.lookup_typeinfo(name), args)
+
+    def lookup_typeinfo(self, fullname: str) -> TypeInfo:
+        # Assume that the name refers to a class.
+        sym = self.lookup_qualified(fullname)
+        return cast(TypeInfo, sym.node)
     
     def type_type(self) -> Instance:
         """Return instance type 'type'."""

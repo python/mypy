@@ -596,3 +596,19 @@ ia = Undefined # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"
 ia.f(a)
+
+
+-- Misc
+-- ----
+
+
+[case testMultipleAssignmentAndGenericSubtyping]
+from typing import Iterable, Undefined
+n, s = Undefined(int), Undefined(str)
+class Nums(Iterable[int]):
+    def __iter__(self): pass
+    def __next__(self): pass
+n, n = Nums()
+s, s = Nums() # E: Incompatible types in assignment
+[builtins fixtures/for.py]
+[out]
