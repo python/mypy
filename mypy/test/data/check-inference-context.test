@@ -135,7 +135,7 @@ def g(a: T) -> List[T]: pass
 
 class A(Generic[T]): pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/for.py]
 [out]
 main: In function "h":
 

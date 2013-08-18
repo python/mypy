@@ -224,6 +224,7 @@ def f() -> None:
     a, b = f   # E: Incompatible types in assignment
     c, d = A() # E: Incompatible types in assignment
 class A: pass
+[builtins fixtures/for.py]
 [out]
 main: In function "f":
 
@@ -250,7 +251,7 @@ def f() -> None:
     a = b
     c = d
     d = e
-[builtins fixtures/list.py]
+[builtins fixtures/for.py]
 [out]
 main: In function "f":
 

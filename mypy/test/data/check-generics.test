@@ -609,7 +609,7 @@ b2, b2 = List[B]() # E: Incompatible types in assignment
 
 a, a = List[A]()
 b, b2, b = List[B2]()
-[builtins fixtures/list.py]
+[builtins fixtures/for.py]
 
 [case testMultipleAssignmentWithListsInInitialization]
 from typing import List
@@ -617,7 +617,7 @@ class A: pass
 a, b = List[object]() # type: (A, object) # E: Incompatible types in assignment
 c, d = List[object]() # type: (object, A) # E: Incompatible types in assignment
 e, f = List[A]() # type: (A, object)
-[builtins fixtures/list.py]
+[builtins fixtures/for.py]
 
 [case testMultipleAssignmentWithListAndIndexing]
 from typing import Undefined, List
@@ -632,10 +632,25 @@ class A: pass
 from typing import typevar, Generic
 T = typevar('T')
 class object: pass
-class list(Generic[T]):
+class Iterable(Generic[T]): pass
+class list(Iterable[T], Generic[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
 class int: pass
 class type: pass
+
+[case testMultipleAsssignmentWithIterable]
+from typing import Iterable, Undefined, typevar
+a = Undefined(int)
+b = Undefined(str)
+T = typevar('T')
+
+def f(x: T) -> Iterable[T]: pass
+
+a, b = f(a)   # E: Incompatible types in assignment
+b, b = f(a)   # E: Incompatible types in assignment
+a, a = f(a)
+b, b = f(b)
+[builtins fixtures/for.py]
 
 
 -- Error messages

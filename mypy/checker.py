@@ -609,9 +609,11 @@ class TypeChecker(NodeVisitor[Type]):
                     self.check_single_assignment(
                         lvalue_types[j], index_lvalues[j],
                         self.temp_node(rvalue_type.items[j]), context, msg)
-        elif (isinstance(rvalue_type, Instance) and
-               cast(Instance, rvalue_type).type.fullname() == 'builtins.list'):
-            # Rvalue with list type.
+        elif (is_subtype(rvalue_type,
+                         self.named_generic_type('builtins.Iterable',
+                                                 [AnyType()])) and
+              not isinstance(rvalue_type, NoneTyp)):
+            # Iterable rvalue.
             item_type = cast(Instance, rvalue_type).args[0]
             for k in range(len(lvalue_types)):
                 self.check_single_assignment(lvalue_types[k],

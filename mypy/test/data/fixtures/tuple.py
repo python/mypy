@@ -1,5 +1,7 @@
 # Builtins stub used in tuple-related test cases.
 
+from typing import Iterable
+
 class object:
     def __init__(self): pass
 
