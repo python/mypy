@@ -948,6 +948,7 @@ def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO perhaps support this
 #def issubclass(type cld, classinfo: Sequence[type]) -> bool: pass
 def len(o: Sized) -> int: pass
+def locals() -> Dict[str, Any]: pass
 
 # TODO more than two iterables
 @overload
