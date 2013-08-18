@@ -526,10 +526,12 @@ class TypeChecker(NodeVisitor[Type]):
                         self.msg.incompatible_value_count_in_assignment(
                             len(names), len(init_type.items), context)
                 elif (isinstance(init_type, Instance) and
-                        cast(Instance, init_type).type.fullname() ==
-                            'builtins.list'):
-                    # Initializer with an array type.
-                    item_type = cast(Instance, init_type).args[0]
+                      is_subtype(init_type,
+                                 self.named_generic_type('builtins.Iterable',
+                                                         [AnyType()]))):
+                    # Initializer with an iterable type.
+                    item_type = self.iterable_item_type(cast(Instance,
+                                                             init_type))
                     for i in range(len(names)):
                         self.set_inferred_type(names[i], lvalues[i], item_type)
                 elif isinstance(init_type, AnyType):
@@ -614,10 +616,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                  [AnyType()])) and
               isinstance(rvalue_type, Instance)):
             # Rvalue is iterable.
-            iterable = map_instance_to_supertype(
-                cast(Instance, rvalue_type),
-                self.lookup_typeinfo('builtins.Iterable'))
-            item_type = iterable.args[0]
+            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
             for k in range(len(lvalue_types)):
                 self.check_single_assignment(lvalue_types[k],
                                              index_lvalues[k],
@@ -625,7 +624,7 @@ class TypeChecker(NodeVisitor[Type]):
                                              context, msg)
         else:
             self.fail(msg, context)
-    
+
     def check_single_assignment(self,
             lvalue_type: Type, index_lvalue: IndexExpr,
             rvalue: Node, context: Context,
@@ -1157,6 +1156,12 @@ class TypeChecker(NodeVisitor[Type]):
     def fail(self, msg: str, context: Context) -> None:
         """Produce an error message."""
         self.msg.fail(msg, context)
+
+    def iterable_item_type(self, instance: Instance) -> Type:
+        iterable = map_instance_to_supertype(
+            instance,
+            self.lookup_typeinfo('builtins.Iterable'))
+        return iterable.args[0]
 
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,

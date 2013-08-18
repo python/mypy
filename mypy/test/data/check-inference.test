@@ -174,8 +174,8 @@ class A: pass
 main: In function "f":
 
 
--- Inferring local variable types in multiple definition
--- -----------------------------------------------------
+-- Inferring variable types in multiple definition
+-- -----------------------------------------------
 
 
 [case testInferringLvarTypesInMultiDef]
@@ -269,6 +269,17 @@ def f(d: Any) -> None:
     a, b = d
     a.x
     b.x
+
+[case testInferringTypesFromIterable]
+from typing import Iterable
+class Nums(Iterable[int]):
+    def __iter__(self): pass
+    def __next__(self): pass
+a, b = Nums()
+a = b = 1
+a = '' # E: Incompatible types in assignment
+b = '' # E: Incompatible types in assignment
+[builtins fixtures/for.py]
 
 
 -- Type variable inference for generic functions
