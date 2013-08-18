@@ -922,6 +922,10 @@ def divmod(a: int, b: int) -> Tuple[int, int]: pass
 @overload
 def divmod(a: float, b: float) -> Tuple[float, float]: pass
 
+# TODO code object as source
+def eval(source: str, globals: Dict[str, Any] = None,
+         locals: Mapping[str, Any] = None) -> Any: pass
+
 def filter(function: Function[[T], Any],
            iterable: Iterable[T]) -> Iterator[T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
