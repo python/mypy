@@ -75,9 +75,10 @@ class StringIO(TextIO):
     
 class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
-    def __init__(buffer: IO, encoding: str = None, errors: str = None,
-                  newline: str = None, line_buffering: bool = False,
-                  write_through: bool = True) -> None: pass
+    def __init__(self, buffer: IO, encoding: str = None, errors: str = None,
+                 newline: str = None, line_buffering: bool = False,
+                 write_through: bool = True) -> None:
+        self.mode = ''
     # TODO see comments in IO for missing functionality
     def close(self) -> None: pass
     def closed(self) -> bool: pass
