@@ -23,6 +23,8 @@ S = 0
 DOTALL = 0
 X = 0
 VERBOSE = 0
+U = 0
+UNICODE = 0
 
 class error(Exception): pass
 
