@@ -385,13 +385,10 @@ main, line 6: Invalid assignment target
 [case testInvalidDel]
 import typing
 x = 1
-del x # not supported yet
-del x.y # not supported
-del x + 1
+del x.y # E: Invalid delete target
+del x + 1 # E: Invalid delete target
+del z # E: Name 'z' is not defined
 [out]
-main, line 3: Invalid delete target
-main, line 4: Invalid delete target
-main, line 5: Invalid delete target
 
 [case testFunctionTvarScope]
 from typing import typevar

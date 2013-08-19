@@ -423,6 +423,30 @@ MypyFile:1(
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y]))))
 
+[case testDelGlobalName]
+x = 1
+del x
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x* [__main__.x])
+    IntExpr(1))
+  DelStmt:2(
+    NameExpr(x [__main__.x])))
+
+[case testLocalName]
+def f(x):
+    del x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x))
+    Block:1(
+      DelStmt:2(
+        NameExpr(x [l])))))
+
 [case testTry]
 class c: pass
 try:
