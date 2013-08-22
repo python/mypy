@@ -886,7 +886,8 @@ class TypeChecker(NodeVisitor[Type]):
             c.line = s.line
             return c.accept(self)
         else:
-            return None # this case is handled in semantical analysis
+            s.expr.accept(self)
+            return None
     
     def visit_decorator(self, e: Decorator) -> Type:
         e.func.accept(self)

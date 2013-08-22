@@ -500,6 +500,16 @@ class B:
   def __delitem__(self, index: 'A'): pass
 class A: pass
 
+[case testDelStmtWithAttribute]
+import typing
+class A:
+    def f(self): pass
+    x = 0
+a = A()
+del a.f
+del a.x
+del a.z # E: "A" has no attribute "z"
+
 
 -- Yield statement
 -- ---------------

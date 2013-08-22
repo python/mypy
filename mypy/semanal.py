@@ -972,7 +972,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     def visit_del_stmt(self, s: DelStmt) -> None:
         s.expr.accept(self)
-        if not isinstance(s.expr, (IndexExpr, NameExpr)):
+        if not isinstance(s.expr, (IndexExpr, NameExpr, MemberExpr)):
             self.fail('Invalid delete target', s)
     
     def visit_global_decl(self, g: GlobalDecl) -> None:

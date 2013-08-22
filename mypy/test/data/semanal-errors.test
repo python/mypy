@@ -385,9 +385,9 @@ main, line 6: Invalid assignment target
 [case testInvalidDel]
 import typing
 x = 1
-del x.y # E: Invalid delete target
+del x(1)  # E: Invalid delete target
 del x + 1 # E: Invalid delete target
-del z # E: Name 'z' is not defined
+del z     # E: Name 'z' is not defined
 [out]
 
 [case testFunctionTvarScope]
