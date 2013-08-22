@@ -266,6 +266,18 @@ class MyError(BaseException): pass
 [out]
 main, line 5: Invalid exception type
 
+[case testRaiseClassobject]
+import typing
+class A: pass
+class MyError(BaseException): pass
+def f(): pass
+raise BaseException
+raise MyError
+raise A # E: Invalid exception type
+raise object # E: Invalid exception type
+raise f # E: Invalid exception type
+[builtins fixtures/exception.py]
+
 [case testTryFinallyStatement]
 import typing
 try:

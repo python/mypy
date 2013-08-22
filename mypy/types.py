@@ -220,6 +220,9 @@ class FunctionLike(Type):
     def is_type_obj(self) -> bool: pass
 
     @abstractmethod
+    def type_object(self) -> mypy.nodes.TypeInfo: pass
+
+    @abstractmethod
     def items(self) -> List['Callable']: pass
 
     @abstractmethod
@@ -346,8 +349,13 @@ class Overloaded(FunctionLike):
     
     def is_type_obj(self) -> bool:
         # All the items must have the same type object status, so it's
-        # sufficient to query only one of them.
+        # sufficient to query only (any) one of them.
         return self._items[0].is_type_obj()
+
+    def type_object(self) -> mypy.nodes.TypeInfo:
+        # All the items must have the same type object, so it's sufficient to
+        # query only (any) one of them.
+        return self._items[0].type_object()
     
     def with_name(self, name: str) -> 'Overloaded':
         ni = List[Callable]()

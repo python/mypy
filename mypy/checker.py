@@ -749,6 +749,15 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a raise statement."""
         if s.expr:
             typ = self.accept(s.expr)
+            if isinstance(typ, FunctionLike):
+                if typ.is_type_obj():
+                    # Cases like "raise ExceptionClass".
+                    typeinfo = typ.type_object()
+                    base = self.lookup_typeinfo('builtins.BaseException')
+                    if base in typeinfo.mro:
+                        # Good!
+                        return None
+                    # Else fall back to the check below (which will fail).
             self.check_subtype(typ,
                                self.named_type('builtins.BaseException'), s,
                                messages.INVALID_EXCEPTION_TYPE)
