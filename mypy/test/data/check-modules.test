@@ -38,7 +38,7 @@ try:
     pass
 except m.Err:
     pass
-except m.Bad: # E: Invalid exception type
+except m.Bad: # E: Exception type must be derived from BaseException
     pass
 [file m.py]
 class Err(BaseException): pass
@@ -52,7 +52,7 @@ try:
     pass
 except Err:
     pass
-except Bad: # E: Invalid exception type
+except Bad: # E: Exception type must be derived from BaseException
     pass
 [file m.py]
 class Err(BaseException): pass

@@ -760,7 +760,7 @@ class TypeChecker(NodeVisitor[Type]):
                     # Else fall back to the check below (which will fail).
             self.check_subtype(typ,
                                self.named_type('builtins.BaseException'), s,
-                               messages.INVALID_EXCEPTION_TYPE)
+                               messages.INVALID_EXCEPTION)
     
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""

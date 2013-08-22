@@ -264,7 +264,7 @@ class A: pass
 class MyError(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 5: Invalid exception type
+main, line 5: Exception must be derived from BaseException
 
 [case testRaiseClassobject]
 import typing
@@ -273,9 +273,9 @@ class MyError(BaseException): pass
 def f(): pass
 raise BaseException
 raise MyError
-raise A # E: Invalid exception type
-raise object # E: Invalid exception type
-raise f # E: Invalid exception type
+raise A # E: Exception must be derived from BaseException
+raise object # E: Exception must be derived from BaseException
+raise f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.py]
 
 [case testTryFinallyStatement]
@@ -435,8 +435,8 @@ class E2(E1): pass
 try:
     pass
 except (E1, E2): pass
-except (E1, object): pass # E: Invalid exception type
-except (object, E2): pass # E: Invalid exception type
+except (E1, object): pass # E: Exception type must be derived from BaseException
+except (object, E2): pass # E: Exception type must be derived from BaseException
 [builtins fixtures/exception.py]
 
 [case testExceptWithMultipleTypes2]
@@ -478,8 +478,8 @@ except a as b:
 import typing
 def exc() -> BaseException: pass
 try: pass
-except exc as e: pass             # E: Invalid exception type
-except BaseException() as b: pass # E: Invalid exception type
+except exc as e: pass             # E: Exception type must be derived from BaseException
+except BaseException() as b: pass # E: Exception type must be derived from BaseException
 [builtins fixtures/exception.py]
 
 [case testOverloadedExceptionType]
