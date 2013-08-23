@@ -141,6 +141,9 @@ class SemanticAnalyzer(NodeVisitor):
         defs = file_node.defs
         for d in defs:
             d.accept(self)
+
+        if self.cur_mod_id == 'builtins':
+            remove_imported_names_from_symtable(self.globals, 'builtins')
     
     def visit_func_def(self, defn: FuncDef) -> None:
         self.errors.push_function(defn.name())
@@ -1589,3 +1592,16 @@ def enable_typevars(nodes: List[SymbolTableNode]) -> None:
     for node in nodes:
         assert node.kind in (TVAR, UNBOUND_TVAR)
         node.kind = TVAR
+
+
+def remove_imported_names_from_symtable(names: SymbolTable,
+                                        module: str) -> None:
+    """Remove all imported names from the symbol table of a module."""
+    removed = List[str]()
+    for name, node in names.items():
+        fullname = node.node.fullname()
+        prefix = fullname[:fullname.rfind('.')]
+        if prefix != module:
+            removed.append(name)
+    for name in removed:
+        del names[name]

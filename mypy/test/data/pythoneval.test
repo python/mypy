@@ -492,3 +492,9 @@ print(f(b''))
 [out]
 foo
 b'zar'
+
+[case testNameNotImportedFromTyping]
+import typing
+Any(1)
+[out]
+_program.py, line 2: Name 'Any' is not defined

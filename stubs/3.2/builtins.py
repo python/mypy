@@ -8,6 +8,9 @@ from typing import (
 )
 from abc import abstractmethod, ABCMeta
 
+# Note that names imported above are not automatically made visible via the
+# implicit builtins import.
+
 T = typevar('T')
 KT = typevar('KT')
 VT = typevar('VT')
