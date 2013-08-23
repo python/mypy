@@ -998,17 +998,19 @@ def f(): pass
 [out]
 
 [case testIncompatibleSignatureInComment]
+import typing
 def f(): # type: (int) -> int
   pass
 def g(x): # type: () -> int
   pass
 [out]
 main: In function "f":
-main, line 1: Type signature has too many arguments
+main, line 2: Type signature has too many arguments
 main: In function "g":
-main, line 3: Type signature has too few arguments
+main, line 4: Type signature has too few arguments
 
 [case testStaticmethodAndNonMethod]
+import typing
 @staticmethod
 def f(): pass
 class A:
@@ -1017,17 +1019,19 @@ class A:
     def h(): pass
 [builtins fixtures/staticmethod.py]
 [out]
-main, line 1: 'staticmethod' used with a non-method
+main, line 2: 'staticmethod' used with a non-method
 main: In function "g":
-main, line 5: 'staticmethod' used with a non-method
+main, line 6: 'staticmethod' used with a non-method
 
 [case testNonMethodProperty]
+import typing
 @property  # E: 'property' used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.py]
 [out]
 
 [case testInvalidArgCountForProperty]
+import typing
 class A:
     @property
     def f(self, x) -> int: pass  # E: Too many arguments
@@ -1049,6 +1053,7 @@ class A:
 [out]
 
 [case testImportTwoModulesWithSameNameInFunction]
+import typing
 def f() -> None:
     import x
     import y as x # E: Name 'x' already defined
@@ -1060,6 +1065,7 @@ y = 1
 main: In function "f":
 
 [case testImportTwoModulesWithSameNameInGlobalContext]
+import typing
 import x
 import y as x # E: Name 'x' already defined
 x.y
