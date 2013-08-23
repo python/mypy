@@ -1058,3 +1058,12 @@ y = 1
 [file y.py]
 [out]
 main: In function "f":
+
+[case testImportTwoModulesWithSameNameInGlobalContext]
+import x
+import y as x # E: Name 'x' already defined
+x.y
+[file x.py]
+y = 1
+[file y.py]
+[out]

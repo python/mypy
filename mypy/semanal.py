@@ -1260,7 +1260,8 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.type:
             self.type.names[name] = node
         else:
-            if name in self.globals and not isinstance(node.node, MypyFile):
+            if name in self.globals and (not isinstance(node.node, MypyFile) or
+                                         self.globals[name].node != node.node):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
                 self.name_already_defined(name, context)
