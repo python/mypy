@@ -13,8 +13,7 @@ AbstractGeneric = object()
 Tuple = object()
 Function = object()
 
-# Type aliases. These need to be classes, but their definition is not used,
-# so their value does not matter.
+# Type aliases.
 List = object()
 Dict = object()
 Set = object()
