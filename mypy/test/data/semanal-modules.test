@@ -607,3 +607,28 @@ MypyFile:1(
       MemberExpr:3(
         NameExpr(_x)
         y [_x.y]))))
+
+[case testImportModuleTwice]
+def f() -> None:
+    import x
+    import x
+    x.y
+[file x.py]
+y = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:1(
+      Import:2(x : x)
+      Import:3(x : x)
+      ExpressionStmt:4(
+        MemberExpr:4(
+          NameExpr(x)
+          y [x.y])))))
+MypyFile:1(
+  tmp/x.py
+  AssignmentStmt:1(
+    NameExpr(y* [x.y])
+    IntExpr(1)))

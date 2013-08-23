@@ -1252,7 +1252,10 @@ class SemanticAnalyzer(NodeVisitor):
                    context: Context) -> None:
         if self.is_func_scope():
             if name in self.locals[-1]:
-                self.name_already_defined(name, context)
+                # Flag redefinition unless this is a reimport of a module.
+                if not (node.kind == MODULE_REF and
+                        self.locals[-1][name].node == node.node):
+                    self.name_already_defined(name, context)
             self.locals[-1][name] = node
         elif self.type:
             self.type.names[name] = node
