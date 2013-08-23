@@ -1,7 +1,8 @@
--- Test cases for running mypy programs using CPython and type checking using
--- full stubs.
+-- Test cases for type checking mypy programs using full stubs and running
+-- using CPython.
 -- 
--- These are mostly regression tests.
+-- These are mostly regression tests -- no attempt is made to make these
+-- complete.
 
 
 [case testHello]

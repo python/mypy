@@ -62,10 +62,13 @@ def test_python_evaluation(testcase):
     os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
     os.environ['MYPYPATH'] = '.'
     # Run the program.
-    outb = subprocess.check_output([python3_path,
-                                    os.path.join('scripts', 'mypy')] +
-                                   args +
-                                   [program])
+    process = subprocess.Popen([python3_path,
+                                os.path.join('scripts', 'mypy')] +
+                               args +
+                               [program],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
+    outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
