@@ -1417,3 +1417,22 @@ MypyFile:1(
     def [T in (builtins.int, builtins.str)] (x: T`-1) -> T`-1
     Block:3(
       PassStmt:3())))
+
+[case testGenericClassWithValueSet]
+from typing import typevar, Generic
+T = typevar('T', values=(int, str))
+class C(Generic[T]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Values(
+        builtins.int
+        builtins.str)))
+  TypeDef:3(
+    C
+    TypeVars(
+      T in (builtins.int, builtins.str))
+    PassStmt:3()))

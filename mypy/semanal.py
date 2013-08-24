@@ -392,8 +392,9 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Duplicate Generic or AbstractGeneric in bases',
                               defn)
                 removed.append(i)
-                for j, name in enumerate(tvars):
-                    type_vars.append(TypeVarDef(name, j + 1, None))
+                for j, tvar in enumerate(tvars):
+                    name, values = tvar
+                    type_vars.append(TypeVarDef(name, j + 1, values))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -401,7 +402,8 @@ class SemanticAnalyzer(NodeVisitor):
         for i in reversed(removed):
             del defn.base_types[i]
 
-    def analyze_typevar_declaration(self, t: Type) -> List[str]:
+    def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str,
+                                                                 List[Type]]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
@@ -410,7 +412,7 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         if sym.node.fullname() in ('typing.Generic',
                                    'typing.AbstractGeneric'):
-            tvars = List[str]()
+            tvars = List[Tuple[str, List[Type]]]()
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
@@ -421,13 +423,13 @@ class SemanticAnalyzer(NodeVisitor):
             return tvars
         return None
 
-    def analyze_unbound_tvar(self, t: Type) -> str:
+    def analyze_unbound_tvar(self, t: Type) -> Tuple[str, List[Type]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
-            return unbound.name
+            return unbound.name, cast(TypeVarExpr, sym.node).values[:]
         return None
 
     def setup_type_def_analysis(self, defn: TypeDef) -> None:
