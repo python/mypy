@@ -824,7 +824,7 @@ class SemanticAnalyzer(NodeVisitor):
         result = List[Type]()
         for node in items:
             try:
-                result.append(expr_to_unanalyzed_type(node))
+                result.append(self.anal_type(expr_to_unanalyzed_type(node)))
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType())

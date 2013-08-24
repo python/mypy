@@ -1387,15 +1387,15 @@ MypyFile:1(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2(
       Values(
-        int?
-        str?)))
+        builtins.int
+        builtins.str)))
   AssignmentStmt:3(
     NameExpr(S* [__main__.S])
     TypeVarExpr:3(
       Values(
-        Any?
-        int?
-        str?))))
+        Any
+        builtins.int
+        builtins.str))))
 
 [case testGenericFunctionWithValueSet]
 from typing import typevar
@@ -1408,8 +1408,8 @@ MypyFile:1(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2(
       Values(
-        int?
-        str?)))
+        builtins.int
+        builtins.str)))
   FuncDef:3(
     f
     Args(
