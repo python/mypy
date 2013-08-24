@@ -1149,6 +1149,8 @@ class TypeVarExpr(SymbolNode):
 
     _name = ''
     _fullname = ''
+    # Value restriction: only types in the list are valid as values. If the
+    # list is empty, there is no restriction.
     values = Undefined(List['mypy.types.Type'])
 
     def __init__(self, name: str, fullname: str,
