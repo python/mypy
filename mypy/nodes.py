@@ -398,7 +398,7 @@ class TypeDef(Node):
             base_types = []
         self.name = name
         self.defs = defs
-        self.type_vars = type_vars
+        self.type_vars = type_vars or []
         self.base_types = base_types
         self.metaclass = metaclass
     

@@ -165,3 +165,12 @@ a = Undefined(A[int])
 b = Undefined(A[str])
 d = Undefined(A[object]) # E: Invalid type argument value for "A"
 c = Undefined(A[Any])
+
+[case testTypeApplicationAndTypevarValues]
+from typing import typevar, Generic, Undefined, Any
+X = typevar('X', values=(int, str))
+class A(Generic[X]): pass
+A[int]()
+A[str]()
+A[Any]()
+A[object]() # E: Type argument 1 of "A" has incompatible value "object"

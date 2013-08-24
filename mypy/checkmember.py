@@ -232,8 +232,8 @@ def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
 def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
     """Create a type object type based on the signature of __init__."""
     variables = [] # type: List[TypeVarDef]
-    for i in range(len(info.type_vars)): # TODO bounds
-        variables.append(TypeVarDef(info.type_vars[i], i + 1, None))
+    for i, tvar in enumerate(info.defn.type_vars):
+        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values))
 
     initvars = init_type.variables
     variables.extend(initvars)
@@ -272,7 +272,7 @@ class TvarTranslator(TypeTranslator):
         for v in variables:
             if v.id > 0:
                 items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        None))
+                                        v.values))
             else:
                 items.append(v)
         return items
