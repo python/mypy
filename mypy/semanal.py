@@ -1419,7 +1419,7 @@ class FirstPass(NodeVisitor):
 
 
 class ThirdPass(TraverserVisitor[None]):
-    """Check type argument counts of generic types.
+    """Check type argument counts and values of generic types.
 
     This is the third and final pass of semantic analysis.
     """

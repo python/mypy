@@ -156,3 +156,12 @@ def h(x: int) -> int: pass
 def g(a: T) -> None:
     h(f(a))
 [out]
+
+[case testGenericTypeWithTypevarValues]
+from typing import typevar, Generic, Undefined, Any
+X = typevar('X', values=(int, str))
+class A(Generic[X]): pass
+a = Undefined(A[int])
+b = Undefined(A[str])
+d = Undefined(A[object]) # E: Invalid type argument value for "A"
+c = Undefined(A[Any])

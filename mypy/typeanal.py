@@ -8,6 +8,7 @@ from mypy.types import (
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
+from mypy.sametypes import is_same_type
 from mypy import nodes
 
 
@@ -50,10 +51,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TupleType(self.anal_array(t.args), t.line, t.repr)
             else:
                 # Analyze arguments and construct Instance type. The
-                # number of type arguments is checked only later,
-                # since we do not always know the valid count at this
-                # point. Thus we may construct an Instance with an
-                # invalid number of type arguments.
+                # number of type arguments and their values are
+                # checked only later, since we do not always know the
+                # valid count at this point. Thus we may construct an
+                # Instance with an invalid number of type arguments.
                 return Instance(info, self.anal_array(t.args), t.line, t.repr)
         else:
             return t
@@ -125,7 +126,7 @@ class TypeAnalyser(TypeVisitor[Type]):
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):
-    """Analyze type argument counts of types.
+    """Analyze type argument counts and values of generic types.
 
     This is semantic analysis pass 3 for types.
 
@@ -135,6 +136,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
      * Make implicit Any type argumenents explicit my modifying types
        in-place. For example, modify Foo into Foo[Any] if Foo expects a single
        type argument.
+     * If a type variable has a value restriction, ensure that the value is
+       valid. For example, reject IO[int] if the type argument must be str
+       or bytes.
 
     We can't do this earlier than the third pass, since type argument counts
     are only determined in pass 2, and we have to support forward references
@@ -164,6 +168,16 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 act = 'none'
             self.fail('"{}" expects {}, but {} given'.format(
                 info.name(), s, act), t)
+        elif info.defn.type_vars:
+            # Check type argument values.
+            for arg, typevar in zip(t.args, info.defn.type_vars):
+                if typevar.values:
+                    if (not isinstance(arg, AnyType) and
+                        not any(is_same_type(arg, value)
+                                for value in typevar.values)):
+                        self.fail(
+                            'Invalid type argument value for "{}"'.format(
+                                info.name()), t)
         for arg in t.args:
             arg.accept(self)
 
