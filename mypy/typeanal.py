@@ -146,10 +146,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     
     def visit_instance(self, t: Instance) -> None:
         info = t.type
+        # Check type argument count.
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
-                # Implicit 'Any' type arguments.
-                # TODO remove <Type> below
+                # Insert implicit 'Any' type arguments.
                 t.args = [AnyType()] * len(info.type_vars)
                 return
             # Invalid number of type parameters.
