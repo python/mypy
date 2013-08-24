@@ -527,7 +527,7 @@ class TypeChecker(NodeVisitor[Type]):
                             len(names), len(init_type.items), context)
                 elif (isinstance(init_type, Instance) and
                       is_subtype(init_type,
-                                 self.named_generic_type('builtins.Iterable',
+                                 self.named_generic_type('typing.Iterable',
                                                          [AnyType()]))):
                     # Initializer with an iterable type.
                     item_type = self.iterable_item_type(cast(Instance,
@@ -612,7 +612,7 @@ class TypeChecker(NodeVisitor[Type]):
                         lvalue_types[j], index_lvalues[j],
                         self.temp_node(rvalue_type.items[j]), context, msg)
         elif (is_subtype(rvalue_type,
-                         self.named_generic_type('builtins.Iterable',
+                         self.named_generic_type('typing.Iterable',
                                                  [AnyType()])) and
               isinstance(rvalue_type, Instance)):
             # Rvalue is iterable.
@@ -840,7 +840,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # Non-tuple iterable.
             self.check_subtype(iterable,
-                               self.named_generic_type('builtins.Iterable',
+                               self.named_generic_type('typing.Iterable',
                                                        [AnyType()]),
                                expr, messages.ITERABLE_EXPECTED)
 
@@ -1170,7 +1170,7 @@ class TypeChecker(NodeVisitor[Type]):
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(
             instance,
-            self.lookup_typeinfo('builtins.Iterable'))
+            self.lookup_typeinfo('typing.Iterable'))
         return iterable.args[0]
 
 

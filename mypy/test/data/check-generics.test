@@ -629,10 +629,9 @@ a[1], a[2] = a
 
 class A: pass
 [file builtins.py]
-from typing import typevar, Generic
+from typing import typevar, Generic, Iterable
 T = typevar('T')
 class object: pass
-class Iterable(Generic[T]): pass
 class list(Iterable[T], Generic[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
 class int: pass

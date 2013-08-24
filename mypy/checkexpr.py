@@ -1021,7 +1021,7 @@ class ExpressionChecker:
             e.generator, 'builtins.list', '<list-comprehension>')
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
-        return self.check_generator_or_comprehension(e, 'builtins.Iterator',
+        return self.check_generator_or_comprehension(e, 'typing.Iterator',
                                                      '<generator>')
     
     def check_generator_or_comprehension(self, gen: GeneratorExpr,
