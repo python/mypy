@@ -204,3 +204,15 @@ main: In function "g":
 main, line 11: Invalid type argument value for "D"
 main: In function "h":
 main, line 13: Type variable "Z" not valid as type argument value for "D"
+
+[case testGenericTypeWithTypevarValuesAndSubtypePromotion]
+from typing import typevar, Generic, Undefined
+X = typevar('X', values=(int, str))
+class S(str): pass
+class C(Generic[X]):
+    def __init__(self, x: X) -> None: pass
+x = Undefined(C[str])
+y = C(S())
+x = y
+y = x
+y = C[int](1) # E: Incompatible types in assignment
