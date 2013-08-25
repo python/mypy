@@ -524,3 +524,11 @@ _program.py: In function "bin":
 _program.py, line 8: Argument 1 to "write" of "IO" has incompatible type "bytearray"
 _program.py: At top level:
 _program.py, line 10: Argument 1 to "bin" has incompatible type "TextIO"
+
+[case testBuiltinOpen]
+f = open('x')
+f.write('x')
+f.write(b'x')
+f.foobar()
+[out]
+_program.py, line 4: IO[Any] has no attribute "foobar"

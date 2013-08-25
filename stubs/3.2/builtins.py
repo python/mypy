@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, TextIO
+    SupportsRound, IO
 )
 from abc import abstractmethod, ABCMeta
 
@@ -986,19 +986,18 @@ def next(i: Iterator[T], default: T) -> T: pass
 # TODO __index__
 def oct(i: int) -> str: pass
 
-# TODO return type
 @overload
 def open(file: str, mode: str = 'r', buffering: int = -1, encoding: str = None,
          errors: str = None, newline: str = None,
-         closefd: bool = True) -> Any: pass
+         closefd: bool = True) -> IO[Any]: pass
 @overload
 def open(file: bytes, mode: str = 'r', buffering: int = -1,
          encoding: str = None, errors: str = None, newline: str = None,
-         closefd: bool = True) -> Any: pass
+         closefd: bool = True) -> IO[Any]: pass
 @overload
 def open(file: int, mode: str = 'r', buffering: int = -1, encoding: str = None,
          errors: str = None, newline: str = None,
-         closefd: bool = True) -> Any: pass
+         closefd: bool = True) -> IO[Any]: pass
 
 @overload
 def ord(c: str) -> int: pass
@@ -1008,7 +1007,7 @@ def ord(c: bytes) -> int: pass
 def ord(c: bytearray) -> int: pass
 
 def print(*values: Any, *, sep: str = ' ', end: str = '\n',
-           file: TextIO = None) -> None: pass
+           file: IO[str] = None) -> None: pass
 
 # The return type can be int or float, depending on the value of y.
 @overload
