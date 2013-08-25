@@ -61,7 +61,7 @@ else:
 
 try:
     import _thread
-    _allocate_lock = _thread.allocate_lock # type: Function[[], Any]
+    _allocate_lock = _thread.allocate_lock # type: _Function[[], _Any]
 except ImportError:
     import _dummy_thread
     _allocate_lock = _dummy_thread.allocate_lock
