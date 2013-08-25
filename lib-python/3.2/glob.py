@@ -4,7 +4,7 @@ import os
 import re
 import fnmatch
 
-from typing import overload, List, Iterator, Iterable, AnyStr
+from typing import overload, List, Iterator, Iterable, Any, AnyStr
 
 __all__ = ["glob", "iglob"]
 

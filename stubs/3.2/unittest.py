@@ -8,7 +8,8 @@
 # Only a subset of functionality is included.
 
 from typing import (
-    Any, Function, Iterable, Undefined, Tuple, List, TextIO, typevar
+    Any, Function, Iterable, Undefined, Tuple, List, TextIO, Sequence,
+    overload, typevar
 )
 from abc import abstractmethod, ABCMeta
 
