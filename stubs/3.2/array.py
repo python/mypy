@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/array.html
 
-from typing import Any, Iterable, Tuple, List, Iterator, IO, overload
+from typing import Any, Iterable, Tuple, List, Iterator, BinaryIO, overload
 
 typecodes = ''
 
@@ -18,7 +18,7 @@ class array:
     def count(self, x: Any) -> int: pass
     def extend(self, iterable: Iterable[Any]) -> None: pass
     def frombytes(self, s: bytes) -> None: pass
-    def fromfile(self, f: IO, n: int) -> None: pass
+    def fromfile(self, f: BinaryIO, n: int) -> None: pass
     def fromlist(self, list: List[Any]) -> None: pass
     def fromstring(self, s: bytes) -> None: pass
     def fromunicode(self, s: str) -> None: pass
@@ -28,7 +28,7 @@ class array:
     def remove(self, x: Any) -> None: pass
     def reverse(self) -> None: pass
     def tobytes(self) -> bytes: pass
-    def tofile(self, f: IO) -> None: pass
+    def tofile(self, f: BinaryIO) -> None: pass
     def tolist(self) -> List[Any]: pass
     def tostring(self) -> bytes: pass
     def tounicode(self) -> str: pass

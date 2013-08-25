@@ -23,7 +23,7 @@ import warnings
 from test import support
 from test.support import check_warnings, captured_stdout
 
-from typing import Any, Function, Tuple, List, Sequence, IO, overload
+from typing import Any, Function, Tuple, List, Sequence, BinaryIO, overload
 
 import bz2
 BZ2_SUPPORTED = True
@@ -876,7 +876,7 @@ class TestCopyFile(unittest.TestCase):
         self._delete = True
 
     def test_w_source_open_fails(self) -> None:
-        def _open(filename: str, mode: str= 'r') -> IO:
+        def _open(filename: str, mode: str= 'r') -> BinaryIO:
             if filename == 'srcfile':
                 raise IOError('Cannot open "srcfile"')
             assert 0  # shouldn't reach here.

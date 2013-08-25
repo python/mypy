@@ -1,6 +1,6 @@
 # TODO these are incomplete
 
-from typing import overload, List, Undefined, Tuple, IO
+from typing import overload, List, Undefined, Tuple, BinaryIO
 
 ZIP_STORED = 0
 ZIP_DEFLATED = 0
@@ -8,7 +8,7 @@ ZIP_DEFLATED = 0
 @overload
 def is_zipfile(filename: str) -> bool: pass
 @overload
-def is_zipfile(filename: IO) -> bool: pass
+def is_zipfile(filename: BinaryIO) -> bool: pass
 
 class ZipInfo:
     filename = ''
@@ -22,7 +22,7 @@ class ZipFile:
                  compression: int = ZIP_STORED,
                  allowZip64: bool = False) -> None: pass
     @overload
-    def __init__(self, file: IO, mode: str = 'r',
+    def __init__(self, file: BinaryIO, mode: str = 'r',
                   compression: int = ZIP_STORED,
                  allowZip64: bool = False) -> None: pass
     

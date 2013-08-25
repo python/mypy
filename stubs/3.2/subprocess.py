@@ -27,9 +27,9 @@ class CalledProcessError(Exception):
     output = b'' # May be None
 
 class Popen:
-    stdin = Undefined(Any)  # IO or TextIO
-    stdout = Undefined(Any) # IO or TextIO
-    stderr = Undefined(Any) # IO or TextIO
+    stdin = Undefined(Any)  # BinaryIO or TextIO
+    stdout = Undefined(Any) # BinaryIO or TextIO
+    stderr = Undefined(Any) # BinaryIO or TextIO
     pid = 0
     returncode = 0
     

@@ -7,11 +7,11 @@
 # cases don't use them.
 
 from typing import (
-    overload, List, Iterable, Function, Any, Tuple, Sequence, IO, TextIO
+    overload, List, Iterable, Function, Any, Tuple, Sequence, BinaryIO, TextIO
 )
 
 @overload
-def copyfileobj(fsrc: IO, fdst: IO, length: int = None) -> None: pass
+def copyfileobj(fsrc: BinaryIO, fdst: BinaryIO, length: int = None) -> None: pass
 @overload
 def copyfileobj(fsrc: TextIO, fdst: TextIO, length: int = None) -> None: pass
 

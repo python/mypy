@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    overload, Tuple, IO, TextIO, Pattern, BytesPattern, AnyStr, List, Set, Any
+    overload, Tuple, BinaryIO, TextIO, Pattern, BytesPattern, AnyStr, List, Set, Any
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
@@ -189,7 +189,7 @@ def _sameopenfile(fp1, fp2):
     return samestat(s1, s2)
 
 @overload
-def sameopenfile(fp1: IO, fp2: IO) -> bool:
+def sameopenfile(fp1: BinaryIO, fp2: BinaryIO) -> bool:
     """Test whether two open file objects reference the same file"""
     return _sameopenfile(fp1, fp2)
 @overload

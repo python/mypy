@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.3/library/tempfile.html
 
-from typing import Tuple, IO
+from typing import Tuple, BinaryIO
 
 # global variables
 tempdir = ''
@@ -15,17 +15,17 @@ template = ''
 def TemporaryFile(
             mode: str = 'w+b', buffering: int = None, encoding: str = None, 
             newline: str = None, suffix: str = '', prefix: str = 'tmp',
-            dir: str = None) -> IO:
+            dir: str = None) -> BinaryIO:
     pass
 def NamedTemporaryFile(
             mode: str = 'w+b', buffering: int = None, encoding: str = None, 
             newline: str = None, suffix: str = '', prefix: str = 'tmp',
-            dir: str = None, delete=True) -> IO: 
+            dir: str = None, delete=True) -> BinaryIO: 
     pass
 def SpooledTemporaryFile(
             max_size: int = 0, mode: str = 'w+b', buffering: int = None, 
             encoding: str = None, newline: str = None, suffix: str = '', 
-            prefix: str = 'tmp', dir: str = None) -> IO: 
+            prefix: str = 'tmp', dir: str = None) -> BinaryIO: 
     pass
 
 class TemporaryDirectory:

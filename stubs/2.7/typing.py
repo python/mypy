@@ -152,7 +152,7 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
     def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
 
-class IO(metaclass=ABCMeta):    
+class BinaryIO(metaclass=ABCMeta):    
     # TODO iteration
     # TODO mode
     # TODO name
@@ -201,7 +201,7 @@ class IO(metaclass=ABCMeta):
     def writelines(self, lines: list[str]) -> None: pass
 
     @abstractmethod
-    def __enter__(self) -> IO: pass
+    def __enter__(self) -> BinaryIO: pass
     @abstractmethod
     def __exit__(self, type, value, traceback) -> None: pass
 

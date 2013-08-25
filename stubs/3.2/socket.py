@@ -316,7 +316,7 @@ class socket:
     def ioctl(self, control: object,
               option: Tuple[int, int, int]) -> None: pass
     def listen(self, backlog: int) -> None: pass
-    # TODO the return value may be IO or TextIO, depending on mode
+    # TODO the return value may be BinaryIO or TextIO, depending on mode
     def makefile(self, mode: str = 'r', buffering: int = None, 
                  encoding: str = None, errors: str = None,
                  newline: str = None) -> Any: 

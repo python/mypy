@@ -2,11 +2,11 @@
 
 # NOTE: These are incomplete!
 
-from typing import Any, IO
+from typing import Any, BinaryIO
 
 def dumps(obj: Any, protocol: int = None, *,
           fix_imports: bool = True) -> bytes: pass
 def loads(p: bytes, *, fix_imports: bool = True,
           encoding: str = 'ASCII', errors: str = 'strict') -> Any: pass
-def load(file: IO, *, fix_imports: bool = True, encoding: str = 'ASCII',
+def load(file: BinaryIO, *, fix_imports: bool = True, encoding: str = 'ASCII',
          errors: str = 'strict') -> Any: pass

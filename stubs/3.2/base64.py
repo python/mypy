@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/base64.html
 
-from typing import IO
+from typing import BinaryIO
 
 def b64encode(s: bytes, altchars: bytes = None) -> bytes: pass
 def b64decode(s: bytes, altchars: bytes = None,
@@ -17,9 +17,9 @@ def b32decode(s: bytes, casefold: bool = False,
 def b16encode(s: bytes) -> bytes: pass
 def b16decode(s: bytes, casefold: bool = False) -> bytes: pass
 
-def decode(input: IO, output: IO) -> None: pass
+def decode(input: BinaryIO, output: BinaryIO) -> None: pass
 def decodebytes(s: bytes) -> bytes: pass
 def decodestring(s: bytes) -> bytes: pass
-def encode(input: IO, output: IO) -> None: pass
+def encode(input: BinaryIO, output: BinaryIO) -> None: pass
 def encodebytes(s: bytes) -> bytes: pass
 def encodestring(s: bytes) -> bytes: pass

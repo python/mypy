@@ -6,7 +6,7 @@
 # Partially adapted to Python 2.7 by Jukka Lehtosalo.
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, IO, overload
+    Undefined, List, Sequence, Any, Dict, Tuple, BinaryIO, overload
 )
 
 # ----- sys variables -----
@@ -37,12 +37,12 @@ platform = ''
 prefix = ''
 ps1 = ''
 ps2 = ''
-stdin = Undefined(IO)
-stdout = Undefined(IO)
-stderr = Undefined(IO)
-__stdin__ = Undefined(IO)
-__stdout__ = Undefined(IO)
-__stderr__ = Undefined(IO)
+stdin = Undefined(BinaryIO)
+stdout = Undefined(BinaryIO)
+stderr = Undefined(BinaryIO)
+__stdin__ = Undefined(BinaryIO)
+__stdout__ = Undefined(BinaryIO)
+__stderr__ = Undefined(BinaryIO)
 subversion = Undefined(Tuple[str, str, str])
 tracebacklimit = 0
 version = ''

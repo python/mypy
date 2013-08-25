@@ -4,7 +4,7 @@ import unittest
 from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
     Function, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
-    Sequence, AbstractSet, Mapping, IO, TextIO, SupportsInt, SupportsFloat,
+    Sequence, AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, cast,
     forwardref, overload, typevar
 )
@@ -375,7 +375,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance({}, Mapping)
 
     def test_io_types(self):
-        self.assertIsInstance(IO, type)
+        self.assertIsInstance(BinaryIO, type)
         self.assertIsInstance(TextIO, type)
 
     def test_supports_int(self):

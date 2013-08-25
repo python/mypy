@@ -17,12 +17,12 @@
 DEFAULT_BUFFER_SIZE = 0
 
 from builtins import open
-from typing import List, IO, TextIO, overload
+from typing import List, BinaryIO, TextIO, overload
 
-class BytesIO(IO):
+class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: bytes = b'') -> None: pass
     # TODO getbuffer
-    # TODO see comments in IO for missing functionality
+    # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
     def closed(self) -> bool: pass
     def fileno(self) -> int: pass
@@ -51,7 +51,7 @@ class BytesIO(IO):
 class StringIO(TextIO):
     def __init__(self, initial_value: str = '',
                  newline: str = None) -> None: pass
-    # TODO see comments in IO for missing functionality
+    # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
     def closed(self) -> bool: pass
     def fileno(self) -> int: pass
@@ -75,11 +75,11 @@ class StringIO(TextIO):
     
 class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
-    def __init__(self, buffer: IO, encoding: str = None, errors: str = None,
+    def __init__(self, buffer: BinaryIO, encoding: str = None, errors: str = None,
                  newline: str = None, line_buffering: bool = False,
                  write_through: bool = True) -> None:
         self.mode = ''
-    # TODO see comments in IO for missing functionality
+    # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
     def closed(self) -> bool: pass
     def fileno(self) -> int: pass

@@ -35,7 +35,7 @@ __all__ = [
     'Sized',
     'AbstractSet',
     'Mapping',
-    'IO',
+    'BinaryIO',
     'TextIO',
 ]
 
@@ -473,10 +473,10 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
 Mapping.register(dict)
 
 
-# Note that the IO and TextIO classes must be in sync with typing module stubs.
+# Note that the BinaryIO and TextIO classes must be in sync with typing module stubs.
 
 
-class IO(metaclass=ABCMeta):
+class BinaryIO(metaclass=ABCMeta):
     @abstractmethod
     def close(self) -> None: pass
     @abstractmethod
@@ -515,7 +515,7 @@ class IO(metaclass=ABCMeta):
     def writelines(self, lines: List[bytes]) -> None: pass
 
     @abstractmethod
-    def __enter__(self) -> 'IO': pass
+    def __enter__(self) -> 'BinaryIO': pass
     @abstractmethod
     def __exit__(self, type, value, traceback) -> None: pass
 
@@ -560,7 +560,7 @@ class TextIO(metaclass=ABCMeta):
     def __exit__(self, type, value, traceback) -> None: pass
 
 
-# TODO Register [Text]IO as the base class of file-like types.
+# TODO Register TextIO/BinaryIO as the base class of file-like types.
 
 
 del t

@@ -10,7 +10,7 @@ import re
 import struct
 import binascii
 
-from typing import Dict, List, Any, IO
+from typing import Dict, List, Any, BinaryIO
 
 
 __all__ = [
@@ -312,7 +312,7 @@ def b16decode(s: bytes, casefold: bool = False) -> bytes:
 MAXLINESIZE = 76 # Excluding the CRLF
 MAXBINSIZE = (MAXLINESIZE//4)*3
 
-def encode(input: IO, output: IO) -> None:
+def encode(input: BinaryIO, output: BinaryIO) -> None:
     """Encode a file; input and output are binary files."""
     while True:
         s = input.read(MAXBINSIZE)
@@ -327,7 +327,7 @@ def encode(input: IO, output: IO) -> None:
         output.write(line)
 
 
-def decode(input: IO, output: IO) -> None:
+def decode(input: BinaryIO, output: BinaryIO) -> None:
     """Decode a file; input and output are binary files."""
     while True:
         line = input.readline()

@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.path.html
 
-from typing import overload, List, Any, Tuple, IO, TextIO
+from typing import overload, List, Any, Tuple, BinaryIO, TextIO
 
 # ----- os.path variables -----
 supports_unicode_filenames = False
@@ -114,7 +114,7 @@ def samefile(path1: str, path2: str) -> bool: pass
 @overload
 def samefile(path1: bytes, path2: bytes) -> bool: pass
 @overload
-def sameopenfile(fp1: IO, fp2: IO) -> bool: pass
+def sameopenfile(fp1: BinaryIO, fp2: BinaryIO) -> bool: pass
 @overload
 def sameopenfile(fp1: TextIO, fp2: TextIO) -> bool: pass
 #def samestat(stat1: stat_result,
