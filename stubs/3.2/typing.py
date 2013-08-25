@@ -160,14 +160,11 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
     def items(self) -> AbstractSet[Tuple[KT, VT]]: pass
 
-class BinaryIO(metaclass=ABCMeta):    
+class IO(AbstractGeneric[AnyStr]):
     # TODO iteration
     # TODO mode
     # TODO name
     # TODO detach
-    # TODO readinto
-    # TODO read1?
-    # TODO peek?
     @abstractmethod
     def close(self) -> None: pass
     @abstractmethod
@@ -180,13 +177,13 @@ class BinaryIO(metaclass=ABCMeta):
     def isatty(self) -> bool: pass
     # TODO what if n is None?
     @abstractmethod
-    def read(self, n: int = -1) -> bytes: pass
+    def read(self, n: int = -1) -> AnyStr: pass
     @abstractmethod
     def readable(self) -> bool: pass
     @abstractmethod
-    def readline(self, limit: int = -1) -> bytes: pass
+    def readline(self, limit: int = -1) -> AnyStr: pass
     @abstractmethod
-    def readlines(self, hint: int = -1) -> list[bytes]: pass
+    def readlines(self, hint: int = -1) -> list[AnyStr]: pass
     @abstractmethod
     def seek(self, offset: int, whence: int = 0) -> int: pass
     @abstractmethod
@@ -199,67 +196,35 @@ class BinaryIO(metaclass=ABCMeta):
     @abstractmethod
     def writable(self) -> bool: pass
     # TODO buffer objects
+    @abstractmethod
+    def write(self, s: AnyStr) -> int: pass
+    @abstractmethod
+    def writelines(self, lines: list[AnyStr]) -> None: pass
+
+    @abstractmethod
+    def __enter__(self) -> 'IO[AnyStr]': pass
+    @abstractmethod
+    def __exit__(self, type, value, traceback) -> None: pass
+
+class BinaryIO(IO[bytes]):    
+    # TODO readinto
+    # TODO read1?
+    # TODO peek?
     @overload
     @abstractmethod
     def write(self, s: bytes) -> int: pass
     @overload
     @abstractmethod
     def write(self, s: bytearray) -> int: pass
-    @abstractmethod
-    def writelines(self, lines: list[bytes]) -> None: pass
 
     @abstractmethod
     def __enter__(self) -> BinaryIO: pass
-    @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass
 
-class TextIO(metaclass=ABCMeta):
-    # TODO iteration
+class TextIO(IO[str]):
     # TODO buffer?
     # TODO str encoding
     # TODO str errors
     # TODO line_buffering
-    # TODO mode
-    # TODO name
     # TODO any newlines
-    # TODO detach(self)
-    @abstractmethod
-    def close(self) -> None: pass
-    @abstractmethod
-    def closed(self) -> bool: pass
-    @abstractmethod
-    def fileno(self) -> int: pass
-    @abstractmethod
-    def flush(self) -> None: pass
-    @abstractmethod
-    def isatty(self) -> bool: pass
-    # TODO what if n is None?
-    @abstractmethod
-    def read(self, n: int = -1) -> str: pass
-    @abstractmethod
-    def readable(self) -> bool: pass
-    @abstractmethod
-    def readline(self, limit: int = -1) -> str: pass
-    @abstractmethod
-    def readlines(self, hint: int = -1) -> list[str]: pass
-    @abstractmethod
-    def seek(self, offset: int, whence: int = 0) -> int: pass
-    @abstractmethod
-    def seekable(self) -> bool: pass
-    @abstractmethod
-    def tell(self) -> int: pass
-    # TODO is None compatible with int?
-    @abstractmethod
-    def truncate(self, size: int = None) -> int: pass
-    @abstractmethod
-    def writable(self) -> bool: pass
-    # TODO buffer objects
-    @abstractmethod
-    def write(self, s: str) -> int: pass
-    @abstractmethod
-    def writelines(self, lines: list[str]) -> None: pass
-
     @abstractmethod
     def __enter__(self) -> TextIO: pass
-    @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass

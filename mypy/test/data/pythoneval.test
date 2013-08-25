@@ -498,3 +498,29 @@ import typing
 Any(1)
 [out]
 _program.py, line 2: Name 'Any' is not defined
+
+[case testBinaryIOType]
+from typing import BinaryIO
+def f(f: BinaryIO) -> None:
+    f.write(b'foo')
+    f.write(bytearray(b'foo'))
+[out]
+
+[case testIOTypes]
+from typing import IO
+import sys
+def txt(f: IO[str]) -> None:
+    f.write('foo')
+    f.write(b'foo')
+def bin(f: IO[bytes]) -> None:
+    f.write(b'foo')
+    f.write(bytearray(b'foo'))
+txt(sys.stdout)
+bin(sys.stdout)
+[out]
+_program.py: In function "txt":
+_program.py, line 5: Argument 1 to "write" of "IO" has incompatible type "bytes"
+_program.py: In function "bin":
+_program.py, line 8: Argument 1 to "write" of "IO" has incompatible type "bytearray"
+_program.py: At top level:
+_program.py, line 10: Argument 1 to "bin" has incompatible type "TextIO"
