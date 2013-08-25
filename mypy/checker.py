@@ -292,8 +292,18 @@ class TypeChecker(NodeVisitor[Type]):
                 expanded = cast(Callable, expand_type(typ, {var.id: value}))
                 result.append((expand_func(defn, {var.id: value}), expanded))
             return result
-        else:
-            return [(defn, typ)]
+        elif defn.info and defn.info.defn.type_vars:
+            tdef = defn.info.defn
+            if tdef.type_vars[0].values:
+                var = tdef.type_vars[0]
+                result = List[Tuple[FuncItem, Callable]]()
+                for value in var.values:
+                    expanded = cast(Callable, expand_type(typ,
+                                                          {var.id: value}))
+                    result.append((expand_func(defn, {var.id: value}),
+                                   expanded))
+                return result
+        return [(defn, typ)]
     
     def check_method_override(self, defn: FuncBase) -> None:
         """Check if function definition is compatible with base classes."""
@@ -332,6 +342,7 @@ class TypeChecker(NodeVisitor[Type]):
                                             base.name(),
                                             defn)
                     else:
+                        assert original_type is not None
                         self.msg.signature_incompatible_with_supertype(
                             defn.name(), base.name(), defn)
     
@@ -378,20 +389,9 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)
-        for item in self.expand_typevars_in_class(defn):
-            self.accept(item.defs)
+        self.accept(defn.defs)
         self.check_multiple_inheritance(typ)
         self.errors.pop_type()
-
-    def expand_typevars_in_class(self, defn: TypeDef) -> List[TypeDef]:
-        if defn.type_vars and defn.type_vars[0].values:
-            var = defn.type_vars[0]
-            result = List[TypeDef]()
-            for value in var.values:
-                result.append(expand_type_def(defn, {var.id: value}))
-            return result
-        else:
-            return [defn]
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Verify that multiply inherited attributes are compatible."""
@@ -1299,10 +1299,6 @@ def expand_node(defn: Node, map: Dict[int, Type]) -> Node:
 
 def expand_func(defn: FuncItem, map: Dict[int, Type]) -> FuncItem:
     return cast(FuncItem, expand_node(defn, map))
-
-
-def expand_type_def(defn: TypeDef, map: Dict[int, Type]) -> TypeDef:
-    return cast(TypeDef, expand_node(defn, map))
 
 
 class TypeTransformVisitor(TransformVisitor):

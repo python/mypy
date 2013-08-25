@@ -258,3 +258,11 @@ cn.x = '' # E: Incompatible types in assignment
 cs = C[str]()
 cs.x = ''
 cs.x = 1 # E: Incompatible types in assignment
+
+[case testInferredAttributeInGenericClassBodyWithTypevarValues]
+from typing import typevar, Generic, Undefined
+X = typevar('X', values=(int, str))
+class C(Generic[X]):
+    x = 1
+C.x = 1
+C.x = '' # E: Incompatible types in assignment
