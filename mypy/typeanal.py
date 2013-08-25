@@ -7,7 +7,9 @@ from mypy.types import (
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
 )
 from mypy.typerepr import TypeVarRepr
-from mypy.nodes import GDEF, TypeInfo, Context, SymbolTableNode, TVAR
+from mypy.nodes import (
+    GDEF, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr
+)
 from mypy.sametypes import is_same_type
 from mypy import nodes
 
@@ -31,7 +33,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                     rep = TypeVarRepr(t.repr.components[0])
                 else:
                     rep = None
-                return TypeVar(t.name, sym.tvar_id, [], False, t.line, rep)
+                values = cast(TypeVarExpr, sym.node).values
+                return TypeVar(t.name, sym.tvar_id, values, False, t.line, rep)
             elif sym.node.fullname() == 'builtins.None':
                 return Void()
             elif sym.node.fullname() == 'typing.Any':
@@ -172,14 +175,27 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             # Check type argument values.
             for arg, typevar in zip(t.args, info.defn.type_vars):
                 if typevar.values:
-                    if (not isinstance(arg, AnyType) and
-                        not any(is_same_type(arg, value)
-                                for value in typevar.values)):
-                        self.fail(
-                            'Invalid type argument value for "{}"'.format(
-                                info.name()), t)
+                    if isinstance(arg, TypeVar):
+                        arg_values = arg.values
+                        if not arg_values:
+                            self.fail('Type variable "{}" not valid as type '
+                                      'argument value for "{}"'.format(
+                                          arg.name, info.name()), t)
+                            continue
+                    else:
+                        arg_values = [arg]
+                    self.check_type_var_values(info, arg_values,
+                                               typevar.values, t)
         for arg in t.args:
             arg.accept(self)
+
+    def check_type_var_values(self, type: TypeInfo, actuals: List[Type],
+                              valids: List[Type], context: Context) -> None:
+        for actual in actuals:
+            if (not isinstance(actual, AnyType) and
+                not any(is_same_type(actual, value) for value in valids)):
+                self.fail('Invalid type argument value for "{}"'.format(
+                    type.name()), context)
 
     def visit_callable(self, t: Callable) -> None:
         t.ret_type.accept(self)
