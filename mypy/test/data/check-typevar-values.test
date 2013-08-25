@@ -266,3 +266,25 @@ class C(Generic[X]):
     x = 1
 C.x = 1
 C.x = '' # E: Incompatible types in assignment
+
+
+-- Special cases
+-- -------------
+
+
+[case testTypevarValuesSpecialCase1]
+from typing import typevar, Generic
+from abc import abstractmethod
+T = typevar('T', values=(int, str))
+class A(Generic[T]):
+    @abstractmethod
+    def f(self) -> 'A[T]': pass
+class B(A[str]):
+    @abstractmethod
+    def f(self) -> 'B': pass
+class C(A[str]):
+    @abstractmethod
+    def f(self) -> int: # E: Return type of "f" incompatible with supertype "A"
+        pass
+[out]
+main: In class "C":
