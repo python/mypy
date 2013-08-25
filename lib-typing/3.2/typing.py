@@ -16,6 +16,7 @@ __all__ = [
     'Dict',
     'Generic',
     'GenericMeta',
+    'IO',
     'List',
     'Match',
     'Pattern',
