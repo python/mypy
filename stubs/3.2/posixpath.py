@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.path.html
 
-from typing import List, Tuple, BinaryIO, TextIO, overload
+from typing import Any, List, Tuple, IO, overload
 
 # ----- os.path variables -----
 supports_unicode_filenames = False
@@ -36,10 +36,7 @@ def realpath(path: str) -> str: pass
 def relpath(path: str, start: str = None) -> str: pass
 def samefile(path1: str, path2: str) -> bool: pass
 
-@overload
-def sameopenfile(fp1: BinaryIO, fp2: BinaryIO) -> bool: pass
-@overload
-def sameopenfile(fp1: TextIO, fp2: TextIO) -> bool: pass
+def sameopenfile(fp1: IO[Any], fp2: IO[Any]) -> bool: pass
 
 #def samestat(stat1: stat_result, stat2: stat_result) -> bool:
 #    pass  # Unix only

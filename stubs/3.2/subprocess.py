@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/subprocess.html
 
-from typing import Sequence, Any, Mapping, Undefined, Function, Tuple
+from typing import Sequence, Any, Mapping, Undefined, Function, Tuple, IO
 
 # TODO force keyword arguments
 # TODO more keyword arguments
@@ -27,9 +27,9 @@ class CalledProcessError(Exception):
     output = b'' # May be None
 
 class Popen:
-    stdin = Undefined(Any)  # BinaryIO or TextIO
-    stdout = Undefined(Any) # BinaryIO or TextIO
-    stderr = Undefined(Any) # BinaryIO or TextIO
+    stdin = Undefined(IO[Any])
+    stdout = Undefined(IO[Any])
+    stderr = Undefined(IO[Any])
     pid = 0
     returncode = 0
     

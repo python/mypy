@@ -17,7 +17,7 @@
 DEFAULT_BUFFER_SIZE = 0
 
 from builtins import open
-from typing import List, BinaryIO, TextIO, overload
+from typing import List, BinaryIO, TextIO, IO, overload
 
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: bytes = b'') -> None: pass
@@ -75,8 +75,9 @@ class StringIO(TextIO):
     
 class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
-    def __init__(self, buffer: BinaryIO, encoding: str = None, errors: str = None,
-                 newline: str = None, line_buffering: bool = False,
+    def __init__(self, buffer: IO[bytes], encoding: str = None,
+                 errors: str = None, newline: str = None,
+                 line_buffering: bool = False,
                  write_through: bool = True) -> None:
         self.mode = ''
     # TODO see comments in BinaryIO for missing functionality
