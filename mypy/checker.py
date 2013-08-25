@@ -378,9 +378,20 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)
-        self.accept(defn.defs)
+        for item in self.expand_typevars_in_class(defn):
+            self.accept(item.defs)
         self.check_multiple_inheritance(typ)
         self.errors.pop_type()
+
+    def expand_typevars_in_class(self, defn: TypeDef) -> List[TypeDef]:
+        if defn.type_vars and defn.type_vars[0].values:
+            var = defn.type_vars[0]
+            result = List[TypeDef]()
+            for value in var.values:
+                result.append(expand_type_def(defn, {var.id: value}))
+            return result
+        else:
+            return [defn]
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Verify that multiply inherited attributes are compatible."""
@@ -1281,10 +1292,17 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
     return True
 
 
-def expand_func(defn: FuncItem, map: Dict[int, Type]) -> FuncItem:
+def expand_node(defn: Node, map: Dict[int, Type]) -> Node:
     visitor = TypeTransformVisitor(map)
-    result = defn.accept(visitor)
-    return cast(FuncItem, result)
+    return defn.accept(visitor)
+
+
+def expand_func(defn: FuncItem, map: Dict[int, Type]) -> FuncItem:
+    return cast(FuncItem, expand_node(defn, map))
+
+
+def expand_type_def(defn: TypeDef, map: Dict[int, Type]) -> TypeDef:
+    return cast(TypeDef, expand_node(defn, map))
 
 
 class TypeTransformVisitor(TransformVisitor):

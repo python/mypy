@@ -216,3 +216,45 @@ y = C(S())
 x = y
 y = x
 y = C[int](1) # E: Incompatible types in assignment
+
+[case testGenericTypeBodyWithTypevarValues]
+from typing import typevar, Generic
+class A:
+    def f(self, x: int) -> None: pass
+    def g(self, x: int) -> None: pass
+    def h(self, x: str) -> None: pass
+class B:
+    def f(self, x: int) -> None: pass
+    def g(self, x: str) -> None: pass
+    def h(self, x: int) -> None: pass
+X = typevar('X', values=(A, B))
+class C(Generic[X]):
+    def f(self, x: X) -> None:
+        x.f(1)
+        x.g(1) # E: Argument 1 to "g" of "B" has incompatible type "int"
+        x.h(1) # E: Argument 1 to "h" of "A" has incompatible type "int"
+[out]
+main: In member "f" of class "C":
+
+[case testAttributeInGenericTypeWithTypevarValues1]
+from typing import typevar, Generic, Undefined
+X = typevar('X', values=(int, str))
+class C(Generic[X]):
+    x = Undefined(X)
+    def f(self, x: X) -> None:
+        self.x = x
+        self.x = 1 # E: Incompatible types in assignment
+[out]
+main: In member "f" of class "C":
+
+[case testAttributeInGenericTypeWithTypevarValues2]
+from typing import typevar, Generic, Undefined
+X = typevar('X', values=(int, str))
+class C(Generic[X]):
+    x = Undefined(X)
+cn = C[int]()
+cn.x = 1
+cn.x = '' # E: Incompatible types in assignment
+cs = C[str]()
+cs.x = ''
+cs.x = 1 # E: Incompatible types in assignment
