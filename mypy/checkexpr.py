@@ -882,7 +882,7 @@ class ExpressionChecker:
     def check_list_or_set_expr(self, items: List[Node], fullname: str,
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
-        tv = TypeVar('T', -1)
+        tv = TypeVar('T', -1, [])
         constructor = Callable([tv],
                                [nodes.ARG_STAR],
                                [None],
@@ -918,8 +918,8 @@ class ExpressionChecker:
     
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
-        tv1 = TypeVar('KT', -1)
-        tv2 = TypeVar('VT', -2)
+        tv1 = TypeVar('KT', -1, [])
+        tv2 = TypeVar('VT', -2, [])
         constructor = Undefined(Callable)
         # The callable type represents a function like this:
         #
@@ -1037,7 +1037,7 @@ class ExpressionChecker:
         
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        tv = TypeVar('T', -1)
+        tv = TypeVar('T', -1, [])
         constructor = Callable([tv],
                                [nodes.ARG_POS],
                                [None],

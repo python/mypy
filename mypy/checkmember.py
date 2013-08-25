@@ -262,7 +262,7 @@ class TvarTranslator(TypeTranslator):
         if t.id < 0:
             return t
         else:
-            return TypeVar(t.name, -t.id - self.num_func_tvars)
+            return TypeVar(t.name, -t.id - self.num_func_tvars, t.values)
     
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:

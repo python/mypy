@@ -1473,7 +1473,8 @@ def self_type(typ: TypeInfo) -> Instance:
     """
     tv = List[Type]()
     for i in range(len(typ.type_vars)):
-        tv.append(TypeVar(typ.type_vars[i], i + 1))
+        tv.append(TypeVar(typ.type_vars[i], i + 1,
+                          typ.defn.type_vars[i].values))
     return Instance(typ, tv)
 
 

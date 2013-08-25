@@ -77,7 +77,7 @@ class TranslateTypeVarsToWrapperVarsVisitor(TypeTranslator):
     """Visitor that implements TranslateTypeVarsToWrapperVarsVisitor."""
     def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0:
-            return TypeVar(t.name, t.id, True, t.line, t.repr)
+            return TypeVar(t.name, t.id, t.values, True, t.line, t.repr)
         else:
             return t
 
@@ -89,7 +89,7 @@ def translate_type_vars_to_bound_vars(typ: Type) -> Type:
 class TranslateTypeVarsToBoundVarsVisitor(TypeTranslator):
     def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0:
-            return TypeVar(t.name, t.id, BOUND_VAR, t.line, t.repr)
+            return TypeVar(t.name, t.id, t.values, BOUND_VAR, t.line, t.repr)
         else:
             return t
 
@@ -101,7 +101,7 @@ def translate_type_vars_to_wrapped_object_vars(typ: Type) -> Type:
 class TranslateTypeVarsToWrappedObjectVarsVisitor(TypeTranslator):
     def visit_type_var(self, t: TypeVar) -> Type:
         if t.id > 0:
-            return TypeVar(t.name, t.id, OBJECT_VAR, t.line, t.repr)
+            return TypeVar(t.name, t.id, t.values, OBJECT_VAR, t.line, t.repr)
         else:
             return t
 

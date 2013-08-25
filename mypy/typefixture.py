@@ -23,13 +23,13 @@ class TypeFixture:
     def __init__(self):
         # Type variables
 
-        self.t = TypeVar('T', 1)    # T`1 (type variable)
-        self.tf = TypeVar('T', -1)  # T`-1 (type variable)
-        self.tf2 = TypeVar('T', -2) # T`-2 (type variable)
-        self.s = TypeVar('S', 2)    # S`2 (type variable)
-        self.s1 = TypeVar('S', 1)   # S`1 (type variable)
-        self.sf = TypeVar('S', -2)  # S`-2 (type variable)
-        self.sf1 = TypeVar('S', -1) # S`-1 (type variable)
+        self.t = TypeVar('T', 1, [])    # T`1 (type variable)
+        self.tf = TypeVar('T', -1, [])  # T`-1 (type variable)
+        self.tf2 = TypeVar('T', -2, []) # T`-2 (type variable)
+        self.s = TypeVar('S', 2, [])    # S`2 (type variable)
+        self.s1 = TypeVar('S', 1, [])   # S`1 (type variable)
+        self.sf = TypeVar('S', -2, [])  # S`-2 (type variable)
+        self.sf1 = TypeVar('S', -1, []) # S`-1 (type variable)
 
         # Simple types
 

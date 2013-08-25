@@ -192,7 +192,8 @@ class TypeVar(Type):
     """
     
     name = '' # Name of the type variable (for messages and debugging)
-    id = 0 # 1, 2, ... for type-related, -1, ... for function-related
+    id = 0    # 1, 2, ... for type-related, -1, ... for function-related
+    values = Undefined(List[Type])  # Value restriction
     
     # True if refers to the value of the type variable stored in a generic
     # instance wrapper. This is only relevant for generic class wrappers. If
@@ -202,10 +203,12 @@ class TypeVar(Type):
     # Can also be BoundVar/ObjectVar TODO better representation
     is_wrapper_var = Undefined(Any)
     
-    def __init__(self, name: str, id: int, is_wrapper_var: Any = False,
-                 line: int = -1, repr: Any = None) -> None:
+    def __init__(self, name: str, id: int, values: List[Type],
+                 is_wrapper_var: Any = False, line: int = -1,
+                 repr: Any = None) -> None:
         self.name = name
         self.id = id
+        self.values = values
         self.is_wrapper_var = is_wrapper_var
         super().__init__(line, repr)
     

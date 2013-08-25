@@ -31,7 +31,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     rep = TypeVarRepr(t.repr.components[0])
                 else:
                     rep = None
-                return TypeVar(t.name, sym.tvar_id, False, t.line, rep)
+                return TypeVar(t.name, sym.tvar_id, [], False, t.line, rep)
             elif sym.node.fullname() == 'builtins.None':
                 return Void()
             elif sym.node.fullname() == 'typing.Any':
