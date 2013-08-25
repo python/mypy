@@ -11,8 +11,6 @@ __all__ = [
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
-    'BytesMatch',
-    'BytesPattern',
     'Dict',
     'Generic',
     'GenericMeta',
@@ -141,12 +139,8 @@ Dict = TypeAlias(dict)
 Set = TypeAlias(set)
 Tuple = TypeAlias(tuple)
 Function = TypeAlias(callable)
-
-# Give names to some built-in types.
-Pattern = type(re.compile(''))
-BytesPattern = Pattern # TODO Pattern and BytesPattern shouldn't be the same!
-Match = type(re.match('', ''))
-BytesMatch = Match # TODO See above.
+Pattern = TypeAlias(type(re.compile('')))
+Match = TypeAlias(type(re.match('', '')))
 
 
 class typevar:

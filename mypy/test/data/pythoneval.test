@@ -66,7 +66,7 @@ sized
 other
 sized
 
-[case testOverloadUsingMatchAndPattern]
+[case testOverloadUsingMatchAndPattern-skip]
 import re
 from typing import overload, Any, Match, Pattern
 @overload
@@ -532,3 +532,23 @@ f.write(b'x')
 f.foobar()
 [out]
 _program.py, line 4: IO[Any] has no attribute "foobar"
+
+[case testGenericPatterns]
+from typing import Pattern, Undefined
+import re
+p = Undefined(Pattern[str])
+p = re.compile('foo*')
+b = Undefined(Pattern[bytes])
+b = re.compile(b'foo*')
+print(p.match('fooo').group(0))
+[out]
+fooo
+
+[case testGenericMatch]
+from typing import Match
+import re
+def f(m: Match[bytes]) -> None:
+    print(m.group(0))
+f(re.match(b'x*', b'xxy'))
+[out]
+b'xx'

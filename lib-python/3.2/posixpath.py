@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    overload, Tuple, BinaryIO, TextIO, Pattern, BytesPattern, AnyStr, List, Set, Any
+    overload, Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
@@ -286,8 +286,8 @@ def expanduser(path: AnyStr) -> AnyStr:
 # This expands the forms $variable and ${variable} only.
 # Non-existent variables are left unchanged.
 
-_varprog = None # type: Pattern
-_varprogb = None # type: BytesPattern
+_varprog = None # type: Pattern[str]
+_varprogb = None # type: Pattern[bytes]
 
 def expandvars(path: AnyStr) -> AnyStr:
     """Expand shell variables of form $var and ${var}.  Unknown variables
