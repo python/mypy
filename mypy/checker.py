@@ -500,9 +500,13 @@ class TypeChecker(NodeVisitor[Type]):
             self.infer_variable_type(inferred, lvalues, self.accept(rvalue),
                                      rvalue)
     
-    def is_definition(self, s):
-        return ((isinstance(s, NameExpr) or isinstance(s, MemberExpr)) and
-                s.is_def)
+    def is_definition(self, s: Node) -> bool:
+        if isinstance(s, NameExpr):
+            return s.is_def
+        elif isinstance(s, MemberExpr):
+            return s.is_def
+        else:
+            return False
     
     def expand_lvalues(self, n: Node) -> List[Node]:
         if isinstance(n, TupleExpr):
