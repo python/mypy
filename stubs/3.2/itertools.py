@@ -17,7 +17,7 @@ def repeat(object: T) -> Iterator[T]: pass
 def repeat(object: T, times: int) -> Iterator[T]: pass
 
 def accumulate(iterable: Iterable[T]) -> Iterator[T]: pass
-def chain( *iterables: Iterable[T]) -> Iterator[T]: pass
+def chain(*iterables: Iterable[T]) -> Iterator[T]: pass
 # TODO chain.from_Iterable
 def compress(data: Iterable[T], selectors: Iterable[Any]) -> Iterator[T]: pass
 def dropwhile(predicate: Function[[T], Any],
@@ -41,9 +41,9 @@ def starmap(func: Any, iterable: Iterable[Any]) -> Iterator[Any]: pass
 def takewhile(predicate: Function[[T], Any],
               iterable: Iterable[T]) -> Iterator[T]: pass
 def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
-def zip_longest( *p: Iterable[Any]) -> Iterator[Any]: pass # TODO fillvalue
+def zip_longest(*p: Iterable[Any]) -> Iterator[Any]: pass # TODO fillvalue
 
-def product( *p: Iterable[Any]) -> Iterator[Any]: pass # TODO repeat
+def product(*p: Iterable[Any]) -> Iterator[Any]: pass # TODO repeat
 # TODO int with None default
 def permutations(iterable: Iterable[Any], r: int = None) -> Iterator[Any]: pass
 def combinations(iterable: Iterable[Any], r: int) -> Iterable[Any]: pass

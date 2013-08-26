@@ -18,8 +18,8 @@ def copymode(src: str, dst: str) -> None: pass
 def copystat(src: str, dst: str) -> None: pass
 def copy(src: str, dst: str) -> None: pass
 def copy2(src: str, dst: str) -> None: pass
-def ignore_patterns( *patterns: str) -> Function[[str, List[str]],
-                                                 Iterable[str]]: pass
+def ignore_patterns(*patterns: str) -> Function[[str, List[str]],
+                                                Iterable[str]]: pass
 def copytree(src: str, dst: str, symlinks: bool = False,
              ignore: Function[[str, List[str]], Iterable[str]] = None,
              copy_function: Function[[str, str], None] = copy2,
