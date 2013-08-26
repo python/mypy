@@ -37,6 +37,8 @@ class TransformVisitor(NodeVisitor[Node]):
        nodes.
      * Types are not transformed, but you can override type() to also perform
        type transformation.
+
+    TODO nested classes and functions have not been tested well enough
     """
 
     def __init__(self) -> None:
