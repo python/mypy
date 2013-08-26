@@ -295,6 +295,38 @@ b = Undefined(C[B, str])
 c = Undefined(C[int, int]) # E: Invalid type argument value for "C"
 c = Undefined(C[A, A])     # E: Invalid type argument value for "C"
 
+[case testCallGenericFunctionUsingMultipleTypevarsWithValues]
+from typing import typevar
+class A: pass
+class B: pass
+X = typevar('X', values=(A, B))
+Y = typevar('Y', values=(int, str))
+def f(x: X, y: Y) -> None: pass
+f(A(), '')
+f(B(), 1)
+f(A(), A()) # E: Type argument 2 of "f" has incompatible value "A"
+f(1, 1) # E: Type argument 1 of "f" has incompatible value "int"
+
+[case testGenericFunctionWithNormalAndRestrictedTypevar]
+from typing import typevar, Generic, Undefined
+X = typevar('X')
+Y = typevar('Y', values=(int, str))
+class C(Generic[Y]):
+    def __init__(self, y: Y) -> None: pass
+def f(x: X, y: Y, z: int) -> None:
+    C(y)
+    C(x)  # Error
+    z = x # Error
+    z = y # Error
+    y.foo # Error
+[out]
+main: In function "f":
+main, line 8: Type argument 1 of "C" has incompatible value "X"
+main, line 9: Incompatible types in assignment
+main, line 10: Incompatible types in assignment
+main, line 11: "int" has no attribute "foo"
+main, line 11: "str" has no attribute "foo"
+
 
 -- Special cases
 -- -------------
