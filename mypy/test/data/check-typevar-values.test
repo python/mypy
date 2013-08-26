@@ -148,6 +148,43 @@ def f(x: T) -> T:
 [out]
 main: In function "f":
 
+[case testIsinstanceAndTypeVarValues3]
+from typing import typevar, Undefined
+T = typevar('T', values=(int, str))
+def f(x: T) -> T:
+    if isinstance(x, int):
+        y = 1
+    else:
+        y = ''
+    return y
+[builtins fixtures/isinstance.py]
+
+[case testIsinstanceAndTypeVarValues4]
+from typing import typevar, Undefined
+T = typevar('T', values=(int, str))
+def f(x: T) -> T:
+    if isinstance(x, int):
+        y = 1
+    else:
+        y = object()
+    return y # E: Incompatible return value type
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
+[case testIsinstanceAndTypeVarValues5]
+from typing import typevar, Undefined
+T = typevar('T', values=(int, str))
+def f(x: T) -> T:
+    if isinstance(x, int):
+        y = object()
+    else:
+        y = ''
+    return y # E: Incompatible return value type
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
 [case testTypeVarValuesAndNestedCalls]
 from typing import typevar
 T = typevar('T', values=(int, str))

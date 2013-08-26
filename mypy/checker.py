@@ -502,11 +502,19 @@ class TypeChecker(NodeVisitor[Type]):
     
     def is_definition(self, s: Node) -> bool:
         if isinstance(s, NameExpr):
-            return s.is_def
+            if s.is_def:
+                return True
+            # If the node type is not defined, this must the first assignment
+            # that we process => this is a definition, even though the semantic
+            # analyzer did not recognize this as such. This can arise in code
+            # that uses isinstance checks, if type checking of the primary
+            # definition is skipped due to an always False type check.
+            node = s.node
+            if isinstance(node, Var):
+                return node.type is None
         elif isinstance(s, MemberExpr):
             return s.is_def
-        else:
-            return False
+        return False
     
     def expand_lvalues(self, n: Node) -> List[Node]:
         if isinstance(n, TupleExpr):
