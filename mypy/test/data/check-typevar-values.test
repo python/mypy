@@ -348,3 +348,9 @@ class C(A[str]):
         pass
 [out]
 main: In class "C":
+
+[case testDefaultArgumentValueInGenericClassWithTypevarValues]
+from typing import typevar, Generic
+T = typevar('T', values=(int, str))
+class C(Generic[T]):
+    def f(self, x: int = None) -> None: pass

@@ -242,8 +242,8 @@ class TypeChecker(NodeVisitor[Type]):
             # We may be checking a function definition or an anonymous
             # function. In the first case, set up another reference with the
             # precise type.
-            if isinstance(defn, FuncDef):
-                fdef = defn
+            if isinstance(item, FuncDef):
+                fdef = item
             else:
                 fdef = None
 
@@ -255,7 +255,7 @@ class TypeChecker(NodeVisitor[Type]):
                         not isinstance(typ.ret_type, Void) and
                         not self.dynamic_funcs[-1]):
                     self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE,
-                              defn.type)
+                              item.type)
 
             # Push return type.
             self.return_types.append(typ.ret_type)
@@ -274,9 +274,9 @@ class TypeChecker(NodeVisitor[Type]):
                 item.args[i].type = arg_type
 
             # Type check initialization expressions.
-            for j in range(len(defn.init)):
-                if defn.init[j]:
-                    self.accept(defn.init[j])
+            for j in range(len(item.init)):
+                if item.init[j]:
+                    self.accept(item.init[j])
 
             # Type check body.
             self.accept(item.body)
