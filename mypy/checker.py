@@ -290,6 +290,7 @@ class TypeChecker(NodeVisitor[Type]):
         # TODO use generator
         subst = List[List[Tuple[int, Type]]]()
         tvars = typ.variables or []
+        tvars = tvars[:]
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
