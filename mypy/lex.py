@@ -173,14 +173,13 @@ str_prefixes = set(['r', 'b', 'br', 'u', 'ur'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
-             re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')] # type: List[Pattern]
+             re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
 
 # List of regular expressions that match punctuator tokens
 punctuators = [re.compile('[=,()@]'),
                re.compile('\\['),
                re.compile(']'),
-               re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')
-               ] # type: List[Pattern]
+               re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
 
 
 # Source file encodings
@@ -229,7 +228,7 @@ def _parse_str_literal(string: str) -> str:
         return escape_re.sub(lambda m: escape_repl(m, prefix), s[1:-1])
 
 
-def escape_repl(m: Match, prefix: str) -> str:
+def escape_repl(m: Match[str], prefix: str) -> str:
     """Translate a string escape sequence, e.g. \t -> the tab character.
 
     Assume that the Match object is from escape_re.
@@ -475,8 +474,9 @@ class Lexer:
             self.lex_str(re1, re2, self.str_exp_double3,
                          self.str_exp_double3end, prefix)
     
-    def lex_str(self, regex: Pattern, re2: Pattern, re3: Pattern,
-                re3end: Pattern, prefix: str = '') -> None:
+    def lex_str(self, regex: Pattern[str], re2: Pattern[str],
+                re3: Pattern[str], re3end: Pattern[str],
+                prefix: str = '') -> None:
         """Analyse a string literal described by regexps.
 
         Assume that the current location is at the beginning of the
@@ -506,7 +506,7 @@ class Lexer:
                 s = self.match(re.compile('[^\\n\\r]*'))
                 self.add_token(LexError(s, UNTERMINATED_STRING_LITERAL))
     
-    def lex_triple_quoted_str(self, re3end: Pattern, prefix: str) -> None:
+    def lex_triple_quoted_str(self, re3end: Pattern[str], prefix: str) -> None:
         line = self.line
         ss = self.s[self.i:self.i + len(prefix) + 3]
         self.i += len(prefix) + 3
@@ -532,7 +532,7 @@ class Lexer:
             lit = StrLit(ss + m.group(0))
         self.add_special_token(lit, line, len(m.group(0)))
     
-    def lex_multiline_string_literal(self, re_end: Pattern,
+    def lex_multiline_string_literal(self, re_end: Pattern[str],
                                      prefix: str) -> None:
         """Analyze multiline single/double-quoted string literal.
 
@@ -693,7 +693,7 @@ class Lexer:
     
     # Utility methods
     
-    def match(self, pattern: Pattern) -> str:
+    def match(self, pattern: Pattern[str]) -> str:
         """Try to match a regular expression at current location.
 
         If the argument regexp is matched at the current location,
