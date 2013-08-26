@@ -267,6 +267,34 @@ class C(Generic[X]):
 C.x = 1
 C.x = '' # E: Incompatible types in assignment
 
+[case testMultipleClassTypevarsWithValues1]
+from typing import typevar, Generic
+class A:
+    def f(self, x: int) -> None: pass
+class B:
+    def f(self, x: str) -> None: pass
+X = typevar('X', values=(A, B))
+Y = typevar('Y', values=(int, str))
+class C(Generic[X, Y]):
+    def f(self, x: X, y: Y) -> None:
+        x.f(y)
+[out]
+main: In member "f" of class "C":
+main, line 10: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 10: Argument 1 to "f" of "B" has incompatible type "int"
+
+[case testMultipleClassTypevarsWithValues2]
+from typing import typevar, Generic, Undefined
+class A: pass
+class B: pass
+X = typevar('X', values=(A, B))
+Y = typevar('Y', values=(int, str))
+class C(Generic[X, Y]): pass
+a = Undefined(C[A, int])
+b = Undefined(C[B, str])
+c = Undefined(C[int, int]) # E: Invalid type argument value for "C"
+c = Undefined(C[A, A])     # E: Invalid type argument value for "C"
+
 
 -- Special cases
 -- -------------

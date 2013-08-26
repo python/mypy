@@ -552,3 +552,16 @@ def f(m: Match[bytes]) -> None:
 f(re.match(b'x*', b'xxy'))
 [out]
 b'xx'
+
+[case testMultipleTypevarsWithValues]
+from typing import typevar
+
+T = typevar('T', values=(int, str))
+S = typevar('S', values=(int, str))
+
+def f(t: T, s: S) -> None:
+    t + s
+[out]
+_program.py: In function "f":
+_program.py, line 7: No overload variant of "__add__" of "int" matches argument types
+_program.py, line 7: Unsupported operand types for + ("str" and "int")

@@ -1,5 +1,7 @@
 """Mypy type checker."""
 
+import itertools
+            
 from typing import Undefined, Dict, List, cast, overload, Tuple
 
 from mypy.errors import Errors
@@ -285,25 +287,25 @@ class TypeChecker(NodeVisitor[Type]):
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:
-        if typ.variables and typ.variables[0].values:
-            var = typ.variables[0]
+        # TODO use generator
+        subst = List[List[Tuple[int, Type]]]()
+        tvars = typ.variables or []
+        if defn.info:
+            # Class type variables
+            tvars += defn.info.defn.type_vars or []
+        for tvar in tvars:
+            if tvar.values:
+                subst.append([(tvar.id, value)
+                              for value in tvar.values])
+        if subst:
             result = List[Tuple[FuncItem, Callable]]()
-            for value in var.values:
-                expanded = cast(Callable, expand_type(typ, {var.id: value}))
-                result.append((expand_func(defn, {var.id: value}), expanded))
+            for substitutions in itertools.product(*subst):
+                mapping = dict(substitutions)
+                expanded = cast(Callable, expand_type(typ, mapping))
+                result.append((expand_func(defn, mapping), expanded))
             return result
-        elif defn.info and defn.info.defn.type_vars:
-            tdef = defn.info.defn
-            if tdef.type_vars[0].values:
-                var = tdef.type_vars[0]
-                result = List[Tuple[FuncItem, Callable]]()
-                for value in var.values:
-                    expanded = cast(Callable, expand_type(typ,
-                                                          {var.id: value}))
-                    result.append((expand_func(defn, {var.id: value}),
-                                   expanded))
-                return result
-        return [(defn, typ)]
+        else:
+            return [(defn, typ)]
     
     def check_method_override(self, defn: FuncBase) -> None:
         """Check if function definition is compatible with base classes."""
