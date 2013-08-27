@@ -390,6 +390,8 @@ class ClassDef(Node):
     info = None # type: TypeInfo  # Related TypeInfo
     metaclass = ''
     decorators = Undefined(List[Node])
+    # Built-in/extension class? (single implementation inheritance only)
+    is_builtinclass = False
     
     def __init__(self, name: str, defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,

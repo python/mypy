@@ -333,7 +333,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.analyze_metaclass(defn)
 
         for decorator in defn.decorators:
-            decorator.accept(self)
+            self.analyze_class_decorator(defn, decorator)
 
         # Analyze class body.
         defn.defs.accept(self)
@@ -348,6 +348,11 @@ class SemanticAnalyzer(NodeVisitor):
         if self.type_stack:
             # Enable type variables of the enclosing class again.
             enable_typevars(self.type_stack[-1][1])
+
+    def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
+        decorator.accept(self)
+        if refers_to_fullname(decorator, 'typing.builtinclass'):
+            defn.is_builtinclass = True
     
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
