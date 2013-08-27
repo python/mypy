@@ -696,7 +696,7 @@ class tuple(Sized, Iterable[Any]):
 
 
 class function:
-    # TODO name of the class (corresponds to Python 'function' class)
+    # TODO not defined in builtins!
     __name__ = ''
     __module__ = ''
 
@@ -891,6 +891,7 @@ class range(Sequence[int], Reversible[int]):
 
 
 class module:
+    # TODO not defined in builtins!
     __name__ = ''
     __file__ = ''
     __dict__ = Undefined # type: Dict[str, Any]
@@ -1018,8 +1019,6 @@ def pow(x: int, y: int, z: int) -> Any: pass
 def pow(x: float, y: float) -> float: pass
 @overload
 def pow(x: float, y: float, z: float) -> float: pass
-
-# TODO property
 
 @overload
 def reversed(object: Reversible[T]) -> Iterator[T]: pass
