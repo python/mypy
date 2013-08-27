@@ -132,6 +132,8 @@ class TransformVisitor(NodeVisitor[Node]):
                       node.metaclass)
         new.fullname = node.fullname
         new.info = node.info
+        new.decorators = [decorator.accept(self)
+                          for decorator in node.decorators]
         return new
     
     def visit_var_def(self, node: VarDef) -> Node:
