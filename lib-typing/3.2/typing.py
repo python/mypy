@@ -39,6 +39,11 @@ __all__ = [
 ]
 
 
+def builtinclass(cls):
+    """Mark a class as a built-in/extension class for type checking."""
+    return cls
+
+
 class GenericMeta(type):
     """Metaclass for generic classes that support indexing by types."""
     

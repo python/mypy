@@ -5,8 +5,8 @@ from typing import (
     List, Dict, Set, Tuple, Pattern, Match, Any, Function, Generic,
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
-    SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, cast,
-    forwardref, overload, typevar
+    SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
+    cast, forwardref, overload, typevar
 )
 
 
@@ -791,6 +791,11 @@ class TestTyping(unittest.TestCase):
 
         self.assertEqual(C().f(2), 1)
         self.assertEqual(C().f(None), 'x')
+
+    def test_builtinclass(self):
+        class A: pass
+        self.assertIs(builtinclass(int), int)
+        self.assertIs(builtinclass(A), A)
 
 
 @overload
