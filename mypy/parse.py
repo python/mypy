@@ -287,7 +287,7 @@ class Parser:
         self.expect('=')
         return self.parse_qualified_name()[0]
     
-    def parse_decorated_function(self) -> Node:
+    def parse_decorated_function_or_class(self) -> Node:
         ats = List[Token]()
         brs = List[Token]()
         decorators = List[Node]()
@@ -295,15 +295,20 @@ class Parser:
             ats.append(self.expect('@'))
             decorators.append(self.parse_expression())
             brs.append(self.expect_break())
-        func = self.parse_function()
-        func.is_decorated = True
-        var = Var(func.name())
-        # Types of decorated functions must always be inferred.
-        var.is_ready = False
-        var.set_line(decorators[0].line)
-        node = Decorator(func, decorators, var)
-        self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
-        return node
+        if self.current_str() != 'class':
+            func = self.parse_function()
+            func.is_decorated = True
+            var = Var(func.name())
+            # Types of decorated functions must always be inferred.
+            var.is_ready = False
+            var.set_line(decorators[0].line)
+            node = Decorator(func, decorators, var)
+            self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
+            return node
+        else:
+            cls = self.parse_class_def()
+            cls.decorators = decorators
+            return cls
     
     def parse_function(self) -> FuncDef:
         def_tok = self.expect('def')
@@ -646,7 +651,7 @@ class Parser:
         elif ts == 'with':
             stmt = self.parse_with_stmt()
         elif ts == '@':
-            stmt = self.parse_decorated_function()
+            stmt = self.parse_decorated_function_or_class()
         elif ts == 'print' and self.pyversion == 2:
             stmt = self.parse_print_stmt()
         else:

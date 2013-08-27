@@ -2578,3 +2578,28 @@ MypyFile:1(
       Var(z))
     Block:1(
       PassStmt:2())))
+
+[case testClassDecorator]
+@foo
+class X: pass
+@foo(bar)
+@x.y
+class Z: pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    X
+    Decorators(
+      NameExpr(foo))
+    PassStmt:2())
+  ClassDef:3(
+    Z
+    Decorators(
+      CallExpr:3(
+        NameExpr(foo)
+        Args(
+          NameExpr(bar)))
+      MemberExpr:4(
+        NameExpr(x)
+        y))
+    PassStmt:5()))

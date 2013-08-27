@@ -389,6 +389,7 @@ class ClassDef(Node):
     base_types = Undefined(List['mypy.types.Type'])
     info = None # type: TypeInfo  # Related TypeInfo
     metaclass = ''
+    decorators = Undefined(List[Node])
     
     def __init__(self, name: str, defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
@@ -401,6 +402,7 @@ class ClassDef(Node):
         self.type_vars = type_vars or []
         self.base_types = base_types
         self.metaclass = metaclass
+        self.decorators = []
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_class_def(self)
