@@ -185,6 +185,50 @@ def f(x: T) -> T:
 [out]
 main: In function "f":
 
+[case testIsinstanceWithUserDefinedTypeAndTypeVarValues]
+from typing import typevar, Undefined
+class A: pass
+class B: pass
+T = typevar('T', values=(A, B))
+def f(x: T) -> None:
+    y = x
+    if isinstance(x, A):
+        # This is checked both when x is A or B, since A and B are overlapping
+        # types.
+        x = y # E: Incompatible types in assignment
+        x = A()
+    else:
+        x = B()
+        x = y
+        x.foo() # E: "B" has no attribute "foo"
+S = typevar('S', values=(int, str))
+def g(x: S) -> None:
+    y = x
+    if isinstance(x, int):
+        x = y
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
+[case testIsinstanceWithUserDefinedTypeAndTypeVarValues2]
+from typing import typevar, Undefined
+class S(str): pass
+T = typevar('T', values=(S, int))
+def f(x: T) -> None:
+    y = x
+    if isinstance(x, S):
+        # This is checked only when type of x is str.
+        x = y
+        x = S()
+        x = 1 # E: Incompatible types in assignment
+    else:
+        x = y
+        x = 1
+        x = S() # E: Incompatible types in assignment
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
 [case testTypeVarValuesAndNestedCalls]
 from typing import typevar
 T = typevar('T', values=(int, str))

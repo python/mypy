@@ -1287,24 +1287,31 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
     return None
 
 
-primitive_types = {'builtins.int',
-                   'builtins.float',
-                   'builtins.str',
-                   'builtins.bytes'}
-
-
 def is_overlapping_types(t: Type, s: Type) -> bool:
-    """Can a value of type t be a value of type s, or vice versa?
-
-    TODO Currently only certain primitive types are considered non-overlapping.
-    """
+    """Can a value of type t be a value of type s, or vice versa?"""
     if isinstance(t, Instance):
         if isinstance(s, Instance):
-            if (t.type != s.type and
-                t.type.fullname() in primitive_types and
-                s.type.fullname() in primitive_types):
-                return False
+            # Only built-in classes in the mro affect whether two types can be
+            # overlapping.
+            # TODO Find the most distant ancestor with the same memory layout,
+            #      since multiple inheritance seems possible if the memory
+            #      layout is the same.
+            tbuiltin = nearest_builtin_ancestor(t.type)
+            sbuiltin = nearest_builtin_ancestor(s.type)
+            
+            # If one is a base class of other, the types overlap.
+            if tbuiltin in sbuiltin.mro or sbuiltin in tbuiltin.mro:
+                return True
+            return tbuiltin == sbuiltin
     return True
+
+
+def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
+    for base in type.mro:
+        if base.defn.is_builtinclass:
+            return base
+    else:
+        assert False, 'No built-in ancestor found for {}'.format(type.name())
 
 
 def expand_node(defn: Node, map: Dict[int, Type]) -> Node:
