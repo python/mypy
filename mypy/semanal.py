@@ -481,6 +481,11 @@ class SemanticAnalyzer(NodeVisitor):
         except MroError:
             self.fail("Cannot determine consistent method resolution order "
                       '(MRO) for "%s"' % defn.name, defn)
+        else:
+            # If there are cyclic imports, we may be missing 'object' in
+            # the MRO. Fix MRO if needed.
+            if defn.info.mro[-1].fullname() != 'builtins.object':
+                defn.info.mro.append(self.object_type().type)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         base_classes = List[str]()
