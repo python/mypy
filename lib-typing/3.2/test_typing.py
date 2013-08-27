@@ -2,9 +2,9 @@ from abc import abstractmethod, ABCMeta
 import unittest
 
 from typing import (
-    List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
-    Function, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
-    Sequence, AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
+    List, Dict, Set, Tuple, Pattern, Match, Any, Function, Generic,
+    AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
+    AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, cast,
     forwardref, overload, typevar
 )
@@ -30,17 +30,13 @@ class TestTyping(unittest.TestCase):
 
     def test_Pattern(self):
         import re
-        self.assertIs(type(re.compile('')), Pattern)
-        self.assertIs(type(re.compile(b'')), BytesPattern)
-        # Note that actually Pattern is the same as BytesPattern, which is
-        # a bit awkward.
+        self.assertIs(type(re.compile('')), Pattern.target_type)
+        self.assertIs(type(re.compile(b'')), Pattern.target_type)
 
     def test_Match(self):
         import re
-        self.assertIs(type(re.match('', '')), Match)
-        self.assertIs(type(re.match(b'', b'')), BytesMatch)
-        # Note that actually Match is the same as BytesMatch, which is
-        # a bit awkward.
+        self.assertIs(type(re.match('', '')), Match.target_type)
+        self.assertIs(type(re.match(b'', b'')), Match.target_type)
         
     def test_Any(self):
         o = object()
