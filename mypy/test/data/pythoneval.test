@@ -575,3 +575,9 @@ class A:
 print(A(2).x)
 [out]
 3
+
+[case testSystemExitCode]
+import typing
+print(SystemExit(5).code)
+[out]
+5

@@ -1091,7 +1091,9 @@ class BaseException:
 
 class GeneratorExit(BaseException): pass
 class KeyboardInterrupt(BaseException): pass
-class SystemExit(BaseException): pass
+@builtinclass
+class SystemExit(BaseException):
+    code = 0
 
 # Base classes
 class Exception(BaseException): pass
