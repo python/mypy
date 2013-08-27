@@ -446,3 +446,16 @@ MypyFile:1(
         Property
         Block:4(
           PassStmt:4())))))
+
+[case testClassDecorator]
+import typing
+@object
+class A: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  ClassDef:2(
+    A
+    Decorators(
+      NameExpr(object [builtins.object]))
+    PassStmt:3()))

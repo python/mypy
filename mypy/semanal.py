@@ -332,6 +332,9 @@ class SemanticAnalyzer(NodeVisitor):
         self.analyze_base_classes(defn)
         self.analyze_metaclass(defn)
 
+        for decorator in defn.decorators:
+            decorator.accept(self)
+
         # Analyze class body.
         defn.defs.accept(self)
 
