@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, TextIO
+    SupportsRound, TextIO, builtinclass
 )
 from abc import abstractmethod, ABCMeta
 
@@ -22,6 +22,7 @@ T4 = typevar('T4')
 staticmethod = object() # Only valid as a decorator.
 
 
+@builtinclass
 class object:
     __doc__ = ''
     __class__ = Undefined # type: type
@@ -40,6 +41,7 @@ class object:
 # Classes
 
 
+@builtinclass
 class type:
     __name__ = ''
     __module__ = ''
@@ -48,6 +50,7 @@ class type:
     def __init__(self, o: object) -> None: pass
 
 
+@builtinclass
 class int(SupportsInt, SupportsFloat):
     @overload
     def __init__(self) -> None: pass
@@ -136,6 +139,7 @@ class int(SupportsInt, SupportsFloat):
     def __hash__(self) -> int: pass
 
     
+@builtinclass
 class float(SupportsFloat, SupportsInt):
     @overload
     def __init__(self) -> None: pass
@@ -198,11 +202,13 @@ class float(SupportsFloat, SupportsInt):
     def __hash__(self) -> int: pass
 
 
+@builtinclass
 class complex:
     # TODO this is just a placeholder; add more members
     def __init__(self, re: float, im: float = 0.0) -> None: pass
 
 
+@builtinclass
 class unicode(Sequence[unicode]):
     # TODO maketrans
     
@@ -317,6 +323,7 @@ class unicode(Sequence[unicode]):
     def __hash__(self) -> int: pass
     
 
+@builtinclass
 class str(Sequence[str]):
     # TODO fromhex
     # TODO maketrans
@@ -475,6 +482,7 @@ class str(Sequence[str]):
     def __ge__(self, x: object) -> bool: pass
 
 
+@builtinclass
 class bytearray(Sequence[int]):
     # TODO fromhex
     # TODO maketrans
@@ -662,10 +670,12 @@ class bytearray(Sequence[int]):
     def __ge__(self, x: object) -> bool: pass
 
 
+@builtinclass
 class bool(int, SupportsInt, SupportsFloat):
     def __init__(self, o: object = False) -> None: pass
 
 
+@builtinclass
 class slice:
     start = 0
     step = 0
@@ -673,6 +683,7 @@ class slice:
     def __init__(self, start: int, stop: int, step: int) -> None: pass
 
 
+@builtinclass
 class tuple(Sized):
     @overload
     def __init__(self) -> None: pass
@@ -687,12 +698,14 @@ class tuple(Sized):
     def __ge__(self, x: tuple) -> bool: pass
 
 
+@builtinclass
 class function:
     # TODO name of the class (corresponds to Python 'function' class)
     __name__ = ''
     __module__ = ''
 
 
+@builtinclass
 class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     @overload
     def __init__(self) -> None: pass
@@ -742,6 +755,7 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __reversed__(self) -> Iterator[T]: pass
 
 
+@builtinclass
 class dict(Mapping[KT, VT], Generic[KT, VT]):
     @overload
     def __init__(self) -> None: pass
@@ -791,6 +805,7 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
 
 
+@builtinclass
 class set(AbstractSet[T], Generic[T]):
     @overload
     def __init__(self) -> None: pass
@@ -813,6 +828,7 @@ class set(AbstractSet[T], Generic[T]):
     # TODO more set operations
 
 
+@builtinclass
 class frozenset(AbstractSet[T], Generic[T]):
     @overload
     def __init__(self) -> None: pass
@@ -832,6 +848,7 @@ class frozenset(AbstractSet[T], Generic[T]):
     # TODO more set operations
 
 
+@builtinclass
 class enumerate(Iterator[Tuple[int, T]], Generic[T]):
     def __init__(self, iterable: Iterable[T], start: int = 0) -> None: pass
     def __iter__(self) -> Iterator[Tuple[int, T]]: pass
@@ -839,6 +856,7 @@ class enumerate(Iterator[Tuple[int, T]], Generic[T]):
     # TODO __getattribute__
 
 
+@builtinclass
 class xrange(Sized, Iterable[int], Reversible[int]):
     @overload
     def __init__(self, stop: int) -> None: pass
@@ -851,6 +869,7 @@ class xrange(Sized, Iterable[int], Reversible[int]):
     def __reversed__(self) -> Iterator[int]: pass
 
 
+@builtinclass
 class module:
     __name__ = ''
     __file__ = ''
@@ -1026,6 +1045,7 @@ def __import__(name: str,
 # Exceptions
 
 
+@builtinclass
 class BaseException:
     args = Undefined # type: Any
     def __init__(self, *args: Any) -> None: pass
@@ -1040,6 +1060,7 @@ class StopIteration(Exception): pass
 class StandardError(Exception): pass
 
 class ArithmeticError(StandardError): pass
+@builtinclass
 class EnvironmentError(StandardError):
     errno = 0
     strerror = ''
