@@ -6,7 +6,7 @@ y = x
 [out]
 MypyFile:1(
   Import:1(typing : typing)
-  TypeDef:2(
+  ClassDef:2(
     A
     PassStmt:2())
   AssignmentStmt:3(
@@ -28,7 +28,7 @@ y = x
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
-  TypeDef:3(
+  ClassDef:3(
     A
     PassStmt:3())
   AssignmentStmt:4(
@@ -48,7 +48,7 @@ def f():
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
-  TypeDef:2(
+  ClassDef:2(
     A
     PassStmt:2())
   FuncDef:3(
@@ -85,7 +85,7 @@ class A:
 [out]
 MypyFile:1(
   Import:1(typing : typing)
-  TypeDef:2(
+  ClassDef:2(
     A
     FuncDef:3(
       __init__
@@ -107,7 +107,7 @@ class A:
 [out]
 MypyFile:1(
   Import:1(typing : typing)
-  TypeDef:2(
+  ClassDef:2(
     A
     AssignmentStmt:3(
       NameExpr(x [m])
@@ -126,7 +126,7 @@ def g(x: Any, y: A) -> None:
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Any : Any])
-  TypeDef:2(
+  ClassDef:2(
     A
     PassStmt:2())
   FuncDef:3(
@@ -154,10 +154,10 @@ class A: pass
 class B(A): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     PassStmt:1())
-  TypeDef:2(
+  ClassDef:2(
     B
     BaseType(
       __main__.A)
@@ -172,10 +172,10 @@ x = a, b
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
-  TypeDef:2(
+  ClassDef:2(
     A
     PassStmt:2())
-  TypeDef:3(
+  ClassDef:3(
     B
     PassStmt:3())
   AssignmentStmt:4(
@@ -207,12 +207,12 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  TypeDef:5(
+  ClassDef:5(
     A
     TypeVars(
       t)
     PassStmt:5())
-  TypeDef:6(
+  ClassDef:6(
     B
     PassStmt:6())
   AssignmentStmt:7(
@@ -240,13 +240,13 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(s* [__main__.s])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     A
     TypeVars(
       t
       s)
     PassStmt:4())
-  TypeDef:5(
+  ClassDef:5(
     B
     PassStmt:5())
   AssignmentStmt:6(
@@ -266,7 +266,7 @@ def f():
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Undefined : Undefined])
-  TypeDef:3(
+  ClassDef:3(
     A
     PassStmt:3())
   AssignmentStmt:4(
@@ -340,7 +340,7 @@ MypyFile:1(
     NameExpr(x [__main__.x])
     UndefinedExpr:2(__main__.A)
     __main__.A)
-  TypeDef:3(
+  ClassDef:3(
     A
     PassStmt:3()))
 
@@ -358,10 +358,10 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     c
     PassStmt:3())
-  TypeDef:4(
+  ClassDef:4(
     d
     TypeVars(
       t)
@@ -425,7 +425,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(s* [__main__.s])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     C
     TypeVars(
       t
@@ -537,7 +537,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       t)
@@ -562,7 +562,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       t)
@@ -586,7 +586,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       t)
@@ -610,7 +610,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       t)
@@ -644,7 +644,7 @@ class A:
   def f(self, o: object) -> None: pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       f
@@ -689,7 +689,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  TypeDef:5(
+  ClassDef:5(
     c
     TypeVars(
       t)
@@ -718,7 +718,7 @@ MypyFile:1(
   AssignmentStmt:4(
     NameExpr(s* [__main__.s])
     TypeVarExpr:4())
-  TypeDef:6(
+  ClassDef:6(
     c
     TypeVars(
       t
@@ -743,12 +743,12 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     d
     TypeVars(
       t)
     PassStmt:3())
-  TypeDef:4(
+  ClassDef:4(
     c
     TypeVars(
       t)
@@ -914,7 +914,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(s* [__main__.s])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     A
     TypeVars(
       t
@@ -940,12 +940,12 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(s* [__main__.s])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     B
     TypeVars(
       s)
     PassStmt:4())
-  TypeDef:5(
+  ClassDef:5(
     A
     TypeVars(
       t)
@@ -964,7 +964,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       t)
@@ -993,7 +993,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(s* [__main__.s])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     A
     TypeVars(
       t
@@ -1047,7 +1047,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       t)
@@ -1176,7 +1176,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(T* [__main__.T])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     A
     TypeVars(
       T)
@@ -1248,7 +1248,7 @@ class A:
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [typevar : typevar])
-  TypeDef:2(
+  ClassDef:2(
     A
     AssignmentStmt:3(
       NameExpr(T* [m])
@@ -1274,7 +1274,7 @@ T = typevar('T')
 MypyFile:1(
   ImportFrom:1(typing, [Generic : Generic])
   ImportFrom:2(_m, [T : T])
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       T)
@@ -1297,7 +1297,7 @@ T = typevar('T')
 MypyFile:1(
   ImportFrom:1(typing, [Generic : Generic])
   Import:2(_m : _m)
-  TypeDef:3(
+  ClassDef:3(
     A
     TypeVars(
       _m.T)
@@ -1363,7 +1363,7 @@ class A:
 [out]
 MypyFile:1(
   Import:1(typing : typing)
-  TypeDef:2(
+  ClassDef:2(
     A
     FuncDef:3(
       f
@@ -1431,7 +1431,7 @@ MypyFile:1(
       Values(
         builtins.int
         builtins.str)))
-  TypeDef:3(
+  ClassDef:3(
     C
     TypeVars(
       T in (builtins.int, builtins.str))

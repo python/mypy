@@ -7,7 +7,7 @@ from typing import List, Dict
 
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
-    OverloadedFuncDef, TypeDef, Decorator, Block, Var, VarDef,
+    OverloadedFuncDef, ClassDef, Decorator, Block, Var, VarDef,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, YieldStmt, DelStmt, BreakStmt, ContinueStmt,
     PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
@@ -33,7 +33,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
      * Do not duplicate TypeInfo nodes. This would generally not be desirable.
      * Only update some name binding cross-references, but only those that
-       refer to Var nodes, not those targeting TypeDef, TypeInfo or FuncDef
+       refer to Var nodes, not those targeting ClassDef, TypeInfo or FuncDef
        nodes.
      * Types are not transformed, but you can override type() to also perform
        type transformation.
@@ -124,8 +124,8 @@ class TransformVisitor(NodeVisitor[Node]):
         new.info = node.info
         return new
     
-    def visit_type_def(self, node: TypeDef) -> Node:
-        new = TypeDef(node.name,
+    def visit_class_def(self, node: ClassDef) -> Node:
+        new = ClassDef(node.name,
                       self.block(node.defs),
                       node.type_vars,
                       self.types(node.base_types),

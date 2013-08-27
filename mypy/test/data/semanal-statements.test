@@ -461,7 +461,7 @@ finally:
   c
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     c
     PassStmt:1())
   TryStmt:2(
@@ -523,7 +523,7 @@ except (c, object) as e:
   e
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     c
     PassStmt:1())
   TryStmt:2(
@@ -702,7 +702,7 @@ MypyFile:1(
         CallExpr:7(
           NameExpr(Err [__main__.Err])
           Args()))))
-  TypeDef:8(
+  ClassDef:8(
     Err
     BaseType(
       builtins.BaseException)

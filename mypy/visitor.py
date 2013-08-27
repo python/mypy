@@ -37,7 +37,7 @@ class NodeVisitor(Generic[T]):
     def visit_overloaded_func_def(self,
                                   o: 'mypy.nodes.OverloadedFuncDef') -> T:
         pass
-    def visit_type_def(self, o: 'mypy.nodes.TypeDef') -> T:
+    def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> T:
         pass
     def visit_var_def(self, o: 'mypy.nodes.VarDef') -> T:
         pass

@@ -2,7 +2,7 @@ from typing import List, cast
 
 from mypy.output import TypeOutputVisitor
 from mypy.nodes import (
-    Node, VarDef, TypeDef, FuncDef, MypyFile, CoerceExpr, TypeExpr, CallExpr,
+    Node, VarDef, ClassDef, FuncDef, MypyFile, CoerceExpr, TypeExpr, CallExpr,
     TypeVarExpr
 )
 from mypy.visitor import NodeVisitor
@@ -35,7 +35,7 @@ class PrettyPrintVisitor(NodeVisitor):
         for d in file.defs:
             d.accept(self)
     
-    def visit_type_def(self, tdef: TypeDef) -> None:
+    def visit_class_def(self, tdef: ClassDef) -> None:
         self.string('class ')
         self.string(tdef.name)
         if tdef.base_types:

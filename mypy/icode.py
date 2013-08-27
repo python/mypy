@@ -6,7 +6,7 @@ from mypy.types import AnyType, Instance, Type, Callable, FunctionLike
 from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
-    UnaryExpr, ExpressionStmt, CoerceExpr, TypeDef, MemberExpr, TypeInfo,
+    UnaryExpr, ExpressionStmt, CoerceExpr, ClassDef, MemberExpr, TypeInfo,
     VarDef, SuperExpr, IndexExpr, UndefinedExpr
 )
 from mypy import nodes
@@ -393,7 +393,7 @@ class IcodeBuilder(NodeVisitor[int]):
                 self.add(SetRNone(r))
             self.add(Return(r))
 
-    def visit_type_def(self, tdef: TypeDef) -> int:
+    def visit_class_def(self, tdef: ClassDef) -> int:
         # TODO assignments in the body
         # TODO multiple inheritance
         tdef.defs.accept(self)
@@ -403,7 +403,7 @@ class IcodeBuilder(NodeVisitor[int]):
         
         return -1
 
-    def make_class_constructor(self, tdef: TypeDef) -> None:
+    def make_class_constructor(self, tdef: ClassDef) -> None:
         # Do we have a non-empty __init__?
         init = cast(FuncDef, tdef.info.get_method('__init__'))
         init_argc = len(init.args) - 1

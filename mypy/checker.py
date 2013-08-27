@@ -8,7 +8,7 @@ from mypy.errors import Errors
 from mypy.nodes import (
     SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
-    TypeDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
+    ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ParenExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, YieldStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
@@ -388,7 +388,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.return_type_incompatible_with_supertype(
                     name, supertype, node)
     
-    def visit_type_def(self, defn: TypeDef) -> Type:
+    def visit_class_def(self, defn: ClassDef) -> Type:
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)

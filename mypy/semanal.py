@@ -46,7 +46,7 @@ from typing import (
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
-    TypeDef, VarDef, Var, GDEF, MODULE_REF, FuncItem, Import,
+    ClassDef, VarDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, ParenExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
@@ -326,9 +326,9 @@ class SemanticAnalyzer(NodeVisitor):
         elif len(sig.arg_types) > len(fdef.args):
             self.fail('Type signature has too many arguments', fdef)
     
-    def visit_type_def(self, defn: TypeDef) -> None:
+    def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
-        self.setup_type_def_analysis(defn)
+        self.setup_class_def_analysis(defn)
         self.analyze_base_classes(defn)
         self.analyze_metaclass(defn)
 
@@ -373,7 +373,7 @@ class SemanticAnalyzer(NodeVisitor):
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
-    def clean_up_bases_and_infer_type_variables(self, defn: TypeDef) -> None:
+    def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
 
         For example, consider this class:
@@ -432,7 +432,7 @@ class SemanticAnalyzer(NodeVisitor):
             return unbound.name, cast(TypeVarExpr, sym.node).values[:]
         return None
 
-    def setup_type_def_analysis(self, defn: TypeDef) -> None:
+    def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
         if not defn.info:
             defn.info = TypeInfo(SymbolTable(), defn)
@@ -452,7 +452,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.block_depth.append(-1) # The class body increments this to 0
         self.type = defn.info
 
-    def analyze_base_classes(self, defn: TypeDef) -> None:
+    def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""        
         bases = List[Instance]()
         for i in range(len(defn.base_types)):
@@ -474,7 +474,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("Cannot determine consistent method resolution order "
                       '(MRO) for "%s"' % defn.name, defn)
 
-    def verify_base_classes(self, defn: TypeDef) -> bool:
+    def verify_base_classes(self, defn: ClassDef) -> bool:
         base_classes = List[str]()
         info = defn.info
         for base in info.bases:
@@ -508,7 +508,7 @@ class SemanticAnalyzer(NodeVisitor):
                     visited.add(base.type)
         return False
 
-    def analyze_metaclass(self, defn: TypeDef) -> None:
+    def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
             sym = self.lookup_qualified(defn.metaclass, defn)
             if sym is not None and not isinstance(sym.node, TypeInfo):
@@ -1379,7 +1379,7 @@ class FirstPass(NodeVisitor):
         self.sem.globals[d.name()] = SymbolTableNode(GDEF, d,
                                                      self.sem.cur_mod_id)
     
-    def visit_type_def(self, d: TypeDef) -> None:
+    def visit_class_def(self, d: ClassDef) -> None:
         self.sem.check_no_global(d.name, d)
         d.fullname = self.sem.qualified_name(d.name)
         info = TypeInfo(SymbolTable(), d)
@@ -1437,10 +1437,10 @@ class ThirdPass(TraverserVisitor[None]):
         super().visit_func_def(fdef)
         self.errors.pop_function()
 
-    def visit_type_def(self, tdef: TypeDef) -> None:
+    def visit_class_def(self, tdef: ClassDef) -> None:
         for base in tdef.info.bases:
             self.analyze(base)
-        super().visit_type_def(tdef)
+        super().visit_class_def(tdef)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)

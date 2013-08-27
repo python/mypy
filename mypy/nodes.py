@@ -378,7 +378,7 @@ class Var(SymbolNode):
         return visitor.visit_var(self)
 
 
-class TypeDef(Node):
+class ClassDef(Node):
     """Class definition"""
     
     name = Undefined(str)         # Name of the class without module prefix
@@ -403,7 +403,7 @@ class TypeDef(Node):
         self.metaclass = metaclass
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_type_def(self)
+        return visitor.visit_class_def(self)
     
     def is_generic(self) -> bool:
         return self.info.is_generic()
@@ -1242,12 +1242,12 @@ class TempNode(Node):
 class TypeInfo(SymbolNode):
     """Class representing the type structure of a single class.
 
-    The corresponding TypeDef instance represents the parse tree of
+    The corresponding ClassDef instance represents the parse tree of
     the class.
     """
     
     _fullname = None # type: str     # Fully qualified name
-    defn = Undefined(TypeDef)        # Corresponding TypeDef
+    defn = Undefined(ClassDef)        # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to self.
     mro = Undefined(List['TypeInfo'])
@@ -1264,7 +1264,7 @@ class TypeInfo(SymbolNode):
     # Direct base classes.
     bases = Undefined(List['mypy.types.Instance'])
     
-    def __init__(self, names: 'SymbolTable', defn: TypeDef) -> None:
+    def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
         self.names = names
         self.defn = defn

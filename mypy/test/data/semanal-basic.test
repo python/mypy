@@ -240,7 +240,7 @@ MypyFile:1(
         NameExpr(None [builtins.None]))
       ExpressionStmt:5(
         NameExpr(x [__main__.x]))))
-  TypeDef:6(
+  ClassDef:6(
     A
     PassStmt:6()))
 
@@ -302,7 +302,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x* [__main__.x])
     NameExpr(None [builtins.None]))
-  TypeDef:2(
+  ClassDef:2(
     A
     FuncDef:3(
       f

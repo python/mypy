@@ -4,7 +4,7 @@ from typing import typevar, Generic
 
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
-    Block, MypyFile, VarDef, FuncItem, CallExpr, TypeDef, Decorator, FuncDef,
+    Block, MypyFile, VarDef, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, YieldStmt, DelStmt, IfStmt, RaiseStmt,
     TryStmt, WithStmt, ParenExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
@@ -51,7 +51,7 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
         for item in o.items:
             item.accept(self)
     
-    def visit_type_def(self, o: TypeDef) -> T:
+    def visit_class_def(self, o: ClassDef) -> T:
         o.defs.accept(self)
     
     def visit_decorator(self, o: Decorator) -> T:

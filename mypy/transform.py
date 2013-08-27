@@ -14,7 +14,7 @@ The transform performs these main changes:
 from typing import Undefined, Dict, List, Tuple, cast
 
 from mypy.nodes import (
-    Node, MypyFile, TypeInfo, TypeDef, VarDef, FuncDef, Var,
+    Node, MypyFile, TypeInfo, ClassDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
     CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
     SymbolTableNode, IndexExpr, function_type
@@ -83,9 +83,9 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """Transform an file."""
         res = [] # type: List[Node]
         for d in o.defs:
-            if isinstance(d, TypeDef):
+            if isinstance(d, ClassDef):
                 self._type_context = d.info
-                res.extend(self.type_tf.transform_type_def(d))
+                res.extend(self.type_tf.transform_class_def(d))
                 self._type_context = None
             else:
                 d.accept(self)
@@ -397,7 +397,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         """Add a line mapping for a wrapper.
 
         The node new_node has logically the same line numbers as
-        orig_node. The nodes should be FuncDef/TypeDef nodes.
+        orig_node. The nodes should be FuncDef/ClassDef nodes.
         """
         if orig_node.repr:
             start_line = orig_node.line

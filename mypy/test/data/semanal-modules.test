@@ -35,7 +35,7 @@ MypyFile:1(
     m.c))
 MypyFile:1(
   tmp/m.py
-  TypeDef:1(
+  ClassDef:1(
     c
     PassStmt:1()))
 
@@ -72,7 +72,7 @@ MypyFile:1(
     m.c))
 MypyFile:1(
   tmp/m.py
-  TypeDef:1(
+  ClassDef:1(
     c
     PassStmt:1()))
 
@@ -584,7 +584,7 @@ class A:
 y = 1
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     ImportFrom:2(_x, [y : y])
     AssignmentStmt:3(
@@ -599,7 +599,7 @@ class A:
 y = 1
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     Import:2(_x : _x)
     AssignmentStmt:3(

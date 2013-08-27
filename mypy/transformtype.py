@@ -3,7 +3,7 @@
 from typing import Undefined, List, Set, Any, cast, Tuple, Dict
 
 from mypy.nodes import (
-    TypeDef, Node, FuncDef, VarDef, Block, Var, ExpressionStmt,
+    ClassDef, Node, FuncDef, VarDef, Block, Var, ExpressionStmt,
     TypeInfo, SuperExpr, NameExpr, CallExpr, MDEF, MemberExpr, ReturnStmt,
     AssignmentStmt, TypeExpr, PassStmt, SymbolTableNode
 )
@@ -57,11 +57,11 @@ class TypeTransformer:
         self.tf = tf
         self.func_tf = FuncTransformer(tf)
     
-    def transform_type_def(self, tdef: TypeDef) -> List[Node]:        
+    def transform_class_def(self, tdef: ClassDef) -> List[Node]:        
         """Transform a type definition.
 
         The result may be one or two definitions.  The first is the
-        transformation of the original TypeDef. The second is a
+        transformation of the original ClassDef. The second is a
         wrapper type, which is generated for generic types only.
         """
         defs = [] # type: List[Node]
@@ -116,7 +116,7 @@ class TypeTransformer:
         else:
             return [tdef, dyn_wrapper, gen_wrapper]
     
-    def make_init_wrapper(self, tdef: TypeDef) -> List[Node]:
+    def make_init_wrapper(self, tdef: ClassDef) -> List[Node]:
         """Make and return an implicit __init__ if class needs it.
         
         Otherwise, return an empty list. We include an implicit
@@ -390,7 +390,7 @@ class TypeTransformer:
             res.extend(self.func_tf.generic_method_wrappers(fd))
         return res
     
-    def generic_class_wrapper(self, tdef: TypeDef) -> TypeDef:
+    def generic_class_wrapper(self, tdef: ClassDef) -> ClassDef:
         """Construct a wrapper class for a generic type."""
         # FIX semanal meta-info for nodes + TypeInfo
         
@@ -432,7 +432,7 @@ class TypeTransformer:
                                         self.tf.wrapper_class_suffix())
         
         # Build the type definition.
-        wrapper = TypeDef(tdef.name + self.tf.wrapper_class_suffix(),
+        wrapper = ClassDef(tdef.name + self.tf.wrapper_class_suffix(),
                           Block(defs),
                           None,
                           [base_type])
@@ -451,7 +451,7 @@ class TypeTransformer:
                 return None
             base = base.mro[1]
     
-    def make_generic_wrapper_member_vars(self, tdef: TypeDef) -> List[Node]:
+    def make_generic_wrapper_member_vars(self, tdef: ClassDef) -> List[Node]:
         """Generate member variable definition for wrapped object (__o).
         
         This is added to a generic wrapper class.
@@ -595,7 +595,7 @@ class TypeTransformer:
         # Build the rvalue (initializer) expression
         return TypeExpr(tvar)
 
-    def make_type_object_wrapper(self, tdef: TypeDef) -> FuncDef:
+    def make_type_object_wrapper(self, tdef: ClassDef) -> FuncDef:
         """Construct dynamically typed wrapper function for a class.
 
         It simple calls the type object and returns the result.

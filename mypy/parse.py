@@ -16,7 +16,7 @@ from mypy.lex import (
 import mypy.types
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
-    TypeDef, Decorator, Block, Var, VarDef, OperatorAssignmentStmt,
+    ClassDef, Decorator, Block, Var, VarDef, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr, ParenExpr,
@@ -235,7 +235,7 @@ class Parser:
                 pass
         return defs
     
-    def parse_class_def(self) -> TypeDef:
+    def parse_class_def(self) -> ClassDef:
         old_is_class_body = self.is_class_body
         self.is_class_body = True
         
@@ -268,7 +268,7 @@ class Parser:
             
             defs, _ = self.parse_block()
             
-            node = TypeDef(name, defs, None, base_types, metaclass=metaclass)
+            node = ClassDef(name, defs, None, base_types, metaclass=metaclass)
             self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
                                                      lparen, commas, rparen))
             return node

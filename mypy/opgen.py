@@ -6,7 +6,7 @@ TODO This is mostly obsolete, but this is kept anyway, since some of the
 
 from typing import List, cast
 
-from nodes import MypyFile, TypeDef, TypeInfo
+from nodes import MypyFile, ClassDef, TypeInfo
 from types import Instance, TypeVar, BOUND_VAR, Type
 import transform
 from maptypevar import num_slots, get_tvar_access_path
@@ -27,8 +27,8 @@ def generate_slot_map(f: MypyFile) -> str:
     map.append('def __InitSlotMap()')
     map.append('  __SlotMap = std::Map(')
     for d in f.defs:
-        if isinstance(d, TypeDef):
-            td = cast(TypeDef, d)
+        if isinstance(d, ClassDef):
+            td = cast(ClassDef, d)
             if td.info:
                 add_slot_map_data(map, ops, td.info)
     map.append('  )')
@@ -95,8 +95,8 @@ def generate_type_map(f: MypyFile) -> str:
     for alt, suffix in [(None, ''), (BOUND_VAR, 'B')]:
         map.append('  __TypeMap{} = std::Map('.format(suffix))
         for d in f.defs:
-            if isinstance(d, TypeDef):
-                td = cast(TypeDef, d)
+            if isinstance(d, ClassDef):
+                td = cast(ClassDef, d)
                 if td.info is not None:
                     add_type_map_support_for_type(map, ops, td.info, alt,
                                                   suffix)

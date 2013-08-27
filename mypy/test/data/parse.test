@@ -390,7 +390,7 @@ class A:
         pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       f
@@ -463,7 +463,7 @@ MypyFile:1(
     def (y: str?) -> int?
     Block:1(
       ReturnStmt:2()))
-  TypeDef:3(
+  ClassDef:3(
     A
     FuncDef:4(
       f
@@ -624,7 +624,7 @@ class A:
         self.x = 1 # type: int
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       __init__
@@ -711,7 +711,7 @@ class C:
   pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     C
     PassStmt:2()))
 
@@ -886,12 +886,12 @@ class A(B[T], C[Any, d[x]]):
   pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     BaseType(
       B?)
     PassStmt:2())
-  TypeDef:3(
+  ClassDef:3(
     A
     BaseType(
       B?[T?]
@@ -1626,7 +1626,7 @@ class A:
     pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     ExpressionStmt:2(
       StrExpr(doc string))
@@ -1644,7 +1644,7 @@ MypyFile:1(
 class a: pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     a
     PassStmt:1()))
 
@@ -2073,12 +2073,12 @@ class A:
     pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
-    TypeDef:2(
+    ClassDef:2(
       B
       PassStmt:3())
-    TypeDef:4(
+    ClassDef:4(
       C
       PassStmt:5())))
 
@@ -2271,7 +2271,7 @@ MypyFile:1(
 class Foo(metaclass=Bar): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     Foo
     Metaclass(Bar)
     PassStmt:1()))
@@ -2280,7 +2280,7 @@ MypyFile:1(
 class Foo(metaclass=foo.Bar): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     Foo
     Metaclass(foo.Bar)
     PassStmt:1()))
@@ -2289,7 +2289,7 @@ MypyFile:1(
 class Foo(foo.bar[x], metaclass=Bar): pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     Foo
     Metaclass(Bar)
     BaseType(
@@ -2476,7 +2476,7 @@ class A:
     pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       f
@@ -2501,7 +2501,7 @@ class A:
       pass
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       f

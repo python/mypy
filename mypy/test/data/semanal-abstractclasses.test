@@ -11,7 +11,7 @@ class A(metaclass=ABCMeta):
 MypyFile:1(
   ImportFrom:1(abc, [abstractmethod : abstractmethod, ABCMeta : ABCMeta])
   Import:2(typing : typing)
-  TypeDef:4(
+  ClassDef:4(
     A
     Metaclass(ABCMeta)
     Decorator:5(
@@ -47,15 +47,15 @@ class C(A, B): pass
 MypyFile:1(
   ImportFrom:1(abc, [abstractmethod : abstractmethod, ABCMeta : ABCMeta])
   Import:2(typing : typing)
-  TypeDef:4(
+  ClassDef:4(
     A
     Metaclass(ABCMeta)
     PassStmt:4())
-  TypeDef:5(
+  ClassDef:5(
     B
     Metaclass(ABCMeta)
     PassStmt:5())
-  TypeDef:6(
+  ClassDef:6(
     C
     BaseType(
       __main__.A
@@ -76,7 +76,7 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(T* [__main__.T])
     TypeVarExpr:3())
-  TypeDef:4(
+  ClassDef:4(
     A
     TypeVars(
       T)
@@ -104,7 +104,7 @@ MypyFile:1(
   Import:1(abc : abc)
   ImportFrom:2(abc, [ABCMeta : ABCMeta])
   Import:3(typing : typing)
-  TypeDef:5(
+  ClassDef:5(
     A
     Metaclass(ABCMeta)
     Decorator:6(

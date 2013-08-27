@@ -64,7 +64,7 @@ class OutputVisitor(NodeVisitor):
         self.token(r.rparen)
         self.token(r.br)
     
-    def visit_type_def(self, o):
+    def visit_class_def(self, o):
         r = o.repr
         self.tokens([r.class_tok, r.name])
         self.type_vars(o.type_vars)

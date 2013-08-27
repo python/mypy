@@ -5,7 +5,7 @@ class A: pass
 x = A
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     PassStmt:1())
   AssignmentStmt:2(
@@ -20,7 +20,7 @@ class A:
     y = self
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       __init__
@@ -47,7 +47,7 @@ class A:
     self.y = 2
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       __init__
@@ -73,7 +73,7 @@ def __init__(self):
   self.y = 1
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       f
@@ -106,7 +106,7 @@ class B:
     self.z = 1
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       __init__
@@ -119,7 +119,7 @@ MypyFile:1(
             NameExpr(self [l])
             y)
           IntExpr(1)))))
-  TypeDef:4(
+  ClassDef:4(
     B
     FuncDef:5(
       __init__
@@ -141,7 +141,7 @@ class A:
     x.y = 1
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       __init__
@@ -161,7 +161,7 @@ class A:
     self.x = 2
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       __init__
@@ -189,7 +189,7 @@ class A:
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [overload : overload])
-  TypeDef:2(
+  ClassDef:2(
     A
     OverloadedFuncDef:3(
       Overload(def (self: __main__.A), \
@@ -223,7 +223,7 @@ class A:
     a = object
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     AssignmentStmt:2(
       NameExpr(a* [m])
@@ -235,7 +235,7 @@ class A:
     y = x
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     AssignmentStmt:2(
       NameExpr(x* [m])
@@ -250,7 +250,7 @@ class A:
     g = f
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     FuncDef:2(
       f
@@ -270,7 +270,7 @@ class A:
         x = 2
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     IfStmt:2(
       If(
@@ -290,7 +290,7 @@ class A:
         y = x
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     ForStmt:2(
       NameExpr(x* [m])
@@ -311,7 +311,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      TypeDef:2(
+      ClassDef:2(
         A
         PassStmt:2())
       ExpressionStmt:3(
@@ -323,9 +323,9 @@ class A:
     B
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
-    TypeDef:2(
+    ClassDef:2(
       B
       PassStmt:2())
     ExpressionStmt:3(
@@ -341,7 +341,7 @@ MypyFile:1(
     f
     def ()
     Block:1(
-      TypeDef:2(
+      ClassDef:2(
         A
         PassStmt:2())
       AssignmentStmt:3(
@@ -362,7 +362,7 @@ MypyFile:1(
     Args(
       Var(x))
     Block:1(
-      TypeDef:2(
+      ClassDef:2(
         A
         AssignmentStmt:3(
           NameExpr(y* [m])
@@ -382,7 +382,7 @@ class A(metaclass=abc.ABCMeta): pass
 [out]
 MypyFile:1(
   Import:1(abc : abc)
-  TypeDef:2(
+  ClassDef:2(
     A
     Metaclass(abc.ABCMeta)
     PassStmt:2()))
@@ -394,7 +394,7 @@ class A:
 [builtins fixtures/staticmethod.py]
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     Decorator:2(
       Var(f)
@@ -414,7 +414,7 @@ class A:
 [builtins fixtures/staticmethod.py]
 [out]
 MypyFile:1(
-  TypeDef:1(
+  ClassDef:1(
     A
     Decorator:2(
       Var(f)
@@ -434,7 +434,7 @@ class A:
 [out]
 MypyFile:1(
   Import:1(typing : typing)
-  TypeDef:2(
+  ClassDef:2(
     A
     Decorator:3(
       Var(f)

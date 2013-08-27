@@ -118,7 +118,7 @@ class StrConv(NodeVisitor[str]):
             a.insert(0, o.type)
         return self.dump(a, o)
     
-    def visit_type_def(self, o):
+    def visit_class_def(self, o):
         a = [o.name, o.defs.body]
         # Display base types unless they are implicitly just builtins.object
         # (in this case there is no representation).

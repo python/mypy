@@ -10,7 +10,7 @@ from mypy.types import (
     BasicTypes
 )
 from mypy.nodes import (
-    TypeInfo, TypeDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
+    TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
 )
 
 
@@ -206,8 +206,8 @@ def make_type_info(name: str,
                    typevars: List[str] = None) -> TypeInfo:
     """Make a TypeInfo suitable for use in unit tests."""
     
-    type_def = TypeDef(name, Block([]), None, [])
-    type_def.fullname = name
+    class_def = ClassDef(name, Block([]), None, [])
+    class_def.fullname = name
     
     if typevars:
         v = [] # type: List[TypeVarDef]
@@ -215,9 +215,9 @@ def make_type_info(name: str,
         for n in typevars:
             v.append(TypeVarDef(n, id, None))
             id += 1
-        type_def.type_vars = v
+        class_def.type_vars = v
     
-    info = TypeInfo(SymbolTable(), type_def)
+    info = TypeInfo(SymbolTable(), class_def)
     if mro is None:
         mro = []
     info.mro = [info] + mro
