@@ -145,7 +145,7 @@ class SemAnalSymtableSuite(Suite):
             # The output is the symbol table converted into a string.
             a = []      
             for f in sorted(result.files.keys()):
-                if f != 'builtins':
+                if f not in ('builtins', 'typing', 'abc'):
                     a.append('{}:'.format(f))
                     for s in str(result.files[f].names).split('\n'):
                         a.append('  ' + s)

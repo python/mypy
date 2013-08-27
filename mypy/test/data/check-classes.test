@@ -763,6 +763,16 @@ a.f = '' # E: Property "f" defined in "A" is read-only
 [builtins fixtures/property.py]
 
 
+-- Multiple inheritance, non-object built-in class as base
+-- -------------------------------------------------------
+
+
+[case testInvalidMultipleInheritanceFromBuiltins]
+class A(int, str): pass # E: Instance layout conflict in multiple inheritance
+[out]
+main: In class "A":
+
+
 -- Special cases
 -- -------------
 

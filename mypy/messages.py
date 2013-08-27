@@ -57,6 +57,7 @@ CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
 INCONSISTENT_ABSTRACT_OVERLOAD = \
               'Overloaded method has both abstract and non-abstract variants'
+INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
 
 
 class MessageBuilder:
