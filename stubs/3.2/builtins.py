@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, builtinclass
+    SupportsRound, IO, builtinclass, ducktype
 )
 from abc import abstractmethod, ABCMeta
 
@@ -54,6 +54,7 @@ class type:
 
 
 @builtinclass
+@ducktype(float)
 class int(SupportsInt, SupportsFloat):
     @overload
     def __init__(self) -> None: pass
@@ -152,6 +153,7 @@ class int(SupportsInt, SupportsFloat):
 
     
 @builtinclass
+@ducktype(complex)
 class float(SupportsFloat, SupportsInt):
     @overload
     def __init__(self) -> None: pass

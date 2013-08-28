@@ -581,3 +581,13 @@ import typing
 print(SystemExit(5).code)
 [out]
 5
+
+[case testIntFloatDucktyping]
+from typing import Undefined
+x = Undefined(float)
+x = 2.2
+x = 2
+def f(x: float) -> None: pass
+f(1.1)
+f(1)
+[out]
