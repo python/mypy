@@ -15,8 +15,8 @@ from mypy.nodes import (
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
-    SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, CoerceExpr, TypeExpr,
-    JavaCast, TempNode
+    SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
+    CoerceExpr, TypeExpr, JavaCast, TempNode
 )
 from mypy.types import Type
 from mypy.visitor import NodeVisitor
@@ -383,6 +383,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_type_var_expr(self, node: TypeVarExpr) -> Node:
         return TypeVarExpr(node.name(), node.fullname(),
                            self.types(node.values))
+
+    def visit_ducktype_expr(self, node: DucktypeExpr) -> Node:
+        return DucktypeExpr(node.type)
     
     def visit_coerce_expr(self, node: CoerceExpr) -> Node:
         raise RuntimeError('Not supported')

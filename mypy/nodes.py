@@ -1173,6 +1173,18 @@ class TypeVarExpr(SymbolNode):
         return visitor.visit_type_var_expr(self)
 
 
+class DucktypeExpr(Node):
+    """Ducktype class decorator expression ducktype(...)."""
+
+    type = Undefined('mypy.types.Type')
+
+    def __init__(self, type: 'mypy.types.Type') -> None:
+        self.type = type
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_ducktype_expr(self)
+
+
 class CoerceExpr(Node):
     """Implicit coercion expression.
 
@@ -1267,6 +1279,9 @@ class TypeInfo(SymbolNode):
     
     # Direct base classes.
     bases = Undefined(List['mypy.types.Instance'])
+
+    # Duck type compatibility (ducktype decorator)
+    ducktype = None # type: mypy.types.Type
     
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""

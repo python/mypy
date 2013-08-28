@@ -144,6 +144,8 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
         pass
+    def visit_ducktype_expr(self, o: 'mypy.nodes.DucktypeExpr') -> T:
+        pass
     
     def visit_coerce_expr(self, o: 'mypy.nodes.CoerceExpr') -> T:
         pass

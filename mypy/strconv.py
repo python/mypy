@@ -133,6 +133,8 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ('Decorators', o.decorators))
         if o.is_builtinclass:
             a.insert(1, 'Builtinclass')
+        if o.info and o.info.ducktype:
+            a.insert(1, 'Ducktype({})'.format(o.info.ducktype))
         return self.dump(a, o)
     
     def visit_var_def(self, o):
@@ -373,6 +375,9 @@ class StrConv(NodeVisitor[str]):
             return self.dump([('Values', o.values)], o)
         else:
             return 'TypeVarExpr:{}()'.format(o.line)
+
+    def visit_ducktype_expr(self, o):
+        return 'DucktypeExpr:{}({})'.format(o.line, o.type)
     
     def visit_func_expr(self, o):
         a = self.func_helper(o)

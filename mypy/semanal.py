@@ -55,8 +55,8 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ConditionalExpr, ARG_POS, ARG_NAMED, MroError,
-    type_aliases
+    StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, ARG_POS, ARG_NAMED,
+    MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -339,6 +339,7 @@ class SemanticAnalyzer(NodeVisitor):
         defn.defs.accept(self)
 
         self.calculate_abstract_status(defn.info)
+        self.setup_ducktyping(defn)
         
         # Restore analyzer state.
         self.block_depth.pop()
@@ -380,6 +381,13 @@ class SemanticAnalyzer(NodeVisitor):
                         abstract.append(name)
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
+
+    def setup_ducktyping(self, defn: ClassDef) -> None:
+        for decorator in defn.decorators:
+            if isinstance(decorator, CallExpr):
+                analyzed = decorator.analyzed
+                if isinstance(analyzed, DucktypeExpr):
+                    defn.info.ducktype = analyzed.type
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
@@ -1083,6 +1091,19 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = UndefinedExpr(type)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'typing.ducktype'):
+            # Special form ducktype(...).
+            if not self.check_fixed_args(expr, 1, 'ducktype'):
+                return
+            # Translate first argument to an unanalyzed type.
+            try:
+                target = expr_to_unanalyzed_type(expr.args[0])
+            except TypeTranslationError:
+                self.fail('Argument 1 to ducktype is not a type', expr)
+                return
+            expr.analyzed = DucktypeExpr(target)
+            expr.analyzed.line = expr.line
+            expr.analyzed.accept(self)
         else:
             # Normal call expression.
             for a in expr.args:
@@ -1197,6 +1218,9 @@ class SemanticAnalyzer(NodeVisitor):
         expr.if_expr.accept(self)
         expr.cond.accept(self)
         expr.else_expr.accept(self)
+
+    def visit_ducktype_expr(self, expr: DucktypeExpr) -> None:
+        expr.type = self.anal_type(expr.type)
     
     #
     # Helpers

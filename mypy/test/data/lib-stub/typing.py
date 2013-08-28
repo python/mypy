@@ -13,6 +13,7 @@ AbstractGeneric = object()
 Tuple = object()
 Function = object()
 builtinclass = object()
+ducktype = object()
 
 # Type aliases.
 List = object()

@@ -1436,3 +1436,17 @@ MypyFile:1(
     TypeVars(
       T in (builtins.int, builtins.str))
     PassStmt:3()))
+
+[case testSimpleDucktypeDecorator]
+from typing import ducktype, Any
+@ducktype(str)
+class S: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [ducktype : ducktype, Any : Any])
+  ClassDef:2(
+    S
+    Ducktype(builtins.str)
+    Decorators(
+      DucktypeExpr:2(builtins.str))
+    PassStmt:3()))
