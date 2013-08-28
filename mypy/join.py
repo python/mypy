@@ -151,6 +151,12 @@ def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
 
 def join_instances_via_supertype(t: Instance, s: Instance,
                                  basic: BasicTypes) -> Type:
+    # Give preference to joins via duck typing relationship, so that
+    # join(int, float) == float, for example.
+    if t.type.ducktype and is_subtype(t.type.ducktype, s):
+        return join_types(t.type.ducktype, s, basic)
+    elif s.type.ducktype and is_subtype(s.type.ducktype, t):
+        return join_types(t, s.type.ducktype, basic)
     res = s
     mapped = map_instance_to_supertype(t, t.type.bases[0].type)
     join = join_instances(mapped, res, basic)

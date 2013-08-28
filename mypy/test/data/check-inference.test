@@ -837,3 +837,38 @@ class A:
    def __init__(self) -> None:
        self.x = object()
 a.x.y  # E: "object" has no attribute "y"
+
+
+-- Ducktype declarations
+-- ---------------------
+
+
+[case testListWithDucktypeCompatibility]
+from typing import List, Undefined, ducktype
+class A: pass
+@ducktype(A)
+class B: pass
+a = Undefined(List[A])
+x1 = [A(), B()]
+x2 = [B(), A()]
+x3 = [B(), B()]
+a = x1
+a = x2
+a = x3 # E: Incompatible types in assignment
+[builtins fixtures/list.py]
+
+[case testListWithDucktypeCompatibilityAndTransitivity]
+from typing import List, Undefined, ducktype
+class A: pass
+@ducktype(A)
+class B: pass
+@ducktype(B)
+class C: pass
+a = Undefined(List[A])
+x1 = [A(), C()]
+x2 = [C(), A()]
+x3 = [B(), C()]
+a = x1
+a = x2
+a = x3 # E: Incompatible types in assignment
+[builtins fixtures/list.py]
