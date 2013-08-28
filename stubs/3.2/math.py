@@ -47,7 +47,7 @@ def atanh(x: float) -> float: pass
 def cosh(x: float) -> float: pass
 def sinh(x: float) -> float: pass
 def tanh(x: float) -> float: pass
-def erf(x: object) -> float: pass  # x is an arbitrary expression
-def erfc(x: object) -> float: pass  # x is an arbitrary expression
-def gamma(x: object) -> float: pass  # x is an arbitrary expression
-def lgamma(x: object) -> float: pass  # x is an arbitrary expression
+def erf(x: object) -> float: pass
+def erfc(x: object) -> float: pass
+def gamma(x: object) -> float: pass
+def lgamma(x: object) -> float: pass
