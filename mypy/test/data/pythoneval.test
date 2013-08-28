@@ -591,3 +591,13 @@ def f(x: float) -> None: pass
 f(1.1)
 f(1)
 [out]
+
+[case testDucktypeDeclaration]
+from typing import Undefined, ducktype
+@ducktype(str)
+class S: pass
+def f() -> None:
+    'foo' + S()
+print(type(S()))
+[out]
+<class '__main__.S'>
