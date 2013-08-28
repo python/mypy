@@ -52,6 +52,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
+            if left.type.ducktype and is_subtype(left.type.ducktype,
+                                                 self.right):
+                return True
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
