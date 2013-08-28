@@ -76,7 +76,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            return join_instances(t, cast(Instance, self.s), True, self.basic)
+            return join_instances(t, cast(Instance, self.s), self.basic)
         elif t.type == self.basic.type_type.type and is_subtype(self.s, t):
             return t
         else:
@@ -119,8 +119,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.object
 
 
-def join_instances(t: Instance, s: Instance, allow_interfaces: bool,
-                   basic: BasicTypes) -> Type:
+def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
     """Calculate the join of two instance types.
 
     If allow_interfaces is True, also consider interface-type results for
@@ -142,21 +141,19 @@ def join_instances(t: Instance, s: Instance, allow_interfaces: bool,
             # Incompatible; return trivial result object.
             return basic.object
     elif t.type.bases and is_subtype(t, s):
-        return join_instances_via_supertype(t, s, allow_interfaces, basic)
+        return join_instances_via_supertype(t, s, basic)
     elif s.type.bases:
-        return join_instances_via_supertype(s, t, allow_interfaces, basic)
-    elif allow_interfaces:
-        return join_instances_as_interface(t, s, basic)
+        return join_instances_via_supertype(s, t, basic)
     else:
-        return basic.object
+        return join_instances_as_interface(t, s, basic)
+    #return basic.object
 
 
 def join_instances_via_supertype(t: Instance, s: Instance,
-                                 allow_interfaces: bool,
                                  basic: BasicTypes) -> Type:
     res = s
     mapped = map_instance_to_supertype(t, t.type.bases[0].type)
-    join = join_instances(mapped, res, False, basic)
+    join = join_instances(mapped, res, basic)
     # If the join failed, fail. This is a defensive measure (this might
     # never happen).
     if isinstance(join, ErrorType):
