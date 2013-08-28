@@ -615,3 +615,13 @@ import typing
 import math
 math.sin(2)
 math.sin(2.2)
+
+[case testAbsReturnType]
+from typing import Undefined
+f = Undefined(float)
+n = Undefined(int)
+n = abs(2)
+f = abs(2.2)
+n = abs(2.2) # Error
+[out]
+_program.py, line 6: Incompatible types in assignment
