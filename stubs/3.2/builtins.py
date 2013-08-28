@@ -176,34 +176,13 @@ class float(SupportsFloat, SupportsInt):
 
     # Operators
     
-    @overload
     def __add__(self, x: float) -> float: pass
-    @overload
-    def __add__(self, x: int) -> float: pass
-    @overload
     def __sub__(self, x: float) -> float: pass
-    @overload
-    def __sub__(self, x: int) -> float: pass
-    @overload
     def __mul__(self, x: float) -> float: pass
-    @overload
-    def __mul__(self, x: int) -> float: pass
-    @overload
     def __floordiv__(self, x: float) -> float: pass
-    @overload
-    def __floordiv__(self, x: int) -> float: pass
-    @overload
     def __truediv__(self, x: float) -> float: pass
-    @overload
-    def __truediv__(self, x: int) -> float: pass
-    @overload
     def __mod__(self, x: float) -> float: pass
-    @overload
-    def __mod__(self, x: int) -> float: pass
-    @overload
     def __pow__(self, x: float) -> float: pass
-    @overload
-    def __pow__(self, x: int) -> float: pass
     
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass

@@ -601,3 +601,17 @@ def f() -> None:
 print(type(S()))
 [out]
 <class '__main__.S'>
+
+[case testsFloatOperations]
+import typing
+print(1.5 + 1.5)
+print(1.5 + 1)
+[out]
+3.0
+2.5
+
+[case testMathFunctionWithIntArgument]
+import typing
+import math
+math.sin(2)
+math.sin(2.2)
