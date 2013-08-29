@@ -469,6 +469,19 @@ from typing import Any
 class A: pass
 A() + Any(1)
 
+[case testReverseComparisonOperator]
+from typing import Undefined
+class A:
+    def __lt__(self, x: int) -> int: pass
+class B:
+    def __gt__(self, x: A) -> str: pass
+s = Undefined(str)
+n = Undefined(int)
+n = A() < 1
+s = A() < B()
+n = A() < B() # E: Incompatible types in assignment
+s = object() < B() # E: Unsupported operand types for > ("B" and "object")
+
 [case testErrorContextAndBinaryOperators]
 import typing
 class A:

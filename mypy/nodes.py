@@ -935,7 +935,28 @@ op_methods = {
     '>=': '__ge__',
     '>': '__gt__',
     '<=': '__le__',
-    'in': '__contains__'
+    'in': '__contains__',
+}
+
+reverse_op_methods = {
+    '__add__': '__radd__',
+    '__sub__': '__rsub__',
+    '__mul__': '__rmul__',
+    '__truediv__': '__rtruediv__',
+    '__mod__': '__rmod__',
+    '__floordiv__': '__rfloordiv__',
+    '__pow__': '__rpow__',
+    '__and__': '__rand__',
+    '__or__': '__ror__',
+    '__xor__': '__rxor__',
+    '__lshift__': '__rlshift__',
+    '__rshift__': '__rrshift__',
+    '__eq__': '__eq__',
+    '__ne__': '__ne__',
+    '__lt__': '__gt__',
+    '__ge__': '__le__',
+    '__gt__': '__lt__',
+    '__le__': '__ge__',
 }
 
 

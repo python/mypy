@@ -789,7 +789,7 @@ class ExpressionChecker:
         else:
             # Calling the operator method was unsuccessful. Try the __rX
             # method of the other operand instead.
-            rmethod = '__r' + method[2:]
+            rmethod = nodes.reverse_op_methods[method]
             arg_type = self.accept(arg)
             if self.has_member(arg_type, rmethod):
                 method_type = self.analyse_external_member_access(
