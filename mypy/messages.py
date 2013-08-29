@@ -87,10 +87,7 @@ class MessageBuilder:
     #
 
     def copy(self) -> 'MessageBuilder':
-        errors = Errors()
-        errors.file = self.errors.file
-        builder = MessageBuilder(errors)
-        return builder
+        return MessageBuilder(self.errors.copy())
 
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""

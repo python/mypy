@@ -454,6 +454,43 @@ n = Undefined(int)
 s = A() + B()
 n = A() + B() # E: Incompatible types in assignment
 
+[case testErrorContextAndBinaryOperators]
+import typing
+class A:
+    def __getitem__(self, i: str) -> int: pass
+def f() -> None:
+    A()[1] # Error
+class B:
+    A()[1] # Error
+A()[1] # Error
+[out]
+main: In function "f":
+main, line 5: Invalid index type "int" for "A"
+main: In class "B":
+main, line 7: Invalid index type "int" for "A"
+main: At top level:
+main, line 8: Invalid index type "int" for "A"
+
+[case testErrorContextAndBinaryOperators2]
+import m
+[file m.py]
+import typing
+class A:
+    def __getitem__(self, i: str) -> int: pass
+def f() -> None:
+    A()[1] # Error
+class B:
+    A()[1] # Error
+A()[1] # Error
+[out]
+In module imported in main, line 1:
+tmp/m.py: In function "f":
+tmp/m.py, line 5: Invalid index type "int" for "A"
+tmp/m.py: In class "B":
+tmp/m.py, line 7: Invalid index type "int" for "A"
+tmp/m.py: At top level:
+tmp/m.py, line 8: Invalid index type "int" for "A"
+
 
 -- Unary operators
 -- ---------------

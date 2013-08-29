@@ -70,6 +70,14 @@ class Errors:
         self.import_ctx = []
         self.type_name = [None]
         self.function_or_member = [None]
+
+    def copy(self) -> 'Errors':
+        new = Errors()
+        new.file = self.file
+        new.import_ctx = self.import_ctx[:]
+        new.type_name = self.type_name[:]
+        new.function_or_member = self.function_or_member[:]
+        return new
     
     def set_ignore_prefix(self, prefix: str) -> None:
         """Set path prefix that will be removed from all paths."""
