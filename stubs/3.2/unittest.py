@@ -53,60 +53,62 @@ class TestCase(Testable):
     def tearDown(self) -> None: pass
     def run(self, result: TestResult = None) -> None: pass
     def debug(self) -> None: pass
-    def assert_(self, expr: Any, msg: str = None) -> None: pass
-    def failUnless(self, expr: Any, msg: str = None) -> None: pass
-    def assertTrue(self, expr: Any, msg: str = None) -> None: pass
+    def assert_(self, expr: Any, msg: object = None) -> None: pass
+    def failUnless(self, expr: Any, msg: object = None) -> None: pass
+    def assertTrue(self, expr: Any, msg: object = None) -> None: pass
     def assertEqual(self, first: Any, second: Any,
-                    msg: str = None) -> None: pass
+                    msg: object = None) -> None: pass
     def failUnlessEqual(self, first: Any, second: Any,
-                        msg: str = None) -> None: pass
+                        msg: object = None) -> None: pass
     def assertNotEqual(self, first: Any, second: Any,
-                       msg: str = None) -> None: pass
+                       msg: object = None) -> None: pass
     def assertSequenceEqual(self, first: Sequence[Any], second: Sequence[Any],
-                            msg: str = None,
+                            msg: object = None,
                             seq_type: type = None) -> None: pass
     def failIfEqual(self, first: Any, second: Any,
-                    msg: str = None) -> None: pass
+                    msg: object = None) -> None: pass
     def assertAlmostEqual(self, first: float, second: float, places: int = 7,
-                          msg: str = None, delta: float = None) -> None: pass
+                          msg: object = None,
+                          delta: float = None) -> None: pass
     def failUnlessAlmostEqual(self, first: float, second: float,
-                              places: int = 7, msg: str = None) -> None: pass
+                              places: int = 7,
+                              msg: object = None) -> None: pass
     def assertNotAlmostEqual(self, first: float, second: float,
-                             places: int = 7, msg: str = None,
+                             places: int = 7, msg: object = None,
                              delta: float = None) -> None: pass
     def failIfAlmostEqual(self, first: float, second: float, places: int = 7,
-                          msg: str = None) -> None: pass
+                          msg: object = None) -> None: pass
     def assertGreater(self, first: Any, second: Any,
-                      msg: str = None) -> None: pass
+                      msg: object = None) -> None: pass
     def assertGreaterEqual(self, first: Any, second: Any,
-                      msg: str = None) -> None: pass
+                      msg: object = None) -> None: pass
     def assertLess(self, first: Any, second: Any,
-                   msg: str = None) -> None: pass
+                   msg: object = None) -> None: pass
     def assertLessEqual(self, first: Any, second: Any,
-                        msg: str = None) -> None: pass
+                        msg: object = None) -> None: pass
     @overload
     def assertRaises(self, exception: type, callable: Any,
                      *args: Any, **kwargs: Any) -> None: pass
     @overload
-    def assertRaises(self, exception: type, msg: str = None,
+    def assertRaises(self, exception: type, msg: object = None,
                      *args: Any, **kwargs: Any) -> _AssertRaisesContext: pass
-    def failIf(self, expr: Any, msg: str = None) -> None: pass
-    def assertFalse(self, expr: Any, msg: str = None) -> None: pass
+    def failIf(self, expr: Any, msg: object = None) -> None: pass
+    def assertFalse(self, expr: Any, msg: object = None) -> None: pass
     def assertIs(self, first: object, second: object,
-                 msg: str = None) -> None: pass
+                 msg: object = None) -> None: pass
     def assertIsNot(self, first: object, second: object,
-                    msg: str = None) -> None: pass
-    def assertIsNone(self, expr: Any, msg: str = None) -> None: pass
-    def assertIsNotNone(self, expr: Any, msg: str = None) -> None: pass
+                    msg: object = None) -> None: pass
+    def assertIsNone(self, expr: Any, msg: object = None) -> None: pass
+    def assertIsNotNone(self, expr: Any, msg: object = None) -> None: pass
     def assertIn(self, first: T, second: Iterable[T],
-                 msg: str = None) -> None: pass
+                 msg: object = None) -> None: pass
     def assertNotIn(self, first: T, second: Iterable[T],
-                    msg: str = None) -> None: pass
+                    msg: object = None) -> None: pass
     def assertIsInstance(self, obj: Any, cls: type,
-                         msg: str = None) -> None: pass
+                         msg: object = None) -> None: pass
     def assertNotIsInstance(self, obj: Any, cls: type,
-                            msg: str = None) -> None: pass
-    def fail(self, msg: str = None) -> None: pass
+                            msg: object = None) -> None: pass
+    def fail(self, msg: object = None) -> None: pass
     def countTestCases(self) -> int: pass
     def defaultTestResult(self) -> TestResult: pass
     def id(self) -> str: pass
