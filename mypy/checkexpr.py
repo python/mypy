@@ -772,7 +772,7 @@ class ExpressionChecker:
         else:
             result = AnyType(), AnyType()
             success = False
-        if success or not allow_reverse:
+        if success or not allow_reverse or isinstance(base_type, AnyType):
             # We were able to call the normal variant of the operator method,
             # or there was some problem not related to argument type
             # validity, or the operator has no __rX method. In any case, we

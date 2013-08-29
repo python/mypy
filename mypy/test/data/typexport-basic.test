@@ -1040,6 +1040,22 @@ NameExpr(7) : def [-1:builtins.str] (x: builtins.str) -> builtins.str
 NameExpr(7) : S
 
 
+-- Binary operations
+-- -----------------
+
+
+[case testBinaryOperatorWithAnyLeftOperand]
+## OpExpr
+from typing import Any
+class A:
+    def __radd__(self, x: str) -> int: pass
+Any(1) + A()
+'' + A()
+[out]
+OpExpr(5) : Any
+OpExpr(6) : builtins.int
+
+
 -- Special cases
 -- -------------
 
