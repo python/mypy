@@ -464,6 +464,11 @@ s = Undefined(str)
 n = Undefined(int)
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
+[case testBinaryOperatorWithAnyRightOperand]
+from typing import Any
+class A: pass
+A() + Any(1)
+
 [case testErrorContextAndBinaryOperators]
 import typing
 class A:

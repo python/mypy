@@ -1153,6 +1153,8 @@ class ExpressionChecker:
         # TODO TupleType => also consider tuple attributes
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
+        elif isinstance(typ, AnyType):
+            return True
         else:
             return False
     
