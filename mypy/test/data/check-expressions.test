@@ -432,6 +432,28 @@ class A: pass
 [out]
 main, line 3: Incompatible types in assignment
 
+[case testReverseBinaryOperator]
+from typing import Undefined
+class A:
+    def __add__(self, x: int) -> int: pass
+class B:
+    def __radd__(self, x: A) -> str: pass
+s = Undefined(str)
+n = Undefined(int)
+n = A() + 1
+s = A() + B()
+n = A() + B() # E: Incompatible types in assignment
+
+[case testReverseBinaryOperator2]
+from typing import Undefined
+class A: pass
+class B:
+    def __radd__(self, x: A) -> str: pass
+s = Undefined(str)
+n = Undefined(int)
+s = A() + B()
+n = A() + B() # E: Incompatible types in assignment
+
 
 -- Unary operators
 -- ---------------

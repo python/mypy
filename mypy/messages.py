@@ -86,11 +86,24 @@ class MessageBuilder:
     # Helpers
     #
 
+    def copy(self) -> 'MessageBuilder':
+        errors = Errors()
+        errors.file = self.errors.file
+        builder = MessageBuilder(errors)
+        return builder
+
+    def add_errors(self, messages: 'MessageBuilder') -> None:
+        """Add errors in messages to this builder."""
+        self.errors.error_info.extend(messages.errors.error_info)
+
     def disable_errors(self) -> None:
         self.disable_count += 1
 
     def enable_errors(self) -> None:
         self.disable_count -= 1
+
+    def is_errors(self) -> bool:
+        return self.errors.is_errors()
     
     def fail(self, msg: str, context: Context) -> None:
         """Report an error message (unless disabled)."""

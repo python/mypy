@@ -12,7 +12,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr
+    UndefinedExpr, ConditionalExpr, TempNode
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -117,7 +117,8 @@ class ExpressionChecker:
     def check_call(self, callee: Type, args: List[Node],
                    arg_kinds: List[int], context: Context,
                    arg_names: List[str] = None,
-                   callable_node: Node = None) -> Tuple[Type, Type]:
+                   callable_node: Node = None,
+                   arg_messages: MessageBuilder = None) -> Tuple[Type, Type]:
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
@@ -132,7 +133,9 @@ class ExpressionChecker:
           arg_names: names of arguments (optional)
           callable_node: associate the inferred callable type to this node,
             if specified
+          arg_messages: TODO
         """
+        arg_messages = arg_messages or self.msg
         is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, Callable):
             if callee.is_type_obj():
@@ -161,7 +164,8 @@ class ExpressionChecker:
                                       arg_names, formal_to_actual, context)
             
             self.check_argument_types(arg_types, arg_kinds, callee,
-                                      formal_to_actual, context)
+                                      formal_to_actual, context,
+                                      messages=arg_messages)
             if callable_node:
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callee)
@@ -445,11 +449,13 @@ class ExpressionChecker:
     def check_argument_types(self, arg_types: List[Type], arg_kinds: List[int],
                              callee: Callable,
                              formal_to_actual: List[List[int]],
-                             context: Context) -> None:
+                             context: Context,
+                             messages: MessageBuilder = None) -> None:
         """Check argument types against a callable type.
 
         Report errors if the argument types are not compatible.
         """
+        messages = messages or self.msg
         # Keep track of consumed tuple *arg items.
         tuple_counter = [0]
         for i, actuals in enumerate(formal_to_actual):
@@ -458,17 +464,17 @@ class ExpressionChecker:
                 # Check that a *arg is valid as varargs.
                 if (arg_kinds[actual] == nodes.ARG_STAR and
                         not self.is_valid_var_arg(arg_type)):
-                    self.msg.invalid_var_arg(arg_type, context)
+                    messages.invalid_var_arg(arg_type, context)
                 if (arg_kinds[actual] == nodes.ARG_STAR2 and
                         not self.is_valid_keyword_var_arg(arg_type)):
-                    self.msg.invalid_keyword_var_arg(arg_type, context)
+                    messages.invalid_keyword_var_arg(arg_type, context)
                 # Get the type of an inidividual actual argument (for *args
                 # and **args this is the item type, not the collection type).
                 actual_type = get_actual_type(arg_type, arg_kinds[actual],
                                               tuple_counter)
                 self.check_arg(actual_type, arg_type,
                                callee.arg_types[i],
-                               actual + 1, callee, context)
+                               actual + 1, callee, context, messages)
                 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
@@ -482,17 +488,16 @@ class ExpressionChecker:
                                                       tuple_counter)
                         self.check_arg(actual_type, arg_type,
                                        callee.arg_types[i],
-                                       actual + 1, callee, context)
-    
+                                       actual + 1, callee, context, messages)
     
     def check_arg(self, caller_type: Type, original_caller_type: Type,
                   callee_type: Type, n: int, callee: Callable,
-                  context: Context) -> None:
+                  context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, Void):
-            self.msg.does_not_return_value(caller_type, context)
+            messages.does_not_return_value(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
-            self.msg.incompatible_argument(n, callee, original_caller_type,
+            messages.incompatible_argument(n, callee, original_caller_type,
                                            context)
     
     def overload_call_target(self, arg_types: List[Type], is_var_arg: bool,
@@ -713,6 +718,7 @@ class ExpressionChecker:
         if e.op == 'and' or e.op == 'or':
             return self.check_boolean_op(e, e)
         if e.op == '*' and isinstance(e.left, ListExpr):
+            # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
@@ -726,7 +732,8 @@ class ExpressionChecker:
                 return self.chk.bool_type()
         elif e.op in nodes.op_methods:
             method = self.get_operator_method(e.op)
-            result, method_type = self.check_op(method, left_type, e.right, e)
+            result, method_type = self.check_op(method, left_type, e.right, e,
+                                                allow_reverse=True)
             e.method_type = method_type
             return result
         elif e.op == 'is' or e.op == 'is not':
@@ -742,17 +749,55 @@ class ExpressionChecker:
             return nodes.op_methods[op]
     
     def check_op(self, method: str, base_type: Type, arg: Node,
-                 context: Context) -> Tuple[Type, Type]:
+                 context: Context,
+                 allow_reverse: bool = False) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
 
         Return tuple (result type, inferred operator method type).
         """
         if self.has_non_method(base_type, method):
+            # TODO This restriction seems unnecessary.
             self.msg.method_expected_as_operator_implementation(
                 base_type, method, context)
-        method_type = self.analyse_external_member_access(
-            method, base_type, context)
-        return self.check_call(method_type, [arg], [nodes.ARG_POS], context)
+        # Use a local error storage for errors related to invalid argument
+        # type (but NOT other errors). This error may need to be suppressed
+        # for operators which support __rX methods.
+        local_errors = self.msg.copy()
+        if not allow_reverse or self.has_member(base_type, method):
+            method_type = self.analyse_external_member_access(
+                method, base_type, context)
+            result = self.check_call(method_type, [arg], [nodes.ARG_POS],
+                                     context, arg_messages=local_errors)
+            success = not local_errors.is_errors()
+        else:
+            result = AnyType(), AnyType()
+            success = False
+        if success or not allow_reverse:
+            # We were able to call the normal variant of the operator method,
+            # or there was some problem not related to argument type
+            # validity, or the operator has no __rX method. In any case, we
+            # don't need to consider the __rX method.
+            self.msg.add_errors(local_errors)
+            return result
+        else:
+            # Calling the operator method was unsuccessful. Try the __rX
+            # method of the other operand instead.
+            rmethod = '__r' + method[2:]
+            arg_type = self.accept(arg)
+            if self.has_member(arg_type, rmethod):
+                method_type = self.analyse_external_member_access(
+                    rmethod, arg_type, context)
+                temp = TempNode(base_type)
+                return self.check_call(method_type, [temp], [nodes.ARG_POS],
+                                       context)
+            else:
+                # No __rX method either. Do deferred type checking to produce
+                # error message that we may have missed previously.
+                # TODO Fix type checking an expression more than once.
+                method_type = self.analyse_external_member_access(
+                    method, base_type, context)
+                return self.check_call(method_type, [arg], [nodes.ARG_POS],
+                                       context)
     
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
@@ -1100,6 +1145,14 @@ class ExpressionChecker:
         if isinstance(typ, Instance):
             return (not typ.type.has_method(member) and
                     typ.type.has_readable_member(member))
+        else:
+            return False
+    
+    def has_member(self, typ: Type, member: str) -> bool:
+        """Does type have member with the given name?"""
+        # TODO TupleType => also consider tuple attributes
+        if isinstance(typ, Instance):
+            return typ.type.has_readable_member(member)
         else:
             return False
     
