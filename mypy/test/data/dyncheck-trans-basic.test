@@ -921,7 +921,7 @@ d = 1 # type: Any
 a: int = 1
 d: Any = {Any <= int 1}
 
-[case testIntArithmetic]
+[case testIntArithmetic-skip]
 from typing import Undefined, Any
 i = Undefined(int)
 d = Undefined # type: Any
@@ -961,7 +961,7 @@ d = d * {Any <= int 1}
 d = d % d
 d = d // d
 
-[case testBinaryOperationOperands]
+[case testBinaryOperationOperands-skip]
 from typing import Undefined, Any
 d = Undefined # type: Any
 i = Undefined(int)
@@ -1016,7 +1016,7 @@ b = {bool d and d}
 d = d or d
 b = not d
 
-[case testIntComparisons]
+[case testIntComparisons-skip]
 from typing import Undefined, Any
 i = Undefined(int)
 b = False
@@ -1196,7 +1196,7 @@ class A:
 -- --------------------
 
 
-[case testBinaryOperatorOverloading]
+[case testBinaryOperatorOverloading-skip]
 from typing import Undefined, Any
 class A:
     def __add__(self, x: 'A') -> int: pass

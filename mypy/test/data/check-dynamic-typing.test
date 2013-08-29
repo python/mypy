@@ -125,8 +125,8 @@ a or d
 c = a in d
 c = b and d # Unintuitive type inference?
 c = b or d  # Unintuitive type inference?
-b = a + d   # E: Incompatible types in assignment
-b = a / d   # E: Incompatible types in assignment
+b = a + d
+b = a / d
 
 c = a + d
 c = a - d

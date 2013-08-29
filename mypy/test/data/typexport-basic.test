@@ -1055,6 +1055,15 @@ Any(1) + A()
 OpExpr(5) : Any
 OpExpr(6) : builtins.int
 
+[case testBinaryOperatorWithAnyRightOperand]
+## OpExpr
+from typing import Any
+class A:
+    def __add__(self, x: str) -> int: pass
+A() + Any(1)
+[out]
+OpExpr(5) : Any
+
 
 -- Special cases
 -- -------------

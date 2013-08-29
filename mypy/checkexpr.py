@@ -768,6 +768,13 @@ class ExpressionChecker:
                 method, base_type, context)
             result = self.check_call(method_type, [arg], [nodes.ARG_POS],
                                      context, arg_messages=local_errors)
+            if allow_reverse:
+                arg_type = self.chk.type_map[arg]
+                if isinstance(arg_type, AnyType):
+                    # If the right operand has type Any, we can't make any
+                    # conjectures about the type of the result, since the
+                    # operand could have a __r method that returns anything.
+                    result = AnyType(), result[1]
             success = not local_errors.is_errors()
         else:
             result = AnyType(), AnyType()
