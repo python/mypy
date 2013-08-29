@@ -625,3 +625,23 @@ f = abs(2.2)
 n = abs(2.2) # Error
 [out]
 _program.py, line 6: Incompatible types in assignment
+
+[case testROperatorMethods]
+from typing import Undefined
+b = Undefined(bytes)
+s = Undefined(str)
+s = b'foo' * 5 # Error
+b = 5 * b'foo'
+b = b'foo' * 5
+s = 5 * 'foo'
+s = 'foo' * 5
+[out]
+_program.py, line 4: Incompatible types in assignment
+
+[case testROperatorMethods2]
+import typing
+print(2 / 0.5)
+print(' ', 2 * [3, 4])
+[out]
+4.0
+  [3, 4, 3, 4]

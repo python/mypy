@@ -83,54 +83,35 @@ class int(SupportsInt, SupportsFloat):
     def from_bytes(bytes: Sequence[int], byteorder: str, *,
                    signed: bool = False) -> int: pass
 
-    # TODO all __r* methods
-    
-    @overload
     def __add__(self, x: int) -> int: pass
-    @overload
-    def __add__(self, x: float) -> float: pass
-    
-    @overload
     def __sub__(self, x: int) -> int: pass
-    @overload
-    def __sub__(self, x: float) -> float: pass
-    
-    @overload
     def __mul__(self, x: int) -> int: pass
-    @overload
-    def __mul__(self, x: float) -> float: pass
-    @overload
-    def __mul__(self, s: str) -> str: pass
-    @overload
-    def __mul__(self, l: List[T]) -> List[T]: pass
-    
-    @overload
     def __floordiv__(self, x: int) -> int: pass
-    @overload
-    def __floordiv__(self, x: float) -> float: pass
-    
-    @overload
     def __truediv__(self, x: int) -> float: pass
-    @overload
-    def __truediv__(self, x: float) -> float: pass
-    
-    @overload
     def __mod__(self, x: int) -> int: pass
-    @overload
-    def __mod__(self, x: float) -> float: pass
+    
+    def __radd__(self, x: int) -> int: pass
+    def __rsub__(self, x: int) -> int: pass
+    def __rmul__(self, x: int) -> int: pass
+    def __rfloordiv__(self, x: int) -> int: pass
+    def __rtruediv__(self, x: int) -> float: pass
     def __rmod__(self, x: int) -> int: pass
-
+    
     # Return type can be int or float, depending on the value of x.
-    @overload
     def __pow__(self, x: int) -> Any: pass
-    @overload
-    def __pow__(self, x: float) -> float: pass
+    def __rpow__(self, x: int) -> Any: pass
 
     def __and__(self, n: int) -> int: pass
     def __or__(self, n: int) -> int: pass
     def __xor__(self, n: int) -> int: pass
     def __lshift__(self, n: int) -> int: pass
     def __rshift__(self, n: int) -> int: pass
+
+    def __rand__(self, n: int) -> int: pass
+    def __ror__(self, n: int) -> int: pass
+    def __rxor__(self, n: int) -> int: pass
+    def __rlshift__(self, n: int) -> int: pass
+    def __rrshift__(self, n: int) -> int: pass
 
     def __neg__(self) -> int: pass
     def __invert__(self) -> int: pass
@@ -183,6 +164,14 @@ class float(SupportsFloat, SupportsInt):
     def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: float) -> float: pass
     def __pow__(self, x: float) -> float: pass
+    
+    def __radd__(self, x: float) -> float: pass
+    def __rsub__(self, x: float) -> float: pass
+    def __rmul__(self, x: float) -> float: pass
+    def __rfloordiv__(self, x: float) -> float: pass
+    def __rtruediv__(self, x: float) -> float: pass
+    def __rmod__(self, x: float) -> float: pass
+    def __rpow__(self, x: float) -> float: pass
     
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
@@ -293,6 +282,7 @@ class str(Sequence[str]):
 
     def __add__(self, s: str) -> str: pass
     def __mul__(self, n: int) -> str: pass
+    def __rmul__(self, n: int) -> str: pass
     def __mod__(self, *args: Any) -> str: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
@@ -464,6 +454,7 @@ class bytes(Sequence[int]):
     def __add__(self, s: bytearray) -> bytes: pass
     
     def __mul__(self, n: int) -> bytes: pass
+    def __rmul__(self, n: int) -> bytes: pass
     def __contains__(self, o: object) -> bool: pass    
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
@@ -640,7 +631,8 @@ class bytearray(Sequence[int]):
     def __add__(self, s: bytearray) -> bytearray: pass
     
     def __mul__(self, n: int) -> bytearray: pass
-    def __contains__(self, o: object) -> bool: pass    
+    def __rmul__(self, n: int) -> bytearray: pass
+    def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     # TODO precise types for operands
@@ -732,6 +724,7 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     
     def __add__(self, x: List[T]) -> List[T]: pass
     def __mul__(self, n: int) -> List[T]: pass
+    def __rmul__(self, n: int) -> List[T]: pass
     def __contains__(self, o: object) -> bool: pass
     def __reversed__(self) -> Iterator[T]: pass
 
