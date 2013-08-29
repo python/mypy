@@ -895,8 +895,7 @@ False = Undefined # type: bool
 __debug__ = False
 
 
-class _NotImplementedType: pass # TODO name of the class
-NotImplemented = Undefined # type: _NotImplementedType
+NotImplemented = Undefined # type: Any
 
 
 @overload

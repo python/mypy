@@ -645,3 +645,19 @@ print(' ', 2 * [3, 4])
 [out]
 4.0
   [3, 4, 3, 4]
+
+[case testNotImplemented]
+import typing
+class A:
+    def __add__(self, x: int) -> int:
+        if isinstance(x, int):
+            return x + 1
+        return NotImplemented
+class B:
+    def __radd__(self, x: A) -> str:
+        return 'x'
+print(A() + 1)
+print(A() + B())
+[out]
+2
+x
