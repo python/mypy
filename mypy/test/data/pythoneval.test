@@ -563,7 +563,7 @@ def f(t: T, s: S) -> None:
     t + s
 [out]
 _program.py: In function "f":
-_program.py, line 7: No overload variant of "__add__" of "int" matches argument types
+_program.py, line 7: Unsupported operand types for + ("int" and "str")
 _program.py, line 7: Unsupported operand types for + ("str" and "int")
 
 [case testBuiltinclass]
