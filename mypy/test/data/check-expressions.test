@@ -454,6 +454,16 @@ n = Undefined(int)
 s = A() + B()
 n = A() + B() # E: Incompatible types in assignment
 
+[case testReverseBinaryOperator3]
+from typing import Undefined
+class A:
+    def __add__(self, x: int) -> int: pass
+class B:
+    def __radd__(self, x: int) -> str: pass
+s = Undefined(str)
+n = Undefined(int)
+s = A() + B() # E: Argument 1 to "__radd__" of "B" has incompatible type "A"
+
 [case testErrorContextAndBinaryOperators]
 import typing
 class A:
