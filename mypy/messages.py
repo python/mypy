@@ -301,14 +301,16 @@ class MessageBuilder:
             base = extract_type(name)
             
             for op, method in op_methods.items():
-                if name.startswith('"{}" of'.format(method)):
-                    if op == 'in':
-                        self.unsupported_operand_types(op, arg_type, base,
-                                                       context)
-                    else:
-                        self.unsupported_operand_types(op, base, arg_type,
-                                                       context)
-                    return 
+                for variant in method, '__r' + method[2:]:
+                    if name.startswith('"{}" of'.format(variant)):
+                        if op == 'in' or variant != method:
+                            # Reversed order of base/argument.
+                            self.unsupported_operand_types(op, arg_type, base,
+                                                           context)
+                        else:
+                            self.unsupported_operand_types(op, base, arg_type,
+                                                           context)
+                        return 
             
             if name.startswith('"__getitem__" of'):
                 self.invalid_index_type(arg_type, base, context)

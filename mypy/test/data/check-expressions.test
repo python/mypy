@@ -462,7 +462,7 @@ class B:
     def __radd__(self, x: int) -> str: pass
 s = Undefined(str)
 n = Undefined(int)
-s = A() + B() # E: Argument 1 to "__radd__" of "B" has incompatible type "A"
+s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testErrorContextAndBinaryOperators]
 import typing
