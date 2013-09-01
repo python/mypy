@@ -54,6 +54,16 @@ def ducktype(type):
     return decorator
 
 
+def disjointclass(type):
+    """Return a disjoint class declaration decorator.
+
+    The decorator only affects type checking.
+    """
+    def decorator(cls):
+        return cls
+    return decorator
+
+
 class GenericMeta(type):
     """Metaclass for generic classes that support indexing by types."""
     

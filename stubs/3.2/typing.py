@@ -17,6 +17,7 @@ Tuple = object()
 Function = object()
 builtinclass = object()
 ducktype = object()
+disjointclass = object()
 
 # Type aliases.
 List = object()

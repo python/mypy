@@ -661,3 +661,11 @@ print(A() + B())
 [out]
 2
 x
+
+[case testDisjointclass]
+from typing import disjointclass
+@disjointclass(int)
+class A: pass
+print(A)
+[out]
+<class '__main__.A'>
