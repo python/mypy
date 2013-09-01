@@ -557,6 +557,11 @@ class MessageBuilder:
         self.fail('Type argument {} of {} has incompatible value {}'.format(
             index, callable_name(callee), self.format(type)), context)
 
+    def disjointness_violation(self, cls: TypeInfo, disjoint: TypeInfo,
+                               context: Context) -> None:
+        self.fail('disjointclass constraint in class {} disallows {} as a '
+                  'base class'.format(cls.name(), disjoint.name()), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
