@@ -1450,3 +1450,36 @@ MypyFile:1(
     Decorators(
       DucktypeExpr:2(builtins.str))
     PassStmt:3()))
+
+[case testDisjointclassDecorator]
+from typing import disjointclass
+@disjointclass(str)
+class A: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [disjointclass : disjointclass])
+  ClassDef:2(
+    A
+    Disjointclasses(
+      builtins.str)
+    Decorators(
+      DisjointclassExpr:2(builtins.str))
+    PassStmt:3()))
+
+[case testDisjointclassDecorators]
+from typing import disjointclass
+@disjointclass(str)
+@disjointclass(int)
+class A: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [disjointclass : disjointclass])
+  ClassDef:2(
+    A
+    Disjointclasses(
+      builtins.str
+      builtins.int)
+    Decorators(
+      DisjointclassExpr:2(builtins.str)
+      DisjointclassExpr:3(builtins.int))
+    PassStmt:4()))

@@ -1206,6 +1206,18 @@ class DucktypeExpr(Node):
         return visitor.visit_ducktype_expr(self)
 
 
+class DisjointclassExpr(Node):
+    """Disjoint class class decorator expression disjointclass(cls)."""
+
+    cls = Undefined(RefExpr)
+
+    def __init__(self, cls: RefExpr) -> None:
+        self.cls = cls
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_disjointclass_expr(self)
+
+
 class CoerceExpr(Node):
     """Implicit coercion expression.
 
@@ -1292,6 +1304,7 @@ class TypeInfo(SymbolNode):
     names = Undefined('SymbolTable')      # Names defined directly in this type
     is_abstract = False       # Does the class have any abstract attributes?
     abstract_attributes = Undefined(List[str])
+    disjoint_classes = Undefined(List['TypeInfo'])
     
     # Information related to type annotations.
     
@@ -1315,6 +1328,7 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
+        self.disjoint_classes = []
         if defn.type_vars:
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)

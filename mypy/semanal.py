@@ -55,8 +55,8 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, ARG_POS, ARG_NAMED,
-    MroError, type_aliases
+    StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
+    ARG_POS, ARG_NAMED, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -388,6 +388,13 @@ class SemanticAnalyzer(NodeVisitor):
                 analyzed = decorator.analyzed
                 if isinstance(analyzed, DucktypeExpr):
                     defn.info.ducktype = analyzed.type
+                elif isinstance(analyzed, DisjointclassExpr):
+                    node = analyzed.cls.node
+                    if isinstance(node, TypeInfo):
+                        defn.info.disjoint_classes.append(node)
+                    else:
+                        self.fail('Argument 1 to disjointclass does not refer '
+                                  'to a class', analyzed)
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
@@ -1104,6 +1111,17 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = DucktypeExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'typing.disjointclass'):
+            # Special form disjointclass(...).
+            if not self.check_fixed_args(expr, 1, 'disjointclass'):
+                return
+            arg = expr.args[0]
+            if isinstance(arg, RefExpr):
+                expr.analyzed = DisjointclassExpr(arg)
+                expr.analyzed.line = expr.line
+                expr.analyzed.accept(self)
+            else:
+                self.fail('Argument 1 to disjointclass is not a class')
         else:
             # Normal call expression.
             for a in expr.args:
@@ -1221,6 +1239,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_ducktype_expr(self, expr: DucktypeExpr) -> None:
         expr.type = self.anal_type(expr.type)
+
+    def visit_disjointclass_expr(self, expr: DisjointclassExpr) -> None:
+        expr.cls.accept(self)
     
     #
     # Helpers
