@@ -1122,7 +1122,7 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.analyzed.line = expr.line
                 expr.analyzed.accept(self)
             else:
-                self.fail('Argument 1 to disjointclass is not a class')
+                self.fail('Argument 1 to disjointclass is not a class', expr)
         else:
             # Normal call expression.
             for a in expr.args:
