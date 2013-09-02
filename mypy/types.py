@@ -238,7 +238,7 @@ class Callable(FunctionLike):
     arg_types = Undefined(List[Type]) # Types of function arguments
     arg_kinds = Undefined(List[int])  # mypy.nodes.ARG_ constants
     arg_names = Undefined(List[str])  # None if not a keyword argument
-    minargs = 0                # Minimum number of arguments
+    min_args = 0               # Minimum number of arguments
     is_var_arg = False         # Is it a varargs function?
     ret_type = Undefined(Type) # Return value type
     name = ''                  # Name (may be None; for error messages)
