@@ -47,7 +47,7 @@ class B: pass
 class C: pass
 
 [case testOverloadedFunctionReturnValue]
-from typing import Undefined, overload
+from typing import Undefined, overload, disjointclass
 a, b = Undefined, Undefined # type: (A, B)
 b = f(a) # E: Incompatible types in assignment
 a = f(b) # E: Incompatible types in assignment
@@ -59,6 +59,7 @@ def f(x: 'A') -> 'A': pass
 @overload
 def f(x: 'B') -> 'B': pass
 class A: pass
+@disjointclass(A)
 class B: pass
 
 [case testCallToOverloadedMethod]
@@ -77,7 +78,7 @@ class B: pass
 class C: pass
 
 [case testOverloadedMethodReturnValue]
-from typing import Undefined, overload
+from typing import Undefined, overload, disjointclass
 a, b = Undefined, Undefined # type: (A, B)
 b = a.f(a) # E: Incompatible types in assignment
 a = a.f(b) # E: Incompatible types in assignment
@@ -89,6 +90,7 @@ class A:
   def f(self, x: 'A') -> 'A': pass
   @overload
   def f(self, x: 'B') -> 'B': pass
+@disjointclass(A)
 class B: pass
 
 [case testNonConsecutiveOverloads]
@@ -116,7 +118,7 @@ class A: pass
 class B: pass
 
 [case testGenericOverloadVariant]
-from typing import Undefined, overload, typevar, Generic
+from typing import Undefined, overload, typevar, Generic, disjointclass
 t = typevar('t')
 ab, ac, b, c = Undefined, Undefined, Undefined, Undefined # type: (A[B], A[C], B, C)
 b = f(ab)
@@ -129,6 +131,7 @@ def f(x: 'A[t]') -> t: pass
 @overload
 def f(x: 'B') -> 'B': pass
 class A(Generic[t]): pass
+@disjointclass(A)
 class B: pass
 class C: pass
 
@@ -176,18 +179,17 @@ class B: pass
 
 [case testOverloadedGetitem]
 from typing import Undefined, overload
-a, b = Undefined, Undefined # type: (A, B)
-a = a[a]
-b = a[a] # E: Incompatible types in assignment
-b = a[b]
-a = a[b] # E: Incompatible types in assignment
+a, b = Undefined(int), Undefined(str)
+a = A()[a]
+b = A()[a] # E: Incompatible types in assignment
+b = A()[b]
+a = A()[b] # E: Incompatible types in assignment
 
 class A:
     @overload
-    def __getitem__(self, a: 'A') -> 'A': pass
+    def __getitem__(self, a: int) -> int: pass
     @overload
-    def __getitem__(self, b: 'B') -> 'B': pass
-class B: pass
+    def __getitem__(self, b: str) -> str: pass
 
 [case testOverloadedGetitemWithGenerics]
 from typing import Undefined, typevar, Generic, overload
@@ -277,7 +279,7 @@ class B: pass
 [builtins fixtures/function.py]
 
 [case testOverloadedInitAndTypeObjectInOverload]
-from typing import overload, Undefined
+from typing import overload, Undefined, disjointclass
 @overload
 def f(t: type) -> 'A': pass
 @overload
@@ -287,6 +289,7 @@ a = f(A)
 b = f(a)
 b = f(A) # E: Incompatible types in assignment
 a = f(a) # E: Incompatible types in assignment
+@disjointclass(type)
 class A:
    @overload
    def __init__(self) -> None: pass
@@ -309,3 +312,22 @@ n = 'x' # E: Incompatible types in assignment
 m = 'x' # E: Incompatible types in assignment
 f(List[object]()) # E: Argument 1 to "f" has incompatible type List[object]
 [builtins fixtures/list.py]
+
+[case testOverlappingOverloadSignatures]
+from typing import overload
+class A: pass
+class B: pass
+@overload
+def f(x: A) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: B) -> B: pass
+
+[case testDisjointclassesAndOverload]
+from typing import overload, disjointclass
+class A: pass
+@disjointclass(A)
+class B: pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass

@@ -349,7 +349,7 @@ main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
 
 
 [case testIntersectionTypesAndVarArgs]
-from typing import Undefined, overload
+from typing import Undefined, overload, disjointclass
 a, b = Undefined, Undefined # type: (A, B)
 
 b = f()        # E: Incompatible types in assignment
@@ -378,14 +378,15 @@ b = f(*(b,))
 b = f(*(b, b))
 b = f(*[b])
 
-@overload
-def f(a: 'A' = None, *b: 'B') -> 'A': pass
-
-@overload
-def f(a: 'B', *b: 'B') -> 'B': pass
-
 class A: pass
+@disjointclass(A)
 class B: pass
+
+@overload
+def f(a: A = None, *b: B) -> A: pass
+
+@overload
+def f(a: B, *b: B) -> B: pass
 [builtins fixtures/list.py]
 
 

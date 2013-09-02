@@ -1522,28 +1522,32 @@ MypyFile:1(
   ClassDef:3(
     B
     Disjointclasses(
-      __main__.C)
+      __main__.C
+      __main__.D)
     BaseType(
       __main__.A)
     PassStmt:3())
   ClassDef:4(
     C
     Disjointclasses(
-      __main__.B)
+      __main__.B
+      __main__.E)
     Decorators(
       DisjointclassExpr:4(__main__.B))
     PassStmt:5())
   ClassDef:6(
     D
     Disjointclasses(
-      __main__.B)
+      __main__.B
+      __main__.E)
     BaseType(
       __main__.C)
     PassStmt:6())
   ClassDef:7(
     E
     Disjointclasses(
-      __main__.C)
+      __main__.C
+      __main__.D)
     BaseType(
       __main__.B)
     PassStmt:7()))

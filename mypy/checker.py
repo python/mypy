@@ -192,6 +192,17 @@ class TypeChecker(NodeVisitor[Type]):
             self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.info:
             self.check_method_override(defn)
+        self.check_overlapping_overloads(defn)
+
+    def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
+        for i, item in enumerate(defn.items):
+            for j, item2 in enumerate(defn.items[i + 1:]):
+                # TODO overloads involving decorators
+                sig1 = function_type(item.func)
+                sig2 = function_type(item2.func)
+                if is_unsafe_overlapping_signatures(sig1, sig2):
+                    self.msg.overloaded_signatures_overlap(i + 1, j + 2,
+                                                           item.func)
     
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
@@ -418,7 +429,7 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.INSTANCE_LAYOUT_CONFLICT, typ)
         # Verify that no disjointclass constraints are violated.
         for base in typ.mro:
-            for disjoint in base.disjoint_classes:
+            for disjoint in base.disjointclass_decls:
                 if disjoint in typ.mro:
                     self.msg.disjointness_violation(base, disjoint, typ)
 
@@ -1305,7 +1316,12 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
     """Can a value of type t be a value of type s, or vice versa?"""
     if isinstance(t, Instance):
         if isinstance(s, Instance):
-            # Only built-in classes in the mro affect whether two types can be
+            # If the classes are explicitly declared as disjoint, they can't
+            # overlap.
+            if t.type in s.type.disjoint_classes:
+                return False
+            
+            # Built-in classes in the mro affect whether two types can be
             # overlapping.
             # TODO Find the most distant ancestor with the same memory layout,
             #      since multiple inheritance seems possible if the memory
@@ -1313,10 +1329,13 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
             tbuiltin = nearest_builtin_ancestor(t.type)
             sbuiltin = nearest_builtin_ancestor(s.type)
             
-            # If one is a base class of other, the types overlap.
+            # If one is a base class of other, the types overlap, unless there
+            # is an explicit disjointclass constraint.
             if tbuiltin in sbuiltin.mro or sbuiltin in tbuiltin.mro:
                 return True
             return tbuiltin == sbuiltin
+    # We conservatively assume that non-instance types can overlap any other
+    # types.    
     return True
 
 
@@ -1344,3 +1363,39 @@ class TypeTransformVisitor(TransformVisitor):
     
     def type(self, type: Type) -> Type:
         return expand_type(type, self.map)
+
+
+def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
+    """Check if two signatures may be unsafely overlapping.
+
+    Two signatures s and t are overlapping if both can be valid for the same
+    statically typed values and the return types are incompatible.
+
+    TODO If argument types vary covariantly, the return type may vary
+         covariantly as well.
+    """
+    if isinstance(signature, Callable):
+        if isinstance(other, Callable):
+            # TODO varargs
+            # TODO keyword args
+            # TODO erasure
+            # TODO allow to vary covariantly
+            # Check if the argument counts are overlapping.
+            min_args = max(signature.min_args, other.min_args)
+            max_args = min(len(signature.arg_types), len(other.arg_types))
+            if min_args > max_args:
+                # Argument counts are not overlapping.
+                return False
+            # Signatures are overlapping iff if they are overlapping for the
+            # smallest common argument count.
+            for i in range(min_args):
+                t1 = signature.arg_types[i]
+                t2 = other.arg_types[i]
+                if not is_overlapping_types(t1, t2):
+                    return False
+            # All arguments types for the smallest common argument count are
+            # overlapping => the signature is overlapping. The overlapping is
+            # safe if the return types are identical.
+            return not is_same_type(signature.ret_type,
+                                    other.ret_type)
+    return True

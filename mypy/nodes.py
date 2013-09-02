@@ -1304,7 +1304,11 @@ class TypeInfo(SymbolNode):
     names = Undefined('SymbolTable')      # Names defined directly in this type
     is_abstract = False       # Does the class have any abstract attributes?
     abstract_attributes = Undefined(List[str])
+    # All classes in this build unit that are disjoint with this class.
     disjoint_classes = Undefined(List['TypeInfo'])
+    # Targets of disjointclass declarations present in this class only (for
+    # generating error messages).
+    disjointclass_decls = Undefined(List['TypeInfo'])
     
     # Information related to type annotations.
     
@@ -1329,6 +1333,7 @@ class TypeInfo(SymbolNode):
         self.is_abstract = False
         self.abstract_attributes = []
         self.disjoint_classes = []
+        self.disjointclass_decls = []
         if defn.type_vars:
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)

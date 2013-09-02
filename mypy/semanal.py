@@ -392,6 +392,7 @@ class SemanticAnalyzer(NodeVisitor):
                     node = analyzed.cls.node
                     if isinstance(node, TypeInfo):
                         defn.info.disjoint_classes.append(node)
+                        defn.info.disjointclass_decls.append(node)
                         node.disjoint_classes.append(defn.info)
                     else:
                         self.fail('Argument 1 to disjointclass does not refer '
@@ -1506,6 +1507,9 @@ class ThirdPass(TraverserVisitor[None]):
             for disjoint in base.disjoint_classes:
                 if disjoint not in info.disjoint_classes:
                     info.disjoint_classes.append(disjoint)
+                    for subtype in disjoint.all_subtypes():
+                        if info not in subtype.disjoint_classes:
+                            subtype.disjoint_classes.append(info)
         super().visit_class_def(tdef)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

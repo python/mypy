@@ -115,7 +115,7 @@ class A:
 def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
-from typing import Undefined, Function, overload
+from typing import Undefined, Function, overload, disjointclass
 f = Undefined # type: Function[[AA], A]
 g = Undefined # type: Function[[B], B]
 h = Undefined # type: Function[[A], AA]
@@ -127,26 +127,28 @@ f = i
 g = i
 g = j
 
+class A: pass
+class AA(A): pass
+
+@disjointclass(A)
+class B: pass
+
 @overload
-def i(x: 'AA') -> 'A':
+def i(x: AA) -> A:
     pass
 @overload
-def i(x: 'B') -> 'B':
+def i(x: B) -> B:
     pass
     
 @overload
-def j(x: 'B') -> 'B':
+def j(x: B) -> B:
     pass
 @overload
-def j(x: 'A') -> 'AA':
+def j(x: A) -> AA:
     pass
 
-class A: pass
-class AA(A): pass
-class B: pass
-
 [case testOverloadWithThreeItems]
-from typing import Undefined, Function, overload
+from typing import Undefined, Function, overload, disjointclass
 g1 = Undefined # type: Function[[A], A]
 g2 = Undefined # type: Function[[B], B]
 g3 = Undefined # type: Function[[C], C]
@@ -165,21 +167,21 @@ a = f(a)
 b = f(b)
 c = f(c)
 
-@overload
-def f(x: 'A') -> 'A':
-    pass
-
-@overload
-def f(x: 'B') -> 'B':
-    pass
-
-@overload
-def f(x: 'C') -> 'C':
-    pass
-
 class A: pass
+
+@disjointclass(A)
 class B: pass
+
+@disjointclass(A)
+@disjointclass(B)
 class C: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+@overload
+def f(x: C) -> C: pass
 
 
 -- Default argument values

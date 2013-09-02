@@ -559,8 +559,13 @@ class MessageBuilder:
 
     def disjointness_violation(self, cls: TypeInfo, disjoint: TypeInfo,
                                context: Context) -> None:
-        self.fail('disjointclass constraint in class {} disallows {} as a '
+        self.fail('disjointclass constraint of class {} disallows {} as a '
                   'base class'.format(cls.name(), disjoint.name()), context)
+
+    def overloaded_signatures_overlap(self, index1: int, index2: int,
+                                      context: Context) -> None:
+        self.fail('Overloaded function signatures {} and {} overlap with '
+                  'incompatible return types'.format(index1, index2), context)
 
 
 def capitalize(s: str) -> str:
