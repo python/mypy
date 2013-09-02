@@ -520,9 +520,9 @@ class ExpressionChecker:
                                       typ.ret_type)):
                     # Ambiguous return type. Either the function overload is
                     # overlapping (which results in an error elsewhere) or the
-                    # caller has provided some dynamic argument types; in
+                    # caller has provided some Any argument types; in
                     # either case can only infer the type to be any, as it is
-                    # not an error to use any types in calls.
+                    # not an error to use Any types in calls.
                     # TODO overlapping overloads should be possible in some
                     #      cases
                     return AnyType()
