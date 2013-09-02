@@ -1478,9 +1478,10 @@ class FirstPass(NodeVisitor):
 
 
 class ThirdPass(TraverserVisitor[None]):
-    """Check type argument counts and values of generic types.
+    """The third and final pass of semantic analysis.
 
-    This is the third and final pass of semantic analysis.
+    Check type argument counts and values of generic types. Also update
+    TypeInfo disjointclass information.
     """
     
     def __init__(self, errors: Errors) -> None:
@@ -1499,6 +1500,12 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_class_def(self, tdef: ClassDef) -> None:
         for base in tdef.info.bases:
             self.analyze(base)
+        info = tdef.info
+        # Collect declared disjoint classes from all base classes.
+        for base in info.mro:
+            for disjoint in base.disjoint_classes:
+                if disjoint not in info.disjoint_classes:
+                    info.disjoint_classes.append(disjoint)
         super().visit_class_def(tdef)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
