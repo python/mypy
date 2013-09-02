@@ -146,7 +146,7 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_ducktype_expr(self, o: 'mypy.nodes.DucktypeExpr') -> T:
         pass
-    def visit_disjoitclass_expr(self, o: 'mypy.nodes.DisjointclassExpr') -> T:
+    def visit_disjointclass_expr(self, o: 'mypy.nodes.DisjointclassExpr') -> T:
         pass
     
     def visit_coerce_expr(self, o: 'mypy.nodes.CoerceExpr') -> T:
