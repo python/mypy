@@ -16,7 +16,7 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    CoerceExpr, TypeExpr, JavaCast, TempNode
+    DisjointclassExpr, CoerceExpr, TypeExpr, JavaCast, TempNode
 )
 from mypy.types import Type
 from mypy.visitor import NodeVisitor
@@ -386,6 +386,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_ducktype_expr(self, node: DucktypeExpr) -> Node:
         return DucktypeExpr(node.type)
+
+    def visit_disjointclass_expr(self, node: DisjointclassExpr) -> Node:
+        return DisjointclassExpr(node.cls)
     
     def visit_coerce_expr(self, node: CoerceExpr) -> Node:
         raise RuntimeError('Not supported')
