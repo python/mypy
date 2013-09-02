@@ -16,6 +16,7 @@ AbstractGeneric = object()
 Tuple = object()
 Function = object()
 builtinclass = object()
+disjointclass = object()
 
 # Type aliases.
 List = object()
