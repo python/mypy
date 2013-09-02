@@ -1424,11 +1424,11 @@ class TypeInfo(SymbolNode):
     
     def all_subtypes(self) -> 'Set[TypeInfo]':
         """Return TypeInfos of all subtypes, including this type, as a set."""
-        set = set([self])
+        subtypes = set([self])
         for subt in self.subtypes:
             for t in subt.all_subtypes():
-                set.add(t)
-        return set
+                subtypes.add(t)
+        return subtypes
     
     def all_base_classes(self) -> 'List[TypeInfo]':
         """Return a list of base classes, including indirect bases."""
