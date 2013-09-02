@@ -1498,8 +1498,8 @@ class ThirdPass(TraverserVisitor[None]):
         self.errors.pop_function()
 
     def visit_class_def(self, tdef: ClassDef) -> None:
-        for base in tdef.info.bases:
-            self.analyze(base)
+        for type in tdef.info.bases:
+            self.analyze(type)
         info = tdef.info
         # Collect declared disjoint classes from all base classes.
         for base in info.mro:
