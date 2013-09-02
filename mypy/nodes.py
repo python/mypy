@@ -1295,7 +1295,7 @@ class TypeInfo(SymbolNode):
     the class.
     """
     
-    _fullname = None # type: str     # Fully qualified name
+    _fullname = None # type: str      # Fully qualified name
     defn = Undefined(ClassDef)        # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to self.
