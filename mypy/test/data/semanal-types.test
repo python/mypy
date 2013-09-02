@@ -1483,3 +1483,24 @@ MypyFile:1(
       DisjointclassExpr:2(builtins.str)
       DisjointclassExpr:3(builtins.int))
     PassStmt:4()))
+
+[case testDisjointClassSymmetry]
+from typing import disjointclass
+class B: pass
+@disjointclass(B)
+class A: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [disjointclass : disjointclass])
+  ClassDef:2(
+    B
+    Disjointclasses(
+      __main__.A)
+    PassStmt:2())
+  ClassDef:3(
+    A
+    Disjointclasses(
+      __main__.B)
+    Decorators(
+      DisjointclassExpr:3(__main__.B))
+    PassStmt:4()))

@@ -392,6 +392,7 @@ class SemanticAnalyzer(NodeVisitor):
                     node = analyzed.cls.node
                     if isinstance(node, TypeInfo):
                         defn.info.disjoint_classes.append(node)
+                        node.disjoint_classes.append(defn.info)
                     else:
                         self.fail('Argument 1 to disjointclass does not refer '
                                   'to a class', analyzed)
