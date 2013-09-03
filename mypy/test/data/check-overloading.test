@@ -371,3 +371,17 @@ class B(A): pass
 def g(x: int, y: B) -> B: pass
 @overload
 def g(x: int, y: A) -> A: pass
+
+[case testCovariantOverlappingOverloadSignaturesWithAnyType]
+from typing import Any, overload
+@overload
+def g(x: int) -> int: pass
+@overload
+def g(x: Any) -> Any: pass
+
+[case testContravariantOverlappingOverloadSignaturesWithAnyType]
+from typing import Any, overload
+@overload
+def g(x: Any) -> Any: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(x: int) -> int: pass
