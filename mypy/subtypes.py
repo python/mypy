@@ -9,7 +9,12 @@ from mypy.expandtype import expand_type
 
 
 def is_subtype(left: Type, right: Type) -> bool:
-    """Is 'left' subtype of 'right'?"""
+    """Is 'left' subtype of 'right'?
+
+    Also consider Any to be a subtype of any type, and vice versa. This
+    recursively applies to components of composite types (List[int] is subtype
+    of List[Any], for example).
+    """
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
