@@ -86,11 +86,8 @@ class TestCase(Testable):
                    msg: object = None) -> None: pass
     def assertLessEqual(self, first: Any, second: Any,
                         msg: object = None) -> None: pass
-    @overload
-    def assertRaises(self, exception: type, callable: Any,
-                     *args: Any, **kwargs: Any) -> None: pass
-    @overload
-    def assertRaises(self, exception: type, msg: object = None,
+    # TODO: If callableObj is None, the return value is None.
+    def assertRaises(self, excClass: type, callableObj: Any = None,
                      *args: Any, **kwargs: Any) -> _AssertRaisesContext: pass
     def failIf(self, expr: Any, msg: object = None) -> None: pass
     def assertFalse(self, expr: Any, msg: object = None) -> None: pass
