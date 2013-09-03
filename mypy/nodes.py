@@ -1408,7 +1408,7 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 node = cls.names[name].node
                 if isinstance(node, FuncBase):
-                    return cast(FuncBase, node)
+                    return node
                 else:
                     return None
         return None
