@@ -1082,6 +1082,23 @@ f('')
 CallExpr(7) : builtins.str
 CallExpr(8) : builtins.int
 
+[case testOverlappingOverloadedFunctionType]
+## CallExpr
+from typing import overload
+class A: pass
+class B(A): pass
+@overload
+def f(x: B) -> B: pass
+@overload
+def f(x: A) -> A: pass
+a = None # type: A
+b = None # type: B
+f(a)
+f(b)
+[out]
+CallExpr(11) : A
+CallExpr(12) : B
+
 
 -- Special cases
 -- -------------

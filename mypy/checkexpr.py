@@ -514,15 +514,19 @@ class ExpressionChecker:
         match = [] # type: List[Callable]
         for typ in overload.items():
             if self.matches_signature_erased(arg_types, is_var_arg, typ):
-                if match and not is_same_type(match[-1].ret_type,
-                                              typ.ret_type):
+                if (match and not is_same_type(match[-1].ret_type,
+                                               typ.ret_type) and
+                    not mypy.checker.is_more_precise_signature(
+                            match[-1], typ)):
                     # Ambiguous return type. Either the function overload is
                     # overlapping (which results in an error elsewhere) or the
                     # caller has provided some Any argument types; in
                     # either case can only infer the type to be Any, as it is
                     # not an error to use Any types in calls.
-                    # TODO overlapping overloads should be possible in some
-                    #      cases
+                    #
+                    # Overlapping overload items are fine if the items are
+                    # covariant in both argument types and return types with
+                    # respect to type precision.
                     return AnyType()
                 else:
                     match.append(typ)
