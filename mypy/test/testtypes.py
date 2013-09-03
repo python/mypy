@@ -95,7 +95,7 @@ class TypeOpsSuite(Suite):
     def set_up(self):
         self.fx = TypeFixture()
     
-    # ExpandTypes
+    # expand_type
     
     def test_trivial_expand(self):
         for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nonet,
@@ -127,7 +127,7 @@ class TypeOpsSuite(Suite):
         # Remove erased tags (asterisks).
         assert_equal(str(exp).replace('*', ''), str(result))
     
-    # ReplaceTypeVars
+    # replace_type_vars
     
     def test_trivial_replace(self):
         for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
@@ -146,7 +146,7 @@ class TypeOpsSuite(Suite):
     def assert_replace(self, orig, result):
         assert_equal(str(replace_type_vars(orig)), str(result))
     
-    # EraseType
+    # erase_type
     
     def test_trivial_erase(self):
         for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
