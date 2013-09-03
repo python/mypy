@@ -1374,7 +1374,7 @@ class TypeInfo(SymbolNode):
     #       them.
     
     def has_readable_member(self, name: str) -> bool:
-        return self.has_var(name) or self.has_method(name)
+        return self.get(name) is not None
     
     def has_writable_member(self, name: str) -> bool:
         return self.has_var(name)

@@ -898,6 +898,21 @@ main, line 5: "Any" return type expected since argument to __radd__ does not sup
 main: In member "__radd__" of class "C":
 main, line 7: "Any" return type expected since argument to __radd__ has type "Any"
 
+[case testAbstractReverseOperatorMethod]
+import typing
+from abc import abstractmethod
+class A:
+    @abstractmethod
+    def __lt__(self, x: 'A') -> int: pass
+class B:
+    @abstractmethod
+    def __lt__(self, x: 'B') -> int: pass
+    @abstractmethod
+    def __gt__(self, x: 'B') -> int: pass
+[out]
+main: In member "__lt__" of class "A":
+main, line 5: "Any" return type expected since argument to __lt__ does not support __gt__
+
 
 -- Special cases
 -- -------------
