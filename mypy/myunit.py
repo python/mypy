@@ -14,6 +14,7 @@ times = List[Tuple[float, str]]()
 
 
 class AssertionFailure(Exception):
+    """Exception used to signal skipped test cases."""
     def __init__(self, s: str = None) -> None:
         if s:
             super().__init__(s)
@@ -25,7 +26,6 @@ class SkipTestCaseException(Exception): pass
 
 
 def assert_true(b: bool, msg: str = None) -> None:
-    """Exception used to signal skipped test cases."""
     if not b:
         raise AssertionFailure(msg)
 
