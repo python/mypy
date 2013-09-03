@@ -514,10 +514,8 @@ class ExpressionChecker:
         match = [] # type: List[Callable]
         for typ in overload.items():
             if self.matches_signature_erased(arg_types, is_var_arg, typ):
-                if match and (isinstance(match, AnyType) or
-                              not is_same_type(
-                                      cast(Callable, match[-1]).ret_type,
-                                      typ.ret_type)):
+                if match and not is_same_type(match[-1].ret_type,
+                                              typ.ret_type):
                     # Ambiguous return type. Either the function overload is
                     # overlapping (which results in an error elsewhere) or the
                     # caller has provided some Any argument types; in
