@@ -14,9 +14,9 @@ a.foo(A())
 b.bar(B(), A())
 
 class A:
-  def foo(self, x: 'A') -> None: pass
+    def foo(self, x: 'A') -> None: pass
 class B:
-  def bar(self, x: 'B', y: A) -> None: pass
+    def bar(self, x: 'B', y: A) -> None: pass
 [out]
 main, line 5: Argument 1 to "foo" of "A" has incompatible type "B"
 main, line 6: "A" has no attribute "bar"
@@ -30,8 +30,8 @@ a.bar(A()) # Fail
 a.bar(B())
 
 class A:
-  def foo(self, x: 'A') -> None: pass
-  def bar(self, x: 'B') -> None: pass
+    def foo(self, x: 'A') -> None: pass
+    def bar(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
 main, line 5: Argument 1 to "bar" of "A" has incompatible type "A"
@@ -43,7 +43,7 @@ a.foo(A()) # Fail
 a.foo(B())
 
 class A:
-  def foo(self, x: 'B') -> None: pass
+    def foo(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
 main, line 3: Argument 1 to "foo" of "A" has incompatible type "A"
@@ -55,7 +55,7 @@ a.foo()               # Fail
 a.foo(object(), A())  # Fail
 
 class A:
-  def foo(self, x: 'A') -> None: pass
+    def foo(self, x: 'A') -> None: pass
 [out]
 main, line 3: Too few arguments for "foo" of "A"
 main, line 4: Too many arguments for "foo" of "A"
@@ -64,8 +64,8 @@ main, line 4: Argument 1 to "foo" of "A" has incompatible type "object"
 [case testMethodBody]
 import typing
 class A:
-  def f(self) -> None:
-    a = object() # type: A    # Fail
+    def f(self) -> None:
+        a = object() # type: A    # Fail
 [out]
 main: In member "f" of class "A":
 main, line 4: Incompatible types in assignment
@@ -73,13 +73,13 @@ main, line 4: Incompatible types in assignment
 [case testMethodArguments]
 import typing
 class A:
-  def f(self, a: 'A', b: 'B') -> None:
-    a = B() # Fail
-    b = A() # Fail
-    a = A()
-    b = B()
-    a = a
-    a = b # Fail
+    def f(self, a: 'A', b: 'B') -> None:
+        a = B() # Fail
+        b = A() # Fail
+        a = A()
+        b = B()
+        a = a
+        a = b # Fail
 class B: pass
 [out]
 main: In member "f" of class "A":
@@ -90,9 +90,9 @@ main, line 9: Incompatible types in assignment
 [case testReturnFromMethod]
 import typing
 class A:
-  def f(self) -> 'A':
-    return B() # Fail
-    return A()
+    def f(self) -> 'A':
+        return B() # Fail
+        return A()
 class B: pass
 [out]
 main: In member "f" of class "A":
@@ -101,11 +101,11 @@ main, line 4: Incompatible return value type
 [case testSelfArgument]
 import typing
 class A:
-  def f(self) -> None:
-    o = self # type: B    # Fail
-    self.g()      # Fail
-    a = self # type: A
-    self.f()
+    def f(self) -> None:
+        o = self # type: B    # Fail
+        self.g()      # Fail
+        a = self # type: A
+        self.f()
 class B: pass
 [out]
 main: In member "f" of class "A":
@@ -126,8 +126,8 @@ A().f = None # E: Cannot assign to a method
 [case testReferToInvalidAttribute]
 from typing import Undefined
 class A:
-  def __init__(self):
-    self.x = object()
+    def __init__(self):
+        self.x = object()
 a = Undefined # type: A
 a.y
 a.y = object()
@@ -140,9 +140,9 @@ main, line 7: "A" has no attribute "y"
 [case testArgumentTypeInference]
 from typing import Undefined
 class A:
-  def __init__(self, aa: 'A', bb: 'B') -> None:
-    self.a = aa
-    self.b = bb
+    def __init__(self, aa: 'A', bb: 'B') -> None:
+        self.a = aa
+        self.b = bb
 class B: pass
 a = Undefined # type: A
 b = Undefined # type: B
@@ -169,10 +169,10 @@ main, line 3: Incompatible types in assignment
 [case testAttributeDefinedInNonInitMethod]
 import typing
 class A:
-  def f(self) -> None:
-    self.x = 1
-    self.y = ''
-    self.x = 1
+    def f(self) -> None:
+        self.x = 1
+        self.y = ''
+        self.x = 1
 a = A()
 a.x = 1
 a.y = ''
@@ -182,23 +182,23 @@ a.z = 0  # E: "A" has no attribute "z"
 [case testInheritanceAndAttributeAssignment]
 import typing
 class A:
-  def f(self) -> None:
-    self.x = 0
+    def f(self) -> None:
+        self.x = 0
 class B(A):
-  def f(self) -> None:
-    self.x = '' # E: Incompatible types in assignment
+    def f(self) -> None:
+        self.x = '' # E: Incompatible types in assignment
 [out]
 main: In member "f" of class "B":
 
 [case testAssignmentToAttributeInMultipleMethods]
 import typing
 class A:
-  def f(self) -> None:
-    self.x = 0
-  def g(self) -> None:
-    self.x = '' # Fail
-  def __init__(self) -> None:
-    self.x = '' # Fail
+    def f(self) -> None:
+        self.x = 0
+    def g(self) -> None:
+        self.x = '' # Fail
+    def __init__(self) -> None:
+        self.x = '' # Fail
 [out]
 main: In member "g" of class "A":
 main, line 6: Incompatible types in assignment
@@ -213,13 +213,13 @@ main, line 8: Incompatible types in assignment
 [case testMethodOverridingWithIdenticalSignature]
 import typing
 class A:
-  def f(self, x: 'A') -> None: pass
-  def g(self, x: 'B' , y: object) -> 'A': pass
-  def h(self) -> None: pass
+    def f(self, x: 'A') -> None: pass
+    def g(self, x: 'B' , y: object) -> 'A': pass
+    def h(self) -> None: pass
 class B(A):
-  def f(self, x: A) -> None: pass
-  def g(self, x: 'B' , y: object) -> A: pass
-  def h(self) -> None: pass
+    def f(self, x: A) -> None: pass
+    def g(self, x: 'B' , y: object) -> A: pass
+    def h(self) -> None: pass
 [out]
 
 [case testMethodOverridingWithReturnTypeCoVariance]
