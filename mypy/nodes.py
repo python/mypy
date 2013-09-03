@@ -959,6 +959,9 @@ reverse_op_methods = {
     '__le__': '__ge__',
 }
 
+normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
+reverse_op_method_set = set(reverse_op_methods.values())
+
 
 class OpExpr(Node):
     """Binary operation (other than . or [], which have specific nodes)."""

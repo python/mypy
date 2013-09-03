@@ -131,7 +131,8 @@ class object:
     def __init__(self) -> None: pass
 class int:
     def __eq__(self, x: object) -> bool: pass
-    def __lt__(selef, x: int) -> bool: pass
+    def __lt__(self, x: int) -> bool: pass
+    def __gt__(self, x: int) -> int: pass
 class bool: pass
 class type: pass
 [out]
@@ -1047,13 +1048,15 @@ NameExpr(7) : S
 [case testBinaryOperatorWithAnyLeftOperand]
 ## OpExpr
 from typing import Any
+class B:
+    def __add__(self, x: int) -> str: pass
 class A:
-    def __radd__(self, x: str) -> int: pass
+    def __radd__(self, x: B) -> int: pass
 Any(1) + A()
-'' + A()
+B() + A()
 [out]
-OpExpr(5) : Any
-OpExpr(6) : builtins.int
+OpExpr(7) : Any
+OpExpr(8) : builtins.int
 
 [case testBinaryOperatorWithAnyRightOperand]
 ## OpExpr

@@ -567,6 +567,11 @@ class MessageBuilder:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
+    def invalid_reverse_operator_signature(self, reverse: str, other: str,
+                                           context: Context) -> None:
+        self.fail('"Any" return type expected since argument to {} does not '
+                  'support {}'.format(reverse, other), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

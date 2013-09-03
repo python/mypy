@@ -869,6 +869,19 @@ class B(A):
     def __add__(self, x): pass
 [out]
 
+[case testReverseOperatorMethoddArgumentType]
+from typing import Any
+class A: pass
+class B:
+    def __radd__(self, x: A) -> int: pass # Error
+class C:
+    def __radd__(self, x: A) -> Any: pass
+class D:
+    def __radd__(self, x: A) -> object: pass
+[out]
+main: In member "__radd__" of class "B":
+main, line 4: "Any" return type expected since argument to __radd__ does not support __add__
+
 
 -- Special cases
 -- -------------

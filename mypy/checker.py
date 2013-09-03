@@ -186,7 +186,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> Type:
         num_abstract = 0
         for fdef in defn.items:
-            self.check_func_item(fdef.func)
+            self.check_func_item(fdef.func, name=fdef.func.name())
             if fdef.func.is_abstract:
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
@@ -207,7 +207,7 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
-        self.check_func_item(defn)
+        self.check_func_item(defn, name=defn.name())
         if defn.info:
             self.check_method_override(defn)
         if defn.original_def:
@@ -216,7 +216,8 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.incompatible_conditional_function_def(defn)
     
     def check_func_item(self, defn: FuncItem,
-                        type_override: Callable = None) -> Type:
+                        type_override: Callable = None,
+                        name: str = None) -> Type:
         """Type check a function.
 
         If type_override is provided, use it as the function type.
@@ -237,7 +238,7 @@ class TypeChecker(NodeVisitor[Type]):
         if type_override:
             typ = type_override
         if isinstance(typ, Callable):
-            self.check_func_def(defn, typ)
+            self.check_func_def(defn, typ, name)
         else:
             raise RuntimeError('Not supported')
         
@@ -247,7 +248,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.dynamic_funcs.pop()
         self.function_stack.pop()
     
-    def check_func_def(self, defn: FuncItem, typ: Callable) -> None:
+    def check_func_def(self, defn: FuncItem, typ: Callable, name: str) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
@@ -268,6 +269,9 @@ class TypeChecker(NodeVisitor[Type]):
                         not self.dynamic_funcs[-1]):
                     self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE,
                               item.type)
+
+            if name in nodes.reverse_op_method_set:
+                self.check_reverse_op_method(item, typ, name)
 
             # Push return type.
             self.return_types.append(typ.ret_type)
@@ -296,6 +300,51 @@ class TypeChecker(NodeVisitor[Type]):
             self.return_types.pop()
 
             self.leave()
+
+    def check_reverse_op_method(self, defn: FuncItem, typ: Callable,
+                                name: str) -> None:
+        """Check a reverse operator method such as __add__."""
+        
+        # If the argument of a reverse operator method such as __radd__
+        # does not define the corresponding non-reverse method such as __add__
+        # the return type of __radd__ may not reliably represent the value of
+        # the corresponding operation even in a fully statically typed program.
+        # This example illustrates the issue:
+        #
+        #   class A: pass
+        #   class B:
+        #       def __radd__(self, x: A) -> int: # Note that A does not define
+        #           return 1                     # __add__!
+        #   class C(A):
+        #       def __add__(self, x: Any) -> str: return 'x'
+        #   a = Undefined(A)
+        #   a = C()
+        #   a + B()  # Result is 'x', even though static type seems to be int!
+
+        if name in ('__eq__', '__ne__'):
+            # These are defined for all objects => can't cause trouble.
+            return 
+        
+        # With 'Any' or 'object' return type we are happy, since any possible
+        # return value is valid.
+        ret_type = typ.ret_type
+        if isinstance(ret_type, AnyType):
+            return
+        if isinstance(ret_type, Instance):
+            if ret_type.type.fullname() == 'builtins.object':
+                return
+        # Plausibly the method could have too few arguments, which would result
+        # in an error elsewhere.
+        if len(typ.arg_types) <= 2:
+            # TODO check self argument kind
+            arg_type = typ.arg_types[1]
+            if isinstance(arg_type, Instance):
+                other_method = nodes.normal_from_reverse_op[name]
+                if not arg_type.type.has_readable_member(other_method):
+                    self.msg.invalid_reverse_operator_signature(
+                        name, other_method, defn)
+            else:
+                pass
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:

@@ -378,15 +378,18 @@ main, line 4: Incompatible types in assignment
 
 [case testLtAndGt]
 from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
 a = a < b # Fail
 a = a > b # Fail
-b = a < b
-b = a > b
+bo = a < b
+bo = a > b
 
 class A:
-  def __lt__(self, o: object) -> bool: pass
-  def __gt__(self, o: object) -> bool: pass
+    def __lt__(self, o: 'B') -> bool: pass
+    def __gt__(self, o: 'B') -> bool: pass
+class B:
+    def __lt__(self, o: 'B') -> bool: pass
+    def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.py]
 [out]
 main, line 3: Incompatible types in assignment
@@ -394,15 +397,18 @@ main, line 4: Incompatible types in assignment
 
 [case testLeAndGe]
 from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
 a = a <= b # Fail
 a = a >= b # Fail
-b = a <= b
-b = a >= b
+bo = a <= b
+bo = a >= b
 
 class A:
-  def __le__(self, o: object) -> bool: pass
-  def __ge__(self, o: object) -> bool: pass
+    def __le__(self, o: 'B') -> bool: pass
+    def __ge__(self, o: 'B') -> bool: pass
+class B:
+    def __le__(self, o: 'B') -> bool: pass
+    def __ge__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.py]
 [out]
 main, line 3: Incompatible types in assignment
@@ -446,7 +452,8 @@ n = A() + B() # E: Incompatible types in assignment
 
 [case testReverseBinaryOperator2]
 from typing import Undefined
-class A: pass
+class A:
+    def __add__(self, x: 'A') -> object: pass
 class B:
     def __radd__(self, x: A) -> str: pass
 s = Undefined(str)
@@ -456,12 +463,13 @@ n = A() + B() # E: Incompatible types in assignment
 
 [case testReverseBinaryOperator3]
 from typing import Undefined
+class N:
+    def __add__(self, x: 'N') -> object: pass
 class A:
-    def __add__(self, x: int) -> int: pass
+    def __add__(self, x: N) -> int: pass
 class B:
-    def __radd__(self, x: int) -> str: pass
+    def __radd__(self, x: N) -> str: pass
 s = Undefined(str)
-n = Undefined(int)
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testBinaryOperatorWithAnyRightOperand]
@@ -471,13 +479,15 @@ A() + Any(1)
 
 [case testReverseComparisonOperator]
 from typing import Undefined
+class C:
+    def __gt__(self, x: 'A') -> object: pass
 class A:
-    def __lt__(self, x: int) -> int: pass
+    def __lt__(self, x: C) -> int: pass
 class B:
     def __gt__(self, x: A) -> str: pass
 s = Undefined(str)
 n = Undefined(int)
-n = A() < 1
+n = A() < C()
 s = A() < B()
 n = A() < B() # E: Incompatible types in assignment
 s = object() < B() # E: Unsupported operand types for > ("B" and "object")
