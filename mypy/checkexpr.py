@@ -504,7 +504,7 @@ class ExpressionChecker:
                              overload: Overloaded, context: Context) -> Type:
         """Infer the correct overload item to call with given argument types.
 
-        The return value may be Callable or any (if an unique item
+        The return value may be Callable or AnyType (if an unique item
         could not be determined). If is_var_arg is True, the caller
         uses varargs.
         """
