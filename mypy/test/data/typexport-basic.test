@@ -1065,6 +1065,24 @@ A() + Any(1)
 OpExpr(5) : Any
 
 
+-- Function overloading
+-- --------------------
+
+
+[case testOverloadedFunctionType]
+## CallExpr
+from typing import overload
+@overload
+def f(x: int) -> str: pass
+@overload
+def f(x: str) -> int: pass
+f(1)
+f('')
+[out]
+CallExpr(7) : builtins.str
+CallExpr(8) : builtins.int
+
+
 -- Special cases
 -- -------------
 
