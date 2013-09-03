@@ -2,7 +2,9 @@
 
 from typing import List
 
-from mypy.myunit import Suite, assert_equal, assert_true, run_test
+from mypy.myunit import (
+    Suite, assert_equal, assert_true, assert_false, run_test
+)
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types
@@ -13,7 +15,7 @@ from mypy.types import (
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
 from mypy.replacetvars import replace_type_vars
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, is_more_precise
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
 
@@ -172,6 +174,22 @@ class TypeOpsSuite(Suite):
     
     def assert_erase(self, orig, result):
         assert_equal(str(erase_type(orig, self.fx.basic)), str(result))
+
+    # is_more_precise
+
+    def test_is_more_precise(self):
+        fx = self.fx
+        assert_true(is_more_precise(fx.b, fx.a))
+        assert_true(is_more_precise(fx.b, fx.b))
+        assert_true(is_more_precise(fx.b, fx.b))
+        assert_true(is_more_precise(fx.b, fx.anyt))
+        assert_true(is_more_precise(self.tuple(fx.b, fx.a),
+                                    self.tuple(fx.b, fx.a)))
+        
+        assert_false(is_more_precise(fx.a, fx.b))
+        assert_false(is_more_precise(fx.anyt, fx.b))
+        assert_false(is_more_precise(self.tuple(fx.b, fx.b),
+                                     self.tuple(fx.b, fx.a)))
     
     # Helpers
     

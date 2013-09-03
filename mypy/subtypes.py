@@ -4,6 +4,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeList
 )
+from mypy import sametypes
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
 
@@ -282,3 +283,18 @@ def is_proper_subtype(t, s):
     # FIX support generic types, tuple types etc.
     return (isinstance(t, Instance) and isinstance(s, Instance)
             and t.args == [] and s.args == [] and is_subtype(t, s))
+
+
+def is_more_precise(t: Type, s: Type) -> bool:
+    """Check if t is a more precise type than s.
+
+    A t is a proper subtype of s, t is also more precise than s. Also, if
+    s is Any, t is more precise than s for any t. Finally, if t is the same
+    type as s, t is more precise than s.
+    """
+    # TODO Should List[int] be more precise than List[Any]?
+    if isinstance(s, AnyType):
+        return True
+    if isinstance(s, Instance):
+        return is_proper_subtype(t, s)
+    return sametypes.is_same_type(t, s)
