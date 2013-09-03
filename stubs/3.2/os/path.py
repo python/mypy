@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.path.html
 
-from typing import overload, List, Any, Tuple, BinaryIO, TextIO
+from typing import overload, List, Any, AnyStr, Tuple, BinaryIO, TextIO
 
 # ----- os.path variables -----
 supports_unicode_filenames = False
@@ -26,10 +26,8 @@ def abspath(path: bytes) -> bytes: pass
 def basename(path: str) -> str: pass
 @overload
 def basename(path: bytes) -> bytes: pass
-@overload
-def commonprefix(list: List[str]) -> str: pass
-@overload
-def commonprefix(list: List[bytes]) -> bytes: pass
+# NOTE: Empty List[bytes] results in '' (str) => fall back to Any return type.
+def commonprefix(list: List[AnyStr]) -> Any: pass
 @overload
 def dirname(path: str) -> str: pass
 @overload
