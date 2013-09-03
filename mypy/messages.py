@@ -572,6 +572,11 @@ class MessageBuilder:
         self.fail('"Any" return type expected since argument to {} does not '
                   'support {}'.format(reverse, other), context)
 
+    def reverse_operator_method_with_any_arg_must_return_any(
+            self, method: str, context: Context) -> None:
+        self.fail('"Any" return type expected since argument to {} has type '
+                  '"Any"'.format(method), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

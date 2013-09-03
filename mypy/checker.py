@@ -338,13 +338,20 @@ class TypeChecker(NodeVisitor[Type]):
         if len(typ.arg_types) <= 2:
             # TODO check self argument kind
             arg_type = typ.arg_types[1]
+            other_method = nodes.normal_from_reverse_op[name]
+            fail = False
             if isinstance(arg_type, Instance):
-                other_method = nodes.normal_from_reverse_op[name]
                 if not arg_type.type.has_readable_member(other_method):
-                    self.msg.invalid_reverse_operator_signature(
-                        name, other_method, defn)
+                    fail = True
+            elif isinstance(arg_type, AnyType):
+                self.msg.reverse_operator_method_with_any_arg_must_return_any(
+                    name, defn)
+                return
             else:
-                pass
+                fail = True
+            if fail:
+                self.msg.invalid_reverse_operator_signature(
+                    name, other_method, defn)
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:
