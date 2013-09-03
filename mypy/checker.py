@@ -378,7 +378,17 @@ class TypeChecker(NodeVisitor[Type]):
                     len(cast(Callable, original).arg_types) or
                 cast(Callable, override).min_args !=
                     cast(Callable, original).min_args):
+            # Use boolean variable to clarify code.
+            fail = False
             if not is_subtype(override, original):
+                fail = True
+            elif (not isinstance(original, Overloaded) and
+                  isinstance(override, Overloaded) and
+                  name in nodes.reverse_op_methods.keys()):
+                # Operator method overrides cannot introduce overloading, as
+                # this could be unsafe with reverse operator methods.
+                fail = True
+            if fail:
                 self.msg.signature_incompatible_with_supertype(
                     name, supertype, node)
             return
