@@ -30,6 +30,11 @@ def assert_true(b: bool, msg: str = None) -> None:
         raise AssertionFailure(msg)
 
 
+def assert_false(b: bool, msg: str = None) -> None:
+    if b:
+        raise AssertionFailure(msg)
+
+
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
         raise AssertionFailure(fmt.format(repr(a), repr(b)))
