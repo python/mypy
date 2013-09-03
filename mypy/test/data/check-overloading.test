@@ -331,3 +331,43 @@ class B: pass
 def f(x: A) -> A: pass
 @overload
 def f(x: B) -> B: pass
+
+[case testContravariantOverlappingOverloadSignatures]
+from typing import overload
+class A: pass
+class B(A): pass
+@overload
+def f(x: A) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: B) -> B: pass
+
+[case testPartiallyCovariantOverlappingOverloadSignatures]
+from typing import overload
+class A: pass
+class B(A): pass
+@overload
+def f(x: B) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: A) -> B: pass
+@overload
+def g(x: A) -> B: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(x: B) -> A: pass
+
+[case testCovariantOverlappingOverloadSignatures]
+from typing import overload
+class A: pass
+class B(A): pass
+@overload
+def g(x: B) -> B: pass
+@overload
+def g(x: A) -> A: pass
+
+[case testCovariantOverlappingOverloadSignaturesWithSomeSameArgTypes]
+from typing import overload
+class A: pass
+class B(A): pass
+@overload
+def g(x: int, y: B) -> B: pass
+@overload
+def g(x: int, y: A) -> A: pass

@@ -29,7 +29,8 @@ from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype
+    is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype,
+    is_more_precise
 )
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
@@ -1396,6 +1397,24 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
             # All arguments types for the smallest common argument count are
             # overlapping => the signature is overlapping. The overlapping is
             # safe if the return types are identical.
-            return not is_same_type(signature.ret_type,
-                                    other.ret_type)
+            if is_same_type(signature.ret_type, other.ret_type):
+                return False
+            return not is_more_precise_signature(signature, other)            
     return True
+
+
+def is_more_precise_signature(t: Callable, s: Callable) -> bool:
+    """Is t more precise than s?
+
+    A signature t is more precise than s if all argument types and the return
+    type of t are more precise than the corresponding types in s.
+
+    Assume that the argument kinds and names are compatible, and that the
+    argument counts are overlapping.
+    """
+    # TODO generic function types
+    # Only consider the common prefix of argument types.
+    for argt, args in zip(t.arg_types, s.arg_types):
+        if not is_more_precise(argt, args):
+            return False
+    return is_more_precise(t.ret_type, s.ret_type)
