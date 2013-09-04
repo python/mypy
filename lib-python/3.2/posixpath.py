@@ -274,12 +274,13 @@ def expanduser(path: AnyStr) -> AnyStr:
             return path
         userhome = pwent.pw_dir
     if isinstance(path, bytes):
-        userhome = os.fsencode(userhome)
+        userhome2 = os.fsencode(userhome)
         root = b'/'
     else:
+        userhome2 = userhome
         root = '/'
-    userhome = userhome.rstrip(root) or userhome
-    return userhome + path[i:]
+    userhome2 = userhome2.rstrip(root) or userhome2
+    return userhome2 + path[i:]
 
 
 # Expand paths containing shell variable substitutions.
