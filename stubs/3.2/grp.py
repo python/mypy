@@ -1,7 +1,13 @@
-from typing import Any
+from typing import List, Undefined
 
 # TODO group database entry object type
 
-def getgrgid(gid: int) -> Any: pass
-def getgrnam(name: str) -> Any: pass
-def getgrall() -> List[Any]: pass
+class struct_group:
+    gr_name = ''
+    gr_passwd = ''
+    gr_gid = 0
+    gr_mem = Undefined(List[str])
+
+def getgrgid(gid: int) -> struct_group: pass
+def getgrnam(name: str) -> struct_group: pass
+def getgrall() -> List[struct_group]: pass
