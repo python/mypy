@@ -379,7 +379,7 @@ def _get_uid(name: str) -> int:
     except KeyError:
         result = None
     if result is not None:
-        return result[2]
+        return result.pw_uid
     return None
 
 def _make_tarball(base_name: str, base_dir: str, compress: str = "gzip",
