@@ -309,6 +309,7 @@ class TypeChecker(NodeVisitor[Type]):
         # does not define the corresponding non-reverse method such as __add__
         # the return type of __radd__ may not reliably represent the value of
         # the corresponding operation even in a fully statically typed program.
+        #
         # This example illustrates the issue:
         #
         #   class A: pass
@@ -319,7 +320,8 @@ class TypeChecker(NodeVisitor[Type]):
         #       def __add__(self, x: Any) -> str: return 'x'
         #   a = Undefined(A)
         #   a = C()
-        #   a + B()  # Result is 'x', even though static type seems to be int!
+        #   a + B()  # Result would be 'x', even though static type seems to
+        #            # be int!
 
         if name in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
