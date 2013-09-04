@@ -28,11 +28,11 @@ j = b
 a = b
 
 class I(metaclass=ABCMeta):
-  @abstractmethod
-  def f(self): pass
+    @abstractmethod
+    def f(self): pass
 class J(metaclass=ABCMeta):
-  @abstractmethod
-  def g(self): pass
+    @abstractmethod
+    def g(self): pass
 class A(I, J): pass
 class B(A): pass
 class C(I): pass
