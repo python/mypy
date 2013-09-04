@@ -124,11 +124,10 @@ class int(SupportsInt, SupportsFloat):
 
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operand
-    def __lt__(self, x: object) -> bool: pass
-    def __le__(self, x: object) -> bool: pass
-    def __gt__(self, x: object) -> bool: pass
-    def __ge__(self, x: object) -> bool: pass
+    def __lt__(self, x: int) -> bool: pass
+    def __le__(self, x: int) -> bool: pass
+    def __gt__(self, x: int) -> bool: pass
+    def __ge__(self, x: int) -> bool: pass
 
     # Conversions
 
@@ -189,11 +188,10 @@ class float(SupportsFloat, SupportsInt):
     
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operand
-    def __lt__(self, x: object) -> bool: pass
-    def __le__(self, x: object) -> bool: pass
-    def __gt__(self, x: object) -> bool: pass
-    def __ge__(self, x: object) -> bool: pass
+    def __lt__(self, x: float) -> bool: pass
+    def __le__(self, x: float) -> bool: pass
+    def __gt__(self, x: float) -> bool: pass
+    def __ge__(self, x: float) -> bool: pass
     def __neg__(self) -> float: pass
 
     def __str__(self) -> str: pass
@@ -307,11 +305,10 @@ class unicode(Sequence[unicode]):
     def __mod__(self, *args: Any) -> unicode: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operands
-    def __lt__(self, x: object) -> bool: pass
-    def __le__(self, x: object) -> bool: pass
-    def __gt__(self, x: object) -> bool: pass
-    def __ge__(self, x: object) -> bool: pass
+    def __lt__(self, x: unicode) -> bool: pass
+    def __le__(self, x: unicode) -> bool: pass
+    def __gt__(self, x: unicode) -> bool: pass
+    def __ge__(self, x: unicode) -> bool: pass
     
     def __len__(self) -> int: pass
     def __contains__(self, s: object) -> bool: pass
@@ -475,11 +472,10 @@ class str(Sequence[str]):
     def __contains__(self, o: object) -> bool: pass    
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operands
-    def __lt__(self, x: object) -> bool: pass
-    def __le__(self, x: object) -> bool: pass
-    def __gt__(self, x: object) -> bool: pass
-    def __ge__(self, x: object) -> bool: pass
+    def __lt__(self, x: str) -> bool: pass
+    def __le__(self, x: str) -> bool: pass
+    def __gt__(self, x: str) -> bool: pass
+    def __ge__(self, x: str) -> bool: pass
 
 
 @builtinclass
@@ -663,11 +659,11 @@ class bytearray(Sequence[int]):
     def __contains__(self, o: object) -> bool: pass    
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operands
-    def __lt__(self, x: object) -> bool: pass
-    def __le__(self, x: object) -> bool: pass
-    def __gt__(self, x: object) -> bool: pass
-    def __ge__(self, x: object) -> bool: pass
+    # TODO more general types for operands
+    def __lt__(self, x: bytearray) -> bool: pass
+    def __le__(self, x: bytearray) -> bool: pass
+    def __gt__(self, x: bytearray) -> bool: pass
+    def __ge__(self, x: bytearray) -> bool: pass
 
 
 @builtinclass
