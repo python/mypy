@@ -302,7 +302,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.leave()
 
     def check_reverse_op_method(self, defn: FuncItem, typ: Callable,
-                                name: str) -> None:
+                                method: str) -> None:
         """Check a reverse operator method such as __radd__."""
         
         # If the argument of a reverse operator method such as __radd__
@@ -323,7 +323,7 @@ class TypeChecker(NodeVisitor[Type]):
         #   a + B()  # Result would be 'x', even though static type seems to
         #            # be int!
 
-        if name in ('__eq__', '__ne__'):
+        if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
             return 
         
@@ -339,21 +339,102 @@ class TypeChecker(NodeVisitor[Type]):
         # in an error elsewhere.
         if len(typ.arg_types) <= 2:
             # TODO check self argument kind
+            
+            # Check for the issue described above.
             arg_type = typ.arg_types[1]
-            other_method = nodes.normal_from_reverse_op[name]
+            other_method = nodes.normal_from_reverse_op[method]
             fail = False
             if isinstance(arg_type, Instance):
                 if not arg_type.type.has_readable_member(other_method):
                     fail = True
             elif isinstance(arg_type, AnyType):
                 self.msg.reverse_operator_method_with_any_arg_must_return_any(
-                    name, defn)
+                    method, defn)
                 return
             else:
                 fail = True
             if fail:
                 self.msg.invalid_reverse_operator_signature(
-                    name, other_method, defn)
+                    method, other_method, defn)
+                return
+
+            typ2 = self.expr_checker.analyse_external_member_access(
+                other_method, arg_type, defn)
+            self.check_overlapping_op_methods(
+                typ, method, defn.info,
+                typ2, other_method, cast(Instance, arg_type),
+                defn)
+
+    def check_overlapping_op_methods(self,
+                                     reverse_type: Callable,
+                                     reverse_name: str,
+                                     reverse_class: TypeInfo,
+                                     forward_type: Type,
+                                     forward_name: str,
+                                     forward_base: Instance,
+                                     context: Context) -> None:
+        """Check for overlapping method and reverse method signatures.
+
+        Assume reverse method has valid argument count and kinds.
+        """
+
+        # Reverse operator method that overlaps unsafely with the
+        # forward operator method can result in type unsafety. This is
+        # similar to overlapping overload variants.
+        #
+        # This example illustrates the issue:
+        #
+        #   class X: pass
+        #   class A:
+        #       def __add__(self, x: X) -> int:
+        #           if isinstance(x, X):
+        #               return 1
+        #           return NotImplemented
+        #   class B:
+        #       def __radd__(self, x: A) -> str: return 'x'
+        #   class C(X, B): pass
+        #   b = Undefined(B)
+        #   b = C()
+        #   A() + b # Result is 1, even though static type seems to be str!
+        #
+        # The reason for the problem is that B and X are overlapping
+        # types, and the return types are different. Also, if the type
+        # of x in __radd__ would not be A, the methods could be
+        # non-overlapping.
+
+        if isinstance(forward_type, Callable):
+            # TODO check argument kinds
+            if len(forward_type.arg_types) < 1:
+                # Not a valid operator method -- can't succeed anyway.
+                return
+
+            # Construct normalized function signatures corresponding to the
+            # operator methods. The first argument is the left operand and the
+            # second operatnd is the right argument -- we switch the order of
+            # the arguments of the reverse method.
+            forward_tweaked = Callable([forward_base,
+                                        forward_type.arg_types[0]],
+                                       [nodes.ARG_POS] * 2,
+                                       [None] * 2,
+                                       forward_type.ret_type,
+                                       is_type_obj=False,
+                                       name=forward_type.name)            
+            reverse_args = reverse_type.arg_types
+            reverse_tweaked = Callable([reverse_args[1], reverse_args[0]],
+                                       [nodes.ARG_POS] * 2,
+                                       [None] * 2,
+                                       reverse_type.ret_type,
+                                       is_type_obj=False,
+                                       name=reverse_type.name)
+            
+            if is_unsafe_overlapping_signatures(forward_tweaked,
+                                                reverse_tweaked):
+                self.msg.operator_method_signatures_overlap(
+                    reverse_class.name(), reverse_name,
+                    forward_base.type.name(), forward_name, context)
+        else:
+            # TODO what about this?
+            assert False, 'Forward operator method type is not Callable'
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:
@@ -1440,6 +1521,10 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
     Two signatures s and t are overlapping if both can be valid for the same
     statically typed values and the return types are incompatible.
 
+    Assume calls are first checked against 'signature', then against 'other'.
+    Thus if 'signature' is more general than 'other', there is no unsafe
+    overlapping.
+
     TODO If argument types vary covariantly, the return type may vary
          covariantly as well.
     """
@@ -1467,7 +1552,18 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
             # safe if the return types are identical.
             if is_same_type(signature.ret_type, other.ret_type):
                 return False
+            # If the first signature has more general argument types, the
+            # latter will never be called 
+            if is_more_general_arg_prefix(signature, other):
+                return False
             return not is_more_precise_signature(signature, other)            
+    return True
+
+
+def is_more_general_arg_prefix(t: Callable, s: Callable) -> bool:
+    for argt, args in zip(t.arg_types, s.arg_types):
+        if not is_proper_subtype(args, argt):
+            return False
     return True
 
 

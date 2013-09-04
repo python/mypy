@@ -647,12 +647,13 @@ print(' ', 2 * [3, 4])
   [3, 4, 3, 4]
 
 [case testNotImplemented]
-import typing
+from typing import disjointclass
 class A:
     def __add__(self, x: int) -> int:
         if isinstance(x, int):
             return x + 1
         return NotImplemented
+@disjointclass(int)
 class B:
     def __radd__(self, x: A) -> str:
         return 'x'
@@ -679,3 +680,21 @@ print('y' in x)
 [out]
 True
 False
+
+[case testOverlappingOperatorMethods]
+from typing import Undefined
+class X: pass
+class A:
+    def __add__(self, x: X) -> int:
+        if isinstance(x, X):
+            return 1
+        return NotImplemented
+class B:
+    def __radd__(self, x: A) -> str: return 'x'
+class C(X, B): pass
+b = Undefined(B)
+b = C()
+print(A() + b)
+[out]
+_program.py: In member "__radd__" of class "B":
+_program.py, line 9: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping

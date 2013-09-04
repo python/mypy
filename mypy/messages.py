@@ -571,6 +571,13 @@ class MessageBuilder:
         self.fail('"Any" return type expected since argument to {} has type '
                   '"Any"'.format(method), context)
 
+    def operator_method_signatures_overlap(
+        self, reverse_class: str, reverse_method: str, forward_class: str,
+        forward_method: str, context: Context) -> None:
+        self.fail('Signatures of "{}" of "{}" and "{}" of "{}" are unsafely '
+                  'overlapping'.format(reverse_method, reverse_class,
+                                       forward_method, forward_class), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

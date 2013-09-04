@@ -337,9 +337,10 @@ from typing import overload
 class A: pass
 class B(A): pass
 @overload
-def f(x: A) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: A) -> A: pass
 @overload
-def f(x: B) -> B: pass
+def f(x: B) -> B: pass # This is more specific than the first item, and thus
+                       # will never be called.
 
 [case testPartiallyCovariantOverlappingOverloadSignatures]
 from typing import overload
@@ -349,10 +350,15 @@ class B(A): pass
 def f(x: B) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(x: A) -> B: pass
+
+[case testPartiallyContravariantOverloadSignatures]
+from typing import overload
+class A: pass
+class B(A): pass
 @overload
-def g(x: A) -> B: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(x: A) -> int: pass # Fine, since A us supertype of B.
 @overload
-def g(x: B) -> A: pass
+def g(x: B) -> str: pass
 
 [case testCovariantOverlappingOverloadSignatures]
 from typing import overload

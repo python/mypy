@@ -127,6 +127,8 @@ import typing
 1 == 2
 2 < 3
 [file builtins.py]
+from typing import builtinclass
+@builtinclass
 class object:
     def __init__(self) -> None: pass
 class int:
@@ -1047,16 +1049,17 @@ NameExpr(7) : S
 
 [case testBinaryOperatorWithAnyLeftOperand]
 ## OpExpr
-from typing import Any
+from typing import Any, disjointclass
 class B:
     def __add__(self, x: int) -> str: pass
+@disjointclass(int)
 class A:
     def __radd__(self, x: B) -> int: pass
 Any(1) + A()
 B() + A()
 [out]
-OpExpr(7) : Any
-OpExpr(8) : builtins.int
+OpExpr(8) : Any
+OpExpr(9) : builtins.int
 
 [case testBinaryOperatorWithAnyRightOperand]
 ## OpExpr

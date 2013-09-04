@@ -439,9 +439,10 @@ class A: pass
 main, line 3: Incompatible types in assignment
 
 [case testReverseBinaryOperator]
-from typing import Undefined
+from typing import Undefined, disjointclass
 class A:
     def __add__(self, x: int) -> int: pass
+@disjointclass(int)
 class B:
     def __radd__(self, x: A) -> str: pass
 s = Undefined(str)
@@ -451,9 +452,10 @@ s = A() + B()
 n = A() + B() # E: Incompatible types in assignment
 
 [case testReverseBinaryOperator2]
-from typing import Undefined
+from typing import Undefined, disjointclass
 class A:
     def __add__(self, x: 'A') -> object: pass
+@disjointclass(A)
 class B:
     def __radd__(self, x: A) -> str: pass
 s = Undefined(str)
@@ -462,11 +464,12 @@ s = A() + B()
 n = A() + B() # E: Incompatible types in assignment
 
 [case testReverseBinaryOperator3]
-from typing import Undefined
+from typing import Undefined, disjointclass
 class N:
     def __add__(self, x: 'N') -> object: pass
 class A:
     def __add__(self, x: N) -> int: pass
+@disjointclass(N)
 class B:
     def __radd__(self, x: N) -> str: pass
 s = Undefined(str)
@@ -478,11 +481,12 @@ class A: pass
 A() + Any(1)
 
 [case testReverseComparisonOperator]
-from typing import Undefined
+from typing import Undefined, disjointclass
 class C:
     def __gt__(self, x: 'A') -> object: pass
 class A:
     def __lt__(self, x: C) -> int: pass
+@disjointclass(C)
 class B:
     def __gt__(self, x: A) -> str: pass
 s = Undefined(str)
