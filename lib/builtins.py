@@ -2,18 +2,22 @@
 
 # TODO this still in early stages of development
 
-from typing import typevar, Generic
+from typing import typevar, Generic, builtinclass
 
 T = typevar('T')
 
+@builtinclass
 class object:
     def __init__(self) -> None: pass
 
+@builtinclass
 class type: pass
+@builtinclass
 class str: pass
 
 # Primitive types are special in generated code.
 
+@builtinclass
 class int:
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass
@@ -34,9 +38,12 @@ class int:
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
 
+@builtinclass
 class float: pass
+@builtinclass
 class bool: pass
 
+@builtinclass
 class list(Generic[T]): pass
 
 def print(*object) -> None: pass
