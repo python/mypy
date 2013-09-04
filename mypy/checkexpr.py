@@ -757,10 +757,6 @@ class ExpressionChecker:
 
         Return tuple (result type, inferred operator method type).
         """
-        if self.has_non_method(base_type, method):
-            # TODO This restriction seems unnecessary.
-            self.msg.method_expected_as_operator_implementation(
-                base_type, method, context)
         # Use a local error storage for errors related to invalid argument
         # type (but NOT other errors). This error may need to be suppressed
         # for operators which support __rX methods.

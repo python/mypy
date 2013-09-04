@@ -669,3 +669,13 @@ class A: pass
 print(A)
 [out]
 <class '__main__.A'>
+
+[case testMappingMethods]
+# Regression test
+from typing import Mapping
+x = {'x': 'y'} # type: Mapping[str, str]
+print('x' in x)
+print('y' in x)
+[out]
+True
+False

@@ -452,12 +452,6 @@ class MessageBuilder:
         self.fail('Return type of "{}" incompatible with supertype "{}"'
                   .format(name, supertype), context)
     
-    def method_expected_as_operator_implementation(self, typ: Type,
-                                                   member: str,
-                                                   context: Context) -> None:
-        self.fail('Expected operator method "{}" in {}'.format(
-            member, self.format(typ)), context)
-    
     def boolean_return_value_expected(self, method: str,
                                       context: Context) -> None:
         self.fail('Boolean return value expected for method "{}"'.format(

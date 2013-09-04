@@ -940,9 +940,19 @@ class A:
     def __init__(self, _add: Any) -> None:
         self.__add__ = _add
 a = Undefined # type: A
-a + a   # Currently fails (but should work in the future)
+a + a
 [out]
-main, line 6: Expected operator method "__add__" in "A"
+
+[case testOperatorMethodAsVar2]
+from typing import Undefined
+class A:
+    def f(self, x: int) -> str: pass
+    __add__ = f
+s = Undefined(str)
+s = A() + 1
+A() + (A() + 1)
+[out]
+main, line 7: Argument 1 has incompatible type "str"
 
 [case testIndexedLvalueWithSubtypes]
 from typing import Undefined
