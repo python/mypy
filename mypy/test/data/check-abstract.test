@@ -489,3 +489,27 @@ class A(metaclass=ABCMeta):
     def g(self, x: str) -> None: pass
 [out]
 main: In member "f" of class "A":
+
+[case testAbstractOperatorMethods1]
+import typing
+from abc import abstractmethod, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def __lt__(self, other: 'A') -> int: pass
+    @abstractmethod
+    def __gt__(self, other: 'A') -> int: pass
+
+[case testAbstractOperatorMethods2]
+import typing
+from abc import abstractmethod, ABCMeta
+class B:
+    @abstractmethod
+    def __gt__(self, other: 'A') -> int: pass # Error
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def __lt__(self, other: 'B') -> str: pass # Error
+[out]
+main: In member "__gt__" of class "B":
+main, line 5: Signatures of "__gt__" of "B" and "__lt__" of "A" are unsafely overlapping
+main: In member "__lt__" of class "A":
+main, line 8: Signatures of "__lt__" of "A" and "__gt__" of "B" are unsafely overlapping
