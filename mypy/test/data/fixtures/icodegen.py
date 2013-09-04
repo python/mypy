@@ -1,10 +1,11 @@
 # These builtins stubs are used implicitly in parse-tree to icode generation
 # test cases (testicodegen.py and test/data/icode-basic.test).
 
-from typing import typevar, Generic
+from typing import typevar, Generic, builtinclass
 
 t = typevar('t')
 
+@builtinclass
 class object:
     def __init__(self) -> None: pass
 

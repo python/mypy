@@ -1,7 +1,8 @@
-from typing import Undefined
+from typing import Undefined, builtinclass
 
 # This is an extension of transform builtins with additional operations.
 
+@builtinclass
 class object:
     def __init__(self) -> None: pass
     def __eq__(self, o: 'object') -> 'bool': pass
