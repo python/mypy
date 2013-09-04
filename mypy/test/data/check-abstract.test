@@ -478,3 +478,14 @@ class C(A, B): pass
 [out]
 main: In class "C":
 main, line 8: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+
+[case testCallAbstractMethodBeforeDefinition]
+import typing
+from abc import abstractmethod, ABCMeta
+class A(metaclass=ABCMeta):
+    def f(self) -> None:
+        self.g(1) # E: Argument 1 to "g" of "A" has incompatible type "int"
+    @abstractmethod
+    def g(self, x: str) -> None: pass
+[out]
+main: In member "f" of class "A":

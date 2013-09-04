@@ -897,6 +897,10 @@ class SemanticAnalyzer(NodeVisitor):
         for i in reversed(removed):
             del dec.decorators[i]
         dec.func.accept(self)
+        if not dec.decorators and not dec.var.is_property:
+            # No non-special decorators left. We can trivially infer the type
+            # of the function here.
+            dec.var.type = dec.func.type
 
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
