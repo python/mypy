@@ -787,7 +787,7 @@ class ExpressionChecker:
         else:
             # Calling the operator method was unsuccessful. Try the __rX
             # method of the other operand instead.
-            rmethod = nodes.reverse_op_methods[method]
+            rmethod = self.get_reverse_op_method(method)
             arg_type = self.accept(arg)
             if self.has_member(arg_type, rmethod):
                 method_type = self.analyse_external_member_access(
@@ -803,6 +803,12 @@ class ExpressionChecker:
                     method, base_type, context)
                 return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                        context)
+
+    def get_reverse_op_method(self, method: str) -> str:
+        if method == '__div__' and self.chk.pyversion == 2:
+            return '__rdiv__'
+        else:
+            return nodes.reverse_op_methods[method]
     
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
