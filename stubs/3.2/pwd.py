@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Any
+import typing
 
 class struct_passwd:
     # TODO use namedtuple
