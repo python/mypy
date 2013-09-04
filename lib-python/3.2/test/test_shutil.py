@@ -586,8 +586,8 @@ class TestShutil(unittest.TestCase):
         # testing make_archive with owner and group, with various combinations
         # this works even if there's not gid/uid support
         if UID_GID_SUPPORT:
-            group = grp.getgrgid(0)[0]
-            owner = pwd.getpwuid(0)[0]
+            group = grp.getgrgid(0).gr_name
+            owner = pwd.getpwuid(0).pw_name
         else:
             group = owner = 'root'
 
@@ -615,8 +615,8 @@ class TestShutil(unittest.TestCase):
         tmpdir, tmpdir2, base_name =  self._create_files()
         old_dir = os.getcwd()
         os.chdir(tmpdir)
-        group = grp.getgrgid(0)[0]
-        owner = pwd.getpwuid(0)[0]
+        group = grp.getgrgid(0).gr_name
+        owner = pwd.getpwuid(0).pw_name
         try:
             archive_name = _make_tarball(base_name, 'dist', compress=None,
                                          owner=owner, group=group)

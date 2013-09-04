@@ -367,7 +367,7 @@ def _get_gid(name: str) -> int:
     except KeyError:
         result = None
     if result is not None:
-        return result[2]
+        return result.gr_gid
     return None
 
 def _get_uid(name: str) -> int:
