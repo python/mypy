@@ -303,7 +303,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_reverse_op_method(self, defn: FuncItem, typ: Callable,
                                 name: str) -> None:
-        """Check a reverse operator method such as __add__."""
+        """Check a reverse operator method such as __radd__."""
         
         # If the argument of a reverse operator method such as __radd__
         # does not define the corresponding non-reverse method such as __add__
