@@ -910,6 +910,22 @@ class B(A):
 main: In class "B":
 main, line 8: Signature of "__add__" incompatible with supertype "A"
 
+[case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
+from typing import overload, Any
+class A:
+    @overload
+    def __add__(self, x: 'B') -> 'B': pass
+    @overload
+    def __add__(self, x: 'A') -> 'A': pass
+class B(A):
+    @overload
+    def __add__(self, x: 'A') -> 'A': pass
+    @overload
+    def __add__(self, x: 'B') -> 'B': pass
+[out]
+main: In class "B":
+main, line 8: Signature of "__add__" incompatible with supertype "A"
+
 [case testReverseOperatorMethoddArgumentType]
 from typing import Any
 class A: pass
