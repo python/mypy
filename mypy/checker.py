@@ -272,6 +272,8 @@ class TypeChecker(NodeVisitor[Type]):
 
             if name in nodes.reverse_op_method_set:
                 self.check_reverse_op_method(item, typ, name)
+            if name in nodes.inplace_operator_methods:
+                self.check_inplace_operator_method(item, typ, name)
 
             # Push return type.
             self.return_types.append(typ.ret_type)
@@ -440,6 +442,29 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # TODO what about this?
             assert False, 'Forward operator method type is not Callable'
+
+    def check_inplace_operator_method(self, defn: FuncItem, typ: Callable,
+                                      method: str) -> None:
+        """Check an inplace operator method such as __iadd__.
+
+        They cannot arbitrarily overlap with __add__.
+        """
+        type = defn.info
+        other_method = '__' + method[3:]
+        if type.has_readable_member(other_method):
+            instance = self_type(type)
+            typ = nodes.method_callable(typ)
+            typ2 = self.expr_checker.analyse_external_member_access(
+                other_method, instance, defn)
+            fail = False
+            if isinstance(typ2, Callable):
+                if not is_more_general_arg_prefix(typ, typ2):
+                    fail = True
+            else:
+                # TODO overloads
+                fail = True
+            if fail:
+                self.msg.signatures_incompatible(method, other_method, defn)
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:

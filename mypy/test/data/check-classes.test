@@ -1015,6 +1015,21 @@ main: In member "__radd__" of class "B":
 main, line 6: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 main, line 8: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
+[case testOverlappingNormalAndInplaceOperatorMethod]
+import typing
+class A:
+    # Incompatible (potential trouble with __radd__)
+    def __add__(self, x: 'A') -> int: pass
+    def __iadd__(self, x: 'B') -> int: pass
+class B:
+    # Safe
+    def __add__(self, x: 'C') -> int: pass
+    def __iadd__(self, x: A) -> int: pass
+class C(A): pass
+[out]
+main: In member "__iadd__" of class "A":
+main, line 5: Signatures of "__iadd__" and "__add__" are incompatible
+
 
 -- Special cases
 -- -------------
