@@ -718,3 +718,24 @@ _program.py, line 2: Unsupported operand types for > ("bytes" and "str")
 _program.py, line 3: Unsupported operand types for > ("str" and "bytes")
 _program.py, line 4: No overload variant of "__gt__" of "bytearray" matches argument types
 _program.py, line 5: No overload variant of "__lt__" of "bytearray" matches argument types
+
+[case testOverloadedOperatorMethodAndReverseMethod]
+from typing import overload
+class A:
+    @overload
+    def __add__(self, x: 'A') -> int: return 1
+    @overload
+    def __add__(self, x: int) -> int:
+        if isinstance(x, int):
+            return 2
+        else:
+            return NotImplemented
+class B:
+    def __radd__(self, x: A) -> int: return 3
+print(A() + A())
+print(A() + 1)
+print(A() + B())
+[out]
+1
+2
+3
