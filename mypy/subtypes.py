@@ -88,6 +88,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, Callable):
             return is_callable_subtype(left, right)
+        elif isinstance(right, Overloaded):
+            return all(is_subtype(left, item) for item in right.items())
         elif is_named_instance(right, 'builtins.object'):
             return True
         elif (is_named_instance(right, 'builtins.type') and

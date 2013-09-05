@@ -880,6 +880,18 @@ class B(A):
     @overload
     def __add__(self, x: str) -> 'A': pass
 
+[case testOverloadedOperatorMethodOverrideWithDynamicallyTypedMethod]
+from typing import overload, Any
+class A:
+    @overload
+    def __add__(self, x: int) -> 'A': pass
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+class B(A):
+    def __add__(self, x): pass
+class C(A):
+    def __add__(self, x: Any) -> A: pass
+
 [case testReverseOperatorMethoddArgumentType]
 from typing import Any
 class A: pass
