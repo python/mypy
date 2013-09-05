@@ -717,7 +717,7 @@ bytearray() < ''
 _program.py, line 2: Unsupported operand types for > ("bytes" and "str")
 _program.py, line 3: Unsupported operand types for > ("str" and "bytes")
 _program.py, line 4: No overload variant of "__gt__" of "bytearray" matches argument types
-_program.py, line 5: No overload variant of "__lt__" of "bytearray" matches argument types
+_program.py, line 5: Unsupported operand types for > ("str" and "bytearray")
 
 [case testOverloadedOperatorMethodAndReverseMethod]
 from typing import overload
