@@ -867,6 +867,19 @@ class A:
 class B(A):
     def __add__(self, x): pass
 
+[case testOperatorMethodOverrideWithIdenticalOverloadedType]
+from typing import overload
+class A:
+    @overload
+    def __add__(self, x: int) -> 'A': pass
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+class B(A):
+    @overload
+    def __add__(self, x: int) -> 'A': pass
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+
 [case testReverseOperatorMethoddArgumentType]
 from typing import Any
 class A: pass
