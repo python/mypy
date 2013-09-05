@@ -391,3 +391,24 @@ from typing import Any, overload
 def g(x: Any) -> Any: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def g(x: int) -> int: pass
+
+[case testOverloadedLtAndGtMethods]
+from typing import overload
+class A:
+    def __lt__(self, x: A) -> int: pass
+    def __gt__(self, x: A) -> int: pass
+class B:
+    @overload
+    def __lt__(self, x: B) -> int: pass
+    @overload
+    def __lt__(self, x: A) -> int: pass
+    @overload
+    def __gt__(self, x: B) -> int: pass
+    @overload
+    def __gt__(self, x: A) -> int: pass
+A() < A()
+A() < B()
+B() < A()
+B() < B()
+A() < object() # E: Unsupported operand types for < ("A" and "object")
+B() < object() # E: No overload variant of "__lt__" of "B" matches argument types

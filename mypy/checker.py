@@ -432,7 +432,10 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.operator_method_signatures_overlap(
                     reverse_class.name(), reverse_name,
                     forward_base.type.name(), forward_name, context)
-        else:
+        elif isinstance(forward_type, Overloaded):
+            # TODO check
+            pass
+        else:            
             # TODO what about this?
             assert False, 'Forward operator method type is not Callable'
 
