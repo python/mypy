@@ -235,6 +235,17 @@ main, line 3: Unsupported operand types for & ("A" and "A")
 main, line 4: Unsupported operand types for >> ("A" and "A")
 main, line 5: Unsupported operand types for // ("A" and "A")
 
+[case testInplaceOperatorMethods]
+import typing
+class A:
+    def __iadd__(self, x: int) -> 'A': pass
+    def __imul__(self, x: str) -> 'A': pass
+a = A()
+a += 1
+a *= ''
+a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"
+a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"
+
 
 -- Assert statement
 -- ----------------

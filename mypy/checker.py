@@ -938,8 +938,9 @@ class TypeChecker(NodeVisitor[Type]):
                                        s: OperatorAssignmentStmt) -> Type:
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
+        method = infer_operator_assignment_method(lvalue_type, s.op)
         rvalue_type, method_type = self.expr_checker.check_op(
-            nodes.op_methods[s.op], lvalue_type, s.rvalue, s)
+            method, lvalue_type, s.rvalue, s)
         
         if isinstance(s.lvalue, IndexExpr):
             lv = cast(IndexExpr, s.lvalue)
@@ -1587,3 +1588,18 @@ def is_more_precise_signature(t: Callable, s: Callable) -> bool:
         if not is_more_precise(argt, args):
             return False
     return is_more_precise(t.ret_type, s.ret_type)
+
+
+def infer_operator_assignment_method(type: Type, operator: str) -> str:
+    """Return the method used for operator assignment for given value type.
+
+    For example, if operator is '+', return '__iadd__' or '__add__' depending
+    on which method is supported by the type.
+    """
+    method = nodes.op_methods[operator]
+    if isinstance(type, Instance):
+        if operator in nodes.ops_with_inplace_method:
+            inplace = '__i' + method[2:]
+            if type.type.has_readable_member(inplace):
+                method = inplace
+    return method
