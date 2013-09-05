@@ -625,9 +625,14 @@ class bytearray(Sequence[int]):
     def __add__(self, s: bytes) -> bytearray: pass    
     @overload
     def __add__(self, s: bytearray) -> bytearray: pass
+    @overload
+    def __iadd__(self, s: bytes) -> bytearray: pass    
+    @overload
+    def __iadd__(self, s: bytearray) -> bytearray: pass
     
     def __mul__(self, n: int) -> bytearray: pass
     def __rmul__(self, n: int) -> bytearray: pass
+    def __imul__(self, n: int) -> bytearray: pass
     def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
@@ -730,8 +735,10 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __delitem__(self, s: slice) -> None: pass
     
     def __add__(self, x: List[T]) -> List[T]: pass
+    def __iadd__(self, x: List[T]) -> List[T]: pass
     def __mul__(self, n: int) -> List[T]: pass
     def __rmul__(self, n: int) -> List[T]: pass
+    def __imul__(self, n: int) -> List[T]: pass
     def __contains__(self, o: object) -> bool: pass
     def __reversed__(self) -> Iterator[T]: pass
 
@@ -819,9 +826,13 @@ class set(AbstractSet[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: pass    
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[Any]) -> set[T]: pass
+    def __iand__(self, s: AbstractSet[Any]) -> set[T]: pass
     def __or__(self, s: AbstractSet[T]) -> set[T]: pass
+    def __ior__(self, s: AbstractSet[T]) -> set[T]: pass
     def __sub__(self, s: AbstractSet[Any]) -> set[T]: pass
+    def __isub__(self, s: AbstractSet[Any]) -> set[T]: pass
     def __xor__(self, s: AbstractSet[T]) -> set[T]: pass
+    def __ixor__(self, s: AbstractSet[T]) -> set[T]: pass
     def __le__(self, s: AbstractSet[Any]) -> bool: pass
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
