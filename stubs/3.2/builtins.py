@@ -455,7 +455,6 @@ class bytes(Sequence[int]):
     def __contains__(self, o: object) -> bool: pass    
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operands
     def __lt__(self, x: bytes) -> bool: pass
     def __le__(self, x: bytes) -> bool: pass
     def __gt__(self, x: bytes) -> bool: pass
@@ -632,11 +631,22 @@ class bytearray(Sequence[int]):
     def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    # TODO precise types for operands
+    @overload
     def __lt__(self, x: bytearray) -> bool: pass
+    @overload
+    def __lt__(self, x: bytes) -> bool: pass
+    @overload
     def __le__(self, x: bytearray) -> bool: pass
+    @overload
+    def __le__(self, x: bytes) -> bool: pass
+    @overload
     def __gt__(self, x: bytearray) -> bool: pass
+    @overload
+    def __gt__(self, x: bytes) -> bool: pass
+    @overload
     def __ge__(self, x: bytearray) -> bool: pass
+    @overload
+    def __ge__(self, x: bytes) -> bool: pass
 
 
 @builtinclass

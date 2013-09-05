@@ -698,3 +698,23 @@ print(A() + b)
 [out]
 _program.py: In member "__radd__" of class "B":
 _program.py, line 9: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
+[case testBytesAndBytearrayComparisons]
+import typing
+print(b'ab' < bytearray(b'b'))
+print(bytearray(b'ab') < b'a')
+[out]
+True
+False
+
+[case testBytesAndBytearrayComparisons2]
+import typing
+'' < b''
+b'' < ''
+'' < bytearray()
+bytearray() < ''
+[out]
+_program.py, line 2: Unsupported operand types for > ("bytes" and "str")
+_program.py, line 3: Unsupported operand types for > ("str" and "bytes")
+_program.py, line 4: No overload variant of "__gt__" of "bytearray" matches argument types
+_program.py, line 5: No overload variant of "__lt__" of "bytearray" matches argument types
