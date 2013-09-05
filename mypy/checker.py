@@ -539,7 +539,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # Give more detailed messages for the common case of both
             # signatures having the same number of arguments and no
-            # intersection types.
+            # overloads.
             
             coverride = cast(Callable, override)
             coriginal = cast(Callable, original)
