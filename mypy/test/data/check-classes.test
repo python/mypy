@@ -892,6 +892,24 @@ class B(A):
 class C(A):
     def __add__(self, x: Any) -> A: pass
 
+[case testOverloadedOperatorMethodOverrideWithNewItem]
+from typing import overload, Any
+class A:
+    @overload
+    def __add__(self, x: int) -> 'A': pass
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+class B(A):
+    @overload
+    def __add__(self, x: int) -> A: pass
+    @overload
+    def __add__(self, x: str) -> A: pass
+    @overload
+    def __add__(self, x: type) -> A: pass
+[out]
+main: In class "B":
+main, line 8: Signature of "__add__" incompatible with supertype "A"
+
 [case testReverseOperatorMethoddArgumentType]
 from typing import Any
 class A: pass
