@@ -748,3 +748,17 @@ print('', a)
 [out]
  [1, 2]
  [1, 2]
+
+[case testListInplaceAdd]
+import typing
+a = [1]
+a += iter([2, 3])
+print(tuple(a))
+[out]
+(1, 2, 3)
+
+[case testListConcatenateWithIterable]
+import typing
+[1] + iter([2, 3])
+[out]
+_program.py, line 2: Unsupported operand types for + ("list" and Iterator[int])

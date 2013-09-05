@@ -735,7 +735,7 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __delitem__(self, s: slice) -> None: pass
     
     def __add__(self, x: List[T]) -> List[T]: pass
-    def __iadd__(self, x: List[T]) -> List[T]: pass
+    def __iadd__(self, x: Iterable[T]) -> List[T]: pass
     def __mul__(self, n: int) -> List[T]: pass
     def __rmul__(self, n: int) -> List[T]: pass
     def __imul__(self, n: int) -> List[T]: pass
