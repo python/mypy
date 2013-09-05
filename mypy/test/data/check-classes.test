@@ -898,6 +898,28 @@ main, line 5: "Any" return type expected since argument to __radd__ does not sup
 main: In member "__radd__" of class "C":
 main, line 7: "Any" return type expected since argument to __radd__ has type "Any"
 
+[case testOverloadedReverseOperatorMethodArgumentType]
+from typing import overload, Any
+class A:
+    @overload
+    def __radd__(self, x: 'A') -> str: pass # Error
+    @overload
+    def __radd__(self, x: 'A') -> Any: pass
+[out]
+main: In member "__radd__" of class "A":
+main, line 4: "Any" return type expected since argument to __radd__ does not support __add__
+
+[case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
+from typing import overload, disjointclass
+@disjointclass(int)
+@disjointclass(str)
+class A:
+    @overload
+    def __add__(self, x: int) -> int: pass
+    @overload
+    def __add__(self, x: str) -> int: pass
+    def __radd__(self, x: 'A') -> str: pass
+
 [case testAbstractReverseOperatorMethod]
 import typing
 from abc import abstractmethod
