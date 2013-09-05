@@ -739,3 +739,12 @@ print(A() + B())
 1
 2
 3
+
+[case testInplaceOperatorMethod]
+import typing
+a = [1]
+print('', a.__iadd__([2]))
+print('', a)
+[out]
+ [1, 2]
+ [1, 2]
