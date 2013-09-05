@@ -923,6 +923,35 @@ class B:
 main: In member "__radd__" of class "B":
 main, line 5: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
+[case testUnsafeOverlappingWithOperatorMethodsAndOverloading]
+from typing import overload
+class A:
+    @overload
+    def __add__(self, x: 'A') -> int: pass
+    @overload
+    def __add__(self, x: str) -> int: pass
+class B:
+    def __radd__(self, x: 'A') -> str: pass # Error
+[out]
+main: In member "__radd__" of class "B":
+main, line 8: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
+[case testUnsafeOverlappingWithOperatorMethodsAndOverloading2]
+from typing import overload
+class A:
+    def __add__(self, x: 'A') -> int: pass
+class B:
+    @overload
+    def __radd__(self, x: 'X') -> str: pass # Error
+    @overload
+    def __radd__(self, x: A) -> str: pass   # Error
+class X:
+    def __add__(self, x): pass
+[out]
+main: In member "__radd__" of class "B":
+main, line 6: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
+main, line 8: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
 
 -- Special cases
 -- -------------
