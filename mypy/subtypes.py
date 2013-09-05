@@ -85,11 +85,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_named_instance(self.right, 'builtins.object')
     
     def visit_callable(self, left: Callable) -> bool:
-        if isinstance(self.right, Callable):
-            return is_callable_subtype(left, cast(Callable, self.right))
-        elif is_named_instance(self.right, 'builtins.object'):
+        right = self.right
+        if isinstance(right, Callable):
+            return is_callable_subtype(left, right)
+        elif is_named_instance(right, 'builtins.object'):
             return True
-        elif (is_named_instance(self.right, 'builtins.type') and
+        elif (is_named_instance(right, 'builtins.type') and
                   left.is_type_obj()):
             return True
         else:
