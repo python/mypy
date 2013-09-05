@@ -412,3 +412,18 @@ B() < A()
 B() < B()
 A() < object() # E: Unsupported operand types for < ("A" and "object")
 B() < object() # E: No overload variant of "__lt__" of "B" matches argument types
+
+[case testOverloadedForwardMethodAndCallingReverseMethod]
+from typing import overload
+class A:
+    @overload
+    def __add__(self, x: 'A') -> int: pass
+    @overload
+    def __add__(self, x: int) -> int: pass
+class B:
+    def __radd__(self, x: A) -> int: pass
+A() + A()
+A() + 1
+A() + B()
+A() + '' # E: No overload variant of "__add__" of "A" matches argument types
+

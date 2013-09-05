@@ -179,8 +179,10 @@ class ExpressionChecker:
             self.msg.enable_errors()
             
             target = self.overload_call_target(arg_types, is_var_arg,
-                                               callee, context)
-            return self.check_call(target, args, arg_kinds, context, arg_names)
+                                               callee, context,
+                                               messages=arg_messages)
+            return self.check_call(target, args, arg_kinds, context, arg_names,
+                                   arg_messages=arg_messages)
         elif isinstance(callee, AnyType) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
             return AnyType(), AnyType()
@@ -501,13 +503,15 @@ class ExpressionChecker:
                                            context)
     
     def overload_call_target(self, arg_types: List[Type], is_var_arg: bool,
-                             overload: Overloaded, context: Context) -> Type:
+                             overload: Overloaded, context: Context,
+                             messages: MessageBuilder = None) -> Type:
         """Infer the correct overload item to call with given argument types.
 
         The return value may be Callable or AnyType (if an unique item
         could not be determined). If is_var_arg is True, the caller
         uses varargs.
         """
+        messages = messages or self.msg
         # TODO also consider argument names and kinds
         # TODO for overlapping signatures we should try to get a more precise
         #      result than 'Any'
@@ -531,7 +535,7 @@ class ExpressionChecker:
                 else:
                     match.append(typ)
         if not match:
-            self.msg.no_variant_matches_arguments(overload, context)
+            messages.no_variant_matches_arguments(overload, context)
             return AnyType()
         else:
             if len(match) == 1:
