@@ -195,16 +195,24 @@ class TypeOpsSuite(Suite):
 
     def test_is_proper_subtype(self):
         fx = self.fx
+        
         assert_true(is_proper_subtype(fx.a, fx.a))
         assert_true(is_proper_subtype(fx.b, fx.a))
         assert_true(is_proper_subtype(fx.b, fx.o))
         assert_true(is_proper_subtype(fx.b, fx.o))
-        assert_true(is_proper_subtype(fx.anyt, fx.anyt))
-
+        
         assert_false(is_proper_subtype(fx.a, fx.b))
         assert_false(is_proper_subtype(fx.o, fx.b))
+        
+        assert_true(is_proper_subtype(fx.anyt, fx.anyt))
         assert_false(is_proper_subtype(fx.a, fx.anyt))
         assert_false(is_proper_subtype(fx.anyt, fx.a))
+        
+        assert_true(is_proper_subtype(fx.ga, fx.ga))
+        assert_true(is_proper_subtype(fx.gdyn, fx.gdyn))
+        assert_false(is_proper_subtype(fx.gb, fx.ga))
+        assert_false(is_proper_subtype(fx.ga, fx.gdyn))
+        assert_false(is_proper_subtype(fx.gdyn, fx.ga))
     
     # Helpers
     

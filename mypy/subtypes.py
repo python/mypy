@@ -283,10 +283,14 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
     For proper subtypes, there's no need to rely on compatibility due to
     Any types. Any instance type t is also a proper subtype of t.
     """
-    # FIX support generic types, tuple types etc.
+    # FIX tuple types
     if isinstance(t, Instance):
         if isinstance(s, Instance):
-            return not t.args and not s.args and is_subtype(t, s)
+            if not t.type.has_base(s.type.fullname()):
+                return False
+            t = map_instance_to_supertype(t, s.type)
+            return all(sametypes.is_same_type(x, y)
+                       for x, y in zip(t.args, s.args))
         return False
     else:
         return sametypes.is_same_type(t, s)
