@@ -668,7 +668,7 @@ class slice:
 
 
 @builtinclass
-class tuple(Sized, Iterable[Any]):
+class tuple(Iterable[Any], Sized):
     @overload
     def __init__(self) -> None: pass
     @overload

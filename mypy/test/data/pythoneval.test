@@ -762,3 +762,16 @@ import typing
 [1] + iter([2, 3])
 [out]
 _program.py, line 2: Unsupported operand types for + ("list" and Iterator[int])
+
+[case testInferHeterogeneousListOfIterables]
+from typing import Sequence
+s = ['x', 'y'] # type: Sequence[str]
+a = [['x', 'x'], 'fo', s, iter('foo'), {'aa'}]
+for i, x in enumerate(a):
+    print(i, next(iter(x)))
+[out]
+0 x
+1 f
+2 x
+3 f
+4 aa
