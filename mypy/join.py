@@ -142,11 +142,11 @@ def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
             return basic.object
     elif t.type.bases and is_subtype(t, s):
         return join_instances_via_supertype(t, s, basic)
-    elif s.type.bases:
-        return join_instances_via_supertype(s, t, basic)
     else:
-        return join_instances_as_interface(t, s, basic)
-    #return basic.object
+        # Now t is not a subtype of s, and t != s. Now s could be a subtype
+        # of t; alternatively, we need to find a common supertype. This works
+        # in of the both cases.
+        return join_instances_via_supertype(s, t, basic)
 
 
 def join_instances_via_supertype(t: Instance, s: Instance,
@@ -167,74 +167,6 @@ def join_instances_via_supertype(t: Instance, s: Instance,
     # Now the result must be an Instance, so the cast below cannot fail.
     res = cast(Instance, join)
     return res
-
-
-def join_instances_as_interface(t: Instance, s: Instance,
-                                basic: BasicTypes) -> Type:
-    """Compute join of two instances with a preference to an interface
-    type result.  Return object if no common interface type is found
-    and ErrorType if the result type is ambiguous.
-    
-    Interface type result is expected in the following cases:
-     * exactly one of t or s is an interface type
-     * neither t nor s is an interface type, and neither is subtype of the
-       other
-    """
-    
-    t_ifaces = implemented_interfaces(t)
-    s_ifaces = implemented_interfaces(s)
-    
-    res = [] # type: List[Instance]
-    
-    for ti in t_ifaces:
-        for si in s_ifaces:
-            # Join of two interface types is always an Instance type (either
-            # another interface type or object), so the cast below is safe.
-            j = cast(Instance, join_types(ti, si, basic))
-            if j.type != basic.object.type:
-                res.append(j)
-    
-    if len(res) == 1:
-        # Unambiguous, non-trivial result.
-        return res[0]
-    elif len(res) == 0:
-        # Return the trivial result (object).
-        return basic.object
-    else:
-        # Two or more potential candidate results.
-        
-        # Calculate the join of the results. If it is object, the result is
-        # ambigous (ErrorType).
-        j = res[0]
-        for i in range(1, len(res)):
-            # As above, the join of two interface types is always an Instance
-            # type. The cast below is thus safe.
-            j = cast(Instance, join_types(j, res[i], basic))
-        if j.type != basic.object.type:
-            return j
-        else:
-            return ErrorType()
-
-
-def implemented_interfaces(t: Instance) -> List[Type]:
-    """If t is a class instance, return all the directly implemented interface
-    types by t and its supertypes, including mapped type arguments.
-    """
-    
-    assert False
-    #if t.type.is_interface:
-    #    return [t]
-    #else:
-    #    Type[] res = []
-    #    
-    #    for iface in t.type.interfaces:
-    #        res.append(map_instance_to_supertype(t, iface))
-        
-    #    if t.type.base is not None:
-    #        tt = map_instance_to_supertype(t, t.type.base)
-    #        res.extend(implemented_interfaces(tt))
-        
-    #    return res
 
 
 def is_similar_callables(t: Callable, s: Callable) -> bool:
