@@ -56,8 +56,8 @@ class TypeFixture:
         self.type_typei = make_type_info('builtins.type')   # class type
         self.std_functioni = make_type_info('std::Function') # Function TODO
         self.ai = make_type_info('A', mro=[self.oi])        # class A
-        self.bi = make_type_info('B', mro=[self.ai])        # class B(A)
-        self.ci = make_type_info('C', mro=[self.ai])        # class C(A)
+        self.bi = make_type_info('B', mro=[self.ai, self.oi]) # class B(A)
+        self.ci = make_type_info('C', mro=[self.ai, self.oi]) # class C(A)
         self.di = make_type_info('D', mro=[self.oi])        # class D
 
         # class E(F)
