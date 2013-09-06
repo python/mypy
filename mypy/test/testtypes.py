@@ -215,6 +215,9 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(fx.gb, fx.ga))
         assert_false(is_proper_subtype(fx.ga, fx.gdyn))
         assert_false(is_proper_subtype(fx.gdyn, fx.ga))
+
+        assert_true(is_proper_subtype(fx.t, fx.t))
+        assert_false(is_proper_subtype(fx.t, fx.s))
     
     # Helpers
     
