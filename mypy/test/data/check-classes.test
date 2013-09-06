@@ -1027,8 +1027,32 @@ class B:
     def __iadd__(self, x: A) -> int: pass
 class C(A): pass
 [out]
-main: In member "__iadd__" of class "A":
+main: In class "A":
 main, line 5: Signatures of "__iadd__" and "__add__" are incompatible
+
+[case testOverloadedNormalAndInplaceOperatorMethod]
+from typing import overload
+class A:
+    @overload
+    def __add__(self, x: int) -> int: pass
+    @overload
+    def __add__(self, x: str) -> int: pass
+    @overload # Error
+    def __iadd__(self, x: int) -> int: pass
+    @overload
+    def __iadd__(self, x: object) -> int: pass
+class B:
+    @overload
+    def __add__(self, x: int) -> int: pass
+    @overload
+    def __add__(self, x: str) -> str: pass
+    @overload
+    def __iadd__(self, x: int) -> int: pass
+    @overload
+    def __iadd__(self, x: str) -> str: pass
+[out]
+main: In class "A":
+main, line 7: Signatures of "__iadd__" and "__add__" are incompatible
 
 
 -- Special cases

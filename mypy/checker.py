@@ -193,6 +193,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.info:
             self.check_method_override(defn)
+            self.check_inplace_operator_method(defn)
         self.check_overlapping_overloads(defn)
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
@@ -210,6 +211,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.check_func_item(defn, name=defn.name())
         if defn.info:
             self.check_method_override(defn)
+            self.check_inplace_operator_method(defn)
         if defn.original_def:
             if not is_same_type(function_type(defn),
                                 function_type(defn.original_def)):
@@ -272,8 +274,6 @@ class TypeChecker(NodeVisitor[Type]):
 
             if name in nodes.reverse_op_method_set:
                 self.check_reverse_op_method(item, typ, name)
-            if name in nodes.inplace_operator_methods:
-                self.check_inplace_operator_method(item, typ, name)
 
             # Push return type.
             self.return_types.append(typ.ret_type)
@@ -443,21 +443,23 @@ class TypeChecker(NodeVisitor[Type]):
             # TODO what about this?
             assert False, 'Forward operator method type is not Callable'
 
-    def check_inplace_operator_method(self, defn: FuncItem, typ: Callable,
-                                      method: str) -> None:
+    def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
 
         They cannot arbitrarily overlap with __add__.
         """
-        type = defn.info
+        method = defn.name()
+        if method not in nodes.inplace_operator_methods:
+            return
+        typ = method_type(defn)
+        cls = defn.info
         other_method = '__' + method[3:]
-        if type.has_readable_member(other_method):
-            instance = self_type(type)
-            typ = nodes.method_callable(typ)
+        if cls.has_readable_member(other_method):
+            instance = self_type(cls)
             typ2 = self.expr_checker.analyse_external_member_access(
                 other_method, instance, defn)
             fail = False
-            if isinstance(typ2, Callable):
+            if isinstance(typ2, FunctionLike):
                 if not is_more_general_arg_prefix(typ, typ2):
                     fail = True
             else:
@@ -1591,11 +1593,27 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
     return True
 
 
-def is_more_general_arg_prefix(t: Callable, s: Callable) -> bool:
-    for argt, args in zip(t.arg_types, s.arg_types):
-        if not is_proper_subtype(args, argt):
-            return False
-    return True
+def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
+    """Does t have wider arguments than s?"""
+    # TODO should an overload with additional items be allowed to be more
+    #      general than one with fewer items (or just one item)?
+    # TODO check argument kinds
+    if isinstance(t, Callable):
+        if isinstance(s, Callable):
+            return all(is_proper_subtype(args, argt)
+                       for argt, args in zip(t.arg_types, s.arg_types))
+    elif isinstance(t, FunctionLike):
+        if isinstance(s, FunctionLike):
+            if len(t.items()) == len(s.items()):
+                return all(is_same_arg_prefix(items, itemt)
+                           for items, itemt in zip(t.items(), s.items()))
+    return False
+
+
+def is_same_arg_prefix(t: Callable, s: Callable) -> bool:
+    # TODO check argument kinds
+    return all(is_same_type(argt, args)
+               for argt, args in zip(t.arg_types, s.arg_types))
 
 
 def is_more_precise_signature(t: Callable, s: Callable) -> bool:
