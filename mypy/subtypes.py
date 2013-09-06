@@ -277,15 +277,17 @@ def is_named_instance(t: Type, fullname: str) -> bool:
             cast(Instance, t).type.fullname() == fullname)
 
 
-def is_proper_subtype(t, s):
+def is_proper_subtype(t: Type, s: Type) -> bool:
     """Check if t is a proper subtype of s?
 
     For proper subtypes, there's no need to rely on compatibility due to
     Any types. Any instance type t is also a proper subtype of t.
     """
     # FIX support generic types, tuple types etc.
-    return (isinstance(t, Instance) and isinstance(s, Instance)
-            and t.args == [] and s.args == [] and is_subtype(t, s))
+    if isinstance(t, Instance):
+        if isinstance(s, Instance):
+            return not t.args and not s.args and is_subtype(t, s)
+    return False
 
 
 def is_more_precise(t: Type, s: Type) -> bool:
