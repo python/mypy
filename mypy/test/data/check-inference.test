@@ -462,77 +462,84 @@ def g(a: T, b: T = None) -> T: pass
 class A: pass
 
 
--- Generic function inference with interfaces
--- ------------------------------------------
+-- Generic function inference with multiple inheritance
+-- ----------------------------------------------------
 
 
-[case testUniqueAndNonUniqueInterfaceInference-skip]
-from typing import Undefined, typevar
-from abc import abstractmethod, ABCMeta
-T = typevar('T')
-i, j = Undefined, Undefined # type: (I, J)
+[case testGenericFunctionInferenceWithMultipleInheritance]
+from typing import typevar
 
-# Ambiguous join:
-f(A(), B())     # E: Cannot infer type argument 1 of "f"
-
-j = f(A(), C()) # E: Argument 2 to "f" has incompatible type "C"
-
-i = f(A(), C())
-
-def f(a: T, b: T) -> T:
-    pass
-
-class I(metaclass=ABCMeta): pass
-class J(metaclass=ABCMeta): pass
+class I: pass
+class J: pass
 
 class A(I, J): pass
 class B(I, J): pass
 class C(I): pass
+class D(J): pass
 
-[case testInterfaceInferenceWithInheritance1-skip]
-from typing import Undefined, typevar
-from abc import abstractmethod, ABCMeta
 T = typevar('T')
-i = Undefined # type: I
-
-f(B(), C())  # E: Cannot infer type argument 1 of "f"
-
-i = f(A(), B())
-i = f(A(), C())
-
 def f(a: T, b: T) -> T: pass
+def g(x: I) -> None: pass
 
-class I(metaclass=ABCMeta): pass
-class J(metaclass=ABCMeta): pass
+a = f(A(), C())
+g(a)
+b = f(A(), B())
+g(b)
+c = f(A(), D())
+g(c) # E: Argument 1 to "g" has incompatible type "object"
+d = f(D(), A())
+g(d) # E: Argument 1 to "g" has incompatible type "object"
+e = f(D(), C())
+g(e) # E: Argument 1 to "g" has incompatible type "object"
+
+[case testGenericFunctionInferenceWithMultipleInheritance2]
+from typing import typevar
+
+class I: pass
+class J: pass
 
 class A(I): pass
 class B(A, J): pass
 class C(I, J): pass
 
-[case testInterfaceInferenceWithInheritance2-skip]
-from typing import Undefined, typevar
-from abc import abstractmethod, ABCMeta
 T = typevar('T')
-j, k = Undefined, Undefined # type: (J, K)
+def f(a: T, b: T) -> T: pass
+def g(x: I) -> None: pass
+def h(x: J) -> None: pass
 
-f(B(), C())     # E: Cannot infer type argument 1 of "f"
-k = f(A(), C()) # E: Argument 2 to "f" has incompatible type "C"
+a = f(B(), C())
+g(a)
+h(a) # E: Argument 1 to "h" has incompatible type "I"
+b = f(C(), B())
+g(b)
+h(b) # E: Argument 1 to "h" has incompatible type "I"
+c = f(A(), B())
+g(a)
+h(b) # E: Argument 1 to "h" has incompatible type "I"
 
-k = f(A(), B())
-j = f(A(), C())
+[case testGenericFunctionInferenceWithMultipleInheritance3]
+from typing import typevar
 
-def f(a: T, b: T) -> T:
-    pass
-
-class I(metaclass=ABCMeta): pass
-class J(metaclass=ABCMeta): pass
+class I: pass
+class J: pass
 class K(J): pass
 
 class A(K): pass
 class B(A, I): pass
 class C(I, J): pass
 
-[case testPrecedenceOfClassInferenceResultOverInterfaceResult]
+T = typevar('T')
+def f(a: T, b: T) -> T: pass
+def g(x: K) -> None: pass
+
+a = f(B(), C())
+g(a) # E: Argument 1 to "g" has incompatible type "object"
+b = f(A(), C())
+g(b) # E: Argument 1 to "g" has incompatible type "object"
+c = f(A(), B())
+g(c)
+
+[case testPrecedenceOfFirstBaseAsInferenceResult]
 from typing import Undefined, typevar
 from abc import abstractmethod, ABCMeta
 T = typevar('T')
