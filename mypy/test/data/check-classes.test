@@ -1054,6 +1054,24 @@ class B:
 main: In class "A":
 main, line 7: Signatures of "__iadd__" and "__add__" are incompatible
 
+[case testIntroducingInplaceOperatorInSubclass]
+import typing
+class A:
+    def __add__(self, x: 'A') -> 'B': pass
+class B(A):
+    # __iadd__ effectively partially overrides __add__
+    def __iadd__(self, x: 'A') -> 'A': pass # Error
+class C(A):
+    def __iadd__(self, x: int) -> 'B': pass # Error
+class D(A):
+    def __iadd__(self, x: 'A') -> 'B': pass
+[out]
+main: In class "B":
+main, line 6: Return type of "__iadd__" incompatible with "__add__" of supertype "A"
+main: In class "C":
+main, line 8: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
+main, line 8: Signatures of "__iadd__" and "__add__" are incompatible
+
 
 -- Special cases
 -- -------------

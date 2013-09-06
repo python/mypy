@@ -501,10 +501,15 @@ class TypeChecker(NodeVisitor[Type]):
                                                    base: TypeInfo) -> None:
         """Check if method definition is compatible with a base class."""
         if base:
-            if defn.name() != '__init__':
+            name = defn.name()
+            if name != '__init__':
                 # Check method override (__init__ is special).
-                self.check_method_override_for_base_with_name(
-                    defn, defn.name(), base)
+                self.check_method_override_for_base_with_name(defn, name, base)
+                if name in nodes.inplace_operator_methods:
+                    # Figure out the name of the corresponding operator method.
+                    method = '__' + name[3:]
+                    self.check_method_override_for_base_with_name(defn, method,
+                                                                  base)
 
     def check_method_override_for_base_with_name(
             self, defn: FuncBase, name: str, base: TypeInfo) -> None:
@@ -530,15 +535,17 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_override(cast(FunctionLike, typ),
                                     cast(FunctionLike, original),
                                     defn.name(),
+                                    name,
                                     base.name(),
                                     defn)
             else:
                 assert original_type is not None
                 self.msg.signature_incompatible_with_supertype(
-                    defn.name(), base.name(), defn)
+                    defn.name(), name, base.name(), defn)
     
     def check_override(self, override: FunctionLike, original: FunctionLike,
-                       name: str, supertype: str, node: Context) -> None:
+                       name: str, name_in_super: str, supertype: str,
+                       node: Context) -> None:
         """Check a method override with given signatures.
 
         Arguments:
@@ -566,7 +573,7 @@ class TypeChecker(NodeVisitor[Type]):
                 fail = True
             if fail:
                 self.msg.signature_incompatible_with_supertype(
-                    name, supertype, node)
+                    name, name_in_super, supertype, node)
             return
         else:
             # Give more detailed messages for the common case of both
@@ -580,11 +587,11 @@ class TypeChecker(NodeVisitor[Type]):
                 if not is_equivalent(coriginal.arg_types[i],
                                      coverride.arg_types[i]):
                     self.msg.argument_incompatible_with_supertype(
-                        i + 1, name, supertype, node)
+                        i + 1, name, name_in_super, supertype, node)
             
             if not is_subtype(coverride.ret_type, coriginal.ret_type):
                 self.msg.return_type_incompatible_with_supertype(
-                    name, supertype, node)
+                    name, name_in_super, supertype, node)
     
     def visit_class_def(self, defn: ClassDef) -> Type:
         """Type check a class definition."""
