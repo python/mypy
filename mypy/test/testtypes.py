@@ -199,6 +199,7 @@ class TypeOpsSuite(Suite):
         assert_true(is_proper_subtype(fx.b, fx.a))
         assert_true(is_proper_subtype(fx.b, fx.o))
         assert_true(is_proper_subtype(fx.b, fx.o))
+        assert_true(is_proper_subtype(fx.anyt, fx.anyt))
 
         assert_false(is_proper_subtype(fx.a, fx.b))
         assert_false(is_proper_subtype(fx.o, fx.b))

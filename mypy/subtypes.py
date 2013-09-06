@@ -287,7 +287,9 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             return not t.args and not s.args and is_subtype(t, s)
-    return False
+        return False
+    else:
+        return sametypes.is_same_type(t, s)
 
 
 def is_more_precise(t: Type, s: Type) -> bool:
