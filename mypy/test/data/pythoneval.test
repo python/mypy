@@ -140,6 +140,19 @@ print(abs(A())) # TODO fix type inference
 1.2
 5.5
 
+[case testAbs2-skip]
+from typing import Undefined
+n = Undefined(int)
+f = Undefined(float)
+s = Undefined(str)
+n = abs(1)
+s = abs(1) # Error
+f = abs(1.1)
+n = abs(1.1) # Error
+[out]
+_program.py, line 6: Incompatible types in assignment
+_program.py, line 8: Incompatible types in assignment
+
 [case testRound]
 from typing import SupportsRound
 class A(SupportsRound):
