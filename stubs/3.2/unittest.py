@@ -111,6 +111,7 @@ class TestCase(Testable):
     def id(self) -> str: pass
     def shortDescription(self) -> str: pass # May return None
     def addCleanup(function: Any, *args: Any, **kwargs: Any) -> None: pass
+    def skipTest(self, reason: Any) -> None: pass
 
 class FunctionTestCase(Testable):
     def __init__(self, testFunc: Function[[], None],
