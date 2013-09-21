@@ -144,6 +144,7 @@ class SkipTest(Exception):
 def skipUnless(condition: Any, reason: str) -> Any: pass
 def skipIf(condition: Any, reason: str) -> Any: pass
 def expectedFailure(func: FT) -> FT: pass
+def skip(reason: str) -> Any: pass
 
 def main(module: str = '__main__', defaultTest: str = None,
          argv: List[str] = None, testRunner: Any = None,
