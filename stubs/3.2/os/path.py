@@ -111,10 +111,7 @@ def relpath(path: bytes, start: bytes = None) -> bytes: pass
 def samefile(path1: str, path2: str) -> bool: pass
 @overload
 def samefile(path1: bytes, path2: bytes) -> bool: pass
-@overload
-def sameopenfile(fp1: BinaryIO, fp2: BinaryIO) -> bool: pass
-@overload
-def sameopenfile(fp1: TextIO, fp2: TextIO) -> bool: pass
+def sameopenfile(fp1: int, fp2: int) -> bool: pass
 #def samestat(stat1: stat_result,
 #             stat2: stat_result) -> bool: pass  # Unix only
 @overload
