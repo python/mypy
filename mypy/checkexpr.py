@@ -881,11 +881,19 @@ class ExpressionChecker:
             # Special case for tuples. They support indexing only by integer
             # literals.
             index = self.unwrap(e.index)
+            ok = False
             if isinstance(index, IntExpr):
                 n = index.value
-                tuple_type = left_type
-                if n < len(tuple_type.items):
-                    return tuple_type.items[n]
+                ok = True
+            elif isinstance(index, UnaryExpr):
+                if index.op == '-':
+                    operand = index.expr
+                    if isinstance(operand, IntExpr):
+                        n = len(left_type.items) - operand.value
+                        ok = True
+            if ok:
+                if n >= 0 and n < len(left_type.items):
+                    return left_type.items[n]
                 else:
                     self.chk.fail(messages.TUPLE_INDEX_OUT_OF_RANGE, e)
                     return AnyType()
@@ -897,7 +905,7 @@ class ExpressionChecker:
                                                 e.index, e)
             e.method_type = method_type
             return result
-    
+
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
         source_type = self.accept(expr.expr)

@@ -146,7 +146,7 @@ n = 0
 a = t1[1] # E: Incompatible types in assignment
 b = t1[0] # E: Incompatible types in assignment
 t1[2]     # E: Tuple index out of range
-t1[-1]    # E: Tuple index must an integer literal
+t1[3]     # E: Tuple index out of range
 t2[1]     # E: Tuple index out of range
 t1[n]     # E: Tuple index must an integer literal
 b = t1[(0)] # E: Incompatible types in assignment
@@ -154,6 +154,26 @@ b = t1[(0)] # E: Incompatible types in assignment
 a = t1[0]
 b = t1[1]
 a = t1[(0)]
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.py]
+
+[case testIndexingTuplesWithNegativeIntegers]
+from typing import Undefined, Tuple
+t1 = Undefined(Tuple[A, B])
+t2 = Undefined(Tuple[A])
+a, b = Undefined(A), Undefined(B)
+
+a = t1[-1] # E: Incompatible types in assignment
+b = t1[-2] # E: Incompatible types in assignment
+t1[-3]     # E: Tuple index out of range
+t1[-4]     # E: Tuple index out of range
+b = t2[(-1)] # E: Incompatible types in assignment
+
+a = t1[-2]
+b = t1[-1]
+a = t2[(-1)]
 
 class A: pass
 class B: pass
