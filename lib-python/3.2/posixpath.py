@@ -183,18 +183,11 @@ def samefile(f1: AnyStr, f2: AnyStr) -> bool:
 # Are two open files really referencing the same file?
 # (Not necessarily the same file descriptor!)
 
-def _sameopenfile(fp1, fp2):
+def sameopenfile(fp1: int, fp2: int) -> bool:
+    """Test whether two open file objects reference the same file"""
     s1 = os.fstat(fp1)
     s2 = os.fstat(fp2)
     return samestat(s1, s2)
-
-@overload
-def sameopenfile(fp1: BinaryIO, fp2: BinaryIO) -> bool:
-    """Test whether two open file objects reference the same file"""
-    return _sameopenfile(fp1, fp2)
-@overload
-def sameopenfile(fp1: TextIO, fp2: TextIO) -> bool:
-    return _sameopenfile(fp1, fp2)
 
 
 # Are two stat buffers (obtained from stat, fstat or lstat)
