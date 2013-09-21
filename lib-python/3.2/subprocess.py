@@ -454,7 +454,7 @@ PIPE = -1
 STDOUT = -2
 
 
-def _eintr_retry_call(func, *args) -> Any:
+def _eintr_retry_call(func, *args: Any) -> Any:
     while True:
         try:
             return func(*args)
@@ -644,14 +644,14 @@ _PLATFORM_DEFAULT_CLOSE_FDS = object()
 
 
 class Popen(object):
-    def __init__(self, args: Sequence[str], bufsize: int = 0,
+    def __init__(self, args: Sequence[Any], bufsize: int = 0,
                  executable: str = None, stdin: Any = None,
                  stdout: Any = None, stderr: Any = None,
                  preexec_fn: Function[[], Any] = None,
                  close_fds: Any = _PLATFORM_DEFAULT_CLOSE_FDS,
-                 shell: bool = False, cwd: str = None,
+                 shell: int = False, cwd: str = None,
                  env: Mapping[str, str] = None,
-                 universal_newlines: bool = False,
+                 universal_newlines: int = False,
                  startupinfo: Any = None, creationflags: int = 0,
                  restore_signals: bool = True, start_new_session: bool = False,
                  pass_fds: Any = ()) -> None:
@@ -921,8 +921,8 @@ class Popen(object):
         def _execute_child(self, args: Sequence[str], executable: str,
                            preexec_fn: Function[[], Any], close_fds: Any,
                            pass_fds: Any, cwd: str, env: Mapping[str, str],
-                           universal_newlines: bool,
-                           startupinfo: Any, creationflags: int, shell: bool,
+                           universal_newlines: int,
+                           startupinfo: Any, creationflags: int, shell: int,
                            p2cread: Any, p2cwrite: Any,
                            c2pread: Any, c2pwrite: Any,
                            errread: Any, errwrite: Any,
@@ -1162,8 +1162,8 @@ class Popen(object):
         def _execute_child(self, args: Sequence[str], executable: str,
                            preexec_fn: Function[[], Any], close_fds: Any,
                            pass_fds: Any, cwd: str, env: Mapping[str, str],
-                           universal_newlines: bool,
-                           startupinfo: Any, creationflags: int, shell: bool,
+                           universal_newlines: int,
+                           startupinfo: Any, creationflags: int, shell: int,
                            p2cread: Any, p2cwrite: Any,
                            c2pread: Any, c2pwrite: Any,
                            errread: Any, errwrite: Any,
