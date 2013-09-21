@@ -13,25 +13,25 @@ class list2(list):
     pass
 
 class list3(list):
-    def __repr__(self):
+    def __repr__(self) -> str:
         return list.__repr__(self)
 
 class tuple2(tuple):
     pass
 
 class tuple3(tuple):
-    def __repr__(self):
+    def __repr__(self) -> str:
         return tuple.__repr__(self)
 
 class dict2(dict):
     pass
 
 class dict3(dict):
-    def __repr__(self):
+    def __repr__(self) -> str:
         return dict.__repr__(self)
 
 class Unorderable:
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(id(self))
 
 class QueryTestCase(unittest.TestCase):
@@ -182,7 +182,7 @@ class QueryTestCase(unittest.TestCase):
         'third': 3}]"""
         self.assertEqual(pprint.pformat(o, indent=4, width=42), expected)
 
-    def test_sorted_dict(self):
+    def test_sorted_dict(self) -> None:
         # Starting in Python 2.5, pprint sorts dict displays by key regardless
         # of how small the dictionary may be.
         # Before the change, on 32-bit Windows pformat() gave order
