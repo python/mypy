@@ -68,10 +68,15 @@ def get_actual_type(arg_type: Type, kind: int,
     """
     
     if kind == nodes.ARG_STAR:
-        if isinstance(arg_type, Instance) and (
-                (cast(Instance, arg_type)).type.fullname() == 'builtins.list'):
-            # List *arg. TODO any iterable
-            return (cast(Instance, arg_type)).args[0]
+        if isinstance(arg_type, Instance):
+            if arg_type.type.fullname() == 'builtins.list':
+                # List *arg.
+                return arg_type.args[0]
+            elif arg_type.args:
+                # TODO try to map type arguments to Iterable
+                return arg_type.args[0]
+            else:
+                return AnyType()
         elif isinstance(arg_type, TupleType):
             # Get the next tuple item of a tuple *arg.
             tuplet = cast(TupleType, arg_type)

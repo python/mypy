@@ -92,6 +92,15 @@ class B(A): pass
 class C: pass
 [builtins fixtures/list.py]
 
+[case testCallVarargsFunctionWithIterable]
+from typing import Iterable, Undefined
+it1 = Undefined(Iterable[int])
+it2 = Undefined(Iterable[str])
+def f(*x: int) -> None: pass
+f(*it1)
+f(*it2) # E: Argument 1 to "f" has incompatible type Iterable[str]
+[builtins fixtures/for.py]
+
 
 -- Calling varargs function + type inference
 -- -----------------------------------------
@@ -203,7 +212,7 @@ class CC(C): pass
 from typing import Undefined
 a = Undefined # type: A
 
-f(*None) # E: List or tuple expected as variable arguments
+f(*None)
 f(*a)    # E: List or tuple expected as variable arguments
 f(*(a,))
 

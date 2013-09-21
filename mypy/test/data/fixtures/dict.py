@@ -1,6 +1,6 @@
 # Builtins stub used in dictionary-related test cases.
 
-from typing import typevar, Generic
+from typing import typevar, Generic, Iterable, Iterator
 
 T = typevar('T')
 S = typevar('S')
@@ -13,4 +13,6 @@ class type: pass
 class dict(Generic[T, S]): pass
 class int: pass # for convenience
 class str: pass # for keyword argument key type
-class list(Generic[T]): pass # needed by some test cases
+class list(Iterable[T], Generic[T]): # needed by some test cases
+    def __iter__(self) -> Iterator[T]: pass
+    def __mul__(self, x: int) -> list[T]: pass

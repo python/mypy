@@ -1142,18 +1142,15 @@ class ExpressionChecker:
     
     def is_valid_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a *args argument?"""
-        return (isinstance(typ, TupleType) or self.is_list_instance(typ) or
-                    isinstance(typ, AnyType))
+        return (isinstance(typ, TupleType) or
+                is_subtype(typ, self.chk.named_generic_type('typing.Iterable',
+                                                            [AnyType()])) or
+                isinstance(typ, AnyType))
     
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:    
         """Is a type valid as a **kwargs argument?"""
         return is_subtype(typ, self.chk.named_generic_type(
             'builtins.dict', [self.named_type('builtins.str'), AnyType()]))
-    
-    def is_list_instance(self, t: Type) -> bool:
-        """Is the argument an instance type List[...]?"""
-        return (isinstance(t, Instance) and
-                cast(Instance, t).type.fullname() == 'builtins.list')
     
     def has_non_method(self, typ: Type, member: str) -> bool:
         """Does type have a member variable / property with the given name?"""
