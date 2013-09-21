@@ -806,20 +806,20 @@ class set(AbstractSet[T], Generic[T]):
     def add(self, element: T) -> None: pass
     def clear(self) -> None: pass
     def copy(self) -> set[T]: pass
-    def difference(self, s: AbstractSet[Any]) -> set[T]: pass
-    def difference_update(self, s: AbstractSet[Any]) -> None: pass
+    def difference(self, s: Iterable[Any]) -> set[T]: pass
+    def difference_update(self, s: Iterable[Any]) -> None: pass
     def discard(self, element: T) -> None: pass
-    def intersection(self, s: AbstractSet[Any]) -> set[T]: pass
-    def intersection_update(self, s: AbstractSet[Any]) -> None: pass
+    def intersection(self, s: Iterable[Any]) -> set[T]: pass
+    def intersection_update(self, s: Iterable[Any]) -> None: pass
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
     def issubset(self, s: AbstractSet[Any]) -> bool: pass
     def issuperset(self, s: AbstractSet[Any]) -> bool: pass
     def pop(self) -> T: pass
     def remove(self, element: T) -> None: pass
-    def symmetric_difference(self, s: AbstractSet[T]) -> set[T]: pass
-    def symmetric_difference_update(self, s: AbstractSet[T]) -> None: pass
-    def union(self, s: AbstractSet[T]) -> set[T]: pass
-    def update(self, s: AbstractSet[T]) -> None: pass
+    def symmetric_difference(self, s: Iterable[T]) -> set[T]: pass
+    def symmetric_difference_update(self, s: Iterable[T]) -> None: pass
+    def union(self, s: Iterable[T]) -> set[T]: pass
+    def update(self, s: Iterable[T]) -> None: pass
     
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
