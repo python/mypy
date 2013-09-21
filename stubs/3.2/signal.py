@@ -34,9 +34,9 @@ ITIMER_PROF = 0
 
 class ItimerError(IOError): pass
 
-#def alarm(time: int) -> int: pass # Unix
+def alarm(time: int) -> int: pass # Unix
 def getsignal(signalnum: int) -> Any: pass
-#def pause() -> None: pass # Unix
+def pause() -> None: pass # Unix
 #def setitimer(which: int, seconds: float,
 #              internval: float = None) -> Tuple[float, float]: pass # Unix
 #def getitimer(int which): pass # Unix
