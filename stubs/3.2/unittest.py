@@ -9,7 +9,7 @@
 
 from typing import (
     Any, Function, Iterable, Undefined, Tuple, List, TextIO, Sequence,
-    overload, typevar
+    overload, typevar, Pattern
 )
 from abc import abstractmethod, ABCMeta
 
@@ -41,9 +41,22 @@ class TestResult:
                     err: Tuple[type, Any, Any]) -> None: pass # TODO
     def addSuccess(self, test: Testable) -> None: pass
 
-class _AssertRaisesContext:
+class _AssertRaisesBaseContext:
+    expected = Undefined(Any)
+    failureException = Undefined(type)
+    obj_name = ''
+    expected_regex = Undefined(Pattern[str])
+    
+class _AssertRaisesContext(_AssertRaisesBaseContext):
     exception = Undefined(Any) # TODO precise type
     def __enter__(self) -> _AssertRaisesContext: pass
+    def __exit__(self, exc_type, exc_value, tb) -> bool: pass
+    
+class _AssertWarnsContext(_AssertRaisesBaseContext):
+    warning = Undefined(Any) # TODO precise type
+    filename = ''
+    lineno = 0
+    def __enter__(self) -> _AssertWarnsContext: pass
     def __exit__(self, exc_type, exc_value, tb) -> bool: pass
 
 class TestCase(Testable):
@@ -105,6 +118,8 @@ class TestCase(Testable):
                          msg: object = None) -> None: pass
     def assertNotIsInstance(self, obj: Any, cls: type,
                             msg: object = None) -> None: pass
+    def assertWarns(self, expected_warning: type, callable_obj: Any = None,
+                    *args: Any, **kwargs: Any) -> _AssertWarnsContext: pass
     def fail(self, msg: object = None) -> None: pass
     def countTestCases(self) -> int: pass
     def defaultTestResult(self) -> TestResult: pass
