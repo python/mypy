@@ -73,7 +73,7 @@ class Iterator(Iterable[T], AbstractGeneric[T]):
     @abstractmethod
     def __next__(self) -> T: pass
 
-class Sequence(Sized, Iterable[T], AbstractGeneric[T]):
+class Sequence(Iterable[T], Sized, AbstractGeneric[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     @overload
@@ -83,7 +83,7 @@ class Sequence(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod
     def __getitem__(self, s: slice) -> Sequence[T]: pass
     
-class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
+class AbstractSet(Iterable[T], Sized, AbstractGeneric[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     @abstractmethod
@@ -108,7 +108,7 @@ class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
-class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
+class Mapping(Iterable[KT], Sized, AbstractGeneric[KT, VT]):
     @abstractmethod
     def __getitem__(self, k: KT) -> VT: pass
     @abstractmethod

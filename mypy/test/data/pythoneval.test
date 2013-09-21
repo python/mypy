@@ -140,6 +140,19 @@ print(abs(A())) # TODO fix type inference
 1.2
 5.5
 
+[case testAbs2-skip]
+from typing import Undefined
+n = Undefined(int)
+f = Undefined(float)
+s = Undefined(str)
+n = abs(1)
+s = abs(1) # Error
+f = abs(1.1)
+n = abs(1.1) # Error
+[out]
+_program.py, line 6: Incompatible types in assignment
+_program.py, line 8: Incompatible types in assignment
+
 [case testRound]
 from typing import SupportsRound
 class A(SupportsRound):
@@ -739,3 +752,39 @@ print(A() + B())
 1
 2
 3
+
+[case testInplaceOperatorMethod]
+import typing
+a = [1]
+print('', a.__iadd__([2]))
+print('', a)
+[out]
+ [1, 2]
+ [1, 2]
+
+[case testListInplaceAdd]
+import typing
+a = [1]
+a += iter([2, 3])
+print(tuple(a))
+[out]
+(1, 2, 3)
+
+[case testListConcatenateWithIterable]
+import typing
+[1] + iter([2, 3])
+[out]
+_program.py, line 2: Unsupported operand types for + ("list" and Iterator[int])
+
+[case testInferHeterogeneousListOfIterables]
+from typing import Sequence
+s = ['x', 'y'] # type: Sequence[str]
+a = [['x', 'x'], 'fo', s, iter('foo'), {'aa'}]
+for i, x in enumerate(a):
+    print(i, next(iter(x)))
+[out]
+0 x
+1 f
+2 x
+3 f
+4 aa

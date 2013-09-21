@@ -15,7 +15,7 @@ from mypy.types import (
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
 from mypy.replacetvars import replace_type_vars
-from mypy.subtypes import is_subtype, is_more_precise
+from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
 
@@ -190,6 +190,34 @@ class TypeOpsSuite(Suite):
         assert_false(is_more_precise(fx.anyt, fx.b))
         assert_false(is_more_precise(self.tuple(fx.b, fx.b),
                                      self.tuple(fx.b, fx.a)))
+
+    # is_proper_subtype
+
+    def test_is_proper_subtype(self):
+        fx = self.fx
+        
+        assert_true(is_proper_subtype(fx.a, fx.a))
+        assert_true(is_proper_subtype(fx.b, fx.a))
+        assert_true(is_proper_subtype(fx.b, fx.o))
+        assert_true(is_proper_subtype(fx.b, fx.o))
+        
+        assert_false(is_proper_subtype(fx.a, fx.b))
+        assert_false(is_proper_subtype(fx.o, fx.b))
+        
+        assert_true(is_proper_subtype(fx.anyt, fx.anyt))
+        assert_false(is_proper_subtype(fx.a, fx.anyt))
+        assert_false(is_proper_subtype(fx.anyt, fx.a))
+        
+        assert_true(is_proper_subtype(fx.ga, fx.ga))
+        assert_true(is_proper_subtype(fx.gdyn, fx.gdyn))
+        assert_true(is_proper_subtype(fx.gsab, fx.gb))
+        assert_false(is_proper_subtype(fx.gsab, fx.ga))
+        assert_false(is_proper_subtype(fx.gb, fx.ga))
+        assert_false(is_proper_subtype(fx.ga, fx.gdyn))
+        assert_false(is_proper_subtype(fx.gdyn, fx.ga))
+
+        assert_true(is_proper_subtype(fx.t, fx.t))
+        assert_false(is_proper_subtype(fx.t, fx.s))
     
     # Helpers
     

@@ -938,6 +938,12 @@ op_methods = {
     'in': '__contains__',
 }
 
+ops_with_inplace_method = {
+    '+', '-', '*', '/', '%', '//', '**', '&', '|', '^', '<<', '>>'}
+
+inplace_operator_methods = set(
+    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)
+
 reverse_op_methods = {
     '__add__': '__radd__',
     '__sub__': '__rsub__',

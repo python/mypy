@@ -193,6 +193,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.info:
             self.check_method_override(defn)
+            self.check_inplace_operator_method(defn)
         self.check_overlapping_overloads(defn)
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
@@ -210,6 +211,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.check_func_item(defn, name=defn.name())
         if defn.info:
             self.check_method_override(defn)
+            self.check_inplace_operator_method(defn)
         if defn.original_def:
             if not is_same_type(function_type(defn),
                                 function_type(defn.original_def)):
@@ -441,6 +443,31 @@ class TypeChecker(NodeVisitor[Type]):
             # TODO what about this?
             assert False, 'Forward operator method type is not Callable'
 
+    def check_inplace_operator_method(self, defn: FuncBase) -> None:
+        """Check an inplace operator method such as __iadd__.
+
+        They cannot arbitrarily overlap with __add__.
+        """
+        method = defn.name()
+        if method not in nodes.inplace_operator_methods:
+            return
+        typ = method_type(defn)
+        cls = defn.info
+        other_method = '__' + method[3:]
+        if cls.has_readable_member(other_method):
+            instance = self_type(cls)
+            typ2 = self.expr_checker.analyse_external_member_access(
+                other_method, instance, defn)
+            fail = False
+            if isinstance(typ2, FunctionLike):
+                if not is_more_general_arg_prefix(typ, typ2):
+                    fail = True
+            else:
+                # TODO overloads
+                fail = True
+            if fail:
+                self.msg.signatures_incompatible(method, other_method, defn)
+
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:
         # TODO use generator
@@ -474,39 +501,55 @@ class TypeChecker(NodeVisitor[Type]):
                                                    base: TypeInfo) -> None:
         """Check if method definition is compatible with a base class."""
         if base:
-            if defn.name() != '__init__':
+            name = defn.name()
+            if name != '__init__':
                 # Check method override (__init__ is special).
-                base_attr = base.names.get(defn.name())
-                if base_attr:
-                    # The name of the method is defined in the base class.
-                    
-                    # Construct the type of the overriding method.
-                    typ = method_type(defn)
-                    # Map the overridden method type to subtype context so that
-                    # it can be checked for compatibility.
-                    original_type = base_attr.type
-                    if original_type is None and isinstance(base_attr.node,
-                                                            FuncDef):
-                        original_type = function_type(cast(FuncDef,
-                                                           base_attr.node))
-                    if isinstance(original_type, FunctionLike):
-                        original = map_type_from_supertype(
-                            method_type(original_type),
-                            defn.info, base)
-                        # Check that the types are compatible.
-                        # TODO overloaded signatures
-                        self.check_override(cast(FunctionLike, typ),
-                                            cast(FunctionLike, original),
-                                            defn.name(),
-                                            base.name(),
-                                            defn)
-                    else:
-                        assert original_type is not None
-                        self.msg.signature_incompatible_with_supertype(
-                            defn.name(), base.name(), defn)
+                self.check_method_override_for_base_with_name(defn, name, base)
+                if name in nodes.inplace_operator_methods:
+                    # Figure out the name of the corresponding operator method.
+                    method = '__' + name[3:]
+                    # An inplace overator method such as __iadd__ might not be
+                    # always introduced safely if a base class defined __add__.
+                    # TODO can't come up with an example where this is
+                    #      necessary; now it's "just in case"
+                    self.check_method_override_for_base_with_name(defn, method,
+                                                                  base)
+
+    def check_method_override_for_base_with_name(
+            self, defn: FuncBase, name: str, base: TypeInfo) -> None:
+        base_attr = base.names.get(name)
+        if base_attr:
+            # The name of the method is defined in the base class.
+
+            # Construct the type of the overriding method.
+            typ = method_type(defn)
+            # Map the overridden method type to subtype context so that
+            # it can be checked for compatibility.
+            original_type = base_attr.type
+            if original_type is None and isinstance(base_attr.node,
+                                                    FuncDef):
+                original_type = function_type(cast(FuncDef,
+                                                   base_attr.node))
+            if isinstance(original_type, FunctionLike):
+                original = map_type_from_supertype(
+                    method_type(original_type),
+                    defn.info, base)
+                # Check that the types are compatible.
+                # TODO overloaded signatures
+                self.check_override(cast(FunctionLike, typ),
+                                    cast(FunctionLike, original),
+                                    defn.name(),
+                                    name,
+                                    base.name(),
+                                    defn)
+            else:
+                assert original_type is not None
+                self.msg.signature_incompatible_with_supertype(
+                    defn.name(), name, base.name(), defn)
     
     def check_override(self, override: FunctionLike, original: FunctionLike,
-                       name: str, supertype: str, node: Context) -> None:
+                       name: str, name_in_super: str, supertype: str,
+                       node: Context) -> None:
         """Check a method override with given signatures.
 
         Arguments:
@@ -534,12 +577,12 @@ class TypeChecker(NodeVisitor[Type]):
                 fail = True
             if fail:
                 self.msg.signature_incompatible_with_supertype(
-                    name, supertype, node)
+                    name, name_in_super, supertype, node)
             return
         else:
             # Give more detailed messages for the common case of both
             # signatures having the same number of arguments and no
-            # intersection types.
+            # overloads.
             
             coverride = cast(Callable, override)
             coriginal = cast(Callable, original)
@@ -548,11 +591,11 @@ class TypeChecker(NodeVisitor[Type]):
                 if not is_equivalent(coriginal.arg_types[i],
                                      coverride.arg_types[i]):
                     self.msg.argument_incompatible_with_supertype(
-                        i + 1, name, supertype, node)
+                        i + 1, name, name_in_super, supertype, node)
             
             if not is_subtype(coverride.ret_type, coriginal.ret_type):
                 self.msg.return_type_incompatible_with_supertype(
-                    name, supertype, node)
+                    name, name_in_super, supertype, node)
     
     def visit_class_def(self, defn: ClassDef) -> Type:
         """Type check a class definition."""
@@ -938,8 +981,9 @@ class TypeChecker(NodeVisitor[Type]):
                                        s: OperatorAssignmentStmt) -> Type:
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
+        method = infer_operator_assignment_method(lvalue_type, s.op)
         rvalue_type, method_type = self.expr_checker.check_op(
-            nodes.op_methods[s.op], lvalue_type, s.rvalue, s)
+            method, lvalue_type, s.rvalue, s)
         
         if isinstance(s.lvalue, IndexExpr):
             lv = cast(IndexExpr, s.lvalue)
@@ -1565,11 +1609,27 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
     return True
 
 
-def is_more_general_arg_prefix(t: Callable, s: Callable) -> bool:
-    for argt, args in zip(t.arg_types, s.arg_types):
-        if not is_proper_subtype(args, argt):
-            return False
-    return True
+def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
+    """Does t have wider arguments than s?"""
+    # TODO should an overload with additional items be allowed to be more
+    #      general than one with fewer items (or just one item)?
+    # TODO check argument kinds
+    if isinstance(t, Callable):
+        if isinstance(s, Callable):
+            return all(is_proper_subtype(args, argt)
+                       for argt, args in zip(t.arg_types, s.arg_types))
+    elif isinstance(t, FunctionLike):
+        if isinstance(s, FunctionLike):
+            if len(t.items()) == len(s.items()):
+                return all(is_same_arg_prefix(items, itemt)
+                           for items, itemt in zip(t.items(), s.items()))
+    return False
+
+
+def is_same_arg_prefix(t: Callable, s: Callable) -> bool:
+    # TODO check argument kinds
+    return all(is_same_type(argt, args)
+               for argt, args in zip(t.arg_types, s.arg_types))
 
 
 def is_more_precise_signature(t: Callable, s: Callable) -> bool:
@@ -1587,3 +1647,18 @@ def is_more_precise_signature(t: Callable, s: Callable) -> bool:
         if not is_more_precise(argt, args):
             return False
     return is_more_precise(t.ret_type, s.ret_type)
+
+
+def infer_operator_assignment_method(type: Type, operator: str) -> str:
+    """Return the method used for operator assignment for given value type.
+
+    For example, if operator is '+', return '__iadd__' or '__add__' depending
+    on which method is supported by the type.
+    """
+    method = nodes.op_methods[operator]
+    if isinstance(type, Instance):
+        if operator in nodes.ops_with_inplace_method:
+            inplace = '__i' + method[2:]
+            if type.type.has_readable_member(inplace):
+                method = inplace
+    return method

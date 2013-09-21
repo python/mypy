@@ -435,22 +435,33 @@ class MessageBuilder:
         self.fail('Type of "{}" incompatible with supertype "{}"'.format(
             name, supertype.name), context)
     
-    def signature_incompatible_with_supertype(self, name: str, supertype: str,
-                                               context: Context) -> None:
-        self.fail('Signature of "{}" incompatible with supertype "{}"'.format(
-            name, supertype), context)
+    def signature_incompatible_with_supertype(
+            self, name: str, name_in_super: str, supertype: str,
+            context: Context) -> None:
+        target = self.override_target(name, name_in_super, supertype)
+        self.fail('Signature of "{}" incompatible with {}'.format(
+            name, target), context)
     
-    def argument_incompatible_with_supertype(self, arg_num: int, name: str,
-                                             supertype: str,
-                                             context: Context) -> None:
-        self.fail('Argument {} of "{}" incompatible with supertype "{}"'
-                  .format(arg_num, name, supertype), context)
+    def argument_incompatible_with_supertype(
+            self, arg_num: int, name: str, name_in_supertype: str,
+            supertype: str, context: Context) -> None:
+        target = self.override_target(name, name_in_supertype, supertype)
+        self.fail('Argument {} of "{}" incompatible with {}'
+                  .format(arg_num, name, target), context)
     
-    def return_type_incompatible_with_supertype(self, name: str,
-                                                supertype: str,
-                                                context: Context) -> None:
-        self.fail('Return type of "{}" incompatible with supertype "{}"'
-                  .format(name, supertype), context)
+    def return_type_incompatible_with_supertype(
+            self, name: str, name_in_supertype: str, supertype: str,
+            context: Context) -> None:
+        target = self.override_target(name, name_in_supertype, supertype)
+        self.fail('Return type of "{}" incompatible with {}'
+                  .format(name, target), context)
+
+    def override_target(self, name: str, name_in_super: str,
+                        supertype: str) -> str:
+        target = 'supertype "{}"'.format(supertype)
+        if name_in_super != name:
+            target = '"{}" of {}'.format(name_in_super, target)
+        return target        
     
     def boolean_return_value_expected(self, method: str,
                                       context: Context) -> None:
@@ -572,11 +583,16 @@ class MessageBuilder:
                   '"Any"'.format(method), context)
 
     def operator_method_signatures_overlap(
-        self, reverse_class: str, reverse_method: str, forward_class: str,
-        forward_method: str, context: Context) -> None:
+            self, reverse_class: str, reverse_method: str, forward_class: str,
+            forward_method: str, context: Context) -> None:
         self.fail('Signatures of "{}" of "{}" and "{}" of "{}" are unsafely '
                   'overlapping'.format(reverse_method, reverse_class,
                                        forward_method, forward_class), context)
+
+    def signatures_incompatible(self, method: str, other_method: str,
+                                context: Context) -> None:
+        self.fail('Signatures of "{}" and "{}" are incompatible'.format(
+            method, other_method), context)
 
 
 def capitalize(s: str) -> str:
