@@ -696,6 +696,7 @@ class function:
     # TODO not defined in builtins!
     __name__ = ''
     __module__ = ''
+    __code__ = Undefined(Any)
 
 
 @builtinclass
