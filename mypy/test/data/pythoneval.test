@@ -788,3 +788,10 @@ for i, x in enumerate(a):
 2 x
 3 f
 4 aa
+
+[case testGenericFunctionTypeInferenceProblem-skip]
+# See #39.
+from typing import typevar, Iterable
+T = typevar('T')
+def f(x: T, it: Iterable[T]) -> None: pass
+f(b'', b'')
