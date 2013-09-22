@@ -348,7 +348,8 @@ import warnings
 import errno
 
 from typing import (
-    Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict
+    Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict,
+    IO, TextIO
 )
 
 # Exception classes used by this module.
@@ -652,7 +653,7 @@ class Popen(object):
                  shell: int = False, cwd: str = None,
                  env: Mapping[str, str] = None,
                  universal_newlines: int = False,
-                 startupinfo: Any = None, creationflags: int = 0,
+                 startupinfo: 'STARTUPINFO' = None, creationflags: int = 0,
                  restore_signals: bool = True, start_new_session: bool = False,
                  pass_fds: Any = ()) -> None:
         """Create new Popen instance."""
@@ -693,9 +694,9 @@ class Popen(object):
                 raise ValueError("creationflags is only supported on Windows "
                                  "platforms")
 
-        self.stdin = None # type: Any
-        self.stdout = None # type: Any
-        self.stderr = None # type: Any
+        self.stdin = None # type: IO[Any]
+        self.stdout = None # type: IO[Any]
+        self.stderr = None # type: IO[Any]
         self.pid = None # type: int
         self.returncode = None # type: int
         self.universal_newlines = universal_newlines
@@ -806,8 +807,8 @@ class Popen(object):
         # Optimization: If we are only using one pipe, or no pipe at
         # all, using select() or threads is unnecessary.
         if [self.stdin, self.stdout, self.stderr].count(None) >= 2:
-            stdout = Any(None)
-            stderr = Any(None)
+            stdout = None # type: IO[Any]
+            stderr = None # type: IO[Any]
             if self.stdin:
                 if input:
                     try:
@@ -922,7 +923,8 @@ class Popen(object):
                            preexec_fn: Function[[], Any], close_fds: Any,
                            pass_fds: Any, cwd: str, env: Mapping[str, str],
                            universal_newlines: int,
-                           startupinfo: Any, creationflags: int, shell: int,
+                           startupinfo: STARTUPINFO, creationflags: int,
+                           shell: int,
                            p2cread: Any, p2cwrite: Any,
                            c2pread: Any, c2pwrite: Any,
                            errread: Any, errwrite: Any,
@@ -1163,7 +1165,8 @@ class Popen(object):
                            preexec_fn: Function[[], Any], close_fds: Any,
                            pass_fds: Any, cwd: str, env: Mapping[str, str],
                            universal_newlines: int,
-                           startupinfo: Any, creationflags: int, shell: int,
+                           startupinfo: 'STARTUPINFO', creationflags: int,
+                           shell: int,
                            p2cread: Any, p2cwrite: Any,
                            c2pread: Any, c2pwrite: Any,
                            errread: Any, errwrite: Any,
@@ -1471,11 +1474,11 @@ class Popen(object):
             stderr3 = Any(stderr2)
             if self.universal_newlines:
                 if stdout is not None:
-                    stdout3 = self._translate_newlines(stdout2,
-                                                       self.stdout.encoding)
+                    stdout3 = self._translate_newlines(
+                        stdout2, cast(TextIO, self.stdout).encoding)
                 if stderr is not None:
-                    stderr3 = self._translate_newlines(stderr2,
-                                                       self.stderr.encoding)
+                    stderr3 = self._translate_newlines(
+                        stderr2, cast(TextIO, self.stderr).encoding)
 
             self.wait()
             return (stdout3, stderr3)
@@ -1548,8 +1551,8 @@ class Popen(object):
 
         def _communicate_with_select(self, input: Any) -> Tuple[List[bytes],
                                                                 List[bytes]]:
-            read_set = List[Any]()
-            write_set = List[Any]()
+            read_set = List[IO[Any]]()
+            write_set = List[IO[Any]]()
             stdout = None # type: List[bytes] # Return
             stderr = None # type: List[bytes] # Return
 
