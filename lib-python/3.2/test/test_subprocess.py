@@ -877,18 +877,18 @@ class POSIXProcessTestCase(BaseTestCase):
                             preexec_fn=lambda: None)
             self.assertTrue(gc.isenabled(), "Popen left gc disabled.")
 
-            #gc.disable = raise_runtime_error
-            #self.assertRaises(RuntimeError, subprocess.Popen,
-            #                  [sys.executable, '-c', ''],
-            #                  preexec_fn=lambda: None)
+            setattr(gc, 'disable', raise_runtime_error)
+            self.assertRaises(RuntimeError, subprocess.Popen,
+                              [sys.executable, '-c', ''],
+                              preexec_fn=lambda: None)
 
-            #del gc.isenabled  # force an AttributeError
-            #self.assertRaises(AttributeError, subprocess.Popen,
-            #                  [sys.executable, '-c', ''],
-            #                  preexec_fn=lambda: None)
+            del gc.isenabled  # force an AttributeError
+            self.assertRaises(AttributeError, subprocess.Popen,
+                              [sys.executable, '-c', ''],
+                              preexec_fn=lambda: None)
         finally:
-            #gc.disable = orig_gc_disable
-            #gc.isenabled = orig_gc_isenabled
+            setattr(gc, 'disable', orig_gc_disable)
+            setattr(gc, 'isenabled', orig_gc_isenabled)
             if not enabled:
                 gc.disable()
 
