@@ -11,7 +11,7 @@
 import unittest
 from test import support
 
-from typing import List, Sequence, Undefined
+from typing import Any, List, Sequence, Undefined
 
 from textwrap import TextWrapper, wrap, fill, dedent
 
@@ -32,16 +32,17 @@ class BaseTestCase(unittest.TestCase):
         return result
 
 
-    def check(self, result, expect) -> None:
+    def check(self, result: Sequence[str], expect: Sequence[str]) -> None:
         self.assertEqual(result, expect,
             'expected:\n%s\nbut got:\n%s' % (
                 self.show(expect), self.show(result)))
 
-    def check_wrap(self, text, width, expect, **kwargs) -> None:
+    def check_wrap(self, text: str, width: int, expect: Sequence[str],
+                   **kwargs: Any) -> None:
         result = wrap(text, width, **kwargs)
         self.check(result, expect)
 
-    def check_split(self, text, expect) -> None:
+    def check_split(self, text: str, expect: Sequence[str]) -> None:
         result = self.wrapper._split(text)
         self.assertEqual(result, expect,
                          "\nexpected %r\n"
