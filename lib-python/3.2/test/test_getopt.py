@@ -18,7 +18,7 @@ class GetoptTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.env.__exit__()
-        self.env = None
+        del self.env
 
     def assertError(self, *args: Any, **kwargs: Any) -> None:
         # JLe: work around mypy bug #229
