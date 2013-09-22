@@ -145,10 +145,10 @@ class PrettyPrinter:
         self._format(object, sio, 0, 0, {}, 0)
         return sio.getvalue()
 
-    def isrecursive(self, object: object) -> bool:
+    def isrecursive(self, object: object) -> int:
         return self.format(object, {}, 0, 0)[2]
 
-    def isreadable(self, object: object) -> bool:
+    def isreadable(self, object: object) -> int:
         s, readable, recursive = self.format(object, {}, 0, 0)
         return readable and not recursive
 
@@ -264,7 +264,7 @@ class PrettyPrinter:
         return repr
 
     def format(self, object: object, context: Dict[int, int],
-               maxlevels: int, level: int) -> Tuple[str, bool, bool]:
+               maxlevels: int, level: int) -> Tuple[str, int, int]:
         """Format object for a specific context, returning a string
         and flags indicating whether the representation is 'readable'
         and whether the object represents a recursive construct.

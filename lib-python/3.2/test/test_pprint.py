@@ -468,13 +468,12 @@ class QueryTestCase(unittest.TestCase):
 class DottedPrettyPrinter(pprint.PrettyPrinter):
 
     def format(self, object: object, context: Dict[int, Any], maxlevels: int,
-               level: int) -> Tuple[str, bool, bool]:
+               level: int) -> Tuple[str, int, int]:
         if isinstance(object, str):
-            s = cast(str, object)
-            if ' ' in s:
-                return repr(s), True, False
+            if ' ' in object:
+                return repr(object), 1, 0
             else:
-                return s, False, False
+                return object, 0, 0
         else:
             return pprint.PrettyPrinter.format(
                 self, object, context, maxlevels, level)
