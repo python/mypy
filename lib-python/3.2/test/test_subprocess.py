@@ -1274,12 +1274,12 @@ class POSIXProcessTestCase(BaseTestCase):
 
         self.addCleanup(p1.wait)
         self.addCleanup(p2.wait)
-        def kill_p1():
+        def kill_p1() -> None:
             #try:
             p1.terminate()
             #except ProcessLookupError:
             #    pass
-        def kill_p2():
+        def kill_p2() -> None:
             #try:
             p2.terminate()
             #except ProcessLookupError:
@@ -1438,7 +1438,7 @@ class POSIXProcessTestCase(BaseTestCase):
         self.addCleanup(p.stderr.close)
         ident = id(p)
         pid = p.pid
-        p = None
+        del p
         # check that p is in the active processes list
         self.assertIn(ident, [id(o) for o in subprocess._active])
 
@@ -1457,7 +1457,7 @@ class POSIXProcessTestCase(BaseTestCase):
         self.addCleanup(p.stderr.close)
         ident = id(p)
         pid = p.pid
-        p = None
+        del p
         os.kill(pid, signal.SIGKILL)
         # check that p is in the active processes list
         self.assertIn(ident, [id(o) for o in subprocess._active])
