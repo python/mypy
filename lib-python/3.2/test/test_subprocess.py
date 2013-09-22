@@ -17,7 +17,7 @@ import gc
 
 import resource
 
-from typing import Any, Dict, Iterable, List, Set, Tuple
+from typing import Any, Dict, Function, Iterable, List, Set, Tuple
 
 mswindows = (sys.platform == "win32")
 
@@ -33,14 +33,14 @@ else:
 
 
 try:
-    mkstemp = tempfile.mkstemp # type: Any
+    mkstemp = tempfile.mkstemp
 except AttributeError:
     # tempfile.mkstemp is not available
-    def _mkstemp() -> Any:
+    def _mkstemp() -> Tuple[int, str]:
         """Replacement for mkstemp, calling mktemp."""
         fname = tempfile.mktemp()
         return os.open(fname, os.O_RDWR|os.O_CREAT), fname
-    mkstemp = _mkstemp
+    mkstemp = Any(_mkstemp)
 
 
 class BaseTestCase(unittest.TestCase):
@@ -56,7 +56,7 @@ class BaseTestCase(unittest.TestCase):
         self.assertFalse(subprocess._active, "subprocess._active not empty")
 
     def assertStderrEqual(self, stderr: bytes, expected: bytes,
-                          msg: Any = None) -> None:
+                          msg: object = None) -> None:
         # In a debug build, stuff like "[6580 refs]" is printed to stderr at
         # shutdown time.  That frustrates tests trying to check stderr produced
         # from a spawned Python process.
@@ -1206,7 +1206,7 @@ class POSIXProcessTestCase(BaseTestCase):
             keyb = key.encode("ascii", "surrogateescape")
             valueb = value.encode("ascii", "surrogateescape")
             script = "import os; print(ascii(os.getenvb(%s)))" % repr(keyb)
-            envb = Dict[Any,Any](os.environ.copy().items())
+            envb = Dict[Any, Any](os.environ.copy().items())
             envb[keyb] = valueb
             stdout = subprocess.check_output(
                 [sys.executable, "-c", script],
