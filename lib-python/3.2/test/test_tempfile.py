@@ -47,7 +47,7 @@ class TC(unittest.TestCase):
         self._warnings_manager.__exit__(None, None, None)
 
 
-    def failOnException(self, what: str, ei: Any = None) -> None:
+    def failOnException(self, what: str, ei: tuple = None) -> None:
         if ei is None:
             ei = sys.exc_info()
         self.fail("%s raised %s: %s" % (what, ei[0], ei[1]))

@@ -39,7 +39,7 @@ from random import Random as _Random
 from typing import (
     Any as _Any, Function as _Function, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
-    Iterable as _Iterable
+    Iterable as _Iterable, IO as _IO, ducktype as _ducktype
 )
 
 try:
@@ -352,6 +352,7 @@ def mktemp(suffix: str = "", prefix: str = template, dir: str = None) -> str:
     raise IOError(_errno.EEXIST, "No usable temporary filename found")
 
 
+@_ducktype(_IO[_Any])
 class _TemporaryFileWrapper:
     """Temporary file wrapper
 
@@ -422,7 +423,7 @@ class _TemporaryFileWrapper:
 def NamedTemporaryFile(mode: str = 'w+b', buffering: int = -1,
                        encoding: str = None, newline: str = None,
                        suffix: str = "", prefix: str = template,
-                       dir: str = None, delete: bool = True) -> _Any:
+                       dir: str = None, delete: bool = True) -> _IO[_Any]:
     """Create and return a temporary file.
     Arguments:
     'prefix', 'suffix', 'dir' -- as for mkstemp.
@@ -463,7 +464,7 @@ else:
     def _TemporaryFile(mode: str = 'w+b', buffering: int = -1,
                        encoding: str = None, newline: str = None,
                        suffix: str = "", prefix: str = template,
-                       dir: str = None, delete: bool = True) -> _Any:
+                       dir: str = None, delete: bool = True) -> _IO[_Any]:
         """Create and return a temporary file.
         Arguments:
         'prefix', 'suffix', 'dir' -- as for mkstemp.
