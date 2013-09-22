@@ -7,8 +7,7 @@ import os
 import stat
 
 from typing import (
-    overload as overload_, Any as Any_, List as List_, AnyStr as AnyStr_,
-    Tuple as Tuple_
+    Any as Any_, List as List_, AnyStr as AnyStr_, Tuple as Tuple_
 )
 
 __all__ = ['commonprefix', 'exists', 'getatime', 'getctime', 'getmtime',
