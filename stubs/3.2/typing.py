@@ -220,11 +220,17 @@ class BinaryIO(IO[bytes]):
     def __enter__(self) -> BinaryIO: pass
 
 class TextIO(IO[str]):
-    # TODO buffer?
-    # TODO str encoding
-    # TODO str errors
-    # TODO line_buffering
-    # TODO any newlines
+    # TODO use abstractproperty
+    @property
+    def buffer(self) -> BinaryIO: pass
+    @property
+    def encoding(self) -> str: pass
+    @property
+    def errors(self) -> str: pass
+    @property
+    def line_buffering(self) -> bool: pass
+    @property
+    def newlines(self) -> Any: pass # None, str or tuple
     @abstractmethod
     def __enter__(self) -> TextIO: pass
 

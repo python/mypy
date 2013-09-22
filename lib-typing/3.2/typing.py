@@ -1,6 +1,6 @@
 """Static type checking helpers"""
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 import inspect
 import sys
 import re
@@ -550,6 +550,16 @@ class BinaryIO(IO[bytes]):
 
 
 class TextIO(IO[str]):
+    @abstractproperty
+    def buffer(self) -> BinaryIO: pass
+    @abstractproperty
+    def encoding(self) -> str: pass
+    @abstractproperty
+    def errors(self) -> str: pass
+    @abstractproperty
+    def line_buffering(self) -> bool: pass
+    @abstractproperty
+    def newlines(self) -> Any: pass
     @abstractmethod
     def __enter__(self) -> 'TextIO': pass
 

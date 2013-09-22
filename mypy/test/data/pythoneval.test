@@ -795,3 +795,16 @@ from typing import typevar, Iterable
 T = typevar('T')
 def f(x: T, it: Iterable[T]) -> None: pass
 f(b'', b'')
+
+[case testTextIOProperties]
+import typing
+import sys
+print(type(sys.stdin.encoding))
+print(type(sys.stdin.errors))
+print(type(sys.stdin.line_buffering))
+sys.stdin.buffer
+sys.stdin.newlines
+[out]
+<class 'str'>
+<class 'str'>
+<class 'bool'>
