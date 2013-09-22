@@ -119,7 +119,9 @@ class Random(_random.Random):
             if isinstance(a, (str, bytes, bytearray)):
                 s = a
                 if isinstance(s, str):
-                    b = s.encode()
+                    a = s.encode()
+                else:
+                    a = s
                 a += _sha512(a).digest()
                 a = int.from_bytes(a, 'big')
 
