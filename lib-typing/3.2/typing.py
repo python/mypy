@@ -498,6 +498,10 @@ Mapping.register(dict)
 
 
 class IO(AbstractGeneric[AnyStr]):
+    @abstractproperty
+    def mode(self) -> str: pass
+    @abstractproperty
+    def name(self) -> str: pass
     @abstractmethod
     def close(self) -> None: pass
     @abstractmethod

@@ -161,9 +161,12 @@ class Mapping(Iterable[KT], Sized, AbstractGeneric[KT, VT]):
 
 class IO(AbstractGeneric[AnyStr]):
     # TODO iteration
-    # TODO mode
-    # TODO name
     # TODO detach
+    # TODO use abstract properties
+    @property
+    def mode(self) -> str: pass
+    @property
+    def name(self) -> str: pass
     @abstractmethod
     def close(self) -> None: pass
     @abstractmethod

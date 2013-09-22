@@ -808,3 +808,12 @@ sys.stdin.newlines
 <class 'str'>
 <class 'str'>
 <class 'bool'>
+
+[case testIOProperties]
+import typing
+import sys
+print(sys.stdin.name)
+print(sys.stdin.buffer.mode)
+[out]
+<stdin>
+rb

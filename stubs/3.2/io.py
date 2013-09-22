@@ -78,8 +78,7 @@ class TextIOWrapper(TextIO):
     def __init__(self, buffer: IO[bytes], encoding: str = None,
                  errors: str = None, newline: str = None,
                  line_buffering: bool = False,
-                 write_through: bool = True) -> None:
-        self.mode = ''
+                 write_through: bool = True) -> None: pass
     # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
     def closed(self) -> bool: pass
