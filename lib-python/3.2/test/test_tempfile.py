@@ -1033,7 +1033,7 @@ class test_TemporaryDirectory(TC):
         try:
             d = self.do_create(dir=dir)
             name = d.name
-            d = None # Rely on refcounting to invoke __del__
+            del d # Rely on refcounting to invoke __del__
             self.assertFalse(os.path.exists(name),
                         "TemporaryDirectory %s exists after __del__" % name)
         finally:
