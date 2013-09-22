@@ -11,7 +11,7 @@ import imp
 imp.reload(genericpath) # Make sure we are using the local copy
 
 import sys
-from typing import Any
+from typing import Any, List
 
 
 def safe_rmdir(dirname: str) -> None:
@@ -26,7 +26,7 @@ class GenericTest(unittest.TestCase):
     pathmodule = genericpath # type: Any
     common_attributes = ['commonprefix', 'getsize', 'getatime', 'getctime',
                          'getmtime', 'exists', 'isdir', 'isfile']
-    attributes = [] # type: Any
+    attributes = List[str]()
 
     def test_no_argument(self) -> None:
         for attr in self.common_attributes + self.attributes:
