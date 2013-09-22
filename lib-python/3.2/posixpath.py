@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    overload, Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any
+    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
