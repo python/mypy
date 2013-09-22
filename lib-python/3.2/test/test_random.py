@@ -217,7 +217,8 @@ class SystemRandom_TestBasicOps(TestBasicOps):
         self.assertRaises(ValueError, self.gen.getrandbits, -1)
         self.assertRaises(TypeError, self.gen.getrandbits, 10.1)
 
-    def test_randbelow_logic(self, _log=log, int=int) -> None:
+    def test_randbelow_logic(self, _log: Function[[float, float], float] = log,
+                             int: Function[[float], int] = int) -> None:
         # check bitcount transition points:  2**i and 2**(i+1)-1
         # show that: k = int(1.001 + _log(n, 2))
         # is equal to or one greater than the number of bits in n
