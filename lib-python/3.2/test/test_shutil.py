@@ -675,7 +675,7 @@ class TestShutil(unittest.TestCase):
         for root, dirs, files in os.walk(dir1):
             for file_ in files:
                 path = os.path.join(root, file_)
-                target_path = os.path.join(dir2, os.path.split(path)[1])
+                target_path = os.path.join(dir2, os.path.split(path)[-1])
                 if not os.path.exists(target_path):
                     diff.append(file_)
         return diff
