@@ -14,7 +14,9 @@ import errno
 import tarfile
 import builtins
 
-from typing import Any, List, Iterable, Function, Tuple, Dict, Sequence, cast
+from typing import (
+    Any, AnyStr, IO, List, Iterable, Function, Tuple, Dict, Sequence, cast
+)
 
 try:
     import bz2
@@ -70,7 +72,8 @@ rename = os.rename
 open = builtins.open
 
 
-def copyfileobj(fsrc, fdst, length: int = 16*1024) -> None:
+def copyfileobj(fsrc: IO[AnyStr], fdst: IO[AnyStr],
+                length: int = 16*1024) -> None:
     """copy data from file-like object fsrc to file-like object fdst"""
     while 1:
         buf = fsrc.read(length)
@@ -626,7 +629,8 @@ def get_unpack_formats() -> List[Tuple[str, List[str], str]]:
     formats.sort()
     return formats
 
-def _check_unpack_options(extensions, function, extra_args) -> None:
+def _check_unpack_options(extensions: List[str], function: Any,
+                          extra_args: Sequence[Tuple[str, Any]]) -> None:
     """Checks what gets registered as an unpacker."""
     # first make sure no other unpacker is registered for this extension
     existing_extensions = Dict[str, str]()
