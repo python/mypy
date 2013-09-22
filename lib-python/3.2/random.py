@@ -44,7 +44,7 @@ from os import urandom as _urandom
 from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
-from typing import Any, typevar, Sequence, List, Function, overload, Set, cast
+from typing import Any, typevar, Iterable, Sequence, List, Function, Set, cast
 
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",
            "randrange","shuffle","normalvariate","lognormvariate",
@@ -275,8 +275,7 @@ class Random(_random.Random):
             j = randbelow(i+1) if random is None else int(random() * (i+1))
             x[i], x[j] = x[j], x[i]
 
-    @overload
-    def sample(self, population: Sequence[T], k: int) -> List[T]:
+    def sample(self, population: Iterable[T], k: int) -> List[T]:
         """Chooses k unique random elements from a population sequence or set.
 
         Returns a new list containing elements from the population while
@@ -304,8 +303,14 @@ class Random(_random.Random):
         # preferred since the list takes less space than the
         # set and it doesn't suffer from frequent reselections.
 
+        if isinstance(population, _Sequence):
+            populationseq = population
+        elif isinstance(population, _Set):
+            populationseq = list(population)
+        else:
+            raise TypeError("Population must be a sequence or set.  For dicts, use list(d).")
         randbelow = self._randbelow
-        n = len(population)
+        n = len(populationseq)
         if not (0 <= k and k <= n):
             raise ValueError("Sample larger than population")
         result = [cast(T, None)] * k
@@ -314,7 +319,7 @@ class Random(_random.Random):
             setsize += 4 ** _ceil(_log(k * 3, 4)) # table size for big sets
         if n <= setsize:
             # An n-length list is smaller than a k-length set
-            pool = list(population)
+            pool = list(populationseq)
             for i in range(k):         # invariant:  non-selected at [0,n-i)
                 j = randbelow(n-i)
                 result[i] = pool[j]
@@ -327,16 +332,8 @@ class Random(_random.Random):
                 while j in selected:
                     j = randbelow(n)
                 selected_add(j)
-                result[i] = population[j]
+                result[i] = populationseq[j]
         return result
-
-    @overload
-    def sample(self, population: Set[T], k: int) -> List[T]:
-        return self.sample(list(population), k)
-
-    @overload
-    def sample(self, population, k):
-        raise TypeError("Population must be a sequence or set.  For dicts, use list(d).")
 
 ## -------------------- real-valued distributions  -------------------
 
