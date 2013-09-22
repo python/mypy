@@ -817,3 +817,10 @@ print(sys.stdin.buffer.mode)
 [out]
 <stdin>
 rb
+
+[case testSetUnion]
+import typing
+s = {'x', 'y'}
+print('>', sorted(s.union('foo')))
+[out]
+> ['f', 'o', 'x', 'y']
