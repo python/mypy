@@ -10,7 +10,7 @@ import re
 import struct
 import binascii
 
-from typing import Dict, List, Any, IO
+from typing import Dict, List, Any, AnyStr, IO
 
 
 __all__ = [
@@ -32,7 +32,7 @@ __all__ = [
 bytes_types = (bytes, bytearray)  # Types acceptable as binary data
 
 
-def _translate(s: bytes, altchars: Dict[str, bytes]) -> bytes:
+def _translate(s: bytes, altchars: Dict[AnyStr, bytes]) -> bytes:
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
     translation = bytearray(range(256))
@@ -226,7 +226,7 @@ def b32decode(s: bytes, casefold: bool = False, map01: bytes = None) -> bytes:
         if not isinstance(map01, bytes_types):
             raise TypeError("expected bytes, not %s" % map01.__class__.__name__)
         assert len(map01) == 1, repr(map01)
-        s = _translate(s, {'0': b'O', '1': map01})
+        s = _translate(s, {b'0': b'O', b'1': map01})
     if casefold:
         s = s.upper()
     # Strip off pad characters from the right.  We need to count the pad
