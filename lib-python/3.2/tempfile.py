@@ -499,7 +499,7 @@ class SpooledTemporaryFile:
     when a fileno is needed.
     """
     _rolled = False
-    _file = _Undefined # type: _Any # BinaryIO or TextIO
+    _file = _Undefined # type: _Any   # BytesIO, StringIO or TemporaryFile
 
     def __init__(self, max_size: int = 0, mode: str = 'w+b',
                  buffering: int = -1, encoding: str = None,
