@@ -101,9 +101,6 @@ def _safe_tuple(t: Tuple[Any, Any]) -> Tuple[_safe_key, _safe_key]:
     return _safe_key(t[0]), _safe_key(t[1])
 
 class PrettyPrinter:
-    _recursive = False
-    _readable = False
-    
     def __init__(self, indent: int = 1, width: int = 80, depth: int = None,
                  stream: TextIO = None) -> None:
         """Handle pretty printing operations onto a stream using a set of
