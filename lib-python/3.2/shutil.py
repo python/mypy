@@ -211,7 +211,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
     """
     names = os.listdir(src)
     if ignore is not None:
-        ignored_names = set(ignore(src, names))
+        ignored_names = set(ignore(src, names))   # see #203
     else:
         ignored_names = set()
 
