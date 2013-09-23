@@ -839,7 +839,7 @@ class Popen(object):
         #
         def _get_handles(self, stdin: Any, stdout: Any,
                          stderr: Any) -> Tuple[Any, Any, Any, Any, Any, Any]:
-            """Construct and return tuple with BinaryIO objects:
+            """Construct and return tuple with IO objects:
             p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite
             """
             if stdin is None and stdout is None and stderr is None:
@@ -1107,7 +1107,7 @@ class Popen(object):
         #
         def _get_handles(self, stdin: Any, stdout: Any,
                          stderr: Any) -> Tuple[Any, Any, Any, Any, Any, Any]:
-            """Construct and return tuple with BinaryIO objects:
+            """Construct and return tuple with IO objects:
             p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite
             """
             p2cread, p2cwrite = -1, -1
