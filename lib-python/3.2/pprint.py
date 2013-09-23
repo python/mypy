@@ -169,19 +169,18 @@ class PrettyPrinter:
 
         if sepLines:
             r = getattr(typ, "__repr__", None)
-            if issubclass(typ, dict):
-                dictobj = cast(dict, object)
+            if isinstance(object, dict):
                 write('{')
                 if self._indent_per_level > 1:
                     write((self._indent_per_level - 1) * ' ')
-                length = _len(dictobj)
+                length = _len(object)
                 if length:
                     context[objid] = 1
                     indent = indent + self._indent_per_level
                     if issubclass(typ, _OrderedDict):
-                        items = list(dictobj.items())
+                        items = list(object.items())
                     else:
-                        items = sorted(dictobj.items(), key=_safe_tuple)
+                        items = sorted(object.items(), key=_safe_tuple)
                     key, ent = items[0]
                     rep = self._repr(key, context, level)
                     write(rep)
