@@ -249,13 +249,14 @@ def expanduser(path: AnyStr) -> AnyStr:
     i = path.find(sep, 1)
     if i < 0:
         i = len(path)
-    import pwd
     if i == 1:
         if 'HOME' not in os.environ:
+            import pwd
             userhome = pwd.getpwuid(os.getuid()).pw_dir
         else:
             userhome = os.environ['HOME']
     else:
+        import pwd
         name = path[1:i]
         if isinstance(name, bytes):
             name2 = str(name, 'ASCII')
@@ -287,11 +288,11 @@ def expandvars(path: AnyStr) -> AnyStr:
     """Expand shell variables of form $var and ${var}.  Unknown variables
     are left unchanged."""
     global _varprog, _varprogb
-    import re
     if isinstance(path, bytes):
         if b'$' not in path:
             return path
         if not _varprogb:
+            import re
             _varprogb = re.compile(br'\$(\w+|\{[^}]*\})', re.ASCII)
         search = _varprogb.search
         start = b'{'
@@ -300,6 +301,7 @@ def expandvars(path: AnyStr) -> AnyStr:
         if '$' not in path:
             return path
         if not _varprog:
+            import re
             _varprog = re.compile(r'\$(\w+|\{[^}]*\})', re.ASCII)
         search = _varprog.search
         start = '{'
@@ -350,7 +352,7 @@ def normpath(path: AnyStr) -> AnyStr:
         dotdot = '..'
     if path == empty:
         return dot
-    initial_slashes = int(path.startswith(sep))
+    initial_slashes = path.startswith(sep) # type: int
     # POSIX allows one or two initial slashes, but treats three or more
     # as single slash.
     if (initial_slashes and
