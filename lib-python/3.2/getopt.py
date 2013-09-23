@@ -35,7 +35,7 @@ __all__ = ["GetoptError","error","getopt","gnu_getopt"]
 
 import os
 
-from typing import overload, List, Tuple, Iterable
+from typing import List, Tuple, Iterable
 
 class GetoptError(Exception):
     opt = ''
@@ -50,12 +50,6 @@ class GetoptError(Exception):
 
 error = GetoptError # backward compatibility
 
-@overload
-def getopt(args: List[str], shortopts: str,
-           longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
-    return getopt(args, shortopts, [longopts])
-    
-@overload
 def getopt(args: List[str], shortopts: str,
            longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]],
                                                     List[str]]:
@@ -86,7 +80,10 @@ def getopt(args: List[str], shortopts: str,
     """
 
     opts = List[Tuple[str, str]]()
-    llongopts = list(longopts)
+    if isinstance(longopts, str):
+        llongopts = [longopts]
+    else:
+        llongopts = list(longopts)
     while args and args[0].startswith('-') and args[0] != '-':
         if args[0] == '--':
             args = args[1:]
@@ -98,12 +95,6 @@ def getopt(args: List[str], shortopts: str,
 
     return opts, args
 
-@overload
-def gnu_getopt(args: List[str], shortopts: str,
-               longopts: str) -> Tuple[List[Tuple[str, str]], List[str]]:
-    return gnu_getopt(args, shortopts, [longopts])
-
-@overload
 def gnu_getopt(args: List[str], shortopts: str,
                longopts: Iterable[str]  =  []) -> Tuple[List[Tuple[str, str]],
                                                         List[str]]:
@@ -123,7 +114,10 @@ def gnu_getopt(args: List[str], shortopts: str,
 
     opts = List[Tuple[str, str]]()
     prog_args = List[str]()
-    llongopts = list(longopts)
+    if isinstance(longopts, str):
+        llongopts = [longopts]
+    else:
+        llongopts = list(longopts)
 
     # Allow options after non-option arguments?
     if shortopts.startswith('+'):
