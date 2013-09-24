@@ -956,6 +956,7 @@ def analyze_types(tree, path):
     print('  function ', v.num_function)
     print('  tuple    ', v.num_tuple)
     print('  typevar  ', v.num_typevar)
+    print('  complex  ', v.num_complex)
     print('  any      ', v.num_any)
 
 
@@ -976,6 +977,7 @@ class MyVisitor(TraverserVisitor):
         self.num_tuple = 0
         self.num_function = 0
         self.num_typevar = 0
+        self.num_complex = 0
         
         TraverserVisitor.__init__(self)
     
@@ -1006,7 +1008,10 @@ class MyVisitor(TraverserVisitor):
 
         if isinstance(t, Instance):
             if t.args:
-                self.num_generic += 1
+                if any(is_complex(arg) for arg in t.args):
+                    self.num_complex += 1
+                else:
+                    self.num_generic += 1
             else:
                 self.num_simple += 1
         elif isinstance(t, Void):
@@ -1014,7 +1019,10 @@ class MyVisitor(TraverserVisitor):
         elif isinstance(t, FunctionLike):
             self.num_function += 1
         elif isinstance(t, TupleType):
-            self.num_tuple += 1
+            if any(is_complex(item) for item in t.items):
+                self.num_complex += 1
+            else:
+                self.num_tuple += 1
         elif isinstance(t, TypeVar):
             self.num_typevar += 1
 
@@ -1036,3 +1044,12 @@ class HasAnyQuery(TypeQuery):
             return True
         else:
             return super().visit_instance(t)
+
+
+def is_generic(t):
+    return isinstance(t, Instance) and t.args
+
+
+def is_complex(t):
+    return is_generic(t) or isinstance(t, (FunctionLike, TupleType,
+                                           TypeVar))
