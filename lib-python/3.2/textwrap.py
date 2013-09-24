@@ -7,7 +7,7 @@
 
 import string, re
 
-from typing import Dict, List
+from typing import Dict, List, Any
 
 __all__ = ['TextWrapper', 'wrap', 'fill', 'dedent']
 
@@ -306,7 +306,7 @@ class TextWrapper:
 
 # -- Convenience interface ---------------------------------------------
 
-def wrap(text: str, width: int = 70, **kwargs) -> List[str]:
+def wrap(text: str, width: int = 70, **kwargs: Any) -> List[str]:
     """Wrap a single paragraph of text, returning a list of wrapped lines.
 
     Reformat the single paragraph in 'text' so it fits in lines of no
@@ -319,7 +319,7 @@ def wrap(text: str, width: int = 70, **kwargs) -> List[str]:
     w = TextWrapper(width=width, **kwargs)
     return w.wrap(text)
 
-def fill(text: str, width: int = 70, **kwargs) -> str:
+def fill(text: str, width: int = 70, **kwargs: Any) -> str:
     """Fill a single paragraph of text, returning a new string.
 
     Reformat the single paragraph in 'text' to fit in lines of no more
