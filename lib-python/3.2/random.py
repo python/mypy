@@ -44,7 +44,9 @@ from os import urandom as _urandom
 from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
-from typing import Any, typevar, Iterable, Sequence, List, Function, Set, cast
+from typing import (
+    Any, typevar, Iterable, Sequence, List, Function, Set, cast, SupportsInt
+)
 
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",
            "randrange","shuffle","normalvariate","lognormvariate",
@@ -170,8 +172,9 @@ class Random(_random.Random):
 
 ## -------------------- integer methods  -------------------
 
-    def randrange(self, start: int, stop: int = None, step: int = 1,
-                  int=int) -> int:
+    def randrange(self, start: SupportsInt, stop: SupportsInt = None,
+                  step: int = 1, int: Function[[SupportsInt],
+                                               int] = int) -> int:
         """Choose a random item from range(start, stop[, step]).
 
         This fixes the problem with randint() which includes the
@@ -222,9 +225,11 @@ class Random(_random.Random):
 
         return self.randrange(a, b+1)
 
-    def _randbelow(self, n: int, int=int, maxsize: int = 1<<BPF, type=type,
-                   Method=_MethodType,
-                   BuiltinMethod=_BuiltinMethodType) -> int:
+    def _randbelow(self, n: int, int: Function[[float], int] = int,
+                   maxsize: int = 1<<BPF,
+                   type: Function[[object], type] = type,
+                   Method: type = _MethodType,
+                   BuiltinMethod: type = _BuiltinMethodType) -> int:
         "Return a random int in the range [0,n).  Raises ValueError if n==0."
 
         getrandbits = self.getrandbits
@@ -262,7 +267,8 @@ class Random(_random.Random):
         return seq[i]
 
     def shuffle(self, x: List[T],
-                random: Function[[], float] = None, int=int) -> None:
+                random: Function[[], float] = None,
+                int: Function[[float], int] = int) -> None:
         """x, random=random.random -> shuffle list x in place; return None.
 
         Optional arg random is a 0-argument function returning a random
@@ -658,11 +664,11 @@ class SystemRandom(Random):
         x = int.from_bytes(_urandom(numbytes), 'big')
         return x >> (numbytes * 8 - k)                # trim excess bits
 
-    def seed(self, *args, **kwds):
+    def seed(self, a: object = None, version: int = None) -> None:
         "Stub method.  Not used for a system random number generator."
-        return None
+        return
 
-    def _notimplemented(self, *args, **kwds):
+    def _notimplemented(self, *args: Any, **kwds: Any) -> Any:
         "Method should not be called for a system random number generator."
         raise NotImplementedError('System entropy source does not have state.')
     getstate = setstate = _notimplemented
@@ -698,7 +704,7 @@ getrandbits = _inst.getrandbits
 
 ## -------------------- test program --------------------
 
-def _test_generator(n: int, func, args) -> None:
+def _test_generator(n: int, func: Any, args: tuple) -> None:
     import time
     print(n, 'times', func.__name__)
     total = 0.0
