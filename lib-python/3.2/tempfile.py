@@ -39,7 +39,8 @@ from random import Random as _Random
 from typing import (
     Any as _Any, Function as _Function, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
-    Iterable as _Iterable, IO as _IO, ducktype as _ducktype
+    Iterable as _Iterable, IO as _IO, ducktype as _ducktype,
+    Traceback as _Traceback
 )
 
 try:
@@ -361,7 +362,8 @@ class _TemporaryFileWrapper:
     remove the file when it is no longer needed.
     """
 
-    def __init__(self, file: _Any, name: str, delete: bool = True) -> None:
+    def __init__(self, file: _IO[_Any], name: str,
+                 delete: bool = True) -> None:
         self.file = file
         self.name = name
         self.close_called = False
@@ -411,12 +413,14 @@ class _TemporaryFileWrapper:
 
         # Need to trap __exit__ as well to ensure the file gets
         # deleted when used in a with statement
-        def __exit__(self, exc, value, tb) -> None:
+        def __exit__(self, exc: type, value: BaseException,
+                     tb: _Traceback) -> bool:
             result = self.file.__exit__(exc, value, tb)
             self.close()
             return result
     else:
-        def __exit__(self, exc, value, tb) -> None:
+        def __exit__(self, exc: type, value: BaseException,
+                     tb: _Traceback) -> bool:
             self.file.__exit__(exc, value, tb)
 
 
@@ -548,7 +552,8 @@ class SpooledTemporaryFile:
             raise ValueError("Cannot enter context with closed file")
         return self
 
-    def __exit__(self, exc, value, tb) -> None:
+    def __exit__(self, exc: type, value: BaseException,
+                 tb: _Traceback) -> bool:
         self._file.close()
 
     # file protocol
@@ -684,7 +689,8 @@ class TemporaryDirectory(object):
                 self._warn("Implicitly cleaning up {!r}".format(self),
                            ResourceWarning)
 
-    def __exit__(self, exc, value, tb) -> None:
+    def __exit__(self, exc: type, value: BaseException,
+                 tb: _Traceback) -> bool:
         self.cleanup()
 
     def __del__(self) -> None:
