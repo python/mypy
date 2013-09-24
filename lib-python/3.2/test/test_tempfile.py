@@ -9,7 +9,7 @@ import warnings
 import unittest
 from test import support
 
-from typing import Any, AnyStr, List, Dict
+from typing import Any, AnyStr, List, Dict, IO
 
 
 if hasattr(os, 'stat'):
@@ -606,7 +606,7 @@ class test_NamedTemporaryFile(TC):
     """Test NamedTemporaryFile()."""
 
     def do_create(self, dir: str = None, pre: str = "", suf: str = "",
-                  delete: bool = True) -> Any:
+                  delete: bool = True) -> IO[Any]:
         if dir is None:
             dir = tempfile.gettempdir()
         try:
