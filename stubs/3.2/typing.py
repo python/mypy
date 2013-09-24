@@ -297,3 +297,5 @@ class Pattern(Generic[AnyStr]):
     @overload
     def subn(self, repl: Function[[Match[AnyStr]], AnyStr], string: AnyStr,
              count: int = 0) -> Tuple[AnyStr, int]: pass
+
+class Traceback: pass

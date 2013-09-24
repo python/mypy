@@ -158,6 +158,9 @@ class TypeAlias:
         return self.target_type
 
 
+Traceback = object() # TODO proper type object
+
+
 # Define aliases for built-in types that support indexing.
 List = TypeAlias(list)
 Dict = TypeAlias(dict)
