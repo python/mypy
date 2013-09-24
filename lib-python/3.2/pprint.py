@@ -89,7 +89,7 @@ class _safe_key:
     def __init__(self, obj: Any) -> None:
         self.obj = obj
 
-    def __lt__(self, other: Any) -> bool:
+    def __lt__(self, other: Any) -> Any:
         rv = self.obj.__lt__(other.obj) # type: Any
         if rv is NotImplemented:
             rv = (str(type(self.obj)), id(self.obj)) < \
