@@ -10,7 +10,7 @@ import re
 import struct
 import binascii
 
-from typing import Dict, List, Any, AnyStr, IO
+from typing import Dict, List, AnyStr, IO
 
 
 __all__ = [
