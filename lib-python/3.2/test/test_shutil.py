@@ -45,7 +45,7 @@ def _fake_rename(*args: Any, **kwargs: Any) -> None:
     # Pretend the destination path is on a different filesystem.
     raise OSError()
 
-def mock_rename(func) -> Any:
+def mock_rename(func: Any) -> Any:
     @functools.wraps(func)
     def wrap(*args, **kwargs):
         try:
@@ -128,7 +128,9 @@ class TestShutil(unittest.TestCase):
             # Clean up.
             shutil.rmtree(TESTFN)
 
-    def check_args_to_onerror(self, func: Any, arg: str, exc: Any) -> None:
+    def check_args_to_onerror(self, func: Function[[str], Any], arg: str,
+                              exc: Tuple[type, BaseException,
+                                         Traceback]) -> None:
         # test_rmtree_errors deliberately runs rmtree
         # on a directory that is chmod 400, which will fail.
         # This function is run when shutil.rmtree fails.
@@ -639,7 +641,7 @@ class TestShutil(unittest.TestCase):
 
     def test_make_archive_cwd(self) -> None:
         current_dir = os.getcwd()
-        def _breaks(*args: Any, **kw: Any) -> Any:
+        def _breaks(*args: Any, **kw: Any) -> None:
             raise RuntimeError()
 
         register_archive_format('xxx', _breaks, [], 'xxx file')
