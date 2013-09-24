@@ -831,6 +831,8 @@ class PartiallySemanticallyAnalyzedFile(ParsedFile):
     def process(self) -> None:
         """Perform final pass of semantic analysis and advance state."""
         self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
+        if 'dump-type-stats' in self.manager.flags:
+            analyze_types(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
 
     def state(self) -> int:
@@ -935,3 +937,96 @@ def make_parent_dirs(path: str) -> None:
         os.makedirs(parent)
     except OSError:
         pass
+
+
+def analyze_types(tree, path):
+    from os.path import basename
+    if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
+        return
+    print(path)
+    v = MyVisitor()
+    tree.accept(v)
+    print('  ** precision **')
+    print('  precise  ', v.num_precise)
+    print('  imprecise', v.num_imprecise)
+    print('  any      ', v.num_any)
+    print('  ** kinds **')
+    print('  simple   ', v.num_simple)
+    print('  generic  ', v.num_generic)
+    print('  function ', v.num_function)
+    print('  tuple    ', v.num_tuple)
+    print('  typevar  ', v.num_typevar)
+    print('  any      ', v.num_any)
+
+
+from mypy.traverser import TraverserVisitor
+from mypy.types import (
+    AnyType, Instance, FunctionLike, TupleType, Void, TypeVar
+)
+
+
+class MyVisitor(TraverserVisitor):
+    def __init__(self):
+        self.num_precise = 0
+        self.num_imprecise = 0
+        self.num_any = 0
+
+        self.num_simple = 0
+        self.num_generic = 0
+        self.num_tuple = 0
+        self.num_function = 0
+        self.num_typevar = 0
+        
+        TraverserVisitor.__init__(self)
+    
+    def visit_func_def(self, o):
+        if o.type:
+            for arg in o.type.arg_types:
+                self.type(arg)
+            self.type(o.type.ret_type)
+        super().visit_func_def(o)
+
+    def visit_type_application(self, o):
+        for t in o.types:
+            self.type(t)
+        super().visit_type_application(o)
+
+    def visit_assignment_stmt(self, o):
+        if o.type:
+            self.type(o.type)
+        super().visit_assignment_stmt(o)
+
+    def type(self, t):
+        if isinstance(t, AnyType):
+            self.num_any += 1
+        elif is_imprecise(t):
+            self.num_imprecise += 1
+        else:
+            self.num_precise += 1
+
+        if isinstance(t, Instance):
+            if t.args:
+                self.num_generic += 1
+            else:
+                self.num_simple += 1
+        elif isinstance(t, Void):
+            self.num_simple += 1
+        elif isinstance(t, FunctionLike):
+            self.num_function += 1
+        elif isinstance(t, TupleType):
+            self.num_tuple += 1
+        elif isinstance(t, TypeVar):
+            self.num_typevar += 1
+
+
+def is_imprecise(t):
+    return t.accept(HasAnyQuery())
+
+from mypy.types import TypeQuery, ANY_TYPE_STRATEGY
+
+class HasAnyQuery(TypeQuery):
+    def __init__(self):
+        super().__init__(False, ANY_TYPE_STRATEGY)
+
+    def visit_any(self, t):
+        return True
