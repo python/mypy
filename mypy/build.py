@@ -1030,3 +1030,9 @@ class HasAnyQuery(TypeQuery):
 
     def visit_any(self, t):
         return True
+
+    def visit_instance(self, t):
+        if t.type.fullname() == 'builtins.tuple':
+            return True
+        else:
+            return super().visit_instance(t)
