@@ -159,8 +159,7 @@ class Mapping(Iterable[KT], Sized, AbstractGeneric[KT, VT]):
     @abstractmethod
     def items(self) -> AbstractSet[Tuple[KT, VT]]: pass
 
-class IO(AbstractGeneric[AnyStr]):
-    # TODO iteration
+class IO(Iterable[AnyStr], AbstractGeneric[AnyStr]):
     # TODO detach
     # TODO use abstract properties
     @property
@@ -203,6 +202,8 @@ class IO(AbstractGeneric[AnyStr]):
     @abstractmethod
     def writelines(self, lines: list[AnyStr]) -> None: pass
 
+    @abstractmethod
+    def __iter__(self) -> Iterator[AnyStr]: pass
     @abstractmethod
     def __enter__(self) -> 'IO[AnyStr]': pass
     @abstractmethod

@@ -17,7 +17,7 @@
 DEFAULT_BUFFER_SIZE = 0
 
 from builtins import open
-from typing import List, BinaryIO, TextIO, IO, overload
+from typing import List, BinaryIO, TextIO, IO, overload, Iterator
 
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: bytes = b'') -> None: pass
@@ -45,6 +45,7 @@ class BytesIO(BinaryIO):
     def getvalue(self) -> bytes: pass
     def read1(self) -> str: pass
 
+    def __iter__(self) -> Iterator[bytes]: pass
     def __enter__(self) -> 'BytesIO': pass
     def __exit__(self, type, value, traceback) -> bool: pass
 
@@ -70,6 +71,7 @@ class StringIO(TextIO):
     def writelines(self, lines: List[str]) -> None: pass
     def getvalue(self) -> str: pass
 
+    def __iter__(self) -> Iterator[str]: pass
     def __enter__(self) -> 'StringIO': pass
     def __exit__(self, type, value, traceback) -> bool: pass
     
@@ -98,5 +100,6 @@ class TextIOWrapper(TextIO):
     def writelines(self, lines: List[str]) -> None: pass
     def getvalue(self) -> str: pass
 
+    def __iter__(self) -> Iterator[str]: pass
     def __enter__(self) -> StringIO: pass
     def __exit__(self, type, value, traceback) -> bool: pass
