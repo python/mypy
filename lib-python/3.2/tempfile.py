@@ -524,7 +524,7 @@ class SpooledTemporaryFile:
                                    'encoding': encoding, 'newline': newline,
                                    'dir': dir} # type: Dict[str, _Any]
 
-    def _check(self, file: _Any) -> None:
+    def _check(self, file: _IO[_Any]) -> None:
         if self._rolled: return
         max_size = self._max_size
         if max_size and file.tell() > max_size:
@@ -593,20 +593,20 @@ class SpooledTemporaryFile:
     def newlines(self) -> _Any:
         return self._file.newlines
 
-    def next(self):
-        return self._file.next
+    #def next(self):
+    #    return self._file.next
 
-    def read(self, *args) -> _Any:
-        return self._file.read(*args)
+    def read(self, n: int = -1) -> _Any:
+        return self._file.read(n)
 
-    def readline(self, *args) -> _Any:
-        return self._file.readline(*args)
+    def readline(self, limit: int = -1) -> _Any:
+        return self._file.readline(limit)
 
     def readlines(self, *args) -> _List[_Any]:
         return self._file.readlines(*args)
 
-    def seek(self, *args) -> None:
-        self._file.seek(*args)
+    def seek(self, offset: int, whence: int = 0) -> None:
+        self._file.seek(offset, whence)
 
     @property
     def softspace(self) -> bool:
@@ -618,20 +618,20 @@ class SpooledTemporaryFile:
     def truncate(self) -> None:
         self._file.truncate()
 
-    def write(self, s) -> int:
+    def write(self, s: _Any) -> int:
         file = self._file
         rv = file.write(s)
         self._check(file)
         return rv
 
-    def writelines(self, iterable) -> int:
+    def writelines(self, iterable: _Iterable[_Any]) -> int:
         file = self._file
         rv = file.writelines(iterable)
         self._check(file)
         return rv
 
-    def xreadlines(self, *args) -> _Any:
-        return self._file.xreadlines(*args)
+    #def xreadlines(self, *args) -> _Any:
+    #    return self._file.xreadlines(*args)
 
 
 class TemporaryDirectory(object):
