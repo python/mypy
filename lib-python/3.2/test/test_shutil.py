@@ -23,7 +23,9 @@ import warnings
 from test import support
 from test.support import check_warnings, captured_stdout
 
-from typing import Any, Function, Tuple, List, Sequence, BinaryIO, overload
+from typing import (
+    Any, Function, Tuple, List, Sequence, BinaryIO, overload, Traceback
+)
 
 import bz2
 BZ2_SUPPORTED = True
@@ -861,7 +863,8 @@ class TestCopyFile(unittest.TestCase):
             return ''
         def __enter__(self) -> None:
             self._entered = True
-        def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+        def __exit__(self, exc_type: type, exc_val: BaseException,
+                     exc_tb: Traceback) -> bool:
             self._exited_with = exc_type, exc_val, exc_tb
             if self._raise_in_exit:
                 self._raised = True
