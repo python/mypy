@@ -206,7 +206,7 @@ class IO(AbstractGeneric[AnyStr]):
     @abstractmethod
     def __enter__(self) -> 'IO[AnyStr]': pass
     @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass
 
 class BinaryIO(IO[bytes]):    
     # TODO readinto

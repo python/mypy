@@ -46,7 +46,7 @@ class BytesIO(BinaryIO):
     def read1(self) -> str: pass
 
     def __enter__(self) -> 'BytesIO': pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass
 
 class StringIO(TextIO):
     def __init__(self, initial_value: str = '',
@@ -71,7 +71,7 @@ class StringIO(TextIO):
     def getvalue(self) -> str: pass
 
     def __enter__(self) -> 'StringIO': pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass
     
 class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
@@ -99,4 +99,4 @@ class TextIOWrapper(TextIO):
     def getvalue(self) -> str: pass
 
     def __enter__(self) -> StringIO: pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass

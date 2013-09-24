@@ -39,4 +39,4 @@ class catch_warnings:
     # TODO type of module?
     def __init__(self, record: bool = False, module: Any = None) -> None: pass
     def __enter__(self) -> List[Any]: pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass

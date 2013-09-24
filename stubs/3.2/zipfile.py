@@ -40,4 +40,4 @@ class ZipFile:
               compress_type: int = None) -> None: pass
     
     def __enter__(self) -> 'ZipFile': pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass

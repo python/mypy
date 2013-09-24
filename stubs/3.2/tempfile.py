@@ -34,7 +34,7 @@ class TemporaryDirectory:
                  dir: str = None) -> None: pass
     def cleanup(self) -> None: pass
     def __enter__(self) -> str: pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass
     
 def mkstemp(suffix: str = '', prefix: str = 'tmp', dir: str = None,
             text: bool = False) -> Tuple[int, str]: pass

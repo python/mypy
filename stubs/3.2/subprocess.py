@@ -60,7 +60,7 @@ class Popen:
     def terminatate(self) -> None: pass
     def kill(self) -> None: pass
     def __enter__(self) -> 'Popen': pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass
 
 def getstatusoutput(cmd: str) -> Tuple[int, str]: pass
 def getoutput(cmd: str) -> str: pass

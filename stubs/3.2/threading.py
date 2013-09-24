@@ -38,4 +38,4 @@ class RLock:
                 timeout: float = -1.0) -> bool: pass
     def release(self) -> None: pass
     def __enter__(self) -> bool: pass
-    def __exit__(self, type, value, traceback) -> None: pass
+    def __exit__(self, type, value, traceback) -> bool: pass
