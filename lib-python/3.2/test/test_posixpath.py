@@ -13,14 +13,17 @@ import sys
 from posixpath import realpath, abspath, dirname, basename
 
 import posix
-from typing import Any
+from typing import Any, typevar, Function
+
+T = typevar('T')
 
 # An absolute path to a temporary filename for testing. We can't rely on TESTFN
 # being an absolute path, so we need this.
 
 ABSTFN = abspath(support.TESTFN)
 
-def skip_if_ABSTFN_contains_backslash(test) -> Any:
+def skip_if_ABSTFN_contains_backslash(
+        test: Function[[T], None]) -> Function[[T], None]:
     """
     On Windows, posixpath.abspath still returns paths with backslashes
     instead of posix forward slashes. If this is the case, several tests
