@@ -5,12 +5,13 @@ import unittest
 
 from fnmatch import fnmatch, fnmatchcase, translate, filter
 
-from typing import Any, Function
+from typing import Any, AnyStr, Function
 
 class FnmatchTestCase(unittest.TestCase):
 
-    def check_match(self, filename: Any, pattern: Any, should_match: int = 1,
-                    fn: Any = fnmatch) -> None:
+    def check_match(self, filename: AnyStr, pattern: AnyStr,
+                    should_match: int = 1,
+                    fn: Any = fnmatch) -> None:  # see #270
         if should_match:
             self.assertTrue(fn(filename, pattern),
                          "expected %r to match pattern %r"

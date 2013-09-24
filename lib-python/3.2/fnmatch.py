@@ -14,7 +14,7 @@ import posixpath
 import re
 import functools
 
-from typing import Iterable, List, AnyStr, Any, Function
+from typing import Iterable, List, AnyStr, Any, Function, Match
 
 __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
 
@@ -39,7 +39,8 @@ def fnmatch(name: AnyStr, pat: AnyStr) -> bool:
 
 @functools.lru_cache(maxsize=250)
 def _compile_pattern(pat: AnyStr,
-                     is_bytes: bool = False) -> Function[[AnyStr], Any]:
+                     is_bytes: bool = False) -> Function[[AnyStr],
+                                                         Match[AnyStr]]:
     if isinstance(pat, bytes):
         pat_str = str(pat, 'ISO-8859-1')
         res_str = translate(pat_str)
