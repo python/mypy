@@ -86,7 +86,7 @@ class Random(_random.Random):
     VERSION = 3     # used by getstate/setstate
     gauss_next = 0.0
 
-    def __init__(self, x: Any = None) -> None:
+    def __init__(self, x: object = None) -> None:
         """Initialize an instance.
 
         Optional argument x controls seeding, as for Random.seed().
@@ -132,7 +132,7 @@ class Random(_random.Random):
         """Return internal state; can be passed to setstate() later."""
         return self.VERSION, super().getstate(), self.gauss_next
 
-    def setstate(self, state: Any) -> None:
+    def setstate(self, state: tuple) -> None:
         """Restore internal state from object returned by getstate()."""
         version = state[0]
         if version == 3:
@@ -165,7 +165,7 @@ class Random(_random.Random):
     def __setstate__(self, state: Any) -> None:  # for pickle
         self.setstate(state)
 
-    def __reduce__(self) -> Any:
+    def __reduce__(self) -> object:
         return self.__class__, (), self.getstate()
 
 ## -------------------- integer methods  -------------------
@@ -261,7 +261,7 @@ class Random(_random.Random):
             raise IndexError('Cannot choose from an empty sequence')
         return seq[i]
 
-    def shuffle(self, x: List[Any],
+    def shuffle(self, x: List[T],
                 random: Function[[], float] = None, int=int) -> None:
         """x, random=random.random -> shuffle list x in place; return None.
 
