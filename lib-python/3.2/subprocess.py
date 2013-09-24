@@ -349,7 +349,7 @@ import errno
 
 from typing import (
     Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict,
-    IO, TextIO
+    IO, TextIO, Traceback
 )
 
 # Exception classes used by this module.
@@ -457,7 +457,7 @@ PIPE = -1
 STDOUT = -2
 
 
-def _eintr_retry_call(func, *args: Any) -> Any:
+def _eintr_retry_call(func: Any, *args: Any) -> Any:
     while True:
         try:
             return func(*args)
@@ -773,7 +773,8 @@ class Popen(object):
     def __enter__(self) -> 'Popen':
         return self
 
-    def __exit__(self, type, value, traceback) -> None:
+    def __exit__(self, type: type, value: BaseException,
+                 traceback: Traceback) -> bool:
         if self.stdout:
             self.stdout.close()
         if self.stderr:
