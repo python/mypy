@@ -263,7 +263,7 @@ class test__mkstemp_inner(TC):
         if dir is None:
             dir = tempfile.gettempdir()
         try:
-            file = Any(self).mkstemped(dir, pre, suf, bin) # see #259
+            file = test__mkstemp_inner.mkstemped(dir, pre, suf, bin) # see #259
         except:
             self.failOnException("_mkstemp_inner")
 
@@ -321,7 +321,7 @@ class test__mkstemp_inner(TC):
         fd = "%d" % file.fd
 
         try:
-            me = __file__
+            me = __file__ # type: str
         except NameError:
             me = sys.argv[0]
 
@@ -567,7 +567,7 @@ class test_mktemp(TC):
 
     def do_create(self, pre: str = "", suf: str = "") -> mktemped:
         try:
-            file = Any(self).mktemped(self.dir, pre, suf) # see #259
+            file = test_mktemp.mktemped(self.dir, pre, suf) # see #259
         except:
             self.failOnException("mktemp")
 
