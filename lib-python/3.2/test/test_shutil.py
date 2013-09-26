@@ -47,10 +47,10 @@ def _fake_rename(*args: Any, **kwargs: Any) -> None:
 
 def mock_rename(func: Any) -> Any:
     @functools.wraps(func)
-    def wrap(*args, **kwargs):
+    def wrap(*args: Any, **kwargs: Any) -> Any:
         try:
             builtin_rename = shutil.rename
-            shutil.rename = _fake_rename
+            shutil.rename = Any(_fake_rename)
             return func(*args, **kwargs)
         finally:
             shutil.rename = builtin_rename
@@ -861,7 +861,7 @@ class TestCopyFile(unittest.TestCase):
                      suppress_at_exit: bool = True) -> None:
             self._raise_in_exit = raise_in_exit
             self._suppress_at_exit = suppress_at_exit
-        def read(self, *args) -> str:
+        def read(self, *args: Any) -> str:
             return ''
         def __enter__(self) -> None:
             self._entered = True
@@ -876,7 +876,7 @@ class TestCopyFile(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.open = open
 
-    def _set_shutil_open(self, func) -> None:
+    def _set_shutil_open(self, func: Any) -> None:
         shutil.open = func
         self._delete = True
 
