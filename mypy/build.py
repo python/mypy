@@ -999,7 +999,8 @@ class MyVisitor(TraverserVisitor):
             if o.type:
                 sig = o.type
                 arg_types = sig.arg_types
-                if sig.arg_names and sig.arg_names[0] == 'self':
+                if (sig.arg_names and sig.arg_names[0] == 'self' and
+                    not self.inferred):
                     arg_types = arg_types[1:]
                 for arg in arg_types:
                     self.type(arg)
