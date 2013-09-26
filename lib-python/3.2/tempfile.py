@@ -381,7 +381,7 @@ class _TemporaryFileWrapper:
         # Attribute lookups are delegated to the underlying file
         # and cached for non-numeric results
         # (i.e. methods are cached, closed and friends are not)
-        file = _Any(self).__dict__['file']
+        file = _Any(self).__dict__['file'] # type: _IO[_Any]
         a = getattr(file, name)
         if not isinstance(a, int):
             setattr(self, name, a)
@@ -619,16 +619,15 @@ class SpooledTemporaryFile:
         self._file.truncate()
 
     def write(self, s: _Any) -> int:
-        file = self._file
+        file = self._file # type: _IO[_Any]
         rv = file.write(s)
         self._check(file)
         return rv
 
-    def writelines(self, iterable: _Iterable[_Any]) -> int:
-        file = self._file
-        rv = file.writelines(iterable)
+    def writelines(self, iterable: _Iterable[_Any]) -> None:
+        file = self._file # type: _IO[_Any]
+        file.writelines(iterable)
         self._check(file)
-        return rv
 
     #def xreadlines(self, *args) -> _Any:
     #    return self._file.xreadlines(*args)
