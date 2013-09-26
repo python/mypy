@@ -8,14 +8,16 @@ import warnings
 from math import log, exp, pi, fsum, sin
 from test import support
 
-from typing import Undefined, Any, Dict, List, Function
+from typing import Undefined, Any, Dict, List, Function, Generic, typevar
 
-class TestBasicOps(unittest.TestCase):
+RT = typevar('RT', values=(random.Random, random.SystemRandom))
+
+class TestBasicOps(unittest.TestCase, Generic[RT]):
     # Superclass with tests common to all generators.
     # Subclasses must arrange for self.gen to retrieve the Random instance
     # to be tested.
 
-    gen = Undefined(Any) # Either Random or SystemRandom 
+    gen = Undefined(RT) # Either Random or SystemRandom 
 
     def randomlist(self, n: int) -> List[float]:
         """Helper function to make a list of random numbers"""
@@ -140,9 +142,9 @@ class TestBasicOps(unittest.TestCase):
         n = 100000
         randrange = self.gen.randrange
         k = sum(randrange(6755399441055744) % 3 == 2 for i in range(n))
-        self.assertTrue(0.30 < k/n < .37, (k/n))
+        self.assertTrue(0.30 < k/n and k/n < .37, (k/n))
 
-class SystemRandom_TestBasicOps(TestBasicOps):
+class SystemRandom_TestBasicOps(TestBasicOps[random.SystemRandom]):
     gen = random.SystemRandom()
 
     def test_autoseed(self) -> None:
@@ -167,7 +169,7 @@ class SystemRandom_TestBasicOps(TestBasicOps):
 
     def test_53_bits_per_float(self) -> None:
         # This should pass whenever a C double has 53 bit precision.
-        span = 2 ** 53
+        span = 2 ** 53 # type: int
         cum = 0
         for i in range(100):
             cum |= int(self.gen.random() * span)
@@ -176,7 +178,7 @@ class SystemRandom_TestBasicOps(TestBasicOps):
     def test_bigrand(self) -> None:
         # The randrange routine should build-up the required number of bits
         # in stages so that all bit positions are active.
-        span = 2 ** 500
+        span = 2 ** 500 # type: int
         cum = 0
         for i in range(100):
             r = self.gen.randrange(span)
@@ -240,7 +242,7 @@ class SystemRandom_TestBasicOps(TestBasicOps):
             self.assertTrue(2**k > n > 2**(k-1))   # note the stronger assertion
 
 
-class MersenneTwister_TestBasicOps(TestBasicOps):
+class MersenneTwister_TestBasicOps(TestBasicOps[random.Random]):
     gen = random.Random()
 
     def test_guaranteed_stable(self) -> None:
@@ -331,7 +333,7 @@ class MersenneTwister_TestBasicOps(TestBasicOps):
 
     def test_53_bits_per_float(self) -> None:
         # This should pass whenever a C double has 53 bit precision.
-        span = 2 ** 53
+        span = 2 ** 53 # type: int
         cum = 0
         for i in range(100):
             cum |= int(self.gen.random() * span)
@@ -340,7 +342,7 @@ class MersenneTwister_TestBasicOps(TestBasicOps):
     def test_bigrand(self) -> None:
         # The randrange routine should build-up the required number of bits
         # in stages so that all bit positions are active.
-        span = 2 ** 500
+        span = 2 ** 500 # type: int
         cum = 0
         for i in range(100):
             r = self.gen.randrange(span)
@@ -504,7 +506,7 @@ class TestModule(unittest.TestCase):
         Subclass(newarg=1)
 
 
-def test_main(verbose=None) -> None:
+def test_main(verbose: bool = None) -> None:
     testclasses =    [MersenneTwister_TestBasicOps,
                       TestDistributions,
                       TestModule]
