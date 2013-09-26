@@ -222,6 +222,8 @@ class FuncItem(FuncBase):
     is_overload = False    # Is this an overload variant of function with
                            # more than one overload variant?
     is_generator = False   # Contains a yield statement?
+    expanded = Undefined(List['FuncItem'])  # Variants of function with type
+                                            # variables with values expanded
     
     def __init__(self, args: List['Var'], arg_kinds: List[int],
                  init: List[Node], body: 'Block',
@@ -231,6 +233,7 @@ class FuncItem(FuncBase):
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
+        self.expanded = []
         
         i2 = List[AssignmentStmt]()
         self.min_args = 0

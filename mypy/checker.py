@@ -254,6 +254,8 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
+            defn.expanded.append(item)
+            
             # We may be checking a function definition or an anonymous
             # function. In the first case, set up another reference with the
             # precise type.
