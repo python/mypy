@@ -148,6 +148,9 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
         elif args[0] == '--stats':
             options.build_flags.append('dump-type-stats')
             args = args[1:]
+        elif args[0] == '--inferstats':
+            options.build_flags.append('dump-infer-stats')
+            args = args[1:]
         else:
             usage('Invalid option {}'.format(args[0]))
     

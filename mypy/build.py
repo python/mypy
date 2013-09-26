@@ -844,6 +844,9 @@ class SemanticallyAnalyzedFile(ParsedFile):
         """Type check file and advance to the next state."""
         if self.manager.target >= TYPE_CHECK:
             self.type_checker().visit_file(self.tree, self.tree.path)
+            if 'dump-infer-stats' in self.manager.flags:
+                analyze_types(self.tree, self.tree.path, inferred=True,
+                              typemap=self.manager.type_checker.type_map)
         
         # FIX remove from active state list to speed up processing
         
@@ -939,12 +942,12 @@ def make_parent_dirs(path: str) -> None:
         pass
 
 
-def analyze_types(tree, path):
+def analyze_types(tree, path, inferred=False, typemap=None):
     from os.path import basename
     if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
         return
     print(path)
-    v = MyVisitor()
+    v = MyVisitor(inferred, typemap)
     tree.accept(v)
     print('  ** precision **')
     print('  precise  ', v.num_precise)
@@ -967,7 +970,10 @@ from mypy.types import (
 
 
 class MyVisitor(TraverserVisitor):
-    def __init__(self):
+    def __init__(self, inferred, typemap=None):
+        self.inferred = inferred
+        self.typemap = typemap
+        
         self.num_precise = 0
         self.num_imprecise = 0
         self.num_any = 0
@@ -978,10 +984,13 @@ class MyVisitor(TraverserVisitor):
         self.num_function = 0
         self.num_typevar = 0
         self.num_complex = 0
+
+        self.line = -1
         
         TraverserVisitor.__init__(self)
     
     def visit_func_def(self, o):
+        self.line = o.line
         if o.type:
             sig = o.type
             arg_types = sig.arg_types
@@ -993,17 +1002,28 @@ class MyVisitor(TraverserVisitor):
         super().visit_func_def(o)
 
     def visit_type_application(self, o):
+        self.line = o.line
         for t in o.types:
             self.type(t)
         super().visit_type_application(o)
 
     def visit_assignment_stmt(self, o):
+        self.line = o.line
         if o.type:
             self.type(o.type)
+        elif self.inferred:
+            for lvalue in o.lvalues:
+                if hasattr(lvalue, 'is_def') and lvalue.is_def:
+                    t = self.typemap.get(lvalue)
+                    if t:
+                        self.type(t)
+                    else:
+                        print('  !! No inferred type on line', self.line)
         super().visit_assignment_stmt(o)
 
     def type(self, t):
         if isinstance(t, AnyType):
+            print('  !! Any type around line', self.line)
             self.num_any += 1
         elif is_imprecise(t):
             self.num_imprecise += 1
