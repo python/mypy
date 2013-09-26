@@ -992,7 +992,7 @@ class MyVisitor(TraverserVisitor):
     
     def visit_func_def(self, o):
         self.line = o.line
-        if o.expanded:
+        if len(o.expanded) > 1:
             for defn in o.expanded:
                 self.visit_func_def(defn)
         else:
