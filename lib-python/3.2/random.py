@@ -60,7 +60,7 @@ TWOPI = 2.0*_pi
 LOG4 = _log(4.0)
 SG_MAGICCONST = 1.0 + _log(4.5)
 BPF = 53        # Number of bits in a float
-RECIP_BPF = 2**-BPF
+RECIP_BPF = 2**-BPF # type: float
 
 
 # Translated by Guido van Rossum from C source provided by
@@ -713,7 +713,7 @@ def _test_generator(n: int, func: Any, args: tuple) -> None:
     largest = -1e10
     t0 = time.time()
     for i in range(n):
-        x = func(*args)
+        x = func(*args) # type: float
         total += x
         sqsum = sqsum + x*x
         smallest = min(x, smallest)
@@ -726,7 +726,7 @@ def _test_generator(n: int, func: Any, args: tuple) -> None:
               (avg, stddev, smallest, largest))
 
 
-def _test(N=2000) -> None:
+def _test(N: int = 2000) -> None:
     _test_generator(N, random, ())
     _test_generator(N, normalvariate, (0.0, 1.0))
     _test_generator(N, lognormvariate, (0.0, 1.0))
