@@ -991,15 +991,19 @@ class MyVisitor(TraverserVisitor):
     
     def visit_func_def(self, o):
         self.line = o.line
-        if o.type:
-            sig = o.type
-            arg_types = sig.arg_types
-            if sig.arg_names and sig.arg_names[0] == 'self':
-                arg_types = arg_types[1:]
-            for arg in arg_types:
-                self.type(arg)
-            self.type(sig.ret_type)
-        super().visit_func_def(o)
+        if o.expanded:
+            for defn in o.expanded:
+                self.visit_func_def(defn)
+        else:
+            if o.type:
+                sig = o.type
+                arg_types = sig.arg_types
+                if sig.arg_names and sig.arg_names[0] == 'self':
+                    arg_types = arg_types[1:]
+                for arg in arg_types:
+                    self.type(arg)
+                self.type(sig.ret_type)
+            super().visit_func_def(o)
 
     def visit_type_application(self, o):
         self.line = o.line
