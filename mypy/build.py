@@ -967,6 +967,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     AnyType, Instance, FunctionLike, TupleType, Void, TypeVar
 )
+from mypy import nodes
 
 
 class MyVisitor(TraverserVisitor):
@@ -1013,6 +1014,10 @@ class MyVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, o):
         self.line = o.line
+        if (isinstance(o.rvalue, nodes.CallExpr) and
+            isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):
+            # Type variable definition -- not a real assignment.
+            return
         if o.type:
             self.type(o.type)
         elif self.inferred:
