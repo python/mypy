@@ -200,7 +200,7 @@ class IO(Iterable[AnyStr], AbstractGeneric[AnyStr]):
     @abstractmethod
     def write(self, s: AnyStr) -> int: pass
     @abstractmethod
-    def writelines(self, lines: list[AnyStr]) -> None: pass
+    def writelines(self, lines: Iterable[AnyStr]) -> None: pass
 
     @abstractmethod
     def __iter__(self) -> Iterator[AnyStr]: pass

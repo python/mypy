@@ -17,7 +17,7 @@
 DEFAULT_BUFFER_SIZE = 0
 
 from builtins import open
-from typing import List, BinaryIO, TextIO, IO, overload, Iterator
+from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable
 
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: bytes = b'') -> None: pass
@@ -41,7 +41,7 @@ class BytesIO(BinaryIO):
     def write(self, s: bytes) -> int: pass
     @overload
     def write(self, s: bytearray) -> int: pass
-    def writelines(self, lines: List[bytes]) -> None: pass
+    def writelines(self, lines: Iterable[bytes]) -> None: pass
     def getvalue(self) -> bytes: pass
     def read1(self) -> str: pass
 
@@ -68,7 +68,7 @@ class StringIO(TextIO):
     def truncate(self, size: int = None) -> int: pass
     def writable(self) -> bool: pass
     def write(self, s: str) -> int: pass
-    def writelines(self, lines: List[str]) -> None: pass
+    def writelines(self, lines: Iterable[str]) -> None: pass
     def getvalue(self) -> str: pass
 
     def __iter__(self) -> Iterator[str]: pass
@@ -97,7 +97,7 @@ class TextIOWrapper(TextIO):
     def truncate(self, size: int = None) -> int: pass
     def writable(self) -> bool: pass
     def write(self, s: str) -> int: pass
-    def writelines(self, lines: List[str]) -> None: pass
+    def writelines(self, lines: Iterable[str]) -> None: pass
     def getvalue(self) -> str: pass
 
     def __iter__(self) -> Iterator[str]: pass
