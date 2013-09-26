@@ -44,7 +44,7 @@ def _translate(s: bytes, altchars: Dict[AnyStr, bytes]) -> bytes:
 
 # Base64 encoding/decoding uses binascii
 
-def b64encode(s, altchars: bytes = None) -> bytes:
+def b64encode(s: bytes, altchars: bytes = None) -> bytes:
     """Encode a byte string using Base64.
 
     s is the byte string to encode.  Optional altchars must be a byte
