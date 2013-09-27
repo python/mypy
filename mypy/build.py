@@ -1036,6 +1036,7 @@ class MyVisitor(TraverserVisitor):
             print('  !! Any type around line', self.line)
             self.num_any += 1
         elif is_imprecise(t):
+            print('  !! Imprecise type around line', self.line)
             self.num_imprecise += 1
         else:
             self.num_precise += 1
