@@ -349,7 +349,7 @@ import errno
 
 from typing import (
     Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict,
-    IO, TextIO, Traceback
+    IO, TextIO, Traceback, AnyStr
 )
 
 # Exception classes used by this module.
@@ -359,7 +359,7 @@ class CalledProcessError(Exception):
     The exit status will be stored in the returncode attribute;
     check_output() will also store the output in the output attribute.
     """
-    def __init__(self, returncode: int, cmd: str, output=None) -> None:
+    def __init__(self, returncode: int, cmd: str, output: Any = None) -> None:
         self.returncode = returncode
         self.cmd = cmd
         self.output = output
@@ -467,7 +467,7 @@ def _eintr_retry_call(func: Any, *args: Any) -> Any:
             raise
 
 
-def call(*popenargs, **kwargs) -> int:
+def call(*popenargs: Any, **kwargs: Any) -> int:
     """Run command with arguments.  Wait for command to complete, then
     return the returncode attribute.
 
@@ -478,7 +478,7 @@ def call(*popenargs, **kwargs) -> int:
     return Popen(*popenargs, **kwargs).wait()
 
 
-def check_call(*popenargs, **kwargs) -> int:
+def check_call(*popenargs: Any, **kwargs: Any) -> int:
     """Run command with arguments.  Wait for command to complete.  If
     the exit code was zero then return, otherwise raise
     CalledProcessError.  The CalledProcessError object will have the
@@ -497,7 +497,7 @@ def check_call(*popenargs, **kwargs) -> int:
     return 0
 
 
-def check_output(*popenargs, **kwargs) -> bytes:
+def check_output(*popenargs: Any, **kwargs: Any) -> bytes:
     r"""Run command with arguments and return its output as a byte string.
 
     If the exit code was non-zero it raises a CalledProcessError.  The
@@ -784,7 +784,8 @@ class Popen(object):
         # Wait for the process to terminate, to avoid zombies.
         self.wait()
 
-    def __del__(self, _maxsize=sys.maxsize, _active=_active) -> None:
+    def __del__(self, _maxsize: int = sys.maxsize,
+                _active: List['Popen'] = _active) -> None:
         # If __init__ hasn't had a chance to execute (e.g. if it
         # was passed an undeclared keyword argument), we don't
         # have a _child_created attribute at all.
@@ -1007,7 +1008,7 @@ class Popen(object):
             self.pid = pid
             ht.Close()
 
-        def _internal_poll(self, _deadstate=None) -> int:
+        def _internal_poll(self, _deadstate: int = None) -> int:
             """Check if child process has terminated.  Returns returncode
             attribute.
 
@@ -1016,11 +1017,15 @@ class Popen(object):
 
             """
             return self._internal_poll_win(_deadstate)
+
+        from _subprocess import Handle
             
-        def _internal_poll_win(self, _deadstate=None,
-                _WaitForSingleObject=_subprocess.WaitForSingleObject,
-                _WAIT_OBJECT_0=_subprocess.WAIT_OBJECT_0,
-                _GetExitCodeProcess=_subprocess.GetExitCodeProcess) -> int:
+        def _internal_poll_win(self, _deadstate: int = None,
+                _WaitForSingleObject: Function[[Handle, int], int] =
+                               _subprocess.WaitForSingleObject,
+                _WAIT_OBJECT_0: int = _subprocess.WAIT_OBJECT_0,
+                _GetExitCodeProcess: Function[[Handle], int] =
+                                    _subprocess.GetExitCodeProcess) -> int:
             if self.returncode is None:
                 if _WaitForSingleObject(self._handle, 0) == _WAIT_OBJECT_0:
                     self.returncode = _GetExitCodeProcess(self._handle)
@@ -1037,7 +1042,7 @@ class Popen(object):
             return self.returncode
 
 
-        def _readerthread(self, fh, buffer) -> None:
+        def _readerthread(self, fh: IO[AnyStr], buffer: List[AnyStr]) -> None:
             buffer.append(fh.read())
             fh.close()
 
@@ -1393,9 +1398,12 @@ class Popen(object):
                 raise child_exception_type(err_msg)
 
 
-        def _handle_exitstatus(self, sts: int, _WIFSIGNALED=os.WIFSIGNALED,
-                _WTERMSIG=os.WTERMSIG, _WIFEXITED=os.WIFEXITED,
-                _WEXITSTATUS=os.WEXITSTATUS) -> None:
+        def _handle_exitstatus(
+                self, sts: int,
+                _WIFSIGNALED: Function[[int], bool] = os.WIFSIGNALED,
+                _WTERMSIG: Function[[int], bool] = os.WTERMSIG,
+                _WIFEXITED: Function[[int], bool] = os.WIFEXITED,
+                _WEXITSTATUS: Function[[int], bool] = os.WEXITSTATUS) -> None:
             # This method is called (indirectly) by __del__, so it cannot
             # refer to anything outside of its local scope."""
             if _WIFSIGNALED(sts):
@@ -1407,7 +1415,7 @@ class Popen(object):
                 raise RuntimeError("Unknown child exit status!")
 
 
-        def _internal_poll(self, _deadstate=None) -> int:
+        def _internal_poll(self, _deadstate: int = None) -> int:
             """Check if child process has terminated.  Returns returncode
             attribute.
 
@@ -1417,9 +1425,11 @@ class Popen(object):
             """
             return self._internal_poll_posix(_deadstate)
             
-        def _internal_poll_posix(self, _deadstate=None, _waitpid=os.waitpid,
-                                 _WNOHANG=os.WNOHANG,
-                                 _os_error=os.error) -> int:
+        def _internal_poll_posix(self, _deadstate: int = None,
+                                 _waitpid: Function[[int, int],
+                                                 Tuple[int, int]] = os.waitpid,
+                                 _WNOHANG: int = os.WNOHANG,
+                                 _os_error: Any = os.error) -> int:
             if self.returncode is None:
                 try:
                     pid, sts = _waitpid(self.pid, _WNOHANG)
@@ -1495,7 +1505,7 @@ class Popen(object):
             fd2output = Dict[int, List[bytes]]()
 
             poller = select.poll()
-            def register_and_append(file_obj, eventmask: int) -> None:
+            def register_and_append(file_obj: IO[Any], eventmask: int) -> None:
                 poller.register(file_obj.fileno(), eventmask)
                 fd2file[file_obj.fileno()] = file_obj
 
