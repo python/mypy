@@ -171,7 +171,7 @@ def b32encode(s: bytes) -> bytes:
         # leftover bit of c1 and tack it onto c2.  Then we take the 2 leftover
         # bits of c2 and tack them onto c3.  The shifts and masks are intended
         # to give us values of exactly 5 bits in width.
-        c1, c2, c3 = struct.unpack('!HHB', s[i*5:(i+1)*5])
+        c1, c2, c3 = struct.unpack('!HHB', s[i*5:(i+1)*5]) # type: (int, int, int)
         c2 += (c1 & 1) << 16 # 17 bits wide
         c3 += (c2 & 3) << 8  # 10 bits wide
         encoded += bytes([_b32tab[c1 >> 11],         # bits 1 - 5
