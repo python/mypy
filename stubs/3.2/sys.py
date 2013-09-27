@@ -4,7 +4,7 @@
 # based on http://docs.python.org/3.2/library/sys.html
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload
+    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload, Traceback
 )
 
 # ----- sys variables -----
@@ -111,16 +111,15 @@ def call_tracing(fn: Any, args: Any) -> object: pass
 def _clear_type_cache() -> None: pass
 def _current_frames() -> Dict[int, Any]: pass
 def displayhook(value: int) -> None: pass  # value might be None
-def excepthook(type_: type, value: BaseException, traceback: Any) -> None:
-    # TODO traceback type
-    pass
-def exc_info() -> Tuple[type, Any, Any]: pass # see above
+def excepthook(type_: type, value: BaseException,
+               traceback: Traceback) -> None: pass
+def exc_info() -> Tuple[type, BaseException, Traceback]: pass
 def exit(arg: int = 0) -> None: pass  # arg might be None
 def getcheckinterval() -> int: pass  # deprecated
 def getdefaultencoding() -> str: pass
-#def getdlopenflags() -> int: pass  # Unix only
+def getdlopenflags() -> int: pass  # Unix only
 def getfilesystemencoding() -> str: pass  # cannot return None
-#def getrefcount(object) -> int: pass  # no ref counts in MyPy!
+def getrefcount(object) -> int: pass
 def getrecursionlimit() -> int: pass
 
 @overload
