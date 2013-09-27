@@ -15,7 +15,8 @@ import tarfile
 import builtins
 
 from typing import (
-    Any, AnyStr, IO, List, Iterable, Function, Tuple, Dict, Sequence, cast
+    Any, AnyStr, IO, List, Iterable, Function, Tuple, Dict, Sequence, cast,
+    Traceback
 )
 
 try:
@@ -256,7 +257,8 @@ def copytree(src: str, dst: str, symlinks: bool = False,
         raise Error(errors)
 
 def rmtree(path: str, ignore_errors: bool = False,
-           onerror: Function[[Any, str, Any], None] = None) -> None:
+           onerror: Function[[Any, str, Tuple[type, BaseException, Traceback]],
+                              None] = None) -> None:
     """Recursively delete a directory tree.
 
     If ignore_errors is set, errors are ignored; otherwise, if onerror
@@ -268,11 +270,13 @@ def rmtree(path: str, ignore_errors: bool = False,
 
     """
     if ignore_errors:
-        def _onerror(x, y, z):
+        def _onerror(x: Any, y: str,
+                     z: Tuple[type, BaseException, Traceback]) -> None:
             pass
         onerror = _onerror
     elif onerror is None:
-        def __onerror(x, y, z):
+        def __onerror(x: Any, y: str,
+                      z: Tuple[type, BaseException, Traceback]) -> None:
             raise
         onerror = __onerror
     try:
