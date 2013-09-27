@@ -24,7 +24,8 @@ from test import support
 from test.support import check_warnings, captured_stdout
 
 from typing import (
-    Any, Function, Tuple, List, Sequence, BinaryIO, overload, Traceback
+    Any, Function, Tuple, List, Sequence, BinaryIO, overload, Traceback, IO,
+    ducktype
 )
 
 import bz2
@@ -853,6 +854,7 @@ class TestCopyFile(unittest.TestCase):
 
     _delete = False
 
+    @ducktype(IO[str])
     class Faux(object):
         _entered = False
         _exited_with = None # type: tuple
