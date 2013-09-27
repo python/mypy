@@ -932,10 +932,8 @@ def chr(code: int) -> str: pass
 def delattr(o: Any, name: str) -> None: pass
 def dir(o: object = None) -> List[str]: pass
 
-@overload
-def divmod(a: int, b: int) -> Tuple[int, int]: pass
-@overload
-def divmod(a: float, b: float) -> Tuple[float, float]: pass
+_N = typevar('_N', values=(int, float))
+def divmod(a: _N, b: _N) -> Tuple[_N, _N]: pass
 
 # TODO code object as source
 def eval(source: str, globals: Dict[str, Any] = None,
