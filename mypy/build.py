@@ -1023,12 +1023,19 @@ class MyVisitor(TraverserVisitor):
             self.type(o.type)
         elif self.inferred:
             for lvalue in o.lvalues:
-                if hasattr(lvalue, 'is_def') and lvalue.is_def:
-                    t = self.typemap.get(lvalue)
-                    if t:
-                        self.type(t)
-                    else:
-                        print('  !! No inferred type on line', self.line)
+                if isinstance(lvalue, nodes.ParenExpr):
+                    lvalue = lvalue.expr
+                if isinstance(lvalue, (nodes.TupleExpr, nodes.ListExpr)):
+                    items = lvalue.items
+                else:
+                    items = [lvalue]
+                for item in items:
+                    if hasattr(item, 'is_def') and item.is_def:
+                        t = self.typemap.get(item)
+                        if t:
+                            self.type(t)
+                        else:
+                            print('  !! No inferred type on line', self.line)
         super().visit_assignment_stmt(o)
 
     def type(self, t):
