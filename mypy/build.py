@@ -447,7 +447,6 @@ class BuildManager:
         Return list of tuples (module id, import line number) for all modules
         imported in file.
         """
-        # TODO also find imports not at the top level of the file
         res = List[Tuple[str, int]]()
         for imp in file.imports:
             if isinstance(imp, Import):
