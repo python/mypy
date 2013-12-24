@@ -348,7 +348,7 @@ class BuildManager:
         # If there were no errors, all files should have been fully processed.
         for s in self.states:
             assert s.state() == final_state, (
-                '{} still unprocessed'.format(s.path))
+                '{} still unprocessed in state {}'.format(s.path, s.state()))
         
         # Collect a list of all files.
         trees = List[MypyFile]()
