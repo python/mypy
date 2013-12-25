@@ -824,3 +824,12 @@ s = {'x', 'y'}
 print('>', sorted(s.union('foo')))
 [out]
 > ['f', 'o', 'x', 'y']
+
+[case testStrUnicodeCompatibility_python2]
+import typing
+def f(s): # type: (unicode) -> None
+    pass
+f(u'')
+f('')
+[out]
+
