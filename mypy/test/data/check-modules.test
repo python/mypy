@@ -285,3 +285,11 @@ z
 [out]
 main, line 1: No module named 'xyz'
 main, line 2: Name 'y' is not defined
+
+[case testUnknownModuleRedefinition]
+import x
+def x(): pass
+[out]
+main, line 1: No module named 'x'
+main, line 1: Name 'x' already defined
+
