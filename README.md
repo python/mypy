@@ -114,15 +114,15 @@ mypy development is already done in mypy!).
 Here are some of the more significant Python features not supported
 right now (but all of these will improve):
 
- - Python 2.x support not yet usable
- - no properties
- - no static or class methods
- - int is not compatible with float
- - tuples are not well-supported as immutable lists 
+ - Python 2.x support not really yet usable
+ - properties with setters not supported
+ - class methods not supported
+ - relative imports not supported
+ - tuples not well-supported as immutable lists 
  - somewhat limited operator overloading
  - only a subset of Python standard library modules are supported, and some
    only partially
- - very limited metaclass support
+ - limited metaclass support
 
 Some mypy-specific features are also not supported or only partially
 supported, including these:
@@ -132,8 +132,8 @@ supported, including these:
  - no 'Dynamic' classes
  - there is no way to use dynamic typing by default for top-level code
 
-The current development focus is to support a good subset of Python
-features (both 2.x and 3.x).
+The current development focus is to support static type checking with a good
+subset of Python features (both 2.x and 3.x).
 
 
 Issue tracker
