@@ -277,6 +277,7 @@ class BuildManager:
       module_deps:     Cache for module dependencies (direct or indirect).
                        Item (m, n) indicates whether m depends on n (directly
                        or indirectly).
+      missing_modules: Set of modules that could not be imported encountered so far
 
     TODO Refactor code related to transformation, icode generation etc. to
          external objects.  This module should not directly depend on them.
@@ -307,6 +308,7 @@ class BuildManager:
         self.icode = Dict[str, FuncIcode]()
         self.binary_path = None # type: str
         self.module_deps = Dict[Tuple[str, str], bool]()
+        self.missing_modules = Set[str]()
     
     def process(self, initial_state: 'UnprocessedFile') -> BuildResult:
         """Perform a build.
@@ -342,7 +344,7 @@ class BuildManager:
             # Raise exception if the build failed. The build can fail for
             # various reasons, such as parse error, semantic analysis error,
             # etc.
-            if self.errors.is_errors():
+            if self.errors.is_blockers():
                 self.errors.raise_error()
         
         # If there were no errors, all files should have been fully processed.
@@ -678,10 +680,10 @@ class State:
     def type_checker(self) -> TypeChecker:
         return self.manager.type_checker
     
-    def fail(self, path: str, line: int, msg: str) -> None:
+    def fail(self, path: str, line: int, msg: str, blocker: bool = True) -> None:
         """Report an error in the build (e.g. if could not find a module)."""
         self.errors().set_file(path)
-        self.errors().report(line, msg)
+        self.errors().report(line, msg, blocker=blocker)
 
 
 class UnprocessedFile(State):
@@ -729,7 +731,8 @@ class UnprocessedFile(State):
             finally:
                 self.errors().pop_import_context()
             if not res:
-                self.fail(self.path, line, "No module named '{}'".format(id))
+                self.fail(self.path, line, "No module named '{}'".format(id), blocker=False)
+                self.manager.missing_modules.add(id)
 
         # Do the first pass of semantic analysis: add top-level definitions in
         # the file to the symbol table.
@@ -789,7 +792,10 @@ class ParsedFile(State):
         # Build a list all directly imported moules (dependencies).
         imp = List[str]()
         for id, line in self.manager.all_imported_modules_in_file(tree):
-            imp.append(id)
+            # Omit missing modules, as otherwise we could not type check
+            # programs with missing modules.
+            if not id in self.manager.missing_modules:
+                imp.append(id)
         if self.id != 'builtins':
             imp.append('builtins')
         

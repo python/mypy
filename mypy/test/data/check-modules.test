@@ -180,3 +180,56 @@ if x:
     def f(x: int) -> None: pass
 else:
     def f(x: int) -> None: pass
+
+[case testTypeCheckWithUnknownModule]
+import nonexistent
+None + ''
+[out]
+main, line 1: No module named 'nonexistent'  
+main, line 2: Unsupported left operand type for + (None)
+
+[case testTypeCheckWithUnknownModule2]
+import m, nonexistent
+None + ''
+m.x = 1
+m.x = ''
+[file m.py]
+x = 1
+[out]
+main, line 1: No module named 'nonexistent'  
+main, line 2: Unsupported left operand type for + (None)
+main, line 4: Incompatible types in assignment
+
+[case testTypeCheckWithUnknownModule3]
+import nonexistent, m
+None + ''
+m.x = 1
+m.x = ''
+[file m.py]
+x = 1
+[out]
+main, line 1: No module named 'nonexistent'  
+main, line 2: Unsupported left operand type for + (None)
+main, line 4: Incompatible types in assignment
+
+[case testTypeCheckWithUnknownModule]
+import nonexistent, another
+None + ''
+[out]
+main, line 1: No module named 'nonexistent'
+main, line 1: No module named 'another'
+main, line 2: Unsupported left operand type for + (None)
+
+[case testTypeCheckWithUnknownModuleUsingFromImport]
+from nonexistent import x
+None + ''
+[out]
+main, line 1: No module named 'nonexistent'  
+main, line 2: Unsupported left operand type for + (None)
+
+[case testTypeCheckWithUnknownModuleUsingImportStar]
+from nonexistent import *
+None + ''
+[out]
+main, line 1: No module named 'nonexistent'  
+main, line 2: Unsupported left operand type for + (None)

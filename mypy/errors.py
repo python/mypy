@@ -28,15 +28,19 @@ class ErrorInfo:
     
     # The error message.
     message = ''
+
+    # If True, we should halt build after the file that generated this error.
+    blocker = True
     
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
-                  function_or_member: str, line: int, message: str) -> None:
+                 function_or_member: str, line: int, message: str, blocker: bool) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
         self.function_or_member = function_or_member
         self.line = line
         self.message = message
+        self.blocker = blocker
 
 
 class Errors:
@@ -122,13 +126,14 @@ class Errors:
         """Replace the entire import context with a new value."""
         self.import_ctx = ctx[:]
     
-    def report(self, line: int, message: str) -> None:
+    def report(self, line: int, message: str, blocker: bool = True) -> None:
         """Report message at the given line using the current error context."""
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
             type = None # Omit type context if nested function
         info = ErrorInfo(self.import_context(), self.file, type,
-                         self.function_or_member[-1], line, message)
+                         self.function_or_member[-1], line, message,
+                         blocker)
         self.error_info.append(info)
     
     def num_messages(self) -> int:
@@ -137,7 +142,11 @@ class Errors:
     
     def is_errors(self) -> bool:
         """Are there any generated errors?"""
-        return len(self.error_info) > 0
+        return bool(self.error_info)
+
+    def is_blockers(self) -> bool:
+        """Are the any errors that are blockers?"""
+        return any(err for err in self.error_info if err.blocker)
     
     def raise_error(self) -> None:
         """Raise a CompileError with the generated messages.

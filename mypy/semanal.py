@@ -572,22 +572,30 @@ class SemanticAnalyzer(NodeVisitor):
                                                        self.cur_mod_id), i)
             else:
                 base = id.split('.')[0]
-                m = self.modules[base]
-                self.add_symbol(base, SymbolTableNode(MODULE_REF, m,
-                                                      self.cur_mod_id), i)
+                self.add_module_symbol(base, i)
+
+    def add_module_symbol(self, id: str, context: Context) -> None:
+        if id in self.modules:
+            m = self.modules[id]
+            self.add_symbol(id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id), context)
+        else:
+            pass
     
     def visit_import_from(self, i: ImportFrom) -> None:
-        m = self.modules[i.id]
-        for id, as_id in i.names:
-            node = m.names.get(id, None)
-            if node:
-                node = self.normalize_type_alias(node, i)
-                if not node:
-                    return
-                self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
-                                                       self.cur_mod_id), i)
-            else:
-                self.fail("Module has no attribute '{}'".format(id), i)
+        if i.id in self.modules:
+            m = self.modules[i.id]
+            for id, as_id in i.names:
+                node = m.names.get(id, None)
+                if node:
+                    node = self.normalize_type_alias(node, i)
+                    if not node:
+                        return
+                    self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
+                                                           self.cur_mod_id), i)
+                else:
+                    self.fail("Module has no attribute '{}'".format(id), i)
+        else:
+            pass
 
     def normalize_type_alias(self, node: SymbolTableNode,
                                          ctx: Context) -> SymbolTableNode:
@@ -597,11 +605,14 @@ class SemanticAnalyzer(NodeVisitor):
         return node
     
     def visit_import_all(self, i: ImportAll) -> None:
-        m = self.modules[i.id]
-        for name, node in m.names.items():
-            if not name.startswith('_'):
-                self.add_symbol(name, SymbolTableNode(node.kind, node.node,
-                                                      self.cur_mod_id), i)
+        if i.id in self.modules:
+            m = self.modules[i.id]
+            for name, node in m.names.items():
+                if not name.startswith('_'):
+                    self.add_symbol(name, SymbolTableNode(node.kind, node.node,
+                                                          self.cur_mod_id), i)
+        else:
+            pass
     
     #
     # Statements
