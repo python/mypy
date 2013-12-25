@@ -305,3 +305,21 @@ In module imported in main, line 1:
 tmp/x.py, line 1: No module named 'nonexistent'
 main, line 3: "module" has no attribute "z"
 
+[case testUnknownModuleImportedWithinFunction]
+def f():
+    import foobar
+def foobar(): pass
+foobar('')
+[out]
+main, line 2: No module named 'foobar'
+main, line 4: Too many arguments for "foobar"
+
+[case testUnknownModuleImportedWithinFunction2]
+def f():
+    from foobar import x
+def x(): pass
+x('')
+[out]
+main, line 2: No module named 'foobar'
+main, line 4: Too many arguments for "x"
+
