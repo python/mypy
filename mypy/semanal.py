@@ -567,17 +567,17 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_import(self, i: Import) -> None:
         for id, as_id in i.ids:
             if as_id != id:
-                self.add_module_symbol(as_id, i)
+                self.add_module_symbol(id, as_id, i)
             else:
                 base = id.split('.')[0]
-                self.add_module_symbol(base, i)
+                self.add_module_symbol(base, base, i)
 
-    def add_module_symbol(self, id: str, context: Context) -> None:
+    def add_module_symbol(self, id: str, as_id: str, context: Context) -> None:
         if id in self.modules:
             m = self.modules[id]
-            self.add_symbol(id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id), context)
+            self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id), context)
         else:
-            self.add_unknown_symbol(id, context)
+            self.add_unknown_symbol(as_id, context)
     
     def visit_import_from(self, i: ImportFrom) -> None:
         if i.id in self.modules:
