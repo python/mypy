@@ -293,3 +293,15 @@ def x(): pass
 main, line 1: No module named 'x'
 main, line 1: Name 'x' already defined
 
+[case testAccessingUnknownModuleFromOtherModule]
+import x
+x.nonexistent.foo
+x.z
+[file x.py]
+import nonexistent
+[builtins fixtures/module.py]
+[out]
+In module imported in main, line 1:
+tmp/x.py, line 1: No module named 'nonexistent'
+main, line 3: "module" has no attribute "z"
+
