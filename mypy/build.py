@@ -351,6 +351,9 @@ class BuildManager:
         for s in self.states:
             assert s.state() == final_state, (
                 '{} still unprocessed in state {}'.format(s.path, s.state()))
+
+        if self.errors.is_errors():
+            self.errors.raise_error()
         
         # Collect a list of all files.
         trees = List[MypyFile]()

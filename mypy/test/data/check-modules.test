@@ -233,3 +233,32 @@ None + ''
 [out]
 main, line 1: No module named 'nonexistent'  
 main, line 2: Unsupported left operand type for + (None)
+
+[case testAccessingUnknownModule]
+import xyz
+xyz.foo()
+xyz()
+[out]
+main, line 1: No module named 'xyz'
+
+[case testAccessingUnknownModule2]
+import xyz, bar
+xyz.foo()
+bar()
+[out]
+main, line 1: No module named 'xyz'
+main, line 1: No module named 'bar'
+
+[case testAccessingNameImportedFromUnknownModule]
+from xyz import y, z
+y.foo()
+z()
+[out]
+main, line 1: No module named 'xyz'
+
+[case testAccessingNameImportedFromUnknownModule2]
+from xyz import *
+y
+[out]
+main, line 1: No module named 'xyz'
+main, line 2: Name 'y' is not defined

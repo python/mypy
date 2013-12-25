@@ -579,7 +579,7 @@ class SemanticAnalyzer(NodeVisitor):
             m = self.modules[id]
             self.add_symbol(id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id), context)
         else:
-            pass
+            self.add_unknown_symbol(id, context)
     
     def visit_import_from(self, i: ImportFrom) -> None:
         if i.id in self.modules:
@@ -595,7 +595,8 @@ class SemanticAnalyzer(NodeVisitor):
                 else:
                     self.fail("Module has no attribute '{}'".format(id), i)
         else:
-            pass
+            for id, as_id in i.names:
+                self.add_unknown_symbol(as_id, i)
 
     def normalize_type_alias(self, node: SymbolTableNode,
                                          ctx: Context) -> SymbolTableNode:
@@ -612,7 +613,15 @@ class SemanticAnalyzer(NodeVisitor):
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id), i)
         else:
+            # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
+
+    def add_unknown_symbol(self, name: str, context: Context) -> None:
+        var = Var(name)
+        var._fullname = self.qualified_name(name)
+        var.is_ready = True
+        var.type = AnyType()
+        self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
     
     #
     # Statements
