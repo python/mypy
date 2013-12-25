@@ -833,3 +833,8 @@ f(u'')
 f('')
 [out]
 
+[case testStrUnicodeCompatibilityInBuiltins_python2]
+import typing
+'x'.count('x')
+'x'.count(u'x')
+[out]
