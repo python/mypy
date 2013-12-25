@@ -167,15 +167,12 @@ def usage(msg: str = None) -> None:
 '''Usage: mypy [options] [-m mod | file] [args]
 
 Options:
-  -c          compile to native code (EXPERIMENTAL)
-  -m mod      run module as a script (terminates option list)
-  -S          do not run the program or generate a binary
+  -m mod      check and run module as a script (terminates option list)
+  -S          only check; do not run program or module
   --verbose   more verbose messages
   
 Environment variables:
   MYPYPATH    additional module search path
-  CC          the C compiler (used with -c)
-  CFLAGS      command line options to the C compiler (used with -c)
 ''')
     sys.exit(2)
 
