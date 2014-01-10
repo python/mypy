@@ -42,18 +42,18 @@ class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): pass
 
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[str], _ResultMixinBytes): pass
 
-class _DefragResultBase(Tuple[AnyStr,AnyStr], Generic[AnyStr]):
+class _DefragResultBase(tuple, Generic[AnyStr]):
     url = Undefined(AnyStr)
     fragment = Undefined(AnyStr)
 
-class _SplitResultBase(Tuple[AnyStr,AnyStr,AnyStr,AnyStr,AnyStr], Generic[AnyStr]):
+class _SplitResultBase(tuple, Generic[AnyStr]):
     scheme = Undefined(AnyStr)
     netloc = Undefined(AnyStr)
     path = Undefined(AnyStr)
     query = Undefined(AnyStr)
     fragment = Undefined(AnyStr)
 
-class _ParseResultBase(Tuple[AnyStr,AnyStr,AnyStr,AnyStr,AnyStr,AnyStr], Generic[AnyStr]):
+class _ParseResultBase(tuple, Generic[AnyStr]):
     scheme = Undefined(AnyStr)
     netloc = Undefined(AnyStr)
     path = Undefined(AnyStr)
@@ -112,6 +112,12 @@ def urlsplit(url: str, scheme: str = None, allow_fragments: bool = True) -> Spli
 @overload
 def urlsplit(url: bytes, scheme: bytes = None, allow_fragments: bool = True) -> SplitResultBytes: pass
 
+@overload
+def urlunparse(components: Sequence[AnyStr]) -> AnyStr: pass
+@overload
 def urlunparse(components: Tuple[AnyStr, AnyStr, AnyStr, AnyStr, AnyStr, AnyStr]) -> AnyStr: pass
 
+@overload
+def urlunsplit(components: Sequence[AnyStr]) -> AnyStr: pass
+@overload
 def urlunsplit(components: Tuple[AnyStr, AnyStr, AnyStr, AnyStr, AnyStr]) -> AnyStr: pass
