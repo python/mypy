@@ -7,6 +7,11 @@ Introduction
 Pinfer is tool for runtime type inference of variable types and
 function signatures in Python programs.
 
+Requirements
+------------
+
+ * Python 3.2+
+
 Basic usage
 -----------
 
