@@ -1,1 +1,24 @@
-TODO write readme
+ReadMe for pinfer
+=================
+
+Introduction
+------------
+
+Pinfer is tool for runtime type inference of variable types and
+function signatures in Python programs.
+
+Basic usage
+-----------
+
+To infer types of all functions and methods in a module:
+
+  import foo   # target module
+  import pinfer
+
+  # set up type inference and dumping
+  pinfer.infer_module(foo)
+  pinfer.dump_at_exit()
+
+  # now do something with the module, e.g. run tests
+
+For inferring a Python module, add the above lines to the test suite.
