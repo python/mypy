@@ -2,8 +2,8 @@
 
 import unittest
 
-from infer import Instance, Generic, Tuple, Either, Unknown
-import infer
+from pinfer import Instance, Generic, Tuple, Either, Unknown
+import pinfer
 
 
 class TestInfer(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestInfer(unittest.TestCase):
         self.float = Instance(float)
 
     def tearDown(self):
-        infer.reset()
+        pinfer.reset()
 
     def test_instance(self):
         i = self.int
@@ -123,11 +123,11 @@ class TestInfer(unittest.TestCase):
         self.assert_combine(list_(i), list_(u), list_(i))
 
     def assert_combine(self, t, s, combined):
-        self.assertEqual(infer.combine_types(t, s), combined)
-        self.assertEqual(infer.combine_types(s, t), combined)
+        self.assertEqual(pinfer.combine_types(t, s), combined)
+        self.assertEqual(pinfer.combine_types(s, t), combined)
 
     def test_sample(self):
-        sample = infer.sample
+        sample = pinfer.sample
         self.assertEqual(sample(()), [])
         self.assertEqual(sample((1, 2)), [1, 2])
         self.assertEqual(sample([]), [])
@@ -155,14 +155,14 @@ class TestInfer(unittest.TestCase):
         self.assert_infer_type((1, None) * 100, 'TupleSequence[Optional(int)]')
 
     def assert_infer_type(self, value, type):
-        self.assertEqual(str(infer.infer_value_type(value)), type)
+        self.assertEqual(str(pinfer.infer_value_type(value)), type)
 
     def test_infer_variables(self):
-        infer.infer_var('x', 1)
+        pinfer.infer_var('x', 1)
         self.assert_infer_state('x: int')
-        infer.infer_var('x', 1)
-        infer.infer_var('x', None)
-        infer.infer_var('y', 1.1)
+        pinfer.infer_var('x', 1)
+        pinfer.infer_var('x', None)
+        pinfer.infer_var('y', 1.1)
         self.assert_infer_state('x: Optional(int)\n'
                                 'y: float')
 
@@ -171,14 +171,14 @@ class TestInfer(unittest.TestCase):
         a = A()
         a.x = 1
         a.y = 'x'
-        infer.infer_attrs(a)
+        pinfer.infer_attrs(a)
         self.assert_infer_state('A.x: int\n'
                                 'A.y: str')
 
     def test_infer_class_var(self):
         class A:
             x = 1.1
-        infer.infer_attrs(A())
+        pinfer.infer_attrs(A())
         self.assert_infer_state('A.x: float')
 
     def test_infer_function_attr(self):        
@@ -186,11 +186,11 @@ class TestInfer(unittest.TestCase):
             def f(self): pass
         a = A()
         a.g = lambda x: 1
-        infer.infer_attrs(a)
+        pinfer.infer_attrs(a)
         self.assert_infer_state('A.g: function')
 
     def test_infer_simple_function_signature(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(a):
             return 'x'
         f(1)
@@ -199,7 +199,7 @@ class TestInfer(unittest.TestCase):
         self.assert_infer_state('def f(a: Optional(int)) -> str')
 
     def test_infer_function_with_two_args(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(x, y):
             return x * y
         f(1, 2)
@@ -209,13 +209,13 @@ class TestInfer(unittest.TestCase):
 
     def test_infer_method(self):
         class A:
-            @infer.infer_signature
+            @pinfer.infer_signature
             def f(self, x): pass
         A().f('x')
         self.assert_infer_state('def f(self, x: str) -> None')
 
     def test_infer_default_arg_values(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(x=1, y=None): pass
         f()
         self.assert_infer_state('def f(x: int, y: None) -> None')
@@ -226,7 +226,7 @@ class TestInfer(unittest.TestCase):
             'def f(x: Either(str, int), y: Optional(float)) -> None')
 
     def test_infer_varargs(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(x, *y): pass
         f(1)
         f(1, 'x', None)
@@ -235,48 +235,48 @@ class TestInfer(unittest.TestCase):
         self.assert_infer_state('def f(x: int) -> None')
 
     def test_infer_keyword_args(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(x): pass
         f(x=1)
         self.assert_infer_state('def f(x: int) -> None')
         
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(x='x'): pass
         f(x=1)
         self.assert_infer_state('def f(x: int) -> None')
 
     def test_infer_keyword_varargs(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(a, **kwargs): pass
         f(None, x=1, y='x')
         self.assert_infer_state(
             'def f(a: None, kwargs: Either(str, int)) -> None')
 
     def test_infer_keyword_only_args(self):
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(x, *, y=0): pass
         f(1, y='x')
         self.assert_infer_state(
             'def f(x: int, y: str) -> None')
         
-        @infer.infer_signature
+        @pinfer.infer_signature
         def f(*, x=None, y=None): pass
         f(y='x')
         self.assert_infer_state(
             'def f(x: None, y: str) -> None')
 
     def test_infer_class(self):
-        @infer.infer_class
+        @pinfer.infer_class
         class A:
             def f(self, x): return 0
         A().f('x')
         self.assert_infer_state('class A(...):\n'
                                 '    def f(self, x: str) -> int')
 
-        @infer.infer_class
+        @pinfer.infer_class
         class A:
             def f(self, x): return 0
-        @infer.infer_class
+        @pinfer.infer_class
         class B:
             def f(self): pass
             def g(self): pass
@@ -290,8 +290,8 @@ class TestInfer(unittest.TestCase):
                                 '    def g(self) -> None')
 
     def assert_infer_state(self, expected):
-        self.assertEqual(infer.format_state(), expected)
-        infer.reset()
+        self.assertEqual(pinfer.format_state(), expected)
+        pinfer.reset()
 
 
 if __name__ == '__main__':
