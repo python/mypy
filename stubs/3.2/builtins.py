@@ -964,7 +964,10 @@ def isinstance(o: object, t: tuple) -> bool: pass
 def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO perhaps support this
 #def issubclass(type cld, classinfo: Sequence[type]) -> bool: pass
+@overload
 def len(o: Sized) -> int: pass
+@overload
+def len(o: tuple) -> int: pass
 def locals() -> Dict[str, Any]: pass
 
 # TODO more than two iterables
