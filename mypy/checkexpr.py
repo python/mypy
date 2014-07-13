@@ -866,6 +866,10 @@ class ExpressionChecker:
                                                               operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
+        elif op == '+':
+            return e.expr.accept(self)
+        else:
+            raise NotImplementedError(op)
         return result
     
     def visit_index_expr(self, e: IndexExpr) -> Type:
