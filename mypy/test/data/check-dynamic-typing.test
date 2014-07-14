@@ -22,7 +22,7 @@ from typing import Undefined, Any
 d = Undefined # type: Any
 a, b = Undefined, Undefined # type: (A, B)
 
-d, a = b, b    # E: Incompatible types in assignment
+d, a = b, b    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 d, d = d, d, d # E: Too many values to assign
 
 a, b = d, d
@@ -42,7 +42,7 @@ class B: pass
 from typing import Undefined, Any
 a, b = Undefined, Undefined # type: (A, B)
 
-b = f(a) # E: Incompatible types in assignment
+b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = f(a)
 a = f(b)
@@ -172,7 +172,7 @@ from typing import Undefined, Any
 d = Undefined # type: Any
 a = Undefined # type: A
 b = Undefined # type: bool
-a = not d # E: Incompatible types in assignment
+a = not d # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 b = not d
 a = -d
 class A: pass
@@ -213,7 +213,7 @@ from typing import Undefined, Tuple, Any
 t2 = Undefined # type: Tuple[A, A]
 d = Undefined # type: Any
 
-t2 = (d, d, d)  # E: Incompatible types in assignment
+t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[A, A]")
 t2 = (d, d)
 
 class A: pass
@@ -226,7 +226,7 @@ class B: pass
 d = Undefined # type: Any
 a = Undefined # type: A
 b = Undefined # type: B
-b = cast(A, d) # E: Incompatible types in assignment
+b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = cast(A, d)
 b = Any(d)
 a = Any(f())
@@ -300,7 +300,7 @@ h = Undefined # type: Function[[A], None]
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
-g = f   # E: Incompatible types in assignment
+g = f   # E: Incompatible types in assignment (expression has type , variable has type )
 f(a)
 f(x)
 a = f(a)
@@ -317,10 +317,10 @@ g1 = Undefined # type: Function[[A], None]
 g2 = Undefined # type: Function[[A, A], None]
 a = Undefined # type: A
 
-g1 = f0 # E: Incompatible types in assignment
-g2 = f0 # E: Incompatible types in assignment
-g0 = f2 # E: Incompatible types in assignment
-g1 = f2 # E: Incompatible types in assignment
+g1 = f0 # E: Incompatible types in assignment (expression has type , variable has type )
+g2 = f0 # E: Incompatible types in assignment (expression has type , variable has type )
+g0 = f2 # E: Incompatible types in assignment (expression has type , variable has type )
+g1 = f2 # E: Incompatible types in assignment (expression has type , variable has type )
 
 g0 = g0
 g2 = f2
@@ -371,9 +371,9 @@ class B: pass
 main, line 10: Too many arguments for "f01"
 main, line 11: Too few arguments for "f13"
 main, line 12: Too many arguments for "f13"
-main, line 13: Incompatible types in assignment
-main, line 14: Incompatible types in assignment
-main, line 15: Incompatible types in assignment
+main, line 13: Incompatible types in assignment (expression has type , variable has type )
+main, line 14: Incompatible types in assignment (expression has type , variable has type )
+main, line 15: Incompatible types in assignment (expression has type , variable has type )
 
 [case testSkipTypeCheckingWithImplicitSignature]
 from typing import Undefined
@@ -405,9 +405,9 @@ g1 = Undefined # type: Function[[A], None]
 g2 = Undefined # type: Function[[A, A], None]
 a = Undefined # type: A
 
-g0 = a.f # E: Incompatible types in assignment
-g2 = a.f # E: Incompatible types in assignment
-a = a.f  # E: Incompatible types in assignment
+g0 = a.f # E: Incompatible types in assignment (expression has type , variable has type )
+g2 = a.f # E: Incompatible types in assignment (expression has type , variable has type )
+a = a.f  # E: Incompatible types in assignment (expression has type , variable has type "A")
 
 class A:
     def g(self) -> None:
@@ -432,7 +432,7 @@ g0 = Undefined # type: Function[[], None]
 g1 = Undefined # type: Function[[A], None]
 a = Undefined # type: A
 
-g0 = a.f # E: Incompatible types in assignment
+g0 = a.f # E: Incompatible types in assignment (expression has type , variable has type )
 
 g1 = a.f
 a = a.f(a)
@@ -483,7 +483,7 @@ class A:
   def __init__(self, a, b): pass
 [out]
 main, line 6: Too few arguments for "A"
-main, line 7: Incompatible types in assignment
+main, line 7: Incompatible types in assignment (expression has type , variable has type )
 
 [case testUsingImplicitTypeObjectWithIs]
 from typing import Undefined
@@ -508,8 +508,8 @@ t3 = Undefined # type: Tuple[Any, Any]
 t4 = Undefined # type: Tuple[A, A]
 t5 = Undefined # type: Tuple[Any, Any, Any]
 
-t3 = t5 # E: Incompatible types in assignment
-t5 = t4 # E: Incompatible types in assignment
+t3 = t5 # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[Any, Any]")
+t5 = t4 # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[Any, Any, Any]")
 
 t1 = t1
 t1 = t2
@@ -534,7 +534,7 @@ f1 = Undefined # type: Function[[], Any]
 f2 = Undefined # type: Function[[], A]
 f3 = Undefined # type: Function[[], None]
 
-f2 = f3 # E: Incompatible types in assignment
+f2 = f3 # E: Incompatible types in assignment (expression has type , variable has type )
 
 f1 = f2
 f1 = f3
@@ -568,7 +568,7 @@ from typing import Undefined, Any, Function
 f1 = Undefined # type: Function[[Any], None]
 f2 = Undefined # type: Function[[Any, Any], None]
 
-f1 = f2 # E: Incompatible types in assignment
+f1 = f2 # E: Incompatible types in assignment (expression has type , variable has type )
 
 
 -- Overriding

@@ -13,8 +13,8 @@ x = x
 class A: pass
 class B: pass
 [out]
-main, line 4: Incompatible types in assignment
-main, line 6: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInferSimpleLvarType]
 import typing
@@ -29,8 +29,8 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 5: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
+main, line 7: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLvarInitializedToNoneWithoutType]
 import typing
@@ -54,7 +54,7 @@ main: In function "f":
 import typing
 def f(a: 'A') -> None:
     b = a
-    b = B() # E: Incompatible types in assignment
+    b = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     b = a
     a = b
 
@@ -69,7 +69,7 @@ g = Undefined # type: B
 
 def f() -> None:
     a = g
-    a = A() # E: Incompatible types in assignment
+    a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = B()
 
 class A: pass
@@ -110,8 +110,8 @@ def f() -> None:
     a = A(), B()
     aa = Undefined # type: A
     bb = Undefined # type: B
-    bb = a[0] # E: Incompatible types in assignment
-    aa = a[1] # E: Incompatible types in assignment
+    bb = a[0] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    aa = a[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     aa = a[0]
     bb = a[1]
 
@@ -141,7 +141,7 @@ a_s = Undefined # type: A[str]
 
 def f() -> None:
     a = A[int]()
-    a = a_s # E: Incompatible types in assignment
+    a = a_s # E: Incompatible types in assignment (expression has type A[str], variable has type A[int])
     a = a_i
 [builtins fixtures/tuple.py]
 [out]
@@ -182,9 +182,9 @@ main: In function "f":
 import typing
 def f() -> None:
     a, b = A(), B()
-    a = b   # E: Incompatible types in assignment
-    a = B() # E: Incompatible types in assignment
-    b = A() # E: Incompatible types in assignment
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     
     a = A()
     b = B()
@@ -237,10 +237,10 @@ class D: pass
 def f() -> None:
     a, b = List[C]()
     c, d, e = List[D]()
-    a = D() # E: Incompatible types in assignment
-    b = D() # E: Incompatible types in assignment
-    c = C() # E: Incompatible types in assignment
-    b = c   # E: Incompatible types in assignment
+    a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+    b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+    c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+    b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     
     a = C()
     b = C()
@@ -277,8 +277,8 @@ class Nums(Iterable[int]):
     def __next__(self): pass
 a, b = Nums()
 a = b = 1
-a = '' # E: Incompatible types in assignment
-b = '' # E: Incompatible types in assignment
+a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/for.py]
 
 
@@ -572,7 +572,7 @@ def mymap(f: Function[[t], s], a: List[t]) -> List[s]: pass
 
 l = mymap(f, [b])
 l = List[A]()
-l = List[bool]() # E: Incompatible types in assignment
+l = List[bool]() # E: Incompatible types in assignment (expression has type List[bool], variable has type List[A])
 [builtins fixtures/for.py]
 
 
@@ -587,8 +587,8 @@ class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 d = {a:b}
 d = Dict[A, B]()
-d = Dict[A, A]() # E: Incompatible types in assignment
-d = Dict[B, B]() # E: Incompatible types in assignment
+d = Dict[A, A]() # E: Incompatible types in assignment (expression has type Dict[A, A], variable has type Dict[A, B])
+d = Dict[B, B]() # E: Incompatible types in assignment (expression has type Dict[B, B], variable has type Dict[A, B])
 [builtins fixtures/dict.py]
 
 [case testSetLiteral]
@@ -597,7 +597,7 @@ a, x = Undefined, Undefined # type: (int, Any)
 s = {a}
 s = {x}
 s = Set[int]()
-s = Set[str]() # E: Incompatible types in assignment
+s = Set[str]() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
 [builtins fixtures/set.py]
 
 
@@ -610,7 +610,7 @@ from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
 for x in [A()]:
-    b = x # E: Incompatible types in assignment
+    b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
 
 for y in []: # E: Need type annotation for variable
@@ -637,8 +637,8 @@ class A: pass
 class B: pass
 [builtins fixtures/for.py]
 [out]
-main, line 4: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
 main, line 8: Need 3 values to assign
 main, line 10: Need type annotation for variable
 
@@ -647,8 +647,8 @@ from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
 for x, y in [[A()]]:
-    b = x # E: Incompatible types in assignment
-    b = y # E: Incompatible types in assignment
+    b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = y # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
     a = y
 
@@ -670,10 +670,10 @@ def f() -> None: pass
 import typing
 for a in [A()]: pass
 a = A()
-a = B() # E: Incompatible types in assignment
+a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 for a in []: pass
 a = A()
-a = B() # E: Incompatible types in assignment
+a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
 [builtins fixtures/for.py]
@@ -683,10 +683,10 @@ import typing
 def f() -> None:
     for a in [A()]: pass
     a = A()
-    a = B() # E: Incompatible types in assignment
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     for a in []: pass
     a = A()
-    a = B() # E: Incompatible types in assignment
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
 [builtins fixtures/for.py]
@@ -704,8 +704,8 @@ a = Undefined # type: A
 x, a = a, a
 x = a
 a = x
-x = object() # E: Incompatible types in assignment
-a = object() # E: Incompatible types in assignment
+x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 
 [case testMultipleAssignmentWithPartialDefinition2]
@@ -714,8 +714,8 @@ a = Undefined # type: A
 a, x = [a]
 x = a
 a = x
-x = object() # E: Incompatible types in assignment
-a = object() # E: Incompatible types in assignment
+x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [builtins fixtures/for.py]
 
@@ -726,7 +726,7 @@ x, a = Any(a)
 x = a
 a = x
 x = object()
-a = object() # E: Incompatible types in assignment
+a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 
 [case testInferGlobalDefinedInBlock]
@@ -734,7 +734,7 @@ import typing
 if A:
     a = A()
     a = A()
-    a = B() # E: Incompatible types in assignment
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
 
@@ -750,14 +750,14 @@ class A:
 class B: pass
 
 A().a = B()
-A().a = A() # E: Incompatible types in assignment
+A().a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testInferAttributeTypeAndAssignInInit]
 import typing
 class A:
     a = B()
     def __init__(self) -> None:
-        self.a = A() # E: Incompatible types in assignment
+        self.a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         self.a = B()
 class B: pass
 [out]
@@ -773,8 +773,8 @@ class A:
 a = A()
 a.a = A()
 a.b = B()
-a.a = B() # E: Incompatible types in assignment
-a.b = A() # E: Incompatible types in assignment
+a.a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a.b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testInferAttributeInInitUsingChainedAssignment]
 import typing
@@ -785,8 +785,8 @@ class A:
 a = A()
 a.a = A()
 a.b = A()
-a.a = B() # E: Incompatible types in assignment
-a.b = B() # E: Incompatible types in assignment
+a.a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a.b = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 
 -- Lambdas
@@ -797,14 +797,14 @@ a.b = B() # E: Incompatible types in assignment
 from typing import List, Function, Undefined
 l = lambda: List[int]()
 f1 = l # type: Function[[], List[int]]
-f2 = l # type: Function[[], List[str]] # E: Incompatible types in assignment
+f2 = l # type: Function[[], List[str]] # E: Incompatible types in assignment (expression has type , variable has type )
 [builtins fixtures/list.py]
 
 [case testInferLambdaType2]
 from typing import List, Function
 l = lambda: [B()]
 f1 = l # type: Function[[], List[B]]
-f2 = l # type: Function[[], List[A]] # E: Incompatible types in assignment
+f2 = l # type: Function[[], List[A]] # E: Incompatible types in assignment (expression has type , variable has type )
 
 class A: pass
 class B: pass
@@ -821,7 +821,7 @@ a = Undefined # type: List[A]
 o = Undefined # type: List[object]
 a2 = a or []
 a = a2
-a2 = o # E: Incompatible types in assignment
+a2 = o # E: Incompatible types in assignment (expression has type List[object], variable has type List[A])
 class A: pass
 [builtins fixtures/list.py]
 
@@ -861,7 +861,7 @@ x2 = [B(), A()]
 x3 = [B(), B()]
 a = x1
 a = x2
-a = x3 # E: Incompatible types in assignment
+a = x3 # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
 [builtins fixtures/list.py]
 
 [case testListWithDucktypeCompatibilityAndTransitivity]
@@ -877,5 +877,5 @@ x2 = [C(), A()]
 x3 = [B(), C()]
 a = x1
 a = x2
-a = x3 # E: Incompatible types in assignment
+a = x3 # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
 [builtins fixtures/list.py]

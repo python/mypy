@@ -12,7 +12,7 @@
 from typing import Undefined, Function
 f = Undefined # type: Function[[A], B]
 a, b = Undefined, Undefined # type: (A, B)
-a = f(a)    # E: Incompatible types in assignment
+a = f(a)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
 b = f()     # E: Too few arguments
 b = f(a, a) # E: Too many arguments
@@ -26,10 +26,10 @@ from typing import Undefined, Function
 f = Undefined # type: Function[[B], A]
 g = Undefined # type: Function[[A], A]
 h = Undefined # type: Function[[B], B]  # subtype of f
-g = f  # E: Incompatible types in assignment
-g = h  # E: Incompatible types in assignment
-h = f  # E: Incompatible types in assignment
-h = g  # E: Incompatible types in assignment
+g = f  # E: Incompatible types in assignment (expression has type , variable has type )
+g = h  # E: Incompatible types in assignment (expression has type , variable has type )
+h = f  # E: Incompatible types in assignment (expression has type , variable has type )
+h = g  # E: Incompatible types in assignment (expression has type , variable has type )
 f = g
 f = h
 f = f
@@ -43,9 +43,9 @@ class B(A): pass
 from typing import Undefined, Function
 f = Undefined # type: Function[[], None]
 a, o = Undefined, Undefined # type: (A, object)
-a = f   # E: Incompatible types in assignment
-f = a   # E: Incompatible types in assignment
-f = o   # E: Incompatible types in assignment
+a = f   # E: Incompatible types in assignment (expression has type , variable has type "A")
+f = a   # E: Incompatible types in assignment (expression has type "A", variable has type )
+f = o   # E: Incompatible types in assignment (expression has type "object", variable has type )
 f = f() # E: Function does not return a value
 
 f = f
@@ -58,8 +58,8 @@ class A: pass
 from typing import Undefined, Function
 f = Undefined # type: Function[[], None]
 g = Undefined # type: Function[[], object]
-f = g  # E: Incompatible types in assignment
-g = f  # E: Incompatible types in assignment
+f = g  # E: Incompatible types in assignment (expression has type , variable has type )
+g = f  # E: Incompatible types in assignment (expression has type , variable has type )
 
 f = f
 g = g
@@ -69,9 +69,9 @@ from typing import Undefined, Function
 f = Undefined # type: Function[[A, A], None]
 g = Undefined # type: Function[[A, B], None]
 h = Undefined # type: Function[[B, B], None]
-f = g  # E: Incompatible types in assignment
-f = h  # E: Incompatible types in assignment
-g = h  # E: Incompatible types in assignment
+f = g  # E: Incompatible types in assignment (expression has type , variable has type )
+f = h  # E: Incompatible types in assignment (expression has type , variable has type )
+g = h  # E: Incompatible types in assignment (expression has type , variable has type )
 g = f
 h = f
 h = g
@@ -88,10 +88,10 @@ f = Undefined # type: Function[[], None]
 g = Undefined # type: Function[[A], None]
 h = Undefined # type: Function[[A, A], None]
 
-f = g   # E: Incompatible types in assignment
-f = h   # E: Incompatible types in assignment
-h = f   # E: Incompatible types in assignment
-h = g   # E: Incompatible types in assignment
+f = g   # E: Incompatible types in assignment (expression has type , variable has type )
+f = h   # E: Incompatible types in assignment (expression has type , variable has type )
+h = f   # E: Incompatible types in assignment (expression has type , variable has type )
+h = g   # E: Incompatible types in assignment (expression has type , variable has type )
 
 f = f
 g = g
@@ -105,8 +105,8 @@ from typing import Undefined
 t = Undefined # type: type
 a = Undefined # type: A
 
-a = A # E: Incompatible types in assignment
-t = f # E: Incompatible types in assignment
+a = A # E: Incompatible types in assignment (expression has type , variable has type "A")
+t = f # E: Incompatible types in assignment (expression has type , variable has type "type")
 t = A
 
 class A:
@@ -120,7 +120,7 @@ f = Undefined # type: Function[[AA], A]
 g = Undefined # type: Function[[B], B]
 h = Undefined # type: Function[[A], AA]
 
-h = i  # E: Incompatible types in assignment
+h = i  # E: Incompatible types in assignment (expression has type , variable has type )
 f = j
 
 f = i
@@ -155,10 +155,10 @@ g3 = Undefined # type: Function[[C], C]
 g4 = Undefined # type: Function[[A], B]
 a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
-b = f(a)  # E: Incompatible types in assignment
-a = f(b)  # E: Incompatible types in assignment
-b = f(c)  # E: Incompatible types in assignment
-g4 = f    # E: Incompatible types in assignment
+b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(c)  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+g4 = f    # E: Incompatible types in assignment (expression has type , variable has type )
 
 g1 = f
 g2 = f
@@ -191,7 +191,7 @@ def f(x: C) -> C: pass
 [case testCallingFunctionsWithDefaultArgumentValues]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
-a = f()     # E: Incompatible types in assignment
+a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 b = f(a, a) # E: Too many arguments for "f"
 
@@ -208,7 +208,7 @@ class B: pass
 [case testDefaultArgumentExpressions]
 import typing
 def f(x: 'A' = A()) -> None:
-    b = x # type: B # E: Incompatible types in assignment
+    b = x # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
@@ -218,8 +218,8 @@ main: In function "f":
 
 [case testDefaultArgumentExpressions2]
 import typing
-def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment
-    b = x # type: B      # E: Incompatible types in assignment
+def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
@@ -229,7 +229,7 @@ main: In function "f":
 
 [case testDefaultArgumentsWithSubtypes]
 import typing
-def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment
+def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     pass
 def g(x: 'A' = B()) -> None:
     pass
@@ -241,7 +241,7 @@ main: In function "f":
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible types in assignment
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
@@ -253,7 +253,7 @@ main: In function "f":
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     pass
 
 class A: pass
@@ -408,7 +408,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "g":
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
 main: In function "f":
 main, line 7: Argument 1 to "g" has incompatible type "A"; expected "B"
 
@@ -449,7 +449,7 @@ class A:
         g(A()) # fail
 [out]
 main: In function "g":
-main, line 6: Incompatible types in assignment
+main, line 6: Incompatible types in assignment (expression has type "int", variable has type "A")
 main: In member "f" of class "A":
 main, line 8: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
 
@@ -515,7 +515,7 @@ def dec(f): pass
 @dec
 def f(x: 'A') -> None:
     a = x # type: A
-    x = object() # E: Incompatible types in assignment
+    x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [out]
 main: In function "f":
@@ -575,7 +575,7 @@ x = Undefined # type: Any
 if x:
     def f(x: int) -> None: 
         x = 1
-        x = '' # E: Incompatible types in assignment
+        x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: In function "f":
 
@@ -604,7 +604,7 @@ f(1)
 f('x') # fail
 [out]
 main: In function "f":
-main, line 5: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "str", variable has type "int")
 main, line 9: Unsupported left operand type for + ("int")
 main: At top level:
 main, line 12: Argument 1 to "f" has incompatible type "str"; expected "int"
@@ -652,7 +652,7 @@ class A:
     if x:
         def f(self, x: int) -> None: 
             x = 1
-            x = '' # E: Incompatible types in assignment
+            x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: In member "f" of class "A":
 
@@ -694,7 +694,7 @@ A().f(1)
 A().f('x') # fail
 [out]
 main: In member "f" of class "A":
-main, line 6: Incompatible types in assignment
+main, line 6: Incompatible types in assignment (expression has type "str", variable has type "int")
 main, line 10: Unsupported left operand type for + ("int")
 main: At top level:
 main, line 13: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"

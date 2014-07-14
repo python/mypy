@@ -10,11 +10,11 @@ t3 = Undefined # type: Tuple[A, A]
 t4 = Undefined # type: Tuple[A, B]
 t5 = Undefined # type: Tuple[B, A]
 
-t1 = t2 # E: Incompatible types in assignment
-t1 = t3 # E: Incompatible types in assignment
-t3 = t1 # E: Incompatible types in assignment
-t3 = t4 # E: Incompatible types in assignment
-t3 = t5 # E: Incompatible types in assignment
+t1 = t2 # E: Incompatible types in assignment (expression has type "Tuple[B]", variable has type "Tuple[A]")
+t1 = t3 # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A]")
+t3 = t1 # E: Incompatible types in assignment (expression has type "Tuple[A]", variable has type "Tuple[A, A]")
+t3 = t4 # E: Incompatible types in assignment (expression has type "Tuple[A, B]", variable has type "Tuple[A, A]")
+t3 = t5 # E: Incompatible types in assignment (expression has type "Tuple[B, A]", variable has type "Tuple[A, A]")
 
 # Ok
 t1 = t1
@@ -33,10 +33,10 @@ t1 = Undefined # type: Tuple[A, A]
 t2 = Undefined # type: Tuple[A, B]
 t3 = Undefined # type: Tuple[B, A]
 
-t2 = t1  # E: Incompatible types in assignment
-t2 = t3  # E: Incompatible types in assignment
-t3 = t1  # E: Incompatible types in assignment
-t3 = t2  # E: Incompatible types in assignment
+t2 = t1  # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A, B]")
+t2 = t3  # E: Incompatible types in assignment (expression has type "Tuple[B, A]", variable has type "Tuple[A, B]")
+t3 = t1  # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[B, A]")
+t3 = t2  # E: Incompatible types in assignment (expression has type "Tuple[A, B]", variable has type "Tuple[B, A]")
 
 t1 = t2
 t1 = t3
@@ -50,9 +50,9 @@ from typing import Undefined, Tuple
 a, o = Undefined, Undefined # type: (A, object)
 t = Undefined # type: Tuple[A, A]
 
-a = t # E: Incompatible types in assignment
-t = o # E: Incompatible types in assignment
-t = a # E: Incompatible types in assignment
+a = t # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "A")
+t = o # E: Incompatible types in assignment (expression has type "object", variable has type "Tuple[A, A]")
+t = a # E: Incompatible types in assignment (expression has type "A", variable has type "Tuple[A, A]")
 # TODO: callable types + tuples
 
 # Ok
@@ -67,7 +67,7 @@ from typing import Undefined, Tuple
 t1 = Undefined # type: Tuple[A, Tuple[A, A]]
 t2 = Undefined # type: Tuple[B, Tuple[B, B]]
 
-t2 = t1 # E: Incompatible types in assignment
+t2 = t1 # E: Incompatible types in assignment (expression has type "Tuple[A, Tuple[A, A]]", variable has type "Tuple[B, Tuple[B, B]]")
 t1 = t2
 
 class A: pass
@@ -79,7 +79,7 @@ from typing import Undefined, Tuple
 t1 = Undefined # type: Tuple[A, A]
 t2 = Undefined # type: tuple
 
-t1 = t2 # E: Incompatible types in assignment
+t1 = t2 # E: Incompatible types in assignment (expression has type "tuple", variable has type "Tuple[A, A]")
 t2 = t1
 
 class A: pass
@@ -105,11 +105,11 @@ t3 = Undefined # type: Tuple[A, B]
 
 a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
-t2 = ()        # E: Incompatible types in assignment
-t2 = (a, a)    # E: Incompatible types in assignment
-t3 = (a, a)    # E: Incompatible types in assignment
-t3 = (b, b)    # E: Incompatible types in assignment
-t3 = (a, b, a) # E: Incompatible types in assignment
+t2 = ()        # E: Incompatible types in assignment (expression has type "Tuple[]", variable has type "Tuple[A]")
+t2 = (a, a)    # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A]")
+t3 = (a, a)    # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A, B]")
+t3 = (b, b)    # E: Incompatible types in assignment (expression has type "Tuple[B, B]", variable has type "Tuple[A, B]")
+t3 = (a, b, a) # E: Incompatible types in assignment (expression has type "Tuple[A, B, A]", variable has type "Tuple[A, B]")
 
 t1 = ()
 t1 = (a,)
@@ -143,13 +143,13 @@ t2 = Undefined # type: Tuple[A]
 a, b = Undefined, Undefined # type: (A, B)
 n = 0
 
-a = t1[1] # E: Incompatible types in assignment
-b = t1[0] # E: Incompatible types in assignment
+a = t1[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = t1[0] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 t1[2]     # E: Tuple index out of range
 t1[3]     # E: Tuple index out of range
 t2[1]     # E: Tuple index out of range
 t1[n]     # E: Tuple index must an integer literal
-b = t1[(0)] # E: Incompatible types in assignment
+b = t1[(0)] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = t1[0]
 b = t1[1]
@@ -165,11 +165,11 @@ t1 = Undefined(Tuple[A, B])
 t2 = Undefined(Tuple[A])
 a, b = Undefined(A), Undefined(B)
 
-a = t1[-1] # E: Incompatible types in assignment
-b = t1[-2] # E: Incompatible types in assignment
+a = t1[-1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = t1[-2] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 t1[-3]     # E: Tuple index out of range
 t1[-4]     # E: Tuple index out of range
-b = t2[(-1)] # E: Incompatible types in assignment
+b = t2[(-1)] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = t1[-2]
 b = t1[-1]
@@ -203,9 +203,9 @@ t1 = Undefined # type: Tuple[A, B]
 t2 = Undefined # type: Tuple[A, B, A]
 a, b = Undefined, Undefined # type: (A, B)
 
-a, a = t1 # E: Incompatible types in assignment
-b, b = t1 # E: Incompatible types in assignment
-a, b, b = t2 # E: Incompatible types in assignment
+a, a = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b, b = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a, b, b = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a, b = t1
 a, b, a = t2
@@ -231,8 +231,8 @@ class A: pass
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
-a, b = a, a # E: Incompatible types in assignment
-a, b = b, a # E: Incompatible types in assignment
+a, b = a, a # Fail
+a, b = b, a # Fail
 
 a, b = a, b
 a, a = a, a
@@ -240,13 +240,17 @@ a, a = a, a
 class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
+[out]
+main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
+main, line 5: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testSubtypingInMultipleAssignment]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
-b, b = a, b # E: Incompatible types in assignment
-b, b = b, a # E: Incompatible types in assignment
+b, b = a, b # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b, b = b, a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a, b = b, b
 b, a = b, b
@@ -259,8 +263,8 @@ class B(A): pass
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
-a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment
-a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment
+a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a3, b3 = a # type: (A, B)     # E: Incompatible types in assignment
 a4, b4 = None # type: (A, B)  # E: Incompatible types in assignment
 a5, b5 = a, b, a # type: (A, B)  # E: Too many values to assign
@@ -307,8 +311,8 @@ class BB: pass
 [case testMultipleDeclarationWithParentheses]
 from typing import Undefined
 (a, b) = (None, None) # type: int, str
-a = '' # E: Incompatible types in assignment
-b = 1  # E: Incompatible types in assignment
+a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 a = 1
 b = ''
 
@@ -316,12 +320,12 @@ b = ''
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
-(a, b) = (a, a) # E: Incompatible types in assignment
-(a, b) = (b, b) # E: Incompatible types in assignment
-((a), (b)) = ((a), (a))  # E: Incompatible types in assignment
-((a), (b)) = ((b), (b))  # E: Incompatible types in assignment
-[a, b] = a, a  # E: Incompatible types in assignment
-[a, b] = b, b  # E: Incompatible types in assignment
+(a, b) = (a, a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+(a, b) = (b, b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+((a), (b)) = ((a), (a))  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+((a), (b)) = ((b), (b))  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+[a, b] = a, a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+[a, b] = b, b  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 (a, b) = (a, b)
 ((a), (b)) = ((a), (b))
@@ -336,24 +340,24 @@ from typing import Undefined, Tuple
 a, b = Undefined(Tuple[int, str])
 a = 1
 b = ''
-a = '' # E: Incompatible types in assignment
-b = 1  # E: Incompatible types in assignment
+a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testMultipleAssignmentUsingRepeatedUndefinedWithArgument]
 from typing import Undefined
 a, b = Undefined(int), Undefined(str)
 a = 1
 b = ''
-a = '' # E: Incompatible types in assignment
-b = 1  # E: Incompatible types in assignment
+a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testMultipleAssignmentUsingUndefinedWithArgumentAndNormalExpression]
 from typing import Undefined
 a, b = Undefined(int), ''
 a = 1
 b = ''
-a = '' # E: Incompatible types in assignment
-b = 1  # E: Incompatible types in assignment
+a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
 -- Error messages
@@ -398,9 +402,9 @@ i = 0
 s = ''
 b = bool()
 
-s = t.__len__()  # E: Incompatible types in assignment
-i = t.__str__()  # E: Incompatible types in assignment
-i = s in t       # E: Incompatible types in assignment
+s = t.__len__()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+i = t.__str__()  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+i = s in t       # E: Incompatible types in assignment (expression has type "bool", variable has type "int")
 t.foo            # E: "tuple" has no attribute "foo"
 
 i = t.__len__()
@@ -429,7 +433,7 @@ import typing
 t = 1, 2
 for x in t:
     x = 1
-    x = '' # E: Incompatible types in assignment
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/for.py]
 
 [case testForLoopOverEmptyTuple]
@@ -451,5 +455,5 @@ class B(A): pass
 for x in B(), A():
     x = A()
     x = B()
-    x = '' # E: Incompatible types in assignment
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 [builtins fixtures/for.py]

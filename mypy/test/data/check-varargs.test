@@ -10,8 +10,8 @@ from typing import Undefined, List
 def f( *b: 'B') -> None:
     ab = Undefined # type: List[B]
     ac = Undefined # type: List[C]
-    b = ac # E: Incompatible types in assignment
-    ac = b # E: Incompatible types in assignment
+    b = ac # E: Incompatible types in assignment (expression has type List[C], variable has type List[B])
+    ac = b # E: Incompatible types in assignment (expression has type List[B], variable has type List[C])
     b = ab
     ab = b
 
@@ -361,18 +361,18 @@ main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"; expected
 from typing import Undefined, overload, disjointclass
 a, b = Undefined, Undefined # type: (A, B)
 
-b = f()        # E: Incompatible types in assignment
-b = f(a)       # E: Incompatible types in assignment
-b = f(a, b)    # E: Incompatible types in assignment
-a = f(b)       # E: Incompatible types in assignment
-a = f(b, b)    # E: Incompatible types in assignment
-b = f(a, *[b]) # E: Incompatible types in assignment
+b = f()        # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(a)       # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(a, b)    # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(b)       # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = f(b, b)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(a, *[b]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = f(*())
-b = f(*(a,))   # E: Incompatible types in assignment
-b = f(*(a, b)) # E: Incompatible types in assignment
-a = f(*(b,))   # E: Incompatible types in assignment
-a = f(*(b, b)) # E: Incompatible types in assignment
-a = f(*[b])    # E: Incompatible types in assignment
+b = f(*(a,))   # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(*(a, b)) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(*(b,))   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = f(*(b, b)) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = f(*[b])    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 a = f()
 a = f(a)
@@ -470,8 +470,8 @@ a, aa = G().f(*[a])  # Fail
 aa, a = G().f(*[a])  # Fail
 ab, aa = G().f(*[a]) # Fail
 
-ao, ao = G().f(*[a]) # E: Incompatible types in assignment
-aa, aa = G().f(*[a]) # E: Incompatible types in assignment
+ao, ao = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[None], variable has type List[object])
+aa, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[None], variable has type List[A])
 
 class G(Generic[T]):
     def f(self, *a: S) -> Tuple[List[S], List[T]]:
@@ -481,10 +481,11 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 9: Incompatible types in assignment
-main, line 10: Incompatible types in assignment
+main, line 9: Incompatible types in assignment (expression has type List[A], variable has type "A")
+main, line 9: Incompatible types in assignment (expression has type List[None], variable has type List[A])
+main, line 10: Incompatible types in assignment (expression has type List[None], variable has type "A")
 main, line 11: Argument 1 to "f" of "G" has incompatible type List[A]; expected "B"
-main, line 11: Incompatible types in assignment
+main, line 11: Incompatible types in assignment (expression has type List[None], variable has type List[A])
 
 
 -- Comment signatures

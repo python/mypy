@@ -43,7 +43,7 @@ class object:
   def __init__(self): pass
 class int: pass
 [out]
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "int", variable has type "A")
 
 [case testStrLiteral]
 from typing import Undefined
@@ -60,7 +60,7 @@ class object:
   def __init__(self): pass
 class str: pass
 [out]
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "str", variable has type "A")
 
 [case testFloatLiteral]
 from typing import Undefined
@@ -75,7 +75,7 @@ class object:
   def __init__(self): pass
 class float: pass
 [out]
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "float", variable has type "A")
 
 [case testBytesLiteral]
 from typing import Undefined
@@ -83,7 +83,7 @@ b, a = Undefined, Undefined # type: (bytes, A)
 b = b'foo'
 b = br"foo"
 b = b'''foo'''
-a = b'foo' # E: Incompatible types in assignment
+a = b'foo' # E: Incompatible types in assignment (expression has type "bytes", variable has type "A")
 class A: pass
 [file builtins.py]
 class object:
@@ -95,7 +95,7 @@ from typing import Undefined
 s = Undefined(str)
 s = u'foo'
 b = Undefined(bytes)
-b = u'foo' # E: Incompatible types in assignment
+b = u'foo' # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
 [builtins fixtures/primitives.py]
 
 
@@ -117,7 +117,7 @@ class B: pass
 class C: pass
 [out]
 main, line 3: Unsupported operand types for + ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for + ("B")
 [case testAdd]
 from typing import Undefined
@@ -136,7 +136,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for + ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for + ("B")
 
 [case testSub]
@@ -156,7 +156,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for - ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for - ("B")
 
 [case testMul]
@@ -176,7 +176,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for * ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for * ("B")
 
 [case testDiv]
@@ -196,7 +196,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for / ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for / ("B")
 
 [case testIntDiv]
@@ -216,7 +216,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for // ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for // ("B")
 
 [case testMod]
@@ -236,7 +236,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for % ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for % ("B")
 
 [case testPow]
@@ -256,7 +256,7 @@ class C:
     pass
 [out]
 main, line 3: Unsupported operand types for ** ("A" and "C")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for ** ("B")
 
 [case testMiscBinaryOperators]
@@ -292,10 +292,10 @@ from typing import Undefined
 a, b = Undefined, Undefined # type: (A, bool)
 b = b and b
 b = b or b
-b = b and a # E: Incompatible types in assignment
-b = a and b # E: Incompatible types in assignment
-b = b or a  # E: Incompatible types in assignment
-b = a or b  # E: Incompatible types in assignment
+b = b and a # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
+b = a and b # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
+b = b or a  # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
+b = a or b  # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
 class A: pass
 [builtins fixtures/bool.py]
 
@@ -305,9 +305,9 @@ c, d, b = Undefined, Undefined, Undefined # type: (C, D, bool)
 c = c or c
 c = c or d
 c = d or c
-b = c or c # E: Incompatible types in assignment
-d = c or d # E: Incompatible types in assignment
-d = d or c # E: Incompatible types in assignment
+b = c or c # E: Incompatible types in assignment (expression has type "C", variable has type "bool")
+d = c or d # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+d = d or c # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 class C: pass
 class D(C): pass
 [builtins fixtures/bool.py]
@@ -327,7 +327,7 @@ class C: pass
 [builtins fixtures/bool.py]
 [out]
 main, line 3: Unsupported operand types for in ("bool" and "A")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 main, line 5: Unsupported right operand type for in ("B")
 
 [case testNotInOperator]
@@ -345,7 +345,7 @@ class C: pass
 [builtins fixtures/bool.py]
 [out]
 main, line 3: Unsupported operand types for in ("bool" and "A")
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 main, line 5: Unsupported right operand type for in ("B")
 
 [case testNonBooleanContainsReturnValue]
@@ -358,7 +358,7 @@ class A:
   def __contains__(self, x: 'A') -> object: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "object", variable has type "bool")
 
 [case testEq]
 from typing import Undefined
@@ -373,8 +373,8 @@ class A:
   def __ne__(self, o: object) -> bool: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 3: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testLtAndGt]
 from typing import Undefined
@@ -392,8 +392,8 @@ class B:
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 3: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testLeAndGe]
 from typing import Undefined
@@ -411,8 +411,8 @@ class B:
     def __ge__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 3: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testIs]
 from typing import Undefined
@@ -424,7 +424,7 @@ b = a is None
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testIsNot]
 from typing import Undefined
@@ -436,7 +436,7 @@ b = a is not None
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testReverseBinaryOperator]
 from typing import Undefined, disjointclass
@@ -449,7 +449,7 @@ s = Undefined(str)
 n = Undefined(int)
 n = A() + 1
 s = A() + B()
-n = A() + B() # E: Incompatible types in assignment
+n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReverseBinaryOperator2]
 from typing import Undefined, disjointclass
@@ -461,7 +461,7 @@ class B:
 s = Undefined(str)
 n = Undefined(int)
 s = A() + B()
-n = A() + B() # E: Incompatible types in assignment
+n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReverseBinaryOperator3]
 from typing import Undefined, disjointclass
@@ -493,7 +493,7 @@ s = Undefined(str)
 n = Undefined(int)
 n = A() < C()
 s = A() < B()
-n = A() < B() # E: Incompatible types in assignment
+n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 s = object() < B() # E: Unsupported operand types for > ("B" and "object")
 
 [case testErrorContextAndBinaryOperators]
@@ -551,7 +551,7 @@ class A:
 class B:
     pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
 main, line 4: Unsupported operand type for unary - ("B")
 
 [case testUnaryPlus]
@@ -580,7 +580,7 @@ class A:
     pass
 [builtins fixtures/bool.py]
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testUnaryBitwiseNeg]
 from typing import Undefined
@@ -595,7 +595,7 @@ class A:
 class B:
     pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
 main, line 4: Unsupported operand type for ~ ("B")
 
 
@@ -618,7 +618,7 @@ class B: pass
 class C: pass
 [out]
 main, line 3: Invalid index type "C" for "A"
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Value of type "B" is not indexable
 
 [case testIndexingAsLvalue]
@@ -655,7 +655,7 @@ a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
 a = cast(A, a())       # E: "A" not callable
 a = cast(Any, a())     # E: "A" not callable
-b = cast(A, a)         # E: Incompatible types in assignment
+b = cast(A, a)         # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = cast(A, b)
 a = cast(A, a)
@@ -767,10 +767,10 @@ class A:
 [case testGetSlice]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
-a = a[1:2] # E: Incompatible types in assignment
-a = a[1:]  # E: Incompatible types in assignment
-a = a[:2]  # E: Incompatible types in assignment
-a = a[:]   # E: Incompatible types in assignment
+a = a[1:2] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = a[1:]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = a[:2]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = a[:]   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 b = a[1:2]
 b = a[1:]
@@ -829,7 +829,7 @@ f = lambda: ''
 [out]
 main, line 3: "str" has no attribute "x"
 main, line 4: Incompatible return value type
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type , variable has type )
 
 
 -- List comprehensions
@@ -896,7 +896,7 @@ import typing
 y = ''
 x = 1 if y else 2
 x = 3
-x = '' # E: Incompatible types in assignment
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testConditionalExpressionWithEmptyCondition]
 import typing
@@ -909,10 +909,10 @@ class A: pass
 class B(A): pass
 x = B() if None else A()
 x = A()
-x = '' # E: Incompatible types in assignment
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 y = A() if None else B()
 y = A()
-y = '' # E: Incompatible types in assignment
+y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 
 [case testConditionalExpressionAndTypeContext]
 import typing

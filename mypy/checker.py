@@ -895,7 +895,8 @@ class TypeChecker(NodeVisitor[Type]):
                 self.store_type(rvalue, lvalue_type)
                 return
             rvalue_type = self.accept(rvalue, lvalue_type)
-            self.check_subtype(rvalue_type, lvalue_type, context, msg)
+            self.check_subtype(rvalue_type, lvalue_type, context, msg,
+                               'expression has type', 'variable has type')
         elif index_lvalue:
             self.check_indexed_assignment(index_lvalue, rvalue, context)
     
@@ -1274,13 +1275,22 @@ class TypeChecker(NodeVisitor[Type]):
     #
     
     def check_subtype(self, subtype: Type, supertype: Type, context: Context,
-                       msg: str = messages.INCOMPATIBLE_TYPES) -> None:
+                       msg: str = messages.INCOMPATIBLE_TYPES,
+                       subtype_label: str = None,
+                       supertype_label: str = None) -> None:
         """Generate an error if the subtype is not compatible with
         supertype."""
         if not is_subtype(subtype, supertype):
             if isinstance(subtype, Void):
                 self.msg.does_not_return_value(subtype, context)
             else:
+                extra_info = [] # type: [str]
+                if subtype_label is not None:
+                    extra_info.append(subtype_label + ' ' + self.msg.format_simple(subtype))
+                if supertype_label is not None:
+                    extra_info.append(supertype_label + ' ' + self.msg.format_simple(supertype))
+                if extra_info:
+                    msg += ' (' + ', '.join(extra_info) + ')'
                 self.fail(msg, context)
     
     def named_type(self, name: str) -> Instance:

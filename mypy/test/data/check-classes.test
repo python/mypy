@@ -68,7 +68,7 @@ class A:
         a = object() # type: A    # Fail
 [out]
 main: In member "f" of class "A":
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testMethodArguments]
 import typing
@@ -83,9 +83,9 @@ class A:
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 4: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
-main, line 9: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+main, line 5: Incompatible types in assignment (expression has type "A", variable has type "B")
+main, line 9: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testReturnFromMethod]
 import typing
@@ -109,7 +109,7 @@ class A:
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
 main, line 5: "A" has no attribute "g"
 
 [case testAssignToMethodViaInstance]
@@ -152,8 +152,8 @@ b.a     # Fail
 a.a = a
 a.b = b
 [out]
-main, line 9: Incompatible types in assignment
-main, line 10: Incompatible types in assignment
+main, line 9: Incompatible types in assignment (expression has type "B", variable has type "A")
+main, line 10: Incompatible types in assignment (expression has type "A", variable has type "B")
 main, line 11: "B" has no attribute "a"
 
 [case testExplicitAttributeInBody]
@@ -164,7 +164,7 @@ a.x = A()
 class A:
   x = Undefined # type: A
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testAttributeDefinedInNonInitMethod]
 import typing
@@ -176,7 +176,7 @@ class A:
 a = A()
 a.x = 1
 a.y = ''
-a.x = '' # E: Incompatible types in assignment
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 a.z = 0  # E: "A" has no attribute "z"
 
 [case testInheritanceAndAttributeAssignment]
@@ -186,7 +186,7 @@ class A:
         self.x = 0
 class B(A):
     def f(self) -> None:
-        self.x = '' # E: Incompatible types in assignment
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: In member "f" of class "B":
 
@@ -201,9 +201,9 @@ class A:
         self.x = '' # Fail
 [out]
 main: In member "g" of class "A":
-main, line 6: Incompatible types in assignment
+main, line 6: Incompatible types in assignment (expression has type "str", variable has type "int")
 main: In member "__init__" of class "A":
-main, line 8: Incompatible types in assignment
+main, line 8: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 -- Method overriding
@@ -310,7 +310,7 @@ class A:
     def __init__(self) -> None: pass
 class B: pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testConstructor]
 import typing
@@ -322,7 +322,7 @@ class A:
 class B: pass
 [out]
 main, line 3: Argument 1 to "A" has incompatible type "object"; expected "B"
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testConstructorWithTwoArguments]
 import typing
@@ -378,7 +378,7 @@ def __init__() -> 'A': pass
 class A: pass
 class B: pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testAccessingInit]
 from typing import Undefined, Any
@@ -405,10 +405,10 @@ class C(B): pass
 class D(C): pass
 class D2(C): pass
 [out]
-main, line 2: Incompatible types in assignment
-main, line 3: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
+main, line 2: Incompatible types in assignment (expression has type "C", variable has type "D")
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "D")
+main, line 4: Incompatible types in assignment (expression has type "A", variable has type "D")
+main, line 5: Incompatible types in assignment (expression has type "D2", variable has type "D")
 
 
 -- Attribute access in class body
@@ -423,8 +423,8 @@ class A:
     y = x
     b = x # type: B
     b = x
-    c = x # type: A # E: Incompatible types in assignment
-    c = b   # E: Incompatible types in assignment
+    c = x # type: A # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    c = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [out]
 main: In class "A":
 
@@ -437,8 +437,8 @@ class A:
     h = f # type: Function[[A], None]
     h = f
     g = h
-    ff = f # type: Function[[B], None]  # E: Incompatible types in assignment
-    g = ff                # E: Incompatible types in assignment
+    ff = f # type: Function[[B], None]  # E: Incompatible types in assignment (expression has type , variable has type )
+    g = ff                # E: Incompatible types in assignment (expression has type , variable has type )
 [out]
 main: In class "A":
 
@@ -453,10 +453,10 @@ class B: pass
 class A:
     for x in [A()]:
         y = x
-        y = B() # E: Incompatible types in assignment
+        y = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     x = A()
     y = A()
-    x = B() # E: Incompatible types in assignment
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [builtins fixtures/for.py]
 [out]
 main: In class "A":
@@ -481,7 +481,7 @@ class B: pass
 class A:
     x = None # type: A
 a = A.x # type: A
-b = A.x # type: B # E: Incompatible types in assignment
+b = A.x # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testAccessingUndefinedAttributeViaClass]
 import typing
@@ -514,7 +514,7 @@ class B: pass
 class A:
     x = None # type: B
 A.x = B()
-A.x = object()  # E: Incompatible types in assignment
+A.x = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "B")
 
 [case testAssignmentToInferredClassDataAttribute]
 import typing
@@ -522,7 +522,7 @@ class B: pass
 class A:
      x = B()
 A.x = B()
-A.x = A()   # E: Incompatible types in assignment
+A.x = A()   # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testInitMethodUnbound]
 from typing import Undefined
@@ -568,7 +568,7 @@ import typing
 class A:
     class B: pass
     b = B()
-    b = A() # E: Incompatible types in assignment
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     b = B(b) # E: Too many arguments for "B"
 [out]
 main: In class "A":
@@ -580,7 +580,7 @@ class A:
         class B:
             def __init__(self, a: 'A') -> None: pass
         b = B(A())
-        b = A() # E: Incompatible types in assignment
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         b = B() # E: Too few arguments for "B"
 [out]
 main: In member "f" of class "A":
@@ -591,7 +591,7 @@ def f() -> None:
     class A: pass
     a = Undefined # type: A
     a = A()
-    a = object() # E: Incompatible types in assignment
+    a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [out]
 main: In function "f":
 
@@ -601,7 +601,7 @@ class A:
     class B: pass
 b = Undefined # type: A.B
 b = A.B()
-b = A() # E: Incompatible types in assignment
+b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = A.B(b) # E: Too many arguments for "B"
 
 
@@ -616,13 +616,13 @@ class A:
         self.x = None # type: int
 a = Undefined # type: A
 a.x = 1
-a.x = '' # E: Incompatible types in assignment
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testAccessAttributeDeclaredInInitBeforeDeclaration]
 from typing import Undefined
 a = Undefined # type: A
 a.x = 1
-a.x = '' # E: Incompatible types in assignment
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 class A:
     def __init__(self):
         self.x = None # type: int
@@ -673,7 +673,7 @@ class A:
     x = Undefined(int)
 a = Undefined(A)
 a.x = 1
-a.x = '' # E: Incompatible types in assignment
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDeclareInstanceVariableUsingUndefinedWithArgument]
 from typing import Undefined
@@ -682,14 +682,14 @@ class A:
         self.x = Undefined(int)
 a = Undefined(A)
 a.x = 1
-a.x = '' # E: Incompatible types in assignment
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testAccessInstanceVariableDeclaredUsingUndefinedWithArgumentBeforeDecl]
 from typing import Undefined
 class A:
     def f(self) -> None:
         self.x = 1
-        self.x = '' # E: Incompatible types in assignment
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     def __init__(self):
         self.x = Undefined(int)
 [out]
@@ -730,7 +730,7 @@ class A:
 a = A() # type. A
 s = ''  # type: str
 s = a.f
-a = a.f  # E: Incompatible types in assignment
+a = a.f  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 [builtins fixtures/property.py]
 
 [case testAssigningToReadOnlyProperty]
@@ -747,7 +747,7 @@ class A:
     @property
     def f(self) -> str:
         self.x = 1
-        self.x = '' # E: Incompatible types in assignment
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.py]
 [out]
 main: In member "f" of class "A":
@@ -794,7 +794,7 @@ class B: pass
 a = Undefined(A)
 b = Undefined(B)
 a = b
-b = a # E: Incompatible types in assignment
+b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testDucktypeTransitivityDecorator]
 from typing import ducktype, Undefined
@@ -806,7 +806,7 @@ class C: pass
 a = Undefined(A)
 c = Undefined(C)
 a = c
-c = a # E: Incompatible types in assignment
+c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
 
 
 -- Disjointclass decorators
@@ -1099,7 +1099,7 @@ class A(int): pass
 n = 0
 n = A()
 a = A()
-a = 0 # E: Incompatible types in assignment
+a = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 
 
 -- TODO

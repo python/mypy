@@ -161,8 +161,8 @@ class A: pass
 from typing import Dict, Any
 def f( **kwargs: 'A') -> None:
     d1 = kwargs # type: Dict[str, A]
-    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment
-    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment
+    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[A, Any])
+    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[Any, str])
 class A: pass
 [builtins fixtures/dict.py]
 [out]
@@ -173,7 +173,7 @@ from typing import Dict, Any
 def f(**kwargs) -> None:
     d1 = kwargs # type: Dict[str, A]
     d2 = kwargs # type: Dict[str, str]
-    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment
+    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[A, Any])
 class A: pass
 [builtins fixtures/dict.py]
 [out]
