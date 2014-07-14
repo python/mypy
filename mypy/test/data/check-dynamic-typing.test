@@ -59,7 +59,7 @@ class B: pass
 from typing import Undefined, Any
 a, b = Undefined, Undefined # type: (A, B)
 
-a = f(b) # E: Argument 1 to "f" has incompatible type "B"
+a = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 a = f(a)
 b = f(a)
@@ -579,7 +579,7 @@ f1 = f2 # E: Incompatible types in assignment
 from typing import Undefined, Any
 a, b = Undefined, Undefined # type: (A, B)
 
-b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
+b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
 a = a.f(b)
 
 class B:
@@ -597,7 +597,7 @@ class A(B):
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 
-b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
+b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
 a = a.f(b)
 
 class B:

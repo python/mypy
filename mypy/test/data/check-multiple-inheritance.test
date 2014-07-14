@@ -16,9 +16,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 c.g('')
-c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"
+c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
 
 [case testSimpleMultipleInheritanceAndMethods2]
 import typing
@@ -29,7 +29,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 c.g('')
 c.g(1)
 
@@ -87,7 +87,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testInstanceVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
 import typing

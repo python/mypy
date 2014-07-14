@@ -123,7 +123,7 @@ t = typevar('t')
 ab, ac, b, c = Undefined, Undefined, Undefined, Undefined # type: (A[B], A[C], B, C)
 b = f(ab)
 c = f(ac)
-b = f(ac) # E: Argument 1 to "f" has incompatible type A[C]
+b = f(ac) # E: Argument 1 to "f" has incompatible type A[C]; expected A[B]
 b = f(b)
 c = f(b)  # E: Incompatible types in assignment
 @overload
@@ -310,7 +310,7 @@ n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment
 m = 'x' # E: Incompatible types in assignment
-f(List[object]()) # E: Argument 1 to "f" has incompatible type List[object]
+f(List[object]()) # E: Argument 1 to "f" has incompatible type List[object]; expected List[int]
 [builtins fixtures/list.py]
 
 [case testOverlappingOverloadSignatures]

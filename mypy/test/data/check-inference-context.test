@@ -43,8 +43,8 @@ ab = Undefined # type: A[B]
 ao = Undefined # type: A[object]
 ac = Undefined # type: A[C]
 
-ac = f(b) # E: Argument 1 to "f" has incompatible type "B"
-ab = f(c) # E: Argument 1 to "f" has incompatible type "C"
+ac = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
+ab = f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "B"
 
 ao = f(b)
 ab = f(b)
@@ -214,10 +214,10 @@ b = Undefined # type: B
 c = Undefined # type: C
 o = Undefined # type: object
 
-ab = f(b, o) # E: Argument 2 to "f" has incompatible type "object"
-ab = f(o, b) # E: Argument 1 to "f" has incompatible type "object"
-ac = f(b, c) # E: Argument 1 to "f" has incompatible type "B"
-ac = f(c, b) # E: Argument 2 to "f" has incompatible type "B"
+ab = f(b, o) # E: Argument 2 to "f" has incompatible type "object"; expected "B"
+ab = f(o, b) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
+ac = f(b, c) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
+ac = f(c, b) # E: Argument 2 to "f" has incompatible type "B"; expected "C"
 
 ao = f(b, c)
 ao = f(c, b)
@@ -243,7 +243,7 @@ ao = Undefined # type: A[object]
 b = Undefined # type: B
 o = Undefined # type: object
 
-aab = f(f(o)) # E: Argument 1 to "f" has incompatible type "object"
+aab = f(f(o)) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
 
 aab = f(f(b))
 aao = f(f(b))
@@ -262,7 +262,7 @@ ao = Undefined # type: A[object]
 b = Undefined # type: B
 o = Undefined # type: object
 
-ab = f(g(o)) # E: Argument 1 to "g" has incompatible type "object"
+ab = f(g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
 
 ab = f(g(b))
 ao = f(g(b))
@@ -282,8 +282,8 @@ ao = Undefined # type: A[object]
 b = Undefined # type: B
 o = Undefined # type: object
 
-ab = f(g(o), g(b)) # E: Argument 1 to "g" has incompatible type "object"
-ab = f(g(b), g(o)) # E: Argument 1 to "g" has incompatible type "object"
+ab = f(g(o), g(b)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
+ab = f(g(b), g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
 
 ab = f(g(b), g(b))
 ao = f(g(b), g(o))
@@ -312,9 +312,9 @@ ao = Undefined # type: A[object]
 ab = Undefined # type: A[B]
 ac = Undefined # type: A[C]
 
-ab.g(f(o))        # E: Argument 1 to "f" has incompatible type "object"
+ab.g(f(o))        # E: Argument 1 to "f" has incompatible type "object"; expected "B"
 ac = f(b).g(f(c)) # E: Incompatible types in assignment
-ac = f(c).g(f(b)) # E: Argument 1 to "f" has incompatible type "B"
+ac = f(c).g(f(b)) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
 
 ab = f(b).g(f(c))
 ab.g(f(c))
@@ -465,7 +465,7 @@ d = {A()    : A[C](),
 [case testInitializationWithInferredGenericType]
 from typing import typevar, Generic
 T = typevar('T')
-c = f(A()) # type: C[A] # E: Argument 1 to "f" has incompatible type "A"
+c = f(A()) # type: C[A] # E: Argument 1 to "f" has incompatible type "A"; expected C[A]
 
 def f(x: T) -> T: pass
 class C(Generic[T]): pass
@@ -475,7 +475,7 @@ class A: pass
 from typing import typevar, Generic
 T = typevar('T')
 def t() -> 'A[B]':
-    return f(D()) # E: Argument 1 to "f" has incompatible type "D"
+    return f(D()) # E: Argument 1 to "f" has incompatible type "D"; expected "B"
     return A()
     return f(C())
 
@@ -655,7 +655,7 @@ s = typevar('s')
 # Some type variables can be inferred using context, but not all of them.
 a = Undefined # type: List[A]
 a = f(A(), B())
-a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"
+a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
@@ -668,7 +668,7 @@ t = typevar('t')
 # Like testSomeTypeVarsInferredFromContext, but tvars in different order.
 a = Undefined # type: List[A]
 a = f(A(), B())
-a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"
+a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass

@@ -260,7 +260,7 @@ class I(metaclass=ABCMeta):
 i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
 
 a = i.f(a) # E: Incompatible types in assignment
-b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"
+b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
 i.g()      # E: "I" has no attribute "g"
 
 b = i.f(a)
@@ -484,7 +484,7 @@ import typing
 from abc import abstractmethod, ABCMeta
 class A(metaclass=ABCMeta):
     def f(self) -> None:
-        self.g(1) # E: Argument 1 to "g" of "A" has incompatible type "int"
+        self.g(1) # E: Argument 1 to "g" of "A" has incompatible type "int"; expected "str"
     @abstractmethod
     def g(self, x: str) -> None: pass
 [out]

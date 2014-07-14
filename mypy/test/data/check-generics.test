@@ -33,7 +33,7 @@ class A(Generic[T]):
 class B: pass
 class C: pass
 [out]
-main, line 3: Argument 1 to "f" of "A" has incompatible type "C"
+main, line 3: Argument 1 to "f" of "A" has incompatible type "C"; expected "B"
 
 [case testGenericMemberVariable]
 from typing import typevar, Generic, Undefined
@@ -158,8 +158,8 @@ class A(Generic[S, T]):
 class B: pass
 class C: pass
 [out]
-main, line 8: Argument 2 to "f" of "A" has incompatible type "B"
-main, line 9: Argument 1 to "f" of "A" has incompatible type "C"
+main, line 8: Argument 2 to "f" of "A" has incompatible type "B"; expected "C"
+main, line 9: Argument 1 to "f" of "A" has incompatible type "C"; expected "B"
 
 [case testMultipleGenericTypeParametersAndSubtyping]
 from typing import Undefined, typevar, Generic
@@ -208,7 +208,7 @@ x = Undefined # type: B
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 7: Argument 1 to "f" of "A" has incompatible type "B"
+main, line 7: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
 main, line 8: Incompatible types in assignment
 
 [case testGenericTypeBodyWithMultipleVariables]
@@ -393,7 +393,7 @@ b = Undefined # type: B
 def id(a: T) -> T:
     return a
 
-b = id[B](a)  # E: Argument 1 to "id" has incompatible type "A"
+b = id[B](a)  # E: Argument 1 to "id" has incompatible type "A"; expected "B"
 a = id[B](b)  # E: Incompatible types in assignment
 a = id[A](a)
 
@@ -413,8 +413,8 @@ c = Undefined # type: C
 
 def f(a: S, b: t[S, T]) -> t[S, T]: pass
 
-tbc = f[B, C](c, tbc) # E: Argument 1 to "f" has incompatible type "C"
-tbc = f[B, C](b, tbb) # E: Argument 2 to "f" has incompatible type t[B, B]
+tbc = f[B, C](c, tbc) # E: Argument 1 to "f" has incompatible type "C"; expected "B"
+tbc = f[B, C](b, tbb) # E: Argument 2 to "f" has incompatible type t[B, B]; expected t[B, C]
 tbb = f[B, C](b, tbc) # E: Incompatible types in assignment
 tbc = f[B, C](b, tbc)
 
@@ -531,7 +531,7 @@ ab = Undefined # type: A[B]
 b = Undefined # type: B
 c = Undefined # type: C
 
-ac = A[C](b, b) # E: Argument 1 to "A" has incompatible type "B"
+ac = A[C](b, b) # E: Argument 1 to "A" has incompatible type "B"; expected "C"
 ab = A[C](c, b) # E: Incompatible types in assignment
 ac = A[C](c, b)
 
@@ -548,8 +548,8 @@ abc = Undefined # type: A[B, C]
 acb = Undefined # type: A[C, B]
 b, c = Undefined, Undefined # type: (B, C)
 
-abc = A[B, C](b, b) # E: Argument 1 to "A" has incompatible type "B"
-abc = A[B, C](c, c) # E: Argument 2 to "A" has incompatible type "C"
+abc = A[B, C](b, b) # E: Argument 1 to "A" has incompatible type "B"; expected "C"
+abc = A[B, C](c, c) # E: Argument 2 to "A" has incompatible type "C"; expected "B"
 acb = A[B, C](c, b) # E: Incompatible types in assignment
 abc = A[B, C](c, b)
 acb = A[C, B](b, c)
@@ -563,8 +563,8 @@ class B: pass
 class C: pass
 a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
-a = A[B](b, c) # E: Argument 2 to "A" has incompatible type "C"
-a = A[B](c, b) # E: Argument 1 to "A" has incompatible type "C"
+a = A[B](b, c) # E: Argument 2 to "A" has incompatible type "C"; expected "B"
+a = A[B](c, b) # E: Argument 1 to "A" has incompatible type "C"; expected "B"
 b = A[B](b, b) # E: Incompatible types in assignment
 
 a = A[B](b, b)
@@ -667,7 +667,7 @@ G = typevar('G')
 class O: pass
 a = Undefined # type: A[object, object, object, object, object, object]
 
-f(a) # E: Argument 1 to "f" has incompatible type A[...]
+f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "O"
 
 def f(a: O) -> None:
     pass
@@ -678,7 +678,7 @@ from typing import Undefined, typevar, Generic
 S = typevar('S')
 T = typevar('T')
 a = Undefined # type: A[object, B]
-f(a) # E: Argument 1 to "f" has incompatible type A[object, B]
+f(a) # E: Argument 1 to "f" has incompatible type A[object, B]; expected "B"
 
 def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass
@@ -689,7 +689,7 @@ from typing import Undefined, Function, typevar, Generic
 S = typevar('S')
 T = typevar('T')
 a = Undefined # type: A[object, Function[[], None]]
-f(a) # E: Argument 1 to "f" has incompatible type A[object, function]
+f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "B"
 
 def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass

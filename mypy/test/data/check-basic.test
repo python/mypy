@@ -88,7 +88,7 @@ f(B()) # Fail
 class A: pass
 class B: pass
 [out]
-main, line 4: Argument 1 to "f" has incompatible type "B"
+main, line 4: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 [case testNotCallable]
 import typing
@@ -106,7 +106,7 @@ f(B(), B())
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Argument 2 to "f" has incompatible type "A"
+main, line 3: Argument 2 to "f" has incompatible type "A"; expected "B"
 
 [case testInvalidArgumentCount]
 import typing
@@ -316,7 +316,7 @@ f('')
 main: In function "f":
 main, line 2: Incompatible return value type
 main: At top level:
-main, line 3: Argument 1 to "f" has incompatible type "str"
+main, line 3: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodSignatureAsComment]
 class A:
@@ -327,9 +327,9 @@ class A:
 A().f('') # Fail
 [out]
 main: In member "f" of class "A":
-main, line 4: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 4: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main, line 5: Incompatible return value type
 main: At top level:
-main, line 6: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 6: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 

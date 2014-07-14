@@ -13,7 +13,7 @@ from typing import Undefined, Function
 f = Undefined # type: Function[[A], B]
 a, b = Undefined, Undefined # type: (A, B)
 a = f(a)    # E: Incompatible types in assignment
-b = f(b)    # E: Argument 1 has incompatible type "B"
+b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
 b = f()     # E: Too few arguments
 b = f(a, a) # E: Too many arguments
 b = f(a)
@@ -192,7 +192,7 @@ def f(x: C) -> C: pass
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 a = f()     # E: Incompatible types in assignment
-b = f(b)    # E: Argument 1 to "f" has incompatible type "B"
+b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 b = f(a, a) # E: Too many arguments for "f"
 
 b = f()
@@ -267,7 +267,7 @@ def f(x = 1): # type: (int) -> str
     pass
 f()
 f(1)
-f('') # E: Argument 1 to "f" has incompatible type "str"
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodDefaultArgumentsAndSignatureAsComment]
 import typing
@@ -276,7 +276,7 @@ class A:
         pass
 A().f()
 A().f(1)
-A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 
 -- Access to method defined as a data attribute
@@ -350,7 +350,7 @@ class A(Generic[t]):
     g = f
 a = Undefined # type: A[B]
 a.g(B())
-a.g(a)   # E: Argument 1 has incompatible type A[B]
+a.g(a)   # E: Argument 1 has incompatible type A[B]; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
 from typing import Undefined, Any, typevar, Generic, Function
@@ -410,7 +410,7 @@ class B: pass
 main: In function "g":
 main, line 4: Incompatible types in assignment
 main: In function "f":
-main, line 7: Argument 1 to "g" has incompatible type "A"
+main, line 7: Argument 1 to "g" has incompatible type "A"; expected "B"
 
 [case testReturnAndNestedFunction]
 import typing
@@ -451,7 +451,7 @@ class A:
 main: In function "g":
 main, line 6: Incompatible types in assignment
 main: In member "f" of class "A":
-main, line 8: Argument 1 to "g" of "A" has incompatible type "A"
+main, line 8: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
 
 
 -- Casts
@@ -482,7 +482,7 @@ def dec(f: t) -> t:
 @dec
 def f(x: int) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testTrivialStaticallyTypedMethodDecorator]
 from typing import typevar
@@ -493,7 +493,7 @@ class A:
     @dec
     def f(self, x: int) -> None: pass
 A().f(1)
-A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 class B: pass
 
 [case testTrivialDecoratedNestedFunction]
@@ -505,7 +505,7 @@ def g() -> None:
     @dec
     def f(x: int) -> None: pass
     f(1)
-    f('') # E: Argument 1 to "f" has incompatible type "str"
+    f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
 main: In function "g":
 
@@ -552,7 +552,7 @@ f(None) # E: Too many arguments for "f"
 from typing import Any, Function
 def dec1(f: Function[[Any], None]) -> Function[[], None]: pass
 def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec2" has incompatible type
+@dec1 # E: Argument 1 to "dec2" has incompatible type Function[["Any"] -> "Any"]; expected Function[["Any", "Any"] -> None]
 @dec2
 def f(x): pass
 
@@ -560,7 +560,7 @@ def f(x): pass
 from typing import Any, Function
 def dec1(f: Function[[Any, Any], None]) -> Function[[], None]: pass
 def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec1" has incompatible type
+@dec1 # E: Argument 1 to "dec1" has incompatible type Function[["Any"] -> None]; expected Function[["Any", "Any"] -> None]
 @dec2
 def f(x, y): pass
 
@@ -585,9 +585,9 @@ x = Undefined # type: Any
 if x:
     def f(x: int) -> None:  pass
     f(1)
-    f('x') # E: Argument 1 to "f" has incompatible type "str"
+    f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testConditionalFunctionDefinitionWithIfElse]
 from typing import Undefined, Any
@@ -607,7 +607,7 @@ main: In function "f":
 main, line 5: Incompatible types in assignment
 main, line 9: Unsupported left operand type for + ("int")
 main: At top level:
-main, line 12: Argument 1 to "f" has incompatible type "str"
+main, line 12: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
 from typing import Undefined, Any
@@ -663,9 +663,9 @@ class A:
     if x:
         def f(self, x: int) -> None:  pass
         f(x, 1)
-        f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"
+        f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
     f(x, 1)
-    f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"
+    f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
 [out]
 main: In class "A":
 
@@ -676,7 +676,7 @@ class A:
     if x:
          def f(self, x: int) -> None: pass
 A().f(1)
-A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"
+A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testConditionalMethodDefinitionWithIfElse]
 from typing import Undefined, Any
@@ -697,7 +697,7 @@ main: In member "f" of class "A":
 main, line 6: Incompatible types in assignment
 main, line 10: Unsupported left operand type for + ("int")
 main: At top level:
-main, line 13: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 13: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]
 from typing import Undefined, Any
@@ -725,6 +725,6 @@ try:
 except:
     def g(x: str) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
-g(1) # E: Argument 1 to "g" has incompatible type "int"
+g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"

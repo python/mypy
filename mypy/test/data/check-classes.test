@@ -18,7 +18,7 @@ class A:
 class B:
     def bar(self, x: 'B', y: A) -> None: pass
 [out]
-main, line 5: Argument 1 to "foo" of "A" has incompatible type "B"
+main, line 5: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
 main, line 6: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]
@@ -34,7 +34,7 @@ class A:
     def bar(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main, line 5: Argument 1 to "bar" of "A" has incompatible type "A"
+main, line 5: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
 
 [case testInheritingMethod]
 from typing import Undefined
@@ -46,7 +46,7 @@ class A:
     def foo(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main, line 3: Argument 1 to "foo" of "A" has incompatible type "A"
+main, line 3: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
 [case testMethodCallWithInvalidNumberOfArguments]
 from typing import Undefined
@@ -59,7 +59,7 @@ class A:
 [out]
 main, line 3: Too few arguments for "foo" of "A"
 main, line 4: Too many arguments for "foo" of "A"
-main, line 4: Argument 1 to "foo" of "A" has incompatible type "object"
+main, line 4: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
 
 [case testMethodBody]
 import typing
@@ -321,7 +321,7 @@ class A:
     def __init__(self, x: 'B') -> None: pass
 class B: pass
 [out]
-main, line 3: Argument 1 to "A" has incompatible type "object"
+main, line 3: Argument 1 to "A" has incompatible type "object"; expected "B"
 main, line 4: Incompatible types in assignment
 
 [case testConstructorWithTwoArguments]
@@ -333,7 +333,7 @@ class A:
 class B: pass
 class C(B): pass
 [out]
-main, line 2: Argument 2 to "A" has incompatible type "B"
+main, line 2: Argument 2 to "A" has incompatible type "B"; expected "C"
 
 [case testInheritedConstructor]
 import typing
@@ -345,7 +345,7 @@ class B(A): pass
 class C: pass
 class D: pass
 [out]
-main, line 3: Argument 1 to "B" has incompatible type "D"
+main, line 3: Argument 1 to "B" has incompatible type "D"; expected "C"
 
 [case testOverridingWithIncompatibleConstructor]
 import typing
@@ -471,7 +471,7 @@ import typing
 class A:
     def f(self) -> None: pass
 A.f(A())
-A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"
+A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"; expected "A"
 A.f()             # E: Too few arguments for "f" of "A"
 A.f(None, None)   # E: Too many arguments for "f" of "A"
 
@@ -532,8 +532,8 @@ class A:
 a = Undefined # type: A
 b = Undefined # type: B
 A.__init__(a, b)
-A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"
-A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"
+A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"; expected "A"
+A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"; expected "B"
 
 [case testAssignToMethodViaClass]
 import typing
@@ -707,14 +707,14 @@ class A:
   def f(x: int) -> None: pass
 A.f(1)
 A().f(1)
-A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
-A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins fixtures/staticmethod.py]
 
 [case testBuiltinStaticMethod]
 import typing
 int.from_bytes(b'', '')
-int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"
+int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
 [builtins fixtures/staticmethod.py]
 
 

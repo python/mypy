@@ -114,7 +114,7 @@ S = typevar('S')
 b = Undefined # type: B[C, D]
 c, d = Undefined, Undefined # type: (C, D)
 
-b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
+b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"; expected "D"
 b.f(d)
 
 class A(Generic[T]):
@@ -129,7 +129,7 @@ from typing import Undefined, typevar, Generic
 T = typevar('T')
 b, c, d = Undefined, Undefined, Undefined # type: (B, C, D)
 
-b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
+b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"; expected "D"
 b.f(d)
 
 class C: pass
@@ -262,7 +262,7 @@ c = Undefined # type: C
 bc = Undefined # type: B[C]
 
 a.x = c # E: Incompatible types in assignment
-a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
+a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
 a.x = bc
 a.f(bc)
 [out]
@@ -282,7 +282,7 @@ class B(Generic[T]):
 class A(B):
   def g(self) -> None:
     self.x = c # E: Incompatible types in assignment
-    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
+    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
     self.x = bc
     self.f(bc)
 
@@ -314,7 +314,7 @@ class B(Generic[T]):
     def f(self, a: T) -> None: pass
 class A(B[S], Generic[T, S]):
     def g(self, t: T, s: S) -> None:
-        super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"
+        super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
 main: In member "g" of class "A":
@@ -331,7 +331,7 @@ class D: pass
 class B(C[D, D, T], Generic[T]): pass
 class A(B[S], Generic[T, S]):
     def g(self, t: T, s: S) -> None:
-        super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"
+        super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
 main: In member "g" of class "A":
@@ -578,7 +578,7 @@ class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 ia = Undefined # type: I[A]
 
-ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"
+ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"; expected "A"
 ia.f(a)
 
 [case testAccessingInheritedGenericABCMembers]
@@ -594,7 +594,7 @@ class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 ia = Undefined # type: I[A]
 
-ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"
+ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"; expected "A"
 ia.f(a)
 
 

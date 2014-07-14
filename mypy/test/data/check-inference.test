@@ -151,7 +151,7 @@ main: In function "f":
 import typing
 def f() -> None:
     a = g
-    a(B()) # E: Argument 1 has incompatible type "B"
+    a(B()) # E: Argument 1 has incompatible type "B"; expected "A"
     a(A())
 
 def g(a: 'A') -> None: pass
@@ -293,9 +293,9 @@ a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: Tuple[A, object]
 
-b = id(a) # E: Argument 1 to "id" has incompatible type "A"
-a = id(b) # E: Argument 1 to "id" has incompatible type "B"
-a = id(c) # E: Argument 1 to "id" has incompatible type "Tuple[A, object]"
+b = id(a) # E: Argument 1 to "id" has incompatible type "A"; expected "B"
+a = id(b) # E: Argument 1 to "id" has incompatible type "B"; expected "A"
+a = id(c) # E: Argument 1 to "id" has incompatible type "Tuple[A, object]"; expected "A"
 
 a = id(a)
 b = id(b)
@@ -315,7 +315,7 @@ def f() -> None:
     a = id
     b = Undefined # type: int
     c = Undefined # type: str
-    b = a(c) # E: Argument 1 has incompatible type "str"
+    b = a(c) # E: Argument 1 has incompatible type "str"; expected "int"
     b = a(b)
     c = a(c)
 def id(x: T) -> T:
@@ -361,8 +361,8 @@ T = typevar('T')
 a = Undefined # type: A
 b = Undefined # type: B
 
-b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"
-b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"
+b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 a = f(a, b)
 a = f(b, a)
 
@@ -393,10 +393,10 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 9: Argument 2 to "f" has incompatible type "B"
-main, line 10: Argument 1 to "f" has incompatible type "B"
-main, line 11: Argument 1 to "f" has incompatible type "A"
-main, line 11: Argument 2 to "f" has incompatible type "B"
+main, line 9: Argument 2 to "f" has incompatible type "B"; expected "A"
+main, line 10: Argument 1 to "f" has incompatible type "B"; expected "A"
+main, line 11: Argument 1 to "f" has incompatible type "A"; expected "B"
+main, line 11: Argument 2 to "f" has incompatible type "B"; expected "A"
 
 [case testConstraintSolvingWithSimpleGenerics]
 from typing import Undefined, typevar, Generic
@@ -405,11 +405,11 @@ ao = Undefined # type: A[object]
 ab = Undefined # type: A[B]
 ac = Undefined # type: A[C]
 
-ab = f(ao) # E: Argument 1 to "f" has incompatible type A[object]
-ao = f(ab) # E: Argument 1 to "f" has incompatible type A[B]
-ab = f(ac) # E: Argument 1 to "f" has incompatible type A[C]
-ab = g(ao) # E: Argument 1 to "g" has incompatible type A[object]
-ao = g(ab) # E: Argument 1 to "g" has incompatible type A[B]
+ab = f(ao) # E: Argument 1 to "f" has incompatible type A[object]; expected A[B]
+ao = f(ab) # E: Argument 1 to "f" has incompatible type A[B]; expected A[object]
+ab = f(ac) # E: Argument 1 to "f" has incompatible type A[C]; expected A[B]
+ab = g(ao) # E: Argument 1 to "g" has incompatible type A[object]; expected A[B]
+ao = g(ab) # E: Argument 1 to "g" has incompatible type A[B]; expected A[object]
 
 ab = f(ab)
 ac = f(ac)
@@ -448,8 +448,8 @@ T = typevar('T')
 a = Undefined # type: A
 o = Undefined # type: object
 
-a = f(o)    # E: Argument 1 to "f" has incompatible type "object"
-a = g(a, o) # E: Argument 2 to "g" has incompatible type "object"
+a = f(o)    # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+a = g(a, o) # E: Argument 2 to "g" has incompatible type "object"; expected "A"
 
 o = f()
 o = f(o)
@@ -486,11 +486,11 @@ g(a)
 b = f(A(), B())
 g(b)
 c = f(A(), D())
-g(c) # E: Argument 1 to "g" has incompatible type "object"
+g(c) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
 d = f(D(), A())
-g(d) # E: Argument 1 to "g" has incompatible type "object"
+g(d) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
 e = f(D(), C())
-g(e) # E: Argument 1 to "g" has incompatible type "object"
+g(e) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
 
 [case testGenericFunctionInferenceWithMultipleInheritance2]
 from typing import typevar
@@ -509,13 +509,13 @@ def h(x: J) -> None: pass
 
 a = f(B(), C())
 g(a)
-h(a) # E: Argument 1 to "h" has incompatible type "I"
+h(a) # E: Argument 1 to "h" has incompatible type "I"; expected "J"
 b = f(C(), B())
 g(b)
-h(b) # E: Argument 1 to "h" has incompatible type "I"
+h(b) # E: Argument 1 to "h" has incompatible type "I"; expected "J"
 c = f(A(), B())
 g(a)
-h(b) # E: Argument 1 to "h" has incompatible type "I"
+h(b) # E: Argument 1 to "h" has incompatible type "I"; expected "J"
 
 [case testGenericFunctionInferenceWithMultipleInheritance3]
 from typing import typevar
@@ -533,9 +533,9 @@ def f(a: T, b: T) -> T: pass
 def g(x: K) -> None: pass
 
 a = f(B(), C())
-g(a) # E: Argument 1 to "g" has incompatible type "object"
+g(a) # E: Argument 1 to "g" has incompatible type "object"; expected "K"
 b = f(A(), C())
-g(b) # E: Argument 1 to "g" has incompatible type "object"
+g(b) # E: Argument 1 to "g" has incompatible type "object"; expected "K"
 c = f(A(), B())
 g(c)
 

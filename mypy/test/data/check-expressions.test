@@ -567,7 +567,7 @@ class A:
 class B:
     pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
 main, line 4: Unsupported operand type for unary + ("B")
 
 [case testUnaryNot]
@@ -851,7 +851,7 @@ a = Undefined # type: List[A]
 b = Undefined # type: List[B]
 b = [f(x) for x in a]
 a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]
-([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"
+([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
@@ -940,8 +940,8 @@ def f() -> None:
     pass
 [out]
 main, line 5: Unsupported left operand type for + (None)
-main, line 6: Unsupported left operand type for + (function)
-main, line 7: Unsupported operand types for + ("A" and function)
+main, line 6: Unsupported left operand type for + (Function[[] -> None])
+main, line 7: Unsupported operand types for + ("A" and Function[[] -> None])
 
 [case testOperatorMethodWithInvalidArgCount]
 from typing import Undefined
@@ -972,7 +972,7 @@ s = Undefined(str)
 s = A() + 1
 A() + (A() + 1)
 [out]
-main, line 7: Argument 1 has incompatible type "str"
+main, line 7: Argument 1 has incompatible type "str"; expected "int"
 
 [case testIndexedLvalueWithSubtypes]
 from typing import Undefined

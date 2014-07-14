@@ -366,7 +366,7 @@ a = Undefined # type: A
 
 (a, a) + a  # E: Unsupported left operand type for + ("tuple")
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
-f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"
+f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
 (a, a).foo  # E: "tuple" has no attribute "foo"
 
 def f(x: 'A') -> None: pass

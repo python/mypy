@@ -243,8 +243,8 @@ class A:
 a = A()
 a += 1
 a *= ''
-a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"
-a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"
+a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"; expected "int"
+a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"; expected "str"
 
 
 -- Assert statement
@@ -516,7 +516,7 @@ except E as e:
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 del b[a]
-del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"
+del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"; expected "A"
 del a[a] # E: "A" has no attribute "__delitem__"
 del a[b] # E: "A" has no attribute "__delitem__"
 class B:
@@ -711,14 +711,14 @@ import typing
 foo = int
 def f(x: foo) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testTypeAliasDefinedInAModule]
 import typing
 import m
 def f(x: m.foo) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 import typing
 foo = int
@@ -728,7 +728,7 @@ import typing
 from m import foo
 def f(x: foo) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 import typing
 foo = int

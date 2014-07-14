@@ -4,7 +4,7 @@
 import m
 import typing
 m.f()           # E: Too few arguments for "f"
-m.f(object())   # E: Argument 1 to "f" has incompatible type "object"
+m.f(object())   # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 m.x = object()  # E: Incompatible types in assignment
 m.f(m.A())
 m.x = m.A()
@@ -16,7 +16,7 @@ x = A()
 [case testAccessImportedDefinitions]
 import m
 import typing
-m.f(object()) # E: Argument 1 to "f" has incompatible type "object"
+m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 m.f(m.A())
 [file m.py]
 class A: pass
@@ -25,7 +25,7 @@ def f(a: A) -> None: pass
 [case testAccessImportedDefinitions2]
 from m import f, A
 import typing
-f(object()) # E: Argument 1 to "f" has incompatible type "object"
+f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 f(A())
 [file m.py]
 class A: pass
@@ -173,7 +173,7 @@ x = y = 1
 import m
 import typing
 m.f(1)
-m.f('x') # E: Argument 1 to "f" has incompatible type "str"
+m.f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 x = object()
 if x:

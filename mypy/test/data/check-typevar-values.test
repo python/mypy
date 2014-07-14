@@ -312,8 +312,8 @@ X = typevar('X', values=(A, B))
 class C(Generic[X]):
     def f(self, x: X) -> None:
         x.f(1)
-        x.g(1) # E: Argument 1 to "g" of "B" has incompatible type "int"
-        x.h(1) # E: Argument 1 to "h" of "A" has incompatible type "int"
+        x.g(1) # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
+        x.h(1) # E: Argument 1 to "h" of "A" has incompatible type "int"; expected "str"
 [out]
 main: In member "f" of class "C":
 
@@ -361,8 +361,8 @@ class C(Generic[X, Y]):
         x.f(y)
 [out]
 main: In member "f" of class "C":
-main, line 10: Argument 1 to "f" of "A" has incompatible type "str"
-main, line 10: Argument 1 to "f" of "B" has incompatible type "int"
+main, line 10: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main, line 10: Argument 1 to "f" of "B" has incompatible type "int"; expected "str"
 
 [case testMultipleClassTypevarsWithValues2]
 from typing import typevar, Generic, Undefined
