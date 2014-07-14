@@ -83,6 +83,32 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
         
         raise AssertionFailure(msg)
 
+def update_testcase_output(testcase, output, append):
+    newfile = testcase.file + append
+    data_lines = open(testcase.file).read().splitlines()
+    test = '\n'.join(data_lines[testcase.line:testcase.lastline])
+
+    mapping = {} # type: Dict[str, List[str]]
+    for old, new in zip(testcase.output, output):
+        ind = old.index(':')
+        if ind != -1 and old[:ind] == new[:ind]:
+            old, new = old[ind:], new[ind:]
+        mapping.setdefault(old, []).append(new)
+
+    for old in mapping:
+        if test.count(old) == len(mapping[old]):
+            betweens = test.split(old)
+
+            #interleave betweens and mapping[old]
+            from itertools import chain
+            interleaved = [betweens[0]] + \
+                list(chain.from_iterable(zip(mapping[old], betweens[1:])))
+            test = ''.join(interleaved)
+
+    data_lines[testcase.line:testcase.lastline] = [test]
+    data = '\n'.join(data_lines)
+    with open(newfile, 'w') as f:
+        print(data, file=f)
 
 def show_align_message(s1: str, s2: str) -> None:
     """Align s1 and s2 so that the their first difference is highlighted.
