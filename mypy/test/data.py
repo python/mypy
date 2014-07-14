@@ -205,7 +205,7 @@ def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
-        ret.append(TestItem(id, arg, data, fnam, i + 1))
+        ret.append(TestItem(id, arg, data, fnam, i0 + 1))
     
     return ret
 
