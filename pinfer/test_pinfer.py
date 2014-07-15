@@ -67,7 +67,7 @@ class TestInfer(unittest.TestCase):
         
         e2 = Either((i, f))
         self.assertEqual(len(e2.types), 2)
-        self.assertEqual(str(e2), 'Either(int, float)')
+        self.assertEqual(str(e2), 'Either(float, int)')
 
         self.assertEqual(e2, Either((i, f)))
         self.assertEqual(e2, Either((f, i)))
@@ -82,7 +82,7 @@ class TestInfer(unittest.TestCase):
         optfloat = Either((None, self.float))
         self.assertEqual(str(optfloat), 'Optional(float)')
         eithernone = Either((self.int, self.float, None))
-        self.assertEqual(str(eithernone), 'Either(int, float, None)')
+        self.assertEqual(str(eithernone), 'Either(None, float, int)')
 
     def test_unknown(self):
         unknown = Unknown()
@@ -223,7 +223,7 @@ class TestInfer(unittest.TestCase):
         f('x', 1.1)
         f()
         self.assert_infer_state(
-            'def f(x: Either(str, int), y: Optional(float)) -> None')
+            'def f(x: Either(int, str), y: Optional(float)) -> None')
 
     def test_infer_varargs(self):
         @pinfer.infer_signature
@@ -250,7 +250,7 @@ class TestInfer(unittest.TestCase):
         def f(a, **kwargs): pass
         f(None, x=1, y='x')
         self.assert_infer_state(
-            'def f(a: None, kwargs: Either(str, int)) -> None')
+            'def f(a: None, kwargs: Either(int, str)) -> None')
 
     def test_infer_keyword_only_args(self):
         @pinfer.infer_signature
