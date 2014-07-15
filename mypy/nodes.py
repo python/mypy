@@ -114,7 +114,7 @@ class MypyFile(SymbolNode):
     names = Undefined('SymbolTable')
     imports = Undefined(List['ImportBase'])    # All import nodes within the file
     
-    def __init__(self, defs: List[Node], imports: List[Node],
+    def __init__(self, defs: List[Node], imports: List['ImportBase'],
                  is_bom: bool = False) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
