@@ -542,7 +542,7 @@ del a.z # E: "A" has no attribute "z"
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    yield '' # E: Incompatible types
+    yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
@@ -587,6 +587,13 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
     return
+[builtins fixtures/for.py]
+
+[case testYieldWithoutValue]
+from typing import Iterator, typevar
+T = typevar('T')
+def f() -> Iterator[T]:
+    yield
 [builtins fixtures/for.py]
 
 

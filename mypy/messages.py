@@ -34,6 +34,7 @@ INVALID_RETURN_TYPE_FOR_YIELD = \
                          'Iterator function return type expected for "yield"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
+INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
                                      'Type of getter incompatible with setter'
