@@ -531,15 +531,21 @@ def f:
 import typing
 class A:
     def __neg__(self) -> int: pass
+    def __pos__(self) -> int: pass
     def __invert__(self) -> int: pass
 def f(a: A) -> int:
     return -a
 def g(a: A) -> int:
+    return +a
+def h(a: A) -> int:
     return ~a
 [out]
 def f:
     r1 = r0.__neg__() [A]
     return r1
 def g:
+    r1 = r0.__pos__() [A]
+    return r1
+def h:
     r1 = r0.__invert__() [A]
     return r1

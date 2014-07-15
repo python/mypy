@@ -1321,7 +1321,7 @@ x = x in a
 a: A = Undefined
 x = {Any <= int {A x} in a}
 
-[case testUnaryOperator]
+[case testUnaryMinusOperator]
 from typing import Undefined, Any
 class A:
     def __neg__(self) -> bool: pass
@@ -1333,6 +1333,19 @@ x = -a
 ...
 a: A = Undefined
 x = {Any <= bool -a}
+
+[case testUnaryPlusOperator]
+from typing import Undefined, Any
+class A:
+    def __pos__(self) -> bool: pass
+x = Undefined # type: Any
+a = Undefined # type: A
+x = +a
+[builtins fixtures/ops.py]
+[out]
+...
+a: A = Undefined
+x = {Any <= bool +a}
 
 [case testTransformBinaryOpOperands]
 from typing import Any, Undefined
@@ -1358,7 +1371,7 @@ a[f(1)]
 a: A = Undefined
 a[f({Any <= int 1})]
 
-[case testTransformUnaryOperand]
+[case testTransformUnaryMinusOperand]
 from typing import Any
 class A:
     def __neg__(self) -> int: pass
@@ -1367,3 +1380,13 @@ def f(x: Any) -> A: pass
 [out]
 ...
 -f({Any <= int 1})
+
+[case testTransformUnaryPlusOperand]
+from typing import Any
+class A:
+    def __pos__(self) -> int: pass
+def f(x: Any) -> A: pass
++f(1)
+[out]
+...
++f({Any <= int 1})
