@@ -95,8 +95,12 @@ def infer_var(name, value):
 
 
 def infer_attrs(x):
-    cls = type(x).__name__
-    typedict = type(x).__dict__
+    if hasattr(x, '__class__'):
+        t = x.__class__
+    else:
+        t = type(x)
+    cls = t.__name__
+    typedict = t.__dict__
     for dict in x.__dict__, typedict:
         for attr, value in dict.items():
             if attr in ('__dict__', '__doc__', '__module__', '__weakref__'):
@@ -326,7 +330,7 @@ def simplify_either(x, y):
         return result[0]
 
 
-class TypeBase:
+class TypeBase(object):
     """Abstract base class of all type objects.
 
     Type objects use isinstance tests librarally -- they don't support duck
