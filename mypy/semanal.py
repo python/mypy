@@ -74,6 +74,12 @@ from mypy.parsetype import parse_str_as_type, TypeParseError
 T = typevar('T')
 
 
+# Inferred value of an expression.
+ALWAYS_TRUE = 0
+ALWAYS_FALSE = 1
+TRUTH_VALUE_UNKOWN = 2
+
+
 class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
@@ -112,7 +118,8 @@ class SemanticAnalyzer(NodeVisitor):
     imports = Undefined(Set[str])  # Imported modules (during phase 2 analysis)
     errors = Undefined(Errors)     # Keep track of generated errors
     
-    def __init__(self, lib_path: List[str], errors: Errors) -> None:
+    def __init__(self, lib_path: List[str], errors: Errors,
+                 pyversion: int = 3) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -128,6 +135,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
+        self.pyversion = pyversion
     
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -1017,10 +1025,34 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'continue' outside loop", s)
     
     def visit_if_stmt(self, s: IfStmt) -> None:
+        always_true = False
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
-            self.visit_block(s.body[i])
-        self.visit_block_maybe(s.else_body)
+            result = self.infer_if_condition_value(s.expr[i])
+            if result == ALWAYS_FALSE:
+                # The condition is always false, so we skip the if/elif body.
+                s.body[i].is_unreachable = True
+            else:
+                self.visit_block(s.body[i])
+                if result == ALWAYS_TRUE:
+                    # This condition is always true, so all of the remaining
+                    # elif/else bodies will never be executed.
+                    always_true = True
+                    for body in s.body[i + 1:]:
+                        body.is_unreachable = True
+                        s.else_body.is_unreachable = True
+                    break
+        else:
+            self.visit_block_maybe(s.else_body)
+
+    def infer_if_condition_value(self, node: Node) -> int:
+        if isinstance(node, RefExpr):
+            short_name = node.fullname.split('.')[-1]
+            if short_name == 'PY2':
+                return ALWAYS_TRUE if self.pyversion == 2 else ALWAYS_FALSE
+            elif short_name == 'PY3':
+                return ALWAYS_TRUE if self.pyversion == 3 else ALWAYS_TRUE
+        return TRUTH_VALUE_UNKOWN
     
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
