@@ -20,3 +20,12 @@ def search_function(encoding):
                                 streamwriter=utf8.streamwriter)
 
 codecs.register(search_function)
+
+def main():
+    fn = sys.argv[1]
+    with open(fn) as fp:
+        data = fp.read()
+    print(codecs.decode(data, 'py3annot'))
+
+if __name__ == '__main__':
+    main()
