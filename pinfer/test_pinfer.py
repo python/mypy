@@ -67,7 +67,7 @@ class TestInfer(unittest.TestCase):
         
         e2 = Either((i, f))
         self.assertEqual(len(e2.types), 2)
-        self.assertEqual(str(e2), 'Either(float, int)')
+        self.assertEqual(str(e2), 'Either[float, int]')
 
         self.assertEqual(e2, Either((i, f)))
         self.assertEqual(e2, Either((f, i)))
@@ -78,11 +78,11 @@ class TestInfer(unittest.TestCase):
 
     def test_either_as_optional(self):
         optint = Either((self.int, None))
-        self.assertEqual(str(optint), 'Optional(int)')
+        self.assertEqual(str(optint), 'Optional[int]')
         optfloat = Either((None, self.float))
-        self.assertEqual(str(optfloat), 'Optional(float)')
+        self.assertEqual(str(optfloat), 'Optional[float]')
         eithernone = Either((self.int, self.float, None))
-        self.assertEqual(str(eithernone), 'Either(None, float, int)')
+        self.assertEqual(str(eithernone), 'Either[None, float, int]')
 
     def test_unknown(self):
         unknown = Unknown()
@@ -144,15 +144,15 @@ class TestInfer(unittest.TestCase):
         # List
         self.assert_infer_type([], 'List[Unknown]')
         self.assert_infer_type([1], 'List[int]')
-        self.assert_infer_type([1, None], 'List[Optional(int)]')
+        self.assert_infer_type([1, None], 'List[Optional[int]]')
         # Dict
         self.assert_infer_type({1: 'x', 2: None},
-                               'Dict[int, Optional(str)]')
+                               'Dict[int, Optional[str]]')
         # Set
-        self.assert_infer_type({1, None}, 'Set[Optional(int)]')
+        self.assert_infer_type({1, None}, 'Set[Optional[int]]')
         # Tuple
         self.assert_infer_type((1, 'x'), 'Tuple[int, str]')
-        self.assert_infer_type((1, None) * 100, 'TupleSequence[Optional(int)]')
+        self.assert_infer_type((1, None) * 100, 'TupleSequence[Optional[int]]')
 
     def assert_infer_type(self, value, type):
         self.assertEqual(str(pinfer.infer_value_type(value)), type)
@@ -163,7 +163,7 @@ class TestInfer(unittest.TestCase):
         pinfer.infer_var('x', 1)
         pinfer.infer_var('x', None)
         pinfer.infer_var('y', 1.1)
-        self.assert_infer_state('x: Optional(int)\n'
+        self.assert_infer_state('x: Optional[int]\n'
                                 'y: float')
 
     def test_infer_instance_var(self):
@@ -196,7 +196,7 @@ class TestInfer(unittest.TestCase):
         f(1)
         f(None)
         self.assertEqual(f.__name__, 'f')
-        self.assert_infer_state('def f(a: Optional(int)) -> str')
+        self.assert_infer_state('def f(a: Optional[int]) -> str')
 
     def test_infer_function_with_two_args(self):
         @pinfer.infer_signature
@@ -205,7 +205,7 @@ class TestInfer(unittest.TestCase):
         f(1, 2)
         f(1, 'x')
         self.assert_infer_state(
-            'def f(x: int, y: Either(int, str)) -> Either(int, str)')
+            'def f(x: int, y: Either[int, str]) -> Either[int, str]')
 
     def test_infer_method(self):
         class A:
@@ -223,14 +223,14 @@ class TestInfer(unittest.TestCase):
         f('x', 1.1)
         f()
         self.assert_infer_state(
-            'def f(x: Either(int, str), y: Optional(float)) -> None')
+            'def f(x: Either[int, str], y: Optional[float]) -> None')
 
     def test_infer_varargs(self):
         @pinfer.infer_signature
         def f(x, *y): pass
         f(1)
         f(1, 'x', None)
-        self.assert_infer_state('def f(x: int, y: Optional(str)) -> None')
+        self.assert_infer_state('def f(x: int, y: Optional[str]) -> None')
         f(1)
         self.assert_infer_state('def f(x: int) -> None')
 
@@ -250,7 +250,7 @@ class TestInfer(unittest.TestCase):
         def f(a, **kwargs): pass
         f(None, x=1, y='x')
         self.assert_infer_state(
-            'def f(a: None, kwargs: Either(int, str)) -> None')
+            'def f(a: None, kwargs: Either[int, str]) -> None')
 
     def test_infer_class(self):
         @pinfer.infer_class

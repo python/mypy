@@ -275,7 +275,7 @@ def combine_types(x, y):
     """Perform a union of two types.
 
     >>> combine_types(Instance(int), None)
-    Optional(int)
+    Optional[int]
     """
     if isinstance(x, Unknown):
         return y
@@ -405,9 +405,9 @@ class Either(TypeBase):
         types = self.types
         if len(types) == 2 and None in types:
             type = [t for t in types if t is not None][0]
-            return 'Optional(%s)' % type
+            return 'Optional[%s]' % type
         else:
-            return 'Either(%s)' % (', '.join(sorted(str(t) for t in types)))
+            return 'Either[%s]' % (', '.join(sorted(str(t) for t in types)))
 
 
 class Unknown(TypeBase):
