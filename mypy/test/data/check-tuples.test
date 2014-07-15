@@ -457,3 +457,9 @@ for x in B(), A():
     x = B()
     x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 [builtins fixtures/for.py]
+
+[case testTupleIterable]
+y = 'a'
+x = sum((1,2))
+y = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.py]

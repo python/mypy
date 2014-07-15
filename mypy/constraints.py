@@ -7,7 +7,7 @@ from mypy.types import (
     Instance, TupleType, Overloaded, ErasedType
 )
 from mypy.expandtype import expand_caller_var_args
-from mypy.subtypes import map_instance_to_supertype
+from mypy.subtypes import map_instance_to_supertype, is_named_instance
 from mypy import nodes
 
 
@@ -188,6 +188,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args)
+        if (isinstance(actual, TupleType) and is_named_instance(template, 'typing.Iterable')
+            and self.direction == SUPERTYPE_OF):
+            res = [] # type: List[Constraint]
+            for item in actual.items:
+                cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
+                res.extend(cb)
+            return res
         else:
             return []
     
