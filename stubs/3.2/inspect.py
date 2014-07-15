@@ -4,11 +4,9 @@ from typing import Undefined, Any, Tuple, List, Function
 
 _object = object
 
-def getmembers(obj: object, predicate: Function[[Any], bool]) -> List[Tuple[str, object]]:
-    return []
+def getmembers(obj: object, predicate: Function[[Any], bool]) -> List[Tuple[str, object]]: pass
 
-def isclass(obj: object) -> bool:
-    return False
+def isclass(obj: object) -> bool: pass
 
 # namedtuple('Attribute', 'name kind defining_class object')
 class Attribute(tuple):
@@ -17,20 +15,16 @@ class Attribute(tuple):
     defining_class = Undefined(type)
     object = Undefined(_object)
 
-def classify_class_attrs(cls: type) -> List[Attribute]:
-    return []
+def classify_class_attrs(cls: type) -> List[Attribute]: pass
 
-def cleandoc(doc: str) -> str:
-    return doc
+def cleandoc(doc: str) -> str: pass
 
-def getsourcelines(obj: object) -> Tuple[List[str], int]:
-    return ([], 0)
+def getsourcelines(obj: object) -> Tuple[List[str], int]: pass
 
 class ArgSpec(tuple):
-    args = Undefined(object)
-    varargs = Undefined(object)
-    keywords = Undefined(object)
-    defaults = Undefined(object)
+    args = Undefined(List[str])
+    varargs = Undefined(str)
+    keywords = Undefined(str)
+    defaults = Undefined(tuple)
 
-def getargspec(func: object) -> ArgSpec:
-    return None
+def getargspec(func: object) -> ArgSpec: pass
