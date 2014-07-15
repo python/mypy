@@ -639,10 +639,12 @@ class IcodeBuilder(NodeVisitor[int]):
         else:
             if e.op == '-':
                 method = '__neg__'
+            elif e.op == '+':
+                method = '__pos__'
             elif e.op == '~':
                 method = '__invert__'
             else:
-                raise NotImplementedError()
+                raise NotImplementedError("unhandled op: " + e.op)
             inst = cast(Instance, operand_type) # TODO more flexible
             self.add(CallMethod(target, operand, method, inst.type, []))
         return target
