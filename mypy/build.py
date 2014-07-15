@@ -726,6 +726,12 @@ class UnprocessedFile(State):
             if not self.import_module('builtins'):
                 self.fail(self.path, 1, 'Could not find builtins')
 
+        # Do the first pass of semantic analysis: add top-level definitions in
+        # the file to the symbol table. We must do this before processing imports,
+        # since this may mark some import statements as unreachable.
+        first = FirstPass(self.semantic_analyzer())
+        first.analyze(tree, self.path, self.id)
+
         # Add all directly imported modules to be processed (however they are
         # not processed yet, just waiting to be processed).
         for id, line in self.manager.all_imported_modules_in_file(tree):
@@ -737,11 +743,7 @@ class UnprocessedFile(State):
             if not res:
                 self.fail(self.path, line, "No module named '{}'".format(id), blocker=False)
                 self.manager.missing_modules.add(id)
-
-        # Do the first pass of semantic analysis: add top-level definitions in
-        # the file to the symbol table.
-        first = FirstPass(self.semantic_analyzer())
-        first.analyze(tree, self.path, self.id)
+        
         # Initialize module symbol table, which was populated by the semantic
         # analyzer.
         tree.names = self.semantic_analyzer().globals
