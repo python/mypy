@@ -188,7 +188,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args)
-        if (isinstance(actual, TupleType) and is_named_instance(template, 'typing.Iterable')
+        if (isinstance(actual, TupleType) and
+            (is_named_instance(template, 'typing.Iterable') or
+             is_named_instance(template, 'typing.Sequence') or
+             is_named_instance(template, 'typing.Reversible'))
             and self.direction == SUPERTYPE_OF):
             res = [] # type: List[Constraint]
             for item in actual.items:

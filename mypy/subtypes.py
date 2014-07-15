@@ -108,7 +108,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if (is_named_instance(right, 'builtins.object') or
                 is_named_instance(right, 'builtins.tuple')):
                 return True
-            elif is_named_instance(right, 'typing.Iterable'):
+            elif (is_named_instance(right, 'typing.Iterable') or
+                  is_named_instance(right, 'typing.Sequence') or
+                  is_named_instance(right, 'typing.Reversible')):
                 iter_type = right.args[0]
                 return all(is_subtype(li, iter_type) for li in left.items)
             return False
