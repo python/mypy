@@ -43,9 +43,8 @@ def py3annot_tokenize(readline):
     return transform_tokens(tokenize.generate_tokens(readline))
 
 def transform_tokens(tokens):
-    first_token_value_from_line = None  # value of first non-whitespace token on cur line
-    line_root_depth = -1  # bracket nesting depth of current line
-    cur_line = 0  # index of current line
+    in_a_def_statement = False  # true if we're between a 'def' and a ':'
+    def_depth = -1  # bracket depth of last def, for reference
 
     prev_token = None  # last token seen
     bracket_depth = 0  # bracket nesting depth of current token
@@ -60,19 +59,14 @@ def transform_tokens(tokens):
 
         bracket_depth += bracket_delta(token)
 
-        if start_line > cur_line and tvalue.strip():  # first non-whitespace token on a new line
-            cur_line = start_line
-            first_token_value_from_line = tvalue
-            line_root_depth = bracket_depth
-
-        if first_token_value_from_line == 'def':
-            if tvalue == ':' and bracket_depth > line_root_depth:
+        if in_a_def_statement:
+            if tvalue == ':' and bracket_depth > def_depth:
                 # param type annotation
                 newlines, token = scan_until(['=', ',', ')'], tokens)
                 for tok in newlines:
                     yield tok
                 bracket_depth += bracket_delta(token)
-            if tvalue == '-' and bracket_depth == line_root_depth:
+            elif tvalue == '-' and bracket_depth == def_depth:
                 prev_token = token
                 token = tokens.next()
                 if token[1] == '>' and token[2] == prev_token[3]:  # -> adjacent (not - >, etc.)
@@ -83,16 +77,42 @@ def transform_tokens(tokens):
                 else:
                     yield prev_token
                 bracket_depth += bracket_delta(token)
+            elif tvalue == ':' and bracket_depth == def_depth:
+                in_a_def_statement = False
+        elif tvalue == 'def':
+            in_a_def_statement = True
+            def_depth = bracket_depth
+
+        # tokenize has this bug where you can get line jumps without a newline token
+        # we check and fix for that here by seeing if there was a line jump
+        if prev_token:
+            prev_ttype, prev_tvalue, prev_tstart, prev_tend, prev_tline = prev_token
+
+            prev_row, prev_col = prev_tend
+            cur_row, cur_col = token[2]
+
+            # check for a line jump without a newline token
+            if (prev_row < cur_row and prev_ttype not in (tokenize.NEWLINE, tokenize.NL)):
+
+                # tokenize also forgets \ continuations :(
+                prev_line = prev_tline.strip()
+                if prev_ttype != tokenize.COMMENT and prev_line and prev_line[-1] == '\\':
+                    start_pos = (prev_row, prev_col)
+                    end_pos = (prev_row, prev_col+1)
+                    yield (tokenize.STRING, ' \\', start_pos, end_pos, prev_tline)
+                    prev_col += 1
+
+                start_pos = (prev_row, prev_col)
+                end_pos = (prev_row, prev_col+1)
+                yield (tokenize.NL, '\n', start_pos, end_pos, prev_tline)
 
         prev_token = token
         yield token
 
 def scan_until(match_list, tokens):
     """Steps through the tokens iterator until it finds a token whose value is in match_list at the
-    original bracket depth.
-    Returns a list of tokens that should be kept. If a token in the match list is found, it will be
-    the last token in the returned list and previous elements can only be newlines. However, if no
-    matching token is found then 
+    original bracket depth. Returns the token that matches, plus a list of other tokens that should
+    be kept (currently only newlines).
     """
     bracket_depth = 0
     token = tokens.next()
