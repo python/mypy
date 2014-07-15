@@ -112,7 +112,7 @@ class MypyFile(SymbolNode):
     defs = Undefined # type: List[Node]  # Global definitions and statements
     is_bom = False   # Is there a UTF-8 BOM at the start?
     names = Undefined('SymbolTable')
-    imports = Undefined(List[Node])    # All import nodes within the file
+    imports = Undefined(List['ImportBase'])    # All import nodes within the file
     
     def __init__(self, defs: List[Node], imports: List[Node],
                  is_bom: bool = False) -> None:
@@ -131,7 +131,12 @@ class MypyFile(SymbolNode):
         return visitor.visit_mypy_file(self)
 
 
-class Import(Node):
+class ImportBase(Node):
+    """Base class for all import statements."""
+    is_unreachable = False
+    
+
+class Import(ImportBase):
     """import m [as n]"""
     
     ids = Undefined(List[Tuple[str, str]])     # (module id, as id)
@@ -143,7 +148,7 @@ class Import(Node):
         return visitor.visit_import(self)
 
 
-class ImportFrom(Node):
+class ImportFrom(ImportBase):
     """from m import x, ..."""
     
     names = Undefined(List[Tuple[str, str]]) # Tuples (name, as name)
@@ -156,7 +161,7 @@ class ImportFrom(Node):
         return visitor.visit_import_from(self)
 
 
-class ImportAll(Node):
+class ImportAll(ImportBase):
     """from m import *"""
     
     def __init__(self, id: str) -> None:

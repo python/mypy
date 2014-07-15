@@ -448,25 +448,26 @@ class BuildManager:
     
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[str, int]]:
-        """Find all import statements in a file.
+        """Find all reachable import statements in a file.
 
         Return list of tuples (module id, import line number) for all modules
         imported in file.
         """
         res = List[Tuple[str, int]]()
         for imp in file.imports:
-            if isinstance(imp, Import):
-                for id, _ in imp.ids:
-                    res.append((id, imp.line))
-            elif isinstance(imp, ImportFrom):
-                res.append((imp.id, imp.line))
-                # Also add any imported names that are submodules.
-                for name, __ in imp.names:
-                    sub_id = imp.id + '.' + name
-                    if self.is_module(sub_id):
-                        res.append((sub_id, imp.line))
-            elif isinstance(imp, ImportAll):
-                res.append((imp.id, imp.line))
+            if not imp.is_unreachable:
+                if isinstance(imp, Import):
+                    for id, _ in imp.ids:
+                        res.append((id, imp.line))
+                elif isinstance(imp, ImportFrom):
+                    res.append((imp.id, imp.line))
+                    # Also add any imported names that are submodules.
+                    for name, __ in imp.names:
+                        sub_id = imp.id + '.' + name
+                        if self.is_module(sub_id):
+                            res.append((sub_id, imp.line))
+                elif isinstance(imp, ImportAll):
+                    res.append((imp.id, imp.line))
         return res
     
     def is_module(self, id: str) -> bool:
