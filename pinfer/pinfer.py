@@ -149,23 +149,34 @@ def infer_method_signature(class_name):
             min_arg_count -= len(defaults)
 
         def wrapper(*args, **kwargs):
-            argids = func_argid_db.setdefault(name, set())
+            # collect arg ids and types
+            argids = set()
+            arg_db = {}
+            expecting_type_error = False
+
             used_kwargs = set()
             for i, arg in enumerate(argnames):
                 if i < len(args):
                     argvalue = args[i]
-                elif i >= min_arg_count and not arg in kwargs:
-                    argvalue = defaults[i - min_arg_count]
-                else:
+                elif arg in kwargs:
                     argvalue = kwargs[arg]
                     used_kwargs.add(arg)
+                elif i >= min_arg_count:
+                    argvalue = defaults[i - min_arg_count]
+                else:
+                    # we should get here when we call a function with fewer arguments
+                    # than min_arg_count, and no keyword arguments to cover the required
+                    # unpassed positional arguments.
+                    # We should get a TypeError when we do the call
+                    expecting_type_error = True
+                    continue
                 key = (name, i)
-                update_db(func_arg_db, key, argvalue)
+                update_db(arg_db, key, argvalue)
                 argids.add((i, arg))
             if varargs:
                 for i in range(len(argnames), len(args)):
                     key = (name, len(argnames))
-                    update_db(func_arg_db, key, args[i])
+                    update_db(arg_db, key, args[i])
                     argids.add((len(argnames), varargs))
             if kwonlyargs:
                 used_kwonlyargs = set()
@@ -173,7 +184,7 @@ def infer_method_signature(class_name):
                     if arg in kwonlyargs:
                         index = len(argnames) + kwonlyargs.index(arg)
                         key = (name, index)
-                        update_db(func_arg_db, key, value)
+                        update_db(arg_db, key, value)
                         argids.add((index, arg))
                         used_kwargs.add(arg)
                         used_kwonlyargs.add(arg)
@@ -181,17 +192,37 @@ def infer_method_signature(class_name):
                     if arg not in used_kwonlyargs:
                         index = len(argnames) + i
                         key = (name, index)
-                        update_db(func_arg_db, key,
+                        update_db(arg_db, key,
                                   argspec.kwonlydefaults[arg])
                         argids.add((index, arg))
             if kwargs:
                 for arg, value in kwargs.items():
                     if arg not in used_kwargs:
                         key = (name, -1)
-                        update_db(func_arg_db, key, value)
+                        update_db(arg_db, key, value)
                         argids.add((-1, varkw))
-            ret = func(*args, **kwargs)
-            update_db(func_return_db, name, ret)
+
+            got_type_error, got_exception = False, False
+            try:
+                ret = func(*args, **kwargs)
+            except TypeError:
+                got_type_error = got_exception = True
+                raise
+            except:
+                got_exception = True
+                raise
+            finally:
+                if not got_type_error:
+                    assert not expecting_type_error
+
+                    # if we didn't get a TypeError, update the actual databases
+                    func_argid_db.setdefault(name, set()).update(argids)
+                    merge_db(func_arg_db, arg_db)
+
+                    # if we got an exception, we don't have a ret
+                    if not got_exception:
+                        update_db(func_return_db, name, ret)
+
             return ret
 
         if hasattr(func, '__name__'):
@@ -228,6 +259,13 @@ def update_db(db, key, value):
         db[key] = type
     else:
         db[key] = combine_types(db[key], type)
+
+def merge_db(db, other):
+    for key in other.keys():
+        if key not in db:
+            db[key] = other[key]
+        else:
+            db[key] = combine_types(db[key], other[key])
 
 
 def infer_value_type(value):
