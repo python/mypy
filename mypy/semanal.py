@@ -615,6 +615,7 @@ class SemanticAnalyzer(NodeVisitor):
         if i.id in self.modules:
             m = self.modules[i.id]
             for name, node in m.names.items():
+                node = self.normalize_type_alias(node, i)
                 if not name.startswith('_'):
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id), i)
