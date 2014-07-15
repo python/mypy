@@ -30,7 +30,7 @@ import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype,
-    is_more_precise
+    is_more_precise, restrict_subtype_away
 )
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
@@ -960,24 +960,34 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
+        pop_list = [] #type: List[Node]
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
-            var, type, kind = find_isinstance_check(e, self.type_map)
-            if kind != ISINSTANCE_ALWAYS_FALSE:
+            var, type, elsetype, kind = find_isinstance_check(e, self.type_map)
+            if kind == ISINSTANCE_ALWAYS_FALSE:
+                #XXX should issue a warning
+                pass
+            else:
                 # Only type check body if the if condition can be true.
                 if var:
                     self.binder.push(var, type)
                 self.accept(b)
                 if var:
                     self.binder.pop(var)
+                    self.binder.push(var, elsetype)
+                    pop_list.append(var)
             if kind == ISINSTANCE_ALWAYS_TRUE:
                 # The condition is always true => remaining elif/else blocks
                 # can never be reached.
+
+                # Might also want to issue a warning
                 break
         else:
             if s.else_body:
                 self.accept(s.else_body)
+        for var in pop_list:
+            self.binder.pop(var)
     
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
@@ -1487,11 +1497,11 @@ def get_undefined_tuple(rvalue: Node) -> Type:
 
 
 def find_isinstance_check(node: Node,
-                          type_map: Dict[Node, Type]) -> Tuple[Var, Type, int]:
+                          type_map: Dict[Node, Type]) -> Tuple[Var, Type, Type, int]:
     """Check if node is an isinstance(variable, type) check.
 
-    If successful, return tuple (variable, target-type, kind); otherwise,
-    return (None, AnyType, -1).
+    If successful, return tuple (variable, target-type, else-type,
+    kind); otherwise, return (None, AnyType, AnyType, -1).
 
     When successful, the kind takes one of these values:
 
@@ -1510,14 +1520,18 @@ def find_isinstance_check(node: Node,
                 if type and isinstance(expr.node, Var):
                     var = cast(Var, expr.node)
                     kind = ISINSTANCE_OVERLAPPING
+                    elsetype = var.type
                     if var.type:
                         if is_proper_subtype(var.type, type):
                             kind = ISINSTANCE_ALWAYS_TRUE
+                            elsetype = None
                         elif not is_overlapping_types(var.type, type):
                             kind = ISINSTANCE_ALWAYS_FALSE
-                    return cast(Var, expr.node), type, kind
+                        else:
+                            elsetype = restrict_subtype_away(var.type, type)
+                    return var, type, elsetype, kind
     # Not a supported isinstance check
-    return None, AnyType(), -1
+    return None, AnyType(), AnyType(), -1
 
 
 def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:

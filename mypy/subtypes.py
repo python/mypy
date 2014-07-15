@@ -286,6 +286,16 @@ def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
             cast(Instance, t).type.fullname() == fullname)
 
+def restrict_subtype_away(t:Type, s: Type) -> Type:
+    """Return a supertype of (t intersect not s)
+
+    Currently just remove elements of a union type.
+    """
+    if isinstance(t, UnionType):
+        new_items = [item for item in t.items if not is_subtype(item, s)]
+        return UnionType(new_items)
+    else:
+        return t
 
 def is_proper_subtype(t: Type, s: Type) -> bool:
     """Check if t is a proper subtype of s?
