@@ -19,3 +19,18 @@ class Attribute(tuple):
 
 def classify_class_attrs(cls: type) -> List[Attribute]:
     return []
+
+def cleandoc(doc: str) -> str:
+    return doc
+
+def getsourcelines(obj: object) -> Tuple[List[str], int]:
+    return ([], 0)
+
+class ArgSpec(tuple):
+    args = Undefined(object)
+    varargs = Undefined(object)
+    keywords = Undefined(object)
+    defaults = Undefined(object)
+
+def getargspec(func: object) -> ArgSpec:
+    return None
