@@ -231,6 +231,7 @@ a = cast(A, d)
 b = Any(d)
 a = Any(f())
 def f() -> None: pass
+
 [case testCompatibilityOfDynamicWithOtherTypes]
 from typing import Undefined, Any, Tuple
 d = Undefined # type: Any

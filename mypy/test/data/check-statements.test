@@ -701,3 +701,34 @@ x = '' # E: Incompatible types in assignment
 y = '' # E: Incompatible types in assignment
 x = 1
 y = 1
+
+
+-- Type aliases
+-- ------------
+
+[case testSimpleTypeAlias]
+import typing
+foo = int
+def f(x: foo) -> None: pass
+f(1)
+f('x') # E: Argument 1 to "f" has incompatible type "str"
+
+[case testTypeAliasDefinedInAModule]
+import typing
+import m
+def f(x: m.foo) -> None: pass
+f(1)
+f('x') # E: Argument 1 to "f" has incompatible type "str"
+[file m.py]
+import typing
+foo = int
+
+[case testTypeAliasDefinedInAModule2]
+import typing
+from m import foo
+def f(x: foo) -> None: pass
+f(1)
+f('x') # E: Argument 1 to "f" has incompatible type "str"
+[file m.py]
+import typing
+foo = int
