@@ -1,7 +1,9 @@
-import pytokenize as tokenize
+from __future__ import absolute_import
+
+from . import pytokenize as tokenize
 import re
 from StringIO import StringIO
-from pytokenize import Untokenizer
+from .pytokenize import Untokenizer
 
 def get_end_pos(start_pos, tvalue):
     row, col = start_pos

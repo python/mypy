@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+
 import codecs
 import cStringIO
 import traceback
 from encodings import utf_8
 
-from tokenizer import py3annot_tokenize, py3annot_untokenize
+from .tokenizer import py3annot_tokenize, py3annot_untokenize
 
 def py3annot_transform(stream):
     try:
