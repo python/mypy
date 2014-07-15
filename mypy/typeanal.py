@@ -3,7 +3,7 @@
 from typing import Undefined, Function, cast, List, Tuple
 
 from mypy.types import (
-    Type, UnboundType, TypeVar, TupleType, Instance, AnyType, Callable,
+    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, Callable,
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
 )
 from mypy.typerepr import TypeVarRepr
@@ -94,6 +94,9 @@ class TypeAnalyser(TypeVisitor[Type]):
     
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.anal_array(t.items), t.line, t.repr)
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        return UnionType(self.anal_array(t.items), t.line, t.repr)
 
     def analyze_function_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
@@ -203,6 +206,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             arg_type.accept(self)
     
     def visit_tuple_type(self, t: TupleType) -> None:
+        for item in t.items:
+            item.accept(self)
+
+    def visit_union_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
 

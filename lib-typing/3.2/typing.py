@@ -22,6 +22,7 @@ __all__ = [
     'Set',
     'Tuple',
     'Undefined',
+    'Union',
     'cast',
     'forwardref',
     'overload',
@@ -190,6 +191,9 @@ def Any(x):
     """The Any type; can also be used to cast a value to type Any."""
     return x
 
+def Union(*types):
+    """A union type."""
+    return lambda x: x
 
 def cast(type, object):
     """Cast a value to a type.

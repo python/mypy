@@ -64,7 +64,7 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_self_type, TupleType
+    replace_self_type, TupleType, UnionType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3
@@ -233,6 +233,9 @@ class SemanticAnalyzer(NodeVisitor):
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
+            for item in type.items:
+                result.extend(self.find_type_variables_in_type(item))
+        elif isinstance(type, UnionType):
             for item in type.items:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):

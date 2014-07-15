@@ -2,7 +2,7 @@ import typing
 
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
-    Instance, TypeVar, Callable, TupleType, Overloaded, ErasedType,
+    Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType,
     TypeTranslator, BasicTypes, TypeList
 )
 
@@ -67,6 +67,8 @@ class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return self.basic.tuple
 
+    def visit_union_type(self, t: UnionType) -> Type:
+        return AnyType()        # XXX: return underlying type if only one?
 
 def erase_generic_types(t: Type) -> Type:
     """Remove generic type arguments and type variables from a type.

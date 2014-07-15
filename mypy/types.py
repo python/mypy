@@ -387,6 +387,23 @@ class TupleType(Type):
         return visitor.visit_tuple_type(self)
 
 
+class UnionType(Type):
+    """The union type Union(T1, ..., Tn) (at least one type argument)."""
+
+    items = Undefined(List[Type])
+    
+    def __init__(self, items: List[Type], line: int = -1,
+                 repr: Any = None) -> None:
+        self.items = items
+        super().__init__(line, repr)
+    
+    def length(self) -> int:
+        return len(self.items)
+    
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_union_type(self)
+
+
 class RuntimeTypeVar(Type):
     """Reference to a runtime variable with the value of a type variable.
 
@@ -452,6 +469,9 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
     
+    def visit_union_type(self, t: TupleType) -> T:
+        assert(0)               # XXX catch visitors that don't have Union cases yet
+    
     def visit_runtime_type_var(self, t: RuntimeTypeVar) -> T:
         pass
 
@@ -503,6 +523,9 @@ class TypeTranslator(TypeVisitor[Type]):
     
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items), t.line, t.repr)
+    
+    def visit_union_type(self, t: TupleType) -> Type:
+        return UnionType(self.translate_types(t.items), t.line, t.repr)
     
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
@@ -621,6 +644,10 @@ class TypeStrVisitor(TypeVisitor[str]):
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
     
+    def visit_union_type(self, t):
+        s = self.list_str(t.items)
+        return 'Union({})'.format(s)
+    
     def visit_runtime_type_var(self, t):
         return '<RuntimeTypeVar>'
     
@@ -696,6 +723,9 @@ class TypeQuery(TypeVisitor[bool]):
         return self.query_types(t.arg_types + [t.ret_type])
     
     def visit_tuple_type(self, t: TupleType) -> bool:
+        return self.query_types(t.items)
+    
+    def visit_union_type(self, t: TupleType) -> bool:
         return self.query_types(t.items)
     
     def visit_runtime_type_var(self, t: RuntimeTypeVar) -> bool:

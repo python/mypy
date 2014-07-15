@@ -3,7 +3,7 @@
 from typing import List, Tuple, cast
 
 from mypy.types import (
-    Type, UnboundType, TupleType, TypeList, AnyType, Callable
+    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, Callable
 )
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
@@ -52,7 +52,10 @@ class TypeParser:
         """Parse a type."""
         t = self.current_token()
         if isinstance(t, Name):
-            return self.parse_named_type()
+            if t.string == 'Union':
+                return self.parse_union_type()
+            else:
+                return self.parse_named_type()
         elif t.string == '[':
             return self.parse_type_list()
         elif isinstance(t, StrLit):
@@ -131,6 +134,21 @@ class TypeParser:
                                                            langle,
                                                            commas, rangle))
         return typ
+    
+    def parse_union_type(self) -> TypeList:
+        """Parse union type Union(t, ...)."""
+        union = self.expect('Union')
+        lparen = self.expect('(')
+        commas = [] # type: List[Token]
+        items = [] # type: List[Type]
+        while self.current_token_str() != ')':
+            t = self.parse_type()
+            items.append(t)
+            if self.current_token_str() != ',':
+                break
+            commas.append(self.skip())
+        rparen = self.expect(')')
+        return UnionType(items, line=lparen.line)
     
     # Helpers
     

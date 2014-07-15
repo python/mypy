@@ -1,7 +1,7 @@
 from typing import List, cast
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, Callable,
+    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, Callable,
     TypeVar, Instance, TypeVisitor, ErasedType, TypeList
 )
 
@@ -83,5 +83,12 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
             return is_same_types(left.items, cast(TupleType, self.right).items)
+        else:
+            return False
+    
+    def visit_union_type(self, left: UnionType) -> bool:
+        # XXX This is a test for syntactic equality, not equivalence
+        if isinstance(self.right, UnionType):
+            return is_same_types(left.items, cast(UnionType, self.right).items)
         else:
             return False

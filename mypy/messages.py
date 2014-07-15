@@ -9,7 +9,7 @@ from typing import Undefined, cast, List, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, AnyType,
+    Type, Callable, Instance, TypeVar, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
 from mypy.nodes import (
@@ -185,6 +185,15 @@ class MessageBuilder:
             for t in (cast(TupleType, typ)).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
+            if len(s) < 30:
+                return s
+            else:
+                return 'tuple'
+        elif isinstance(typ, UnionType):
+            items = []
+            for t in (cast(UnionType, typ)).items:
+                items.append(strip_quotes(self.format(t)))
+            s = '"Union({})"'.format(', '.join(items))
             if len(s) < 30:
                 return s
             else:
