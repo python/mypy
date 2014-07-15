@@ -634,6 +634,8 @@ class SemanticAnalyzer(NodeVisitor):
     #
     
     def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
         self.block_depth[-1] += 1
         for s in b.body:
             s.accept(self)
@@ -1025,34 +1027,11 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'continue' outside loop", s)
     
     def visit_if_stmt(self, s: IfStmt) -> None:
-        always_true = False
+        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
-            result = self.infer_if_condition_value(s.expr[i])
-            if result == ALWAYS_FALSE:
-                # The condition is always false, so we skip the if/elif body.
-                s.body[i].is_unreachable = True
-            else:
-                self.visit_block(s.body[i])
-                if result == ALWAYS_TRUE:
-                    # This condition is always true, so all of the remaining
-                    # elif/else bodies will never be executed.
-                    always_true = True
-                    for body in s.body[i + 1:]:
-                        body.is_unreachable = True
-                        s.else_body.is_unreachable = True
-                    break
-        else:
-            self.visit_block_maybe(s.else_body)
-
-    def infer_if_condition_value(self, node: Node) -> int:
-        if isinstance(node, RefExpr):
-            short_name = node.fullname.split('.')[-1]
-            if short_name == 'PY2':
-                return ALWAYS_TRUE if self.pyversion == 2 else ALWAYS_FALSE
-            elif short_name == 'PY3':
-                return ALWAYS_TRUE if self.pyversion == 3 else ALWAYS_TRUE
-        return TRUTH_VALUE_UNKOWN
+            self.visit_block(s.body[i])
+        self.visit_block_maybe(s.else_body)
     
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
@@ -1449,6 +1428,7 @@ class FirstPass(NodeVisitor):
     
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
+        self.pyversion = sem.pyversion
 
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.
@@ -1484,6 +1464,8 @@ class FirstPass(NodeVisitor):
             none_def.accept(self)
 
     def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
         self.sem.block_depth[-1] += 1
         for node in b.body:
             node.accept(self)
@@ -1543,6 +1525,7 @@ class FirstPass(NodeVisitor):
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
+        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
         for node in s.body:
             node.accept(self)
         if s.else_body:
@@ -1752,3 +1735,34 @@ def remove_imported_names_from_symtable(names: SymbolTable,
             removed.append(name)
     for name in removed:
         del names[name]
+
+
+def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
+    always_true = False
+    for i in range(len(s.expr)):
+        result = infer_if_condition_value(s.expr[i], pyversion)
+        if result == ALWAYS_FALSE:
+            # The condition is always false, so we skip the if/elif body.
+            s.body[i].is_unreachable = True
+        elif result == ALWAYS_TRUE:
+            # This condition is always true, so all of the remaining
+            # elif/else bodies will never be executed.
+            always_true = True
+            for body in s.body[i + 1:]:
+                body.is_unreachable = True
+            if s.else_body:
+                s.else_body.is_unreachable = True
+            break
+
+
+def infer_if_condition_value(expr: Node, pyversion: int) -> int:
+    name = ''
+    if isinstance(expr, NameExpr):
+        name = expr.name
+    elif isinstance(expr, MemberExpr):
+        name = expr.name
+    if name == 'PY2':
+        return ALWAYS_TRUE if pyversion == 2 else ALWAYS_FALSE
+    elif name == 'PY3':
+        return ALWAYS_TRUE if pyversion == 3 else ALWAYS_FALSE
+    return TRUTH_VALUE_UNKOWN
