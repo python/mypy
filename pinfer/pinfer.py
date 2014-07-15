@@ -95,8 +95,12 @@ def infer_var(name, value):
 
 
 def infer_attrs(x):
-    cls = type(x).__name__
-    typedict = type(x).__dict__
+    if hasattr(x, '__class__'):
+        t = x.__class__
+    else:
+        t = type(x)
+    cls = t.__name__
+    typedict = t.__dict__
     for dict in x.__dict__, typedict:
         for attr, value in dict.items():
             if attr in ('__dict__', '__doc__', '__module__', '__weakref__'):
@@ -121,15 +125,25 @@ def infer_method_signature(class_name):
         if class_name:
             name = '%s.%s' % (class_name, name)
         try:
-            argspec = inspect.getfullargspec(func)
+            if hasattr(inspect, 'getfullargspec'):
+                argspec = inspect.getfullargspec(func)
+                argnames = argspec.args
+                varargs = argspec.varargs
+                varkw = argspec.varkw
+                defaults = argspec.defaults
+                kwonlyargs = argspec.kwonlyargs
+
+            else:
+                argspec = inspect.getargspec(func)
+                argnames = argspec.args
+                varargs = argspec.varargs
+                varkw = argspec.keywords
+                defaults = argspec.defaults
+                kwonlyargs = []
+
         except TypeError:
             # Not supported.
             return func
-        argnames = argspec.args
-        varargs = argspec.varargs
-        varkw = argspec.varkw
-        defaults = argspec.defaults
-        kwonlyargs = argspec.kwonlyargs
         min_arg_count = len(argnames)
         if defaults:
             min_arg_count -= len(defaults)
@@ -316,7 +330,7 @@ def simplify_either(x, y):
         return result[0]
 
 
-class TypeBase:
+class TypeBase(object):
     """Abstract base class of all type objects.
 
     Type objects use isinstance tests librarally -- they don't support duck
@@ -393,7 +407,7 @@ class Either(TypeBase):
             type = [t for t in types if t is not None][0]
             return 'Optional(%s)' % type
         else:
-            return 'Either(%s)' % (', '.join(str(t) for t in types))
+            return 'Either(%s)' % (', '.join(sorted(str(t) for t in types)))
 
 
 class Unknown(TypeBase):
