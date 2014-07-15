@@ -287,11 +287,11 @@ main, line 1: No module named 'xyz'
 main, line 2: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
-import x
-def x(): pass
+import xab
+def xab(): pass
 [out]
-main, line 1: No module named 'x'
-main, line 1: Name 'x' already defined
+main, line 1: No module named 'xab'
+main, line 1: Name 'xab' already defined
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
