@@ -466,6 +466,10 @@ class GlobalDecl(Node):
 
 class Block(Node):
     body = Undefined(List[Node])
+    # True if we can determine that this block is not executed. For example,
+    # this applies to blocks that are protected by something like "if PY3:"
+    # when using Python 2.
+    is_unreachable = False
     
     def __init__(self, body: List[Node]) -> None:
         self.body = body
