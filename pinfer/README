@@ -32,3 +32,8 @@ To infer types of all functions and methods in a module:
   # now do something with the module, e.g. run tests
 
 For inferring a Python module, add the above lines to the test suite.
+
+Handy wrapper
+-------------
+
+The p.py script provides a handy wrapper for the above.
