@@ -252,21 +252,6 @@ class TestInfer(unittest.TestCase):
         self.assert_infer_state(
             'def f(a: None, kwargs: Either(int, str)) -> None')
 
-    '''
-    def test_infer_keyword_only_args(self):
-        @pinfer.infer_signature
-        def f(x, *, y=0): pass
-        f(1, y='x')
-        self.assert_infer_state(
-            'def f(x: int, y: str) -> None')
-        
-        @pinfer.infer_signature
-        def f(*, x=None, y=None): pass
-        f(y='x')
-        self.assert_infer_state(
-            'def f(x: None, y: str) -> None')
-    '''
-
     def test_infer_class(self):
         @pinfer.infer_class
         class A:
