@@ -850,7 +850,7 @@ class ExpressionChecker:
         return result
     
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
-        """Type check an unary operation ('not', '-' or '~')."""
+        """Type check an unary operation ('not', '-', '+' or '~')."""
         operand_type = self.accept(e.expr)
         op = e.op
         if op == 'not':
@@ -861,7 +861,13 @@ class ExpressionChecker:
                                                               operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
-        elif op == '~':
+        elif op == '+':
+            method_type = self.analyse_external_member_access('__pos__',
+                                                              operand_type, e)
+            result, method_type = self.check_call(method_type, [], [], e)
+            e.method_type = method_type
+        else:
+            assert op == '~', "unhandled unary operator"
             method_type = self.analyse_external_member_access('__invert__',
                                                               operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)

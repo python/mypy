@@ -19,6 +19,7 @@ class int:
     def __sub__(self, n: int) -> int: pass
     def __mul__(self, n: int) -> int: pass
     def __neg__(self) -> int: pass
+    def __pos__(self) -> int: pass
     def __eq__(self, n: int) -> bool: pass
     def __ne__(self, n: int) -> bool: pass
     def __lt__(self, n: int) -> bool: pass
