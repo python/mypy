@@ -684,16 +684,17 @@ class SemanticAnalyzer(NodeVisitor):
                 and not s.type):
             lvalue = s.lvalues[0]
             if isinstance(lvalue, NameExpr):
-                if not s.lvalues[0].is_def:
+                if not lvalue.is_def:
                     # Only a definition can create a type alias, not regular assignment.
                     return
                 rvalue = s.rvalue
                 if isinstance(rvalue, RefExpr):
-                    if isinstance(rvalue.node, TypeInfo):
+                    node = rvalue.node
+                    if isinstance(node, TypeInfo):
                         # TODO: We should record the fact that this is a variable
                         #       that refers to a type, rather than making this
                         #       just an alias for the type.
-                        self.globals[lvalue.name].node = rvalue.node
+                        self.globals[lvalue.name].node = node
                         
     def analyse_lvalue(self, lval: Node, nested: bool = False,
                        add_global: bool = False,
