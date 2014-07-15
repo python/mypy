@@ -8,7 +8,7 @@ from mypy import build
 from mypy.myunit import Suite, run_test
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
-from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
+from mypy.test.helpers import assert_string_arrays_equal, testcase_pyversion
 from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
 
@@ -37,6 +37,7 @@ files = [
     'check-typevar-values.test',
     'check-python2.test',
     'check-unsupported.test',
+    'check-pyversion-checks.test'
 ]
 
 
@@ -50,12 +51,13 @@ class TypeCheckSuite(Suite):
     
     def run_test(self, testcase):
         a = []
+        pyversion = testcase_pyversion(testcase.file, testcase.name)
         try:
             src = '\n'.join(testcase.input)
             build.build('main',
                         target=build.TYPE_CHECK,
                         program_text=src,
-                        pyversion=testfile_pyversion(testcase.file),
+                        pyversion=pyversion,
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:

@@ -1,0 +1,50 @@
+-- Type checker test cases for conditional Python version runtime checks.
+-- The idea is that we skip blocks that won't be executed on the active
+-- Python version.
+
+[case testConditionalTypeAliasPY3]
+import typing
+def f(): pass
+PY3 = f()
+if PY3:
+    t = int
+    x = object() + 'x' # E: Unsupported left operand type for + ("object")
+else:
+    t = str
+    y = 'x' / 1
+x
+z = 1 # type: t
+
+[case testConditionalTypeAliasPY3_python2]
+import typing
+def f(): pass
+PY3 = f()
+if PY3:
+    t = int
+    x = object() + 'x'
+else:
+    t = str
+    y = 'x' / 1 # E: "str" has no attribute "__div__"
+y
+z = '' # type: t
+
+[case testConditionalAssignmentPY2]
+import typing
+def f(): pass
+PY2 = f()
+if PY2:
+    x = object() + 'x'
+else:
+    y = 'x' / 1 # E: Unsupported left operand type for / ("str")
+y
+
+[case testConditionalAssignmentPY2_python2]
+import typing
+def f(): pass
+PY2 = f()
+if PY2:
+    x = object() + 'x' # E: Unsupported left operand type for + ("object")
+else:
+    y = 'x' / 1
+x
+
