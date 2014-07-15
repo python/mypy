@@ -674,8 +674,27 @@ class SemanticAnalyzer(NodeVisitor):
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+        self.check_and_set_up_type_alias(s)
         self.process_typevar_declaration(s)
-    
+
+    def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
+        """Check if assignment creates a type alias and set it up as needed."""
+        # For now, type aliases only work at the top level of a module.
+        if (len(s.lvalues) == 1 and not self.is_func_scope() and not self.type
+                and not s.type):
+            lvalue = s.lvalues[0]
+            if isinstance(lvalue, NameExpr):
+                if not s.lvalues[0].is_def:
+                    # Only a definition can create a type alias, not regular assignment.
+                    return
+                rvalue = s.rvalue
+                if isinstance(rvalue, RefExpr):
+                    if isinstance(rvalue.node, TypeInfo):
+                        # TODO: We should record the fact that this is a variable
+                        #       that refers to a type, rather than making this
+                        #       just an alias for the type.
+                        self.globals[lvalue.name].node = rvalue.node
+                        
     def analyse_lvalue(self, lval: Node, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False) -> None:
