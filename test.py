@@ -5,4 +5,4 @@
 def f(x: int, y: str = 'abc') -> str:
     return y + str(x)
 
-print f(123) #abc123
+print(f(123)) #abc123

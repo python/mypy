@@ -1,0 +1,6 @@
+py3annot defines an encoding that strips type annotations from function definitions in Python 2, and leaves them in Python 3, so that code with these annotations can be executed in either environment.
+
+To test:
+1. run Python 2 or 3 shell
+2. import register
+3. import test, verify it doesn't crash
