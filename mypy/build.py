@@ -298,7 +298,8 @@ class BuildManager:
         self.output_dir = output_dir
         self.pyversion = pyversion
         self.flags = flags
-        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
+        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
+                                                  pyversion=pyversion)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules,

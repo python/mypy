@@ -74,6 +74,12 @@ from mypy.parsetype import parse_str_as_type, TypeParseError
 T = typevar('T')
 
 
+# Inferred value of an expression.
+ALWAYS_TRUE = 0
+ALWAYS_FALSE = 1
+TRUTH_VALUE_UNKOWN = 2
+
+
 class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
@@ -112,7 +118,8 @@ class SemanticAnalyzer(NodeVisitor):
     imports = Undefined(Set[str])  # Imported modules (during phase 2 analysis)
     errors = Undefined(Errors)     # Keep track of generated errors
     
-    def __init__(self, lib_path: List[str], errors: Errors) -> None:
+    def __init__(self, lib_path: List[str], errors: Errors,
+                 pyversion: int = 3) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -128,6 +135,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
+        self.pyversion = pyversion
     
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -626,6 +634,8 @@ class SemanticAnalyzer(NodeVisitor):
     #
     
     def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
         self.block_depth[-1] += 1
         for s in b.body:
             s.accept(self)
@@ -1017,6 +1027,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'continue' outside loop", s)
     
     def visit_if_stmt(self, s: IfStmt) -> None:
+        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
@@ -1417,6 +1428,7 @@ class FirstPass(NodeVisitor):
     
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
+        self.pyversion = sem.pyversion
 
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.
@@ -1452,6 +1464,8 @@ class FirstPass(NodeVisitor):
             none_def.accept(self)
 
     def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
         self.sem.block_depth[-1] += 1
         for node in b.body:
             node.accept(self)
@@ -1511,6 +1525,7 @@ class FirstPass(NodeVisitor):
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
+        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
         for node in s.body:
             node.accept(self)
         if s.else_body:
@@ -1720,3 +1735,34 @@ def remove_imported_names_from_symtable(names: SymbolTable,
             removed.append(name)
     for name in removed:
         del names[name]
+
+
+def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
+    always_true = False
+    for i in range(len(s.expr)):
+        result = infer_if_condition_value(s.expr[i], pyversion)
+        if result == ALWAYS_FALSE:
+            # The condition is always false, so we skip the if/elif body.
+            s.body[i].is_unreachable = True
+        elif result == ALWAYS_TRUE:
+            # This condition is always true, so all of the remaining
+            # elif/else bodies will never be executed.
+            always_true = True
+            for body in s.body[i + 1:]:
+                body.is_unreachable = True
+            if s.else_body:
+                s.else_body.is_unreachable = True
+            break
+
+
+def infer_if_condition_value(expr: Node, pyversion: int) -> int:
+    name = ''
+    if isinstance(expr, NameExpr):
+        name = expr.name
+    elif isinstance(expr, MemberExpr):
+        name = expr.name
+    if name == 'PY2':
+        return ALWAYS_TRUE if pyversion == 2 else ALWAYS_FALSE
+    elif name == 'PY3':
+        return ALWAYS_TRUE if pyversion == 3 else ALWAYS_FALSE
+    return TRUTH_VALUE_UNKOWN

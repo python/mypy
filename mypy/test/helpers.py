@@ -236,3 +236,10 @@ def testfile_pyversion(path: str) -> int:
         return 2
     else:
         return 3
+
+
+def testcase_pyversion(path: str, testcase_name: str) -> int:
+    if testcase_name.endswith('python2'):
+        return 2
+    else:
+        return testfile_pyversion(path)

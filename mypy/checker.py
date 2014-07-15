@@ -660,6 +660,8 @@ class TypeChecker(NodeVisitor[Type]):
     #
     
     def visit_block(self, b: Block) -> Type:
+        if b.is_unreachable:
+            return
         for s in b.body:
             self.accept(s)
     
