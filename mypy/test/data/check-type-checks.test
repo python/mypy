@@ -6,21 +6,21 @@ from typing import Undefined
 x = Undefined(object)
 n = Undefined(int)
 s = Undefined(str)
-n = x # E: Incompatible types in assignment
+n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 if isinstance(x, int):
     n = x
-    s = x # E: Incompatible types in assignment
-n = x # E: Incompatible types in assignment
+    s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.py]
 
 [case testSimpleIsinstance2]
 import typing
 def f(x: object, n: int, s: str) -> None:
-    n = x # E: Incompatible types in assignment
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
     if isinstance(x, int):
         n = x
-        s = x # E: Incompatible types in assignment
-    n = x # E: Incompatible types in assignment
+        s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.py]
 [out]
 main: In function "f":
@@ -31,12 +31,12 @@ class A:
     x = Undefined(object)
     n = Undefined(int)
     s = Undefined(str)
-    n = x # E: Incompatible types in assignment
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
     if isinstance(x, int):
         n = x
-        s = x # E: Incompatible types in assignment
+        s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     else:
-        n = x # E: Incompatible types in assignment
+        n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.py]
 [out]
 main: In class "A":
@@ -49,9 +49,9 @@ def f(x: object, a: A, b: B, c: int) -> None:
     if isinstance(x, A):
         if isinstance(x, B):
             b = x
-            x = a # E: Incompatible types in assignment
+            x = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         a = x
-        c = x # E: Incompatible types in assignment
+        c = x # E: Incompatible types in assignment (expression has type "A", variable has type "int")
 [builtins fixtures/isinstance.py]
 [out]
 main: In function "f":
@@ -65,10 +65,10 @@ def f(x: object, y: object, n: int, s: str) -> None:
         if isinstance(y, str):
             n = x
             s = y
-            s = x # E: Incompatible types in assignment
-            n = y # E: Incompatible types in assignment
-        s = y # E: Incompatible types in assignment
-        n = y # E: Incompatible types in assignment
+            s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+            n = y # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        s = y # E: Incompatible types in assignment (expression has type "object", variable has type "str")
+        n = y # E: Incompatible types in assignment (expression has type "object", variable has type "int")
         n = x
 [builtins fixtures/isinstance.py]
 [out]
@@ -77,17 +77,17 @@ main: In function "f":
 [case testIsinstanceAndElif]
 import typing
 def f(x: object, n: int, s: str) -> None:
-    n = x # E: Incompatible types in assignment
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
     if isinstance(x, int):
         n = x
-        s = x # E: Incompatible types in assignment
+        s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     elif isinstance(x, str):
         s = x
-        n = x # E: Incompatible types in assignment
+        n = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     else:
-        n = x # E: Incompatible types in assignment
-        s = x # E: Incompatible types in assignment
-    n = x # E: Incompatible types in assignment
+        n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+        s = x # E: Incompatible types in assignment (expression has type "object", variable has type "str")
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.py]
 [out]
 main: In function "f":
@@ -98,7 +98,7 @@ def f(x: Any, n: int, s: str) -> None:
     s = x
     if isinstance(x, int):
         n = x
-        s = x # E: Incompatible types in assignment
+        s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     s = x
 [builtins fixtures/isinstance.py]
 [out]

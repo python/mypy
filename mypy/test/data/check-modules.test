@@ -4,8 +4,8 @@
 import m
 import typing
 m.f()           # E: Too few arguments for "f"
-m.f(object())   # E: Argument 1 to "f" has incompatible type "object"
-m.x = object()  # E: Incompatible types in assignment
+m.f(object())   # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+m.x = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 m.f(m.A())
 m.x = m.A()
 [file m.py]
@@ -16,7 +16,7 @@ x = A()
 [case testAccessImportedDefinitions]
 import m
 import typing
-m.f(object()) # E: Argument 1 to "f" has incompatible type "object"
+m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 m.f(m.A())
 [file m.py]
 class A: pass
@@ -25,7 +25,7 @@ def f(a: A) -> None: pass
 [case testAccessImportedDefinitions2]
 from m import f, A
 import typing
-f(object()) # E: Argument 1 to "f" has incompatible type "object"
+f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 f(A())
 [file m.py]
 class A: pass
@@ -63,12 +63,12 @@ class Bad: pass
 import typing
 if None:
     import m
-    m.a = m.b   # E: Incompatible types in assignment
+    m.a = m.b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     m.a = m.a
     m.f()
     m.f(m.a)    # E: Too many arguments for "f"
     m.a = m.A()
-    m.a = m.B() # E: Incompatible types in assignment
+    m.a = m.B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
@@ -80,12 +80,12 @@ def f() -> None: pass
 import typing
 def f() -> None:
     from m import a, b, f, A, B
-    a = b   # E: Incompatible types in assignment
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     a = a
     f()
     f(a)    # E: Too many arguments for "f"
     a = A()
-    a = B() # E: Incompatible types in assignment
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
@@ -100,12 +100,12 @@ import typing
 class C:
     def f(self) -> None:
         from m import *
-        a = b   # E: Incompatible types in assignment
+        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = a
         f()
         f(a)    # E: Too many arguments for "f"
         a = A()
-        a = B() # E: Incompatible types in assignment
+        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
@@ -142,7 +142,7 @@ import m
 import typing
 class A: pass
 m()      # E: "module" not callable
-a = m # type: A  # E: Incompatible types in assignment
+a = m # type: A  # E: Incompatible types in assignment (expression has type "module", variable has type "A")
 m + None # E: Unsupported left operand type for + ("module")
 [file m.py]
 [builtins fixtures/module.py]
@@ -163,8 +163,8 @@ from typing import Undefined
 i, s = Undefined, Undefined # type: (int, str)
 i = m.x
 i = m.y
-s = m.x # E: Incompatible types in assignment
-s = m.y # E: Incompatible types in assignment
+s = m.x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+s = m.y # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [file m.py]
 x = y = 1
 [builtins fixtures/primitives.py]
@@ -173,7 +173,7 @@ x = y = 1
 import m
 import typing
 m.f(1)
-m.f('x') # E: Argument 1 to "f" has incompatible type "str"
+m.f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 x = object()
 if x:
@@ -198,7 +198,7 @@ x = 1
 [out]
 main, line 1: No module named 'nonexistent'  
 main, line 2: Unsupported left operand type for + (None)
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testTypeCheckWithUnknownModule3]
 import nonexistent, m
@@ -210,7 +210,7 @@ x = 1
 [out]
 main, line 1: No module named 'nonexistent'  
 main, line 2: Unsupported left operand type for + (None)
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testTypeCheckWithUnknownModule4]
 import nonexistent, another

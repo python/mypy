@@ -68,8 +68,9 @@ def parse_test_cases(
             if ok:
                 input = expand_includes(p[i0].data, include_path)
                 expand_errors(input, tcout, 'main')
+                lastline = p[i].line if i < len(p) else p[i-1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
-                                        p[i0].line, perform, files)
+                                        p[i0].line, lastline, perform, files)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -93,10 +94,12 @@ class DataDrivenTestCase(TestCase):
     
     clean_up = Undefined(List[Tuple[bool, str]])
     
-    def __init__(self, name, input, output, file, line, perform, files):
+    def __init__(self, name, input, output, file, line, lastline,
+                 perform, files):
         super().__init__(name)
         self.input = input
         self.output = output
+        self.lastline = lastline
         self.file = file
         self.line = line
         self.perform = perform
@@ -205,7 +208,7 @@ def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
-        ret.append(TestItem(id, arg, data, fnam, i + 1))
+        ret.append(TestItem(id, arg, data, fnam, i0 + 1))
     
     return ret
 

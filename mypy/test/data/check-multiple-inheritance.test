@@ -16,9 +16,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 c.g('')
-c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"
+c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
 
 [case testSimpleMultipleInheritanceAndMethods2]
 import typing
@@ -29,7 +29,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 c.g('')
 c.g(1)
 
@@ -44,9 +44,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E: Incompatible types in assignment
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 c.y = ''
-c.y = 1  # E: Incompatible types in assignment
+c.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testSimpleMultipleInheritanceAndInstanceVariableInClassBody]
 import typing
@@ -57,9 +57,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E: Incompatible types in assignment
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 c.y = ''
-c.y = 1  # E: Incompatible types in assignment
+c.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testSimpleMultipleInheritanceAndClassVariable]
 import typing
@@ -69,9 +69,9 @@ class B:
     y = ''
 class C(A, B): pass
 C.x = 1
-C.x = '' # E: Incompatible types in assignment
+C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C.y = ''
-C.y = 1  # E: Incompatible types in assignment
+C.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
 -- Name collisions
@@ -87,7 +87,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testInstanceVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
 import typing
@@ -100,7 +100,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E: Incompatible types in assignment
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testClassVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
 import typing
@@ -111,9 +111,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E: Incompatible types in assignment
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C.x = 1
-C.x = '' # E: Incompatible types in assignment
+C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs]
 import typing

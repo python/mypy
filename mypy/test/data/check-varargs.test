@@ -10,8 +10,8 @@ from typing import Undefined, List
 def f( *b: 'B') -> None:
     ab = Undefined # type: List[B]
     ac = Undefined # type: List[C]
-    b = ac # E: Incompatible types in assignment
-    ac = b # E: Incompatible types in assignment
+    b = ac # E: Incompatible types in assignment (expression has type List[C], variable has type List[B])
+    ac = b # E: Incompatible types in assignment (expression has type List[B], variable has type List[C])
     b = ab
     ab = b
 
@@ -32,8 +32,8 @@ a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: C
 
-f(c)       # E: Argument 1 to "f" has incompatible type "C"
-f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"
+f(c)       # E: Argument 1 to "f" has incompatible type "C"; expected "A"
+f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"; expected "A"
 f(g())     # E: "g" does not return a value
 f(a, g())  # E: "g" does not return a value
 f()
@@ -56,9 +56,9 @@ a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: C
 
-f(a)       # E: Argument 1 to "f" has incompatible type "A"
-f(c, c)    # E: Argument 2 to "f" has incompatible type "C"
-f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"
+f(a)       # E: Argument 1 to "f" has incompatible type "A"; expected "C"
+f(c, c)    # E: Argument 2 to "f" has incompatible type "C"; expected "A"
+f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"; expected "A"
 f(c)
 f(c, a)
 f(c, b, b, a, b)
@@ -76,9 +76,9 @@ a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: C
 
-f(a)           # E: Argument 1 to "f" has incompatible type "A"
-f(c, c)        # E: Argument 2 to "f" has incompatible type "C"
-f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"
+f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "C"
+f(c, c)        # E: Argument 2 to "f" has incompatible type "C"; expected "A"
+f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"; expected "A"
 f()
 f(c)
 f(c, a)
@@ -98,7 +98,7 @@ it1 = Undefined(Iterable[int])
 it2 = Undefined(Iterable[str])
 def f(*x: int) -> None: pass
 f(*it1)
-f(*it2) # E: Argument 1 to "f" has incompatible type Iterable[str]
+f(*it2) # E: Argument 1 to "f" has incompatible type Iterable[str]; expected "int"
 [builtins fixtures/for.py]
 
 
@@ -114,9 +114,9 @@ b = Undefined # type: B
 c = Undefined # type: C
 o = Undefined # type: object
 
-a = f(o) # E: Argument 1 to "f" has incompatible type "object"
-b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"
-b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"
+a = f(o) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 
 o = f()
 a = f(a)
@@ -139,10 +139,10 @@ T = typevar('T')
 a = Undefined # type: A
 o = Undefined # type: object
 
-a = f(o) # E: Argument 1 to "f" has incompatible type "object"
-a = f(a, o) # E: Argument 2 to "f" has incompatible type "object"
-a = f(a, a, o) # E: Argument 3 to "f" has incompatible type "object"
-a = f(a, a, a, o) # E: Argument 4 to "f" has incompatible type "object"
+a = f(o) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+a = f(a, o) # E: Argument 2 to "f" has incompatible type "object"; expected "A"
+a = f(a, a, o) # E: Argument 3 to "f" has incompatible type "object"; expected "A"
+a = f(a, a, a, o) # E: Argument 4 to "f" has incompatible type "object"; expected "A"
 
 a = f(a)
 a = f(a, a)
@@ -179,7 +179,7 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 7: Argument 1 to "f" has incompatible type List[A]
+main, line 7: Argument 1 to "f" has incompatible type List[A]; expected "A"
 
 [case testCallingWithTupleVarArgs]
 from typing import Undefined
@@ -188,10 +188,10 @@ b = Undefined # type: B
 c = Undefined # type: C
 cc = Undefined # type: CC
 
-f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "Tuple[A, B, B]"
-f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "Tuple[B, B, C]"
-f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "Tuple[B, B]"
-f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"
+f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "Tuple[A, B, B]"; expected "A"
+f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "Tuple[B, B, C]"; expected "A"
+f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "Tuple[B, B]"; expected "B"
+f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(*(a, b))    # E: Too few arguments for "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
 f(a, *(b, c, c)) # E: Too many arguments for "f"
@@ -248,26 +248,26 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 3: Argument 1 to "f" has incompatible type List[A]
-main, line 4: Argument 2 to "f" has incompatible type List[A]
-main, line 5: Argument 1 to "f" has incompatible type "B"
-main, line 6: Argument 2 to "f" has incompatible type "A"
-main, line 7: Argument 3 to "f" has incompatible type List[A]
-main, line 8: Argument 1 to "f" has incompatible type "B"
-main, line 9: Argument 1 to "g" has incompatible type List[B]
+main, line 3: Argument 1 to "f" has incompatible type List[A]; expected "A"
+main, line 4: Argument 2 to "f" has incompatible type List[A]; expected "B"
+main, line 5: Argument 1 to "f" has incompatible type "B"; expected "A"
+main, line 6: Argument 2 to "f" has incompatible type "A"; expected "B"
+main, line 7: Argument 3 to "f" has incompatible type List[A]; expected "B"
+main, line 8: Argument 1 to "f" has incompatible type "B"; expected "A"
+main, line 9: Argument 1 to "g" has incompatible type List[B]; expected "A"
 
 [case testCallingVarArgsFunctionWithTupleVarArgs]
 from typing import Undefined
 a, b, c, cc = Undefined, Undefined, Undefined, Undefined # type: (A, B, C, CC)
 
-f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "Tuple[B, B, B]"
-f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
-f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B, A]"
-f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "Tuple[A, B]"
-f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"
-f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"
-f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"
-f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "Tuple[A]"
+f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "Tuple[B, B, B]"; expected "A"
+f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"; expected "A"
+f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B, A]"; expected "A"
+f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "Tuple[A, B]"; expected "B"
+f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "Tuple[A]"; expected "B"
 f(*())          # E: Too few arguments for "f"
 f(*(a, b, b))
 f(a, *(b, b))
@@ -311,7 +311,7 @@ from typing import Undefined, List
 aa = Undefined # type: List[A]
 ab = Undefined # type: List[B]
 
-g(*aa) # E: Argument 1 to "g" has incompatible type List[A]
+g(*aa) # E: Argument 1 to "g" has incompatible type List[A]; expected "B"
 f(*aa)
 f(*ab)
 g(*ab)
@@ -348,9 +348,9 @@ class B: pass
 [builtins fixtures/list.py]
 [out]
 main, line 3: Too few arguments for "f"
-main, line 4: Argument 2 to "f" has incompatible type List[A]
-main, line 5: Argument 3 to "f" has incompatible type List[A]
-main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
+main, line 4: Argument 2 to "f" has incompatible type List[A]; expected "B"
+main, line 5: Argument 3 to "f" has incompatible type List[A]; expected "B"
+main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"; expected "A"
 
 
 -- Overloads + varargs
@@ -361,18 +361,18 @@ main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"
 from typing import Undefined, overload, disjointclass
 a, b = Undefined, Undefined # type: (A, B)
 
-b = f()        # E: Incompatible types in assignment
-b = f(a)       # E: Incompatible types in assignment
-b = f(a, b)    # E: Incompatible types in assignment
-a = f(b)       # E: Incompatible types in assignment
-a = f(b, b)    # E: Incompatible types in assignment
-b = f(a, *[b]) # E: Incompatible types in assignment
+b = f()        # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(a)       # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(a, b)    # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(b)       # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = f(b, b)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(a, *[b]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = f(*())
-b = f(*(a,))   # E: Incompatible types in assignment
-b = f(*(a, b)) # E: Incompatible types in assignment
-a = f(*(b,))   # E: Incompatible types in assignment
-a = f(*(b, b)) # E: Incompatible types in assignment
-a = f(*[b])    # E: Incompatible types in assignment
+b = f(*(a,))   # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(*(a, b)) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(*(b,))   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = f(*(b, b)) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = f(*[b])    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 a = f()
 a = f(a)
@@ -428,11 +428,11 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 6: Argument 1 to "f" has incompatible type List[A]
-main, line 7: Argument 1 to "f" has incompatible type List[A]
-main, line 8: Argument 1 to "f" has incompatible type "B"
-main, line 9: Argument 2 to "f" has incompatible type List[A]
-main, line 10: Argument 3 to "f" has incompatible type List[A]
+main, line 6: Argument 1 to "f" has incompatible type List[A]; expected "A"
+main, line 7: Argument 1 to "f" has incompatible type List[A]; expected "B"
+main, line 8: Argument 1 to "f" has incompatible type "B"; expected "A"
+main, line 9: Argument 2 to "f" has incompatible type List[A]; expected "B"
+main, line 10: Argument 3 to "f" has incompatible type List[A]; expected "B"
 main, line 11: List or tuple expected as variable arguments
 main, line 12: List or tuple expected as variable arguments
 
@@ -442,10 +442,10 @@ S = typevar('S')
 T = typevar('T')
 a, b = Undefined, Undefined # type: (A, B)
 
-a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"
-b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
-a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"
-b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"
+a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"; expected "A"
+b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"; expected "A"
+b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 a, b = f(*(a, b, b)) # E: Too many arguments for "f"
 
 a, b = f(*(a, b))
@@ -470,8 +470,8 @@ a, aa = G().f(*[a])  # Fail
 aa, a = G().f(*[a])  # Fail
 ab, aa = G().f(*[a]) # Fail
 
-ao, ao = G().f(*[a]) # E: Incompatible types in assignment
-aa, aa = G().f(*[a]) # E: Incompatible types in assignment
+ao, ao = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[None], variable has type List[object])
+aa, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[None], variable has type List[A])
 
 class G(Generic[T]):
     def f(self, *a: S) -> Tuple[List[S], List[T]]:
@@ -481,10 +481,11 @@ class A: pass
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main, line 9: Incompatible types in assignment
-main, line 10: Incompatible types in assignment
-main, line 11: Argument 1 to "f" of "G" has incompatible type List[A]
-main, line 11: Incompatible types in assignment
+main, line 9: Incompatible types in assignment (expression has type List[A], variable has type "A")
+main, line 9: Incompatible types in assignment (expression has type List[None], variable has type List[A])
+main, line 10: Incompatible types in assignment (expression has type List[None], variable has type "A")
+main, line 11: Argument 1 to "f" of "G" has incompatible type List[A]; expected "B"
+main, line 11: Incompatible types in assignment (expression has type List[None], variable has type List[A])
 
 
 -- Comment signatures
@@ -497,6 +498,6 @@ def f(*x): # type: (*int) -> None
     pass
 f(1)
 f(1, 2)
-f('') # E: Argument 1 to "f" has incompatible type "str"
-f(1, '') # E: Argument 2 to "f" has incompatible type "str"
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/list.py]

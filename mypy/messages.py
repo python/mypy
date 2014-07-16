@@ -34,6 +34,7 @@ INVALID_RETURN_TYPE_FOR_YIELD = \
                          'Iterator function return type expected for "yield"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
+INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
                                      'Type of getter incompatible with setter'
@@ -122,12 +123,17 @@ class MessageBuilder:
                 # The type of a type object type can be derived from the
                 # return type (this always works).
                 itype = cast(Instance, func.items()[0].ret_type)
-                return self.format(itype)                
+                return self.format(itype)
+            elif isinstance(func, Callable):
+                arg_types = map(self.format, func.arg_types)
+                return_type = self.format(func.ret_type)
+                return 'Function[[{}] -> {}]'.format(", ".join(arg_types),
+                                                    return_type)
             else:
                 # Use a simple representation for function types; proper
                 # function types may result in long and difficult-to-read
                 # error messages.
-                return 'function'
+                return 'functionlike'
         else:
             # Default case; we simply have to return something meaningful here.
             return 'object'
@@ -340,8 +346,12 @@ class MessageBuilder:
             msg = 'Generator has incompatible item type {}'.format(
                                               self.format_simple(arg_type))
         else:
-            msg = 'Argument {} {}has incompatible type {}'.format(
-                n, target, self.format_simple(arg_type))
+            try:
+                expected_type = callee.arg_types[n-1]
+            except IndexError:
+                expected_type = callee.arg_types[-1]
+            msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+                n, target, self.format(arg_type), self.format(expected_type))
         self.fail(msg, context)
     
     def invalid_index_type(self, index_type: Type, base_str: str,
