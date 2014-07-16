@@ -6,7 +6,7 @@ import typing
 u = u'foo'
 u = unicode()
 s = ''
-s = u'foo' # E: Incompatible types in assignment
+s = u'foo' # E: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 s = b'foo'
 [builtins fixtures/python2.py]
 
@@ -21,4 +21,4 @@ class A:
     def __div__(self, x: int) -> str: pass
 s = A() / 1
 s = ''
-s = 1 # E: Incompatible types in assignment
+s = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")

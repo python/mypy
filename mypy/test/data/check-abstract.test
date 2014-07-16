@@ -15,10 +15,10 @@ a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: C
 
-j = c  # E: Incompatible types in assignment
-a = i  # E: Incompatible types in assignment
-a = j  # E: Incompatible types in assignment
-b = i  # E: Incompatible types in assignment
+j = c  # E: Incompatible types in assignment (expression has type "C", variable has type "J")
+a = i  # E: Incompatible types in assignment (expression has type "I", variable has type "A")
+a = j  # E: Incompatible types in assignment (expression has type "J", variable has type "A")
+b = i  # E: Incompatible types in assignment (expression has type "I", variable has type "B")
 
 i = a
 i = b
@@ -46,11 +46,11 @@ j = Undefined # type: J
 a = Undefined # type: A
 o = Undefined # type: object
 
-j = i # E: Incompatible types in assignment
-a = i # E: Incompatible types in assignment
-a = j # E: Incompatible types in assignment
-i = o # E: Incompatible types in assignment
-j = o # E: Incompatible types in assignment
+j = i # E: Incompatible types in assignment (expression has type "I", variable has type "J")
+a = i # E: Incompatible types in assignment (expression has type "I", variable has type "A")
+a = j # E: Incompatible types in assignment (expression has type "J", variable has type "A")
+i = o # E: Incompatible types in assignment (expression has type "object", variable has type "I")
+j = o # E: Incompatible types in assignment (expression has type "object", variable has type "J")
 
 i = a
 j = a
@@ -72,8 +72,8 @@ i = Undefined # type: I
 a = Undefined # type: A
 b = Undefined # type: B
 
-i = a # E: Incompatible types in assignment
-b = a # E: Incompatible types in assignment
+i = a # E: Incompatible types in assignment (expression has type "A", variable has type "I")
+b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = b
 i = b
@@ -116,7 +116,7 @@ class B: pass
 i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
 o = Undefined # type: object
 
-a = cast(I, o) # E: Incompatible types in assignment
+a = cast(I, o) # E: Incompatible types in assignment (expression has type "I", variable has type "A")
 b = cast(B, i) # Ok; a subclass of B might inherit I
 i = cast(I, b) # Ok; a subclass of B might inherit I
 
@@ -259,8 +259,8 @@ class I(metaclass=ABCMeta):
 
 i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
 
-a = i.f(a) # E: Incompatible types in assignment
-b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"
+a = i.f(a) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
 i.g()      # E: "I" has no attribute "g"
 
 b = i.f(a)
@@ -276,7 +276,7 @@ class I(J): pass
 
 i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
 
-a = i.f(1) # E: Incompatible types in assignment
+a = i.f(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 b = i.f(1)
 
 
@@ -484,7 +484,7 @@ import typing
 from abc import abstractmethod, ABCMeta
 class A(metaclass=ABCMeta):
     def f(self) -> None:
-        self.g(1) # E: Argument 1 to "g" of "A" has incompatible type "int"
+        self.g(1) # E: Argument 1 to "g" of "A" has incompatible type "int"; expected "str"
     @abstractmethod
     def g(self, x: str) -> None: pass
 [out]

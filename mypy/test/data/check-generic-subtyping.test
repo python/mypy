@@ -13,9 +13,9 @@ ac = Undefined # type: A[C]
 ad = Undefined # type: A[D]
 b = Undefined # type: B
 
-b = ad # E: Incompatible types in assignment
-ad = b # E: Incompatible types in assignment
-b = ac # E: Incompatible types in assignment
+b = ad # E: Incompatible types in assignment (expression has type A[D], variable has type "B")
+ad = b # E: Incompatible types in assignment (expression has type "B", variable has type A[D])
+b = ac # E: Incompatible types in assignment (expression has type A[C], variable has type "B")
 
 b = b
 ac = b
@@ -32,10 +32,10 @@ a = Undefined # type: A
 bc = Undefined # type: B[C]
 bd = Undefined # type: B[D]
 
-bc = bd # E: Incompatible types in assignment
-bd = bc # E: Incompatible types in assignment
-bc = a  # E: Incompatible types in assignment
-bd = a  # E: Incompatible types in assignment
+bc = bd # E: Incompatible types in assignment (expression has type B[D], variable has type B[C])
+bd = bc # E: Incompatible types in assignment (expression has type B[C], variable has type B[D])
+bc = a  # E: Incompatible types in assignment (expression has type "A", variable has type B[C])
+bd = a  # E: Incompatible types in assignment (expression has type "A", variable has type B[D])
 
 a = bc
 a = bd
@@ -54,10 +54,10 @@ ad = Undefined # type: A[D]
 bcc = Undefined # type: B[C, C]
 bdc = Undefined # type: B[D, C]
 
-ad = bcc # E: Incompatible types in assignment
-ad = bdc # E: Incompatible types in assignment
-bcc = ac # E: Incompatible types in assignment
-bdc = ac # E: Incompatible types in assignment
+ad = bcc # E: Incompatible types in assignment (expression has type B[C, C], variable has type A[D])
+ad = bdc # E: Incompatible types in assignment (expression has type B[D, C], variable has type A[D])
+bcc = ac # E: Incompatible types in assignment (expression has type A[C], variable has type B[C, C])
+bdc = ac # E: Incompatible types in assignment (expression has type A[C], variable has type B[D, C])
 
 bcc = bcc
 bdc = bdc
@@ -82,8 +82,8 @@ cef = Undefined # type: C[E, F]
 cff = Undefined # type: C[F, F]
 cfe = Undefined # type: C[F, E]
 
-ae = cef # E: Incompatible types in assignment
-af = cfe # E: Incompatible types in assignment
+ae = cef # E: Incompatible types in assignment (expression has type C[E, F], variable has type A[A[E]])
+af = cfe # E: Incompatible types in assignment (expression has type C[F, E], variable has type A[A[F]])
 
 ae = cfe
 af = cef
@@ -114,7 +114,7 @@ S = typevar('S')
 b = Undefined # type: B[C, D]
 c, d = Undefined, Undefined # type: (C, D)
 
-b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
+b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"; expected "D"
 b.f(d)
 
 class A(Generic[T]):
@@ -129,7 +129,7 @@ from typing import Undefined, typevar, Generic
 T = typevar('T')
 b, c, d = Undefined, Undefined, Undefined # type: (B, C, D)
 
-b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"
+b.f(c) # E: Argument 1 to "f" of "A" has incompatible type "C"; expected "D"
 b.f(d)
 
 class C: pass
@@ -150,7 +150,7 @@ class A(Generic[T]):
 b = Undefined # type: B[C, D]
 c, d = Undefined, Undefined # type: (C, D)
 
-b.a = c # E: Incompatible types in assignment
+b.a = c # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 b.a = d
 
 class B(A[S], Generic[T, S]): pass
@@ -236,7 +236,7 @@ a = Undefined # type: A
 bc = Undefined # type: B[C]
 bd = Undefined # type: B[D]
 
-a = bc # E: Incompatible types in assignment
+a = bc # E: Incompatible types in assignment (expression has type B[C], variable has type "A")
 bc = a
 bd = a
 
@@ -261,8 +261,8 @@ a = Undefined # type: A
 c = Undefined # type: C
 bc = Undefined # type: B[C]
 
-a.x = c # E: Incompatible types in assignment
-a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
+a.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])
+a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
 a.x = bc
 a.f(bc)
 [out]
@@ -281,8 +281,8 @@ class B(Generic[T]):
     
 class A(B):
   def g(self) -> None:
-    self.x = c # E: Incompatible types in assignment
-    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"
+    self.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])
+    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
     self.x = bc
     self.f(bc)
 
@@ -314,7 +314,7 @@ class B(Generic[T]):
     def f(self, a: T) -> None: pass
 class A(B[S], Generic[T, S]):
     def g(self, t: T, s: S) -> None:
-        super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"
+        super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
 main: In member "g" of class "A":
@@ -331,7 +331,7 @@ class D: pass
 class B(C[D, D, T], Generic[T]): pass
 class A(B[S], Generic[T, S]):
     def g(self, t: T, s: S) -> None:
-        super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"
+        super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
 main: In member "g" of class "A":
@@ -351,9 +351,9 @@ adc = Undefined # type: A[D, C]
 ic = Undefined # type: I[C]
 id = Undefined # type: I[D]
 
-ic = acd # E: Incompatible types in assignment
-id = adc # E: Incompatible types in assignment
-adc = ic # E: Incompatible types in assignment
+ic = acd # E: Incompatible types in assignment (expression has type A[C, D], variable has type I[C])
+id = adc # E: Incompatible types in assignment (expression has type A[D, C], variable has type I[D])
+adc = ic # E: Incompatible types in assignment (expression has type I[C], variable has type A[D, C])
 
 ic = adc
 id = acd
@@ -375,11 +375,11 @@ class I(AbstractGeneric[S]): pass
 class B(I[C]): pass
 class A(B): pass
 
-ie = a # E: Incompatible types in assignment
-a = ic # E: Incompatible types in assignment
-a = id # E: Incompatible types in assignment
-a = b  # E: Incompatible types in assignment
-id = a # E: Incompatible types in assignment
+ie = a # E: Incompatible types in assignment (expression has type "A", variable has type I[E])
+a = ic # E: Incompatible types in assignment (expression has type I[C], variable has type "A")
+a = id # E: Incompatible types in assignment (expression has type I[D], variable has type "A")
+a = b  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+id = a # E: Incompatible types in assignment (expression has type "A", variable has type I[D])
 
 ic = a
 b = a
@@ -410,8 +410,8 @@ a, i, j = Undefined, Undefined, Undefined # type: (A[object], I[object], J[objec
 i = a
 j = a
 j = i
-a = i # E: Incompatible types in assignment
-a = j # E: Incompatible types in assignment
+a = i # E: Incompatible types in assignment (expression has type I[object], variable has type A[object])
+a = j # E: Incompatible types in assignment (expression has type J[object], variable has type A[object])
 
 class J(AbstractGeneric[t]): pass
 class X(metaclass=ABCMeta): pass
@@ -471,7 +471,7 @@ class A(B):
 class C: pass
 class D: pass
 [out]
-main, line 7: Incompatible types in assignment
+main, line 7: Incompatible types in assignment (expression has type "A", variable has type I[D])
 main: In class "A":
 
 [case testSubclassingGenenericABCWithDeepHierarchy2]
@@ -578,7 +578,7 @@ class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 ia = Undefined # type: I[A]
 
-ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"
+ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"; expected "A"
 ia.f(a)
 
 [case testAccessingInheritedGenericABCMembers]
@@ -594,7 +594,7 @@ class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 ia = Undefined # type: I[A]
 
-ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"
+ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"; expected "A"
 ia.f(a)
 
 
@@ -609,6 +609,6 @@ class Nums(Iterable[int]):
     def __iter__(self): pass
     def __next__(self): pass
 n, n = Nums()
-s, s = Nums() # E: Incompatible types in assignment
+s, s = Nums() # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/for.py]
 [out]

@@ -10,7 +10,7 @@ a = b # Fail
 class A: pass
 class B: pass
 [out]
-main, line 5: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testConstructionAndAssignment]
 from typing import Undefined
@@ -22,7 +22,7 @@ class A:
 class B:
     def __init__(self): pass
 [out]
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInheritInitFromObject]
 from typing import Undefined
@@ -32,7 +32,7 @@ x = B()
 class A(object): pass
 class B(object): pass
 [out]
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testImplicitInheritInitFromObject]
 from typing import Undefined
@@ -44,7 +44,7 @@ x = o # Fail
 class A: pass
 class B: pass
 [out]
-main, line 6: Incompatible types in assignment
+main, line 6: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testTooManyConstructorArgs]
 import typing
@@ -58,7 +58,7 @@ a = A() # type: A
 b = object() # type: A
 class A: pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testInheritanceBasedSubtyping]
 import typing
@@ -67,12 +67,12 @@ y = A() # type: B # Fail
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testDeclaredVariableInParentheses]
 from typing import Undefined
 (x) = Undefined # type: int
-x = '' # E: Incompatible types in assignment
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 x = 1
 
 
@@ -88,7 +88,7 @@ f(B()) # Fail
 class A: pass
 class B: pass
 [out]
-main, line 4: Argument 1 to "f" has incompatible type "B"
+main, line 4: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 [case testNotCallable]
 import typing
@@ -106,7 +106,7 @@ f(B(), B())
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Argument 2 to "f" has incompatible type "A"
+main, line 3: Argument 2 to "f" has incompatible type "A"; expected "B"
 
 [case testInvalidArgumentCount]
 import typing
@@ -133,7 +133,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 6: Incompatible types in assignment
+main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableScope]
 from typing import Undefined
@@ -147,7 +147,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "g":
-main, line 7: Incompatible types in assignment
+main, line 7: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testFunctionArguments]
 import typing
@@ -159,7 +159,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableInitialization]
 import typing
@@ -170,7 +170,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testVariableInitializationWithSubtype]
 import typing
@@ -179,7 +179,7 @@ y = A() # type: B # Fail
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 
 -- Misc
@@ -207,7 +207,7 @@ class B: pass
 main: In function "f":
 main, line 3: Incompatible return value type
 main: At top level:
-main, line 4: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testModule__name__]
 import typing
@@ -250,11 +250,11 @@ a = A()
 class A: pass
 class B: pass
 [out]
-main, line 3: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
 main: In function "f":
-main, line 7: Incompatible types in assignment
+main, line 7: Incompatible types in assignment (expression has type "A", variable has type "B")
 main: At top level:
-main, line 9: Incompatible types in assignment
+main, line 9: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
 from typing import Undefined
@@ -262,7 +262,7 @@ class A: pass
 while A:
     a = Undefined # type: A
     a = A()
-    a = object() # E: Incompatible types in assignment
+    a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 
 -- Using Undefined with a type argument
@@ -273,7 +273,7 @@ while A:
 from typing import Undefined
 a = Undefined(int)
 a = 1
-a = '' # E: Incompatible types in assignment
+a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDeclareGlobalUsingUndefindWithAnyArgument]
 from typing import Undefined, Any
@@ -287,19 +287,19 @@ from typing import Undefined
 def f() -> None:
     a = Undefined(int)
     a = 1
-    a = '' # E: Incompatible types in assignment
+    a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: In function "f":
 
 [case testDeclareTypeUsingUndefinedAndComment]
 from typing import Undefined
-x = Undefined(int) # type: str # E: Incompatible types in assignment
+x = Undefined(int) # type: str # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testDeclareMultipleVarsUsingUndefinedWithArgument]
 from typing import Undefined
 x = y = Undefined(int)
-x = '' # E: Incompatible types in assignment
-y = '' # E: Incompatible types in assignment
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 x = 1
 y = 1
 
@@ -316,7 +316,7 @@ f('')
 main: In function "f":
 main, line 2: Incompatible return value type
 main: At top level:
-main, line 3: Argument 1 to "f" has incompatible type "str"
+main, line 3: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodSignatureAsComment]
 class A:
@@ -327,9 +327,9 @@ class A:
 A().f('') # Fail
 [out]
 main: In member "f" of class "A":
-main, line 4: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 4: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main, line 5: Incompatible return value type
 main: At top level:
-main, line 6: Argument 1 to "f" of "A" has incompatible type "str"
+main, line 6: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 

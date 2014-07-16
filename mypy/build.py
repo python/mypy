@@ -448,25 +448,26 @@ class BuildManager:
     
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[str, int]]:
-        """Find all import statements in a file.
+        """Find all reachable import statements in a file.
 
         Return list of tuples (module id, import line number) for all modules
         imported in file.
         """
         res = List[Tuple[str, int]]()
         for imp in file.imports:
-            if isinstance(imp, Import):
-                for id, _ in imp.ids:
-                    res.append((id, imp.line))
-            elif isinstance(imp, ImportFrom):
-                res.append((imp.id, imp.line))
-                # Also add any imported names that are submodules.
-                for name, __ in imp.names:
-                    sub_id = imp.id + '.' + name
-                    if self.is_module(sub_id):
-                        res.append((sub_id, imp.line))
-            elif isinstance(imp, ImportAll):
-                res.append((imp.id, imp.line))
+            if not imp.is_unreachable:
+                if isinstance(imp, Import):
+                    for id, _ in imp.ids:
+                        res.append((id, imp.line))
+                elif isinstance(imp, ImportFrom):
+                    res.append((imp.id, imp.line))
+                    # Also add any imported names that are submodules.
+                    for name, __ in imp.names:
+                        sub_id = imp.id + '.' + name
+                        if self.is_module(sub_id):
+                            res.append((sub_id, imp.line))
+                elif isinstance(imp, ImportAll):
+                    res.append((imp.id, imp.line))
         return res
     
     def is_module(self, id: str) -> bool:
@@ -726,6 +727,12 @@ class UnprocessedFile(State):
             if not self.import_module('builtins'):
                 self.fail(self.path, 1, 'Could not find builtins')
 
+        # Do the first pass of semantic analysis: add top-level definitions in
+        # the file to the symbol table. We must do this before processing imports,
+        # since this may mark some import statements as unreachable.
+        first = FirstPass(self.semantic_analyzer())
+        first.analyze(tree, self.path, self.id)
+
         # Add all directly imported modules to be processed (however they are
         # not processed yet, just waiting to be processed).
         for id, line in self.manager.all_imported_modules_in_file(tree):
@@ -737,11 +744,7 @@ class UnprocessedFile(State):
             if not res:
                 self.fail(self.path, line, "No module named '{}'".format(id), blocker=False)
                 self.manager.missing_modules.add(id)
-
-        # Do the first pass of semantic analysis: add top-level definitions in
-        # the file to the symbol table.
-        first = FirstPass(self.semantic_analyzer())
-        first.analyze(tree, self.path, self.id)
+        
         # Initialize module symbol table, which was populated by the semantic
         # analyzer.
         tree.names = self.semantic_analyzer().globals
