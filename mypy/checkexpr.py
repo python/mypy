@@ -215,7 +215,10 @@ class ExpressionChecker:
                     arg_type = self.accept(arg, callee.arg_types[-1])
                 else:
                     arg_type = self.accept(arg)
-            res.append(arg_type)
+            if isinstance(arg_type, ErasedType):
+                res.append(NoneTyp())
+            else:
+                res.append(arg_type)
         return res
     
     def infer_arg_types_in_context2(
