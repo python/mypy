@@ -21,6 +21,7 @@ def cleandoc(doc: str) -> str: pass
 
 def getsourcelines(obj: object) -> Tuple[List[str], int]: pass
 
+# namedtuple('ArgSpec', 'args varargs keywords defaults')
 class ArgSpec(tuple):
     args = Undefined(List[str])
     varargs = Undefined(str)

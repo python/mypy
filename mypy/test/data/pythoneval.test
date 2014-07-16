@@ -824,3 +824,22 @@ s = {'x', 'y'}
 print('>', sorted(s.union('foo')))
 [out]
 > ['f', 'o', 'x', 'y']
+
+[case testOverloadedErasedType]
+from typing import overload, typevar, Function, List
+
+T = typevar("T")
+V = typevar("V")
+
+@overload
+def fun(x: int) -> int: return 1
+@overload
+def fun(x: str) -> int: return 2
+
+def m(fun: Function[[T], V], iter: List[T]) -> int: return 17
+
+nums = [1] # type: List[int]
+print('>', m(lambda x: fun(x),
+             nums))
+[out]
+> 17

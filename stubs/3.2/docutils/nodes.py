@@ -1,3 +1,8 @@
-from typing import Any, Undefined
+from typing import Any, List
 
-reference = Undefined(Any)
+class reference:
+    def __init__(self,
+                 rawsource: str = '',
+                 text: str = '',
+                 *children: List[Any],
+                 **attributes) -> None: pass
