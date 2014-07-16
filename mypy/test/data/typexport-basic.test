@@ -1106,6 +1106,33 @@ CallExpr(11) : A
 CallExpr(12) : B
 
 
+
+[case testOverloadedErasedType]
+from typing import Function
+from typing import List
+from typing import overload
+from typing import typevar
+
+T = typevar("T")
+V = typevar("V")
+
+def fun(s: int) -> int: pass
+
+def m(fun: Function[[T], V], iter: List[T]) -> None: pass
+
+nums = [1] # type: List[int]
+m(fun,
+  nums)
+[builtins fixtures/list.py]
+[out]
+IntExpr(13) : builtins.int
+ListExpr(13) : builtins.list[builtins.int]
+CallExpr(14) : void
+NameExpr(14) : def (s: builtins.int) -> builtins.int
+NameExpr(14) : def [-1:builtins.int, -2:builtins.int] (fun: def (builtins.int) -> builtins.int, iter: builtins.list[builtins.int])
+NameExpr(15) : builtins.list[builtins.int]
+
+
 -- Special cases
 -- -------------
 
