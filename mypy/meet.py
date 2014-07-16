@@ -13,8 +13,10 @@ from mypy.subtypes import is_subtype
 
 
 def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
-    if isinstance(s, AnyType) or isinstance(s, ErasedType):
+    if isinstance(s, ErasedType):
         return s
+    if isinstance(s, AnyType):
+        return t
     if isinstance(s, UnionType) and not isinstance(t, UnionType):
         s, t = t, s
     return t.accept(TypeMeetVisitor(s, basic))
@@ -40,7 +42,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         assert False, 'Not supported'
     
     def visit_any(self, t: AnyType) -> Type:
-        return t
+        return self.s
 
     def visit_union_type(self, t: UnionType) -> Type:
         if isinstance(self.s, UnionType):

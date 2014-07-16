@@ -524,7 +524,7 @@ class MeetSuite(Suite):
     
     def test_void(self):
         self.assert_meet(self.fx.void, self.fx.void, self.fx.void)
-        self.assert_meet(self.fx.void, self.fx.anyt, self.fx.anyt)
+        self.assert_meet(self.fx.void, self.fx.anyt, self.fx.void)
         
         # Meet of any other type against void results in ErrorType, since there
         # is no meaningful valid result.
@@ -536,7 +536,7 @@ class MeetSuite(Suite):
     def test_none(self):
         self.assert_meet(NoneTyp(), NoneTyp(), NoneTyp())
         
-        self.assert_meet(NoneTyp(), self.fx.anyt, self.fx.anyt)
+        self.assert_meet(NoneTyp(), self.fx.anyt, NoneTyp())
         self.assert_meet(NoneTyp(), self.fx.void, self.fx.err)
         
         # Any type t joined with None results in None, unless t is any or
@@ -550,11 +550,12 @@ class MeetSuite(Suite):
         self.assert_meet(UnboundType('x'), UnboundType('y'), self.fx.anyt)
         
         self.assert_meet(UnboundType('x'), self.fx.void, self.fx.err)
+        self.assert_meet(UnboundType('x'), self.fx.anyt, UnboundType('x'))
         
         # The meet of any type t with an unbound type results in dynamic
         # (except for void). Unbound type means that there is an error
         # somewhere in the program, so this does not affect type safety.
-        for t in [self.fx.anyt, self.fx.a, self.fx.o, self.fx.t, self.tuple(),
+        for t in [self.fx.a, self.fx.o, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, UnboundType('X'), self.fx.anyt)
     
@@ -563,10 +564,10 @@ class MeetSuite(Suite):
         for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneTyp(),
                   UnboundType('x'), self.fx.void, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
-            self.assert_meet(t, self.fx.anyt, self.fx.anyt)
+            self.assert_meet(t, self.fx.anyt, t)
     
     def test_error_type(self):
-        self.assert_meet(self.fx.err, self.fx.anyt, self.fx.anyt)
+        self.assert_meet(self.fx.err, self.fx.anyt, self.fx.err)
         
         # Meet against any type except dynamic results in ErrorType.
         for t in [self.fx.a, self.fx.o, NoneTyp(), UnboundType('x'),
@@ -581,7 +582,7 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nonet)
         
         self.assert_meet(self.fx.ga, self.fx.nonet, self.fx.nonet)
-        self.assert_meet(self.fx.ga, self.fx.anyt, self.fx.anyt)
+        self.assert_meet(self.fx.ga, self.fx.anyt, self.fx.ga)
         
         for t in [self.fx.a, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
@@ -601,7 +602,7 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.gsab, self.fx.gs2a, self.fx.nonet)
     
     def test_generic_types_and_dynamic(self):
-        self.assert_meet(self.fx.gdyn, self.fx.ga, self.fx.gdyn)
+        self.assert_meet(self.fx.gdyn, self.fx.ga, self.fx.ga)
     
     def test_callables_with_dynamic(self):
         self.assert_meet(self.callable(self.fx.a, self.fx.a, self.fx.anyt,
