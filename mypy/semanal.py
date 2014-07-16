@@ -1743,15 +1743,15 @@ def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
         result = infer_if_condition_value(s.expr[i], pyversion)
         if result == ALWAYS_FALSE:
             # The condition is always false, so we skip the if/elif body.
-            s.body[i].is_unreachable = True
+            mark_block_unreachable(s.body[i])
         elif result == ALWAYS_TRUE:
             # This condition is always true, so all of the remaining
             # elif/else bodies will never be executed.
             always_true = True
             for body in s.body[i + 1:]:
-                body.is_unreachable = True
+                mark_block_unreachable(s.body[i])
             if s.else_body:
-                s.else_body.is_unreachable = True
+                mark_block_unreachable(s.else_body)
             break
 
 
@@ -1766,3 +1766,21 @@ def infer_if_condition_value(expr: Node, pyversion: int) -> int:
     elif name == 'PY3':
         return ALWAYS_TRUE if pyversion == 3 else ALWAYS_FALSE
     return TRUTH_VALUE_UNKOWN
+
+
+def mark_block_unreachable(block: Block) -> None:
+    block.is_unreachable = True
+    block.accept(MarkImportsUnreachableVisitor())
+
+
+class MarkImportsUnreachableVisitor(TraverserVisitor):
+    """Visitor that flags all imports nested within a node as unreachable."""
+    
+    def visit_import(self, node: Import) -> None:
+        node.is_unreachable = True
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        node.is_unreachable = True
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        node.is_unreachable = True
