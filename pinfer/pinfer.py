@@ -135,6 +135,10 @@ def infer_method_signature(class_name):
     """Construct a function decorator that infer the signature of a function.
     """
     def outer_wrapper(func):
+        # infer_method_signature should be idempotent
+        if hasattr(func, '__is_inferring_sig'):
+            return func
+
         assert func.__module__ != infer_method_signature.__module__
 
         name = func.__name__
@@ -263,6 +267,7 @@ def infer_method_signature(class_name):
 
         if hasattr(func, '__name__'):
             wrapper.__name__ = func.__name__
+        wrapper.__is_inferring_sig = True
         return wrapper
     return outer_wrapper
 
