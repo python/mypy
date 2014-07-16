@@ -388,7 +388,7 @@ class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 3: Unsupported operand types for + ("LongTypeName" and tuple)
+main, line 3: Unsupported operand types for + ("LongTypeName" and tuple(length 7))
 
 
 -- Tuple methods

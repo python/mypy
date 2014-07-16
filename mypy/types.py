@@ -397,9 +397,10 @@ class UnionType(Type):
         self.items = items
         super().__init__(line, repr)
 
-    def __new__(cls, items: List[Type], line: int = -1, repr: Any = None) -> None:
+    @staticmethod
+    def make_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
         if len(items) > 1:
-            return super().__new__(cls)
+            return UnionType(items, line, repr)
         elif len(items) == 1:
             return items[0]
         else:

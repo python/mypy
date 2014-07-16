@@ -293,7 +293,7 @@ def restrict_subtype_away(t:Type, s: Type) -> Type:
     """
     if isinstance(t, UnionType):
         new_items = [item for item in t.items if not is_subtype(item, s)]
-        return UnionType(new_items)
+        return UnionType.make_union(new_items)
     else:
         return t
 

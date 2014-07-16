@@ -3,7 +3,7 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList
+    Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
@@ -15,7 +15,8 @@ from mypy.subtypes import is_subtype
 def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
     if isinstance(s, AnyType) or isinstance(s, ErasedType):
         return s
-    
+    if isinstance(s, UnionType) and not isinstance(t, UnionType):
+        s, t = t, s
     return t.accept(TypeMeetVisitor(s, basic))
 
 
@@ -40,7 +41,21 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     
     def visit_any(self, t: AnyType) -> Type:
         return t
-    
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        if isinstance(self.s, UnionType):
+            meets = [meet_types(x, y, self.basic)
+                     for x in t.items for y in self.s.items]
+        else:
+            meets = [meet_types(x, self.s, self.basic)
+                     for x in t.items]
+        ans_set = list(meets)
+        for type in list(ans_set):
+            if any(x for x in ans_set if
+                   x != type and is_subtype(type, x)):
+                ans_set.remove(type)
+        return UnionType.make_union(list(ans_set))
+
     def visit_void(self, t: Void) -> Type:
         if isinstance(self.s, Void):
             return t

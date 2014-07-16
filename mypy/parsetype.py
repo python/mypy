@@ -148,7 +148,7 @@ class TypeParser:
                 break
             commas.append(self.skip())
         rparen = self.expect(')')
-        return UnionType(items, line=lparen.line)
+        return UnionType.make_union(items, line=lparen.line)
     
     # Helpers
     

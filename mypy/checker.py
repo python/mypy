@@ -15,7 +15,8 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt
+    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
+    LITERAL_TYPE
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -38,6 +39,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
+from mypy.meet import meet_types
 
 
 # Kinds of isinstance checks.
@@ -52,19 +54,22 @@ class ConditionalTypeBinder:
     def __init__(self) -> None:
         self.types = Dict[Var, List[Type]]()
 
-    def push(self, var: Var, type: Type) -> None:
-        self.types.setdefault(var, []).append(type)
+    def push(self, expr: Node, type: Type) -> None:
+        if not expr.literal:
+            return
+        self.types.setdefault(expr.literal_hash, []).append(type)
         
-    def pop(self, var: Var) -> None:
-        self.types[var].pop()
+    def pop(self, expr: Node) -> None:
+        if not expr.literal:
+            return
+        self.types[expr.literal_hash].pop()
         
-    def get(self, var: Var) -> Type:
-        values = self.types.get(var)
+    def get(self, expr: Node) -> Type:
+        values = self.types.get(expr.literal_hash)
         if values:
             return values[-1]
         else:
-            return var.type
-
+            return None
 
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
@@ -824,6 +829,14 @@ class TypeChecker(NodeVisitor[Type]):
                     return False
         return True
     
+    def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:
+        if expr.literal >= LITERAL_TYPE:
+            restriction = self.binder.get(expr)
+            if restriction:
+                ans = meet_types(restriction, known_type, self.basic_types())
+                return ans
+        return known_type
+
     def check_multi_assignment(self, lvalue_types: List[Type],
                                index_lvalues: List[IndexExpr],
                                rvalue: Node,
@@ -967,6 +980,7 @@ class TypeChecker(NodeVisitor[Type]):
             var, type, elsetype, kind = find_isinstance_check(e, self.type_map)
             if kind == ISINSTANCE_ALWAYS_FALSE:
                 #XXX should issue a warning
+                #print("Warning: isinstance always false")
                 pass
             else:
                 # Only type check body if the if condition can be true.
@@ -981,6 +995,7 @@ class TypeChecker(NodeVisitor[Type]):
                 # The condition is always true => remaining elif/else blocks
                 # can never be reached.
 
+                #print("Warning: isinstance always true")
                 # Might also want to issue a warning
                 break
         else:
@@ -1077,7 +1092,7 @@ class TypeChecker(NodeVisitor[Type]):
             return ret
         else:
             self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-            return AnyType()        
+            return AnyType()
 
     @overload
     def check_exception_type(self, type: AnyType, context: Context) -> Type:
@@ -1515,21 +1530,21 @@ def find_isinstance_check(node: Node,
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
-            if isinstance(expr, NameExpr):
+            if expr.literal == LITERAL_TYPE:
                 type = get_isinstance_type(node.args[1], type_map)
-                if type and isinstance(expr.node, Var):
-                    var = cast(Var, expr.node)
+                if type:
+                    vartype = type_map[expr]
                     kind = ISINSTANCE_OVERLAPPING
-                    elsetype = var.type
-                    if var.type:
-                        if is_proper_subtype(var.type, type):
+                    elsetype = vartype
+                    if vartype:
+                        if is_proper_subtype(vartype, type):
                             kind = ISINSTANCE_ALWAYS_TRUE
                             elsetype = None
-                        elif not is_overlapping_types(var.type, type):
+                        elif not is_overlapping_types(vartype, type):
                             kind = ISINSTANCE_ALWAYS_FALSE
                         else:
-                            elsetype = restrict_subtype_away(var.type, type)
-                    return var, type, elsetype, kind
+                            elsetype = restrict_subtype_away(vartype, type)
+                    return expr, type, elsetype, kind
     # Not a supported isinstance check
     return None, AnyType(), AnyType(), -1
 

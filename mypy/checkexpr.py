@@ -12,7 +12,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, TempNode
+    UndefinedExpr, ConditionalExpr, TempNode, LITERAL_TYPE
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -31,11 +31,10 @@ from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 
-
 class ExpressionChecker:
     """Expression type checker.
 
-    This clas works closely together with checker.TypeChecker.
+    This class works closely together with checker.TypeChecker.
     """
     
     # Some services are provided by a TypeChecker instance.
@@ -55,7 +54,8 @@ class ExpressionChecker:
 
         It can be of any kind: local, member or global.
         """
-        return self.analyse_ref_expr(e)
+        result = self.analyse_ref_expr(e)
+        return self.chk.narrow_type_from_binder(e, result)
     
     def analyse_ref_expr(self, e: RefExpr) -> Type:
         result = Undefined(Type)
@@ -90,7 +90,11 @@ class ExpressionChecker:
             return AnyType()
         else:
             # Look up local type of variable with type (inferred or explicit).
-            return self.chk.binder.get(var)
+            val = self.chk.binder.get(var)
+            if val is None:
+                return var.type
+            else:
+                return val
     
     def visit_call_expr(self, e: CallExpr) -> Type:
         """Type check a call expression."""
@@ -679,8 +683,9 @@ class ExpressionChecker:
     
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
-        return self.analyse_ordinary_member_access(e, False)
-    
+        result = self.analyse_ordinary_member_access(e, False)
+        return self.chk.narrow_type_from_binder(e, result)
+
     def analyse_ordinary_member_access(self, e: MemberExpr,
                                        is_lvalue: bool) -> Type:
         """Analyse member expression or member lvalue."""
@@ -876,12 +881,16 @@ class ExpressionChecker:
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         return result
-    
+
     def visit_index_expr(self, e: IndexExpr) -> Type:
         """Type check an index expression (base[index]).
 
         It may also represent type application.
         """
+        result = self.visit_index_expr_helper(e)
+        return self.chk.narrow_type_from_binder(e, result)
+
+    def visit_index_expr_helper(self, e: IndexExpr) -> Type:
         if e.analyzed:
             # It's actually a type application.
             return self.accept(e.analyzed)

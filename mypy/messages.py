@@ -185,19 +185,19 @@ class MessageBuilder:
             for t in (cast(TupleType, typ)).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
-            if len(s) < 30:
+            if len(s) < 40:
                 return s
             else:
-                return 'tuple'
+                return 'tuple(length {})'.format(len(items))
         elif isinstance(typ, UnionType):
             items = []
             for t in (cast(UnionType, typ)).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Union({})"'.format(', '.join(items))
-            if len(s) < 30:
+            if len(s) < 40:
                 return s
             else:
-                return 'tuple'
+                return 'union(length {})'.format(len(items))
         elif isinstance(typ, Void):
             return 'None'
         elif isinstance(typ, NoneTyp):
