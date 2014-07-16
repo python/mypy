@@ -40,7 +40,7 @@ VT = typevar('VT')
 class SupportsInt(metaclass=ABCMeta):
     @abstractmethod
     def __int__(self) -> int: pass
-    
+
 class SupportsFloat(metaclass=ABCMeta):
     @abstractmethod
     def __float__(self) -> float: pass
@@ -82,7 +82,7 @@ class Sequence(Iterable[T], Sized, AbstractGeneric[T]):
     @overload
     @abstractmethod
     def __getitem__(self, s: slice) -> Sequence[T]: pass
-    
+
 class AbstractSet(Iterable[T], Sized, AbstractGeneric[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
@@ -142,7 +142,7 @@ class Mapping(Iterable[KT], Sized, AbstractGeneric[KT, VT]):
     @overload
     @abstractmethod
     def setdefault(self, k: KT, default: VT) -> VT: pass
-    
+
     # TODO keyword arguments
     @overload
     @abstractmethod
@@ -150,7 +150,7 @@ class Mapping(Iterable[KT], Sized, AbstractGeneric[KT, VT]):
     @overload
     @abstractmethod
     def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-    
+
     # TODO use views for the return values instead
     @abstractmethod
     def keys(self) -> AbstractSet[KT]: pass
@@ -209,7 +209,7 @@ class IO(Iterable[AnyStr], AbstractGeneric[AnyStr]):
     @abstractmethod
     def __exit__(self, type, value, traceback) -> bool: pass
 
-class BinaryIO(IO[bytes]):    
+class BinaryIO(IO[bytes]):
     # TODO readinto
     # TODO read1?
     # TODO peek?
@@ -244,13 +244,13 @@ class Match(Generic[AnyStr]):
     lastindex = 0
     lastgroup = Undefined(AnyStr)
     string = Undefined(AnyStr)
-    
+
     # The regular expression object whose match() or search() method produced
     # this match instance.
     re = Undefined('Pattern[AnyStr]')
-    
+
     def expand(self, template: AnyStr) -> AnyStr: pass
-    
+
     @overload
     def group(self, group1: int = 0) -> AnyStr: pass
     @overload
@@ -261,7 +261,7 @@ class Match(Generic[AnyStr]):
     @overload
     def group(self, group1: str, group2: str,
               *groups: str) -> Sequence[AnyStr]: pass
-    
+
     def groups(self, default: AnyStr = None) -> Sequence[AnyStr]: pass
     def groupdict(self, default: AnyStr = None) -> dict[str, AnyStr]: pass
     def start(self, group: int = 0) -> int: pass
@@ -283,14 +283,14 @@ class Pattern(Generic[AnyStr]):
                 endpos: int = -1) -> list[AnyStr]: pass
     def finditer(self, string: AnyStr, pos: int = 0,
                  endpos: int = -1) -> Iterator[Match[AnyStr]]: pass
-    
+
     @overload
     def sub(self, repl: AnyStr, string: AnyStr,
             count: int = 0) -> AnyStr: pass
     @overload
     def sub(self, repl: Function[[Match[AnyStr]], AnyStr], string: AnyStr,
             count: int = 0) -> AnyStr: pass
-    
+
     @overload
     def subn(self, repl: AnyStr, string: AnyStr,
              count: int = 0) -> Tuple[AnyStr, int]: pass

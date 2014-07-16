@@ -44,7 +44,7 @@ VT = typevar('VT')
 class SupportsInt(metaclass=ABCMeta):
     @abstractmethod
     def __int__(self) -> int: pass
-    
+
 class SupportsFloat(metaclass=ABCMeta):
     @abstractmethod
     def __float__(self) -> float: pass
@@ -86,7 +86,7 @@ class Sequence(Sized, Iterable[T], AbstractGeneric[T]):
     @overload
     @abstractmethod
     def __getitem__(self, s: slice) -> Sequence[T]: pass
-    
+
 class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
@@ -137,7 +137,7 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @overload
     @abstractmethod
     def setdefault(self, k: KT, default: VT) -> VT: pass
-    
+
     # TODO keyword arguments
     @overload
     @abstractmethod
@@ -145,7 +145,7 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @overload
     @abstractmethod
     def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-    
+
     @abstractmethod
     def keys(self) -> list[KT]: pass
     @abstractmethod
@@ -159,7 +159,7 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
     def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
 
-class BinaryIO(metaclass=ABCMeta):    
+class BinaryIO(metaclass=ABCMeta):
     # TODO iteration
     # TODO mode
     # TODO name
