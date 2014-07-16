@@ -166,67 +166,71 @@ def infer_method_signature(class_name):
             global is_performing_inference
             # If we're already doing inference, we should be in our own code, not code we're checking.
             # Not doing this check sometimes results in infinite recursion.
+
             if is_performing_inference:
                 return func(*args, **kwargs)
 
             is_performing_inference = True
 
-            # collect arg ids and types
-            argids = set()
-            arg_db = {}
-            expecting_type_error = False
-
-            used_kwargs = set()
-            for i, arg in enumerate(argnames):
-                if i < len(args):
-                    argvalue = args[i]
-                elif arg in kwargs:
-                    argvalue = kwargs[arg]
-                    used_kwargs.add(arg)
-                elif i >= min_arg_count:
-                    argvalue = defaults[i - min_arg_count]
-                else:
-                    # we should get here when we call a function with fewer arguments
-                    # than min_arg_count, and no keyword arguments to cover the required
-                    # unpassed positional arguments.
-                    # We should get a TypeError when we do the call
-                    expecting_type_error = True
-                    continue
-                key = (name, i)
-                update_db(arg_db, key, argvalue)
-                argids.add((i, arg))
-            if varargs:
-                for i in range(len(argnames), len(args)):
-                    key = (name, len(argnames))
-                    update_db(arg_db, key, args[i])
-                    argids.add((len(argnames), varargs))
-            if kwonlyargs:
-                used_kwonlyargs = set()
-                for arg, value in kwargs.items():
-                    if arg in kwonlyargs:
-                        index = len(argnames) + kwonlyargs.index(arg)
-                        key = (name, index)
-                        update_db(arg_db, key, value)
-                        argids.add((index, arg))
-                        used_kwargs.add(arg)
-                        used_kwonlyargs.add(arg)
-                for i, arg in enumerate(kwonlyargs):
-                    if arg not in used_kwonlyargs:
-                        index = len(argnames) + i
-                        key = (name, index)
-                        update_db(arg_db, key,
-                                  argspec.kwonlydefaults[arg])
-                        argids.add((index, arg))
-            if kwargs:
-                for arg, value in kwargs.items():
-                    if arg not in used_kwargs:
-                        key = (name, -1)
-                        update_db(arg_db, key, value)
-                        argids.add((-1, varkw))
-
-            is_performing_inference = False
-
             got_type_error, got_exception = False, False
+            try:
+                # collect arg ids and types
+                argids = set()
+                arg_db = {}
+                expecting_type_error = False
+
+                used_kwargs = set()
+                for i, arg in enumerate(argnames):
+                    if i < len(args):
+                        argvalue = args[i]
+                    elif arg in kwargs:
+                        argvalue = kwargs[arg]
+                        used_kwargs.add(arg)
+                    elif i >= min_arg_count:
+                        argvalue = defaults[i - min_arg_count]
+                    else:
+                        # we should get here when we call a function with fewer arguments
+                        # than min_arg_count, and no keyword arguments to cover the required
+                        # unpassed positional arguments.
+                        # We should get a TypeError when we do the call
+                        expecting_type_error = True
+                        continue
+                    key = (name, i)
+                    update_db(arg_db, key, argvalue)
+                    argids.add((i, arg))
+                if varargs:
+                    for i in range(len(argnames), len(args)):
+                        key = (name, len(argnames))
+                        update_db(arg_db, key, args[i])
+                        argids.add((len(argnames), varargs))
+                if kwonlyargs:
+                    used_kwonlyargs = set()
+                    for arg, value in kwargs.items():
+                        if arg in kwonlyargs:
+                            index = len(argnames) + kwonlyargs.index(arg)
+                            key = (name, index)
+                            update_db(arg_db, key, value)
+                            argids.add((index, arg))
+                            used_kwargs.add(arg)
+                            used_kwonlyargs.add(arg)
+                    for i, arg in enumerate(kwonlyargs):
+                        if arg not in used_kwonlyargs:
+                            index = len(argnames) + i
+                            key = (name, index)
+                            update_db(arg_db, key,
+                                      argspec.kwonlydefaults[arg])
+                            argids.add((index, arg))
+                if kwargs:
+                    for arg, value in kwargs.items():
+                        if arg not in used_kwargs:
+                            key = (name, -1)
+                            update_db(arg_db, key, value)
+                            argids.add((-1, varkw))
+            except:
+                got_type_error = got_exception = True
+            finally:
+                is_performing_inference = False
+
             try:
                 ret = func(*args, **kwargs)
             except TypeError:
@@ -245,7 +249,13 @@ def infer_method_signature(class_name):
 
                     # if we got an exception, we don't have a ret
                     if not got_exception:
-                        update_db(func_return_db, name, ret)
+                        is_performing_inference = True
+                        try:
+                            update_db(func_return_db, name, ret)
+                        except:
+                            pass
+                        finally:
+                            is_performing_inference = False
 
             return ret
 
