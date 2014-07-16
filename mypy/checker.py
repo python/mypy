@@ -2,7 +2,7 @@
 
 import itertools
             
-from typing import Undefined, Dict, List, cast, overload, Tuple
+from typing import Undefined, Any, Dict, List, cast, overload, Tuple, Function
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -16,7 +16,7 @@ from mypy.nodes import (
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
-    LITERAL_TYPE
+    LITERAL_TYPE, BreakStmt, ContinueStmt
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -47,29 +47,70 @@ ISINSTANCE_OVERLAPPING = 0
 ISINSTANCE_ALWAYS_TRUE = 1
 ISINSTANCE_ALWAYS_FALSE = 2
 
+Frame = Dict[Any, Type]
 
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self) -> None:
-        self.types = Dict[Var, List[Type]]()
+        self.types = Dict[Any, List[Type]]()
+        self.frames = [ Frame() ]
+
+    def _push(self, key: Node, value: Type) -> None:
+        if key in self.frames[-1]:
+            self.types[key][-1] = value
+        else:
+            self.types.setdefault(key, []).append(value)
+        self.frames[-1][key] = value
+
+    def push_frame(self) -> Frame:
+        d = Frame()
+        self.frames.append(d)
+        return d
 
     def push(self, expr: Node, type: Type) -> None:
         if not expr.literal:
             return
-        self.types.setdefault(expr.literal_hash, []).append(type)
-        
-    def pop(self, expr: Node) -> None:
-        if not expr.literal:
-            return
-        self.types[expr.literal_hash].pop()
-        
+        self._push(expr.literal_hash, type)
+
+    def update(self, frame: Frame) -> None:
+        for key in frame:
+            self._push(key, frame[key])
+
+    def pop_frame(self) -> Frame:
+        for key in self.frames[-1]:
+            self.types[key].pop()
+        return self.frames.pop()
+
     def get(self, expr: Node) -> Type:
         values = self.types.get(expr.literal_hash)
         if values:
             return values[-1]
         else:
             return None
+
+def join_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
+    answer = Frame()
+    for key in frames[0]:
+        type = frames[0][key]
+        for f in frames[1:]:
+            if key in f:
+                type = join_types(type, f[key], basic_types)
+            else:
+                break
+        else:
+            answer[key] = type
+    return answer
+
+def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
+    answer = Frame()
+    for f in frames:
+        for key in f:
+            if key in answer:
+                answer[key] = meet_types(answer[key], f[key], basic_types)
+            else:
+                answer[key] = f[key]
+    return answer
 
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
@@ -101,6 +142,8 @@ class TypeChecker(NodeVisitor[Type]):
     dynamic_funcs = Undefined(List[bool])
     # Stack of functions being type checked
     function_stack = Undefined(List[FuncItem])
+    # Set to True on return/break/raise, False on blocks that can block any of them
+    breaking_out = False
     
     globals = Undefined(SymbolTable)
     locals = Undefined(SymbolTable)
@@ -145,7 +188,15 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         else:
             return typ
-    
+
+    def accept_in_frame(self, node: Node, type_context: Type = None) -> Type:
+        """Type check a node in the given type context in a new frame of inferred types."""
+        self.binder.push_frame()
+        answer = self.accept(node, type_context)
+        self.binder.pop_frame()
+        self.breaking_out = False
+        return answer
+
     #
     # Definitions
     #
@@ -304,7 +355,7 @@ class TypeChecker(NodeVisitor[Type]):
                     self.accept(item.init[j])
 
             # Type check body.
-            self.accept(item.body)
+            self.accept_in_frame(item.body)
 
             self.return_types.pop()
 
@@ -669,6 +720,8 @@ class TypeChecker(NodeVisitor[Type]):
             return None
         for s in b.body:
             self.accept(s)
+            if self.breaking_out:
+                break
     
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
         """Type check an assignment statement.
@@ -828,7 +881,19 @@ class TypeChecker(NodeVisitor[Type]):
                 if not self.is_valid_inferred_type(item):
                     return False
         return True
-    
+
+    def meet(self, types: List[Type]) -> Type:
+        answer = types[0]
+        for type in types[1:]:
+            answer = meet_types(answer, type, self.basic_types())
+        return answer
+
+    def join(self, types: List[Type]) -> Type:
+        answer = types[0]
+        for type in types[1:]:
+            answer = join_types(answer, type, self.basic_types())
+        return answer
+
     def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
@@ -932,6 +997,7 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_return_stmt(self, s: ReturnStmt) -> Type:
         """Type check a return statement."""
+        self.breaking_out = True
         if self.is_within_function():
             if s.expr:
                 # Return with a value.
@@ -973,7 +1039,9 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
-        pop_list = [] #type: List[Node]
+        ending_frames = [] #type: List[Frame]
+        broken = True
+        clauses_frame = self.binder.push_frame()
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
@@ -984,31 +1052,54 @@ class TypeChecker(NodeVisitor[Type]):
                 pass
             else:
                 # Only type check body if the if condition can be true.
+                self.binder.push_frame()
                 if var:
                     self.binder.push(var, type)
                 self.accept(b)
+                frame = self.binder.pop_frame()
+                if not self.breaking_out:
+                    broken = False
+                    ending_frames.append(meet_frames(self.basic_types(), frame, clauses_frame))
+
+                self.breaking_out = False
+
                 if var:
-                    self.binder.pop(var)
                     self.binder.push(var, elsetype)
-                    pop_list.append(var)
             if kind == ISINSTANCE_ALWAYS_TRUE:
                 # The condition is always true => remaining elif/else blocks
                 # can never be reached.
 
-                #print("Warning: isinstance always true")
                 # Might also want to issue a warning
+                # print("Warning: isinstance always true")
+                if broken:
+                    self.binder.pop_frame()
+                    return
                 break
         else:
             if s.else_body:
+                self.binder.push_frame()
                 self.accept(s.else_body)
-        for var in pop_list:
-            self.binder.pop(var)
-    
+
+                if self.breaking_out and broken:
+                    self.binder.pop_frame()
+                    return
+
+                if not self.breaking_out:
+                    ending_frames.append(clauses_frame)
+
+                self.breaking_out = False
+            else:
+                ending_frames.append(clauses_frame)
+
+        self.binder.pop_frame()
+        ending_frame = join_frames(self.basic_types(), *ending_frames)
+        self.binder.update(ending_frame)
+
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
         t = self.accept(s.expr)
         self.check_not_void(t, s)
-        self.accept(s.body)
+        self.accept_in_frame(s.body)
         if s.else_body:
             self.accept(s.else_body)
     
@@ -1032,6 +1123,7 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_raise_stmt(self, s: RaiseStmt) -> Type:
         """Type check a raise statement."""
+        self.breaking_out = True
         if s.expr:
             typ = self.accept(s.expr)
             if isinstance(typ, FunctionLike):
@@ -1049,7 +1141,7 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        self.accept(s.body)
+        self.accept_in_frame(s.body)
         for i in range(len(s.handlers)):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
@@ -1107,7 +1199,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a for statement."""
         item_type = self.analyse_iterable_item_type(s.expr)
         self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
-        self.accept(s.body)
+        self.accept_in_frame(s.body)
 
     def analyse_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
@@ -1225,11 +1317,21 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_paren_expr(e)
     
     def visit_call_expr(self, e: CallExpr) -> Type:
-        return self.expr_checker.visit_call_expr(e)
+        result = self.expr_checker.visit_call_expr(e)
+        self.breaking_out = False
+        return result
     
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
     
+    def visit_break_stmt(self, s: BreakStmt) -> Type:
+        self.breaking_out = True
+        return None
+
+    def visit_continue_stmt(self, s: ContinueStmt) -> Type:
+        self.breaking_out = True
+        return None
+
     def visit_int_expr(self, e: IntExpr) -> Type:
         return self.expr_checker.visit_int_expr(e)
     
