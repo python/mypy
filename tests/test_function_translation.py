@@ -4,50 +4,83 @@ from unittest import TestCase
 
 from py3annot.codec import register
 
-class TestFunctionTranslation(TestCase):
-    def test_no_annotations(self):
-        func = '''def f(x):
+# The test functions that will be translated.
+# even indices are input functions, odd indices are expected output
+test_function_examples = [
+# test a function without annotations
+'''\
+def f(x):
     x = {'a': x}
-    return x['a']'''
+    return x['a']
+''',
+'''\
+def f(x):
+    x = {'a': x}
+    return x['a']
+''',
 
-        func_translated = codecs.decode(func, 'py3annot')
+# test parameter type annotations
+'''\
+def f(x: int, y: str = 'abc'):
+    return x
+''',
+'''\
+def f(x     , y      = 'abc'):
+    return x
+''',
 
-        self.assertEqual(func, func_translated)
+# test return type annotations
+'''\
+def f(x, y) -> str:
+    return x
+''',
+'''\
+def f(x, y)       :
+    return x
+''',
 
-    def test_param_annotations(self):
-        func = \
-            '''def f(x: int, y: str = 'abc'):
-    return x'''
-        func_expected = \
-            '''def f(x     , y      = 'abc'):
-    return x'''
-
-        func_translated = codecs.decode(func, 'py3annot')
-
-        self.assertEqual(func_expected, func_translated)
-
-    def test_return_annotations(self):
-        func = \
-            '''def f(x, y) -> str:
-    return x'''
-        func_expected = \
-            '''def f(x, y)       :
-    return x'''
-
-        func_translated = codecs.decode(func, 'py3annot')
-
-        self.assertEqual(func_expected, func_translated)
-
-    def test_newline_in_param_list(self):
-        func = \
-            '''def f(x: int,
+# test newlines in param list
+'''\
+def f(x: int,
                 y: str) -> str:
-    return x'''
-        func_expected = \
-            '''def f(x     ,
+    return x
+''',
+'''\
+def f(x     ,
                 y     )       :
-    return x'''
+    return x
+''',
 
-        func_translated = codecs.decode(func, 'py3annot')
+# test newlines in return type annotation
+'''\
+def f(x: int, y: str='abc') -> Tuple[int,
+                                str]:
+    return x, y
+''',
+'''\
+def f(x     , y     ='abc')\\
+                                    :
+    return x, y
+''',
 
-        self.assertEqual(func_expected, func_translated)
+
+# test unrelated continuations
+'''\
+x = 1 + \
+    2
+''',
+'''\
+x = 1 + \
+    2
+''',
+
+]
+
+class TestFunctionTranslation(TestCase):
+
+    def test_all_functions(self):
+        for i in range(0, len(test_function_examples), 2):
+            func_translated = codecs.decode(test_function_examples[i], 'py3annot')
+            #print repr(func_translated)
+            #print repr(test_function_examples[i+1])
+            self.assertEqual(func_translated, test_function_examples[i+1])

@@ -15,7 +15,7 @@ def py3annot_transform(stream):
         traceback.print_exc()
         raise
 
-    return output.rstrip()
+    return output
 
 def py3annot_transform_string(text):
     stream = cStringIO.StringIO(text)
