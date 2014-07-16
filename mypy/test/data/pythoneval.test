@@ -304,16 +304,16 @@ builtins
 [case testTypeAttributes]
 import typing
 print(str.__class__)
-print(str.__doc__[:10])
+print(type(str.__doc__))
 print(str.__name__)
 print(str.__module__)
-print(type(str.__dict__))
+print(str.__dict__ is not None)
 [out]
 <class 'type'>
-str(string
+<class 'str'>
 str
 builtins
-<class 'dict_proxy'>
+True
 
 [case testBoolCompatibilityWithInt]
 import typing
