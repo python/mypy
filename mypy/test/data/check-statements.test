@@ -72,10 +72,10 @@ if b:
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 5: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
-main, line 9: Incompatible types in assignment
-main, line 11: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 7: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 9: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 11: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 
 -- Loops
@@ -96,8 +96,8 @@ while b:
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 5: Incompatible types in assignment
-main, line 7: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main, line 7: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testBreakStatement]
 import typing
@@ -243,8 +243,8 @@ class A:
 a = A()
 a += 1
 a *= ''
-a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"
-a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"
+a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"; expected "int"
+a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"; expected "str"
 
 
 -- Assert statement
@@ -297,8 +297,8 @@ finally:
     c = object() # type: A # Fail
 class A: pass
 [out]
-main, line 3: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "object", variable has type "A")
+main, line 5: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testSimpleTryExcept]
 from typing import Undefined
@@ -312,7 +312,7 @@ class A: pass
 class B: pass
 [builtins fixtures/exception.py]
 [out]
-main, line 7: Incompatible types in assignment
+main, line 7: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testTypeErrorInBlock]
 from typing import Undefined
@@ -323,8 +323,8 @@ while object:
 class A: pass
 class B: pass
 [out]
-main, line 4: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
+main, line 4: Incompatible types in assignment (expression has type "object", variable has type "A")
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeErrorInvolvingBaseException]
 from typing import Undefined
@@ -337,10 +337,10 @@ x = BaseException()
 class A: pass
 [builtins fixtures/exception.py]
 [out]
-main, line 3: Incompatible types in assignment
-main, line 4: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
-main, line 6: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "BaseException", variable has type "A")
+main, line 4: Incompatible types in assignment (expression has type "object", variable has type "A")
+main, line 5: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+main, line 6: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
 
 [case testSimpleTryExcept2]
 import typing
@@ -351,7 +351,7 @@ except BaseException as e:
   e = BaseException()
 [builtins fixtures/exception.py]
 [out]
-main, line 5: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testBaseClassAsExceptionTypeInExcept]
 import typing
@@ -363,7 +363,7 @@ except Err as e:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 5: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testMultipleExceptHandlers]
 import typing
@@ -377,7 +377,7 @@ except Err as f:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 7: Incompatible types in assignment
+main, line 7: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testTryExceptStatement]
 import typing
@@ -394,9 +394,9 @@ class B: pass
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 3: Incompatible types in assignment
-main, line 5: Incompatible types in assignment
-main, line 8: Incompatible types in assignment
+main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
+main, line 5: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+main, line 8: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testTryExceptWithinFunction]
 import typing
@@ -412,8 +412,8 @@ class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
 main: In function "f":
-main, line 5: Incompatible types in assignment
-main, line 8: Incompatible types in assignment
+main, line 5: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+main, line 8: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testTryWithElse]
 import typing
@@ -458,10 +458,10 @@ try:
     pass
 except (E1, E2) as e1:
     x = e1 # type: E1
-    y = e1 # type: E2 # E: Incompatible types in assignment
+    y = e1 # type: E2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E2")
 except (E2, E1) as e2:
     a = e2 # type: E1
-    b = e2 # type: E2 # E: Incompatible types in assignment
+    b = e2 # type: E2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E2")
 [builtins fixtures/exception.py]
 
 [case testReuseTryExceptionVariable]
@@ -473,7 +473,7 @@ except E1 as e: pass
 try: pass
 except E1 as e: pass
 try: pass
-except E2 as e: pass # E: Incompatible types in assignment
+except E2 as e: pass # E: Incompatible types in assignment (expression has type "E2", variable has type "E1")
 [builtins fixtures/exception.py]
 
 [case testArbitraryExpressionAsExceptionType]
@@ -482,7 +482,7 @@ a = BaseException
 try: pass
 except a as b:
     b = BaseException()
-    b = object() # E: Incompatible types in assignment
+    b = object() # E: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 [builtins fixtures/exception.py]
 
 [case testInvalidExceptionCallable]
@@ -504,7 +504,7 @@ try:
     pass
 except E as e:
     e = E()
-    e = BaseException() # E: Incompatible types in assignment
+    e = BaseException() # E: Incompatible types in assignment (expression has type "BaseException", variable has type "E")
 [builtins fixtures/exception.py]
 
 
@@ -516,7 +516,7 @@ except E as e:
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
 del b[a]
-del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"
+del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"; expected "A"
 del a[a] # E: "A" has no attribute "__delitem__"
 del a[b] # E: "A" has no attribute "__delitem__"
 class B:
@@ -542,7 +542,7 @@ del a.z # E: "A" has no attribute "z"
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    yield '' # E: Incompatible types
+    yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
@@ -587,6 +587,13 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
     return
+[builtins fixtures/for.py]
+
+[case testYieldWithoutValue]
+from typing import Iterator, typevar
+T = typevar('T')
+def f() -> Iterator[T]:
+    yield
 [builtins fixtures/for.py]
 
 
@@ -652,7 +659,7 @@ class A:
     def __exit__(self, x, y, z): pass
 with A() as b:
     b = B()
-    b = A() # E: Incompatible types in assignment
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testWithStmtAndMultipleResults]
 from typing import typevar, Generic
@@ -665,8 +672,8 @@ class A(Generic[t]):
 with A[B]() as b, A[C]() as c:
     b = B()
     c = C()
-    b = c # E: Incompatible types in assignment
-    c = b # E: Incompatible types in assignment
+    b = c # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+    c = b # E: Incompatible types in assignment (expression has type "B", variable has type "C")
 
 
 -- Chained assignment
@@ -680,16 +687,16 @@ class B: pass
 x = y = A()
 x = A()
 y = A()
-x = B() # E: Incompatible types in assignment
-y = B() # E: Incompatible types in assignment
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+y = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testChainedAssignment2]
 import typing
 def f() -> None:
     x = 1
     y = 'x'
-    x = y = 'x' # E: Incompatible types in assignment
-    x = y = 1   # E: Incompatible types in assignment
+    x = y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/primitives.py]
 [out]
 main: In function "f":
@@ -697,8 +704,8 @@ main: In function "f":
 [case testChainedAssignmentWithType]
 from typing import Undefined
 x = y = None # type: int
-x = '' # E: Incompatible types in assignment
-y = '' # E: Incompatible types in assignment
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 x = 1
 y = 1
 
@@ -711,14 +718,14 @@ import typing
 foo = int
 def f(x: foo) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testTypeAliasDefinedInAModule]
 import typing
 import m
 def f(x: m.foo) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 import typing
 foo = int
@@ -728,7 +735,7 @@ import typing
 from m import foo
 def f(x: foo) -> None: pass
 f(1)
-f('x') # E: Argument 1 to "f" has incompatible type "str"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 import typing
 foo = int

@@ -12,7 +12,7 @@ class B:
 class A(B):
   def f(self) -> 'A':
     a, b = Undefined, Undefined # type: (A, B)
-    a = super().f() # E: Incompatible types in assignment
+    a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     a = super().g() # E: "g" undefined in superclass
     b = super().f()
 [out]
@@ -25,7 +25,7 @@ class B:
 class A(B):
   def f(self, x: Any) -> None:
     a, b = Undefined, Undefined # type: (A, B)
-    super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"
+    super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
     super().f(a)
     self.f(b)
     self.f(a)
@@ -38,7 +38,7 @@ class B:
     def __init__(self, x: A) -> None: pass
 class A(B):
   def __init__(self) -> None:
-    super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"
+    super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"; expected "A"
     super().__init__()       # E: Too few arguments for "__init__" of "B"
     super().__init__(A())
 [out]

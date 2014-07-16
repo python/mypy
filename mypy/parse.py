@@ -23,7 +23,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, TypeApplication, PrintStmt
+    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase
 )
 from mypy import nodes
 from mypy import noderepr
@@ -86,7 +86,7 @@ class Parser:
     # Are we currently parsing the body of a class definition?
     is_class_body = False
     # All import nodes encountered so far in this parse unit.
-    imports = Undefined(List[Node])
+    imports = Undefined(List[ImportBase])
     
     def __init__(self, fnam: str, errors: Errors, pyversion: int) -> None:
         self.raise_on_error = errors is None
@@ -165,7 +165,7 @@ class Parser:
         name_toks = List[Tuple[List[Token], Token]]()
         lparen = none
         rparen = none
-        node = Undefined(Node)
+        node = Undefined(ImportBase)
         if self.current_str() == '*':
             name_toks.append(([self.skip()], none))
             node = ImportAll(name)
