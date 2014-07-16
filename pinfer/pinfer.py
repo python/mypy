@@ -135,6 +135,8 @@ def infer_method_signature(class_name):
     """Construct a function decorator that infer the signature of a function.
     """
     def outer_wrapper(func):
+        assert func.__module__ != infer_method_signature.__module__
+
         name = func.__name__
         if class_name:
             name = '%s.%s' % (class_name, name)
@@ -295,6 +297,7 @@ def update_db(db, key, value):
         db[key] = combine_types(db[key], type)
 
 def merge_db(db, other):
+    assert id(db) != id(other)
     for key in other.keys():
         if key not in db:
             db[key] = other[key]
@@ -431,6 +434,7 @@ class TypeBase(object):
 
 class Instance(TypeBase):
     def __init__(self, typeobj):
+        assert not inspect.isclass(typeobj) or not issubclass(typeobj, TypeBase)
         self.typeobj = typeobj
 
     def __str__(self):
