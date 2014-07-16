@@ -12,6 +12,20 @@ func_argid_db = {} # funcname -> set of (argindex, name)
 func_arg_db = {} # (funcname, argindex/name) -> type
 func_return_db = {} # funcname -> type
 
+# The type inferencing wrapper should not be reentrant.  It's not, in theory, calling
+# out to any external code which we would want to infer the types of.  However, 
+# sometimes we do something like infer_type(arg.keys()) or infer_type(arg.values()) if
+# the arg is a collection, and we want to know about the types of its elements.  .keys(),
+# .values(), etc. can be overloaded, possibly to a method we've wrapped.  This can become 
+# infinitely recursive, particuarly because on something like arg.keys(), keys() gets passed
+# arg as the first parameter, so if we've wrapped keys() we'll try to infer_type(arg),
+# which will detect it's a dictionary, call infer_type(arg.keys()), recurse and so on.
+# We ran in to this problem with collections.OrderedDict.
+# To prevent reentrancy, we set is_performing_inference = True iff we're in the middle of
+# inferring the types of a function.  If we try to run another function we've wrapped,
+# we skip type inferencing so we can't accidentally infinitely recurse.
+is_performing_inference = False
+
 
 def reset():
     global var_db, func_argid_db, func_arg_db, func_return_db
@@ -19,6 +33,7 @@ def reset():
     func_argid_db = {}
     func_arg_db = {}
     func_return_db = {}
+    is_performing_inference = False
 
 
 def format_state(pretty=False):
@@ -116,7 +131,6 @@ def infer_signature(func):
     """Decorator that infers the signature of a function."""
     return infer_method_signature('')(func)
 
-
 def infer_method_signature(class_name):
     """Construct a function decorator that infer the signature of a function.
     """
@@ -149,6 +163,14 @@ def infer_method_signature(class_name):
             min_arg_count -= len(defaults)
 
         def wrapper(*args, **kwargs):
+            global is_performing_inference
+            # If we're already doing inference, we should be in our own code, not code we're checking.
+            # Not doing this check sometimes results in infinite recursion.
+            if is_performing_inference:
+                return func(*args, **kwargs)
+
+            is_performing_inference = True
+
             # collect arg ids and types
             argids = set()
             arg_db = {}
@@ -201,6 +223,8 @@ def infer_method_signature(class_name):
                         key = (name, -1)
                         update_db(arg_db, key, value)
                         argids.add((-1, varkw))
+
+            is_performing_inference = False
 
             got_type_error, got_exception = False, False
             try:
@@ -268,28 +292,33 @@ def merge_db(db, other):
             db[key] = combine_types(db[key], other[key])
 
 
-def infer_value_type(value):
+def infer_value_type(value, depth=0):
+    # Prevent infinite recursion
+    if depth > 5:
+        return Unknown()
+    depth += 1
+
     if value is None:
         return None
     elif isinstance(value, list):
-        return Generic('List', [infer_value_types(value)])
+        return Generic('List', [infer_value_types(value, depth)])
     elif isinstance(value, dict):
-        keytype = infer_value_types(value.keys())
-        valuetype = infer_value_types(value.values())
+        keytype = infer_value_types(value.keys(), depth)
+        valuetype = infer_value_types(value.values(), depth)
         return Generic('Dict', (keytype, valuetype))
     elif isinstance(value, tuple):
         if len(value) <= MAX_INFERRED_TUPLE_LENGTH:
-            return Tuple(infer_value_type(item)
+            return Tuple(infer_value_type(item, depth)
                          for item in value)
         else:
-            return Generic('TupleSequence', [infer_value_types(value)])
+            return Generic('TupleSequence', [infer_value_types(value, depth)])
     elif isinstance(value, set):
-        return Generic('Set', [infer_value_types(value)])
+        return Generic('Set', [infer_value_types(value, depth)])
     else:
         return Instance(type(value))
 
 
-def infer_value_types(values):
+def infer_value_types(values, depth=0):
     """Infer a single type for an iterable of values.
 
     >>> infer_value_types((1, 'x'))
@@ -299,7 +328,7 @@ def infer_value_types(values):
     """
     inferred = Unknown()
     for value in sample(values):
-        type = infer_value_type(value)
+        type = infer_value_type(value, depth)
         inferred = combine_types(inferred, type)
     return inferred
 
