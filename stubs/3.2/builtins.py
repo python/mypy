@@ -22,6 +22,7 @@ T4 = typevar('T4')
 
 
 staticmethod = object() # Only valid as a decorator.
+classmethod = object() # Only valid as a decorator.
 property = object()
 
 
@@ -710,7 +711,7 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     
     def append(self, object: T) -> None: pass
     def extend(self, iterable: Iterable[T]) -> None: pass
-    def pop(self) -> T: pass
+    def pop(self, arg: int = None) -> T: pass
     def index(self, object: T) -> int: pass
     def count(self, object: T) -> int: pass
     def insert(self, index: int, object: T) -> None: pass
