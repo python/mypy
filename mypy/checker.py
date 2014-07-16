@@ -39,7 +39,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_types
+from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, is_overlapping_types
 
 
 # Kinds of isinstance checks.
@@ -107,7 +107,7 @@ def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
     for f in frames:
         for key in f:
             if key in answer:
-                answer[key] = meet_types(answer[key], f[key], basic_types)
+                answer[key] = meet_simple(answer[key], f[key], basic_types)
             else:
                 answer[key] = f[key]
     return answer
@@ -882,12 +882,6 @@ class TypeChecker(NodeVisitor[Type]):
                     return False
         return True
 
-    def meet(self, types: List[Type]) -> Type:
-        answer = types[0]
-        for type in types[1:]:
-            answer = meet_types(answer, type, self.basic_types())
-        return answer
-
     def join(self, types: List[Type]) -> Type:
         answer = types[0]
         for type in types[1:]:
@@ -898,7 +892,7 @@ class TypeChecker(NodeVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
             if restriction:
-                ans = meet_types(restriction, known_type, self.basic_types())
+                ans = meet_simple(known_type, restriction, self.basic_types())
                 return ans
         return known_type
 
@@ -1059,7 +1053,7 @@ class TypeChecker(NodeVisitor[Type]):
                 frame = self.binder.pop_frame()
                 if not self.breaking_out:
                     broken = False
-                    ending_frames.append(meet_frames(self.basic_types(), frame, clauses_frame))
+                    ending_frames.append(meet_frames(self.basic_types(), clauses_frame, frame))
 
                 self.breaking_out = False
 
@@ -1659,42 +1653,6 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
             # we can do (outside disallowing them here).
             return erase_typevars(type.items()[0].ret_type)
     return None
-
-
-def is_overlapping_types(t: Type, s: Type) -> bool:
-    """Can a value of type t be a value of type s, or vice versa?"""
-    if isinstance(t, Instance):
-        if isinstance(s, Instance):
-            # If the classes are explicitly declared as disjoint, they can't
-            # overlap.
-            if t.type in s.type.disjoint_classes:
-                return False
-            
-            # Built-in classes in the mro affect whether two types can be
-            # overlapping.
-            # TODO Find the most distant ancestor with the same memory layout,
-            #      since multiple inheritance seems possible if the memory
-            #      layout is the same.
-            tbuiltin = nearest_builtin_ancestor(t.type)
-            sbuiltin = nearest_builtin_ancestor(s.type)
-            
-            # If one is a base class of other, the types overlap, unless there
-            # is an explicit disjointclass constraint.
-            if tbuiltin in sbuiltin.mro or sbuiltin in tbuiltin.mro:
-                return True
-            return tbuiltin == sbuiltin
-    # We conservatively assume that non-instance types can overlap any other
-    # types.    
-    return True
-
-
-def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
-    for base in type.mro:
-        if base.defn.is_builtinclass:
-            return base
-    else:
-        assert False, 'No built-in ancestor found for {}'.format(type.name())
-
 
 def expand_node(defn: Node, map: Dict[int, Type]) -> Node:
     visitor = TypeTransformVisitor(map)

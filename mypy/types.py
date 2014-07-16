@@ -397,14 +397,26 @@ class UnionType(Type):
         self.items = items
         super().__init__(line, repr)
 
-    @staticmethod
-    def make_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
+    @classmethod
+    def make_union(cls, items: List[Type], line: int = -1, repr: Any = None) -> Type:
         if len(items) > 1:
-            return UnionType(items, line, repr)
+            return cls(items, line, repr)
         elif len(items) == 1:
             return items[0]
         else:
             return Void
+
+    @classmethod
+    def make_simplified_union(cls, items: List[Type], line: int = -1, repr: Any = None) -> Type:
+        from mypy.subtypes import is_subtype
+        removed = set()
+        for i in range(len(items)):
+            if any(is_subtype(items[i], items[j]) for j in range(len(items))
+                   if j not in removed and j != i):
+                removed.add(i)
+
+        simplified_set = [items[i] for i in range(len(items)) if i not in removed]
+        return cls.make_union(simplified_set)
 
     def length(self) -> int:
         return len(self.items)
