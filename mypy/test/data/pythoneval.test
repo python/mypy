@@ -532,11 +532,11 @@ txt(sys.stdout)
 bin(sys.stdout)
 [out]
 _program.py: In function "txt":
-_program.py, line 5: Argument 1 to "write" of "IO" has incompatible type "bytes"
+_program.py, line 5: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
 _program.py: In function "bin":
-_program.py, line 8: Argument 1 to "write" of "IO" has incompatible type "bytearray"
+_program.py, line 8: Argument 1 to "write" of "IO" has incompatible type "bytearray"; expected "bytes"
 _program.py: At top level:
-_program.py, line 10: Argument 1 to "bin" has incompatible type "TextIO"
+_program.py, line 10: Argument 1 to "bin" has incompatible type "TextIO"; expected IO[bytes]
 
 [case testBuiltinOpen]
 f = open('x')
@@ -637,7 +637,7 @@ n = abs(2)
 f = abs(2.2)
 n = abs(2.2) # Error
 [out]
-_program.py, line 6: Incompatible types in assignment
+_program.py, line 6: Incompatible types in assignment (expression has type "float", variable has type "int")
 
 [case testROperatorMethods]
 from typing import Undefined
@@ -649,7 +649,7 @@ b = b'foo' * 5
 s = 5 * 'foo'
 s = 'foo' * 5
 [out]
-_program.py, line 4: Incompatible types in assignment
+_program.py, line 4: Incompatible types in assignment (expression has type "bytes", variable has type "str")
 
 [case testROperatorMethods2]
 import typing
