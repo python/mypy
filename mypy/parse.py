@@ -162,7 +162,7 @@ class Parser:
                                                 commas, br))
         return node
     
-    def parse_import_from(self) -> List[Node]:
+    def parse_import_from(self) -> Node:
         from_tok = self.expect('from')
         name, components = self.parse_qualified_name()
         if name == self.custom_typing_module:
