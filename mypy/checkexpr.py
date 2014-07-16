@@ -202,20 +202,20 @@ class ExpressionChecker:
         fixed = len(args)
         if callee:
             fixed = min(fixed, callee.max_fixed_args())
-        
-        for i in range(fixed):
-            arg = args[i] # FIX refactor
-            ctx = None # type: Type
-            if callee and i < len(callee.arg_types):
-                ctx = callee.arg_types[i]
-            res.append(self.accept(arg, ctx))
-        
-        for j in range(fixed, len(args)):
-            if callee and callee.is_var_arg:
-                res.append(self.accept(args[j], callee.arg_types[-1]))
+
+        arg_type = None # type: Type
+        ctx = None # type: Type
+        for i, arg in enumerate(args):
+            if i < fixed:
+                if callee and i < len(callee.arg_types):
+                    ctx = callee.arg_types[i]
+                arg_type = self.accept(arg, ctx)
             else:
-                res.append(self.accept(args[j]))
-        
+                if callee and callee.is_var_arg:
+                    arg_type = self.accept(arg, callee.arg_types[-1])
+                else:
+                    arg_type = self.accept(arg)
+            res.append(arg_type)
         return res
     
     def infer_arg_types_in_context2(
