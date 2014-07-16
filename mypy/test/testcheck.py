@@ -42,6 +42,7 @@ files = [
     'check-unsupported.test',
     'check-unreachable-code.test',
     'check-unions.test',
+    'check-isinstance.test',
 ]
 
 
