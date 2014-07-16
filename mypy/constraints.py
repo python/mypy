@@ -4,7 +4,7 @@ from typing import List, cast, Undefined
 
 from mypy.types import (
     Callable, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
-    Instance, TupleType, Overloaded, ErasedType
+    Instance, TupleType, UnionType, Overloaded, ErasedType
 )
 from mypy.expandtype import expand_caller_var_args
 from mypy.subtypes import map_instance_to_supertype, is_named_instance
@@ -253,6 +253,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         else:
             return []
     
+    def visit_union_type(self, template: UnionType) -> List[Constraint]:
+        # XXX We should maybe do something intelligent here,
+        # but it seems complicated.
+        return []
+
     def infer_against_any(self, types: List[Type]) -> List[Constraint]:
         res = [] # type: List[Constraint]
         for t in types:

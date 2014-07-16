@@ -2,7 +2,7 @@ from typing import Dict, Tuple, List, cast, Undefined
 
 from mypy.types import (
     Type, Instance, Callable, TypeVisitor, UnboundType, ErrorType, AnyType,
-    Void, NoneTyp, TypeVar, Overloaded, TupleType, ErasedType, TypeList
+    Void, NoneTyp, TypeVar, Overloaded, TupleType, UnionType, ErasedType, TypeList
 )
 
 
@@ -94,6 +94,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.expand_types(t.items), t.line, t.repr)
     
+    def visit_union_type(self, t: UnionType) -> Type:
+        return UnionType(self.expand_types(t.items), t.line, t.repr)
+
     def expand_types(self, types: List[Type]) -> List[Type]:
         a = [] # type: List[Type]
         for t in types:

@@ -19,6 +19,8 @@ def is_subtype(left: Type, right: Type) -> bool:
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
+    elif isinstance(left, UnionType):
+        return all(is_subtype(item, right) for item in left.items)
     elif isinstance(right, UnionType):
         return any(is_subtype(left, item) for item in right.items)
     else:
@@ -36,8 +38,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
     # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
     
-    # right must not be Any or a union type: these cases are handled in is_subtype.
-
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
     
@@ -124,10 +124,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return False
     
-    def visit_union_type(self, left: UnionType) -> bool:
-        right = self.right
-        return all(is_subtype(item, right) for item in left.items)
-
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if is_named_instance(right, 'builtins.object'):
