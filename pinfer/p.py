@@ -3,16 +3,15 @@
 
 Usage is currently awkward (better UI is TBD):
 
-  p.py modname testfile [testargs]
+  p.py testfile [testargs]
 
 Where:
 
-  modname:  the full target module (e.g. textwrap)
   testfile: the full test module file (e.g. test/test_textwrap.py)
 
 Example invocation:
 
-  python3 p.py textwrap test/test_textwrap.py
+  python3 p.py test/test_textwrap.py
 """
 
 
@@ -20,22 +19,31 @@ import sys
 import imp
 import pinfer
 
+iport = __builtins__.__import__
+watched = set()
+def inferring_import(*args, **kwargs):
+  module = iport(*args, **kwargs)
+  if module not in watched:
+    watched.add(module)
+    pinfer.infer_module(module)
+  #  print(module)
+  return module
 
 def main():
     try:
-        modname, testname = sys.argv[1:3]
+        testfile = sys.argv[1]
+        del sys.argv[1]
     except Exception:
-        print('Usage: %s modname testfile [testargs]\n' % sys.argv[0],
-              file=sys.stderr)
+        print('Usage: %s testfile [testargs]\n' % sys.argv[0], file=sys.stderr)
         sys.exit(2)
         
-    __import__(modname)
-    mod = sys.modules[modname]
-    pinfer.infer_module(mod)
     pinfer.dump_at_exit()
 
-    del sys.argv[1:3]
-    imp.load_source('__main__', testname)
+    __builtins__.__import__ = inferring_import
+
+    # run testfile as main
+    del sys.modules['__main__']
+    imp.load_source('__main__', testfile)
 
 if __name__ == '__main__':
     main()
