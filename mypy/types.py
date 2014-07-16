@@ -490,7 +490,7 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
     
-    def visit_union_type(self, t: TupleType) -> T:
+    def visit_union_type(self, t: UnionType) -> T:
         assert(0)               # XXX catch visitors that don't have Union cases yet
     
     def visit_runtime_type_var(self, t: RuntimeTypeVar) -> T:

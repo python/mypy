@@ -22,6 +22,8 @@ def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
     return t.accept(TypeMeetVisitor(s, basic))
 
 def meet_simple(s: Type, t: Type, basic: BasicTypes) -> Type:
+    if s == t:
+        return s
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([meet_types(x, t, basic) for x in s.items])
     elif not is_overlapping_types(s, t):
@@ -32,7 +34,7 @@ def meet_simple(s: Type, t: Type, basic: BasicTypes) -> Type:
 def meet_simple_away(s: Type, t: Type, basic: BasicTypes) -> Type:
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([x for x in s.items
-                                                is not is_subtype(x, t)])
+                                                if not is_subtype(x, t)])
     elif not isinstance(s, AnyType) and is_subtype(s, t):
         return Void
     else:
@@ -98,8 +100,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         if isinstance(self.s, UnionType):
-            meets = [meet_types(x, y, self.basic)
-                     for x in t.items for y in self.s.items]
+            meets = []
+            for x in t.items:
+                for y in self.s.items:
+                    meets.append(meet_types(x, y, self.basic))
         else:
             meets = [meet_types(x, self.s, self.basic)
                      for x in t.items]

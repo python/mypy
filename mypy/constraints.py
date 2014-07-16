@@ -159,8 +159,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     
     def visit_instance(self, template: Instance) -> List[Constraint]:
         actual = self.actual
+        res = [] # type: List[Constraint]
         if isinstance(actual, Instance):
-            res = [] # type: List[Constraint]
             instance = cast(Instance, actual)
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
@@ -193,7 +193,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
              is_named_instance(template, 'typing.Sequence') or
              is_named_instance(template, 'typing.Reversible'))
             and self.direction == SUPERTYPE_OF):
-            res = [] # type: List[Constraint]
             for item in actual.items:
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
                 res.extend(cb)

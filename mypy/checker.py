@@ -47,14 +47,14 @@ ISINSTANCE_OVERLAPPING = 0
 ISINSTANCE_ALWAYS_TRUE = 1
 ISINSTANCE_ALWAYS_FALSE = 2
 
-Frame = Dict[Any, Type]
+class Frame(Dict[Any, Type]): pass
 
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self) -> None:
         self.types = Dict[Any, List[Type]]()
-        self.frames = [ Frame() ]
+        self.frames = []
 
     def _push(self, key: Node, value: Type) -> None:
         if key in self.frames[-1]:
@@ -163,6 +163,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.msg = MessageBuilder(errors)
         self.type_map = {}
         self.binder = ConditionalTypeBinder()
+        self.binder.push_frame()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
         self.type_context = []
@@ -310,6 +311,9 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
+            old_binder = self.binder
+            self.binder = ConditionalTypeBinder()
+            self.binder.push_frame()
             defn.expanded.append(item)
             
             # We may be checking a function definition or an anonymous
@@ -354,12 +358,13 @@ class TypeChecker(NodeVisitor[Type]):
                 if item.init[j]:
                     self.accept(item.init[j])
 
-            # Type check body.
+            # Type check body in a new scope.
             self.accept_in_frame(item.body)
 
             self.return_types.pop()
 
             self.leave()
+            self.binder = old_binder
 
     def check_reverse_op_method(self, defn: FuncItem, typ: Callable,
                                 method: str) -> None:
@@ -1530,7 +1535,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Return a BasicTypes instance that contains primitive types that are
         needed for certain type operations (joins, for example).
         """
-        return BasicTypes(self.object_type(), self.type_type(),
+        return BasicTypes(self.object_type(), self.named_type_if_exists('builtins.type'),
                           self.named_type_if_exists('builtins.tuple'),
                           self.named_type_if_exists('builtins.function'))
     
