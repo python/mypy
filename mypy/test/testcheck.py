@@ -40,7 +40,8 @@ files = [
     'check-typevar-values.test',
     'check-python2.test',
     'check-unsupported.test',
-    'check-unreachable-code.test'
+    'check-unreachable-code.test',
+    'check-unions.test',
 ]
 
 
