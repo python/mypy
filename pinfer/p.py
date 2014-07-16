@@ -18,6 +18,7 @@ Example invocation:
 import sys
 import imp
 import pinfer
+import os
 
 iport = __builtins__.__import__
 watched = set()
@@ -26,7 +27,6 @@ def inferring_import(*args, **kwargs):
   if module not in watched:
     watched.add(module)
     pinfer.infer_module(module)
-  #  print(module)
   return module
 
 def main():
@@ -42,6 +42,8 @@ def main():
     __builtins__.__import__ = inferring_import
 
     # run testfile as main
+    filemodule = os.path.dirname(os.path.abspath(testfile))
+    sys.path.append(filemodule)
     del sys.modules['__main__']
     imp.load_source('__main__', testfile)
 
