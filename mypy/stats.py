@@ -14,7 +14,7 @@ def analyze_types(tree, path, inferred=False, typemap=None):
     if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
         return
     print(path)
-    v = MyVisitor(inferred, typemap)
+    v = StatisticsVisitor(inferred, typemap)
     tree.accept(v)
     print('  ** precision **')
     print('  precise  ', v.num_precise)
@@ -30,7 +30,7 @@ def analyze_types(tree, path, inferred=False, typemap=None):
     print('  any      ', v.num_any)
 
 
-class MyVisitor(TraverserVisitor):
+class StatisticsVisitor(TraverserVisitor):
     def __init__(self, inferred, typemap=None):
         self.inferred = inferred
         self.typemap = typemap
