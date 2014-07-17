@@ -312,6 +312,8 @@ def generate_html_index(output_dir: str) -> None:
   table { border-collapse: collapse; }
   table tr td { border: 1px solid black; }
   td { padding: 0.4em; }
+  .red { background-color: #faa; }
+  .yellow { background-color: #ffa; }
   </style>
 </head>
 <body>''')
@@ -321,8 +323,13 @@ def generate_html_index(output_dir: str) -> None:
         if num_lines == 0:
             continue
         percent = 100.0 * num_imprecise / num_lines
-        append('<tr><td><a href="%s">%s</a><td>%.1f%% imprecise<td>%d LOC' % (
-            target_path, source_path, percent, num_lines))
+        style = ''
+        if percent >= 20:
+            style = 'class="red"'
+        elif percent >= 5:
+            style = 'class="yellow"'
+        append('<tr %s><td><a href="%s">%s</a><td>%.1f%% imprecise<td>%d LOC' % (
+            style, target_path, source_path, percent, num_lines))
     append('</table>')
     append('</body></html>')
     with open(path, 'w') as file:
