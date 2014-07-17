@@ -1,7 +1,50 @@
-[case testIsInstanceIndexing]
-from typing import Union
+[case testUnionStrictDefnBasic]
+from typing import Union, Undefined
+
+def foo() -> Union(int, str): pass
 
 x = 1 # type: Union(int, str)
+x = x + 1
+x = foo()
+x = x + 1                # E: Unsupported left operand type for + ("Union(int, str)")
+if isinstance(x, str):
+   x = x + 1             # E: Unsupported operand types for + ("str" and "int")
+   x = 1
+   x = x + 1
+
+[builtins fixtures/isinstancelist.py]
+
+[case testSubtypeRedefinitionBasic]
+from typing import Union, Undefined
+
+class A: pass
+class B(A): y = 1
+
+x = A()
+x.y        # E: "A" has no attribute "y"
+x = B()
+x.y        # E: "A" has no attribute "y"
+# but it should be ok: x is known to be a B
+
+[builtins fixtures/isinstancelist.py]
+
+[case testIsInstanceBasic]
+from typing import Union, Undefined
+
+x = Undefined # type: Union(int, str)
+
+if isinstance(x, str):
+    x = x + 1   # E: Unsupported operand types for + ("str" and "int")
+    x = x + 'a'
+else:
+    x = x + 'a' # E: Unsupported operand types for + ("int" and "str")
+    x = x + 1
+[builtins fixtures/isinstancelist.py]
+
+[case testIsInstanceIndexing]
+from typing import Union, Undefined
+
+x = Undefined # type: Union(int, str)
 j = [x]
 
 if isinstance(j[0], str):
@@ -57,10 +100,10 @@ def foo() -> None:
 foo()
 [builtins fixtures/isinstancelist.py]
 [case testIsInstanceBadBreak]
-from typing import Union
+from typing import Union, Undefined
 
 def foo() -> None:
-    x = 1 # type: Union(int, str)
+    x = Undefined # type: Union(int, str)
     if isinstance(x, int):
         for z in [1,2]:
             break
@@ -73,9 +116,9 @@ foo()
 [out]
 main: In function "foo":
 [case testIsInstanceThreeUnion]
-from typing import Union, List
+from typing import Union, List, Undefined
 
-x = 1 # type: Union(int, str, List[int])
+x = Undefined # type: Union(int, str, List[int])
 
 while 1:
     if isinstance(x, int):
@@ -89,9 +132,9 @@ x + [1]               # E: Unsupported left operand type for + ("Union(int, str,
 
 [builtins fixtures/isinstancelist.py]
 [case testIsInstanceThreeUnion2]
-from typing import Union, List
+from typing import Union, List, Undefined
 
-x = 1 # type: Union(int, str, List[int])
+x = Undefined # type: Union(int, str, List[int])
 
 while 1:
     if isinstance(x, int):
@@ -106,6 +149,23 @@ x + [1]               # E: Unsupported left operand type for + ("Union(int, str,
 
 [builtins fixtures/isinstancelist.py]
 
+[case testIsInstanceThreeUnion3]
+from typing import Union, List
+
+while 1:
+    x = 1 # type: Union(int, str, List[int])
+    if isinstance(x, int):
+        x + 1
+        break
+    elif isinstance(x, str):
+        x + 'a'
+        break
+    x + [1]           # These lines aren't reached because x was an int
+    x + 'a'
+x + [1]               # E: Unsupported left operand type for + ("Union(int, str, List[int])")
+
+[builtins fixtures/isinstancelist.py]
+
 [case testRemovingTypeRepeatedly]
 from typing import Union
 
@@ -113,21 +173,83 @@ def foo() -> Union(int, str): pass
 
 for i in [1, 2]:
     x = foo()
+    x + 'a'                 # E: Unsupported left operand type for + ("Union(int, str)")
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
+    x + 'a'                 # E: Unsupported left operand type for + ("Union(int, str)")
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
+    x + 'a'                 # E: Unsupported left operand type for + ("Union(int, str)")
     if isinstance(x, int):
         break
     x + 'a'
 
-x + 'a'                    # E: moo
+x + 'a'                    # E: Unsupported left operand type for + ("Union(int, str)")
+  
+[builtins fixtures/isinstancelist.py]
+
+
+
+[case testModifyRepeatedly]
+from typing import Union
+
+def foo() -> Union(int, str): pass
+
+x = foo()
+x + 1     # E: Unsupported left operand type for + ("Union(int, str)")
+x + 'a'   # E: Unsupported left operand type for + ("Union(int, str)")
+
+x = 1
+x + 1
+x + 'a'   # E: Unsupported operand types for + ("int" and "str")
+
+x = 'a'
+x + 1     # E: Unsupported operand types for + ("str" and "int")
+x + 'a'
+
+x = foo()
+x + 1     # E: Unsupported left operand type for + ("Union(int, str)")
+x + 'a'   # E: Unsupported left operand type for + ("Union(int, str)")
+
+[builtins fixtures/isinstancelist.py]
+
+[case testModifyLoop]
+from typing import Union
+
+def foo() -> Union(int, str): pass
+
+x = foo()
+x + 1      # E: Unsupported left operand type for + ("Union(int, str)")
+x = 'a'
+x + 1      # E: Unsupported operand types for + ("str" and "int")
+x = 1
+x + 1
+
+while 1:
+      x + 1    # SHOULD BE E: moo
+      x = 'a'
+
+
+[builtins fixtures/isinstancelist.py]
+
+[case testCastIsinstance]
+from typing import Union
+
+def foo() -> Union(int, str): pass
+
+x = foo()
+y = 1 # type: int
+
+if isinstance(x, str):
+    x = y
+x + 1
+x + 'a'   # E: Unsupported operand types for + ("int" and "str")
 
 [builtins fixtures/isinstancelist.py]
 

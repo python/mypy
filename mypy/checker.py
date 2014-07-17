@@ -23,7 +23,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, BasicTypes,
-    strip_type
+    strip_type, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -52,15 +52,27 @@ class Frame(Dict[Any, Type]): pass
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
-    def __init__(self) -> None:
+    def __init__(self, basic_types_fn) -> None:
         self.types = Dict[Any, List[Type]]()
         self.frames = []
+        self.dependencies = {}  #Set of other keys to invalidate if a key is changed
+        self.basic_types_fn = basic_types_fn
+
+    def _add_dependencies(self, key: Any, value: Any):
+        if isinstance(key, tuple):
+            if key != value:
+                self.dependencies.setdefault(key, set()).add(value)
+            for elt in key:
+                self._add_dependencies(elt, value)
 
     def _push(self, key: Node, value: Type) -> None:
         if key in self.frames[-1]:
             self.types[key][-1] = value
         else:
-            self.types.setdefault(key, []).append(value)
+            if key not in self.types:
+                self.types[key] = []
+                self._add_dependencies(key, key)
+            self.types[key].append(value)
         self.frames[-1][key] = value
 
     def push_frame(self) -> Frame:
@@ -87,7 +99,53 @@ class ConditionalTypeBinder:
         if values:
             return values[-1]
         else:
+            return self.get_declaration(expr)
+
+    def get_declaration(self, expr: Node):
+        if hasattr(expr, 'node') and isinstance(expr.node, Var):
+            return expr.node.type
+        else:
             return None
+
+    def assign_type(self, expr: Node, type: Type) -> None:
+        if not expr.literal:
+            return
+        declared_type = self.get_declaration(expr)
+        if declared_type and not is_subtype(type, declared_type):
+            #print("ERROR! Defining {} to type {}, which is outside the declared {}".format(expr, type, declared_type))
+            pass
+
+        #Update the stored type for this expression
+        current_assumption = self.get(expr)
+        if not is_subtype(type, current_assumption):
+            self.expand_type(expr, type)
+            current_assumption = self.get(expr)
+
+        if type == current_assumption or isinstance(current_assumption, AnyType):
+            pass
+        elif not isinstance(type, AnyType):
+            if is_subtype(type, current_assumption):
+                if isinstance(current_assumption, UnionType):
+                    self.push(expr, type)
+
+        #Invalidate types that include this expression
+        for dep in self.dependencies.get(expr.literal_hash, []):
+            if dep in self.types:
+                del self.types[dep]
+                for f in self.frames:
+                    if dep in f:
+                        del f[dep]
+
+    def expand_type(self, expr: Node, type: Type):
+        #First remove all the restrictions until we get a supertype of type
+        for f in reversed(self.frames):
+            if expr.literal_hash in f:
+                if is_subtype(type, f[expr.literal_hash]):
+                    break
+                del f[expr.literal_hash]
+                self.types[expr.literal_hash].pop()
+
+
 
 def join_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
     answer = Frame()
@@ -162,7 +220,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pyversion = pyversion
         self.msg = MessageBuilder(errors)
         self.type_map = {}
-        self.binder = ConditionalTypeBinder()
+        self.binder = ConditionalTypeBinder(self.basic_types)
         self.binder.push_frame()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
@@ -312,7 +370,7 @@ class TypeChecker(NodeVisitor[Type]):
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder()
+            self.binder = ConditionalTypeBinder(self.basic_types)
             self.binder.push_frame()
             defn.expanded.append(item)
             
@@ -774,15 +832,22 @@ class TypeChecker(NodeVisitor[Type]):
                 self.store_type(lv, lvalue_types[-1])
                 index_lvalues.append(None)
                 inferred.append(None)
+            elif isinstance(lv, NameExpr):
+                lvalue_types.append(self.expr_checker.analyse_ref_expr(lv))
+                self.store_type(lv, lvalue_types[-1])
+                index_lvalues.append(None)
+                inferred.append(None)
             else:
                 lvalue_types.append(self.accept(lv))
                 index_lvalues.append(None)
                 inferred.append(None)
-        
+
         if len(lvalues) == 1:
             # Single lvalue.
-            self.check_single_assignment(lvalue_types[0],
-                                         index_lvalues[0], rvalue, rvalue)
+            rvalue_type = self.check_single_assignment(lvalue_types[0],
+                                                       index_lvalues[0], rvalue, rvalue)
+            if rvalue_type:
+                self.binder.assign_type(lvalues[0], rvalue_type)
         else:
             self.check_multi_assignment(lvalue_types, index_lvalues,
                                         rvalue, rvalue)
@@ -958,7 +1023,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_single_assignment(self,
             lvalue_type: Type, index_lvalue: IndexExpr,
             rvalue: Node, context: Context,
-            msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> None:
+            msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
         """Type check an assignment.
 
         If lvalue_type is None, the index_lvalue argument must be the
@@ -974,6 +1039,7 @@ class TypeChecker(NodeVisitor[Type]):
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                'expression has type', 'variable has type')
+            return rvalue_type
         elif index_lvalue:
             self.check_indexed_assignment(index_lvalue, rvalue, context)
     
@@ -1072,6 +1138,7 @@ class TypeChecker(NodeVisitor[Type]):
                 # print("Warning: isinstance always true")
                 if broken:
                     self.binder.pop_frame()
+                    self.breaking_out = True
                     return
                 break
         else:

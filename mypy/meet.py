@@ -21,15 +21,18 @@ def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
         s, t = t, s
     return t.accept(TypeMeetVisitor(s, basic))
 
-def meet_simple(s: Type, t: Type, basic: BasicTypes) -> Type:
+def meet_simple(s: Type, t: Type, basic: BasicTypes, default_right: bool = True) -> Type:
     if s == t:
         return s
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([meet_types(x, t, basic) for x in s.items])
     elif not is_overlapping_types(s, t):
-        return Void
+        return Void()
     else:
-        return t
+        if default_right:
+            return t
+        else:
+            return s
 
 def meet_simple_away(s: Type, t: Type, basic: BasicTypes) -> Type:
     if isinstance(s, UnionType):
@@ -57,6 +60,8 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
             #      layout is the same.
             tbuiltin = nearest_builtin_ancestor(t.type)
             sbuiltin = nearest_builtin_ancestor(s.type)
+            if not sbuiltin or not tbuiltin:
+                return True
 
             # If one is a base class of other, the types overlap, unless there
             # is an explicit disjointclass constraint.
@@ -72,6 +77,7 @@ def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
         if base.defn.is_builtinclass:
             return base
     else:
+        return None
         assert False, 'No built-in ancestor found for {}'.format(type.name())
 
 

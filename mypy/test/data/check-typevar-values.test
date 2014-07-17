@@ -198,8 +198,8 @@ def f(x: T) -> None:
     if isinstance(x, A):
         # This is checked both when x is A or B, since A and B are overlapping
         # types.
-        x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        x = A()
+        x = y
+        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     else:
         x = B()
         x = y
