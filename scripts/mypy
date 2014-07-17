@@ -29,6 +29,7 @@ class Options:
         self.build_flags = List[str]()
         self.interpreter = 'python'
         self.pyversion = 3
+        self.custom_typing_module = None # type: str
 
 
 def main() -> None:
@@ -80,6 +81,7 @@ def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
                 bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
                 pyversion=options.pyversion,
+                custom_typing_module=options.custom_typing_module,
                 flags=options.build_flags)
 
     if build.COMPILE_ONLY not in options.build_flags:
@@ -151,6 +153,9 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
         elif args[0] == '--inferstats':
             options.build_flags.append('dump-infer-stats')
             args = args[1:]
+        elif args[0] == '--custom-typing' and args[1:]:
+            options.custom_typing_module = args[1]
+            args = args[2:]
         else:
             usage('Invalid option {}'.format(args[0]))
     

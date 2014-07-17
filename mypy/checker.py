@@ -1289,7 +1289,7 @@ class TypeChecker(NodeVisitor[Type]):
             if isinstance(subtype, Void):
                 self.msg.does_not_return_value(subtype, context)
             else:
-                extra_info = [] # type: [str]
+                extra_info = [] # type: List[str]
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + self.msg.format_simple(subtype))
                 if supertype_label is not None:

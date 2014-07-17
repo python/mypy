@@ -62,7 +62,7 @@ none = Token('') # Empty token
 
 
 def parse(s: str, fnam: str = None, errors: Errors = None,
-          pyversion: int = 3) -> MypyFile:
+          pyversion: int = 3, custom_typing_module: str = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -71,7 +71,7 @@ def parse(s: str, fnam: str = None, errors: Errors = None,
     The pyversion argument determines the Python syntax variant (2 for 2.x and
     3 for 3.x).
     """
-    parser = Parser(fnam, errors, pyversion)
+    parser = Parser(fnam, errors, pyversion, custom_typing_module)
     tree = parser.parse(s)
     tree.path = fnam
     return tree
@@ -88,9 +88,11 @@ class Parser:
     # All import nodes encountered so far in this parse unit.
     imports = Undefined(List[ImportBase])
     
-    def __init__(self, fnam: str, errors: Errors, pyversion: int) -> None:
+    def __init__(self, fnam: str, errors: Errors, pyversion: int,
+                 custom_typing_module : str = None) -> None:
         self.raise_on_error = errors is None
         self.pyversion = pyversion
+        self.custom_typing_module = custom_typing_module
         if errors is not None:
             self.errors = errors
         else:
@@ -138,6 +140,8 @@ class Parser:
         as_names = List[Tuple[Token, Token]]()
         while True:
             id, components = self.parse_qualified_name()
+            if id == self.custom_typing_module:
+                id = 'typing'
             id_toks.append(components)
             as_id = id
             if self.current_str() == 'as':
@@ -161,11 +165,13 @@ class Parser:
     def parse_import_from(self) -> Node:
         from_tok = self.expect('from')
         name, components = self.parse_qualified_name()
+        if name == self.custom_typing_module:
+            name = 'typing'
         import_tok = self.expect('import')
         name_toks = List[Tuple[List[Token], Token]]()
         lparen = none
         rparen = none
-        node = Undefined(ImportBase)
+        node = None # type: ImportBase
         if self.current_str() == '*':
             name_toks.append(([self.skip()], none))
             node = ImportAll(name)
@@ -176,6 +182,14 @@ class Parser:
             targets = List[Tuple[str, str]]()
             while True:
                 id, as_id, toks = self.parse_import_name()
+                if '%s.%s' % (name, id) == self.custom_typing_module:
+                    if targets or self.current_str() == ',':
+                        self.fail('You cannot import any other modules when you '
+                                  'import a custom typing module',
+                                  toks[0].line)
+                    node = Import([('typing', as_id)])
+                    self.skip_until_break()
+                    break
                 targets.append((id, as_id))
                 if self.current_str() != ',':
                     name_toks.append((toks, none))
@@ -185,9 +199,11 @@ class Parser:
                     break
             if is_paren:
                 rparen = self.expect(')')
-            node = ImportFrom(name, targets)
+            if node is None:
+                node = ImportFrom(name, targets)
         br = self.expect_break()
         self.imports.append(node)
+        # TODO: Fix representation if there is a custom typing module import.
         self.set_repr(node, noderepr.ImportFromRepr(
             from_tok, components,import_tok, lparen, name_toks, rparen, br))
         return node

@@ -605,7 +605,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_unknown_symbol(as_id, i)
 
     def normalize_type_alias(self, node: SymbolTableNode,
-                                         ctx: Context) -> SymbolTableNode:
+                             ctx: Context) -> SymbolTableNode:
         if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
