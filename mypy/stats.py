@@ -4,7 +4,7 @@ import cgi
 import os.path
 import re
 
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, cast, Tuple
     
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -248,6 +248,9 @@ def is_complex(t: Type) -> bool:
                                            TypeVar))
 
 
+html_files = [] # type: List[Tuple[str, str, int, int]]
+
+
 def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
                          output_dir: str) -> None:
     if is_special_module(path):
@@ -271,6 +274,8 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
 </head>
 <body>
 <pre>''')
+    num_imprecise_lines = 0
+    num_lines = 0
     with open(path) as input_file:
         for i, line in enumerate(input_file):
             lineno = i + 1
@@ -282,8 +287,43 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
             append('<span class="lineno">%4d</span>   ' % lineno +
                    '<span class="%s">%s</span>' % (style,
                                                    cgi.escape(line)))
+            if status != TYPE_PRECISE:
+                num_imprecise_lines += 1
+            if line.strip():
+                num_lines += 1
     append('</pre>')
     append('</body></html>')
     with open(target_path, 'w') as output_file:
         output_file.writelines(output)
     print('Wrote %s.' % target_path)
+    target_path = target_path[len(output_dir) + 1:]
+    html_files.append((path, target_path, num_lines, num_imprecise_lines))
+
+
+def generate_html_index(output_dir: str) -> None:
+    path = os.path.join(output_dir, 'index.html')
+    output = [] # type: List[str]
+    append = output.append
+    append('''\
+<html>
+<head>
+  <style>
+  body { font-family: courier; }
+  table { border-collapse: collapse; }
+  table tr td { border: 1px solid black; }
+  td { padding: 0.4em; }
+  </style>
+</head>
+<body>''')
+    append('<h1>Mypy Type Check Coverage Report</h1>\n')
+    append('<table>\n')
+    for source_path, target_path, num_lines, num_imprecise in sorted(html_files):
+        if num_lines == 0:
+            continue
+        percent = 100.0 * num_imprecise / num_lines
+        append('<tr><td><a href="%s">%s</a><td>%.1f%% imprecise<td>%d LOC' % (
+            target_path, source_path, percent, num_lines))
+    append('</table>')
+    append('</body></html>')
+    with open(path, 'w') as file:
+        file.writelines(output)

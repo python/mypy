@@ -175,7 +175,10 @@ def build(program_path: str,
     # Perform the build by sending the file as new file (UnprocessedFile is the
     # initial state of all files) to the manager. The manager will process the
     # file and all dependant modules recursively.
-    return manager.process(UnprocessedFile(info, program_text))
+    result = manager.process(UnprocessedFile(info, program_text))
+    if 'html-report' in flags:
+        stats.generate_html_index(html_report_dir)
+    return result
 
 
 def default_data_dir(bin_dir: str) -> str:
