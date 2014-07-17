@@ -193,7 +193,7 @@ def is_complex(t: Type) -> bool:
                                            TypeVar))
 
 
-def generate_html_report(tree: None, path: str, type_map: Dict[Node, Type],
+def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
                          output_dir: str) -> None:
     if is_special_module(path):
         return
@@ -204,13 +204,29 @@ def generate_html_report(tree: None, path: str, type_map: Dict[Node, Type],
     target_path = re.sub(r'\.py$', '.html', target_path)
     output = [] # type: List[str]
     append = output.append
-    append('<html><body>')
-    append('<pre>')
+    append('''\
+<html>
+<head>
+  <style>
+    .red { background-color: #faa; }
+    .yellow { background-color: #ffa; }
+    .white { }
+    .lineno { color: #999; }
+  </style>
+</head>
+<body>
+<pre>''')
     with open(path) as input_file:
         for i, line in enumerate(input_file):
             lineno = i + 1
             status = visitor.line_map.get(lineno, TYPE_PRECISE)
-            append('%4d %d %s' % (lineno, status, cgi.escape(line)))
+            style_map = { TYPE_PRECISE: 'white',
+                          TYPE_IMPRECISE: 'yellow',
+                          TYPE_ANY: 'red' }
+            style = style_map[status]
+            append('<span class="lineno">%4d</span>   ' % lineno +
+                   '<span class="%s">%s</span>' % (style,
+                                                   cgi.escape(line)))
     append('</pre>')
     append('</body></html>')
     with open(target_path, 'w') as output_file:
