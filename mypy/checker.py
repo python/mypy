@@ -55,8 +55,9 @@ class ConditionalTypeBinder:
     def __init__(self, basic_types_fn) -> None:
         self.types = Dict[Any, List[Type]]()
         self.frames = []
-        self.dependencies = {}  #Set of other keys to invalidate if a key is changed
+        self.dependencies = {}  # Set of other keys to invalidate if a key is changed
         self.basic_types_fn = basic_types_fn
+        self.min_frame = None # type: int    # index of outermost frame that was modified
 
     def _add_dependencies(self, key: Any, value: Any):
         if isinstance(key, tuple):
@@ -138,12 +139,17 @@ class ConditionalTypeBinder:
 
     def expand_type(self, expr: Node, type: Type):
         #First remove all the restrictions until we get a supertype of type
+        counter = 0
         for f in reversed(self.frames):
+            counter += 1
             if expr.literal_hash in f:
                 if is_subtype(type, f[expr.literal_hash]):
                     break
                 del f[expr.literal_hash]
                 self.types[expr.literal_hash].pop()
+                self.min_frame = min(self.min_frame if self.min_frame is not None
+                                     else len(self.frames),
+                                     len(self.frames) - counter)
 
 
 
@@ -248,12 +254,21 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             return typ
 
-    def accept_in_frame(self, node: Node, type_context: Type = None) -> Type:
+    def accept_in_frame(self, node: Node, type_context: Type = None, repeat_till_fixed = False) -> Type:
         """Type check a node in the given type context in a new frame of inferred types."""
-        self.binder.push_frame()
-        answer = self.accept(node, type_context)
-        self.binder.pop_frame()
-        self.breaking_out = False
+        while True:
+            old_min_frame = self.binder.min_frame
+            self.binder.min_frame = None
+            self.binder.push_frame()
+            answer = self.accept(node, type_context)
+            self.binder.pop_frame()
+            this_min_frame = self.binder.min_frame
+            self.binder.min_frame = old_min_frame
+            self.breaking_out = False
+
+            if not repeat_till_fixed or this_min_frame is None or this_min_frame >= len(self.binder.frames):
+                break
+
         return answer
 
     #
@@ -1165,7 +1180,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a while statement."""
         t = self.accept(s.expr)
         self.check_not_void(t, s)
-        self.accept_in_frame(s.body)
+        self.accept_in_frame(s.body, repeat_till_fixed=True)
         if s.else_body:
             self.accept(s.else_body)
     
@@ -1265,7 +1280,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a for statement."""
         item_type = self.analyse_iterable_item_type(s.expr)
         self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
-        self.accept_in_frame(s.body)
+        self.accept_in_frame(s.body, repeat_till_fixed=True)
 
     def analyse_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
