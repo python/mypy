@@ -77,7 +77,7 @@ T = typevar('T')
 # Inferred value of an expression.
 ALWAYS_TRUE = 0
 ALWAYS_FALSE = 1
-TRUTH_VALUE_UNKOWN = 2
+TRUTH_VALUE_UNKNOWN = 2
 
 
 class TypeTranslationError(Exception):
@@ -1756,16 +1756,35 @@ def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
 
 
 def infer_if_condition_value(expr: Node, pyversion: int) -> int:
+    """Infer whether if condition is always true/false.
+
+    Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
+    and TRUTH_VALUE_UNKNOWN otherwise.
+    """
     name = ''
+    negated = False
+    alias = expr
+    if isinstance(alias, UnaryExpr):
+        if alias.op == 'not':
+            expr = alias.expr
+            negated = True
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
+    result = TRUTH_VALUE_UNKNOWN
     if name == 'PY2':
-        return ALWAYS_TRUE if pyversion == 2 else ALWAYS_FALSE
+        result = ALWAYS_TRUE if pyversion == 2 else ALWAYS_FALSE
     elif name == 'PY3':
-        return ALWAYS_TRUE if pyversion == 3 else ALWAYS_FALSE
-    return TRUTH_VALUE_UNKOWN
+        result = ALWAYS_TRUE if pyversion == 3 else ALWAYS_FALSE
+    elif name == 'MYPY':
+        result = ALWAYS_TRUE
+    if negated:
+        if result == ALWAYS_TRUE:
+            result = ALWAYS_FALSE
+        elif result == ALWAYS_FALSE:
+            result = ALWAYS_TRUE
+    return result
 
 
 def mark_block_unreachable(block: Block) -> None:
