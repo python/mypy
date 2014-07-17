@@ -111,7 +111,12 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_call_expr(self, o: CallExpr) -> None:
         self.process_node(o)
-        super().visit_call_expr(o)
+        if o.analyzed:
+            o.analyzed.accept(self)
+        else:
+            o.callee.accept(self)
+            for a in o.args:
+                a.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
         self.process_node(o)
@@ -129,7 +134,8 @@ class StatisticsVisitor(TraverserVisitor):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
             self.record_line(self.line, TYPE_ANY)
-        elif is_imprecise(t):
+        elif ((not self.all_nodes and is_imprecise(t)) or
+              (self.all_nodes and is_imprecise2(t))):
             self.log('  !! Imprecise type around line %d' % self.line)
             self.num_imprecise += 1
             self.record_line(self.line, TYPE_IMPRECISE)
@@ -208,6 +214,17 @@ class HasAnyQuery(TypeQuery):
             return True
         else:
             return super().visit_instance(t)
+
+
+def is_imprecise2(t: Type) -> bool:
+    return t.accept(HasAnyQuery2())
+
+
+class HasAnyQuery2(HasAnyQuery):
+    def visit_callable(self, t: Callable) -> bool:
+        # We don't want to flag references to functions with some Any
+        # argument types (etc.) since they generally don't mean trouble.
+        return False
 
 
 def is_generic(t: Type) -> bool:
