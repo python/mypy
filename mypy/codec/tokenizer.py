@@ -12,7 +12,7 @@ def get_end_pos(start_pos, tvalue):
             col += 1
     return (row, col)
 
-def py3annot_untokenize(tokens):
+def mypy_untokenize(tokens):
     parts = []
     prev_row = 1
     prev_col = 0
@@ -49,7 +49,7 @@ def py3annot_untokenize(tokens):
 
     return ''.join(parts)
 
-def py3annot_tokenize(readline):
+def mypy_tokenize(readline):
     return transform_tokens(tokenize.generate_tokens(readline))
 
 def transform_tokens(tokens):

@@ -1,4 +1,4 @@
-# coding: py3annot
+# coding: mypy
 
 # very simple script to test type annotations
 

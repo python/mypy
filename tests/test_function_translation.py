@@ -2,7 +2,7 @@ import codecs
 
 from unittest import TestCase
 
-from py3annot.codec import register
+from mypy.codec import register
 
 # The test functions that will be translated.
 # even indices are input functions, odd indices are expected output
@@ -80,7 +80,7 @@ class TestFunctionTranslation(TestCase):
 
     def test_all_functions(self):
         for i in range(0, len(test_function_examples), 2):
-            func_translated = codecs.decode(test_function_examples[i], 'py3annot')
+            func_translated = codecs.decode(test_function_examples[i], 'mypy')
             #print repr(func_translated)
             #print repr(test_function_examples[i+1])
             self.assertEqual(func_translated, test_function_examples[i+1])
