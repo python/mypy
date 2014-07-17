@@ -1023,6 +1023,20 @@ main, line 2: 'staticmethod' used with a non-method
 main: In function "g":
 main, line 6: 'staticmethod' used with a non-method
 
+[case testClassmethodAndNonMethod]
+import typing
+@classmethod
+def f(): pass
+class A:
+  def g(self):
+    @classmethod
+    def h(): pass
+[builtins fixtures/classmethod.py]
+[out]
+main, line 2: 'classmethod' used with a non-method
+main: In function "g":
+main, line 6: 'classmethod' used with a non-method
+
 [case testNonMethodProperty]
 import typing
 @property  # E: 'property' used with a non-method

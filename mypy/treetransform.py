@@ -80,6 +80,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_conditional = node.is_conditional
         new.is_abstract = node.is_abstract
         new.is_static = node.is_static
+        new.is_class = node.is_class
         new.is_property = node.is_property
         new.original_def = node.original_def
         return new
@@ -171,6 +172,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_ready = node.is_ready
         new.is_initialized_in_class = node.is_initialized_in_class
         new.is_staticmethod = node.is_staticmethod
+        new.is_classmethod = node.is_classmethod
         new.is_property = node.is_property
         new.set_line(node.line)
         self.var_map[node] = new

@@ -293,6 +293,7 @@ class FuncDef(FuncItem):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_static = False
+    is_class = False
     is_property = False
     original_def = None # type: FuncDef  # Original conditional definition
     
@@ -367,6 +368,7 @@ class Var(SymbolNode):
     # Is this initialized explicitly to a non-None value in class body?
     is_initialized_in_class = False
     is_staticmethod = False
+    is_classmethod = False
     is_property = False
     
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:

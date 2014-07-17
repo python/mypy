@@ -717,6 +717,52 @@ int.from_bytes(b'', '')
 int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
 [builtins fixtures/staticmethod.py]
 
+[case testAssignStaticMethodOnInstance]
+import typing
+class A:
+  @staticmethod
+  def f(x: int) -> None: pass
+A().f = A.f # E: Cannot assign to a method
+[builtins fixtures/staticmethod.py]
+
+
+-- Class methods
+-- -------------
+
+
+[case testSimpleClassMethod]
+import typing
+class A:
+  @classmethod
+  def f(cls, x: int) -> None: pass
+A.f(1)
+A().f(1)
+A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.py]
+
+[case testBuiltinClassMethod]
+import typing
+int.from_bytes(b'', '')
+int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
+[builtins fixtures/classmethod.py]
+
+[case testAssignClassMethodOnClass]
+import typing
+class A:
+  @classmethod
+  def f(cls, x: int) -> None: pass
+A.f = A.f # E: Cannot assign to a method
+[builtins fixtures/classmethod.py]
+
+[case testAssignClassMethodOnInstance]
+import typing
+class A:
+  @classmethod
+  def f(cls, x: int) -> None: pass
+A().f = A.f # E: Cannot assign to a method
+[builtins fixtures/classmethod.py]
+
 
 -- Properties
 -- ----------
