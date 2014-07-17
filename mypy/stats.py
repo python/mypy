@@ -321,6 +321,7 @@ def generate_html_index(output_dir: str) -> None:
     for source_path, target_path, num_lines, num_imprecise in sorted(html_files):
         if num_lines == 0:
             continue
+        source_path = os.path.normpath(source_path)
         percent = 100.0 * num_imprecise / num_lines
         style = ''
         if percent >= 20:
