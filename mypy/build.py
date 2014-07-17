@@ -851,7 +851,7 @@ class PartiallySemanticallyAnalyzedFile(ParsedFile):
         """Perform final pass of semantic analysis and advance state."""
         self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
         if 'dump-type-stats' in self.manager.flags:
-            stats.analyze_types(self.tree, self.tree.path)
+            stats.dump_type_stats(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
 
     def state(self) -> int:
@@ -864,8 +864,8 @@ class SemanticallyAnalyzedFile(ParsedFile):
         if self.manager.target >= TYPE_CHECK:
             self.type_checker().visit_file(self.tree, self.tree.path)
             if 'dump-infer-stats' in self.manager.flags:
-                stats.analyze_types(self.tree, self.tree.path, inferred=True,
-                                    typemap=self.manager.type_checker.type_map)
+                stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
+                                      typemap=self.manager.type_checker.type_map)
         
         # FIX remove from active state list to speed up processing
         

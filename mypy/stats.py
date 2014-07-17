@@ -129,8 +129,8 @@ class StatisticsVisitor(TraverserVisitor):
         self.output.append(string)
 
 
-def analyze_types(tree: Node, path: str, inferred: bool = False,
-                  typemap: Dict[Node, Type] = None) -> None:
+def dump_type_stats(tree: Node, path: str, inferred: bool = False,
+                    typemap: Dict[Node, Type] = None) -> None:
     if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
         return
     print(path)
