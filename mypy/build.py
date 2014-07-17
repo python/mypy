@@ -870,6 +870,11 @@ class SemanticallyAnalyzedFile(ParsedFile):
             if 'dump-infer-stats' in self.manager.flags:
                 stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
                                       typemap=self.manager.type_checker.type_map)
+            elif 'html-report' in self.manager.flags:
+                stats.generate_html_report(
+                    self.tree, self.tree.path,
+                    type_map=self.manager.type_checker.type_map,
+                    output_dir=self.manager.html_report_dir)
         
         # FIX remove from active state list to speed up processing
         

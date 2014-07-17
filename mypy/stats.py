@@ -185,3 +185,10 @@ def is_generic(t: Type) -> bool:
 def is_complex(t: Type) -> bool:
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType,
                                            TypeVar))
+
+
+def generate_html_report(tree, path, type_map, output_dir):
+    if path.startswith('stubs') or '/stubs/' in path:
+        return
+    print('generate', path)
+
