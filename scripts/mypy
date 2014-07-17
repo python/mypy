@@ -83,6 +83,7 @@ def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
                 target=build.TYPE_CHECK,
                 pyversion=options.pyversion,
                 custom_typing_module=options.custom_typing_module,
+                html_report_dir=options.html_report_dir,
                 flags=options.build_flags)
 
     if build.COMPILE_ONLY not in options.build_flags:

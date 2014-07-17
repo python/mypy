@@ -104,6 +104,7 @@ def build(program_path: str,
           output_dir: str = None,
           pyversion: int = 3,
           custom_typing_module: str = None,
+          html_report_dir: str = None,
           flags: List[str] = None) -> BuildResult:
     """Build a mypy program.
 
@@ -161,7 +162,8 @@ def build(program_path: str,
     manager = BuildManager(data_dir, lib_path, target, output_dir,
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
-                           custom_typing_module=custom_typing_module)
+                           custom_typing_module=custom_typing_module,
+                           html_report_dir=html_report_dir)
 
     program_path = program_path or lookup_program(module, lib_path)
     if program_text is None:
@@ -294,7 +296,8 @@ class BuildManager:
                  pyversion: int,
                  flags: List[str],
                  ignore_prefix: str,
-                 custom_typing_module: str) -> None:
+                 custom_typing_module: str,
+                 html_report_dir: str) -> None:
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
@@ -304,6 +307,7 @@ class BuildManager:
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
+        self.html_report_dir = html_report_dir
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
