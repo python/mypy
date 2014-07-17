@@ -1,6 +1,8 @@
 """Utilities for calculating and reporting statistics about types."""
 
-from os.path import basename
+import cgi
+import os.path
+import re
 
 from typing import Any, Dict, List, cast
     
@@ -139,7 +141,7 @@ class StatisticsVisitor(TraverserVisitor):
 
 def dump_type_stats(tree: Node, path: str, inferred: bool = False,
                     typemap: Dict[Node, Type] = None) -> None:
-    if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
+    if is_special_module(path):
         return
     print(path)
     visitor = StatisticsVisitor(inferred, typemap)
@@ -158,6 +160,10 @@ def dump_type_stats(tree: Node, path: str, inferred: bool = False,
     print('  typevar  ', visitor.num_typevar)
     print('  complex  ', visitor.num_complex)
     print('  any      ', visitor.num_any)
+
+
+def is_special_module(path: str) -> bool:
+    return os.path.basename(path) in ('abc.py', 'typing.py', 'builtins.py')
 
 
 def is_imprecise(t: Type) -> bool:
@@ -187,8 +193,26 @@ def is_complex(t: Type) -> bool:
                                            TypeVar))
 
 
-def generate_html_report(tree, path, type_map, output_dir):
-    if path.startswith('stubs') or '/stubs/' in path:
+def generate_html_report(tree: None, path: str, type_map: Dict[Node, Type],
+                         output_dir: str) -> None:
+    if is_special_module(path):
         return
     print('generate', path)
-
+    visitor = StatisticsVisitor(inferred=True, typemap=type_map)
+    tree.accept(visitor)
+    target_path = os.path.join(output_dir, os.path.basename(path))
+    target_path = re.sub(r'\.py$', '.html', target_path)
+    output = [] # type: List[str]
+    append = output.append
+    append('<html><body>')
+    append('<pre>')
+    with open(path) as input_file:
+        for i, line in enumerate(input_file):
+            lineno = i + 1
+            status = visitor.line_map.get(lineno, TYPE_PRECISE)
+            append('%4d %d %s' % (lineno, status, cgi.escape(line)))
+    append('</pre>')
+    append('</body></html>')
+    with open(target_path, 'w') as output_file:
+        output_file.writelines(output)
+    print('Wrote %s.' % target_path)
