@@ -255,7 +255,6 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
                          output_dir: str) -> None:
     if is_special_module(path):
         return
-    print('generate', path)
     visitor = StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
     tree.accept(visitor)
     target_path = os.path.join(output_dir, os.path.basename(path))
@@ -334,3 +333,5 @@ def generate_html_index(output_dir: str) -> None:
     append('</body></html>')
     with open(path, 'w') as file:
         file.writelines(output)
+    print('Wrote %s.' % path)
+
