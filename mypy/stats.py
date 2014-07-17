@@ -257,8 +257,9 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
         return
     visitor = StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
     tree.accept(visitor)
-    target_path = os.path.join(output_dir, os.path.basename(path))
+    target_path = os.path.join(output_dir, 'html', path)
     target_path = re.sub(r'\.py$', '.html', target_path)
+    ensure_dir_exists(os.path.dirname(target_path))
     output = [] # type: List[str]
     append = output.append
     append('''\
@@ -339,3 +340,7 @@ def generate_html_index(output_dir: str) -> None:
         file.writelines(output)
     print('Generated HTML report: %s' % os.path.abspath(path))
 
+
+def ensure_dir_exists(dir: str) -> None:
+    if not os.path.exists(dir):
+        os.makedirs(dir)
