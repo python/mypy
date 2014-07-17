@@ -2,7 +2,7 @@
 
 from os.path import basename
 
-from typing import Any, Dict, cast
+from typing import Any, Dict, List, cast
     
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -11,6 +11,11 @@ from mypy.types import (
 )
 from mypy import nodes
 from mypy.nodes import Node, FuncDef, TypeApplication, AssignmentStmt
+
+
+TYPE_PRECISE = 0
+TYPE_ANY = 1
+TYPE_IMPRECISE = 2
 
 
 class StatisticsVisitor(TraverserVisitor):
@@ -32,6 +37,8 @@ class StatisticsVisitor(TraverserVisitor):
         self.line = -1
 
         self.line_map = Dict[int, int]()
+
+        self.output = List[str]()
         
         TraverserVisitor.__init__(self)
     
@@ -84,15 +91,16 @@ class StatisticsVisitor(TraverserVisitor):
                         if t:
                             self.type(t)
                         else:
-                            print('  !! No inferred type on line', self.line)
+                            self.log('  !! No inferred type on line %d' %
+                                     self.line)
         super().visit_assignment_stmt(o)
 
     def type(self, t: Type) -> None:
         if isinstance(t, AnyType):
-            print('  !! Any type around line', self.line)
+            self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
         elif is_imprecise(t):
-            print('  !! Imprecise type around line', self.line)
+            self.log('  !! Imprecise type around line %d' % self.line)
             self.num_imprecise += 1
         else:
             self.num_precise += 1
@@ -117,26 +125,31 @@ class StatisticsVisitor(TraverserVisitor):
         elif isinstance(t, TypeVar):
             self.num_typevar += 1
 
+    def log(self, string: str) -> None:
+        self.output.append(string)
+
 
 def analyze_types(tree: Node, path: str, inferred: bool = False,
                   typemap: Dict[Node, Type] = None) -> None:
     if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
         return
     print(path)
-    v = StatisticsVisitor(inferred, typemap)
-    tree.accept(v)
+    visitor = StatisticsVisitor(inferred, typemap)
+    tree.accept(visitor)
+    for line in visitor.output:
+        print(line)
     print('  ** precision **')
-    print('  precise  ', v.num_precise)
-    print('  imprecise', v.num_imprecise)
-    print('  any      ', v.num_any)
+    print('  precise  ', visitor.num_precise)
+    print('  imprecise', visitor.num_imprecise)
+    print('  any      ', visitor.num_any)
     print('  ** kinds **')
-    print('  simple   ', v.num_simple)
-    print('  generic  ', v.num_generic)
-    print('  function ', v.num_function)
-    print('  tuple    ', v.num_tuple)
-    print('  typevar  ', v.num_typevar)
-    print('  complex  ', v.num_complex)
-    print('  any      ', v.num_any)
+    print('  simple   ', visitor.num_simple)
+    print('  generic  ', visitor.num_generic)
+    print('  function ', visitor.num_function)
+    print('  tuple    ', visitor.num_tuple)
+    print('  typevar  ', visitor.num_typevar)
+    print('  complex  ', visitor.num_complex)
+    print('  any      ', visitor.num_any)
 
 
 def is_imprecise(t: Type) -> bool:
