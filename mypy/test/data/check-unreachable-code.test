@@ -1,5 +1,8 @@
--- Type checker test cases for conditional Python version runtime checks.
--- The idea is that we skip blocks that won't be executed on the active
+-- Type checker test cases for conditional checks that result in some
+-- blocks classified as unreachable (they are not type checked or semantically
+-- analyzed).
+--
+-- For example, we skip blocks that won't be executed on the active
 -- Python version.
 
 [case testConditionalTypeAliasPY3]
