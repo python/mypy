@@ -23,8 +23,7 @@ class B(A): y = 1
 x = A()
 x.y        # E: "A" has no attribute "y"
 x = B()
-x.y        # E: "A" has no attribute "y"
-# but it should be ok: x is known to be a B
+x.y        # OK: x is known to be a B
 
 [builtins fixtures/isinstancelist.py]
 

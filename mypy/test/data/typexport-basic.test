@@ -1090,15 +1090,15 @@ CallExpr(8) : builtins.int
 
 [case testOverlappingOverloadedFunctionType]
 ## CallExpr
-from typing import overload
+from typing import overload, Undefined
 class A: pass
 class B(A): pass
 @overload
 def f(x: B) -> B: pass
 @overload
 def f(x: A) -> A: pass
-a = None # type: A
-b = None # type: B
+a = Undefined # type: A
+b = Undefined # type: B
 f(a)
 f(b)
 [out]

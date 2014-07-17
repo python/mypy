@@ -38,13 +38,12 @@ main, line 4: Incompatible types in assignment (expression has type "B", variabl
 from typing import Undefined
 x = Undefined # type: A
 o = Undefined # type: object
+x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 x = A()
 o = x
-x = o # Fail
 class A: pass
 class B: pass
 [out]
-main, line 6: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testTooManyConstructorArgs]
 import typing

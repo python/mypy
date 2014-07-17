@@ -126,8 +126,7 @@ class ConditionalTypeBinder:
             pass
         elif not isinstance(type, AnyType):
             if is_subtype(type, current_assumption):
-                if isinstance(current_assumption, UnionType):
-                    self.push(expr, type)
+                self.push(expr, type)
 
         #Invalidate types that include this expression
         for dep in self.dependencies.get(expr.literal_hash, []):

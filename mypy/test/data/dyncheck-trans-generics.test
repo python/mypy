@@ -201,7 +201,7 @@ b = {B d.f*()}
 aa: A = {A[C] d}
 aa.f()
 
-[case testCastWithDynamicAndTypedArguments]
+[case testCastWithDynamicAndTypedArguments-skip]
 from typing import typevar, Generic, Undefined, Any
 T = typevar('T')
 class A(Generic[T]): pass
@@ -216,7 +216,7 @@ d: A = Undefined
 a = {A[B] d}
 d = {A[Any] a}
 
-[case testNestedGenerics]
+[case testNestedGenerics-skip]
 from typing import typevar, Generic, Undefined, Any
 T = typevar('T')
 class A(Generic[T]):

@@ -793,8 +793,8 @@ class A: pass
 class B: pass
 a = Undefined(A)
 b = Undefined(B)
-a = b
 b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = b
 
 [case testDucktypeTransitivityDecorator]
 from typing import ducktype, Undefined
@@ -805,8 +805,8 @@ class B: pass
 class C: pass
 a = Undefined(A)
 c = Undefined(C)
-a = c
 c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+a = c
 
 
 -- Disjointclass decorators
