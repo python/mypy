@@ -12,7 +12,10 @@ from mypy.types import (
     TypeQuery, ANY_TYPE_STRATEGY, Callable
 )
 from mypy import nodes
-from mypy.nodes import Node, FuncDef, TypeApplication, AssignmentStmt
+from mypy.nodes import (
+    Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr,
+    MemberExpr
+)
 
 
 TYPE_PRECISE = 0
@@ -21,9 +24,11 @@ TYPE_ANY = 2
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, typemap: Dict[Node, Type] = None) -> None:
+    def __init__(self, inferred: bool, typemap: Dict[Node, Type] = None,
+                 all_nodes: bool = False) -> None:
         self.inferred = inferred
         self.typemap = typemap
+        self.all_nodes = all_nodes
         
         self.num_precise = 0
         self.num_imprecise = 0
@@ -59,6 +64,8 @@ class StatisticsVisitor(TraverserVisitor):
                 for arg in arg_types:
                     self.type(arg)
                 self.type(sig.ret_type)
+            elif self.all_nodes:
+                self.record_line(self.line, TYPE_ANY)
             super().visit_func_def(o)
 
     def visit_type_application(self, o: TypeApplication) -> None:
@@ -97,6 +104,25 @@ class StatisticsVisitor(TraverserVisitor):
                                      self.line)
                             self.record_line(self.line, TYPE_ANY)
         super().visit_assignment_stmt(o)
+
+    def visit_name_expr(self, o: NameExpr) -> None:
+        self.process_node(o)
+        super().visit_name_expr(o)
+
+    def visit_call_expr(self, o: CallExpr) -> None:
+        self.process_node(o)
+        super().visit_call_expr(o)
+
+    def visit_member_expr(self, o: MemberExpr) -> None:
+        self.process_node(o)
+        super().visit_member_expr(o)
+
+    def process_node(self, node: Node) -> None:
+        if self.all_nodes:
+            typ = self.typemap.get(node)
+            if typ:
+                self.line = node.line
+                self.type(typ)
 
     def type(self, t: Type) -> None:
         if isinstance(t, AnyType):
@@ -198,7 +224,7 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
     if is_special_module(path):
         return
     print('generate', path)
-    visitor = StatisticsVisitor(inferred=True, typemap=type_map)
+    visitor = StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
     tree.accept(visitor)
     target_path = os.path.join(output_dir, os.path.basename(path))
     target_path = re.sub(r'\.py$', '.html', target_path)
