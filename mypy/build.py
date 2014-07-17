@@ -28,6 +28,7 @@ from mypy.icode import FuncIcode
 from mypy import cgen
 from mypy import icode
 from mypy import parse
+from mypy import stats
 from mypy import transform
 
 
@@ -103,6 +104,7 @@ def build(program_path: str,
           output_dir: str = None,
           pyversion: int = 3,
           custom_typing_module: str = None,
+          html_report_dir: str = None,
           flags: List[str] = None) -> BuildResult:
     """Build a mypy program.
 
@@ -160,7 +162,8 @@ def build(program_path: str,
     manager = BuildManager(data_dir, lib_path, target, output_dir,
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
-                           custom_typing_module=custom_typing_module)
+                           custom_typing_module=custom_typing_module,
+                           html_report_dir=html_report_dir)
 
     program_path = program_path or lookup_program(module, lib_path)
     if program_text is None:
@@ -172,7 +175,10 @@ def build(program_path: str,
     # Perform the build by sending the file as new file (UnprocessedFile is the
     # initial state of all files) to the manager. The manager will process the
     # file and all dependant modules recursively.
-    return manager.process(UnprocessedFile(info, program_text))
+    result = manager.process(UnprocessedFile(info, program_text))
+    if 'html-report' in flags:
+        stats.generate_html_index(html_report_dir)
+    return result
 
 
 def default_data_dir(bin_dir: str) -> str:
@@ -293,7 +299,8 @@ class BuildManager:
                  pyversion: int,
                  flags: List[str],
                  ignore_prefix: str,
-                 custom_typing_module: str) -> None:
+                 custom_typing_module: str,
+                 html_report_dir: str) -> None:
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
@@ -303,6 +310,7 @@ class BuildManager:
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
+        self.html_report_dir = html_report_dir
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
@@ -850,7 +858,7 @@ class PartiallySemanticallyAnalyzedFile(ParsedFile):
         """Perform final pass of semantic analysis and advance state."""
         self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
         if 'dump-type-stats' in self.manager.flags:
-            analyze_types(self.tree, self.tree.path)
+            stats.dump_type_stats(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
 
     def state(self) -> int:
@@ -863,8 +871,13 @@ class SemanticallyAnalyzedFile(ParsedFile):
         if self.manager.target >= TYPE_CHECK:
             self.type_checker().visit_file(self.tree, self.tree.path)
             if 'dump-infer-stats' in self.manager.flags:
-                analyze_types(self.tree, self.tree.path, inferred=True,
-                              typemap=self.manager.type_checker.type_map)
+                stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
+                                      typemap=self.manager.type_checker.type_map)
+            elif 'html-report' in self.manager.flags:
+                stats.generate_html_report(
+                    self.tree, self.tree.path,
+                    type_map=self.manager.type_checker.type_map,
+                    output_dir=self.manager.html_report_dir)
         
         # FIX remove from active state list to speed up processing
         
@@ -958,158 +971,3 @@ def make_parent_dirs(path: str) -> None:
         os.makedirs(parent)
     except OSError:
         pass
-
-
-def analyze_types(tree, path, inferred=False, typemap=None):
-    from os.path import basename
-    if basename(path) in ('abc.py', 'typing.py', 'builtins.py'):
-        return
-    print(path)
-    v = MyVisitor(inferred, typemap)
-    tree.accept(v)
-    print('  ** precision **')
-    print('  precise  ', v.num_precise)
-    print('  imprecise', v.num_imprecise)
-    print('  any      ', v.num_any)
-    print('  ** kinds **')
-    print('  simple   ', v.num_simple)
-    print('  generic  ', v.num_generic)
-    print('  function ', v.num_function)
-    print('  tuple    ', v.num_tuple)
-    print('  typevar  ', v.num_typevar)
-    print('  complex  ', v.num_complex)
-    print('  any      ', v.num_any)
-
-
-from mypy.traverser import TraverserVisitor
-from mypy.types import (
-    AnyType, Instance, FunctionLike, TupleType, Void, TypeVar
-)
-from mypy import nodes
-
-
-class MyVisitor(TraverserVisitor):
-    def __init__(self, inferred, typemap=None):
-        self.inferred = inferred
-        self.typemap = typemap
-        
-        self.num_precise = 0
-        self.num_imprecise = 0
-        self.num_any = 0
-
-        self.num_simple = 0
-        self.num_generic = 0
-        self.num_tuple = 0
-        self.num_function = 0
-        self.num_typevar = 0
-        self.num_complex = 0
-
-        self.line = -1
-        
-        TraverserVisitor.__init__(self)
-    
-    def visit_func_def(self, o):
-        self.line = o.line
-        if len(o.expanded) > 1:
-            for defn in o.expanded:
-                self.visit_func_def(defn)
-        else:
-            if o.type:
-                sig = o.type
-                arg_types = sig.arg_types
-                if (sig.arg_names and sig.arg_names[0] == 'self' and
-                    not self.inferred):
-                    arg_types = arg_types[1:]
-                for arg in arg_types:
-                    self.type(arg)
-                self.type(sig.ret_type)
-            super().visit_func_def(o)
-
-    def visit_type_application(self, o):
-        self.line = o.line
-        for t in o.types:
-            self.type(t)
-        super().visit_type_application(o)
-
-    def visit_assignment_stmt(self, o):
-        self.line = o.line
-        if (isinstance(o.rvalue, nodes.CallExpr) and
-            isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):
-            # Type variable definition -- not a real assignment.
-            return
-        if o.type:
-            self.type(o.type)
-        elif self.inferred:
-            for lvalue in o.lvalues:
-                if isinstance(lvalue, nodes.ParenExpr):
-                    lvalue = lvalue.expr
-                if isinstance(lvalue, (nodes.TupleExpr, nodes.ListExpr)):
-                    items = lvalue.items
-                else:
-                    items = [lvalue]
-                for item in items:
-                    if hasattr(item, 'is_def') and item.is_def:
-                        t = self.typemap.get(item)
-                        if t:
-                            self.type(t)
-                        else:
-                            print('  !! No inferred type on line', self.line)
-        super().visit_assignment_stmt(o)
-
-    def type(self, t):
-        if isinstance(t, AnyType):
-            print('  !! Any type around line', self.line)
-            self.num_any += 1
-        elif is_imprecise(t):
-            print('  !! Imprecise type around line', self.line)
-            self.num_imprecise += 1
-        else:
-            self.num_precise += 1
-
-        if isinstance(t, Instance):
-            if t.args:
-                if any(is_complex(arg) for arg in t.args):
-                    self.num_complex += 1
-                else:
-                    self.num_generic += 1
-            else:
-                self.num_simple += 1
-        elif isinstance(t, Void):
-            self.num_simple += 1
-        elif isinstance(t, FunctionLike):
-            self.num_function += 1
-        elif isinstance(t, TupleType):
-            if any(is_complex(item) for item in t.items):
-                self.num_complex += 1
-            else:
-                self.num_tuple += 1
-        elif isinstance(t, TypeVar):
-            self.num_typevar += 1
-
-
-def is_imprecise(t):
-    return t.accept(HasAnyQuery())
-
-from mypy.types import TypeQuery, ANY_TYPE_STRATEGY
-
-class HasAnyQuery(TypeQuery):
-    def __init__(self):
-        super().__init__(False, ANY_TYPE_STRATEGY)
-
-    def visit_any(self, t):
-        return True
-
-    def visit_instance(self, t):
-        if t.type.fullname() == 'builtins.tuple':
-            return True
-        else:
-            return super().visit_instance(t)
-
-
-def is_generic(t):
-    return isinstance(t, Instance) and t.args
-
-
-def is_complex(t):
-    return is_generic(t) or isinstance(t, (FunctionLike, TupleType,
-                                           TypeVar))
