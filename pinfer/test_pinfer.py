@@ -96,22 +96,38 @@ class TestInfer(unittest.TestCase):
         i = self.int
         f = self.float
         s = Instance(str)
+        c = Instance(complex)
+        class Foo: pass
+        o = Instance(Foo)
+
         # Simple types
         self.assert_combine(i, i, i)
-        self.assert_combine(f, f, f)
-        self.assert_combine(i, f, Either((i, f)))
+        self.assert_combine(s, s, s)
+        self.assert_combine(i, s, Either((i, s)))
         self.assert_combine(i, None, Either((i, None)))
         # Unknowns
         self.assert_combine(i, Unknown(), i)
         self.assert_combine(Unknown(), Unknown(), Unknown())
         # Either types
-        self.assert_combine(i, Either((f, s)), Either((i, f, s)))
-        self.assert_combine(i, Either((i, f)), Either((i, f)))
-        self.assert_combine(Either((i, f)), Either((i, s)), Either((i, f, s)))
+        self.assert_combine(o, Either((f, s)), Either((o, f, s)))
+        self.assert_combine(i, Either((i, s)), Either((i, s)))
+        self.assert_combine(Either((o, f)), Either((o, s)), Either((o, f, s)))
         # Tuple types
         self.assert_combine(Tuple([i, i]), Tuple([i, i]), Tuple([i, i]))
-        self.assert_combine(Tuple([i, i]), Tuple([f, s]),
-                            Tuple([Either([f, i]), Either([s, i])]))
+        self.assert_combine(Tuple([i, i]), Tuple([o, s]),
+                            Tuple([Either([o, i]), Either([s, i])]))
+        # Numeric types
+        self.assert_combine(i, f, f)
+        self.assert_combine(i, c, c)
+        self.assert_combine(c, f, c)
+        # Eithers with numerics
+        self.assert_combine(i, Either((o, f)), Either((o, f)))
+        self.assert_combine(Either((o, f)), i, Either((o, f)))
+        self.assert_combine(Either((o, i)), f, Either((o, f)))
+        # Tuples with numerics
+        self.assert_combine(Tuple([i, i]), Tuple([f, i]), Tuple([f, i]))
+        self.assert_combine(Tuple([i, i]), Tuple([f, o]), Tuple([f, Either((i, o))]))
+        self.assert_combine(Tuple([f, i]), Tuple([i, o]), Tuple([f, Either((i, o))]))
 
     def test_combine_special_cases(self):
         i = self.int

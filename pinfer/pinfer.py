@@ -246,8 +246,8 @@ def infer_method_signature(class_name):
                 got_exception = True
                 raise
             finally:
-                if not got_type_error:
-                    assert not expecting_type_error
+                if not got_exception:
+                    assert (not got_type_error) or expecting_type_error
 
                     # if we didn't get a TypeError, update the actual databases
                     func_argid_db.setdefault(name, set()).update(argids)
@@ -382,8 +382,9 @@ def combine_either(either, x):
         xtypes = [x]
     return simplify_either(either.types, xtypes)
 
-
 def simplify_either(x, y):
+    numerics = [Instance(int), Instance(float), Instance(complex)]
+
     # TODO this is O(n**2); use an O(n) algorithm instead
     result = list(x)
     for type in y:
@@ -395,8 +396,7 @@ def simplify_either(x, y):
                                          for t, s in zip(type.args, rt.args)))
                     break
             else:
-                if type not in result:
-                    result.append(type)
+                result.append(type)
         elif isinstance(type, Tuple):
             for i, rt in enumerate(result):
                 if isinstance(rt, Tuple) and len(type) == len(rt):
@@ -405,10 +405,29 @@ def simplify_either(x, y):
                                                       rt.itemtypes))
                     break
             else:
-                if type not in result:
-                    result.append(type)
+                result.append(type)
+        elif type in numerics:
+            for i, rt in enumerate(result):
+                if rt in numerics:
+                    result[i] = numerics[max(numerics.index(rt), numerics.index(type))]
+                    break
+            else:
+                result.append(type)
+        elif isinstance(type, Instance):
+            for i, rt in enumerate(result):
+                if isinstance(rt, Instance):
+                    # Either[A, SubclassOfA] -> A
+                    # Either[A, A] -> A, because issubclass(A, A) == True,
+                    if issubclass(type.typeobj, rt.typeobj):
+                        break
+                    elif issubclass(rt.typeobj, type.typeobj):
+                        result[i] = type
+                        break
+            else:
+                result.append(type)
         elif type not in result:
             result.append(type)
+
     if len(result) > 1:
         return Either(result)
     else:
@@ -469,6 +488,7 @@ class Tuple(TypeBase):
     def __str__(self):
         return 'Tuple[%s]' % (', '.join(str(t) for t in self.itemtypes))
 
+class AnyStr(object): pass
 
 class Either(TypeBase):
     def __init__(self, types):
@@ -488,8 +508,15 @@ class Either(TypeBase):
         return True
 
     def __str__(self):
-        types = self.types
-        if len(types) == 2 and None in types:
+        types = list(self.types)
+        if str != bytes: # on Python 2 str == bytes
+            if Instance(bytes) in types and Instance(str) in types:
+                types.remove(Instance(bytes))
+                types.remove(Instance(str))
+                types.append(Instance(AnyStr))
+        if len(types) == 1:
+            return str(types[0])
+        elif len(types) == 2 and None in types:
             type = [t for t in types if t is not None][0]
             return 'Optional[%s]' % type
         else:
