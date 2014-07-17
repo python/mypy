@@ -421,6 +421,17 @@ print(A().f('34'))
 12
 34
 
+[case testClassmethod]
+import typing
+class A:
+    @classmethod
+    def f(cls, x: str) -> int: return int(x)
+print(A.f('12'))
+print(A().f('34'))
+[out]
+12
+34
+
 [case testIntMethods]
 import typing
 print(int.from_bytes(b'ab', 'big'))

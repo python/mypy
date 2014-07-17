@@ -47,7 +47,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         method = info.get_method(name)
         if method:
             if is_lvalue:
-                msg.fail(messages.CANNOT_ASSIGN_TO_METHOD, node)
+                msg.cant_assign_to_method(node)
             typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(method_type(method), typ)
         else:
@@ -107,20 +107,26 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
         itype = map_instance_to_supertype(itype, var.info)
         if var.type:
             t = expand_type_by_instance(var.type, itype)
-            if (var.is_initialized_in_class and isinstance(t, FunctionLike)
-                    and not var.is_staticmethod):
-                # Class-level function object becomes a bound method.
-                functype = cast(FunctionLike, t)
-                check_method_type(functype, itype, node, msg)
-                signature = method_type(functype)
-                if var.is_property:
-                    if is_lvalue:
+            if var.is_initialized_in_class and isinstance(t, FunctionLike):
+                if is_lvalue:
+                    if var.is_property:
                         msg.read_only_property(name, info, node)
-                    # A property cannot have an overloaded type => the cast
-                    # is fine.
-                    return cast(Callable, signature).ret_type
-                else:
-                    return signature
+                    else:
+                        msg.cant_assign_to_method(node)
+
+                if not var.is_staticmethod:
+                    # Class-level function objects and classmethods become bound
+                    # methods: the former to the instance, the latter to the
+                    # class.
+                    functype = cast(FunctionLike, t)
+                    check_method_type(functype, itype, node, msg)
+                    signature = method_type(functype)
+                    if var.is_property:
+                        # A property cannot have an overloaded type => the cast
+                        # is fine.
+                        return cast(Callable, signature).ret_type
+                    else:
+                        return signature
             return t
         else:
             if not var.is_ready:
@@ -166,30 +172,43 @@ def analyse_class_attribute_access(itype: Instance, name: str,
                                    context: Context, is_lvalue: bool,
                                    msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
-    if node:
-        if is_lvalue and isinstance(node.node, FuncDef):
-            msg.fail(messages.CANNOT_ASSIGN_TO_METHOD, context)
-        if is_lvalue and isinstance(node.node, TypeInfo):
-            msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
-        t = node.type
-        if t:
-            return add_class_tvars(t, itype.type)
-        elif isinstance(node.node, TypeInfo):
-            # TODO add second argument
-            return type_object_type(cast(TypeInfo, node.node), None)
-        else:
-            return function_type(cast(FuncBase, node.node))
-    else:
+    if not node:
         return None
 
+    is_decorated = isinstance(node.node, Decorator)
+    is_method = is_decorated or isinstance(node.node, FuncDef)
+    if is_lvalue:
+        if is_method:
+            msg.cant_assign_to_method(context)
+        if isinstance(node.node, TypeInfo):
+            msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
 
-def add_class_tvars(t: Type, info: TypeInfo) -> Type:
+    t = node.type
+    if t:
+        is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
+        return add_class_tvars(t, itype.type, is_classmethod)
+
+    if isinstance(node.node, TypeInfo):
+        # TODO add second argument
+        return type_object_type(cast(TypeInfo, node.node), None)
+
+    return function_type(cast(FuncBase, node.node))
+
+
+def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool) -> Type:
     if isinstance(t, Callable):
         vars = [TypeVarDef(n, i + 1, None)
                 for i, n in enumerate(info.type_vars)]
-        return Callable(t.arg_types,
-                        t.arg_kinds,
-                        t.arg_names,
+        arg_types = t.arg_types
+        arg_kinds = t.arg_kinds
+        arg_names = t.arg_names
+        if is_classmethod:
+            arg_types = arg_types[1:]
+            arg_kinds = arg_kinds[1:]
+            arg_names = arg_names[1:]
+        return Callable(arg_types,
+                        arg_kinds,
+                        arg_names,
                         t.ret_type,
                         t.is_type_obj(),
                         t.name,
@@ -197,7 +216,7 @@ def add_class_tvars(t: Type, info: TypeInfo) -> Type:
                         t.bound_vars,
                         t.line, None)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(Callable, add_class_tvars(i, info))
+        return Overloaded([cast(Callable, add_class_tvars(i, info, is_classmethod))
                            for i in t.items()])
     return t
 

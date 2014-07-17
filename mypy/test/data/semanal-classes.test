@@ -425,6 +425,47 @@ MypyFile:1(
         Block:3(
           PassStmt:3())))))
 
+[case testClassMethod]
+class A:
+  @classmethod
+  def f(cls, z: int) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    Decorator:2(
+      Var(f)
+      FuncDef:3(
+        f
+        Args(
+          Var(cls)
+          Var(z))
+        def (cls: Any, z: builtins.int) -> builtins.str
+        Class
+        Block:3(
+          PassStmt:3())))))
+
+[case testClassMethodWithNoArgs]
+class A:
+  @classmethod
+  def f(cls) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    Decorator:2(
+      Var(f)
+      FuncDef:3(
+        f
+        Args(
+          Var(cls))
+        def (cls: Any) -> builtins.str
+        Class
+        Block:3(
+          PassStmt:3())))))
+
 [case testProperty]
 import typing
 class A:
