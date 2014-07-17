@@ -294,7 +294,6 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
     append('</body></html>')
     with open(target_path, 'w') as output_file:
         output_file.writelines(output)
-    print('Wrote %s.' % target_path)
     target_path = target_path[len(output_dir) + 1:]
     html_files.append((path, target_path, num_lines, num_imprecise_lines))
 
@@ -338,5 +337,5 @@ def generate_html_index(output_dir: str) -> None:
     append('</body></html>')
     with open(path, 'w') as file:
         file.writelines(output)
-    print('Wrote %s.' % path)
+    print('Generated HTML report: %s' % os.path.abspath(path))
 
