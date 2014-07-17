@@ -14,8 +14,8 @@ from mypy.nodes import Node, FuncDef, TypeApplication, AssignmentStmt
 
 
 TYPE_PRECISE = 0
-TYPE_ANY = 1
-TYPE_IMPRECISE = 2
+TYPE_IMPRECISE = 1
+TYPE_ANY = 2
 
 
 class StatisticsVisitor(TraverserVisitor):
@@ -93,17 +93,21 @@ class StatisticsVisitor(TraverserVisitor):
                         else:
                             self.log('  !! No inferred type on line %d' %
                                      self.line)
+                            self.record_line(self.line, TYPE_ANY)
         super().visit_assignment_stmt(o)
 
     def type(self, t: Type) -> None:
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
+            self.record_line(self.line, TYPE_ANY)
         elif is_imprecise(t):
             self.log('  !! Imprecise type around line %d' % self.line)
             self.num_imprecise += 1
+            self.record_line(self.line, TYPE_IMPRECISE)
         else:
             self.num_precise += 1
+            self.record_line(self.line, TYPE_PRECISE)
 
         if isinstance(t, Instance):
             if t.args:
@@ -127,6 +131,10 @@ class StatisticsVisitor(TraverserVisitor):
 
     def log(self, string: str) -> None:
         self.output.append(string)
+
+    def record_line(self, line: int, precision: int) -> None:
+        self.line_map[line] = max(precision,
+                                  self.line_map.get(line, TYPE_PRECISE))
 
 
 def dump_type_stats(tree: Node, path: str, inferred: bool = False,
