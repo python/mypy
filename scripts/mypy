@@ -30,6 +30,7 @@ class Options:
         self.interpreter = 'python'
         self.pyversion = 3
         self.custom_typing_module = None # type: str
+        self.html_report_dir = None # type: str
 
 
 def main() -> None:
@@ -156,6 +157,10 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
         elif args[0] == '--custom-typing' and args[1:]:
             options.custom_typing_module = args[1]
             args = args[2:]
+        elif args[0] == '--html-report' and args[1:]:
+            options.html_report_dir = args[1]
+            options.build_flags.append('html-report')
+            args = args[2:]
         else:
             usage('Invalid option {}'.format(args[0]))
     
@@ -176,7 +181,10 @@ Options:
   -m mod      run module as a script (terminates option list)
   -S          do not run the program or generate a binary
   --verbose   more verbose messages
-  
+  --html-report dir
+              type check and generate a report of type checking precision
+              under dir/, do not run the program
+
 Environment variables:
   MYPYPATH    additional module search path
   CC          the C compiler (used with -c)
