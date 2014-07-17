@@ -4,7 +4,8 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList
+    ErrorType, TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList,
+    UnionType
 )
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
@@ -16,7 +17,7 @@ def join_types(s: Type, t: Type, basic: BasicTypes) -> Type:
 
     If the join does not exist, return an ErrorType instance.
     """
-    
+
     if isinstance(s, AnyType):
         return s
     
@@ -44,6 +45,12 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return AnyType()
     
+    def visit_union_type(self, t: UnionType) -> Type:
+        if is_subtype(self.s, t):
+            return t
+        else:
+            return UnionType(t.items + [self.s])
+
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
     

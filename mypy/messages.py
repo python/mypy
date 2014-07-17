@@ -78,10 +78,14 @@ class MessageBuilder:
     
     # Number of times errors have been disabled.
     disable_count = 0
+
+    # Hack to deduplicate error messages from union types
+    disable_type_names = 0
     
     def __init__(self, errors: Errors) -> None:
         self.errors = errors
         self.disable_count = 0
+        self.disable_type_names = 0
 
     #
     # Helpers
@@ -287,8 +291,11 @@ class MessageBuilder:
         else:
             right_str = self.format(right_type)
         
-        msg = 'Unsupported operand types for {} ({} and {})'.format(
-                                                    op, left_str, right_str)
+        if self.disable_type_names:
+            msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
+        else:
+            msg = 'Unsupported operand types for {} ({} and {})'.format(
+                op, left_str, right_str)
         self.fail(msg, context)
     
     def unsupported_left_operand(self, op: str, typ: Type,

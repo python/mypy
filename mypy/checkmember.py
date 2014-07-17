@@ -4,7 +4,7 @@ from typing import cast, Function, List
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVarDef,
-    Overloaded, TypeVar, TypeTranslator, BasicTypes
+    Overloaded, TypeVar, TypeTranslator, BasicTypes, UnionType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type, Decorator
@@ -58,6 +58,12 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType()
+    elif isinstance(typ, UnionType):
+        # The base object has dynamic type.
+        return UnionType.make_simplified_union([analyse_member_access(name, subtype, node,
+                                                                      is_lvalue, is_super,
+                                                                      basic_types, msg)
+                                                for subtype in typ.items])
     elif isinstance(typ, TupleType):
         # Actually look up from the 'tuple' type.
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,

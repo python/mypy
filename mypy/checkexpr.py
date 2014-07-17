@@ -4,7 +4,7 @@ from typing import Undefined, cast, List, Tuple, Dict, Function
 
 from mypy.types import (
     Type, AnyType, Callable, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike
+    TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike, UnionType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -190,6 +190,14 @@ class ExpressionChecker:
         elif isinstance(callee, AnyType) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
             return AnyType(), AnyType()
+        elif isinstance(callee, UnionType):
+            self.msg.disable_type_names += 1
+            results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
+                                arg_messages=arg_messages)
+                       for subtype in callee.items]
+            self.msg.disable_type_names -= 1
+            return (UnionType.make_simplified_union([res[0] for res in results]),
+                    callee)
         else:
             return self.msg.not_callable(callee, context), AnyType()
     
@@ -1193,6 +1201,8 @@ class ExpressionChecker:
             return typ.type.has_readable_member(member)
         elif isinstance(typ, AnyType):
             return True
+        elif isinstance(typ, UnionType):
+            return all(self.has_member(x, member) for x in typ.items)
         else:
             return False
     

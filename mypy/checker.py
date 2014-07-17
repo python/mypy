@@ -1228,11 +1228,11 @@ class TypeChecker(NodeVisitor[Type]):
                 if s.vars[i]:
                     self.check_assignments([s.vars[i]],
                                            self.temp_node(t, s.vars[i]))
-            self.accept(s.handlers[i])
+            self.accept_in_frame(s.handlers[i])
+        if s.else_body:
+            self.accept_in_frame(s.else_body)
         if s.finally_body:
             self.accept(s.finally_body)
-        if s.else_body:
-            self.accept(s.else_body)
     
     def exception_type(self, n: Node) -> Type:
         if isinstance(n, ParenExpr):
