@@ -322,6 +322,10 @@ def generate_html_index(output_dir: str) -> None:
         if num_lines == 0:
             continue
         source_path = os.path.normpath(source_path)
+        # TODO: Windows paths.
+        if (source_path.startswith('stubs/') or
+            '/stubs/' in source_path):
+            continue
         percent = 100.0 * num_imprecise / num_lines
         style = ''
         if percent >= 20:
