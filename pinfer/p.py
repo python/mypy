@@ -41,7 +41,6 @@ def main():
       argslen = len(sys.argv)
     args = sys.argv[1:argslen]
     del sys.argv[1:argslen+1]
-    print(sys.argv, args)
 
     if len(args) == 2:
         targetpackage, testfile = args
