@@ -1,7 +1,7 @@
 [case testUnionIfZigzag-skip]
 from typing import Union
 
-def fff(x: Union(int, str)) -> None:
+def fff(x: Union[int, str]) -> None:
     x = 1
     if x:
         x = 'a'
@@ -36,7 +36,7 @@ class C: pass
 class D(C): d = 1
 
     
-def f(x: Union(List[int], List[str], int)) -> None:
+def f(x: Union[List[int], List[str], int]) -> None:
     if isinstance(x, list):
         a = x[0]
         if isinstance(a, int):
@@ -57,9 +57,9 @@ main: In function "f":
 [case testUnionStrictDefnBasic]
 from typing import Union, Undefined
 
-def foo() -> Union(int, str): pass
+def foo() -> Union[int, str]: pass
 
-x = 1 # type: Union(int, str)
+x = 1 # type: Union[int, str]
 x = x + 1
 x = foo()
 x = x + 1                # E: Unsupported operand types for + (likely involving Union)
@@ -86,7 +86,7 @@ x.y        # OK: x is known to be a B
 [case testIsInstanceBasic]
 from typing import Union, Undefined
 
-x = Undefined # type: Union(int, str)
+x = Undefined # type: Union[int, str]
 
 if isinstance(x, str):
     x = x + 1   # E: Unsupported operand types for + ("str" and "int")
@@ -99,7 +99,7 @@ else:
 [case testIsInstanceIndexing]
 from typing import Union, Undefined
 
-x = Undefined # type: Union(int, str)
+x = Undefined # type: Union[int, str]
 j = [x]
 
 if isinstance(j[0], str):
@@ -117,7 +117,7 @@ class Animal:
     pass
 
 class Dog(Animal):
-    paws = 4  # type: Union(int, str)
+    paws = 4  # type: Union[int, str]
 
     def bark(self): pass
 
@@ -145,7 +145,7 @@ while 1:
 from typing import Union
 
 def foo() -> None:
-    x = 1 # type: Union(int, str)
+    x = 1 # type: Union[int, str]
     if isinstance(x, int):
         return
     else:
@@ -158,7 +158,7 @@ foo()
 from typing import Union, Undefined
 
 def foo() -> None:
-    x = Undefined # type: Union(int, str)
+    x = Undefined # type: Union[int, str]
     if isinstance(x, int):
         for z in [1,2]:
             break
@@ -173,7 +173,7 @@ main: In function "foo":
 [case testIsInstanceThreeUnion]
 from typing import Union, List, Undefined
 
-x = Undefined # type: Union(int, str, List[int])
+x = Undefined # type: Union[int, str, List[int]]
 
 while 1:
     if isinstance(x, int):
@@ -189,7 +189,7 @@ x + [1]               # E: Unsupported operand types for + (likely involving Uni
 [case testIsInstanceThreeUnion2]
 from typing import Union, List, Undefined
 
-x = Undefined # type: Union(int, str, List[int])
+x = Undefined # type: Union[int, str, List[int]]
 
 while 1:
     if isinstance(x, int):
@@ -208,7 +208,7 @@ x + [1]               # E: Unsupported operand types for + (likely involving Uni
 from typing import Union, List
 
 while 1:
-    x = 1 # type: Union(int, str, List[int])
+    x = 1 # type: Union[int, str, List[int]]
     if isinstance(x, int):
         x + 1
         break
@@ -224,7 +224,7 @@ x + [1]               # E: Unsupported operand types for + (likely involving Uni
 [case testRemovingTypeRepeatedly]
 from typing import Union
 
-def foo() -> Union(int, str): pass
+def foo() -> Union[int, str]: pass
 
 for i in [1, 2]:
     x = foo()
@@ -254,7 +254,7 @@ x + 'a'                    # E: Unsupported operand types for + (likely involvin
 [case testModifyRepeatedly]
 from typing import Union
 
-def foo() -> Union(int, str): pass
+def foo() -> Union[int, str]: pass
 
 x = foo()
 x + 1     # E: Unsupported operand types for + (likely involving Union)
@@ -277,7 +277,7 @@ x + 'a'   # E: Unsupported operand types for + (likely involving Union)
 [case testModifyLoop]
 from typing import Union
 
-def foo() -> Union(int, str): pass
+def foo() -> Union[int, str]: pass
 
 x = foo()
 x + 1      # E: Unsupported operand types for + (likely involving Union)
@@ -297,7 +297,7 @@ from typing import Union
 
 class A: a = 1
 
-def foo() -> Union(int, str, A): pass
+def foo() -> Union[int, str, A]: pass
 
 def bar() -> None:
     x = foo()
@@ -344,7 +344,7 @@ main: In function "bar":
 [case testCastIsinstance]
 from typing import Union
 
-def foo() -> Union(int, str): pass
+def foo() -> Union[int, str]: pass
 
 x = foo()
 y = 1 # type: int

@@ -164,6 +164,7 @@ Traceback = object() # TODO proper type object
 
 # Define aliases for built-in types that support indexing.
 List = TypeAlias(list)
+Union = TypeAlias(list)
 Dict = TypeAlias(dict)
 Set = TypeAlias(set)
 Tuple = TypeAlias(tuple)
@@ -190,10 +191,6 @@ class forwardref:
 def Any(x):
     """The Any type; can also be used to cast a value to type Any."""
     return x
-
-def Union(*types):
-    """A union type."""
-    return lambda x: x
 
 def cast(type, object):
     """Cast a value to a type.

@@ -41,6 +41,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return AnyType()
             elif sym.node.fullname() == 'typing.Tuple':
                 return TupleType(self.anal_array(t.args))
+            elif sym.node.fullname() == 'typing.Union':
+                return UnionType(self.anal_array(t.args))
             elif sym.node.fullname() == 'typing.Function':
                 return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):

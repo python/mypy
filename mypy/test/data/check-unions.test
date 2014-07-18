@@ -2,7 +2,7 @@
 
 [case testUnion1]
 from typing import Union
-def f(x: Union(int,str)) -> None:
+def f(x: Union[int, str]) -> None:
     if isinstance(x, int):
         y = 1
         y = x
@@ -13,7 +13,7 @@ def f(x: Union(int,str)) -> None:
 
 [case testUnion2]
 from typing import Union
-def f(x: Union(int,str)) -> None:
+def f(x: Union[int, str]) -> None:
     if isinstance(x, int):
         y = 1
         y = x
@@ -24,7 +24,7 @@ def f(x: Union(int,str)) -> None:
 
 [case testUnion3]
 from typing import Union
-def f(x: Union(int,str)) -> None:
+def f(x: Union[int, str]) -> None:
     if isinstance(x, int):
         y = 1
         y = x
