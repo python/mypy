@@ -988,8 +988,8 @@ class ExpressionChecker:
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
-    
-    def visit_tuple_expr(self, e: TupleExpr) -> Type:    
+
+    def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         ctx = None # type: TupleType
         # Try to determine type context for type inference.

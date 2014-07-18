@@ -77,7 +77,24 @@ def bar() -> None:
 [out]
 main: In function "bar":
 
-[case testUnionTryExcept-skip]
+[case testUnionTryExcept]
+
+class A: y = A()
+class B(A): z = 1
+
+x = A()
+x = B()
+x.z
+try:
+    x.z
+    x = B()
+    x.z
+except:
+    pass
+x.z
+
+
+[case testUnionTryExcept2-skip]
 
 class A: y = A()
 class B(A): z = 1
@@ -207,6 +224,54 @@ while 1:
             break
         y = h.pet.paws + 1
         z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstancelist.py]
+
+[case testMemberAssignmentChanges-skip]
+from typing import Union, Undefined
+
+class Dog:
+    paws = 1  # type: Union[int, str]
+
+pet = Dog()
+
+pet.paws + 'a'  # E: moo
+pet.paws = 'a'
+pet.paws + 'a'
+pet.paws = 1
+pet.paws + 1
+
+[builtins fixtures/isinstancelist.py]
+
+[case testIsInstanceSubClassMemberHard-skip]
+from typing import Union, Undefined
+
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws = 4  # type: Union[int, str]
+
+    def bark(self): pass
+
+class House:
+    pet = Undefined(Animal)
+
+h = House()
+h.pet = Dog()
+
+if isinstance(h.pet, Dog):
+    if isinstance(h.pet.paws, str):
+        for i in [1]:
+            h.pet.paws + 'a'
+            if 1:
+                break
+            h.pet.paws = 1
+            h.pet.paws + 1
+
+    if isinstance(h.pet.paws, str):
+        h.pet.paws + 'a'
+    else:
+        h.pet.paws + 1
 
 [builtins fixtures/isinstancelist.py]
 
@@ -358,6 +423,25 @@ x + 1
 while 1:
       x + 1    # E: Unsupported operand types for + (likely involving Union)
       x = 'a'
+[builtins fixtures/isinstancelist.py]
+
+[case testModifyLoop2]
+from typing import Union
+
+def foo() -> Union[int, str]: pass
+
+x = foo()
+x + 1      # E: Unsupported operand types for + (likely involving Union)
+x = 'a'
+x + 1      # E: Unsupported operand types for + ("str" and "int")
+x = 1
+x + 1
+
+for i in [1]:
+      x = 'a'
+
+x + 1    # E: Unsupported operand types for + (likely involving Union)
+
 [builtins fixtures/isinstancelist.py]
 
 

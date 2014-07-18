@@ -32,6 +32,14 @@ def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
         return UnionType.make_simplified_union([s, t])
 
     value = t.accept(TypeJoinVisitor(s, basic))
+
+    if value is None:
+        # XXX this code path probably should be avoided.
+        # It seems to happen when a line (x = y) is a type error, and
+        # it's not clear that assuming that x is arbitrary afterward
+        # is a good idea.
+        return declaration
+
     if is_subtype(value, declaration):
         return declaration
 

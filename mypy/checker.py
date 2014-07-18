@@ -2,7 +2,7 @@
 
 import itertools
             
-from typing import Undefined, Any, Dict, List, cast, overload, Tuple, Function, typevar
+from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -68,6 +68,10 @@ class ConditionalTypeBinder:
         self.min_frame = None # type: int    # index of outermost frame that was modified
         self.declared_types = Dict[Any, Type]()
 
+        self.frames_on_escape = Dict[int, Frame]()
+
+        self.escapable_frames = Set[int]()
+
     def _add_dependencies(self, key: Any, value: Any):
         if isinstance(key, tuple):
             if key != value:
@@ -96,14 +100,43 @@ class ConditionalTypeBinder:
         self.declared_types[expr.literal_hash] = self.get_declaration(expr)
         self._push(expr.literal_hash, type)
 
-    def update(self, frame: Frame) -> None:
-        for key in frame:
-            self._push(key, frame[key])
+    def update_expand(self, frame: Frame) -> bool:
+        """Update the frame to include another one, if that other one is larger than the current value.
 
-    def pop_frame(self) -> Frame:
+        Return whether anything changed."""
+        result = False
+
+        for key in frame:
+            old_type = (self.types.get(key) or [self.declared_types[key]])[-1]
+            if old_type is None:
+                continue
+            replacement = join_simple(self.declared_types[key], old_type, frame[key], self.basic_types_fn())
+
+            if not is_same_type(replacement, old_type):
+                self._push(key, replacement)
+                #print("Changing type of", key, "from", old_val, "to", self.frames[-1].get(key))
+                #print("Frames are", len(self.frames))
+                result = True
+        return result
+
+    def pop_frame(self) -> (bool, Frame):
+        """Pop a frame, setting the newly innermost frame to what it is from frames_on_escape.
+
+        Return whether the newly innermost frame was modified, and
+        what it would be if the block had run to completion.
+        """
         for key in self.frames[-1]:
             self.types[key].pop()
-        return self.frames.pop()
+        result = self.frames.pop()
+
+        changed = False
+
+        i = len(self.frames)-1
+        if i in self.frames_on_escape:
+            changed = self.update_expand(self.frames_on_escape[i]) or changed
+            del self.frames_on_escape[i]
+
+        return (changed, result)
 
     def get(self, expr: Node) -> Type:
         values = self.types.get(expr.literal_hash)
@@ -140,19 +173,18 @@ class ConditionalTypeBinder:
             #print("ERROR! Defining {} to type {}, which is outside the declared {}".format(expr, type, declared_type))
             return
 
-        current_assumption = self.get(expr)
-        if isinstance(type, AnyType) or not is_subtype(type, current_assumption):
-            self.expand_type(expr, type)
-            current_assumption = self.get(expr)
-
         # If x is Any and y is int, after x = y we do not infer that x is int.
         # This could be changed.
 
-        if type == current_assumption or isinstance(current_assumption, AnyType) or isinstance(type, AnyType):
+        if isinstance(self.most_recent_enclosing_type(expr, type), AnyType):
             pass
+        elif isinstance(type, AnyType):
+            self.push(expr, declared_type)
         else:
             self.push(expr, type)
 
+        for i in self.escapable_frames:
+            self.allow_jump(i)
 
     def invalidate_dependencies(self, expr: Node) -> None:
         """Invalidate knowledge of types that include expr, but not expr itself.
@@ -170,18 +202,28 @@ class ConditionalTypeBinder:
                     if dep in f:
                         del f[dep]
 
-    def expand_type(self, expr: Node, type: Type):
-        #First remove all the restrictions until we get a supertype of type
-        counter = 0
-        for f in reversed(self.frames):
-            counter += 1
-            if expr.literal_hash in f:
-                if is_subtype(type, f[expr.literal_hash]) and not isinstance(type, AnyType):
-                    break
-                del f[expr.literal_hash]
-                self.types[expr.literal_hash].pop()
-                self.min_frame = min_with_None_large(self.min_frame, len(self.frames) - counter)
+    def most_recent_enclosing_type(self, expr: Node, type: Type) -> Type:
+        if isinstance(type, AnyType):
+            return self.get_declaration(expr)
+        enclosers = [self.get_declaration(expr)] + [t for t in self.types.get(expr.literal_hash, [])
+                                                    if is_subtype(type, t)]
+        return enclosers[-1]
 
+    def allow_jump(self, index: int) -> None:
+        new_frame = Frame()
+        for f in self.frames[index:]:
+            for k in f:
+                new_frame[k] = f[k]
+
+        old_frame = self.frames_on_escape.setdefault(index, Frame())
+
+        for k in new_frame:
+            old_type = old_frame.get(k)
+
+            if old_type is None:
+                old_frame[k] = new_frame[k]
+            else:
+                old_frame[k] = join_simple(self.declared_types[k], old_type, new_frame[k], self.basic_types_fn())
 
 
 def join_frames(basic_types: BasicTypes, binder: ConditionalTypeBinder,
@@ -290,16 +332,14 @@ class TypeChecker(NodeVisitor[Type]):
     def accept_in_frame(self, node: Node, type_context: Type = None, repeat_till_fixed = False) -> Type:
         """Type check a node in the given type context in a new frame of inferred types."""
         while True:
-            old_min_frame = self.binder.min_frame
-            self.binder.min_frame = None
+            self.binder.escapable_frames.add(len(self.binder.frames)-1)
             self.binder.push_frame()
             answer = self.accept(node, type_context)
-            self.binder.pop_frame()
-            this_min_frame = self.binder.min_frame
-            self.binder.min_frame = min_with_None_large(old_min_frame, this_min_frame)
+            changed, frame_on_completion = self.binder.pop_frame()
+            self.binder.escapable_frames.remove(len(self.binder.frames)-1)
             self.breaking_out = False
 
-            if not repeat_till_fixed or this_min_frame is None or this_min_frame >= len(self.binder.frames):
+            if not repeat_till_fixed or not changed:
                 break
 
         return answer
@@ -770,7 +810,11 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)
+        old_binder = self.binder
+        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder.push_frame()
         self.accept(defn.defs)
+        self.binder = old_binder
         self.check_multiple_inheritance(typ)
         self.errors.pop_type()
 
@@ -848,7 +892,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_assignments(self.expand_lvalues(lv), rvalue)
 
     def check_assignments(self, lvalues: List[Node],
-                          rvalue: Node) -> None:        
+                          rvalue: Node) -> None:
         # Collect lvalue types. Index lvalues require special consideration,
         # since we cannot typecheck them until we know the rvalue type.
         # For each lvalue, one of lvalue_types[i] or index_lvalues[i] is not
@@ -899,6 +943,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.check_multi_assignment(lvalue_types, index_lvalues,
                                         rvalue, rvalue)
+            #XXX somehow need to also assign the rvalue_types to the lvalues
         if is_inferred:
             self.infer_variable_type(inferred, lvalues, self.accept(rvalue),
                                      rvalue)
@@ -1146,8 +1191,8 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
-        ending_frames = [] #type: List[Frame]
         broken = True
+        ending_frames = []
         clauses_frame = self.binder.push_frame()
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
@@ -1163,7 +1208,8 @@ class TypeChecker(NodeVisitor[Type]):
                 if var:
                     self.binder.push(var, type)
                 self.accept(b)
-                frame = self.binder.pop_frame()
+                _, frame = self.binder.pop_frame()
+                self.binder.allow_jump(len(self.binder.frames)-1)
                 if not self.breaking_out:
                     broken = False
                     ending_frames.append(meet_frames(self.basic_types(), clauses_frame, frame))
@@ -1185,7 +1231,6 @@ class TypeChecker(NodeVisitor[Type]):
                 break
         else:
             if s.else_body:
-                self.binder.push_frame()
                 self.accept(s.else_body)
 
                 if self.breaking_out and broken:
@@ -1199,10 +1244,13 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 ending_frames.append(clauses_frame)
 
-        self.binder.pop_frame()
         ending_frame = join_frames(self.basic_types(), self.binder,
                                    *ending_frames)
-        self.binder.update(ending_frame)
+
+
+        self.binder.pop_frame()
+        for key in ending_frame:
+            self.binder._push(key, ending_frame[key])
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
