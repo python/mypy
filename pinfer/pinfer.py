@@ -22,6 +22,7 @@ func_argid_db = {} # funcname -> set of (argindex, name)
 func_arg_db = {} # (funcname, argindex/name) -> type
 func_return_db = {} # funcname -> type
 func_source_db = {} # funcid -> source string
+ignore_files = set()
 
 # The type inferencing wrapper should not be reentrant.  It's not, in theory, calling
 # out to any external code which we would want to infer the types of.  However, 
@@ -40,13 +41,14 @@ is_performing_inference = False
 
 def reset():
     global var_db, func_argid_db, func_arg_db, func_return_db, func_source_db
-    global is_performing_inference
+    global ignore_files, is_performing_inference
     var_db = {}
     func_argid_db = {}
     func_arg_db = {}
     func_return_db = {}
     func_source_db = {}
     is_performing_inference = False
+    ignore_files = set()
 
 
 def format_state(pretty=False):
@@ -75,26 +77,30 @@ def format_state(pretty=False):
     return '\n'.join(lines)
 
 
+def unparse_ast(node):
+    buf = StringIO()
+    Unparser(node, buf)
+    return buf.getvalue().strip()
+
+
 def format_sig(funcid, fname, indent, pretty, defaults=[]):
-    # to get defaults, parse the function, get the nodes for the
-    # defaults, then unparse them
-    fn_ast = ast.parse(func_source_db[funcid].strip()).body[0]
-    defaults_nodes = fn_ast.args.defaults
-    # for now, we're not going to care about kw_only args
-
-    def unparse(node):
-        buf = StringIO()
-        Unparser(node, buf)
-        return buf.getvalue().strip()
-
-    defaults = [unparse(dn) for dn in defaults_nodes]
-
     lines = []
     args = []
     kwargs = []
 
     # Sort argid set by index.
     argids = sorted(func_argid_db[funcid], key=lambda x: x[0])
+
+    # to get defaults, parse the function, get the nodes for the
+    # defaults, then unparse them
+    try:
+        fn_ast = ast.parse(func_source_db[funcid].strip()).body[0]
+        defaults_nodes = fn_ast.args.defaults
+        # for now, we're not going to care about kw_only args
+
+        defaults = [unparse_ast(dn) for dn in defaults_nodes]
+    except:
+        defaults = []
 
     # pad defaults to match the length of args
     defaults = ([None] * (len(argids) - len(defaults))) + defaults

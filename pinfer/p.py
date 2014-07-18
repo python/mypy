@@ -69,6 +69,8 @@ def main():
     else:
       pinfer.dump_at_exit()
 
+    pinfer.ignore_files.add(testfile)
+
     # run testfile as main
     del sys.modules['__main__']
     imp.load_source('__main__', testfile)
