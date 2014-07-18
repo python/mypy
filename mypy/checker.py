@@ -141,14 +141,17 @@ class ConditionalTypeBinder:
             return
 
         current_assumption = self.get(expr)
-        if not is_subtype(type, current_assumption):
+        if isinstance(type, AnyType) or not is_subtype(type, current_assumption):
             self.expand_type(expr, type)
             current_assumption = self.get(expr)
 
-        if type == current_assumption or isinstance(current_assumption, AnyType) or isinstance(type, AnyType):
-            return
+        # If x is Any and y is int, after x = y we do not infer that x is int.
+        # This could be changed.
 
-        self.push(expr, type)
+        if type == current_assumption or isinstance(current_assumption, AnyType) or isinstance(type, AnyType):
+            pass
+        else:
+            self.push(expr, type)
 
 
     def invalidate_dependencies(self, expr: Node) -> None:
@@ -173,7 +176,7 @@ class ConditionalTypeBinder:
         for f in reversed(self.frames):
             counter += 1
             if expr.literal_hash in f:
-                if is_subtype(type, f[expr.literal_hash]):
+                if is_subtype(type, f[expr.literal_hash]) and not isinstance(type, AnyType):
                     break
                 del f[expr.literal_hash]
                 self.types[expr.literal_hash].pop()

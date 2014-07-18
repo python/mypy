@@ -1,3 +1,17 @@
+[case testSubtypingWithAny]
+
+class A: y = 1
+class B(A): z = 1
+
+def foo(): pass
+
+x = A()
+x = B()
+x.z
+x = foo()
+x.z          # E: "A" has no attribute "z"
+x.y
+
 [case testSingleMultiAssignment-skip]
 
 x = 'a'
