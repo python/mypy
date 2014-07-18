@@ -1,6 +1,7 @@
 """Tools for runtime type inference"""
 
 import inspect
+import types
 
 
 MAX_INFERRED_TUPLE_LENGTH = 10
@@ -332,6 +333,8 @@ def infer_value_type(value, depth=0):
             return Generic('TupleSequence', [infer_value_types(value, depth)])
     elif isinstance(value, set):
         return Generic('Set', [infer_value_types(value, depth)])
+    elif isinstance(value, types.MethodType) or isinstance(value, types.FunctionType):
+        return Instance(Function)
     else:
         return Instance(type(value))
 
@@ -488,7 +491,6 @@ class Tuple(TypeBase):
     def __str__(self):
         return 'Tuple[%s]' % (', '.join(str(t) for t in self.itemtypes))
 
-class AnyStr(object): pass
 
 class Either(TypeBase):
     def __init__(self, types):
@@ -529,3 +531,7 @@ class Unknown(TypeBase):
 
     def __repr__(self):
         return 'Unknown()'
+
+
+class AnyStr(object): pass
+class Function(object): pass

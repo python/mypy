@@ -203,7 +203,7 @@ class TestInfer(unittest.TestCase):
         a = A()
         a.g = lambda x: 1
         pinfer.infer_attrs(a)
-        self.assert_infer_state('A.g: function')
+        self.assert_infer_state('A.g: Function')
 
     def test_infer_simple_function_signature(self):
         @pinfer.infer_signature
