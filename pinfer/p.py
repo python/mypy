@@ -21,6 +21,8 @@ import sys
 import imp
 import pinfer
 import os
+import atexit
+import inspect
 
 iport = __builtins__.__import__
 watched = set()
@@ -33,23 +35,26 @@ def inferring_import(*args, **kwargs):
 
 def main():
     try:
-        modname, testfile = sys.argv[1], sys.argv[2]
+        targetpackage, testfile = sys.argv[1], sys.argv[2]
         del sys.argv[1:3]
     except Exception:
-        print('Usage: %s outputfile modname testfile [testargs]\n' % sys.argv[0], file=sys.stderr)
+        sys.stderr.write('Usage: %s targetpackage testfile [testargs]\n' % sys.argv[0])
         sys.exit(2)
-
-    pinfer.dump_at_exit()
 
     # help us with local imports
     filemodule = os.path.dirname(os.path.abspath(testfile))
     sys.path.append(filemodule)
 
-    if modname == '-':
-      __builtins__.__import__ = inferring_import
-    else:
-      module = __import__(modname)
-      pinfer.infer_module(module)
+    targetmod = __import__(targetpackage)
+    targetfile = inspect.getfile(targetmod)
+    pinfer.infer_module(targetmod)
+
+    @atexit.register
+    def rewrite_file(targetfile=targetfile, pinfer=pinfer):
+        if targetfile.endswith(".pyc"):
+          targetfile = targetfile[0:-1]
+        annotated = pinfer.annotate_file(targetfile)
+        print(annotated)
 
     # run testfile as main
     del sys.modules['__main__']

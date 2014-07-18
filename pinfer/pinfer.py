@@ -100,6 +100,10 @@ def format_state(pretty=False):
                 lines.append(indent + ' ' * 8 + ') -> %s' % ret)
     return '\n'.join(lines)
 
+def annotate_file(path):
+    with open(path, 'r') as targetfile:
+        source = targetfile.read()
+    return source
 
 def dump():
     s = format_state(pretty=True)
