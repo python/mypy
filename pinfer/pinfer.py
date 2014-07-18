@@ -343,7 +343,7 @@ def infer_value_types(values, depth=0):
     """Infer a single type for an iterable of values.
 
     >>> infer_value_types((1, 'x'))
-    Either(int, str)
+    Union(int, str)
     >>> infer_value_types([])
     Unknown
     """
@@ -369,9 +369,9 @@ def combine_types(x, y):
         return y
     if isinstance(y, Unknown):
         return x
-    if isinstance(x, Either):
+    if isinstance(x, Union):
         return combine_either(x, y)
-    if isinstance(y, Either):
+    if isinstance(y, Union):
         return combine_either(y, x)
     if x == y:
         return x
@@ -379,7 +379,7 @@ def combine_types(x, y):
 
 
 def combine_either(either, x):
-    if isinstance(x, Either):
+    if isinstance(x, Union):
         xtypes = x.types
     else:
         xtypes = [x]
@@ -419,8 +419,8 @@ def simplify_either(x, y):
         elif isinstance(type, Instance):
             for i, rt in enumerate(result):
                 if isinstance(rt, Instance):
-                    # Either[A, SubclassOfA] -> A
-                    # Either[A, A] -> A, because issubclass(A, A) == True,
+                    # Union[A, SubclassOfA] -> A
+                    # Union[A, A] -> A, because issubclass(A, A) == True,
                     if issubclass(type.typeobj, rt.typeobj):
                         break
                     elif issubclass(rt.typeobj, type.typeobj):
@@ -432,7 +432,7 @@ def simplify_either(x, y):
             result.append(type)
 
     if len(result) > 1:
-        return Either(result)
+        return Union(result)
     else:
         return result[0]
 
@@ -499,13 +499,13 @@ class Tuple(TypeBase):
         return 'Tuple[%s]' % (', '.join(str(t) for t in self.itemtypes))
 
 
-class Either(TypeBase):
+class Union(TypeBase):
     def __init__(self, types):
         assert len(types) > 1
         self.types = tuple(types)
 
     def __eq__(self, other):
-        if type(other) is not Either:
+        if type(other) is not Union:
             return False
         # TODO this is O(n**2); use an O(n) algorithm instead
         for t in self.types:
@@ -520,7 +520,7 @@ class Either(TypeBase):
         types = list(self.types)
         if str != bytes: # on Python 2 str == bytes
             if Instance(bytes) in types and Instance(str) in types:
-                # we Either[bytes, str] -> AnyStr as late as possible so we avoid
+                # we Union[bytes, str] -> AnyStr as late as possible so we avoid
                 # corner cases like subclasses of bytes or str
                 types.remove(Instance(bytes))
                 types.remove(Instance(str))
@@ -531,7 +531,7 @@ class Either(TypeBase):
             type = [t for t in types if t is not None][0]
             return 'Optional[%s]' % type
         else:
-            return 'Either[%s]' % (', '.join(sorted(str(t) for t in types)))
+            return 'Union[%s]' % (', '.join(sorted(str(t) for t in types)))
 
 
 class Unknown(TypeBase):

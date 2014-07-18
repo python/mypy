@@ -2,7 +2,7 @@
 
 import unittest
 
-from pinfer import Instance, Generic, Tuple, Either, Unknown
+from pinfer import Instance, Generic, Tuple, Union, Unknown
 import pinfer
 
 
@@ -65,24 +65,24 @@ class TestInfer(unittest.TestCase):
         f = self.float
         s = Instance(str)
         
-        e2 = Either((i, f))
+        e2 = Union((i, f))
         self.assertEqual(len(e2.types), 2)
-        self.assertEqual(str(e2), 'Either[float, int]')
+        self.assertEqual(str(e2), 'Union[float, int]')
 
-        self.assertEqual(e2, Either((i, f)))
-        self.assertEqual(e2, Either((f, i)))
-        self.assertNotEqual(e2, Either((i, s)))
-        self.assertNotEqual(e2, Either((i, f, s)))
-        self.assertNotEqual(Either((i, f, s)), e2)
+        self.assertEqual(e2, Union((i, f)))
+        self.assertEqual(e2, Union((f, i)))
+        self.assertNotEqual(e2, Union((i, s)))
+        self.assertNotEqual(e2, Union((i, f, s)))
+        self.assertNotEqual(Union((i, f, s)), e2)
         self.assertNotEqual(e2, i)
 
     def test_either_as_optional(self):
-        optint = Either((self.int, None))
+        optint = Union((self.int, None))
         self.assertEqual(str(optint), 'Optional[int]')
-        optfloat = Either((None, self.float))
+        optfloat = Union((None, self.float))
         self.assertEqual(str(optfloat), 'Optional[float]')
-        eithernone = Either((self.int, self.float, None))
-        self.assertEqual(str(eithernone), 'Either[None, float, int]')
+        eithernone = Union((self.int, self.float, None))
+        self.assertEqual(str(eithernone), 'Union[None, float, int]')
 
     def test_unknown(self):
         unknown = Unknown()
@@ -103,31 +103,31 @@ class TestInfer(unittest.TestCase):
         # Simple types
         self.assert_combine(i, i, i)
         self.assert_combine(s, s, s)
-        self.assert_combine(i, s, Either((i, s)))
-        self.assert_combine(i, None, Either((i, None)))
+        self.assert_combine(i, s, Union((i, s)))
+        self.assert_combine(i, None, Union((i, None)))
         # Unknowns
         self.assert_combine(i, Unknown(), i)
         self.assert_combine(Unknown(), Unknown(), Unknown())
-        # Either types
-        self.assert_combine(o, Either((f, s)), Either((o, f, s)))
-        self.assert_combine(i, Either((i, s)), Either((i, s)))
-        self.assert_combine(Either((o, f)), Either((o, s)), Either((o, f, s)))
+        # Union types
+        self.assert_combine(o, Union((f, s)), Union((o, f, s)))
+        self.assert_combine(i, Union((i, s)), Union((i, s)))
+        self.assert_combine(Union((o, f)), Union((o, s)), Union((o, f, s)))
         # Tuple types
         self.assert_combine(Tuple([i, i]), Tuple([i, i]), Tuple([i, i]))
         self.assert_combine(Tuple([i, i]), Tuple([o, s]),
-                            Tuple([Either([o, i]), Either([s, i])]))
+                            Tuple([Union([o, i]), Union([s, i])]))
         # Numeric types
         self.assert_combine(i, f, f)
         self.assert_combine(i, c, c)
         self.assert_combine(c, f, c)
-        # Eithers with numerics
-        self.assert_combine(i, Either((o, f)), Either((o, f)))
-        self.assert_combine(Either((o, f)), i, Either((o, f)))
-        self.assert_combine(Either((o, i)), f, Either((o, f)))
+        # Unions with numerics
+        self.assert_combine(i, Union((o, f)), Union((o, f)))
+        self.assert_combine(Union((o, f)), i, Union((o, f)))
+        self.assert_combine(Union((o, i)), f, Union((o, f)))
         # Tuples with numerics
         self.assert_combine(Tuple([i, i]), Tuple([f, i]), Tuple([f, i]))
-        self.assert_combine(Tuple([i, i]), Tuple([f, o]), Tuple([f, Either((i, o))]))
-        self.assert_combine(Tuple([f, i]), Tuple([i, o]), Tuple([f, Either((i, o))]))
+        self.assert_combine(Tuple([i, i]), Tuple([f, o]), Tuple([f, Union((i, o))]))
+        self.assert_combine(Tuple([f, i]), Tuple([i, o]), Tuple([f, Union((i, o))]))
 
     def test_combine_special_cases(self):
         i = self.int
@@ -221,7 +221,7 @@ class TestInfer(unittest.TestCase):
         f(1, 2)
         f(1, 'x')
         self.assert_infer_state(
-            'def f(x: int, y: Either[int, str]) -> Either[int, str]')
+            'def f(x: int, y: Union[int, str]) -> Union[int, str]')
 
     def test_infer_method(self):
         class A:
@@ -239,7 +239,7 @@ class TestInfer(unittest.TestCase):
         f('x', 1.1)
         f()
         self.assert_infer_state(
-            'def f(x: Either[int, str], y: Optional[float]) -> None')
+            'def f(x: Union[int, str], y: Optional[float]) -> None')
 
     def test_infer_varargs(self):
         @pinfer.infer_signature
@@ -266,7 +266,7 @@ class TestInfer(unittest.TestCase):
         def f(a, **kwargs): pass
         f(None, x=1, y='x')
         self.assert_infer_state(
-            'def f(a: None, kwargs: Either[int, str]) -> None')
+            'def f(a: None, kwargs: Union[int, str]) -> None')
 
     def test_infer_class(self):
         @pinfer.infer_class
