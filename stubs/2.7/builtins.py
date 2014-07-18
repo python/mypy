@@ -289,6 +289,7 @@ class unicode(Sequence[unicode]):
     
 
 @builtinclass
+@ducktype(unicode)
 class str(Sequence[str]):
     # TODO fromhex
     # TODO maketrans
