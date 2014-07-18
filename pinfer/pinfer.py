@@ -12,6 +12,7 @@ var_db = {} # (location, variable) -> type
 func_argid_db = {} # funcname -> set of (argindex, name)
 func_arg_db = {} # (funcname, argindex/name) -> type
 func_return_db = {} # funcname -> type
+func_source_db = {} # funcid -> source string
 
 # The type inferencing wrapper should not be reentrant.  It's not, in theory, calling
 # out to any external code which we would want to infer the types of.  However, 
@@ -29,11 +30,13 @@ is_performing_inference = False
 
 
 def reset():
-    global var_db, func_argid_db, func_arg_db, func_return_db, is_performing_inference
+    global var_db, func_argid_db, func_arg_db, func_return_db, func_source_db
+    global is_performing_inference
     var_db = {}
     func_argid_db = {}
     func_arg_db = {}
     func_return_db = {}
+    func_source_db = {}
     is_performing_inference = False
 
 
@@ -44,7 +47,9 @@ def format_state(pretty=False):
     funcnames = sorted(set(name for name, arg in func_arg_db))
     prevclass = ''
     indent = ''
-    for name in funcnames:
+    for funcid in funcnames:
+        name, sourcefile, sourceline = funcid.split(':')
+
         if '.' in name:
             curclass, shortname = name.split('.', 1)
         else:
@@ -58,20 +63,25 @@ def format_state(pretty=False):
             prevclass = curclass
         args = []
         kwargs = []
+
         # Sort argid set by index.
-        argids = sorted(func_argid_db[name], key=lambda x: x[0])
+        argids = sorted(func_argid_db[funcid], key=lambda x: x[0])
         for i, arg in argids:
             if i == 0 and arg == 'self':
                 # Omit type of self argument.
                 t = ''
             else:
-                t = ': %s' % func_arg_db[(name, i)]
+                t = ': %s' % func_arg_db[(funcid, i)]
             argstr = '%s%s' % (arg, t)
             if i >= 0:
                 args.append(argstr)
             else:
                 kwargs.append(argstr)
-        ret = str(func_return_db.get(name, Unknown()))
+        ret = str(func_return_db.get(funcid, Unknown()))
+
+        #lines.append('#' + sourcefile + ':' + sourceline)
+        #lines.append(func_source_db[funcid])
+
         sig = 'def %s(%s) -> %s' % (shortname, ', '.join(args + kwargs), ret)
         if not pretty or len(sig) <= PREFERRED_LINE_LENGTH or not args:
             lines.append(indent + sig)
@@ -142,9 +152,19 @@ def infer_method_signature(class_name):
 
         assert func.__module__ != infer_method_signature.__module__
 
+        try:
+            funcfile = inspect.getfile(func)
+            funcsource, sourceline = inspect.getsourcelines(func)
+        except:
+            return func
+
         name = func.__name__
         if class_name:
             name = '%s.%s' % (class_name, name)
+
+        name = ':'.join([name, funcfile, str(sourceline)])
+        func_source_db[name] = ''.join(funcsource)
+
         try:
             if hasattr(inspect, 'getfullargspec'):
                 argspec = inspect.getfullargspec(func)
