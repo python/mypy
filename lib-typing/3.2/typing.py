@@ -164,7 +164,6 @@ Traceback = object() # TODO proper type object
 
 # Define aliases for built-in types that support indexing.
 List = TypeAlias(list)
-Union = TypeAlias(list)
 Dict = TypeAlias(dict)
 Set = TypeAlias(set)
 Tuple = TypeAlias(tuple)
@@ -172,6 +171,9 @@ Function = TypeAlias(callable)
 Pattern = TypeAlias(type(re.compile('')))
 Match = TypeAlias(type(re.match('', '')))
 
+def union(x): return x
+
+Union = TypeAlias(union)
 
 class typevar:
     def __init__(self, name, *, values=None):
