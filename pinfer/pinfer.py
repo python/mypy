@@ -128,6 +128,9 @@ def annotate_file(path):
         if sourcefile == path
     )
 
+    # list of (oldstart, oldend, replacement)
+    replacements = [] # type: List[Tuple[Int, Int, String]]
+
     for (funcid, name, def_start_line, func_source) in funcs:
         tokens = list(tokenize.generate_tokens(StringIO(func_source).readline))
         assert len(tokens) > 0
@@ -140,6 +143,8 @@ def annotate_file(path):
             del tokens[0]
         else:
             indent = ''
+
+        annotated_def = format_sig(funcid, name, indent, True)
 
         # Find the first indent, which should be between the end of the def
         # and before the start of the body.  Then find the preceding colon,
@@ -172,10 +177,14 @@ def annotate_file(path):
         def_start_offset = line_offsets[def_start_line]
         def_end_offset = line_offsets[def_end_line] + def_end_col
 
-        print(source[def_start_offset:def_end_offset])
-        #print(format_sig(funcid, name, indent, True))
-        #print(source)
+        replacements.append((def_start_offset, def_end_offset, annotated_def))
 
+    # absurdly inefficient algorithm: replace with O(n) writer
+
+    for (start, end, replacement) in sorted(replacements, key=lambda r:r[0], reverse=True):
+        source = source[0:start] + replacement + source[end:]
+
+    return source
 
 
 def dump():
