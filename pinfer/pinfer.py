@@ -76,6 +76,19 @@ def format_state(pretty=False):
 
 
 def format_sig(funcid, fname, indent, pretty, defaults=[]):
+    # to get defaults, parse the function, get the nodes for the
+    # defaults, then unparse them
+    fn_ast = ast.parse(func_source_db[funcid].strip()).body[0]
+    defaults_nodes = fn_ast.args.defaults
+    # for now, we're not going to care about kw_only args
+
+    def unparse(node):
+        buf = StringIO()
+        Unparser(node, buf)
+        return buf.getvalue().strip()
+
+    defaults = [unparse(dn) for dn in defaults_nodes]
+
     lines = []
     args = []
     kwargs = []
@@ -187,20 +200,7 @@ def annotate_file(path):
         def_start_offset = line_offsets[def_start_line]
         def_end_offset = line_offsets[def_end_line] + def_end_col
 
-        # get the defaults as strings
-        # parse the function, get the nodes for the defaults, then unparse them
-        fn_ast = ast.parse(func_source.strip()).body[0]
-        defaults_nodes = fn_ast.args.defaults
-        # for now, we're not going to care about kw_only args
-
-        def unparse(node):
-            buf = StringIO()
-            Unparser(node, buf)
-            return buf.getvalue().strip()
-
-        defaults = [unparse(dn) for dn in defaults_nodes]
-
-        annotated_def = format_sig(funcid, name, indent, True, defaults)
+        annotated_def = format_sig(funcid, name, indent, True)
 
         replacements.append((def_start_offset, def_end_offset, annotated_def))
 
