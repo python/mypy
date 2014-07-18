@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""Stub to run pinfer on a stdlib module.
+"""Stub to run pinfer on a module.
 
 Usage:
 
-  p.py modname testfile [testargs]
+  p.py targetmod testfile [outfile] [ -- testargs]
 
 Where:
 
-  modname:  the full target module (e.g. textwrap).  If modname is "-",
-            infer the types of all imported modules.
+  targetmod:  the full target module (e.g. textwrap)
   testfile: the full test module file (e.g. test/test_textwrap.py)
+  outfile:  where to write the annotated module.  If unspecified, will
+            write stubs at end of stdout.
 
 Example invocation:
 
-  python3 p.py test/test_textwrap.py
+  python3 p.py textwrap test/test_textwrap.py
 """
 
 
@@ -34,11 +35,21 @@ def inferring_import(*args, **kwargs):
   return module
 
 def main():
-    try:
-        targetpackage, testfile = sys.argv[1], sys.argv[2]
-        del sys.argv[1:3]
-    except Exception:
-        sys.stderr.write('Usage: %s targetpackage testfile [testargs]\n' % sys.argv[0])
+    if '--' in sys.argv:
+      argslen = sys.argv.index('--')
+    else:
+      argslen = len(sys.argv)
+    args = sys.argv[1:argslen]
+    del sys.argv[1:argslen+1]
+    print(sys.argv, args)
+
+    if len(args) == 2:
+        targetpackage, testfile = args
+        outfile = None
+    elif len(args) == 3:
+        targetpackage, testfile, outfile = args
+    else:
+        sys.stderr.write('Usage: %s targetmodule testfile [outfile] [ -- testargs]\n' % sys.argv[0])
         sys.exit(2)
 
     # help us with local imports
@@ -49,14 +60,15 @@ def main():
     targetfile = inspect.getfile(targetmod)
     pinfer.infer_module(targetmod)
 
-    #pinfer.dump_at_exit()
-
-    @atexit.register
-    def rewrite_file(targetfile=targetfile, pinfer=pinfer):
-        if targetfile.endswith(".pyc"):
-          targetfile = targetfile[0:-1]
-        annotated = pinfer.annotate_file(targetfile)
-        print(annotated)
+    if outfile:
+      @atexit.register
+      def rewrite_file(targetfile=targetfile, outfile=outfile, pinfer=pinfer):
+          if targetfile.endswith(".pyc"):
+            targetfile = targetfile[0:-1]
+          annotated = pinfer.annotate_file(targetfile)
+          open(outfile, "w").write(annotated)
+    else:
+      pinfer.dump_at_exit()
 
     # run testfile as main
     del sys.modules['__main__']
