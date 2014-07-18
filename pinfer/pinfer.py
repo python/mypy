@@ -61,49 +61,67 @@ def format_state(pretty=False):
             else:
                 indent = ''
             prevclass = curclass
-        args = []
-        kwargs = []
 
-        # Sort argid set by index.
-        argids = sorted(func_argid_db[funcid], key=lambda x: x[0])
-        for i, arg in argids:
-            if i == 0 and arg == 'self':
-                # Omit type of self argument.
-                t = ''
-            else:
-                t = ': %s' % func_arg_db[(funcid, i)]
-            argstr = '%s%s' % (arg, t)
-            if i >= 0:
-                args.append(argstr)
-            else:
-                kwargs.append(argstr)
-        ret = str(func_return_db.get(funcid, Unknown()))
+        lines.append(format_sig(funcid, shortname, indent, pretty))
+    return '\n'.join(lines)
 
-        #lines.append('#' + sourcefile + ':' + sourceline)
-        #lines.append(func_source_db[funcid])
 
-        sig = 'def %s(%s) -> %s' % (shortname, ', '.join(args + kwargs), ret)
-        if not pretty or len(sig) <= PREFERRED_LINE_LENGTH or not args:
-            lines.append(indent + sig)
+def format_sig(funcid, fname, indent, pretty):
+    lines = []
+    args = []
+    kwargs = []
+
+    # Sort argid set by index.
+    argids = sorted(func_argid_db[funcid], key=lambda x: x[0])
+    for i, arg in argids:
+        if i == 0 and arg == 'self':
+            # Omit type of self argument.
+            t = ''
         else:
-            # Format into multiple lines to conserve horizontal space.
-            first = 'def %s(' % shortname
-            if args[0] == 'self':
-                first += 'self,'
-                args = args[1:]
-            lines.append(indent + first)
-            for arg in args:
-                lines.append(indent + ' ' * 8 + '%s,' % arg)
-            if len(lines[-1]) + 4 + len(ret) <= PREFERRED_LINE_LENGTH:
-                lines[-1] = lines[-1][:-1] + ') -> %s' % ret
-            else:
-                lines.append(indent + ' ' * 8 + ') -> %s' % ret)
+            t = ': %s' % func_arg_db[(funcid, i)]
+        argstr = '%s%s' % (arg, t)
+        if i >= 0:
+            args.append(argstr)
+        else:
+            kwargs.append(argstr)
+    ret = str(func_return_db.get(funcid, Unknown()))
+
+    sig = 'def %s(%s) -> %s' % (fname, ', '.join(args + kwargs), ret)
+    if not pretty or len(sig) <= PREFERRED_LINE_LENGTH or not args:
+        lines.append(indent + sig)
+    else:
+        # Format into multiple lines to conserve horizontal space.
+        first = 'def %s(' % fname
+        if args[0] == 'self':
+            first += 'self,'
+            args = args[1:]
+        lines.append(indent + first)
+        for arg in args:
+            lines.append(indent + ' ' * 8 + '%s,' % arg)
+        if len(lines[-1]) + 4 + len(ret) <= PREFERRED_LINE_LENGTH:
+            lines[-1] = lines[-1][:-1] + ') -> %s' % ret
+        else:
+            lines.append(indent + ' ' * 8 + ') -> %s' % ret)
     return '\n'.join(lines)
 
 def annotate_file(path):
     with open(path, 'r') as targetfile:
         source = targetfile.read()
-    return source
+
+    funcids = set(funcid for funcid, arg in func_arg_db)
+    funcid_components = ((funcid, funcid.split(':')) for funcid in funcids)
+    funcs = (
+        (funcid, name.split('.')[-1], sourceline, func_source_db[funcid])
+        for (funcid, (name, sourcefile, sourceline)) in funcid_components
+        if sourcefile == path
+    )
+
+    for (funcid, name, line, source) in funcs:
+        print("@"+line)
+        print(format_sig(funcid, name, '', True))
+        print(source)
+
+
 
 def dump():
     s = format_state(pretty=True)

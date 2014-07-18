@@ -49,6 +49,8 @@ def main():
     targetfile = inspect.getfile(targetmod)
     pinfer.infer_module(targetmod)
 
+    #pinfer.dump_at_exit()
+
     @atexit.register
     def rewrite_file(targetfile=targetfile, pinfer=pinfer):
         if targetfile.endswith(".pyc"):
