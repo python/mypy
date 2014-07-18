@@ -205,7 +205,7 @@ def annotate_file(path):
         replacements.append((def_start_offset, def_end_offset, annotated_def))
 
     # ideally, we'd put this after the docstring
-    replacements.append((0, 0, "from typing import List, Union, Function\n"))
+    replacements.append((0, 0, "from typing import List, Dict, Set, Tuple, Function, Pattern, Match, Union, Optional\n"))
 
     # absurdly inefficient algorithm: replace with O(n) writer
 
