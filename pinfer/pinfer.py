@@ -3,6 +3,7 @@
 import inspect
 import types
 import codecs
+import os
 import tokenize
 try:
     from StringIO import StringIO
@@ -235,6 +236,16 @@ def dump_at_exit():
     atexit.register(dump)
 
 
+def get_defining_file(obj):
+    try:
+        path = os.path.abspath(inspect.getfile(obj))
+        if path.endswith('.pyc'):
+            path = path[0:-1]
+        return path
+    except:
+        return None
+
+
 def infer_var(name, value):
     key = (None, name)
     update_var_db(key, value)
@@ -273,7 +284,7 @@ def infer_method_signature(class_name):
         assert func.__module__ != infer_method_signature.__module__
 
         try:
-            funcfile = inspect.getfile(func)
+            funcfile = get_defining_file(func)
             funcsource, sourceline = inspect.getsourcelines(func)
             sourceline -= 1  # getsourcelines is apparently 1-indexed
         except:
@@ -477,7 +488,17 @@ def infer_value_type(value, depth=0):
     elif isinstance(value, types.MethodType) or isinstance(value, types.FunctionType):
         return Instance(Function)
     else:
-        return Instance(type(value))
+        for t in type(value).mro():
+            if get_defining_file(t) in ignore_files:
+                continue
+            elif t is object:
+                return Any()
+            elif hasattr(types, 'InstanceType') and t is types.InstanceType:
+                return Any()
+            else:
+                return Instance(t)
+        else:
+            return Any()
 
 
 def infer_value_types(values, depth=0):
@@ -510,6 +531,10 @@ def combine_types(x, y):
         return y
     if isinstance(y, Unknown):
         return x
+    if isinstance(x, Any):
+        return x
+    if isinstance(y, Any):
+        return y
     if isinstance(x, Union):
         return combine_either(x, y)
     if isinstance(y, Union):
@@ -681,6 +706,14 @@ class Unknown(TypeBase):
 
     def __repr__(self):
         return 'Unknown()'
+
+
+class Any(TypeBase):
+    def __str__(self):
+        return 'Any'
+
+    def __repr__(self):
+        return 'Any()'
 
 
 class AnyStr(object): pass

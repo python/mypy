@@ -69,7 +69,7 @@ def main():
     else:
       pinfer.dump_at_exit()
 
-    pinfer.ignore_files.add(testfile)
+    pinfer.ignore_files.add(os.path.abspath(testfile))
 
     # run testfile as main
     del sys.modules['__main__']
