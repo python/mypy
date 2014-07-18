@@ -29,7 +29,7 @@ is_performing_inference = False
 
 
 def reset():
-    global var_db, func_argid_db, func_arg_db, func_return_db
+    global var_db, func_argid_db, func_arg_db, func_return_db, is_performing_inference
     var_db = {}
     func_argid_db = {}
     func_arg_db = {}
