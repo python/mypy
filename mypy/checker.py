@@ -121,24 +121,45 @@ class ConditionalTypeBinder:
     def assign_type(self, expr: Node, type: Type) -> None:
         if not expr.literal:
             return
-        declared_type = self.get_declaration(expr)
-        if declared_type and not is_subtype(type, declared_type):
-            #print("ERROR! Defining {} to type {}, which is outside the declared {}".format(expr, type, declared_type))
-            pass
+        self.invalidate_dependencies(expr)
 
-        #Update the stored type for this expression
+        declared_type = self.get_declaration(expr)
+
+        if declared_type is None:
+            # Not sure why this happens.  It seems to mainly happen in
+            # member initialization.
+            return
+        if not is_subtype(type, declared_type):
+            # Pretty sure this is only happens when there's a type error.
+
+            # Ideally this function wouldn't be called if the
+            # expression has a type error, though -- do other kinds of
+            # errors cause this function to get called at invalid
+            # times?
+
+            #print("ERROR! Defining {} to type {}, which is outside the declared {}".format(expr, type, declared_type))
+            return
+
         current_assumption = self.get(expr)
         if not is_subtype(type, current_assumption):
             self.expand_type(expr, type)
             current_assumption = self.get(expr)
 
-        if type == current_assumption or isinstance(current_assumption, AnyType):
-            pass
-        elif not isinstance(type, AnyType):
-            if is_subtype(type, current_assumption):
-                self.push(expr, type)
+        if type == current_assumption or isinstance(current_assumption, AnyType) or isinstance(type, AnyType):
+            return
 
-        #Invalidate types that include this expression
+        self.push(expr, type)
+
+
+    def invalidate_dependencies(self, expr: Node) -> None:
+        """Invalidate knowledge of types that include expr, but not expr itself.
+
+        For example, when expr is foo.bar, invalidate foo.bar.baz and
+        foo.bar[0].
+
+        It is overly conservative: it invalidates globally, including
+        in code paths unreachable from here.
+        """
         for dep in self.dependencies.get(expr.literal_hash, []):
             if dep in self.types:
                 del self.types[dep]
