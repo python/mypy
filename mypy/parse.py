@@ -1273,7 +1273,10 @@ class Parser:
             t = cast(StrLit, self.skip())
             tok.append(t)
             value += t.parsed()
-        node = StrExpr(value)
+        if self.pyversion == 2 and 'unicode_literals' in self.future_options:
+            node = UnicodeExpr(value)
+        else:
+            node = StrExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     
