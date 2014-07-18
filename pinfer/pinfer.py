@@ -465,7 +465,14 @@ class Instance(TypeBase):
         self.typeobj = typeobj
 
     def __str__(self):
-        return self.typeobj.__name__
+        # cheat on regular expression objects which have weird class names
+        # to be consistent with typing.py
+        if self.typeobj == Pattern:
+            return "Pattern"
+        elif self.typeobj == Match:
+            return "Match"
+        else:
+            return self.typeobj.__name__
 
     def __repr__(self):
         return 'Instance(%s)' % self
@@ -513,6 +520,8 @@ class Either(TypeBase):
         types = list(self.types)
         if str != bytes: # on Python 2 str == bytes
             if Instance(bytes) in types and Instance(str) in types:
+                # we Either[bytes, str] -> AnyStr as late as possible so we avoid
+                # corner cases like subclasses of bytes or str
                 types.remove(Instance(bytes))
                 types.remove(Instance(str))
                 types.append(Instance(AnyStr))
@@ -535,3 +544,6 @@ class Unknown(TypeBase):
 
 class AnyStr(object): pass
 class Function(object): pass
+import re
+Pattern = type(re.compile(u''))
+Match = type(re.match(u'', u''))
