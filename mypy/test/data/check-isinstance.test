@@ -1,12 +1,31 @@
+[case testSingleMultiAssignment-skip]
+
+x = 'a'
+(x, ) = ('a',)
+
+[case testUnionMultiAssignment-skip]
+from typing import Union, Undefined
+
+x = Undefined # type: Union[int, str]
+x = 1
+x = 'a'
+x + 1    # E: Unsupported operand types for + ("str" and "int")
+x = 1
+(x, y) = ('a', 1)
+x + 1    # E: Unsupported operand types for + ("str" and "int")
+
+[builtins fixtures/isinstancelist.py]
+
 [case testUnionIfZigzag-skip]
 from typing import Union
 
-def fff(x: Union[int, str]) -> None:
+def f(x: Union[int, str]) -> None:
     x = 1
     if x:
         x = 'a'
         x = 1
     x + 1          # My code fails
+[builtins fixtures/isinstancelist.py]
 
 [case testUnionTryExcept-skip]
 
