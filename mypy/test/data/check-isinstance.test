@@ -1,3 +1,59 @@
+[case testUnionIfZigzag-skip]
+from typing import Union
+
+def fff(x: Union(int, str)) -> None:
+    x = 1
+    if x:
+        x = 'a'
+        x = 1
+    x + 1          # My code fails
+
+[case testUnionTryExcept-skip]
+
+class A: y = A()
+class B(A): z = 1
+
+x = A()
+try:
+    x.z # E: "A" has no attribute "z"
+    x = B()
+    x.z
+except:
+    x.z # E: "A" has no attribute "z"
+    x = B()
+    x.z
+x.z     # My code fails
+
+
+[case testUnionListIsinstance]
+
+from typing import Union, List
+
+class A: y = A()
+class B(A): z = C()
+    
+class C: pass
+class D(C): d = 1
+
+    
+def f(x: Union(List[int], List[str], int)) -> None:
+    if isinstance(x, list):
+        a = x[0]
+        if isinstance(a, int):
+            a + 1
+            a + 'x' # E: Unsupported operand types for + ("int" and "str")
+
+        # type of a?
+        x + 1 # E: Unsupported operand types for + (likely involving Union)
+    else:
+        x[0] # E: Value of type "int" is not indexable
+        x + 1
+    x[0] # E: Value of type "int" is not indexable
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
+[builtins fixtures/isinstancelist.py]
+[out]
+main: In function "f":
+
 [case testUnionStrictDefnBasic]
 from typing import Union, Undefined
 
@@ -6,7 +62,7 @@ def foo() -> Union(int, str): pass
 x = 1 # type: Union(int, str)
 x = x + 1
 x = foo()
-x = x + 1                # E: Unsupported left operand type for + ("Union(int, str)")
+x = x + 1                # E: Unsupported operand types for + (likely involving Union)
 if isinstance(x, str):
    x = x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
@@ -75,8 +131,8 @@ while 1:
     if isinstance(h.pet, Dog):
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
-        y = h.pet.paws + 1   # E: Unsupported left operand type for + ("Union(int, str)")
-        z = h.pet.paws + 'a' # E: Unsupported left operand type for + ("Union(int, str)")
+        y = h.pet.paws + 1   # E: Unsupported operand types for + (likely involving Union)
+        z = h.pet.paws + 'a' # E: Unsupported operand types for + (likely involving Union)
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
             break
@@ -108,7 +164,7 @@ def foo() -> None:
             break
     else:
         pass
-    y = x + 'asdad'    # E: Unsupported left operand type for + ("Union(int, str)")
+    y = x + 'asdad'    # E: Unsupported operand types for + (likely involving Union)
 
 foo()
 [builtins fixtures/isinstancelist.py]
@@ -126,8 +182,8 @@ while 1:
         x + 'a'
     else:
         x + [1]
-    x + 'a'           # E: Unsupported left operand type for + ("Union(int, str, List[int])")
-x + [1]               # E: Unsupported left operand type for + ("Union(int, str, List[int])")
+    x + 'a'           # E: Unsupported operand types for + (likely involving Union)
+x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.py]
 [case testIsInstanceThreeUnion2]
@@ -144,7 +200,7 @@ while 1:
         break
     x + [1]
     x + 'a'           # E: Unsupported operand types for + ("list" and "str")
-x + [1]               # E: Unsupported left operand type for + ("Union(int, str, List[int])")
+x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.py]
 
@@ -161,7 +217,7 @@ while 1:
         break
     x + [1]           # These lines aren't reached because x was an int
     x + 'a'
-x + [1]               # E: Unsupported left operand type for + ("Union(int, str, List[int])")
+x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.py]
 
@@ -172,24 +228,24 @@ def foo() -> Union(int, str): pass
 
 for i in [1, 2]:
     x = foo()
-    x + 'a'                 # E: Unsupported left operand type for + ("Union(int, str)")
+    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
-    x + 'a'                 # E: Unsupported left operand type for + ("Union(int, str)")
+    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
-    x + 'a'                 # E: Unsupported left operand type for + ("Union(int, str)")
+    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, int):
         break
     x + 'a'
 
-x + 'a'                    # E: Unsupported left operand type for + ("Union(int, str)")
+x + 'a'                    # E: Unsupported operand types for + (likely involving Union)
   
 [builtins fixtures/isinstancelist.py]
 
@@ -201,8 +257,8 @@ from typing import Union
 def foo() -> Union(int, str): pass
 
 x = foo()
-x + 1     # E: Unsupported left operand type for + ("Union(int, str)")
-x + 'a'   # E: Unsupported left operand type for + ("Union(int, str)")
+x + 1     # E: Unsupported operand types for + (likely involving Union)
+x + 'a'   # E: Unsupported operand types for + (likely involving Union)
 
 x = 1
 x + 1
@@ -213,8 +269,8 @@ x + 1     # E: Unsupported operand types for + ("str" and "int")
 x + 'a'
 
 x = foo()
-x + 1     # E: Unsupported left operand type for + ("Union(int, str)")
-x + 'a'   # E: Unsupported left operand type for + ("Union(int, str)")
+x + 1     # E: Unsupported operand types for + (likely involving Union)
+x + 'a'   # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.py]
 
@@ -224,18 +280,66 @@ from typing import Union
 def foo() -> Union(int, str): pass
 
 x = foo()
-x + 1      # E: Unsupported left operand type for + ("Union(int, str)")
+x + 1      # E: Unsupported operand types for + (likely involving Union)
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
 x + 1
 
 while 1:
-      x + 1    # E: Unsupported left operand type for + ("Union(int, str)")
+      x + 1    # E: Unsupported operand types for + (likely involving Union)
       x = 'a'
+[builtins fixtures/isinstancelist.py]
 
+
+[case testModifyLoopLong]
+from typing import Union
+
+class A: a = 1
+
+def foo() -> Union(int, str, A): pass
+
+def bar() -> None:
+    x = foo()
+    x + 1  # E: Unsupported left operand type for + (some union)
+    if isinstance(x, A):
+       x.a
+    else:
+       if isinstance(x, int):
+          x + 1
+          x + 'a'  # E: Unsupported operand types for + ("int" and "str")
+       else:
+          x + 'a'
+          x.a      # E: "str" has no attribute "a"
+       x = A()
+
+    if isinstance(x, str):
+       x + 'a'
+    else:
+       while 1:
+          if isinstance(x, int):
+             x + 1
+          else:
+             x.a
+          break
+       while 1:
+          if isinstance(x, int):
+             x + 1
+          else:
+             x.a
+          continue
+
+       #for i in [1]:
+       while 1:
+          if isinstance(x, int):
+             x + 1
+          else:
+             x.a     # E: Some element of union has no attribute "a"
+          x = 'a'
 
 [builtins fixtures/isinstancelist.py]
+[out]
+main: In function "bar":
 
 [case testCastIsinstance]
 from typing import Union

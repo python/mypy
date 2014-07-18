@@ -408,6 +408,15 @@ class UnionType(Type):
 
     @classmethod
     def make_simplified_union(cls, items: List[Type], line: int = -1, repr: Any = None) -> Type:
+        while any(isinstance(typ, UnionType) for typ in items):
+            all_items = [] # type: List[Type]
+            for typ in items:
+                if isinstance(typ, UnionType):
+                    all_items.extend(typ.items)
+                else:
+                    all_items.append(typ)
+            items = all_items
+
         from mypy.subtypes import is_subtype
         removed = set()
         for i in range(len(items)):

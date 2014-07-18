@@ -1202,7 +1202,8 @@ class ExpressionChecker:
         elif isinstance(typ, AnyType):
             return True
         elif isinstance(typ, UnionType):
-            return all(self.has_member(x, member) for x in typ.items)
+            result = all(self.has_member(x, member) for x in typ.items)
+            return result
         else:
             return False
     

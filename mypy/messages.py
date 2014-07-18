@@ -264,8 +264,12 @@ class MessageBuilder:
             self.fail('Unsupported target for indexed assignment', context)
         else:
             # The non-special case: a missing ordinary attribute.
-            self.fail('{} has no attribute "{}"'.format(self.format(typ),
-                                                        member), context)
+            if not self.disable_type_names:
+                self.fail('{} has no attribute "{}"'.format(self.format(typ),
+                                                            member), context)
+            else:
+                self.fail('Some element of union has no attribute "{}"'.format(
+                        member), context)
         return AnyType()
     
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -301,8 +305,12 @@ class MessageBuilder:
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
         if not self.check_void(typ, context):
-            self.fail('Unsupported left operand type for {} ({})'.format(
-                op, self.format(typ)), context)
+            if self.disable_type_names:
+                msg = 'Unsupported left operand type for {} (some union)'.format(op)
+            else:
+                msg = 'Unsupported left operand type for {} ({})'.format(
+                    op, self.format(typ))
+            self.fail(msg, context)
     
     def type_expected_as_right_operand_of_is(self, context: Context) -> None:
         self.fail('Type expected as right operand of "is"', context)

@@ -10,6 +10,35 @@ from mypy.types import (
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
+def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
+    """Return a simple least upper bound given the declared type."""
+
+    if isinstance(s, AnyType):
+        return s
+    
+    if isinstance(s, NoneTyp) and not isinstance(t, Void):
+        return t
+
+    if isinstance(s, ErasedType):
+        return t
+
+    if is_subtype(s, t):
+        return t
+
+    if is_subtype(t, s):
+        return s
+
+    if isinstance(declaration, UnionType):
+        return UnionType.make_simplified_union([s, t])
+
+    value = t.accept(TypeJoinVisitor(s, basic))
+    if is_subtype(value, declaration):
+        return declaration
+
+    return value
+
+
+
 def join_types(s: Type, t: Type, basic: BasicTypes) -> Type:
     """Return the least upper bound of s and t.
 

@@ -60,10 +60,12 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         return AnyType()
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
-        return UnionType.make_simplified_union([analyse_member_access(name, subtype, node,
-                                                                      is_lvalue, is_super,
-                                                                      basic_types, msg)
-                                                for subtype in typ.items])
+        msg.disable_type_names += 1
+        results = [analyse_member_access(name, subtype, node, is_lvalue,
+                                         is_super, basic_types, msg)
+                   for subtype in typ.items]
+        msg.disable_type_names -= 1
+        return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the 'tuple' type.
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,

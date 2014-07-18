@@ -37,7 +37,7 @@ from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types
+from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, is_overlapping_types
 
@@ -58,6 +58,7 @@ class ConditionalTypeBinder:
         self.dependencies = {}  # Set of other keys to invalidate if a key is changed
         self.basic_types_fn = basic_types_fn
         self.min_frame = None # type: int    # index of outermost frame that was modified
+        self.declared_types = Dict[Any, Type]()
 
     def _add_dependencies(self, key: Any, value: Any):
         if isinstance(key, tuple):
@@ -66,7 +67,7 @@ class ConditionalTypeBinder:
             for elt in key:
                 self._add_dependencies(elt, value)
 
-    def _push(self, key: Node, value: Type) -> None:
+    def _push(self, key: Any, value: Type) -> None:
         if key in self.frames[-1]:
             self.types[key][-1] = value
         else:
@@ -84,6 +85,7 @@ class ConditionalTypeBinder:
     def push(self, expr: Node, type: Type) -> None:
         if not expr.literal:
             return
+        self.declared_types[expr.literal_hash] = self.get_declaration(expr)
         self._push(expr.literal_hash, type)
 
     def update(self, frame: Frame) -> None:
@@ -152,13 +154,15 @@ class ConditionalTypeBinder:
 
 
 
-def join_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
+def join_frames(basic_types: BasicTypes, binder: ConditionalTypeBinder,
+                *frames: Frame) -> Frame:
     answer = Frame()
     for key in frames[0]:
         type = frames[0][key]
         for f in frames[1:]:
             if key in f:
-                type = join_types(type, f[key], basic_types)
+                type = join_simple(binder.declared_types[key], type,
+                                   f[key], basic_types)
             else:
                 break
         else:
@@ -966,12 +970,6 @@ class TypeChecker(NodeVisitor[Type]):
                     return False
         return True
 
-    def join(self, types: List[Type]) -> Type:
-        answer = types[0]
-        for type in types[1:]:
-            answer = join_types(answer, type, self.basic_types())
-        return answer
-
     def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
@@ -1172,7 +1170,8 @@ class TypeChecker(NodeVisitor[Type]):
                 ending_frames.append(clauses_frame)
 
         self.binder.pop_frame()
-        ending_frame = join_frames(self.basic_types(), *ending_frames)
+        ending_frame = join_frames(self.basic_types(), self.binder,
+                                   *ending_frames)
         self.binder.update(ending_frame)
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
