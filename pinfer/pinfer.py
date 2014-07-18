@@ -2,6 +2,9 @@
 
 import inspect
 import types
+import tokenize
+from io import StringIO
+import ast
 
 
 MAX_INFERRED_TUPLE_LENGTH = 10
@@ -105,21 +108,73 @@ def format_sig(funcid, fname, indent, pretty):
     return '\n'.join(lines)
 
 def annotate_file(path):
+    # this should be documented somewhere...
+    INDENT_TOKEN = 5
+
     with open(path, 'r') as targetfile:
         source = targetfile.read()
+
+    line_offsets = []
+    source_length = 0
+    for line in source.split('\n'):
+        line_offsets.append(source_length)
+        source_length = source_length + len(line) + 1
 
     funcids = set(funcid for funcid, arg in func_arg_db)
     funcid_components = ((funcid, funcid.split(':')) for funcid in funcids)
     funcs = (
-        (funcid, name.split('.')[-1], sourceline, func_source_db[funcid])
+        (funcid, name.split('.')[-1], int(sourceline), func_source_db[funcid])
         for (funcid, (name, sourcefile, sourceline)) in funcid_components
         if sourcefile == path
     )
 
-    for (funcid, name, line, source) in funcs:
-        print("@"+line)
-        print(format_sig(funcid, name, '', True))
-        print(source)
+    for (funcid, name, def_start_line, func_source) in funcs:
+        tokens = list(tokenize.generate_tokens(StringIO(func_source).readline))
+        assert len(tokens) > 0
+
+        # we're making the assumption that the def at least gets to start on
+        # it's own line, which is fine for non-lambdas
+
+        if tokens[0][0] == INDENT_TOKEN:
+            indent = tokens[0][1]
+            del tokens[0]
+        else:
+            indent = ''
+
+        # Find the first indent, which should be between the end of the def
+        # and before the start of the body.  Then find the preceding colon,
+        # which should be at the end of the def.
+
+        for indent_loc in range(len(tokens)):
+            if tokens[indent_loc][0] == INDENT_TOKEN:
+                function_is_one_line = False
+                break
+            else:
+                function_is_one_line = True
+
+        if function_is_one_line:
+            # we're also making the assumption that the def has an indent on the
+            # line following the signature, which is true almost all of the time.
+            # If this is not the case, we should just leave a comment above the
+            # function, although I might not have time to do that now.
+            continue
+
+        for def_end_loc in range(indent_loc, -1, -1):
+            if tokens[def_end_loc][1] == ':':
+                break
+
+        assert def_end_loc > 0
+
+        def_end_line, def_end_col = tokens[def_end_loc][2]
+        def_end_line -= 1 # the tokenizer apparently 1-indexes lines
+        def_end_line += def_start_line
+
+        def_start_offset = line_offsets[def_start_line]
+        def_end_offset = line_offsets[def_end_line] + def_end_col
+
+        print(source[def_start_offset:def_end_offset])
+        #print(format_sig(funcid, name, indent, True))
+        #print(source)
 
 
 
@@ -177,6 +232,7 @@ def infer_method_signature(class_name):
         try:
             funcfile = inspect.getfile(func)
             funcsource, sourceline = inspect.getsourcelines(func)
+            sourceline -= 1  # getsourcelines is apparently 1-indexed
         except:
             return func
 
