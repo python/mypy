@@ -2,8 +2,12 @@
 
 import inspect
 import types
+import codecs
 import tokenize
-from io import StringIO
+try:
+    from StringIO import StringIO
+except:
+    from io import StringIO
 import ast
 
 
