@@ -27,6 +27,42 @@ def f(x: Union[int, str]) -> None:
     x + 1          # My code fails
 [builtins fixtures/isinstancelist.py]
 
+
+[case testComplicatedBlocks-skip]
+from typing import Union
+
+def foo() -> Union[int, str]: pass
+
+def bar() -> None:
+    x = foo()
+    if isinstance(x, int):
+        return
+    while 1:
+        x + 'a'
+        while 1:
+            x = foo()
+            if 1:
+                return
+            x = 'a'
+    x + 'a'
+
+    x = foo()
+    if isinstance(x, int):
+        return
+    while 1:
+        x + 'a'             # E: Unsupported operand types for + (likely involving Union)
+        while 1:
+            x + 'a'         # E: Unsupported operand types for + (likely involving Union)
+            x = foo()
+            if 1:
+                continue
+            x = 'a'
+        x = 'a'
+    x + 'a'
+[builtins fixtures/isinstancelist.py]
+[out]
+main: In function "bar":
+
 [case testUnionTryExcept-skip]
 
 class A: y = A()
