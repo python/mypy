@@ -96,6 +96,10 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
     # defaults, then unparse them
     try:
         fn_ast = ast.parse(func_source_db[funcid].strip()).body[0]
+
+        # override fname if we parsed a different one
+        fname = fn_ast.name
+
         defaults_nodes = fn_ast.args.defaults
         # for now, we're not going to care about kw_only args
 
