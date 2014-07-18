@@ -87,6 +87,8 @@ class Parser:
     is_class_body = False
     # All import nodes encountered so far in this parse unit.
     imports = Undefined(List[ImportBase])
+    # Names imported from __future__.
+    future_options = Undefined(List[str])
     
     def __init__(self, fnam: str, errors: Errors, pyversion: int,
                  custom_typing_module : str = None) -> None:
@@ -106,6 +108,7 @@ class Parser:
         self.tok = lex.lex(s)
         self.ind = 0
         self.imports = []
+        self.future_options = []
         file = self.parse_file()
         if self.raise_on_error and self.errors.is_errors():
             self.errors.raise_error()
@@ -206,6 +209,8 @@ class Parser:
         # TODO: Fix representation if there is a custom typing module import.
         self.set_repr(node, noderepr.ImportFromRepr(
             from_tok, components,import_tok, lparen, name_toks, rparen, br))
+        if name == '__future__':
+            self.future_options.extend(target[0] for target in targets)
         return node
     
     def parse_import_name(self) -> Tuple[str, str, List[Token]]:
@@ -668,7 +673,8 @@ class Parser:
             stmt = self.parse_with_stmt()
         elif ts == '@':
             stmt = self.parse_decorated_function_or_class()
-        elif ts == 'print' and self.pyversion == 2:
+        elif ts == 'print' and (self.pyversion == 2 and 
+                                'print_function' not in self.future_options):
             stmt = self.parse_print_stmt()
         else:
             stmt = self.parse_expression_or_assignment()
@@ -1267,7 +1273,10 @@ class Parser:
             t = cast(StrLit, self.skip())
             tok.append(t)
             value += t.parsed()
-        node = StrExpr(value)
+        if self.pyversion == 2 and 'unicode_literals' in self.future_options:
+            node = UnicodeExpr(value)
+        else:
+            node = StrExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
     
