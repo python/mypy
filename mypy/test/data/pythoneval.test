@@ -843,3 +843,15 @@ print('>', m(lambda x: fun(x),
              nums))
 [out]
 > 17
+
+[case testFromFuturePrintFunction_python2]
+from __future__ import print_function
+print('a', 'b')
+[out]
+a b
+
+[case testFromFuturePrintFunction]
+from __future__ import print_function
+print('a', 'b')
+[out]
+a b

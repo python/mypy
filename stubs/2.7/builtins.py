@@ -950,6 +950,11 @@ def ord(c: unicode) -> int: pass
 @overload
 def ord(c: bytearray) -> int: pass
 
+# This is only available after from __future__ import print_function.
+# TODO: Use IO[str] instead of TextIO (once IO is available)?
+def print(*values: Any, *, sep: unicode = u' ', end: unicode = u'\n',
+           file: TextIO = None) -> None: pass
+
 # The return type can be int or float, depending on the value of y.
 @overload
 def pow(x: int, y: int) -> Any: pass
