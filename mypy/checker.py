@@ -2,7 +2,7 @@
 
 import itertools
             
-from typing import Undefined, Any, Dict, List, cast, overload, Tuple, Function
+from typing import Undefined, Any, Dict, List, cast, overload, Tuple, Function, typevar
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -46,6 +46,14 @@ from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, i
 ISINSTANCE_OVERLAPPING = 0
 ISINSTANCE_ALWAYS_TRUE = 1
 ISINSTANCE_ALWAYS_FALSE = 2
+
+T = typevar('T')
+
+def min_with_None_large(x: T, y: T) -> T:
+    """Return min(x, y) but with  a < None for all variables a that are not None"""
+    if x is None:
+        return y
+    return min(x, x if y is None else y)
 
 class Frame(Dict[Any, Type]): pass
 
@@ -148,9 +156,7 @@ class ConditionalTypeBinder:
                     break
                 del f[expr.literal_hash]
                 self.types[expr.literal_hash].pop()
-                self.min_frame = min(self.min_frame if self.min_frame is not None
-                                     else len(self.frames),
-                                     len(self.frames) - counter)
+                self.min_frame = min_with_None_large(self.min_frame, len(self.frames) - counter)
 
 
 
@@ -266,7 +272,7 @@ class TypeChecker(NodeVisitor[Type]):
             answer = self.accept(node, type_context)
             self.binder.pop_frame()
             this_min_frame = self.binder.min_frame
-            self.binder.min_frame = old_min_frame
+            self.binder.min_frame = min_with_None_large(old_min_frame, this_min_frame)
             self.breaking_out = False
 
             if not repeat_till_fixed or this_min_frame is None or this_min_frame >= len(self.binder.frames):
