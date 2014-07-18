@@ -18,6 +18,7 @@ class bool(int): pass
 @builtinclass
 class str:
     def __add__(self, x: str) -> str: pass
+    def __getitem__(self, x: int) -> str: pass
 
 T = typevar('T')
 
