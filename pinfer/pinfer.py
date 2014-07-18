@@ -6,8 +6,10 @@ import codecs
 import tokenize
 try:
     from StringIO import StringIO
+    from unparse import Unparser
 except:
     from io import StringIO
+    from unparse3 import Unparser
 import ast
 
 
@@ -73,20 +75,26 @@ def format_state(pretty=False):
     return '\n'.join(lines)
 
 
-def format_sig(funcid, fname, indent, pretty):
+def format_sig(funcid, fname, indent, pretty, defaults=[]):
     lines = []
     args = []
     kwargs = []
 
     # Sort argid set by index.
     argids = sorted(func_argid_db[funcid], key=lambda x: x[0])
-    for i, arg in argids:
+
+    # pad defaults to match the length of args
+    defaults = ([None] * (len(argids) - len(defaults))) + defaults
+
+    for (i, arg), default in zip(argids, defaults):
         if i == 0 and arg == 'self':
             # Omit type of self argument.
             t = ''
         else:
             t = ': %s' % func_arg_db[(funcid, i)]
         argstr = '%s%s' % (arg, t)
+        if default:
+            argstr += ' = %s' % default
         if i >= 0:
             args.append(argstr)
         else:
@@ -148,8 +156,6 @@ def annotate_file(path):
         else:
             indent = ''
 
-        annotated_def = format_sig(funcid, name, indent, True)
-
         # Find the first indent, which should be between the end of the def
         # and before the start of the body.  Then find the preceding colon,
         # which should be at the end of the def.
@@ -181,7 +187,25 @@ def annotate_file(path):
         def_start_offset = line_offsets[def_start_line]
         def_end_offset = line_offsets[def_end_line] + def_end_col
 
+        # get the defaults as strings
+        # parse the function, get the nodes for the defaults, then unparse them
+        fn_ast = ast.parse(func_source.strip()).body[0]
+        defaults_nodes = fn_ast.args.defaults
+        # for now, we're not going to care about kw_only args
+
+        def unparse(node):
+            buf = StringIO()
+            Unparser(node, buf)
+            return buf.getvalue().strip()
+
+        defaults = [unparse(dn) for dn in defaults_nodes]
+
+        annotated_def = format_sig(funcid, name, indent, True, defaults)
+
         replacements.append((def_start_offset, def_end_offset, annotated_def))
+
+    # ideally, we'd put this after the docstring
+    replacements.append((0, 0, "from typing import List, Union, Function\n"))
 
     # absurdly inefficient algorithm: replace with O(n) writer
 
