@@ -70,7 +70,8 @@ class ConditionalTypeBinder:
 
         self.frames_on_escape = Dict[int, Frame]()
 
-        self.escapable_frames = Set[int]()
+        self.try_frames = Set[int]()
+        self.loop_frames = List[int]()
 
     def _add_dependencies(self, key: Any, value: Any):
         if isinstance(key, tuple):
@@ -183,7 +184,7 @@ class ConditionalTypeBinder:
         else:
             self.push(expr, type)
 
-        for i in self.escapable_frames:
+        for i in self.try_frames:
             self.allow_jump(i)
 
     def invalidate_dependencies(self, expr: Node) -> None:
@@ -209,7 +210,11 @@ class ConditionalTypeBinder:
                                                     if is_subtype(type, t)]
         return enclosers[-1]
 
-    def allow_jump(self, index: int) -> None:
+    def allow_jump(self, index: int = None) -> None:
+        if index is None:
+            if not self.loop_frames:
+                return
+            index = self.loop_frames[-1]
         new_frame = Frame()
         for f in self.frames[index:]:
             for k in f:
@@ -224,6 +229,13 @@ class ConditionalTypeBinder:
                 old_frame[k] = new_frame[k]
             else:
                 old_frame[k] = join_simple(self.declared_types[k], old_type, new_frame[k], self.basic_types_fn())
+
+    def push_loop_frame(self):
+        self.loop_frames.append(len(self.frames)-1)
+
+    def pop_loop_frame(self):
+        self.loop_frames.pop()
+
 
 
 def join_frames(basic_types: BasicTypes, binder: ConditionalTypeBinder,
@@ -332,11 +344,10 @@ class TypeChecker(NodeVisitor[Type]):
     def accept_in_frame(self, node: Node, type_context: Type = None, repeat_till_fixed = False) -> Type:
         """Type check a node in the given type context in a new frame of inferred types."""
         while True:
-            self.binder.escapable_frames.add(len(self.binder.frames)-1)
             self.binder.push_frame()
             answer = self.accept(node, type_context)
             changed, frame_on_completion = self.binder.pop_frame()
-            self.binder.escapable_frames.remove(len(self.binder.frames)-1)
+            changed = self.binder.update_expand(frame_on_completion) or changed
             self.breaking_out = False
 
             if not repeat_till_fixed or not changed:
@@ -1256,7 +1267,9 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a while statement."""
         t = self.accept(s.expr)
         self.check_not_void(t, s)
+        self.binder.push_loop_frame()
         self.accept_in_frame(s.body, repeat_till_fixed=True)
+        self.binder.pop_loop_frame()
         if s.else_body:
             self.accept(s.else_body)
     
@@ -1298,7 +1311,9 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
+        self.binder.try_frames.add(len(self.binder.frames)-1)
         self.accept_in_frame(s.body)
+        self.binder.try_frames.remove(len(self.binder.frames)-1)
         for i in range(len(s.handlers)):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
@@ -1356,7 +1371,9 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a for statement."""
         item_type = self.analyse_iterable_item_type(s.expr)
         self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
+        self.binder.push_loop_frame()
         self.accept_in_frame(s.body, repeat_till_fixed=True)
+        self.binder.pop_loop_frame()
 
     def analyse_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
@@ -1483,10 +1500,12 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_break_stmt(self, s: BreakStmt) -> Type:
         self.breaking_out = True
+        self.binder.allow_jump()
         return None
 
     def visit_continue_stmt(self, s: ContinueStmt) -> Type:
         self.breaking_out = True
+        self.binder.allow_jump()
         return None
 
     def visit_int_expr(self, e: IntExpr) -> Type:

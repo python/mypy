@@ -30,7 +30,7 @@ x + 1    # E: Unsupported operand types for + ("str" and "int")
 
 [builtins fixtures/isinstancelist.py]
 
-[case testUnionIfZigzag-skip]
+[case testUnionIfZigzag]
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
@@ -38,11 +38,31 @@ def f(x: Union[int, str]) -> None:
     if x:
         x = 'a'
         x = 1
-    x + 1          # My code fails
+    x + 1
 [builtins fixtures/isinstancelist.py]
 
 
-[case testComplicatedBlocks-skip]
+[case testTwoLoopsUnion]
+from typing import Union
+
+def foo() -> Union[int, str]: pass
+
+def bar() -> None:
+    x = foo()
+    if isinstance(x, int):
+        return
+    while 1:
+        x + 'a'
+        while 1:
+            x = foo()
+            if 1:
+                return
+            x = 'a'
+    x + 'a'
+
+[builtins fixtures/isinstancelist.py]
+
+[case testComplicatedBlocks]
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -64,7 +84,7 @@ def bar() -> None:
     if isinstance(x, int):
         return
     while 1:
-        x + 'a'             # E: Unsupported operand types for + (likely involving Union)
+        x + 'a'
         while 1:
             x + 'a'         # E: Unsupported operand types for + (likely involving Union)
             x = foo()
@@ -87,11 +107,12 @@ x = B()
 x.z
 try:
     x.z
+    x = A()
     x = B()
     x.z
 except:
     pass
-x.z
+x.z           # E: "A" has no attribute "z"
 
 
 [case testUnionTryExcept2-skip]
