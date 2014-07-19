@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.html
 
-from typing import Undefined, Mapping, List, overload, Any, Tuple, Iterator
+from typing import Undefined, Mapping, Dict, List, overload, Any, Tuple, Iterator
 from builtins import OSError as error
 import os.path as path
 

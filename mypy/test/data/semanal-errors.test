@@ -1073,3 +1073,11 @@ x.y
 y = 1
 [file y.py]
 [out]
+
+[case testListTypeAliasWithoutImport]
+import typing
+def f() -> List[int]: pass
+[builtins fixtures/list.py]
+[out]
+main: In function "f":
+main, line 2: Name 'List' is not defined
