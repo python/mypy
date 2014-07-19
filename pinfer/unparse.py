@@ -1,6 +1,11 @@
+# From Python 2's Demo/parser/unparse.py
+# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+# 2011, 2012, 2013, 2014 Python Software Foundation; All Rights Reserved
+
 "Usage: unparse.py <path to source file>"
 import sys
 import ast
+import cStringIO
 import os
 
 # Large float and imaginary literals get turned into infinities in the AST.
@@ -574,9 +579,32 @@ def roundtrip(filename, output=sys.stdout):
     Unparser(tree, output)
 
 
+
+def testdir(a):
+    try:
+        names = [n for n in os.listdir(a) if n.endswith('.py')]
+    except OSError:
+        sys.stderr.write("Directory not readable: %s" % a)
+    else:
+        for n in names:
+            fullname = os.path.join(a, n)
+            if os.path.isfile(fullname):
+                output = cStringIO.StringIO()
+                print 'Testing %s' % fullname
+                try:
+                    roundtrip(fullname, output)
+                except Exception as e:
+                    print '  Failed to compile, exception is %s' % repr(e)
+            elif os.path.isdir(fullname):
+                testdir(fullname)
+
 def main(args):
-    for a in args:
-        roundtrip(a)
+    if args[0] == '--testdir':
+        for a in args[1:]:
+            testdir(a)
+    else:
+        for a in args:
+            roundtrip(a)
 
 if __name__=='__main__':
     main(sys.argv[1:])
