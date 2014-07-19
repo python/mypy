@@ -115,7 +115,7 @@ except:
 x.z           # E: "A" has no attribute "z"
 
 
-[case testUnionTryExcept2-skip]
+[case testUnionTryExcept2]
 
 class A: y = A()
 class B(A): z = 1
@@ -123,13 +123,16 @@ class B(A): z = 1
 x = A()
 try:
     x.z # E: "A" has no attribute "z"
+    x = A()
     x = B()
     x.z
 except:
     x.z # E: "A" has no attribute "z"
     x = B()
     x.z
-x.z     # My code fails
+else:
+    x = B()
+x.z
 
 
 [case testUnionListIsinstance]

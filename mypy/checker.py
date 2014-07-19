@@ -1311,18 +1311,35 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        self.binder.try_frames.add(len(self.binder.frames)-1)
-        self.accept_in_frame(s.body)
-        self.binder.try_frames.remove(len(self.binder.frames)-1)
+        completed_frames = []
+        self.binder.push_frame()
+        self.binder.try_frames.add(len(self.binder.frames)-2)
+        self.accept(s.body)
+        self.binder.try_frames.remove(len(self.binder.frames)-2)
+        if s.else_body:
+            self.accept(s.else_body)
+        changed, frame_on_completion = self.binder.pop_frame()
+        completed_frames.append(frame_on_completion)
+
         for i in range(len(s.handlers)):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
                     self.check_assignments([s.vars[i]],
                                            self.temp_node(t, s.vars[i]))
-            self.accept_in_frame(s.handlers[i])
+            self.binder.push_frame()
+            self.accept(s.handlers[i])
+            changed, frame_on_completion = self.binder.pop_frame()
+            completed_frames.append(frame_on_completion)
         if s.else_body:
-            self.accept_in_frame(s.else_body)
+            self.binder.push_frame()
+            self.accept(s.else_body)
+            changed, frame_on_completion = self.binder.pop_frame()
+            completed_frames.append(frame_on_completion)
+
+        ending_frame = join_frames(self.basic_types(), self.binder, *completed_frames)
+        for key in ending_frame:
+            self.binder._push(key, ending_frame[key])
         if s.finally_body:
             self.accept(s.finally_body)
     
