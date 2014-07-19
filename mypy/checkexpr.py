@@ -867,7 +867,7 @@ class ExpressionChecker:
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         elif op == '+':
-            return e.expr.accept(self)
+            return e.expr.accept(self.chk)
         else:
             raise NotImplementedError(op)
         return result
