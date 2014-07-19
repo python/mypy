@@ -8,7 +8,7 @@ from mypy.types import (
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import (
-    GDEF, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, type_aliases
+    GDEF, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr
 )
 from mypy.sametypes import is_same_type
 from mypy import nodes
@@ -44,16 +44,12 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif sym.node.fullname() == 'typing.Function':
                 return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):
-                if sym.fullname in type_aliases:
-                    info = cast(TypeInfo, self.lookup(type_aliases[sym.fullname], t).node)
-                else:
-                    name = sym.fullname
-                    if name is None:
-                        name = sym.node.name()
-                    self.fail('Invalid type "{}"'.format(name), t)
-                    return t
-            else:
-                info = cast(TypeInfo, sym.node)
+                name = sym.fullname
+                if name is None:
+                    name = sym.node.name()
+                self.fail('Invalid type "{}"'.format(name), t)
+                return t
+            info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args), t.line, t.repr)
             else:

@@ -287,11 +287,11 @@ main, line 1: No module named 'xyz'
 main, line 2: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
-import xab
-def xab(): pass
+import x
+def x(): pass
 [out]
-main, line 1: No module named 'xab'
-main, line 1: Name 'xab' already defined
+main, line 1: No module named 'x'
+main, line 1: Name 'x' already defined
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -323,8 +323,3 @@ x('')
 main, line 2: No module named 'foobar'
 main, line 4: Too many arguments for "x"
 
-[case testImportStarTyping]
-from typing import *
-x = Undefined(List[int])
-[builtins fixtures/for.py]
-[out]
