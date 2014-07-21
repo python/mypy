@@ -70,7 +70,8 @@ class ConditionalTypeBinder:
         self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
         self.basic_types_fn = basic_types_fn
 
-        self.changed_frames = Set[int]()
+        self.frames_on_escape = Dict[int, List[Frame]]()
+
         self.try_frames = Set[int]()
         self.loop_frames = List[int]()
 
@@ -115,8 +116,9 @@ class ConditionalTypeBinder:
 
     def update_from_options(self, frames: List[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
-        as in one of the frames."""
+        as in one of the frames.  Return whether any item changes."""
 
+        changed = False
         keys = set(key for f in frames for key in f)
 
         for key in keys:
@@ -129,7 +131,11 @@ class ConditionalTypeBinder:
             for other in resulting_values[1:]:
                 type = join_simple(self.frames[0][key], type,
                                    other, self.basic_types_fn())
-            self._push(key, type)
+            if not is_same_type(type, current_value):
+                self._push(key, type)
+                changed = True
+
+        return changed
 
 
     def update_expand(self, frame: Frame, index: int=-1) -> bool:
@@ -151,8 +157,14 @@ class ConditionalTypeBinder:
                 result = True
         return result
 
-    def pop_frame(self) -> (bool, Frame):
+    def pop_frame(self, canskip=True, fallthrough=False) -> (bool, Frame):
         """Pop a frame.
+
+        If canskip, then allow types to skip all the inner frame
+        blocks.
+
+        If fallthrough, then allow types to escape from the inner
+        frame to the resulting frame.
 
         Return whether the newly innermost frame was modified since it
         was last on top, and what it would be if the block had run to
@@ -160,9 +172,14 @@ class ConditionalTypeBinder:
         """
         result = self.frames.pop()
 
-        i = len(self.frames)-1
-        changed = i in self.changed_frames
-        self.changed_frames.discard(i)
+        options = self.frames_on_escape.get(len(self.frames)-1, [])
+        if canskip:
+            options.append(self.frames[-1])
+        if fallthrough:
+            options.append(result)
+
+        changed = self.update_from_options(options)
+
         return (changed, result)
 
     def get_declaration(self, expr: Node):
@@ -229,19 +246,13 @@ class ConditionalTypeBinder:
              if key in f and is_subtype(type, f[key])])
         return enclosers[-1]
 
-    def allow_jump(self, index: int = None) -> None:
-        if index is None:
-            if not self.loop_frames:
-                return
-            index = self.loop_frames[-1]
-
+    def allow_jump(self, index: int) -> None:
         new_frame = Frame()
         for f in self.frames[index+1:]:
             for k in f:
                 new_frame[k] = f[k]
 
-        if self.update_expand(new_frame, index):
-            self.changed_frames.add(index)
+        self.frames_on_escape.setdefault(index, []).append(new_frame)
 
     def push_loop_frame(self):
         self.loop_frames.append(len(self.frames)-1)
@@ -343,10 +354,8 @@ class TypeChecker(NodeVisitor[Type]):
         while True:
             self.binder.push_frame()
             answer = self.accept(node, type_context)
-            changed, frame_on_completion = self.binder.pop_frame()
-            changed = self.binder.update_expand(frame_on_completion) or changed
+            changed, _ = self.binder.pop_frame(True, True)
             self.breaking_out = False
-
             if not repeat_till_fixed or not changed:
                 break
 
@@ -1257,12 +1266,14 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
+        self.binder.push_frame()
         self.binder.push_loop_frame()
         self.accept_in_frame(IfStmt([s.expr], [s.body], None),
                              repeat_till_fixed=True)
         self.binder.pop_loop_frame()
         if s.else_body:
             self.accept(s.else_body)
+        self.binder.pop_frame(False, True)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> Type:
@@ -1378,9 +1389,13 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a for statement."""
         item_type = self.analyse_iterable_item_type(s.expr)
         self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
+        self.binder.push_frame()
         self.binder.push_loop_frame()
         self.accept_in_frame(s.body, repeat_till_fixed=True)
         self.binder.pop_loop_frame()
+        if s.else_body:
+            self.accept(s.else_body)
+        self.binder.pop_frame(False, True)
 
     def analyse_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
@@ -1507,12 +1522,12 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_break_stmt(self, s: BreakStmt) -> Type:
         self.breaking_out = True
-        self.binder.allow_jump()
+        self.binder.allow_jump(self.binder.loop_frames[-1]-1)
         return None
 
     def visit_continue_stmt(self, s: ContinueStmt) -> Type:
         self.breaking_out = True
-        self.binder.allow_jump()
+        self.binder.allow_jump(self.binder.loop_frames[-1])
         return None
 
     def visit_int_expr(self, e: IntExpr) -> Type:
