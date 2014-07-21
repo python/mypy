@@ -56,95 +56,95 @@ def min_with_None_large(x: T, y: T) -> T:
     return min(x, x if y is None else y)
 
 class Frame(Dict[Any, Type]): pass
+Key = Any
+
 
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self, basic_types_fn) -> None:
-        self.types = Dict[Any, List[Type]]()
-        self.frames = []
-        self.dependencies = {}  # Set of other keys to invalidate if a key is changed
+        self.frames = List[Frame]()
+        # The first frame is special: it's the declared types of variables.
+        self.frames.append(Frame())
+        self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key is changed
+        self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
         self.basic_types_fn = basic_types_fn
-        self.min_frame = None # type: int    # index of outermost frame that was modified
-        self.declared_types = Dict[Any, Type]()
 
-        self.frames_on_escape = Dict[int, Frame]()
-
+        self.changed_frames = Set[int]()
         self.try_frames = Set[int]()
         self.loop_frames = List[int]()
 
-    def _add_dependencies(self, key: Any, value: Any):
+    def _add_dependencies(self, key: Key, value: Key = None) -> None:
+        if value is None:
+            value = key
+            if value in self._added_dependencies:
+                return
+            self._added_dependencies.add(value)
         if isinstance(key, tuple):
             if key != value:
                 self.dependencies.setdefault(key, set()).add(value)
             for elt in key:
                 self._add_dependencies(elt, value)
 
-    def _push(self, key: Any, value: Type) -> None:
-        if key in self.frames[-1]:
-            self.types[key][-1] = value
-        else:
-            if key not in self.types:
-                self.types[key] = []
-                self._add_dependencies(key, key)
-            self.types[key].append(value)
-        self.frames[-1][key] = value
-
     def push_frame(self) -> Frame:
         d = Frame()
         self.frames.append(d)
         return d
 
+    def _push(self, key: Key, type: Type, index: int=-1) -> None:
+        self._add_dependencies(key)
+        self.frames[index][key] = type
+
+    def _get(self, key: Key, index: int=-1) -> Type:
+        if index < 0:
+            index += len(self.frames)
+        for i in range(index, -1, -1):
+            if key in self.frames[i]:
+                return self.frames[i][key]
+        return None
+
     def push(self, expr: Node, type: Type) -> None:
         if not expr.literal:
             return
-        self.declared_types[expr.literal_hash] = self.get_declaration(expr)
-        self._push(expr.literal_hash, type)
+        key = expr.literal_hash
+        self.frames[0][key] = self.get_declaration(expr)
+        self._push(key, type)
 
-    def update_expand(self, frame: Frame) -> bool:
+    def get(self, expr: Node) -> Type:
+        return self._get(expr.literal_hash)
+
+    def update_expand(self, frame: Frame, index: int=-1) -> bool:
         """Update the frame to include another one, if that other one is larger than the current value.
 
         Return whether anything changed."""
         result = False
 
         for key in frame:
-            old_type = (self.types.get(key) or [self.declared_types[key]])[-1]
+            old_type = self._get(key, index)
             if old_type is None:
                 continue
-            replacement = join_simple(self.declared_types[key], old_type, frame[key], self.basic_types_fn())
+            replacement = join_simple(self.frames[0][key], old_type, frame[key], self.basic_types_fn())
 
             if not is_same_type(replacement, old_type):
-                self._push(key, replacement)
-                #print("Changing type of", key, "from", old_val, "to", self.frames[-1].get(key))
+                self._push(key, replacement, index)
+                #print("Changing type of", key, "from", old_type, "to", self.frames[-1].get(key))
                 #print("Frames are", len(self.frames))
                 result = True
         return result
 
     def pop_frame(self) -> (bool, Frame):
-        """Pop a frame, setting the newly innermost frame to what it is from frames_on_escape.
+        """Pop a frame.
 
-        Return whether the newly innermost frame was modified, and
-        what it would be if the block had run to completion.
+        Return whether the newly innermost frame was modified since it
+        was last on top, and what it would be if the block had run to
+        completion.
         """
-        for key in self.frames[-1]:
-            self.types[key].pop()
         result = self.frames.pop()
 
-        changed = False
-
         i = len(self.frames)-1
-        if i in self.frames_on_escape:
-            changed = self.update_expand(self.frames_on_escape[i]) or changed
-            del self.frames_on_escape[i]
-
+        changed = i in self.changed_frames
+        self.changed_frames.discard(i)
         return (changed, result)
-
-    def get(self, expr: Node) -> Type:
-        values = self.types.get(expr.literal_hash)
-        if values:
-            return values[-1]
-        else:
-            return self.get_declaration(expr)
 
     def get_declaration(self, expr: Node):
         if hasattr(expr, 'node') and isinstance(expr.node, Var):
@@ -197,17 +197,17 @@ class ConditionalTypeBinder:
         in code paths unreachable from here.
         """
         for dep in self.dependencies.get(expr.literal_hash, []):
-            if dep in self.types:
-                del self.types[dep]
-                for f in self.frames:
-                    if dep in f:
-                        del f[dep]
+            for f in self.frames:
+                if dep in f:
+                    del f[dep]
 
     def most_recent_enclosing_type(self, expr: Node, type: Type) -> Type:
         if isinstance(type, AnyType):
             return self.get_declaration(expr)
-        enclosers = [self.get_declaration(expr)] + [t for t in self.types.get(expr.literal_hash, [])
-                                                    if is_subtype(type, t)]
+        key = expr.literal_hash
+        enclosers = ([self.get_declaration(expr)] +
+            [f[key] for f in self.frames
+             if key in f and is_subtype(type, f[key])])
         return enclosers[-1]
 
     def allow_jump(self, index: int = None) -> None:
@@ -215,27 +215,20 @@ class ConditionalTypeBinder:
             if not self.loop_frames:
                 return
             index = self.loop_frames[-1]
+
         new_frame = Frame()
-        for f in self.frames[index:]:
+        for f in self.frames[index+1:]:
             for k in f:
                 new_frame[k] = f[k]
 
-        old_frame = self.frames_on_escape.setdefault(index, Frame())
-
-        for k in new_frame:
-            old_type = old_frame.get(k)
-
-            if old_type is None:
-                old_frame[k] = new_frame[k]
-            else:
-                old_frame[k] = join_simple(self.declared_types[k], old_type, new_frame[k], self.basic_types_fn())
+        if self.update_expand(new_frame, index):
+            self.changed_frames.add(index)
 
     def push_loop_frame(self):
         self.loop_frames.append(len(self.frames)-1)
 
     def pop_loop_frame(self):
         self.loop_frames.pop()
-
 
 
 def join_frames(basic_types: BasicTypes, binder: ConditionalTypeBinder,
@@ -245,7 +238,7 @@ def join_frames(basic_types: BasicTypes, binder: ConditionalTypeBinder,
         type = frames[0][key]
         for f in frames[1:]:
             if key in f:
-                type = join_simple(binder.declared_types[key], type,
+                type = join_simple(binder.frames[0][key], type,
                                    f[key], basic_types)
             else:
                 break
@@ -1342,7 +1335,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.binder._push(key, ending_frame[key])
         if s.finally_body:
             self.accept(s.finally_body)
-    
+
     def exception_type(self, n: Node) -> Type:
         if isinstance(n, ParenExpr):
             # Multiple exception types (...).
