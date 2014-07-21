@@ -1,3 +1,23 @@
+[case testIsinstanceFancyConditionals]
+
+class A: pass
+class B(A): y = 1
+
+x =  A()
+
+if isinstance(x, B):
+    x.y
+
+while isinstance(x, B):
+    x.y
+
+while isinstance(x, B):
+    x.y
+    x = B()
+
+[builtins fixtures/isinstance.py]
+
+
 [case testSubtypingWithAny]
 
 class A: y = 1

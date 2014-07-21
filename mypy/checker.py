@@ -113,6 +113,25 @@ class ConditionalTypeBinder:
     def get(self, expr: Node) -> Type:
         return self._get(expr.literal_hash)
 
+    def update_from_options(self, frames: List[Frame]) -> bool:
+        """Update the frame to reflect that each key will be updated
+        as in one of the frames."""
+
+        keys = set(key for f in frames for key in f)
+
+        for key in keys:
+            current_value = self._get(key)
+            resulting_values = [f.get(key, current_value) for f in frames]
+            if any(x is None for x in resulting_values):
+                continue
+
+            type = resulting_values[0]
+            for other in resulting_values[1:]:
+                type = join_simple(self.frames[0][key], type,
+                                   other, self.basic_types_fn())
+            self._push(key, type)
+
+
     def update_expand(self, frame: Frame, index: int=-1) -> bool:
         """Update the frame to include another one, if that other one is larger than the current value.
 
@@ -230,21 +249,6 @@ class ConditionalTypeBinder:
     def pop_loop_frame(self):
         self.loop_frames.pop()
 
-
-def join_frames(basic_types: BasicTypes, binder: ConditionalTypeBinder,
-                *frames: Frame) -> Frame:
-    answer = Frame()
-    for key in frames[0]:
-        type = frames[0][key]
-        for f in frames[1:]:
-            if key in f:
-                type = join_simple(binder.frames[0][key], type,
-                                   f[key], basic_types)
-            else:
-                break
-        else:
-            answer[key] = type
-    return answer
 
 def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
     answer = Frame()
@@ -1248,24 +1252,18 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 ending_frames.append(clauses_frame)
 
-        ending_frame = join_frames(self.basic_types(), self.binder,
-                                   *ending_frames)
-
-
         self.binder.pop_frame()
-        for key in ending_frame:
-            self.binder._push(key, ending_frame[key])
+        self.binder.update_from_options(ending_frames)
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
-        t = self.accept(s.expr)
-        self.check_not_void(t, s)
         self.binder.push_loop_frame()
-        self.accept_in_frame(s.body, repeat_till_fixed=True)
+        self.accept_in_frame(IfStmt([s.expr], [s.body], None),
+                             repeat_till_fixed=True)
         self.binder.pop_loop_frame()
         if s.else_body:
             self.accept(s.else_body)
-    
+
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> Type:
         """Type check an operator assignment statement, e.g. x += 1."""
@@ -1330,9 +1328,8 @@ class TypeChecker(NodeVisitor[Type]):
             changed, frame_on_completion = self.binder.pop_frame()
             completed_frames.append(frame_on_completion)
 
-        ending_frame = join_frames(self.basic_types(), self.binder, *completed_frames)
-        for key in ending_frame:
-            self.binder._push(key, ending_frame[key])
+        self.binder.update_from_options(completed_frames)
+
         if s.finally_body:
             self.accept(s.finally_body)
 
