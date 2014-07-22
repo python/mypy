@@ -1,6 +1,7 @@
 """Tools for runtime type inference"""
 
 import inspect
+from inspect3 import getfullargspec, getcallargs
 import types
 import codecs
 import os
@@ -19,10 +20,11 @@ PREFERRED_LINE_LENGTH = 79
 
 
 var_db = {} # (location, variable) -> type
-func_argid_db = {} # funcname -> set of (argindex, name)
-func_arg_db = {} # (funcname, argindex/name) -> type
+func_argid_db = {} # funcid -> argspec
+func_arg_db = {} # (funcid, name) -> type
 func_return_db = {} # funcname -> type
 func_source_db = {} # funcid -> source string
+#func_info_db = {} # funcid -> (class, name, argspec, file, line, source)
 ignore_files = set()
 
 # The type inferencing wrapper should not be reentrant.  It's not, in theory, calling
@@ -56,7 +58,7 @@ def format_state(pretty=False):
     lines = []
     for loc, var in sorted(var_db.keys()):
         lines.append('%s: %s' % (var, var_db[(loc, var)]))
-    funcnames = sorted(set(name for name, arg in func_arg_db))
+    funcnames = sorted(set(func_argid_db.keys()))
     prevclass = ''
     indent = ''
     for funcid in funcnames:
@@ -85,13 +87,6 @@ def unparse_ast(node):
 
 
 def format_sig(funcid, fname, indent, pretty, defaults=[]):
-    lines = []
-    args = []
-    kwargs = []
-
-    # Sort argid set by index.
-    argids = sorted(func_argid_db[funcid], key=lambda x: x[0])
-
     # to get defaults, parse the function, get the nodes for the
     # defaults, then unparse them
     try:
@@ -107,41 +102,58 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
     except:
         defaults = []
 
-    # pad defaults to match the length of args
-    defaults = ([None] * (len(argids) - len(defaults))) + defaults
+    (argnames, varargs, varkw, _, kwonlyargs, _, _) = func_argid_db[funcid]
 
-    for (i, arg), default in zip(argids, defaults):
-        if i == 0 and arg == 'self':
+    # pad defaults to match the length of args
+    defaults = ([None] * (len(argnames) - len(defaults))) + defaults
+
+    args = [('', arg, default) for (arg, default) in zip(argnames, defaults)]
+    if varargs:
+        args += [('*', varargs, None)]
+    elif len(kwonlyargs) > 0:
+        args += [('*', '', None)]
+    if len(kwonlyargs) > 0:
+        # zip in kw_defaults
+        args += [('', arg, None) for arg in kwonlyargs]
+    if varkw:
+        args += [('**', varkw, None)]
+
+    argstrs = []
+    for i, (prefix, arg, default) in enumerate(args):
+        argstr = prefix + arg
+
+        if (funcid, arg) in func_arg_db:
             # Omit type of self argument.
-            t = ''
-        else:
-            t = ': %s' % func_arg_db[(funcid, i)]
-        argstr = '%s%s' % (arg, t)
+            if not (i == 0 and arg == 'self'):
+                argstr += ': %s' % func_arg_db[(funcid, arg)]
+
         if default:
             argstr += ' = %s' % default
-        if i >= 0:
-            args.append(argstr)
-        else:
-            kwargs.append(argstr)
+
+        argstrs.append(argstr)
+
     ret = str(func_return_db.get(funcid, Unknown()))
 
-    sig = 'def %s(%s) -> %s' % (fname, ', '.join(args + kwargs), ret)
+    sig = 'def %s(%s) -> %s' % (fname, ', '.join(argstrs), ret)
     if not pretty or len(sig) <= PREFERRED_LINE_LENGTH or not args:
-        lines.append(indent + sig)
+        return indent + sig
+
     else:
         # Format into multiple lines to conserve horizontal space.
+        lines = []
         first = 'def %s(' % fname
-        if args[0] == 'self':
+        if args[0][1] == 'self':
             first += 'self,'
-            args = args[1:]
+            args, argstrs = args[1:], argstrs[1:]
         lines.append(indent + first)
-        for arg in args:
-            lines.append(indent + ' ' * 8 + '%s,' % arg)
+        indent = ' ' * (1+first.index('('))
+        for arg in argstrs:
+            lines.append(indent + '%s,' % arg)
         if len(lines[-1]) + 4 + len(ret) <= PREFERRED_LINE_LENGTH:
             lines[-1] = lines[-1][:-1] + ') -> %s' % ret
         else:
-            lines.append(indent + ' ' * 8 + ') -> %s' % ret)
-    return '\n'.join(lines)
+            lines.append(indent + ') -> %s' % ret)
+        return '\n'.join(lines)
 
 def annotate_file(path):
     # this should be documented somewhere...
@@ -298,32 +310,14 @@ def infer_method_signature(class_name):
         if class_name:
             name = '%s.%s' % (class_name, name)
 
-        name = ':'.join([name, funcfile, str(sourceline)])
-        func_source_db[name] = ''.join(funcsource)
+        funcid = ':'.join([name, funcfile, str(sourceline)])
+        func_source_db[funcid] = ''.join(funcsource)
 
         try:
-            if hasattr(inspect, 'getfullargspec'):
-                argspec = inspect.getfullargspec(func)
-                argnames = argspec.args
-                varargs = argspec.varargs
-                varkw = argspec.varkw
-                defaults = argspec.defaults
-                kwonlyargs = argspec.kwonlyargs
-
-            else:
-                argspec = inspect.getargspec(func)
-                argnames = argspec.args
-                varargs = argspec.varargs
-                varkw = argspec.keywords
-                defaults = argspec.defaults
-                kwonlyargs = []
-
+            argspec = getfullargspec(func)
         except TypeError:
             # Not supported.
             return func
-        min_arg_count = len(argnames)
-        if defaults:
-            min_arg_count -= len(defaults)
 
         def wrapper(*args, **kwargs):
             global is_performing_inference
@@ -333,64 +327,18 @@ def infer_method_signature(class_name):
             if is_performing_inference:
                 return func(*args, **kwargs)
 
+            expecting_type_error, got_type_error, got_exception = False, False, False
+
+            # collect arg ids and types
+            arg_db = {}
+
             is_performing_inference = True
-
-            got_type_error, got_exception = False, False
             try:
-                # collect arg ids and types
-                argids = set()
-                arg_db = {}
-                expecting_type_error = False
-
-                used_kwargs = set()
-                for i, arg in enumerate(argnames):
-                    if i < len(args):
-                        argvalue = args[i]
-                    elif arg in kwargs:
-                        argvalue = kwargs[arg]
-                        used_kwargs.add(arg)
-                    elif i >= min_arg_count:
-                        argvalue = defaults[i - min_arg_count]
-                    else:
-                        # we should get here when we call a function with fewer arguments
-                        # than min_arg_count, and no keyword arguments to cover the required
-                        # unpassed positional arguments.
-                        # We should get a TypeError when we do the call
-                        expecting_type_error = True
-                        continue
-                    key = (name, i)
-                    update_db(arg_db, key, argvalue)
-                    argids.add((i, arg))
-                if varargs:
-                    for i in range(len(argnames), len(args)):
-                        key = (name, len(argnames))
-                        update_db(arg_db, key, args[i])
-                        argids.add((len(argnames), varargs))
-                if kwonlyargs:
-                    used_kwonlyargs = set()
-                    for arg, value in kwargs.items():
-                        if arg in kwonlyargs:
-                            index = len(argnames) + kwonlyargs.index(arg)
-                            key = (name, index)
-                            update_db(arg_db, key, value)
-                            argids.add((index, arg))
-                            used_kwargs.add(arg)
-                            used_kwonlyargs.add(arg)
-                    for i, arg in enumerate(kwonlyargs):
-                        if arg not in used_kwonlyargs:
-                            index = len(argnames) + i
-                            key = (name, index)
-                            update_db(arg_db, key,
-                                      argspec.kwonlydefaults[arg])
-                            argids.add((index, arg))
-                if kwargs:
-                    for arg, value in kwargs.items():
-                        if arg not in used_kwargs:
-                            key = (name, -1)
-                            update_db(arg_db, key, value)
-                            argids.add((-1, varkw))
+                callargs = getcallargs(func, *args, **kwargs)
+                for argname, value in callargs.items():
+                    update_db(arg_db, (funcid, argname), value)
             except:
-                got_type_error = got_exception = True
+                expecting_type_error = True
             finally:
                 is_performing_inference = False
 
@@ -407,14 +355,14 @@ def infer_method_signature(class_name):
                     assert (not got_type_error) or expecting_type_error
 
                     # if we didn't get a TypeError, update the actual databases
-                    func_argid_db.setdefault(name, set()).update(argids)
+                    func_argid_db[funcid] = argspec
                     merge_db(func_arg_db, arg_db)
 
                     # if we got an exception, we don't have a ret
                     if not got_exception:
                         is_performing_inference = True
                         try:
-                            update_db(func_return_db, name, ret)
+                            update_db(func_return_db, funcid, ret)
                         except:
                             pass
                         finally:
@@ -523,6 +471,10 @@ def infer_value_types(values, depth=0):
 def sample(values):
     # TODO only return a sample of values
     return list(values)
+
+
+def union_many_types(types):
+    return reduce(combine_types, types, Unknown())
 
 
 def combine_types(x, y):
