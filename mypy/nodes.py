@@ -1157,21 +1157,21 @@ class SetExpr(Node):
 
 
 class GeneratorExpr(Node):
-    """Generator expression ... for ... in ... [ if ... ]."""
+    """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
     
     left_expr = Undefined(Node)
-    right_expr = Undefined(Node)
+    sequences_expr = Undefined(Node)
     condition = Undefined(Node)   # May be None
-    index = Undefined(List[NameExpr])
+    indices = Undefined(List[NameExpr])
     types = Undefined(List['mypy.types.Type'])
     
-    def __init__(self, left_expr: Node, index: List[NameExpr],
-                  types: List['mypy.types.Type'], right_expr: Node,
+    def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
+                  types: List[List['mypy.types.Type']], sequences: List[Node],
                  condition: Node) -> None:
         self.left_expr = left_expr
-        self.right_expr = right_expr
+        self.sequences = sequences
         self.condition = condition
-        self.index = index
+        self.indices = indices
         self.types = types
     
     def accept(self, visitor: NodeVisitor[T]) -> T:

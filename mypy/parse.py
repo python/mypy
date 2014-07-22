@@ -1154,17 +1154,24 @@ class Parser:
             return expr
     
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
-        for_tok = self.expect('for')
-        index, types, commas = self.parse_for_index_variables()
-        in_tok = self.expect('in')
-        right_expr = self.parse_expression_list()
+        indices = List[List[NameExpr]]()
+        sequences = List[Node]()
+        types = List[List[Type]]()
+        while self.current_str() == 'for':
+            for_tok = self.expect('for')
+            index, type, commas = self.parse_for_index_variables()
+            indices.append(index)
+            types.append(type)
+            in_tok = self.expect('in')
+            sequence = self.parse_expression_list()
+            sequences.append(sequence)
         if self.current_str() == 'if':
             if_tok = self.skip()
             cond = self.parse_expression()
         else:
             if_tok = none
             cond = None
-        gen = GeneratorExpr(left_expr, index, types, right_expr, cond)
+        gen = GeneratorExpr(left_expr, indices, types, sequences, cond)
         gen.set_line(for_tok)
         self.set_repr(gen, noderepr.GeneratorExprRepr(for_tok, commas, in_tok,
                                                       if_tok))

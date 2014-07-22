@@ -1,3 +1,14 @@
+[case testGeneratorExpressionTypes]
+
+class A: y = 1
+x = [A()]
+y = [x]
+
+z = [1,2]
+z = [a.y for b in y for a in b]
+
+[builtins fixtures/list.py]
+
 [case testClassAttributeInitialization-skip]
 class A:
     x = None # type: int

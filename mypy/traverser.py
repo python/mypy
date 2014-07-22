@@ -195,12 +195,13 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
             o.analyzed.accept(self)
     
     def visit_generator_expr(self, o: GeneratorExpr) -> T:
+        for index, sequence in zip(o.indices, o.sequences):
+            sequence.accept(self)
+            for ind in index:
+                ind.accept(self)
         o.left_expr.accept(self)
-        o.right_expr.accept(self)
         if o.condition is not None:
             o.condition.accept(self)
-        for index in o.index:
-            index.accept(self)
     
     def visit_list_comprehension(self, o: ListComprehension) -> T:
         o.generator.accept(self)

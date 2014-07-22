@@ -1276,10 +1276,12 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
-        expr.right_expr.accept(self)
-        # Bind index variables.
-        for n in expr.index:
-            self.analyse_lvalue(n)
+
+        for index, sequence in zip(expr.indices, expr.sequences):
+            sequence.accept(self)
+            # Bind index variables.
+            for n in index:
+                self.analyse_lvalue(n)
         if expr.condition:
             expr.condition.accept(self)
 

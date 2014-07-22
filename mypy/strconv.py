@@ -391,7 +391,7 @@ class StrConv(NodeVisitor[str]):
     
     def visit_generator_expr(self, o):
         # FIX types
-        return self.dump([o.left_expr, o.index, o.right_expr, o.condition], o)
+        return self.dump([o.left_expr, o.indices, o.sequences, o.condition], o)
     
     def visit_list_comprehension(self, o):
         return self.dump([o.generator], o)
