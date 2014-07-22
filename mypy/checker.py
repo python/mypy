@@ -221,6 +221,8 @@ class ConditionalTypeBinder:
             self.push(expr, type)
 
         for i in self.try_frames:
+            # XXX This should probably not copy the entire frame, but
+            # just copy this variable into a single stored frame.
             self.allow_jump(i)
 
     def invalidate_dependencies(self, expr: Node) -> None:
@@ -958,9 +960,11 @@ class TypeChecker(NodeVisitor[Type]):
             if rvalue_type:
                 self.binder.assign_type(lvalues[0], rvalue_type)
         else:
-            self.check_multi_assignment(lvalue_types, index_lvalues,
-                                        rvalue, rvalue)
-            #XXX somehow need to also assign the rvalue_types to the lvalues
+            rvalue_types = self.check_multi_assignment(lvalue_types, index_lvalues,
+                                                       rvalue, rvalue)
+            if rvalue_types:
+                for lv, rt in zip(lvalues, rvalue_types):
+                    self.binder.assign_type(lv, rt)
         if is_inferred:
             self.infer_variable_type(inferred, lvalues, self.accept(rvalue),
                                      rvalue)
@@ -1074,7 +1078,7 @@ class TypeChecker(NodeVisitor[Type]):
                                index_lvalues: List[IndexExpr],
                                rvalue: Node,
                                context: Context,
-                               msg: str = None) -> None:
+                               msg: str = None) -> List[Type]:
         if not msg:
             msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
         # First handle case where rvalue is of form Undefined, ...
@@ -1085,6 +1089,7 @@ class TypeChecker(NodeVisitor[Type]):
             rvalue_type = self.accept(rvalue) # TODO maybe elsewhere; redundant
             undefined_rvalue = False
         # Try to expand rvalue to lvalue(s).
+        rvalue_types = None
         if isinstance(rvalue_type, AnyType):
             pass
         elif isinstance(rvalue_type, TupleType):
@@ -1110,19 +1115,23 @@ class TypeChecker(NodeVisitor[Type]):
                     self.check_single_assignment(
                         lvalue_types[j], index_lvalues[j],
                         self.temp_node(rvalue_type.items[j]), context, msg)
+                rvalue_types = rvalue_type.items
         elif (is_subtype(rvalue_type,
                          self.named_generic_type('typing.Iterable',
                                                  [AnyType()])) and
               isinstance(rvalue_type, Instance)):
             # Rvalue is iterable.
+            rvalue_types = []
             item_type = self.iterable_item_type(cast(Instance, rvalue_type))
             for k in range(len(lvalue_types)):
-                self.check_single_assignment(lvalue_types[k],
-                                             index_lvalues[k],
-                                             self.temp_node(item_type),
-                                             context, msg)
+                type = self.check_single_assignment(lvalue_types[k],
+                                                    index_lvalues[k],
+                                                    self.temp_node(item_type),
+                                                    context, msg)
+                rvalue_types.append(type)
         else:
             self.fail(msg, context)
+        return rvalue_types
 
     def check_single_assignment(self,
             lvalue_type: Type, index_lvalue: IndexExpr,

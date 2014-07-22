@@ -37,7 +37,7 @@ x.y
 x = 'a'
 (x, ) = ('a',)
 
-[case testUnionMultiAssignment-skip]
+[case testUnionMultiAssignment]
 from typing import Union, Undefined
 
 x = Undefined # type: Union[int, str]
