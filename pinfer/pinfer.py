@@ -145,20 +145,13 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
 
     else:
         # Format into multiple lines to conserve horizontal space.
-        lines = []
-        first = 'def %s(' % fname
-        if args[0][1] == 'self':
-            first += 'self,'
-            args, argstrs = args[1:], argstrs[1:]
-        lines.append(indent + first)
-        indent = ' ' * (1+first.index('('))
-        for arg in argstrs:
-            lines.append(indent + '%s,' % arg)
-        if len(lines[-1]) + 4 + len(ret) <= PREFERRED_LINE_LENGTH:
-            lines[-1] = lines[-1][:-1] + ') -> %s' % ret
-        else:
-            lines.append(indent + ') -> %s' % ret)
-        return '\n'.join(lines)
+        first = indent + 'def %s(' % fname
+        extra_indent = first.index('(') + 1
+
+        decl = indent + first
+        decl += (',\n'+indent+' '*extra_indent).join(argstrs)
+        decl += ')\n%s -> %s' % (indent+' '*(extra_indent - 4), ret)
+        return decl
 
 def annotate_file(path):
     # this should be documented somewhere...
