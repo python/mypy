@@ -12,6 +12,7 @@ __all__ = [
     'AbstractGenericMeta',
     'Any',
     'Dict',
+    'Function',
     'Generic',
     'GenericMeta',
     'IO',
