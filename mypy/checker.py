@@ -947,7 +947,10 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
             return None
-        actual_item_type = self.accept(s.expr, expected_item_type)
+        if s.expr is None:
+            actual_item_type = Void()
+        else:
+            actual_item_type = self.accept(s.expr, expected_item_type)
         self.check_subtype(actual_item_type, expected_item_type, s)
     
     def visit_if_stmt(self, s: IfStmt) -> Type:
