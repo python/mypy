@@ -81,15 +81,15 @@ def getopt(args: List[str], shortopts: str,
 
     opts = List[Tuple[str, str]]()
     if isinstance(longopts, str):
-        llongopts = [longopts]
+        longopts = [longopts]
     else:
-        llongopts = list(longopts)
+        longopts = list(longopts)
     while args and args[0].startswith('-') and args[0] != '-':
         if args[0] == '--':
             args = args[1:]
             break
         if args[0].startswith('--'):
-            opts, args = do_longs(opts, args[0][2:], llongopts, args[1:])
+            opts, args = do_longs(opts, args[0][2:], longopts, args[1:])
         else:
             opts, args = do_shorts(opts, args[0][1:], shortopts, args[1:])
 
@@ -115,9 +115,9 @@ def gnu_getopt(args: List[str], shortopts: str,
     opts = List[Tuple[str, str]]()
     prog_args = List[str]()
     if isinstance(longopts, str):
-        llongopts = [longopts]
+        longopts = [longopts]
     else:
-        llongopts = list(longopts)
+        longopts = list(longopts)
 
     # Allow options after non-option arguments?
     if shortopts.startswith('+'):
@@ -134,7 +134,7 @@ def gnu_getopt(args: List[str], shortopts: str,
             break
 
         if args[0][:2] == '--':
-            opts, args = do_longs(opts, args[0][2:], llongopts, args[1:])
+            opts, args = do_longs(opts, args[0][2:], longopts, args[1:])
         elif args[0][:1] == '-' and args[0] != '-':
             opts, args = do_shorts(opts, args[0][1:], shortopts, args[1:])
         else:

@@ -45,7 +45,7 @@ from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
 from typing import (
-    Any, typevar, Iterable, Sequence, List, Function, Set, cast, SupportsInt
+    Any, typevar, Iterable, Sequence, List, Function, Set, cast, SupportsInt, Union
 )
 
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",
@@ -119,11 +119,8 @@ class Random(_random.Random):
 
         if version == 2:
             if isinstance(a, (str, bytes, bytearray)):
-                s = a
-                if isinstance(s, str):
-                    a = s.encode()
-                else:
-                    a = s
+                if isinstance(a, str):
+                    a = a.encode()
                 a += _sha512(a).digest()
                 a = int.from_bytes(a, 'big')
 
@@ -281,7 +278,7 @@ class Random(_random.Random):
             j = randbelow(i+1) if random is None else int(random() * (i+1))
             x[i], x[j] = x[j], x[i]
 
-    def sample(self, population: Iterable[T], k: int) -> List[T]:
+    def sample(self, population: Union[_Set[T], _Sequence[T]], k: int) -> List[T]:
         """Chooses k unique random elements from a population sequence or set.
 
         Returns a new list containing elements from the population while
@@ -309,14 +306,12 @@ class Random(_random.Random):
         # preferred since the list takes less space than the
         # set and it doesn't suffer from frequent reselections.
 
-        if isinstance(population, _Sequence):
-            populationseq = population
-        elif isinstance(population, _Set):
-            populationseq = list(population)
-        else:
+        if isinstance(population, _Set):
+            population = list(population)
+        if not isinstance(population, _Sequence):
             raise TypeError("Population must be a sequence or set.  For dicts, use list(d).")
         randbelow = self._randbelow
-        n = len(populationseq)
+        n = len(population)
         if not (0 <= k and k <= n):
             raise ValueError("Sample larger than population")
         result = [cast(T, None)] * k
@@ -325,7 +320,7 @@ class Random(_random.Random):
             setsize += 4 ** _ceil(_log(k * 3, 4)) # table size for big sets
         if n <= setsize:
             # An n-length list is smaller than a k-length set
-            pool = list(populationseq)
+            pool = list(population)
             for i in range(k):         # invariant:  non-selected at [0,n-i)
                 j = randbelow(n-i)
                 result[i] = pool[j]
@@ -338,7 +333,7 @@ class Random(_random.Random):
                 while j in selected:
                     j = randbelow(n)
                 selected_add(j)
-                result[i] = populationseq[j]
+                result[i] = population[j]
         return result
 
 ## -------------------- real-valued distributions  -------------------

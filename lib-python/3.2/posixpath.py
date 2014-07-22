@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any
+    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any, Union
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
@@ -252,29 +252,26 @@ def expanduser(path: AnyStr) -> AnyStr:
     if i == 1:
         if 'HOME' not in os.environ:
             import pwd
-            userhome = pwd.getpwuid(os.getuid()).pw_dir
+            userhome = pwd.getpwuid(os.getuid()).pw_dir # type: Union[str, bytes]
         else:
             userhome = os.environ['HOME']
     else:
         import pwd
-        name = path[1:i]
+        name = path[1:i]   # type: Union[str, bytes]
         if isinstance(name, bytes):
-            name2 = str(name, 'ASCII')
-        else:
-            name2 = name
+            name = str(name, 'ASCII')
         try:
-            pwent = pwd.getpwnam(name2)
+            pwent = pwd.getpwnam(name)
         except KeyError:
             return path
         userhome = pwent.pw_dir
     if isinstance(path, bytes):
-        userhome2 = os.fsencode(userhome)
+        userhome = os.fsencode(userhome)
         root = b'/'
     else:
-        userhome2 = userhome
         root = '/'
-    userhome2 = userhome2.rstrip(root) or userhome2
-    return userhome2 + path[i:]
+    userhome = userhome.rstrip(root)
+    return (userhome + path[i:]) or root
 
 
 # Expand paths containing shell variable substitutions.
@@ -312,20 +309,16 @@ def expandvars(path: AnyStr) -> AnyStr:
         if not m:
             break
         i, j = m.span(0)
-        name = m.group(1)
+        name = m.group(1) # type: Union[str, bytes]
         if name.startswith(start) and name.endswith(end):
             name = name[1:-1]
         if isinstance(name, bytes):
-            namestr = str(name, 'ASCII')
-        else:
-            namestr = name
-        if namestr in os.environ:
+            name = str(name, 'ASCII')
+        if name in os.environ:
             tail = path[j:]
-            valuestr = os.environ[namestr]
+            value = os.environ[name]    # type: Union[str, bytes]
             if isinstance(path, bytes):
-                value = valuestr.encode('ASCII')
-            else:
-                value = valuestr
+                value = value.encode('ASCII')
             path = path[:i] + value
             i = len(path)
             path += tail

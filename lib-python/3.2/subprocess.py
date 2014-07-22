@@ -1183,17 +1183,17 @@ class Popen(object):
             """Execute program (POSIX version)"""
 
             if isinstance(args, str):
-                arglist = [args]
+                args = [args]
             else:
-                arglist = list(args)
+                args = list(args)
 
             if shell:
-                arglist = ["/bin/sh", "-c"] + arglist
+                args = ["/bin/sh", "-c"] + args
                 if executable:
-                    arglist[0] = executable
+                    args[0] = executable
 
             if executable is None:
-                executable = arglist[0]
+                executable = args[0]
 
             # For transferring possible exec failure from child to parent.
             # Data format: "exception name:hex errno:description"
@@ -1224,7 +1224,7 @@ class Popen(object):
                         fds_to_keep = set(pass_fds)
                         fds_to_keep.add(errpipe_write)
                         self.pid = _posixsubprocess.fork_exec(
-                                arglist, executable_list,
+                                args, executable_list,
                                 close_fds, sorted(fds_to_keep), cwd, env_list,
                                 p2cread, p2cwrite, c2pread, c2pwrite,
                                 errread, errwrite,
@@ -1317,13 +1317,13 @@ class Popen(object):
                                     preexec_fn()
 
                                 if env is None:
-                                    os.execvp(executable, arglist)
+                                    os.execvp(executable, args)
                                 else:
-                                    os.execvpe(executable, arglist, env)
+                                    os.execvpe(executable, args, env)
 
                             except:
                                 try:
-                                    exc_type, exc_value, _ = sys.exc_info()
+                                    exc_type, exc_value = sys.exc_info()[:2]
                                     if isinstance(exc_value, OSError):
                                         errno_num = exc_value.errno
                                     else:
@@ -1393,7 +1393,7 @@ class Popen(object):
                     if errno_num != 0:
                         err_msg = os.strerror(errno_num)
                         if errno_num == errno.ENOENT:
-                            err_msg += ': ' + repr(arglist[0])
+                            err_msg += ': ' + repr(args[0])
                     raise child_exception_type(errno_num, err_msg)
                 raise child_exception_type(err_msg)
 
@@ -1542,8 +1542,8 @@ class Popen(object):
                         chunk = input[input_offset : input_offset + _PIPE_BUF]
                         try:
                             input_offset += os.write(fd, chunk)
-                        except OSError as oe:
-                            if oe.errno == errno.EPIPE:
+                        except OSError as e:
+                            if e.errno == errno.EPIPE:
                                 close_unregister_and_remove(fd)
                             else:
                                 raise
