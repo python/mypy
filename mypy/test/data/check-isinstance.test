@@ -1,3 +1,16 @@
+[case testFunctionDefaultArgs]
+
+class A: pass
+class B(A): y = 1
+
+x =  A()
+
+def foo(x: A = B()):
+    x.y   # E: "A" has no attribute "y"
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "foo":
+
 [case testIsinstanceFancyConditionals]
 
 class A: pass

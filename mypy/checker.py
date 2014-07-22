@@ -523,6 +523,9 @@ class TypeChecker(NodeVisitor[Type]):
                 if item.init[j]:
                     self.accept(item.init[j])
 
+            # Clear out the default assignments from the binder
+            self.binder.pop_frame()
+            self.binder.push_frame()
             # Type check body in a new scope.
             self.accept_in_frame(item.body)
 
