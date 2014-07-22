@@ -46,10 +46,12 @@ def reset():
     global var_db, func_argid_db, func_arg_db, func_return_db, func_source_db
     global ignore_files, is_performing_inference
     var_db = {}
-    func_argid_db = {}
     func_arg_db = {}
     func_return_db = {}
-    func_source_db = {}
+    # we don't actually want to clear these on reset(), or we'll
+    # lose the functions we've already wrapped forever.
+    #func_source_db = {}
+    #func_argid_db = {}
     is_performing_inference = False
     ignore_files = set()
 
@@ -58,7 +60,7 @@ def format_state(pretty=False):
     lines = []
     for loc, var in sorted(var_db.keys()):
         lines.append('%s: %s' % (var, var_db[(loc, var)]))
-    funcnames = sorted(set(func_argid_db.keys()))
+    funcnames = sorted(set(func_return_db.keys()))
     prevclass = ''
     indent = ''
     for funcid in funcnames:
@@ -314,7 +316,8 @@ def infer_method_signature(class_name):
         func_source_db[funcid] = ''.join(funcsource)
 
         try:
-            argspec = getfullargspec(func)
+            func_argid_db[funcid] = getfullargspec(func)
+            vargs_name, kwargs_name = func_argid_db[funcid][1], func_argid_db[funcid][2]
         except TypeError:
             # Not supported.
             return func
@@ -329,16 +332,28 @@ def infer_method_signature(class_name):
 
             expecting_type_error, got_type_error, got_exception = False, False, False
 
-            # collect arg ids and types
-            arg_db = {}
-
             is_performing_inference = True
             try:
                 callargs = getcallargs(func, *args, **kwargs)
-                for argname, value in callargs.items():
-                    update_db(arg_db, (funcid, argname), value)
+
+                # we have to handle *args and **kwargs separately
+                if vargs_name:
+                    va = callargs.pop(vargs_name)
+                if kwargs_name:
+                    kw = callargs.pop(kwargs_name)
+
+                arg_db = {arg: infer_value_type(value) for arg, value in callargs.items()}
+
+                # *args and **kwargs need to merge the types of all their values
+                if vargs_name:
+                    arg_db[vargs_name] = union_many_types(*[infer_value_type(v) for v in va])
+                if kwargs_name:
+                    arg_db[kwargs_name] = union_many_types(*[infer_value_type(v) for v in kw.values()])
+
+            except TypeError:
+                got_exception = expecting_type_error = True
             except:
-                expecting_type_error = True
+                got_exception = True
             finally:
                 is_performing_inference = False
 
@@ -352,17 +367,18 @@ def infer_method_signature(class_name):
                 raise
             finally:
                 if not got_exception:
-                    assert (not got_type_error) or expecting_type_error
+                    assert not expecting_type_error
 
-                    # if we didn't get a TypeError, update the actual databases
-                    func_argid_db[funcid] = argspec
-                    merge_db(func_arg_db, arg_db)
+                    # if we didn't get a TypeError, update the actual database
+                    for arg, t in arg_db.items():
+                        update_db(func_arg_db, (funcid, arg), t)
 
                     # if we got an exception, we don't have a ret
                     if not got_exception:
                         is_performing_inference = True
                         try:
-                            update_db(func_return_db, funcid, ret)
+                            type = infer_value_type(ret)
+                            update_db(func_return_db, funcid, type)
                         except:
                             pass
                         finally:
@@ -396,11 +412,11 @@ def infer_module(namespace):
 
 
 def update_var_db(key, value):
-    update_db(var_db, key, value)
-
-
-def update_db(db, key, value):
     type = infer_value_type(value)
+    update_db(var_db, key, type)
+
+
+def update_db(db, key, type):
     if key not in db:
         db[key] = type
     else:
@@ -473,8 +489,11 @@ def sample(values):
     return list(values)
 
 
-def union_many_types(types):
-    return reduce(combine_types, types, Unknown())
+def union_many_types(*types):
+    union = Unknown()
+    for t in types:
+        union = combine_types(union, t)
+    return union
 
 
 def combine_types(x, y):

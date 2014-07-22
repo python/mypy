@@ -246,9 +246,9 @@ class TestInfer(unittest.TestCase):
         def f(x, *y): pass
         f(1)
         f(1, 'x', None)
-        self.assert_infer_state('def f(x: int, y: Optional[str]) -> None')
+        self.assert_infer_state('def f(x: int, *y: Optional[str]) -> None')
         f(1)
-        self.assert_infer_state('def f(x: int) -> None')
+        self.assert_infer_state('def f(x: int, *y: Unknown) -> None')
 
     def test_infer_keyword_args(self):
         @pinfer.infer_signature
@@ -266,7 +266,7 @@ class TestInfer(unittest.TestCase):
         def f(a, **kwargs): pass
         f(None, x=1, y='x')
         self.assert_infer_state(
-            'def f(a: None, kwargs: Union[int, str]) -> None')
+            'def f(a: None, **kwargs: Union[int, str]) -> None')
 
     def test_infer_class(self):
         @pinfer.infer_class
