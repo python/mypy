@@ -844,3 +844,91 @@ import typing
 print(len((1, 'x')))
 [out]
 2
+
+[case testListMethods]
+import typing
+l = [0, 1, 2, 3, 4]
+l.clear()
+l.append(0)
+print('>', l)
+m = l.copy()
+m.extend([1, 2, 3, 4])
+print('>', m)
+print(l.index(0))
+print(l.index(0, 0))
+print(l.index(0, 0, 1))
+try:
+    print(l.index(1))
+    print('expected ValueError')
+except ValueError:
+    pass
+l.insert(0, 1)
+print('>', l)
+print(l.pop(0))
+print(l.pop())
+m.remove(0)
+try:
+    m.remove(0)
+    print('expected ValueError')
+except ValueError:
+    pass
+m.reverse()
+m.sort()
+m.sort(key=lambda x: -x)
+m.sort(reverse=False)
+m.sort(key=lambda x: -x, reverse=True)
+print('>', m)
+[out]
+> [0]
+> [0, 1, 2, 3, 4]
+0
+0
+0
+> [1, 0]
+1
+0
+> [1, 2, 3, 4]
+
+[case testListOperators]
+import typing
+l = [0, 1]
+print('+', l + [2])
+print('*', l * 2)
+print('*', 2 * l)
+print('in', 1 in l)
+print('==', l == [1, 2])
+print('!=', l != [1, 2])
+print('>', l > [1, 2, 3])
+print('>=', l >= [1, 2, 3])
+print('<', l < [1, 2, 3])
+print('<=', l <= [1, 2, 3])
+print('>[0]', l[0])
+l += [2]
+print('+=', l)
+l *= 2
+print('*=', l)
+print('iter', list(iter(l)))
+print('len', len(l))
+print('repr', repr(l))
+l[:3] = []
+print('setslice', l)
+print('reversed', list(reversed(l)))
+[out]
++ [0, 1, 2]
+* [0, 1, 0, 1]
+* [0, 1, 0, 1]
+in True
+== False
+!= True
+> False
+>= False
+< True
+<= True
+>[0] 0
++= [0, 1, 2]
+*= [0, 1, 2, 0, 1, 2]
+iter [0, 1, 2, 0, 1, 2]
+len 6
+repr [0, 1, 2, 0, 1, 2]
+setslice [0, 1, 2]
+reversed [2, 1, 0]
