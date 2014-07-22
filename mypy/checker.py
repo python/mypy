@@ -186,7 +186,7 @@ class ConditionalTypeBinder:
         if hasattr(expr, 'node') and isinstance(expr.node, Var):
             return expr.node.type
         else:
-            return None
+            return self.frames[0].get(expr.literal_hash)
 
     def assign_type(self, expr: Node, type: Type) -> None:
         if not expr.literal:

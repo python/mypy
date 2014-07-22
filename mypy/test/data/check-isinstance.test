@@ -1,3 +1,29 @@
+[case testClassAttributeInitialization-skip]
+class A:
+    x = None # type: int
+    def __init__(self) -> None:
+        self.y = None # type: int
+        z = self.x
+        w = self.y
+[case testAssignmentSubtypes-skip]
+from typing import Union
+
+def foo(x: Union[str, int]):
+    if isinstance(x, int):
+        x = 'a'
+    x + 'a'         # Works in the current code
+    z = x           # We probably want this to be of type str.
+    y = [x]         # But what type should this be?
+    y[0] + 'a'      #  (1) Should this work?
+    y + [1]         #  (2) Or this?
+    z = 1           # Also, is this valid?
+
+x = None # type: int
+y = [x]
+[builtins fixtures/isinstancelist.py]
+[out]
+main: In function "foo":
+
 [case testFunctionDefaultArgs]
 
 class A: pass
