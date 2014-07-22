@@ -193,7 +193,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 3: Incompatible return value type
+main, line 3: Incompatible return value type: expected __main__.A, got __main__.B
 
 [case testTopLevelContextAndInvalidReturn]
 import typing
@@ -204,7 +204,7 @@ class A: pass
 class B: pass
 [out]
 main: In function "f":
-main, line 3: Incompatible return value type
+main, line 3: Incompatible return value type: expected __main__.A, got __main__.B
 main: At top level:
 main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
@@ -313,7 +313,7 @@ def f(x): # type: (int) -> str
 f('')
 [out]
 main: In function "f":
-main, line 2: Incompatible return value type
+main, line 2: Incompatible return value type: expected builtins.str, got builtins.int
 main: At top level:
 main, line 3: Argument 1 to "f" has incompatible type "str"; expected "int"
 
@@ -327,7 +327,7 @@ A().f('') # Fail
 [out]
 main: In member "f" of class "A":
 main, line 4: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-main, line 5: Incompatible return value type
+main, line 5: Incompatible return value type: expected builtins.str, got builtins.int
 main: At top level:
 main, line 6: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 

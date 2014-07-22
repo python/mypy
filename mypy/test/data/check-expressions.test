@@ -828,7 +828,7 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main, line 3: "str" has no attribute "x"
-main, line 4: Incompatible return value type
+main, line 4: Incompatible return value type: expected builtins.int, got builtins.str
 main, line 4: Incompatible types in assignment (expression has type , variable has type )
 
 

@@ -15,9 +15,9 @@ class B:
     pass
 [out]
 main: In function "f":
-main, line 4: Incompatible return value type
+main, line 4: Incompatible return value type: expected __main__.A, got __main__.B
 main: In function "g":
-main, line 6: Incompatible return value type
+main, line 6: Incompatible return value type: expected __main__.B, got __main__.A
 
 [case testReturnSubtype]
 import typing
@@ -31,7 +31,7 @@ class B(A):
     pass
 [out]
 main: In function "f":
-main, line 3: Incompatible return value type
+main, line 3: Incompatible return value type: expected __main__.B, got __main__.A
 
 [case testReturnWithoutAValue]
 import typing

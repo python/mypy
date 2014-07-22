@@ -476,7 +476,7 @@ class p(Generic[T, S]):
 def f(s: S, t: T) -> p[T, A]:
     a = t # type: S # E: Incompatible types in assignment (expression has type "T", variable has type "S")
     s = t           # E: Incompatible types in assignment (expression has type "T", variable has type "S")
-    return p[S, A](s, A()) # E: Incompatible return value type
+    return p[S, A](s, A()) # E: Incompatible return value type: expected __main__.p[T`-2, __main__.A], got __main__.p[S`-1, __main__.A*]
     b = t # type: T
     c = s # type: S
     return p[T, A](t, A())
@@ -492,8 +492,8 @@ class p(Generic[T, S]):
 class A(Generic[T]):
     def f(self, s: S, t: T) -> p[S, T]:
         s = t # E: Incompatible types in assignment (expression has type "T", variable has type "S")
-        return p[S, S](s, s) # E: Incompatible return value type
-        return p[T, T](t, t) # E: Incompatible return value type
+        return p[S, S](s, s) # E: Incompatible return value type: expected __main__.p[S`-1, T`1], got __main__.p[S`-1, S`-1]
+        return p[T, T](t, t) # E: Incompatible return value type: expected __main__.p[S`-1, T`1], got __main__.p[T`1, T`1]
         t = t
         s = s
         return p[S, T](s, t)

@@ -96,7 +96,7 @@ class A:
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 4: Incompatible return value type
+main, line 4: Incompatible return value type: expected __main__.A, got __main__.B
 
 [case testSelfArgument]
 import typing

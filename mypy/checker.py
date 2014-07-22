@@ -1192,6 +1192,7 @@ class TypeChecker(NodeVisitor[Type]):
                         self.check_subtype(
                             typ, self.return_types[-1], s,
                             messages.INCOMPATIBLE_RETURN_VALUE_TYPE
+                             + ": expected {}, got {}".format(self.return_types[-1], typ)
                             )
             else:
                 # Return without a value. It's valid in a generator function.
