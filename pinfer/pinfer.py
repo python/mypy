@@ -97,17 +97,20 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
         # override fname if we parsed a different one
         fname = fn_ast.name
 
-        defaults_nodes = fn_ast.args.defaults
-        # for now, we're not going to care about kw_only args
+        defaults = [unparse_ast(dn) for dn in fn_ast.args.defaults]
 
-        defaults = [unparse_ast(dn) for dn in defaults_nodes]
+        if hasattr(fn_ast.args, 'kw_defaults'):
+            kwonly_defaults = [unparse_ast(dn) for dn in fn_ast.args.kw_defaults]
+        else:
+            kwonly_defaults = []
     except:
-        defaults = []
+        defaults, kwonly_defaults = [], []
 
     (argnames, varargs, varkw, _, kwonlyargs, _, _) = func_argid_db[funcid]
 
     # pad defaults to match the length of args
     defaults = ([None] * (len(argnames) - len(defaults))) + defaults
+    kwonly_defaults = ([None] * (len(kwonlyargs) - len(kwonly_defaults))) + kwonly_defaults
 
     args = [('', arg, default) for (arg, default) in zip(argnames, defaults)]
     if varargs:
@@ -116,7 +119,7 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
         args += [('*', '', None)]
     if len(kwonlyargs) > 0:
         # zip in kw_defaults
-        args += [('', arg, None) for arg in kwonlyargs]
+        args += [('', arg, default) for (arg, default) in zip(kwonlyargs, kwonly_defaults)]
     if varkw:
         args += [('**', varkw, None)]
 
