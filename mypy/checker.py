@@ -923,7 +923,9 @@ class TypeChecker(NodeVisitor[Type]):
                 # Returning a value of type Any is always fine.
                 if not isinstance(typ, AnyType):
                     if isinstance(self.return_types[-1], Void):
-                        self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
+                        # FuncExpr (lambda) may have a Void return.
+                        if not isinstance(self.function_stack[-1], FuncExpr):
+                            self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                     else:
                         self.check_subtype(
                             typ, self.return_types[-1], s,
