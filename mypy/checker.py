@@ -56,8 +56,7 @@ def min_with_None_large(x: T, y: T) -> T:
     return min(x, x if y is None else y)
 
 class Frame(Dict[Any, Type]): pass
-Key = Any
-
+class Key(AnyType): pass
 
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
@@ -82,9 +81,11 @@ class ConditionalTypeBinder:
                 return
             self._added_dependencies.add(value)
         if isinstance(key, tuple):
+            key = cast(Any, key)   # XXX sad
             if key != value:
-                self.dependencies.setdefault(key, set()).add(value)
-            for elt in key:
+                self.dependencies[key] = Set[Key]()
+                self.dependencies.setdefault(key, Set[Key]()).add(value)
+            for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 
     def push_frame(self) -> Frame:
@@ -157,7 +158,7 @@ class ConditionalTypeBinder:
                 result = True
         return result
 
-    def pop_frame(self, canskip=True, fallthrough=False) -> (bool, Frame):
+    def pop_frame(self, canskip=True, fallthrough=False) -> Tuple[bool, Frame]:
         """Pop a frame.
 
         If canskip, then allow types to skip all the inner frame
@@ -182,7 +183,7 @@ class ConditionalTypeBinder:
 
         return (changed, result)
 
-    def get_declaration(self, expr: Node):
+    def get_declaration(self, expr: Any) -> Type:
         if hasattr(expr, 'node') and isinstance(expr.node, Var):
             return expr.node.type
         else:
@@ -234,7 +235,7 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
-        for dep in self.dependencies.get(expr.literal_hash, []):
+        for dep in self.dependencies.get(expr.literal_hash, Set[Key]()):
             for f in self.frames:
                 if dep in f:
                     del f[dep]
@@ -1092,7 +1093,7 @@ class TypeChecker(NodeVisitor[Type]):
             rvalue_type = self.accept(rvalue) # TODO maybe elsewhere; redundant
             undefined_rvalue = False
         # Try to expand rvalue to lvalue(s).
-        rvalue_types = None
+        rvalue_types = None  # type: List[Type]
         if isinstance(rvalue_type, AnyType):
             pass
         elif isinstance(rvalue_type, TupleType):
@@ -1151,7 +1152,7 @@ class TypeChecker(NodeVisitor[Type]):
                 # The rvalue is just 'Undefined'; this is always valid.
                 # Infer the type of 'Undefined' from the lvalue type.
                 self.store_type(rvalue, lvalue_type)
-                return
+                return None
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                'expression has type', 'variable has type')
@@ -1190,7 +1191,8 @@ class TypeChecker(NodeVisitor[Type]):
                     else:
                         self.check_subtype(
                             typ, self.return_types[-1], s,
-                            messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
+                            messages.INCOMPATIBLE_RETURN_VALUE_TYPE
+                            )
             else:
                 # Return without a value. It's valid in a generator function.
                 if not self.function_stack[-1].is_generator:
@@ -1221,7 +1223,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         broken = True
-        ending_frames = []
+        ending_frames = List[Frame]()
         clauses_frame = self.binder.push_frame()
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
@@ -1256,7 +1258,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if broken:
                     self.binder.pop_frame()
                     self.breaking_out = True
-                    return
+                    return None
                 break
         else:
             if s.else_body:
@@ -1264,7 +1266,7 @@ class TypeChecker(NodeVisitor[Type]):
 
                 if self.breaking_out and broken:
                     self.binder.pop_frame()
-                    return
+                    return None
 
                 if not self.breaking_out:
                     ending_frames.append(clauses_frame)
@@ -1325,7 +1327,7 @@ class TypeChecker(NodeVisitor[Type]):
     
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        completed_frames = []
+        completed_frames = List[Frame]()
         self.binder.push_frame()
         self.binder.try_frames.add(len(self.binder.frames)-2)
         self.accept(s.body)
@@ -1746,7 +1748,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Return a BasicTypes instance that contains primitive types that are
         needed for certain type operations (joins, for example).
         """
-        return BasicTypes(self.object_type(), self.named_type_if_exists('builtins.type'),
+        return BasicTypes(self.object_type(), self.named_type('builtins.type'),
                           self.named_type_if_exists('builtins.tuple'),
                           self.named_type_if_exists('builtins.function'))
     
@@ -1824,7 +1826,7 @@ def get_undefined_tuple(rvalue: Node) -> Type:
 
 
 def find_isinstance_check(node: Node,
-                          type_map: Dict[Node, Type]) -> Tuple[Var, Type, Type, int]:
+                          type_map: Dict[Node, Type]) -> Tuple[Node, Type, Type, int]:
     """Check if node is an isinstance(variable, type) check.
 
     If successful, return tuple (variable, target-type, else-type,

@@ -211,7 +211,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         for item in t.items:
             item.accept(self)
 
-    def visit_union_type(self, t: TupleType) -> None:
+    def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:
             item.accept(self)
 

@@ -193,6 +193,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
              is_named_instance(template, 'typing.Sequence') or
              is_named_instance(template, 'typing.Reversible'))
             and self.direction == SUPERTYPE_OF):
+            actual = cast(TupleType, actual)
             for item in actual.items:
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
                 res.extend(cb)

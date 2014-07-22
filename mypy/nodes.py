@@ -1160,10 +1160,10 @@ class GeneratorExpr(Node):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
     
     left_expr = Undefined(Node)
-    sequences_expr = Undefined(Node)
+    sequences_expr = Undefined(List[Node])
     condition = Undefined(Node)   # May be None
-    indices = Undefined(List[NameExpr])
-    types = Undefined(List['mypy.types.Type'])
+    indices = Undefined(List[List[NameExpr]])
+    types = Undefined(List[List['mypy.types.Type']])
     
     def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
                   types: List[List['mypy.types.Type']], sequences: List[Node],

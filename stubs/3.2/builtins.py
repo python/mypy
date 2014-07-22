@@ -693,6 +693,8 @@ class tuple(Iterable[Any], Sized):
     def __gt__(self, x: tuple) -> bool: pass
     def __ge__(self, x: tuple) -> bool: pass
 
+    def __add__(self, x: tuple) -> tuple: pass
+
 
 @builtinclass
 class function:

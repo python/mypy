@@ -230,12 +230,11 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
 
     time0 = time.time()
     test.set_up() # FIX: check exceptions
+    exc_traceback = None # type: Any
     try:
         test.run()
     except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-    else:
-        exc_traceback = None
     test.tear_down() # FIX: check exceptions
     times.append((time.time() - time0, name))
 

@@ -1,7 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Undefined, Any, typevar, List, Tuple, cast, Generic
+from typing import Undefined, Any, typevar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
 
@@ -397,17 +397,17 @@ class UnionType(Type):
         self.items = items
         super().__init__(line, repr)
 
-    @classmethod
-    def make_union(cls, items: List[Type], line: int = -1, repr: Any = None) -> Type:
+    @staticmethod
+    def make_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
         if len(items) > 1:
-            return cls(items, line, repr)
+            return UnionType(items, line, repr)
         elif len(items) == 1:
             return items[0]
         else:
-            return Void
+            return Void()
 
-    @classmethod
-    def make_simplified_union(cls, items: List[Type], line: int = -1, repr: Any = None) -> Type:
+    @staticmethod
+    def make_simplified_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = [] # type: List[Type]
             for typ in items:
@@ -418,14 +418,14 @@ class UnionType(Type):
             items = all_items
 
         from mypy.subtypes import is_subtype
-        removed = set()
+        removed = Set[int]()
         for i in range(len(items)):
             if any(is_subtype(items[i], items[j]) for j in range(len(items))
                    if j not in removed and j != i):
                 removed.add(i)
 
         simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-        return cls.make_union(simplified_set)
+        return UnionType.make_union(simplified_set)
 
     def length(self) -> int:
         return len(self.items)
@@ -554,7 +554,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items), t.line, t.repr)
     
-    def visit_union_type(self, t: TupleType) -> Type:
+    def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.repr)
     
     def translate_types(self, types: List[Type]) -> List[Type]:
@@ -755,7 +755,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_tuple_type(self, t: TupleType) -> bool:
         return self.query_types(t.items)
     
-    def visit_union_type(self, t: TupleType) -> bool:
+    def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)
     
     def visit_runtime_type_var(self, t: RuntimeTypeVar) -> bool:

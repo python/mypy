@@ -282,7 +282,6 @@ class MessageBuilder:
             self.check_void(left_type, context)
             self.check_void(right_type, context)
             return 
-        
         left_str = ''
         if isinstance(left_type, str):
             left_str = left_type

@@ -39,7 +39,7 @@ def meet_simple_away(s: Type, t: Type, basic: BasicTypes) -> Type:
         return UnionType.make_simplified_union([x for x in s.items
                                                 if not is_subtype(x, t)])
     elif not isinstance(s, AnyType) and is_subtype(s, t):
-        return Void
+        return Void()
     else:
         return s
 
@@ -106,7 +106,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         if isinstance(self.s, UnionType):
-            meets = []
+            meets = List[Type]()
             for x in t.items:
                 for y in self.s.items:
                     meets.append(meet_types(x, y, self.basic))
