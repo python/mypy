@@ -589,6 +589,12 @@ def f() -> Iterator[int]:
     return
 [builtins fixtures/for.py]
 
+[case testYieldWithNoValue]
+from typing import Iterator
+def f() -> Iterator[None]:
+    yield
+[builtins fixtures/for.py]
+
 
 -- With statement
 -- --------------
