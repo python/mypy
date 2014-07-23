@@ -585,6 +585,9 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.reverse_operator_method_with_any_arg_must_return_any(
                     method, defn)
                 return
+            elif isinstance(arg_type, UnionType):
+                if not arg_type.has_readable_member(other_method):
+                    fail = True
             else:
                 fail = True
             if fail:

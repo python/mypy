@@ -433,6 +433,16 @@ class UnionType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_union_type(self)
 
+    def has_readable_member(self, name):
+        """For a tree of unions of instances, check whether all
+        instances have a given member.
+
+        This should probably be refactored to go elsewhere."""
+        return all(isinstance(x, UnionType) and x.has_readable_member(name) or
+                   isinstance(x, Instance) and
+                   x.type.has_readable_member(name)
+                   for x in self.items)
+
 
 class RuntimeTypeVar(Type):
     """Reference to a runtime variable with the value of a type variable.
