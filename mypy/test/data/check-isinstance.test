@@ -1,3 +1,19 @@
+[case testJoinAny]
+from typing import List, Any
+
+x = None # type: List[Any]
+
+def foo() -> List[int]: pass
+def bar() -> List[str]: pass
+
+if 1:
+    x = foo()
+else:
+    x = bar()
+
+x * 2
+[builtins fixtures/list.py]
+
 [case testGeneratorExpressionTypes]
 
 class A: y = 1

@@ -40,10 +40,10 @@ def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
         # is a good idea.
         return declaration
 
-    if is_subtype(value, declaration):
-        return declaration
+    if declaration is None or is_subtype(value, declaration):
+        return value
 
-    return value
+    return declaration
 
 
 
