@@ -8,6 +8,11 @@ from mypy import sametypes
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
 
+def is_immutable(t: Instance) -> bool:
+    return t.type.fullname() in ('typing.Iterable',
+                                 'typing.Sequence',
+                                 'typing.Reversible',
+                                 )
 
 def is_subtype(left: Type, right: Type) -> bool:
     """Is 'left' subtype of 'right'?
@@ -71,11 +76,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
-            result = True
-            for i in range(len(right.args)):
-                if not is_equivalent(t.args[i], right.args[i]):
-                    result = False
-                    break
+            if not is_immutable(right):
+                result = all(is_equivalent(ta, ra) for (ta, ra) in
+                             zip(t.args, right.args))
+            else:
+                result = all(is_subtype(ta, ra) for (ta, ra) in
+                             zip(t.args, right.args))
             return result
         else:
             return False
@@ -309,8 +315,12 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
             if not t.type.has_base(s.type.fullname()):
                 return False
             t = map_instance_to_supertype(t, s.type)
-            return all(sametypes.is_same_type(x, y)
-                       for x, y in zip(t.args, s.args))
+            if not is_immutable(s):
+                return all(sametypes.is_same_type(ta, ra) for (ta, ra) in
+                           zip(t.args, s.args))
+            else:
+                return all(is_proper_subtype(ta, ra) for (ta, ra) in
+                           zip(t.args, s.args))
         return False
     else:
         return sametypes.is_same_type(t, s)
