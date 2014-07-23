@@ -10,7 +10,6 @@ cast = object()
 overload = object()
 Undefined = object()
 Any = object()
-Union = object()
 typevar = object()
 Generic = object()
 AbstractGeneric = object()
@@ -21,9 +20,20 @@ ducktype = object()
 disjointclass = object()
 
 # Type aliases.
-List = object()
-Dict = object()
-Set = object()
+
+class TypeAlias:
+    """Class for defining generic aliases for library types."""
+
+    def __init__(self, target_type):
+        self.target_type = target_type
+
+    def __getitem__(self, typeargs):
+        return self.target_type
+
+Union = TypeAlias(object)
+List = TypeAlias(object)
+Dict = TypeAlias(object)
+Set = TypeAlias(object)
 
 # Predefined type variables.
 AnyStr = typevar('AnyStr', values=(str, bytes))

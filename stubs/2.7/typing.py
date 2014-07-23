@@ -20,9 +20,20 @@ ducktype = object()
 disjointclass = object()
 
 # Type aliases.
-List = object()
-Dict = object()
-Set = object()
+
+class TypeAlias:
+    """Class for defining generic aliases for library types."""
+
+    def __init__(self, target_type):
+        self.target_type = target_type
+
+    def __getitem__(self, typeargs):
+        return self.target_type
+
+Union = TypeAlias(object)
+List = TypeAlias(object)
+Dict = TypeAlias(object)
+Set = TypeAlias(object)
 
 # Defines aliases for built-in types.
 # Note that here 're' refers to the stub!  The Python 're' module does not

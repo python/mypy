@@ -67,7 +67,7 @@ from mypy.types import (
     replace_self_type, TupleType, UnionType
 )
 from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
 from mypy.parsetype import parse_str_as_type, TypeParseError
 
 
@@ -136,6 +136,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors = errors
         self.modules = {}
         self.pyversion = pyversion
+        self.stored_vars = Dict[Node, Type]()
     
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -671,7 +672,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     def anal_type(self, t: Type) -> Type:
         if t:
-            a = TypeAnalyser(self.lookup_qualified, self.fail)
+            a = TypeAnalyser(self.lookup_qualified, self.stored_vars, self.fail)
             return t.accept(a)
         else:
             return None
@@ -684,6 +685,15 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type)
         else:
             s.type = self.infer_type_from_undefined(s.rvalue)
+            # For simple assignments, allow binding type aliases
+            if (s.type is None and len(s.lvalues) == 1 and
+                isinstance(s.lvalues[0], NameExpr)):
+                res = analyse_node(self.lookup_qualified, s.rvalue, s)
+                if res:
+                    #XXX Need to remove this later if reassigned
+                    x = cast(NameExpr, s.lvalues[0])
+                    self.stored_vars[x.node] = res
+
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
