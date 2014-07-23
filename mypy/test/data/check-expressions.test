@@ -313,13 +313,16 @@ class D(C): pass
 [builtins fixtures/bool.py]
 
 [case testInOperator]
-from typing import Undefined, Iterator, Iterable
-a, b, c, d = Undefined, Undefined, Undefined, Undefined # type: (A, B, bool, D)
+from typing import Undefined, Iterator, Iterable, Any
+a, b, c, d, e = Undefined, Undefined, Undefined, Undefined, Undefined # type: (A, B, bool, D, Any)
 c = c in a  # Fail
 a = b in a  # Fail
 c = a in b  # Fail
+c = b in d  # Fail
 c = b in a
 c = a in d
+c = e in d
+c = a in e
 
 class A:
     def __contains__(self, x: 'B') -> bool: pass
@@ -331,15 +334,19 @@ class D(Iterable[A]):
 main, line 3: Unsupported operand types for in ("bool" and "A")
 main, line 4: Incompatible types in assignment
 main, line 5: Unsupported right operand type for in ("B")
+main, line 6: Unsupported operand types for in ("B" and "D")
 
 [case testNotInOperator]
-from typing import Undefined, Iterator, Iterable
-a, b, c, d = Undefined, Undefined, Undefined, Undefined # type: (A, B, bool, D)
+from typing import Undefined, Iterator, Iterable, Any
+a, b, c, d, e = Undefined, Undefined, Undefined, Undefined, Undefined # type: (A, B, bool, D, Any)
 c = c not in a  # Fail
 a = b not in a  # Fail
 c = a not in b  # Fail
+c = b not in d  # Fail
 c = b not in a
 c = a not in d
+c = e in d
+c = a in e
 
 class A:
     def __contains__(self, x: 'B') -> bool: pass
@@ -351,6 +358,7 @@ class D(Iterable[A]):
 main, line 3: Unsupported operand types for in ("bool" and "A")
 main, line 4: Incompatible types in assignment
 main, line 5: Unsupported right operand type for in ("B")
+main, line 6: Unsupported operand types for in ("B" and "D")
 
 [case testNonBooleanContainsReturnValue]
 from typing import Undefined
