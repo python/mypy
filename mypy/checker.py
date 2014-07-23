@@ -909,16 +909,18 @@ class TypeChecker(NodeVisitor[Type]):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignments(self.expand_lvalues(s.lvalues[-1]), s.rvalue)
+        self.check_assignments(self.expand_lvalues(s.lvalues[-1]), s.rvalue,
+                               s.type)
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
             # Make sure that rvalue type will not be reinferred.
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
-                self.check_assignments(self.expand_lvalues(lv), rvalue)
+                self.check_assignments(self.expand_lvalues(lv), rvalue,
+                                       s.type)
 
     def check_assignments(self, lvalues: List[Node],
-                          rvalue: Node) -> None:
+                          rvalue: Node, force_rvalue_type: Type=None) -> None:
         # Collect lvalue types. Index lvalues require special consideration,
         # since we cannot typecheck them until we know the rvalue type.
         # For each lvalue, one of lvalue_types[i] or index_lvalues[i] is not
@@ -964,12 +966,12 @@ class TypeChecker(NodeVisitor[Type]):
             # Single lvalue.
             rvalue_type = self.check_single_assignment(lvalue_types[0],
                                                        index_lvalues[0], rvalue, rvalue)
-            if rvalue_type:
+            if rvalue_type and not force_rvalue_type:
                 self.binder.assign_type(lvalues[0], rvalue_type)
         else:
             rvalue_types = self.check_multi_assignment(lvalue_types, index_lvalues,
                                                        rvalue, rvalue)
-            if rvalue_types:
+            if rvalue_types and not force_rvalue_type:
                 for lv, rt in zip(lvalues, rvalue_types):
                     self.binder.assign_type(lv, rt)
         if is_inferred:

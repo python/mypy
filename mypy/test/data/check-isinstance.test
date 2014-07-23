@@ -1,3 +1,9 @@
+[case testForcedAssignment]
+x = 1 # type: object
+y = 1
+y = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+x = 2
+y = x
 [case testJoinAny]
 from typing import List, Any
 
@@ -255,7 +261,8 @@ from typing import Union, Undefined
 
 def foo() -> Union[int, str]: pass
 
-x = 1 # type: Union[int, str]
+x = foo()
+x = 1
 x = x + 1
 x = foo()
 x = x + 1                # E: Unsupported operand types for + (likely involving Union)
@@ -452,7 +459,8 @@ x + [1]               # E: Unsupported operand types for + (likely involving Uni
 from typing import Union, List
 
 while 1:
-    x = 1 # type: Union[int, str, List[int]]
+    x = None # type: Union[int, str, List[int]]
+    x = 1
     if isinstance(x, int):
         x + 1
         break
