@@ -659,8 +659,6 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     @overload
     def __init__(self, iterable: Iterable[T]) -> None: pass
 
-    def clear(self) -> None: pass
-    def copy(self) -> List[T]: pass
     def append(self, object: T) -> None: pass
     def extend(self, iterable: Iterable[T]) -> None: pass
     def pop(self, index: int = -1) -> T: pass
