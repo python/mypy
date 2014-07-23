@@ -554,6 +554,22 @@ class B:
 main, line 3: Incompatible types in assignment
 main, line 4: Unsupported operand type for unary - ("B")
 
+[case testUnaryPlus]
+from typing import Undefined
+a, b = Undefined, Undefined # type: (A, B)
+a = +a   # Fail
+b = +b   # Fail
+b = +a
+
+class A:
+    def __pos__(self) -> 'B':
+        pass
+class B:
+    pass
+[out]
+main, line 3: Incompatible types in assignment
+main, line 4: Unsupported operand type for unary + ("B")
+
 [case testUnaryNot]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, bool)
