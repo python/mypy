@@ -73,7 +73,7 @@ i = Undefined # type: int
 x.foo()
 y.foo()
 i = x.foo()
-i = y.foo()   # E: Incompatible types in assignment (expression has type "Union(int, str)", variable has type "int") 
+i = y.foo()   # E: Incompatible types in assignment (expression has type "Union[int, str]", variable has type "int") 
 
 [builtins fixtures/isinstance.py]
 

@@ -388,7 +388,7 @@ class TupleType(Type):
 
 
 class UnionType(Type):
-    """The union type Union(T1, ..., Tn) (at least one type argument)."""
+    """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
     items = Undefined(List[Type])
     
@@ -676,7 +676,7 @@ class TypeStrVisitor(TypeVisitor[str]):
     
     def visit_union_type(self, t):
         s = self.list_str(t.items)
-        return 'Union({})'.format(s)
+        return 'Union[{}]'.format(s)
     
     def visit_runtime_type_var(self, t):
         return '<RuntimeTypeVar>'
