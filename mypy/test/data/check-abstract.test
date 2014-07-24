@@ -401,7 +401,7 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "B" matches argument types
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
 from abc import abstractmethod, ABCMeta
@@ -426,7 +426,7 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "B" matches argument types
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
 from abc import abstractmethod, ABCMeta
