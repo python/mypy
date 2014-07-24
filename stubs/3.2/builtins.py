@@ -99,7 +99,6 @@ class int(SupportsInt, SupportsFloat):
     def __rlshift__(self, n: int) -> int: pass
     def __rrshift__(self, n: int) -> int: pass
 
-    def __pos__(self) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
     def __invert__(self) -> int: pass
@@ -157,7 +156,6 @@ class float(SupportsFloat, SupportsInt):
     def __le__(self, x: float) -> bool: pass
     def __gt__(self, x: float) -> bool: pass
     def __ge__(self, x: float) -> bool: pass
-    def __pos__(self) -> float: pass
     def __neg__(self) -> float: pass
     def __pos__(self) -> float: pass
 
