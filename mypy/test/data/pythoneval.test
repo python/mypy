@@ -344,10 +344,10 @@ import typing
 x = unicode('xyz', 'latin1')
 print x
 x = u'foo'
-print x
+print repr(x)
 [out]
 xyz
-foo
+u'foo'
 
 [case testXrangeAndRange_python2]
 import typing
@@ -415,6 +415,17 @@ import typing
 class A:
     @staticmethod
     def f(x: str) -> int: return int(x)
+print(A.f('12'))
+print(A().f('34'))
+[out]
+12
+34
+
+[case testClassmethod]
+import typing
+class A:
+    @classmethod
+    def f(cls, x: str) -> int: return int(x)
 print(A.f('12'))
 print(A().f('34'))
 [out]
@@ -843,3 +854,139 @@ print('>', m(lambda x: fun(x),
              nums))
 [out]
 > 17
+
+[case testFromFuturePrintFunction_python2]
+from __future__ import print_function
+print('a', 'b')
+[out]
+a b
+
+[case testFromFuturePrintFunction]
+from __future__ import print_function
+print('a', 'b')
+[out]
+a b
+
+[case testFromFutureImportUnicodeLiterals_python2]
+from __future__ import unicode_literals
+print '>', ['a', b'b', u'c']
+[out]
+> [u'a', 'b', u'c']
+
+[case testFromFutureImportUnicodeLiterals2_python2]
+from __future__ import unicode_literals
+def f(x: str) -> None: pass
+f(b'')
+f(u'')
+f('')
+[out]
+_program.py, line 4: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py, line 5: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+
+[case testStrUnicodeCompatibility_python2]
+import typing
+def f(s): # type: (unicode) -> None
+    pass
+f(u'')
+f('')
+[out]
+
+[case testStrUnicodeCompatibilityInBuiltins_python2]
+import typing
+'x'.count('x')
+'x'.count(u'x')
+[out]
+
+[case testLenOfTuple]
+import typing
+print(len((1, 'x')))
+[out]
+2
+
+[case testListMethods]
+import typing
+l = [0, 1, 2, 3, 4]
+l.clear()
+l.append(0)
+print('>', l)
+m = l.copy()
+m.extend([1, 2, 3, 4])
+print('>', m)
+print(l.index(0))
+print(l.index(0, 0))
+print(l.index(0, 0, 1))
+try:
+    print(l.index(1))
+    print('expected ValueError')
+except ValueError:
+    pass
+l.insert(0, 1)
+print('>', l)
+print(l.pop(0))
+print(l.pop())
+m.remove(0)
+try:
+    m.remove(0)
+    print('expected ValueError')
+except ValueError:
+    pass
+m.reverse()
+m.sort()
+m.sort(key=lambda x: -x)
+m.sort(reverse=False)
+m.sort(key=lambda x: -x, reverse=True)
+print('>', m)
+[out]
+> [0]
+> [0, 1, 2, 3, 4]
+0
+0
+0
+> [1, 0]
+1
+0
+> [1, 2, 3, 4]
+
+[case testListOperators]
+import typing
+l = [0, 1]
+print('+', l + [2])
+print('*', l * 2)
+print('*', 2 * l)
+print('in', 1 in l)
+print('==', l == [1, 2])
+print('!=', l != [1, 2])
+print('>', l > [1, 2, 3])
+print('>=', l >= [1, 2, 3])
+print('<', l < [1, 2, 3])
+print('<=', l <= [1, 2, 3])
+print('>[0]', l[0])
+l += [2]
+print('+=', l)
+l *= 2
+print('*=', l)
+print('iter', list(iter(l)))
+print('len', len(l))
+print('repr', repr(l))
+l[:3] = []
+print('setslice', l)
+print('reversed', list(reversed(l)))
+[out]
++ [0, 1, 2]
+* [0, 1, 0, 1]
+* [0, 1, 0, 1]
+in True
+== False
+!= True
+> False
+>= False
+< True
+<= True
+>[0] 0
++= [0, 1, 2]
+*= [0, 1, 2, 0, 1, 2]
+iter [0, 1, 2, 0, 1, 2]
+len 6
+repr [0, 1, 2, 0, 1, 2]
+setslice [0, 1, 2]
+reversed [2, 1, 0]

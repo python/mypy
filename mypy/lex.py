@@ -632,11 +632,15 @@ class Lexer:
     def lex_break(self) -> None:
         """Analyse a line break."""
         s = self.match(self.break_exp)
-        if self.tok and isinstance(self.tok[-1], Break):
-            self.tok[-1].string += self.pre_whitespace + s
+        last_tok = self.tok[-1] if self.tok else None
+        if isinstance(last_tok, Break):
+            was_semicolon = last_tok.string == ';'
+            last_tok.string += self.pre_whitespace + s
             self.i += len(s)
             self.line += 1
             self.pre_whitespace = ''
+            if was_semicolon:
+                self.lex_indent()
         elif self.ignore_break():
             self.add_pre_whitespace(s)
             self.line += 1

@@ -64,7 +64,7 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_self_type, TupleType, UnionType
+    replace_leading_arg_type, TupleType, UnionType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
@@ -177,8 +177,10 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Method must have at least one argument', defn)
                 elif defn.type:
                     sig = cast(FunctionLike, defn.type)
-                    defn.type = replace_implicit_self_type(
-                        sig, self_type(self.type))
+                    # TODO: A classmethod's first argument should be more
+                    #       precisely typed than Any.
+                    leading_type = AnyType() if defn.is_class else self_type(self.type)
+                    defn.type = replace_implicit_first_type(sig, leading_type)
 
         if self.is_func_scope() and (not defn.is_decorated and
                                      not defn.is_overload):
@@ -292,9 +294,10 @@ class SemanticAnalyzer(NodeVisitor):
             if init_:
                 init_.lvalues[0].accept(self)
         
-        # The first argument of a method is like 'self', though the name could
-        # be different.
-        if is_method and defn.args:
+        # The first argument of a non-static, non-class method is like 'self'
+        # (though the name could be different), having the enclosing class's
+        # instance type.
+        if is_method and not defn.is_static and not defn.is_class and defn.args:
             defn.args[0].is_self = True
         
         defn.body.accept(self)
@@ -947,6 +950,11 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.func.is_static = True
                 dec.var.is_staticmethod = True
                 self.check_decorated_function_is_method('staticmethod', dec)
+            elif refers_to_fullname(d, 'builtins.classmethod'):
+                removed.append(i)
+                dec.func.is_class = True
+                dec.var.is_classmethod = True
+                self.check_decorated_function_is_method('classmethod', dec)
             elif refers_to_fullname(d, 'builtins.property'):
                 removed.append(i)
                 dec.func.is_property = True
@@ -1340,9 +1348,13 @@ class SemanticAnalyzer(NodeVisitor):
         # 5. Builtins
         b = self.globals.get('__builtins__', None)
         if b:
-            table = (cast(MypyFile, b.node)).names
+            table = cast(MypyFile, b.node).names
             if name in table:
-                return table[name]
+                node = table[name]
+                # Only succeed if we are not using a type alias such List -- these must be
+                # be accessed via the typing module.
+                if node.node.name() == name:
+                    return node
         # Give up.
         self.name_not_defined(name, ctx)
         return None
@@ -1622,17 +1634,17 @@ def self_type(typ: TypeInfo) -> Instance:
 
 
 @overload
-def replace_implicit_self_type(sig: Callable, new: Type) -> Callable:
+def replace_implicit_first_type(sig: Callable, new: Type) -> Callable:
     # We can detect implicit self type by it having no representation.
     if not sig.arg_types[0].repr:
-        return replace_self_type(sig, new)
+        return replace_leading_arg_type(sig, new)
     else:
         return sig
 
 @overload
-def replace_implicit_self_type(sig: FunctionLike, new: Type) -> FunctionLike:
+def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     osig = cast(Overloaded, sig)
-    return Overloaded([replace_implicit_self_type(i, new)
+    return Overloaded([replace_implicit_first_type(i, new)
                        for i in osig.items()])
 
 

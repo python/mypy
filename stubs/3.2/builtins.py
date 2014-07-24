@@ -64,10 +64,9 @@ class int(SupportsInt, SupportsFloat):
     def to_bytes(self, length: int, byteorder: str, *,
                  signed: bool = False) -> bytes: pass
 
-    # TODO actually classmethod
     # TODO buffer object argument
-    @staticmethod
-    def from_bytes(bytes: Sequence[int], byteorder: str, *,
+    @classmethod
+    def from_bytes(cls, bytes: Sequence[int], byteorder: str, *,
                    signed: bool = False) -> int: pass
 
     def __add__(self, x: int) -> int: pass
@@ -100,6 +99,7 @@ class int(SupportsInt, SupportsFloat):
     def __rlshift__(self, n: int) -> int: pass
     def __rrshift__(self, n: int) -> int: pass
 
+    def __pos__(self) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
     def __invert__(self) -> int: pass
@@ -130,8 +130,8 @@ class float(SupportsFloat, SupportsInt):
     def is_integer(self) -> bool: pass
 
     # TODO actually classmethod
-    @staticmethod
-    def fromhex(s: str) -> float: pass
+    @classmethod
+    def fromhex(cls, s: str) -> float: pass
 
     # Operators
     
@@ -157,6 +157,7 @@ class float(SupportsFloat, SupportsInt):
     def __le__(self, x: float) -> bool: pass
     def __gt__(self, x: float) -> bool: pass
     def __ge__(self, x: float) -> bool: pass
+    def __pos__(self) -> float: pass
     def __neg__(self) -> float: pass
     def __pos__(self) -> float: pass
 
@@ -488,11 +489,13 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __init__(self) -> None: pass
     @overload
     def __init__(self, iterable: Iterable[T]) -> None: pass
-    
+
+    def clear(self) -> None: pass
+    def copy(self) -> List[T]: pass
     def append(self, object: T) -> None: pass
     def extend(self, iterable: Iterable[T]) -> None: pass
-    def pop(self, arg: int = None) -> T: pass
-    def index(self, object: T) -> int: pass
+    def pop(self, index: int = -1) -> T: pass
+    def index(self, object: T, start: int = 0, stop: int = Undefined(int)) -> int: pass
     def count(self, object: T) -> int: pass
     def insert(self, index: int, object: T) -> None: pass
     def remove(self, object: T) -> None: pass
@@ -525,6 +528,11 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __imul__(self, n: int) -> List[T]: pass
     def __contains__(self, o: object) -> bool: pass
     def __reversed__(self) -> Iterator[T]: pass
+
+    def __gt__(self, x: List[T]) -> bool: pass
+    def __ge__(self, x: List[T]) -> bool: pass
+    def __lt__(self, x: List[T]) -> bool: pass
+    def __le__(self, x: List[T]) -> bool: pass
 
 
 @builtinclass
@@ -562,13 +570,12 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def values(self) -> Set[VT]: pass
     def items(self) -> Set[Tuple[KT, VT]]: pass
 
-    # TODO actually a class method
-    @staticmethod
+    @classmethod
     @overload
-    def fromkeys(seq: Sequence[T]) -> Dict[T, Any]: pass
-    @staticmethod
+    def fromkeys(cls, seq: Sequence[T]) -> Dict[T, Any]: pass
+    @classmethod
     @overload
-    def fromkeys(seq: Sequence[T], value: S) -> Dict[T, S]: pass
+    def fromkeys(cls, seq: Sequence[T], value: S) -> Dict[T, S]: pass
 
 
 @builtinclass
@@ -729,7 +736,10 @@ def isinstance(o: object, t: Union[type, tuple]) -> bool: pass
 def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO perhaps support this
 #def issubclass(type cld, classinfo: Sequence[type]) -> bool: pass
+@overload
 def len(o: Sized) -> int: pass
+@overload
+def len(o: tuple) -> int: pass
 def locals() -> Dict[str, Any]: pass
 
 # TODO more than two iterables

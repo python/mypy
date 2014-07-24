@@ -588,6 +588,9 @@ class MessageBuilder:
                   'with definition in base class "{}"'.format(
                       name, base1.name(), base2.name()), context)
 
+    def cant_assign_to_method(self, context: Context) -> None:
+        self.fail(CANNOT_ASSIGN_TO_METHOD, context)
+
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
