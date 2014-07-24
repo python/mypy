@@ -14,6 +14,7 @@ __all__ = [
     'BytesMatch',
     'BytesPattern',
     'Dict',
+    'Function',
     'Generic',
     'GenericMeta',
     'List',
