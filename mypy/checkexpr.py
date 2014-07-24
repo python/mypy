@@ -729,8 +729,20 @@ class ExpressionChecker:
         left_type = self.accept(e.left)
         right_type = self.accept(e.right) # TODO only evaluate if needed
         if e.op == 'in' or e.op == 'not in':
-            result, method_type = self.check_op('__contains__', right_type,
-                                                e.left, e)
+            local_errors = self.msg.copy()
+            result, method_type = self.check_op_local('__contains__', right_type,
+                                                      e.left, e, local_errors)
+            if (local_errors.is_errors() and
+                # is_valid_var_arg is True for any Iterable
+                self.is_valid_var_arg(right_type)):
+                itertype = self.chk.analyse_iterable_item_type(e.right)
+                method_type = Callable([left_type], [nodes.ARG_POS], [None],
+                                       self.chk.bool_type(), False)
+                result = self.chk.bool_type()
+                if not is_subtype(left_type, itertype):
+                    self.msg.unsupported_operand_types('in', left_type, right_type, e)
+            else:
+                self.msg.add_errors(local_errors)
             e.method_type = method_type
             if e.op == 'in':
                 return result
@@ -754,6 +766,17 @@ class ExpressionChecker:
         else:
             return nodes.op_methods[op]
     
+    def check_op_local(self, method: str, base_type: Type, arg: Node,
+                 context: Context, local_errors: 'Errors') -> Tuple[Type, Type]:
+        """Type check a binary operation which maps to a method call.
+
+        Return tuple (result type, inferred operator method type).
+        """
+        method_type = analyse_member_access(method, base_type, context, False, False,
+                                            self.chk.basic_types(), local_errors)
+        return self.check_call(method_type, [arg], [nodes.ARG_POS],
+                               context, arg_messages=local_errors)
+
     def check_op(self, method: str, base_type: Type, arg: Node,
                  context: Context,
                  allow_reverse: bool = False) -> Tuple[Type, Type]:
@@ -766,10 +789,8 @@ class ExpressionChecker:
         # for operators which support __rX methods.
         local_errors = self.msg.copy()
         if not allow_reverse or self.has_member(base_type, method):
-            method_type = self.analyse_external_member_access(
-                method, base_type, context)
-            result = self.check_call(method_type, [arg], [nodes.ARG_POS],
-                                     context, arg_messages=local_errors)
+            result = self.check_op_local(method, base_type, arg, context,
+                                         local_errors)
             if allow_reverse:
                 arg_type = self.chk.type_map[arg]
                 if isinstance(arg_type, AnyType):
@@ -803,10 +824,8 @@ class ExpressionChecker:
                 # No __rX method either. Do deferred type checking to produce
                 # error message that we may have missed previously.
                 # TODO Fix type checking an expression more than once.
-                method_type = self.analyse_external_member_access(
-                    method, base_type, context)
-                return self.check_call(method_type, [arg], [nodes.ARG_POS],
-                                       context)
+                return self.check_op_local(method, base_type, arg, context,
+                                           self.msg)
 
     def get_reverse_op_method(self, method: str) -> str:
         if method == '__div__' and self.chk.pyversion == 2:
