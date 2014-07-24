@@ -2603,3 +2603,20 @@ MypyFile:1(
         NameExpr(x)
         y))
     PassStmt:5()))
+
+[case testTrailingSemicolon]
+def x():
+    pass;
+
+def y():
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    x
+    Block:1(
+      PassStmt:2()))
+  FuncDef:4(
+    y
+    Block:4(
+      PassStmt:5())))

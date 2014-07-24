@@ -589,10 +589,9 @@ def f() -> Iterator[int]:
     return
 [builtins fixtures/for.py]
 
-[case testYieldWithoutValue]
-from typing import Iterator, typevar
-T = typevar('T')
-def f() -> Iterator[T]:
+[case testYieldWithNoValue]
+from typing import Iterator
+def f() -> Iterator[None]:
     yield
 [builtins fixtures/for.py]
 
