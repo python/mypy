@@ -230,6 +230,9 @@ class MessageBuilder:
         elif member == '__neg__':
             self.fail('Unsupported operand type for unary - ({})'.format(
                 self.format(typ)), context)
+        elif member == '__pos__':
+            self.fail('Unsupported operand type for unary + ({})'.format(
+                self.format(typ)), context)
         elif member == '__invert__':
             self.fail('Unsupported operand type for ~ ({})'.format(
                 self.format(typ)), context)
