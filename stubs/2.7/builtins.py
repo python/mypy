@@ -658,11 +658,11 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __init__(self) -> None: pass
     @overload
     def __init__(self, iterable: Iterable[T]) -> None: pass
-    
+
     def append(self, object: T) -> None: pass
     def extend(self, iterable: Iterable[T]) -> None: pass
-    def pop(self) -> T: pass
-    def index(self, object: T) -> int: pass
+    def pop(self, index: int = -1) -> T: pass
+    def index(self, object: T, start: int = 0, stop: int = Undefined(int)) -> int: pass
     def count(self, object: T) -> int: pass
     def insert(self, index: int, object: T) -> None: pass
     def remove(self, object: T) -> None: pass
@@ -701,6 +701,11 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __rmul__(self, n: int) -> List[T]: pass
     def __contains__(self, o: object) -> bool: pass
     def __reversed__(self) -> Iterator[T]: pass
+
+    def __gt__(self, x: List[T]) -> bool: pass
+    def __ge__(self, x: List[T]) -> bool: pass
+    def __lt__(self, x: List[T]) -> bool: pass
+    def __le__(self, x: List[T]) -> bool: pass
 
 
 @builtinclass
