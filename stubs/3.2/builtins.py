@@ -78,10 +78,9 @@ class int(SupportsInt, SupportsFloat):
     def to_bytes(self, length: int, byteorder: str, *,
                  signed: bool = False) -> bytes: pass
 
-    # TODO actually classmethod
     # TODO buffer object argument
-    @staticmethod
-    def from_bytes(bytes: Sequence[int], byteorder: str, *,
+    @classmethod
+    def from_bytes(cls, bytes: Sequence[int], byteorder: str, *,
                    signed: bool = False) -> int: pass
 
     def __add__(self, x: int) -> int: pass
@@ -153,8 +152,8 @@ class float(SupportsFloat, SupportsInt):
     def is_integer(self) -> bool: pass
 
     # TODO actually classmethod
-    @staticmethod
-    def fromhex(s: str) -> float: pass
+    @classmethod
+    def fromhex(cls, s: str) -> float: pass
 
     # Operators
     
@@ -791,13 +790,12 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def values(self) -> Set[VT]: pass
     def items(self) -> Set[Tuple[KT, VT]]: pass
 
-    # TODO actually a class method
-    @staticmethod
+    @classmethod
     @overload
-    def fromkeys(seq: Sequence[T]) -> Dict[T, Any]: pass
-    @staticmethod
+    def fromkeys(cls, seq: Sequence[T]) -> Dict[T, Any]: pass
+    @classmethod
     @overload
-    def fromkeys(seq: Sequence[T], value: S) -> Dict[T, S]: pass
+    def fromkeys(cls, seq: Sequence[T], value: S) -> Dict[T, S]: pass
 
 
 @builtinclass

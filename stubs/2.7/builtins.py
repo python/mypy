@@ -20,6 +20,7 @@ T4 = typevar('T4')
 
 
 staticmethod = object() # Only valid as a decorator.
+classmethod = object() # Only valid as a decorator.
 
 
 @builtinclass

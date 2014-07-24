@@ -2,7 +2,7 @@ from typing import cast, Any, List
 
 from mypy.types import (
     Callable, Type, AnyType, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR,
-    replace_self_type
+    replace_leading_arg_type
 ) 
 from mypy.nodes import FuncDef, TypeInfo, NameExpr, LDEF
 from mypy import nodes
@@ -146,9 +146,9 @@ def is_simple_override(fdef: FuncDef, info: TypeInfo) -> bool:
     # Ignore the first argument (self) when determining type sameness.
     # TODO overloads
     newtype = cast(Callable, function_type(fdef))
-    newtype = replace_self_type(newtype, AnyType())
+    newtype = replace_leading_arg_type(newtype, AnyType())
     origtype = cast(Callable, function_type(orig))
-    origtype = replace_self_type(origtype, AnyType())
+    origtype = replace_leading_arg_type(origtype, AnyType())
     return is_same_type(newtype, origtype)
 
 
