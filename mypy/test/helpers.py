@@ -2,7 +2,7 @@ import sys
 import re
 import os
 
-from typing import List
+from typing import List, Dict
 
 from mypy.myunit import AssertionFailure
 from mypy.test import config
