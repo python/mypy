@@ -371,7 +371,7 @@ class MessageBuilder:
         else:
             try:
                 expected_type = callee.arg_types[n-1]
-            except IndexError:  #Varargs callees
+            except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, self.format(arg_type), self.format(expected_type))

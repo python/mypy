@@ -32,6 +32,7 @@ from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 
+
 class ExpressionChecker:
     """Expression type checker.
 

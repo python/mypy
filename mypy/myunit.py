@@ -160,7 +160,7 @@ def run_test(t: Suite, args: List[str] = None) -> None:
             is_verbose = True
         elif a == '-q':
             is_quiet = True
-        #used for updating tests, but breaks clean code usage
+        # Used for updating tests, but breaks clean code usage.
         elif a in ('-u', '-i'): 
             pass
         elif len(a) > 0 and a[0] != '-':

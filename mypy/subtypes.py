@@ -8,11 +8,13 @@ from mypy import sametypes
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
 
+
 def is_immutable(t: Instance) -> bool:
     return t.type.fullname() in ('typing.Iterable',
                                  'typing.Sequence',
                                  'typing.Reversible',
                                  )
+
 
 def is_subtype(left: Type, right: Type) -> bool:
     """Is 'left' subtype of 'right'?
@@ -292,6 +294,7 @@ def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
             cast(Instance, t).type.fullname() == fullname)
 
+
 def restrict_subtype_away(t:Type, s: Type) -> Type:
     """Return a supertype of (t intersect not s)
 
@@ -302,6 +305,7 @@ def restrict_subtype_away(t:Type, s: Type) -> Type:
         return UnionType.make_union(new_items)
     else:
         return t
+
 
 def is_proper_subtype(t: Type, s: Type) -> bool:
     """Check if t is a proper subtype of s?

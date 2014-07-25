@@ -49,14 +49,21 @@ ISINSTANCE_ALWAYS_FALSE = 2
 
 T = typevar('T')
 
+
 def min_with_None_large(x: T, y: T) -> T:
     """Return min(x, y) but with  a < None for all variables a that are not None"""
     if x is None:
         return y
     return min(x, x if y is None else y)
 
-class Frame(Dict[Any, Type]): pass
-class Key(AnyType): pass
+
+class Frame(Dict[Any, Type]):
+    pass
+
+
+class Key(AnyType):
+    pass
+
 
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
@@ -65,7 +72,8 @@ class ConditionalTypeBinder:
         self.frames = List[Frame]()
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
-        self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key is changed
+        self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key
+                                                   # is changed
         self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
         self.basic_types_fn = basic_types_fn
 
@@ -139,8 +147,8 @@ class ConditionalTypeBinder:
         return changed
 
 
-    def update_expand(self, frame: Frame, index: int=-1) -> bool:
-        """Update the frame to include another one, if that other one is larger than the current value.
+    def update_expand(self, frame: Frame, index: int = -1) -> bool:
+        """Update frame to include another one, if that other one is larger than the current value.
 
         Return whether anything changed."""
         result = False
@@ -149,12 +157,11 @@ class ConditionalTypeBinder:
             old_type = self._get(key, index)
             if old_type is None:
                 continue
-            replacement = join_simple(self.frames[0][key], old_type, frame[key], self.basic_types_fn())
+            replacement = join_simple(self.frames[0][key], old_type, frame[key],
+                                      self.basic_types_fn())
 
             if not is_same_type(replacement, old_type):
                 self._push(key, replacement, index)
-                #print("Changing type of", key, "from", old_type, "to", self.frames[-1].get(key))
-                #print("Frames are", len(self.frames))
                 result = True
         return result
 
@@ -208,7 +215,6 @@ class ConditionalTypeBinder:
             # errors cause this function to get called at invalid
             # times?
 
-            #print("ERROR! Defining {} to type {}, which is outside the declared {}".format(expr, type, declared_type))
             return
 
         # If x is Any and y is int, after x = y we do not infer that x is int.
@@ -273,6 +279,7 @@ def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
             else:
                 answer[key] = f[key]
     return answer
+
 
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
@@ -352,7 +359,8 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             return typ
 
-    def accept_in_frame(self, node: Node, type_context: Type = None, repeat_till_fixed = False) -> Type:
+    def accept_in_frame(self, node: Node, type_context: Type = None,
+                        repeat_till_fixed: bool = False) -> Type:
         """Type check a node in the given type context in a new frame of inferred types."""
         while True:
             self.binder.push_frame()
@@ -1241,8 +1249,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_not_void(t, e)
             var, type, elsetype, kind = find_isinstance_check(e, self.type_map)
             if kind == ISINSTANCE_ALWAYS_FALSE:
-                #XXX should issue a warning
-                #print("Warning: isinstance always false")
+                # XXX should issue a warning?
                 pass
             else:
                 # Only type check body if the if condition can be true.
@@ -1882,6 +1889,7 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
             # we can do (outside disallowing them here).
             return erase_typevars(type.items()[0].ret_type)
     return None
+
 
 def expand_node(defn: Node, map: Dict[int, Type]) -> Node:
     visitor = TypeTransformVisitor(map)

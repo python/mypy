@@ -693,7 +693,7 @@ class SemanticAnalyzer(NodeVisitor):
                 isinstance(s.lvalues[0], NameExpr)):
                 res = analyse_node(self.lookup_qualified, s.rvalue, s)
                 if res:
-                    #XXX Need to remove this later if reassigned
+                    # XXX Need to remove this later if reassigned
                     x = cast(NameExpr, s.lvalues[0])
                     self.stored_vars[x.node] = res
 
