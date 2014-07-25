@@ -905,11 +905,18 @@ print(len((1, 'x')))
 
 [case testListMethods]
 import typing
+import sys
 l = [0, 1, 2, 3, 4]
-l.clear()
+if sys.version >= '3.3':
+    l.clear()
+else:
+    l = []
 l.append(0)
 print('>', l)
-m = l.copy()
+if sys.version >= '3.3':
+    m = l.copy()
+else:
+    m = l[:]
 m.extend([1, 2, 3, 4])
 print('>', m)
 print(l.index(0))

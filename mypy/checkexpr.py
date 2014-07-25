@@ -784,7 +784,7 @@ class ExpressionChecker:
             return nodes.op_methods[op]
     
     def check_op_local(self, method: str, base_type: Type, arg: Node,
-                 context: Context, local_errors: 'Errors') -> Tuple[Type, Type]:
+                 context: Context, local_errors: MessageBuilder) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
 
         Return tuple (result type, inferred operator method type).

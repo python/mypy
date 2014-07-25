@@ -522,7 +522,7 @@ class SpooledTemporaryFile:
                                    'mode': mode, 'buffering': buffering,
                                    'suffix': suffix, 'prefix': prefix,
                                    'encoding': encoding, 'newline': newline,
-                                   'dir': dir} # type: Dict[str, _Any]
+                                   'dir': dir} # type: _Dict[str, _Any]
 
     def _check(self, file: _IO[_Any]) -> None:
         if self._rolled: return

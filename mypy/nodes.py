@@ -237,6 +237,8 @@ class FuncItem(FuncBase):
     is_overload = False    # Is this an overload variant of function with
                            # more than one overload variant?
     is_generator = False   # Contains a yield statement?
+    is_static = False      # Uses @staticmethod?
+    is_class = False       # Uses @classmethod?
     expanded = Undefined(List['FuncItem'])  # Variants of function with type
                                             # variables with values expanded
     
@@ -302,8 +304,6 @@ class FuncDef(FuncItem):
     is_decorated = False
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
-    is_static = False
-    is_class = False
     is_property = False
     original_def = None # type: FuncDef  # Original conditional definition
     
