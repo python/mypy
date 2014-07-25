@@ -1027,7 +1027,7 @@ def ord(c: bytes) -> int: pass
 @overload
 def ord(c: bytearray) -> int: pass
 
-def print(*values: Any, *, sep: str = ' ', end: str = '\n',
+def print(*values: Any, sep: str = ' ', end: str = '\n',
            file: IO[str] = None) -> None: pass
 
 # The return type can be int or float, depending on the value of y.
