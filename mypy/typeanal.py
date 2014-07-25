@@ -14,12 +14,14 @@ from mypy.nodes import (
 from mypy.sametypes import is_same_type
 from mypy import nodes
 
+
 def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
                  name: str, ctx: Context) -> Any:
     """Convert a name into the constructor for the associated Type"""
     if name is None:
         return None
     if name.startswith('builtins.'):
+        # TODO: Not sure if this works...
         kind = name.split('.')[1]
         sym = lookup(kind, ctx)
         if isinstance(sym.node, TypeInfo):
@@ -30,13 +32,14 @@ def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
     elif name == 'typing.Tuple':
         return TupleType
     elif name == 'typing.List':
-        return List
+        raise NotImplementedError
     elif name == 'typing.Dict':
-        return Dict
+        raise NotImplementedError
     elif name == 'typing.Set':
-        return Set
+        raise NotImplementedError
     elif name == 'typing.Union':
         return UnionType
+
 
 def analyse_node(lookup: Function[[str, Context], SymbolTableNode],
                  node: Node, ctx: Context) -> Type:
