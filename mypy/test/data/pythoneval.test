@@ -997,3 +997,20 @@ len 6
 repr [0, 1, 2, 0, 1, 2]
 setslice [0, 1, 2]
 reversed [2, 1, 0]
+
+[case testTupleAsSubtypeOfSequence]
+from typing import typevar, Sequence
+T = typevar('T')
+def f(a: Sequence[T]) -> None: print(a)
+f(tuple())
+[out]
+()
+
+[case testTupleAsSubtypeOfSequence_python2]
+from typing import typevar, Sequence
+T = typevar('T')
+def f(a): # type: (Sequence[T]) -> None
+    print a
+f(tuple())
+[out]
+()

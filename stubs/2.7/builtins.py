@@ -634,7 +634,7 @@ class slice:
 
 
 @builtinclass
-class tuple(Sized):
+class tuple(Sequence[Any]):
     @overload
     def __init__(self) -> None: pass
     @overload
@@ -642,10 +642,19 @@ class tuple(Sized):
     
     def __len__(self) -> int: pass
     def __contains__(self, x: object) -> bool: pass
+
+    @overload
+    def __getitem__(self, x: int) -> Any: pass
+    @overload
+    def __getitem__(self, x: slice) -> tuple: pass
+    
+    def __iter__(self) -> Iterator[Any]: pass
     def __lt__(self, x: tuple) -> bool: pass
     def __le__(self, x: tuple) -> bool: pass
     def __gt__(self, x: tuple) -> bool: pass
     def __ge__(self, x: tuple) -> bool: pass
+
+    def __add__(self, x: tuple) -> tuple: pass
 
 
 @builtinclass
