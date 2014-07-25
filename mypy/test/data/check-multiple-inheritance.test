@@ -191,3 +191,17 @@ class A:
 class B:
     def __init__(self) -> None: pass
 class C(A, B): pass
+
+
+-- Special cases
+-- -------------
+
+
+[case testGenericInheritanceAndOverridingWithMultipleInheritance]
+from typing import Generic, typevar
+T = typevar('T')
+class G(Generic[T]):
+    def f(self, s: int) -> 'G[T]': pass
+class A(G[int]):
+    def f(self, s: int) -> 'A': pass
+class B(A, int): pass

@@ -855,7 +855,10 @@ class TypeChecker(NodeVisitor[Type]):
         for i, base in enumerate(mro):
             for name in base.names:
                 for base2 in mro[i + 1:]:
-                    if name in base2.names:
+                    # We only need to check compatibility of attributes from classes not
+                    # in a subclass relationship. For subclasses, normal (single inheritance)
+                    # checks suffice (these are implemented elsewhere).
+                    if name in base2.names and not base2 in base.mro:
                         self.check_compatibility(name, base, base2, typ)
         # Verify that base class layouts are compatible.
         builtin_bases = [nearest_builtin_ancestor(base.type)
