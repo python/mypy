@@ -63,7 +63,7 @@ class RegistryError(Exception):
 
 
 try:
-    _WindowsError = WindowsError
+    _WindowsError = WindowsError # type: type
 except NameError:
     _WindowsError = None
 
