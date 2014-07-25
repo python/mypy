@@ -797,12 +797,13 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def values(self) -> Set[VT]: pass
     def items(self) -> Set[Tuple[KT, VT]]: pass
 
-    @classmethod
+    # TODO: Actually a class method.
+    @staticmethod
     @overload
-    def fromkeys(cls, seq: Sequence[T]) -> Dict[T, Any]: pass
-    @classmethod
+    def fromkeys(seq: Sequence[T]) -> Dict[T, Any]: pass
+    @staticmethod
     @overload
-    def fromkeys(cls, seq: Sequence[T], value: S) -> Dict[T, S]: pass
+    def fromkeys(seq: Sequence[T], value: S) -> Dict[T, S]: pass
 
 
 @builtinclass
