@@ -1458,6 +1458,24 @@ MypyFile:1(
         IntExpr(0)
         IntExpr(1)))))
 
+[case testListComprehensionWithCrazyConditions]
+raise [x for y in z if (1 if 2 else 3) if 1]
+[out]
+MypyFile:1(
+  RaiseStmt:1(
+    ListComprehension:1(
+      GeneratorExpr:1(
+        NameExpr(x)
+        NameExpr(y)
+        NameExpr(z)
+        ParenExpr:1(
+          ConditionalExpr:1(
+            Condition(
+              IntExpr(2))
+            IntExpr(1)
+            IntExpr(3)))
+        IntExpr(1)))))
+
 [case testWithStatement]
 with open('foo') as f:
   pass

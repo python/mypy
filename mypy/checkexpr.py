@@ -1145,11 +1145,12 @@ class ExpressionChecker:
         """Type check a generator expression or a list comprehension."""
         
         self.chk.binder.push_frame()
-        for index, sequence in zip(gen.indices, gen.sequences):
+        for index, sequence, conditions in zip(gen.indices, gen.sequences,
+                                               gen.condlists):
             sequence_type = self.chk.analyse_iterable_item_type(sequence)
             self.chk.analyse_index_variables(index, False, sequence_type, gen)
-        if gen.condition:
-            self.accept(gen.condition)
+            for condition in conditions:
+                self.accept(condition)
         self.chk.binder.pop_frame()
 
         # Infer the type of the list comprehension by using a synthetic generic

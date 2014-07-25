@@ -1174,24 +1174,30 @@ class Parser:
         indices = List[List[NameExpr]]()
         sequences = List[Node]()
         types = List[List[Type]]()
+        for_toks = List[Token]()
+        in_toks = List[Token]()
+        if_toklists = List[List[Token]]()
+        condlists = List[List[Node]]()
         while self.current_str() == 'for':
-            for_tok = self.expect('for')
+            if_toks = List[Token]()
+            conds = List[Node]()
+            for_toks.append(self.expect('for'))
             index, type, commas = self.parse_for_index_variables()
             indices.append(index)
             types.append(type)
-            in_tok = self.expect('in')
+            in_toks.append(self.expect('in'))
             sequence = self.parse_expression_list()
             sequences.append(sequence)
-        if self.current_str() == 'if':
-            if_tok = self.skip()
-            cond = self.parse_expression()
-        else:
-            if_tok = none
-            cond = None
-        gen = GeneratorExpr(left_expr, indices, types, sequences, cond)
-        gen.set_line(for_tok)
-        self.set_repr(gen, noderepr.GeneratorExprRepr(for_tok, commas, in_tok,
-                                                      if_tok))
+            while self.current_str() == 'if':
+                if_toks.append(self.skip())
+                conds.append(self.parse_expression(precedence['<if>']))
+            if_toklists.append(if_toks)
+            condlists.append(conds)
+
+        gen = GeneratorExpr(left_expr, indices, types, sequences, condlists)
+        gen.set_line(for_toks[0])
+        self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, commas, in_toks,
+                                                      if_toklists))
         return gen
     
     def parse_expression_list(self) -> Node:
