@@ -2137,8 +2137,8 @@ MypyFile:1(
     Block:1(
       PassStmt:1())))
 
-[case testBareAsteriskAndVarArgs]
-def f(*x: A, *, y: B = 1) -> None: pass
+[case testBareAsteriskNamedDefault]
+def f(*, y: B = 1) -> None: pass
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -2146,13 +2146,25 @@ MypyFile:1(
     MaxPos(0)
     Args(
       Var(y))
-    def (*x: A?, *, y: B?) -> None?
+    def (*, y: B?) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)
         IntExpr(1)))
-    VarArg(
-      Var(x))
+    Block:1(
+      PassStmt:1())))
+
+[case testBareAsteriskNamedNoDefault]
+def f(*, y: B) -> None: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    MaxPos(0)
+    Args(
+      Var(y))
+    def (*, y: B?) -> None?
+    Init()
     Block:1(
       PassStmt:1())))
 

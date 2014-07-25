@@ -502,13 +502,22 @@ class Parser:
         assigns = []   # type: List[Token]
         
         require_named = False
+        bare_asterisk_before = -1
         
         if self.current_str() != ')' and self.current_str() != ':':
             while self.current_str() != ')':
                 if self.current_str() == '*' and self.peek().string == ',':
+                    if require_named:
+                        # can only have one bare star, must be before any
+                        # *args or **args
+                        self.parse_error()
                     self.expect('*')
                     require_named = True
+                    bare_asterisk_before = len(args)
                 elif self.current_str() in ['*', '**']:
+                    if bare_asterisk_before == len(args):
+                        # named arguments must follow bare *
+                        self.parse_error()
                     asterisk.append(self.skip())
                     isdict = asterisk[-1].string == '**'
                     name = self.expect_type(Name)
@@ -540,11 +549,13 @@ class Parser:
                         else:
                             kinds.append(nodes.ARG_OPT)
                     else:
-                        if require_named:
-                            self.parse_error()
                         init.append(None)
                         assigns.append(none)
-                        kinds.append(nodes.ARG_POS)
+                        if require_named:
+                            # required keyword-only argument
+                            kinds.append(nodes.ARG_NAMED)
+                        else:
+                            kinds.append(nodes.ARG_POS)
                         
                 if self.current().string != ',':
                     break
