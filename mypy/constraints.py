@@ -254,9 +254,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return []
     
     def visit_union_type(self, template: UnionType) -> List[Constraint]:
-        # XXX We should maybe do something intelligent here,
-        # but it seems complicated.
-        return []
+        res = [] # type: List[Constraint]
+        for item in template.items:
+            res.extend(infer_constraints(item, self.actual, self.direction))
+        return res
 
     def infer_against_any(self, types: List[Type]) -> List[Constraint]:
         res = [] # type: List[Constraint]

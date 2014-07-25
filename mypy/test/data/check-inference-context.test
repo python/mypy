@@ -710,3 +710,12 @@ a = Undefined(List[int])
 a = [None] * 3
 a = [''] * 3 # E: List item 1 has incompatible type "str"
 [builtins fixtures/list.py]
+
+[case testUnionTypeContext]
+from typing import Undefined, Union, List, typevar
+T = typevar('T')
+def f(x: Union[List[T], str]) -> None: pass
+f([1])
+f('')
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[None], str]"
+[builtins fixtures/isinstancelist.py]
