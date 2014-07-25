@@ -100,10 +100,47 @@ f(*x, y)
 [out]
 file, line 1: Parse error before "y"
 
-[case testInvalidBareAsteriskAndVarArgs]
+[case testInvalidBareAsteriskAndVarArgs1]
 def f(*x: A, *, y: B = 1) -> None: pass
 [out]
-file, line 1: Parse error before "*"
+file: In function "f":
+file, line 1: Parse error before *
+file, line 1: Parse error before end of line
+
+[case testInvalidBareAsteriskAndVarArgs2]
+def f(*x: A, *) -> None: pass
+[out]
+file: In function "f":
+file, line 1: Parse error before )
+file, line 1: Parse error before end of line
+
+[case testInvalidBareAsteriskAndVarArgs3]
+def f(*, *x: A) -> None: pass
+[out]
+file: In function "f":
+file, line 1: Parse error before *
+file, line 1: Parse error before end of line
+
+[case testInvalidBareAsteriskAndVarArgs4]
+def f(*, **x: A) -> None: pass
+[out]
+file: In function "f":
+file, line 1: Parse error before **
+file, line 1: Parse error before end of line
+
+[case testInvalidBareAsterisk1]
+def f(*) -> None: pass
+[out]
+file: In function "f":
+file, line 1: Parse error before )
+file, line 1: Parse error before end of line
+
+[case testInvalidBareAsterisk2]
+def f(x, *) -> None: pass
+[out]
+file: In function "f":
+file, line 1: Parse error before )
+file, line 1: Parse error before end of line
 
 [case testInvalidFuncDefArgs1]
 def f(x = y, x): pass
@@ -111,25 +148,12 @@ def f(x = y, x): pass
 file: In function "f":
 file, line 1: Invalid argument list
 
-[case testInvalidFuncDefArgs2]
-def f(*x, y): 
-    pass
-[out]
-file: In function "f":
-file, line 1: Parse error before )
-file: At top level:
-file, line 1: Parse error before :
-file, line 2: Inconsistent indentation
-
 [case testInvalidFuncDefArgs3]
-def f(**x, y): 
+def f(**x, y):
    pass
 [out]
 file: In function "f":
-file, line 1: Parse error before )
-file: At top level:
-file, line 1: Parse error before :
-file, line 2: Inconsistent indentation
+file, line 1: Invalid argument list
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x): 

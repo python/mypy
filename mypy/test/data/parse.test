@@ -2137,6 +2137,37 @@ MypyFile:1(
     Block:1(
       PassStmt:1())))
 
+[case testBareAsteriskNamedDefault]
+def f(*, y: B = 1) -> None: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    MaxPos(0)
+    Args(
+      Var(y))
+    def (*, y: B?) -> None?
+    Init(
+      AssignmentStmt:1(
+        NameExpr(y)
+        IntExpr(1)))
+    Block:1(
+      PassStmt:1())))
+
+[case testBareAsteriskNamedNoDefault]
+def f(*, y: B) -> None: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    MaxPos(0)
+    Args(
+      Var(y))
+    def (*, y: B?) -> None?
+    Init()
+    Block:1(
+      PassStmt:1())))
+
 [case testSuperExpr]
 super().x
 [out]
