@@ -14,6 +14,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     UndefinedExpr, ConditionalExpr, TempNode
 )
+from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
 from mypy import nodes
 import mypy.checker
