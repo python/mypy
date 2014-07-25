@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any, Union
+    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any, Union, Undefined
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
@@ -249,15 +249,17 @@ def expanduser(path: AnyStr) -> AnyStr:
     i = path.find(sep, 1)
     if i < 0:
         i = len(path)
+    userhome = Undefined(Union[str, bytes])
     if i == 1:
         if 'HOME' not in os.environ:
             import pwd
-            userhome = pwd.getpwuid(os.getuid()).pw_dir # type: Union[str, bytes]
+            userhome = pwd.getpwuid(os.getuid()).pw_dir
         else:
             userhome = os.environ['HOME']
     else:
         import pwd
-        name = path[1:i]   # type: Union[str, bytes]
+        name = Undefined(Union[str, bytes])
+        name = path[1:i]
         if isinstance(name, bytes):
             name = str(name, 'ASCII')
         try:
@@ -309,14 +311,16 @@ def expandvars(path: AnyStr) -> AnyStr:
         if not m:
             break
         i, j = m.span(0)
-        name = m.group(1) # type: Union[str, bytes]
+        name = Undefined(Union[str, bytes])
+        name = m.group(1)
         if name.startswith(start) and name.endswith(end):
             name = name[1:-1]
         if isinstance(name, bytes):
             name = str(name, 'ASCII')
         if name in os.environ:
             tail = path[j:]
-            value = os.environ[name]    # type: Union[str, bytes]
+            value = Undefined(Union[str, bytes])
+            value = os.environ[name]
             if isinstance(path, bytes):
                 value = value.encode('ASCII')
             path = path[:i] + value
