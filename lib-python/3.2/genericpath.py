@@ -69,7 +69,7 @@ def getctime(filename: AnyStr_) -> float:
 
 
 # Return the longest prefix of all list elements.
-def commonprefix(m: List_[AnyStr_]) -> Any_:
+def commonprefix(m: List_[Any_]) -> Any_:
     "Given a list of pathnames, returns the longest common leading component"
     if not m: return ''
     s1 = min(m)

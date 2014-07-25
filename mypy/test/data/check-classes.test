@@ -96,7 +96,7 @@ class A:
 class B: pass
 [out]
 main: In member "f" of class "A":
-main, line 4: Incompatible return value type
+main, line 4: Incompatible return value type: expected __main__.A, got __main__.B
 
 [case testSelfArgument]
 import typing
@@ -839,8 +839,8 @@ class A: pass
 class B: pass
 a = Undefined(A)
 b = Undefined(B)
-a = b
 b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = b
 
 [case testDucktypeTransitivityDecorator]
 from typing import ducktype, Undefined
@@ -851,8 +851,8 @@ class B: pass
 class C: pass
 a = Undefined(A)
 c = Undefined(C)
-a = c
 c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+a = c
 
 
 -- Disjointclass decorators

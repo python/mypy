@@ -40,6 +40,10 @@ UNBOUND_TVAR = 4 # type: 'int'
 TVAR = 5 # type: int
 
 
+LITERAL_YES = 2
+LITERAL_TYPE = 1
+LITERAL_NO = 0
+
 node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
@@ -69,10 +73,16 @@ class Node(Context):
     line = -1
     # Textual representation
     repr = None # type: Any
-    
+
+    literal = LITERAL_NO
+    literal_hash = None # type: Any
+
     def __str__(self) -> str:
-        return self.accept(mypy.strconv.StrConv())
-    
+        ans = self.accept(mypy.strconv.StrConv())
+        if ans is None:
+            return repr(self)
+        return ans
+
     @overload
     def set_line(self, tok: Token) -> 'Node':
         self.line = tok.line
@@ -725,9 +735,11 @@ class IntExpr(Node):
     """Integer literal"""
     
     value = 0
+    literal = LITERAL_YES
     
     def __init__(self, value: int) -> None:
         self.value = value
+        self.literal_hash = value
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
@@ -737,9 +749,11 @@ class StrExpr(Node):
     """String literal"""
     
     value = ''
-    
+    literal = LITERAL_YES
+
     def __init__(self, value: str) -> None:
         self.value = value
+        self.literal_hash = value
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -749,9 +763,11 @@ class BytesExpr(Node):
     """Bytes literal"""
     
     value = '' # TODO use bytes
-    
+    literal = LITERAL_YES
+
     def __init__(self, value: str) -> None:
         self.value = value
+        self.literal_hash = value
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
@@ -761,9 +777,11 @@ class UnicodeExpr(Node):
     """Unicode literal (Python 2.x)"""
     
     value = '' # TODO use bytes
-    
+    literal = LITERAL_YES
+
     def __init__(self, value: str) -> None:
         self.value = value
+        self.literal_hash = value
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
@@ -773,9 +791,11 @@ class FloatExpr(Node):
     """Float literal"""
     
     value = 0.0
+    literal = LITERAL_YES
     
     def __init__(self, value: float) -> None:
         self.value = value
+        self.literal_hash = value
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
@@ -788,6 +808,8 @@ class ParenExpr(Node):
     
     def __init__(self, expr: Node) -> None:
         self.expr = expr
+        self.literal = self.expr.literal
+        self.literal_hash = ('Paren', expr.literal_hash,)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_paren_expr(self)
@@ -816,9 +838,11 @@ class NameExpr(RefExpr):
     name = None # type: str      # Name referred to (may be qualified)
     info = Undefined('TypeInfo') # TypeInfo of class surrounding expression
                                  # (may be None)
+    literal = LITERAL_TYPE
     
     def __init__(self, name: str) -> None:
         self.name = name
+        self.literal_hash = ('Var', name,)
     
     def type_node(self):
         return cast('TypeInfo', self.node)
@@ -841,7 +865,9 @@ class MemberExpr(RefExpr):
         self.expr = expr
         self.name = name
         self.direct = direct
-    
+        self.literal = self.expr.literal
+        self.literal_hash = ('Member', expr.literal_hash, name, direct)
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
 
@@ -908,6 +934,10 @@ class IndexExpr(Node):
         self.base = base
         self.index = index
         self.analyzed = None
+        if self.index.literal == LITERAL_YES:
+            self.literal = self.base.literal
+            self.literal_hash = ('Member', base.literal_hash,
+                                 index.literal_hash)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -924,6 +954,8 @@ class UnaryExpr(Node):
     def __init__(self, op: str, expr: Node) -> None:
         self.op = op
         self.expr = expr
+        self.literal = self.expr.literal
+        self.literal_hash = ('Unary', op, expr.literal_hash)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
@@ -997,6 +1029,8 @@ class OpExpr(Node):
         self.op = op
         self.left = left
         self.right = right
+        self.literal = min(self.left.literal, self.right.literal)
+        self.literal_hash = ('Binary', op, left.literal_hash, right.literal_hash)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
@@ -1063,7 +1097,6 @@ class FuncExpr(FuncItem):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_expr(self)
 
-
 class ListExpr(Node):
     """List literal expression [...]."""
     
@@ -1071,6 +1104,9 @@ class ListExpr(Node):
     
     def __init__(self, items: List[Node]) -> None:
         self.items = items
+        if all(x.literal == LITERAL_YES for x in items):
+            self.literal = LITERAL_YES
+            self.literal_hash = ('List',) + tuple(x.literal_hash for x in items)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
@@ -1083,6 +1119,10 @@ class DictExpr(Node):
     
     def __init__(self, items: List[Tuple[Node, Node]]) -> None:
         self.items = items
+        if all(x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
+               for x in items):
+            self.literal = LITERAL_YES
+            self.literal_hash = ('Dict',) + tuple((x[0].literal_hash, x[1].literal_hash) for x in items)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
@@ -1095,6 +1135,9 @@ class TupleExpr(Node):
     
     def __init__(self, items: List[Node]) -> None:
         self.items = items
+        if all(x.literal == LITERAL_YES for x in items):
+            self.literal = LITERAL_YES
+            self.literal_hash = ('Tuple',) + tuple(x.literal_hash for x in items)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
@@ -1107,27 +1150,30 @@ class SetExpr(Node):
     
     def __init__(self, items: List[Node]) -> None:
         self.items = items
+        if all(x.literal == LITERAL_YES for x in items):
+            self.literal = LITERAL_YES
+            self.literal_hash = ('Set',) + tuple(x.literal_hash for x in items)
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
 
 
 class GeneratorExpr(Node):
-    """Generator expression ... for ... in ... [ if ... ]."""
+    """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
     
     left_expr = Undefined(Node)
-    right_expr = Undefined(Node)
+    sequences_expr = Undefined(List[Node])
     condition = Undefined(Node)   # May be None
-    index = Undefined(List[NameExpr])
-    types = Undefined(List['mypy.types.Type'])
+    indices = Undefined(List[List[NameExpr]])
+    types = Undefined(List[List['mypy.types.Type']])
     
-    def __init__(self, left_expr: Node, index: List[NameExpr],
-                  types: List['mypy.types.Type'], right_expr: Node,
+    def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
+                  types: List[List['mypy.types.Type']], sequences: List[Node],
                  condition: Node) -> None:
         self.left_expr = left_expr
-        self.right_expr = right_expr
+        self.sequences = sequences
         self.condition = condition
-        self.index = index
+        self.indices = indices
         self.types = types
     
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -1638,5 +1684,5 @@ def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
             raise MroError()
         result.append(head)
         for s in seqs:
-            if s[0] == head:
+            if s[0] is head:
                 del s[0]

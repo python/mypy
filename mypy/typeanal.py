@@ -1,27 +1,76 @@
 """Semantic analysis of types"""
 
-from typing import Undefined, Function, cast, List, Tuple
+from typing import Undefined, Function, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
-    Type, UnboundType, TypeVar, TupleType, Instance, AnyType, Callable,
+    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, Callable,
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import (
-    GDEF, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr
+    GDEF, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, Var, Node,
+    IndexExpr, NameExpr, TupleExpr
 )
 from mypy.sametypes import is_same_type
 from mypy import nodes
+
+
+def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
+                 name: str, ctx: Context) -> Any:
+    """Convert a name into the constructor for the associated Type"""
+    if name is None:
+        return None
+    if name.startswith('builtins.'):
+        # TODO: Not sure if this works...
+        kind = name.split('.')[1]
+        sym = lookup(kind, ctx)
+        if isinstance(sym.node, TypeInfo):
+            res = Instance(cast(TypeInfo, sym.node), [])
+            return lambda: res
+    elif name == 'typing.Any':
+        return AnyType
+    elif name == 'typing.Tuple':
+        return TupleType
+    elif name == 'typing.List':
+        raise NotImplementedError
+    elif name == 'typing.Dict':
+        raise NotImplementedError
+    elif name == 'typing.Set':
+        raise NotImplementedError
+    elif name == 'typing.Union':
+        return UnionType
+
+
+def analyse_node(lookup: Function[[str, Context], SymbolTableNode],
+                 node: Node, ctx: Context) -> Type:
+    if isinstance(node, IndexExpr):
+        if isinstance(node.base, NameExpr):
+            type_type = analyse_name(lookup, node.base.fullname, ctx)
+            if type_type is None:
+                return None
+            type_ind = Undefined(Any)
+            if isinstance(node.index, TupleExpr):
+                type_ind = [analyse_node(lookup, x, ctx) for x in node.index.items]
+            else:
+                type_ind = analyse_node(lookup, node.index, ctx)
+            result = type_type(type_ind)
+            return result
+    elif isinstance(node, NameExpr):
+        type_type = analyse_name(lookup, node.fullname, ctx)
+        if type_type:
+            return type_type()
 
 
 class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
     def __init__(self, lookup_func: Function[[str, Context], SymbolTableNode],
+                 stored_vars: Dict[Node, Type],
                  fail_func: Function[[str, Context], None]) -> None:
         self.lookup = lookup_func
         self.fail = fail_func
-    
+        self.stored_vars = stored_vars
+
     def visit_unbound_type(self, t: UnboundType) -> Type:
         sym = self.lookup(t.name, t)
         if sym is not None:
@@ -41,12 +90,16 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return AnyType()
             elif sym.node.fullname() == 'typing.Tuple':
                 return TupleType(self.anal_array(t.args))
+            elif sym.node.fullname() == 'typing.Union':
+                return UnionType(self.anal_array(t.args))
             elif sym.node.fullname() == 'typing.Function':
                 return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
                     name = sym.node.name()
+                if sym.node in self.stored_vars:
+                    return self.stored_vars[sym.node]
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = cast(TypeInfo, sym.node)
@@ -94,6 +147,9 @@ class TypeAnalyser(TypeVisitor[Type]):
     
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.anal_array(t.items), t.line, t.repr)
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        return UnionType(self.anal_array(t.items), t.line, t.repr)
 
     def analyze_function_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
@@ -203,6 +259,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             arg_type.accept(self)
     
     def visit_tuple_type(self, t: TupleType) -> None:
+        for item in t.items:
+            item.accept(self)
+
+    def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:
             item.accept(self)
 

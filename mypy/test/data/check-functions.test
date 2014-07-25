@@ -424,9 +424,9 @@ class A: pass
 class B: pass
 [out]
 main: In function "g":
-main, line 4: Incompatible return value type
+main, line 4: Incompatible return value type: expected __main__.B, got __main__.A
 main: In function "f":
-main, line 6: Incompatible return value type
+main, line 6: Incompatible return value type: expected __main__.A, got __main__.B
 
 [case testDynamicallyTypedNestedFunction]
 import typing

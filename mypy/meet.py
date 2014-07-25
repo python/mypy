@@ -3,20 +3,83 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList
+    Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
-
+from mypy.nodes import TypeInfo
 
 # TODO Describe this module.
 
 
 def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
-    if isinstance(s, AnyType) or isinstance(s, ErasedType):
+    if isinstance(s, ErasedType):
         return s
-    
+    if isinstance(s, AnyType):
+        return t
+    if isinstance(s, UnionType) and not isinstance(t, UnionType):
+        s, t = t, s
     return t.accept(TypeMeetVisitor(s, basic))
+
+def meet_simple(s: Type, t: Type, basic: BasicTypes, default_right: bool = True) -> Type:
+    if s == t:
+        return s
+    if isinstance(s, UnionType):
+        return UnionType.make_simplified_union([meet_types(x, t, basic) for x in s.items])
+    elif not is_overlapping_types(s, t):
+        return Void()
+    else:
+        if default_right:
+            return t
+        else:
+            return s
+
+def meet_simple_away(s: Type, t: Type, basic: BasicTypes) -> Type:
+    if isinstance(s, UnionType):
+        return UnionType.make_simplified_union([x for x in s.items
+                                                if not is_subtype(x, t)])
+    elif not isinstance(s, AnyType) and is_subtype(s, t):
+        return Void()
+    else:
+        return s
+
+
+def is_overlapping_types(t: Type, s: Type) -> bool:
+    """Can a value of type t be a value of type s, or vice versa?"""
+    if isinstance(t, Instance):
+        if isinstance(s, Instance):
+            # If the classes are explicitly declared as disjoint, they can't
+            # overlap.
+            if t.type in s.type.disjoint_classes:
+                return False
+
+            # Built-in classes in the mro affect whether two types can be
+            # overlapping.
+            # TODO Find the most distant ancestor with the same memory layout,
+            #      since multiple inheritance seems possible if the memory
+            #      layout is the same.
+            tbuiltin = nearest_builtin_ancestor(t.type)
+            sbuiltin = nearest_builtin_ancestor(s.type)
+            if not sbuiltin or not tbuiltin:
+                return True
+
+            # If one is a base class of other, the types overlap, unless there
+            # is an explicit disjointclass constraint.
+            if tbuiltin in sbuiltin.mro or sbuiltin in tbuiltin.mro:
+                return True
+            return tbuiltin == sbuiltin
+    # We conservatively assume that non-instance types can overlap any other
+    # types.
+    return True
+
+def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
+    for base in type.mro:
+        if base.defn.is_builtinclass:
+            return base
+    else:
+        return None
+        assert False, 'No built-in ancestor found for {}'.format(type.name())
+
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
@@ -39,8 +102,19 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         assert False, 'Not supported'
     
     def visit_any(self, t: AnyType) -> Type:
-        return t
-    
+        return self.s
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        if isinstance(self.s, UnionType):
+            meets = List[Type]()
+            for x in t.items:
+                for y in self.s.items:
+                    meets.append(meet_types(x, y, self.basic))
+        else:
+            meets = [meet_types(x, self.s, self.basic)
+                     for x in t.items]
+        return UnionType.make_simplified_union(meets)
+
     def visit_void(self, t: Void) -> Type:
         if isinstance(self.s, Void):
             return t

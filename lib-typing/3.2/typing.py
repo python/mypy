@@ -23,6 +23,7 @@ __all__ = [
     'Set',
     'Tuple',
     'Undefined',
+    'Union',
     'cast',
     'forwardref',
     'overload',
@@ -171,6 +172,9 @@ Function = TypeAlias(callable)
 Pattern = TypeAlias(type(re.compile('')))
 Match = TypeAlias(type(re.match('', '')))
 
+def union(x): return x
+
+Union = TypeAlias(union)
 
 class typevar:
     def __init__(self, name, *, values=None):
@@ -190,7 +194,6 @@ class forwardref:
 def Any(x):
     """The Any type; can also be used to cast a value to type Any."""
     return x
-
 
 def cast(type, object):
     """Cast a value to a type.

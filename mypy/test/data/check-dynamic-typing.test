@@ -531,6 +531,7 @@ class A: pass
 [case testFunctionTypeCompatibilityAndReturnTypes]
 from typing import Undefined, Any, Function
 f1 = Undefined # type: Function[[], Any]
+f11 = Undefined # type: Function[[], Any]
 f2 = Undefined # type: Function[[], A]
 f3 = Undefined # type: Function[[], None]
 
@@ -538,8 +539,8 @@ f2 = f3 # E: Incompatible types in assignment (expression has type , variable ha
 
 f1 = f2
 f1 = f3
-f2 = f1
-f3 = f1
+f2 = f11
+f3 = f11
 
 class A: pass
 

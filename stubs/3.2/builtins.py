@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, builtinclass, ducktype
+    SupportsRound, IO, builtinclass, ducktype, Union
 )
 from abc import abstractmethod, ABCMeta
 
@@ -24,6 +24,8 @@ T4 = typevar('T4')
 staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.
 property = object()
+
+byte_types = Union[bytes, bytearray]
 
 
 @builtinclass
@@ -53,26 +55,10 @@ class type:
     
     def __init__(self, o: object) -> None: pass
 
-
 @builtinclass
 @ducktype(float)
 class int(SupportsInt, SupportsFloat):
-    @overload
-    def __init__(self) -> None: pass
-    @overload
-    def __init__(self, x: SupportsInt) -> None: pass
-    @overload
-    def __init__(self, x: str) -> None: pass
-    @overload
-    def __init__(self, x: bytes) -> None: pass
-    @overload
-    def __init__(self, x: bytearray) -> None: pass
-    @overload
-    def __init__(self, string: str, base: int) -> None: pass
-    @overload
-    def __init__(self, string: bytes, base: int) -> None: pass
-    @overload
-    def __init__(self, string: bytearray, base: int) -> None: pass
+    def __init__(self, x: Union[SupportsInt, str, byte_types]=None, base: int=None) -> None: pass
 
     def bit_length(self) -> int: pass
     def to_bytes(self, length: int, byteorder: str, *,
@@ -136,16 +122,7 @@ class int(SupportsInt, SupportsFloat):
 @builtinclass
 @ducktype(complex)
 class float(SupportsFloat, SupportsInt):
-    @overload
-    def __init__(self) -> None: pass
-    @overload
-    def __init__(self, x: SupportsFloat) -> None: pass
-    @overload
-    def __init__(self, x: str) -> None: pass
-    @overload
-    def __init__(self, x: bytes) -> None: pass
-    @overload
-    def __init__(self, x: bytearray) -> None: pass
+    def __init__(self, x: Union[SupportsFloat, str, byte_types]=None) -> None: pass
 
     def as_integer_ratio(self) -> Tuple[int, int]: pass
     def hex(self) -> str: pass
@@ -203,10 +180,7 @@ class str(Sequence[str]):
     @overload
     def __init__(self, o: object) -> None: pass
     @overload
-    def __init__(self, o: bytes, encoding: str = None,
-                 errors: str = 'strict') -> None: pass
-    @overload
-    def __init__(self, o: bytearray, encoding: str = None,
+    def __init__(self, o: byte_types, encoding: str = None,
                  errors: str = 'strict') -> None: pass
 
     def capitalize(self) -> str: pass
@@ -218,20 +192,14 @@ class str(Sequence[str]):
     def endswith(self, suffix: str, start: int = 0,
                  end: int = None) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> str: pass
-    
-    @overload
-    def find(self, sub: str, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: str, start: int, end: int) -> int: pass
-    
+
+    def find(self, sub: str, start: int = 0, end: int = 0) -> int: pass
+
     def format(self, *args: Any, **kwargs: Any) -> str: pass
     def format_map(self, map: Mapping[str, Any]) -> str: pass
-    
-    @overload
-    def index(self, sub: str, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: str, start: int, end: int) -> int: pass
-    
+
+    def index(self, sub: str, start: int = 0, end: int = 0) -> int: pass
+
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdecimal(self) -> bool: pass
@@ -250,14 +218,8 @@ class str(Sequence[str]):
     def partition(self, sep: str) -> Tuple[str, str, str]: pass
     def replace(self, old: str, new: str, count: int = -1) -> str: pass
     
-    @overload
-    def rfind(self, sub: str, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: str, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: str, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: str, start: int, end: int) -> int: pass
+    def rfind(self, sub: str, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: str, start: int = 0, end: int = 0) -> int: pass
     
     def rjust(self, width: int, fillchar: str = ' ') -> str: pass
     def rpartition(self, sep: str) -> Tuple[str, str, str]: pass
@@ -275,10 +237,7 @@ class str(Sequence[str]):
     def upper(self) -> str: pass
     def zfill(self, width: int) -> str: pass
     
-    @overload
-    def __getitem__(self, i: int) -> str: pass
-    @overload
-    def __getitem__(self, s: slice) -> str: pass
+    def __getitem__(self, i: Union[int, slice]) -> str: pass
 
     def __add__(self, s: str) -> str: pass
     def __mul__(self, n: int) -> str: pass
@@ -318,37 +277,14 @@ class bytes(Sequence[int]):
 
     def capitalize(self) -> bytes: pass
     
-    @overload
-    def center(self, width: int, fillchar: bytes = None) -> bytes: pass
-    @overload
-    def center(self, width: int, fillchar: bytearray = None) -> bytes: pass
-    @overload
-    def count(self, x: bytes) -> int: pass
-    @overload
-    def count(self, x: bytearray) -> int: pass
+    def center(self, width: int, fillchar: byte_types = None) -> bytes: pass
+    def count(self, x: byte_types) -> int: pass
     def decode(self, encoding: str = 'utf-8',
                errors: str = 'strict') -> str: pass
-    @overload
-    def endswith(self, suffix: bytes) -> bool: pass
-    @overload
-    def endswith(self, suffix: bytearray) -> bool: pass
+    def endswith(self, suffix: byte_types) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytes: pass
-    @overload
-    def find(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def find(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def index(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def index(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: bytearray, start: int, end: int) -> int: pass
+    def find(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -356,82 +292,26 @@ class bytes(Sequence[int]):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    @overload
-    def join(self, iterable: Iterable[bytes]) -> bytes: pass
-    @overload
-    def join(self, iterable: Iterable[bytearray]) -> bytes: pass
-    @overload
-    def ljust(self, width: int, fillchar: bytes = None) -> bytes: pass
-    @overload
-    def ljust(self, width: int, fillchar: bytearray = None) -> bytes: pass
+    def join(self, iterable: Iterable[byte_types]) -> bytes: pass
+    def ljust(self, width: int, fillchar: byte_types = None) -> bytes: pass
     def lower(self) -> bytes: pass
-    @overload
-    def lstrip(self, chars: bytes = None) -> bytes: pass
-    @overload
-    def lstrip(self, chars: bytearray = None) -> bytes: pass
-    @overload
-    def partition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
-    @overload
-    def partition(self, sep: bytearray) -> Tuple[bytes, bytes, bytes]: pass
-    @overload
-    def replace(self, old: bytes, new: bytes, count: int = -1) -> bytes: pass
-    @overload
-    def replace(self, old: bytearray, new: bytearray,
-                count: int = -1) -> bytes: pass
-    @overload
-    def rfind(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def rfind(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def rjust(self, width: int, fillchar: bytes = None) -> bytes: pass
-    @overload
-    def rjust(self, width: int, fillchar: bytearray = None) -> bytes: pass
-    @overload
-    def rpartition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
-    @overload
-    def rpartition(self, sep: bytearray) -> Tuple[bytes, bytes, bytes]: pass
-    @overload
-    def rsplit(self, sep: bytes = None,
+    def lstrip(self, chars: byte_types = None) -> bytes: pass
+    def partition(self, sep: byte_types) -> Tuple[bytes, bytes, bytes]: pass
+    def replace(self, old: byte_types, new: byte_types, count: int = -1) -> bytes: pass
+    def rfind(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rjust(self, width: int, fillchar: byte_types = None) -> bytes: pass
+    def rpartition(self, sep: byte_types) -> Tuple[bytes, bytes, bytes]: pass
+    def rsplit(self, sep: byte_types = None,
                maxsplit: int = -1) -> List[bytes]: pass
-    @overload
-    def rsplit(self, sep: bytearray = None,
-               maxsplit: int = -1) -> List[bytes]: pass
-    @overload
-    def rstrip(self, chars: bytes = None) -> bytes: pass
-    @overload
-    def rstrip(self, chars: bytearray = None) -> bytes: pass
-    @overload
-    def split(self, sep: bytes = None, maxsplit: int = -1) -> List[bytes]: pass
-    @overload
-    def split(self, sep: bytearray = None,
-              maxsplit: int = -1) -> List[bytes]: pass
+    def rstrip(self, chars: byte_types = None) -> bytes: pass
+    def split(self, sep: byte_types = None, maxsplit: int = -1) -> List[bytes]: pass
     def splitlines(self, keepends: bool = False) -> List[bytes]: pass
-    @overload
-    def startswith(self, prefix: bytes) -> bool: pass
-    @overload
-    def startswith(self, prefix: bytearray) -> bool: pass
-    @overload
-    def strip(self, chars: bytes = None) -> bytes: pass
-    @overload
-    def strip(self, chars: bytearray = None) -> bytes: pass
+    def startswith(self, prefix: byte_types) -> bool: pass
+    def strip(self, chars: byte_types = None) -> bytes: pass
     def swapcase(self) -> bytes: pass
     def title(self) -> bytes: pass
-    @overload
-    def translate(self, table: bytes) -> bytes: pass
-    @overload
-    def translate(self, table: bytearray) -> bytes: pass
+    def translate(self, table: byte_types) -> bytes: pass
     def upper(self) -> bytes: pass
     def zfill(self, width: int) -> bytes: pass
     
@@ -447,14 +327,11 @@ class bytes(Sequence[int]):
     def __getitem__(self, i: int) -> int: pass
     @overload
     def __getitem__(self, s: slice) -> bytes: pass
-    @overload
-    def __add__(self, s: bytes) -> bytes: pass    
-    @overload
-    def __add__(self, s: bytearray) -> bytes: pass
+    def __add__(self, s: byte_types) -> bytes: pass
     
     def __mul__(self, n: int) -> bytes: pass
     def __rmul__(self, n: int) -> bytes: pass
-    def __contains__(self, o: object) -> bool: pass    
+    def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: bytes) -> bool: pass
@@ -479,37 +356,14 @@ class bytearray(Sequence[int]):
     def __init__(self) -> None: pass
 
     def capitalize(self) -> bytearray: pass
-    @overload
-    def center(self, width: int, fillchar: bytes = None) -> bytearray: pass
-    @overload
-    def center(self, width: int, fillchar: bytearray = None) -> bytearray: pass
-    @overload
-    def count(self, x: bytes) -> int: pass
-    @overload
-    def count(self, x: bytearray) -> int: pass
+    def center(self, width: int, fillchar: byte_types = None) -> bytearray: pass
+    def count(self, x: byte_types) -> int: pass
     def decode(self, encoding: str = 'utf-8',
                errors: str = 'strict') -> str: pass
-    @overload
-    def endswith(self, suffix: bytes) -> bool: pass
-    @overload
-    def endswith(self, suffix: bytearray) -> bool: pass
+    def endswith(self, suffix: byte_types) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytearray: pass
-    @overload
-    def find(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def find(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def index(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def index(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: bytearray, start: int, end: int) -> int: pass
+    def find(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -517,91 +371,33 @@ class bytearray(Sequence[int]):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    @overload
-    def join(self, iterable: Iterable[bytes]) -> bytearray: pass
-    @overload
-    def join(self, iterable: Iterable[bytearray]) -> bytearray: pass
-    @overload
-    def ljust(self, width: int, fillchar: bytes = None) -> bytearray: pass
-    @overload
-    def ljust(self, width: int, fillchar: bytearray = None) -> bytearray: pass
+    def join(self, iterable: Iterable[byte_types]) -> bytearray: pass
+    def ljust(self, width: int, fillchar: byte_types = None) -> bytearray: pass
     def lower(self) -> bytearray: pass
-    @overload
-    def lstrip(self, chars: bytes = None) -> bytearray: pass
-    @overload
-    def lstrip(self, chars: bytearray = None) -> bytearray: pass
-    @overload
-    def partition(self, sep: bytes) -> Tuple[bytearray, bytearray,
+    def lstrip(self, chars: byte_types = None) -> bytearray: pass
+    def partition(self, sep: byte_types) -> Tuple[bytearray, bytearray,
                                              bytearray]: pass
-    @overload
-    def partition(self, sep: bytearray) -> Tuple[bytearray, bytearray,
-                                                 bytearray]: pass
-    @overload
-    def replace(self, old: bytes, new: bytes,
+    def replace(self, old: byte_types, new: bytes,
                 count: int = -1) -> bytearray: pass
-    @overload
-    def replace(self, old: bytearray, new: bytearray,
-                count: int = -1) -> bytearray: pass
-    @overload
-    def rfind(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def rfind(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: bytes, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: bytes, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def rjust(self, width: int, fillchar: bytes = None) -> bytearray: pass
-    @overload
-    def rjust(self, width: int, fillchar: bytearray = None) -> bytearray: pass
-    @overload
-    def rpartition(self, sep: bytes) -> Tuple[bytearray, bytearray,
+    def rfind(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rjust(self, width: int, fillchar: byte_types = None) -> bytearray: pass
+    def rpartition(self, sep: byte_types) -> Tuple[bytearray, bytearray,
                                               bytearray]: pass
-    @overload
-    def rpartition(self, sep: bytearray) -> Tuple[bytearray, bytearray,
-                                                  bytearray]:pass
-    @overload
-    def rsplit(self, sep: bytes = None,
+    def rsplit(self, sep: byte_types = None,
                maxsplit: int = -1) -> List[bytearray]: pass
-    @overload
-    def rsplit(self, sep: bytearray = None,
-               maxsplit: int = -1) -> List[bytearray]: pass
-    @overload
-    def rstrip(self, chars: bytes = None) -> bytearray: pass
-    @overload
-    def rstrip(self, chars: bytearray = None) -> bytearray: pass
-    @overload
-    def split(self, sep: bytes = None,
-              maxsplit: int = -1) -> List[bytearray]: pass
-    @overload
-    def split(self, sep: bytearray = None,
+    def rstrip(self, chars: byte_types = None) -> bytearray: pass
+    def split(self, sep: byte_types = None,
               maxsplit: int = -1) -> List[bytearray]: pass
     def splitlines(self, keepends: bool = False) -> List[bytearray]: pass
-    @overload
-    def startswith(self, prefix: bytes) -> bool: pass
-    @overload
-    def startswith(self, prefix: bytearray) -> bool: pass
-    @overload
-    def strip(self, chars: bytes = None) -> bytearray: pass
-    @overload
-    def strip(self, chars: bytearray = None) -> bytearray: pass
+    def startswith(self, prefix: byte_types) -> bool: pass
+    def strip(self, chars: byte_types = None) -> bytearray: pass
     def swapcase(self) -> bytearray: pass
     def title(self) -> bytearray: pass
-    @overload
-    def translate(self, table: bytes) -> bytearray: pass
-    @overload
-    def translate(self, table: bytearray) -> bytearray: pass
+    def translate(self, table: byte_types) -> bytearray: pass
     def upper(self) -> bytearray: pass
     def zfill(self, width: int) -> bytearray: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[int]: pass
     def __str__(self) -> str: pass
@@ -609,7 +405,7 @@ class bytearray(Sequence[int]):
     def __int__(self) -> int: pass
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
-    
+
     @overload
     def __getitem__(self, i: int) -> int: pass
     @overload
@@ -622,38 +418,20 @@ class bytearray(Sequence[int]):
     def __delitem__(self, i: int) -> None: pass
     @overload
     def __delitem__(self, s: slice) -> None: pass
-    
-    @overload
-    def __add__(self, s: bytes) -> bytearray: pass    
-    @overload
-    def __add__(self, s: bytearray) -> bytearray: pass
-    @overload
-    def __iadd__(self, s: bytes) -> bytearray: pass    
-    @overload
-    def __iadd__(self, s: bytearray) -> bytearray: pass
-    
+
+    def __add__(self, s: byte_types) -> bytearray: pass
+    def __iadd__(self, s: byte_types) -> bytearray: pass
+
     def __mul__(self, n: int) -> bytearray: pass
     def __rmul__(self, n: int) -> bytearray: pass
     def __imul__(self, n: int) -> bytearray: pass
     def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    @overload
-    def __lt__(self, x: bytearray) -> bool: pass
-    @overload
-    def __lt__(self, x: bytes) -> bool: pass
-    @overload
-    def __le__(self, x: bytearray) -> bool: pass
-    @overload
-    def __le__(self, x: bytes) -> bool: pass
-    @overload
-    def __gt__(self, x: bytearray) -> bool: pass
-    @overload
-    def __gt__(self, x: bytes) -> bool: pass
-    @overload
-    def __ge__(self, x: bytearray) -> bool: pass
-    @overload
-    def __ge__(self, x: bytes) -> bool: pass
+    def __lt__(self, x: byte_types) -> bool: pass
+    def __le__(self, x: byte_types) -> bool: pass
+    def __gt__(self, x: byte_types) -> bool: pass
+    def __ge__(self, x: byte_types) -> bool: pass
 
 
 @builtinclass
@@ -670,7 +448,7 @@ class slice:
 
 
 @builtinclass
-class tuple(Iterable[Any], Sized):
+class tuple(Sequence[Any]):
     @overload
     def __init__(self) -> None: pass
     @overload
@@ -691,6 +469,8 @@ class tuple(Iterable[Any], Sized):
     def __le__(self, x: tuple) -> bool: pass
     def __gt__(self, x: tuple) -> bool: pass
     def __ge__(self, x: tuple) -> bool: pass
+
+    def __add__(self, x: tuple) -> tuple: pass
 
 
 @builtinclass
@@ -762,7 +542,7 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     @overload
     def __init__(self, iterable: Iterable[Tuple[KT, VT]]) -> None: pass
     # TODO __init__ keyword args
-    
+
     def __len__(self) -> int: pass
     def __getitem__(self, k: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
@@ -770,24 +550,15 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def __contains__(self, o: object) -> bool: pass
     def __iter__(self) -> Iterator[KT]: pass
     def __str__(self) -> str: pass
-    
+
     def clear(self) -> None: pass
     def copy(self) -> Dict[KT, VT]: pass
-    
-    @overload
-    def get(self, k: KT) -> VT: pass
-    @overload
-    def get(self, k: KT, default: VT) -> VT: pass
-    @overload
-    def pop(self, k: KT) -> VT: pass
-    @overload
-    def pop(self, k: KT, default: VT) -> VT: pass
+
+    def get(self, k: KT, default: VT=None) -> VT: pass
+    def pop(self, k: KT, default: VT=None) -> VT: pass
     def popitem(self) -> Tuple[KT, VT]: pass
-    @overload
-    def setdefault(self, k: KT) -> VT: pass
-    @overload
-    def setdefault(self, k: KT, default: VT) -> VT: pass
-    
+    def setdefault(self, k: KT, default: VT=None) -> VT: pass
+
     @overload
     def update(self, m: Mapping[KT, VT]) -> None: pass
     @overload
@@ -808,10 +579,7 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
 
 @builtinclass
 class set(AbstractSet[T], Generic[T]):
-    @overload
-    def __init__(self) -> None: pass
-    @overload
-    def __init__(self, iterable: Iterable[T]) -> None: pass
+    def __init__(self, iterable: Iterable[T]=None) -> None: pass
     
     def add(self, element: T) -> None: pass
     def clear(self) -> None: pass
@@ -853,10 +621,7 @@ class set(AbstractSet[T], Generic[T]):
 
 @builtinclass
 class frozenset(AbstractSet[T], Generic[T]):
-    @overload
-    def __init__(self) -> None: pass
-    @overload
-    def __init__(self, iterable: Iterable[T]) -> None: pass
+    def __init__(self, iterable: Iterable[T]=None) -> None: pass
 
     def copy(self) -> frozenset[T]: pass
     def difference(self, s: AbstractSet[Any]) -> frozenset[T]: pass
@@ -965,10 +730,7 @@ def iter(iterable: Iterable[T]) -> Iterator[T]: pass
 @overload
 def iter(function: Function[[], T], sentinel: T) -> Iterator[T]: pass
 
-@overload
-def isinstance(o: object, t: type) -> bool: pass
-@overload
-def isinstance(o: object, t: tuple) -> bool: pass
+def isinstance(o: object, t: Union[type, tuple]) -> bool: pass
 
 def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO perhaps support this
@@ -1008,25 +770,12 @@ def next(i: Iterator[T], default: T) -> T: pass
 # TODO __index__
 def oct(i: int) -> str: pass
 
-@overload
-def open(file: str, mode: str = 'r', buffering: int = -1, encoding: str = None,
-         errors: str = None, newline: str = None,
-         closefd: bool = True) -> IO[Any]: pass
-@overload
-def open(file: bytes, mode: str = 'r', buffering: int = -1,
-         encoding: str = None, errors: str = None, newline: str = None,
-         closefd: bool = True) -> IO[Any]: pass
-@overload
-def open(file: int, mode: str = 'r', buffering: int = -1, encoding: str = None,
+def open(file: Union[str, bytes, int],
+         mode: str = 'r', buffering: int = -1, encoding: str = None,
          errors: str = None, newline: str = None,
          closefd: bool = True) -> IO[Any]: pass
 
-@overload
-def ord(c: str) -> int: pass
-@overload
-def ord(c: bytes) -> int: pass
-@overload
-def ord(c: bytearray) -> int: pass
+def ord(c: Union[str, bytes, bytearray]) -> int: pass
 
 def print(*values: Any, sep: str = ' ', end: str = '\n',
            file: IO[str] = None) -> None: pass

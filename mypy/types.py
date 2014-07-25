@@ -1,7 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Undefined, Any, typevar, List, Tuple, cast, Generic
+from typing import Undefined, Any, typevar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
 
@@ -387,6 +387,63 @@ class TupleType(Type):
         return visitor.visit_tuple_type(self)
 
 
+class UnionType(Type):
+    """The union type Union[T1, ..., Tn] (at least one type argument)."""
+
+    items = Undefined(List[Type])
+    
+    def __init__(self, items: List[Type], line: int = -1,
+                 repr: Any = None) -> None:
+        self.items = items
+        super().__init__(line, repr)
+
+    @staticmethod
+    def make_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
+        if len(items) > 1:
+            return UnionType(items, line, repr)
+        elif len(items) == 1:
+            return items[0]
+        else:
+            return Void()
+
+    @staticmethod
+    def make_simplified_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
+        while any(isinstance(typ, UnionType) for typ in items):
+            all_items = [] # type: List[Type]
+            for typ in items:
+                if isinstance(typ, UnionType):
+                    all_items.extend(typ.items)
+                else:
+                    all_items.append(typ)
+            items = all_items
+
+        from mypy.subtypes import is_subtype
+        removed = Set[int]()
+        for i in range(len(items)):
+            if any(is_subtype(items[i], items[j]) for j in range(len(items))
+                   if j not in removed and j != i):
+                removed.add(i)
+
+        simplified_set = [items[i] for i in range(len(items)) if i not in removed]
+        return UnionType.make_union(simplified_set)
+
+    def length(self) -> int:
+        return len(self.items)
+    
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_union_type(self)
+
+    def has_readable_member(self, name):
+        """For a tree of unions of instances, check whether all
+        instances have a given member.
+
+        This should probably be refactored to go elsewhere."""
+        return all(isinstance(x, UnionType) and x.has_readable_member(name) or
+                   isinstance(x, Instance) and
+                   x.type.has_readable_member(name)
+                   for x in self.items)
+
+
 class RuntimeTypeVar(Type):
     """Reference to a runtime variable with the value of a type variable.
 
@@ -452,6 +509,9 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
     
+    def visit_union_type(self, t: UnionType) -> T:
+        assert(0)               # XXX catch visitors that don't have Union cases yet
+    
     def visit_runtime_type_var(self, t: RuntimeTypeVar) -> T:
         pass
 
@@ -503,6 +563,9 @@ class TypeTranslator(TypeVisitor[Type]):
     
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items), t.line, t.repr)
+    
+    def visit_union_type(self, t: UnionType) -> Type:
+        return UnionType(self.translate_types(t.items), t.line, t.repr)
     
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
@@ -621,6 +684,10 @@ class TypeStrVisitor(TypeVisitor[str]):
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
     
+    def visit_union_type(self, t):
+        s = self.list_str(t.items)
+        return 'Union[{}]'.format(s)
+    
     def visit_runtime_type_var(self, t):
         return '<RuntimeTypeVar>'
     
@@ -696,6 +763,9 @@ class TypeQuery(TypeVisitor[bool]):
         return self.query_types(t.arg_types + [t.ret_type])
     
     def visit_tuple_type(self, t: TupleType) -> bool:
+        return self.query_types(t.items)
+    
+    def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)
     
     def visit_runtime_type_var(self, t: RuntimeTypeVar) -> bool:

@@ -438,13 +438,15 @@ class OutputVisitor(NodeVisitor):
     def visit_generator_expr(self, o):
         r = o.repr
         self.node(o.left_expr)
-        self.token(r.for_tok)
-        for i in range(len(o.index)):
-            self.node(o.types[i])
-            self.node(o.index[i])
-            self.token(r.commas[i])
-        self.token(r.in_tok)
-        self.node(o.right_expr)
+        for i in range(len(o.indices)):
+            self.token(r.for_tok)
+            for j in range(len(o.indices[i])):
+                self.node(o.types[i][j])
+                self.node(o.indices[i][j])
+                if j < len(o.indices[i])-1:
+                    self.token(r.commas[0])
+            self.token(r.in_tok)
+            self.node(o.sequences[i])
         if o.condition:
             self.token(r.if_tok)
             self.node(o.condition)

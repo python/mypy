@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any
+    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any, Union, Undefined
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
@@ -249,6 +249,7 @@ def expanduser(path: AnyStr) -> AnyStr:
     i = path.find(sep, 1)
     if i < 0:
         i = len(path)
+    userhome = Undefined(Union[str, bytes])
     if i == 1:
         if 'HOME' not in os.environ:
             import pwd
@@ -257,24 +258,22 @@ def expanduser(path: AnyStr) -> AnyStr:
             userhome = os.environ['HOME']
     else:
         import pwd
+        name = Undefined(Union[str, bytes])
         name = path[1:i]
         if isinstance(name, bytes):
-            name2 = str(name, 'ASCII')
-        else:
-            name2 = name
+            name = str(name, 'ASCII')
         try:
-            pwent = pwd.getpwnam(name2)
+            pwent = pwd.getpwnam(name)
         except KeyError:
             return path
         userhome = pwent.pw_dir
     if isinstance(path, bytes):
-        userhome2 = os.fsencode(userhome)
+        userhome = os.fsencode(userhome)
         root = b'/'
     else:
-        userhome2 = userhome
         root = '/'
-    userhome2 = userhome2.rstrip(root) or userhome2
-    return userhome2 + path[i:]
+    userhome = userhome.rstrip(root)
+    return (userhome + path[i:]) or root
 
 
 # Expand paths containing shell variable substitutions.
@@ -312,20 +311,18 @@ def expandvars(path: AnyStr) -> AnyStr:
         if not m:
             break
         i, j = m.span(0)
+        name = Undefined(Union[str, bytes])
         name = m.group(1)
         if name.startswith(start) and name.endswith(end):
             name = name[1:-1]
         if isinstance(name, bytes):
-            namestr = str(name, 'ASCII')
-        else:
-            namestr = name
-        if namestr in os.environ:
+            name = str(name, 'ASCII')
+        if name in os.environ:
             tail = path[j:]
-            valuestr = os.environ[namestr]
+            value = Undefined(Union[str, bytes])
+            value = os.environ[name]
             if isinstance(path, bytes):
-                value = valuestr.encode('ASCII')
-            else:
-                value = valuestr
+                value = value.encode('ASCII')
             path = path[:i] + value
             i = len(path)
             path += tail
@@ -462,7 +459,7 @@ def relpath(path: AnyStr, start: AnyStr = None) -> AnyStr:
     path_list = [x for x in abspath(path).split(sep) if x]
 
     # Work out how much of the filepath is shared by start and path.
-    i = len(commonprefix(Any([start_list, path_list])))
+    i = len(commonprefix([start_list, path_list]))
 
     rel_list = [pardir] * (len(start_list)-i) + path_list[i:]
     if not rel_list:

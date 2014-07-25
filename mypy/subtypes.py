@@ -2,12 +2,17 @@ from typing import cast, List, Dict
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVar, Callable, TupleType, Overloaded, ErasedType, TypeList
+    Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType, TypeList
 )
 from mypy import sametypes
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
 
+def is_immutable(t: Instance) -> bool:
+    return t.type.fullname() in ('typing.Iterable',
+                                 'typing.Sequence',
+                                 'typing.Reversible',
+                                 )
 
 def is_subtype(left: Type, right: Type) -> bool:
     """Is 'left' subtype of 'right'?
@@ -19,6 +24,10 @@ def is_subtype(left: Type, right: Type) -> bool:
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
+    elif isinstance(left, UnionType):
+        return all(is_subtype(item, right) for item in left.items)
+    elif isinstance(right, UnionType):
+        return any(is_subtype(left, item) for item in right.items)
     else:
         return left.accept(SubtypeVisitor(right))
 
@@ -67,11 +76,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
-            result = True
-            for i in range(len(right.args)):
-                if not is_equivalent(t.args[i], right.args[i]):
-                    result = False
-                    break
+            if not is_immutable(right):
+                result = all(is_equivalent(ta, ra) for (ta, ra) in
+                             zip(t.args, right.args))
+            else:
+                result = all(is_subtype(ta, ra) for (ta, ra) in
+                             zip(t.args, right.args))
             return result
         else:
             return False
@@ -100,10 +110,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
     
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
-        if isinstance(right, Instance) and (
-                is_named_instance(right, 'builtins.object') or
+        if isinstance(right, Instance):
+            if (is_named_instance(right, 'builtins.object') or
                 is_named_instance(right, 'builtins.tuple')):
-            return True
+                return True
+            elif (is_named_instance(right, 'typing.Iterable') or
+                  is_named_instance(right, 'typing.Sequence') or
+                  is_named_instance(right, 'typing.Reversible')):
+                iter_type = right.args[0]
+                return all(is_subtype(li, iter_type) for li in left.items)
+            return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
@@ -276,6 +292,16 @@ def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
             cast(Instance, t).type.fullname() == fullname)
 
+def restrict_subtype_away(t:Type, s: Type) -> Type:
+    """Return a supertype of (t intersect not s)
+
+    Currently just remove elements of a union type.
+    """
+    if isinstance(t, UnionType):
+        new_items = [item for item in t.items if not is_subtype(item, s)]
+        return UnionType.make_union(new_items)
+    else:
+        return t
 
 def is_proper_subtype(t: Type, s: Type) -> bool:
     """Check if t is a proper subtype of s?
@@ -289,8 +315,12 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
             if not t.type.has_base(s.type.fullname()):
                 return False
             t = map_instance_to_supertype(t, s.type)
-            return all(sametypes.is_same_type(x, y)
-                       for x, y in zip(t.args, s.args))
+            if not is_immutable(s):
+                return all(sametypes.is_same_type(ta, ra) for (ta, ra) in
+                           zip(t.args, s.args))
+            else:
+                return all(is_proper_subtype(ta, ra) for (ta, ra) in
+                           zip(t.args, s.args))
         return False
     else:
         return sametypes.is_same_type(t, s)

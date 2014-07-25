@@ -4,9 +4,47 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList
+    ErrorType, TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList,
+    UnionType
 )
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
+
+
+def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
+    """Return a simple least upper bound given the declared type."""
+
+    if isinstance(s, AnyType):
+        return s
+    
+    if isinstance(s, NoneTyp) and not isinstance(t, Void):
+        return t
+
+    if isinstance(s, ErasedType):
+        return t
+
+    if is_subtype(s, t):
+        return t
+
+    if is_subtype(t, s):
+        return s
+
+    if isinstance(declaration, UnionType):
+        return UnionType.make_simplified_union([s, t])
+
+    value = t.accept(TypeJoinVisitor(s, basic))
+
+    if value is None:
+        # XXX this code path probably should be avoided.
+        # It seems to happen when a line (x = y) is a type error, and
+        # it's not clear that assuming that x is arbitrary afterward
+        # is a good idea.
+        return declaration
+
+    if declaration is None or is_subtype(value, declaration):
+        return value
+
+    return declaration
+
 
 
 def join_types(s: Type, t: Type, basic: BasicTypes) -> Type:
@@ -16,7 +54,7 @@ def join_types(s: Type, t: Type, basic: BasicTypes) -> Type:
 
     If the join does not exist, return an ErrorType instance.
     """
-    
+
     if isinstance(s, AnyType):
         return s
     
@@ -44,6 +82,12 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return AnyType()
     
+    def visit_union_type(self, t: UnionType) -> Type:
+        if is_subtype(self.s, t):
+            return t
+        else:
+            return UnionType(t.items + [self.s])
+
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
     

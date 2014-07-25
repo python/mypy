@@ -407,9 +407,10 @@ from typing import Undefined, typevar, AbstractGeneric, Generic
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
 a, i, j = Undefined, Undefined, Undefined # type: (A[object], I[object], J[object])
-i = a
-j = a
-j = i
+(ii, jj) = (i, j)
+ii = a
+jj = a
+jj = i
 a = i # E: Incompatible types in assignment (expression has type I[object], variable has type A[object])
 a = j # E: Incompatible types in assignment (expression has type J[object], variable has type A[object])
 

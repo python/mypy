@@ -4,7 +4,7 @@ from typing import Undefined, cast, List, Tuple, Dict, Function
 
 from mypy.types import (
     Type, AnyType, Callable, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike
+    TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike, UnionType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -12,8 +12,9 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, TempNode
+    UndefinedExpr, ConditionalExpr, TempNode, LITERAL_TYPE
 )
+from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
 from mypy import nodes
 import mypy.checker
@@ -31,11 +32,10 @@ from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 
-
 class ExpressionChecker:
     """Expression type checker.
 
-    This clas works closely together with checker.TypeChecker.
+    This class works closely together with checker.TypeChecker.
     """
     
     # Some services are provided by a TypeChecker instance.
@@ -55,7 +55,8 @@ class ExpressionChecker:
 
         It can be of any kind: local, member or global.
         """
-        return self.analyse_ref_expr(e)
+        result = self.analyse_ref_expr(e)
+        return self.chk.narrow_type_from_binder(e, result)
     
     def analyse_ref_expr(self, e: RefExpr) -> Type:
         result = Undefined(Type)
@@ -90,7 +91,11 @@ class ExpressionChecker:
             return AnyType()
         else:
             # Look up local type of variable with type (inferred or explicit).
-            return self.chk.binder.get(var)
+            val = self.chk.binder.get(var)
+            if val is None:
+                return var.type
+            else:
+                return val
     
     def visit_call_expr(self, e: CallExpr) -> Type:
         """Type check a call expression."""
@@ -186,6 +191,14 @@ class ExpressionChecker:
         elif isinstance(callee, AnyType) or self.chk.is_dynamic_function():
             self.infer_arg_types_in_context(None, args)
             return AnyType(), AnyType()
+        elif isinstance(callee, UnionType):
+            self.msg.disable_type_names += 1
+            results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
+                                arg_messages=arg_messages)
+                       for subtype in callee.items]
+            self.msg.disable_type_names -= 1
+            return (UnionType.make_simplified_union([res[0] for res in results]),
+                    callee)
         else:
             return self.msg.not_callable(callee, context), AnyType()
     
@@ -679,8 +692,9 @@ class ExpressionChecker:
     
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
-        return self.analyse_ordinary_member_access(e, False)
-    
+        result = self.analyse_ordinary_member_access(e, False)
+        return self.chk.narrow_type_from_binder(e, result)
+
     def analyse_ordinary_member_access(self, e: MemberExpr,
                                        is_lvalue: bool) -> Type:
         """Analyse member expression or member lvalue."""
@@ -895,12 +909,16 @@ class ExpressionChecker:
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         return result
-    
+
     def visit_index_expr(self, e: IndexExpr) -> Type:
         """Type check an index expression (base[index]).
 
         It may also represent type application.
         """
+        result = self.visit_index_expr_helper(e)
+        return self.chk.narrow_type_from_binder(e, result)
+
+    def visit_index_expr_helper(self, e: IndexExpr) -> Type:
         if e.analyzed:
             # It's actually a type application.
             return self.accept(e.analyzed)
@@ -990,8 +1008,8 @@ class ExpressionChecker:
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
-    
-    def visit_tuple_expr(self, e: TupleExpr) -> Type:    
+
+    def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         ctx = None # type: TupleType
         # Try to determine type context for type inference.
@@ -1125,12 +1143,14 @@ class ExpressionChecker:
                                          id_for_messages: str) -> Type:
         """Type check a generator expression or a list comprehension."""
         
-        item_type = self.chk.analyse_iterable_item_type(gen.right_expr)
-        self.chk.analyse_index_variables(gen.index, False, item_type, gen)
-
+        self.chk.binder.push_frame()
+        for index, sequence in zip(gen.indices, gen.sequences):
+            sequence_type = self.chk.analyse_iterable_item_type(sequence)
+            self.chk.analyse_index_variables(index, False, sequence_type, gen)
         if gen.condition:
             self.accept(gen.condition)
-        
+        self.chk.binder.pop_frame()
+
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
         tv = TypeVar('T', -1, [])
@@ -1203,6 +1223,9 @@ class ExpressionChecker:
             return typ.type.has_readable_member(member)
         elif isinstance(typ, AnyType):
             return True
+        elif isinstance(typ, UnionType):
+            result = all(self.has_member(x, member) for x in typ.items)
+            return result
         else:
             return False
     

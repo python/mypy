@@ -1,9 +1,9 @@
 """Type parser"""
 
-from typing import List, Tuple, cast
+from typing import List, Tuple, Union, cast
 
 from mypy.types import (
-    Type, UnboundType, TupleType, TypeList, AnyType, Callable
+    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, Callable
 )
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
@@ -131,7 +131,7 @@ class TypeParser:
                                                            langle,
                                                            commas, rangle))
         return typ
-    
+
     # Helpers
     
     def skip(self) -> Token:

@@ -4,10 +4,10 @@ from typing import List, cast, Undefined
 
 from mypy.types import (
     Callable, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
-    Instance, TupleType, Overloaded, ErasedType
+    Instance, TupleType, UnionType, Overloaded, ErasedType
 )
 from mypy.expandtype import expand_caller_var_args
-from mypy.subtypes import map_instance_to_supertype
+from mypy.subtypes import map_instance_to_supertype, is_named_instance
 from mypy import nodes
 
 
@@ -159,8 +159,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     
     def visit_instance(self, template: Instance) -> List[Constraint]:
         actual = self.actual
+        res = [] # type: List[Constraint]
         if isinstance(actual, Instance):
-            res = [] # type: List[Constraint]
             instance = cast(Instance, actual)
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
@@ -188,6 +188,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args)
+        if (isinstance(actual, TupleType) and
+            (is_named_instance(template, 'typing.Iterable') or
+             is_named_instance(template, 'typing.Sequence') or
+             is_named_instance(template, 'typing.Reversible'))
+            and self.direction == SUPERTYPE_OF):
+            actual = cast(TupleType, actual)
+            for item in actual.items:
+                cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
+                res.extend(cb)
+            return res
         else:
             return []
     
@@ -243,6 +253,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         else:
             return []
     
+    def visit_union_type(self, template: UnionType) -> List[Constraint]:
+        res = [] # type: List[Constraint]
+        for item in template.items:
+            res.extend(infer_constraints(item, self.actual, self.direction))
+        return res
+
     def infer_against_any(self, types: List[Type]) -> List[Constraint]:
         res = [] # type: List[Constraint]
         for t in types:

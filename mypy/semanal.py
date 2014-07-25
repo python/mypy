@@ -64,10 +64,10 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType
+    replace_leading_arg_type, TupleType, UnionType
 )
 from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
 from mypy.parsetype import parse_str_as_type, TypeParseError
 
 
@@ -136,6 +136,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors = errors
         self.modules = {}
         self.pyversion = pyversion
+        self.stored_vars = Dict[Node, Type]()
     
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -235,6 +236,9 @@ class SemanticAnalyzer(NodeVisitor):
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
+            for item in type.items:
+                result.extend(self.find_type_variables_in_type(item))
+        elif isinstance(type, UnionType):
             for item in type.items:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
@@ -618,6 +622,7 @@ class SemanticAnalyzer(NodeVisitor):
         if i.id in self.modules:
             m = self.modules[i.id]
             for name, node in m.names.items():
+                node = self.normalize_type_alias(node, i)
                 if not name.startswith('_'):
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id), i)
@@ -670,7 +675,7 @@ class SemanticAnalyzer(NodeVisitor):
     
     def anal_type(self, t: Type) -> Type:
         if t:
-            a = TypeAnalyser(self.lookup_qualified, self.fail)
+            a = TypeAnalyser(self.lookup_qualified, self.stored_vars, self.fail)
             return t.accept(a)
         else:
             return None
@@ -683,6 +688,15 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type)
         else:
             s.type = self.infer_type_from_undefined(s.rvalue)
+            # For simple assignments, allow binding type aliases
+            if (s.type is None and len(s.lvalues) == 1 and
+                isinstance(s.lvalues[0], NameExpr)):
+                res = analyse_node(self.lookup_qualified, s.rvalue, s)
+                if res:
+                    #XXX Need to remove this later if reassigned
+                    x = cast(NameExpr, s.lvalues[0])
+                    self.stored_vars[x.node] = res
+
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1280,10 +1294,12 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
-        expr.right_expr.accept(self)
-        # Bind index variables.
-        for n in expr.index:
-            self.analyse_lvalue(n)
+
+        for index, sequence in zip(expr.indices, expr.sequences):
+            sequence.accept(self)
+            # Bind index variables.
+            for n in index:
+                self.analyse_lvalue(n)
         if expr.condition:
             expr.condition.accept(self)
 

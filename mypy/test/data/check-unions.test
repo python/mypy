@@ -1,0 +1,88 @@
+-- Type checking of union types
+
+[case testUnion1]
+from typing import Union
+def f(x: Union[int, str]) -> None:
+    if isinstance(x, int):
+        y = 1
+        y = x
+    elif isinstance(x, str):
+        z = 'a'
+        z = x
+[builtins fixtures/isinstance.py]
+
+[case testUnion2]
+from typing import Union
+def f(x: Union[int, str]) -> None:
+    if isinstance(x, int):
+        y = 1
+        y = x
+    else:
+        z = 'a'
+        z = x
+[builtins fixtures/isinstance.py]
+
+[case testUnion3]
+from typing import Union
+def f(x: Union[int, str]) -> None:
+    if isinstance(x, int):
+        y = 1
+        y = x
+    else:
+        z = 2
+        z = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstance.py]
+[out]
+main: In function "f":
+
+
+[case testUnionAttributeAccess]
+from typing import Union, Undefined
+
+class A: y = 1
+class B: y = 2
+class C: pass
+
+w = Undefined # type: Union[A, B]
+x = Undefined # type: Union[A, C]
+y = Undefined # type: int
+z = Undefined # type: str
+
+y = w.y
+z = w.y       # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+w.y = 'a'     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+y = x.y       # E: Some element of union has no attribute "y"
+z = x.y       # E: Some element of union has no attribute "y"
+
+[builtins fixtures/isinstance.py]
+
+[case testUnionMethodCalls]
+from typing import Union, Undefined
+
+class A:
+    def foo(self) -> int: pass
+class B:
+    def foo(self) -> int: pass
+class C:
+    def foo(self) -> str: pass
+
+x = Undefined # type: Union[A, B]
+y = Undefined # type: Union[A, C]
+i = Undefined # type: int
+
+x.foo()
+y.foo()
+i = x.foo()
+i = y.foo()   # E: Incompatible types in assignment (expression has type "Union[int, str]", variable has type "int") 
+
+[builtins fixtures/isinstance.py]
+
+[case testUnionIndexing]
+from typing import Union, List, Undefined
+
+x = Undefined # type: Union[List[int], str]
+x[2]
+x[2] + 1 # E: Unsupported operand types for + (likely involving Union)
+
+
+[builtins fixtures/isinstancelist.py]

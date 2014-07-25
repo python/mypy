@@ -49,7 +49,7 @@ def f(x: object, a: A, b: B, c: int) -> None:
     if isinstance(x, A):
         if isinstance(x, B):
             b = x
-            x = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+            x = a
         a = x
         c = x # E: Incompatible types in assignment (expression has type "A", variable has type "int")
 [builtins fixtures/isinstance.py]

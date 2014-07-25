@@ -367,9 +367,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.node(node.left_expr),
-                             self.names(node.index),
-                             self.optional_types(node.types),
-                             self.node(node.right_expr),
+                             [self.names(index) for index in node.indices],
+                             [self.optional_types(t) for t in node.types],
+                             [self.node(s) for s in node.sequences],
                              self.optional_node(node.condition))
     
     def visit_slice_expr(self, node: SliceExpr) -> Node:

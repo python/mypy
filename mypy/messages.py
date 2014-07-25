@@ -9,7 +9,7 @@ from typing import Undefined, cast, List, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, Callable, Instance, TypeVar, TupleType, Void, NoneTyp, AnyType,
+    Type, Callable, Instance, TypeVar, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
 from mypy.nodes import (
@@ -78,10 +78,14 @@ class MessageBuilder:
     
     # Number of times errors have been disabled.
     disable_count = 0
+
+    # Hack to deduplicate error messages from union types
+    disable_type_names = 0
     
     def __init__(self, errors: Errors) -> None:
         self.errors = errors
         self.disable_count = 0
+        self.disable_type_names = 0
 
     #
     # Helpers
@@ -185,10 +189,19 @@ class MessageBuilder:
             for t in (cast(TupleType, typ)).items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
-            if len(s) < 30:
+            if len(s) < 40:
                 return s
             else:
-                return 'tuple'
+                return 'tuple(length {})'.format(len(items))
+        elif isinstance(typ, UnionType):
+            items = []
+            for t in (cast(UnionType, typ)).items:
+                items.append(strip_quotes(self.format(t)))
+            s = '"Union[{}]"'.format(', '.join(items))
+            if len(s) < 40:
+                return s
+            else:
+                return 'union(length {})'.format(len(items))
         elif isinstance(typ, Void):
             return 'None'
         elif isinstance(typ, NoneTyp):
@@ -251,8 +264,12 @@ class MessageBuilder:
             self.fail('Unsupported target for indexed assignment', context)
         else:
             # The non-special case: a missing ordinary attribute.
-            self.fail('{} has no attribute "{}"'.format(self.format(typ),
-                                                        member), context)
+            if not self.disable_type_names:
+                self.fail('{} has no attribute "{}"'.format(self.format(typ),
+                                                            member), context)
+            else:
+                self.fail('Some element of union has no attribute "{}"'.format(
+                        member), context)
         return AnyType()
     
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -265,7 +282,6 @@ class MessageBuilder:
             self.check_void(left_type, context)
             self.check_void(right_type, context)
             return 
-        
         left_str = ''
         if isinstance(left_type, str):
             left_str = left_type
@@ -278,15 +294,22 @@ class MessageBuilder:
         else:
             right_str = self.format(right_type)
         
-        msg = 'Unsupported operand types for {} ({} and {})'.format(
-                                                    op, left_str, right_str)
+        if self.disable_type_names:
+            msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
+        else:
+            msg = 'Unsupported operand types for {} ({} and {})'.format(
+                op, left_str, right_str)
         self.fail(msg, context)
     
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
         if not self.check_void(typ, context):
-            self.fail('Unsupported left operand type for {} ({})'.format(
-                op, self.format(typ)), context)
+            if self.disable_type_names:
+                msg = 'Unsupported left operand type for {} (some union)'.format(op)
+            else:
+                msg = 'Unsupported left operand type for {} ({})'.format(
+                    op, self.format(typ))
+            self.fail(msg, context)
     
     def type_expected_as_right_operand_of_is(self, context: Context) -> None:
         self.fail('Type expected as right operand of "is"', context)
@@ -348,7 +371,7 @@ class MessageBuilder:
         else:
             try:
                 expected_type = callee.arg_types[n-1]
-            except IndexError:
+            except IndexError:  #Varargs callees
                 expected_type = callee.arg_types[-1]
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, self.format(arg_type), self.format(expected_type))
