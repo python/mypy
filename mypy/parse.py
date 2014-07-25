@@ -1265,7 +1265,7 @@ class Parser:
         self.set_repr(node, noderepr.IntExprRepr(tok))
         return node
     
-    def parse_str_expr(self) -> StrExpr:
+    def parse_str_expr(self) -> Node:
         # XXX \uxxxx literals
         tok = [self.expect_type(StrLit)]
         value = (cast(StrLit, tok[0])).parsed()
@@ -1273,6 +1273,7 @@ class Parser:
             t = cast(StrLit, self.skip())
             tok.append(t)
             value += t.parsed()
+        node = Undefined(Node)
         if self.pyversion == 2 and 'unicode_literals' in self.future_options:
             node = UnicodeExpr(value)
         else:
