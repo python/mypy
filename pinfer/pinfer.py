@@ -64,12 +64,7 @@ def format_state(pretty=False):
     prevclass = ''
     indent = ''
     for funcid in funcnames:
-        name, sourcefile, sourceline = funcid.split(':')
-
-        if '.' in name:
-            curclass, shortname = name.split('.', 1)
-        else:
-            curclass, shortname = '', name
+        curclass, name, sourcefile, sourceline = funcid
         if curclass != prevclass:
             if curclass:
                 lines.append('class %s(...):' % curclass)
@@ -78,7 +73,7 @@ def format_state(pretty=False):
                 indent = ''
             prevclass = curclass
 
-        lines.append(format_sig(funcid, shortname, indent, pretty))
+        lines.append(format_sig(funcid, name, indent, pretty))
     return '\n'.join(lines)
 
 
@@ -89,6 +84,8 @@ def unparse_ast(node):
 
 
 def format_sig(funcid, fname, indent, pretty, defaults=[]):
+    (argnames, varargs, varkw, _, kwonlyargs, _, _) = func_argid_db[funcid]
+
     # to get defaults, parse the function, get the nodes for the
     # defaults, then unparse them
     try:
@@ -105,20 +102,18 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
             kwonly_defaults = []
     except:
         defaults, kwonly_defaults = [], []
-
-    (argnames, varargs, varkw, _, kwonlyargs, _, _) = func_argid_db[funcid]
-
-    # pad defaults to match the length of args
-    defaults = ([None] * (len(argnames) - len(defaults))) + defaults
-    kwonly_defaults = ([None] * (len(kwonlyargs) - len(kwonly_defaults))) + kwonly_defaults
+    finally:
+        # pad defaults to match the length of args
+        defaults = ([None] * (len(argnames) - len(defaults))) + defaults
+        kwonly_defaults = ([None] * (len(kwonlyargs) - len(kwonly_defaults))) + kwonly_defaults
 
     args = [('', arg, default) for (arg, default) in zip(argnames, defaults)]
+
     if varargs:
         args += [('*', varargs, None)]
     elif len(kwonlyargs) > 0:
         args += [('*', '', None)]
     if len(kwonlyargs) > 0:
-        # zip in kw_defaults
         args += [('', arg, default) for (arg, default) in zip(kwonlyargs, kwonly_defaults)]
     if varkw:
         args += [('**', varkw, None)]
@@ -127,10 +122,9 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
     for i, (prefix, arg, default) in enumerate(args):
         argstr = prefix + arg
 
-        if (funcid, arg) in func_arg_db:
-            # Omit type of self argument.
-            if not (i == 0 and arg == 'self'):
-                argstr += ': %s' % func_arg_db[(funcid, arg)]
+        # Omit type of self argument.
+        if (funcid, arg) in func_arg_db and not (i == 0 and arg == 'self'):
+            argstr += ': %s' % func_arg_db[(funcid, arg)]
 
         if default:
             argstr += ' = %s' % default
@@ -167,17 +161,16 @@ def annotate_file(path):
         source_length = source_length + len(line) + 1
 
     funcids = set(funcid for funcid, arg in func_arg_db)
-    funcid_components = ((funcid, funcid.split(':')) for funcid in funcids)
-    funcs = (
-        (funcid, name.split('.')[-1], int(sourceline), func_source_db[funcid])
-        for (funcid, (name, sourcefile, sourceline)) in funcid_components
-        if sourcefile == path
-    )
 
     # list of (oldstart, oldend, replacement)
     replacements = [] # type: List[Tuple[Int, Int, String]]
 
-    for (funcid, name, def_start_line, func_source) in funcs:
+    for funcid in funcids:
+        class_name, name, sourcefile, def_start_line = funcid
+        if sourcefile != path:
+            continue
+
+        func_source = func_source_db[funcid]
         tokens = list(tokenize.generate_tokens(StringIO(func_source).readline))
         assert len(tokens) > 0
 
@@ -304,11 +297,7 @@ def infer_method_signature(class_name):
         except:
             return func
 
-        name = func.__name__
-        if class_name:
-            name = '%s.%s' % (class_name, name)
-
-        funcid = ':'.join([name, funcfile, str(sourceline)])
+        funcid = (class_name, func.__name__, funcfile, sourceline)
         func_source_db[funcid] = ''.join(funcsource)
 
         try:
