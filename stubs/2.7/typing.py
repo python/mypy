@@ -180,7 +180,7 @@ class BinaryIO(metaclass=ABCMeta):
     # TODO peek?
     @abstractmethod
     def close(self) -> None: pass
-    @abstractmethod
+    @property
     def closed(self) -> bool: pass
     @abstractmethod
     def fileno(self) -> int: pass
@@ -235,7 +235,7 @@ class TextIO(metaclass=ABCMeta):
     # TODO detach(self)
     @abstractmethod
     def close(self) -> None: pass
-    @abstractmethod
+    @property
     def closed(self) -> bool: pass
     @abstractmethod
     def fileno(self) -> int: pass
