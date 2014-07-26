@@ -24,10 +24,6 @@ Here is a small example:
 Mypy is work in progress; many features are missing and there are
 still bugs.  See 'Development status' below.
 
-The long-term goal of the project is to also develop an optimizing
-compiler that can compile mypy programs to efficient native code.  The
-compiler is still early in development.
-
 
 Requirements
 ------------
@@ -116,9 +112,7 @@ right now (but all of these will improve):
 
  - Python 2.x support not really yet usable
  - properties with setters not supported
- - class methods not supported
  - relative imports not supported
- - tuples not well-supported as immutable lists 
  - somewhat limited operator overloading
  - only a subset of Python standard library modules are supported, and some
    only partially
