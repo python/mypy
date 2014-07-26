@@ -212,7 +212,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
     """
     names = os.listdir(src)
     if ignore is not None:
-        ignored_names = set(ignore(src, names))   # see #203
+        ignored_names = ignore(src, names)
     else:
         ignored_names = set()
 
@@ -718,7 +718,7 @@ def _unpack_zipfile(filename: str, extract_dir: str) -> None:
                     f.write(data)
                 finally:
                     f.close()
-                    data = None
+                    del data
     finally:
         zip.close()
 
