@@ -276,106 +276,105 @@ def infer_attrs(x):
             update_var_db(key, value)
 
 
-def infer_signature(func):
-    """Decorator that infers the signature of a function."""
-    return infer_method_signature('')(func)
-
 def infer_method_signature(class_name):
-    """Construct a function decorator that infer the signature of a function.
-    """
-    def outer_wrapper(func):
-        # infer_method_signature should be idempotent
-        if hasattr(func, '__is_inferring_sig'):
-            return func
+    def decorator(func):
+        return infer_signature(func, class_name)
+    return decorator
 
-        assert func.__module__ != infer_method_signature.__module__
+def infer_signature(func, class_name=''):
+    """Decorator that infers the signature of a function."""
 
+    # infer_method_signature should be idempotent
+    if hasattr(func, '__is_inferring_sig'):
+        return func
+
+    assert func.__module__ != infer_method_signature.__module__
+
+    try:
+        funcfile = get_defining_file(func)
+        funcsource, sourceline = inspect.getsourcelines(func)
+        sourceline -= 1  # getsourcelines is apparently 1-indexed
+    except:
+        return func
+
+    funcid = (class_name, func.__name__, funcfile, sourceline)
+    func_source_db[funcid] = ''.join(funcsource)
+
+    try:
+        func_argid_db[funcid] = getfullargspec(func)
+        vargs_name, kwargs_name = func_argid_db[funcid][1], func_argid_db[funcid][2]
+    except TypeError:
+        # Not supported.
+        return func
+
+    def wrapper(*args, **kwargs):
+        global is_performing_inference
+        # If we're already doing inference, we should be in our own code, not code we're checking.
+        # Not doing this check sometimes results in infinite recursion.
+
+        if is_performing_inference:
+            return func(*args, **kwargs)
+
+        expecting_type_error, got_type_error, got_exception = False, False, False
+
+        is_performing_inference = True
         try:
-            funcfile = get_defining_file(func)
-            funcsource, sourceline = inspect.getsourcelines(func)
-            sourceline -= 1  # getsourcelines is apparently 1-indexed
-        except:
-            return func
+            callargs = getcallargs(func, *args, **kwargs)
 
-        funcid = (class_name, func.__name__, funcfile, sourceline)
-        func_source_db[funcid] = ''.join(funcsource)
+            # we have to handle *args and **kwargs separately
+            if vargs_name:
+                va = callargs.pop(vargs_name)
+            if kwargs_name:
+                kw = callargs.pop(kwargs_name)
 
-        try:
-            func_argid_db[funcid] = getfullargspec(func)
-            vargs_name, kwargs_name = func_argid_db[funcid][1], func_argid_db[funcid][2]
+            arg_db = {arg: infer_value_type(value) for arg, value in callargs.items()}
+
+            # *args and **kwargs need to merge the types of all their values
+            if vargs_name:
+                arg_db[vargs_name] = union_many_types(*[infer_value_type(v) for v in va])
+            if kwargs_name:
+                arg_db[kwargs_name] = union_many_types(*[infer_value_type(v) for v in kw.values()])
+
         except TypeError:
-            # Not supported.
-            return func
+            got_exception = expecting_type_error = True
+        except:
+            got_exception = True
+        finally:
+            is_performing_inference = False
 
-        def wrapper(*args, **kwargs):
-            global is_performing_inference
-            # If we're already doing inference, we should be in our own code, not code we're checking.
-            # Not doing this check sometimes results in infinite recursion.
+        try:
+            ret = func(*args, **kwargs)
+        except TypeError:
+            got_type_error = got_exception = True
+            raise
+        except:
+            got_exception = True
+            raise
+        finally:
+            if not got_exception:
+                assert not expecting_type_error
 
-            if is_performing_inference:
-                return func(*args, **kwargs)
+                # if we didn't get a TypeError, update the actual database
+                for arg, t in arg_db.items():
+                    update_db(func_arg_db, (funcid, arg), t)
 
-            expecting_type_error, got_type_error, got_exception = False, False, False
-
-            is_performing_inference = True
-            try:
-                callargs = getcallargs(func, *args, **kwargs)
-
-                # we have to handle *args and **kwargs separately
-                if vargs_name:
-                    va = callargs.pop(vargs_name)
-                if kwargs_name:
-                    kw = callargs.pop(kwargs_name)
-
-                arg_db = {arg: infer_value_type(value) for arg, value in callargs.items()}
-
-                # *args and **kwargs need to merge the types of all their values
-                if vargs_name:
-                    arg_db[vargs_name] = union_many_types(*[infer_value_type(v) for v in va])
-                if kwargs_name:
-                    arg_db[kwargs_name] = union_many_types(*[infer_value_type(v) for v in kw.values()])
-
-            except TypeError:
-                got_exception = expecting_type_error = True
-            except:
-                got_exception = True
-            finally:
-                is_performing_inference = False
-
-            try:
-                ret = func(*args, **kwargs)
-            except TypeError:
-                got_type_error = got_exception = True
-                raise
-            except:
-                got_exception = True
-                raise
-            finally:
+                # if we got an exception, we don't have a ret
                 if not got_exception:
-                    assert not expecting_type_error
+                    is_performing_inference = True
+                    try:
+                        type = infer_value_type(ret)
+                        update_db(func_return_db, funcid, type)
+                    except:
+                        pass
+                    finally:
+                        is_performing_inference = False
 
-                    # if we didn't get a TypeError, update the actual database
-                    for arg, t in arg_db.items():
-                        update_db(func_arg_db, (funcid, arg), t)
+        return ret
 
-                    # if we got an exception, we don't have a ret
-                    if not got_exception:
-                        is_performing_inference = True
-                        try:
-                            type = infer_value_type(ret)
-                            update_db(func_return_db, funcid, type)
-                        except:
-                            pass
-                        finally:
-                            is_performing_inference = False
-
-            return ret
-
-        if hasattr(func, '__name__'):
-            wrapper.__name__ = func.__name__
-        wrapper.__is_inferring_sig = True
-        return wrapper
-    return outer_wrapper
+    if hasattr(func, '__name__'):
+        wrapper.__name__ = func.__name__
+    wrapper.__is_inferring_sig = True
+    return wrapper
 
 
 def infer_class(cls):
