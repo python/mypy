@@ -323,12 +323,12 @@ class TypeApplicationRepr:
 
 
 class GeneratorExprRepr:
-    def __init__(self, for_tok: Any, commas: Any, in_tok: Any,
-                 if_tok: Any) -> None:
-        self.for_tok = for_tok
+    def __init__(self, for_toks: List[Token], commas: List[Token], in_toks: List[Token],
+                 if_toklists: List[List[Token]]) -> None:
+        self.for_toks = for_toks
         self.commas = commas
-        self.in_tok = in_tok
-        self.if_tok = if_tok
+        self.in_toks = in_toks
+        self.if_toklists = if_toklists
 
 
 class ListComprehensionRepr:

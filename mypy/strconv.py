@@ -393,7 +393,8 @@ class StrConv(NodeVisitor[str]):
     
     def visit_generator_expr(self, o):
         # FIX types
-        return self.dump([o.left_expr, o.indices, o.sequences, o.condition], o)
+        condlists = o.condlists if any(o.condlists) else None
+        return self.dump([o.left_expr, o.indices, o.sequences, condlists], o)
     
     def visit_list_comprehension(self, o):
         return self.dump([o.generator], o)
