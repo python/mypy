@@ -42,7 +42,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
     @abstractmethod
     def call_soon(self, callback: Function[[],Any], *args: Any) -> Handle: pass
     @abstractmethod
-    def call_later(self, delay: float, callback: Function[[],Any], *args: Any) -> Handle: pass
+    def call_later(self, delay: Union[int, float], callback: Function[[],Any], *args: Any) -> Handle: pass
     @abstractmethod
     def call_at(self, when: float, callback: Function[[],Any], *args: Any) -> Handle: pass
     @abstractmethod

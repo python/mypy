@@ -226,9 +226,11 @@ def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
             version_dir = '2.7'
         path.append(os.path.join(data_dir, 'stubs', version_dir))
         path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-        #Add py3.3 stubs
-        if sys.version_info.major == 3 and sys.version_info.minor >= 3:
-            path.append(os.path.join(data_dir, 'stubs', '3.3'))
+        #Add py3.3 and 3.4 stubs
+        if sys.version_info.major == 3:
+            versions = ['3.' + str(x) for x in range(3, sys.version_info.minor + 1)]
+            for v in versions:
+                path.append(os.path.join(data_dir, 'stubs', v))
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
