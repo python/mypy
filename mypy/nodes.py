@@ -625,7 +625,12 @@ class YieldStmt(Node):
         return visitor.visit_yield_stmt(self)
 
 
-class YieldFromStmt(YieldStmt):
+class YieldFromStmt(Node):
+    expr = Undefined(Node)
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_from_stmt(self)
 
