@@ -24,11 +24,10 @@ interpreter.
 
 stubs = []
 
-for version in ['3.2', '2.7']:
+for version in ['3.4', '3.3', '3.2', '2.7']:
     base = os.path.join('stubs', version)
     stub_dirs = [''] + [name for name in os.listdir(base)
                         if os.path.isdir(os.path.join(base, name))]
-
     for stub_dir in stub_dirs:
         target = os.path.join('lib', 'mypy', 'stubs', version, stub_dir)
         files = glob.glob(os.path.join(base, stub_dir, '*.py'))
