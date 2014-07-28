@@ -370,7 +370,8 @@ class TransformVisitor(NodeVisitor[Node]):
                              [self.names(index) for index in node.indices],
                              [self.optional_types(t) for t in node.types],
                              [self.node(s) for s in node.sequences],
-                             self.optional_node(node.condition))
+                             [[self.node(cond) for cond in conditions]
+                                for conditions in node.condlists])
     
     def visit_slice_expr(self, node: SliceExpr) -> Node:
         return SliceExpr(self.optional_node(node.begin_index),
