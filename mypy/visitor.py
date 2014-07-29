@@ -110,6 +110,8 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> T:
         pass
+    def visit_yield_from_expr(self, o: 'mypy.nodes.YieldFromExpr') -> T:
+        pass
     def visit_call_expr(self, o: 'mypy.nodes.CallExpr') -> T:
         pass
     def visit_op_expr(self, o: 'mypy.nodes.OpExpr') -> T:

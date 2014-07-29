@@ -359,6 +359,9 @@ class OutputVisitor(NodeVisitor):
         self.token(o.repr.colon2)
         self.node(o.stride)
 
+    def visit_yield_from_expr(self, o):
+        self.visit_call_expr(o.callee)
+
     def visit_call_expr(self, o):
         r = o.repr
         self.node(o.callee)

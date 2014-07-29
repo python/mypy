@@ -56,7 +56,7 @@ from mypy.nodes import (
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
-    ARG_POS, ARG_NAMED, MroError, type_aliases, YieldFromStmt
+    ARG_POS, ARG_NAMED, MroError, type_aliases, YieldFromStmt, YieldFromExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1140,6 +1140,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_paren_expr(self, expr: ParenExpr) -> None:
         expr.expr.accept(self)
+
+    def visit_yield_from_expr(self, expr: YieldFromExpr) -> None:
+        self.visit_call_expr(expr.callee)
 
     def visit_call_expr(self, expr: CallExpr) -> None:
         """Analyze a call expression.

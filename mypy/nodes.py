@@ -926,6 +926,15 @@ class CallExpr(Node):
         return visitor.visit_call_expr(self)
 
 
+class YieldFromExpr(Node):
+    callee = Undefined(Node)
+
+    def __init__(self, callee: Node) -> None:
+        self.callee = callee
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_yield_from_expr(self)
+
 class IndexExpr(Node):
     """Index expression x[y].
 

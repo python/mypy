@@ -1318,10 +1318,10 @@ MypyFile:1(
     Block:1(
       AssignmentStmt:2(
         NameExpr(a)
-        CallExpr:2(
-          NameExpr(h)
-          Args())))))
-
+        YieldFromExpr:2(
+          CallExpr:2(
+            NameExpr(h)
+            Args()))))))
 
 [case testDel]
 del x

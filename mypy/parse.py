@@ -23,7 +23,8 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, YieldFromStmt
+    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, YieldFromStmt,
+    YieldFromExpr
 )
 from mypy import nodes
 from mypy import noderepr
@@ -740,6 +741,8 @@ class Parser:
         expr = None # type: Node
         if not isinstance(self.current(), Break):
             expr = self.parse_expression()
+            if isinstance(expr, YieldFromExpr): #cant go a yield from expr
+                return None
         br = self.expect_break()
         node = ReturnStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(return_tok, br))
@@ -788,7 +791,7 @@ class Parser:
         y_tok = self.expect("yield")
         f_tok = self.expect("from")
         tok = self.parse_expression() # Here comes when yield from is assigned to a variable
-        return tok
+        return YieldFromExpr(tok)
 
     def parse_del_stmt(self) -> DelStmt:
         del_tok = self.expect('del')

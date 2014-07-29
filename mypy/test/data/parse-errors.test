@@ -347,3 +347,10 @@ def f():
 [out]
 file: In function "f":
 file, line 2: Parse error before end of line
+
+[case testYielFromAfterReturn]
+def f():
+    return yield from h()
+[out]
+file: In function "f":
+file, line 2: Parse error before end of line

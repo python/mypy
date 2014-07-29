@@ -16,7 +16,8 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    DisjointclassExpr, CoerceExpr, TypeExpr, JavaCast, TempNode, YieldFromStmt
+    DisjointclassExpr, CoerceExpr, TypeExpr, JavaCast, TempNode, YieldFromStmt,
+    YieldFromExpr
 )
 from mypy.types import Type
 from mypy.visitor import NodeVisitor
@@ -304,6 +305,9 @@ class TransformVisitor(NodeVisitor[Node]):
             target = self.visit_var(target)
         new.node = target
         new.is_def = original.is_def
+
+    def visit_yield_from_expr(self, node: YieldFromExpr) -> Node:
+        return YieldFromExpr(self.node(node.callee))
 
     def visit_call_expr(self, node: CallExpr) -> Node:
         return CallExpr(self.node(node.callee),

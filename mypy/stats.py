@@ -5,7 +5,7 @@ import os.path
 import re
 
 from typing import Any, Dict, List, cast, Tuple
-    
+
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVar,
@@ -14,7 +14,7 @@ from mypy.types import (
 from mypy import nodes
 from mypy.nodes import (
     Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr,
-    MemberExpr, OpExpr, IndexExpr, UnaryExpr
+    MemberExpr, OpExpr, IndexExpr, UnaryExpr, YieldFromExpr
 )
 
 
@@ -29,7 +29,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.inferred = inferred
         self.typemap = typemap
         self.all_nodes = all_nodes
-        
+
         self.num_precise = 0
         self.num_imprecise = 0
         self.num_any = 0
@@ -46,9 +46,9 @@ class StatisticsVisitor(TraverserVisitor):
         self.line_map = Dict[int, int]()
 
         self.output = List[str]()
-        
+
         TraverserVisitor.__init__(self)
-    
+
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
         if len(o.expanded) > 1:
@@ -108,6 +108,9 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         self.process_node(o)
         super().visit_name_expr(o)
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
+        self.visit_call_expr(o.callee)
 
     def visit_call_expr(self, o: CallExpr) -> None:
         self.process_node(o)
