@@ -1,0 +1,40 @@
+mypy.codec readme
+=================
+
+
+What's this?
+------------
+
+mypy.codec defines an encoding that strips type annotations from
+function definitions in Python 2, and leaves them in Python 3, so that
+code with these annotations can be executed in either environment.
+
+mypy.codec is derived from pyxl (https://github.com/dropbox/pyxl).
+
+
+Using the codec
+---------------
+
+To register the codec, add this to the beginning of each module that
+can act as an entry point to your program:
+
+  from mypy.codec import register
+
+Now you can use Python 3 function annotations in any module imported
+after registering the codec, even in Python 2:
+
+  # coding: mypy
+
+  import typing
+
+  def inc(x: int) -> int:
+      return x + 1
+
+
+Running tests
+-------------
+
+Unit tests are run by py.test.  This requires that you have the pytest
+package installed (e.g. sudo pip install pytest). Run tests like this:
+
+  $ py.test mypy/codec

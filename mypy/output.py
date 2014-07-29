@@ -445,17 +445,17 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         self.node(o.left_expr)
         for i in range(len(o.indices)):
-            self.token(r.for_tok)
+            self.token(r.for_toks[i])
             for j in range(len(o.indices[i])):
                 self.node(o.types[i][j])
                 self.node(o.indices[i][j])
                 if j < len(o.indices[i])-1:
                     self.token(r.commas[0])
-            self.token(r.in_tok)
+            self.token(r.in_toks[i])
             self.node(o.sequences[i])
-        if o.condition:
-            self.token(r.if_tok)
-            self.node(o.condition)
+            for cond, if_tok in zip(o.condlists[i], r.if_toklists[i]):
+                self.token(if_tok)
+                self.node(cond)
 
     def visit_list_comprehension(self, o):
         self.token(o.repr.lbracket)

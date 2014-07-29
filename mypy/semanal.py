@@ -1305,13 +1305,14 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
 
-        for index, sequence in zip(expr.indices, expr.sequences):
+        for index, sequence, conditions in zip(expr.indices, expr.sequences,
+                                               expr.condlists):
             sequence.accept(self)
             # Bind index variables.
             for n in index:
                 self.analyse_lvalue(n)
-        if expr.condition:
-            expr.condition.accept(self)
+            for cond in conditions:
+                cond.accept(self)
 
         # TODO analyze variable types (see visit_for_stmt)
 

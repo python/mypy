@@ -179,7 +179,7 @@ class IO(Iterable[AnyStr], AbstractGeneric[AnyStr]):
     def name(self) -> str: pass
     @abstractmethod
     def close(self) -> None: pass
-    @abstractmethod
+    @property
     def closed(self) -> bool: pass
     @abstractmethod
     def fileno(self) -> int: pass

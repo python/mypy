@@ -1182,16 +1182,16 @@ class GeneratorExpr(Node):
 
     left_expr = Undefined(Node)
     sequences_expr = Undefined(List[Node])
-    condition = Undefined(Node)   # May be None
+    condlists = Undefined(List[List[Node]])
     indices = Undefined(List[List[NameExpr]])
     types = Undefined(List[List['mypy.types.Type']])
 
     def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
                   types: List[List['mypy.types.Type']], sequences: List[Node],
-                 condition: Node) -> None:
+                 condlists: List[List[Node]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
-        self.condition = condition
+        self.condlists = condlists
         self.indices = indices
         self.types = types
 
