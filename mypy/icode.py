@@ -7,7 +7,7 @@ from mypy.nodes import (
     FuncDef, IntExpr, MypyFile, ReturnStmt, NameExpr, WhileStmt,
     AssignmentStmt, Node, Var, OpExpr, Block, CallExpr, IfStmt, ParenExpr,
     UnaryExpr, ExpressionStmt, CoerceExpr, ClassDef, MemberExpr, TypeInfo,
-    VarDef, SuperExpr, IndexExpr, UndefinedExpr
+    VarDef, SuperExpr, IndexExpr, UndefinedExpr, YieldFromExpr
 )
 from mypy import nodes
 from mypy.visitor import NodeVisitor
@@ -180,7 +180,7 @@ class Return(Opcode):
     """Return from function (return rN)."""
     def __init__(self, retval: int) -> None:
         self.retval = retval
-        
+
     def is_exit(self) -> bool:
         return True
 
@@ -189,10 +189,10 @@ class Return(Opcode):
 
 
 class Branch(Opcode):
-    """Abstract base class for branch opcode."""  
+    """Abstract base class for branch opcode."""
     true_block = Undefined # type: BasicBlock
     false_block = Undefined # type: BasicBlock
-        
+
     def is_exit(self) -> bool:
         return True
 
@@ -203,7 +203,7 @@ class Branch(Opcode):
 class IfOp(Branch):
     inversion = {'==': '!=', '!=': '==',
                  '<': '>=', '<=': '>', '>': '<=', '>=': '<'}
-    
+
     """Conditional operator branch (e.g. if r0 < r1 goto L2 else goto L3)."""
     def __init__(self,
                  left: int, left_kind: int,
@@ -232,7 +232,7 @@ class IfOp(Branch):
 class IfR(Branch):
     """Conditional value branch (if rN goto LN else goto LN). """
     negated = False
-    
+
     def __init__(self, value: int,
                  true_block: BasicBlock, false_block: BasicBlock) -> None:
         self.value = value
@@ -259,7 +259,7 @@ class Goto(Opcode):
     """Unconditional jump (goto LN)."""
     def __init__(self, next_block: BasicBlock) -> None:
         self.next_block = next_block
-        
+
     def is_exit(self) -> bool:
         return True
 
@@ -307,7 +307,7 @@ class IcodeBuilder(NodeVisitor[int]):
     """Generate icode from a parse tree."""
 
     generated = Undefined(Dict[str, FuncIcode])
-    
+
     # List of generated blocks in the current scope
     blocks = Undefined(List[BasicBlock])
     # Current basic block
@@ -335,9 +335,9 @@ class IcodeBuilder(NodeVisitor[int]):
             # These module are special; their contents are currently all
             # built-in primitives.
             return -1
-        
+
         self.enter()
-        
+
         # Initialize non-int global variables.
         for name in sorted(mfile.names):
             node = mfile.names[name].node
@@ -349,7 +349,7 @@ class IcodeBuilder(NodeVisitor[int]):
                     tmp = self.alloc_register()
                     self.add(SetRNone(tmp))
                     self.add(SetGR(v.fullname(), tmp))
-        
+
         for d in mfile.defs:
             d.accept(self)
         self.add_implicit_return()
@@ -362,7 +362,7 @@ class IcodeBuilder(NodeVisitor[int]):
         if fdef.name().endswith('*'):
             # Wrapper functions are not supported yet.
             return -1
-        
+
         self.enter()
 
         for arg in fdef.args:
@@ -374,12 +374,12 @@ class IcodeBuilder(NodeVisitor[int]):
             name = '%s.%s' % (fdef.info.name(), fdef.name())
         else:
             name = fdef.name()
-        
+
         self.generated[name] = FuncIcode(len(fdef.args), self.blocks,
                                          self.register_types)
 
         self.leave()
-        
+
         return -1
 
     def add_implicit_return(self, sig: FunctionLike = None) -> None:
@@ -400,7 +400,7 @@ class IcodeBuilder(NodeVisitor[int]):
 
         # Generate icode for the function that constructs an instance.
         self.make_class_constructor(tdef)
-        
+
         return -1
 
     def make_class_constructor(self, tdef: ClassDef) -> None:
@@ -409,7 +409,7 @@ class IcodeBuilder(NodeVisitor[int]):
         init_argc = len(init.args) - 1
         if init.info.fullname() == 'builtins.object':
             init = None
-        
+
         self.enter()
         if init:
             args = [] # type: List[int]
@@ -649,6 +649,12 @@ class IcodeBuilder(NodeVisitor[int]):
             self.add(CallMethod(target, operand, method, inst.type, []))
         return target
 
+    def visit_yield_from_expr(self, e: YieldFromExpr) -> int:
+        if isinstance(e.callee, CallExpr):
+            return self.visit_call_expr(e.callee)
+        elif isinstance(e.callee, NameExpr):
+            return self.visit_name_expr(e.callee)
+
     def visit_call_expr(self, e: CallExpr) -> int:
         args = [] # type: List[int]
         for arg in e.args:
@@ -818,7 +824,7 @@ class IcodeBuilder(NodeVisitor[int]):
         reg = self.alloc_register(type)
         self.lvar_regs[node] = reg
         return reg
-    
+
     def set_branches(self, branches: List[Branch], condition: bool,
                      target: BasicBlock) -> None:
         """Set branch targets for the given condition (True or False).

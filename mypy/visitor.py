@@ -17,21 +17,21 @@ class NodeVisitor(Generic[T]):
 
     TODO make the default return value explicit
     """
-    
+
     # Module structure
-    
+
     def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
         pass
-    
+
     def visit_import(self, o: 'mypy.nodes.Import') -> T:
         pass
     def visit_import_from(self, o: 'mypy.nodes.ImportFrom') -> T:
         pass
     def visit_import_all(self, o: 'mypy.nodes.ImportAll') -> T:
         pass
-    
+
     # Definitions
-    
+
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> T:
         pass
     def visit_overloaded_func_def(self,
@@ -45,15 +45,15 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
         pass
-    
+
     def visit_var(self, o: 'mypy.nodes.Var') -> T:
         pass
-    
+
     # Statements
-    
+
     def visit_block(self, o: 'mypy.nodes.Block') -> T:
         pass
-    
+
     def visit_expression_stmt(self, o: 'mypy.nodes.ExpressionStmt') -> T:
         pass
     def visit_assignment_stmt(self, o: 'mypy.nodes.AssignmentStmt') -> T:
@@ -70,6 +70,8 @@ class NodeVisitor(Generic[T]):
     def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> T:
         pass
     def visit_yield_stmt(self, o: 'mypy.nodes.YieldStmt') -> T:
+        pass
+    def visit_yield_from_stmt(self, o: 'mypy.nodes.YieldFromStmt') -> T:
         pass
     def visit_del_stmt(self, o: 'mypy.nodes.DelStmt') -> T:
         pass
@@ -89,9 +91,9 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> T:
         pass
-    
+
     # Expressions
-    
+
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
         pass
     def visit_str_expr(self, o: 'mypy.nodes.StrExpr') -> T:
@@ -107,6 +109,8 @@ class NodeVisitor(Generic[T]):
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> T:
         pass
     def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> T:
+        pass
+    def visit_yield_from_expr(self, o: 'mypy.nodes.YieldFromExpr') -> T:
         pass
     def visit_call_expr(self, o: 'mypy.nodes.CallExpr') -> T:
         pass
@@ -148,13 +152,13 @@ class NodeVisitor(Generic[T]):
         pass
     def visit_disjointclass_expr(self, o: 'mypy.nodes.DisjointclassExpr') -> T:
         pass
-    
+
     def visit_coerce_expr(self, o: 'mypy.nodes.CoerceExpr') -> T:
         pass
     def visit_type_expr(self, o: 'mypy.nodes.TypeExpr') -> T:
         pass
     def visit_java_cast(self, o: 'mypy.nodes.JavaCast') -> T:
         pass
-    
+
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
         pass

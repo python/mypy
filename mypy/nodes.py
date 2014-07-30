@@ -33,7 +33,7 @@ GDEF = 1 # type: int
 MDEF = 2 # type: int
 MODULE_REF = 3 # type: int
 # Type variable declared using typevar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind TVAR) within 
+# valid as a type. A type variable is valid as a type (kind TVAR) within
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
 UNBOUND_TVAR = 4 # type: 'int'
@@ -69,7 +69,7 @@ reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
-    
+
     line = -1
     # Textual representation
     repr = None # type: Any
@@ -87,7 +87,7 @@ class Node(Context):
     def set_line(self, tok: Token) -> 'Node':
         self.line = tok.line
         return self
-    
+
     @overload
     def set_line(self, line: int) -> 'Node':
         self.line = line
@@ -96,16 +96,16 @@ class Node(Context):
     def get_line(self) -> int:
         # TODO this should be just 'line'
         return self.line
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
-    
+
     # TODO do not use methods for these
-    
+
     @abstractmethod
     def name(self) -> str: pass
 
@@ -115,7 +115,7 @@ class SymbolNode(Node):
 
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
-    
+
     _name = None     # type: str    # Module name ('__main__' for initial file)
     _fullname = None # type: str    # Qualified module name
     path = ''        # Path to the file (None if not known)
@@ -123,7 +123,7 @@ class MypyFile(SymbolNode):
     is_bom = False   # Is there a UTF-8 BOM at the start?
     names = Undefined('SymbolTable')
     imports = Undefined(List['ImportBase'])    # All import nodes within the file
-    
+
     def __init__(self, defs: List[Node], imports: List['ImportBase'],
                  is_bom: bool = False) -> None:
         self.defs = defs
@@ -136,7 +136,7 @@ class MypyFile(SymbolNode):
 
     def fullname(self) -> str:
         return self._fullname
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
@@ -144,46 +144,46 @@ class MypyFile(SymbolNode):
 class ImportBase(Node):
     """Base class for all import statements."""
     is_unreachable = False
-    
+
 
 class Import(ImportBase):
     """import m [as n]"""
-    
+
     ids = Undefined(List[Tuple[str, str]])     # (module id, as id)
-    
+
     def __init__(self, ids: List[Tuple[str, str]]) -> None:
         self.ids = ids
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import(self)
 
 
 class ImportFrom(ImportBase):
     """from m import x, ..."""
-    
+
     names = Undefined(List[Tuple[str, str]]) # Tuples (name, as name)
-    
+
     def __init__(self, id: str, names: List[Tuple[str, str]]) -> None:
         self.id = id
         self.names = names
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
 
 class ImportAll(ImportBase):
     """from m import *"""
-    
+
     def __init__(self, id: str) -> None:
         self.id = id
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 
 
 class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
-    
+
     # Type signature (Callable or Overloaded)
     type = None # type: mypy.types.Type
     # If method, reference to TypeInfo
@@ -191,10 +191,10 @@ class FuncBase(SymbolNode):
 
     @abstractmethod
     def name(self) -> str: pass
-    
+
     def fullname(self) -> str:
         return self.name()
-    
+
     def is_method(self) -> bool:
         return bool(self.info)
 
@@ -205,20 +205,20 @@ class OverloadedFuncDef(FuncBase):
     This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
     """
-    
+
     items = Undefined(List['Decorator'])
     _fullname = None # type: str
-    
+
     def __init__(self, items: List['Decorator']) -> None:
         self.items = items
         self.set_line(items[0].line)
-    
+
     def name(self) -> str:
         return self.items[1].func.name()
 
     def fullname(self) -> str:
         return self._fullname
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
@@ -226,7 +226,7 @@ class OverloadedFuncDef(FuncBase):
 class FuncItem(FuncBase):
     args = Undefined(List['Var'])    # Argument names
     arg_kinds = Undefined(List[int]) # Kinds of arguments (ARG_*)
-    
+
     # Initialization expessions for fixed args; None if no initialiser
     init = Undefined(List['AssignmentStmt'])
     min_args = 0           # Minimum number of arguments
@@ -241,7 +241,7 @@ class FuncItem(FuncBase):
     is_class = False       # Uses @classmethod?
     expanded = Undefined(List['FuncItem'])  # Variants of function with type
                                             # variables with values expanded
-    
+
     def __init__(self, args: List['Var'], arg_kinds: List[int],
                  init: List[Node], body: 'Block',
                  typ: 'mypy.types.Type' = None) -> None:
@@ -251,7 +251,7 @@ class FuncItem(FuncBase):
         self.body = body
         self.type = typ
         self.expanded = []
-        
+
         i2 = List[AssignmentStmt]()
         self.min_args = 0
         for i in range(len(init)):
@@ -266,24 +266,24 @@ class FuncItem(FuncBase):
                 if i < self.max_fixed_argc():
                     self.min_args = i + 1
         self.init = i2
-    
+
     def max_fixed_argc(self) -> int:
         return self.max_pos
-    
+
     @overload
     def set_line(self, tok: Token) -> Node:
         super().set_line(tok)
         for n in self.args:
             n.line = self.line
         return self
-    
+
     @overload
     def set_line(self, tok: int) -> Node:
         super().set_line(tok)
         for n in self.args:
             n.line = self.line
         return self
-    
+
     def init_expressions(self) -> List[Node]:
         res = List[Node]()
         for i in self.init:
@@ -297,16 +297,16 @@ class FuncItem(FuncBase):
 class FuncDef(FuncItem):
     """Function definition.
 
-    This is a non-lambda function defined using 'def'. 
+    This is a non-lambda function defined using 'def'.
     """
-    
+
     _fullname = None # type: str       # Name with module prefix
     is_decorated = False
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_property = False
     original_def = None # type: FuncDef  # Original conditional definition
-    
+
     def __init__(self,
                  name: str,              # Function name
                  args: List['Var'],      # Argument names
@@ -319,13 +319,13 @@ class FuncDef(FuncItem):
 
     def name(self) -> str:
         return self._name
-    
+
     def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_def(self)
-    
+
     def is_constructor(self) -> bool:
         return self.info is not None and self._name == '__init__'
 
@@ -339,12 +339,12 @@ class Decorator(SymbolNode):
 
     A single Decorator object can include any number of function decorators.
     """
-    
+
     func = Undefined(FuncDef)          # Decorated function
     decorators = Undefined(List[Node]) # Decorators, at least one
     var = Undefined('Var')             # Represents the decorated function obj
     is_overload = False
-    
+
     def __init__(self, func: FuncDef, decorators: List[Node],
                  var: 'Var') -> None:
         self.func = func
@@ -367,7 +367,7 @@ class Var(SymbolNode):
 
     It can refer to global/local variable or a data attribute.
     """
-    
+
     _name = None     # type: str   # Name without module prefix
     _fullname = None # type: str   # Name with module prefix
     info = Undefined('TypeInfo')   # Defining class (for member variables)
@@ -380,7 +380,7 @@ class Var(SymbolNode):
     is_staticmethod = False
     is_classmethod = False
     is_property = False
-    
+
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name
         self.type = type
@@ -393,14 +393,14 @@ class Var(SymbolNode):
 
     def fullname(self) -> str:
         return self._fullname
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
 
 class ClassDef(Node):
     """Class definition"""
-    
+
     name = Undefined(str)         # Name of the class without module prefix
     fullname = None # type: str   # Fully qualified name of the class
     defs = Undefined('Block')
@@ -412,7 +412,7 @@ class ClassDef(Node):
     decorators = Undefined(List[Node])
     # Built-in/extension class? (single implementation inheritance only)
     is_builtinclass = False
-    
+
     def __init__(self, name: str, defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_types: List['mypy.types.Type'] = None,
@@ -425,58 +425,58 @@ class ClassDef(Node):
         self.base_types = base_types
         self.metaclass = metaclass
         self.decorators = []
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_class_def(self)
-    
+
     def is_generic(self) -> bool:
         return self.info.is_generic()
 
 
 class VarDef(Node):
     """Variable definition with explicit types"""
-    
+
     items = Undefined(List[Var])
     kind = None # type: int          # LDEF/GDEF/MDEF/...
     init = Undefined(Node)           # Expression or None
     is_top_level = False # Is the definition at the top level (not within
                          # a function or a type)?
-    
+
     def __init__(self, items: List[Var], is_top_level: bool,
                  init: Node = None) -> None:
         self.items = items
         self.is_top_level = is_top_level
         self.init = init
-    
+
     def info(self) -> 'TypeInfo':
         return self.items[0].info
-    
+
     @overload
     def set_line(self, tok: Token) -> Node:
         super().set_line(tok)
         for n in self.items:
             n.line = self.line
         return self
-    
+
     @overload
     def set_line(self, tok: int) -> Node:
         super().set_line(tok)
         for n in self.items:
             n.line = self.line
         return self
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var_def(self)
 
 
 class GlobalDecl(Node):
     """Declaration global x, y, ..."""
-    
+
     names = Undefined(List[str])
-    
+
     def __init__(self, names: List[str]) -> None:
         self.names = names
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_global_decl(self)
 
@@ -487,10 +487,10 @@ class Block(Node):
     # this applies to blocks that are protected by something like "if PY3:"
     # when using Python 2.
     is_unreachable = False
-    
+
     def __init__(self, body: List[Node]) -> None:
         self.body = body
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_block(self)
 
@@ -501,10 +501,10 @@ class Block(Node):
 class ExpressionStmt(Node):
     """An expression as a statament, such as print(s)."""
     expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
@@ -519,34 +519,34 @@ class AssignmentStmt(Node):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr or
     ParenExpr.
     """
-    
+
     lvalues = Undefined(List[Node])
     rvalue = Undefined(Node)
     type = None # type: mypy.types.Type # Declared type in a comment,
                                         # may be None.
-    
+
     def __init__(self, lvalues: List[Node], rvalue: Node,
                  type: 'mypy.types.Type' = None) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
 
 
 class OperatorAssignmentStmt(Node):
     """Operator assignment statement such as x += 1"""
-    
+
     op = ''
     lvalue = Undefined(Node)
     rvalue = Undefined(Node)
-    
+
     def __init__(self, op: str, lvalue: Node, rvalue: Node) -> None:
         self.op = op
         self.lvalue = lvalue
         self.rvalue = rvalue
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_operator_assignment_stmt(self)
 
@@ -555,12 +555,12 @@ class WhileStmt(Node):
     expr = Undefined(Node)
     body = Undefined(Block)
     else_body = Undefined(Block)
-    
+
     def __init__(self, expr: Node, body: Block, else_body: Block) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_while_stmt(self)
 
@@ -574,7 +574,7 @@ class ForStmt(Node):
     expr = Undefined(Node)
     body = Undefined(Block)
     else_body = Undefined(Block)
-    
+
     def __init__(self, index: List['NameExpr'], expr: Node, body: Block,
                  else_body: Block,
                  types: List['mypy.types.Type'] = None) -> None:
@@ -583,10 +583,10 @@ class ForStmt(Node):
         self.body = body
         self.else_body = else_body
         self.types = types
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
-    
+
     def is_annotated(self) -> bool:
         ann = False
         for t in self.types:
@@ -597,40 +597,50 @@ class ForStmt(Node):
 
 class ReturnStmt(Node):
     expr = Undefined(Node)   # Expression or None
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
 class AssertStmt(Node):
     expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
 class YieldStmt(Node):
     expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_stmt(self)
 
 
-class DelStmt(Node):
+class YieldFromStmt(Node):
     expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
-    
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_yield_from_stmt(self)
+
+
+class DelStmt(Node):
+    expr = Undefined(Node)
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
@@ -654,13 +664,13 @@ class IfStmt(Node):
     expr = Undefined(List[Node])
     body = Undefined(List[Block])
     else_body = Undefined(Block)
-    
+
     def __init__(self, expr: List[Node], body: List[Block],
                  else_body: Block) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
 
@@ -668,11 +678,11 @@ class IfStmt(Node):
 class RaiseStmt(Node):
     expr = Undefined(Node)
     from_expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node, from_expr: Node = None) -> None:
         self.expr = expr
         self.from_expr = from_expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
 
@@ -684,7 +694,7 @@ class TryStmt(Node):
     handlers = Undefined(List[Block])      # Except bodies
     else_body = Undefined(Block)
     finally_body = Undefined(Block)
-    
+
     def __init__(self, body: Block, vars: List['NameExpr'], types: List[Node],
                  handlers: List[Block], else_body: Block,
                  finally_body: Block) -> None:
@@ -694,7 +704,7 @@ class TryStmt(Node):
         self.handlers = handlers
         self.else_body = else_body
         self.finally_body = finally_body
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
 
@@ -703,27 +713,27 @@ class WithStmt(Node):
     expr = Undefined(List[Node])
     name = Undefined(List['NameExpr'])
     body = Undefined(Block)
-    
+
     def __init__(self, expr: List[Node], name: List['NameExpr'],
                  body: Block) -> None:
         self.expr = expr
         self.name = name
         self.body = body
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
 
 
 class PrintStmt(Node):
     """Python 2 print statement"""
-    
+
     args = Undefined(List[Node])
     newline = False
 
     def __init__(self, args: List[Node], newline: bool) -> None:
         self.args = args
         self.newline = newline
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_print_stmt(self)
 
@@ -733,95 +743,95 @@ class PrintStmt(Node):
 
 class IntExpr(Node):
     """Integer literal"""
-    
+
     value = 0
     literal = LITERAL_YES
-    
+
     def __init__(self, value: int) -> None:
         self.value = value
         self.literal_hash = value
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
 
 
 class StrExpr(Node):
     """String literal"""
-    
+
     value = ''
     literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
         self.literal_hash = value
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
 
 
 class BytesExpr(Node):
     """Bytes literal"""
-    
+
     value = '' # TODO use bytes
     literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
         self.literal_hash = value
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
 
 
 class UnicodeExpr(Node):
     """Unicode literal (Python 2.x)"""
-    
+
     value = '' # TODO use bytes
     literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
         self.literal_hash = value
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
 
 
 class FloatExpr(Node):
     """Float literal"""
-    
+
     value = 0.0
     literal = LITERAL_YES
-    
+
     def __init__(self, value: float) -> None:
         self.value = value
         self.literal_hash = value
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
 
 
 class ParenExpr(Node):
     """Parenthesised expression"""
-    
+
     expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
         self.literal = self.expr.literal
         self.literal_hash = ('Paren', expr.literal_hash,)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_paren_expr(self)
 
 
 class RefExpr(Node):
     """Abstract base class for name-like constructs"""
-    
+
     kind = None # type: int      # LDEF/GDEF/MDEF/... (None if not available)
     node = Undefined(Node)       # Var, FuncDef or TypeInfo that describes this
     fullname = None # type: str  # Fully qualified name (or name if not global)
-    
+
     # Does this define a new name with inferred type?
     #
     # For members, after semantic analysis, this does not take base
@@ -834,33 +844,33 @@ class NameExpr(RefExpr):
 
     This refers to a local name, global name or a module.
     """
-    
+
     name = None # type: str      # Name referred to (may be qualified)
     info = Undefined('TypeInfo') # TypeInfo of class surrounding expression
                                  # (may be None)
     literal = LITERAL_TYPE
-    
+
     def __init__(self, name: str) -> None:
         self.name = name
         self.literal_hash = ('Var', name,)
-    
+
     def type_node(self):
         return cast('TypeInfo', self.node)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
 
 
 class MemberExpr(RefExpr):
     """Member access expression x.y"""
-    
+
     expr = Undefined(Node)
     name = None # type: str
     # The variable node related to a definition.
     def_var = None # type: Var
     # Is this direct assignment to a data member (bypassing accessors)?
     direct = False
-    
+
     def __init__(self, expr: Node, name: str, direct: bool = False) -> None:
         self.expr = expr
         self.name = name
@@ -892,7 +902,7 @@ class CallExpr(Node):
     This can also represent several special forms that are syntactically calls
     such as cast(...) and Undefined(...).
     """
-    
+
     callee = Undefined(Node)
     args = Undefined(List[Node])
     arg_kinds = Undefined(List[int]) # ARG_ constants
@@ -901,7 +911,7 @@ class CallExpr(Node):
     analyzed = Undefined(Node)       # If not None, the node that represents
                                      # the meaning of the CallExpr. For
                                      # cast(...) this is a CastExpr.
-    
+
     def __init__(self, callee: Node, args: List[Node], arg_kinds: List[int],
                  arg_names: List[str] = None, analyzed: Node = None) -> None:
         if not arg_names:
@@ -911,17 +921,26 @@ class CallExpr(Node):
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
         self.analyzed = analyzed
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
 
+
+class YieldFromExpr(Node):
+    callee = Undefined(Node)
+
+    def __init__(self, callee: Node) -> None:
+        self.callee = callee
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_yield_from_expr(self)
 
 class IndexExpr(Node):
     """Index expression x[y].
 
     Also wraps type application as a special form.
     """
-    
+
     base = Undefined(Node)
     index = Undefined(Node)
     # Inferred __getitem__ method type
@@ -929,7 +948,7 @@ class IndexExpr(Node):
     # If not None, this is actually semantically a type application
     # Class[type, ...].
     analyzed = Undefined('TypeApplication')
-    
+
     def __init__(self, base: Node, index: Node) -> None:
         self.base = base
         self.index = index
@@ -938,25 +957,25 @@ class IndexExpr(Node):
             self.literal = self.base.literal
             self.literal_hash = ('Member', base.literal_hash,
                                  index.literal_hash)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
 
 
 class UnaryExpr(Node):
     """Unary operation"""
-    
+
     op = ''
     expr = Undefined(Node)
     # Inferred operator method type
     method_type = None # type: mypy.types.Type
-    
+
     def __init__(self, op: str, expr: Node) -> None:
         self.op = op
         self.expr = expr
         self.literal = self.expr.literal
         self.literal_hash = ('Unary', op, expr.literal_hash)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
 
@@ -1017,21 +1036,21 @@ reverse_op_method_set = set(reverse_op_methods.values())
 
 class OpExpr(Node):
     """Binary operation (other than . or [], which have specific nodes)."""
-    
+
     op = ''
     left = Undefined(Node)
     right = Undefined(Node)
     # Inferred type for the operator method type (when relevant; None for
     # 'is').
     method_type = None # type: mypy.types.Type
-    
+
     def __init__(self, op: str, left: Node, right: Node) -> None:
         self.op = op
         self.left = left
         self.right = right
         self.literal = min(self.left.literal, self.right.literal)
         self.literal_hash = ('Binary', op, left.literal_hash, right.literal_hash)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
@@ -1041,44 +1060,44 @@ class SliceExpr(Node):
 
     This is only valid as index in index expressions.
     """
-    
+
     begin_index = Undefined(Node)  # May be None
     end_index = Undefined(Node)    # May be None
     stride = Undefined(Node)       # May be None
-    
+
     def __init__(self, begin_index: Node, end_index: Node,
                  stride: Node) -> None:
         self.begin_index = begin_index
         self.end_index = end_index
         self.stride = stride
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_slice_expr(self)
 
 
 class CastExpr(Node):
     """Cast expression cast(type, expr)."""
-    
+
     expr = Undefined(Node)
     type = Undefined('mypy.types.Type')
-    
+
     def __init__(self, expr: Node, typ: 'mypy.types.Type') -> None:
         self.expr = expr
         self.type = typ
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
 
 
 class SuperExpr(Node):
     """Expression super().name"""
-    
+
     name = ''
     info = Undefined('TypeInfo') # Type that contains this super expression
-    
+
     def __init__(self, name: str) -> None:
         self.name = name
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_super_expr(self)
 
@@ -1088,85 +1107,85 @@ class FuncExpr(FuncItem):
 
     def name(self) -> str:
         return '<lambda>'
-    
+
     def expr(self) -> Node:
         """Return the expression (the body) of the lambda."""
         ret = cast(ReturnStmt, self.body.body[0])
         return ret.expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_expr(self)
 
 class ListExpr(Node):
     """List literal expression [...]."""
-    
+
     items = Undefined(List[Node] )
-    
+
     def __init__(self, items: List[Node]) -> None:
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
             self.literal_hash = ('List',) + tuple(x.literal_hash for x in items)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
 
 
 class DictExpr(Node):
     """Dictionary literal expression {key: value, ...}."""
-    
+
     items = Undefined(List[Tuple[Node, Node]])
-    
+
     def __init__(self, items: List[Tuple[Node, Node]]) -> None:
         self.items = items
         if all(x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
                for x in items):
             self.literal = LITERAL_YES
             self.literal_hash = ('Dict',) + tuple((x[0].literal_hash, x[1].literal_hash) for x in items)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
 
 
 class TupleExpr(Node):
     """Tuple literal expression (..., ...)"""
-    
+
     items = Undefined(List[Node])
-    
+
     def __init__(self, items: List[Node]) -> None:
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
             self.literal_hash = ('Tuple',) + tuple(x.literal_hash for x in items)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
 
 
 class SetExpr(Node):
     """Set literal expression {value, ...}."""
-    
+
     items = Undefined(List[Node])
-    
+
     def __init__(self, items: List[Node]) -> None:
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
             self.literal_hash = ('Set',) + tuple(x.literal_hash for x in items)
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
 
 
 class GeneratorExpr(Node):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
-    
+
     left_expr = Undefined(Node)
     sequences_expr = Undefined(List[Node])
     condlists = Undefined(List[List[Node]])
     indices = Undefined(List[List[NameExpr]])
     types = Undefined(List[List['mypy.types.Type']])
-    
+
     def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
                   types: List[List['mypy.types.Type']], sequences: List[Node],
                  condlists: List[List[Node]]) -> None:
@@ -1175,35 +1194,35 @@ class GeneratorExpr(Node):
         self.condlists = condlists
         self.indices = indices
         self.types = types
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
 
 
 class ListComprehension(Node):
     """List comprehension (e.g. [x + 1 for x in a])"""
-    
+
     generator = Undefined(GeneratorExpr)
-    
+
     def __init__(self, generator: GeneratorExpr) -> None:
         self.generator = generator
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_comprehension(self)
 
 
 class ConditionalExpr(Node):
     """Conditional expression (e.g. x if y else z)"""
-    
+
     cond = Undefined(Node)
     if_expr = Undefined(Node)
     else_expr = Undefined(Node)
-    
+
     def __init__(self, cond: Node, if_expr: Node, else_expr: Node) -> None:
         self.cond = cond
         self.if_expr = if_expr
         self.else_expr = else_expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
 
@@ -1216,7 +1235,7 @@ class UndefinedExpr(Node):
 
       x = Undefined(List[int])
     """
-    
+
     def __init__(self, type: 'mypy.types.Type') -> None:
         self.type = type
 
@@ -1226,14 +1245,14 @@ class UndefinedExpr(Node):
 
 class TypeApplication(Node):
     """Type application expr[type, ...]"""
-    
+
     expr = Undefined(Node)
     types = Undefined(List['mypy.types.Type'])
-    
+
     def __init__(self, expr: Node, types: List['mypy.types.Type']) -> None:
         self.expr = expr
         self.types = types
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_application(self)
 
@@ -1258,7 +1277,7 @@ class TypeVarExpr(SymbolNode):
 
     def fullname(self) -> str:
         return self._fullname
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
@@ -1293,12 +1312,12 @@ class CoerceExpr(Node):
     This is used only when compiling/transforming.  These are inserted
     after type checking.
     """
-    
+
     expr = Undefined(Node)
     target_type = Undefined('mypy.types.Type')
     source_type = Undefined('mypy.types.Type')
     is_wrapper_class = False
-    
+
     def __init__(self, expr: Node, target_type: 'mypy.types.Type',
                  source_type: 'mypy.types.Type',
                  is_wrapper_class: bool) -> None:
@@ -1306,7 +1325,7 @@ class CoerceExpr(Node):
         self.target_type = target_type
         self.source_type = source_type
         self.is_wrapper_class = is_wrapper_class
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_coerce_expr(self)
 
@@ -1314,12 +1333,12 @@ class CoerceExpr(Node):
 class JavaCast(Node):
     # TODO obsolete; remove
     expr = Undefined(Node)
-    target = Undefined('mypy.types.Type')    
-    
+    target = Undefined('mypy.types.Type')
+
     def __init__(self, expr: Node, target: 'mypy.types.Type') -> None:
         self.expr = expr
         self.target = target
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_java_cast(self)
 
@@ -1330,12 +1349,12 @@ class TypeExpr(Node):
     This is used only for runtime type checking. This node is always generated
     only after type checking.
     """
-    
-    type = Undefined('mypy.types.Type')    
-    
+
+    type = Undefined('mypy.types.Type')
+
     def __init__(self, typ: 'mypy.types.Type') -> None:
         self.type = typ
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_expr(self)
 
@@ -1347,12 +1366,12 @@ class TempNode(Node):
     of the type checker implementation. It only represents an opaque node with
     some fixed type.
     """
-    
+
     type = Undefined('mypy.types.Type')
-    
+
     def __init__(self, typ: 'mypy.types.Type') -> None:
         self.type = typ
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
 
@@ -1363,7 +1382,7 @@ class TypeInfo(SymbolNode):
     The corresponding ClassDef instance represents the parse tree of
     the class.
     """
-    
+
     _fullname = None # type: str      # Fully qualified name
     defn = Undefined(ClassDef)        # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
@@ -1378,18 +1397,18 @@ class TypeInfo(SymbolNode):
     # Targets of disjointclass declarations present in this class only (for
     # generating error messages).
     disjointclass_decls = Undefined(List['TypeInfo'])
-    
+
     # Information related to type annotations.
-    
+
     # Generic type variable names
     type_vars = Undefined(List[str])
-    
+
     # Direct base classes.
     bases = Undefined(List['mypy.types.Instance'])
 
     # Duck type compatibility (ducktype decorator)
     ducktype = None # type: mypy.types.Type
-    
+
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
         self.names = names
@@ -1406,18 +1425,18 @@ class TypeInfo(SymbolNode):
         if defn.type_vars:
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
-    
+
     def name(self) -> str:
         """Short name."""
         return self.defn.name
 
     def fullname(self) -> str:
         return self._fullname
-    
+
     def is_generic(self) -> bool:
         """Is the type generic (i.e. does it have type variables)?"""
         return self.type_vars is not None and len(self.type_vars) > 0
-    
+
     def get(self, name: str) -> 'SymbolTableNode':
         for cls in self.mro:
             n = cls.names.get(name)
@@ -1434,23 +1453,23 @@ class TypeInfo(SymbolNode):
 
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
-        
-    
+
+
     # IDEA: Refactor the has* methods to be more consistent and document
     #       them.
-    
+
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
-    
+
     def has_writable_member(self, name: str) -> bool:
         return self.has_var(name)
-    
+
     def has_var(self, name: str) -> bool:
         return self.get_var(name) is not None
-    
+
     def has_method(self, name: str) -> bool:
         return self.get_method(name) is not None
-    
+
     def get_var(self, name: str) -> Var:
         for cls in self.mro:
             if name in cls.names:
@@ -1460,15 +1479,15 @@ class TypeInfo(SymbolNode):
                 else:
                     return None
         return None
-    
+
     def get_var_or_getter(self, name: str) -> SymbolNode:
         # TODO getter
         return self.get_var(name)
-    
+
     def get_var_or_setter(self, name: str) -> SymbolNode:
         # TODO setter
         return self.get_var(name)
-    
+
     def get_method(self, name: str) -> FuncBase:
         for cls in self.mro:
             if name in cls.names:
@@ -1485,7 +1504,7 @@ class TypeInfo(SymbolNode):
         Raise MroError if cannot determine mro.
         """
         self.mro = linearize_hierarchy(self)
-    
+
     def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.
 
@@ -1495,7 +1514,7 @@ class TypeInfo(SymbolNode):
             if cls.fullname() == fullname:
                 return True
         return False
-    
+
     def all_subtypes(self) -> 'Set[TypeInfo]':
         """Return TypeInfos of all subtypes, including this type, as a set."""
         subtypes = set([self])
@@ -1503,18 +1522,18 @@ class TypeInfo(SymbolNode):
             for t in subt.all_subtypes():
                 subtypes.add(t)
         return subtypes
-    
+
     def all_base_classes(self) -> 'List[TypeInfo]':
         """Return a list of base classes, including indirect bases."""
         assert False
-    
+
     def direct_base_classes(self) -> 'List[TypeInfo]':
         """Return a direct base classes.
 
         Omit base classes of other base classes.
         """
         return [base.type for base in self.bases]
-    
+
     def __str__(self) -> str:
         """Return a string representation of the type.
 
@@ -1540,9 +1559,9 @@ class SymbolTableNode:
     tvar_id = 0
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
-    # If None, fall back to type of node    
+    # If None, fall back to type of node
     type_override = Undefined('mypy.types.Type')
-    
+
     def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,
                  typ: 'mypy.types.Type' = None, tvar_id: int = 0) -> None:
         self.kind = kind
@@ -1571,7 +1590,7 @@ class SymbolTableNode:
             return (cast(Decorator, node)).var.type
         else:
             return None
-    
+
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
         if self.mod_id is not None:
@@ -1603,7 +1622,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
 def clean_up(s: str) -> str:
     # TODO remove
     return re.sub('.*::', '', s)
-        
+
 
 def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
     if func.type:
@@ -1612,7 +1631,7 @@ def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an
         # ordinary function.
-        fdef = cast(FuncDef, func)        
+        fdef = cast(FuncDef, func)
         name = func.name()
         if name:
             name = '"{}"'.format(name)
