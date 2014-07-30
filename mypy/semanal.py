@@ -1142,7 +1142,10 @@ class SemanticAnalyzer(NodeVisitor):
         expr.expr.accept(self)
 
     def visit_yield_from_expr(self, expr: YieldFromExpr) -> None:
-        self.visit_call_expr(expr.callee)
+        if not self.is_func_scope():  # not sure
+            self.fail("'yield from' outside function", s)
+        if expr.callee:
+            expr.callee.accept(self)
 
     def visit_call_expr(self, expr: CallExpr) -> None:
         """Analyze a call expression.

@@ -10,7 +10,7 @@ from mypy.nodes import (
     TryStmt, WithStmt, ParenExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
-    FuncExpr, OverloadedFuncDef, YieldFromStmt, YieldFromExpr
+    FuncExpr, OverloadedFuncDef, YieldFromStmt, YieldFromExpr, NameExpr
 )
 
 
@@ -151,7 +151,11 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
         o.expr.accept(self)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> T:
-        self.visit_call_expr(o.callee)
+        if isinstance(o.callee, CallExpr):
+            self.visit_call_expr(o.callee)
+        elif isinstance(o.callee, NameExpr):
+            self.visit_name_expr(o.callee)
+
 
     def visit_call_expr(self, o: CallExpr) -> T:
         for a in o.args:

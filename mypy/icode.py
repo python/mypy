@@ -650,7 +650,10 @@ class IcodeBuilder(NodeVisitor[int]):
         return target
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> int:
-        return self.visit_call_expr(e.callee)
+        if isinstance(e.callee, CallExpr):
+            return self.visit_call_expr(e.callee)
+        elif isinstance(e.callee, NameExpr):
+            return self.visit_name_expr(e.callee)
 
     def visit_call_expr(self, e: CallExpr) -> int:
         args = [] # type: List[int]

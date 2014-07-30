@@ -776,9 +776,9 @@ class Parser:
         expr = None # type: Node
         node = YieldStmt(expr)
         if not isinstance(self.current(), Break):
-            if isinstance(self.current(), Keyword):
+            if isinstance(self.current(), Keyword) and self.current_str() == "from":  # Not go if it's not from
                 from_tok = self.expect("from")
-                expr = self.parse_expression() # Here comes when yield from is not assigned
+                expr = self.parse_expression()  # Here comes when yield from is not assigned
                 node = YieldFromStmt(expr)
             else:
                 expr = self.parse_expression()
@@ -790,7 +790,7 @@ class Parser:
     def parse_yield_from_expr(self) -> CallExpr:
         y_tok = self.expect("yield")
         f_tok = self.expect("from")
-        tok = self.parse_expression() # Here comes when yield from is assigned to a variable
+        tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
         return YieldFromExpr(tok)
 
     def parse_del_stmt(self) -> DelStmt:

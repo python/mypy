@@ -220,7 +220,10 @@ class DyncheckTransformVisitor(TraverserVisitor):
             return ''
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
-        self.visit_call_expr(e.callee)
+        if isinstance(e.callee, CallExpr):
+            self.visit_call_expr(e.callee)
+        elif isinstance(e.callee, NameExpr):
+            self.visit_name_expr(e.callee)
 
     def visit_call_expr(self, e: CallExpr) -> None:
         if e.analyzed:

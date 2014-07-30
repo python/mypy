@@ -159,7 +159,10 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string(')')
 
     def visit_yield_from_expr(self, o):
-        self.visit_call_expr(o.callee)
+        if isinstance(o.callee, CallExpr):
+            self.visit_call_expr(o.callee)
+        elif isinstance(o.callee, NameExpr):
+            self.visit_name_expr(o.callee)
 
     def visit_member_expr(self, o):
         self.node(o.expr)

@@ -325,7 +325,10 @@ class StrConv(NodeVisitor[str]):
                                                    o.is_def)], o)
 
     def visit_yield_from_expr(self, o):
-        return self.dump([self.visit_call_expr(o.callee)], o)
+        if isinstance(o.callee, mypy.nodes.CallExpr):
+            return self.dump([self.visit_call_expr(o.callee)], o)
+        elif isinstance(o.callee, mypy.nodes.NameExpr):
+            return self.dump([self.visit_name_expr(o.callee)], o)
 
     def visit_call_expr(self, o):
         if o.analyzed:
