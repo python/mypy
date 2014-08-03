@@ -1110,3 +1110,16 @@ w = io.TextIOWrapper(b, encoding='utf8')
 print(repr(w.read()))
 [out]
 u'\xab'
+
+[case testUnionType_python2]
+from typing import Undefined, Union
+y = Undefined(Union[int, str])
+def f(x): # type: (Union[int, str]) -> str
+    if isinstance(x, int):
+        x = str(x)
+    return x
+print f(12)
+print f('ab')
+[out]
+12
+ab
