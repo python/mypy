@@ -11,6 +11,7 @@ __all__ = [
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
+    'AnyStr',
     'BytesMatch',
     'BytesPattern',
     'Dict',
@@ -153,8 +154,13 @@ BytesMatch = Match # TODO See above.
 
 
 class typevar(object):
-    def __init__(self, name):
+    def __init__(self, name, values=None):
         self.name = name
+        self.values = values
+
+
+# Predefined type variables.
+AnyStr = typevar('AnyStr', values=(str, unicode))
 
 
 class forwardref(object):

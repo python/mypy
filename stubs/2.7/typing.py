@@ -35,6 +35,9 @@ List = TypeAlias(object)
 Dict = TypeAlias(object)
 Set = TypeAlias(object)
 
+# Predefined type variables.
+AnyStr = typevar('AnyStr', values=(str, unicode))
+
 # Defines aliases for built-in types.
 # Note that here 're' refers to the stub!  The Python 're' module does not
 # define Pattern, etc.  At runtime, the string and bytes variants actually
