@@ -1064,3 +1064,29 @@ if 1 == 2: # Don't want to run the code below, since it would create a file.
 print('ok')
 [out]
 ok
+
+[case testStringIO_python2]
+import typing
+import io
+c = io.StringIO()
+c.write(u'\x89')
+print(repr(c.getvalue()))
+[out]
+u'\x89'
+
+[case testBytesIO_python2]
+import typing
+import io
+c = io.BytesIO()
+c.write('\x89')
+print(repr(c.getvalue()))
+[out]
+'\x89'
+
+[case testTextIOWrapper_python2]
+import io
+b = io.BytesIO(u'\xab'.encode('utf8'))
+w = io.TextIOWrapper(b, encoding='utf8')
+print(repr(w.read()))
+[out]
+u'\xab'
