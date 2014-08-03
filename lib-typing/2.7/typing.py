@@ -18,6 +18,7 @@ __all__ = [
     'Function',
     'Generic',
     'GenericMeta',
+    'IO',
     'List',
     'Match',
     'Pattern',
