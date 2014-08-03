@@ -1037,3 +1037,30 @@ class A:
 print(A().foo + 2)
 [out]
 3
+
+[case testIOTypes_python2]
+from typing import IO, TextIO, BinaryIO, Any
+class X(IO[str]): pass
+class Y(TextIO): pass
+class Z(BinaryIO): pass
+[out]
+
+[case testOpenReturnType_python2]
+import typing
+f = open('/tmp/xyz', 'w')
+f.write(u'foo')
+f.write('bar')
+f.close()
+[out]
+_program.py, line 3: No overload variant of "write" of "BinaryIO" matches argument types
+
+[case testPrintFunctionWithFileArg_python2]
+from __future__ import print_function
+import typing
+if 1 == 2: # Don't want to run the code below, since it would create a file.
+    f = open('/tmp/xyz', 'w')
+    print('foo', file=f)
+    f.close()
+print('ok')
+[out]
+ok

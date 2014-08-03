@@ -1,6 +1,6 @@
 u"""Static type checking helpers"""
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 import inspect
 import sys
 import re
@@ -471,8 +471,11 @@ Mapping.register(dict)
 # Note that the BinaryIO and TextIO classes must be in sync with typing module stubs.
 
 
-class BinaryIO(object):
-    __metaclass__ = ABCMeta
+class IO(AbstractGeneric[AnyStr]):
+    @abstractproperty
+    def mode(self): pass
+    @abstractproperty
+    def name(self): pass
     @abstractmethod
     def close(self): pass
     @abstractmethod
@@ -484,66 +487,21 @@ class BinaryIO(object):
     @abstractmethod
     def isatty(self): pass
     @abstractmethod
-    def read(self, n = -1): pass
+    def read(self, n=-1): pass
     @abstractmethod
     def readable(self): pass
     @abstractmethod
-    def readline(self, limit = -1): pass
+    def readline(self, limit=-1): pass
     @abstractmethod
-    def readlines(self, hint = -1): pass
+    def readlines(self, hint=-1): pass
     @abstractmethod
-    def seek(self, offset, whence = 0): pass
+    def seek(self, offset, whence=0): pass
     @abstractmethod
     def seekable(self): pass
     @abstractmethod
     def tell(self): pass
     @abstractmethod
-    def truncate(self, size = None): pass
-    @abstractmethod
-    def writable(self): pass
-    @overload
-    @abstractmethod
-    def write(self, s): pass
-    @overload
-    @abstractmethod
-    def write(self, s): pass
-    @abstractmethod
-    def writelines(self, lines): pass
-
-    @abstractmethod
-    def __enter__(self): pass
-    @abstractmethod
-    def __exit__(self, type, value, traceback): pass
-
-
-class TextIO(object):
-    __metaclass__ = ABCMeta
-    @abstractmethod
-    def close(self): pass
-    @abstractmethod
-    def closed(self): pass
-    @abstractmethod
-    def fileno(self): pass
-    @abstractmethod
-    def flush(self): pass
-    @abstractmethod
-    def isatty(self): pass
-    @abstractmethod
-    def read(self, n = -1): pass
-    @abstractmethod
-    def readable(self): pass
-    @abstractmethod
-    def readline(self, limit = -1): pass
-    @abstractmethod
-    def readlines(self, hint = -1): pass
-    @abstractmethod
-    def seek(self, offset, whence = 0): pass
-    @abstractmethod
-    def seekable(self): pass
-    @abstractmethod
-    def tell(self): pass
-    @abstractmethod
-    def truncate(self, size = None): pass
+    def truncate(self, size=None): pass
     @abstractmethod
     def writable(self): pass
     @abstractmethod
@@ -555,6 +513,33 @@ class TextIO(object):
     def __enter__(self): pass
     @abstractmethod
     def __exit__(self, type, value, traceback): pass
+
+
+class BinaryIO(IO[str]):
+    @overload
+    @abstractmethod
+    def write(self, s): pass
+    @overload
+    @abstractmethod
+    def write(self, s): pass
+
+    @abstractmethod
+    def __enter__(self): pass
+
+
+class TextIO(IO[unicode]):
+    @abstractproperty
+    def buffer(self): pass
+    @abstractproperty
+    def encoding(self): pass
+    @abstractproperty
+    def errors(self): pass
+    @abstractproperty
+    def line_buffering(self): pass
+    @abstractproperty
+    def newlines(self): pass
+    @abstractmethod
+    def __enter__(self): pass
 
 
 # TODO Register TextIO/BinaryIO as the base class of file-like types.

@@ -173,14 +173,13 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @abstractmethod
     def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
 
-class BinaryIO(metaclass=ABCMeta):
-    # TODO iteration
-    # TODO mode
-    # TODO name
+class IO(Iterable[AnyStr], AbstractGeneric[AnyStr]):
     # TODO detach
-    # TODO readinto
-    # TODO read1?
-    # TODO peek?
+    # TODO use abstract properties
+    @property
+    def mode(self) -> str: pass
+    @property
+    def name(self) -> str: pass
     @abstractmethod
     def close(self) -> None: pass
     @property
@@ -193,13 +192,13 @@ class BinaryIO(metaclass=ABCMeta):
     def isatty(self) -> bool: pass
     # TODO what if n is None?
     @abstractmethod
-    def read(self, n: int = -1) -> str: pass
+    def read(self, n: int = -1) -> AnyStr: pass
     @abstractmethod
     def readable(self) -> bool: pass
     @abstractmethod
-    def readline(self, limit: int = -1) -> str: pass
+    def readline(self, limit: int = -1) -> AnyStr: pass
     @abstractmethod
-    def readlines(self, hint: int = -1) -> list[str]: pass
+    def readlines(self, hint: int = -1) -> list[AnyStr]: pass
     @abstractmethod
     def seek(self, offset: int, whence: int = 0) -> int: pass
     @abstractmethod
@@ -212,67 +211,43 @@ class BinaryIO(metaclass=ABCMeta):
     @abstractmethod
     def writable(self) -> bool: pass
     # TODO buffer objects
+    @abstractmethod
+    def write(self, s: AnyStr) -> int: pass
+    @abstractmethod
+    def writelines(self, lines: Iterable[AnyStr]) -> None: pass
+
+    @abstractmethod
+    def __iter__(self) -> Iterator[AnyStr]: pass
+    @abstractmethod
+    def __enter__(self) -> 'IO[AnyStr]': pass
+    @abstractmethod
+    def __exit__(self, type, value, traceback) -> bool: pass
+
+class BinaryIO(IO[str]):
+    # TODO readinto
+    # TODO read1?
+    # TODO peek?
     @overload
     @abstractmethod
     def write(self, s: str) -> int: pass
     @overload
     @abstractmethod
     def write(self, s: bytearray) -> int: pass
-    @abstractmethod
-    def writelines(self, lines: list[str]) -> None: pass
 
     @abstractmethod
     def __enter__(self) -> BinaryIO: pass
-    @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass
 
-class TextIO(metaclass=ABCMeta):
-    # TODO iteration
-    # TODO buffer?
-    # TODO str encoding
-    # TODO str errors
-    # TODO line_buffering
-    # TODO mode
-    # TODO name
-    # TODO any newlines
-    # TODO detach(self)
-    @abstractmethod
-    def close(self) -> None: pass
+class TextIO(IO[unicode]):
+    # TODO use abstractproperty
     @property
-    def closed(self) -> bool: pass
-    @abstractmethod
-    def fileno(self) -> int: pass
-    @abstractmethod
-    def flush(self) -> None: pass
-    @abstractmethod
-    def isatty(self) -> bool: pass
-    # TODO what if n is None?
-    @abstractmethod
-    def read(self, n: int = -1) -> unicode: pass
-    @abstractmethod
-    def readable(self) -> bool: pass
-    @abstractmethod
-    def readline(self, limit: int = -1) -> unicode: pass
-    @abstractmethod
-    def readlines(self, hint: int = -1) -> list[unicode]: pass
-    @abstractmethod
-    def seek(self, offset: int, whence: int = 0) -> int: pass
-    @abstractmethod
-    def seekable(self) -> bool: pass
-    @abstractmethod
-    def tell(self) -> int: pass
-    # TODO is None compatible with int?
-    @abstractmethod
-    def truncate(self, size: int = None) -> int: pass
-    @abstractmethod
-    def writable(self) -> bool: pass
-    # TODO buffer objects
-    @abstractmethod
-    def write(self, s: unicode) -> int: pass
-    @abstractmethod
-    def writelines(self, lines: list[unicode]) -> None: pass
-
+    def buffer(self) -> BinaryIO: pass
+    @property
+    def encoding(self) -> str: pass
+    @property
+    def errors(self) -> str: pass
+    @property
+    def line_buffering(self) -> bool: pass
+    @property
+    def newlines(self) -> Any: pass # None, str or tuple
     @abstractmethod
     def __enter__(self) -> TextIO: pass
-    @abstractmethod
-    def __exit__(self, type, value, traceback) -> None: pass

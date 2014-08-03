@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, TextIO, builtinclass, ducktype
+    SupportsRound, IO, BinaryIO, builtinclass, ducktype
 )
 from abc import abstractmethod, ABCMeta
 
@@ -929,13 +929,10 @@ def next(i: Iterator[T], default: T) -> T: pass
 # TODO __index__
 def oct(i: int) -> str: pass
 
-# TODO return type
 @overload
-def open(file: unicode, mode: unicode = 'r', buffering: int = -1, encoding: unicode = None,
-         errors: unicode = None, newline: unicode = None, closefd: bool = True) -> Any: pass
+def open(file: unicode, mode: unicode = 'r', buffering: int = -1) -> BinaryIO: pass
 @overload
-def open(file: int, mode: unicode = 'r', buffering: int = -1, encoding: unicode = None,
-         errors: unicode = None, newline: unicode = None, closefd: bool = True) -> Any: pass
+def open(file: int, mode: unicode = 'r', buffering: int = -1) -> BinaryIO: pass
 
 @overload
 def ord(c: unicode) -> int: pass
@@ -943,9 +940,8 @@ def ord(c: unicode) -> int: pass
 def ord(c: bytearray) -> int: pass
 
 # This is only available after from __future__ import print_function.
-# TODO: Use IO[str] instead of TextIO (once IO is available)?
 def print(*values: Any, sep: unicode = u' ', end: unicode = u'\n',
-           file: TextIO = None) -> None: pass
+           file: IO[Any] = None) -> None: pass
 
 # The return type can be int or float, depending on the value of y.
 @overload
