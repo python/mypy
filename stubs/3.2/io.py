@@ -98,7 +98,6 @@ class TextIOWrapper(TextIO):
     def writable(self) -> bool: pass
     def write(self, s: str) -> int: pass
     def writelines(self, lines: Iterable[str]) -> None: pass
-    def getvalue(self) -> str: pass
 
     def __iter__(self) -> Iterator[str]: pass
     def __enter__(self) -> StringIO: pass
