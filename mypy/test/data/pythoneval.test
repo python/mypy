@@ -1104,12 +1104,24 @@ print(repr(c.getvalue()))
 '\x89'
 
 [case testTextIOWrapper_python2]
+import typing
 import io
 b = io.BytesIO(u'\xab'.encode('utf8'))
 w = io.TextIOWrapper(b, encoding='utf8')
 print(repr(w.read()))
 [out]
 u'\xab'
+
+[case testIoOpen_python2]
+import typing
+import io
+if 1 == 2: # Only type check, do not execute
+    f = io.open('/tmp/xyz', 'w', encoding='utf8')
+    f.write(u'\xab')
+    f.close()
+print 'ok'
+[out]
+ok
 
 [case testUnionType_python2]
 from typing import Undefined, Union

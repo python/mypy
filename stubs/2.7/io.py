@@ -6,7 +6,12 @@
 
 DEFAULT_BUFFER_SIZE = 0
 
-from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable
+from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Any, Union
+
+def open(file: Union[str, unicode, int],
+         mode: unicode = 'r', buffering: int = -1, encoding: unicode = None,
+         errors: unicode = None, newline: unicode = None,
+         closefd: bool = True) -> IO[Any]: pass
 
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: str = b'') -> None: pass
