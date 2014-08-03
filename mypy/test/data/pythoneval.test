@@ -581,6 +581,17 @@ print(p.match('fooo').group(0))
 [out]
 fooo
 
+[case testGenericPatterns_python2]
+from typing import Pattern, Undefined
+import re
+p = Undefined(Pattern[unicode])
+p = re.compile(u'foo*')
+b = Undefined(Pattern[str])
+b = re.compile('foo*')
+print(p.match(u'fooo').group(0))
+[out]
+fooo
+
 [case testGenericMatch]
 from typing import Match
 import re
@@ -589,6 +600,15 @@ def f(m: Match[bytes]) -> None:
 f(re.match(b'x*', b'xxy'))
 [out]
 b'xx'
+
+[case testGenericMatch_python2]
+from typing import Match
+import re
+def f(m): # type: (Match[str]) -> None
+    print(m.group(0))
+f(re.match('x*', 'xxy'))
+[out]
+xx
 
 [case testMultipleTypevarsWithValues]
 from typing import typevar
