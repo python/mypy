@@ -3,7 +3,7 @@
 # Based on http://docs.python.org/3.2/library/itertools.html
 
 from typing import (Iterator, typevar, Iterable, overload, Any, Function, Tuple,
-                    Union)
+                    Union, Sequence)
 
 T = typevar('T')
 S = typevar('S')
@@ -45,11 +45,11 @@ def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
 def zip_longest(*p: Iterable[Any],
                 fillvalue: Any = None) -> Iterator[Any]: pass
 
-def product(*p: Iterable[T], repeat: int = 1) -> Iterator[T]: pass
+def product(*p: Iterable[Iterable[T]], repeat: int = 1) -> Iterator[T]: pass
 
 def permutations(iterable: Iterable[T], 
-                 r: Union[int, None] = None) -> Iterator[Iterator[T]]: pass
+                 r: Union[int, None] = None) -> Iterator[Sequence[T]]: pass
 def combinations(iterable: Iterable[T],
-                 r: int) -> Iterable[Iterable[T]]: pass
+                 r: int) -> Iterable[Sequence[T]]: pass
 def combinations_with_replacement(iterable: Iterable[T],
-                                  r: int) -> Iterable[Iterable[T]]: pass
+                                  r: int) -> Iterable[Sequence[T]]: pass
