@@ -45,7 +45,7 @@ def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
 def zip_longest(*p: Iterable[Any],
                 fillvalue: Any = None) -> Iterator[Any]: pass
 
-def product(*p: Iterable[Iterable[T]], repeat: int = 1) -> Iterator[T]: pass
+def product(*p: Iterable[Iterable[T]], repeat: int = 1) -> Iterator[Sequence[T]]: pass
 
 def permutations(iterable: Iterable[T], 
                  r: Union[int, None] = None) -> Iterator[Sequence[T]]: pass
