@@ -45,7 +45,9 @@ def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
 def zip_longest(*p: Iterable[Any],
                 fillvalue: Any = None) -> Iterator[Any]: pass
 
-def product(*p: Iterable[Iterable[T]], repeat: int = 1) -> Iterator[Sequence[T]]: pass
+# TODO: Return type should be Iterator[Tuple[..]], but unknown tuple shape.
+#       Iterator[Sequence[T]] loses this type information.
+def product(*p: Iterable[T], repeat: int = 1) -> Iterator[Sequence[T]]: pass
 
 def permutations(iterable: Iterable[T], 
                  r: Union[int, None] = None) -> Iterator[Sequence[T]]: pass
