@@ -360,10 +360,7 @@ class OutputVisitor(NodeVisitor):
         self.node(o.stride)
 
     def visit_yield_from_expr(self, o):
-        if isinstance(o.callee, CallExpr):
-            self.visit_call_expr(o.callee)
-        elif isinstance(o.callee, NameExpr):
-            self.visit_name_expr(o.callee)
+        o.expr.accept(self)
 
     def visit_call_expr(self, o):
         r = o.repr

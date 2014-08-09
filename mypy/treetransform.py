@@ -307,7 +307,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_def = original.is_def
 
     def visit_yield_from_expr(self, node: YieldFromExpr) -> Node:
-        return YieldFromExpr(self.node(node.callee))
+        return YieldFromExpr(self.node(node.expr))
 
     def visit_call_expr(self, node: CallExpr) -> Node:
         return CallExpr(self.node(node.callee),

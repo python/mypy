@@ -787,11 +787,21 @@ class Parser:
         self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
         return node
 
-    def parse_yield_from_expr(self) -> CallExpr:
+    def parse_yield_from_expr(self) -> CallExpr: # Maybe the name should be yield_expr
         y_tok = self.expect("yield")
-        f_tok = self.expect("from")
-        tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
-        return YieldFromExpr(tok)
+        expr = None # type: Node
+        node = YieldFromExpr(expr)
+        if self.current_str() == "from":
+            f_tok = self.expect("from")
+            tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
+            node = YieldFromExpr(tok)
+        else:
+            # TODO
+            # Here comes the yield expression (ex:  x = yield 3 )
+            # tok = self.parse_expression()
+            # node = YieldExpr(tok)  # Doesn't exist now
+            pass
+        return node
 
     def parse_del_stmt(self) -> DelStmt:
         del_tok = self.expect('del')
@@ -1069,8 +1079,8 @@ class Parser:
                 expr = self.parse_unicode_literal()
             elif isinstance(self.current(), FloatLit):
                 expr = self.parse_float_expr()
-            elif isinstance(t, Keyword) and s == "yield": #maybe check that next is from
-                expr = self.parse_yield_from_expr() # The expression yield from to assign
+            elif isinstance(t, Keyword) and s == "yield":
+                expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
             else:
                 # Invalid expression.
                 self.parse_error()

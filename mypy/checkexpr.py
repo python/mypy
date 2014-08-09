@@ -99,12 +99,7 @@ class ExpressionChecker:
                 return val
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
-        if isinstance(e.callee, CallExpr):
-            return self.visit_call_expr(e.callee)
-        elif isinstance(e.callee, NameExpr):
-            return self.visit_name_expr(e.callee)
-
-        # return self.visit_call_expr(e.callee)
+        return e.expr.accept(self)  # move it to checker?
 
     def visit_call_expr(self, e: CallExpr) -> Type:
         """Type check a call expression."""

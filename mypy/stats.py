@@ -110,10 +110,8 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_name_expr(o)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
-        if isinstance(o.callee, CallExpr):
-            self.visit_call_expr(o.callee)
-        elif isinstance(o.callee, NameExpr):
-            self.visit_name_expr(o.callee)
+        if o.expr:
+            o.expr.accept(self)
 
     def visit_call_expr(self, o: CallExpr) -> None:
         self.process_node(o)

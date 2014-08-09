@@ -945,6 +945,9 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 dec.func.is_abstract = True
                 self.check_decorated_function_is_method('abstractmethod', dec)
+            elif refers_to_fullname(d, 'asyncio.tasks.coroutine'):
+                    removed.append(i)
+                    dec.func.is_coroutine = True
             elif refers_to_fullname(d, 'builtins.staticmethod'):
                 removed.append(i)
                 dec.func.is_static = True
@@ -1001,7 +1004,6 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_yield_from_stmt(self, s: YieldFromStmt) -> None:
         if not self.is_func_scope():
             self.fail("'yield from' outside function", s)
-        #Check coroutine??
         if s.expr:
             s.expr.accept(self)
 
@@ -1141,11 +1143,11 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_paren_expr(self, expr: ParenExpr) -> None:
         expr.expr.accept(self)
 
-    def visit_yield_from_expr(self, expr: YieldFromExpr) -> None:
+    def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
             self.fail("'yield from' outside function", s)
-        if expr.callee:
-            expr.callee.accept(self)
+        if e.expr:
+            e.expr.accept(self)
 
     def visit_call_expr(self, expr: CallExpr) -> None:
         """Analyze a call expression.

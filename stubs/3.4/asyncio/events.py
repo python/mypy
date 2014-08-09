@@ -1,20 +1,23 @@
-from typing import Any, typevar, List, Function, Tuple, Union, Dict
+from typing import Any, typevar, List, Function, Tuple, Union, Dict, Undefined
 from abc import ABCMeta, abstractmethod
 from asyncio.futures import Future
-import socket, subprocess
 
-# __all__ = ['AbstractEventLoopPolicy',
-#            'AbstractEventLoop', 'AbstractServer',
-#            'Handle', 'TimerHandle',
+# __all__ = ['AbstractServer',
+#            'TimerHandle',
 #            'get_event_loop_policy', 'set_event_loop_policy',
-#            'get_event_loop', 'set_event_loop', 'new_event_loop',
+#            'set_event_loop', 'new_event_loop',
 #            'get_child_watcher', 'set_child_watcher',
 #            ]
 
 
-__all__ = ['AbstractEventLoop', 'Handle', 'get_event_loop']
+__all__ = ['AbstractEventLoopPolicy', 'AbstractEventLoop', 'Handle', 'get_event_loop']
 
 T = typevar('T')
+
+PIPE = Undefined(Any)  # from subprocess.PIPE
+
+AF_UNSPEC = 0     # from socket
+AI_PASSIVE = 0
 
 class Handle:
     __slots__ = [] # type: List[str]
@@ -69,7 +72,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
                           # return (Transport, Protocol)
     @abstractmethod
     def create_server(self, protocol_factory: Any, host: str=None, port: int=None, *,
-                      family: int=socket.AF_UNSPEC, flags: int=socket.AI_PASSIVE,
+                      family: int=AF_UNSPEC, flags: int=AI_PASSIVE,
                       sock: Any=None, backlog: int=100, ssl: Any=None, reuse_address: Any=None) -> Any: pass
                     # ?? check Any
                     # return Server
@@ -100,14 +103,14 @@ class AbstractEventLoop(metaclass=ABCMeta):
                     #?? check Any
                     # return (Transport, Protocol)
     @abstractmethod
-    def subprocess_shell(self, protocol_factory: Any, cmd: Union[bytes,str], *, stdin: Any=subprocess.PIPE,
-                         stdout: Any=subprocess.PIPE, stderr: Any=subprocess.PIPE,
+    def subprocess_shell(self, protocol_factory: Any, cmd: Union[bytes,str], *, stdin: Any=PIPE,
+                         stdout: Any=PIPE, stderr: Any=PIPE,
                          **kwargs: Dict[str, Any]) -> tuple: pass
                     #?? check Any
                     # return (Transport, Protocol)
     @abstractmethod
-    def subprocess_exec(self, protocol_factory: Any, *args: List[Any], stdin: Any=subprocess.PIPE,
-                        stdout: Any=subprocess.PIPE, stderr: Any=subprocess.PIPE,
+    def subprocess_exec(self, protocol_factory: Any, *args: List[Any], stdin: Any=PIPE,
+                        stdout: Any=PIPE, stderr: Any=PIPE,
                         **kwargs: Dict[str, Any]) -> tuple: pass
                     #?? check Any
                     # return (Transport, Protocol)
@@ -145,6 +148,25 @@ class AbstractEventLoop(metaclass=ABCMeta):
     def get_debug(self) -> bool: pass
     @abstractmethod
     def set_debug(self, enabled: bool) -> None: pass
+
+class AbstractEventLoopPolicy(metaclass=ABCMeta):
+    @abstractmethod
+    def get_event_loop(self) -> AbstractEventLoop: pass
+    @abstractmethod
+    def set_event_loop(self, loop: AbstractEventLoop): pass
+    @abstractmethod
+    def new_event_loop(self) -> Any: pass # return selector_events.BaseSelectorEventLoop
+    # Child processes handling (Unix only).
+    @abstractmethod
+    def get_child_watcher(self) -> Any: pass  # return unix_events.AbstractChildWatcher
+    @abstractmethod
+    def set_child_watcher(self, watcher: Any) -> None: pass # gen unix_events.AbstractChildWatcher
+
+class BaseDefaultEventLoopPolicy(AbstractEventLoopPolicy):
+    def __init__(self) -> None: pass
+    def get_event_loop(self) -> AbstractEventLoop: pass
+    def set_event_loop(self, loop: AbstractEventLoop): pass
+    def new_event_loop(self) -> Any: pass # Same return than AbstractEventLoop
 
 
 def get_event_loop() -> AbstractEventLoop: pass
