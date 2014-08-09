@@ -11,6 +11,7 @@ __all__ = [
     'AbstractGeneric',
     'AbstractGenericMeta',
     'Any',
+    'AnyStr',
     'Dict',
     'Function',
     'Generic',

@@ -517,6 +517,19 @@ print(f(b''))
 foo
 b'zar'
 
+[case testAnyStr_python2]
+from typing import AnyStr
+def f(x): # type: (AnyStr) -> AnyStr
+    if isinstance(x, str):
+        return 'foo'
+    else:
+        return u'zar'
+print f('')
+print f(u'')
+[out]
+foo
+zar
+
 [case testNameNotImportedFromTyping]
 import typing
 Any(1)
@@ -568,6 +581,17 @@ print(p.match('fooo').group(0))
 [out]
 fooo
 
+[case testGenericPatterns_python2]
+from typing import Pattern, Undefined
+import re
+p = Undefined(Pattern[unicode])
+p = re.compile(u'foo*')
+b = Undefined(Pattern[str])
+b = re.compile('foo*')
+print(p.match(u'fooo').group(0))
+[out]
+fooo
+
 [case testGenericMatch]
 from typing import Match
 import re
@@ -576,6 +600,15 @@ def f(m: Match[bytes]) -> None:
 f(re.match(b'x*', b'xxy'))
 [out]
 b'xx'
+
+[case testGenericMatch_python2]
+from typing import Match
+import re
+def f(m): # type: (Match[str]) -> None
+    print(m.group(0))
+f(re.match('x*', 'xxy'))
+[out]
+xx
 
 [case testMultipleTypevarsWithValues]
 from typing import typevar
@@ -1024,3 +1057,81 @@ class A:
 print(A().foo + 2)
 [out]
 3
+
+[case testIOTypes_python2]
+from typing import IO, TextIO, BinaryIO, Any
+class X(IO[str]): pass
+class Y(TextIO): pass
+class Z(BinaryIO): pass
+[out]
+
+[case testOpenReturnType_python2]
+import typing
+f = open('/tmp/xyz', 'w')
+f.write(u'foo')
+f.write('bar')
+f.close()
+[out]
+_program.py, line 3: No overload variant of "write" of "BinaryIO" matches argument types
+
+[case testPrintFunctionWithFileArg_python2]
+from __future__ import print_function
+import typing
+if 1 == 2: # Don't want to run the code below, since it would create a file.
+    f = open('/tmp/xyz', 'w')
+    print('foo', file=f)
+    f.close()
+print('ok')
+[out]
+ok
+
+[case testStringIO_python2]
+import typing
+import io
+c = io.StringIO()
+c.write(u'\x89')
+print(repr(c.getvalue()))
+[out]
+u'\x89'
+
+[case testBytesIO_python2]
+import typing
+import io
+c = io.BytesIO()
+c.write('\x89')
+print(repr(c.getvalue()))
+[out]
+'\x89'
+
+[case testTextIOWrapper_python2]
+import typing
+import io
+b = io.BytesIO(u'\xab'.encode('utf8'))
+w = io.TextIOWrapper(b, encoding='utf8')
+print(repr(w.read()))
+[out]
+u'\xab'
+
+[case testIoOpen_python2]
+import typing
+import io
+if 1 == 2: # Only type check, do not execute
+    f = io.open('/tmp/xyz', 'w', encoding='utf8')
+    f.write(u'\xab')
+    f.close()
+print 'ok'
+[out]
+ok
+
+[case testUnionType_python2]
+from typing import Undefined, Union
+y = Undefined(Union[int, str])
+def f(x): # type: (Union[int, str]) -> str
+    if isinstance(x, int):
+        x = str(x)
+    return x
+print f(12)
+print f('ab')
+[out]
+12
+ab

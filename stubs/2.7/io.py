@@ -1,57 +1,21 @@
 # Stubs for io
 
-# Based on http://docs.python.org/3.2/library/io.html
+# Based on https://docs.python.org/2/library/io.html
 
-# Only a subset of functionality is included (see below).
-# TODO IOBase
-# TODO RawIOBase
-# TODO BufferedIOBase
-# TODO FileIO
-# TODO BufferedReader
-# TODO BufferedWriter
-# TODO BufferedRandom
-# TODO BufferedRWPair
-# TODO TextIOBase
-# TODO IncrementalNewlineDecoder
+# Only a subset of functionality is included.
 
 DEFAULT_BUFFER_SIZE = 0
 
-from builtins import open
-from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable
+from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Any, Union
+
+def open(file: Union[str, unicode, int],
+         mode: unicode = 'r', buffering: int = -1, encoding: unicode = None,
+         errors: unicode = None, newline: unicode = None,
+         closefd: bool = True) -> IO[Any]: pass
 
 class BytesIO(BinaryIO):
-    def __init__(self, initial_bytes: bytes = b'') -> None: pass
+    def __init__(self, initial_bytes: str = b'') -> None: pass
     # TODO getbuffer
-    # TODO see comments in BinaryIO for missing functionality
-    def close(self) -> None: pass
-    def closed(self) -> bool: pass
-    def fileno(self) -> int: pass
-    def flush(self) -> None: pass
-    def isatty(self) -> bool: pass
-    def read(self, n: int = -1) -> bytes: pass
-    def readable(self) -> bool: pass
-    def readline(self, limit: int = -1) -> bytes: pass
-    def readlines(self, hint: int = -1) -> List[bytes]: pass
-    def seek(self, offset: int, whence: int = 0) -> int: pass
-    def seekable(self) -> bool: pass
-    def tell(self) -> int: pass
-    def truncate(self, size: int = None) -> int: pass
-    def writable(self) -> bool: pass
-    @overload
-    def write(self, s: bytes) -> int: pass
-    @overload
-    def write(self, s: bytearray) -> int: pass
-    def writelines(self, lines: Iterable[bytes]) -> None: pass
-    def getvalue(self) -> bytes: pass
-    def read1(self) -> str: pass
-
-    def __iter__(self) -> Iterator[bytes]: pass
-    def __enter__(self) -> 'BytesIO': pass
-    def __exit__(self, type, value, traceback) -> bool: pass
-
-class StringIO(TextIO):
-    def __init__(self, initial_value: str = '',
-                 newline: str = None) -> None: pass
     # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
     def closed(self) -> bool: pass
@@ -67,18 +31,48 @@ class StringIO(TextIO):
     def tell(self) -> int: pass
     def truncate(self, size: int = None) -> int: pass
     def writable(self) -> bool: pass
+    @overload
     def write(self, s: str) -> int: pass
+    @overload
+    def write(self, s: bytearray) -> int: pass
     def writelines(self, lines: Iterable[str]) -> None: pass
     def getvalue(self) -> str: pass
+    def read1(self) -> str: pass
 
     def __iter__(self) -> Iterator[str]: pass
+    def __enter__(self) -> 'BytesIO': pass
+    def __exit__(self, type, value, traceback) -> bool: pass
+
+class StringIO(TextIO):
+    def __init__(self, initial_value: unicode = '',
+                 newline: unicode = None) -> None: pass
+    # TODO see comments in BinaryIO for missing functionality
+    def close(self) -> None: pass
+    def closed(self) -> bool: pass
+    def fileno(self) -> int: pass
+    def flush(self) -> None: pass
+    def isatty(self) -> bool: pass
+    def read(self, n: int = -1) -> unicode: pass
+    def readable(self) -> bool: pass
+    def readline(self, limit: int = -1) -> unicode: pass
+    def readlines(self, hint: int = -1) -> List[unicode]: pass
+    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seekable(self) -> bool: pass
+    def tell(self) -> int: pass
+    def truncate(self, size: int = None) -> int: pass
+    def writable(self) -> bool: pass
+    def write(self, s: unicode) -> int: pass
+    def writelines(self, lines: Iterable[unicode]) -> None: pass
+    def getvalue(self) -> unicode: pass
+
+    def __iter__(self) -> Iterator[unicode]: pass
     def __enter__(self) -> 'StringIO': pass
     def __exit__(self, type, value, traceback) -> bool: pass
     
 class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
-    def __init__(self, buffer: IO[bytes], encoding: str = None,
-                 errors: str = None, newline: str = None,
+    def __init__(self, buffer: IO[str], encoding: unicode = None,
+                 errors: unicode = None, newline: unicode = None,
                  line_buffering: bool = False,
                  write_through: bool = True) -> None: pass
     # TODO see comments in BinaryIO for missing functionality
@@ -87,18 +81,18 @@ class TextIOWrapper(TextIO):
     def fileno(self) -> int: pass
     def flush(self) -> None: pass
     def isatty(self) -> bool: pass
-    def read(self, n: int = -1) -> str: pass
+    def read(self, n: int = -1) -> unicode: pass
     def readable(self) -> bool: pass
-    def readline(self, limit: int = -1) -> str: pass
-    def readlines(self, hint: int = -1) -> List[str]: pass
+    def readline(self, limit: int = -1) -> unicode: pass
+    def readlines(self, hint: int = -1) -> List[unicode]: pass
     def seek(self, offset: int, whence: int = 0) -> int: pass
     def seekable(self) -> bool: pass
     def tell(self) -> int: pass
     def truncate(self, size: int = None) -> int: pass
     def writable(self) -> bool: pass
-    def write(self, s: str) -> int: pass
-    def writelines(self, lines: Iterable[str]) -> None: pass
+    def write(self, s: unicode) -> int: pass
+    def writelines(self, lines: Iterable[unicode]) -> None: pass
 
-    def __iter__(self) -> Iterator[str]: pass
+    def __iter__(self) -> Iterator[unicode]: pass
     def __enter__(self) -> StringIO: pass
     def __exit__(self, type, value, traceback) -> bool: pass
