@@ -1209,7 +1209,7 @@ class TypeChecker(NodeVisitor[Type]):
                     else:
                         if self.function_stack[-1].is_coroutine: # Something similar will be needed to mix return and yield
                             #If the function is a coroutine, wrap the return type in a Future
-                            typ = self.wrap_generic_type(typ, self.return_types[-1], 'asyncio.futures.Future')
+                            typ = self.wrap_generic_type(typ, self.return_types[-1], 'asyncio.futures.Future', s)
                         self.check_subtype(
                             typ, self.return_types[-1], s,
                             messages.INCOMPATIBLE_RETURN_VALUE_TYPE
@@ -1222,10 +1222,14 @@ class TypeChecker(NodeVisitor[Type]):
                         not self.is_dynamic_function()):
                         self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def wrap_generic_type(self, typ: Type, rtyp: Type, check_type: str) -> Type:
+    def wrap_generic_type(self, typ: Type, rtyp: Type, check_type: str, context: Context) -> Type:
         n_diff = self.count_concatenated_types(rtyp, check_type) - self.count_concatenated_types(typ, check_type)
         if n_diff >= 1:
             return self.named_generic_type(check_type, [typ])
+        elif n_diff == 0:
+            self.fail(messages.INCOMPATIBLE_RETURN_VALUE_TYPE
+                             + ": expected {}, got {}".format(rtyp, typ), context)
+            return typ
         return typ
 
     def count_concatenated_types(self, typ: Type, check_type: str) -> int:
