@@ -14,7 +14,9 @@ import os.path
 import shlex
 import subprocess
 import sys
+from pkg_resources import resource_listdir, resource_filename
 from os.path import dirname, basename
+from functools import partial
 
 from typing import Undefined, Dict, List, Tuple, cast, Set
 
@@ -68,6 +70,9 @@ TYPE_CHECKED_STATE = 5
 
 
 final_state = TYPE_CHECKED_STATE
+
+
+mypy_filename = partial(resource_filename, 'mypy')
 
 
 def earlier_state(s: int, t: int) -> bool:
@@ -133,10 +138,8 @@ def build(program_path: str,
     flags = flags or []
     module = module or '__main__'
 
-    data_dir = default_data_dir(bin_dir)
-
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, target, pyversion)
+    lib_path = default_lib_path(target, pyversion)
 
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -159,7 +162,7 @@ def build(program_path: str,
     # build in the correct order.
     #
     # Ignore current directory prefix in error messages.
-    manager = BuildManager(data_dir, lib_path, target, output_dir,
+    manager = BuildManager(lib_path, target, output_dir,
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
@@ -181,31 +184,7 @@ def build(program_path: str,
     return result
 
 
-def default_data_dir(bin_dir: str) -> str:
-    if not bin_dir:
-        # Default to current directory.
-        return ''
-    base = os.path.basename(bin_dir)
-    dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'scripts'
-            and not os.path.isdir(os.path.join(dir, 'stubs'))):
-        # Installed, on Windows.
-        return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'scripts':
-        # Assume that we have a repo check out or unpacked source tarball.
-        return os.path.dirname(bin_dir)
-    elif base == 'bin':
-        # Installed to somewhere (can be under /usr/local or anywhere).
-        return os.path.join(dir, 'lib', 'mypy')
-    elif base == 'python3':
-        # Assume we installed python3 with brew on os x
-        return os.path.join(os.path.dirname(dir), 'lib', 'mypy')
-    else:
-        # Don't know where to find the data files!
-        raise RuntimeError("Broken installation: can't determine base dir")
-
-
-def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
+def default_lib_path(target: int, pyversion: int) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = List[str]()
@@ -214,23 +193,21 @@ def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
     path_env = os.getenv('MYPYPATH')
     if path_env is not None:
         path[:0] = path_env.split(os.pathsep)
-
+    
     if target in [ICODE, C]:
         # Add C back end library directory.
-        path.append(os.path.join(data_dir, 'lib'))
+        path.append(mypy_filename('lib'))
     else:
         # Add library stubs directory. By convention, they are stored in the
         # stubs/x.y directory of the mypy installation.
         version_dir = '3.2'
         if pyversion < 3:
             version_dir = '2.7'
-        path.append(os.path.join(data_dir, 'stubs', version_dir))
-        path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
+        path.append(mypy_filename(os.path.join('stubs', version_dir)))
         #Add py3.3 and 3.4 stubs
-        if sys.version_info.major == 3:
-            versions = ['3.' + str(x) for x in range(3, sys.version_info.minor + 1)]
-            for v in versions:
-                path.append(os.path.join(data_dir, 'stubs', v))
+        path.extend([mypy_filename(os.path.join('stubs', fname))
+                     for fname in resource_listdir('mypy', 'stubs')
+                     if fname.startswith(str(sys.version_info.major))])
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -267,7 +244,6 @@ class BuildManager:
     build steps.
 
     Attributes:
-      data_dir:        Mypy data directory (contains stubs)
       target:          Build target; selects which passes to perform
       lib_path:        Library path for looking up modules
       semantic_analyzer:
@@ -297,8 +273,7 @@ class BuildManager:
          external objects.  This module should not directly depend on them.
     """
 
-    def __init__(self, data_dir: str,
-                 lib_path: List[str],
+    def __init__(self, lib_path: List[str],
                  target: int,
                  output_dir: str,
                  pyversion: int,
@@ -306,7 +281,6 @@ class BuildManager:
                  ignore_prefix: str,
                  custom_typing_module: str,
                  html_report_dir: str) -> None:
-        self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = lib_path
@@ -559,8 +533,7 @@ class BuildManager:
 
         if COMPILE_ONLY not in self.flags:
             # Generate binary file.
-            data_dir = self.data_dir
-            vm_dir = os.path.join(data_dir, 'vm')
+            vm_dir = mypy_filename('vm')
             cc = os.getenv('CC', 'gcc')
             cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
             cmdline = [cc] + cflags +['-I%s' % vm_dir,

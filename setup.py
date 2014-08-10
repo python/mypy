@@ -5,7 +5,7 @@ import os
 import os.path
 import sys
 
-from distutils.core import setup
+from setuptools import setup
 
 if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
@@ -21,20 +21,6 @@ Mypy lets you add type annotations to Python programs, type check them
 without running them, and run the programs using a standard Python 3
 interpreter.
 '''.lstrip()
-
-stubs = []
-
-for version in ['3.4', '3.3', '3.2', '2.7']:
-    base = os.path.join('stubs', version)
-    if not os.path.exists(base):
-        os.mkdir(base)
-
-    stub_dirs = [''] + [name for name in os.listdir(base)
-                        if os.path.isdir(os.path.join(base, name))]
-    for stub_dir in stub_dirs:
-        target = os.path.join('lib', 'mypy', 'stubs', version, stub_dir)
-        files = glob.glob(os.path.join(base, stub_dir, '*.py'))
-        stubs.append((target, files))
 
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
@@ -57,9 +43,9 @@ setup(name='mypy',
       license='MIT License',
       platforms=['POSIX'],
       package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
+      package_data={'mypy': ['stubs/*/*.pyx', 'lib/*py', 'vm/*']},
       py_modules=['typing'],
       packages=['mypy'],
       scripts=['scripts/mypy'],
-      data_files=stubs,
       classifiers=classifiers,
       )
