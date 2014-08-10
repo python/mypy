@@ -167,7 +167,3 @@ Environment variables:
 def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
     sys.exit(1)
-
-
-if __name__ == '__main__':
-    main()

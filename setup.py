@@ -43,9 +43,11 @@ setup(name='mypy',
       license='MIT License',
       platforms=['POSIX'],
       package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
-      package_data={'mypy': ['stubs/*/*.pyx', 'lib/*py', 'vm/*']},
+      package_data={'mypy': ['stubs/*/*.py', 'lib/*py', 'vm/*']},
       py_modules=['typing'],
       packages=['mypy'],
-      scripts=['scripts/mypy'],
+      entry_points={
+          'console_scripts': ['mypy = mypy.main:main']
+      },
       classifiers=classifiers,
       )
