@@ -81,6 +81,8 @@ agrees to be bound by the terms and conditions of this License
 Agreement.
 """
 
+from __future__ import print_function
+
 __author__ = 'Ka-Ping Yee <ping@lfw.org>'
 __credits__ = ('GvR, ESR, Tim Peters, Thomas Wouters, Fred Drake, '
                'Skip Montanaro, Raymond Hettinger')
@@ -89,6 +91,7 @@ import string, re
 from token import *
 
 import token
+x = None
 __all__ = [x for x in dir(token) if not x.startswith("_")]
 __all__ += ["COMMENT", "tokenize", "generate_tokens", "NL", "untokenize"]
 del x
@@ -208,8 +211,8 @@ class StopTokenizing(Exception): pass
 def printtoken(type, token, srow_scol, erow_ecol, line): # for testing
     srow, scol = srow_scol
     erow, ecol = erow_ecol
-    print "%d,%d-%d,%d:\t%s\t%s" % \
-        (srow, scol, erow, ecol, tok_name[type], repr(token))
+    print("%d,%d-%d,%d:\t%s\t%s" % \
+        (srow, scol, erow, ecol, tok_name[type], repr(token)))
 
 def tokenize(readline, tokeneater=printtoken):
     """
