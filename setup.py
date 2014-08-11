@@ -5,6 +5,8 @@ import os
 import os.path
 import sys
 
+from mypy.codec import register
+
 from setuptools import setup
 
 if sys.version_info < (3, 2, 0):
