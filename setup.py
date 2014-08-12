@@ -7,7 +7,7 @@ import sys
 
 from mypy.codec import register
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
@@ -44,10 +44,10 @@ setup(name='mypy',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       platforms=['POSIX'],
-      package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
+      package_dir={'typing': 'lib-typing/3.2/typing', 'mypy': 'mypy'},
       package_data={'mypy': ['stubs/*/*.py', 'lib/*py', 'vm/*']},
       py_modules=['typing'],
-      packages=['mypy'],
+      packages=find_packages(),
       entry_points={
           'console_scripts': ['mypy = mypy.main:main']
       },
