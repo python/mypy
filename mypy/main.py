@@ -34,13 +34,12 @@ class Options:
 
 
 def main() -> None:
-    bin_dir = find_bin_directory()
     path, module, args, options = process_options(sys.argv[1:])
     try:
         if options.target == build.TYPE_CHECK:
-            type_check_only(path, module, bin_dir, args, options)
+            type_check_only(path, module, args, options)
         elif options.target == build.C:
-            compile_to_c(path, module, bin_dir, args, options)
+            compile_to_c(path, module, args, options)
         else:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
@@ -49,37 +48,11 @@ def main() -> None:
         sys.exit(1)
 
 
-def find_bin_directory() -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    script = __file__
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script):
-            script = readlinkabs(script)
-        else:
-            break
-    return os.path.dirname(script)
-
-
-def readlinkabs(link: str) -> str:
-    """Return an absolute path to symbolic link destination."""
-    # Adapted from code by Greg Smith.
-    assert os.path.islink(link)
-    path = os.readlink(link)
-    if os.path.isabs(path):
-        return path
-    return os.path.join(os.path.dirname(link), path)
-
-
-def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
+def type_check_only(path: str, module: str, args: List[str],
                     options: Options) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
-                bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
                 pyversion=options.pyversion,
                 custom_typing_module=options.custom_typing_module,
@@ -103,14 +76,14 @@ def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
         sys.exit(status)
 
 
-def compile_to_c(path: str, module: str, bin_dir: str, args: List[str],
+def compile_to_c(path: str, module: str, args: List[str],
                  options: Options) -> None:
     assert not module # Not supported yet
     assert not args   # Not supported yet
     assert options.pyversion == 3
     
     # Compile the program to C (also generate binary by default).
-    result = build.build(path, target=build.C, bin_dir=bin_dir,
+    result = build.build(path, target=build.C,
                          flags=options.build_flags)
 
     if build.COMPILE_ONLY not in options.build_flags:
@@ -194,7 +167,3 @@ Environment variables:
 def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
     sys.exit(1)
-
-
-if __name__ == '__main__':
-    main()
