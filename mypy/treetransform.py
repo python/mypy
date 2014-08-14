@@ -60,10 +60,10 @@ class TransformVisitor(NodeVisitor[Node]):
         return Import(node.ids[:])
 
     def visit_import_from(self, node: ImportFrom) -> Node:
-        return ImportFrom(node.id, node.names[:])
+        return ImportFrom(node.id, node.relative, node.names[:])
 
     def visit_import_all(self, node: ImportAll) -> Node:
-        return ImportAll(node.id)
+        return ImportAll(node.id, node.relative)
 
     def visit_func_def(self, node: FuncDef) -> FuncDef:
         # Note that a FuncDef must be transformed to a FuncDef.

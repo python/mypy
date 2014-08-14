@@ -170,7 +170,16 @@ class Parser:
 
     def parse_import_from(self) -> Node:
         from_tok = self.expect('from')
-        name, components = self.parse_qualified_name()
+        relative = 0
+        rel_toks = List[Token]()
+        while self.current_str() == ".":
+            rel_toks.append(self.expect('.'))
+            relative += 1
+        if self.current_str() == "import":
+            name = ""
+            components = List[Token]()
+        else:
+            name, components = self.parse_qualified_name()
         if name == self.custom_typing_module:
             name = 'typing'
         import_tok = self.expect('import')
@@ -180,7 +189,7 @@ class Parser:
         node = None  # type: ImportBase
         if self.current_str() == '*':
             name_toks.append(([self.skip()], none))
-            node = ImportAll(name)
+            node = ImportAll(name, relative)
         else:
             is_paren = self.current_str() == '('
             if is_paren:
@@ -206,12 +215,12 @@ class Parser:
             if is_paren:
                 rparen = self.expect(')')
             if node is None:
-                node = ImportFrom(name, targets)
+                node = ImportFrom(name, relative, targets)
         br = self.expect_break()
         self.imports.append(node)
         # TODO: Fix representation if there is a custom typing module import.
         self.set_repr(node, noderepr.ImportFromRepr(
-            from_tok, components, import_tok, lparen, name_toks, rparen, br))
+            from_tok, rel_toks, components, import_tok, lparen, name_toks, rparen, br))
         if name == '__future__':
             self.future_options.extend(target[0] for target in targets)
         return node

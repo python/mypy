@@ -34,16 +34,18 @@ class ImportRepr:
 class ImportFromRepr:
     def __init__(self,
                  from_tok: Any,
+                 rel_toks: Any,
                  components: List[Token],
                  import_tok: Any,
                  lparen: Any,
                  names: List[Tuple[List[Token], Token]],
                  rparen: Any, br: Any) -> None:
         # Notes:
-        # - lparen and rparen may be empty
+        # - lparen, rparen, and rel_tok may be empty
         # - in each names tuple, the first item contains tokens for
         #   'name [as name]' and the second item is a comma or empty.
         self.from_tok = from_tok
+        self.rel_toks = rel_toks
         self.components = components
         self.import_tok = import_tok
         self.lparen = lparen
