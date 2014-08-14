@@ -2,7 +2,8 @@
 
 # Based on http://docs.python.org/3.2/library/itertools.html
 
-from typing import Iterator, typevar, Iterable, overload, Any, Function, Tuple
+from typing import (Iterator, typevar, Iterable, overload, Any, Function, Tuple,
+                    Union, Sequence)
 
 T = typevar('T')
 S = typevar('S')
@@ -41,11 +42,16 @@ def starmap(func: Any, iterable: Iterable[Any]) -> Iterator[Any]: pass
 def takewhile(predicate: Function[[T], Any],
               iterable: Iterable[T]) -> Iterator[T]: pass
 def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
-def zip_longest(*p: Iterable[Any]) -> Iterator[Any]: pass # TODO fillvalue
+def zip_longest(*p: Iterable[Any],
+                fillvalue: Any = None) -> Iterator[Any]: pass
 
-def product(*p: Iterable[Any]) -> Iterator[Any]: pass # TODO repeat
-# TODO int with None default
-def permutations(iterable: Iterable[Any], r: int = None) -> Iterator[Any]: pass
-def combinations(iterable: Iterable[Any], r: int) -> Iterable[Any]: pass
-def combinations_with_replacement(iterable: Iterable[Any],
-                                  r: int) -> Iterable[Any]: pass
+# TODO: Return type should be Iterator[Tuple[..]], but unknown tuple shape.
+#       Iterator[Sequence[T]] loses this type information.
+def product(*p: Iterable[T], repeat: int = 1) -> Iterator[Sequence[T]]: pass
+
+def permutations(iterable: Iterable[T], 
+                 r: Union[int, None] = None) -> Iterator[Sequence[T]]: pass
+def combinations(iterable: Iterable[T],
+                 r: int) -> Iterable[Sequence[T]]: pass
+def combinations_with_replacement(iterable: Iterable[T],
+                                  r: int) -> Iterable[Sequence[T]]: pass
