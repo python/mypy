@@ -493,7 +493,7 @@ class ExpressionChecker:
                                               tuple_counter)
                 self.check_arg(actual_type, arg_type,
                                callee.arg_types[i],
-                               actual + 1, callee, context, messages)
+                               actual, callee, context, messages)
                 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
