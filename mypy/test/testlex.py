@@ -376,8 +376,8 @@ class LexerSuite(Suite):
         self.assert_lex('0x', 'LexError(  ) ...')
         self.assert_lex('0xax', 'LexError(    ) ...')
     
-    def test_invalid_return_arrow(self):
-        self.assert_lex('->', 'Op(->) Break() Eof()')
+    def test_return_arrow(self):
+        self.assert_lex('->', 'Punct(->) Break() Eof()')
 
     # TODO
     #   invalid escape sequences in string literals etc.
