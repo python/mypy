@@ -443,9 +443,8 @@ class Parser:
         
         rparen = self.expect(')')
 
-        if self.current_str() == '-':
+        if self.current_str() == '->':
             self.skip()
-            self.expect('>')
             ret_type = self.parse_type()
         else:
             ret_type = None
