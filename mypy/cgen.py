@@ -38,17 +38,17 @@ int main(int argc, char **argv) {
 
 class CGenerator:
     """Translate icode to C."""
-    
+
     func = Undefined(FuncIcode)
 
     def __init__(self) -> None:
         self.prolog = ['#include "mypy.h"\n']
-        self.types = [] # type: List[str]
-        self.out = [] # type: List[str]
+        self.types = []  # type: List[str]
+        self.out = []  # type: List[str]
         self.indent = 0
         self.frame_size = 0
-        self.global_vars = {} # type: Dict[str, int]
-        self.classes = {} # type: Dict[TypeInfo, ClassRepresentation]
+        self.global_vars = {}  # type: Dict[str, int]
+        self.classes = {}  # type: Dict[TypeInfo, ClassRepresentation]
         # Count temp labels.
         self.num_labels = 0
 
@@ -60,7 +60,7 @@ class CGenerator:
         result.extend(self.out)
         result.append(MAIN_FRAGMENT)
         return result
-    
+
     def generate_function(self, name: str, func: FuncIcode) -> None:
         # Initialize function-specific state information.
         self.func = func
@@ -70,7 +70,7 @@ class CGenerator:
         # Simplistic name mangling.
         name = name.replace('.', '_')
         name = name.replace('$', '_')
-        
+
         # Add function definition and opening brace.
         header = 'MValue %s(MEnv *e)' % name
         self.emit(header)
@@ -84,9 +84,9 @@ class CGenerator:
         self.emit('MValue *frame = e->frame;')
         self.emit('e->frame = frame + %d;' % self.frame_size)
         self.emit('if (e->frame >= e->stack_top)')
-        self.emit('    abort();') # Dummy handler; should raise an exception
+        self.emit('    abort();')  # Dummy handler; should raise an exception
 
-        # Geneate code that initializes the stack frame. The gc must not see
+        # Generate code that initializes the stack frame. The gc must not see
         # uninitialized values.
         for i in range(func.num_args, self.frame_size):
             if func.register_types[i] == icode.INT:
@@ -183,12 +183,12 @@ class CGenerator:
             # Overflow check needs third argument (operation result).
             label = self.label()
             self.emit('if (MIsShort(%s) && MIsShort(%s)) {' % (left, right))
-            self.emit(  't = %s;' % operation)
-            self.emit(  'if (%s(t, %s, %s))' % (overflow, left, right))
-            self.emit(  '    goto %s;' % label)
+            self.emit('  t = %s;' % operation)
+            self.emit('  if (%s(t, %s, %s))' % (overflow, left, right))
+            self.emit('      goto %s;' % label)
             self.emit('} else {')
             self.emit('%s:' % label)
-            self.emit(  't = %s(e, %s, %s);' % (opfn, left, right))
+            self.emit('  t = %s(e, %s, %s);' % (opfn, left, right))
             self.emit_error_check('t')
             self.emit('}')
             self.emit('%s = t;' % target)
@@ -198,7 +198,7 @@ class CGenerator:
                       (left, right, overflow, left, right))
             self.emit('    %s = %s;' % (target, operation))
             self.emit('else {')
-            self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
+            self.emit('  %s = %s(e, %s, %s);' % (target, opfn, left, right))
             self.emit_error_check(target)
             self.emit('}')
         else:
@@ -206,7 +206,7 @@ class CGenerator:
             self.emit('if (MIsShort(%s) && MIsShort(%s))' % (left, right))
             self.emit('    %s = %s;' % (target, operation))
             self.emit('else {')
-            self.emit(  '%s = %s(e, %s, %s);' % (target, opfn, left, right))
+            self.emit('  %s = %s(e, %s, %s);' % (target, opfn, left, right))
             self.emit_error_check(target)
             self.emit('}')
 
@@ -255,7 +255,7 @@ class CGenerator:
         target = reg(opcode.target)
         self.get_class_representation(opcode.type)
         rep = self.classes[opcode.type]
-        method = opcode.method.replace('$', '_') # Simple name mangling.
+        method = opcode.method.replace('$', '_')  # Simple name mangling.
         if opcode.static:
             self.direct_call(opcode.target, '%s_%s' % (opcode.type.name(),
                                                        method))
@@ -325,7 +325,7 @@ class CGenerator:
         self.emit_types('    0,')
         self.emit_types('    "%s"' % cls.fullname())
         self.emit_types('};\n')
-        
+
         return rep
 
     def direct_call(self, target: int, funcname: str) -> None:
@@ -394,14 +394,14 @@ class ClassRepresentation:
 
     cname = ''
     fullname = ''
-    
+
     slotmap = Undefined(Dict[str, int])
-    
+
     # Map method name to/from vtable index
     vtable_index = Undefined(Dict[str, int])
-    
+
     defining_class = Undefined(Dict[str, str])
-    
+
     vtable_methods = Undefined(List[str])
 
     def __init__(self, type: TypeInfo, base: 'ClassRepresentation') -> None:
@@ -418,8 +418,8 @@ class ClassRepresentation:
                 self.add_method(m, type)
             else:
                 self.slotmap[m] = len(self.slotmap)
-                self.add_method('_' + m, type)    # Getter TODO refactor
-                self.add_method('set_' + m, type) # Setter # TODO refactor
+                self.add_method('_' + m, type)     # Getter TODO refactor
+                self.add_method('set_' + m, type)  # Setter # TODO refactor
 
     def add_method(self, method: str, defining_class: TypeInfo) -> None:
         self.defining_class[method] = defining_class.name()
