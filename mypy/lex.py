@@ -176,7 +176,7 @@ operators = [re.compile('[-+*/<>.%&|^~]'),
              re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
 
 # List of regular expressions that match punctuator tokens
-punctuators = [re.compile('[=,()@]'),
+punctuators = [re.compile('[=,()@]|(->)'),
                re.compile('\\['),
                re.compile(']'),
                re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
