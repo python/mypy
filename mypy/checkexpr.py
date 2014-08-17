@@ -414,7 +414,7 @@ class ExpressionChecker:
                                                            inferred_args, context))
 
     def check_argument_count(self, callee: Callable, actual_types: List[Type],
-                             actual_kinds: List[int],  actual_names: List[str],
+                             actual_kinds: List[int], actual_names: List[str],
                              formal_to_actual: List[List[int]],
                              context: Context) -> None:
         """Check that the number of arguments to a function are valid.
