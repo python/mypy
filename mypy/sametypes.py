@@ -8,7 +8,7 @@ from mypy.types import (
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
-    
+
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
         # generated spurious error messages.
@@ -28,64 +28,64 @@ def is_same_types(a1: List[Type], a2: List[Type]) -> bool:
 
 class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
-    
+
     def __init__(self, right: Type) -> None:
         self.right = right
-    
+
     # visit_x(left) means: is left (which is an instance of X) the same type as
     # right?
-    
+
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
-    
+
     def visit_error_type(self, left: ErrorType) -> bool:
         return False
-    
+
     def visit_type_list(self, t: TypeList) -> bool:
         assert False, 'Not supported'
-    
+
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
-    
+
     def visit_void(self, left: Void) -> bool:
         return isinstance(self.right, Void)
-    
+
     def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)
-    
+
     def visit_erased_type(self, left: ErasedType) -> bool:
         # Should not get here.
         raise RuntimeError()
-    
+
     def visit_instance(self, left: Instance) -> bool:
         return (isinstance(self.right, Instance) and
                 left.type == (cast(Instance, self.right)).type and
                 is_same_types(left.args, (cast(Instance, self.right)).args))
-    
+
     def visit_type_var(self, left: TypeVar) -> bool:
         return (isinstance(self.right, TypeVar) and
                 left.id == (cast(TypeVar, self.right)).id and
                 left.is_wrapper_var ==
-                    cast(TypeVar, self.right).is_wrapper_var)
-    
+                cast(TypeVar, self.right).is_wrapper_var)
+
     def visit_callable(self, left: Callable) -> bool:
         # FIX generics
         if isinstance(self.right, Callable):
             cright = cast(Callable, self.right)
             return (is_same_type(left.ret_type, cright.ret_type) and
-                    is_same_types(left.arg_types, cright.arg_types)  and
+                    is_same_types(left.arg_types, cright.arg_types) and
                     left.arg_names == cright.arg_names and
                     left.arg_kinds == cright.arg_kinds and
                     left.is_type_obj() == cright.is_type_obj())
         else:
             return False
-    
+
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
             return is_same_types(left.items, cast(TupleType, self.right).items)
         else:
             return False
-    
+
     def visit_union_type(self, left: UnionType) -> bool:
         # XXX This is a test for syntactic equality, not equivalence
         if isinstance(self.right, UnionType):

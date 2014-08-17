@@ -19,17 +19,17 @@ class TypeFixture:
 
     The members are initialized to contain various type-related values.
     """
-    
+
     def __init__(self):
         # Type variables
 
-        self.t = TypeVar('T', 1, [])    # T`1 (type variable)
-        self.tf = TypeVar('T', -1, [])  # T`-1 (type variable)
-        self.tf2 = TypeVar('T', -2, []) # T`-2 (type variable)
-        self.s = TypeVar('S', 2, [])    # S`2 (type variable)
-        self.s1 = TypeVar('S', 1, [])   # S`1 (type variable)
-        self.sf = TypeVar('S', -2, [])  # S`-2 (type variable)
-        self.sf1 = TypeVar('S', -1, []) # S`-1 (type variable)
+        self.t = TypeVar('T', 1, [])     # T`1 (type variable)
+        self.tf = TypeVar('T', -1, [])   # T`-1 (type variable)
+        self.tf2 = TypeVar('T', -2, [])  # T`-2 (type variable)
+        self.s = TypeVar('S', 2, [])     # S`2 (type variable)
+        self.s1 = TypeVar('S', 1, [])    # S`1 (type variable)
+        self.sf = TypeVar('S', -2, [])   # S`-2 (type variable)
+        self.sf1 = TypeVar('S', -1, [])  # S`-1 (type variable)
 
         # Simple types
 
@@ -51,14 +51,14 @@ class TypeFixture:
 
         # Class TypeInfos
 
-        self.oi = make_type_info('builtins.object')         # class object
-        self.std_tuplei = make_type_info('builtins.tuple')  # class tuple
-        self.type_typei = make_type_info('builtins.type')   # class type
-        self.std_functioni = make_type_info('std::Function') # Function TODO
-        self.ai = make_type_info('A', mro=[self.oi])        # class A
-        self.bi = make_type_info('B', mro=[self.ai, self.oi]) # class B(A)
-        self.ci = make_type_info('C', mro=[self.ai, self.oi]) # class C(A)
-        self.di = make_type_info('D', mro=[self.oi])        # class D
+        self.oi = make_type_info('builtins.object')            # class object
+        self.std_tuplei = make_type_info('builtins.tuple')     # class tuple
+        self.type_typei = make_type_info('builtins.type')      # class type
+        self.std_functioni = make_type_info('std::Function')   # Function TODO
+        self.ai = make_type_info('A', mro=[self.oi])           # class A
+        self.bi = make_type_info('B', mro=[self.ai, self.oi])  # class B(A)
+        self.ci = make_type_info('C', mro=[self.ai, self.oi])  # class C(A)
+        self.di = make_type_info('D', mro=[self.oi])           # class D
 
         # class E(F)
         self.ei = make_type_info('E', mro=[self.fi, self.oi])
@@ -91,10 +91,10 @@ class TypeFixture:
 
         # Instance types
 
-        self.o = Instance(self.oi, [])                       # object
-        self.std_tuple = Instance(self.std_tuplei, [])       # tuple
-        self.type_type = Instance(self.type_typei, [])         # type
-        self.std_function = Instance(self.std_functioni, []) # function TODO
+        self.o = Instance(self.oi, [])                        # object
+        self.std_tuple = Instance(self.std_tuplei, [])        # tuple
+        self.type_type = Instance(self.type_typei, [])        # type
+        self.std_function = Instance(self.std_functioni, [])  # function TODO
         self.a = Instance(self.ai, [])          # A
         self.b = Instance(self.bi, [])          # B
         self.c = Instance(self.ci, [])          # C
@@ -137,16 +137,16 @@ class TypeFixture:
         # Basic types
         self.basic = BasicTypes(self.o, self.type_type, self.std_tuple,
                                 self.std_function)
-    
+
     # Helper methods
-    
+
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types
         a1, ... an and return type r.
         """
         return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1), a[-1], False)
-    
+
     def callable_type(self, *a):
         """callable_type(a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r, and which
@@ -154,7 +154,7 @@ class TypeFixture:
         """
         return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1), a[-1], True)
-    
+
     def callable_default(self, min_args, *a):
         """callable_default(min_args, a1, ..., an, r) constructs a
         callable with argument types a1, ... an and return type r,
@@ -163,9 +163,9 @@ class TypeFixture:
         n = len(a) - 1
         return Callable(a[:-1],
                         [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
-                        [None]  * n,
+                        [None] * n,
                         a[-1], False)
-    
+
     def callable_var_arg(self, min_args, *a):
         """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
         with argument types a1, ... *an and return type r.
@@ -181,22 +181,22 @@ class TypeFixture:
 class InterfaceTypeFixture(TypeFixture):
     """Extension of TypeFixture that contains additional generic
     interface types."""
-    
+
     def __init__(self):
         super().__init__()
         # GF[T]
         self.gfi = make_type_info('GF', typevars=['T'], is_abstract=True)
-    
+
         # M1 <: GF[A]
         self.m1i = make_type_info('M1',
                                   is_abstract=True,
                                   mro=[self.gfi, self.oi],
                                   bases=[Instance(self.gfi, [self.a])])
 
-        self.gfa = Instance(self.gfi, [self.a]) # GF[A]
-        self.gfb = Instance(self.gfi, [self.b]) # GF[B]
+        self.gfa = Instance(self.gfi, [self.a])  # GF[A]
+        self.gfb = Instance(self.gfi, [self.b])  # GF[B]
 
-        self.m1 = Instance(self.m1i, []) # M1
+        self.m1 = Instance(self.m1i, [])  # M1
 
 
 def make_type_info(name: str,
@@ -205,18 +205,18 @@ def make_type_info(name: str,
                    bases: List[Instance] = None,
                    typevars: List[str] = None) -> TypeInfo:
     """Make a TypeInfo suitable for use in unit tests."""
-    
+
     class_def = ClassDef(name, Block([]), None, [])
     class_def.fullname = name
-    
+
     if typevars:
-        v = [] # type: List[TypeVarDef]
+        v = []  # type: List[TypeVarDef]
         id = 1
         for n in typevars:
             v.append(TypeVarDef(n, id, None))
             id += 1
         class_def.type_vars = v
-    
+
     info = TypeInfo(SymbolTable(), class_def)
     if mro is None:
         mro = []
@@ -228,5 +228,5 @@ def make_type_info(name: str,
         else:
             bases = []
     info.bases = bases
-    
+
     return info

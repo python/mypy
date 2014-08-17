@@ -15,15 +15,15 @@ from mypy.subtypes import is_named_instance
 
 
 # Operand kinds
-REG_KIND = 0 # Register
-INT_KIND = 1 # Integer literal
+REG_KIND = 0  # Register
+INT_KIND = 1  # Integer literal
 
 
 class FuncIcode:
     """Icode and related information for a function."""
 
     def __init__(self, num_args: int, blocks: 'List[BasicBlock]',
-                  register_types: List[int]) -> None:
+                 register_types: List[int]) -> None:
         self.num_args = num_args
         self.blocks = blocks
         self.num_registers = len(register_types)
@@ -180,7 +180,7 @@ class Return(Opcode):
     """Return from function (return rN)."""
     def __init__(self, retval: int) -> None:
         self.retval = retval
-        
+
     def is_exit(self) -> bool:
         return True
 
@@ -189,10 +189,10 @@ class Return(Opcode):
 
 
 class Branch(Opcode):
-    """Abstract base class for branch opcode."""  
-    true_block = Undefined # type: BasicBlock
-    false_block = Undefined # type: BasicBlock
-        
+    """Abstract base class for branch opcode."""
+    true_block = Undefined  # type: BasicBlock
+    false_block = Undefined  # type: BasicBlock
+
     def is_exit(self) -> bool:
         return True
 
@@ -203,7 +203,7 @@ class Branch(Opcode):
 class IfOp(Branch):
     inversion = {'==': '!=', '!=': '==',
                  '<': '>=', '<=': '>', '>': '<=', '>=': '<'}
-    
+
     """Conditional operator branch (e.g. if r0 < r1 goto L2 else goto L3)."""
     def __init__(self,
                  left: int, left_kind: int,
@@ -232,7 +232,7 @@ class IfOp(Branch):
 class IfR(Branch):
     """Conditional value branch (if rN goto LN else goto LN). """
     negated = False
-    
+
     def __init__(self, value: int,
                  true_block: BasicBlock, false_block: BasicBlock) -> None:
         self.value = value
@@ -259,7 +259,7 @@ class Goto(Opcode):
     """Unconditional jump (goto LN)."""
     def __init__(self, next_block: BasicBlock) -> None:
         self.next_block = next_block
-        
+
     def is_exit(self) -> bool:
         return True
 
@@ -299,15 +299,15 @@ class UnaryOp(Opcode):
 
 
 # Types of registers
-INT = 0 # int, initialized to 0
-REF = 1 # Arbitrary reference, initialized to None
+INT = 0  # int, initialized to 0
+REF = 1  # Arbitrary reference, initialized to None
 
 
 class IcodeBuilder(NodeVisitor[int]):
     """Generate icode from a parse tree."""
 
     generated = Undefined(Dict[str, FuncIcode])
-    
+
     # List of generated blocks in the current scope
     blocks = Undefined(List[BasicBlock])
     # Current basic block
@@ -335,9 +335,9 @@ class IcodeBuilder(NodeVisitor[int]):
             # These module are special; their contents are currently all
             # built-in primitives.
             return -1
-        
+
         self.enter()
-        
+
         # Initialize non-int global variables.
         for name in sorted(mfile.names):
             node = mfile.names[name].node
@@ -349,7 +349,7 @@ class IcodeBuilder(NodeVisitor[int]):
                     tmp = self.alloc_register()
                     self.add(SetRNone(tmp))
                     self.add(SetGR(v.fullname(), tmp))
-        
+
         for d in mfile.defs:
             d.accept(self)
         self.add_implicit_return()
@@ -362,7 +362,7 @@ class IcodeBuilder(NodeVisitor[int]):
         if fdef.name().endswith('*'):
             # Wrapper functions are not supported yet.
             return -1
-        
+
         self.enter()
 
         for arg in fdef.args:
@@ -374,12 +374,12 @@ class IcodeBuilder(NodeVisitor[int]):
             name = '%s.%s' % (fdef.info.name(), fdef.name())
         else:
             name = fdef.name()
-        
+
         self.generated[name] = FuncIcode(len(fdef.args), self.blocks,
                                          self.register_types)
 
         self.leave()
-        
+
         return -1
 
     def add_implicit_return(self, sig: FunctionLike = None) -> None:
@@ -400,7 +400,7 @@ class IcodeBuilder(NodeVisitor[int]):
 
         # Generate icode for the function that constructs an instance.
         self.make_class_constructor(tdef)
-        
+
         return -1
 
     def make_class_constructor(self, tdef: ClassDef) -> None:
@@ -409,10 +409,10 @@ class IcodeBuilder(NodeVisitor[int]):
         init_argc = len(init.args) - 1
         if init.info.fullname() == 'builtins.object':
             init = None
-        
+
         self.enter()
         if init:
-            args = [] # type: List[int]
+            args = []  # type: List[int]
             for arg in init.args[1:]:
                 args.append(self.add_local(arg))
         target = self.alloc_register()
@@ -496,7 +496,7 @@ class IcodeBuilder(NodeVisitor[int]):
             member = cast(MemberExpr, lvalue)
             obj = self.accept(member.expr)
             obj_type = self.types[member.expr]
-            assert isinstance(obj_type, Instance) # TODO more flexible
+            assert isinstance(obj_type, Instance)  # TODO more flexible
             typeinfo = (cast(Instance, obj_type)).type
             source = self.accept(s.rvalue)
             if member.direct:
@@ -509,7 +509,7 @@ class IcodeBuilder(NodeVisitor[int]):
         elif isinstance(lvalue, IndexExpr):
             indexexpr = cast(IndexExpr, lvalue)
             obj_type = self.types[indexexpr.base]
-            assert isinstance(obj_type, Instance) # TODO more flexible
+            assert isinstance(obj_type, Instance)  # TODO more flexible
             typeinfo = (cast(Instance, obj_type)).type
             base = self.accept(indexexpr.base)
             index = self.accept(indexexpr.index)
@@ -577,10 +577,10 @@ class IcodeBuilder(NodeVisitor[int]):
                 return target
         elif e.kind == nodes.GDEF:
             target = self.target_register()
-            assert isinstance(e.node, Var) # TODO more flexible
+            assert isinstance(e.node, Var)  # TODO more flexible
             var = cast(Var, e.node)
             if var.fullname() == 'builtins.None':
-                self.add(SetRNone(target)) # Special opcode for None
+                self.add(SetRNone(target))  # Special opcode for None
             else:
                 self.add(SetRG(target, var.fullname()))
             return target
@@ -590,7 +590,7 @@ class IcodeBuilder(NodeVisitor[int]):
     def visit_member_expr(self, e: MemberExpr) -> int:
         obj = self.accept(e.expr)
         obj_type = self.types[e.expr]
-        assert isinstance(obj_type, Instance) # TODO more flexible
+        assert isinstance(obj_type, Instance)  # TODO more flexible
         typeinfo = (cast(Instance, obj_type)).type
         target = self.target_register()
         if e.direct:
@@ -645,12 +645,12 @@ class IcodeBuilder(NodeVisitor[int]):
                 method = '__invert__'
             else:
                 raise NotImplementedError("unhandled op: " + e.op)
-            inst = cast(Instance, operand_type) # TODO more flexible
+            inst = cast(Instance, operand_type)  # TODO more flexible
             self.add(CallMethod(target, operand, method, inst.type, []))
         return target
 
     def visit_call_expr(self, e: CallExpr) -> int:
-        args = [] # type: List[int]
+        args = []  # type: List[int]
         for arg in e.args:
             args.append(self.accept(arg))
         if isinstance(e.callee, NameExpr):
@@ -662,7 +662,7 @@ class IcodeBuilder(NodeVisitor[int]):
             receiver = self.accept(member.expr)
             target = self.target_register()
             receiver_type = self.types[member.expr]
-            assert isinstance(receiver_type, Instance) # TODO more flexible
+            assert isinstance(receiver_type, Instance)  # TODO more flexible
             typeinfo = (cast(Instance, receiver_type)).type
             self.add(CallMethod(target, receiver, member.name, typeinfo, args))
         elif isinstance(e.callee, SuperExpr):
@@ -681,7 +681,7 @@ class IcodeBuilder(NodeVisitor[int]):
 
     def visit_coerce_expr(self, e: CoerceExpr) -> int:
         if (is_named_instance(e.source_type, 'builtins.int') and
-            isinstance(e.target_type, AnyType)):
+                isinstance(e.target_type, AnyType)):
             # This is a no-op currently.
             # TODO perhaps should do boxing in some cases...
             return e.expr.accept(self)
@@ -770,7 +770,7 @@ class IcodeBuilder(NodeVisitor[int]):
         self.scopes.append((self.blocks, self.num_registers, self.lvar_regs))
         self.blocks = []
         self.num_registers = 0
-        self.register_types= []
+        self.register_types = []
         self.lvar_regs = {}
         self.current = None
         self.new_block()
@@ -818,7 +818,7 @@ class IcodeBuilder(NodeVisitor[int]):
         reg = self.alloc_register(type)
         self.lvar_regs[node] = reg
         return reg
-    
+
     def set_branches(self, branches: List[Branch], condition: bool,
                      target: BasicBlock) -> None:
         """Set branch targets for the given condition (True or False).
@@ -846,11 +846,11 @@ def render(func):
 
 def filter_out_trivial_gotos(disasm: List[str]) -> List[str]:
     """Filter out gotos to the next opcode (they are no-ops)."""
-    res = [] # type: List[str]
+    res = []  # type: List[str]
     for i, s in enumerate(disasm):
         if s.startswith('    goto '):
             label = s.split()[1]
-            if i + 1 < len(disasm) and disasm[i+1].startswith('%s:' % label):
+            if i + 1 < len(disasm) and disasm[i + 1].startswith('%s:' % label):
                 # Omit goto
                 continue
         res.append(s)

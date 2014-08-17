@@ -26,7 +26,7 @@ def indent(s: str, n: int) -> str:
 
 def array_repr(a: List[T]) -> List[str]:
     """Return the items of an array converted to strings using Repr."""
-    aa = [] # type: List[str]
+    aa = []  # type: List[str]
     for x in a:
         aa.append(repr(x))
     return aa
@@ -34,7 +34,7 @@ def array_repr(a: List[T]) -> List[str]:
 
 def dump_tagged(nodes: List[Any], tag: str) -> str:
     """Convert an array into a pretty-printed multiline string representation.
-    
+
     The format is
       tag(
         item1..
@@ -44,7 +44,7 @@ def dump_tagged(nodes: List[Any], tag: str) -> str:
      - pairs (str : array) are converted recursively, so that str is the tag
      - other items are converted to strings and indented
     """
-    a = [] # type: List[str]
+    a = []  # type: List[str]
     if tag:
         a.append(tag + '(')
     for n in nodes:

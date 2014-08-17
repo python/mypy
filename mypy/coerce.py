@@ -25,14 +25,14 @@ def coerce(expr: Node, target_type: Type, source_type: Type, context: TypeInfo,
         source = translate_runtime_type_vars_in_context(source_type, context,
                                                         is_java)
         res = CoerceExpr(expr, target, source, is_wrapper_class)
-    
+
     if is_java and ((isinstance(source_type, Instance) and
                      (cast(Instance, source_type)).erased)
                     or (isinstance(res, CoerceExpr) and
                         isinstance(target_type, Instance))):
         res = JavaCast(res, target_type)
-    
-    return res                  
+
+    return res
 
 
 def is_trivial_coercion(target_type: Type, source_type: Type,
@@ -45,12 +45,12 @@ def is_trivial_coercion(target_type: Type, source_type: Type,
     # FIX: Replace type vars in source type with any?
     if isinstance(source_type, Void) or is_same_type(target_type, source_type):
         return True
-    
+
     # Coercions from a primitive type to any other type are non-trivial, since
     # we may have to change the representation.
     if not is_java and is_special_primitive(source_type):
         return False
-    
+
     return (is_proper_subtype(source_type, target_type)
             or isinstance(source_type, NoneTyp)
             or isinstance(target_type, AnyType))
@@ -65,5 +65,5 @@ def is_special_primitive(type: Type) -> bool:
     """
     return (isinstance(type, Instance)
             and (cast(Instance, type)).type.fullname() in ['builtins.int',
-                                                     'builtins.float',
-                                                     'builtins.bool'])
+                                                           'builtins.float',
+                                                           'builtins.bool'])

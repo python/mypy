@@ -29,7 +29,7 @@ def infer_function_type_arguments(callee_type: Callable,
     # Infer constraints.
     constraints = infer_constraints_for_callable(
         callee_type, arg_types, arg_kinds, formal_to_actual)
-    
+
     # Solve constraints.
     type_vars = callee_type.type_var_ids()
     return solve_constraints(type_vars, constraints, basic)

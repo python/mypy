@@ -21,6 +21,7 @@ def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
         s, t = t, s
     return t.accept(TypeMeetVisitor(s, basic))
 
+
 def meet_simple(s: Type, t: Type, basic: BasicTypes, default_right: bool = True) -> Type:
     if s == t:
         return s
@@ -33,6 +34,7 @@ def meet_simple(s: Type, t: Type, basic: BasicTypes, default_right: bool = True)
             return t
         else:
             return s
+
 
 def meet_simple_away(s: Type, t: Type, basic: BasicTypes) -> Type:
     if isinstance(s, UnionType):
@@ -72,6 +74,7 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
     # types.
     return True
 
+
 def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
     for base in type.mro:
         if base.defn.is_builtinclass:
@@ -81,12 +84,11 @@ def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
         assert False, 'No built-in ancestor found for {}'.format(type.name())
 
 
-
 class TypeMeetVisitor(TypeVisitor[Type]):
     def __init__(self, s: Type, basic: BasicTypes) -> None:
         self.s = s
         self.basic = basic
-    
+
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
@@ -94,13 +96,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.s
         else:
             return AnyType()
-    
+
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
-    
+
     def visit_type_list(self, t: TypeList) -> Type:
         assert False, 'Not supported'
-    
+
     def visit_any(self, t: AnyType) -> Type:
         return self.s
 
@@ -120,7 +122,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return t
         else:
             return ErrorType()
-    
+
     def visit_none_type(self, t: NoneTyp) -> Type:
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             return t
@@ -129,13 +131,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
-    
+
     def visit_type_var(self, t: TypeVar) -> Type:
         if isinstance(self.s, TypeVar) and (cast(TypeVar, self.s)).id == t.id:
             return self.s
         else:
             return self.default(self.s)
-    
+
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
             si = cast(Instance, self.s)
@@ -143,7 +145,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 if is_subtype(t, self.s):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    args = [] # type: List[Type]
+                    args = []  # type: List[Type]
                     for i in range(len(t.args)):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.type, args)
@@ -159,26 +161,26 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     return NoneTyp()
         else:
             return self.default(self.s)
-    
+
     def visit_callable(self, t: Callable) -> Type:
         if isinstance(self.s, Callable) and is_similar_callables(
-                                                   t, cast(Callable, self.s)):
+                t, cast(Callable, self.s)):
             return combine_similar_callables(t, cast(Callable, self.s),
                                              self.basic)
         else:
             return self.default(self.s)
-    
+
     def visit_tuple_type(self, t: TupleType) -> Type:
         if isinstance(self.s, TupleType) and (
-                             cast(TupleType, self.s).length() == t.length()):
-            items = [] # type: List[Type]
+                cast(TupleType, self.s).length() == t.length()):
+            items = []  # type: List[Type]
             for i in range(t.length()):
                 items.append(self.meet(t.items[i],
                                        (cast(TupleType, self.s)).items[i]))
             return TupleType(items)
         else:
             return self.default(self.s)
-    
+
     def visit_intersection(self, t):
         # TODO Obsolete; target overload types instead?
         # Only support very rudimentary meets between intersection types.
@@ -186,10 +188,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.s
         else:
             return self.default(self.s)
-    
+
     def meet(self, s, t):
         return meet_types(s, t, self.basic)
-    
+
     def default(self, typ):
         if isinstance(typ, UnboundType):
             return AnyType()

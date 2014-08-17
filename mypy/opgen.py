@@ -22,8 +22,8 @@ def generate_runtime_support(f: MypyFile) -> str:
 
 
 def generate_slot_map(f: MypyFile) -> str:
-    map = [] # type: List[str]
-    ops = [] # type: List[str]
+    map = []  # type: List[str]
+    ops = []  # type: List[str]
     map.append('def __InitSlotMap()')
     map.append('  __SlotMap = std::Map(')
     for d in f.defs:
@@ -59,7 +59,7 @@ def generate_slot_map_op(ops: List[str], op: str, base: TypeInfo,
     ops.append('def {}(t)'.format(op))
     nslots = num_slots(typ)
     slots = compile_slot_mapping(base)
-    a = [] # type: List[str]
+    a = []  # type: List[str]
     for t in slots:
         a.append(transform_type_to_runtime_repr(t))
     for i in range(len(slots), nslots):
@@ -74,7 +74,7 @@ def transform_type_to_runtime_repr(t: Type) -> str:
         if inst.args == []:
             return inst.type.name()
         else:
-            args = [] # type: List[str]
+            args = []  # type: List[str]
             for a in inst.args:
                 args.append(transform_type_to_runtime_repr(a))
             return '__Gen({}, [{}])'.format(inst.type.name(), ', '.join(args))
@@ -89,8 +89,8 @@ def transform_type_to_runtime_repr(t: Type) -> str:
 
 
 def generate_type_map(f: MypyFile) -> str:
-    map = [] # type: List[str]
-    ops = [] # type: List[str]
+    map = []  # type: List[str]
+    ops = []  # type: List[str]
     map.append('def __InitTypeMap()')
     for alt, suffix in [(None, ''), (BOUND_VAR, 'B')]:
         map.append('  __TypeMap{} = std::Map('.format(suffix))
@@ -117,7 +117,7 @@ def add_type_map_support_for_type(map: List[str], ops: List[str],
 
 def generate_type_map_op(ops: List[str], op: str, typ, alt) -> None:
     ops.append('def {}(v)'.format(op))
-    a = [] # type: List[str]
+    a = []  # type: List[str]
     for i in range(len(typ.type_vars)):
         p = get_tvar_access_path(typ, i + 1)
         expr = 'v.' + tvar_slot_name(p[0] - 1, alt)
