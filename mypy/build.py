@@ -44,10 +44,10 @@ C = 5                   # All ICODE passes + generate C and compile it
 
 
 # Build flags
-COMPILE_ONLY = 'compile-only'   # Compile only to C, do not generate binary
-VERBOSE = 'verbose'             # More verbose messages (for troubleshooting)
-MODULE = 'module'               # Build/run module as a script
-TEST_BUILTINS = 'test-builtins' # Use stub builtins to speed up tests
+COMPILE_ONLY = 'compile-only'    # Compile only to C, do not generate binary
+VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
+MODULE = 'module'                # Build/run module as a script
+TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
 
 # State ids. These describe the states a source file / module can be in a
@@ -325,7 +325,7 @@ class BuildManager:
         self.states = List[State]()
         self.module_files = Dict[str, str]()
         self.icode = Dict[str, FuncIcode]()
-        self.binary_path = None # type: str
+        self.binary_path = None  # type: str
         self.module_deps = Dict[Tuple[str, str], bool]()
         self.missing_modules = Set[str]()
 
@@ -505,7 +505,7 @@ class BuildManager:
             self.generate_icode(files, types)
             self.generate_c_and_compile(files)
         elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
-            pass # Nothing to do.
+            pass  # Nothing to do.
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
@@ -563,10 +563,10 @@ class BuildManager:
             vm_dir = os.path.join(data_dir, 'vm')
             cc = os.getenv('CC', 'gcc')
             cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
-            cmdline = [cc] + cflags +['-I%s' % vm_dir,
-                                      '-o%s' % program_name,
-                                      c_file,
-                                      os.path.join(vm_dir, 'runtime.c')]
+            cmdline = [cc] + cflags + ['-I%s' % vm_dir,
+                                       '-o%s' % program_name,
+                                       c_file,
+                                       os.path.join(vm_dir, 'runtime.c')]
             self.log(' '.join(cmdline))
             status = subprocess.call(cmdline)
             # TODO check status
@@ -675,7 +675,7 @@ class State:
 
     def num_incomplete_deps(self) -> int:
         """Return the number of dependencies that are ready but incomplete."""
-        return 0 # Does not matter in this state
+        return 0  # Does not matter in this state
 
     def state(self) -> int:
         raise RuntimeError('Not implemented')
@@ -964,7 +964,7 @@ def verify_module(id: str, path: str) -> bool:
 def super_packages(id: str) -> List[str]:
     """Return the surrounding packages of a module, e.g. ['os'] for os.path."""
     c = id.split('.')
-    res = [] # type: List[str]
+    res = []  # type: List[str]
     for i in range(1, len(c)):
         res.append('.'.join(c[:i]))
     return res
