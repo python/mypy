@@ -11,8 +11,8 @@ from mypy.lex import Token
 
 class CommonTypeRepr:
     """Representation of UnboundType, Instance and Callable."""
-    def __init__(self, components: List[Token],  langle, commas: List[Token],
-                  rangle: Any) -> None:
+    def __init__(self, components: List[Token], langle, commas: List[Token],
+                 rangle: Any) -> None:
         # Note: langle and rangle may be empty.
         self.components = components
         self.langle = langle
@@ -42,7 +42,7 @@ class VoidRepr:
 class CallableRepr:
     """Representation of Callable."""
     def __init__(self, func: Any, langle: Any, lparen: Any, commas: Any,
-                  rparen: Any, rangle: Any) -> None:
+                 rparen: Any, rangle: Any) -> None:
         self.func = func
         self.langle = langle
         self.lparen = lparen
