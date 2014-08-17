@@ -3,7 +3,7 @@ from typing import cast, Any, List
 from mypy.types import (
     Callable, Type, AnyType, TypeTranslator, TypeVar, BOUND_VAR, OBJECT_VAR,
     replace_leading_arg_type
-) 
+)
 from mypy.nodes import FuncDef, TypeInfo, NameExpr, LDEF
 from mypy import nodes
 from mypy.noderepr import FuncRepr, FuncArgsRepr, CallExprRepr
@@ -57,7 +57,7 @@ def dynamic_sig(sig: Callable) -> Callable:
 
     Preserve the number and kinds of arguments.
     """
-    return Callable( [AnyType()] * len(sig.arg_types),
+    return Callable([AnyType()] * len(sig.arg_types),
                     sig.arg_kinds,
                     sig.arg_names,
                     AnyType(),
@@ -66,7 +66,7 @@ def dynamic_sig(sig: Callable) -> Callable:
 
 def translate_type_vars_to_wrapper_vars(typ: Type) -> Type:
     """Translate any instance type variables in a type into wrapper tvars.
-    
+
     (Wrapper tvars are type variables that refer to values stored in a generic
     class wrapper).
     """
@@ -130,7 +130,7 @@ def is_generic(fdef: FuncDef) -> bool:
 
 def is_simple_override(fdef: FuncDef, info: TypeInfo) -> bool:
     """Is function an override with the same type precision as the original?
-    
+
     Compare to the original method in the superclass of info.
     """
     # If this is not an override, this can't be a simple override either.
@@ -187,9 +187,9 @@ def tvar_arg_name(n: int, is_alt: Any = False) -> str:
             # Equivalent to slot name.
             return tvar_slot_name(n - 1, BOUND_VAR)
         elif n == -1:
-            return '__bftv' # FIX do we need this?
+            return '__bftv'  # FIX do we need this?
         else:
-            return '__bftv{}'.format(-n) # FIX do we need this?
+            return '__bftv{}'.format(-n)  # FIX do we need this?
 
 
 def dynamic_suffix(is_pretty: bool) -> str:
