@@ -1,6 +1,8 @@
 Mypy Readme
 ===========
 
+[![Build Status](https://travis-ci.org/JukkaL/mypy.svg)](https://travis-ci.org/JukkaL/mypy)
+
 
 What is mypy?
 -------------
