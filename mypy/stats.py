@@ -5,7 +5,7 @@ import os.path
 import re
 
 from typing import Any, Dict, List, cast, Tuple
-    
+
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVar,
@@ -29,7 +29,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.inferred = inferred
         self.typemap = typemap
         self.all_nodes = all_nodes
-        
+
         self.num_precise = 0
         self.num_imprecise = 0
         self.num_any = 0
@@ -46,9 +46,9 @@ class StatisticsVisitor(TraverserVisitor):
         self.line_map = Dict[int, int]()
 
         self.output = List[str]()
-        
+
         TraverserVisitor.__init__(self)
-    
+
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
         if len(o.expanded) > 1:
@@ -59,7 +59,7 @@ class StatisticsVisitor(TraverserVisitor):
                 sig = cast(Callable, o.type)
                 arg_types = sig.arg_types
                 if (sig.arg_names and sig.arg_names[0] == 'self' and
-                    not self.inferred):
+                        not self.inferred):
                     arg_types = arg_types[1:]
                 for arg in arg_types:
                     self.type(arg)
@@ -248,7 +248,7 @@ def is_complex(t: Type) -> bool:
                                            TypeVar))
 
 
-html_files = [] # type: List[Tuple[str, str, int, int]]
+html_files = []  # type: List[Tuple[str, str, int, int]]
 
 
 def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
@@ -260,7 +260,7 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
     target_path = os.path.join(output_dir, 'html', path)
     target_path = re.sub(r'\.py$', '.html', target_path)
     ensure_dir_exists(os.path.dirname(target_path))
-    output = [] # type: List[str]
+    output = []  # type: List[str]
     append = output.append
     append('''\
 <html>
@@ -301,7 +301,7 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
 
 def generate_html_index(output_dir: str) -> None:
     path = os.path.join(output_dir, 'index.html')
-    output = [] # type: List[str]
+    output = []  # type: List[str]
     append = output.append
     append('''\
 <html>
@@ -324,7 +324,7 @@ def generate_html_index(output_dir: str) -> None:
         source_path = os.path.normpath(source_path)
         # TODO: Windows paths.
         if (source_path.startswith('stubs/') or
-            '/stubs/' in source_path):
+                '/stubs/' in source_path):
             continue
         percent = 100.0 * num_imprecise / num_lines
         style = ''
