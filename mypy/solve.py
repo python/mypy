@@ -22,14 +22,14 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
         a = cmap.get(con.type_var, [])
         a.append(con)
         cmap[con.type_var] = a
-    
-    res = [] # type: List[Type]
+
+    res = []  # type: List[Type]
 
     # Solve each type variable separately.
     for tvar in vars:
-        bottom = None # type: Type
-        top = None # type: Type
-        
+        bottom = None  # type: Type
+        top = None  # type: Type
+
         # Process each contraint separely, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the contraint
         # targets do not have contraint references.
@@ -44,23 +44,23 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
                     top = c.target
                 else:
                     top = meet_types(top, c.target, basic)
-        
+
         if top is None:
             if isinstance(bottom, Void):
                 top = Void()
             else:
                 top = basic.object
-        
+
         if bottom is None:
             if isinstance(top, Void):
                 bottom = Void()
             else:
                 bottom = NoneTyp()
-        
+
         if isinstance(top, AnyType) or isinstance(bottom, AnyType):
             top = AnyType()
             bottom = AnyType()
-        
+
         # Pick the most specific type if it satisfies the constraints.
         if (not top or not bottom or is_subtype(bottom, top)) and (
                 not isinstance(top, ErrorType) and
@@ -68,5 +68,5 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
             res.append(bottom)
         else:
             res.append(None)
-    
+
     return res
