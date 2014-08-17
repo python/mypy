@@ -632,7 +632,7 @@ class TypeStrVisitor(TypeVisitor[str]):
             s = '{}`{}'.format(t.name, t.id)
             if t.is_wrapper_var == BOUND_VAR:
                 s += '!B'
-            elif t.is_wrapper_var == True:
+            elif t.is_wrapper_var is True:
                 s += '!W'
             elif t.is_wrapper_var == OBJECT_VAR:
                 s += '!O'
