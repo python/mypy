@@ -1,10 +1,12 @@
 #!/bin/bash
 
+PYTHON=python
+
 result=0
 
 fail()
 {
-    result = 1
+    result=1
 }
 
 # Setup stuff
@@ -17,42 +19,45 @@ export PYTHONPATH=`pwd`/lib-typing/3.2:`pwd`
 echo Running tests...
 echo
 echo tests.py
-python "$DRIVER" tests.py || fail
+"$PYTHON" "$DRIVER" tests.py || fail
 for t in mypy.test.testpythoneval mypy.test.testcgen; do
     echo $t
-    python "$DRIVER" -m $t || fail
+    "$PYTHON" "$DRIVER" -m $t || fail
 done
 
 # Stub checks
 
 STUBTEST=_test_stubs.py
+echo "import typing" > $STUBTEST
 cd stubs/3.2
-ls *.py | sed s/\\.py//g | sed "s/^/import /g" > $STUBTEST
+ls *.py | sed s/\\.py//g | sed "s/^/import /g" >> ../../$STUBTEST
 for m in os os.path; do
-    echo "import $m" >> $STUBTEST
+    echo "import $m" >> ../../$STUBTEST
 done
+cd ../..
 
-echo Type checking stubs...
+NUMSTUBS=$(( `wc -l $STUBTEST | cut -d' ' -f1` - 1 ))
+
+echo Type checking $NUMSTUBS stubs...
 echo
-python "$DRIVER" -S $STUBTEST || fail
+"$PYTHON" "$DRIVER" -S $STUBTEST || fail
 rm $STUBTEST
-cd ..
 
 # Sample checks
 
 # Only run under 3.2
 
-if [ "`python -c 'from sys import version_info as vi; print(vi.major, vi.minor)'`" == "3 3" ]; then
+if [ "`"$PYTHON" -c 'from sys import version_info as vi; print(vi.major, vi.minor)'`" == "3 2" ]; then
     echo Type checking lib-python...
     echo
     cd lib-python/3.2
     for f in test/test_*.py; do
         mod=test.`basename "$f" .py`
         echo $mod
-        python "$DRIVER" -S -m $mod || fail
+        "$PYTHON" "$DRIVER" -S -m $mod || fail
     done
 else
-    echo "Skipping lib-python type checks(Not Python 3.2!)"
+    echo "Skipping lib-python type checks (not Python 3.2!)"
 fi
 
 exit $result
