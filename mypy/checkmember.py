@@ -24,7 +24,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     """Analyse attribute access.
 
     This is a general operation that supports various different variations:
-    
+
       1. lvalue or non-lvalue access (i.e. setter or getter access)
       2. supertype access (when using super(); is_super == True and
          override_info should refer to the supertype)
@@ -36,13 +36,13 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             # type safety unless used via super().
             msg.fail(messages.CANNOT_ACCESS_INIT, node)
             return AnyType()
-        
+
         # The base object has an instance type.
-        
+
         info = typ.type
         if override_info:
             info = override_info
-        
+
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)
         if method:
@@ -71,7 +71,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
                                      is_super, basic_types, msg)
     elif (isinstance(typ, FunctionLike) and
-              cast(FunctionLike, typ).is_type_obj()):
+          cast(FunctionLike, typ).is_type_obj()):
         # Class attribute.
         # TODO super?
         sig = cast(FunctionLike, typ)
@@ -108,7 +108,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
-    
+
     if isinstance(v, Var):
         # Found a member variable.
         var = v
@@ -143,7 +143,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
             return AnyType()
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
-    
+
     # Could not find the member.
     if is_super:
         msg.undefined_in_superclass(name, node)
@@ -250,15 +250,15 @@ def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
             return class_callable(init_type, info)
         else:
             # Overloaded __init__.
-            items = [] # type: List[Callable]
+            items = []  # type: List[Callable]
             for it in cast(Overloaded, init_type).items():
                 items.append(class_callable(it, info))
             return Overloaded(items)
-    
+
 
 def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
     """Create a type object type based on the signature of __init__."""
-    variables = [] # type: List[TypeVarDef]
+    variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
         variables.append(TypeVarDef(tvar.name, i + 1, tvar.values))
 
@@ -284,18 +284,18 @@ class TvarTranslator(TypeTranslator):
     def __init__(self, num_func_tvars: int) -> None:
         super().__init__()
         self.num_func_tvars = num_func_tvars
-    
+
     def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             return t
         else:
             return TypeVar(t.name, -t.id - self.num_func_tvars, t.values)
-    
+
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
         if not variables:
             return variables
-        items = [] # type: List[TypeVarDef]
+        items = []  # type: List[TypeVarDef]
         for v in variables:
             if v.id > 0:
                 items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
