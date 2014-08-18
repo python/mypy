@@ -35,7 +35,7 @@ class TransformSuite(Suite):
 
 def test_transform(testcase):
     """Perform an identity transform test case."""
-    
+
     try:
         src = '\n'.join(testcase.input)
         result = build.build('main',
