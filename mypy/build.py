@@ -81,7 +81,6 @@ class BuildResult:
                  types: Dict[Node, Type]) -> None:
         self.files = files
         self.types = types
-        self.binary_path = None
 
 
 def build(program_path: str,
@@ -271,15 +270,13 @@ class BuildManager:
                        states are stored.
       module_files:    Map from module name to source file path. There is a
                        1:1 mapping between modules and source files.
-      icode:           Generated icode (when compiling via C)
-      binary_path:     Path of the generated binary (or None)
       module_deps:     Cache for module dependencies (direct or indirect).
                        Item (m, n) indicates whether m depends on n (directly
                        or indirectly).
       missing_modules: Set of modules that could not be imported encountered so far
 
-    TODO Refactor code related to transformation, icode generation etc. to
-         external objects.  This module should not directly depend on them.
+    TODO Refactor code related to transformation to external objects.  This module
+         should not directly depend on them.
     """
 
     def __init__(self, data_dir: str,
@@ -309,7 +306,6 @@ class BuildManager:
                                         self.pyversion)
         self.states = List[State]()
         self.module_files = Dict[str, str]()
-        self.binary_path = None  # type: str
         self.module_deps = Dict[Tuple[str, str], bool]()
         self.missing_modules = Set[str]()
 
@@ -508,15 +504,6 @@ class BuildManager:
                 self.semantic_analyzer.modules,
                 is_pretty=True)
             f.accept(v)
-
-    def generate_icode(self, files: List[MypyFile],
-                       types: Dict[Node, Type]) -> None:
-        builder = icode.IcodeBuilder(types)
-        for f in files:
-            # TODO remove ugly builtins hack
-            if not f.path.endswith('/builtins.py'):
-                f.accept(builder)
-        self.icode = builder.generated
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
