@@ -20,7 +20,7 @@ echo Running tests...
 echo
 echo tests.py
 "$PYTHON" "$DRIVER" tests.py || fail
-for t in mypy.test.testpythoneval mypy.test.testcgen; do
+for t in mypy.test.testpythoneval; do
     echo $t
     "$PYTHON" "$DRIVER" -m $t || fail
 done
