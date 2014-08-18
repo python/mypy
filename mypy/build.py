@@ -39,6 +39,7 @@ TRANSFORM = 3           # Type check and transform for runtime type checking
 
 
 # Build flags
+DO_NOT_RUN = 'do-not-run'        # Only type check, don't run the program
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build/run module as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
@@ -516,38 +517,6 @@ class BuildManager:
             if not f.path.endswith('/builtins.py'):
                 f.accept(builder)
         self.icode = builder.generated
-
-    def generate_c_and_compile(self, files: List[MypyFile]) -> None:
-        gen = cgen.CGenerator()
-
-        for fn, icode in self.icode.items():
-            gen.generate_function('M' + fn, icode)
-
-        program_name = os.path.splitext(basename(files[0].path))[0]
-        c_file = '%s.c' % program_name
-
-        # Write C file.
-        self.log('writing %s' % c_file)
-        out = open(c_file, 'w')
-        out.writelines(gen.output())
-        out.close()
-
-        if COMPILE_ONLY not in self.flags:
-            # Generate binary file.
-            data_dir = self.data_dir
-            vm_dir = os.path.join(data_dir, 'vm')
-            cc = os.getenv('CC', 'gcc')
-            cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
-            cmdline = [cc] + cflags + ['-I%s' % vm_dir,
-                                       '-o%s' % program_name,
-                                       c_file,
-                                       os.path.join(vm_dir, 'runtime.c')]
-            self.log(' '.join(cmdline))
-            status = subprocess.call(cmdline)
-            # TODO check status
-            self.log('removing %s' % c_file)
-            os.remove(c_file)
-            self.binary_path = os.path.join('.', program_name)
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:

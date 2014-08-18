@@ -39,8 +39,6 @@ def main() -> None:
     try:
         if options.target == build.TYPE_CHECK:
             type_check_only(path, module, bin_dir, args, options)
-        elif options.target == build.C:
-            compile_to_c(path, module, bin_dir, args, options)
         else:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
@@ -86,7 +84,7 @@ def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
                 html_report_dir=options.html_report_dir,
                 flags=options.build_flags)
 
-    if build.COMPILE_ONLY not in options.build_flags:
+    if build.DO_NOT_RUN not in options.build_flags:
         # Run the translated program.
         if module:
             opts = ['-m', module]
@@ -100,23 +98,6 @@ def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
             # typing module to be used.
             os.environ['PYTHONPATH'] = os.path.join('lib-typing', '2.7')
         status = subprocess.call([options.interpreter] + opts + args)
-        sys.exit(status)
-
-
-def compile_to_c(path: str, module: str, bin_dir: str, args: List[str],
-                 options: Options) -> None:
-    assert not module # Not supported yet
-    assert not args   # Not supported yet
-    assert options.pyversion == 3
-    
-    # Compile the program to C (also generate binary by default).
-    result = build.build(path, target=build.C, bin_dir=bin_dir,
-                         flags=options.build_flags)
-
-    if build.COMPILE_ONLY not in options.build_flags:
-        # Run the compiled program.
-        # TODO command line arguments
-        status = subprocess.call([result.binary_path])
         sys.exit(status)
 
 
@@ -140,11 +121,8 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
             options.pyversion = 2
             options.interpreter = args[1]
             args = args[2:]
-        elif args[0] == '-c':
-            options.target = build.C
-            args = args[1:]
         elif args[0] == '-S':
-            options.build_flags.append(build.COMPILE_ONLY)
+            options.build_flags.append(build.DO_NOT_RUN)
             args = args[1:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
