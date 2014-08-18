@@ -45,9 +45,14 @@ class PythonEvaluationSuite(Suite):
 
 def test_python_evaluation(testcase):
     python2_interpreter = try_find_python2_interpreter()
-    if not python2_interpreter:
-        # Skip, can't find a Python 2 interpreter.
-        raise SkipTestCaseException()
+    # Use Python 2 interpreter if running a Python 2 test case.
+    if testcase.name.lower().endswith('python2'):
+        if not python2_interpreter:
+            # Skip, can't find a Python 2 interpreter.
+            raise SkipTestCaseException()
+        args = ['--py2', python2_interpreter]
+    else:
+        args = []
     # Write the program to a file.
     program = '_program.py'
     outfile = '_program.out'
@@ -55,11 +60,6 @@ def test_python_evaluation(testcase):
     for s in testcase.input:
         f.write('{}\n'.format(s))
     f.close()
-    # Use Python 2 interpreter if running a Python 2 test case.
-    if testcase.name.lower().endswith('python2'):
-        args = ['--py2', python2_interpreter]
-    else:
-        args = []
     # Set up module path.
     typing_path = os.path.join(os.getcwd(), 'lib-typing', '3.2')
     assert os.path.isdir(typing_path)
