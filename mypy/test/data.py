@@ -11,24 +11,24 @@ from mypy.myunit import TestCase, SkipTestCaseException
 
 
 def parse_test_cases(
-            path: str,
-            perform: Function[['DataDrivenTestCase'], None],
-            base_path: str = '.',
-            optional_out: bool = False,
-            include_path: str = None) -> List['DataDrivenTestCase']:
+        path: str,
+        perform: Function[['DataDrivenTestCase'], None],
+        base_path: str = '.',
+        optional_out: bool = False,
+        include_path: str = None) -> List['DataDrivenTestCase']:
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
     """
-    
+
     if not include_path:
         include_path = os.path.dirname(path)
     l = open(path).readlines()
     for i in range(len(l)):
         l[i] = l[i].rstrip('\n')
     p = parse_test_data(l, path)
-    out = [] # type: List[DataDrivenTestCase]
-    
+    out = []  # type: List[DataDrivenTestCase]
+
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
     i = 0
@@ -37,8 +37,8 @@ def parse_test_cases(
         i0 = i
         if p[i].id == 'case':
             i += 1
-            
-            files = [] # type: List[Tuple[str, str]] # path and contents
+
+            files = []  # type: List[Tuple[str, str]] # path and contents
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
@@ -56,19 +56,19 @@ def parse_test_cases(
                         'Invalid section header {} in {} at line {}'.format(
                             p[i].id, path, p[i].line))
                 i += 1
-            
-            tcout = [] # type: List[str]
+
+            tcout = []  # type: List[str]
             if i < len(p) and p[i].id == 'out':
                 tcout = p[i].data
                 ok = True
                 i += 1
             elif optional_out:
                 ok = True
-            
+
             if ok:
                 input = expand_includes(p[i0].data, include_path)
                 expand_errors(input, tcout, 'main')
-                lastline = p[i].line if i < len(p) else p[i-1].line + 9999
+                lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
                                         p[i0].line, lastline, perform, files)
                 out.append(tc)
@@ -76,24 +76,24 @@ def parse_test_cases(
             raise ValueError(
                 '{}, line {}: Error in test case description'.format(
                     path, p[i0].line))
-    
+
     return out
 
 
 class DataDrivenTestCase(TestCase):
     input = Undefined(List[str])
     output = Undefined(List[str])
-    
+
     file = ''
     line = 0
-    
+
     perform = Undefined(Function[['DataDrivenTestCase'], None])
 
-    # (file path, file content) tuples 
-    files = Undefined(List[Tuple[str, str]] )
-    
+    # (file path, file content) tuples
+    files = Undefined(List[Tuple[str, str]])
+
     clean_up = Undefined(List[Tuple[bool, str]])
-    
+
     def __init__(self, name, input, output, file, line, lastline,
                  perform, files):
         super().__init__(name)
@@ -104,7 +104,7 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
-    
+
     def set_up(self) -> None:
         super().set_up()
         self.clean_up = []
@@ -116,7 +116,7 @@ class DataDrivenTestCase(TestCase):
             f.write(content)
             f.close()
             self.clean_up.append((False, path))
-    
+
     def add_dirs(self, dir: str) -> List[str]:
         """Add all subdirectories required to create dir.
 
@@ -128,13 +128,13 @@ class DataDrivenTestCase(TestCase):
             dirs = self.add_dirs(os.path.dirname(dir)) + [dir]
             os.mkdir(dir)
             return dirs
-    
+
     def run(self):
         if self.name.endswith('-skip'):
             raise SkipTestCaseException()
         else:
             self.perform(self)
-    
+
     def tear_down(self) -> None:
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
@@ -151,16 +151,16 @@ class TestItem:
       [id arg]
       .. data ..
     """
-    
+
     id = ''
     arg = ''
-    
-    # Text data, array of 8-bit strings    
+
+    # Text data, array of 8-bit strings
     data = Undefined(List[str])
-    
+
     file = ''
-    line = 0 # Line number in file
-    
+    line = 0  # Line number in file
+
     def __init__(self, id: str, arg: str, data: List[str], file: str,
                  line: int) -> None:
         self.id = id
@@ -172,18 +172,18 @@ class TestItem:
 
 def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     """Parse a list of lines that represent a sequence of test items."""
-    
-    ret = [] # type: List[TestItem]
-    data = [] # type: List[str]
-    
-    id = None # type: str
-    arg = None # type: str
-    
+
+    ret = []  # type: List[TestItem]
+    data = []  # type: List[str]
+
+    id = None  # type: str
+    arg = None  # type: str
+
     i = 0
     i0 = 0
     while i < len(l):
         s = l[i].strip()
-        
+
         if l[i].startswith('[') and s.endswith(']') and not s.startswith('[['):
             if id:
                 data = collapse_line_continuation(data)
@@ -203,13 +203,13 @@ def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
         elif l[i].startswith('----'):
             data.append(l[i][2:])
         i += 1
-    
+
     # Process the last item.
     if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
         ret.append(TestItem(id, arg, data, fnam, i0 + 1))
-    
+
     return ret
 
 
@@ -219,20 +219,20 @@ def strip_list(l: List[str]) -> List[str]:
     Strip whitespace at the end of all lines, and strip all empty
     lines from the end of the array.
     """
-    
-    r = [] # type: List[str]
+
+    r = []  # type: List[str]
     for s in l:
         # Strip spaces at end of line
         r.append(re.sub(r'\s+$', '', s))
-    
+
     while len(r) > 0 and r[-1] == '':
         r.pop()
-    
+
     return r
 
 
 def collapse_line_continuation(l: List[str]) -> List[str]:
-    r = [] # type: List[str]
+    r = []  # type: List[str]
     cont = False
     for s in l:
         ss = re.sub(r'\\$', '', s)
@@ -250,8 +250,8 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
     Replace all lies starting with @include with the contents of the
     file name following the prefix. Look for the files in base_path.
     """
-    
-    res = [] # type: List[str]
+
+    res = []  # type: List[str]
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()
@@ -268,7 +268,7 @@ def expand_errors(input, output, fnam):
 
     The result is lines like 'fnam, line N: message'.
     """
-    
+
     for i in range(len(input)):
         m = re.search('# E: (.*)$', input[i])
         if m:
