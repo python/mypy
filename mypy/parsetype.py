@@ -204,9 +204,9 @@ def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
         if next == ',':
             i += 1
     i += 1
-    if tokens[i].string != '-' or tokens[i + 1].string != '>':
+    if tokens[i].string != '->':
         raise TypeParseError(tokens[i], i)
-    i += 2
+    i += 1
     ret_type, i = parse_type(tokens, i)
     return Callable(arg_types,
                     arg_kinds,
