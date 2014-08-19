@@ -25,7 +25,7 @@ staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.
 property = object()
 
-byte_types = Union[bytes, bytearray]
+_byte_types = Union[bytes, bytearray]
 
 
 @builtinclass
@@ -58,7 +58,7 @@ class type:
 @builtinclass
 @ducktype(float)
 class int(SupportsInt, SupportsFloat):
-    def __init__(self, x: Union[SupportsInt, str, byte_types]=None, base: int=None) -> None: pass
+    def __init__(self, x: Union[SupportsInt, str, _byte_types]=None, base: int=None) -> None: pass
 
     def bit_length(self) -> int: pass
     def to_bytes(self, length: int, byteorder: str, *,
@@ -122,7 +122,7 @@ class int(SupportsInt, SupportsFloat):
 @builtinclass
 @ducktype(complex)
 class float(SupportsFloat, SupportsInt):
-    def __init__(self, x: Union[SupportsFloat, str, byte_types]=None) -> None: pass
+    def __init__(self, x: Union[SupportsFloat, str, _byte_types]=None) -> None: pass
 
     def as_integer_ratio(self) -> Tuple[int, int]: pass
     def hex(self) -> str: pass
@@ -180,7 +180,7 @@ class str(Sequence[str]):
     @overload
     def __init__(self, o: object) -> None: pass
     @overload
-    def __init__(self, o: byte_types, encoding: str = None,
+    def __init__(self, o: _byte_types, encoding: str = None,
                  errors: str = 'strict') -> None: pass
 
     def capitalize(self) -> str: pass
@@ -277,14 +277,14 @@ class bytes(Sequence[int]):
 
     def capitalize(self) -> bytes: pass
     
-    def center(self, width: int, fillchar: byte_types = None) -> bytes: pass
-    def count(self, x: byte_types) -> int: pass
+    def center(self, width: int, fillchar: _byte_types = None) -> bytes: pass
+    def count(self, x: _byte_types) -> int: pass
     def decode(self, encoding: str = 'utf-8',
                errors: str = 'strict') -> str: pass
-    def endswith(self, suffix: byte_types) -> bool: pass
+    def endswith(self, suffix: _byte_types) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytes: pass
-    def find(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
-    def index(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def find(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -292,26 +292,26 @@ class bytes(Sequence[int]):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    def join(self, iterable: Iterable[byte_types]) -> bytes: pass
-    def ljust(self, width: int, fillchar: byte_types = None) -> bytes: pass
+    def join(self, iterable: Iterable[_byte_types]) -> bytes: pass
+    def ljust(self, width: int, fillchar: _byte_types = None) -> bytes: pass
     def lower(self) -> bytes: pass
-    def lstrip(self, chars: byte_types = None) -> bytes: pass
-    def partition(self, sep: byte_types) -> Tuple[bytes, bytes, bytes]: pass
-    def replace(self, old: byte_types, new: byte_types, count: int = -1) -> bytes: pass
-    def rfind(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rindex(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rjust(self, width: int, fillchar: byte_types = None) -> bytes: pass
-    def rpartition(self, sep: byte_types) -> Tuple[bytes, bytes, bytes]: pass
-    def rsplit(self, sep: byte_types = None,
+    def lstrip(self, chars: _byte_types = None) -> bytes: pass
+    def partition(self, sep: _byte_types) -> Tuple[bytes, bytes, bytes]: pass
+    def replace(self, old: _byte_types, new: _byte_types, count: int = -1) -> bytes: pass
+    def rfind(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rjust(self, width: int, fillchar: _byte_types = None) -> bytes: pass
+    def rpartition(self, sep: _byte_types) -> Tuple[bytes, bytes, bytes]: pass
+    def rsplit(self, sep: _byte_types = None,
                maxsplit: int = -1) -> List[bytes]: pass
-    def rstrip(self, chars: byte_types = None) -> bytes: pass
-    def split(self, sep: byte_types = None, maxsplit: int = -1) -> List[bytes]: pass
+    def rstrip(self, chars: _byte_types = None) -> bytes: pass
+    def split(self, sep: _byte_types = None, maxsplit: int = -1) -> List[bytes]: pass
     def splitlines(self, keepends: bool = False) -> List[bytes]: pass
-    def startswith(self, prefix: byte_types) -> bool: pass
-    def strip(self, chars: byte_types = None) -> bytes: pass
+    def startswith(self, prefix: _byte_types) -> bool: pass
+    def strip(self, chars: _byte_types = None) -> bytes: pass
     def swapcase(self) -> bytes: pass
     def title(self) -> bytes: pass
-    def translate(self, table: byte_types) -> bytes: pass
+    def translate(self, table: _byte_types) -> bytes: pass
     def upper(self) -> bytes: pass
     def zfill(self, width: int) -> bytes: pass
     
@@ -327,7 +327,7 @@ class bytes(Sequence[int]):
     def __getitem__(self, i: int) -> int: pass
     @overload
     def __getitem__(self, s: slice) -> bytes: pass
-    def __add__(self, s: byte_types) -> bytes: pass
+    def __add__(self, s: _byte_types) -> bytes: pass
     
     def __mul__(self, n: int) -> bytes: pass
     def __rmul__(self, n: int) -> bytes: pass
@@ -356,14 +356,14 @@ class bytearray(Sequence[int]):
     def __init__(self) -> None: pass
 
     def capitalize(self) -> bytearray: pass
-    def center(self, width: int, fillchar: byte_types = None) -> bytearray: pass
-    def count(self, x: byte_types) -> int: pass
+    def center(self, width: int, fillchar: _byte_types = None) -> bytearray: pass
+    def count(self, x: _byte_types) -> int: pass
     def decode(self, encoding: str = 'utf-8',
                errors: str = 'strict') -> str: pass
-    def endswith(self, suffix: byte_types) -> bool: pass
+    def endswith(self, suffix: _byte_types) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytearray: pass
-    def find(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
-    def index(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
+    def find(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -371,30 +371,30 @@ class bytearray(Sequence[int]):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    def join(self, iterable: Iterable[byte_types]) -> bytearray: pass
-    def ljust(self, width: int, fillchar: byte_types = None) -> bytearray: pass
+    def join(self, iterable: Iterable[_byte_types]) -> bytearray: pass
+    def ljust(self, width: int, fillchar: _byte_types = None) -> bytearray: pass
     def lower(self) -> bytearray: pass
-    def lstrip(self, chars: byte_types = None) -> bytearray: pass
-    def partition(self, sep: byte_types) -> Tuple[bytearray, bytearray,
+    def lstrip(self, chars: _byte_types = None) -> bytearray: pass
+    def partition(self, sep: _byte_types) -> Tuple[bytearray, bytearray,
                                              bytearray]: pass
-    def replace(self, old: byte_types, new: bytes,
+    def replace(self, old: _byte_types, new: bytes,
                 count: int = -1) -> bytearray: pass
-    def rfind(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rindex(self, sub: byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rjust(self, width: int, fillchar: byte_types = None) -> bytearray: pass
-    def rpartition(self, sep: byte_types) -> Tuple[bytearray, bytearray,
+    def rfind(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def rjust(self, width: int, fillchar: _byte_types = None) -> bytearray: pass
+    def rpartition(self, sep: _byte_types) -> Tuple[bytearray, bytearray,
                                               bytearray]: pass
-    def rsplit(self, sep: byte_types = None,
+    def rsplit(self, sep: _byte_types = None,
                maxsplit: int = -1) -> List[bytearray]: pass
-    def rstrip(self, chars: byte_types = None) -> bytearray: pass
-    def split(self, sep: byte_types = None,
+    def rstrip(self, chars: _byte_types = None) -> bytearray: pass
+    def split(self, sep: _byte_types = None,
               maxsplit: int = -1) -> List[bytearray]: pass
     def splitlines(self, keepends: bool = False) -> List[bytearray]: pass
-    def startswith(self, prefix: byte_types) -> bool: pass
-    def strip(self, chars: byte_types = None) -> bytearray: pass
+    def startswith(self, prefix: _byte_types) -> bool: pass
+    def strip(self, chars: _byte_types = None) -> bytearray: pass
     def swapcase(self) -> bytearray: pass
     def title(self) -> bytearray: pass
-    def translate(self, table: byte_types) -> bytearray: pass
+    def translate(self, table: _byte_types) -> bytearray: pass
     def upper(self) -> bytearray: pass
     def zfill(self, width: int) -> bytearray: pass
 
@@ -419,8 +419,8 @@ class bytearray(Sequence[int]):
     @overload
     def __delitem__(self, s: slice) -> None: pass
 
-    def __add__(self, s: byte_types) -> bytearray: pass
-    def __iadd__(self, s: byte_types) -> bytearray: pass
+    def __add__(self, s: _byte_types) -> bytearray: pass
+    def __iadd__(self, s: _byte_types) -> bytearray: pass
 
     def __mul__(self, n: int) -> bytearray: pass
     def __rmul__(self, n: int) -> bytearray: pass
@@ -428,10 +428,10 @@ class bytearray(Sequence[int]):
     def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    def __lt__(self, x: byte_types) -> bool: pass
-    def __le__(self, x: byte_types) -> bool: pass
-    def __gt__(self, x: byte_types) -> bool: pass
-    def __ge__(self, x: byte_types) -> bool: pass
+    def __lt__(self, x: _byte_types) -> bool: pass
+    def __le__(self, x: _byte_types) -> bool: pass
+    def __gt__(self, x: _byte_types) -> bool: pass
+    def __ge__(self, x: _byte_types) -> bool: pass
 
 
 @builtinclass
