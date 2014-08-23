@@ -32,11 +32,11 @@ def test_parser(testcase):
 
     The argument contains the description of the test case.
     """
-    
+
     pyversion = 3
     if testcase.file.endswith('python2.test'):
         pyversion = 2
-    
+
     try:
         n = parse('\n'.join(testcase.input), pyversion=pyversion)
         a = str(n).split('\n')

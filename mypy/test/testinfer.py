@@ -10,7 +10,7 @@ from mypy.types import AnyType, TupleType
 
 class MapActualsToFormalsSuite(Suite):
     """Test cases for checkexpr.map_actuals_to_formals."""
-    
+
     def test_basic(self):
         self.assert_map([], [], [])
 
@@ -168,7 +168,7 @@ class MapActualsToFormalsSuite(Suite):
         assert_equal(result, expected)
 
     def assert_vararg_map(self, caller_kinds, callee_kinds, expected,
-                           vararg_type):
+                          vararg_type):
         result = map_actuals_to_formals(
             caller_kinds,
             [],

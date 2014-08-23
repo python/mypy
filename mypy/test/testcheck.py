@@ -53,7 +53,7 @@ class TypeCheckSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir, True)
         return c
-    
+
     def run_test(self, testcase):
         a = []
         pyversion = testcase_pyversion(testcase.file, testcase.name)

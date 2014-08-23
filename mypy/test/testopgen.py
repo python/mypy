@@ -20,7 +20,7 @@ from errors import CompileError
 
 class DyncheckOpGenSuite(Suite):
     test_case_files = ['dyncheck-opgen.test']
-    
+
     def cases(self):
         c = []
         for f in self.test_case_files:
@@ -51,7 +51,7 @@ def test_op_gen(testcase):
                     # Display path for files other than the first.
                     a.append('{}:'.format(
                         remove_prefix(t.path, test_temp_dir)))
-                
+
                 # Transform parse tree and produce the code for operations.
                 # Note that currently we generate this for each file
                 # separately; this needs to be fixed eventually.
@@ -68,7 +68,7 @@ def test_op_gen(testcase):
         'Invalid source code output ({}, line {})'.format(testcase.file,
                                                           testcase.line))
 
-    
+
 if __name__ == '__main__':
     import sys
     run_test(DyncheckOpGenSuite(), sys.argv[1:])

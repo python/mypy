@@ -19,14 +19,14 @@ from mypy.errors import CompileError
 class TypeExportSuite(Suite):
     # List of files that contain test case descriptions.
     files = ['typexport-basic.test']
-    
+
     def cases(self):
         c = []
         for f in self.files:
             c += parse_test_cases(os.path.join(config.test_data_prefix, f),
                                   self.run_test, config.test_temp_dir)
         return c
-    
+
     def run_test(self, testcase):
         a = []
         try:
@@ -34,7 +34,7 @@ class TypeExportSuite(Suite):
             mask = ''
             if line.startswith('##'):
                 mask = '(' + line[2:].strip() + ')$'
-            
+
             src = '\n'.join(testcase.input)
             result = build.build(program_path='main',
                                  target=build.TYPE_CHECK,
@@ -62,11 +62,11 @@ class TypeExportSuite(Suite):
                                 and re.match(mask, node.name))):
                         # Include node in output.
                         keys.append(node)
-                        
+
             for key in sorted(keys,
                               key=lambda n: (n.line, short_type(n),
                                              str(n) + str(map[n]))):
-                ts = str(map[key]).replace('*', '') # Remove erased tags
+                ts = str(map[key]).replace('*', '')  # Remove erased tags
                 ts = ts.replace('__main__.', '')
                 a.append('{}({}) : {}'.format(short_type(key), key.line, ts))
         except CompileError as e:
@@ -80,7 +80,7 @@ class TypeExportSuite(Suite):
 class VariableDefinitionNodeSearcher(TraverserVisitor):
     def __init__(self):
         self.nodes = set()
-    
+
     def visit_assignment_stmt(self, s):
         if s.type or ignore_node(s.rvalue):
             for lvalue in s.lvalues:
@@ -93,7 +93,7 @@ class VariableDefinitionNodeSearcher(TraverserVisitor):
 
 def ignore_node(node):
     """Return True if node is to be omitted from test case output."""
-    
+
     # We want to get rid of object() expressions in the typing module stub
     # and also typevar(...) expressions. Since detecting whether a node comes
     # from the typing module is not easy, we just to strip them all away.
@@ -104,7 +104,7 @@ def ignore_node(node):
     if isinstance(node, CallExpr) and (ignore_node(node.callee) or
                                        node.analyzed):
         return True
-    
+
     return False
 
 
