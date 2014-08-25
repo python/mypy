@@ -15,10 +15,10 @@ _T = typevar('_T')
 _KT = typevar('_KT')
 _VT = typevar('_VT')
 _S = typevar('_S')
-T1 = typevar('T1')
-T2 = typevar('T2')
-T3 = typevar('T3')
-T4 = typevar('T4')
+_T1 = typevar('_T1')
+_T2 = typevar('_T2')
+_T3 = typevar('_T3')
+_T4 = typevar('_T4')
 
 staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.
@@ -625,10 +625,10 @@ def len(o: Sized) -> int: pass
 def len(o: tuple) -> int: pass
 def locals() -> Dict[str, Any]: pass
 @overload
-def map(func: Function[[T1], _S], iter1: Iterable[T1]) -> Iterator[_S]: pass
+def map(func: Function[[_T1], _S], iter1: Iterable[_T1]) -> Iterator[_S]: pass
 @overload
-def map(func: Function[[T1, T2], _S], iter1: Iterable[T1],
-        iter2: Iterable[T2]) -> Iterator[_S]: pass  # TODO more than two iterables
+def map(func: Function[[_T1, _T2], _S], iter1: Iterable[_T1],
+        iter2: Iterable[_T2]) -> Iterator[_S]: pass  # TODO more than two iterables
 @overload
 def max(iterable: Iterable[_T]) -> _T: pass  # TODO keyword argument key
 @overload
@@ -673,16 +673,16 @@ def sorted(iterable: Iterable[_T], *, key: Function[[_T], Any] = None,
            reverse: bool = False) -> List[_T]: pass
 def sum(iterable: Iterable[_T], start: _T = None) -> _T: pass
 @overload
-def zip(iter1: Iterable[T1]) -> Iterator[Tuple[T1]]: pass
+def zip(iter1: Iterable[_T1]) -> Iterator[Tuple[_T1]]: pass
 @overload
-def zip(iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[Tuple[T1, T2]]: pass
+def zip(iter1: Iterable[_T1], iter2: Iterable[_T2]) -> Iterator[Tuple[_T1, _T2]]: pass
 @overload
-def zip(iter1: Iterable[T1], iter2: Iterable[T2],
-        iter3: Iterable[T3]) -> Iterator[Tuple[T1, T2, T3]]: pass
+def zip(iter1: Iterable[_T1], iter2: Iterable[_T2],
+        iter3: Iterable[_T3]) -> Iterator[Tuple[_T1, _T2, _T3]]: pass
 @overload
-def zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3],
-        iter4: Iterable[T4]) -> Iterator[Tuple[T1, T2,
-                                               T3, T4]]: pass # TODO more than four iterables
+def zip(iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3],
+        iter4: Iterable[_T4]) -> Iterator[Tuple[_T1, _T2,
+                                               _T3, _T4]]: pass # TODO more than four iterables
 def __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] = {},
                fromlist: List[str] = [], level: int = -1) -> Any: pass
 
