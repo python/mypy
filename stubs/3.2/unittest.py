@@ -13,6 +13,7 @@ from typing import (
 )
 from abc import abstractmethod, ABCMeta
 
+T = typevar('T')
 FT = typevar('FT')
 
 class Testable(metaclass=ABCMeta):
@@ -30,7 +31,7 @@ class TestResult:
     failures = Undefined(List[Tuple[Testable, str]])
     testsRun = 0
     shouldStop = False
-    
+
     def wasSuccessful(self) -> bool: pass
     def stop(self) -> None: pass
     def startTest(self, test: Testable) -> None: pass
@@ -46,12 +47,12 @@ class _AssertRaisesBaseContext:
     failureException = Undefined(type)
     obj_name = ''
     expected_regex = Undefined(Pattern[str])
-    
+
 class _AssertRaisesContext(_AssertRaisesBaseContext):
     exception = Undefined(Any) # TODO precise type
     def __enter__(self) -> _AssertRaisesContext: pass
     def __exit__(self, exc_type, exc_value, tb) -> bool: pass
-    
+
 class _AssertWarnsContext(_AssertRaisesBaseContext):
     warning = Undefined(Any) # TODO precise type
     filename = ''
