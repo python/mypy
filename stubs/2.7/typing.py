@@ -1,7 +1,6 @@
-"""Stubs for typing"""
+# Stubs for typing (Python 2.7)
 
 from abc import abstractmethod, ABCMeta
-
 
 # Definitions of special type checking related constructs.  Their definition
 # are not used, so their value does not matter.
@@ -19,7 +18,7 @@ builtinclass = object()
 ducktype = object()
 disjointclass = object()
 
-# Type aliases.
+# Type aliases
 
 class TypeAlias:
     """Class for defining generic aliases for library types."""
@@ -38,13 +37,11 @@ Set = TypeAlias(object)
 # Predefined type variables.
 AnyStr = typevar('AnyStr', values=(str, unicode))
 
-
 # Abstract base classes.
 
 T = typevar('T')
 KT = typevar('KT')
 VT = typevar('VT')
-
 
 # TODO Container etc.
 
