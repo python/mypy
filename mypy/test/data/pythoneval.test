@@ -134,24 +134,23 @@ class A(SupportsAbs[float]):
 
 print(abs(-1))
 print(abs(-1.2))
-print(abs(A())) # TODO fix type inference
+print(abs(A()))
 [out]
 1
 1.2
 5.5
 
-[case testAbs2-skip]
+[case testAbs2]
 from typing import Undefined
 n = Undefined(int)
 f = Undefined(float)
-s = Undefined(str)
 n = abs(1)
-s = abs(1) # Error
+abs(1) + 'x'  # Error
 f = abs(1.1)
-n = abs(1.1) # Error
+abs(1.1) + 'x'  # Error
 [out]
-_program.py, line 6: Incompatible types in assignment
-_program.py, line 8: Incompatible types in assignment
+_program.py, line 5: Unsupported operand types for + ("int" and "str")
+_program.py, line 7: Unsupported operand types for + ("float" and "str")
 
 [case testRound]
 from typing import SupportsRound
@@ -679,9 +678,9 @@ f = Undefined(float)
 n = Undefined(int)
 n = abs(2)
 f = abs(2.2)
-n = abs(2.2) # Error
+abs(2.2) + 'x'
 [out]
-_program.py, line 6: Incompatible types in assignment (expression has type "float", variable has type "int")
+_program.py, line 6: Unsupported operand types for + ("float" and "str")
 
 [case testROperatorMethods]
 from typing import Undefined
