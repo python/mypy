@@ -25,7 +25,7 @@ staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.
 property = object()
 
-_byte_types = Union[bytes, bytearray]
+_byte_types = typevar('_byte_types', values=(bytes, bytearray))
 
 
 @builtinclass
