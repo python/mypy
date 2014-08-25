@@ -14,7 +14,7 @@ from abc import abstractmethod, ABCMeta
 _T = typevar('_T')
 KT = typevar('KT')
 VT = typevar('VT')
-S = typevar('S')
+_S = typevar('_S')
 T1 = typevar('T1')
 T2 = typevar('T2')
 T3 = typevar('T3')
@@ -481,7 +481,7 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def fromkeys(seq: Sequence[_T]) -> Dict[_T, Any]: pass  # TODO: Actually a class method
     @staticmethod
     @overload
-    def fromkeys(seq: Sequence[_T], value: S) -> Dict[_T, S]: pass
+    def fromkeys(seq: Sequence[_T], value: _S) -> Dict[_T, _S]: pass
     def __len__(self) -> int: pass
     def __getitem__(self, k: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
@@ -625,10 +625,10 @@ def len(o: Sized) -> int: pass
 def len(o: tuple) -> int: pass
 def locals() -> Dict[str, Any]: pass
 @overload
-def map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]: pass
+def map(func: Function[[T1], _S], iter1: Iterable[T1]) -> Iterator[_S]: pass
 @overload
-def map(func: Function[[T1, T2], S], iter1: Iterable[T1],
-        iter2: Iterable[T2]) -> Iterator[S]: pass  # TODO more than two iterables
+def map(func: Function[[T1, T2], _S], iter1: Iterable[T1],
+        iter2: Iterable[T2]) -> Iterator[_S]: pass  # TODO more than two iterables
 @overload
 def max(iterable: Iterable[_T]) -> _T: pass  # TODO keyword argument key
 @overload
