@@ -1,6 +1,6 @@
 -- Test cases for type checking mypy programs using full stubs and running
 -- using CPython.
--- 
+--
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
 
@@ -131,7 +131,7 @@ print(float(B()))
 from typing import SupportsAbs
 class A(SupportsAbs[float]):
     def __abs__(self) -> float: return 5.5
-    
+
 print(abs(-1))
 print(abs(-1.2))
 print(abs(A())) # TODO fix type inference
@@ -1135,3 +1135,11 @@ print f('ab')
 [out]
 12
 ab
+
+[case testMapWithLambdaSpecialCase]
+from typing import List, Iterator
+a = [[1], [3]]
+b = map(lambda y: y[0], a)
+print('>', list(b))
+[out]
+> [1, 3]

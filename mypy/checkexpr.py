@@ -272,7 +272,8 @@ class ExpressionChecker:
         # The return type may have references to function type variables that
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
-        # None type. On the other hand, class type variables are valid results.
+        # special ErasedType type. On the other hand, class type variables are
+        # valid results.
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
         args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
                                     erased_ctx, self.chk.basic_types())

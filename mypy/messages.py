@@ -92,7 +92,9 @@ class MessageBuilder:
     #
 
     def copy(self) -> 'MessageBuilder':
-        return MessageBuilder(self.errors.copy())
+        new = MessageBuilder(self.errors.copy())
+        new.disable_count = self.disable_count
+        return new
 
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""
