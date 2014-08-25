@@ -11,7 +11,7 @@ from abc import abstractmethod, ABCMeta
 # Note that names imported above are not automatically made visible via the
 # implicit builtins import.
 
-T = typevar('T')
+_T = typevar('_T')
 KT = typevar('KT')
 VT = typevar('VT')
 S = typevar('S')
@@ -410,50 +410,50 @@ class function:
     __code__ = Undefined(Any)
 
 @builtinclass
-class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
+class list(Sequence[_T], Reversible[_T], AbstractGeneric[_T]):
     @overload
     def __init__(self) -> None: pass
     @overload
-    def __init__(self, iterable: Iterable[T]) -> None: pass
+    def __init__(self, iterable: Iterable[_T]) -> None: pass
     def clear(self) -> None: pass
-    def copy(self) -> List[T]: pass
-    def append(self, object: T) -> None: pass
-    def extend(self, iterable: Iterable[T]) -> None: pass
-    def pop(self, index: int = -1) -> T: pass
-    def index(self, object: T, start: int = 0, stop: int = Undefined(int)) -> int: pass
-    def count(self, object: T) -> int: pass
-    def insert(self, index: int, object: T) -> None: pass
-    def remove(self, object: T) -> None: pass
+    def copy(self) -> List[_T]: pass
+    def append(self, object: _T) -> None: pass
+    def extend(self, iterable: Iterable[_T]) -> None: pass
+    def pop(self, index: int = -1) -> _T: pass
+    def index(self, object: _T, start: int = 0, stop: int = Undefined(int)) -> int: pass
+    def count(self, object: _T) -> int: pass
+    def insert(self, index: int, object: _T) -> None: pass
+    def remove(self, object: _T) -> None: pass
     def reverse(self) -> None: pass
-    def sort(self, *, key: Function[[T], Any] = None, reverse: bool = False) -> None: pass
+    def sort(self, *, key: Function[[_T], Any] = None, reverse: bool = False) -> None: pass
 
     def __len__(self) -> int: pass
-    def __iter__(self) -> Iterator[T]: pass
+    def __iter__(self) -> Iterator[_T]: pass
     def __str__(self) -> str: pass
     def __hash__(self) -> int: pass
     @overload
-    def __getitem__(self, i: int) -> T: pass
+    def __getitem__(self, i: int) -> _T: pass
     @overload
-    def __getitem__(self, s: slice) -> List[T]: pass
+    def __getitem__(self, s: slice) -> List[_T]: pass
     @overload
-    def __setitem__(self, i: int, o: T) -> None: pass
+    def __setitem__(self, i: int, o: _T) -> None: pass
     @overload
-    def __setitem__(self, s: slice, o: Sequence[T]) -> None: pass
+    def __setitem__(self, s: slice, o: Sequence[_T]) -> None: pass
     @overload
     def __delitem__(self, i: int) -> None: pass
     @overload
     def __delitem__(self, s: slice) -> None: pass
-    def __add__(self, x: List[T]) -> List[T]: pass
-    def __iadd__(self, x: Iterable[T]) -> List[T]: pass
-    def __mul__(self, n: int) -> List[T]: pass
-    def __rmul__(self, n: int) -> List[T]: pass
-    def __imul__(self, n: int) -> List[T]: pass
+    def __add__(self, x: List[_T]) -> List[_T]: pass
+    def __iadd__(self, x: Iterable[_T]) -> List[_T]: pass
+    def __mul__(self, n: int) -> List[_T]: pass
+    def __rmul__(self, n: int) -> List[_T]: pass
+    def __imul__(self, n: int) -> List[_T]: pass
     def __contains__(self, o: object) -> bool: pass
-    def __reversed__(self) -> Iterator[T]: pass
-    def __gt__(self, x: List[T]) -> bool: pass
-    def __ge__(self, x: List[T]) -> bool: pass
-    def __lt__(self, x: List[T]) -> bool: pass
-    def __le__(self, x: List[T]) -> bool: pass
+    def __reversed__(self) -> Iterator[_T]: pass
+    def __gt__(self, x: List[_T]) -> bool: pass
+    def __ge__(self, x: List[_T]) -> bool: pass
+    def __lt__(self, x: List[_T]) -> bool: pass
+    def __le__(self, x: List[_T]) -> bool: pass
 
 @builtinclass
 class dict(Mapping[KT, VT], Generic[KT, VT]):
@@ -478,10 +478,10 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def items(self) -> Set[Tuple[KT, VT]]: pass
     @staticmethod
     @overload
-    def fromkeys(seq: Sequence[T]) -> Dict[T, Any]: pass  # TODO: Actually a class method
+    def fromkeys(seq: Sequence[_T]) -> Dict[_T, Any]: pass  # TODO: Actually a class method
     @staticmethod
     @overload
-    def fromkeys(seq: Sequence[T], value: S) -> Dict[T, S]: pass
+    def fromkeys(seq: Sequence[_T], value: S) -> Dict[_T, S]: pass
     def __len__(self) -> int: pass
     def __getitem__(self, k: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
@@ -491,37 +491,37 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def __str__(self) -> str: pass
 
 @builtinclass
-class set(AbstractSet[T], Generic[T]):
-    def __init__(self, iterable: Iterable[T]=None) -> None: pass
-    def add(self, element: T) -> None: pass
+class set(AbstractSet[_T], Generic[_T]):
+    def __init__(self, iterable: Iterable[_T]=None) -> None: pass
+    def add(self, element: _T) -> None: pass
     def clear(self) -> None: pass
-    def copy(self) -> set[T]: pass
-    def difference(self, s: Iterable[Any]) -> set[T]: pass
+    def copy(self) -> set[_T]: pass
+    def difference(self, s: Iterable[Any]) -> set[_T]: pass
     def difference_update(self, s: Iterable[Any]) -> None: pass
-    def discard(self, element: T) -> None: pass
-    def intersection(self, s: Iterable[Any]) -> set[T]: pass
+    def discard(self, element: _T) -> None: pass
+    def intersection(self, s: Iterable[Any]) -> set[_T]: pass
     def intersection_update(self, s: Iterable[Any]) -> None: pass
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
     def issubset(self, s: AbstractSet[Any]) -> bool: pass
     def issuperset(self, s: AbstractSet[Any]) -> bool: pass
-    def pop(self) -> T: pass
-    def remove(self, element: T) -> None: pass
-    def symmetric_difference(self, s: Iterable[T]) -> set[T]: pass
-    def symmetric_difference_update(self, s: Iterable[T]) -> None: pass
-    def union(self, s: Iterable[T]) -> set[T]: pass
-    def update(self, s: Iterable[T]) -> None: pass
+    def pop(self) -> _T: pass
+    def remove(self, element: _T) -> None: pass
+    def symmetric_difference(self, s: Iterable[_T]) -> set[_T]: pass
+    def symmetric_difference_update(self, s: Iterable[_T]) -> None: pass
+    def union(self, s: Iterable[_T]) -> set[_T]: pass
+    def update(self, s: Iterable[_T]) -> None: pass
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[T]: pass
+    def __iter__(self) -> Iterator[_T]: pass
     def __str__(self) -> str: pass
-    def __and__(self, s: AbstractSet[Any]) -> set[T]: pass
-    def __iand__(self, s: AbstractSet[Any]) -> set[T]: pass
-    def __or__(self, s: AbstractSet[T]) -> set[T]: pass
-    def __ior__(self, s: AbstractSet[T]) -> set[T]: pass
-    def __sub__(self, s: AbstractSet[Any]) -> set[T]: pass
-    def __isub__(self, s: AbstractSet[Any]) -> set[T]: pass
-    def __xor__(self, s: AbstractSet[T]) -> set[T]: pass
-    def __ixor__(self, s: AbstractSet[T]) -> set[T]: pass
+    def __and__(self, s: AbstractSet[Any]) -> set[_T]: pass
+    def __iand__(self, s: AbstractSet[Any]) -> set[_T]: pass
+    def __or__(self, s: AbstractSet[_T]) -> set[_T]: pass
+    def __ior__(self, s: AbstractSet[_T]) -> set[_T]: pass
+    def __sub__(self, s: AbstractSet[Any]) -> set[_T]: pass
+    def __isub__(self, s: AbstractSet[Any]) -> set[_T]: pass
+    def __xor__(self, s: AbstractSet[_T]) -> set[_T]: pass
+    def __ixor__(self, s: AbstractSet[_T]) -> set[_T]: pass
     def __le__(self, s: AbstractSet[Any]) -> bool: pass
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
@@ -529,34 +529,34 @@ class set(AbstractSet[T], Generic[T]):
     # TODO more set operations
 
 @builtinclass
-class frozenset(AbstractSet[T], Generic[T]):
-    def __init__(self, iterable: Iterable[T]=None) -> None: pass
-    def copy(self) -> frozenset[T]: pass
-    def difference(self, s: AbstractSet[Any]) -> frozenset[T]: pass
-    def intersection(self, s: AbstractSet[Any]) -> frozenset[T]: pass
-    def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
+class frozenset(AbstractSet[_T], Generic[_T]):
+    def __init__(self, iterable: Iterable[_T]=None) -> None: pass
+    def copy(self) -> frozenset[_T]: pass
+    def difference(self, s: AbstractSet[Any]) -> frozenset[_T]: pass
+    def intersection(self, s: AbstractSet[Any]) -> frozenset[_T]: pass
+    def isdisjoint(self, s: AbstractSet[_T]) -> bool: pass
     def issubset(self, s: AbstractSet[Any]) -> bool: pass
     def issuperset(self, s: AbstractSet[Any]) -> bool: pass
-    def symmetric_difference(self, s: AbstractSet[T]) -> frozenset[T]: pass
-    def union(self, s: AbstractSet[T]) -> frozenset[T]: pass
+    def symmetric_difference(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def union(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[T]: pass
+    def __iter__(self) -> Iterator[_T]: pass
     def __str__(self) -> str: pass
-    def __and__(self, s: AbstractSet[T]) -> frozenset[T]: pass
-    def __or__(self, s: AbstractSet[T]) -> frozenset[T]: pass
-    def __sub__(self, s: AbstractSet[T]) -> frozenset[T]: pass
-    def __xor__(self, s: AbstractSet[T]) -> frozenset[T]: pass
+    def __and__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __or__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __sub__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __xor__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
     def __le__(self, s: AbstractSet[Any]) -> bool: pass
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
     def __gt__(self, s: AbstractSet[Any]) -> bool: pass
 
 @builtinclass
-class enumerate(Iterator[Tuple[int, T]], Generic[T]):
-    def __init__(self, iterable: Iterable[T], start: int = 0) -> None: pass
-    def __iter__(self) -> Iterator[Tuple[int, T]]: pass
-    def __next__(self) -> Tuple[int, T]: pass
+class enumerate(Iterator[Tuple[int, _T]], Generic[_T]):
+    def __init__(self, iterable: Iterable[_T], start: int = 0) -> None: pass
+    def __iter__(self) -> Iterator[Tuple[int, _T]]: pass
+    def __next__(self) -> Tuple[int, _T]: pass
     # TODO __getattribute__
 
 @builtinclass
@@ -590,7 +590,7 @@ __debug__ = False
 
 NotImplemented = Undefined # type: Any
 
-def abs(n: SupportsAbs[T]) -> T: pass
+def abs(n: SupportsAbs[_T]) -> _T: pass
 def all(i: Iterable) -> bool: pass
 def any(i: Iterable) -> bool: pass
 def ascii(o: object) -> str: pass
@@ -602,7 +602,7 @@ _N = typevar('_N', values=(int, float))
 def divmod(a: _N, b: _N) -> Tuple[_N, _N]: pass
 def eval(source: str, globals: Dict[str, Any] = None,
          locals: Mapping[str, Any] = None) -> Any: pass  # TODO code object as source
-def filter(function: Function[[T], Any], iterable: Iterable[T]) -> Iterator[T]: pass
+def filter(function: Function[[_T], Any], iterable: Iterable[_T]) -> Iterator[_T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
 def getattr(o: Any, name: str, default: Any = None) -> Any: pass
 def globals() -> Dict[str, Any]: pass
@@ -612,9 +612,9 @@ def hex(i: int) -> str: pass  # TODO __index__
 def id(o: object) -> int: pass
 def input(prompt: str = None) -> str: pass
 @overload
-def iter(iterable: Iterable[T]) -> Iterator[T]: pass
+def iter(iterable: Iterable[_T]) -> Iterator[_T]: pass
 @overload
-def iter(function: Function[[], T], sentinel: T) -> Iterator[T]: pass
+def iter(function: Function[[], _T], sentinel: _T) -> Iterator[_T]: pass
 def isinstance(o: object, t: Union[type, tuple]) -> bool: pass
 def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO support this
@@ -630,18 +630,18 @@ def map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]: pass
 def map(func: Function[[T1, T2], S], iter1: Iterable[T1],
         iter2: Iterable[T2]) -> Iterator[S]: pass  # TODO more than two iterables
 @overload
-def max(iterable: Iterable[T]) -> T: pass  # TODO keyword argument key
+def max(iterable: Iterable[_T]) -> _T: pass  # TODO keyword argument key
 @overload
-def max(arg1: T, arg2: T, *args: T) -> T: pass
+def max(arg1: _T, arg2: _T, *args: _T) -> _T: pass
 # TODO memoryview
 @overload
-def min(iterable: Iterable[T]) -> T: pass
+def min(iterable: Iterable[_T]) -> _T: pass
 @overload
-def min(arg1: T, arg2: T, *args: T) -> T: pass
+def min(arg1: _T, arg2: _T, *args: _T) -> _T: pass
 @overload
-def next(i: Iterator[T]) -> T: pass
+def next(i: Iterator[_T]) -> _T: pass
 @overload
-def next(i: Iterator[T], default: T) -> T: pass
+def next(i: Iterator[_T], default: _T) -> _T: pass
 def oct(i: int) -> str: pass  # TODO __index__
 def open(file: Union[str, bytes, int], mode: str = 'r', buffering: int = -1, encoding: str = None,
          errors: str = None, newline: str = None, closefd: bool = True) -> IO[Any]: pass
@@ -656,22 +656,22 @@ def pow(x: float, y: float) -> float: pass
 @overload
 def pow(x: float, y: float, z: float) -> float: pass
 @overload
-def reversed(object: Reversible[T]) -> Iterator[T]: pass
+def reversed(object: Reversible[_T]) -> Iterator[_T]: pass
 @overload
-def reversed(object: Sequence[T]) -> Iterator[T]: pass
+def reversed(object: Sequence[_T]) -> Iterator[_T]: pass
 def repr(o: object) -> str: pass
 @overload
 def round(number: float) -> int: pass
 @overload
 def round(number: float, ndigits: int) -> float: pass  # Always return a float if given ndigits.
 @overload
-def round(number: SupportsRound[T]) -> T: pass
+def round(number: SupportsRound[_T]) -> _T: pass
 @overload
-def round(number: SupportsRound[T], ndigits: int) -> T: pass
+def round(number: SupportsRound[_T], ndigits: int) -> _T: pass
 def setattr(object: Any, name: str, value: Any) -> None: pass
-def sorted(iterable: Iterable[T], *, key: Function[[T], Any] = None,
-           reverse: bool = False) -> List[T]: pass
-def sum(iterable: Iterable[T], start: T = None) -> T: pass
+def sorted(iterable: Iterable[_T], *, key: Function[[_T], Any] = None,
+           reverse: bool = False) -> List[_T]: pass
+def sum(iterable: Iterable[_T], start: _T = None) -> _T: pass
 @overload
 def zip(iter1: Iterable[T1]) -> Iterator[Tuple[T1]]: pass
 @overload
