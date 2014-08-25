@@ -28,12 +28,12 @@ property = object()
 class object:
     __doc__ = ''
     __class__ = Undefined # type: type
-    
+
     def __init__(self) -> None: pass
-    
+
     def __eq__(self, o: object) -> bool: pass
     def __ne__(self, o: object) -> bool: pass
-    
+
     def __str__(self) -> str: pass
     def __repr__(self) -> str: pass
 
@@ -48,13 +48,13 @@ class type:
     __name__ = ''
     __module__ = ''
     __dict__ = Undefined # type: Dict[unicode, Any]
-    
+
     def __init__(self, o: object) -> None: pass
 
 
 @builtinclass
 @ducktype(float)
-class int(SupportsInt, SupportsFloat):
+class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     @overload
     def __init__(self) -> None: pass
     @overload
@@ -67,15 +67,15 @@ class int(SupportsInt, SupportsFloat):
     def bit_length(self) -> int: pass
 
     # TODO all __r* methods
-    
+
     def __add__(self, x: int) -> int: pass
     def __sub__(self, x: int) -> int: pass
     def __mul__(self, x: int) -> int: pass
     def __floordiv__(self, x: int) -> int: pass
     def __div__(self, x: int) -> int: pass
-    def __truediv__(self, x: int) -> float: pass    
+    def __truediv__(self, x: int) -> float: pass
     def __mod__(self, x: int) -> int: pass
-    
+
     def __radd__(self, x: int) -> int: pass
     def __rsub__(self, x: int) -> int: pass
     def __rmul__(self, x: int) -> int: pass
@@ -116,12 +116,13 @@ class int(SupportsInt, SupportsFloat):
     def __str__(self) -> str: pass
     def __float__(self) -> float: pass
     def __int__(self) -> int: return self
-    
+
+    def __abs__(self) -> int: pass
     def __hash__(self) -> int: pass
 
-    
+
 @builtinclass
-class float(SupportsFloat, SupportsInt):
+class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     @overload
     def __init__(self) -> None: pass
     @overload
@@ -132,7 +133,7 @@ class float(SupportsFloat, SupportsInt):
     def __init__(self, x: bytearray) -> None: pass
 
     # Operators
-    
+
     def __add__(self, x: float) -> float: pass
     def __sub__(self, x: float) -> float: pass
     def __mul__(self, x: float) -> float: pass
@@ -141,7 +142,7 @@ class float(SupportsFloat, SupportsInt):
     def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: float) -> float: pass
     def __pow__(self, x: float) -> float: pass
-    
+
     def __radd__(self, x: float) -> float: pass
     def __rsub__(self, x: float) -> float: pass
     def __rmul__(self, x: float) -> float: pass
@@ -150,7 +151,7 @@ class float(SupportsFloat, SupportsInt):
     def __rtruediv__(self, x: float) -> float: pass
     def __rmod__(self, x: float) -> float: pass
     def __rpow__(self, x: float) -> float: pass
-    
+
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: float) -> bool: pass
@@ -163,6 +164,7 @@ class float(SupportsFloat, SupportsInt):
     def __str__(self) -> str: pass
     def __int__(self) -> int: pass
     def __float__(self) -> float: return self
+    def __abs__(self) -> float: pass
     def __hash__(self) -> int: pass
 
 
@@ -175,7 +177,7 @@ class complex:
 @builtinclass
 class unicode(Sequence[unicode]):
     # TODO maketrans
-    
+
     @overload
     def __init__(self) -> None: pass
     @overload
@@ -195,20 +197,20 @@ class unicode(Sequence[unicode]):
     def endswith(self, suffix: unicode, start: int = 0,
                  end: int = None) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> unicode: pass
-    
+
     @overload
     def find(self, sub: unicode, start: int = 0) -> int: pass
     @overload
     def find(self, sub: unicode, start: int, end: int) -> int: pass
-    
+
     def format(self, *args: Any, **kwargs: Any) -> unicode: pass
     def format_map(self, map: Mapping[unicode, Any]) -> unicode: pass
-    
+
     @overload
     def index(self, sub: unicode, start: int = 0) -> int: pass
     @overload
     def index(self, sub: unicode, start: int, end: int) -> int: pass
-    
+
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdecimal(self) -> bool: pass
@@ -226,7 +228,7 @@ class unicode(Sequence[unicode]):
     def lstrip(self, chars: unicode = None) -> unicode: pass
     def partition(self, sep: unicode) -> Tuple[unicode, unicode, unicode]: pass
     def replace(self, old: unicode, new: unicode, count: int = -1) -> unicode: pass
-    
+
     @overload
     def rfind(self, sub: unicode, start: int = 0) -> int: pass
     @overload
@@ -235,7 +237,7 @@ class unicode(Sequence[unicode]):
     def rindex(self, sub: unicode, start: int = 0) -> int: pass
     @overload
     def rindex(self, sub: unicode, start: int, end: int) -> int: pass
-    
+
     def rjust(self, width: int, fillchar: unicode = u' ') -> unicode: pass
     def rpartition(self, sep: unicode) -> Tuple[unicode, unicode, unicode]: pass
     def rsplit(self, sep: unicode = None, maxsplit: int = -1) -> List[unicode]: pass
@@ -250,7 +252,7 @@ class unicode(Sequence[unicode]):
     def translate(self, table: Dict[int, Any]) -> unicode: pass
     def upper(self) -> unicode: pass
     def zfill(self, width: int) -> unicode: pass
-    
+
     @overload
     def __getitem__(self, i: int) -> unicode: pass
     @overload
@@ -267,7 +269,7 @@ class unicode(Sequence[unicode]):
     def __le__(self, x: unicode) -> bool: pass
     def __gt__(self, x: unicode) -> bool: pass
     def __ge__(self, x: unicode) -> bool: pass
-    
+
     def __len__(self) -> int: pass
     def __contains__(self, s: object) -> bool: pass
     def __iter__(self) -> Iterator[unicode]: pass
@@ -276,18 +278,18 @@ class unicode(Sequence[unicode]):
     def __int__(self) -> int: pass
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
-    
+
 
 @builtinclass
 @ducktype(unicode)
 class str(Sequence[str]):
     # TODO fromhex
     # TODO maketrans
-    
+
     def __init__(self, object: object) -> None: pass
 
     def capitalize(self) -> str: pass
-    
+
     @overload
     def center(self, width: int, fillchar: str = None) -> str: pass
     @overload
@@ -403,7 +405,7 @@ class str(Sequence[str]):
     def translate(self, table: bytearray) -> str: pass
     def upper(self) -> str: pass
     def zfill(self, width: int) -> str: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[str]: pass
     def __str__(self) -> str: pass
@@ -411,22 +413,22 @@ class str(Sequence[str]):
     def __int__(self) -> int: pass
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
-    
+
     @overload
     def __getitem__(self, i: int) -> str: pass
     @overload
     def __getitem__(self, s: slice) -> str: pass
 
     def __getslice__(self, start: int, stop: int) -> str: pass
-    
+
     @overload
     def __add__(self, s: str) -> str: pass    # TODO unicode
     @overload
     def __add__(self, s: bytearray) -> str: pass
-    
+
     def __mul__(self, n: int) -> str: pass
     def __rmul__(self, n: int) -> str: pass
-    def __contains__(self, o: object) -> bool: pass    
+    def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: unicode) -> bool: pass
@@ -439,7 +441,7 @@ class str(Sequence[str]):
 class bytearray(Sequence[int]):
     # TODO fromhex
     # TODO maketrans
-    
+
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
     @overload
@@ -564,7 +566,7 @@ class bytearray(Sequence[int]):
     def translate(self, table: bytearray) -> bytearray: pass
     def upper(self) -> bytearray: pass
     def zfill(self, width: int) -> bytearray: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[int]: pass
     def __str__(self) -> str: pass
@@ -572,35 +574,35 @@ class bytearray(Sequence[int]):
     def __int__(self) -> int: pass
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
-    
+
     @overload
     def __getitem__(self, i: int) -> int: pass
     @overload
     def __getitem__(self, s: slice) -> bytearray: pass
 
     def __getslice__(self, start: int, stop: int) -> bytearray: pass
-    
+
     @overload
     def __setitem__(self, i: int, x: int) -> None: pass
     @overload
     def __setitem__(self, s: slice, x: Sequence[int]) -> None: pass
 
     def __setslice__(self, start: int, stop: int, x: Sequence[int]) -> None: pass
-    
+
     @overload
     def __delitem__(self, i: int) -> None: pass
     @overload
     def __delitem__(self, s: slice) -> None: pass
-    
+
     def __delslice__(self, start: int, stop: int) -> None: pass
-    
+
     @overload
-    def __add__(self, s: str) -> bytearray: pass    
+    def __add__(self, s: str) -> bytearray: pass
     @overload
     def __add__(self, s: bytearray) -> bytearray: pass
-    
+
     def __mul__(self, n: int) -> bytearray: pass
-    def __contains__(self, o: object) -> bool: pass    
+    def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     @overload
@@ -640,7 +642,7 @@ class tuple(Sequence[Any]):
     def __init__(self) -> None: pass
     @overload
     def __init__(self, iterable: Iterable[Any]) -> None: pass
-    
+
     def __len__(self) -> int: pass
     def __contains__(self, x: object) -> bool: pass
 
@@ -648,7 +650,7 @@ class tuple(Sequence[Any]):
     def __getitem__(self, x: int) -> Any: pass
     @overload
     def __getitem__(self, x: slice) -> tuple: pass
-    
+
     def __iter__(self) -> Iterator[Any]: pass
     def __lt__(self, x: tuple) -> bool: pass
     def __le__(self, x: tuple) -> bool: pass
@@ -682,33 +684,33 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def reverse(self) -> None: pass
     def sort(self, *, key: Function[[T], Any] = None,
              reverse: bool = False) -> None: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[T]: pass
     def __str__(self) -> str: pass
     def __hash__(self) -> int: pass
-    
+
     @overload
     def __getitem__(self, i: int) -> T: pass
     @overload
     def __getitem__(self, s: slice) -> List[T]: pass
-    
+
     def __getslice__(self, start: int, stop: int) -> List[T]: pass
-    
+
     @overload
     def __setitem__(self, i: int, o: T) -> None: pass
     @overload
     def __setitem__(self, s: slice, o: Sequence[T]) -> None: pass
-    
+
     def __setslice__(self, start: int, stop: int, o: Sequence[T]) -> None: pass
-    
+
     @overload
     def __delitem__(self, i: int) -> None: pass
     @overload
     def __delitem__(self, s: slice) -> None: pass
 
     def __delslice(self, start: int, stop: int) -> None: pass
-    
+
     def __add__(self, x: List[T]) -> List[T]: pass
     def __mul__(self, n: int) -> List[T]: pass
     def __rmul__(self, n: int) -> List[T]: pass
@@ -730,7 +732,7 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     @overload
     def __init__(self, iterable: Iterable[Tuple[KT, VT]]) -> None: pass
     # TODO __init__ keyword args
-    
+
     def __len__(self) -> int: pass
     def __getitem__(self, k: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
@@ -740,10 +742,10 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def __str__(self) -> str: pass
 
     def has_key(self, k: KT) -> bool: pass
-    
+
     def clear(self) -> None: pass
     def copy(self) -> Dict[KT, VT]: pass
-    
+
     @overload
     def get(self, k: KT) -> VT: pass
     @overload
@@ -757,7 +759,7 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     def setdefault(self, k: KT) -> VT: pass
     @overload
     def setdefault(self, k: KT, default: VT) -> VT: pass
-    
+
     @overload
     def update(self, m: Mapping[KT, VT]) -> None: pass
     @overload
@@ -777,15 +779,15 @@ class set(AbstractSet[T], Generic[T]):
     def __init__(self) -> None: pass
     @overload
     def __init__(self, iterable: Iterable[T]) -> None: pass
-    
+
     def add(self, element: T) -> None: pass
     def remove(self, element: T) -> None: pass
     def copy(self) -> AbstractSet[T]: pass
     def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
-    
+
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[T]: pass    
+    def __iter__(self) -> Iterator[T]: pass
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
     def __or__(self, s: AbstractSet[T]) -> AbstractSet[T]: pass
@@ -802,10 +804,10 @@ class frozenset(AbstractSet[T], Generic[T]):
     def __init__(self, iterable: Iterable[T]) -> None: pass
 
     def isdisjoint(self, s: AbstractSet[T]) -> bool: pass
-    
+
     def __len__(self) -> int: pass
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[T]: pass    
+    def __iter__(self) -> Iterator[T]: pass
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[T]) -> frozenset[T]: pass
     def __or__(self, s: AbstractSet[T]) -> frozenset[T]: pass
@@ -828,7 +830,7 @@ class xrange(Sized, Iterable[int], Reversible[int]):
     def __init__(self, stop: int) -> None: pass
     @overload
     def __init__(self, start: int, stop: int, step: int = 1) -> None: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[int]: pass
     def __getitem__(self, i: int) -> int: pass
@@ -855,13 +857,7 @@ class _NotImplementedType: pass # TODO name of the class
 NotImplemented = Undefined # type: _NotImplementedType
 
 
-@overload
-def abs(n: int) -> int: pass
-@overload
-def abs(n: float) -> float: pass
-@overload
 def abs(n: SupportsAbs[T]) -> T: pass
-
 def all(i: Iterable) -> bool: pass
 def any(i: Iterable) -> bool: pass
 def callable(o: object) -> bool: pass

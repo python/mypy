@@ -152,6 +152,18 @@ abs(1.1) + 'x'  # Error
 _program.py, line 5: Unsupported operand types for + ("int" and "str")
 _program.py, line 7: Unsupported operand types for + ("float" and "str")
 
+[case testAbs2_python2]
+from typing import Undefined
+n = Undefined(int)
+f = Undefined(float)
+n = abs(1)
+abs(1) + 'x'  # Error
+f = abs(1.1)
+abs(1.1) + 'x'  # Error
+[out]
+_program.py, line 5: Unsupported operand types for + ("int" and "str")
+_program.py, line 7: Unsupported operand types for + ("float" and "str")
+
 [case testRound]
 from typing import SupportsRound
 class A(SupportsRound):

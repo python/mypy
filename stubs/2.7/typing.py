@@ -56,8 +56,6 @@ class SupportsFloat(metaclass=ABCMeta):
     @abstractmethod
     def __float__(self) -> float: pass
 
-@disjointclass(int)
-@disjointclass(float)
 class SupportsAbs(AbstractGeneric[T]):
     @abstractmethod
     def __abs__(self) -> T: pass
