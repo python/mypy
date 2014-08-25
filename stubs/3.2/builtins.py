@@ -12,8 +12,8 @@ from abc import abstractmethod, ABCMeta
 # implicit builtins import.
 
 _T = typevar('_T')
-KT = typevar('KT')
-VT = typevar('VT')
+_KT = typevar('_KT')
+_VT = typevar('_VT')
 _S = typevar('_S')
 T1 = typevar('T1')
 T2 = typevar('T2')
@@ -456,26 +456,26 @@ class list(Sequence[_T], Reversible[_T], AbstractGeneric[_T]):
     def __le__(self, x: List[_T]) -> bool: pass
 
 @builtinclass
-class dict(Mapping[KT, VT], Generic[KT, VT]):
+class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self) -> None: pass
     @overload
-    def __init__(self, map: Mapping[KT, VT]) -> None: pass
+    def __init__(self, map: Mapping[_KT, _VT]) -> None: pass
     @overload
-    def __init__(self, iterable: Iterable[Tuple[KT, VT]]) -> None: pass  # TODO keyword args
+    def __init__(self, iterable: Iterable[Tuple[_KT, _VT]]) -> None: pass  # TODO keyword args
     def clear(self) -> None: pass
-    def copy(self) -> Dict[KT, VT]: pass
-    def get(self, k: KT, default: VT=None) -> VT: pass
-    def pop(self, k: KT, default: VT=None) -> VT: pass
-    def popitem(self) -> Tuple[KT, VT]: pass
-    def setdefault(self, k: KT, default: VT=None) -> VT: pass
+    def copy(self) -> Dict[_KT, _VT]: pass
+    def get(self, k: _KT, default: _VT=None) -> _VT: pass
+    def pop(self, k: _KT, default: _VT=None) -> _VT: pass
+    def popitem(self) -> Tuple[_KT, _VT]: pass
+    def setdefault(self, k: _KT, default: _VT=None) -> _VT: pass
     @overload
-    def update(self, m: Mapping[KT, VT]) -> None: pass
+    def update(self, m: Mapping[_KT, _VT]) -> None: pass
     @overload
-    def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-    def keys(self) -> Set[KT]: pass
-    def values(self) -> Set[VT]: pass
-    def items(self) -> Set[Tuple[KT, VT]]: pass
+    def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
+    def keys(self) -> Set[_KT]: pass
+    def values(self) -> Set[_VT]: pass
+    def items(self) -> Set[Tuple[_KT, _VT]]: pass
     @staticmethod
     @overload
     def fromkeys(seq: Sequence[_T]) -> Dict[_T, Any]: pass  # TODO: Actually a class method
@@ -483,11 +483,11 @@ class dict(Mapping[KT, VT], Generic[KT, VT]):
     @overload
     def fromkeys(seq: Sequence[_T], value: _S) -> Dict[_T, _S]: pass
     def __len__(self) -> int: pass
-    def __getitem__(self, k: KT) -> VT: pass
-    def __setitem__(self, k: KT, v: VT) -> None: pass
-    def __delitem__(self, v: KT) -> None: pass
+    def __getitem__(self, k: _KT) -> _VT: pass
+    def __setitem__(self, k: _KT, v: _VT) -> None: pass
+    def __delitem__(self, v: _KT) -> None: pass
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[KT]: pass
+    def __iter__(self) -> Iterator[_KT]: pass
     def __str__(self) -> str: pass
 
 @builtinclass
