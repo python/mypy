@@ -9,8 +9,8 @@ from typing import (
 from abc import abstractmethod, ABCMeta
 
 T = typevar('T')
-KT = typevar('KT')
-VT = typevar('VT')
+_KT = typevar('_KT')
+_VT = typevar('_VT')
 S = typevar('S')
 _T1 = typevar('_T1')
 _T2 = typevar('_T2')
@@ -635,45 +635,45 @@ class list(Sequence[T], Reversible[T], AbstractGeneric[T]):
     def __le__(self, x: List[T]) -> bool: pass
 
 @builtinclass
-class dict(Mapping[KT, VT], Generic[KT, VT]):
+class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self) -> None: pass
     @overload
-    def __init__(self, map: Mapping[KT, VT]) -> None: pass
+    def __init__(self, map: Mapping[_KT, _VT]) -> None: pass
     @overload
-    def __init__(self, iterable: Iterable[Tuple[KT, VT]]) -> None: pass  # TODO keyword args
-    def has_key(self, k: KT) -> bool: pass
+    def __init__(self, iterable: Iterable[Tuple[_KT, _VT]]) -> None: pass  # TODO keyword args
+    def has_key(self, k: _KT) -> bool: pass
     def clear(self) -> None: pass
-    def copy(self) -> Dict[KT, VT]: pass
+    def copy(self) -> Dict[_KT, _VT]: pass
     @overload
-    def get(self, k: KT) -> VT: pass
+    def get(self, k: _KT) -> _VT: pass
     @overload
-    def get(self, k: KT, default: VT) -> VT: pass
+    def get(self, k: _KT, default: _VT) -> _VT: pass
     @overload
-    def pop(self, k: KT) -> VT: pass
+    def pop(self, k: _KT) -> _VT: pass
     @overload
-    def pop(self, k: KT, default: VT) -> VT: pass
-    def popitem(self) -> Tuple[KT, VT]: pass
+    def pop(self, k: _KT, default: _VT) -> _VT: pass
+    def popitem(self) -> Tuple[_KT, _VT]: pass
     @overload
-    def setdefault(self, k: KT) -> VT: pass
+    def setdefault(self, k: _KT) -> _VT: pass
     @overload
-    def setdefault(self, k: KT, default: VT) -> VT: pass
+    def setdefault(self, k: _KT, default: _VT) -> _VT: pass
     @overload
-    def update(self, m: Mapping[KT, VT]) -> None: pass
+    def update(self, m: Mapping[_KT, _VT]) -> None: pass
     @overload
-    def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-    def keys(self) -> List[KT]: pass
-    def values(self) -> List[VT]: pass
-    def items(self) -> List[Tuple[KT, VT]]: pass
-    def iterkeys(self) -> Iterator[KT]: pass
-    def itervalues(self) -> Iterator[VT]: pass
-    def iteritems(self) -> Iterator[Tuple[KT, VT]]: pass
+    def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
+    def keys(self) -> List[_KT]: pass
+    def values(self) -> List[_VT]: pass
+    def items(self) -> List[Tuple[_KT, _VT]]: pass
+    def iterkeys(self) -> Iterator[_KT]: pass
+    def itervalues(self) -> Iterator[_VT]: pass
+    def iteritems(self) -> Iterator[Tuple[_KT, _VT]]: pass
     def __len__(self) -> int: pass
-    def __getitem__(self, k: KT) -> VT: pass
-    def __setitem__(self, k: KT, v: VT) -> None: pass
-    def __delitem__(self, v: KT) -> None: pass
+    def __getitem__(self, k: _KT) -> _VT: pass
+    def __setitem__(self, k: _KT, v: _VT) -> None: pass
+    def __delitem__(self, v: _KT) -> None: pass
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[KT]: pass
+    def __iter__(self) -> Iterator[_KT]: pass
     def __str__(self) -> str: pass
 
 @builtinclass
