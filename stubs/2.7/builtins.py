@@ -11,7 +11,7 @@ from abc import abstractmethod, ABCMeta
 _T = typevar('_T')
 _KT = typevar('_KT')
 _VT = typevar('_VT')
-S = typevar('S')
+_S = typevar('_S')
 _T1 = typevar('_T1')
 _T2 = typevar('_T2')
 _T3 = typevar('_T3')
@@ -779,11 +779,11 @@ def issubclass(cls: type, classinfo: type) -> bool: pass
 #def issubclass(type cld, classinfo: Sequence[type]) -> bool: pass
 def len(o: Sized) -> int: pass
 @overload
-def map(func: Function[[_T1], S], iter1: Iterable[_T1]) -> List[S]: pass
+def map(func: Function[[_T1], _S], iter1: Iterable[_T1]) -> List[_S]: pass
 @overload
-def map(func: Function[[_T1, _T2], S],
+def map(func: Function[[_T1, _T2], _S],
         iter1: Iterable[_T1],
-        iter2: Iterable[_T2]) -> List[S]: pass  # TODO more than two iterables
+        iter2: Iterable[_T2]) -> List[_S]: pass  # TODO more than two iterables
 @overload
 def max(iterable: Iterable[_T]) -> _T: pass  # TODO keyword argument key
 @overload
