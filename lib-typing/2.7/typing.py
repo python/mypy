@@ -44,7 +44,7 @@ __all__ = [
 
 class GenericMeta(type):
     """Metaclass for generic classes that support indexing by types."""
-    
+
     def __getitem__(self, args):
         # Just ignore args; they are for compile-time checks only.
         return self
@@ -60,14 +60,14 @@ class AbstractGenericMeta(ABCMeta):
 
     This is used for both protocols and ordinary abstract classes.
     """
-    
+
     def __new__(mcls, name, bases, namespace):
         cls = ABCMeta.__new__(mcls, name, bases, namespace)
         # 'Protocol' must be an explicit base class in order for a class to
         # be a protocol.
         cls._is_protocol = name == u'Protocol' or Protocol in bases
         return cls
-    
+
     def __getitem__(self, args):
         # Just ignore args; they are for compile-time checks only.
         return self
@@ -82,7 +82,7 @@ class Protocol(object):
         if not cls._is_protocol:
             # No structural checks since this isn't a protocol.
             return NotImplemented
-        
+
         if cls is Protocol:
             # Every class is a subclass of the empty protocol.
             return True
@@ -102,7 +102,7 @@ class Protocol(object):
         for c in cls.__mro__:
             if getattr(c, '_is_protocol', False) and c.__name__ != 'Protocol':
                 protocol_bases.append(c)
-        
+
         # Get attributes included in protocol.
         attrs = set()
         for base in protocol_bases:
@@ -120,7 +120,7 @@ class Protocol(object):
                         attr != '_get_protocol_attrs' and
                         attr != '__module__'):
                         attrs.add(attr)
-        
+
         return attrs
 
 
@@ -131,10 +131,10 @@ class AbstractGeneric(object):
 
 class TypeAlias(object):
     """Class for defining generic aliases for library types."""
-    
+
     def __init__(self, target_type):
         self.target_type = target_type
-    
+
     def __getitem__(self, typeargs):
         return self.target_type
 
@@ -148,9 +148,11 @@ Function = TypeAlias(callable)
 Pattern = TypeAlias(type(re.compile('')))
 Match = TypeAlias(type(re.match('', '')))
 
+
 def union(x): return x
 
 Union = TypeAlias(union)
+
 
 class typevar(object):
     def __init__(self, name, values=None):
@@ -191,7 +193,7 @@ def overload(func):
     # overloading in the implementation.
     if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
         orig_func = locals[func.__name__]
-        
+
         def wrapper(*args, **kwargs):
             ret, ok = orig_func.dispatch(*args, **kwargs)
             if ok:
@@ -225,10 +227,10 @@ def make_dispatcher(func, previous=None):
     Also handle chaining of multiple overload variants.
     """
     (args, varargs, varkw, defaults) = inspect.getargspec(func)
-    
+
     argtypes = []
     for arg in args:
-        ann = None # annotations.get(arg)
+        ann = None  # annotations.get(arg)
         if isinstance(ann, forwardref):
             ann = ann.name
         if is_erased_type(ann):
@@ -239,6 +241,7 @@ def make_dispatcher(func, previous=None):
             frame = sys._getframe(2)
             t = [None]
             ann_str = ann
+
             def check(x):
                 if not t[0]:
                     # Evaluate string in the context of the overload caller.
@@ -257,7 +260,7 @@ def make_dispatcher(func, previous=None):
     minargs = maxargs
     if defaults:
         minargs = len(argtypes) - len(defaults)
-    
+
     def dispatch(*args, **kwargs):
         if previous:
             ret, ok = previous(*args, **kwargs)
@@ -268,7 +271,7 @@ def make_dispatcher(func, previous=None):
         if nargs < minargs or nargs > maxargs:
             # Invalid argument count.
             return None, False
-        
+
         for i in xrange(nargs):
             argtype = argtypes[i]
             if argtype:
@@ -307,7 +310,7 @@ class Undefined(object):
     operations needed to evaluate a type expression.  Undefined(x)
     just evaluates to Undefined, ignoring the argument value.
     """
-    
+
     def __repr__(self):
         return '<typing.Undefined>'
 
@@ -384,16 +387,16 @@ class Iterator(Iterable[T], Protocol[T]):
 class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     @abstractmethod
     def __getitem__(self, i): pass
-    
+
     @abstractmethod
     def __getitem__(self, s): pass
-    
+
     @abstractmethod
     def __reversed__(self, s): pass
-    
+
     @abstractmethod
     def index(self, x): pass
-    
+
     @abstractmethod
     def count(self, x): pass
 
@@ -449,12 +452,12 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     def setdefault(self, k): pass
     @abstractmethod
     def setdefault(self, k, default): pass
-    
+
     @abstractmethod
     def update(self, m): pass
     @abstractmethod
     def update(self, m): pass
-    
+
     @abstractmethod
     def keys(self): pass
     @abstractmethod
