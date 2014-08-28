@@ -69,7 +69,7 @@ def disjointclass(type):
 
 class GenericMeta(type):
     """Metaclass for generic classes that support indexing by types."""
-    
+
     def __getitem__(self, args):
         # Just ignore args; they are for compile-time checks only.
         return self
@@ -84,14 +84,14 @@ class AbstractGenericMeta(ABCMeta):
 
     This is used for both protocols and ordinary abstract classes.
     """
-    
+
     def __new__(mcls, name, bases, namespace):
         cls = super().__new__(mcls, name, bases, namespace)
         # 'Protocol' must be an explicit base class in order for a class to
         # be a protocol.
         cls._is_protocol = name == 'Protocol' or Protocol in bases
         return cls
-    
+
     def __getitem__(self, args):
         # Just ignore args; they are for compile-time checks only.
         return self
@@ -105,7 +105,7 @@ class Protocol(metaclass=AbstractGenericMeta):
         if not cls._is_protocol:
             # No structural checks since this isn't a protocol.
             return NotImplemented
-        
+
         if cls is Protocol:
             # Every class is a subclass of the empty protocol.
             return True
@@ -125,7 +125,7 @@ class Protocol(metaclass=AbstractGenericMeta):
         for c in cls.__mro__:
             if getattr(c, '_is_protocol', False) and c.__name__ != 'Protocol':
                 protocol_bases.append(c)
-        
+
         # Get attributes included in protocol.
         attrs = set()
         for base in protocol_bases:
@@ -143,7 +143,7 @@ class Protocol(metaclass=AbstractGenericMeta):
                         attr != '_get_protocol_attrs' and
                         attr != '__module__'):
                         attrs.add(attr)
-        
+
         return attrs
 
 
@@ -153,15 +153,15 @@ class AbstractGeneric(metaclass=AbstractGenericMeta):
 
 class TypeAlias:
     """Class for defining generic aliases for library types."""
-    
+
     def __init__(self, target_type):
         self.target_type = target_type
-    
+
     def __getitem__(self, typeargs):
         return self.target_type
 
 
-Traceback = object() # TODO proper type object
+Traceback = object()  # TODO proper type object
 
 
 # Define aliases for built-in types that support indexing.
@@ -215,7 +215,7 @@ def overload(func):
     # overloading in the implementation.
     if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
         orig_func = locals[func.__name__]
-        
+
         def wrapper(*args, **kwargs):
             ret, ok = orig_func.dispatch(*args, **kwargs)
             if ok:
@@ -250,7 +250,7 @@ def make_dispatcher(func, previous=None):
     """
     (args, varargs, varkw, defaults,
      kwonlyargs, kwonlydefaults, annotations) = inspect.getfullargspec(func)
-    
+
     argtypes = []
     for arg in args:
         ann = annotations.get(arg)
@@ -282,7 +282,7 @@ def make_dispatcher(func, previous=None):
     minargs = maxargs
     if defaults:
         minargs = len(argtypes) - len(defaults)
-    
+
     def dispatch(*args, **kwargs):
         if previous:
             ret, ok = previous(*args, **kwargs)
@@ -293,7 +293,7 @@ def make_dispatcher(func, previous=None):
         if nargs < minargs or nargs > maxargs:
             # Invalid argument count.
             return None, False
-        
+
         for i in range(nargs):
             argtype = argtypes[i]
             if argtype:
@@ -332,7 +332,7 @@ class Undefined:
     operations needed to evaluate a type expression.  Undefined(x)
     just evaluates to Undefined, ignoring the argument value.
     """
-    
+
     def __repr__(self):
         return '<typing.Undefined>'
 
@@ -409,17 +409,17 @@ class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     @abstractmethod
     @overload
     def __getitem__(self, i: int) -> T: pass
-    
+
     @abstractmethod
     @overload
     def __getitem__(self, s: slice) -> 'Sequence[T]': pass
-    
+
     @abstractmethod
     def __reversed__(self, s: slice) -> Iterator[T]: pass
-    
+
     @abstractmethod
     def index(self, x) -> int: pass
-    
+
     @abstractmethod
     def count(self, x) -> int: pass
 
@@ -481,14 +481,14 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     @overload
     @abstractmethod
     def setdefault(self, k: KT, default: VT) -> VT: pass
-    
+
     @overload
     @abstractmethod
     def update(self, m: 'Mapping[KT, VT]') -> None: pass
     @overload
     @abstractmethod
     def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-    
+
     @abstractmethod
     def keys(self) -> AbstractSet[KT]: pass
     @abstractmethod
