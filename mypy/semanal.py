@@ -1351,6 +1351,8 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             table = cast(MypyFile, b.node).names
             if name in table:
+                if name[0] == "_" and name[1] != "_":
+                    self.name_not_defined(name, ctx)
                 node = table[name]
                 # Only succeed if we are not using a type alias such List -- these must be
                 # be accessed via the typing module.
