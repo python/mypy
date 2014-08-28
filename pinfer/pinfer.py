@@ -448,7 +448,7 @@ def infer_value_type(value, depth=0):
                 continue
             elif t is object:
                 return Any()
-            elif hasattr(types, 'InstanceType') and t is types.InstanceType:
+            elif hasattr(types, 'InstanceType') and isinstance(t, types.InstanceType):
                 return Any()
             else:
                 return Instance(t)
