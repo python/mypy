@@ -143,8 +143,8 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
         extra_indent = first.index('(') + 1
 
         decl = indent + first
-        decl += (',\n'+indent+' '*extra_indent).join(argstrs)
-        decl += ')\n%s -> %s' % (indent+' '*(extra_indent - 4), ret)
+        decl += (',\n' + indent + ' ' * extra_indent).join(argstrs)
+        decl += ')\n%s -> %s' % (indent + ' ' * (extra_indent - 4), ret)
         return decl
 
 
