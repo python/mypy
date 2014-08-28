@@ -19,19 +19,19 @@ MAX_INFERRED_TUPLE_LENGTH = 10
 PREFERRED_LINE_LENGTH = 79
 
 
-var_db = {} # (location, variable) -> type
-func_argid_db = {} # funcid -> argspec
-func_arg_db = {} # (funcid, name) -> type
-func_return_db = {} # funcname -> type
-func_source_db = {} # funcid -> source string
-#func_info_db = {} # funcid -> (class, name, argspec, file, line, source)
+var_db = {}  # (location, variable) -> type
+func_argid_db = {}  # funcid -> argspec
+func_arg_db = {}  # (funcid, name) -> type
+func_return_db = {}  # funcname -> type
+func_source_db = {}  # funcid -> source string
+#func_info_db = {}  # funcid -> (class, name, argspec, file, line, source)
 ignore_files = set()
 
 # The type inferencing wrapper should not be reentrant.  It's not, in theory, calling
-# out to any external code which we would want to infer the types of.  However, 
+# out to any external code which we would want to infer the types of.  However,
 # sometimes we do something like infer_type(arg.keys()) or infer_type(arg.values()) if
 # the arg is a collection, and we want to know about the types of its elements.  .keys(),
-# .values(), etc. can be overloaded, possibly to a method we've wrapped.  This can become 
+# .values(), etc. can be overloaded, possibly to a method we've wrapped.  This can become
 # infinitely recursive, particuarly because on something like arg.keys(), keys() gets passed
 # arg as the first parameter, so if we've wrapped keys() we'll try to infer_type(arg),
 # which will detect it's a dictionary, call infer_type(arg.keys()), recurse and so on.
@@ -147,6 +147,7 @@ def format_sig(funcid, fname, indent, pretty, defaults=[]):
         decl += ')\n%s -> %s' % (indent+' '*(extra_indent - 4), ret)
         return decl
 
+
 def annotate_file(path):
     # this should be documented somewhere...
     INDENT_TOKEN = 5
@@ -163,7 +164,7 @@ def annotate_file(path):
     funcids = set(funcid for funcid, arg in func_arg_db)
 
     # list of (oldstart, oldend, replacement)
-    replacements = [] # type: List[Tuple[Int, Int, String]]
+    replacements = []  # type: List[Tuple[Int, Int, String]]
 
     for funcid in funcids:
         class_name, name, sourcefile, def_start_line = funcid
@@ -208,7 +209,7 @@ def annotate_file(path):
         assert def_end_loc > 0
 
         def_end_line, def_end_col = tokens[def_end_loc][2]
-        def_end_line -= 1 # the tokenizer apparently 1-indexes lines
+        def_end_line -= 1  # the tokenizer apparently 1-indexes lines
         def_end_line += def_start_line
 
         def_start_offset = line_offsets[def_start_line]
@@ -223,7 +224,7 @@ def annotate_file(path):
 
     # absurdly inefficient algorithm: replace with O(n) writer
 
-    for (start, end, replacement) in sorted(replacements, key=lambda r:r[0], reverse=True):
+    for (start, end, replacement) in sorted(replacements, key=lambda r: r[0], reverse=True):
         source = source[0:start] + replacement + source[end:]
 
     return source
@@ -280,6 +281,7 @@ def infer_method_signature(class_name):
     def decorator(func):
         return infer_signature(func, class_name)
     return decorator
+
 
 def infer_signature(func, class_name=''):
     """Decorator that infers the signature of a function."""
@@ -406,6 +408,7 @@ def update_db(db, key, type):
     else:
         db[key] = combine_types(db[key], type)
 
+
 def merge_db(db, other):
     assert id(db) != id(other)
     for key in other.keys():
@@ -510,6 +513,7 @@ def combine_either(either, x):
         xtypes = [x]
     return simplify_either(either.types, xtypes)
 
+
 def simplify_either(x, y):
     numerics = [Instance(int), Instance(float), Instance(complex)]
 
@@ -568,7 +572,7 @@ class TypeBase(object):
     Type objects use isinstance tests librarally -- they don't support duck
     typing well.
     """
-    
+
     def __eq__(self, other):
         if type(other) is not type(self):
             return False
@@ -576,7 +580,7 @@ class TypeBase(object):
             if getattr(other, attr) != getattr(self, attr):
                 return False
         return True
-    
+
     def __ne__(self, other):
         return not self == other
 
@@ -643,7 +647,7 @@ class Union(TypeBase):
 
     def __str__(self):
         types = list(self.types)
-        if str != bytes: # on Python 2 str == bytes
+        if str != bytes:  # on Python 2 str == bytes
             if Instance(bytes) in types and Instance(str) in types:
                 # we Union[bytes, str] -> AnyStr as late as possible so we avoid
                 # corner cases like subclasses of bytes or str
