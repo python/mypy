@@ -51,7 +51,8 @@ def main():
     elif len(args) == 3:
         targetpackage, testfile, outfile = args
     else:
-        sys.stderr.write('Usage: %s targetmodule testfile [outfile] [ -- testargs]\n' % sys.argv[0])
+        sys.stderr.write('Usage: %s targetmodule testfile [outfile] [ -- testargs]\n' %
+                         sys.argv[0])
         sys.exit(2)
 
     # help us with local imports
