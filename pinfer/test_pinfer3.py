@@ -6,6 +6,7 @@ import pinfer
 # Include all of the shared unit tests
 from test_pinfer import TestInfer
 
+
 class TestInfer3(unittest.TestCase):
     def test_infer_keyword_only_args(self):
         # decorators break the parsing
@@ -14,7 +15,7 @@ class TestInfer3(unittest.TestCase):
         f(1, y='x')
         self.assert_infer_state(
             'def f(x: int, *, y: str = 0) -> None')
-        
+
         def f(*, x=None, y=None): pass
         f = pinfer.infer_signature(f)
         f(y='x')

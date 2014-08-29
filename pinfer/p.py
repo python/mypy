@@ -27,20 +27,23 @@ import inspect
 
 iport = __builtins__.__import__
 watched = set()
+
+
 def inferring_import(*args, **kwargs):
-  module = iport(*args, **kwargs)
-  if module not in watched:
-    watched.add(module)
-    pinfer.infer_module(module)
-  return module
+    module = iport(*args, **kwargs)
+    if module not in watched:
+        watched.add(module)
+        pinfer.infer_module(module)
+    return module
+
 
 def main():
     if '--' in sys.argv:
-      argslen = sys.argv.index('--')
+        argslen = sys.argv.index('--')
     else:
-      argslen = len(sys.argv)
+        argslen = len(sys.argv)
     args = sys.argv[1:argslen]
-    del sys.argv[1:argslen+1]
+    del sys.argv[1:argslen + 1]
 
     if len(args) == 2:
         targetpackage, testfile = args
@@ -48,7 +51,8 @@ def main():
     elif len(args) == 3:
         targetpackage, testfile, outfile = args
     else:
-        sys.stderr.write('Usage: %s targetmodule testfile [outfile] [ -- testargs]\n' % sys.argv[0])
+        sys.stderr.write('Usage: %s targetmodule testfile [outfile] [ -- testargs]\n' %
+                         sys.argv[0])
         sys.exit(2)
 
     # help us with local imports
@@ -60,14 +64,14 @@ def main():
     pinfer.infer_module(targetmod)
 
     if outfile:
-      @atexit.register
-      def rewrite_file(targetfile=targetfile, outfile=outfile, pinfer=pinfer):
-          if targetfile.endswith(".pyc"):
-            targetfile = targetfile[0:-1]
-          annotated = pinfer.annotate_file(targetfile)
-          open(outfile, "w").write(annotated)
+        @atexit.register
+        def rewrite_file(targetfile=targetfile, outfile=outfile, pinfer=pinfer):
+            if targetfile.endswith(".pyc"):
+                targetfile = targetfile[0:-1]
+            annotated = pinfer.annotate_file(targetfile)
+            open(outfile, "w").write(annotated)
     else:
-      pinfer.dump_at_exit()
+        pinfer.dump_at_exit()
 
     pinfer.ignore_files.add(os.path.abspath(testfile))
 
