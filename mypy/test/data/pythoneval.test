@@ -1147,3 +1147,10 @@ b = map(lambda y: y[0], a)
 print('>', list(b))
 [out]
 > [1, 3]
+
+[case testInternalBuiltinDefinition]
+import typing
+def f(x: _T) -> None: pass
+[out]
+_program.py: In function "f":
+_program.py, line 2: Name '_T' is not defined
