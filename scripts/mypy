@@ -29,8 +29,8 @@ class Options:
         self.build_flags = List[str]()
         self.interpreter = 'python'
         self.pyversion = 3
-        self.custom_typing_module = None # type: str
-        self.html_report_dir = None # type: str
+        self.custom_typing_module = None  # type: str
+        self.html_report_dir = None  # type: str
 
 
 def main() -> None:
@@ -93,7 +93,7 @@ def type_check_only(path: str, module: str, bin_dir: str, args: List[str],
         if (options.pyversion == 2 and
                 os.path.dirname(typing.__file__).endswith(
                     os.path.join('lib-typing', '3.2')) and
-                os.path.isdir('lib-typing')):            
+                os.path.isdir('lib-typing')):
             # We are running Python 2.x test cases and we must force the 2.x
             # typing module to be used.
             os.environ['PYTHONPATH'] = os.path.join('lib-typing', '2.7')
@@ -142,10 +142,10 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
             args = args[2:]
         else:
             usage('Invalid option {}'.format(args[0]))
-    
+
     if not args:
         usage()
-    
+
     return args[0], None, args[1:], options
 
 
