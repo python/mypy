@@ -50,9 +50,13 @@ def test_python_evaluation(testcase):
         if not python2_interpreter:
             # Skip, can't find a Python 2 interpreter.
             raise SkipTestCaseException()
-        args = ['--py2', python2_interpreter]
+        interpreter = python2_interpreter
+        args = ['--py2']
+        py2 = True
     else:
+        interpreter = python3_path
         args = []
+        py2 = False
     # Write the program to a file.
     program = '_program.py'
     outfile = '_program.out'
@@ -65,16 +69,24 @@ def test_python_evaluation(testcase):
     assert os.path.isdir(typing_path)
     os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
     os.environ['MYPYPATH'] = '.'
-    # Run the program.
+    # Type check the program.
     process = subprocess.Popen([python3_path,
-                                os.path.join('scripts', 'mypy')] +
-                               args +
-                               [program],
+                                os.path.join('scripts', 'mypy')] + args + [program],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    if not process.wait():
+        if py2:
+            typing_path = os.path.join(os.getcwd(), 'lib-typing', '2.7')
+            os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
+        process = subprocess.Popen([interpreter, program],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        outb = process.stdout.read()
+        # Split output into lines.
+        out += [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
     os.remove(program)
     assert_string_arrays_equal(testcase.output, out,
