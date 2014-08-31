@@ -1,5 +1,5 @@
-Mypy Readme
-===========
+Mypy: Optional Static Typing for Python
+=======================================
 
 [![Build Status](https://travis-ci.org/JukkaL/mypy.svg)](https://travis-ci.org/JukkaL/mypy)
 
@@ -18,16 +18,24 @@ not introduce additional runtime type checking.
 
 Here is a small example to whet your appetite:
 
-    from typing import Iterator
+```python
+from typing import Iterator
 
-    def fib(n: int) -> Iterator[int]:
-        a, b = 0, 1
-        while a < n:
-            yield a
-            a, b = b, a + b
+def fib(n: int) -> Iterator[int]:
+    a, b = 0, 1
+    while a < n:
+        yield a
+        a, b = b, a + b
+```
 
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
+
+
+Changes
+-------
+
+31 Aug 2014: Mypy only type checks programs, it no longer runs them.
 
 
 Requirements
