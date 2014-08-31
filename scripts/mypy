@@ -85,6 +85,7 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
             parsed flags)
     """
     options = Options()
+    help = False
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
             options.build_flags.append(build.VERBOSE)
@@ -96,6 +97,9 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
             return None, args[1], options
+        elif args[0] in ('-h', '--help'):
+            help = True
+            args = args[1:]
         elif args[0] == '--stats':
             options.build_flags.append('dump-type-stats')
             args = args[1:]
@@ -112,8 +116,11 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
         else:
             usage('Unknown option: {}'.format(args[0]))
 
-    if not args:
+    if help:
         usage()
+
+    if not args:
+        usage('Missing target file or module')
 
     if args[1:]:
         usage('Extra argument: {}'.format(args[1]))
@@ -124,20 +131,23 @@ def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
 def usage(msg: str = None) -> None:
     if msg:
         sys.stderr.write('%s\n' % msg)
-    sys.stderr.write(
-'''Usage: mypy [options] [-m mod | file] [args]
+        sys.stderr.write(
+"""usage: mypy [option ...] [-m mod | file]
+Try 'mypy -h' for more information.
+""")
+    else:
+        sys.stderr.write(
+"""usage: mypy [option ...] [-m mod | file]
 
-Options:
-  -m mod      check and run module as a script (terminates option list)
-  -S          only check; do not run program or module
-  --verbose   more verbose messages
-  --html-report dir
-              type check and generate a report of type checking precision
-              under dir/, do not run the program
+Optional arguments:
+  -h, --help         print this help message and exit
+  --html-report dir  generate a HTML report of type precision under dir/
+  -m mod             type check module
+  --verbose          more verbose messages
 
 Environment variables:
-  MYPYPATH    additional module search path
-''')
+  MYPYPATH     additional module search path
+""")
     sys.exit(2)
 
 
