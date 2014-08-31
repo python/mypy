@@ -13,15 +13,15 @@ before running them.  Mypy allows you to seamlessly mix dynamic and
 static typing in your programs.  Mypy programs are valid Python 3.x
 and you can use a normal Python interpreter to run them.
 
-Here is a small example:
+Here is a small example to whet your appetite:
 
-    import typing
+    from typing import Iterator
 
-    def fib(n: int) -> None:
+    def fib(n: int) -> Iterator[int]:
         a, b = 0, 1
         while a < n:
-            print(a)
-            a, b = b, a+b
+            yield a
+            a, b = b, a + b
 
 Mypy is work in progress; many features are missing and there are
 still bugs.  See 'Development status' below.
