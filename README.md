@@ -7,11 +7,14 @@ Mypy Readme
 What is mypy?
 -------------
 
-Mypy is a Python variant which lets you add type annotations to Python
-programs and type check them statically to find programming errors
-before running them.  Mypy allows you to seamlessly mix dynamic and
-static typing in your programs.  Mypy programs are valid Python 3.x
-and you can use a normal Python interpreter to run them.
+Mypy is an optional static type checker for Python.  You can add type
+annotations to your Python programs and use mypy to type check them
+statically to find errors before running them.  You can also
+seamlessly mix dynamic and static typing in your programs, so you can
+always fall back to dynamic typing.  Mypy programs are valid Python
+3.x and you use a normal Python interpreter to run them. There is
+essentially no performance overhead when using mypy, since mypy does
+not introduce additional runtime type checking.
 
 Here is a small example to whet your appetite:
 
@@ -23,8 +26,8 @@ Here is a small example to whet your appetite:
             yield a
             a, b = b, a + b
 
-Mypy is work in progress; many features are missing and there are
-still bugs.  See 'Development status' below.
+Mypy is in development; some features are missing and there are bugs.
+See 'Development status' below.
 
 
 Requirements
@@ -63,26 +66,27 @@ the above as root. For example, in Ubuntu and Mac OS X:
 
     $ sudo python3 setup.py install
 
-This installs the 'mypy' script and dependencies to system-dependent
-locations.  Sometimes the script directory will not be in PATH,
-and you have to add the target directory to PATH manually or
-create a symbolic link to the script.  In particular, on Mac OS X, the
-script may be installed under /Library/Frameworks:
+This installs the 'mypy' script and dependencies, including the
+'typing' module, to system-dependent locations.  Sometimes the script
+directory will not be in PATH, and you have to add the target
+directory to PATH manually or create a symbolic link to the script.
+In particular, on Mac OS X, the script may be installed under
+/Library/Frameworks:
 
     /Library/Frameworks/Python.framework/Versions/<version>/bin
 
-Now, on a Unix-like system, you can type check and run programs:
+Now, on a Unix-like system, you can type check a program like this:
 
     $ mypy PROGRAM
 
 In Windows, the script is generally installed in
-\PythonNN\Scripts. So, type check and run a program like this (replace
+\PythonNN\Scripts. So, type check a program like this (replace
 \Python33 with your Python installation path):
 
     C:\>\Python33\python \Python33\Scripts\mypy PROGRAM
-    
-Mypy programs are valid Python programs, so you can use the Python
-interpreter to run them without type checking:
+
+You can always use a Python interpreter to run your statically typed
+programs, even if they have type errors:
 
     $ python3 PROGRAM
 
