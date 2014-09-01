@@ -151,11 +151,11 @@ import typing
 'x'.count(u'x')
 [out]
 
-[case testTupleAsSubtypeOfSequence_python2]$
-from typing import typevar, Sequence$
-T = typevar('T')$
-def f(a): # type: (Sequence[T]) -> None$
-    print a$
-f(tuple())$
-[out]$
-()$
+[case testTupleAsSubtypeOfSequence_python2]
+from typing import typevar, Sequence
+T = typevar('T')
+def f(a): # type: (Sequence[T]) -> None
+    print a
+f(tuple())
+[out]
+()
