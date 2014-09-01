@@ -214,3 +214,12 @@ c.write('\x89')
 print(repr(c.getvalue()))
 [out]
 '\x89'
+
+[case testTextIOWrapper_python2]
+import typing
+import io
+b = io.BytesIO(u'\xab'.encode('utf8'))
+w = io.TextIOWrapper(b, encoding='utf8')
+print(repr(w.read()))
+[out]
+u'\xab'
