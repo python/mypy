@@ -136,3 +136,11 @@ f('')
 [out]
 _program.py, line 4: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 _program.py, line 5: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+
+[case testStrUnicodeCompatibility_python2]
+import typing
+def f(s): # type: (unicode) -> None
+    pass
+f(u'')
+f('')
+[out]
