@@ -788,12 +788,6 @@ print('a', 'b')
 [out]
 a b
 
-[case testStrUnicodeCompatibilityInBuiltins_python2]
-import typing
-'x'.count('x')
-'x'.count(u'x')
-[out]
-
 [case testLenOfTuple]
 import typing
 print(len((1, 'x')))
