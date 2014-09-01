@@ -897,15 +897,6 @@ f(tuple())
 [out]
 ()
 
-[case testBytesIO_python2]
-import typing
-import io
-c = io.BytesIO()
-c.write('\x89')
-print(repr(c.getvalue()))
-[out]
-'\x89'
-
 [case testTextIOWrapper_python2]
 import typing
 import io

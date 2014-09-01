@@ -205,3 +205,12 @@ c.write(u'\x89')
 print(repr(c.getvalue()))
 [out]
 u'\x89'
+
+[case testBytesIO_python2]
+import typing
+import io
+c = io.BytesIO()
+c.write('\x89')
+print(repr(c.getvalue()))
+[out]
+'\x89'
