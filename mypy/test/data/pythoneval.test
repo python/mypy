@@ -897,17 +897,6 @@ f(tuple())
 [out]
 ()
 
-[case testPrintFunctionWithFileArg_python2]
-from __future__ import print_function
-import typing
-if 1 == 2: # Don't want to run the code below, since it would create a file.
-    f = open('/tmp/xyz', 'w')
-    print('foo', file=f)
-    f.close()
-print('ok')
-[out]
-ok
-
 [case testStringIO_python2]
 import typing
 import io
