@@ -126,3 +126,13 @@ from __future__ import unicode_literals
 print '>', ['a', b'b', u'c']
 [out]
 > [u'a', 'b', u'c']
+
+[case testFromFutureImportUnicodeLiterals2_python2]
+from __future__ import unicode_literals
+def f(x: str) -> None: pass
+f(b'')
+f(u'')
+f('')
+[out]
+_program.py, line 4: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py, line 5: Argument 1 to "f" has incompatible type "unicode"; expected "str"
