@@ -120,3 +120,9 @@ from __future__ import print_function
 print('a', 'b')
 [out]
 a b
+
+[case testFromFutureImportUnicodeLiterals_python2]
+from __future__ import unicode_literals
+print '>', ['a', b'b', u'c']
+[out]
+> [u'a', 'b', u'c']
