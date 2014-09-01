@@ -897,13 +897,6 @@ f(tuple())
 [out]
 ()
 
-[case testIOTypes_python2]
-from typing import IO, TextIO, BinaryIO, Any
-class X(IO[str]): pass
-class Y(TextIO): pass
-class Z(BinaryIO): pass
-[out]
-
 [case testOpenReturnType_python2]
 import typing
 f = open('/tmp/xyz', 'w')

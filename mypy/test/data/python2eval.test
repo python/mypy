@@ -169,3 +169,10 @@ class A:
 print(A().foo + 2)
 [out]
 3
+
+[case testIOTypes_python2]
+from typing import IO, TextIO, BinaryIO, Any
+class X(IO[str]): pass
+class Y(TextIO): pass
+class Z(BinaryIO): pass
+[out]
