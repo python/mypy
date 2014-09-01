@@ -344,13 +344,6 @@ x = 1 / 2
 x = 1.5
 [out]
 
-[case testIterator_python2]
-import typing, sys
-x = iter('bar')
-print x.next(), x.next()
-[out]
-b a
-
 [case testEncodeAndDecode_python2]
 import typing
 print 'a'.encode('latin1')

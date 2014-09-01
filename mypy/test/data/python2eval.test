@@ -39,3 +39,10 @@ for i in range(3):
 0
 1
 2
+
+[case testIterator_python2]
+import typing, sys
+x = iter('bar')
+print x.next(), x.next()
+[out]
+b a
