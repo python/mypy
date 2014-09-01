@@ -159,3 +159,13 @@ def f(a): # type: (Sequence[T]) -> None
 f(tuple())
 [out]
 ()
+
+[case testReadOnlyProperty_python2]
+import typing
+class A:
+    @property
+    def foo(self): # type: () -> int
+        return 1
+print(A().foo + 2)
+[out]
+3
