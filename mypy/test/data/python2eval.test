@@ -67,3 +67,9 @@ print d.has_key(2)
 [out]
 True
 False
+
+[case testIntegerDivision_python2]
+import typing
+x = 1 / 2
+x = 2
+[out]

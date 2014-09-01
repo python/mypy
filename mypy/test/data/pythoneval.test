@@ -344,12 +344,6 @@ x = 1 / 2
 x = 1.5
 [out]
 
-[case testIntegerDivision_python2]
-import typing
-x = 1 / 2
-x = 2
-[out]
-
 [case testFloatDivision_python2]
 import typing
 x = 1.0 / 2.0
