@@ -196,3 +196,12 @@ if 1 == 2: # Don't want to run the code below, since it would create a file.
 print('ok')
 [out]
 ok
+
+[case testStringIO_python2]
+import typing
+import io
+c = io.StringIO()
+c.write(u'\x89')
+print(repr(c.getvalue()))
+[out]
+u'\x89'
