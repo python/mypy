@@ -223,6 +223,11 @@ class MemberExprRepr:
         self.dot = dot
         self.name = name
 
+class ComparisonExprRepr:
+    def __init__(self, operators: List[Any]) -> None:
+        # List of tupples of (op, op2). 
+        # Note: op2 may be empty; it is used for "is not" and "not in".
+        self.operators = operators   
 
 class CallExprRepr:
     def __init__(self, lparen: Any, commas: List[Token], star: Any, star2: Any,

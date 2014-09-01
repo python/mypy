@@ -23,7 +23,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase
+    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr
 )
 from mypy import nodes
 from mypy import noderepr
@@ -57,6 +57,8 @@ op_assign = set([
     '+=', '-=', '*=', '/=', '//=', '%=', '**=', '|=', '&=', '^=', '>>=',
     '<<='])
 
+op_comp = set([
+    '>', '<', '==', '>=', '<=', '<>', '!=', 'is', 'is', 'in', 'not'])
 
 none = Token('')  # Empty token
 
@@ -1107,7 +1109,10 @@ class Parser:
                         # Either "not in" or an error.
                         op_prec = precedence['in']
                     if op_prec > prec:
-                        expr = self.parse_bin_op_expr(expr, op_prec)
+                        if op in op_comp:
+                            expr = self.parse_comparison_expr(expr, op_prec)
+                        else:
+                            expr = self.parse_bin_op_expr(expr, op_prec)
                     else:
                         # The operation cannot be associated with the
                         # current left operand due to the precedence
@@ -1472,6 +1477,42 @@ class Parser:
         node = OpExpr(op_str, left, right)
         self.set_repr(node, noderepr.OpExprRepr(op, op2))
         return node
+
+    def parse_comparison_expr(self, left: Node, prec: int) -> ComparisonExpr:
+
+        operators = []
+        operators_str = []
+        operands = [left]
+
+        while True:
+            op = self.expect_type(Op)
+            op2 = none
+            op_str = op.string
+            if op_str == 'not':
+                if self.current_str() == 'in':
+                    op_str = 'not in'
+                    op2 = self.skip()
+                else:
+                    self.parse_error()
+            elif op_str == 'is' and self.current_str() == 'not':
+                op_str = 'is not'
+                op2 = self.skip()
+
+            operators_str.append(op_str)
+            operators.append( (op, op2) )
+            operand = self.parse_expression(prec) 
+            operands.append(operand)
+
+            # Continue if next token is a comparison operator
+            t = self.current()
+            s = self.current_str()
+            if s not in op_comp:
+                break
+
+        node = ComparisonExpr(operators_str, operands)
+        self.set_repr(node, noderepr.ComparisonExprRepr(operators))
+        return node
+
 
     def parse_unary_expr(self) -> UnaryExpr:
         op_tok = self.skip()

@@ -380,6 +380,12 @@ class OutputVisitor(NodeVisitor):
         self.tokens([o.repr.op, o.repr.op2])
         self.node(o.right)
 
+    def visit_comparison_expr(self, o):
+        self.node(o.operands[0])
+        for (op, op2), operand in zip(o.repr.operators, o.operands[1:]):
+            self.tokens([op, op2])
+            self.node(operand)
+
     def visit_cast_expr(self, o):
         self.token(o.repr.lparen)
         self.type(o.type)
