@@ -114,3 +114,9 @@ def f(m): # type: (Match[str]) -> None
 f(re.match('x*', 'xxy'))
 [out]
 xx
+
+[case testFromFuturePrintFunction_python2]
+from __future__ import print_function
+print('a', 'b')
+[out]
+a b
