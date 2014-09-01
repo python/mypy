@@ -58,3 +58,12 @@ a
 b
 c
 d
+
+[case testHasKey_python2]
+import typing
+d = {1: 'x'}
+print d.has_key(1)
+print d.has_key(2)
+[out]
+True
+False

@@ -344,15 +344,6 @@ x = 1 / 2
 x = 1.5
 [out]
 
-[case testHasKey_python2]
-import typing
-d = {1: 'x'}
-print d.has_key(1)
-print d.has_key(2)
-[out]
-True
-False
-
 [case testIntegerDivision_python2]
 import typing
 x = 1 / 2
