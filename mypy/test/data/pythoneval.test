@@ -511,15 +511,6 @@ f(re.match(b'x*', b'xxy'))
 [out]
 b'xx'
 
-[case testGenericMatch_python2]
-from typing import Match
-import re
-def f(m): # type: (Match[str]) -> None
-    print(m.group(0))
-f(re.match('x*', 'xxy'))
-[out]
-xx
-
 [case testMultipleTypevarsWithValues]
 from typing import typevar
 
