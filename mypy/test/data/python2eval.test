@@ -1,0 +1,5 @@
+-- Test cases for type checking mypy programs using full stubs and running
+-- using CPython. -- Python 2 syntax.
+--
+-- These are mostly regression tests -- no attempt is made to make these
+-- complete.
