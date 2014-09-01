@@ -94,3 +94,14 @@ print f(u'')
 [out]
 foo
 zar
+
+[case testGenericPatterns_python2]
+from typing import Pattern, Undefined
+import re
+p = Undefined(Pattern[unicode])
+p = re.compile(u'foo*')
+b = Undefined(Pattern[str])
+b = re.compile('foo*')
+print(p.match(u'fooo').group(0))
+[out]
+fooo
