@@ -26,3 +26,16 @@ print repr(x)
 [out]
 xyz
 u'foo'
+
+[case testXrangeAndRange_python2]
+import typing
+for i in xrange(2):
+    print i
+for i in range(3):
+    print i
+[out]
+0
+1
+0
+1
+2
