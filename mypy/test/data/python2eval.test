@@ -16,3 +16,13 @@ abs(1.1) + 'x'  # Error
 [out]
 _program.py, line 5: Unsupported operand types for + ("int" and "str")
 _program.py, line 7: Unsupported operand types for + ("float" and "str")
+
+[case testUnicode_python2]
+import typing
+x = unicode('xyz', 'latin1')
+print x
+x = u'foo'
+print repr(x)
+[out]
+xyz
+u'foo'
