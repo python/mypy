@@ -897,15 +897,6 @@ f(tuple())
 [out]
 ()
 
-[case testOpenReturnType_python2]
-import typing
-f = open('/tmp/xyz', 'w')
-f.write(u'foo')
-f.write('bar')
-f.close()
-[out]
-_program.py, line 3: No overload variant of "write" of "BinaryIO" matches argument types
-
 [case testPrintFunctionWithFileArg_python2]
 from __future__ import print_function
 import typing
