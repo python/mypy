@@ -897,17 +897,6 @@ f(tuple())
 [out]
 ()
 
-[case testIoOpen_python2]
-import typing
-import io
-if 1 == 2: # Only type check, do not execute
-    f = io.open('/tmp/xyz', 'w', encoding='utf8')
-    f.write(u'\xab')
-    f.close()
-print 'ok'
-[out]
-ok
-
 [case testUnionType_python2]
 from typing import Undefined, Union
 y = Undefined(Union[int, str])
