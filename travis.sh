@@ -20,6 +20,7 @@ echo Running tests...
 echo
 echo tests.py
 "$PYTHON" "$DRIVER" tests.py || fail
+"$PYTHON" tests.py || fail
 for t in mypy.test.testpythoneval; do
     echo $t
     "$PYTHON" "$DRIVER" -m $t || fail
@@ -40,7 +41,7 @@ NUMSTUBS=$(( `wc -l $STUBTEST | cut -d' ' -f1` - 1 ))
 
 echo Type checking $NUMSTUBS stubs...
 echo
-"$PYTHON" "$DRIVER" -S $STUBTEST || fail
+"$PYTHON" "$DRIVER" $STUBTEST || fail
 rm $STUBTEST
 
 # Sample checks
@@ -54,7 +55,7 @@ if [ "`"$PYTHON" -c 'from sys import version_info as vi; print(vi.major, vi.mino
     for f in test/test_*.py; do
         mod=test.`basename "$f" .py`
         echo $mod
-        "$PYTHON" "$DRIVER" -S -m $mod || fail
+        "$PYTHON" "$DRIVER" -m $mod || fail
     done
 else
     echo "Skipping lib-python type checks (not Python 3.2!)"
