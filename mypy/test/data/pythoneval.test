@@ -344,18 +344,6 @@ x = 1 / 2
 x = 1.5
 [out]
 
-[case testEncodeAndDecode_python2]
-import typing
-print 'a'.encode('latin1')
-print 'b'.decode('latin1')
-print u'c'.encode('latin1')
-print u'd'.decode('latin1')
-[out]
-a
-b
-c
-d
-
 [case testHasKey_python2]
 import typing
 d = {1: 'x'}
