@@ -16,8 +16,8 @@ from typing import Undefined, Dict, List, Tuple, cast
 from mypy.nodes import (
     Node, MypyFile, TypeInfo, ClassDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
-    CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
-    SymbolTableNode, IndexExpr, function_type
+    CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, ComparisonExpr,
+    GDEF, SymbolTableNode, IndexExpr, function_type
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type, AnyType, Callable, TypeVarDef, Instance
@@ -308,6 +308,35 @@ class DyncheckTransformVisitor(TraverserVisitor):
                     e.left = operand
                 else:
                     e.right = operand
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> None:
+        super().visit_comparison_expr(e)
+        method_type = e.method_type
+        
+        # Check each consecutive operand pair and their operator
+        for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
+            
+            if self.dynamic_funcs[-1] or isinstance(method_type, AnyType):
+                left = self.coerce_to_dynamic(left, self.get_type(left),
+                                                self.type_context())
+                right = self.coerce(right, AnyType(),
+                                      self.get_type(right),
+                                      self.type_context())
+            elif method_type:
+                method_callable = cast(Callable, method_type)
+                operand = right
+                # For 'in', the order of operands is reversed.
+                if operator == 'in':
+                    operand = left
+                # TODO arg_types[0] may not be reliable
+                operand = self.coerce(operand, method_callable.arg_types[0],
+                                      self.get_type(operand),
+                                      self.type_context())
+                if operator == 'in':
+                    left = operand
+                else:
+                    right = operand
+            
 
     def visit_index_expr(self, e: IndexExpr) -> None:
         if e.analyzed:

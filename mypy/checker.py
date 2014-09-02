@@ -16,7 +16,7 @@ from mypy.nodes import (
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, ContinueStmt
+    LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1578,6 +1578,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         return self.expr_checker.visit_op_expr(e)
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
+        return self.expr_checker.visit_comparison_expr(e)
 
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
         return self.expr_checker.visit_unary_expr(e)

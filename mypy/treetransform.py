@@ -16,7 +16,8 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    DisjointclassExpr, CoerceExpr, TypeExpr, JavaCast, TempNode
+    DisjointclassExpr, CoerceExpr, TypeExpr, ComparisonExpr,
+    JavaCast, TempNode
 )
 from mypy.types import Type
 from mypy.visitor import NodeVisitor
@@ -311,6 +312,11 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_op_expr(self, node: OpExpr) -> Node:
         new = OpExpr(node.op, self.node(node.left), self.node(node.right))
+        new.method_type = self.optional_type(node.method_type)
+        return new
+
+    def visit_comparison_expr(self, node: ComparisonExpr) -> Node:
+        new = ComparisonExpr(node.operators, self.nodes(node.operands))
         new.method_type = self.optional_type(node.method_type)
         return new
 
