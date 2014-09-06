@@ -1016,7 +1016,8 @@ reverse_op_method_set = set(reverse_op_methods.values())
 
 
 class OpExpr(Node):
-    """Binary operation (other than . or [], which have specific nodes)."""
+    """Binary operation (other than . or [] or comparison operators, 
+    which have specific nodes)."""
 
     op = ''
     left = Undefined(Node)
@@ -1035,26 +1036,27 @@ class OpExpr(Node):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
+
 class ComparisonExpr(Node):
     """Comparison expression (e.g. a < b > c < d)."""
 
     operators = []
     operands = []
-    # Inferred type for the operator method type (when relevant; None for
-    # 'is').
+    # Inferred type for the operator method type when there is only
+    # a single comparison operator (and when relevant; None for 'is').
     method_type = None  # type: mypy.types.Type
 
     def __init__(self, operators: List[str], operands: List[Node]) -> None:
         self.operators = operators
         self.operands = operands
         self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = ('Comparison',) + tuple(operators) + tuple(operands) 
+        self.literal_hash = ( ('Comparison',) + tuple(operators) + 
+                               tuple(o.literal_hash for o in operands) )
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
     
-
-
+    
 class SliceExpr(Node):
     """Slice expression (e.g. 'x:y', 'x:', '::2' or ':').
 

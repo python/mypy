@@ -758,16 +758,22 @@ class ExpressionChecker:
             raise RuntimeError('Unknown operator {}'.format(e.op))
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
+        """Type check a comparison expression.
+        
+        Comparison expressions are typed check as 
+        That is, 'a < b > c == d' is check as 'a < b and b > c and c == d' 
+        """
+        result = None  # type: mypy.types.Type
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
             left_type = self.accept(left)
-            right_type = self.accept(right)  # TODO only evaluate if needed
-            # TODO handle special cases in and not in
-
+            
             if operator == 'in' or operator == 'not in':
+                right_type = self.accept(right)  # TODO only evaluate if needed
+                
                 local_errors = self.msg.copy()
-                result, method_type = self.check_op_local('__contains__', right_type,
+                sub_result, method_type = self.check_op_local('__contains__', right_type,
                                                           left, e, local_errors)
                 if (local_errors.is_errors() and
                     # is_valid_var_arg is True for any Iterable
@@ -775,28 +781,36 @@ class ExpressionChecker:
                     itertype = self.chk.analyse_iterable_item_type(right)
                     method_type = Callable([left_type], [nodes.ARG_POS], [None],
                                            self.chk.bool_type(), False)
-                    result = self.chk.bool_type()
+                    sub_result = self.chk.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 else:
                     self.msg.add_errors(local_errors)
                 e.method_type = method_type
-                if operator == 'in':
-                    return result
-                else:
-                    return self.chk.bool_type()
+                if operator == 'not in':
+                    sub_result = self.chk.bool_type()
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
-                result, method_type = self.check_op(method, left_type, right, e, 
+                sub_result, method_type = self.check_op(method, left_type, right, e, 
                                                     allow_reverse=True)
-                e.method_type = method_type  # TODO does this make sense?
-                return result
+                                                    
+                e.method_type = method_type
             elif operator == 'is' or operator == 'is not':
-                return self.chk.bool_type()
+                sub_result = self.chk.bool_type()
+                e.method_type = None
             else:
                 raise RuntimeError('Unknown comparison operator {}'.format(operator)) 
-
-        return self.chk.bool_type()
+                
+            #  Determine type of boolean-and of result and sub_result
+            if result == None:
+                result = sub_result
+            else:
+                # TODO: check on void needed?
+                self.check_not_void(sub_result, e)
+                result = join.join_types(result, sub_result, self.chk.basic_types())
+                e.method_type = None
+                
+        return result
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.pyversion == 2:

@@ -317,6 +317,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
             
             if self.dynamic_funcs[-1] or isinstance(method_type, AnyType):
+                # TODO: bug, operand should replace left (or right) inside e
                 left = self.coerce_to_dynamic(left, self.get_type(left),
                                                 self.type_context())
                 right = self.coerce(right, AnyType(),
@@ -333,7 +334,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
                                       self.get_type(operand),
                                       self.type_context())
                 if operator == 'in':
-                    left = operand
+                    left = operand    # TODO: bug, operand should replace left (or right) inside e
                 else:
                     right = operand
             
