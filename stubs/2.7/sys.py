@@ -46,7 +46,7 @@ __stderr__ = Undefined(BinaryIO)
 subversion = Undefined(Tuple[str, str, str])
 tracebacklimit = 0
 version = ''
-api_version = 0 
+api_version = 0
 warnoptions = Undefined(Any)
 #  Each entry is a tuple of the form (action, message, category, module,
 #    lineno)
@@ -93,8 +93,8 @@ class _hash_info:
 
 int_info = Undefined(_int_info)
 class _int_info:
-    bits_per_digit = 0  # number of bits held in each digit. Python integers 
-                        # are stored internally in 
+    bits_per_digit = 0  # number of bits held in each digit. Python integers
+                        # are stored internally in
                         # base 2**int_info.bits_per_digit
     sizeof_digit = 0    # size in bytes of C type used to represent a digit
 
@@ -146,8 +146,8 @@ def setprofile(profilefunc: Any) -> None: pass # TODO type
 def setrecursionlimit(limit: int) -> None: pass
 def setswitchinterval(interval: float) -> None: pass
 def settrace(tracefunc: Any) -> None: pass # TODO type
-# Trace functions should have three arguments: frame, event, and arg. frame 
-# is the current stack frame. event is a string: 'call', 'line', 'return', 
-# 'exception', 'c_call', 'c_return', or 'c_exception'. arg depends on the 
+# Trace functions should have three arguments: frame, event, and arg. frame
+# is the current stack frame. event is a string: 'call', 'line', 'return',
+# 'exception', 'c_call', 'c_return', or 'c_exception'. arg depends on the
 # event type.
 def settscdump(on_flag: bool) -> None: pass

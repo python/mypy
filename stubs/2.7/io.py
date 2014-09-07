@@ -68,7 +68,7 @@ class StringIO(TextIO):
     def __iter__(self) -> Iterator[unicode]: pass
     def __enter__(self) -> 'StringIO': pass
     def __exit__(self, type, value, traceback) -> bool: pass
-    
+
 class TextIOWrapper(TextIO):
     # write_through is undocumented but used by subprocess
     def __init__(self, buffer: IO[str], encoding: unicode = None,
