@@ -36,14 +36,23 @@ main, line 3: Incompatible return value type: expected __main__.B, got __main__.
 [case testReturnWithoutAValue]
 import typing
 def f() -> 'A':
-    return 
+    return
 def g() -> None:
-    return 
+    return
 class A:
     pass
 [out]
 main: In function "f":
 main, line 3: Return value expected
+
+[case testReturnNoneInFunctionReturningNone]
+import typing
+def f() -> None:
+    return None
+def g() -> None:
+    return f()  # E: No return value expected
+[out]
+main: In function "g":
 
 
 -- If statement
@@ -440,7 +449,7 @@ else:
 
 [case testExceptWithoutType]
 import typing
-try: 
+try:
     -None # E: Unsupported operand type for unary - (None)
 except:
     ~None # E: Unsupported operand type for ~ (None)
@@ -515,7 +524,7 @@ class E(BaseException):
     def __init__(self) -> None: pass
     @overload
     def __init__(self, x) -> None: pass
-try: 
+try:
     pass
 except E as e:
     e = E()
@@ -596,7 +605,7 @@ def f() -> 'Iterator[List[int]]':
 [builtins fixtures/for.py]
 [out]
 main: In function "f":
-    
+
 [case testYieldAndReturnWithoutValue]
 from typing import Iterator
 def f() -> Iterator[int]:

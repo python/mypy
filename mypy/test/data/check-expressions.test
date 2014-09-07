@@ -1,6 +1,6 @@
 -- Test cases for simple expressions.
 --
--- See also: 
+-- See also:
 --  * check-functions.test contains test cases for calls.
 --  * check-varargs.test contains test cases for *args.
 --  * check-dynamic.test contains test cases related to 'any' type.
@@ -895,7 +895,7 @@ class A: pass
 
 [case testSimpleGeneratorExpression]
 from typing import Undefined, Iterator
-# The implementation is mostly identical to list comprehensions, so a single 
+# The implementation is mostly identical to list comprehensions, so a single
 # test case is ok.
 a = Undefined # type: Iterator[int]
 a = x for x in a
