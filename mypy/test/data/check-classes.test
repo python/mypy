@@ -238,12 +238,11 @@ class A:
   def h(self, x: 'A', y: 'B') -> 'A': pass
 class B(A):
   def f(self, x: 'B', y: 'B') -> A: pass  # Fail
-  def g(self, x: A, y: A) -> A: pass  # Fail
+  def g(self, x: A, y: A) -> A: pass
   def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
 main: In class "B":
 main, line 7: Argument 1 of "f" incompatible with supertype "A"
-main, line 8: Argument 2 of "g" incompatible with supertype "A"
 main, line 9: Return type of "h" incompatible with supertype "A"
 
 [case testMethodOverridingWithIncompatibleArgumentCount]
@@ -895,9 +894,8 @@ import typing
 class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
-    def __add__(self, x: object) -> int: pass # E: Argument 1 of "__add__" incompatible with supertype "A"
+    def __add__(self, x: object) -> int: pass
 [out]
-main: In class "B":
 
 [case testOperatorMethodOverrideNarrowingReturnType]
 import typing
