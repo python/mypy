@@ -4,12 +4,10 @@ Each test case type checks a program then runs it using Python. The
 output (stdout) of the program is compared to expected output. Type checking
 uses full builtins and other stubs.
 
-Note: Currently Python interpreter and mypy implementation paths are hard coded
-      (see python_path and mypy_path below).
+Note: Currently Python interpreter paths are hard coded.
 
-Note: These test cases are *not* included in the main test suite, as running
-      this suite is slow and it would slow down the main suite too much. The
-      slowness is due to translating the mypy implementation in each test case.
+Note: These test cases are *not* included in the main test suite, as including
+      this suite would slow down the main suite too much.
 """
 
 import os
