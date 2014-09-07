@@ -258,11 +258,11 @@ else:
   yy
 
 [case testTryFinally]
-try: 
+try:
   x
 finally:
   z
-  
+
 [case testComplexTry]
 try:
   x
@@ -310,7 +310,7 @@ else:
 [case testForWithParensAroundIndexVars-skip]
 for ( x ) in y: pass
 for ( x, y ) in y: pass
-  
+
 [case testWith]
 with foo():
   pass
@@ -328,7 +328,7 @@ with f() as x, y() as z:
 def f(): pass
 def g ( x ) : pass
 def h(x, y): pass
-def i(x,y , z  ,  zz ) : 
+def i(x,y , z  ,  zz ) :
   z = y
   return 5
 
@@ -418,7 +418,7 @@ class C:
   x = y
   def f(self, x):
     return x
-    
+
 [case testSuper]
 class C:
   def f(self):
@@ -496,7 +496,7 @@ class A: pass
 class B(A): pass
 class I(metaclass=ABCMeta): pass
 class C(I): pass
-    
+
 [case testMethodWithSignature_SemanticAnalyzer-skip]
 import typing
 class A:

@@ -339,7 +339,7 @@ MypyFile:1(
     Block:1(
       ReturnStmt:2(
         IntExpr(1)))))
-        
+
 
 [case testReturnWithoutValue]
 def f():
@@ -689,7 +689,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x)
     IntExpr(1)))
-    
+
 [case testInvalidAnnotation]
 x=1 ##type: int
 y=1 #.type: int
@@ -870,7 +870,7 @@ MypyFile:1(
       PassStmt:2())
     Block:3(
       RaiseStmt:4())))
-    
+
 [case testRaiseFrom]
 raise e from x
 [out]
@@ -993,7 +993,7 @@ MypyFile:1(
   Import:2(y.z.foo : y.z.foo, __foo__.bar : __foo__.bar))
 
 [case testVariableTypeWithQualifiedName]
-x = None # type: x.y 
+x = None # type: x.y
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -1172,7 +1172,7 @@ MypyFile:1(
         NameExpr(x)
         NameExpr(y)
         NameExpr(z)))))
-      
+
 [case testComplexListComprehension]
 x=[(x, y) for y, z in 1, 2]
 [out]
@@ -1789,7 +1789,7 @@ MypyFile:1(
       Var(a))
     Block:1(
       PassStmt:1())))
-      
+
 [case testDictVarArgs]
 def f(x, **a): pass
 [out]
@@ -1826,7 +1826,7 @@ MypyFile:1(
       Var(b))
     Block:2(
       PassStmt:2())))
-      
+
 [case testDictVarArgsWithType]
 def f(x: X, **a: A) -> None: pass
 [out]
@@ -1954,7 +1954,7 @@ MypyFile:1(
     SetExpr:2(
       IntExpr(1)
       IntExpr(2))))
-      
+
 [case testSetLiteralWithExtraComma]
 {x,}
 [out]
@@ -2227,7 +2227,7 @@ f = None # type: Function[[], None]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
-    NameExpr(None)    
+    NameExpr(None)
     Function?[<TypeList >, None?]))
 
 [case testFunctionTypeWithArgument]
@@ -2236,7 +2236,7 @@ f = None # type: Function[[str], int]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
-    NameExpr(None)    
+    NameExpr(None)
     Function?[<TypeList str?>, int?]))
 
 [case testFunctionTypeWithTwoArguments]
@@ -2245,7 +2245,7 @@ f = None # type: Function[[a[b], x.y], List[int]]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
-    NameExpr(None)    
+    NameExpr(None)
     Function?[<TypeList a?[b?], x.y?>, List?[int?]]))
 
 [case testFunctionTypeWithExtraComma]
@@ -2438,7 +2438,7 @@ MypyFile:1(
           Var(y))
         Block:6(
           PassStmt:6())))))
-          
+
 [case testDecoratorsThatAreNotOverloads]
 @foo
 def f() -> x: pass
@@ -2576,9 +2576,9 @@ MypyFile:1(
 
 [case testCommentFunctionAnnotationOnSeparateLine2]
 def f(x):
-  
+
      # type: (X) -> Y       # bar
-  
+
   pass
 [out]
 MypyFile:1(

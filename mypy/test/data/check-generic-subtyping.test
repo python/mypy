@@ -146,7 +146,7 @@ S = typevar('S')
 class A(Generic[T]):
     def __init__(self, a: T) -> None:
         self.a = a
-        
+
 b = Undefined # type: B[C, D]
 c, d = Undefined, Undefined # type: (C, D)
 
@@ -278,7 +278,7 @@ class B(Generic[T]):
   def f(self, a: 'B[T]') -> None: pass
   def __init__(self, x: 'B[T]') -> None:
     self.x = x
-    
+
 class A(B):
   def g(self) -> None:
     self.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])

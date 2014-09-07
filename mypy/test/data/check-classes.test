@@ -490,7 +490,7 @@ A.x # E: "A" has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
 from typing import overload
-class A: 
+class A:
     @overload
     def __init__(self): pass
     @overload

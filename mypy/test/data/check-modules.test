@@ -34,7 +34,7 @@ def f(a: A) -> None: pass
 [case testImportedExceptionType]
 import m
 import typing
-try: 
+try:
     pass
 except m.Err:
     pass
@@ -48,7 +48,7 @@ class Bad: pass
 [case testImportedExceptionType2]
 from m import Err, Bad
 import typing
-try: 
+try:
     pass
 except Err:
     pass
@@ -185,7 +185,7 @@ else:
 import nonexistent
 None + ''
 [out]
-main, line 1: No module named 'nonexistent'  
+main, line 1: No module named 'nonexistent'
 main, line 2: Unsupported left operand type for + (None)
 
 [case testTypeCheckWithUnknownModule2]
@@ -196,7 +196,7 @@ m.x = ''
 [file m.py]
 x = 1
 [out]
-main, line 1: No module named 'nonexistent'  
+main, line 1: No module named 'nonexistent'
 main, line 2: Unsupported left operand type for + (None)
 main, line 4: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -208,7 +208,7 @@ m.x = ''
 [file m.py]
 x = 1
 [out]
-main, line 1: No module named 'nonexistent'  
+main, line 1: No module named 'nonexistent'
 main, line 2: Unsupported left operand type for + (None)
 main, line 4: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -231,14 +231,14 @@ main, line 2: Unsupported left operand type for + (None)
 from nonexistent import x
 None + ''
 [out]
-main, line 1: No module named 'nonexistent'  
+main, line 1: No module named 'nonexistent'
 main, line 2: Unsupported left operand type for + (None)
 
 [case testTypeCheckWithUnknownModuleUsingImportStar]
 from nonexistent import *
 None + ''
 [out]
-main, line 1: No module named 'nonexistent'  
+main, line 1: No module named 'nonexistent'
 main, line 2: Unsupported left operand type for + (None)
 
 [case testAccessingUnknownModule]
