@@ -156,14 +156,14 @@ file: In function "f":
 file, line 1: Invalid argument list
 
 [case testInvalidFuncDefArgs4]
-def f(**x, y=x): 
+def f(**x, y=x):
     pass
 [out]
 file: In function "f":
 file, line 1: Invalid argument list
 
 [case testInvalidStringLiteralType]
-def f(x: 
+def f(x:
      'A['
      ) -> None: pass
 [out]
@@ -172,7 +172,7 @@ file, line 2: Parse error before end of line
 file, line 3: Parse error before end of line
 
 [case testInvalidStringLiteralType2]
-def f(x: 
+def f(x:
       'A B'
       ) -> None: pass
 [out]

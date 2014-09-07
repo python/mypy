@@ -654,7 +654,7 @@ MypyFile:1(
       def (self: __main__.A, o: builtins.object)
       Block:2(
         PassStmt:2()))))
-        
+
 [case testNestedGenericFunction]
 from typing import typevar
 t = typevar('t')

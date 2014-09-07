@@ -503,7 +503,7 @@ MypyFile:1(
         NameExpr(object [builtins.object])))))
 
 [case testTryWithOnlyFinally]
-try: 
+try:
   pass
 finally:
   pass

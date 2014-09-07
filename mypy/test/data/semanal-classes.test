@@ -1,4 +1,4 @@
--- Test cases related to classes for the semantic analyser. 
+-- Test cases related to classes for the semantic analyser.
 
 [case testSimpleClass]
 class A: pass

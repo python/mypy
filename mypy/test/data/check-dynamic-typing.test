@@ -1,5 +1,3 @@
-
-
 -- Assignment
 -- ----------
 
@@ -447,11 +445,11 @@ class A(B):
 [case testEmptyReturnWithImplicitSignature]
 import typing
 def f():
-    return 
+    return
 class A:
     def g(self):
-        return 
-        
+        return
+
 [case testVarArgsWithImplicitSignature]
 from typing import Undefined, Any
 o = Undefined # type: Any
@@ -487,7 +485,7 @@ main, line 7: Incompatible types in assignment (expression has type , variable h
 
 [case testUsingImplicitTypeObjectWithIs]
 from typing import Undefined
-t = Undefined # type: type 
+t = Undefined # type: type
 t = A
 t = B
 

@@ -131,7 +131,7 @@ MypyFile:1(
       SliceExpr:4(
         <empty>
         NameExpr(y [__main__.y])))))
-        
+
 [case testTupleLiteral]
 x = y = 1
 x, y

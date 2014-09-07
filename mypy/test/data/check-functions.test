@@ -1,4 +1,4 @@
--- Test cases for the type checker related to functions, function types and 
+-- Test cases for the type checker related to functions, function types and
 -- calls.
 
 -- See also check-varargs.test.
@@ -139,7 +139,7 @@ def i(x: AA) -> A:
 @overload
 def i(x: B) -> B:
     pass
-    
+
 @overload
 def j(x: B) -> B:
     pass
@@ -573,7 +573,7 @@ def f(x, y): pass
 from typing import Undefined, Any
 x = Undefined # type: Any
 if x:
-    def f(x: int) -> None: 
+    def f(x: int) -> None:
         x = 1
         x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
@@ -650,7 +650,7 @@ from typing import Undefined, Any
 x = Undefined # type: Any
 class A:
     if x:
-        def f(self, x: int) -> None: 
+        def f(self, x: int) -> None:
             x = 1
             x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
@@ -681,7 +681,7 @@ A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "
 [case testConditionalMethodDefinitionWithIfElse]
 from typing import Undefined, Any
 x = Undefined # type: Any
-class A: 
+class A:
     if x:
         def f(self, x: int) -> None:
             x = 'x'   # fail

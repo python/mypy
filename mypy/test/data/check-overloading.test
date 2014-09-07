@@ -172,7 +172,7 @@ t = A
 
 class A:
     @overload
-    def __init__(self, a: 'A') -> None: pass    
+    def __init__(self, a: 'A') -> None: pass
     @overload
     def __init__(self, a: 'B') -> None: pass
 class B: pass

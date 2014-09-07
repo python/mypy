@@ -5,7 +5,7 @@
 from typing import Undefined
 a = Undefined # type: A
 b = Undefined # type: B
-a = a 
+a = a
 a = b # Fail
 class A: pass
 class B: pass
@@ -17,7 +17,7 @@ from typing import Undefined
 x = Undefined # type: A
 x = A()
 x = B()
-class A: 
+class A:
     def __init__(self): pass
 class B:
     def __init__(self): pass
@@ -330,5 +330,3 @@ main, line 4: Argument 1 to "f" of "A" has incompatible type "str"; expected "in
 main, line 5: Incompatible return value type: expected builtins.str, got builtins.int
 main: At top level:
 main, line 6: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-
-
