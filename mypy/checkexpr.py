@@ -769,6 +769,8 @@ class ExpressionChecker:
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
             left_type = self.accept(left)
             
+            method_type = None
+            
             if operator == 'in' or operator == 'not in':
                 right_type = self.accept(right)  # TODO only evaluate if needed
                 
@@ -786,7 +788,6 @@ class ExpressionChecker:
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 else:
                     self.msg.add_errors(local_errors)
-                e.method_type = method_type
                 if operator == 'not in':
                     sub_result = self.chk.bool_type()
             elif operator in nodes.op_methods:
@@ -794,12 +795,13 @@ class ExpressionChecker:
                 sub_result, method_type = self.check_op(method, left_type, right, e, 
                                                     allow_reverse=True)
                                                     
-                e.method_type = method_type
             elif operator == 'is' or operator == 'is not':
                 sub_result = self.chk.bool_type()
-                e.method_type = None
+                method_type = None
             else:
                 raise RuntimeError('Unknown comparison operator {}'.format(operator)) 
+                
+            e.method_types.append(method_type)
                 
             #  Determine type of boolean-and of result and sub_result
             if result == None:
@@ -808,8 +810,7 @@ class ExpressionChecker:
                 # TODO: check on void needed?
                 self.check_not_void(sub_result, e)
                 result = join.join_types(result, sub_result, self.chk.basic_types())
-                e.method_type = None
-                
+        
         return result
 
     def get_operator_method(self, op: str) -> str:

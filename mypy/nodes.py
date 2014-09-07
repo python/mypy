@@ -1040,15 +1040,16 @@ class OpExpr(Node):
 class ComparisonExpr(Node):
     """Comparison expression (e.g. a < b > c < d)."""
 
-    operators = []
-    operands = []
+    operators = Undefined(List[str])
+    operands = Undefined(List[Node])
     # Inferred type for the operator method type when there is only
     # a single comparison operator (and when relevant; None for 'is').
-    method_type = None  # type: mypy.types.Type
+    method_types = Undefined(List["mypy.types.Type"])
 
     def __init__(self, operators: List[str], operands: List[Node]) -> None:
         self.operators = operators
         self.operands = operands
+        self.method_types = []
         self.literal = min(o.literal for o in self.operands)
         self.literal_hash = ( ('Comparison',) + tuple(operators) + 
                                tuple(o.literal_hash for o in operands) )
