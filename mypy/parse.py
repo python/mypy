@@ -1459,23 +1459,13 @@ class Parser:
 
     def parse_bin_op_expr(self, left: Node, prec: int) -> OpExpr:
         op = self.expect_type(Op)
-        op2 = none
         op_str = op.string
-        if op_str == 'not':
-            if self.current_str() == 'in':
-                op_str = 'not in'
-                op2 = self.skip()
-            else:
-                self.parse_error()
-        elif op_str == 'is' and self.current_str() == 'not':
-            op_str = 'is not'
-            op2 = self.skip()
-        elif op_str == '~':
+        if op_str == '~':
             self.ind -= 1
             self.parse_error()
         right = self.parse_expression(prec)
         node = OpExpr(op_str, left, right)
-        self.set_repr(node, noderepr.OpExprRepr(op, op2))
+        self.set_repr(node, noderepr.OpExprRepr(op))
         return node
 
     def parse_comparison_expr(self, left: Node, prec: int) -> ComparisonExpr:

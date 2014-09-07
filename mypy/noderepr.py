@@ -259,10 +259,8 @@ class UnaryExprRepr:
 
 
 class OpExprRepr:
-    def __init__(self, op: Any, op2: Any) -> None:
-        # Note: op2 may be empty; it is used for "is not" and "not in".
+    def __init__(self, op: Any) -> None:
         self.op = op
-        self.op2 = op2
 
 
 class CastExprRepr:

@@ -752,15 +752,13 @@ class ExpressionChecker:
                                                 allow_reverse=True)
             e.method_type = method_type
             return result
-        elif e.op == 'is' or e.op == 'is not':
-            return self.chk.bool_type()
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
         
-        Comparison expressions are typed check as 
+        Comparison expressions are type checked consecutive-pair-wise 
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d' 
         """
         result = None  # type: mypy.types.Type

@@ -1022,8 +1022,7 @@ class OpExpr(Node):
     op = ''
     left = Undefined(Node)
     right = Undefined(Node)
-    # Inferred type for the operator method type (when relevant; None for
-    # 'is').
+    # Inferred type for the operator method type (when relevant).
     method_type = None  # type: mypy.types.Type
 
     def __init__(self, op: str, left: Node, right: Node) -> None:
@@ -1042,8 +1041,7 @@ class ComparisonExpr(Node):
 
     operators = Undefined(List[str])
     operands = Undefined(List[Node])
-    # Inferred type for the operator method type when there is only
-    # a single comparison operator (and when relevant; None for 'is').
+    # Inferred type for the operator methods (when relevant; None for 'is').
     method_types = Undefined(List["mypy.types.Type"])
 
     def __init__(self, operators: List[str], operands: List[Node]) -> None:
