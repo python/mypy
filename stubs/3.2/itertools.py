@@ -49,7 +49,7 @@ def zip_longest(*p: Iterable[Any],
 #       Iterator[Sequence[T]] loses this type information.
 def product(*p: Iterable[T], repeat: int = 1) -> Iterator[Sequence[T]]: pass
 
-def permutations(iterable: Iterable[T], 
+def permutations(iterable: Iterable[T],
                  r: Union[int, None] = None) -> Iterator[Sequence[T]]: pass
 def combinations(iterable: Iterable[T],
                  r: int) -> Iterable[Sequence[T]]: pass

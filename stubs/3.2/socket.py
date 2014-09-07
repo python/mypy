@@ -275,54 +275,54 @@ class socket:
     family = 0
     type = 0
     proto = 0
-    
+
     def __init__(self, family: int = AF_INET, type: int = SOCK_STREAM,
                  proto: int = 0, fileno: int = None) -> None: pass
-    
+
     # --- methods ---
     # second tuple item is an address
     def accept(self) -> Tuple['socket', Any]: pass
-    
+
     @overload
     def bind(self, address: tuple) -> None: pass
     @overload
     def bind(self, address: str) -> None: pass
-    
+
     def close(self) -> None: pass
-    
+
     @overload
     def connect(self, address: tuple) -> None: pass
     @overload
     def connect(self, address: str) -> None: pass
-    
+
     @overload
     def connect_ex(self, address: tuple) -> int: pass
     @overload
     def connect_ex(self, address: str) -> int: pass
-    
+
     def detach(self) -> int: pass
     def fileno(self) -> int: pass
-    
+
     # return value is an address
     def getpeername(self) -> Any: pass
     def getsockname(self) -> Any: pass
-    
+
     @overload
     def getsockopt(self, level: int, optname: str) -> bytes: pass
     @overload
     def getsockopt(self, level: int, optname: str, buflen: int) -> bytes: pass
-    
+
     def gettimeout(self) -> float: pass
     def ioctl(self, control: object,
               option: Tuple[int, int, int]) -> None: pass
     def listen(self, backlog: int) -> None: pass
     # TODO the return value may be BinaryIO or TextIO, depending on mode
-    def makefile(self, mode: str = 'r', buffering: int = None, 
+    def makefile(self, mode: str = 'r', buffering: int = None,
                  encoding: str = None, errors: str = None,
-                 newline: str = None) -> Any: 
+                 newline: str = None) -> Any:
         pass
     def recv(self, bufsize: int, flags: int = 0) -> bytes: pass
-    
+
     # return type is an address
     def recvfrom(self, bufsize: int, flags: int = 0) -> Any: pass
     def recvfrom_into(self, buffer: bytes, nbytes: int,
@@ -332,26 +332,26 @@ class socket:
     def send(self, data: bytes, flags=0) -> int: pass
     def sendall(self, data: bytes, flags=0) -> Any:
         pass # return type: None on success
-    
+
     @overload
     def sendto(self, data: bytes, address: tuple, flags: int = 0) -> int: pass
     @overload
     def sendto(self, data: bytes, address: str, flags: int = 0) -> int: pass
-    
+
     def setblocking(self, flag: bool) -> None: pass
     # TODO None valid for the value argument
     def settimeout(self, value: float) -> None: pass
-    
+
     @overload
     def setsockopt(self, level: int, optname: str, value: int) -> None: pass
     @overload
     def setsockopt(self, level: int, optname: str, value: bytes) -> None: pass
-    
+
     def shutdown(self, how: int) -> None: pass
-    
+
 
 # ----- functions -----
-def create_connection(address: Tuple[str, int], 
+def create_connection(address: Tuple[str, int],
                       timeout: float = _GLOBAL_DEFAULT_TIMEOUT,
                       source_address: Tuple[str, int] = None) -> socket: pass
 

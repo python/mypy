@@ -32,7 +32,7 @@ class Popen:
     stderr = Undefined(IO[Any])
     pid = 0
     returncode = 0
-    
+
     def __init__(self,
                   args: Sequence[str],
                   bufsize: int = 0,
@@ -51,7 +51,7 @@ class Popen:
                   restore_signals: bool = True,
                   start_new_session: bool = False,
                   pass_fds: Any = ()) -> None: pass
-    
+
     def poll(self) -> int: pass
     def wait(self) -> int: pass
     # Return str/bytes

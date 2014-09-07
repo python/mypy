@@ -19,25 +19,25 @@ class Random(_random.Random):
     def getstate(self) -> tuple: pass
     def setstate(self, state: tuple) -> None: pass
     def getrandbits(self, k: int) -> int: pass
-    
+
     @overload
     def randrange(self, stop: int) -> int: pass
     @overload
     def randrange(self, start: int, stop: int, step: int = 1) -> int: pass
-    
+
     def randint(self, a: int, b: int) -> int: pass
     def choice(self, seq: Sequence[t]) -> t: pass
-    
+
     @overload
     def shuffle(self, x: List[Any]) -> None: pass
     @overload
     def shuffle(self, x: List[Any], random: Function[[], float]) -> None: pass
-    
+
     @overload
     def sample(self, population: Sequence[t], k: int) -> List[t]: pass
     @overload
     def sample(self, population: AbstractSet[t], k: int) -> List[t]: pass
-    
+
     def random(self) -> float: pass
     def uniform(self, a: float, b: float) -> float: pass
     def triangular(self, low: float = 0.0, high: float = 1.0,

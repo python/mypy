@@ -8,7 +8,7 @@ class Thread:
     name = ''
     ident = 0
     daemon = False
-    
+
     def __init__(self, group: Any = None, target: Any = None, args: Any = (),
                  kwargs: Dict[Any, Any] = None,
                  verbose: Any = None) -> None: pass

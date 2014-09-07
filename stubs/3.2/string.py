@@ -18,7 +18,7 @@ def capwords(s: str, sep: str = None) -> str: pass
 
 class Template:
     template = ''
-    
+
     def __init__(self, template: str) -> None: pass
     def substitute(self, mapping: Mapping[str, str], **kwds: str) -> str: pass
     def safe_substitute(self, mapping: Mapping[str, str],

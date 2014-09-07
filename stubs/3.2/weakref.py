@@ -27,40 +27,40 @@ class WeakValueDictionary(Generic[KT, VT]):
     def __init__(self) -> None: pass
     @overload
     def __init__(self, map: Mapping[KT, VT]) -> None: pass
-    
-    def __len__(self) -> int: pass    
+
+    def __len__(self) -> int: pass
     def __getitem__(self, k: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __delitem__(self, v: KT) -> None: pass
     def __contains__(self, o: object) -> bool: pass
     def __iter__(self) -> Iterator[KT]: pass
     def __str__(self) -> str: pass
-    
+
     def clear(self) -> None: pass
     def copy(self) -> Dict[KT, VT]: pass
-    
+
     @overload
     def get(self, k: KT) -> VT: pass
     @overload
     def get(self, k: KT, default: VT) -> VT: pass
-    
+
     @overload
     def pop(self, k: KT) -> VT: pass
     @overload
     def pop(self, k: KT, default: VT) -> VT: pass
-    
+
     def popitem(self) -> Tuple[KT, VT]: pass
-    
+
     @overload
     def setdefault(self, k: KT) -> VT: pass
     @overload
     def setdefault(self, k: KT, default: VT) -> VT: pass
-    
+
     @overload
     def update(self, m: Mapping[KT, VT]) -> None: pass
     @overload
     def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-    
+
     # NOTE: incompatible with Mapping
     def keys(self) -> Iterator[KT]: pass
     def values(self) -> Iterator[VT]: pass

@@ -34,19 +34,19 @@ class deque(Sized, Iterable[T], AbstractGeneric[T]):
     def remove(self, value: T) -> None: pass
     def reverse(self) -> None: pass
     def rotate(self, n: int) -> None: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[T]: pass
     def __str__(self) -> str: pass
     def __hash__(self) -> int: pass
-    
+
     def __getitem__(self, i: int) -> T: pass
     def __setitem__(self, i: int, x: T) -> None: pass
     def __contains__(self, o: T) -> bool: pass
 
     # TODO __reversed__
 
-    
+
 class Counter(Dict[T, int], Generic[T]):
     @overload
     def __init__(self) -> None: pass
@@ -55,19 +55,19 @@ class Counter(Dict[T, int], Generic[T]):
     @overload
     def __init__(self, iterable: Iterable[T]) -> None: pass
     # TODO keyword arguments
-    
+
     def elements(self) -> Iterator[T]: pass
-    
+
     @overload
     def most_common(self) -> List[T]: pass
     @overload
     def most_common(self, n: int) -> List[T]: pass
-    
+
     @overload
     def subtract(self, Mapping: Mapping[T, int]) -> None: pass
     @overload
     def subtract(self, iterable: Iterable[T]) -> None: pass
-    
+
     # TODO update
 
 
@@ -78,7 +78,7 @@ class OrderedDict(Dict[KT, VT], Generic[KT, VT]):
 
 class defaultdict(Dict[KT, VT], Generic[KT, VT]):
     default_factory = Undefined(Function[[], VT])
-    
+
     @overload
     def __init__(self) -> None: pass
     @overload
@@ -94,6 +94,6 @@ class defaultdict(Dict[KT, VT], Generic[KT, VT]):
     def __init__(self, default_factory: Function[[], VT],
                  iterable: Iterable[Tuple[KT, VT]]) -> None: pass
     # TODO __init__ keyword args
-    
+
     def __missing__(self, key: KT) -> VT: pass
     # TODO __reversed__

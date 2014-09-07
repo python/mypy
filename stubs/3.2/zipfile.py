@@ -25,19 +25,19 @@ class ZipFile:
     def __init__(self, file: BinaryIO, mode: str = 'r',
                   compression: int = ZIP_STORED,
                  allowZip64: bool = False) -> None: pass
-    
+
     def close(self) -> None: pass
     def getinfo(name: str) -> ZipInfo: pass
     def infolist(self) -> List[ZipInfo]: pass
     def namelist(self) -> List[str]: pass
-    
+
     @overload
     def read(self, name: str, pwd: str = None) -> bytes: pass
     @overload
     def read(self, name: ZipInfo, pwd: str = None) -> bytes: pass
-    
+
     def write(self, filename: str, arcname: str = None,
               compress_type: int = None) -> None: pass
-    
+
     def __enter__(self) -> 'ZipFile': pass
     def __exit__(self, type, value, traceback) -> bool: pass

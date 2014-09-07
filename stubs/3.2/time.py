@@ -16,7 +16,7 @@ tzname = Undefined(Tuple[str, str])
 
 # ----- classes/methods -----
 class struct_time:
-    # this is supposed to be a namedtuple object 
+    # this is supposed to be a namedtuple object
     # namedtuple is not yet implemented (see file: mypy/stubs/collections.py)
     # see: http://docs.python.org/3.2/library/time.html#time.struct_time
     # see: http://nullege.com/codes/search/time.struct_time

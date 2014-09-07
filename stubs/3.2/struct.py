@@ -37,7 +37,7 @@ def calcsize(fmt: bytes) -> int: pass
 class Struct:
     format = b''
     size = 0
-    
+
     @overload
     def __init__(self, format: str) -> None: pass
     @overload
