@@ -26,10 +26,10 @@ from typing import Undefined, Function
 f = Undefined # type: Function[[B], A]
 g = Undefined # type: Function[[A], A]
 h = Undefined # type: Function[[B], B]  # subtype of f
-g = f  # E: Incompatible types in assignment (expression has type , variable has type )
-g = h  # E: Incompatible types in assignment (expression has type , variable has type )
-h = f  # E: Incompatible types in assignment (expression has type , variable has type )
-h = g  # E: Incompatible types in assignment (expression has type , variable has type )
+g = f  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+g = h  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+h = f  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+h = g  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 f = g
 f = h
 f = f
