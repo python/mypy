@@ -23,7 +23,6 @@ class B: pass
 
 [case testSubtypingFunctionTypes]
 from typing import Undefined, Function
-<<<<<<< HEAD
 f = Undefined # type: Function[[B], A]
 g = Undefined # type: Function[[A], A]
 h = Undefined # type: Function[[B], B]  # subtype of f
@@ -31,7 +30,6 @@ g = f  # E: Incompatible types in assignment (expression has type Function[[A], 
 g = h  # E: Incompatible types in assignment (expression has type , variable has type )
 h = f  # E: Incompatible types in assignment (expression has type , variable has type )
 h = g  # E: Incompatible types in assignment (expression has type , variable has type )
-=======
 
 class A: pass
 class B(A): pass
@@ -43,7 +41,6 @@ g = h  # E: Incompatible types in assignment (expression has type , variable has
 h = f  # E: Incompatible types in assignment (expression has type , variable has type )
 h = g  # E: Incompatible types in assignment (expression has type , variable has type )
 g = f  # E: Incompatible types in assignment (expression has type , variable has type )
->>>>>>> master
 f = g
 f = h
 f = f
