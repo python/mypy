@@ -305,36 +305,7 @@ class DyncheckTransformVisitor(TraverserVisitor):
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> None:
         super().visit_comparison_expr(e)
-        
-        # Check each consecutive operand pair and their operator and method_type  
-        for index in range(len(e.operators)):  
-            left_index = index
-            right_index = index+1
-            method_type = e.method_types[index]
-            operator = e.operators[index]
-              
-            if self.dynamic_funcs[-1] or isinstance(method_type, AnyType):
-                e.operands[left_index] = self.coerce_to_dynamic(e.operands[left_index], 
-                                            self.get_type(e.operands[left_index]),
-                                            self.type_context())
-                e.operands[right_index] = self.coerce(e.operands[right_index], AnyType(),
-                                            self.get_type(e.operands[right_index]),
-                                            self.type_context())
-            elif method_type:                
-                method_callable = cast(Callable, method_type)
-                operand = e.operands[right_index]
-                # For 'in', the order of operands is reversed.
-                if operator == 'in':
-                    operand = e.operands[left_index]
-                # TODO arg_types[0] may not be reliable
-                
-                operand = self.coerce(operand, method_callable.arg_types[0],
-                                      self.get_type(operand),
-                                      self.type_context())
-                if operator == 'in':
-                    e.operands[left_index] = operand
-                else:
-                    e.operands[right_index] = operand
+        # Dummy
             
 
     def visit_index_expr(self, e: IndexExpr) -> None:
