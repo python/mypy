@@ -426,6 +426,73 @@ class B:
 main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
+[case testChainedComp]
+from typing import Undefined
+a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
+a < a < b < b # Fail
+a < b < b < b
+a < a > a < b # Fail
+
+class A:
+    def __lt__(self, o: 'B') -> bool: pass
+    def __gt__(self, o: 'B') -> bool: pass
+class B:
+    def __lt__(self, o: 'B') -> bool: pass
+    def __gt__(self, o: 'B') -> bool: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 3: Unsupported operand types for > ("A" and "A")
+main, line 5: Unsupported operand types for > ("A" and "A")
+main, line 5: Unsupported operand types for < ("A" and "A")
+
+
+[case testChainedCompBoolRes]
+from typing import Undefined
+a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
+bo = a < b < b
+a = a < b < b # Fail
+
+class A:
+    def __lt__(self, o: 'B') -> bool: pass
+    def __gt__(self, o: 'B') -> bool: pass
+class B:
+    def __lt__(self, o: 'B') -> bool: pass
+    def __gt__(self, o: 'B') -> bool: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
+
+
+[case testChainedCompResTyp]
+from typing import Undefined
+x, y = Undefined, Undefined # type: (X, Y)
+a, b, p, bo = Undefined, Undefined, Undefined, Undefined # type: (A, B, P, bool)
+b = y == y == y
+bo = y == y == y # Fail
+a = x < y
+a = x < y == y # Fail
+p = x < y == y
+
+class P:
+    pass
+class A(P):
+    pass
+class B(P):
+    pass
+        
+class X:
+    def __lt__(self, o: 'Y') -> A: pass
+    def __gt__(self, o: 'Y') -> A: pass
+class Y:
+    def __lt__(self, o: 'Y') -> A: pass
+    def __gt__(self, o: 'Y') -> A: pass
+    def __eq__(self, o: 'Y') -> B: pass
+[builtins fixtures/bool.py]
+[out]
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "bool")
+main, line 7: Incompatible types in assignment (expression has type "P", variable has type "A")
+
+
 [case testIs]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, bool)
