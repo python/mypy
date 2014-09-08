@@ -234,7 +234,7 @@ class I(metaclass=ABCMeta):
 class A(I):
     def h(self, a: 'A') -> 'I': # Fail
         pass
-    def f(self, a: 'I') -> 'I': # Fail
+    def f(self, a: 'I') -> 'I':
         pass
     def g(self, a: 'A') -> 'A':
         pass
@@ -242,7 +242,6 @@ class A(I):
 main: In class "A":
 main, line 11: Argument 1 of "h" incompatible with supertype "I"
 main, line 11: Return type of "h" incompatible with supertype "I"
-main, line 13: Argument 1 of "f" incompatible with supertype "I"
 
 
 -- Accessing abstract members

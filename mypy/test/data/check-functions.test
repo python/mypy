@@ -23,21 +23,32 @@ class B: pass
 
 [case testSubtypingFunctionTypes]
 from typing import Undefined, Function
+<<<<<<< HEAD
 f = Undefined # type: Function[[B], A]
 g = Undefined # type: Function[[A], A]
 h = Undefined # type: Function[[B], B]  # subtype of f
-g = f  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-g = h  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-h = f  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-h = g  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+g = f  # E: Incompatible types in assignment (expression has type , variable has type )
+g = h  # E: Incompatible types in assignment (expression has type , variable has type )
+h = f  # E: Incompatible types in assignment (expression has type , variable has type )
+h = g  # E: Incompatible types in assignment (expression has type , variable has type )
+=======
+
+class A: pass
+class B(A): pass
+
+f = Undefined(Function[[B], A])
+g = Undefined(Function[[A], A])  # subtype of f
+h = Undefined(Function[[B], B])  # subtype of f
+g = h  # E: Incompatible types in assignment (expression has type , variable has type )
+h = f  # E: Incompatible types in assignment (expression has type , variable has type )
+h = g  # E: Incompatible types in assignment (expression has type , variable has type )
+g = f  # E: Incompatible types in assignment (expression has type , variable has type )
+>>>>>>> master
 f = g
 f = h
 f = f
 g = g
 h = h
-
-class A: pass
-class B(A): pass
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Undefined, Function

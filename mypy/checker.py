@@ -830,8 +830,8 @@ class TypeChecker(NodeVisitor[Type]):
             coriginal = cast(Callable, original)
 
             for i in range(len(coverride.arg_types)):
-                if not is_equivalent(coriginal.arg_types[i],
-                                     coverride.arg_types[i]):
+                if not is_subtype(coriginal.arg_types[i],
+                                  coverride.arg_types[i]):
                     self.msg.argument_incompatible_with_supertype(
                         i + 1, name, name_in_super, supertype, node)
 

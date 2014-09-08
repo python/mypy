@@ -10,6 +10,7 @@ from mypy.expandtype import expand_type
 
 
 def is_immutable(t: Instance) -> bool:
+    # TODO: The name is confusing, since the values need not be immutable.
     return t.type.fullname() in ('typing.Iterable',
                                  'typing.Sequence',
                                  'typing.Reversible',
@@ -157,6 +158,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 
 def is_callable_subtype(left: Callable, right: Callable) -> bool:
+    """Is left a subtype of right?"""
     # TODO support named arguments, **args etc.
 
     # Subtyping is not currently supported for generic functions.
