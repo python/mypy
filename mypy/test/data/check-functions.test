@@ -30,7 +30,7 @@ class B(A): pass
 f = Undefined(Function[[B], A])
 g = Undefined(Function[[A], A])  # subtype of f
 h = Undefined(Function[[B], B])  # subtype of f
-g = h  # E: Incompatible types in assignment (expression has type , variable has type )
+g = h  # E: Incompatible types in assignment (expression has type Function[[A], A], variable has type Function[[B], B])
 h = f  # E: Incompatible types in assignment (expression has type , variable has type )
 h = g  # E: Incompatible types in assignment (expression has type , variable has type )
 g = f  # E: Incompatible types in assignment (expression has type , variable has type )
