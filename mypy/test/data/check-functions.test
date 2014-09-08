@@ -27,7 +27,7 @@ from typing import Undefined, Function
 f = Undefined # type: Function[[B], A]
 g = Undefined # type: Function[[A], A]
 h = Undefined # type: Function[[B], B]  # subtype of f
-g = f  # E: Incompatible types in assignment (expression has type , variable has type )
+g = f  # E: Incompatible types in assignment (expression has type Function[[A], A], variable has type Function[[B], A])
 g = h  # E: Incompatible types in assignment (expression has type , variable has type )
 h = f  # E: Incompatible types in assignment (expression has type , variable has type )
 h = g  # E: Incompatible types in assignment (expression has type , variable has type )
