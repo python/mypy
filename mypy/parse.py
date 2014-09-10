@@ -1469,9 +1469,8 @@ class Parser:
         return node
 
     def parse_comparison_expr(self, left: Node, prec: int) -> ComparisonExpr:
-
-        operators = []
-        operators_str = []
+        operators = []  # type: List[Tuple[Token, Token]]
+        operators_str = []  # type: List[str]
         operands = [left]
 
         while True:

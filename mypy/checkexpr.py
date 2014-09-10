@@ -767,7 +767,7 @@ class ExpressionChecker:
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
             left_type = self.accept(left)
             
-            method_type = None
+            method_type = None  # type: mypy.types.Type
             
             if operator == 'in' or operator == 'not in':
                 right_type = self.accept(right)  # TODO only evaluate if needed
