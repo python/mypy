@@ -8,7 +8,7 @@
 
 import _random
 from typing import (
-    Any, overload, typevar, Sequence, List, Function, AbstractSet
+    Any, typevar, Sequence, List, Function, AbstractSet, Union
 )
 
 t = typevar('t')
@@ -19,25 +19,11 @@ class Random(_random.Random):
     def getstate(self) -> tuple: pass
     def setstate(self, state: tuple) -> None: pass
     def getrandbits(self, k: int) -> int: pass
-
-    @overload
-    def randrange(self, stop: int) -> int: pass
-    @overload
-    def randrange(self, start: int, stop: int, step: int = 1) -> int: pass
-
+    def randrange(self, start: int, stop: Union[int, None] = None, step: int = 1) -> int: pass
     def randint(self, a: int, b: int) -> int: pass
     def choice(self, seq: Sequence[t]) -> t: pass
-
-    @overload
-    def shuffle(self, x: List[Any]) -> None: pass
-    @overload
-    def shuffle(self, x: List[Any], random: Function[[], float]) -> None: pass
-
-    @overload
-    def sample(self, population: Sequence[t], k: int) -> List[t]: pass
-    @overload
-    def sample(self, population: AbstractSet[t], k: int) -> List[t]: pass
-
+    def shuffle(self, x: List[Any], random: Union[Function[[], float], None] = None) -> None: pass
+    def sample(self, population: Union[Sequence[t], AbstractSet[t]], k: int) -> List[t]: pass
     def random(self) -> float: pass
     def uniform(self, a: float, b: float) -> float: pass
     def triangular(self, low: float = 0.0, high: float = 1.0,
@@ -64,25 +50,11 @@ def seed(a: Any = None, version: int = 2) -> None: pass
 def getstate() -> object: pass
 def setstate(state: object) -> None: pass
 def getrandbits(k: int) -> int: pass
-
-@overload
-def randrange(stop: int) -> int: pass
-@overload
-def randrange(start: int, stop: int, step: int = 1) -> int: pass
-
+def randrange(start: int, stop: Union[None, int] = None, step: int = 1) -> int: pass
 def randint(a: int, b: int) -> int: pass
 def choice(seq: Sequence[t]) -> t: pass
-
-@overload
-def shuffle(x: List[Any]) -> None: pass
-@overload
-def shuffle(x: List[Any], random: Function[[], float]) -> None: pass
-
-@overload
-def sample(population: Sequence[t], k: int) -> List[t]: pass
-@overload
-def sample(population: AbstractSet[t], k: int) -> List[t]: pass
-
+def shuffle(x: List[Any], random: Union[Function[[], float], None] = None) -> None: pass
+def sample(population: Union[Sequence[t], AbstractSet[t]], k: int) -> List[t]: pass
 def random() -> float: pass
 def uniform(a: float, b: float) -> float: pass
 def triangular(low: float = 0.0, high: float = 1.0,
