@@ -170,10 +170,7 @@ def getuid() -> int: pass  # Unix only
 def getenv(key: str, default: str = None) -> str: pass
 def getenvb(key: bytes, default: bytes = None) -> bytes: pass
 # TODO mixed str/bytes putenv arguments
-@overload
-def putenv(key: str, value: str) -> None: pass
-@overload
-def putenv(key: bytes, value: bytes) -> None: pass
+def putenv(key: AnyStr, value: AnyStr) -> None: pass
 def setegid(egid: int) -> None: pass  # Unix only
 def seteuid(euid: int) -> None: pass  # Unix only
 def setgid(gid: int) -> None: pass  # Unix only
@@ -230,16 +227,8 @@ def lchflags(path: str, flags: int) -> None: pass  # Unix only
 def lchmod(path: str, mode: int) -> None: pass  # Unix only
 def lchown(path: str, uid: int, gid: int) -> None: pass  # Unix only
 
-@overload
-def link(src: str, link_name: str) -> None: pass
-@overload
-def link(src: bytes, link_name: bytes) -> None: pass
-
-@overload
-def listdir(path: str = '.') -> List[str]: pass
-@overload
-def listdir(path: bytes) -> List[bytes]: pass
-
+def link(src: AnyStr, link_name: AnyStr) -> None: pass
+def listdir(path: AnyStr = '.') -> List[AnyStr]: pass
 def lstat(path: AnyStr) -> stat_result: pass
 def mkfifo(path, mode: int=0o666) -> None: pass  # Unix only
 def mknod(filename: AnyStr, mode: int = 0o600, device: int = 0) -> None: pass
@@ -251,37 +240,18 @@ def makedirs(path: AnyStr, mode: int = 0o777,
              exist_ok: bool = False) -> None: pass
 def pathconf(path: str, name: str) -> int: pass  # Unix only
 
-@overload
-def readlink(path: str) -> str: pass
-@overload
-def readlink(path: bytes) -> bytes: pass
-
+def readlink(path: AnyStr) -> AnyStr: pass
 def remove(path: AnyStr) -> None: pass
 def removedirs(path: AnyStr) -> None: pass
-
-@overload
-def rename(src: str, dst: str) -> None: pass
-@overload
-def rename(src: bytes, dst: bytes) -> None: pass
-
-@overload
-def renames(old: str, new: str) -> None: pass
-@overload
-def renames(old: bytes, new: bytes) -> None: pass
-
+def rename(src: AnyStr, dst: AnyStr) -> None: pass
+def renames(old: AnyStr, new: AnyStr) -> None: pass
 def rmdir(path: AnyStr) -> None: pass
 def stat(path: AnyStr) -> stat_result: pass
 def stat_float_times(newvalue: Union[bool, None] = None) -> bool: pass
 def statvfs(path: str) -> statvfs_result: pass # Unix only
-
-@overload
-def symlink(source: str, link_name: str,
+def symlink(source: AnyStr, link_name: AnyStr,
             target_is_directory: bool = False) -> None:
     pass  # final argument in Windows only
-@overload
-def symlink(source: bytes, link_name: bytes,
-            target_is_directory: bool = False) -> None:
-    pass
 
 @overload
 def unlink(path: str) -> None: pass
@@ -291,14 +261,9 @@ def unlink(bytes: str) -> None: pass
 def utime(path: AnyStr, times: Union[Tuple[int, int], Tuple[float, float]] = None) -> None: pass
 
 # TODO onerror: function from OSError to void
-@overload
-def walk(top: str, topdown: bool = True, onerror: Any = None, 
-         followlinks: bool = False) -> Iterator[Tuple[str, List[str],
-                                                      List[str]]]: pass
-@overload
-def walk(top: bytes, topdown: bool = True, onerror: Any = None, 
-         followlinks: bool = False) -> Iterator[Tuple[bytes, List[bytes],
-                                                      List[bytes]]]: pass
+def walk(top: AnyStr, topdown: bool = True, onerror: Any = None,
+         followlinks: bool = False) -> Iterator[Tuple[AnyStr, List[AnyStr],
+                                                      List[AnyStr]]]: pass
 # walk(): "By default errors from the os.listdir() call are ignored.  If
 # optional arg 'onerror' is specified, it should be a function; it
 # will be called with one argument, an os.error instance.  It can
@@ -307,45 +272,16 @@ def walk(top: bytes, topdown: bool = True, onerror: Any = None,
 # filename attribute of the exception object."
 
 def abort() -> 'None': pass
-
-@overload
-def execl(path: str, arg0: str, *args: str) -> None: pass
-@overload
-def execl(path: bytes, arg0: bytes, *args: bytes) -> None: pass
-@overload
-def execle(path: str, arg0: str,
+def execl(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: pass
+def execle(path: AnyStr, arg0: AnyStr,
            *args: Any) -> None: pass # Imprecise signature
-@overload
-def execle(path: bytes, arg0: bytes,
-           *args: Any) -> None: pass # Imprecise signature
-@overload
-def execlp(path: str, arg0: str, *args: str) -> None: pass
-@overload
-def execlp(path: bytes, arg0: bytes, *args: bytes) -> None: pass
-@overload
-def execlpe(path: str, arg0: str,
+def execlp(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: pass
+def execlpe(path: AnyStr, arg0: AnyStr,
             *args: Any) -> None: pass # Imprecise signature
-@overload
-def execlpe(path: bytes, arg0: bytes,
-            *args: Any) -> None: pass # Imprecise signature
-@overload
-def execv(path: str, args: List[str]) -> None: pass
-@overload
-def execv(path: bytes, args: List[bytes]) -> None: pass
-@overload
-def execve(path: str, args: List[str], env: Mapping[str, str]) -> None: pass
-@overload
-def execve(path: bytes, args: List[bytes],
-           env: Mapping[str, str]) -> None: pass
-@overload
-def execvp(file: str, args: List[str]) -> None: pass
-@overload
-def execvp(file: bytes, args: List[bytes]) -> None: pass
-@overload
-def execvpe(file: str, args: List[str],
-            env: Mapping[str, str]) -> None: pass
-@overload
-def execvpe(file: bytes, args: List[bytes],
+def execv(path: AnyStr, args: List[AnyStr]) -> None: pass
+def execve(path: AnyStr, args: List[AnyStr], env: Mapping[AnyStr, AnyStr]) -> None: pass
+def execvp(file: AnyStr, args: List[AnyStr]) -> None: pass
+def execvpe(file: AnyStr, args: List[AnyStr],
             env: Mapping[str, str]) -> None: pass
 def _exit(n: int) -> None: pass
 def fork() -> int: pass  # Unix only
@@ -362,48 +298,20 @@ class popen(_TextIOWrapper):
                  bufsize: int = -1) -> None: pass
     def close(self) -> Any: pass # may return int
 
-@overload
-def spawnl(mode: int, path: str, arg0: str, *args: str) -> int: pass
-@overload
-def spawnl(mode: int, path: bytes, arg0: bytes, *args: bytes) -> int: pass
-@overload
-def spawnle(mode: int, path: str, arg0: str,
+def spawnl(mode: int, path: AnyStr, arg0: AnyStr, *args: AnyStr) -> int: pass
+def spawnle(mode: int, path: AnyStr, arg0: AnyStr,
             *args: Any) -> int: pass # Imprecise sig
-@overload
-def spawnle(mode: int, path: bytes, arg0: bytes,
-            *args: Any) -> int: pass # Imprecise sig
-@overload
-def spawnlp(mode: int, file: str, arg0: str,
-            *args: str) -> int: pass  # Unix only TODO 
-@overload
-def spawnlp(mode: int, file: bytes, arg0: bytes, *args: bytes) -> int: pass
-@overload
-def spawnlpe(mode: int, file: str, arg0: str, *args: Any) -> int:
-    pass # Imprecise signature; Unix only TODO 
-@overload
-def spawnlpe(mode: int, file: bytes, arg0: bytes, *args: Any) -> int:
-    pass # Imprecise signature
-@overload
-def spawnv(mode: int, path: str, args: List[str]) -> int: pass
-@overload
-def spawnv(mode: int, path: bytes, args: List[bytes]) -> int: pass
-@overload
-def spawnve(mode: int, path: str, args: List[str],
+def spawnlp(mode: int, file: AnyStr, arg0: AnyStr,
+            *args: AnyStr) -> int: pass  # Unix only TODO
+def spawnlpe(mode: int, file: AnyStr, arg0: AnyStr, *args: Any) -> int:
+    pass # Imprecise signature; Unix only TODO
+def spawnv(mode: int, path: AnyStr, args: List[AnyStr]) -> int: pass
+def spawnve(mode: int, path: AnyStr, args: List[AnyStr],
             env: Mapping[str, str]) -> int: pass
-@overload
-def spawnve(mode: int, path: bytes, args: List[bytes],
-            env: Mapping[str, str]) -> int: pass
-@overload
-def spawnvp(mode: int, file: str, args: List[str]) -> int: pass  # Unix only
-@overload
-def spawnvp(mode: int, file: bytes, args: List[bytes]) -> int: pass
-@overload
-def spawnvpe(mode: int, file: str, args: List[str],
+def spawnvp(mode: int, file: AnyStr, args: List[AnyStr]) -> int: pass  # Unix only
+def spawnvpe(mode: int, file: AnyStr, args: List[AnyStr],
              env: Mapping[str, str]) -> int: 
     pass  # Unix only
-@overload
-def spawnvpe(mode: int, file: bytes, args: List[bytes],
-             env: Mapping[str, str]) -> int: pass
 
 def startfile(path: str, operation: Union[str, None] = None) -> None: pass  # Windows only
 
