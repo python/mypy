@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.html
 
-from typing import Undefined, Mapping, Dict, List, overload, Any, Tuple, Iterator
+from typing import Undefined, Mapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr
 from builtins import OSError as error
 import os.path as path
 
@@ -190,10 +190,7 @@ def setuid(uid) -> None: pass  # Unix only
 def strerror(code: int) -> str: pass
 def umask(mask: int) -> int: pass
 def uname() -> Tuple[str, str, str, str, str]: pass  # Unix only
-@overload
-def unsetenv(key: str) -> None: pass
-@overload
-def unsetenv(key: bytes) -> None: pass
+def unsetenv(key: AnyStr) -> None: pass
 # Return IO or TextIO
 def fdopen(fd: int, mode: str = 'r', encoding: str = None, errors: str = None,
            newline: str = None, closefd: bool = True) -> Any: pass
@@ -212,10 +209,7 @@ def fsync(fd: int) -> None: pass
 def ftruncate(fd: int, length: int) -> None: pass  # Unix only
 def isatty(fd: int) -> bool: pass  # Unix only
 def lseek(fd: int, pos: int, how: int) -> int: pass
-@overload
-def open(file: str, flags: int, mode: int = 0o777) -> int: pass
-@overload
-def open(file: bytes, flags: int, mode: int = 0o777) -> int: pass
+def open(file: AnyStr, flags: int, mode: int = 0o777) -> int: pass
 def openpty() -> Tuple[int, int]: pass  # some flavors of Unix
 def pipe() -> Tuple[int, int]: pass
 def read(fd: int, n: int) -> bytes: pass
@@ -223,30 +217,15 @@ def tcgetpgrp(fd: int) -> int: pass  # Unix only
 def tcsetpgrp(fd: int, pg: int) -> None: pass  # Unix only
 def ttyname(fd: int) -> str: pass  # Unix only
 def write(fd: int, string: bytes) -> int: pass
-@overload
-def access(path: str, mode: int) -> bool: pass
-@overload
-def access(path: bytes, mode: int) -> bool: pass
-@overload
-def chdir(path: str) -> None: pass
-@overload
-def chdir(path: bytes) -> None: pass
+def access(path: AnyStr, mode: int) -> bool: pass
+def chdir(path: AnyStr) -> None: pass
 def fchdir(fd: int) -> None: pass
 def getcwd() -> str: pass
 def getcwdb() -> bytes: pass
 def chflags(path: str, flags: int) -> None: pass  # Unix only
 def chroot(path: str) -> None: pass  # Unix only
-
-@overload
-def chmod(path: str, mode: int) -> None: pass
-@overload
-def chmod(path: bytes, mode: int) -> None: pass
-
-@overload
-def chown(path: str, uid: int, gid: int) -> None: pass  # Unix only
-@overload
-def chown(path: bytes, uid: int, gid: int) -> None: pass  # Unix only
-
+def chmod(path: AnyStr, mode: int) -> None: pass
+def chown(path: AnyStr, uid: int, gid: int) -> None: pass  # Unix only
 def lchflags(path: str, flags: int) -> None: pass  # Unix only
 def lchmod(path: str, mode: int) -> None: pass  # Unix only
 def lchown(path: str, uid: int, gid: int) -> None: pass  # Unix only
@@ -261,34 +240,15 @@ def listdir(path: str = '.') -> List[str]: pass
 @overload
 def listdir(path: bytes) -> List[bytes]: pass
 
-@overload
-def lstat(path: str) -> stat_result: pass
-@overload
-def lstat(path: bytes) -> stat_result: pass
-
+def lstat(path: AnyStr) -> stat_result: pass
 def mkfifo(path, mode: int=0o666) -> None: pass  # Unix only
-
-@overload
-def mknod(filename: str, mode: int = 0o600, device: int = 0) -> None: pass
-@overload
-def mknod(filename: bytes, mode: int = 0o600, device: int = 0) -> None: pass
-
+def mknod(filename: AnyStr, mode: int = 0o600, device: int = 0) -> None: pass
 def major(device: int) -> int: pass
 def minor(device: int) -> int: pass
 def makedev(major: int, minor: int) -> int: pass
-
-@overload
-def mkdir(path: str, mode: int = 0o777) -> None: pass
-@overload
-def mkdir(path: bytes, mode: int = 0o777) -> None: pass
-
-@overload
-def makedirs(path: str, mode: int = 0o777,
+def mkdir(path: AnyStr, mode: int = 0o777) -> None: pass
+def makedirs(path: AnyStr, mode: int = 0o777,
              exist_ok: bool = False) -> None: pass
-@overload
-def makedirs(path: bytes, mode: int = 0o777,
-             exist_ok: bool = False) -> None: pass
-
 def pathconf(path: str, name: str) -> int: pass  # Unix only
 
 @overload
@@ -296,15 +256,8 @@ def readlink(path: str) -> str: pass
 @overload
 def readlink(path: bytes) -> bytes: pass
 
-@overload
-def remove(path: str) -> None: pass
-@overload
-def remove(path: bytes) -> None: pass
-
-@overload
-def removedirs(path: str) -> None: pass
-@overload
-def removedirs(path: bytes) -> None: pass
+def remove(path: AnyStr) -> None: pass
+def removedirs(path: AnyStr) -> None: pass
 
 @overload
 def rename(src: str, dst: str) -> None: pass
@@ -316,21 +269,9 @@ def renames(old: str, new: str) -> None: pass
 @overload
 def renames(old: bytes, new: bytes) -> None: pass
 
-@overload
-def rmdir(path: str) -> None: pass
-@overload
-def rmdir(path: bytes) -> None: pass
-
-@overload
-def stat(path: str) -> stat_result: pass
-@overload
-def stat(path: bytes) -> stat_result: pass
-
-@overload
-def stat_float_times() -> bool: pass
-@overload
-def stat_float_times(newvalue: bool) -> bool: pass
-
+def rmdir(path: AnyStr) -> None: pass
+def stat(path: AnyStr) -> stat_result: pass
+def stat_float_times(newvalue: Union[bool, None] = None) -> bool: pass
 def statvfs(path: str) -> statvfs_result: pass # Unix only
 
 @overload
@@ -347,14 +288,7 @@ def unlink(path: str) -> None: pass
 @overload
 def unlink(bytes: str) -> None: pass
 
-@overload
-def utime(path: str, times: Tuple[int, int] = None) -> None: pass
-@overload
-def utime(path: bytes, times: Tuple[int, int] = None) -> None: pass
-@overload
-def utime(path: str, times: Tuple[float, float] = None) -> None: pass
-@overload
-def utime(path: bytes, times: Tuple[float, float] = None) -> None: pass
+def utime(path: AnyStr, times: Union[Tuple[int, int], Tuple[float, float]] = None) -> None: pass
 
 # TODO onerror: function from OSError to void
 @overload
@@ -471,23 +405,14 @@ def spawnvpe(mode: int, file: str, args: List[str],
 def spawnvpe(mode: int, file: bytes, args: List[bytes],
              env: Mapping[str, str]) -> int: pass
 
-@overload
-def startfile(path: str) -> None: pass  # Windows only
-@overload
-def startfile(path: str, operation: str) -> None: pass  # Windows only
+def startfile(path: str, operation: Union[str, None] = None) -> None: pass  # Windows only
 
-@overload
-def system(command: str) -> int: pass
-@overload
-def system(command: bytes) -> int: pass
+def system(command: AnyStr) -> int: pass
 
 def times() -> Tuple[float, float, float, float, float]: pass
 def wait() -> Tuple[int, int]: pass  # Unix only
 def waitpid(pid: int, options: int) -> Tuple[int, int]: pass
-@overload
-def wait3() -> Tuple[int, int, Any]: pass  # Unix only
-@overload
-def wait3(options: int) -> Tuple[int, int, Any]: pass  # Unix only
+def wait3(options: Union[int, None] = None) -> Tuple[int, int, Any]: pass  # Unix only
 def wait4(pid: int, options: int) -> Tuple[int, int, Any]:
     pass  # Unix only
 def WCOREDUMP(status: int) -> bool: pass  # Unix only
