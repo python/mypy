@@ -4,7 +4,7 @@
 # based on: http://docs.python.org/3.2/library/time.html#module-time
 # see: http://nullege.com/codes/search?cq=time
 
-from typing import Undefined, Tuple, overload
+from typing import Undefined, Tuple, Union
 
 # ----- variables and constants -----
 accept2dyear = False
@@ -35,48 +35,28 @@ class struct_time:
 
 
 # ----- functions -----
-@overload
-def asctime() -> str: pass  # return current time
-@overload
-def asctime(t: struct_time) -> str: pass
-@overload
-def asctime(t: Tuple[int, int, int, int, int, int, int, int, int]) -> str: pass
+def asctime(t: Union[Tuple[int, int, int, int, int, int, int, int, int],
+                     struct_time,
+                     None] = None) -> str: pass  # return current time
 
 def clock() -> float: pass
 
-@overload
-def ctime() -> str: pass  # return current time
-@overload
-def ctime(secs: float) -> str: pass
+def ctime(secs: Union[float, None] = None) -> str: pass  # return current time
 
-@overload
-def gmtime() -> struct_time: pass  # return current time
-@overload
-def gmtime(secs: float) -> struct_time: pass
+def gmtime(secs: Union[float, None] = None) -> struct_time: pass  # return current time
 
-@overload
-def localtime() -> struct_time: pass  # return current time
-@overload
-def localtime(secs: float) -> struct_time: pass
+def localtime(secs: Union[float, None] = None) -> struct_time: pass  # return current time
 
-@overload
-def mktime(t: struct_time) -> float: pass
-@overload
-def mktime(t: Tuple[int, int, int, int, int,
-                    int, int, int, int]) -> float: pass
+def mktime(t: Union[Tuple[int, int, int, int, int,
+                          int, int, int, int],
+                    struct_time]) -> float: pass
 
-@overload
-def sleep(secs: int) -> None: pass
-@overload
-def sleep(secs: float) -> None: pass
+def sleep(secs: Union[int, float]) -> None: pass
 
-@overload
-def strftime(format: str) -> str: pass  # return current time
-@overload
-def strftime(format: str, t: struct_time) -> str: pass
-@overload
-def strftime(format: str, t: Tuple[int, int, int, int, int,
-                                   int, int, int, int]) -> str: pass
+def strftime(format: str, t: Union[Tuple[int, int, int, int, int,
+                                         int, int, int, int],
+                                   struct_time,
+                                   None] = None) -> str: pass  # return current time
 
 def strptime(string: str,
              format: str = "%a %b %d %H:%M:%S %Y") -> struct_time: pass
