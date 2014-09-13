@@ -1370,9 +1370,9 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        n = (cast(TypeInfo, n.node)).get(parts[i])
+                        n = cast(TypeInfo, n.node).get(parts[i])
                     elif isinstance(n.node, MypyFile):
-                        n = (cast(MypyFile, n.node)).names.get(parts[i], None)
+                        n = cast(MypyFile, n.node).names.get(parts[i], None)
                     if not n:
                         self.name_not_defined(name, ctx)
                         break
