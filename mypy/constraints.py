@@ -153,7 +153,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # Non-trivial leaf type
 
     def visit_type_var(self, template: TypeVar) -> List[Constraint]:
-        return [Constraint(template.id, SUPERTYPE_OF, self.actual)]
+        return [Constraint(template.id, self.direction, self.actual)]
 
     # Non-leaf types
 
