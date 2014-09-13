@@ -1375,6 +1375,7 @@ class SemanticAnalyzer(NodeVisitor):
                         n = (cast(MypyFile, n.node)).names.get(parts[i], None)
                     if not n:
                         self.name_not_defined(name, ctx)
+                        break
                 if n:
                     n = self.normalize_type_alias(n, ctx)
             return n
