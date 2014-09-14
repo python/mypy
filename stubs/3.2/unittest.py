@@ -13,8 +13,8 @@ from typing import (
 )
 from abc import abstractmethod, ABCMeta
 
-T = typevar('T')
-FT = typevar('FT')
+_T = typevar('_T')
+_FT = typevar('_FT')
 
 class Testable(metaclass=ABCMeta):
     @abstractmethod
@@ -111,9 +111,9 @@ class TestCase(Testable):
                     msg: object = None) -> None: pass
     def assertIsNone(self, expr: Any, msg: object = None) -> None: pass
     def assertIsNotNone(self, expr: Any, msg: object = None) -> None: pass
-    def assertIn(self, first: T, second: Iterable[T],
+    def assertIn(self, first: _T, second: Iterable[_T],
                  msg: object = None) -> None: pass
-    def assertNotIn(self, first: T, second: Iterable[T],
+    def assertNotIn(self, first: _T, second: Iterable[_T],
                     msg: object = None) -> None: pass
     def assertIsInstance(self, obj: Any, cls: type,
                          msg: object = None) -> None: pass
@@ -159,7 +159,7 @@ class SkipTest(Exception):
 # TODO precise types
 def skipUnless(condition: Any, reason: str) -> Any: pass
 def skipIf(condition: Any, reason: str) -> Any: pass
-def expectedFailure(func: FT) -> FT: pass
+def expectedFailure(func: _FT) -> _FT: pass
 def skip(reason: str) -> Any: pass
 
 def main(module: str = '__main__', defaultTest: str = None,

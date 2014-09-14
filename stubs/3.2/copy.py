@@ -4,6 +4,6 @@
 
 from typing import typevar
 
-T = typevar('T')
+_T = typevar('_T')
 
-def deepcopy(x: T) -> T: pass
+def deepcopy(x: _T) -> _T: pass

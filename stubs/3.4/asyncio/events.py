@@ -14,7 +14,7 @@ import socket, subprocess
 
 __all__ = ['AbstractEventLoop', 'Handle', 'get_event_loop']
 
-T = typevar('T')
+_T = typevar('_T')
 
 class Handle:
     __slots__ = [] # type: List[str]
@@ -31,7 +31,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
     @abstractmethod
     def run_forever(self) -> None: pass
     @abstractmethod
-    def run_until_complete(self, future: Future[T]) -> T: pass
+    def run_until_complete(self, future: Future[_T]) -> _T: pass
     @abstractmethod
     def stop(self) -> None: pass
     @abstractmethod
