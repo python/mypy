@@ -186,6 +186,7 @@ def run_test(t: Suite, args: List[str] = None) -> None:
                                                            num_total,
                                                            skip_msg))
         sys.stderr.write('*** FAILURE ***\n')
+        sys.exit(1)
 
 
 def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
