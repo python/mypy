@@ -1224,6 +1224,26 @@ class TypeChecker(NodeVisitor[Type]):
                             not self.is_dynamic_function()):
                             self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
+    def wrap_generic_type(self, typ: Type, rtyp: Type, check_type: str, context: Context) -> Type:
+        n_diff = self.count_concatenated_types(rtyp, check_type) - self.count_concatenated_types(typ, check_type)
+        if n_diff >= 1:
+            return self.named_generic_type(check_type, [typ])
+        elif n_diff == 0:
+            self.fail(messages.INCOMPATIBLE_RETURN_VALUE_TYPE
+                + ": expected {}, got {}".format(rtyp, typ), context)
+            return typ
+        return typ
+
+    def count_concatenated_types(self, typ: Type, check_type: str) -> int:
+        c = 0
+        while is_subtype(typ, self.named_type(check_type)):
+            c += 1
+            if hasattr(typ, 'args') and typ.args:
+                typ = typ.args[0]
+            else:
+                return c
+        return c
+
     def visit_yield_stmt(self, s: YieldStmt) -> Type:
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):

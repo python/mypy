@@ -15,7 +15,7 @@ FIRST_COMPLETED = 'FIRST_COMPLETED'
 ALL_COMPLETED = 'ALL_COMPLETED'
 _T = typevar('_T')
 def coroutine(f: Any) -> Any: pass  # Here comes and go a function
-def sleep(delay: float, result: T=None, loop: AbstractEventLoop=None) -> Future[_T]: pass
+def sleep(delay: float, result: _T=None, loop: AbstractEventLoop=None) -> Future[_T]: pass
 def wait(fs: List[Any], *, loop: AbstractEventLoop=None,
     timeout: float=None, return_when: str=ALL_COMPLETED) -> Future[Tuple[Set[Future[_T]], Set[Future[_T]]]]: pass
 def wait_for(fut: Future[_T], timeout: float, *, loop: AbstractEventLoop=None) -> Future[_T]: pass

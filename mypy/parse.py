@@ -775,6 +775,7 @@ class Parser:
     def parse_yield_stmt(self) -> YieldStmt:
         yield_tok = self.expect('yield')
         expr = None  # type: Node
+        node = YieldStmt(expr)
         if not isinstance(self.current(), Break):
             if isinstance(self.current(), Keyword) and self.current_str() == "from":  # Not go if it's not from
                 from_tok = self.expect("from")
@@ -784,7 +785,6 @@ class Parser:
                 expr = self.parse_expression()
                 node = YieldStmt(expr)
         br = self.expect_break()
-        node = YieldStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
         return node
 
