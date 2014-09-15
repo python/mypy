@@ -1,7 +1,7 @@
 """Mypy type checker."""
 
 import itertools
-            
+
 from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar
 
 from mypy.errors import Errors

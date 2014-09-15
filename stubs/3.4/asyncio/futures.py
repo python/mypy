@@ -6,7 +6,7 @@ from asyncio.events import AbstractEventLoop
 #            ]
 __all__ = ['Future']
 
-T = typevar('T')
+_T = typevar('_T')
 
 class _TracebackLogger:
     __slots__ = [] # type: List[str]
@@ -17,7 +17,7 @@ class _TracebackLogger:
     def clear(self) -> None: pass
     def __del__(self) -> None: pass
 
-class Future(Iterator[T], Generic[T]):  # (Iterable[T], Generic[T])
+class Future(Iterator[_T], Generic[_T]):  # (Iterable[_T], Generic[_T])
     _state = ''
     _exception = Any #Exception
     _blocking = False
@@ -30,12 +30,12 @@ class Future(Iterator[T], Generic[T]):  # (Iterable[T], Generic[T])
     def _schedule_callbacks(self) -> None: pass
     def cancelled(self) -> bool: pass
     def done(self) -> bool: pass
-    def result(self) -> T: pass
+    def result(self) -> _T: pass
     def exception(self) -> Any: pass
-    def add_done_callback(self, fn: Function[[Future[T]],Any]) -> None: pass
-    def remove_done_callback(self, fn: Function[[Future[T]], Any]) -> int: pass
-    def set_result(self, result: T) -> None: pass
+    def add_done_callback(self, fn: Function[[Future[_T]],Any]) -> None: pass
+    def remove_done_callback(self, fn: Function[[Future[_T]], Any]) -> int: pass
+    def set_result(self, result: _T) -> None: pass
     def set_exception(self, exception: Any) -> None: pass
     def _copy_state(self, other: Any) -> None: pass
-    def __iter__(self) -> 'Iterator[T]': pass
-    def __next__(self) -> 'T': pass
+    def __iter__(self) -> 'Iterator[_T]': pass
+    def __next__(self) -> '_T': pass
