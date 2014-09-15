@@ -275,7 +275,14 @@ class ExpressionChecker:
         # special ErasedType type. On the other hand, class type variables are
         # valid results.
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
-        args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
+        ret_type = callable.ret_type
+        if isinstance(ret_type, TypeVar):
+            if ret_type.values:
+                # The return type is a type variable with values, but we can't easily restrict
+                # type inference to conform to the valid values. Give up and just use function
+                # arguments for type inference.
+                ret_type = NoneTyp()
+        args = infer_type_arguments(callable.type_var_ids(), ret_type,
                                     erased_ctx, self.chk.basic_types())
         # Only substite non-None and non-erased types.
         new_args = []  # type: List[Type]
