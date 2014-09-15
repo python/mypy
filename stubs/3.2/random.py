@@ -11,7 +11,7 @@ from typing import (
     Any, typevar, Sequence, List, Function, AbstractSet, Union
 )
 
-t = typevar('t')
+_T = typevar('_T')
 
 class Random(_random.Random):
     def __init__(self, x: Any = None) -> None: pass
@@ -21,9 +21,9 @@ class Random(_random.Random):
     def getrandbits(self, k: int) -> int: pass
     def randrange(self, start: int, stop: Union[int, None] = None, step: int = 1) -> int: pass
     def randint(self, a: int, b: int) -> int: pass
-    def choice(self, seq: Sequence[t]) -> t: pass
+    def choice(self, seq: Sequence[_T]) -> _T: pass
     def shuffle(self, x: List[Any], random: Union[Function[[], float], None] = None) -> None: pass
-    def sample(self, population: Union[Sequence[t], AbstractSet[t]], k: int) -> List[t]: pass
+    def sample(self, population: Union[Sequence[_T], AbstractSet[_T]], k: int) -> List[_T]: pass
     def random(self) -> float: pass
     def uniform(self, a: float, b: float) -> float: pass
     def triangular(self, low: float = 0.0, high: float = 1.0,
@@ -52,9 +52,9 @@ def setstate(state: object) -> None: pass
 def getrandbits(k: int) -> int: pass
 def randrange(start: int, stop: Union[None, int] = None, step: int = 1) -> int: pass
 def randint(a: int, b: int) -> int: pass
-def choice(seq: Sequence[t]) -> t: pass
+def choice(seq: Sequence[_T]) -> _T: pass
 def shuffle(x: List[Any], random: Union[Function[[], float], None] = None) -> None: pass
-def sample(population: Union[Sequence[t], AbstractSet[t]], k: int) -> List[t]: pass
+def sample(population: Union[Sequence[_T], AbstractSet[_T]], k: int) -> List[_T]: pass
 def random() -> float: pass
 def uniform(a: float, b: float) -> float: pass
 def triangular(low: float = 0.0, high: float = 1.0,

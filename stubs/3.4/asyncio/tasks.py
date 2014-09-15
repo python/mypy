@@ -9,6 +9,6 @@ from asyncio.events import AbstractEventLoop
 
 __all__ = ['coroutine', 'sleep']
 
-T = typevar('T')
+_T = typevar('_T')
 def coroutine(f: Any) -> Any: pass
-def sleep(delay: float, result: T=None, loop: AbstractEventLoop=None) -> T: pass
+def sleep(delay: float, result: _T=None, loop: AbstractEventLoop=None) -> _T: pass
