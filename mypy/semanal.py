@@ -731,6 +731,7 @@ class SemanticAnalyzer(NodeVisitor):
         Only if add_global is True, add name to globals table. If nested
         is true, the lvalue is within a tuple or list lvalue expression.
         """
+        
         if isinstance(lval, NameExpr):
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and
@@ -791,7 +792,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif isinstance(lval, ParenExpr):
             self.analyse_lvalue(lval.expr, nested, add_global, explicit_type)
         elif (isinstance(lval, TupleExpr) or
-              isinstance(lval, ListExpr)) and not nested:
+              isinstance(lval, ListExpr)):
             items = (Any(lval)).items
             for i in items:
                 self.analyse_lvalue(i, nested=True, add_global=add_global,
