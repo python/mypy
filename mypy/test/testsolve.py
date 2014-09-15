@@ -28,11 +28,11 @@ class SolveSuite(Suite):
     def test_simple_subtype_constraints(self):
         self.assert_solve(['T'],
                           [self.subc(self.fx.t, self.fx.a)],
-                          [(self.fx.nonet, self.fx.a)])
+                          [self.fx.a])
         self.assert_solve(['T'],
                           [self.subc(self.fx.t, self.fx.a),
                            self.subc(self.fx.t, self.fx.b)],
-                          [(self.fx.nonet, self.fx.b)])
+                          [self.fx.b])
 
     def test_both_kinds_of_constraints(self):
         self.assert_solve(['T'],
@@ -63,14 +63,13 @@ class SolveSuite(Suite):
     def test_no_constraints_for_var(self):
         self.assert_solve(['T'],
                           [],
-                          [(self.fx.nonet, self.fx.o)])
+                          [self.fx.nonet])
         self.assert_solve(['T', 'S'],
                           [],
-                          [(self.fx.nonet, self.fx.o),
-                           (self.fx.nonet, self.fx.o)])
+                          [self.fx.nonet, self.fx.nonet])
         self.assert_solve(['T', 'S'],
                           [self.supc(self.fx.s, self.fx.a)],
-                          [(self.fx.nonet, self.fx.o), (self.fx.a, self.fx.o)])
+                          [self.fx.nonet, (self.fx.a, self.fx.o)])
 
     def test_void_constraints(self):
         self.assert_solve(['T'],
