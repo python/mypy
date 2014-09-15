@@ -411,6 +411,31 @@ main, line 10: Incompatible types in assignment (expression has type "str", vari
 main, line 11: "int" has no attribute "foo"
 main, line 11: "str" has no attribute "foo"
 
+[case testTypeVarWithValueInferredFromObjectReturnTypeContext]
+from typing import typevar
+T = typevar('T', values=(int, str))
+def c1(x: object) -> None: pass
+def c2(x: int) -> None: pass
+def c3(x: str) -> None: pass
+def g(x: T) -> T: pass
+c1(g(''))
+c2(g(1))
+c3(g(''))
+c2(g(''))  # E: Argument 1 to "c2" has incompatible type "str"; expected "int"
+c3(g(1))   # E: Argument 1 to "c3" has incompatible type "int"; expected "str"
+
+[case testTypeVarWithValueInferredFromObjectReturnTypeContext2]
+from typing import typevar
+T = typevar('T', values=(int, str))
+class ss(str): pass
+def c(x: ss) -> None: pass
+def g(x: T) -> T: pass
+c(g(''))
+c(g(1))
+[out]
+main, line 6: Argument 1 to "c" has incompatible type "str"; expected "ss"
+main, line 7: Argument 1 to "c" has incompatible type "int"; expected "ss"
+
 
 -- Special cases
 -- -------------

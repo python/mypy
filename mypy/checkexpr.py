@@ -275,7 +275,14 @@ class ExpressionChecker:
         # special ErasedType type. On the other hand, class type variables are
         # valid results.
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
-        args = infer_type_arguments(callable.type_var_ids(), callable.ret_type,
+        ret_type = callable.ret_type
+        if isinstance(ret_type, TypeVar):
+            if ret_type.values:
+                # The return type is a type variable with values, but we can't easily restrict
+                # type inference to conform to the valid values. Give up and just use function
+                # arguments for type inference.
+                ret_type = NoneTyp()
+        args = infer_type_arguments(callable.type_var_ids(), ret_type,
                                     erased_ctx, self.chk.basic_types())
         # Only substite non-None and non-erased types.
         new_args = []  # type: List[Type]
@@ -757,21 +764,21 @@ class ExpressionChecker:
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
-        
-        Comparison expressions are type checked consecutive-pair-wise 
-        That is, 'a < b > c == d' is check as 'a < b and b > c and c == d' 
+
+        Comparison expressions are type checked consecutive-pair-wise
+        That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
         result = None  # type: mypy.types.Type
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
             left_type = self.accept(left)
-            
+
             method_type = None  # type: mypy.types.Type
-            
+
             if operator == 'in' or operator == 'not in':
                 right_type = self.accept(right)  # TODO only evaluate if needed
-                
+
                 local_errors = self.msg.copy()
                 sub_result, method_type = self.check_op_local('__contains__', right_type,
                                                           left, e, local_errors)
@@ -790,17 +797,17 @@ class ExpressionChecker:
                     sub_result = self.chk.bool_type()
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
-                sub_result, method_type = self.check_op(method, left_type, right, e, 
+                sub_result, method_type = self.check_op(method, left_type, right, e,
                                                     allow_reverse=True)
-                                                    
+
             elif operator == 'is' or operator == 'is not':
                 sub_result = self.chk.bool_type()
                 method_type = None
             else:
-                raise RuntimeError('Unknown comparison operator {}'.format(operator)) 
-                
+                raise RuntimeError('Unknown comparison operator {}'.format(operator))
+
             e.method_types.append(method_type)
-                
+
             #  Determine type of boolean-and of result and sub_result
             if result == None:
                 result = sub_result
@@ -808,7 +815,7 @@ class ExpressionChecker:
                 # TODO: check on void needed?
                 self.check_not_void(sub_result, e)
                 result = join.join_types(result, sub_result, self.chk.basic_types())
-        
+
         return result
 
     def get_operator_method(self, op: str) -> str:
