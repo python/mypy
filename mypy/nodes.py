@@ -28,16 +28,16 @@ T = typevar('T')
 # Variable kind constants
 # TODO rename to use more descriptive names
 
-LDEF = 0 # type: int
-GDEF = 1 # type: int
-MDEF = 2 # type: int
-MODULE_REF = 3 # type: int
+LDEF = 0  # type: int
+GDEF = 1  # type: int
+MDEF = 2  # type: int
+MODULE_REF = 3  # type: int
 # Type variable declared using typevar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind TVAR) within 
+# valid as a type. A type variable is valid as a type (kind TVAR) within
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-UNBOUND_TVAR = 4 # type: 'int'
-TVAR = 5 # type: int
+UNBOUND_TVAR = 4  # type: 'int'
+TVAR = 5  # type: int
 
 
 LITERAL_YES = 2
@@ -69,13 +69,13 @@ reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
-    
+
     line = -1
     # Textual representation
-    repr = None # type: Any
+    repr = None  # type: Any
 
     literal = LITERAL_NO
-    literal_hash = None # type: Any
+    literal_hash = None  # type: Any
 
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
@@ -87,7 +87,7 @@ class Node(Context):
     def set_line(self, tok: Token) -> 'Node':
         self.line = tok.line
         return self
-    
+
     @overload
     def set_line(self, line: int) -> 'Node':
         self.line = line
@@ -96,16 +96,16 @@ class Node(Context):
     def get_line(self) -> int:
         # TODO this should be just 'line'
         return self.line
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
-    
+
     # TODO do not use methods for these
-    
+
     @abstractmethod
     def name(self) -> str: pass
 
