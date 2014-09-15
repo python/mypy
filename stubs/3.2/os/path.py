@@ -18,112 +18,44 @@ defpath = ''
 devnull = ''
 
 # ----- os.path function stubs -----
-@overload
-def abspath(path: str) -> str: pass
-@overload
-def abspath(path: bytes) -> bytes: pass
-@overload
-def basename(path: str) -> str: pass
-@overload
-def basename(path: bytes) -> bytes: pass
+def abspath(path: AnyStr) -> AnyStr: pass
+def basename(path: AnyStr) -> AnyStr: pass
+
 # NOTE: Empty List[bytes] results in '' (str) => fall back to Any return type.
 def commonprefix(list: List[AnyStr]) -> Any: pass
-@overload
-def dirname(path: str) -> str: pass
-@overload
-def dirname(path: bytes) -> bytes: pass
-@overload
-def exists(path: str) -> bool: pass
-@overload
-def exists(path: bytes) -> bool: pass
-@overload
-def lexists(path: str) -> bool: pass
-@overload
-def lexists(path: bytes) -> bool: pass
-@overload
-def expanduser(path: str) -> str: pass
-@overload
-def expanduser(path: bytes) -> bytes: pass
-@overload
-def expandvars(path: str) -> str: pass
-@overload
-def expandvars(path: bytes) -> bytes: pass
+def dirname(path: AnyStr) -> AnyStr: pass
+def exists(path: AnyStr) -> bool: pass
+def lexists(path: AnyStr) -> bool: pass
+def expanduser(path: AnyStr) -> AnyStr: pass
+def expandvars(path: AnyStr) -> AnyStr: pass
+
 
 # These return float if os.stat_float_times() == True
-@overload
-def getatime(path: str) -> Any: pass
-@overload
-def getatime(path: bytes) -> Any: pass
-@overload
-def getmtime(path: str) -> Any: pass
-@overload
-def getmtime(path: bytes) -> Any: pass
-@overload
-def getctime(path: str) -> Any: pass
-@overload
-def getctime(path: bytes) -> Any: pass
+def getatime(path: AnyStr) -> Any: pass
+def getmtime(path: AnyStr) -> Any: pass
+def getctime(path: AnyStr) -> Any: pass
 
-@overload
-def getsize(path: str) -> int: pass
-@overload
-def getsize(path: bytes) -> int: pass
-@overload
-def isabs(path: str) -> bool: pass
-@overload
-def isabs(path: bytes) -> bool: pass
-@overload
-def isfile(path: str) -> bool: pass
-@overload
-def isfile(path: bytes) -> bool: pass
-@overload
-def isdir(path: str) -> bool: pass
-@overload
-def isdir(path: bytes) -> bool: pass
-@overload
-def islink(path: str) -> bool: pass
-@overload
-def islink(path: bytes) -> bool: pass
-@overload
-def ismount(path: str) -> bool: pass
-@overload
-def ismount(path: bytes) -> bool: pass
-@overload
-def join(path: str, *paths: str) -> str: pass
-@overload
-def join(path: bytes, *paths: bytes) -> bytes: pass
-@overload
-def normcase(path: str) -> str: pass
-@overload
-def normcase(path: bytes) -> bytes: pass
-@overload
-def normpath(path: str) -> str: pass
-@overload
-def normpath(path: bytes) -> bytes: pass
-@overload
-def realpath(path: str) -> str: pass
-@overload
-def realpath(path: bytes) -> bytes: pass
-@overload
-def relpath(path: str, start: str = None) -> str: pass
-@overload
-def relpath(path: bytes, start: bytes = None) -> bytes: pass
-@overload
-def samefile(path1: str, path2: str) -> bool: pass
-@overload
-def samefile(path1: bytes, path2: bytes) -> bool: pass
+def getsize(path: AnyStr) -> int: pass
+def isabs(path: AnyStr) -> bool: pass
+def isfile(path: AnyStr) -> bool: pass
+def isdir(path: AnyStr) -> bool: pass
+def islink(path: AnyStr) -> bool: pass
+def ismount(path: AnyStr) -> bool: pass
+
+def join(path: AnyStr, *paths: AnyStr) -> AnyStr: pass
+
+def normcase(path: AnyStr) -> AnyStr: pass
+def normpath(path: AnyStr) -> AnyStr: pass
+def realpath(path: AnyStr) -> AnyStr: pass
+def relpath(path: AnyStr, start: AnyStr = None) -> AnyStr: pass
+
+def samefile(path1: AnyStr, path2: AnyStr) -> bool: pass
 def sameopenfile(fp1: int, fp2: int) -> bool: pass
 #def samestat(stat1: stat_result,
 #             stat2: stat_result) -> bool: pass  # Unix only
-@overload
-def split(path: str) -> Tuple[str, str]: pass
-@overload
-def split(path: bytes) -> Tuple[bytes, bytes]: pass
-@overload
-def splitdrive(path: str) -> Tuple[str, str]: pass
-@overload
-def splitdrive(path: bytes) -> Tuple[bytes, bytes]: pass
-@overload
-def splitext(path: str) -> Tuple[str, str]: pass
-@overload
-def splitext(path: bytes) -> Tuple[bytes, bytes]: pass
+
+def split(path: AnyStr) -> Tuple[AnyStr, AnyStr]: pass
+def splitdrive(path: AnyStr) -> Tuple[AnyStr, AnyStr]: pass
+def splitext(path: AnyStr) -> Tuple[AnyStr, AnyStr]: pass
+
 #def splitunc(path: str) -> Tuple[str, str]: pass  # Windows only, deprecated
