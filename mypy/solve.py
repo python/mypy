@@ -13,8 +13,9 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
                       basic: BasicTypes) -> List[Type]:
     """Solve type constraints.
 
-    Return lower bound for each type variable or None if the variable could
-    not be solved.
+    Return the best type(s) for type variables; each type can be None if the value of the variable
+    could not be solved. If a variable has no constraints, arbitrarily pick NoneTyp as the value of
+    the type variable.
     """
     # Collect a list of constraints for each type variable.
     cmap = Dict[int, List[Constraint]]()
@@ -22,17 +23,17 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
         a = cmap.get(con.type_var, [])
         a.append(con)
         cmap[con.type_var] = a
-    
-    res = [] # type: List[Type]
+
+    res = []  # type: List[Type]
 
     # Solve each type variable separately.
     for tvar in vars:
-        bottom = None # type: Type
-        top = None # type: Type
-        
+        bottom = None  # type: Type
+        top = None  # type: Type
+
         # Process each contraint separely, and calculate the lower and upper
-        # bounds based on constraints. Note that we assume that the contraint
-        # targets do not have contraint references.
+        # bounds based on constraints. Note that we assume that the constraint
+        # targets do not have constraint references.
         for c in cmap.get(tvar, []):
             if c.op == SUPERTYPE_OF:
                 if bottom is None:
@@ -44,29 +45,25 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
                     top = c.target
                 else:
                     top = meet_types(top, c.target, basic)
-        
-        if top is None:
-            if isinstance(bottom, Void):
-                top = Void()
-            else:
-                top = basic.object
-        
-        if bottom is None:
-            if isinstance(top, Void):
-                bottom = Void()
-            else:
-                bottom = NoneTyp()
-        
+
         if isinstance(top, AnyType) or isinstance(bottom, AnyType):
-            top = AnyType()
-            bottom = AnyType()
-        
-        # Pick the most specific type if it satisfies the constraints.
-        if (not top or not bottom or is_subtype(bottom, top)) and (
-                not isinstance(top, ErrorType) and
-                not isinstance(bottom, ErrorType)):
-            res.append(bottom)
+            res.append(AnyType())
+            continue
+        elif bottom is None:
+            if top:
+                candidate = top
+            else:
+                # No constraints for type variable -- type 'None' is the most specific type.
+                candidate = NoneTyp()
+        elif top is None:
+            candidate = bottom
+        elif is_subtype(bottom, top):
+            candidate = bottom
         else:
+            candidate = None
+        if isinstance(candidate, ErrorType):
             res.append(None)
-    
+        else:
+            res.append(candidate)
+
     return res

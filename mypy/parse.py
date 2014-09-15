@@ -83,14 +83,14 @@ class Parser:
     ind = 0
     errors = Undefined(Errors)
     raise_on_error = False
-
+    
     # Are we currently parsing the body of a class definition?
     is_class_body = False
     # All import nodes encountered so far in this parse unit.
     imports = Undefined(List[ImportBase])
     # Names imported from __future__.
     future_options = Undefined(List[str])
-
+    
     def __init__(self, fnam: str, errors: Errors, pyversion: int,
                  custom_typing_module : str = None) -> None:
         self.raise_on_error = errors is None
@@ -104,7 +104,7 @@ class Parser:
             self.errors.set_file(fnam)
         else:
             self.errors.set_file('<input>')
-
+    
     def parse(self, s: str) -> MypyFile:
         self.tok = lex.lex(s)
         self.ind = 0
@@ -114,7 +114,7 @@ class Parser:
         if self.raise_on_error and self.errors.is_errors():
             self.errors.raise_error()
         return file
-
+    
     def parse_file(self) -> MypyFile:
         """Parse a mypy source file."""
         is_bom = self.parse_bom()
@@ -123,9 +123,9 @@ class Parser:
         node = MypyFile(defs, self.imports, is_bom)
         self.set_repr(node, noderepr.MypyFileRepr(eof))
         return node
-
+    
     # Parse the initial part
-
+    
     def parse_bom(self) -> bool:
         """Parse the optional byte order mark at the beginning of a file."""
         if isinstance(self.current(), Bom):
@@ -135,7 +135,7 @@ class Parser:
             return True
         else:
             return False
-
+    
     def parse_import(self) -> Import:
         import_tok = self.expect('import')
         ids = List[Tuple[str, str]]()
@@ -165,7 +165,7 @@ class Parser:
         self.set_repr(node, noderepr.ImportRepr(import_tok, id_toks, as_names,
                                                 commas, br))
         return node
-
+    
     def parse_import_from(self) -> Node:
         from_tok = self.expect('from')
         name, components = self.parse_qualified_name()
@@ -213,7 +213,7 @@ class Parser:
         if name == '__future__':
             self.future_options.extend(target[0] for target in targets)
         return node
-
+    
     def parse_import_name(self) -> Tuple[str, str, List[Token]]:
         tok = self.expect_type(Name)
         name = tok.string
@@ -225,7 +225,7 @@ class Parser:
             return name, as_name.string, tokens
         else:
             return name, name, tokens
-
+    
     def parse_qualified_name(self) -> Tuple[str, List[Token]]:
         """Parse a name with an optional module qualifier.
 
@@ -242,9 +242,9 @@ class Parser:
             n += '.' + tok.string
             components.append(tok)
         return n, components
-
+    
     # Parsing global definitions
-
+    
     def parse_defs(self) -> List[Node]:
         defs = List[Node]()
         while not self.eof():
@@ -256,24 +256,24 @@ class Parser:
             except ParseError:
                 pass
         return defs
-
+    
     def parse_class_def(self) -> ClassDef:
         old_is_class_body = self.is_class_body
         self.is_class_body = True
-
+        
         type_tok = self.expect('class')
         lparen = none
         rparen = none
         metaclass = None # type: str
-
+        
         try:
             commas, base_types = List[Token](), List[Type]()
             try:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
-
+                
                 self.errors.push_type(name)
-
+                
                 if self.current_str() == '(':
                     lparen = self.skip()
                     while True:
@@ -287,9 +287,9 @@ class Parser:
                     rparen = self.expect(')')
             except ParseError:
                 pass
-
+            
             defs, _ = self.parse_block()
-
+            
             node = ClassDef(name, defs, None, base_types, metaclass=metaclass)
             self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
                                                      lparen, commas, rparen))
@@ -297,7 +297,7 @@ class Parser:
         finally:
             self.errors.pop_type()
             self.is_class_body = old_is_class_body
-
+    
     def parse_super_type(self) -> Type:
         if (isinstance(self.current(), Name) and self.current_str() != 'void'):
             return self.parse_type()
@@ -308,7 +308,7 @@ class Parser:
         self.expect('metaclass')
         self.expect('=')
         return self.parse_qualified_name()[0]
-
+    
     def parse_decorated_function_or_class(self) -> Node:
         ats = List[Token]()
         brs = List[Token]()
@@ -331,7 +331,7 @@ class Parser:
             cls = self.parse_class_def()
             cls.decorators = decorators
             return cls
-
+    
     def parse_function(self) -> FuncDef:
         def_tok = self.expect('def')
         is_method = self.is_class_body
@@ -339,7 +339,7 @@ class Parser:
         try:
             (name, args, init, kinds,
              typ, is_error, toks) = self.parse_function_header()
-
+            
             body, comment_type = self.parse_block(allow_type=True)
             if comment_type:
                 # The function has a # type: ... signature.
@@ -365,12 +365,12 @@ class Parser:
                                    [arg.name() for arg in args],
                                    sig.ret_type,
                                    False)
-
+            
             # If there was a serious error, we really cannot build a parse tree
             # node.
             if is_error:
                 return None
-
+            
             node = FuncDef(name, args, kinds, init, body, typ)
             name_tok, arg_reprs = toks
             node.set_line(name_tok)
@@ -397,7 +397,7 @@ class Parser:
                 self.fail(
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
-
+    
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
                                              List[int], Type, bool,
                                              Tuple[Token, Any]]:
@@ -411,15 +411,15 @@ class Parser:
           signature (annotation)
           error flag (True if error)
           (name token, representation of arguments)
-        """
+        """        
         name_tok = none
-
+        
         try:
             name_tok = self.expect_type(Name)
             name = name_tok.string
-
+            
             self.errors.push_function(name)
-
+            
             (args, init, kinds, typ, arg_repr) = self.parse_args()
         except ParseError:
             if not isinstance(self.current(), Break):
@@ -428,20 +428,20 @@ class Parser:
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
             return (name, [], [], [], None, True, (name_tok, None))
-
+        
         return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
-
+    
     def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Type,
                                   noderepr.FuncArgsRepr]:
         """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
-
+        
         # Parse the argument list (everything within '(' and ')').
         (args, init, kinds,
          has_inits, arg_names,
          commas, asterisk,
          assigns, arg_types) = self.parse_arg_list()
-
+        
         rparen = self.expect(')')
 
         if self.current_str() == '-':
@@ -452,20 +452,20 @@ class Parser:
             ret_type = None
 
         self.verify_argument_kinds(kinds, lparen.line)
-
+        
         names = [] # type: List[str]
         for arg in args:
             names.append(arg.name())
-
+        
         annotation = self.build_func_annotation(
             ret_type, arg_types, kinds, names, lparen.line)
-
+        
         return (args, init, kinds, annotation,
                 noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
                                       assigns, asterisk))
-
+    
     def build_func_annotation(self, ret_type: Type, arg_types: List[Type],
-                              kinds: List[int], names: List[str],
+                              kinds: List[int], names: List[str], 
                               line: int, is_default_ret: bool = False) -> Type:
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
@@ -475,7 +475,7 @@ class Parser:
                                                 ret_type, line)
         else:
             return None
-
+    
     def parse_arg_list(
         self, allow_signature: bool = True) -> Tuple[List[Var], List[Node],
                                                      List[int], bool,
@@ -495,16 +495,16 @@ class Parser:
         names = [] # type: List[str]
         init = []  # type: List[Node]
         has_inits = False
-        arg_types = [] # type: List[Type]
-
+        arg_types = [] # type: List[Type]        
+        
         arg_names = [] # type: List[Token]
         commas = []    # type: List[Token]
         asterisk = []  # type: List[Token]
         assigns = []   # type: List[Token]
-
+        
         require_named = False
         bare_asterisk_before = -1
-
+        
         if self.current_str() != ')' and self.current_str() != ':':
             while self.current_str() != ')':
                 if self.current_str() == '*' and self.peek().string == ',':
@@ -540,7 +540,7 @@ class Parser:
                     arg_names.append(name)
                     args.append(Var(name.string))
                     arg_types.append(self.parse_arg_type(allow_signature))
-
+                    
                     if self.current_str() == '=':
                         assigns.append(self.expect('='))
                         init.append(self.parse_expression(precedence[',']))
@@ -557,11 +557,11 @@ class Parser:
                             kinds.append(nodes.ARG_NAMED)
                         else:
                             kinds.append(nodes.ARG_POS)
-
+                        
                 if self.current().string != ',':
                     break
                 commas.append(self.expect(','))
-
+        
         return (args, init, kinds, has_inits, arg_names, commas, asterisk,
                 assigns, arg_types)
 
@@ -584,7 +584,7 @@ class Parser:
             elif kind == nodes.ARG_STAR2 and i != len(kinds) - 1:
                 self.fail('Invalid argument list', line)
             found.add(kind)
-
+    
     def construct_function_type(self, arg_types: List[Type], kinds: List[int],
                                 names: List[str], ret_type: Type,
                                 line: int) -> Callable:
@@ -597,9 +597,9 @@ class Parser:
             ret_type = AnyType()
         return Callable(arg_types, kinds, names, ret_type, False, None,
                         None, [], line, None)
-
+    
     # Parsing statements
-
+    
     def parse_block(self, allow_type: bool = False) -> Tuple[Block, Type]:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
@@ -625,7 +625,7 @@ class Parser:
             dedent = none
             if isinstance(self.current(), Dedent):
                 dedent = self.skip()
-            node = Block(stmt).set_line(colon)
+            node = Block(stmt).set_line(colon) 
             self.set_repr(node, noderepr.BlockRepr(colon, br, indent, dedent))
             return cast(Block, node), type
 
@@ -642,7 +642,7 @@ class Parser:
                 (cast(OverloadedFuncDef, stmt[-1])).items.append(fdef)
                 return True
         return False
-
+    
     def parse_statement(self) -> Node:
         stmt = Undefined # type: Node
         t = self.current()
@@ -685,7 +685,7 @@ class Parser:
             stmt = self.parse_with_stmt()
         elif ts == '@':
             stmt = self.parse_decorated_function_or_class()
-        elif ts == 'print' and (self.pyversion == 2 and
+        elif ts == 'print' and (self.pyversion == 2 and 
                                 'print_function' not in self.future_options):
             stmt = self.parse_print_stmt()
         else:
@@ -693,7 +693,7 @@ class Parser:
         if stmt is not None:
             stmt.set_line(t)
         return stmt
-
+    
     def parse_expression_or_assignment(self) -> Node:
         e = self.parse_expression()
         if self.current_str() == '=':
@@ -714,7 +714,7 @@ class Parser:
             expr = ExpressionStmt(e)
             self.set_repr(expr, noderepr.ExpressionStmtRepr(br))
             return expr
-
+    
     def parse_assignment(self, lv: Any) -> Node:
         """Parse an assignment statement.
 
@@ -723,7 +723,7 @@ class Parser:
         """
         assigns = [self.expect('=')]
         lvalues = [lv]
-
+        
         e = self.parse_expression()
         while self.current_str() == '=':
             lvalues.append(e)
@@ -735,7 +735,7 @@ class Parser:
         assignment = AssignmentStmt(lvalues, e, type)
         self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
         return assignment
-
+    
     def parse_return_stmt(self) -> ReturnStmt:
         return_tok = self.expect('return')
         expr = None # type: Node
@@ -747,7 +747,7 @@ class Parser:
         node = ReturnStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(return_tok, br))
         return node
-
+    
     def parse_raise_stmt(self) -> RaiseStmt:
         raise_tok = self.expect('raise')
         expr = None # type: Node
@@ -762,7 +762,7 @@ class Parser:
         node = RaiseStmt(expr, from_expr)
         self.set_repr(node, noderepr.RaiseStmtRepr(raise_tok, from_tok, br))
         return node
-
+    
     def parse_assert_stmt(self) -> AssertStmt:
         assert_tok = self.expect('assert')
         expr = self.parse_expression()
@@ -770,7 +770,7 @@ class Parser:
         node = AssertStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(assert_tok, br))
         return node
-
+    
     def parse_yield_stmt(self) -> YieldStmt:
         yield_tok = self.expect('yield')
         expr = None # type: Node
@@ -784,6 +784,7 @@ class Parser:
                 expr = self.parse_expression()
                 node = YieldStmt(expr)
         br = self.expect_break()
+        node = YieldStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
         return node
 
@@ -810,28 +811,28 @@ class Parser:
         node = DelStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(del_tok, br))
         return node
-
+    
     def parse_break_stmt(self) -> BreakStmt:
         break_tok = self.expect('break')
         br = self.expect_break()
         node = BreakStmt()
         self.set_repr(node, noderepr.SimpleStmtRepr(break_tok, br))
         return node
-
+    
     def parse_continue_stmt(self) -> ContinueStmt:
         continue_tok = self.expect('continue')
         br = self.expect_break()
         node = ContinueStmt()
         self.set_repr(node, noderepr.SimpleStmtRepr(continue_tok, br))
         return node
-
+    
     def parse_pass_stmt(self) -> PassStmt:
         pass_tok = self.expect('pass')
         br = self.expect_break()
         node = PassStmt()
         self.set_repr(node, noderepr.SimpleStmtRepr(pass_tok, br))
         return node
-
+    
     def parse_global_decl(self) -> GlobalDecl:
         global_tok = self.expect('global')
         names = List[str]()
@@ -849,7 +850,7 @@ class Parser:
         self.set_repr(node, noderepr.GlobalDeclRepr(global_tok, name_toks,
                                                     commas, br))
         return node
-
+    
     def parse_while_stmt(self) -> WhileStmt:
         is_error = False
         while_tok = self.expect('while')
@@ -870,38 +871,38 @@ class Parser:
             return node
         else:
             return None
-
+    
     def parse_for_stmt(self) -> ForStmt:
         for_tok = self.expect('for')
         index, types, commas = self.parse_for_index_variables()
         in_tok = self.expect('in')
         expr = self.parse_expression()
-
+        
         body, _ = self.parse_block()
-
+        
         if self.current_str() == 'else':
             else_tok = self.expect('else')
             else_body, _ = self.parse_block()
         else:
             else_body = None
             else_tok = none
-
+        
         node = ForStmt(index, expr, body, else_body, types)
         self.set_repr(node, noderepr.ForStmtRepr(for_tok, commas, in_tok,
                                                  else_tok))
         return node
-
+    
     def parse_for_index_variables(self) -> Tuple[List[NameExpr], List[Type],
                                                  List[Token]]:
         # Parse index variables of a 'for' statement.
         index = List[NameExpr]()
         types = List[Type]()
         commas = List[Token]()
-
+        
         is_paren = self.current_str() == '('
         if is_paren:
             self.skip()
-
+        
         while True:
             v = self.parse_name_expr()
             index.append(v)
@@ -910,24 +911,24 @@ class Parser:
                 commas.append(none)
                 break
             commas.append(self.skip())
-
+        
         if is_paren:
             self.expect(')')
-
+        
         return index, types, commas
-
+    
     def parse_if_stmt(self) -> IfStmt:
         is_error = False
-
+        
         if_tok = self.expect('if')
         expr = List[Node]()
         try:
             expr.append(self.parse_expression())
         except ParseError:
             is_error = True
-
+        
         body = [self.parse_block()[0]]
-
+        
         elif_toks = List[Token]()
         while self.current_str() == 'elif':
             elif_toks.append(self.expect('elif'))
@@ -936,14 +937,14 @@ class Parser:
             except ParseError:
                 is_error = True
             body.append(self.parse_block()[0])
-
+        
         if self.current_str() == 'else':
             else_tok = self.expect('else')
             else_body, _ = self.parse_block()
         else:
             else_tok = none
             else_body = None
-
+        
         if not is_error:
             node = IfStmt(expr, body, else_body)
             self.set_repr(node, noderepr.IfStmtRepr(if_tok, elif_toks,
@@ -951,7 +952,7 @@ class Parser:
             return node
         else:
             return None
-
+    
     def parse_try_stmt(self) -> Node:
         try_tok = self.expect('try')
         body, _ = self.parse_block()
@@ -1004,7 +1005,7 @@ class Parser:
             return node
         else:
             return None
-
+    
     def parse_with_stmt(self) -> WithStmt:
         with_tok = self.expect('with')
         as_toks = List[Token]()
@@ -1042,14 +1043,14 @@ class Parser:
                 break
         self.expect_break()
         return PrintStmt(args, newline=not comma)
-
+    
     # Parsing expressions
-
+    
     def parse_expression(self, prec: int = 0) -> Node:
         """Parse a subexpression within a specific precedence context."""
         expr = Undefined # type: Node
         t = self.current() # Remember token for setting the line number.
-
+        
         # Parse a "value" expression or unary operator expression and store
         # that in expr.
         s = self.current_str()
@@ -1084,13 +1085,13 @@ class Parser:
             else:
                 # Invalid expression.
                 self.parse_error()
-
+        
         # Set the line of the expression node, if not specified. This
         # simplifies recording the line number as not every node type needs to
         # deal with it separately.
         if expr.line < 0:
             expr.set_line(t)
-
+        
         # Parse operations that require a left argument (stored in expr).
         while True:
             t = self.current()
@@ -1119,7 +1120,7 @@ class Parser:
                     # comprehension if needed elsewhere.
                     expr = self.parse_generator_expr(expr)
                 else:
-                    break
+                    break                              
             elif s == 'if':
                 # Conditional expression.
                 if precedence['<if>'] > prec:
@@ -1145,15 +1146,15 @@ class Parser:
                     # Not an operation that accepts a left argument; let the
                     # caller handle the rest.
                     break
-
+            
             # Set the line of the expression node, if not specified. This
             # simplifies recording the line number as not every node type
             # needs to deal with it separately.
             if expr.line < 0:
                 expr.set_line(t)
-
+        
         return expr
-
+    
     def parse_parentheses(self) -> Node:
         lparen = self.skip()
         if self.current_str() == ')':
@@ -1166,13 +1167,13 @@ class Parser:
             expr = ParenExpr(expr)
             self.set_repr(expr, noderepr.ParenExprRepr(lparen, rparen))
         return expr
-
+    
     def parse_empty_tuple_expr(self, lparen: Any) -> TupleExpr:
         rparen = self.expect(')')
         node = TupleExpr([])
         self.set_repr(node, noderepr.TupleExprRepr(lparen, [], rparen))
         return node
-
+    
     def parse_list_expr(self) -> Node:
         """Parse list literal or list comprehension."""
         items = List[Node]()
@@ -1184,7 +1185,7 @@ class Parser:
                 break
             commas.append(self.expect(','))
         if self.current_str() == 'for' and len(items) == 1:
-            items[0] = self.parse_generator_expr(items[0])
+            items[0] = self.parse_generator_expr(items[0])            
         rbracket = self.expect(']')
         if len(items) == 1 and isinstance(items[0], GeneratorExpr):
              list_comp = ListComprehension(cast(GeneratorExpr, items[0]))
@@ -1196,7 +1197,7 @@ class Parser:
             self.set_repr(expr, noderepr.ListSetExprRepr(lbracket, commas,
                                                          rbracket, none, none))
             return expr
-
+    
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
         indices = List[List[NameExpr]]()
         sequences = List[Node]()
@@ -1226,7 +1227,7 @@ class Parser:
         self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, commas, in_toks,
                                                       if_toklists))
         return gen
-
+    
     def parse_expression_list(self) -> Node:
         prec = precedence['<if>']
         expr = self.parse_expression(prec)
@@ -1235,14 +1236,14 @@ class Parser:
         else:
             t = self.current()
             return self.parse_tuple_expr(expr, prec).set_line(t)
-
+    
     def parse_conditional_expr(self, left_expr: Node) -> ConditionalExpr:
         self.expect('if')
         cond = self.parse_expression(precedence['<if>'])
         self.expect('else')
         else_expr = self.parse_expression(precedence['<if>'])
         return ConditionalExpr(cond, left_expr, else_expr)
-
+    
     def parse_dict_or_set_expr(self) -> Node:
         items = List[Tuple[Node, Node]]()
         lbrace = self.expect('{')
@@ -1265,7 +1266,7 @@ class Parser:
         self.set_repr(node, noderepr.DictExprRepr(lbrace, colons, commas,
                                                   rbrace, none, none, none))
         return node
-
+    
     def parse_set_expr(self, first: Node, lbrace: Token) -> SetExpr:
         items = [first]
         commas = List[Token]()
@@ -1279,7 +1280,7 @@ class Parser:
         self.set_repr(expr, noderepr.ListSetExprRepr(lbrace, commas,
                                                      rbrace, none, none))
         return expr
-
+    
     def parse_tuple_expr(self, expr: Node,
                          prec: int = precedence[',']) -> TupleExpr:
         items = [expr]
@@ -1294,14 +1295,14 @@ class Parser:
         node = TupleExpr(items)
         self.set_repr(node, noderepr.TupleExprRepr(none, commas, none))
         return node
-
+    
     def parse_name_expr(self) -> NameExpr:
         tok = self.expect_type(Name)
         node = NameExpr(tok.string)
         node.set_line(tok)
         self.set_repr(node, noderepr.NameExprRepr(tok))
         return node
-
+    
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)
         s = tok.string
@@ -1315,7 +1316,7 @@ class Parser:
         node = IntExpr(v)
         self.set_repr(node, noderepr.IntExprRepr(tok))
         return node
-
+    
     def parse_str_expr(self) -> Node:
         # XXX \uxxxx literals
         tok = [self.expect_type(StrLit)]
@@ -1331,7 +1332,7 @@ class Parser:
             node = StrExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
-
+    
     def parse_bytes_literal(self) -> Node:
         # XXX \uxxxx literals
         tok = [self.expect_type(BytesLit)]
@@ -1346,7 +1347,7 @@ class Parser:
             node = StrExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
-
+    
     def parse_unicode_literal(self) -> Node:
         # XXX \uxxxx literals
         tok = [self.expect_type(UnicodeLit)]
@@ -1362,13 +1363,13 @@ class Parser:
             node = UnicodeExpr(value)
         self.set_repr(node, noderepr.StrExprRepr(tok))
         return node
-
+    
     def parse_float_expr(self) -> FloatExpr:
         tok = self.expect_type(FloatLit)
         node = FloatExpr(float(tok.string))
         self.set_repr(node, noderepr.FloatExprRepr(tok))
         return node
-
+    
     def parse_call_expr(self, callee: Any) -> CallExpr:
         lparen = self.expect('(')
         (args, kinds, names,
@@ -1378,7 +1379,7 @@ class Parser:
         self.set_repr(node, noderepr.CallExprRepr(lparen, commas, star, star2,
                                                   assigns, rparen))
         return node
-
+    
     def parse_arg_expr(self) -> Tuple[List[Node], List[int], List[str],
                                       List[Token], Token, Token,
                                       List[List[Token]]]:
@@ -1392,7 +1393,7 @@ class Parser:
           * token (if any)
           ** token (if any)
           (assignment, name) tokens
-        """
+        """        
         args = []  # type: List[Node]
         kinds = [] # type: List[int]
         names = [] # type: List[str]
@@ -1436,7 +1437,7 @@ class Parser:
                 break
             commas.append(self.expect(','))
         return args, kinds, names, commas, star, star2, keywords
-
+    
     def parse_member_expr(self, expr: Any) -> Node:
         dot = self.expect('.')
         name = self.expect_type(Name)
@@ -1453,7 +1454,7 @@ class Parser:
             node = MemberExpr(expr, name.string)
             self.set_repr(node, noderepr.MemberExprRepr(dot, name))
         return node
-
+    
     def parse_index_expr(self, base: Any) -> IndexExpr:
         lbracket = self.expect('[')
         if self.current_str() != ':':
@@ -1479,7 +1480,7 @@ class Parser:
         node = IndexExpr(base, index)
         self.set_repr(node, noderepr.IndexExprRepr(lbracket, rbracket))
         return node
-
+    
     def parse_bin_op_expr(self, left: Node, prec: int) -> OpExpr:
         op = self.expect_type(Op)
         op2 = none
@@ -1500,7 +1501,7 @@ class Parser:
         node = OpExpr(op_str, left, right)
         self.set_repr(node, noderepr.OpExprRepr(op, op2))
         return node
-
+    
     def parse_unary_expr(self) -> UnaryExpr:
         op_tok = self.skip()
         op = op_tok.string
@@ -1512,11 +1513,11 @@ class Parser:
         node = UnaryExpr(op, expr)
         self.set_repr(node, noderepr.UnaryExprRepr(op_tok))
         return node
-
+    
     def parse_lambda_expr(self) -> FuncExpr:
         is_error = False
         lambda_tok = self.expect('lambda')
-
+        
         (args, init, kinds, has_inits,
          arg_names, commas, asterisk,
          assigns, arg_types) = self.parse_arg_list(allow_signature=False)
@@ -1531,14 +1532,14 @@ class Parser:
         ret_type = UnboundType('__builtins__.object')
         typ = self.build_func_annotation(ret_type, arg_types, kinds, names,
                                          lambda_tok.line, is_default_ret=True)
-
+        
         colon = self.expect(':')
-
+        
         expr = self.parse_expression(precedence[','])
-
+        
         body = Block([ReturnStmt(expr).set_line(lambda_tok)])
         body.set_line(colon)
-
+        
         node = FuncExpr(args, kinds, init, body, typ)
         self.set_repr(node,
                       noderepr.FuncExprRepr(
@@ -1546,59 +1547,59 @@ class Parser:
                           noderepr.FuncArgsRepr(none, none, arg_names, commas,
                                                 assigns, asterisk)))
         return node
-
+    
     # Helper methods
-
+    
     def skip(self) -> Token:
         self.ind += 1
         return self.tok[self.ind - 1]
-
+    
     def expect(self, string: str) -> Token:
         if self.current_str() == string:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
-
+    
     def expect_indent(self) -> Token:
         if isinstance(self.current(), Indent):
             return self.expect_type(Indent)
         else:
             self.fail('Expected an indented block', self.current().line)
             return none
-
+    
     def fail(self, msg: str, line: int) -> None:
         self.errors.report(line, msg)
-
+    
     def expect_type(self, typ: type) -> Token:
         if isinstance(self.current(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
-
+    
     def expect_colon_and_break(self) -> Tuple[Token, Token]:
         return self.expect_type(Colon), self.expect_type(Break)
-
+    
     def expect_break(self) -> Token:
         return self.expect_type(Break)
-
+    
     def expect_end(self) -> Tuple[Token, Token]:
         return self.expect('end'), self.expect_type(Break)
-
+    
     def current(self) -> Token:
         return self.tok[self.ind]
-
+    
     def current_str(self) -> str:
         return self.current().string
-
+    
     def peek(self) -> Token:
         return self.tok[self.ind + 1]
-
+    
     def parse_error(self) -> None:
         self.parse_error_at(self.current())
         raise ParseError()
-
+    
     def parse_error_at(self, tok: Token, skip: bool = True) -> None:
         msg = ''
         if isinstance(tok, LexError):
@@ -1608,12 +1609,12 @@ class Parser:
             msg = 'Inconsistent indentation'
         else:
             msg = 'Parse error before {}'.format(token_repr(tok))
-
+        
         self.errors.report(tok.line, msg)
-
+        
         if skip:
             self.skip_until_next_line()
-
+    
     def skip_until_break(self) -> None:
         n = 0
         while (not isinstance(self.current(), Break)
@@ -1622,20 +1623,20 @@ class Parser:
             n += 1
         if isinstance(self.tok[self.ind - 1], Colon) and n > 1:
             self.ind -= 1
-
+    
     def skip_until_next_line(self) -> None:
         self.skip_until_break()
         if isinstance(self.current(), Break):
             self.skip()
-
+    
     def eol(self) -> bool:
         return isinstance(self.current(), Break) or self.eof()
-
+    
     def eof(self) -> bool:
         return isinstance(self.current(), Eof)
-
+    
     # Type annotation related functionality
-
+    
     def parse_type(self) -> Type:
         line = self.current().line
         try:
@@ -1674,16 +1675,16 @@ class Parser:
                 return None
             return type
         else:
-            return None
-
+            return None                          
+    
     # Representation management
-
+    
     def set_repr(self, node: Node, repr: Any) -> None:
         node.repr = repr
-
+    
     def repr(self, node: Node) -> Any:
         return node.repr
-
+    
     def paren_repr(self, e: Node) -> Tuple[List[Token], List[Token]]:
         """If e is a ParenExpr, return an array of left-paren tokens
         (more that one if nested parens) and an array of corresponding

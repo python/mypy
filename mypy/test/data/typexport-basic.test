@@ -121,11 +121,14 @@ OpExpr(5) : builtins.float
 OpExpr(6) : builtins.float
 
 [case testComparisonOps]
-## OpExpr
+## ComparisonExpr
 import typing
 1 == object()
 1 == 2
 2 < 3
+1 < 2 < 3
+8 > 3
+4 < 6 > 2
 [file builtins.py]
 from typing import builtinclass
 @builtinclass
@@ -138,9 +141,12 @@ class int:
 class bool: pass
 class type: pass
 [out]
-OpExpr(3) : builtins.bool
-OpExpr(4) : builtins.bool
-OpExpr(5) : builtins.bool
+ComparisonExpr(3) : builtins.bool
+ComparisonExpr(4) : builtins.bool
+ComparisonExpr(5) : builtins.bool
+ComparisonExpr(6) : builtins.bool
+ComparisonExpr(7) : builtins.int
+ComparisonExpr(8) : builtins.object
 
 [case testBooleanOps]
 ## OpExpr|UnaryExpr
@@ -263,7 +269,7 @@ NameExpr(2) : builtins.int
 [case testInferTwoTypes]
 ## NameExpr
 import typing
-(s, 
+(s,
 i) = 'x', 1
 [builtins fixtures/primitives.py]
 [out]
@@ -576,7 +582,7 @@ from typing import typevar, Generic
 T = typevar('T')
 def f():
   A(f)
-class A(Generic[T]): 
+class A(Generic[T]):
     def __init__(self, x: T) -> None: pass
 [out]
 CallExpr(4) : A[Any]
@@ -700,7 +706,7 @@ from typing import typevar, Function, List
 t = typevar('t')
 s = typevar('s')
 map(
-    f, 
+    f,
     [A()])
 def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
@@ -813,7 +819,7 @@ def map(f: List[Function[[t], s]], a: List[t]) -> List[s]: pass
 class A: pass
 [builtins fixtures/list.py]
 [out]
--- TODO We probably should not silently infer 'Any' types in statically typed 
+-- TODO We probably should not silently infer 'Any' types in statically typed
 --      context. Perhaps just fail instead?
 CallExpr(5) : builtins.list[Any]
 NameExpr(5) : def [-1:A, -2:Any] (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]

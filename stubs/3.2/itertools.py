@@ -2,50 +2,56 @@
 
 # Based on http://docs.python.org/3.2/library/itertools.html
 
-from typing import Iterator, typevar, Iterable, overload, Any, Function, Tuple
+from typing import (Iterator, typevar, Iterable, overload, Any, Function, Tuple,
+                    Union, Sequence)
 
-T = typevar('T')
-S = typevar('S')
+_T = typevar('_T')
+_S = typevar('_S')
 
 def count(start: int = 0,
           step: int = 1) -> Iterator[int]: pass # more general types?
-def cycle(iterable: Iterable[T]) -> Iterator[T]: pass
+def cycle(iterable: Iterable[_T]) -> Iterator[_T]: pass
 
 @overload
-def repeat(object: T) -> Iterator[T]: pass
+def repeat(object: _T) -> Iterator[_T]: pass
 @overload
-def repeat(object: T, times: int) -> Iterator[T]: pass
+def repeat(object: _T, times: int) -> Iterator[_T]: pass
 
-def accumulate(iterable: Iterable[T]) -> Iterator[T]: pass
-def chain(*iterables: Iterable[T]) -> Iterator[T]: pass
+def accumulate(iterable: Iterable[_T]) -> Iterator[_T]: pass
+def chain(*iterables: Iterable[_T]) -> Iterator[_T]: pass
 # TODO chain.from_Iterable
-def compress(data: Iterable[T], selectors: Iterable[Any]) -> Iterator[T]: pass
-def dropwhile(predicate: Function[[T], Any],
-              iterable: Iterable[T]) -> Iterator[T]: pass
-def filterfalse(predicate: Function[[T], Any],
-                iterable: Iterable[T]) -> Iterator[T]: pass
+def compress(data: Iterable[_T], selectors: Iterable[Any]) -> Iterator[_T]: pass
+def dropwhile(predicate: Function[[_T], Any],
+              iterable: Iterable[_T]) -> Iterator[_T]: pass
+def filterfalse(predicate: Function[[_T], Any],
+                iterable: Iterable[_T]) -> Iterator[_T]: pass
 
 @overload
-def groupby(iterable: Iterable[T]) -> Iterator[Tuple[T, Iterator[T]]]: pass
+def groupby(iterable: Iterable[_T]) -> Iterator[Tuple[_T, Iterator[_T]]]: pass
 @overload
-def groupby(iterable: Iterable[T],
-            key: Function[[T], S]) -> Iterator[Tuple[S, Iterator[T]]]: pass
+def groupby(iterable: Iterable[_T],
+            key: Function[[_T], _S]) -> Iterator[Tuple[_S, Iterator[_T]]]: pass
 
 @overload
-def islice(iterable: Iterable[T], stop: int) -> Iterator[T]: pass
+def islice(iterable: Iterable[_T], stop: int) -> Iterator[_T]: pass
 @overload
-def islice(iterable: Iterable[T], start: int, stop: int,
-           step: int = 1) -> Iterator[T]: pass
+def islice(iterable: Iterable[_T], start: int, stop: int,
+           step: int = 1) -> Iterator[_T]: pass
 
 def starmap(func: Any, iterable: Iterable[Any]) -> Iterator[Any]: pass
-def takewhile(predicate: Function[[T], Any],
-              iterable: Iterable[T]) -> Iterator[T]: pass
+def takewhile(predicate: Function[[_T], Any],
+              iterable: Iterable[_T]) -> Iterator[_T]: pass
 def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
-def zip_longest(*p: Iterable[Any]) -> Iterator[Any]: pass # TODO fillvalue
+def zip_longest(*p: Iterable[Any],
+                fillvalue: Any = None) -> Iterator[Any]: pass
 
-def product(*p: Iterable[Any]) -> Iterator[Any]: pass # TODO repeat
-# TODO int with None default
-def permutations(iterable: Iterable[Any], r: int = None) -> Iterator[Any]: pass
-def combinations(iterable: Iterable[Any], r: int) -> Iterable[Any]: pass
-def combinations_with_replacement(iterable: Iterable[Any],
-                                  r: int) -> Iterable[Any]: pass
+# TODO: Return type should be Iterator[Tuple[..]], but unknown tuple shape.
+#       Iterator[Sequence[_T]] loses this type information.
+def product(*p: Iterable[_T], repeat: int = 1) -> Iterator[Sequence[_T]]: pass
+
+def permutations(iterable: Iterable[_T],
+                 r: Union[int, None] = None) -> Iterator[Sequence[_T]]: pass
+def combinations(iterable: Iterable[_T],
+                 r: int) -> Iterable[Sequence[_T]]: pass
+def combinations_with_replacement(iterable: Iterable[_T],
+                                  r: int) -> Iterable[Sequence[_T]]: pass

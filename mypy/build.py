@@ -24,9 +24,6 @@ from mypy.nodes import SymbolTableNode, MODULE_REF
 from mypy.semanal import SemanticAnalyzer, FirstPass, ThirdPass
 from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
-from mypy.icode import FuncIcode
-from mypy import cgen
-from mypy import icode
 from mypy import parse
 from mypy import stats
 from mypy import transform
@@ -39,15 +36,13 @@ debug = False
 SEMANTIC_ANALYSIS = 0   # Semantic analysis only
 TYPE_CHECK = 1          # Type check
 TRANSFORM = 3           # Type check and transform for runtime type checking
-ICODE = 4               # All TRANSFORM passes + generate icode
-C = 5                   # All ICODE passes + generate C and compile it
 
 
 # Build flags
-COMPILE_ONLY = 'compile-only'   # Compile only to C, do not generate binary
-VERBOSE = 'verbose'             # More verbose messages (for troubleshooting)
-MODULE = 'module'               # Build/run module as a script
-TEST_BUILTINS = 'test-builtins' # Use stub builtins to speed up tests
+DO_NOT_RUN = 'do-not-run'        # Only type check, don't run the program
+VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
+MODULE = 'module'                # Build/run module as a script
+TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
 
 # State ids. These describe the states a source file / module can be in a
@@ -80,19 +75,12 @@ class BuildResult:
     Attributes:
       files:  Dictionary from module name to related AST node.
       types:  Dictionary from parse tree node to its inferred type.
-      icode:  Dictionary from function name to related Icode.
-      binary_path: Path of generated binary file (for the C back end,
-                   None otherwise)
     """
 
     def __init__(self, files: Dict[str, MypyFile],
-                 types: Dict[Node, Type],
-                 icode: Dict[str, FuncIcode],
-                 binary_path: str) -> None:
+                 types: Dict[Node, Type]) -> None:
         self.files = files
         self.types = types
-        self.icode = icode
-        self.binary_path = binary_path
 
 
 def build(program_path: str,
@@ -215,22 +203,18 @@ def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
     if path_env is not None:
         path[:0] = path_env.split(os.pathsep)
 
-    if target in [ICODE, C]:
-        # Add C back end library directory.
-        path.append(os.path.join(data_dir, 'lib'))
-    else:
-        # Add library stubs directory. By convention, they are stored in the
-        # stubs/x.y directory of the mypy installation.
-        version_dir = '3.2'
-        if pyversion < 3:
-            version_dir = '2.7'
-        path.append(os.path.join(data_dir, 'stubs', version_dir))
-        path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-        #Add py3.3 and 3.4 stubs
-        if sys.version_info.major == 3:
-            versions = ['3.' + str(x) for x in range(3, sys.version_info.minor + 1)]
-            for v in versions:
-                path.append(os.path.join(data_dir, 'stubs', v))
+    # Add library stubs directory. By convention, they are stored in the
+    # stubs/x.y directory of the mypy installation.
+    version_dir = '3.2'
+    if pyversion < 3:
+        version_dir = '2.7'
+    path.append(os.path.join(data_dir, 'stubs', version_dir))
+    path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
+    #Add py3.3 and 3.4 stubs
+    if sys.version_info.major == 3:
+        versions = ['3.' + str(x) for x in range(3, sys.version_info.minor + 1)]
+        for v in versions:
+            path.append(os.path.join(data_dir, 'stubs', v))
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -286,15 +270,13 @@ class BuildManager:
                        states are stored.
       module_files:    Map from module name to source file path. There is a
                        1:1 mapping between modules and source files.
-      icode:           Generated icode (when compiling via C)
-      binary_path:     Path of the generated binary (or None)
       module_deps:     Cache for module dependencies (direct or indirect).
                        Item (m, n) indicates whether m depends on n (directly
                        or indirectly).
       missing_modules: Set of modules that could not be imported encountered so far
 
-    TODO Refactor code related to transformation, icode generation etc. to
-         external objects.  This module should not directly depend on them.
+    TODO Refactor code related to transformation to external objects.  This module
+         should not directly depend on them.
     """
 
     def __init__(self, data_dir: str,
@@ -324,8 +306,6 @@ class BuildManager:
                                         self.pyversion)
         self.states = List[State]()
         self.module_files = Dict[str, str]()
-        self.icode = Dict[str, FuncIcode]()
-        self.binary_path = None # type: str
         self.module_deps = Dict[Tuple[str, str], bool]()
         self.missing_modules = Set[str]()
 
@@ -383,8 +363,7 @@ class BuildManager:
         self.final_passes(trees, self.type_checker.type_map)
 
         return BuildResult(self.semantic_analyzer.modules,
-                           self.type_checker.type_map,
-                           self.icode, self.binary_path)
+                           self.type_checker.type_map)
 
     def next_available_state(self) -> 'State':
         """Find a ready state (one that has all its dependencies met)."""
@@ -497,15 +476,8 @@ class BuildManager:
         """Perform the code generation passes for type checked files."""
         if self.target == TRANSFORM:
             self.transform(files)
-        elif self.target == ICODE:
-            self.transform(files)
-            self.generate_icode(files, types)
-        elif self.target == C:
-            self.transform(files)
-            self.generate_icode(files, types)
-            self.generate_c_and_compile(files)
         elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
-            pass # Nothing to do.
+            pass  # Nothing to do.
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
@@ -532,47 +504,6 @@ class BuildManager:
                 self.semantic_analyzer.modules,
                 is_pretty=True)
             f.accept(v)
-
-    def generate_icode(self, files: List[MypyFile],
-                       types: Dict[Node, Type]) -> None:
-        builder = icode.IcodeBuilder(types)
-        for f in files:
-            # TODO remove ugly builtins hack
-            if not f.path.endswith('/builtins.py'):
-                f.accept(builder)
-        self.icode = builder.generated
-
-    def generate_c_and_compile(self, files: List[MypyFile]) -> None:
-        gen = cgen.CGenerator()
-
-        for fn, icode in self.icode.items():
-            gen.generate_function('M' + fn, icode)
-
-        program_name = os.path.splitext(basename(files[0].path))[0]
-        c_file = '%s.c' % program_name
-
-        # Write C file.
-        self.log('writing %s' % c_file)
-        out = open(c_file, 'w')
-        out.writelines(gen.output())
-        out.close()
-
-        if COMPILE_ONLY not in self.flags:
-            # Generate binary file.
-            data_dir = self.data_dir
-            vm_dir = os.path.join(data_dir, 'vm')
-            cc = os.getenv('CC', 'gcc')
-            cflags = shlex.split(os.getenv('CFLAGS', '-O2'))
-            cmdline = [cc] + cflags +['-I%s' % vm_dir,
-                                      '-o%s' % program_name,
-                                      c_file,
-                                      os.path.join(vm_dir, 'runtime.c')]
-            self.log(' '.join(cmdline))
-            status = subprocess.call(cmdline)
-            # TODO check status
-            self.log('removing %s' % c_file)
-            os.remove(c_file)
-            self.binary_path = os.path.join('.', program_name)
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
@@ -675,7 +606,7 @@ class State:
 
     def num_incomplete_deps(self) -> int:
         """Return the number of dependencies that are ready but incomplete."""
-        return 0 # Does not matter in this state
+        return 0  # Does not matter in this state
 
     def state(self) -> int:
         raise RuntimeError('Not implemented')
@@ -964,7 +895,7 @@ def verify_module(id: str, path: str) -> bool:
 def super_packages(id: str) -> List[str]:
     """Return the surrounding packages of a module, e.g. ['os'] for os.path."""
     c = id.split('.')
-    res = [] # type: List[str]
+    res = []  # type: List[str]
     for i in range(1, len(c)):
         res.append('.'.join(c[:i]))
     return res

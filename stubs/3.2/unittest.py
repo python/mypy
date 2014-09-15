@@ -13,7 +13,8 @@ from typing import (
 )
 from abc import abstractmethod, ABCMeta
 
-FT = typevar('FT')
+_T = typevar('_T')
+_FT = typevar('_FT')
 
 class Testable(metaclass=ABCMeta):
     @abstractmethod
@@ -30,7 +31,7 @@ class TestResult:
     failures = Undefined(List[Tuple[Testable, str]])
     testsRun = 0
     shouldStop = False
-    
+
     def wasSuccessful(self) -> bool: pass
     def stop(self) -> None: pass
     def startTest(self, test: Testable) -> None: pass
@@ -46,12 +47,12 @@ class _AssertRaisesBaseContext:
     failureException = Undefined(type)
     obj_name = ''
     expected_regex = Undefined(Pattern[str])
-    
+
 class _AssertRaisesContext(_AssertRaisesBaseContext):
     exception = Undefined(Any) # TODO precise type
     def __enter__(self) -> _AssertRaisesContext: pass
     def __exit__(self, exc_type, exc_value, tb) -> bool: pass
-    
+
 class _AssertWarnsContext(_AssertRaisesBaseContext):
     warning = Undefined(Any) # TODO precise type
     filename = ''
@@ -110,9 +111,9 @@ class TestCase(Testable):
                     msg: object = None) -> None: pass
     def assertIsNone(self, expr: Any, msg: object = None) -> None: pass
     def assertIsNotNone(self, expr: Any, msg: object = None) -> None: pass
-    def assertIn(self, first: T, second: Iterable[T],
+    def assertIn(self, first: _T, second: Iterable[_T],
                  msg: object = None) -> None: pass
-    def assertNotIn(self, first: T, second: Iterable[T],
+    def assertNotIn(self, first: _T, second: Iterable[_T],
                     msg: object = None) -> None: pass
     def assertIsInstance(self, obj: Any, cls: type,
                          msg: object = None) -> None: pass
@@ -158,7 +159,7 @@ class SkipTest(Exception):
 # TODO precise types
 def skipUnless(condition: Any, reason: str) -> Any: pass
 def skipIf(condition: Any, reason: str) -> Any: pass
-def expectedFailure(func: FT) -> FT: pass
+def expectedFailure(func: _FT) -> _FT: pass
 def skip(reason: str) -> Any: pass
 
 def main(module: str = '__main__', defaultTest: str = None,

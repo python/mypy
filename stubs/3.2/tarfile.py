@@ -16,14 +16,14 @@ class TarFile:
     def getnames(self) -> List[str]: pass
     def extractall(self, path: str = ".",
                    members: List[TarInfo] = None) -> None: pass
-    
+
     @overload
     def extract(self, member: str, path: str = "",
                 set_attrs: bool = True) -> None: pass
     @overload
     def extract(self, member: TarInfo, path: str = "",
                 set_attrs: bool = True) -> None: pass
-    
+
     def add(self, name: str, arcname: str = None, recursive: bool = True,
             exclude: Function[[str], bool] = None, *,
             filter: 'Function[[TarFile], TarFile]' = None) -> None: pass

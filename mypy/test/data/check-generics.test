@@ -41,7 +41,7 @@ T = typevar('T')
 class A(Generic[T]):
     def __init__(self, v: T) -> None:
         self.v = v
-        
+
 a, b, c = Undefined, Undefined, Undefined # type: (A[B], B, C)
 a.v = c # Fail
 a.v = b
@@ -197,7 +197,7 @@ from typing import typevar, Generic, Undefined
 T = typevar('T')
 class A(Generic[T]):
     a = Undefined # type: T
-    
+
     def f(self, b: T) -> T:
         self.f(x)     # Fail
         d = self # type: A[B] # Fail
@@ -279,7 +279,7 @@ c = a + b
 b = a[c]
 
 class A(Generic[S, T]):
-    def __add__(self, a: S) -> T: pass    
+    def __add__(self, a: S) -> T: pass
     def __getitem__(self, i: T) -> S: pass
 
 class B: pass
@@ -303,7 +303,7 @@ ac[b] += c
 ac[b] = ac[b] + c
 
 class A(Generic[T]):
-    def __getitem__(self, i: 'B') -> T: pass    
+    def __getitem__(self, i: 'B') -> T: pass
     def __setitem__(self, i: 'B', v: T) -> None: pass
 
 class B: pass
@@ -326,7 +326,7 @@ ac[c] += c        # Fail
 ac[b] = ac[b] + c # Fail
 
 class A(Generic[T]):
-    def __getitem__(self, i: 'B') -> T: pass    
+    def __getitem__(self, i: 'B') -> T: pass
     def __setitem__(self, i: 'C', v: T) -> None: pass
 
 class B: pass

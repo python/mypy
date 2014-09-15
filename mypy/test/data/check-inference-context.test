@@ -453,7 +453,7 @@ t = typevar('t')
 class A(Generic[t]): pass
 class B: pass
 class C: pass
-d = {A()    : A[C](), 
+d = {A()    : A[C](),
      A[B]() : A()} # type: Dict[A[B], A[C]]
 [builtins fixtures/dict.py]
 

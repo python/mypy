@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from . import pytokenize as tokenize
 
+
 def get_end_pos(start_pos, tvalue):
     row, col = start_pos
     for c in tvalue:
@@ -11,6 +12,7 @@ def get_end_pos(start_pos, tvalue):
         else:
             col += 1
     return (row, col)
+
 
 def mypy_untokenize(tokens):
     parts = []
@@ -49,8 +51,10 @@ def mypy_untokenize(tokens):
 
     return ''.join(parts)
 
+
 def mypy_tokenize(readline):
     return transform_tokens(tokenize.generate_tokens(readline))
+
 
 def transform_tokens(tokens):
     # state variables
@@ -90,6 +94,7 @@ def transform_tokens(tokens):
 
         yield token
 
+
 def scan_until(match_list, tokens):
     """Steps through the tokens iterator until it finds a token whose value is in match_list at the
     original bracket depth. Returns the token that matches, plus a list of other tokens that should
@@ -105,6 +110,7 @@ def scan_until(match_list, tokens):
             to_keep.append(token)
         token = tokens.next()
     return to_keep, token
+
 
 def bracket_delta(token):
     """Returns +/-1 if the current token increases/decreases bracket nesting depth, 0 otherwise."""

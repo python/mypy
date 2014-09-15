@@ -4,15 +4,15 @@
 
 from typing import typevar, List, Iterable, Any, Function
 
-T = typevar('T')
+_T = typevar('_T')
 
-def heappush(heap: List[T], item: T) -> None: pass
-def heappop(heap: List[T]) -> T: pass
-def heappushpop(heap: List[T], item: T) -> T: pass
-def heapify(x: List[T]) -> None: pass
-def heapreplace(heap: List[T], item: T) -> T: pass
-def merge(*iterables: Iterable[T]) -> Iterable[T]: pass
-def nlargest(n: int, iterable: Iterable[T],
-             key: Function[[T], Any] = None) -> List[T]: pass
-def nsmallest(n: int, iterable: Iterable[T],
-              key: Function[[T], Any] = None) -> List[T]: pass
+def heappush(heap: List[_T], item: _T) -> None: pass
+def heappop(heap: List[_T]) -> _T: pass
+def heappushpop(heap: List[_T], item: _T) -> _T: pass
+def heapify(x: List[_T]) -> None: pass
+def heapreplace(heap: List[_T], item: _T) -> _T: pass
+def merge(*iterables: Iterable[_T]) -> Iterable[_T]: pass
+def nlargest(n: int, iterable: Iterable[_T],
+             key: Function[[_T], Any] = None) -> List[_T]: pass
+def nsmallest(n: int, iterable: Iterable[_T],
+              key: Function[[_T], Any] = None) -> List[_T]: pass

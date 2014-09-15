@@ -19,13 +19,13 @@ class TestInfer(unittest.TestCase):
         self.assertEqual(i.typeobj, int)
         self.assertEqual(str(i), 'int')
         self.assertEqual(repr(i), 'Instance(int)')
-        
+
         self.assertTrue(i == Instance(int))
         self.assertFalse(i != Instance(int))
         self.assertTrue(i != self.float)
         self.assertFalse(i == self.float)
         self.assertNotEqual(i, None)
-    
+
     def test_generic_with_one_arg(self):
         g = Generic('List', [self.int])
         self.assertEqual(g.typename, 'List')
@@ -37,7 +37,7 @@ class TestInfer(unittest.TestCase):
         self.assertNotEqual(g, Generic('Set', [self.int]))
         self.assertNotEqual(g, Generic('List', [self.float]))
         self.assertNotEqual(g, self.int)
-    
+
     def test_generic_with_two_args(self):
         g = Generic('Dict', (self.int, self.float))
         self.assertEqual(g.typename, 'Dict')
@@ -64,7 +64,7 @@ class TestInfer(unittest.TestCase):
         i = self.int
         f = self.float
         s = Instance(str)
-        
+
         e2 = Union((i, f))
         self.assertEqual(len(e2.types), 2)
         self.assertEqual(str(e2), 'Union[float, int]')
@@ -88,7 +88,7 @@ class TestInfer(unittest.TestCase):
         unknown = Unknown()
         self.assertEqual(str(unknown), 'Unknown')
         self.assertEqual(repr(unknown), 'Unknown()')
-        
+
         self.assertEqual(unknown, Unknown())
         self.assertNotEqual(unknown, self.int)
 
@@ -150,7 +150,7 @@ class TestInfer(unittest.TestCase):
         self.assertEqual(sample([1]), [1])
         self.assertEqual(sample([1, 2]), [1, 2])
         # TODO larger collections
-    
+
     def test_infer_simple_value_type(self):
         self.assert_infer_type(1, 'int')
         self.assert_infer_type('', 'str')
@@ -197,7 +197,7 @@ class TestInfer(unittest.TestCase):
         pinfer.infer_attrs(A())
         self.assert_infer_state('A.x: float')
 
-    def test_infer_function_attr(self):        
+    def test_infer_function_attr(self):
         class A:
             def f(self): pass
         a = A()
@@ -255,7 +255,7 @@ class TestInfer(unittest.TestCase):
         def f(x): pass
         f(x=1)
         self.assert_infer_state('def f(x: int) -> None')
-        
+
         @pinfer.infer_signature
         def f(x='x'): pass
         f(x=1)

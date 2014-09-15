@@ -4,6 +4,7 @@ import codecs
 import encodings
 import sys
 
+
 def search_function(encoding):
     if encoding != 'mypy':
         return None
@@ -22,6 +23,7 @@ def search_function(encoding):
                                 streamwriter=utf8.streamwriter)
 
 codecs.register(search_function)
+
 
 def main():
     fn = sys.argv[1]

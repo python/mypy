@@ -12,7 +12,7 @@ from asyncio.futures import Future
 
 __all__ = ['AbstractEventLoopPolicy', 'AbstractEventLoop', 'Handle', 'get_event_loop']
 
-T = typevar('T')
+_T = typevar('_T')
 
 PIPE = Undefined(Any)  # from subprocess.PIPE
 
@@ -34,7 +34,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
     @abstractmethod
     def run_forever(self) -> None: pass
     @abstractmethod
-    def run_until_complete(self, future: Future[T]) -> T: pass
+    def run_until_complete(self, future: Future[_T]) -> _T: pass
     @abstractmethod
     def stop(self) -> None: pass
     @abstractmethod

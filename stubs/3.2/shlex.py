@@ -22,7 +22,7 @@ class shlex:
     lineno = 0
     token = ''
     eof = ''
-    
+
     def __init__(self, instream=None, infile=None,
                  posix: bool = False) -> None: pass
     def get_token(self) -> str: pass

@@ -10,7 +10,7 @@ from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
 
 
-none = Token('') # Empty token
+none = Token('')  # Empty token
 
 
 class TypeParseError(Exception):
@@ -25,7 +25,7 @@ def parse_type(tok: List[Token], index: int) -> Tuple[Type, int]:
 
     Return (type, index after type).
     """
-    
+
     p = TypeParser(tok, index)
     return p.parse_type(), p.index()
 
@@ -33,9 +33,9 @@ def parse_type(tok: List[Token], index: int) -> Tuple[Type, int]:
 def parse_types(tok: List[Token], index: int) -> Tuple[Type, int]:
     """Parse one or more types separated by commas (optional parentheses).
 
-    Return (type, index after type).    
+    Return (type, index after type).
     """
-    
+
     p = TypeParser(tok, index)
     return p.parse_types(), p.index()
 
@@ -44,10 +44,10 @@ class TypeParser:
     def __init__(self, tok: List[Token], ind: int) -> None:
         self.tok = tok
         self.ind = ind
-    
+
     def index(self) -> int:
         return self.ind
-    
+
     def parse_type(self) -> Type:
         """Parse a type."""
         t = self.current_token()
@@ -87,8 +87,8 @@ class TypeParser:
     def parse_type_list(self) -> TypeList:
         """Parse type list [t, ...]."""
         lbracket = self.expect('[')
-        commas = [] # type: List[Token]
-        items = [] # type: List[Type]
+        commas = []  # type: List[Token]
+        items = []  # type: List[Type]
         while self.current_token_str() != ']':
             t = self.parse_type()
             items.append(t)
@@ -97,67 +97,67 @@ class TypeParser:
             commas.append(self.skip())
         rbracket = self.expect(']')
         return TypeList(items, line=lbracket.line)
-    
+
     def parse_named_type(self) -> Type:
         line = self.current_token().line
         name = ''
-        components = [] # type: List[Token]
-        
+        components = []  # type: List[Token]
+
         components.append(self.expect_type(Name))
         name += components[-1].string
-        
+
         while self.current_token_str() == '.':
             components.append(self.skip())
             t = self.expect_type(Name)
             components.append(t)
             name += '.' + t.string
-        
+
         langle, rangle = none, none
-        commas = [] # type: List[Token]
-        args = [] # type: List[Type]
+        commas = []  # type: List[Token]
+        args = []  # type: List[Type]
         if self.current_token_str() == '[':
             lbracket = self.skip()
-            
+
             while True:
                 typ = self.parse_type()
                 args.append(typ)
                 if self.current_token_str() != ',':
                     break
                 commas.append(self.skip())
-            
+
             rbracket = self.expect(']')
-        
+
         typ = UnboundType(name, args, line, CommonTypeRepr(components,
                                                            langle,
                                                            commas, rangle))
         return typ
 
     # Helpers
-    
+
     def skip(self) -> Token:
         self.ind += 1
         return self.tok[self.ind - 1]
-    
+
     def expect(self, string: str) -> Token:
         if self.tok[self.ind].string == string:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
-    
+
     def expect_type(self, typ: type) -> Token:
         if isinstance(self.current_token(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
             self.parse_error()
-    
+
     def current_token(self) -> Token:
         return self.tok[self.ind]
-    
+
     def current_token_str(self) -> str:
         return self.current_token().string
-    
+
     def parse_error(self) -> None:
         raise TypeParseError(self.tok[self.ind], self.ind)
 
@@ -167,7 +167,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
 
     Raise TypeParseError on parse error.
     """
-    
+
     typestr = typestr.strip()
     tokens = lex(typestr, line)
     result, i = parse_type(tokens, 0)
@@ -202,11 +202,11 @@ def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
         if next not in ',)':
             raise TypeParseError(tokens[i], i)
         if next == ',':
-            i += 1            
+            i += 1
     i += 1
-    if tokens[i].string != '-' or tokens[i + 1].string != '>':
+    if tokens[i].string != '->':
         raise TypeParseError(tokens[i], i)
-    i += 2
+    i += 1
     ret_type, i = parse_type(tokens, i)
     return Callable(arg_types,
                     arg_kinds,

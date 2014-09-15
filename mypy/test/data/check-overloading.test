@@ -172,7 +172,7 @@ t = A
 
 class A:
     @overload
-    def __init__(self, a: 'A') -> None: pass    
+    def __init__(self, a: 'A') -> None: pass
     @overload
     def __init__(self, a: 'B') -> None: pass
 class B: pass
@@ -427,3 +427,52 @@ A() + 1
 A() + B()
 A() + '' # E: No overload variant of "__add__" of "A" matches argument types
 
+[case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
+from typing import overload, builtinclass
+@builtinclass
+class IntSub(int): pass
+@builtinclass
+class StrSub(str): pass
+class A:
+    @overload
+    def f(self, x: IntSub) -> int: return 0
+    @overload
+    def f(self, x: StrSub) -> str: return ''
+class B(A):
+    @overload
+    def f(self, x: int) -> int: return 0
+    @overload
+    def f(self, x: str) -> str: return ''
+[out]
+
+[case testOverrideOverloadedMethodWithMoreSpecificArgumentTypes]
+from typing import overload, builtinclass
+@builtinclass
+class IntSub(int): pass
+@builtinclass
+class StrSub(str): pass
+class A:
+    @overload
+    def f(self, x: int) -> int: return 0
+    @overload
+    def f(self, x: str) -> str: return ''
+class B(A):
+    @overload
+    def f(self, x: IntSub) -> int: return 0
+    @overload
+    def f(self, x: str) -> str: return ''
+class C(A):
+    @overload
+    def f(self, x: int) -> int: return 0
+    @overload
+    def f(self, x: StrSub) -> str: return ''
+class D(A):
+    @overload
+    def f(self, x: int) -> int: return 0
+    @overload
+    def f(self, x: str) -> str: return ''
+[out]
+main: In class "B":
+main, line 12: Signature of "f" incompatible with supertype "A"
+main: In class "C":
+main, line 17: Signature of "f" incompatible with supertype "A"

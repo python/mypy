@@ -1,4 +1,4 @@
--- Test cases for the type checker related to functions, function types and 
+-- Test cases for the type checker related to functions, function types and
 -- calls.
 
 -- See also check-varargs.test.
@@ -23,21 +23,22 @@ class B: pass
 
 [case testSubtypingFunctionTypes]
 from typing import Undefined, Function
-f = Undefined # type: Function[[B], A]
-g = Undefined # type: Function[[A], A]
-h = Undefined # type: Function[[B], B]  # subtype of f
-g = f  # E: Incompatible types in assignment (expression has type , variable has type )
+
+class A: pass
+class B(A): pass
+
+f = Undefined(Function[[B], A])
+g = Undefined(Function[[A], A])  # subtype of f
+h = Undefined(Function[[B], B])  # subtype of f
 g = h  # E: Incompatible types in assignment (expression has type , variable has type )
 h = f  # E: Incompatible types in assignment (expression has type , variable has type )
 h = g  # E: Incompatible types in assignment (expression has type , variable has type )
+g = f  # E: Incompatible types in assignment (expression has type , variable has type )
 f = g
 f = h
 f = f
 g = g
 h = h
-
-class A: pass
-class B(A): pass
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Undefined, Function
@@ -139,7 +140,7 @@ def i(x: AA) -> A:
 @overload
 def i(x: B) -> B:
     pass
-    
+
 @overload
 def j(x: B) -> B:
     pass
@@ -573,7 +574,7 @@ def f(x, y): pass
 from typing import Undefined, Any
 x = Undefined # type: Any
 if x:
-    def f(x: int) -> None: 
+    def f(x: int) -> None:
         x = 1
         x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
@@ -650,7 +651,7 @@ from typing import Undefined, Any
 x = Undefined # type: Any
 class A:
     if x:
-        def f(self, x: int) -> None: 
+        def f(self, x: int) -> None:
             x = 1
             x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
@@ -681,7 +682,7 @@ A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "
 [case testConditionalMethodDefinitionWithIfElse]
 from typing import Undefined, Any
 x = Undefined # type: Any
-class A: 
+class A:
     if x:
         def f(self, x: int) -> None:
             x = 'x'   # fail

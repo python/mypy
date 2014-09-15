@@ -32,17 +32,17 @@ class array:
     def tolist(self) -> List[Any]: pass
     def tostring(self) -> bytes: pass
     def tounicode(self) -> str: pass
-    
+
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[Any]: pass
     def __str__(self) -> str: pass
     def __hash__(self) -> int: pass
-    
+
     @overload
     def __getitem__(self, i: int) -> Any: pass
     @overload
     def __getitem__(self, s: slice) -> 'array': pass
-    
+
     def __setitem__(self, i: int, o: Any) -> None: pass
     def __delitem__(self, i: int) -> None: pass
     def __add__(self, x: 'array') -> 'array': pass

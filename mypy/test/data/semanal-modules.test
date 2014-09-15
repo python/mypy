@@ -1,4 +1,4 @@
--- NOTE: If a module has a name starting or ending with _, it is skipped in 
+-- NOTE: If a module has a name starting or ending with _, it is skipped in
 --       output.
 
 [case testImport]
@@ -416,7 +416,7 @@ MypyFile:1(
     NameExpr(x [__main__.x])
     NameExpr(Undefined [typing.Undefined])
     m._n.c))
-    
+
 [case testFromPackageImportModule]
 from m import _n
 _n.x

@@ -233,11 +233,11 @@ from typing import Union, List
 
 class A: y = A()
 class B(A): z = C()
-    
+
 class C: pass
 class D(C): d = 1
 
-    
+
 def f(x: Union[List[int], List[str], int]) -> None:
     if isinstance(x, list):
         a = x[0]
@@ -498,7 +498,7 @@ for i in [1, 2]:
     x + 'a'
 
 x + 'a'                    # E: Unsupported operand types for + (likely involving Union)
-  
+
 [builtins fixtures/isinstancelist.py]
 
 

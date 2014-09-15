@@ -83,7 +83,7 @@ def f() -> None:
     a = g()
     None(a) # E: None not callable
     a.x()
-    
+
 def g(): pass
 [out]
 main: In function "f":
@@ -185,7 +185,7 @@ def f() -> None:
     a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    
+
     a = A()
     b = B()
 
@@ -241,13 +241,13 @@ def f() -> None:
     b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
     b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
-    
+
     a = C()
     b = C()
     c = D()
     d = D()
     e = D()
-    
+
     a = b
     c = d
     d = e
@@ -832,7 +832,7 @@ class A: pass
 
 [case testAccessGlobalVarBeforeItsTypeIsAvailable]
 import typing
-x.y  # E: Cannot determine type of 'x' 
+x.y  # E: Cannot determine type of 'x'
 x = object()
 x.y  # E: "object" has no attribute "y"
 

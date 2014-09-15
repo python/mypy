@@ -36,9 +36,9 @@ def split(pattern: AnyStr, string: AnyStr, maxsplit: int = 0,
 def findall(pattern: AnyStr, string: AnyStr,
             flags: int = 0) -> List[AnyStr]: pass
 
-# Return an iterator yielding match objects over all non-overlapping matches 
-# for the RE pattern in string. The string is scanned left-to-right, and 
-# matches are returned in the order found. Empty matches are included in the 
+# Return an iterator yielding match objects over all non-overlapping matches
+# for the RE pattern in string. The string is scanned left-to-right, and
+# matches are returned in the order found. Empty matches are included in the
 # result unless they touch the beginning of another match.
 def finditer(pattern: AnyStr, string: AnyStr,
              flags: int = 0) -> Iterator[Match[AnyStr]]: pass

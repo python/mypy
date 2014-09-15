@@ -41,7 +41,7 @@ def test_semanal(testcase):
     The testcase argument contains a description of the test case
     (inputs and output).
     """
-    
+
     try:
         src = '\n'.join(testcase.input)
         result = build.build('main',
@@ -86,11 +86,11 @@ class SemAnalErrorSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_semanal_error, test_temp_dir)
         return c
-    
+
 
 def test_semanal_error(testcase):
     """Perform a test case."""
-    
+
     try:
         src = '\n'.join(testcase.input)
         build.build('main',
@@ -111,7 +111,7 @@ def test_semanal_error(testcase):
 
 def normalize_error_messages(messages):
     """Translate an array of error messages to use / as path separator."""
-    
+
     a = []
     for m in messages:
         a.append(m.replace(os.sep, '/'))
@@ -123,7 +123,7 @@ def normalize_error_messages(messages):
 # Test case descriptions
 semanal_symtable_files = ['semanal-symtable.test']
 
-    
+
 class SemAnalSymtableSuite(Suite):
     def cases(self):
         c = []
@@ -131,7 +131,7 @@ class SemAnalSymtableSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir)
         return c
-    
+
     def run_test(self, testcase):
         """Perform a test case."""
         try:
@@ -143,7 +143,7 @@ class SemAnalSymtableSuite(Suite):
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
-            a = []      
+            a = []
             for f in sorted(result.files.keys()):
                 if f not in ('builtins', 'typing', 'abc'):
                     a.append('{}:'.format(f))
@@ -161,7 +161,7 @@ class SemAnalSymtableSuite(Suite):
 
 semanal_typeinfo_files = ['semanal-typeinfo.test']
 
-    
+
 class SemAnalTypeInfoSuite(Suite):
     def cases(self):
         """Test case descriptions"""
@@ -170,7 +170,7 @@ class SemAnalTypeInfoSuite(Suite):
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir)
         return c
-    
+
     def run_test(self, testcase):
         """Perform a test case."""
         try:
@@ -181,14 +181,14 @@ class SemAnalTypeInfoSuite(Suite):
                                  program_text=src,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
-            
+
             # Collect all TypeInfos in top-level modules.
             typeinfos = TypeInfoMap()
             for f in result.files.values():
                 for n in f.names.values():
                     if isinstance(n.node, TypeInfo):
                         typeinfos[n.fullname] = n.node
-            
+
             # The output is the symbol table converted into a string.
             a = str(typeinfos).split('\n')
         except CompileError as e:
@@ -201,7 +201,7 @@ class SemAnalTypeInfoSuite(Suite):
 
 class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
-        a = ['TypeInfoMap('] # type: List[str]
+        a = ['TypeInfoMap(']  # type: List[str]
         for x, y in sorted(self.items()):
             if isinstance(x, str) and (not x.startswith('builtins.') and
                                        not x.startswith('typing.') and

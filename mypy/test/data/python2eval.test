@@ -1,0 +1,249 @@
+-- Test cases for type checking mypy programs using full stubs and running
+-- using CPython. -- Python 2 syntax.
+--
+-- These are mostly regression tests -- no attempt is made to make these
+-- complete.
+
+
+[case testAbs2_python2]
+from typing import Undefined
+n = Undefined(int)
+f = Undefined(float)
+n = abs(1)
+abs(1) + 'x'  # Error
+f = abs(1.1)
+abs(1.1) + 'x'  # Error
+[out]
+_program.py, line 5: Unsupported operand types for + ("int" and "str")
+_program.py, line 7: Unsupported operand types for + ("float" and "str")
+
+[case testUnicode_python2]
+import typing
+x = unicode('xyz', 'latin1')
+print x
+x = u'foo'
+print repr(x)
+[out]
+xyz
+u'foo'
+
+[case testXrangeAndRange_python2]
+import typing
+for i in xrange(2):
+    print i
+for i in range(3):
+    print i
+[out]
+0
+1
+0
+1
+2
+
+[case testIterator_python2]
+import typing, sys
+x = iter('bar')
+print x.next(), x.next()
+[out]
+b a
+
+[case testEncodeAndDecode_python2]
+import typing
+print 'a'.encode('latin1')
+print 'b'.decode('latin1')
+print u'c'.encode('latin1')
+print u'd'.decode('latin1')
+[out]
+a
+b
+c
+d
+
+[case testHasKey_python2]
+import typing
+d = {1: 'x'}
+print d.has_key(1)
+print d.has_key(2)
+[out]
+True
+False
+
+[case testIntegerDivision_python2]
+import typing
+x = 1 / 2
+x = 2
+[out]
+
+[case testFloatDivision_python2]
+import typing
+x = 1.0 / 2.0
+x = 1.0 / 2
+x = 1 / 2.0
+x = 1.5
+[out]
+
+[case testAnyStr_python2]
+from typing import AnyStr
+def f(x): # type: (AnyStr) -> AnyStr
+    if isinstance(x, str):
+        return 'foo'
+    else:
+        return u'zar'
+print f('')
+print f(u'')
+[out]
+foo
+zar
+
+[case testGenericPatterns_python2]
+from typing import Pattern, Undefined
+import re
+p = Undefined(Pattern[unicode])
+p = re.compile(u'foo*')
+b = Undefined(Pattern[str])
+b = re.compile('foo*')
+print(p.match(u'fooo').group(0))
+[out]
+fooo
+
+[case testGenericMatch_python2]
+from typing import Match
+import re
+def f(m): # type: (Match[str]) -> None
+    print(m.group(0))
+f(re.match('x*', 'xxy'))
+[out]
+xx
+
+[case testFromFuturePrintFunction_python2]
+from __future__ import print_function
+print('a', 'b')
+[out]
+a b
+
+[case testFromFutureImportUnicodeLiterals_python2]
+from __future__ import unicode_literals
+print '>', ['a', b'b', u'c']
+[out]
+> [u'a', 'b', u'c']
+
+[case testFromFutureImportUnicodeLiterals2_python2]
+from __future__ import unicode_literals
+def f(x: str) -> None: pass
+f(b'')
+f(u'')
+f('')
+[out]
+_program.py, line 4: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py, line 5: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+
+[case testStrUnicodeCompatibility_python2]
+import typing
+def f(s): # type: (unicode) -> None
+    pass
+f(u'')
+f('')
+[out]
+
+[case testStrUnicodeCompatibilityInBuiltins_python2]
+import typing
+'x'.count('x')
+'x'.count(u'x')
+[out]
+
+[case testTupleAsSubtypeOfSequence_python2]
+from typing import typevar, Sequence
+T = typevar('T')
+def f(a): # type: (Sequence[T]) -> None
+    print a
+f(tuple())
+[out]
+()
+
+[case testReadOnlyProperty_python2]
+import typing
+class A:
+    @property
+    def foo(self): # type: () -> int
+        return 1
+print(A().foo + 2)
+[out]
+3
+
+[case testIOTypes_python2]
+from typing import IO, TextIO, BinaryIO, Any
+class X(IO[str]): pass
+class Y(TextIO): pass
+class Z(BinaryIO): pass
+[out]
+
+[case testOpenReturnType_python2]
+import typing
+f = open('/tmp/xyz', 'w')
+f.write(u'foo')
+f.write('bar')
+f.close()
+[out]
+_program.py, line 3: No overload variant of "write" of "BinaryIO" matches argument types
+
+[case testPrintFunctionWithFileArg_python2]
+from __future__ import print_function
+import typing
+if 1 == 2: # Don't want to run the code below, since it would create a file.
+    f = open('/tmp/xyz', 'w')
+    print('foo', file=f)
+    f.close()
+print('ok')
+[out]
+ok
+
+[case testStringIO_python2]
+import typing
+import io
+c = io.StringIO()
+c.write(u'\x89')
+print(repr(c.getvalue()))
+[out]
+u'\x89'
+
+[case testBytesIO_python2]
+import typing
+import io
+c = io.BytesIO()
+c.write('\x89')
+print(repr(c.getvalue()))
+[out]
+'\x89'
+
+[case testTextIOWrapper_python2]
+import typing
+import io
+b = io.BytesIO(u'\xab'.encode('utf8'))
+w = io.TextIOWrapper(b, encoding='utf8')
+print(repr(w.read()))
+[out]
+u'\xab'
+
+[case testIoOpen_python2]
+import typing
+import io
+if 1 == 2: # Only type check, do not execute
+    f = io.open('/tmp/xyz', 'w', encoding='utf8')
+    f.write(u'\xab')
+    f.close()
+print 'ok'
+[out]
+ok
+
+[case testUnionType_python2]
+from typing import Undefined, Union
+y = Undefined(Union[int, str])
+def f(x): # type: (Union[int, str]) -> str
+    if isinstance(x, int):
+        x = str(x)
+    return x
+print f(12)
+print f('ab')
+[out]
+12
+ab

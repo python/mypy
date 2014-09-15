@@ -4,7 +4,7 @@
 
 from typing import typevar
 
-T = typevar('T')
+_T = typevar('_T')
 
 def cache_from_source(path: str, debug_override: bool = None) -> str: pass
-def reload(module: T) -> T: pass # TODO imprecise signature
+def reload(module: _T) -> _T: pass # TODO imprecise signature

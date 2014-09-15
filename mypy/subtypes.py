@@ -10,6 +10,7 @@ from mypy.expandtype import expand_type
 
 
 def is_immutable(t: Instance) -> bool:
+    # TODO: The name is confusing, since the values need not be immutable.
     return t.type.fullname() in ('typing.Iterable',
                                  'typing.Sequence',
                                  'typing.Reversible',
@@ -41,31 +42,31 @@ def is_equivalent(a: Type, b: Type) -> bool:
 class SubtypeVisitor(TypeVisitor[bool]):
     def __init__(self, right: Type) -> None:
         self.right = right
-    
+
     # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
-    
+
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
-    
+
     def visit_error_type(self, left: ErrorType) -> bool:
         return False
-    
+
     def visit_type_list(self, t: TypeList) -> bool:
         assert False, 'Not supported'
-    
+
     def visit_any(self, left: AnyType) -> bool:
         return True
-    
+
     def visit_void(self, left: Void) -> bool:
         return isinstance(self.right, Void)
-    
+
     def visit_none_type(self, left: NoneTyp) -> bool:
         return not isinstance(self.right, Void)
-    
+
     def visit_erased_type(self, left: ErasedType) -> bool:
         return True
-    
+
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
@@ -75,7 +76,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
-            
+
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
             if not is_immutable(right):
@@ -87,7 +88,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return result
         else:
             return False
-    
+
     def visit_type_var(self, left: TypeVar) -> bool:
         right = self.right
         if isinstance(right, TypeVar):
@@ -95,7 +96,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     left.is_wrapper_var == right.is_wrapper_var)
         else:
             return is_named_instance(self.right, 'builtins.object')
-    
+
     def visit_callable(self, left: Callable) -> bool:
         right = self.right
         if isinstance(right, Callable):
@@ -105,16 +106,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif is_named_instance(right, 'builtins.object'):
             return True
         elif (is_named_instance(right, 'builtins.type') and
-                  left.is_type_obj()):
+              left.is_type_obj()):
             return True
         else:
             return False
-    
+
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
         if isinstance(right, Instance):
             if (is_named_instance(right, 'builtins.object') or
-                is_named_instance(right, 'builtins.tuple')):
+                    is_named_instance(right, 'builtins.tuple')):
                 return True
             elif (is_named_instance(right, 'typing.Iterable') or
                   is_named_instance(right, 'typing.Sequence') or
@@ -131,13 +132,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         else:
             return False
-    
+
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if is_named_instance(right, 'builtins.object'):
             return True
         elif isinstance(right, Callable) or is_named_instance(
-                                                 right, 'builtins.type'):
+                right, 'builtins.type'):
             for item in left.items():
                 if is_subtype(item, right):
                     return True
@@ -157,20 +158,21 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 
 def is_callable_subtype(left: Callable, right: Callable) -> bool:
+    """Is left a subtype of right?"""
     # TODO support named arguments, **args etc.
-    
+
     # Subtyping is not currently supported for generic functions.
     if left.variables or right.variables:
         return False
-    
+
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
         return False
-    
+
     # Check return types.
     if not is_subtype(left.ret_type, right.ret_type):
         return False
-    
+
     if len(left.arg_types) < len(right.arg_types):
         return False
     if left.min_args > right.min_args:
@@ -178,14 +180,14 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     for i in range(len(right.arg_types)):
         if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
-    
+
     if right.is_var_arg and not left.is_var_arg:
         return False
-    
+
     if (left.is_var_arg and not right.is_var_arg and
             len(left.arg_types) <= len(right.arg_types)):
         return False
-    
+
     return True
 
 
@@ -193,28 +195,28 @@ def map_instance_to_supertype(instance: Instance,
                               supertype: TypeInfo) -> Instance:
     """Map an Instance type, including the type arguments, to compatible
     Instance of a specific supertype.
-    
+
     Assume that supertype is a supertype of instance.type.
     """
     if instance.type == supertype:
         return instance
-    
+
     # Strip type variables away if the supertype has none.
     if not supertype.type_vars:
         return Instance(supertype, [])
-    
+
     return map_instance_to_supertypes(instance, supertype)[0]
 
 
 def map_instance_to_direct_supertype(instance: Instance,
                                      supertype: TypeInfo) -> Instance:
     typ = instance.type
-    
+
     for base in typ.bases:
         if base.type == supertype:
             map = type_var_map(typ, instance.args)
             return cast(Instance, expand_type(base, map))
-    
+
     # Relationship with the supertype not specified explicitly. Use AnyType
     # type arguments implicitly.
     # TODO Should this be an error instead?
@@ -225,7 +227,7 @@ def type_var_map(typ: TypeInfo, args: List[Type]) -> Dict[int, Type]:
     if not args:
         return None
     else:
-        tvars = {} # type: Dict[int, Type]
+        tvars = {}  # type: Dict[int, Type]
         for i in range(len(args)):
             tvars[i + 1] = args[i]
         return tvars
@@ -235,11 +237,11 @@ def map_instance_to_supertypes(instance: Instance,
                                supertype: TypeInfo) -> List[Instance]:
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
-    result = [] # type: List[Instance]
+    result = []  # type: List[Instance]
     for path in class_derivation_paths(instance.type, supertype):
         types = [instance]
         for sup in path:
-            a = [] # type: List[Instance]
+            a = []  # type: List[Instance]
             for t in types:
                 a.extend(map_instance_to_direct_supertypes(t, sup))
             types = a
@@ -251,14 +253,14 @@ def class_derivation_paths(typ: TypeInfo,
                            supertype: TypeInfo) -> List[List[TypeInfo]]:
     """Return an array of non-empty paths of direct base classes from
     type to supertype.  Return [] if no such path could be found.
-    
+
       InterfaceImplementationPaths(A, B) == [[B]] if A inherits B
       InterfaceImplementationPaths(A, C) == [[B, C]] if A inherits B and
                                                         B inherits C
     """
     # FIX: Currently we might only ever have a single path, so this could be
     #      simplified
-    result = [] # type: List[List[TypeInfo]]
+    result = []  # type: List[List[TypeInfo]]
 
     for base in typ.bases:
         if base.type == supertype:
@@ -275,13 +277,13 @@ def map_instance_to_direct_supertypes(instance: Instance,
                                       supertype: TypeInfo) -> List[Instance]:
     # FIX: There should only be one supertypes, always.
     typ = instance.type
-    result = [] # type: List[Instance]
-    
+    result = []  # type: List[Instance]
+
     for b in typ.bases:
         if b.type == supertype:
             map = type_var_map(typ, instance.args)
             result.append(cast(Instance, expand_type(b, map)))
-    
+
     if result:
         return result
     else:
@@ -295,7 +297,7 @@ def is_named_instance(t: Type, fullname: str) -> bool:
             cast(Instance, t).type.fullname() == fullname)
 
 
-def restrict_subtype_away(t:Type, s: Type) -> Type:
+def restrict_subtype_away(t: Type, s: Type) -> Type:
     """Return a supertype of (t intersect not s)
 
     Currently just remove elements of a union type.

@@ -7,6 +7,7 @@ from io import BytesIO
 
 from .tokenizer import mypy_tokenize, mypy_untokenize
 
+
 def mypy_transform(stream):
     try:
         output = mypy_untokenize(mypy_tokenize(stream.readline))
@@ -17,12 +18,15 @@ def mypy_transform(stream):
 
     return output
 
+
 def mypy_transform_string(text):
     stream = BytesIO(text)
     return mypy_transform(stream)
 
+
 def mypy_decode(input, errors='strict'):
     return utf_8.decode(mypy_transform_string(input), errors)
+
 
 class MyPyIncrementalDecoder(utf_8.IncrementalDecoder):
     def decode(self, input, final=False):
@@ -32,6 +36,7 @@ class MyPyIncrementalDecoder(utf_8.IncrementalDecoder):
             self.buffer = ''
             return super(MyPyIncrementalDecoder, self).decode(
                 mypy_transform_string(buff), final=True)
+
 
 class MyPyStreamReader(utf_8.StreamReader):
     def __init__(self, *args, **kwargs):

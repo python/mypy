@@ -26,7 +26,7 @@ class PrettyPrintVisitor(NodeVisitor):
 
     def output(self) -> str:
         return ''.join(self.result)
-
+    
     #
     # Definitions
     #
@@ -34,7 +34,7 @@ class PrettyPrintVisitor(NodeVisitor):
     def visit_mypy_file(self, file: MypyFile) -> None:
         for d in file.defs:
             d.accept(self)
-
+    
     def visit_class_def(self, tdef: ClassDef) -> None:
         self.string('class ')
         self.string(tdef.name)
@@ -54,7 +54,7 @@ class PrettyPrintVisitor(NodeVisitor):
         for d in tdef.defs.body:
             d.accept(self)
         self.dedent()
-
+    
     def visit_func_def(self, fdef: FuncDef) -> None:
         # FIX varargs, default args, keyword args etc.
         ftyp = cast(Callable, fdef.type)
@@ -74,7 +74,7 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string(') -> ')
         self.type(ftyp.ret_type)
         fdef.body.accept(self)
-
+    
     def visit_var_def(self, vdef: VarDef) -> None:
         if vdef.items[0].name() not in nodes.implicit_module_attrs:
             self.string(vdef.items[0].name())
@@ -84,7 +84,7 @@ class PrettyPrintVisitor(NodeVisitor):
                 self.string(' = ')
                 self.node(vdef.init)
             self.string('\n')
-
+    
     #
     # Statements
     #
@@ -97,17 +97,17 @@ class PrettyPrintVisitor(NodeVisitor):
 
     def visit_pass_stmt(self, o):
         self.string('pass\n')
-
+    
     def visit_return_stmt(self, o):
         self.string('return ')
         if o.expr:
             self.node(o.expr)
         self.string('\n')
-
+    
     def visit_expression_stmt(self, o):
         self.node(o.expr)
         self.string('\n')
-
+    
     def visit_assignment_stmt(self, o):
         if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed,
                                                          TypeVarExpr):
@@ -140,11 +140,11 @@ class PrettyPrintVisitor(NodeVisitor):
         if o.else_body:
             self.string('else')
             self.node(o.else_body)
-
+    
     #
     # Expressions
     #
-
+    
     def visit_call_expr(self, o):
         if o.analyzed:
             o.analyzed.accept(self)
@@ -167,10 +167,10 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string('.' + o.name)
         if o.direct:
             self.string('!')
-
+    
     def visit_name_expr(self, o):
         self.string(o.name)
-
+    
     def visit_coerce_expr(self, o: CoerceExpr) -> None:
         self.string('{')
         self.full_type(o.target_type)
@@ -180,14 +180,14 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string(' ')
         self.node(o.expr)
         self.string('}')
-
+    
     def visit_type_expr(self, o: TypeExpr) -> None:
         # Type expressions are only generated during transformation, so we must
         # use automatic formatting.
         self.string('<')
         self.full_type(o.type)
         self.string('>')
-
+    
     def visit_index_expr(self, o):
         if o.analyzed:
             o.analyzed.accept(self)
@@ -199,7 +199,7 @@ class PrettyPrintVisitor(NodeVisitor):
 
     def visit_int_expr(self, o):
         self.string(str(o.value))
-
+    
     def visit_str_expr(self, o):
         self.string(repr(o.value))
 
@@ -218,7 +218,7 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string('(')
         self.node(o.expr)
         self.string(')')
-
+    
     def visit_super_expr(self, o):
         self.string('super().')
         self.string(o.name)
@@ -237,7 +237,7 @@ class PrettyPrintVisitor(NodeVisitor):
     def visit_undefined_expr(self, o):
         # Omit declared type as redundant.
         self.string('Undefined')
-
+    
     #
     # Helpers
     #
@@ -261,13 +261,13 @@ class PrettyPrintVisitor(NodeVisitor):
         if self.result:
             return self.result[-1][-1]
         return ''
-
+    
     def type(self, t):
         """Pretty-print a type with erased type arguments."""
         if t:
             v = TypeErasedPrettyPrintVisitor()
             self.string(t.accept(v))
-
+    
     def full_type(self, t):
         """Pretty-print a type, includingn type arguments."""
         if t:
@@ -283,19 +283,19 @@ class TypeErasedPrettyPrintVisitor(TypeVisitor[str]):
     Note that the translation does not preserve all information about the
     types, but this is fine since this is only used in test case output.
     """
-
+    
     def visit_any(self, t):
         return 'Any'
-
+    
     def visit_void(self, t):
         return 'None'
-
+    
     def visit_instance(self, t):
         return t.type.name()
-
+    
     def visit_type_var(self, t):
         return 'Any*'
-
+    
     def visit_runtime_type_var(self, t):
         v = PrettyPrintVisitor()
         t.node.accept(v)
@@ -306,27 +306,27 @@ class TypePrettyPrintVisitor(TypeVisitor[str]):
     """Pretty-print types.
 
     Include type variables.
-
+    
     Note that the translation does not preserve all information about the
     types, but this is fine since this is only used in test case output.
     """
-
+    
     def visit_any(self, t):
         return 'Any'
-
+    
     def visit_void(self, t):
         return 'None'
-
+    
     def visit_instance(self, t):
         s = t.type.name()
         if t.args:
             argstr = ', '.join([a.accept(self) for a in t.args])
             s += '[%s]' % argstr
         return s
-
+    
     def visit_type_var(self, t):
         return 'Any*'
-
+    
     def visit_runtime_type_var(self, t):
         v = PrettyPrintVisitor()
         t.node.accept(v)

@@ -47,23 +47,23 @@ def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
 
 def assert_raises(typ: type, *rest: Any) -> None:
     """Usage: assert_raises(exception class[, message], function[, args])
-    
+
     Call function with the given arguments and expect an exception of the given
     type.
-    
+
     TODO use overloads for better type checking
     """
     # Parse arguments.
-    msg = None # type: str
+    msg = None  # type: str
     if isinstance(rest[0], str) or rest[0] is None:
         msg = rest[0]
         rest = rest[1:]
     f = rest[0]
-    args = [] # type: List[Any]
+    args = []  # type: List[Any]
     if len(rest) > 1:
         args = rest[1]
         assert len(rest) <= 2
-    
+
     # Perform call and verify the exception.
     try:
         f(*args)
@@ -91,15 +91,15 @@ class TestCase:
         self.func = func
         self.name = name
         self.suite = suite
-    
+
     def run(self) -> None:
         if self.func:
             self.func()
-    
+
     def set_up(self) -> None:
         if self.suite:
             self.suite.set_up()
-    
+
     def tear_down(self) -> None:
         if self.suite:
             self.suite.tear_down()
@@ -109,15 +109,15 @@ class Suite:
     def __init__(self) -> None:
         self.prefix = typename(type(self)) + '.'
         # Each test case is either a TestCase object or (str, function).
-        self._test_cases = [] # type: List[Any]
+        self._test_cases = []  # type: List[Any]
         self.init()
-    
+
     def set_up(self) -> None:
         pass
-    
+
     def tear_down(self) -> None:
         pass
-    
+
     def init(self) -> None:
         for m in dir(self):
             if m.startswith('test'):
@@ -126,22 +126,22 @@ class Suite:
                     self.add_test((m + '.', t))
                 else:
                     self.add_test(TestCase(m, self, getattr(self, m)))
-    
+
     @overload
     def add_test(self, test: TestCase) -> None:
         self._test_cases.append(test)
-    
+
     @overload
     def add_test(self, test: Tuple[str, Function[[], None]]) -> None:
         self._test_cases.append(test)
-    
+
     @overload
     def add_test(self, test: Tuple[str, 'Suite']) -> None:
         self._test_cases.append(test)
-    
+
     def cases(self) -> List[Any]:
         return self._test_cases[:]
-    
+
     def skip(self) -> None:
         raise SkipTestCaseException()
 
@@ -161,7 +161,7 @@ def run_test(t: Suite, args: List[str] = None) -> None:
         elif a == '-q':
             is_quiet = True
         # Used for updating tests, but breaks clean code usage.
-        elif a in ('-u', '-i'): 
+        elif a in ('-u', '-i'):
             pass
         elif len(a) > 0 and a[0] != '-':
             patterns.append(a)
@@ -170,13 +170,13 @@ def run_test(t: Suite, args: List[str] = None) -> None:
         i += 1
     if len(patterns) == 0:
         patterns.append('*')
-    
+
     num_total, num_fail, num_skip = run_test_recursive(t, 0, 0, 0, '', 0)
-    
+
     skip_msg = ''
     if num_skip > 0:
         skip_msg = ', {} skipped'.format(num_skip)
-    
+
     if num_fail == 0:
         if not is_quiet:
             print('%d test cases run%s, all passed.' % (num_total, skip_msg))
@@ -186,6 +186,7 @@ def run_test(t: Suite, args: List[str] = None) -> None:
                                                            num_total,
                                                            skip_msg))
         sys.stderr.write('*** FAILURE ***\n')
+        sys.exit(1)
 
 
 def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
@@ -205,7 +206,7 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
             if is_skip: num_skip += 1
             num_total += 1
     else:
-        suite = Undefined # type: Suite
+        suite = Undefined  # type: Suite
         suite_prefix = ''
         if isinstance(test, list) or isinstance(test, tuple):
             suite = test[1]
@@ -213,7 +214,7 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
         else:
             suite = test
             suite_prefix = test.prefix
-        
+
         for stest in suite.cases():
             new_prefix = prefix
             if depth > 0:
@@ -229,13 +230,13 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
         sys.stderr.flush()
 
     time0 = time.time()
-    test.set_up() # FIX: check exceptions
-    exc_traceback = None # type: Any
+    test.set_up()  # FIX: check exceptions
+    exc_traceback = None  # type: Any
     try:
         test.run()
     except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-    test.tear_down() # FIX: check exceptions
+    test.tear_down()  # FIX: check exceptions
     times.append((time.time() - time0, name))
 
     if exc_traceback:
@@ -248,7 +249,7 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
             return True, False
     elif is_verbose:
         sys.stderr.write('\n')
-        
+
     return False, False
 
 

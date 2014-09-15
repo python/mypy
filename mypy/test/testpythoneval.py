@@ -4,12 +4,10 @@ Each test case type checks a program then runs it using Python. The
 output (stdout) of the program is compared to expected output. Type checking
 uses full builtins and other stubs.
 
-Note: Currently Python interpreter and mypy implementation paths are hard coded
-      (see python_path and mypy_path below).
+Note: Currently Python interpreter paths are hard coded.
 
-Note: These test cases are *not* included in the main test suite, as running
-      this suite is slow and it would slow down the main suite too much. The
-      slowness is due to translating the mypy implementation in each test case.
+Note: These test cases are *not* included in the main test suite, as including
+      this suite would slow down the main suite too much.
 """
 
 import os
@@ -19,19 +17,20 @@ import sys
 
 import typing
 
-from mypy.myunit import Suite, run_test
+from mypy.myunit import Suite, run_test, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal
 
 
 # Files which contain test case descriptions.
-python_eval_files = ['pythoneval.test']
+python_eval_files = ['pythoneval.test',
+                     'python2eval.test']
 
 # Path to Python 3 interpreter
 python3_path = 'python3'
-# Path to Python 2 interpreter
-python2_path = 'python'
+
+default_python2_interpreter = 'python'
 
 
 class PythonEvaluationSuite(Suite):
@@ -44,6 +43,19 @@ class PythonEvaluationSuite(Suite):
 
 
 def test_python_evaluation(testcase):
+    python2_interpreter = try_find_python2_interpreter()
+    # Use Python 2 interpreter if running a Python 2 test case.
+    if testcase.name.lower().endswith('python2'):
+        if not python2_interpreter:
+            # Skip, can't find a Python 2 interpreter.
+            raise SkipTestCaseException()
+        interpreter = python2_interpreter
+        args = ['--py2']
+        py2 = True
+    else:
+        interpreter = python3_path
+        args = []
+        py2 = False
     # Write the program to a file.
     program = '_program.py'
     outfile = '_program.out'
@@ -51,31 +63,46 @@ def test_python_evaluation(testcase):
     for s in testcase.input:
         f.write('{}\n'.format(s))
     f.close()
-    # Use Python 2 interpreter if running a Python 2 test case.
-    if testcase.name.lower().endswith('python2'):
-        args = ['--py2', python2_path]
-    else:
-        args = []
     # Set up module path.
     typing_path = os.path.join(os.getcwd(), 'lib-typing', '3.2')
     assert os.path.isdir(typing_path)
     os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
     os.environ['MYPYPATH'] = '.'
-    # Run the program.
+    # Type check the program.
     process = subprocess.Popen([python3_path,
-                                os.path.join('scripts', 'mypy')] +
-                               args +
-                               [program],
+                                os.path.join('scripts', 'mypy')] + args + [program],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    if not process.wait():
+        if py2:
+            typing_path = os.path.join(os.getcwd(), 'lib-typing', '2.7')
+            os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
+        process = subprocess.Popen([interpreter, program],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        outb = process.stdout.read()
+        # Split output into lines.
+        out += [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
     os.remove(program)
     assert_string_arrays_equal(testcase.output, out,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
+
+
+def try_find_python2_interpreter():
+    try:
+        process = subprocess.Popen([default_python2_interpreter, '-V'], stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        if b'Python 2.7' in stderr:
+            return default_python2_interpreter
+        else:
+            return None
+    except OSError:
+        return False
 
 
 if __name__ == '__main__':

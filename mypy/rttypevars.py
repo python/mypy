@@ -34,10 +34,10 @@ def translate_runtime_type_vars_in_context(typ: Type, context: TypeInfo,
     """Replace type variable types within a type with runtime type variables.
 
     Perform the translation in the context of the given type.
-    
+
     For example, assuming class A(Generic[T, S]) ... and
     class B(A[X, Y[U]], Generic[U]) ...:
-    
+
       TranslateRuntimeTypeVarsInContext(C[U`1], <B>) ==
         C[RuntimeTypeVar(<self.__tv2.args[0]>)]  (<...> uses node repr.)
     """
@@ -49,7 +49,7 @@ class ContextualRuntimeTypeVarTranslator(TypeTranslator):
     def __init__(self, context, is_java):
         self.context = context
         self.is_java = is_java
-    
+
     def visit_type_var(self, t: TypeVar) -> Type:
         if t.id < 0:
             # Generic function type variable; always in a local variable.

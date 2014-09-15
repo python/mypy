@@ -45,6 +45,15 @@ class A:
 main: In function "f":
 main, line 3: Return value expected
 
+[case testReturnNoneInFunctionReturningNone]
+import typing
+def f() -> None:
+    return None
+def g() -> None:
+    return f()  # E: No return value expected
+[out]
+main: In function "g":
+
 
 -- If statement
 -- ------------
