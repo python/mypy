@@ -145,6 +145,9 @@ class NodeVisitor(Generic[T]):
     def visit_op_expr(self, o: 'mypy.nodes.OpExpr') -> T:
         pass
 
+    def visit_comparison_expr(self, o: 'mypy.nodes.ComparisonExpr') -> T:
+        pass
+
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> T:
         pass
 

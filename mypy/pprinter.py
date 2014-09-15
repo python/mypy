@@ -204,6 +204,12 @@ class PrettyPrintVisitor(NodeVisitor):
         self.string(' %s ' % o.op)
         self.node(o.right)
 
+    def visit_comparison_expr(self, o):
+        self.node(o.operands[0])
+        for operator, operand in zip(o.operators, o.operands[1:]):
+            self.string(' %s ' % operator)
+            self.node(operand)
+
     def visit_unary_expr(self, o):
         self.string(o.op)
         if o.op == 'not':

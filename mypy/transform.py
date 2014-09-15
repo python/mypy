@@ -16,8 +16,8 @@ from typing import Undefined, Dict, List, Tuple, cast
 from mypy.nodes import (
     Node, MypyFile, TypeInfo, ClassDef, VarDef, FuncDef, Var,
     ReturnStmt, AssignmentStmt, IfStmt, WhileStmt, MemberExpr, NameExpr, MDEF,
-    CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, GDEF,
-    SymbolTableNode, IndexExpr, function_type
+    CallExpr, SuperExpr, TypeExpr, CastExpr, OpExpr, CoerceExpr, ComparisonExpr,
+    GDEF, SymbolTableNode, IndexExpr, function_type
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type, AnyType, Callable, TypeVarDef, Instance
@@ -297,17 +297,16 @@ class DyncheckTransformVisitor(TraverserVisitor):
             elif method_type:
                 method_callable = cast(Callable, method_type)
                 operand = e.right
-                # For 'in', the order of operands is reversed.
-                if e.op == 'in':
-                    operand = e.left
                 # TODO arg_types[0] may not be reliable
                 operand = self.coerce(operand, method_callable.arg_types[0],
                                       self.get_type(operand),
-                                      self.type_context())
-                if e.op == 'in':
-                    e.left = operand
-                else:
-                    e.right = operand
+                                      self.type_context())               
+                e.right = operand
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> None:
+        super().visit_comparison_expr(e)
+        # Dummy
+            
 
     def visit_index_expr(self, e: IndexExpr) -> None:
         if e.analyzed:

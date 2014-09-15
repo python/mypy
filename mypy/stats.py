@@ -14,7 +14,7 @@ from mypy.types import (
 from mypy import nodes
 from mypy.nodes import (
     Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr,
-    MemberExpr, OpExpr, IndexExpr, UnaryExpr
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr
 )
 
 
@@ -125,6 +125,10 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_op_expr(self, o: OpExpr) -> None:
         self.process_node(o)
         super().visit_op_expr(o)
+
+    def visit_comparison_expr(self, o: ComparisonExpr) -> None:
+        self.process_node(o)
+        super().visit_comparison_expr(o)
 
     def visit_index_expr(self, o: IndexExpr) -> None:
         self.process_node(o)

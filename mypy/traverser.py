@@ -10,7 +10,7 @@ from mypy.nodes import (
     TryStmt, WithStmt, ParenExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
-    FuncExpr, OverloadedFuncDef
+    FuncExpr, ComparisonExpr, OverloadedFuncDef
 )
 
 
@@ -156,6 +156,10 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
     def visit_op_expr(self, o: OpExpr) -> T:
         o.left.accept(self)
         o.right.accept(self)
+
+    def visit_comparison_expr(self, o: ComparisonExpr) -> T:
+        for operand in o.operands:
+            operand.accept(self)
 
     def visit_slice_expr(self, o: SliceExpr) -> T:
         if o.begin_index is not None:

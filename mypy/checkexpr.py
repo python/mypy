@@ -12,7 +12,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, TempNode, LITERAL_TYPE
+    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, LITERAL_TYPE
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -745,37 +745,71 @@ class ExpressionChecker:
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         left_type = self.accept(e.left)
-        right_type = self.accept(e.right)  # TODO only evaluate if needed
-        if e.op == 'in' or e.op == 'not in':
-            local_errors = self.msg.copy()
-            result, method_type = self.check_op_local('__contains__', right_type,
-                                                      e.left, e, local_errors)
-            if (local_errors.is_errors() and
-                # is_valid_var_arg is True for any Iterable
-                    self.is_valid_var_arg(right_type)):
-                itertype = self.chk.analyse_iterable_item_type(e.right)
-                method_type = Callable([left_type], [nodes.ARG_POS], [None],
-                                       self.chk.bool_type(), False)
-                result = self.chk.bool_type()
-                if not is_subtype(left_type, itertype):
-                    self.msg.unsupported_operand_types('in', left_type, right_type, e)
-            else:
-                self.msg.add_errors(local_errors)
-            e.method_type = method_type
-            if e.op == 'in':
-                return result
-            else:
-                return self.chk.bool_type()
-        elif e.op in nodes.op_methods:
+
+        if e.op in nodes.op_methods:
             method = self.get_operator_method(e.op)
             result, method_type = self.check_op(method, left_type, e.right, e,
                                                 allow_reverse=True)
             e.method_type = method_type
             return result
-        elif e.op == 'is' or e.op == 'is not':
-            return self.chk.bool_type()
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
+        """Type check a comparison expression.
+        
+        Comparison expressions are type checked consecutive-pair-wise 
+        That is, 'a < b > c == d' is check as 'a < b and b > c and c == d' 
+        """
+        result = None  # type: mypy.types.Type
+
+        # Check each consecutive operand pair and their operator
+        for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
+            left_type = self.accept(left)
+            
+            method_type = None  # type: mypy.types.Type
+            
+            if operator == 'in' or operator == 'not in':
+                right_type = self.accept(right)  # TODO only evaluate if needed
+                
+                local_errors = self.msg.copy()
+                sub_result, method_type = self.check_op_local('__contains__', right_type,
+                                                          left, e, local_errors)
+                if (local_errors.is_errors() and
+                    # is_valid_var_arg is True for any Iterable
+                        self.is_valid_var_arg(right_type)):
+                    itertype = self.chk.analyse_iterable_item_type(right)
+                    method_type = Callable([left_type], [nodes.ARG_POS], [None],
+                                           self.chk.bool_type(), False)
+                    sub_result = self.chk.bool_type()
+                    if not is_subtype(left_type, itertype):
+                        self.msg.unsupported_operand_types('in', left_type, right_type, e)
+                else:
+                    self.msg.add_errors(local_errors)
+                if operator == 'not in':
+                    sub_result = self.chk.bool_type()
+            elif operator in nodes.op_methods:
+                method = self.get_operator_method(operator)
+                sub_result, method_type = self.check_op(method, left_type, right, e, 
+                                                    allow_reverse=True)
+                                                    
+            elif operator == 'is' or operator == 'is not':
+                sub_result = self.chk.bool_type()
+                method_type = None
+            else:
+                raise RuntimeError('Unknown comparison operator {}'.format(operator)) 
+                
+            e.method_types.append(method_type)
+                
+            #  Determine type of boolean-and of result and sub_result
+            if result == None:
+                result = sub_result
+            else:
+                # TODO: check on void needed?
+                self.check_not_void(sub_result, e)
+                result = join.join_types(result, sub_result, self.chk.basic_types())
+        
+        return result
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.pyversion == 2:

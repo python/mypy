@@ -343,6 +343,9 @@ class StrConv(NodeVisitor[str]):
     def visit_op_expr(self, o):
         return self.dump([o.op, o.left, o.right], o)
 
+    def visit_comparison_expr(self, o):
+        return self.dump([o.operators, o.operands], o)
+
     def visit_cast_expr(self, o):
         return self.dump([o.expr, o.type], o)
 

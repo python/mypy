@@ -121,11 +121,14 @@ OpExpr(5) : builtins.float
 OpExpr(6) : builtins.float
 
 [case testComparisonOps]
-## OpExpr
+## ComparisonExpr
 import typing
 1 == object()
 1 == 2
 2 < 3
+1 < 2 < 3
+8 > 3
+4 < 6 > 2
 [file builtins.py]
 from typing import builtinclass
 @builtinclass
@@ -138,9 +141,12 @@ class int:
 class bool: pass
 class type: pass
 [out]
-OpExpr(3) : builtins.bool
-OpExpr(4) : builtins.bool
-OpExpr(5) : builtins.bool
+ComparisonExpr(3) : builtins.bool
+ComparisonExpr(4) : builtins.bool
+ComparisonExpr(5) : builtins.bool
+ComparisonExpr(6) : builtins.bool
+ComparisonExpr(7) : builtins.int
+ComparisonExpr(8) : builtins.object
 
 [case testBooleanOps]
 ## OpExpr|UnaryExpr

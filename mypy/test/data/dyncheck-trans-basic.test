@@ -1309,7 +1309,7 @@ b = a[x] # type: B[int]
 a: A = Undefined
 b: B = a[{int x}]
 
-[case testInOperator]
+[case testInOperator-skip]
 from typing import Undefined, Any
 class A:
     def __contains__(self, a: 'A') -> int: pass

@@ -531,51 +531,48 @@ x < b, y > 2
 MypyFile:1(
   AssignmentStmt:2(
     NameExpr(x)
-    OpExpr:2(
+    ComparisonExpr:2(
+      <
       >
-      OpExpr:2(
-        <
-        NameExpr(a)
-        NameExpr(b))
+      NameExpr(a)
+      NameExpr(b)
       NameExpr(c)))
   ExpressionStmt:3(
     CallExpr:3(
       NameExpr(f)
       Args(
-        OpExpr:3(
+        ComparisonExpr:3(
           <
           NameExpr(x)
           NameExpr(b))
-        OpExpr:3(
+        ComparisonExpr:3(
           >
           NameExpr(y)
           NameExpr(c)))))
   ExpressionStmt:4(
-    OpExpr:4(
+    ComparisonExpr:4(
+      <
       >
-      OpExpr:4(
-        <
-        NameExpr(a)
-        NameExpr(b))
+      NameExpr(a)
+      NameExpr(b)
       IntExpr(1)))
   ExpressionStmt:5(
     TupleExpr:5(
-      OpExpr:5(
+      ComparisonExpr:5(
         <
         NameExpr(x)
         NameExpr(b))
-      OpExpr:5(
+      ComparisonExpr:5(
         >
         NameExpr(y)
         IntExpr(2))))
   ExpressionStmt:6(
     ParenExpr:6(
-      OpExpr:6(
+      ComparisonExpr:6(
+        <
         >
-        OpExpr:6(
-          <
-          NameExpr(a)
-          NameExpr(b))
+        NameExpr(a)
+        NameExpr(b)
         NameExpr(c)))))
 
 [case testLineContinuation]
@@ -903,7 +900,7 @@ x is not y
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    OpExpr:1(
+    ComparisonExpr:1(
       is not
       NameExpr(x)
       NameExpr(y))))
@@ -913,7 +910,7 @@ x in not y
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    OpExpr:1(
+    ComparisonExpr:1(
       in
       NameExpr(x)
       UnaryExpr:1(
@@ -927,19 +924,19 @@ x not in y | z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    OpExpr:1(
+    ComparisonExpr:1(
       not in
       NameExpr(x)
       NameExpr(y)))
   ExpressionStmt:2(
     UnaryExpr:2(
       not
-      OpExpr:2(
+      ComparisonExpr:2(
         not in
         NameExpr(x)
         NameExpr(y))))
   ExpressionStmt:3(
-    OpExpr:3(
+    ComparisonExpr:3(
       not in
       NameExpr(x)
       OpExpr:3(
@@ -1884,7 +1881,7 @@ assert x == y
 [out]
 MypyFile:1(
   AssertStmt:1(
-    OpExpr:1(
+    ComparisonExpr:1(
       ==
       NameExpr(x)
       NameExpr(y))))
