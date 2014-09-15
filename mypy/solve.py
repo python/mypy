@@ -13,8 +13,9 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
                       basic: BasicTypes) -> List[Type]:
     """Solve type constraints.
 
-    Return the most likely type or None if the variable could not be solved. If a variable
-    has no constraints, arbitrarily pick NoneTyp as the value of the type variable.
+    Return the best type(s) for type variables; each type can be None if the value of the variable
+    could not be solved. If a variable has no constraints, arbitrarily pick NoneTyp as the value of
+    the type variable.
     """
     # Collect a list of constraints for each type variable.
     cmap = Dict[int, List[Constraint]]()
