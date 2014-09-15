@@ -278,6 +278,8 @@ class Parser:
                 if self.current_str() == '(':
                     lparen = self.skip()
                     while True:
+                        if self.current_str() == ')':
+                            break
                         if self.current_str() == 'metaclass':
                             metaclass = self.parse_metaclass()
                             break
@@ -1489,7 +1491,7 @@ class Parser:
 
             operators_str.append(op_str)
             operators.append( (op, op2) )
-            operand = self.parse_expression(prec) 
+            operand = self.parse_expression(prec)
             operands.append(operand)
 
             # Continue if next token is a comparison operator
