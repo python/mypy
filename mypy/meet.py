@@ -13,6 +13,7 @@ from mypy.nodes import TypeInfo
 
 
 def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
+    """Return the greatest lower bound of two types."""
     if isinstance(s, ErasedType):
         return s
     if isinstance(s, AnyType):
@@ -177,7 +178,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             for i in range(t.length()):
                 items.append(self.meet(t.items[i],
                                        (cast(TupleType, self.s)).items[i]))
-            return TupleType(items)
+            # TODO: What if the fallbacks are different?
+            return TupleType(items, t.fallback)
         else:
             return self.default(self.s)
 

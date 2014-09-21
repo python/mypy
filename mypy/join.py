@@ -146,7 +146,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             for i in range(t.length()):
                 items.append(self.join(t.items[i],
                                        (cast(TupleType, self.s)).items[i]))
-            return TupleType(items)
+            # TODO: What if the fallback types are different?
+            return TupleType(items, t.fallback)
         else:
             return self.default(self.s)
 

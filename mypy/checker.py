@@ -1101,7 +1101,7 @@ class TypeChecker(NodeVisitor[Type]):
         if not msg:
             msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
         # First handle case where rvalue is of form Undefined, ...
-        rvalue_type = get_undefined_tuple(rvalue)
+        rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
         undefined_rvalue = True
         if not rvalue_type:
             # Infer the type of an ordinary rvalue expression.
@@ -1123,8 +1123,10 @@ class TypeChecker(NodeVisitor[Type]):
                     items.append(rvalue_type.items[i])
             if not undefined_rvalue:
                 # Infer rvalue again, now in the correct type context.
-                rvalue_type = cast(TupleType, self.accept(rvalue,
-                                                          TupleType(items)))
+                rvalue_type = cast(TupleType,
+                                   self.accept(
+                                       rvalue,
+                                       TupleType(items, self.named_type('builtins.tuple'))))
             if len(rvalue_type.items) != len(lvalue_types):
                 self.msg.incompatible_value_count_in_assignment(
                     len(lvalue_types), len(rvalue_type.items), context)
@@ -1757,7 +1759,7 @@ class TypeChecker(NodeVisitor[Type]):
             parts = name.split('.')
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
-                n = cast(MypyFile, ((n.names.get(parts[i], None).node)))
+                n = cast(MypyFile, n.names.get(parts[i], None).node)
             return n.names[parts[-1]]
 
     def enter(self) -> None:
@@ -1832,7 +1834,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     return expand_type_by_instance(typ, inst_type)
 
 
-def get_undefined_tuple(rvalue: Node) -> Type:
+def get_undefined_tuple(rvalue: Node, tuple_type: Instance) -> Type:
     """Get tuple type corresponding to a tuple of Undefined values.
 
     The type is Tuple[Any, ...]. If rvalue is not of the right form, return
@@ -1843,7 +1845,7 @@ def get_undefined_tuple(rvalue: Node) -> Type:
             if not refers_to_fullname(item, 'typing.Undefined'):
                 break
         else:
-            return TupleType([AnyType()] * len(rvalue.items))
+            return TupleType([AnyType()] * len(rvalue.items), tuple_type)
     return None
 
 

@@ -71,9 +71,9 @@ class TypesSuite(Suite):
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
 
     def test_tuple_type(self):
-        assert_equal(str(TupleType([])), 'Tuple[]')
-        assert_equal(str(TupleType([self.x])), 'Tuple[X?]')
-        assert_equal(str(TupleType([self.x, AnyType()])), 'Tuple[X?, Any]')
+        assert_equal(str(TupleType([], None)), 'Tuple[]')
+        assert_equal(str(TupleType([self.x], None)), 'Tuple[X?]')
+        assert_equal(str(TupleType([self.x, AnyType()], None)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self):
         assert_equal(str(TypeVarDef('X', 1, None)), 'X')
@@ -222,7 +222,7 @@ class TypeOpsSuite(Suite):
     # Helpers
 
     def tuple(self, *a):
-        return TupleType(a)
+        return TupleType(a, self.fx.std_tuple)
 
     def callable(self, vars, *a) -> Callable:
         """callable(args, a1, ..., an, r) constructs a callable with
@@ -454,7 +454,7 @@ class JoinSuite(Suite):
                         '{} not subtype of {}'.format(t, result))
 
     def tuple(self, *a):
-        return TupleType(a)
+        return TupleType(a, self.fx.std_tuple)
 
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types
@@ -658,7 +658,7 @@ class MeetSuite(Suite):
                         '{} not subtype of {}'.format(result, t))
 
     def tuple(self, *a):
-        return TupleType(a)
+        return TupleType(a, self.fx.std_tuple)
 
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types

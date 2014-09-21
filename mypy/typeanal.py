@@ -64,10 +64,13 @@ def analyse_node(lookup: Function[[str, Context], SymbolTableNode],
 class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
-    def __init__(self, lookup_func: Function[[str, Context], SymbolTableNode],
+    def __init__(self,
+                 lookup_func: Function[[str, Context], SymbolTableNode],
+                 lookup_fqn_func: Function[[str], SymbolTableNode],
                  stored_vars: Dict[Node, Type],
                  fail_func: Function[[str, Context], None]) -> None:
         self.lookup = lookup_func
+        self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
         self.stored_vars = stored_vars
 
@@ -89,7 +92,8 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif sym.node.fullname() == 'typing.Any':
                 return AnyType()
             elif sym.node.fullname() == 'typing.Tuple':
-                return TupleType(self.anal_array(t.args))
+                return TupleType(self.anal_array(t.args),
+                                 self.builtin_type('builtins.tuple'))
             elif sym.node.fullname() == 'typing.Union':
                 return UnionType(self.anal_array(t.args))
             elif sym.node.fullname() == 'typing.Function':
@@ -104,7 +108,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return t
             info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                return TupleType(self.anal_array(t.args), t.line, t.repr)
+                return TupleType(self.anal_array(t.args),
+                                 Instance(info, [], t.line),
+                                 t.line, t.repr)
             else:
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
@@ -146,7 +152,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         return res
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.anal_array(t.items), t.line, t.repr)
+        return TupleType(self.anal_array(t.items),
+                         self.builtin_type('builtins.tuple'),
+                         t.line, t.repr)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line, t.repr)
@@ -182,6 +190,11 @@ class TypeAnalyser(TypeVisitor[Type]):
             a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
                                 vd.line, vd.repr))
         return a
+
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        node = self.lookup_fqn_func(fully_qualified_name)
+        info = cast(TypeInfo, node.node)
+        return Instance(info, [])
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):

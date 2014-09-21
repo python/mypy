@@ -79,7 +79,7 @@ class TypeParser:
             while self.current_token_str() == ',':
                 self.skip()
                 items.append(self.parse_type())
-            type = TupleType(items)
+            type = TupleType(items, None)
         if parens:
             self.expect(')')
         return type

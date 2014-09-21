@@ -675,7 +675,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def anal_type(self, t: Type) -> Type:
         if t:
-            a = TypeAnalyser(self.lookup_qualified, self.stored_vars, self.fail)
+            a = TypeAnalyser(self.lookup_qualified,
+                             self.lookup_fully_qualified,
+                             self.stored_vars, self.fail)
             return t.accept(a)
         else:
             return None
@@ -1384,6 +1386,19 @@ class SemanticAnalyzer(NodeVisitor):
                 if n:
                     n = self.normalize_type_alias(n, ctx)
             return n
+
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        """Lookup a fully qualified name.
+
+        Assume that the name is defined. This happens in the global namespace -- the local
+        module namespace is ignored.
+        """
+        assert '.' in name
+        parts = name.split('.')
+        n = self.modules[parts[0]]
+        for i in range(1, len(parts) - 1):
+            n = cast(MypyFile, n.names[parts[i]].node)
+        return n.names[parts[-1]]
 
     def qualified_name(self, n: str) -> str:
         return self.cur_mod_id + '.' + n

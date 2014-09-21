@@ -371,13 +371,22 @@ class Overloaded(FunctionLike):
 
 
 class TupleType(Type):
-    """The tuple type Tuple[T1, ..., Tn] (at least one type argument)."""
+    """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
+
+    Instance variables:
+      items -- tuple item types
+      fallback -- the underlying instance type that is used for non-tuple methods
+        (this is currently always builtins.tuple, but it could be different for named
+        tuples, for example)
+    """
 
     items = Undefined(List[Type])
+    fallback = Undefined(Instance)
 
-    def __init__(self, items: List[Type], line: int = -1,
+    def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  repr: Any = None) -> None:
         self.items = items
+        self.fallback = fallback
         super().__init__(line, repr)
 
     def length(self) -> int:
@@ -562,7 +571,9 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.line, t.repr)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.translate_types(t.items), t.line, t.repr)
+        return TupleType(self.translate_types(t.items),
+                         Any(t.fallback.accept(self)),
+                         t.line, t.repr)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.repr)
