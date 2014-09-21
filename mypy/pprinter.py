@@ -8,7 +8,6 @@ from mypy.nodes import (
 from mypy.visitor import NodeVisitor
 from mypy.types import Void, TypeVisitor, Callable, Instance, Type, UnboundType
 from mypy.maptypevar import num_slots
-from mypy.transutil import tvar_arg_name
 from mypy import coerce
 from mypy import nodes
 
