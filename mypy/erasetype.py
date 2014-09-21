@@ -3,11 +3,11 @@ import typing
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType,
-    TypeTranslator, BasicTypes, TypeList
+    TypeTranslator, TypeList
 )
 
 
-def erase_type(typ: Type, basic: BasicTypes) -> Type:
+def erase_type(typ: Type) -> Type:
     """Erase any type variables from a type.
 
     Also replace tuple types with the corresponding concrete types. Replace
@@ -20,13 +20,10 @@ def erase_type(typ: Type, basic: BasicTypes) -> Type:
       Function[...] -> Function[[], None]
     """
 
-    return typ.accept(EraseTypeVisitor(basic))
+    return typ.accept(EraseTypeVisitor())
 
 
 class EraseTypeVisitor(TypeVisitor[Type]):
-    def __init__(self, basic: BasicTypes) -> None:
-        self.basic = basic
-
     def visit_unbound_type(self, t: UnboundType) -> Type:
         assert False, 'Not supported'
 

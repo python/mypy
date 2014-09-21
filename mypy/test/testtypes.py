@@ -176,7 +176,7 @@ class TypeOpsSuite(Suite):
                           self.fx.callable_type(self.fx.void))
 
     def assert_erase(self, orig, result):
-        assert_equal(str(erase_type(orig, self.fx.basic)), str(result))
+        assert_equal(str(erase_type(orig)), str(result))
 
     # is_more_precise
 
@@ -423,7 +423,7 @@ class JoinSuite(Suite):
         t2 = self.type_callable(self.fx.b, self.fx.b)
 
         self.assert_join(t1, t1, t1)
-        assert_true(join_types(t1, t1, self.fx.basic).is_type_obj())
+        assert_true(join_types(t1, t1).is_type_obj())
 
         self.assert_join(t1, t2, self.fx.type_type)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
@@ -444,7 +444,7 @@ class JoinSuite(Suite):
         self.assert_simple_join(t, s, join)
 
     def assert_simple_join(self, s, t, join):
-        result = join_types(s, t, self.fx.basic)
+        result = join_types(s, t)
         actual = str(result)
         expected = str(join)
         assert_equal(actual, expected,
@@ -648,7 +648,7 @@ class MeetSuite(Suite):
         self.assert_simple_meet(t, s, meet)
 
     def assert_simple_meet(self, s, t, meet):
-        result = meet_types(s, t, self.fx.basic)
+        result = meet_types(s, t)
         actual = str(result)
         expected = str(meet)
         assert_equal(actual, expected,

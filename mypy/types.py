@@ -816,13 +816,6 @@ class TypeQuery(TypeVisitor[bool]):
             return res
 
 
-class BasicTypes:
-    """Collection of Instance types of basic types (object, type, etc.)."""
-
-    def __init__(self, object: Instance) -> None:
-        pass
-
-
 def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
 

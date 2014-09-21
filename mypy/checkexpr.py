@@ -282,8 +282,7 @@ class ExpressionChecker:
                 # type inference to conform to the valid values. Give up and just use function
                 # arguments for type inference.
                 ret_type = NoneTyp()
-        args = infer_type_arguments(callable.type_var_ids(), ret_type,
-                                    erased_ctx, self.chk.basic_types())
+        args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substite non-None and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
@@ -329,8 +328,7 @@ class ExpressionChecker:
                     pass1_args.append(arg)
 
             inferred_args = infer_function_type_arguments(
-                callee_type, pass1_args, arg_kinds, formal_to_actual,
-                self.chk.basic_types())  # type: List[Type]
+                callee_type, pass1_args, arg_kinds, formal_to_actual)  # type: List[Type]
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
@@ -376,8 +374,7 @@ class ExpressionChecker:
             callee_type, args, arg_kinds, formal_to_actual)
 
         inferred_args = infer_function_type_arguments(
-            callee_type, arg_types, arg_kinds, formal_to_actual,
-            self.chk.basic_types())
+            callee_type, arg_types, arg_kinds, formal_to_actual)
 
         return callee_type, inferred_args
 
@@ -817,7 +814,7 @@ class ExpressionChecker:
             else:
                 # TODO: check on void needed?
                 self.check_not_void(sub_result, e)
-                result = join.join_types(result, sub_result, self.chk.basic_types())
+                result = join.join_types(result, sub_result)
 
         return result
 
@@ -911,8 +908,7 @@ class ExpressionChecker:
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
 
-        return join.join_types(left_type, right_type,
-                               self.chk.basic_types())
+        return join.join_types(left_type, right_type)
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
@@ -1218,7 +1214,7 @@ class ExpressionChecker:
         self.check_not_void(cond_type, e)
         if_type = self.accept(e.if_expr)
         else_type = self.accept(e.else_expr, context=if_type)
-        return join.join_types(if_type, else_type, self.chk.basic_types())
+        return join.join_types(if_type, else_type)
 
     #
     # Helpers
@@ -1291,7 +1287,7 @@ class ExpressionChecker:
 
     def erase(self, type: Type) -> Type:
         """Replace type variable types in type with Any."""
-        return erasetype.erase_type(type, self.chk.basic_types())
+        return erasetype.erase_type(type)
 
 
 def is_valid_argc(nargs: int, is_var_arg: bool, callable: Callable) -> bool:

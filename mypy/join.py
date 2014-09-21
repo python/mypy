@@ -4,13 +4,13 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList,
+    ErrorType, TypeVar, Callable, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike
 )
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
 
-def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
+def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     """Return a simple least upper bound given the declared type."""
 
     if isinstance(s, AnyType):
@@ -31,7 +31,7 @@ def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
     if isinstance(declaration, UnionType):
         return UnionType.make_simplified_union([s, t])
 
-    value = t.accept(TypeJoinVisitor(s, basic))
+    value = t.accept(TypeJoinVisitor(s))
 
     if value is None:
         # XXX this code path probably should be avoided.
@@ -46,7 +46,7 @@ def join_simple(declaration: Type, s: Type, t: Type, basic: BasicTypes) -> Type:
     return declaration
 
 
-def join_types(s: Type, t: Type, basic: BasicTypes) -> Type:
+def join_types(s: Type, t: Type) -> Type:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
@@ -64,15 +64,14 @@ def join_types(s: Type, t: Type, basic: BasicTypes) -> Type:
         return t
 
     # Use a visitor to handle non-trivial cases.
-    return t.accept(TypeJoinVisitor(s, basic))
+    return t.accept(TypeJoinVisitor(s))
 
 
 class TypeJoinVisitor(TypeVisitor[Type]):
     """Implementation of the least upper bound algorithm."""
 
-    def __init__(self, s: Type, basic: BasicTypes) -> None:
+    def __init__(self, s: Type) -> None:
         self.s = s
-        self.basic = basic
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
@@ -118,7 +117,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            return join_instances(t, cast(Instance, self.s), self.basic)
+            return join_instances(t, cast(Instance, self.s))
         elif t.type.fullname() == 'builtins.type' and is_subtype(self.s, t):
             return t
         else:
@@ -127,8 +126,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_callable(self, t: Callable) -> Type:
         if isinstance(self.s, Callable) and is_similar_callables(
                 t, cast(Callable, self.s)):
-            return combine_similar_callables(t, cast(Callable, self.s),
-                                             self.basic)
+            return combine_similar_callables(t, cast(Callable, self.s))
         elif t.is_type_obj() and is_subtype(self.s, t.fallback):
             return t.fallback
         elif (t.is_type_obj() and isinstance(self.s, Instance) and
@@ -150,7 +148,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def join(self, s: Type, t: Type) -> Type:
-        return join_types(s, t, self.basic)
+        return join_types(s, t)
 
     def default(self, typ: Type) -> Type:
         if isinstance(typ, Instance):
@@ -169,7 +167,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return AnyType()
 
 
-def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
+def join_instances(t: Instance, s: Instance) -> Type:
     """Calculate the join of two instance types.
 
     If allow_interfaces is True, also consider interface-type results for
@@ -185,31 +183,30 @@ def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
             # Compatible; combine type arguments.
             args = []  # type: List[Type]
             for i in range(len(t.args)):
-                args.append(join_types(t.args[i], s.args[i], basic))
+                args.append(join_types(t.args[i], s.args[i]))
             return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
             return object_from_instance(t)
     elif t.type.bases and is_subtype(t, s):
-        return join_instances_via_supertype(t, s, basic)
+        return join_instances_via_supertype(t, s)
     else:
         # Now t is not a subtype of s, and t != s. Now s could be a subtype
         # of t; alternatively, we need to find a common supertype. This works
         # in of the both cases.
-        return join_instances_via_supertype(s, t, basic)
+        return join_instances_via_supertype(s, t)
 
 
-def join_instances_via_supertype(t: Instance, s: Instance,
-                                 basic: BasicTypes) -> Type:
+def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     # Give preference to joins via duck typing relationship, so that
     # join(int, float) == float, for example.
     if t.type.ducktype and is_subtype(t.type.ducktype, s):
-        return join_types(t.type.ducktype, s, basic)
+        return join_types(t.type.ducktype, s)
     elif s.type.ducktype and is_subtype(s.type.ducktype, t):
-        return join_types(t, s.type.ducktype, basic)
+        return join_types(t, s.type.ducktype)
     res = s
     mapped = map_instance_to_supertype(t, t.type.bases[0].type)
-    join = join_instances(mapped, res, basic)
+    join = join_instances(mapped, res)
     # If the join failed, fail. This is a defensive measure (this might
     # never happen).
     if isinstance(join, ErrorType):
@@ -228,11 +225,10 @@ def is_similar_callables(t: Callable, s: Callable) -> bool:
             and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
 
 
-def combine_similar_callables(t: Callable, s: Callable,
-                              basic: BasicTypes) -> Callable:
+def combine_similar_callables(t: Callable, s: Callable) -> Callable:
     arg_types = []  # type: List[Type]
     for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
+        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
     # The fallback type can be either 'function' or 'type'. The result should have 'type' as
     # fallback only if both operands have it as 'type'.
@@ -243,7 +239,7 @@ def combine_similar_callables(t: Callable, s: Callable,
     return Callable(arg_types,
                     t.arg_kinds,
                     t.arg_names,
-                    join_types(t.ret_type, s.ret_type, basic),
+                    join_types(t.ret_type, s.ret_type),
                     fallback,
                     None,
                     t.variables)

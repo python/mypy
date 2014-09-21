@@ -3,7 +3,7 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType, ErasedType, BasicTypes, TypeList, UnionType
+    Instance, Callable, TupleType, ErasedType, TypeList, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
@@ -12,7 +12,7 @@ from mypy.nodes import TypeInfo
 # TODO Describe this module.
 
 
-def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
+def meet_types(s: Type, t: Type) -> Type:
     """Return the greatest lower bound of two types."""
     if isinstance(s, ErasedType):
         return s
@@ -20,14 +20,14 @@ def meet_types(s: Type, t: Type, basic: BasicTypes) -> Type:
         return t
     if isinstance(s, UnionType) and not isinstance(t, UnionType):
         s, t = t, s
-    return t.accept(TypeMeetVisitor(s, basic))
+    return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, basic: BasicTypes, default_right: bool = True) -> Type:
+def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
     if s == t:
         return s
     if isinstance(s, UnionType):
-        return UnionType.make_simplified_union([meet_types(x, t, basic) for x in s.items])
+        return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
     elif not is_overlapping_types(s, t):
         return Void()
     else:
@@ -37,7 +37,7 @@ def meet_simple(s: Type, t: Type, basic: BasicTypes, default_right: bool = True)
             return s
 
 
-def meet_simple_away(s: Type, t: Type, basic: BasicTypes) -> Type:
+def meet_simple_away(s: Type, t: Type) -> Type:
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([x for x in s.items
                                                 if not is_subtype(x, t)])
@@ -86,9 +86,8 @@ def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
-    def __init__(self, s: Type, basic: BasicTypes) -> None:
+    def __init__(self, s: Type) -> None:
         self.s = s
-        self.basic = basic
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
@@ -112,9 +111,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             meets = List[Type]()
             for x in t.items:
                 for y in self.s.items:
-                    meets.append(meet_types(x, y, self.basic))
+                    meets.append(meet_types(x, y))
         else:
-            meets = [meet_types(x, self.s, self.basic)
+            meets = [meet_types(x, self.s)
                      for x in t.items]
         return UnionType.make_simplified_union(meets)
 
@@ -166,8 +165,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_callable(self, t: Callable) -> Type:
         if isinstance(self.s, Callable) and is_similar_callables(
                 t, cast(Callable, self.s)):
-            return combine_similar_callables(t, cast(Callable, self.s),
-                                             self.basic)
+            return combine_similar_callables(t, cast(Callable, self.s))
         else:
             return self.default(self.s)
 
@@ -192,7 +190,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def meet(self, s, t):
-        return meet_types(s, t, self.basic)
+        return meet_types(s, t)
 
     def default(self, typ):
         if isinstance(typ, UnboundType):

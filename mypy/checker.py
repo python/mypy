@@ -22,8 +22,7 @@ from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, BasicTypes,
-    strip_type, UnionType
+    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -68,14 +67,13 @@ class Key(AnyType):
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
-    def __init__(self, basic_types_fn) -> None:
+    def __init__(self) -> None:
         self.frames = List[Frame]()
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
         self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key
                                                    # is changed
         self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
-        self.basic_types_fn = basic_types_fn
 
         self.frames_on_escape = Dict[int, List[Frame]]()
 
@@ -138,8 +136,7 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             for other in resulting_values[1:]:
-                type = join_simple(self.frames[0][key], type,
-                                   other, self.basic_types_fn())
+                type = join_simple(self.frames[0][key], type, other)
             if not is_same_type(type, current_value):
                 self._push(key, type)
                 changed = True
@@ -156,8 +153,7 @@ class ConditionalTypeBinder:
             old_type = self._get(key, index)
             if old_type is None:
                 continue
-            replacement = join_simple(self.frames[0][key], old_type, frame[key],
-                                      self.basic_types_fn())
+            replacement = join_simple(self.frames[0][key], old_type, frame[key])
 
             if not is_same_type(replacement, old_type):
                 self._push(key, replacement, index)
@@ -269,12 +265,12 @@ class ConditionalTypeBinder:
         self.loop_frames.pop()
 
 
-def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
+def meet_frames(*frames: Frame) -> Frame:
     answer = Frame()
     for f in frames:
         for key in f:
             if key in answer:
-                answer[key] = meet_simple(answer[key], f[key], basic_types)
+                answer[key] = meet_simple(answer[key], f[key])
             else:
                 answer[key] = f[key]
     return answer
@@ -330,7 +326,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pyversion = pyversion
         self.msg = MessageBuilder(errors)
         self.type_map = {}
-        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
@@ -485,7 +481,7 @@ class TypeChecker(NodeVisitor[Type]):
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(self.basic_types)
+            self.binder = ConditionalTypeBinder()
             self.binder.push_frame()
             defn.expanded.append(item)
 
@@ -844,7 +840,7 @@ class TypeChecker(NodeVisitor[Type]):
         typ = defn.info
         self.errors.push_type(defn.name)
         old_binder = self.binder
-        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.accept(defn.defs)
         self.binder = old_binder
@@ -1089,7 +1085,7 @@ class TypeChecker(NodeVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
             if restriction:
-                ans = meet_simple(known_type, restriction, self.basic_types())
+                ans = meet_simple(known_type, restriction)
                 return ans
         return known_type
 
@@ -1264,7 +1260,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.binder.allow_jump(len(self.binder.frames) - 1)
                 if not self.breaking_out:
                     broken = False
-                    ending_frames.append(meet_frames(self.basic_types(), clauses_frame, frame))
+                    ending_frames.append(meet_frames(clauses_frame, frame))
 
                 self.breaking_out = False
 
@@ -1388,7 +1384,7 @@ class TypeChecker(NodeVisitor[Type]):
                 for item in unwrapped.items:
                     tt = self.exception_type(item)
                     if t:
-                        t = join_types(t, tt, self.basic_types())
+                        t = join_types(t, tt)
                     else:
                         t = tt
                 return t
@@ -1440,7 +1436,7 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(iterable, TupleType):
             joined = NoneTyp()  # type: Type
             for item in iterable.items:
-                joined = join_types(joined, item, self.basic_types())
+                joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
                 self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
                 return AnyType()
@@ -1746,12 +1742,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def leave(self) -> None:
         self.locals = None
-
-    def basic_types(self) -> BasicTypes:
-        """Return a BasicTypes instance that contains primitive types that are
-        needed for certain type operations (joins, for example).
-        """
-        return BasicTypes(self.object_type())
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?
