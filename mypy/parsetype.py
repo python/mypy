@@ -177,7 +177,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
 
 
 def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
-    """Parse signature of form (...) -> ...
+    """Parse signature of form (argtype, ...) -> ...
 
     Return tuple (signature type, token index).
     """
@@ -211,4 +211,4 @@ def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
     return Callable(arg_types,
                     arg_kinds,
                     [None] * len(arg_types),
-                    ret_type, False), i
+                    ret_type, None), i

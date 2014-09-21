@@ -18,3 +18,4 @@ class list(Iterable[T], Generic[T]): # needed by some test cases
     def __mul__(self, x: int) -> list[T]: pass
 
 class tuple: pass
+class function: pass

@@ -229,7 +229,10 @@ class FunctionLike(Type):
     def items(self) -> List['Callable']: pass
 
     @abstractmethod
-    def with_name(self, name: str) -> Type: pass
+    def with_name(self, name: str) -> 'FunctionLike': pass
+
+    # Corresponding instance type (e.g. builtins.type)
+    fallback = Undefined(Instance)
 
 
 class Callable(FunctionLike):
@@ -238,10 +241,10 @@ class Callable(FunctionLike):
     arg_types = Undefined(List[Type])  # Types of function arguments
     arg_kinds = Undefined(List[int])   # mypy.nodes.ARG_ constants
     arg_names = Undefined(List[str])   # None if not a keyword argument
-    min_args = 0                # Minimum number of arguments
-    is_var_arg = False          # Is it a varargs function?
-    ret_type = Undefined(Type)  # Return value type
-    name = ''                   # Name (may be None; for error messages)
+    min_args = 0                    # Minimum number of arguments
+    is_var_arg = False              # Is it a varargs function?
+    ret_type = Undefined(Type)      # Return value type
+    name = ''                       # Name (may be None; for error messages)
     # Type variables for a generic function
     variables = Undefined(List[TypeVarDef])
 
@@ -266,7 +269,7 @@ class Callable(FunctionLike):
                  arg_kinds: List[int],
                  arg_names: List[str],
                  ret_type: Type,
-                 is_type_obj: bool,
+                 fallback: Instance,
                  name: str = None, variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1, repr: Any = None) -> None:
@@ -280,7 +283,7 @@ class Callable(FunctionLike):
         self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
         self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
         self.ret_type = ret_type
-        self._is_type_obj = is_type_obj
+        self.fallback = fallback
         assert not name or '<bound method' not in name
         self.name = name
         self.variables = variables
@@ -288,11 +291,11 @@ class Callable(FunctionLike):
         super().__init__(line, repr)
 
     def is_type_obj(self) -> bool:
-        return self._is_type_obj
+        return self.fallback.type.fullname() == 'builtins.type'
 
     def type_object(self) -> mypy.nodes.TypeInfo:
-        assert self._is_type_obj
-        return (cast(Instance, self.ret_type)).type
+        assert self.is_type_obj()
+        return cast(Instance, self.ret_type).type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable(self)
@@ -306,7 +309,7 @@ class Callable(FunctionLike):
                         self.arg_kinds,
                         self.arg_names,
                         ret,
-                        self.is_type_obj(),
+                        self.fallback,
                         name,
                         self.variables,
                         self.bound_vars,
@@ -342,6 +345,7 @@ class Overloaded(FunctionLike):
 
     def __init__(self, items: List[Callable]) -> None:
         self._items = items
+        self.fallback = items[0].fallback
         super().__init__(items[0].line, None)
 
     def items(self) -> List[Callable]:
@@ -564,7 +568,7 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.arg_kinds,
                         t.arg_names,
                         t.ret_type.accept(self),
-                        t.is_type_obj(),
+                        t.fallback,
                         t.name,
                         self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
@@ -811,8 +815,8 @@ class TypeQuery(TypeVisitor[bool]):
 class BasicTypes:
     """Collection of Instance types of basic types (object, type, etc.)."""
 
-    def __init__(self, object: Instance, type_type: Instance, tuple: Type,
-                 function: Type) -> None:
+    def __init__(self, object: Instance, type_type: Instance, tuple: Instance,
+                 function: Instance) -> None:
         self.object = object
         self.type_type = type_type
         self.function = function
@@ -826,7 +830,7 @@ def strip_type(typ: Type) -> Type:
                         typ.arg_kinds,
                         typ.arg_names,
                         typ.ret_type,
-                        typ.is_type_obj(),
+                        typ.fallback,
                         None,
                         typ.variables)
     elif isinstance(typ, Overloaded):
@@ -845,7 +849,7 @@ def replace_leading_arg_type(t: Callable, self_type: Type) -> Callable:
                     t.arg_kinds,
                     t.arg_names,
                     t.ret_type,
-                    t.is_type_obj(),
+                    t.fallback,
                     t.name,
                     t.variables,
                     t.bound_vars,

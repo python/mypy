@@ -15,5 +15,6 @@ class int: pass
 class str: pass
 
 class tuple: pass
+class function: pass
 
 # Definition of None is implicit

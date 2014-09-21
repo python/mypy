@@ -18,7 +18,8 @@ from mypy import subtypes
 
 
 def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
-                          is_super: bool, basic_types: BasicTypes,
+                          is_super: bool,
+                          builtin_type: Function[[str], Instance],
                           msg: MessageBuilder, override_info: TypeInfo = None,
                           report_type: Type = None) -> Type:
     """Analyse attribute access.
@@ -49,7 +50,8 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             typ = map_instance_to_supertype(typ, method.info)
-            return expand_type_by_instance(method_type(method), typ)
+            return expand_type_by_instance(
+                method_type(method, builtin_type('builtins.function')), typ)
         else:
             # Not a method.
             return analyse_member_var_access(name, typ, info, node,
@@ -62,33 +64,30 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # The base object has dynamic type.
         msg.disable_type_names += 1
         results = [analyse_member_access(name, subtype, node, is_lvalue,
-                                         is_super, basic_types, msg)
+                                         is_super, builtin_type, msg)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return analyse_member_access(name, typ.fallback, node, is_lvalue,
-                                     is_super, basic_types, msg)
+                                     is_super, builtin_type, msg)
     elif (isinstance(typ, FunctionLike) and
           cast(FunctionLike, typ).is_type_obj()):
         # Class attribute.
         # TODO super?
         sig = cast(FunctionLike, typ)
         itype = cast(Instance, sig.items()[0].ret_type)
-        result = analyse_class_attribute_access(itype, name, node, is_lvalue,
-                                                msg)
+        result = analyse_class_attribute_access(itype, name, node, is_lvalue, builtin_type, msg)
         if result:
             return result
         # Look up from the 'type' type.
-        return analyse_member_access(name, basic_types.type_type, node,
-                                     is_lvalue, is_super, basic_types, msg,
-                                     report_type=report_type)
+        return analyse_member_access(name, sig.fallback, node, is_lvalue, is_super,
+                                     builtin_type, msg, report_type=report_type)
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
-        return analyse_member_access(name, basic_types.function, node,
-                                     is_lvalue, is_super, basic_types, msg,
-                                     report_type=report_type)
+        return analyse_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                     builtin_type, msg, report_type=report_type)
     return msg.has_no_attr(report_type, name, node)
 
 
@@ -176,8 +175,11 @@ def check_method_type(functype: FunctionLike, itype: Instance,
                 msg.invalid_method_type(item, context)
 
 
-def analyse_class_attribute_access(itype: Instance, name: str,
-                                   context: Context, is_lvalue: bool,
+def analyse_class_attribute_access(itype: Instance,
+                                   name: str,
+                                   context: Context,
+                                   is_lvalue: bool,
+                                   builtin_type: Function[[str], Instance],
                                    msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
     if not node:
@@ -197,10 +199,9 @@ def analyse_class_attribute_access(itype: Instance, name: str,
         return add_class_tvars(t, itype.type, is_classmethod)
 
     if isinstance(node.node, TypeInfo):
-        # TODO add second argument
-        return type_object_type(cast(TypeInfo, node.node), None)
+        return type_object_type(cast(TypeInfo, node.node), builtin_type)
 
-    return function_type(cast(FuncBase, node.node))
+    return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
 
 def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool) -> Type:
@@ -218,7 +219,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool) -> Type:
                         arg_kinds,
                         arg_names,
                         t.ret_type,
-                        t.is_type_obj(),
+                        t.fallback,
                         t.name,
                         vars + t.variables,
                         t.bound_vars,
@@ -229,7 +230,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool) -> Type:
     return t
 
 
-def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
+def type_object_type(info: TypeInfo, builtin_type: Function[[str], Instance]) -> Type:
     """Return the type of a type object.
 
     For a generic type G with type variables T and S the type is of form
@@ -245,18 +246,18 @@ def type_object_type(info: TypeInfo, type_type: Function[[], Type]) -> Type:
     else:
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
-        init_type = method_type(init_method)
+        init_type = method_type(init_method, builtin_type('builtins.function'))
         if isinstance(init_type, Callable):
-            return class_callable(init_type, info)
+            return class_callable(init_type, info, builtin_type('builtins.type'))
         else:
             # Overloaded __init__.
             items = []  # type: List[Callable]
             for it in cast(Overloaded, init_type).items():
-                items.append(class_callable(it, info))
+                items.append(class_callable(it, info, builtin_type('builtins.type')))
             return Overloaded(items)
 
 
-def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
+def class_callable(init_type: Callable, info: TypeInfo, type_type: Instance) -> Callable:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
@@ -269,7 +270,7 @@ def class_callable(init_type: Callable, info: TypeInfo) -> Callable:
                  init_type.arg_kinds,
                  init_type.arg_names,
                  self_type(info),
-                 True,
+                 type_type,
                  None,
                  variables).with_name('"{}"'.format(info.name()))
     return convert_class_tvars_to_func_tvars(c, len(initvars))

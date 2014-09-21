@@ -80,7 +80,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                         t.arg_kinds,
                         t.arg_names,
                         t.ret_type.accept(self),
-                        t.is_type_obj(),
+                        t.fallback,
                         t.name,
                         t.variables,
                         self.expand_bound_vars(t.bound_vars), t.line, t.repr)
@@ -118,7 +118,7 @@ def update_callable_implicit_bounds(
                     t.arg_kinds,
                     t.arg_names,
                     t.ret_type,
-                    t.is_type_obj(),
+                    t.fallback,
                     t.name,
                     t.variables,
                     arg_types, t.line, t.repr)

@@ -144,7 +144,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                        t.arg_kinds,
                        t.arg_names,
                        t.ret_type.accept(self),
-                       t.is_type_obj(),
+                       self.builtin_type('builtins.function'),
                        t.name,
                        self.anal_var_defs(t.variables),
                        self.anal_bound_vars(t.bound_vars), t.line, t.repr)
@@ -169,7 +169,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return Callable(self.anal_array(args),
                         [nodes.ARG_POS] * len(args), [None] * len(args),
                         ret_type=t.args[1].accept(self),
-                        is_type_obj=False)
+                        fallback=self.builtin_type('builtins.function'))
 
     def anal_array(self, a: List[Type]) -> List[Type]:
         res = List[Type]()

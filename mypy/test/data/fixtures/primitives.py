@@ -12,3 +12,4 @@ class float: pass
 class bool: pass
 class bytes: pass
 class tuple: pass
+class function: pass

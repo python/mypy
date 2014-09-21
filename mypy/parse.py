@@ -357,7 +357,7 @@ class Parser:
                                    kinds,
                                    [arg.name() for arg in args],
                                    sig.ret_type,
-                                   False)
+                                   None)
                 else:
                     self.check_argument_kinds(kinds, sig.arg_kinds,
                                               def_tok.line)
@@ -365,7 +365,7 @@ class Parser:
                                    kinds,
                                    [arg.name() for arg in args],
                                    sig.ret_type,
-                                   False)
+                                   None)
 
             # If there was a serious error, we really cannot build a parse tree
             # node.
@@ -400,7 +400,7 @@ class Parser:
                     "signature".format(token), line)
 
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
-                                             List[int], Type, bool,
+                                             List[int], Callable, bool,
                                              Tuple[Token, Any]]:
         """Parse function header (a name followed by arguments)
 
@@ -432,7 +432,7 @@ class Parser:
 
         return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
 
-    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Type,
+    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Callable,
                                   noderepr.FuncArgsRepr]:
         """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
@@ -466,7 +466,7 @@ class Parser:
 
     def build_func_annotation(self, ret_type: Type, arg_types: List[Type],
                               kinds: List[int], names: List[str],
-                              line: int, is_default_ret: bool = False) -> Type:
+                              line: int, is_default_ret: bool = False) -> Callable:
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
                 or arg_types != [None] * len(arg_types)):
@@ -595,7 +595,7 @@ class Parser:
                 arg_types[i] = AnyType()
         if ret_type is None:
             ret_type = AnyType()
-        return Callable(arg_types, kinds, names, ret_type, False, None,
+        return Callable(arg_types, kinds, names, ret_type, None, None,
                         None, [], line, None)
 
     # Parsing statements
@@ -1489,7 +1489,7 @@ class Parser:
 
             operators_str.append(op_str)
             operators.append( (op, op2) )
-            operand = self.parse_expression(prec) 
+            operand = self.parse_expression(prec)
             operands.append(operand)
 
             # Continue if next token is a comparison operator

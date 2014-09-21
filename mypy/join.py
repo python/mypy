@@ -120,7 +120,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
             return join_instances(t, cast(Instance, self.s), self.basic)
-        elif t.type == self.basic.type_type.type and is_subtype(self.s, t):
+        elif t.type.fullname() == 'builtins.type' and is_subtype(self.s, t):
             return t
         else:
             return self.default(self.s)
@@ -228,11 +228,17 @@ def combine_similar_callables(t: Callable, s: Callable,
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i], basic))
     # TODO kinds and argument names
+    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
+    # fallback only if both operands have it as 'type'.
+    if t.fallback.type.fullname() != 'builtins.type':
+        fallback = t.fallback
+    else:
+        fallback = s.fallback
     return Callable(arg_types,
                     t.arg_kinds,
                     t.arg_names,
                     join_types(t.ret_type, s.ret_type, basic),
-                    t.is_type_obj() and s.is_type_obj(),
+                    fallback,
                     None,
                     t.variables)
     return s

@@ -257,7 +257,8 @@ class SemanticAnalyzer(NodeVisitor):
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
-            t.append(cast(Callable, function_type(item.func)))
+            t.append(cast(Callable, function_type(item.func,
+                                                  self.builtin_type('builtins.function'))))
             if not [dec for dec in item.decorators
                     if refers_to_fullname(dec, 'typing.overload')]:
                 self.fail("'overload' decorator expected", item)
@@ -1386,6 +1387,11 @@ class SemanticAnalyzer(NodeVisitor):
                 if n:
                     n = self.normalize_type_alias(n, ctx)
             return n
+
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        node = self.lookup_fully_qualified(fully_qualified_name)
+        info = cast(TypeInfo, node.node)
+        return Instance(info, [])
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.

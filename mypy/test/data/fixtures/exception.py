@@ -4,5 +4,6 @@ class object:
 
 class type: pass
 class tuple: pass
+class function: pass
 
 class BaseException: pass

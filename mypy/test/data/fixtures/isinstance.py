@@ -8,6 +8,9 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
+class tuple: pass
+class function: pass
+
 def isinstance(x: object, t: type) -> bool: pass
 
 @builtinclass
@@ -16,5 +19,3 @@ class int: pass
 class bool(int): pass
 @builtinclass
 class str: pass
-
-class tuple: pass

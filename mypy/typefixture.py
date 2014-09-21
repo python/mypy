@@ -145,7 +145,7 @@ class TypeFixture:
         a1, ... an and return type r.
         """
         return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
-                        [None] * (len(a) - 1), a[-1], False)
+                        [None] * (len(a) - 1), a[-1], self.std_function)
 
     def callable_type(self, *a):
         """callable_type(a1, ..., an, r) constructs a callable with
@@ -153,7 +153,7 @@ class TypeFixture:
         represents a type.
         """
         return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
-                        [None] * (len(a) - 1), a[-1], True)
+                        [None] * (len(a) - 1), a[-1], self.type_type)
 
     def callable_default(self, min_args, *a):
         """callable_default(min_args, a1, ..., an, r) constructs a
@@ -164,7 +164,7 @@ class TypeFixture:
         return Callable(a[:-1],
                         [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
                         [None] * n,
-                        a[-1], False)
+                        a[-1], self.std_function)
 
     def callable_var_arg(self, min_args, *a):
         """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
@@ -175,7 +175,7 @@ class TypeFixture:
                         [ARG_POS] * min_args +
                         [ARG_OPT] * (n - 1 - min_args) +
                         [ARG_STAR], [None] * n,
-                        a[-1], False)
+                        a[-1], self.std_function)
 
 
 class InterfaceTypeFixture(TypeFixture):

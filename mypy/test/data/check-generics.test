@@ -637,6 +637,7 @@ class list(Iterable[T], Generic[T]):
 class int: pass
 class type: pass
 class tuple: pass
+class function: pass
 
 [case testMultipleAsssignmentWithIterable]
 from typing import Iterable, Undefined, typevar

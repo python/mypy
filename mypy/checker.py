@@ -430,8 +430,8 @@ class TypeChecker(NodeVisitor[Type]):
         for i, item in enumerate(defn.items):
             for j, item2 in enumerate(defn.items[i + 1:]):
                 # TODO overloads involving decorators
-                sig1 = function_type(item.func)
-                sig2 = function_type(item2.func)
+                sig1 = self.function_type(item.func)
+                sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
                     self.msg.overloaded_signatures_overlap(i + 1, j + 2,
                                                            item.func)
@@ -443,8 +443,8 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
-            if not is_same_type(function_type(defn),
-                                function_type(defn.original_def)):
+            if not is_same_type(self.function_type(defn),
+                                self.function_type(defn.original_def)):
                 self.msg.incompatible_conditional_function_def(defn)
 
     def check_func_item(self, defn: FuncItem,
@@ -466,7 +466,7 @@ class TypeChecker(NodeVisitor[Type]):
         if fdef:
             self.errors.push_function(fdef.name())
 
-        typ = function_type(defn)
+        typ = self.function_type(defn)
         if type_override:
             typ = type_override
         if isinstance(typ, Callable):
@@ -654,21 +654,21 @@ class TypeChecker(NodeVisitor[Type]):
 
             # Construct normalized function signatures corresponding to the
             # operator methods. The first argument is the left operand and the
-            # second operatnd is the right argument -- we switch the order of
+            # second operand is the right argument -- we switch the order of
             # the arguments of the reverse method.
             forward_tweaked = Callable([forward_base,
                                         forward_type.arg_types[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        forward_type.ret_type,
-                                       is_type_obj=False,
+                                       forward_type.fallback,
                                        name=forward_type.name)
             reverse_args = reverse_type.arg_types
             reverse_tweaked = Callable([reverse_args[1], reverse_args[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        reverse_type.ret_type,
-                                       is_type_obj=False,
+                                       fallback=self.named_type('builtins.function'),
                                        name=reverse_type.name)
 
             if is_unsafe_overlapping_signatures(forward_tweaked,
@@ -693,7 +693,7 @@ class TypeChecker(NodeVisitor[Type]):
         method = defn.name()
         if method not in nodes.inplace_operator_methods:
             return
-        typ = method_type(defn)
+        typ = self.method_type(defn)
         cls = defn.info
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
@@ -764,14 +764,14 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = method_type(defn)
+            typ = self.method_type(defn)
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
             if original_type is None and isinstance(base_attr.node,
                                                     FuncDef):
-                original_type = function_type(cast(FuncDef,
-                                                   base_attr.node))
+                original_type = self.function_type(cast(FuncDef,
+                                                        base_attr.node))
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
                     method_type(original_type),
@@ -1508,7 +1508,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_decorator(self, e: Decorator) -> Type:
         e.func.accept(self)
-        sig = function_type(e.func)  # type: Type
+        sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
         for i in range(len(e.decorators)):
             n = len(e.decorators) - 1 - i
@@ -1516,6 +1516,7 @@ class TypeChecker(NodeVisitor[Type]):
             temp = self.temp_node(sig)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)
+        sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
@@ -1670,8 +1671,8 @@ class TypeChecker(NodeVisitor[Type]):
         sym = self.lookup_qualified(name)
         return Instance(cast(TypeInfo, sym.node), [])
 
-    def named_type_if_exists(self, name: str) -> Type:
-        """Return named instance type, or UnboundType if the type was
+    def named_type_if_exists(self, name: str) -> Instance:
+        """Return named instance type, or None if the type was
         not defined.
 
         This is used to simplify test cases by avoiding the need to
@@ -1683,7 +1684,8 @@ class TypeChecker(NodeVisitor[Type]):
             sym = self.lookup_qualified(name)
             return Instance(cast(TypeInfo, sym.node), [])
         except KeyError:
-            return UnboundType(name)
+            # This is an unsafe cast; we use UnboundType to make debugging easier.
+            return Any(UnboundType(name))
 
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
@@ -1804,6 +1806,12 @@ class TypeChecker(NodeVisitor[Type]):
             instance,
             self.lookup_typeinfo('typing.Iterable'))
         return iterable.args[0]
+
+    def function_type(self, func: FuncBase) -> FunctionLike:
+        return function_type(func, self.named_type('builtins.function'))
+
+    def method_type(self, func: FuncBase) -> FunctionLike:
+        return method_type(func, self.named_type('builtins.function'))
 
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,

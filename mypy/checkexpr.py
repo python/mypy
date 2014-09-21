@@ -67,15 +67,15 @@ class ExpressionChecker:
             result = self.analyse_var_ref(node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
-            result = function_type(node)
+            result = function_type(node, self.named_type('builtins.function'))
         elif isinstance(node, OverloadedFuncDef):
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = type_object_type(node, self.chk.type_type)
+            result = type_object_type(node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.chk.named_type('builtins.module')
+            result = self.named_type('builtins.module')
         elif isinstance(node, Decorator):
             result = self.analyse_var_ref(node.var, e)
         else:
@@ -680,7 +680,7 @@ class ExpressionChecker:
                         callable.arg_kinds,
                         callable.arg_names,
                         expand_type(callable.ret_type, id_to_type),
-                        callable.is_type_obj(),
+                        callable.fallback,
                         callable.name,
                         remaining_tvars,
                         callable.bound_vars + bound_vars,
@@ -713,7 +713,7 @@ class ExpressionChecker:
             # This is a reference to a non-module attribute.
             return analyse_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False,
-                                         self.chk.basic_types(), self.msg)
+                                         self.named_type, self.msg)
 
     def analyse_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -722,7 +722,7 @@ class ExpressionChecker:
         """
         # TODO remove; no private definitions in mypy
         return analyse_member_access(member, base_type, context, False, False,
-                                     self.chk.basic_types(), self.msg)
+                                     self.named_type, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -786,8 +786,11 @@ class ExpressionChecker:
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
                     itertype = self.chk.analyse_iterable_item_type(right)
-                    method_type = Callable([left_type], [nodes.ARG_POS], [None],
-                                           self.chk.bool_type(), False)
+                    method_type = Callable([left_type],
+                                           [nodes.ARG_POS],
+                                           [None],
+                                           self.chk.bool_type(),
+                                           self.named_type('builtins.function'))
                     sub_result = self.chk.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
@@ -832,7 +835,7 @@ class ExpressionChecker:
         Return tuple (result type, inferred operator method type).
         """
         method_type = analyse_member_access(method, base_type, context, False, False,
-                                            self.chk.basic_types(), local_errors)
+                                            self.named_type, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -917,7 +920,7 @@ class ExpressionChecker:
         Type inference is special-cased for this common construct.
         """
         right_type = self.accept(e.right)
-        if is_subtype(right_type, self.chk.named_type('builtins.int')):
+        if is_subtype(right_type, self.named_type('builtins.int')):
             # Special case: [...] * <int value>. Use the type context of the
             # OpExpr, since the multiplication does not affect the type.
             left_type = self.accept(e.left, context=self.chk.type_context[-1])
@@ -1044,7 +1047,7 @@ class ExpressionChecker:
                                [None],
                                self.chk.named_generic_type(fullname,
                                                            [tv]),
-                               False,
+                               self.named_type('builtins.function'),
                                tag,
                                [TypeVarDef('T', -1, None)])
         return self.check_call(constructor,
@@ -1085,7 +1088,7 @@ class ExpressionChecker:
                                [None],
                                self.chk.named_generic_type('builtins.dict',
                                                            [tv1, tv2]),
-                               False,
+                               self.named_type('builtins.function'),
                                '<list>',
                                [TypeVarDef('KT', -1, None),
                                 TypeVarDef('VT', -2, None)])
@@ -1105,7 +1108,7 @@ class ExpressionChecker:
             ret_type = e.expr().accept(self.chk)
             if not e.args:
                 # Form 'lambda: e'; just use the inferred return type.
-                return Callable([], [], [], ret_type, is_type_obj=False)
+                return Callable([], [], [], ret_type, self.named_type('builtins.function'))
             else:
                 # TODO: Consider reporting an error. However, this is fine if
                 # we are just doing the first pass in contextual type
@@ -1154,7 +1157,7 @@ class ExpressionChecker:
             # TODO fix multiple inheritance etc
             return analyse_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
-                                         self.chk.basic_types(), self.msg,
+                                         self.named_type, self.msg,
                                          e.info.mro[1])
         else:
             # Invalid super. This has been reported by the semantic analyser.
@@ -1201,7 +1204,7 @@ class ExpressionChecker:
                                [nodes.ARG_POS],
                                [None],
                                self.chk.named_generic_type(type_name, [tv]),
-                               False,
+                               self.chk.named_type('builtins.function'),
                                id_for_messages,
                                [TypeVarDef('T', -1, None)])
         return self.check_call(constructor,
@@ -1396,7 +1399,7 @@ def replace_callable_return_type(c: Callable, new_ret_type: Type) -> Callable:
                     c.arg_kinds,
                     c.arg_names,
                     new_ret_type,
-                    c.is_type_obj(),
+                    c.fallback,
                     c.name,
                     c.variables,
                     c.bound_vars,
