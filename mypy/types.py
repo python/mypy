@@ -815,7 +815,6 @@ class BasicTypes:
                  function: Type) -> None:
         self.object = object
         self.type_type = type_type
-        self.tuple = tuple
         self.function = function
 
 

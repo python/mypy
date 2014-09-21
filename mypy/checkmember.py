@@ -67,8 +67,8 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
-        # Actually look up from the 'tuple' type.
-        return analyse_member_access(name, basic_types.tuple, node, is_lvalue,
+        # Actually look up from the fallback instance type.
+        return analyse_member_access(name, typ.fallback, node, is_lvalue,
                                      is_super, basic_types, msg)
     elif (isinstance(typ, FunctionLike) and
           cast(FunctionLike, typ).is_type_obj()):
