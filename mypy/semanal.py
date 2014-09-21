@@ -208,7 +208,7 @@ class SemanticAnalyzer(NodeVisitor):
             typevars = [(tvar, values) for tvar, values in typevars
                         if not self.is_defined_type_var(tvar, defn)]
             if typevars:
-                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1])
+                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1], self.object_type())
                         for i, tvar in enumerate(typevars)]
                 functype.variables = defs
 
@@ -419,10 +419,10 @@ class SemanticAnalyzer(NodeVisitor):
 
         For example, consider this class:
 
-        . class Foo(Bar, Generic[t]): ...
+        class Foo(Bar, Generic[T]): ...
 
-        Now we will remove Generic[t] from bases of Foo and infer that the
-        type variable 't' is a type argument of Foo.
+        Now we will remove Generic[T] from bases of Foo and infer that the
+        type variable 'T' is a type argument of Foo.
         """
         removed = List[int]()
         type_vars = List[TypeVarDef]()
@@ -435,7 +435,8 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 for j, tvar in enumerate(tvars):
                     name, values = tvar
-                    type_vars.append(TypeVarDef(name, j + 1, values))
+                    type_vars.append(TypeVarDef(name, j + 1, values,
+                                                self.object_type()))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -1658,7 +1659,8 @@ def self_type(typ: TypeInfo) -> Instance:
     tv = List[Type]()
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1,
-                          typ.defn.type_vars[i].values))
+                          typ.defn.type_vars[i].values,
+                          typ.defn.type_vars[i].upper_bound))
     return Instance(typ, tv)
 
 

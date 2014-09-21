@@ -1386,14 +1386,14 @@ class TypeInfo(SymbolNode):
     the class.
     """
 
-    _fullname = None  # type: str      # Fully qualified name
-    defn = Undefined(ClassDef)         # Corresponding ClassDef
+    _fullname = None  # type: str          # Fully qualified name
+    defn = Undefined(ClassDef)             # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
-    # value always to refers to self.
+    # value always to refers to this class.
     mro = Undefined(List['TypeInfo'])
-    subtypes = Undefined(Set['TypeInfo'])  # Direct subclasses
+    subtypes = Undefined(Set['TypeInfo'])  # Direct subclasses encountered so far
     names = Undefined('SymbolTable')       # Names defined directly in this type
-    is_abstract = False       # Does the class have any abstract attributes?
+    is_abstract = False                    # Does the class have any abstract attributes?
     abstract_attributes = Undefined(List[str])
     # All classes in this build unit that are disjoint with this class.
     disjoint_classes = Undefined(List['TypeInfo'])

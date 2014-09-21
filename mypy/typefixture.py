@@ -21,18 +21,20 @@ class TypeFixture:
     """
 
     def __init__(self):
-        # Type variables
+        # The 'object' class
+        self.oi = self.make_type_info('builtins.object')               # class object
+        self.o = Instance(self.oi, [])                        # object
 
-        self.t = TypeVar('T', 1, [])     # T`1 (type variable)
-        self.tf = TypeVar('T', -1, [])   # T`-1 (type variable)
-        self.tf2 = TypeVar('T', -2, [])  # T`-2 (type variable)
-        self.s = TypeVar('S', 2, [])     # S`2 (type variable)
-        self.s1 = TypeVar('S', 1, [])    # S`1 (type variable)
-        self.sf = TypeVar('S', -2, [])   # S`-2 (type variable)
-        self.sf1 = TypeVar('S', -1, [])  # S`-1 (type variable)
+        # Type variables
+        self.t = TypeVar('T', 1, [], self.o)     # T`1 (type variable)
+        self.tf = TypeVar('T', -1, [], self.o)   # T`-1 (type variable)
+        self.tf2 = TypeVar('T', -2, [], self.o)  # T`-2 (type variable)
+        self.s = TypeVar('S', 2, [], self.o)     # S`2 (type variable)
+        self.s1 = TypeVar('S', 1, [], self.o)    # S`1 (type variable)
+        self.sf = TypeVar('S', -2, [], self.o)   # S`-2 (type variable)
+        self.sf1 = TypeVar('S', -1, [], self.o)  # S`-1 (type variable)
 
         # Simple types
-
         self.anyt = AnyType()
         self.void = Void()
         self.err = ErrorType()
@@ -41,57 +43,49 @@ class TypeFixture:
         # Abstract class TypeInfos
 
         # class F
-        self.fi = make_type_info('F', is_abstract=True)
+        self.fi = self.make_type_info('F', is_abstract=True)
 
         # class F2
-        self.f2i = make_type_info('F2', is_abstract=True)
+        self.f2i = self.make_type_info('F2', is_abstract=True)
 
         # class F3(F)
-        self.f3i = make_type_info('F3', is_abstract=True, mro=[self.fi])
+        self.f3i = self.make_type_info('F3', is_abstract=True, mro=[self.fi])
 
         # Class TypeInfos
-
-        self.oi = make_type_info('builtins.object')            # class object
-        self.std_tuplei = make_type_info('builtins.tuple')     # class tuple
-        self.type_typei = make_type_info('builtins.type')      # class type
-        self.std_functioni = make_type_info('std::Function')   # Function TODO
-        self.ai = make_type_info('A', mro=[self.oi])           # class A
-        self.bi = make_type_info('B', mro=[self.ai, self.oi])  # class B(A)
-        self.ci = make_type_info('C', mro=[self.ai, self.oi])  # class C(A)
-        self.di = make_type_info('D', mro=[self.oi])           # class D
-
+        self.std_tuplei = self.make_type_info('builtins.tuple')        # class tuple
+        self.type_typei = self.make_type_info('builtins.type')         # class type
+        self.std_functioni = self.make_type_info('builtins.function')  # function TODO
+        self.ai = self.make_type_info('A', mro=[self.oi])              # class A
+        self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
+        self.ci = self.make_type_info('C', mro=[self.ai, self.oi])     # class C(A)
+        self.di = self.make_type_info('D', mro=[self.oi])              # class D
         # class E(F)
-        self.ei = make_type_info('E', mro=[self.fi, self.oi])
-
+        self.ei = self.make_type_info('E', mro=[self.fi, self.oi])
         # class E2(F2, F)
-        self.e2i = make_type_info('E2', mro=[self.f2i, self.fi, self.oi])
-
+        self.e2i = self.make_type_info('E2', mro=[self.f2i, self.fi, self.oi])
         # class E3(F, F2)
-        self.e3i = make_type_info('E3', mro=[self.fi, self.f2i, self.oi])
+        self.e3i = self.make_type_info('E3', mro=[self.fi, self.f2i, self.oi])
 
         # Generic class TypeInfos
-
         # G[T]
-        self.gi = make_type_info('G', mro=[self.oi], typevars=['T'])
+        self.gi = self.make_type_info('G', mro=[self.oi], typevars=['T'])
         # G2[T]
-        self.g2i = make_type_info('G2', mro=[self.oi], typevars=['T'])
+        self.g2i = self.make_type_info('G2', mro=[self.oi], typevars=['T'])
         # H[S, T]
-        self.hi = make_type_info('H', mro=[self.oi], typevars=['S', 'T'])
+        self.hi = self.make_type_info('H', mro=[self.oi], typevars=['S', 'T'])
         # GS[T, S] <: G[S]
-        self.gsi = make_type_info('GS', mro=[self.gi, self.oi],
-                                  typevars=['T', 'S'],
-                                  bases=[Instance(self.gi, [self.s])])
+        self.gsi = self.make_type_info('GS', mro=[self.gi, self.oi],
+                                       typevars=['T', 'S'],
+                                       bases=[Instance(self.gi, [self.s])])
         # GS2[S] <: G[S]
-        self.gs2i = make_type_info('GS2', mro=[self.gi, self.oi],
-                                   typevars=['S'],
-                                   bases=[Instance(self.gi, [self.s1])])
+        self.gs2i = self.make_type_info('GS2', mro=[self.gi, self.oi],
+                                        typevars=['S'],
+                                        bases=[Instance(self.gi, [self.s1])])
         # list[T]
-        self.std_listi = make_type_info('builtins.list', mro=[self.oi],
-                                        typevars=['T'])
+        self.std_listi = self.make_type_info('builtins.list', mro=[self.oi],
+                                             typevars=['T'])
 
         # Instance types
-
-        self.o = Instance(self.oi, [])                        # object
         self.std_tuple = Instance(self.std_tuplei, [])        # tuple
         self.type_type = Instance(self.type_typei, [])        # type
         self.std_function = Instance(self.std_functioni, [])  # function TODO
@@ -109,7 +103,6 @@ class TypeFixture:
         self.f3 = Instance(self.f3i, [])        # F3
 
         # Generic instance types
-
         self.ga = Instance(self.gi, [self.a])        # G[A]
         self.gb = Instance(self.gi, [self.b])        # G[B]
         self.go = Instance(self.gi, [self.o])        # G[object]
@@ -176,6 +169,40 @@ class TypeFixture:
                         [ARG_STAR], [None] * n,
                         a[-1], self.std_function)
 
+    def make_type_info(self, name: str,
+                       is_abstract: bool = False,
+                       mro: List[TypeInfo] = None,
+                       bases: List[Instance] = None,
+                       typevars: List[str] = None) -> TypeInfo:
+        """Make a TypeInfo suitable for use in unit tests."""
+
+        class_def = ClassDef(name, Block([]), None, [])
+        class_def.fullname = name
+
+        if typevars:
+            v = []  # type: List[TypeVarDef]
+            id = 1
+            for n in typevars:
+                v.append(TypeVarDef(n, id, None, self.oi))
+                id += 1
+            class_def.type_vars = v
+
+        info = TypeInfo(SymbolTable(), class_def)
+        if mro is None:
+            mro = []
+            if name != 'builtins.object':
+                mro.append(self.oi)
+        info.mro = [info] + mro
+        if bases is None:
+            if mro:
+                # By default, assume that there is a single non-generic base.
+                bases = [Instance(mro[0], [])]
+            else:
+                bases = []
+        info.bases = bases
+
+        return info
+
 
 class InterfaceTypeFixture(TypeFixture):
     """Extension of TypeFixture that contains additional generic
@@ -184,48 +211,15 @@ class InterfaceTypeFixture(TypeFixture):
     def __init__(self):
         super().__init__()
         # GF[T]
-        self.gfi = make_type_info('GF', typevars=['T'], is_abstract=True)
+        self.gfi = self.make_type_info('GF', typevars=['T'], is_abstract=True)
 
         # M1 <: GF[A]
-        self.m1i = make_type_info('M1',
-                                  is_abstract=True,
-                                  mro=[self.gfi, self.oi],
-                                  bases=[Instance(self.gfi, [self.a])])
+        self.m1i = self.make_type_info('M1',
+                                       is_abstract=True,
+                                       mro=[self.gfi, self.oi],
+                                       bases=[Instance(self.gfi, [self.a])])
 
         self.gfa = Instance(self.gfi, [self.a])  # GF[A]
         self.gfb = Instance(self.gfi, [self.b])  # GF[B]
 
         self.m1 = Instance(self.m1i, [])  # M1
-
-
-def make_type_info(name: str,
-                   is_abstract: bool = False,
-                   mro: List[TypeInfo] = None,
-                   bases: List[Instance] = None,
-                   typevars: List[str] = None) -> TypeInfo:
-    """Make a TypeInfo suitable for use in unit tests."""
-
-    class_def = ClassDef(name, Block([]), None, [])
-    class_def.fullname = name
-
-    if typevars:
-        v = []  # type: List[TypeVarDef]
-        id = 1
-        for n in typevars:
-            v.append(TypeVarDef(n, id, None))
-            id += 1
-        class_def.type_vars = v
-
-    info = TypeInfo(SymbolTable(), class_def)
-    if mro is None:
-        mro = []
-    info.mro = [info] + mro
-    if bases is None:
-        if mro:
-            # By default, assume that there is a single non-generic base.
-            bases = [Instance(mro[0], [])]
-        else:
-            bases = []
-    info.bases = bases
-
-    return info

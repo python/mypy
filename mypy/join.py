@@ -5,7 +5,7 @@ from typing import cast, List
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVar, Callable, TupleType, ErasedType, BasicTypes, TypeList,
-    UnionType
+    UnionType, FunctionLike
 )
 from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
 
@@ -73,7 +73,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def __init__(self, s: Type, basic: BasicTypes) -> None:
         self.s = s
         self.basic = basic
-        self.object = basic.object
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
@@ -154,12 +153,20 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         return join_types(s, t, self.basic)
 
     def default(self, typ: Type) -> Type:
-        if isinstance(typ, UnboundType):
+        if isinstance(typ, Instance):
+            return object_from_instance(typ)
+        elif isinstance(typ, UnboundType):
             return AnyType()
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
+        elif isinstance(typ, TupleType):
+            return self.default(typ.fallback)
+        elif isinstance(typ, FunctionLike):
+            return self.default(typ.fallback)
+        elif isinstance(typ, TypeVar):
+            return self.default(typ.upper_bound)
         else:
-            return self.object
+            return AnyType()
 
 
 def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
@@ -182,7 +189,7 @@ def join_instances(t: Instance, s: Instance, basic: BasicTypes) -> Type:
             return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
-            return basic.object
+            return object_from_instance(t)
     elif t.type.bases and is_subtype(t, s):
         return join_instances_via_supertype(t, s, basic)
     else:
@@ -241,3 +248,10 @@ def combine_similar_callables(t: Callable, s: Callable,
                     None,
                     t.variables)
     return s
+
+
+def object_from_instance(instance: Instance) -> Instance:
+    """Construct the type 'builtins.object' from an instance type."""
+    # Use the fact that 'object' is always the last class in the mro.
+    res = Instance(instance.type.mro[-1], [])
+    return res

@@ -35,14 +35,16 @@ class TypeVarDef(mypy.nodes.Context):
     name = ''
     id = 0
     values = Undefined(List[Type])
+    upper_bound = Undefined(Type)
     line = 0
     repr = Undefined(Any)
 
-    def __init__(self, name: str, id: int, values: List[Type], line: int = -1,
+    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type, line: int = -1,
                  repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.values = values
+        self.upper_bound = upper_bound
         self.line = line
         self.repr = repr
 
@@ -193,7 +195,8 @@ class TypeVar(Type):
 
     name = ''  # Name of the type variable (for messages and debugging)
     id = 0     # 1, 2, ... for type-related, -1, ... for function-related
-    values = Undefined(List[Type])  # Value restriction
+    values = Undefined(List[Type])  # Value restriction, empty list if no restriction
+    upper_bound = Undefined(Type)   # Upper bound for values (currently always 'object')
 
     # True if refers to the value of the type variable stored in a generic
     # instance wrapper. This is only relevant for generic class wrappers. If
@@ -203,12 +206,13 @@ class TypeVar(Type):
     # Can also be BoundVar/ObjectVar TODO better representation
     is_wrapper_var = Undefined(Any)
 
-    def __init__(self, name: str, id: int, values: List[Type],
+    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
                  is_wrapper_var: Any = False, line: int = -1,
                  repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.values = values
+        self.upper_bound = upper_bound
         self.is_wrapper_var = is_wrapper_var
         super().__init__(line, repr)
 
@@ -816,7 +820,7 @@ class BasicTypes:
     """Collection of Instance types of basic types (object, type, etc.)."""
 
     def __init__(self, object: Instance) -> None:
-        self.object = object
+        pass
 
 
 def strip_type(typ: Type) -> Type:

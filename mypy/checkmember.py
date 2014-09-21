@@ -196,7 +196,7 @@ def analyse_class_attribute_access(itype: Instance,
     t = node.type
     if t:
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
-        return add_class_tvars(t, itype.type, is_classmethod)
+        return add_class_tvars(t, itype.type, is_classmethod, builtin_type)
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(cast(TypeInfo, node.node), builtin_type)
@@ -204,9 +204,11 @@ def analyse_class_attribute_access(itype: Instance,
     return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
 
-def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool) -> Type:
+def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
+                    builtin_type: Function[[str], Instance]) -> Type:
     if isinstance(t, Callable):
-        vars = [TypeVarDef(n, i + 1, None)
+        # TODO: Should we propagate type variable values?
+        vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'))
                 for i, n in enumerate(info.type_vars)]
         arg_types = t.arg_types
         arg_kinds = t.arg_kinds
@@ -225,7 +227,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool) -> Type:
                         t.bound_vars,
                         t.line, None)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(Callable, add_class_tvars(i, info, is_classmethod))
+        return Overloaded([cast(Callable, add_class_tvars(i, info, is_classmethod, builtin_type))
                            for i in t.items()])
     return t
 
@@ -261,7 +263,7 @@ def class_callable(init_type: Callable, info: TypeInfo, type_type: Instance) -> 
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
-        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values))
+        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound))
 
     initvars = init_type.variables
     variables.extend(initvars)
@@ -290,7 +292,7 @@ class TvarTranslator(TypeTranslator):
         if t.id < 0:
             return t
         else:
-            return TypeVar(t.name, -t.id - self.num_func_tvars, t.values)
+            return TypeVar(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound)
 
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
@@ -300,7 +302,7 @@ class TvarTranslator(TypeTranslator):
         for v in variables:
             if v.id > 0:
                 items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        v.values))
+                                        v.values, v.upper_bound))
             else:
                 items.append(v)
         return items

@@ -1041,7 +1041,7 @@ class ExpressionChecker:
     def check_list_or_set_expr(self, items: List[Node], fullname: str,
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
-        tv = TypeVar('T', -1, [])
+        tv = TypeVar('T', -1, [], self.chk.object_type())
         constructor = Callable([tv],
                                [nodes.ARG_STAR],
                                [None],
@@ -1049,7 +1049,7 @@ class ExpressionChecker:
                                                            [tv]),
                                self.named_type('builtins.function'),
                                tag,
-                               [TypeVarDef('T', -1, None)])
+                               [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -1077,8 +1077,8 @@ class ExpressionChecker:
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
-        tv1 = TypeVar('KT', -1, [])
-        tv2 = TypeVar('VT', -2, [])
+        tv1 = TypeVar('KT', -1, [], self.chk.object_type())
+        tv2 = TypeVar('VT', -2, [], self.chk.object_type())
         constructor = Undefined(Callable)
         # The callable type represents a function like this:
         #
@@ -1090,8 +1090,8 @@ class ExpressionChecker:
                                                            [tv1, tv2]),
                                self.named_type('builtins.function'),
                                '<list>',
-                               [TypeVarDef('KT', -1, None),
-                                TypeVarDef('VT', -2, None)])
+                               [TypeVarDef('KT', -1, None, self.chk.object_type()),
+                                TypeVarDef('VT', -2, None, self.chk.object_type())])
         # Synthesize function arguments.
         args = List[Node]()
         for key, value in e.items:
@@ -1199,14 +1199,14 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        tv = TypeVar('T', -1, [])
+        tv = TypeVar('T', -1, [], self.chk.object_type())
         constructor = Callable([tv],
                                [nodes.ARG_POS],
                                [None],
                                self.chk.named_generic_type(type_name, [tv]),
                                self.chk.named_type('builtins.function'),
                                id_for_messages,
-                               [TypeVarDef('T', -1, None)])
+                               [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 

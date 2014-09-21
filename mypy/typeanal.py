@@ -86,7 +86,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 else:
                     rep = None
                 values = cast(TypeVarExpr, sym.node).values
-                return TypeVar(t.name, sym.tvar_id, values, False, t.line, rep)
+                return TypeVar(t.name, sym.tvar_id, values, self.builtin_type('builtins.object'),
+                               False, t.line, rep)
             elif sym.node.fullname() == 'builtins.None':
                 return Void()
             elif sym.node.fullname() == 'typing.Any':
@@ -188,6 +189,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         a = List[TypeVarDef]()
         for vd in var_defs:
             a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
+                                vd.upper_bound.accept(self),
                                 vd.line, vd.repr))
         return a
 
