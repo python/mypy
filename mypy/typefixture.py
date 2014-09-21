@@ -135,8 +135,7 @@ class TypeFixture:
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
 
         # Basic types
-        self.basic = BasicTypes(self.o, self.type_type, self.std_tuple,
-                                self.std_function)
+        self.basic = BasicTypes(self.o)
 
     # Helper methods
 

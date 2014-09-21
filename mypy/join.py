@@ -130,12 +130,11 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 t, cast(Callable, self.s)):
             return combine_similar_callables(t, cast(Callable, self.s),
                                              self.basic)
-        elif t.is_type_obj() and is_subtype(self.s, self.basic.type_type):
-            return self.basic.type_type
-        elif (isinstance(self.s, Instance) and
-                cast(Instance, self.s).type == self.basic.type_type.type and
-                t.is_type_obj()):
-            return self.basic.type_type
+        elif t.is_type_obj() and is_subtype(self.s, t.fallback):
+            return t.fallback
+        elif (t.is_type_obj() and isinstance(self.s, Instance) and
+              cast(Instance, self.s).type == t.fallback):
+            return t.fallback
         else:
             return self.default(self.s)
 

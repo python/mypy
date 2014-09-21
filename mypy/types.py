@@ -815,11 +815,8 @@ class TypeQuery(TypeVisitor[bool]):
 class BasicTypes:
     """Collection of Instance types of basic types (object, type, etc.)."""
 
-    def __init__(self, object: Instance, type_type: Instance, tuple: Instance,
-                 function: Instance) -> None:
+    def __init__(self, object: Instance) -> None:
         self.object = object
-        self.type_type = type_type
-        self.function = function
 
 
 def strip_type(typ: Type) -> Type:

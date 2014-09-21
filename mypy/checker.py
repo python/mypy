@@ -1671,22 +1671,6 @@ class TypeChecker(NodeVisitor[Type]):
         sym = self.lookup_qualified(name)
         return Instance(cast(TypeInfo, sym.node), [])
 
-    def named_type_if_exists(self, name: str) -> Instance:
-        """Return named instance type, or None if the type was
-        not defined.
-
-        This is used to simplify test cases by avoiding the need to
-        define basic types not needed in specific test cases (tuple
-        etc.).
-        """
-        try:
-            # Assume that the name refers to a type.
-            sym = self.lookup_qualified(name)
-            return Instance(cast(TypeInfo, sym.node), [])
-        except KeyError:
-            # This is an unsafe cast; we use UnboundType to make debugging easier.
-            return Any(UnboundType(name))
-
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
 
@@ -1715,13 +1699,6 @@ class TypeChecker(NodeVisitor[Type]):
     def str_type(self) -> Instance:
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
-
-    def tuple_type(self) -> Type:
-        """Return instance type 'tuple'."""
-        # We need the tuple for analysing member access. We want to be able to
-        # do this even if tuple type is not available (useful in test cases),
-        # so we return an unbound type if there is no tuple type.
-        return self.named_type_if_exists('builtins.tuple')
 
     def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
                                msg: str = messages.INCOMPATIBLE_TYPES) -> None:
@@ -1774,9 +1751,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Return a BasicTypes instance that contains primitive types that are
         needed for certain type operations (joins, for example).
         """
-        return BasicTypes(self.object_type(), self.named_type('builtins.type'),
-                          self.named_type_if_exists('builtins.tuple'),
-                          self.named_type_if_exists('builtins.function'))
+        return BasicTypes(self.object_type())
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?
