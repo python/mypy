@@ -182,10 +182,6 @@ class Instance(Type):
         return visitor.visit_instance(self)
 
 
-BOUND_VAR = 2
-OBJECT_VAR = 3
-
-
 class TypeVar(Type):
     """A type variable type.
 
@@ -198,22 +194,12 @@ class TypeVar(Type):
     values = Undefined(List[Type])  # Value restriction, empty list if no restriction
     upper_bound = Undefined(Type)   # Upper bound for values (currently always 'object')
 
-    # True if refers to the value of the type variable stored in a generic
-    # instance wrapper. This is only relevant for generic class wrappers. If
-    # False (default), this refers to the type variable value(s) given as the
-    # implicit type variable argument.
-    #
-    # Can also be BoundVar/ObjectVar TODO better representation
-    is_wrapper_var = Undefined(Any)
-
     def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
-                 is_wrapper_var: Any = False, line: int = -1,
-                 repr: Any = None) -> None:
+                 line: int = -1, repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.values = values
         self.upper_bound = upper_bound
-        self.is_wrapper_var = is_wrapper_var
         super().__init__(line, repr)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -648,14 +634,7 @@ class TypeStrVisitor(TypeVisitor[str]):
             return '`{}'.format(t.id)
         else:
             # Named type variable type.
-            s = '{}`{}'.format(t.name, t.id)
-            if t.is_wrapper_var == BOUND_VAR:
-                s += '!B'
-            elif t.is_wrapper_var is True:
-                s += '!W'
-            elif t.is_wrapper_var == OBJECT_VAR:
-                s += '!O'
-            return s
+            return '{}`{}'.format(t.name, t.id)
 
     def visit_callable(self, t):
         s = ''
