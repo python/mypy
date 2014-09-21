@@ -8,6 +8,8 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
+class tuple: pass
+
 def isinstance(x: object, t: type) -> bool: pass
 
 @builtinclass
@@ -28,4 +30,3 @@ class list(Iterable[T], Generic[T]):
     def __setitem__(self, x: int, v: T) -> None: pass
     def __getitem__(self, x: int) -> T: pass
     def __add__(self, x: List[T]) -> T: pass
-

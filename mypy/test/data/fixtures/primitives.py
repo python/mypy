@@ -11,3 +11,4 @@ class str: pass
 class float: pass
 class bool: pass
 class bytes: pass
+class tuple: pass

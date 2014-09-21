@@ -16,3 +16,5 @@ class int: pass
 class bool(int): pass
 @builtinclass
 class str: pass
+
+class tuple: pass

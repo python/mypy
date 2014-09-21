@@ -9,6 +9,7 @@ class object:
     def __ne__(self, o: 'object') -> 'bool': pass
 
 class type: pass
+class tuple: pass
 
 class bool: pass
 

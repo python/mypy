@@ -6,5 +6,6 @@ class object:
 class type: pass
 
 class int: pass
+class tuple: pass
 
 class slice: pass

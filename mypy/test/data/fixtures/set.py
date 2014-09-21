@@ -11,5 +11,6 @@ class type: pass
 
 class int: pass
 class str: pass
+class tuple: pass
 
 class set(Generic[T]): pass

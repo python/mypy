@@ -74,19 +74,19 @@ class MapActualsToFormalsSuite(Suite):
             [ARG_STAR],
             [ARG_POS],
             [[0]],
-            self.tuple_type([AnyType()]))
+            self.tuple(AnyType()))
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS, ARG_POS],
             [[0], [0]],
-            self.tuple_type([AnyType(), AnyType()]))
+            self.tuple(AnyType(), AnyType()))
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS, ARG_OPT, ARG_OPT],
             [[0], [0], []],
-            self.tuple_type([AnyType(), AnyType()]))
+            self.tuple(AnyType(), AnyType()))
 
-    def tuple_tupe(self, args):
+    def tuple(self, *args):
         return TupleType(args, None)
 
     def test_named_args(self):

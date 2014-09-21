@@ -89,6 +89,7 @@ class A: pass
 class object:
     def __init__(self): pass
 class bytes: pass
+class tuple: pass
 
 [case testUnicodeLiteralInPython3]
 from typing import Undefined
@@ -479,7 +480,7 @@ class A(P):
     pass
 class B(P):
     pass
-        
+
 class X:
     def __lt__(self, o: 'Y') -> A: pass
     def __gt__(self, o: 'Y') -> A: pass
