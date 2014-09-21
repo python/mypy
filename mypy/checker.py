@@ -2,7 +2,7 @@
 
 import itertools
 
-from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar
+from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar, Union
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -386,7 +386,7 @@ class TypeChecker(NodeVisitor[Type]):
             if defn.items[0].type:
                 # Explicit types.
                 if len(defn.items) == 1:
-                    self.check_nonindexed_assignment(defn.items[0].type,
+                    self.check_single_assignment(defn.items[0].type,
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
@@ -928,14 +928,15 @@ class TypeChecker(NodeVisitor[Type]):
             for lv in s.lvalues[:-1]:
                 self.check_assignment(lv, rvalue, s.type)
 
-
     def check_assignment(self, lvalue: Node, rvalue: Node, force_rvalue_type: Type=None) -> None:
 
-        if isinstance(lvalue, TupleExpr):
+        if isinstance(lvalue, ParenExpr):
+            self.check_assignment(lvalue.expr, rvalue)
             
-            # rhs must be TupleExpr, ListExpr, or types: iterable, tuple, any
+        elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            assert not force_rvalue_type or isinstance(force_rvalue_type, TuppleType)
             
-            # TODO remove ParenExpr from rvalue
+            rvalue = self.remove_parens(rvalue)
             
             if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
                 # Recursively go into Tuple or List expression rhs instead of
@@ -943,32 +944,31 @@ class TypeChecker(NodeVisitor[Type]):
                 # control in cases like: a, b = [int, str] where rhs would get
                 # type List[object]
                 
-                rtuple = cast(TupleExpr, rvalue)  # TODO
-                ltuple = cast(TupleExpr, lvalue)
+                rtuple = cast(Union[TupleExpr, ListExpr], rvalue) 
+                ltuple = cast(Union[TupleExpr, ListExpr], lvalue)
                 
                 if len(rtuple.items) != len(ltuple.items):
                     self.msg.incompatible_value_count_in_assignment(
                                     len(ltuple.items), len(rtuple.items), lvalue)
                 else:
-                    for lv, rv in zip(ltuple.items, rtuple.items):
-                        self.check_assignment(lv, rv)  # TODO force_rvalue_type
+                    force_rvalue_types = None
+                    if force_rvalue_type:
+                        assert len(rtuple.items) == len(force_rvalue_type.items)
+                        force_rvalue_types = force_rvalue_type.items
+                    else:
+                        force_rvalue_types = [None] * len(rtuple.items)
+                        
+                    for lv, rv, forced_type in zip(ltuple.items, rtuple.items, force_rvalue_types):
+                        self.check_assignment(lv, rv, forced_type)
             else:
-                # TODO create type from lvalue to infer rvalues
-                
                 lvalues = lvalue.items  # unpack tuple or list expr
-                
                 self.check_multi_assignment(lvalues, rvalue, lvalue)
                 
-            
-        elif isinstance(lvalue, ListExpr):
-            pass # TODO
-        elif isinstance(lvalue, ParenExpr):
-            self.check_assignment(lvalue.expr, rvalue)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             
             if lvalue_type:
-                rvalue_type = self.check_nonindexed_assignment(lvalue_type, rvalue, rvalue)
+                rvalue_type = self.check_single_assignment(lvalue_type, rvalue, rvalue)
                 
                 if rvalue_type and not force_rvalue_type:
                     self.binder.assign_type(lvalue, rvalue_type)
@@ -979,6 +979,11 @@ class TypeChecker(NodeVisitor[Type]):
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
     
+    def remove_parens(self, node: Node) -> Node:
+        if isinstance(node, ParenExpr):
+            return self.remove_parens(node.expr)
+        else:
+            return node
     
     def check_multi_assignment(self, lvalues: List[Node],
                                   rvalue: Node,
@@ -1001,8 +1006,7 @@ class TypeChecker(NodeVisitor[Type]):
        if isinstance(rvalue_type, AnyType):
            pass
        elif isinstance(rvalue_type, TupleType):
-           # Rvalue with tuple type.
-                                            
+           # Rvalue with tuple type.                             
            if len(rvalue_type.items) != len(lvalues):
                self.msg.incompatible_value_count_in_assignment(
                    len(lvalues), len(rvalue_type.items), context)
@@ -1023,13 +1027,13 @@ class TypeChecker(NodeVisitor[Type]):
                            type_parameters.append(rvalue_type.items[i])   
                    
                    lvalue_type = TupleType(type_parameters)
-                   
+
                    # Infer rvalue again, now in the correct type context.
                    rvalue_type = cast(TupleType, self.accept(rvalue,
-                                                             lvalue_type))         
+                                                             lvalue_type))
                                                              
                for lv, rv_type in zip(lvalues, rvalue_type.items):
-                   self.check_assignment(lv, self.temp_node(rv_type))
+                   self.check_assignment(lv, self.temp_node(rv_type), rv_type)
                
        elif (is_subtype(rvalue_type,
                         self.named_generic_type('typing.Iterable',
@@ -1038,9 +1042,7 @@ class TypeChecker(NodeVisitor[Type]):
            # Rvalue is iterable.
            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
            for lv in lvalues:
-               self.check_assignment(lv,
-                                     self.temp_node(item_type),
-                                     context, msg)
+               self.check_assignment(lv, self.temp_node(item_type), item_type)
        else:
            self.fail(msg, context)
                                                
@@ -1088,19 +1090,6 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(s, MemberExpr):
             return s.is_def
         return False
-
-    def expand_lvalues(self, n: Node) -> List[Node]:
-        print(n)
-        
-        if isinstance(n, TupleExpr):
-            return self.expr_checker.unwrap_list(n.items)
-        elif isinstance(n, ListExpr):
-            return self.expr_checker.unwrap_list(n.items)
-        elif isinstance(n, ParenExpr):
-            return self.expand_lvalues(n.expr)
-        else:
-            return [n]
-
 
     def infer_variable_type(self, name: Var, lvalue: Node,
                             init_type: Type, context: Context) -> None:
@@ -1154,18 +1143,19 @@ class TypeChecker(NodeVisitor[Type]):
                 return ans
         return known_type
 
-    def check_nonindexed_assignment(self, lvalue_type: Type, rvalue: Node, 
-                                    context: Node, 
-                                    msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
+    def check_single_assignment(self, lvalue_type: Type, rvalue: Node, 
+                                context: Node, 
+                                msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
         if refers_to_fullname(rvalue, 'typing.Undefined'):
             # The rvalue is just 'Undefined'; this is always valid.
             # Infer the type of 'Undefined' from the lvalue type.
             self.store_type(rvalue, lvalue_type)
             return None
-        rvalue_type = self.accept(rvalue, lvalue_type)
-        self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                           'expression has type', 'variable has type')
-        return rvalue_type
+        else:
+            rvalue_type = self.accept(rvalue, lvalue_type)
+            self.check_subtype(rvalue_type, lvalue_type, context, msg,
+                               'expression has type', 'variable has type')            
+            return rvalue_type
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Node, context: Context) -> None:
@@ -1477,7 +1467,7 @@ class TypeChecker(NodeVisitor[Type]):
         elif len(index) == 1:
             v = cast(Var, index[0].node)
             if v.type:
-                self.check_nonindexed_assignment(v.type,
+                self.check_single_assignment(v.type,
                                              self.temp_node(item_type), context,
                                              messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
