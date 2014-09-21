@@ -16,3 +16,6 @@ class str: pass # for keyword argument key type
 class list(Iterable[T], Generic[T]): # needed by some test cases
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
+
+class tuple: pass
+class function: pass

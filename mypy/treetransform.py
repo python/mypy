@@ -3,7 +3,7 @@
 Subclass TransformVisitor to perform non-trivial transformations.
 """
 
-from typing import List, Dict
+from typing import List, Dict, cast
 
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
@@ -19,7 +19,7 @@ from mypy.nodes import (
     DisjointclassExpr, CoerceExpr, TypeExpr, ComparisonExpr,
     JavaCast, TempNode
 )
-from mypy.types import Type
+from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
 
 
@@ -72,7 +72,7 @@ class TransformVisitor(NodeVisitor[Node]):
                       node.arg_kinds[:],
                       [None] * len(node.init),
                       self.block(node.body),
-                      self.optional_type(node.type))
+                      cast(FunctionLike, self.optional_type(node.type)))
 
         self.copy_function_attributes(new, node)
 
@@ -91,7 +91,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        node.arg_kinds[:],
                        [None] * len(node.init),
                        self.block(node.body),
-                       self.optional_type(node.type))
+                       cast(FunctionLike, self.optional_type(node.type)))
         self.copy_function_attributes(new, node)
         return new
 

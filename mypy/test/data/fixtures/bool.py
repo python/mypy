@@ -7,7 +7,7 @@ class object:
     def __init__(self) -> None: pass
 
 class type: pass
-
+class tuple: pass
+class function: pass
 class bool: pass
-
 class int: pass

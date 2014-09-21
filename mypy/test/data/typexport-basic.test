@@ -107,6 +107,7 @@ a = 1 + 2
 [file builtins.py]
 class object:
     def __init__(self) -> None: pass
+class function: pass
 class int:
     def __add__(self, x: int) -> int: pass
     def __truediv__(self, x: int) -> float: pass
@@ -140,6 +141,7 @@ class int:
     def __gt__(self, x: int) -> int: pass
 class bool: pass
 class type: pass
+class function: pass
 [out]
 ComparisonExpr(3) : builtins.bool
 ComparisonExpr(4) : builtins.bool

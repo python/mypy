@@ -184,7 +184,8 @@ class ImportAll(ImportBase):
 class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
 
-    # Type signature (Callable or Overloaded)
+    # Type signature. This is usually Callable or Overloaded, but it can be something else for
+    # decorated functions/
     type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
@@ -244,7 +245,7 @@ class FuncItem(FuncBase):
 
     def __init__(self, args: List['Var'], arg_kinds: List[int],
                  init: List[Node], body: 'Block',
-                 typ: 'mypy.types.Type' = None) -> None:
+                 typ: 'mypy.types.FunctionLike' = None) -> None:
         self.args = args
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
@@ -313,7 +314,7 @@ class FuncDef(FuncItem):
                  arg_kinds: List[int],   # Arguments kinds (nodes.ARG_*)
                  init: List[Node],       # Initializers (each may be None)
                  body: 'Block',
-                 typ: 'mypy.types.Type' = None) -> None:
+                 typ: 'mypy.types.FunctionLike' = None) -> None:
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
@@ -1016,7 +1017,7 @@ reverse_op_method_set = set(reverse_op_methods.values())
 
 
 class OpExpr(Node):
-    """Binary operation (other than . or [] or comparison operators, 
+    """Binary operation (other than . or [] or comparison operators,
     which have specific nodes)."""
 
     op = ''
@@ -1049,13 +1050,13 @@ class ComparisonExpr(Node):
         self.operands = operands
         self.method_types = []
         self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = ( ('Comparison',) + tuple(operators) + 
+        self.literal_hash = ( ('Comparison',) + tuple(operators) +
                                tuple(o.literal_hash for o in operands) )
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
-    
-    
+
+
 class SliceExpr(Node):
     """Slice expression (e.g. 'x:y', 'x:', '::2' or ':').
 
@@ -1385,14 +1386,14 @@ class TypeInfo(SymbolNode):
     the class.
     """
 
-    _fullname = None  # type: str      # Fully qualified name
-    defn = Undefined(ClassDef)         # Corresponding ClassDef
+    _fullname = None  # type: str          # Fully qualified name
+    defn = Undefined(ClassDef)             # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
-    # value always to refers to self.
+    # value always to refers to this class.
     mro = Undefined(List['TypeInfo'])
-    subtypes = Undefined(Set['TypeInfo'])  # Direct subclasses
+    subtypes = Undefined(Set['TypeInfo'])  # Direct subclasses encountered so far
     names = Undefined('SymbolTable')       # Names defined directly in this type
-    is_abstract = False       # Does the class have any abstract attributes?
+    is_abstract = False                    # Does the class have any abstract attributes?
     abstract_attributes = Undefined(List[str])
     # All classes in this build unit that are disjoint with this class.
     disjoint_classes = Undefined(List['TypeInfo'])
@@ -1625,13 +1626,13 @@ def clean_up(s: str) -> str:
     return re.sub('.*::', '', s)
 
 
-def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
+def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     if func.type:
+        assert isinstance(func.type, mypy.types.FunctionLike)
         return cast(mypy.types.FunctionLike, func.type)
     else:
         # Implicit type signature with dynamic types.
-        # Overloaded functions always have a signature, so func must be an
-        # ordinary function.
+        # Overloaded functions always have a signature, so func must be an ordinary function.
         fdef = cast(FuncDef, func)
         name = func.name()
         if name:
@@ -1643,21 +1644,20 @@ def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
                                    fdef.arg_kinds,
                                    names,
                                    mypy.types.AnyType(),
-                                   False,
+                                   fallback,
                                    name)
 
 
 @overload
-def method_type(func: FuncBase) -> 'mypy.types.FunctionLike':
+def method_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     """Return the signature of a method (omit self)."""
-    return method_type(function_type(func))
+    return method_type(function_type(func, fallback))
 
 
 @overload
 def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
     if isinstance(sig, mypy.types.Callable):
-        csig = cast(mypy.types.Callable, sig)
-        return method_callable(csig)
+        return method_callable(sig)
     else:
         osig = cast(mypy.types.Overloaded, sig)
         items = List[mypy.types.Callable]()
@@ -1671,7 +1671,7 @@ def method_callable(c: 'mypy.types.Callable') -> 'mypy.types.Callable':
                                c.arg_kinds[1:],
                                c.arg_names[1:],
                                c.ret_type,
-                               c.is_type_obj(),
+                               c.fallback,
                                c.name,
                                c.variables,
                                c.bound_vars)

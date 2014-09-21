@@ -35,14 +35,16 @@ class TypeVarDef(mypy.nodes.Context):
     name = ''
     id = 0
     values = Undefined(List[Type])
+    upper_bound = Undefined(Type)
     line = 0
     repr = Undefined(Any)
 
-    def __init__(self, name: str, id: int, values: List[Type], line: int = -1,
+    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type, line: int = -1,
                  repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.values = values
+        self.upper_bound = upper_bound
         self.line = line
         self.repr = repr
 
@@ -193,7 +195,8 @@ class TypeVar(Type):
 
     name = ''  # Name of the type variable (for messages and debugging)
     id = 0     # 1, 2, ... for type-related, -1, ... for function-related
-    values = Undefined(List[Type])  # Value restriction
+    values = Undefined(List[Type])  # Value restriction, empty list if no restriction
+    upper_bound = Undefined(Type)   # Upper bound for values (currently always 'object')
 
     # True if refers to the value of the type variable stored in a generic
     # instance wrapper. This is only relevant for generic class wrappers. If
@@ -203,12 +206,13 @@ class TypeVar(Type):
     # Can also be BoundVar/ObjectVar TODO better representation
     is_wrapper_var = Undefined(Any)
 
-    def __init__(self, name: str, id: int, values: List[Type],
+    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
                  is_wrapper_var: Any = False, line: int = -1,
                  repr: Any = None) -> None:
         self.name = name
         self.id = id
         self.values = values
+        self.upper_bound = upper_bound
         self.is_wrapper_var = is_wrapper_var
         super().__init__(line, repr)
 
@@ -229,7 +233,10 @@ class FunctionLike(Type):
     def items(self) -> List['Callable']: pass
 
     @abstractmethod
-    def with_name(self, name: str) -> Type: pass
+    def with_name(self, name: str) -> 'FunctionLike': pass
+
+    # Corresponding instance type (e.g. builtins.type)
+    fallback = Undefined(Instance)
 
 
 class Callable(FunctionLike):
@@ -238,10 +245,10 @@ class Callable(FunctionLike):
     arg_types = Undefined(List[Type])  # Types of function arguments
     arg_kinds = Undefined(List[int])   # mypy.nodes.ARG_ constants
     arg_names = Undefined(List[str])   # None if not a keyword argument
-    min_args = 0                # Minimum number of arguments
-    is_var_arg = False          # Is it a varargs function?
-    ret_type = Undefined(Type)  # Return value type
-    name = ''                   # Name (may be None; for error messages)
+    min_args = 0                    # Minimum number of arguments
+    is_var_arg = False              # Is it a varargs function?
+    ret_type = Undefined(Type)      # Return value type
+    name = ''                       # Name (may be None; for error messages)
     # Type variables for a generic function
     variables = Undefined(List[TypeVarDef])
 
@@ -266,7 +273,7 @@ class Callable(FunctionLike):
                  arg_kinds: List[int],
                  arg_names: List[str],
                  ret_type: Type,
-                 is_type_obj: bool,
+                 fallback: Instance,
                  name: str = None, variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1, repr: Any = None) -> None:
@@ -280,7 +287,7 @@ class Callable(FunctionLike):
         self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
         self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
         self.ret_type = ret_type
-        self._is_type_obj = is_type_obj
+        self.fallback = fallback
         assert not name or '<bound method' not in name
         self.name = name
         self.variables = variables
@@ -288,11 +295,11 @@ class Callable(FunctionLike):
         super().__init__(line, repr)
 
     def is_type_obj(self) -> bool:
-        return self._is_type_obj
+        return self.fallback.type.fullname() == 'builtins.type'
 
     def type_object(self) -> mypy.nodes.TypeInfo:
-        assert self._is_type_obj
-        return (cast(Instance, self.ret_type)).type
+        assert self.is_type_obj()
+        return cast(Instance, self.ret_type).type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable(self)
@@ -306,7 +313,7 @@ class Callable(FunctionLike):
                         self.arg_kinds,
                         self.arg_names,
                         ret,
-                        self.is_type_obj(),
+                        self.fallback,
                         name,
                         self.variables,
                         self.bound_vars,
@@ -342,6 +349,7 @@ class Overloaded(FunctionLike):
 
     def __init__(self, items: List[Callable]) -> None:
         self._items = items
+        self.fallback = items[0].fallback
         super().__init__(items[0].line, None)
 
     def items(self) -> List[Callable]:
@@ -371,13 +379,22 @@ class Overloaded(FunctionLike):
 
 
 class TupleType(Type):
-    """The tuple type Tuple[T1, ..., Tn] (at least one type argument)."""
+    """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
+
+    Instance variables:
+      items -- tuple item types
+      fallback -- the underlying instance type that is used for non-tuple methods
+        (this is currently always builtins.tuple, but it could be different for named
+        tuples, for example)
+    """
 
     items = Undefined(List[Type])
+    fallback = Undefined(Instance)
 
-    def __init__(self, items: List[Type], line: int = -1,
+    def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  repr: Any = None) -> None:
         self.items = items
+        self.fallback = fallback
         super().__init__(line, repr)
 
     def length(self) -> int:
@@ -555,14 +572,16 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.arg_kinds,
                         t.arg_names,
                         t.ret_type.accept(self),
-                        t.is_type_obj(),
+                        t.fallback,
                         t.name,
                         self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
                         t.line, t.repr)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.translate_types(t.items), t.line, t.repr)
+        return TupleType(self.translate_types(t.items),
+                         Any(t.fallback.accept(self)),
+                         t.line, t.repr)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.repr)
@@ -797,17 +816,6 @@ class TypeQuery(TypeVisitor[bool]):
             return res
 
 
-class BasicTypes:
-    """Collection of Instance types of basic types (object, type, etc.)."""
-
-    def __init__(self, object: Instance, type_type: Instance, tuple: Type,
-                 function: Type) -> None:
-        self.object = object
-        self.type_type = type_type
-        self.tuple = tuple
-        self.function = function
-
-
 def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
 
@@ -816,7 +824,7 @@ def strip_type(typ: Type) -> Type:
                         typ.arg_kinds,
                         typ.arg_names,
                         typ.ret_type,
-                        typ.is_type_obj(),
+                        typ.fallback,
                         None,
                         typ.variables)
     elif isinstance(typ, Overloaded):
@@ -835,7 +843,7 @@ def replace_leading_arg_type(t: Callable, self_type: Type) -> Callable:
                     t.arg_kinds,
                     t.arg_names,
                     t.ret_type,
-                    t.is_type_obj(),
+                    t.fallback,
                     t.name,
                     t.variables,
                     t.bound_vars,
