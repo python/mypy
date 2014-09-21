@@ -412,15 +412,3 @@ class StrConv(NodeVisitor[str]):
         if not a[1]:
             a[1] = '<empty>'
         return self.dump(a, o)
-
-    def visit_coerce_expr(self, o):
-        return self.dump([o.expr, ('Types', [o.target_type, o.source_type])],
-                         o)
-
-    def visit_type_expr(self, o):
-        return self.dump([str(o.type)], o)
-
-    def visit_filter_node(self, o):
-        # These are for convenience. These node types are not defined in the
-        # parser module.
-        pass

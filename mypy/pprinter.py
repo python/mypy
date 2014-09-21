@@ -166,23 +166,6 @@ class PrettyPrintVisitor(NodeVisitor):
     def visit_name_expr(self, o):
         self.string(o.name)
 
-    def visit_coerce_expr(self, o: CoerceExpr) -> None:
-        self.string('{')
-        self.full_type(o.target_type)
-        if coerce.is_special_primitive(o.source_type):
-            self.string(' <= ')
-            self.type(o.source_type)
-        self.string(' ')
-        self.node(o.expr)
-        self.string('}')
-
-    def visit_type_expr(self, o: TypeExpr) -> None:
-        # Type expressions are only generated during transformation, so we must
-        # use automatic formatting.
-        self.string('<')
-        self.full_type(o.type)
-        self.string('>')
-
     def visit_index_expr(self, o):
         if o.analyzed:
             o.analyzed.accept(self)

@@ -1309,59 +1309,6 @@ class DisjointclassExpr(Node):
         return visitor.visit_disjointclass_expr(self)
 
 
-class CoerceExpr(Node):
-    """Implicit coercion expression.
-
-    This is used only when compiling/transforming.  These are inserted
-    after type checking.
-    """
-
-    expr = Undefined(Node)
-    target_type = Undefined('mypy.types.Type')
-    source_type = Undefined('mypy.types.Type')
-    is_wrapper_class = False
-
-    def __init__(self, expr: Node, target_type: 'mypy.types.Type',
-                 source_type: 'mypy.types.Type',
-                 is_wrapper_class: bool) -> None:
-        self.expr = expr
-        self.target_type = target_type
-        self.source_type = source_type
-        self.is_wrapper_class = is_wrapper_class
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_coerce_expr(self)
-
-
-class JavaCast(Node):
-    # TODO obsolete; remove
-    expr = Undefined(Node)
-    target = Undefined('mypy.types.Type')
-
-    def __init__(self, expr: Node, target: 'mypy.types.Type') -> None:
-        self.expr = expr
-        self.target = target
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_java_cast(self)
-
-
-class TypeExpr(Node):
-    """Expression that evaluates to a runtime representation of a type.
-
-    This is used only for runtime type checking. This node is always generated
-    only after type checking.
-    """
-
-    type = Undefined('mypy.types.Type')
-
-    def __init__(self, typ: 'mypy.types.Type') -> None:
-        self.type = typ
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_type_expr(self)
-
-
 class TempNode(Node):
     """Temporary dummy node used during type checking.
 

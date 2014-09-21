@@ -16,8 +16,7 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    DisjointclassExpr, CoerceExpr, TypeExpr, ComparisonExpr,
-    JavaCast, TempNode
+    DisjointclassExpr, ComparisonExpr, TempNode
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -398,15 +397,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_disjointclass_expr(self, node: DisjointclassExpr) -> Node:
         return DisjointclassExpr(node.cls)
-
-    def visit_coerce_expr(self, node: CoerceExpr) -> Node:
-        raise RuntimeError('Not supported')
-
-    def visit_type_expr(self, node: TypeExpr) -> Node:
-        raise RuntimeError('Not supported')
-
-    def visit_java_cast(self, node: JavaCast) -> Node:
-        raise RuntimeError('Not supported')
 
     def visit_temp_node(self, node: TempNode) -> Node:
         return TempNode(self.type(node.type))
