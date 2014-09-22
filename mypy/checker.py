@@ -1338,7 +1338,7 @@ class TypeChecker(NodeVisitor[Type]):
                         # Good!
                         return None
                     # Else fall back to the check below (which will fail).
-            super_type = self.named_type('builtins.BaseException')
+            super_type = cast(Type, self.named_type('builtins.BaseException'))
             # Type checking "raise from"
             if s.from_expr:
                 super_type = self.accept(s.from_expr)
