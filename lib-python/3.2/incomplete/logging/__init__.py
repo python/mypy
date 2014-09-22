@@ -1187,7 +1187,7 @@ class Logger(Filterer):
 
     any root
     any manager
-    
+
     def __init__(self, name, level=NOTSET):
         """
         Initialize the logger with a name and an optional level.

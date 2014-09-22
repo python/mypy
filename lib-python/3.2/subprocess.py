@@ -1019,7 +1019,7 @@ class Popen(object):
             return self._internal_poll_win(_deadstate)
 
         from _subprocess import Handle
-            
+
         def _internal_poll_win(self, _deadstate: int = None,
                 _WaitForSingleObject: Function[[Handle, int], int] =
                                _subprocess.WaitForSingleObject,
@@ -1424,7 +1424,7 @@ class Popen(object):
 
             """
             return self._internal_poll_posix(_deadstate)
-            
+
         def _internal_poll_posix(self, _deadstate: int = None,
                                  _waitpid: Function[[int, int],
                                                  Tuple[int, int]] = os.waitpid,
