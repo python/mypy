@@ -278,6 +278,8 @@ class Parser:
                 if self.current_str() == '(':
                     lparen = self.skip()
                     while True:
+                        if self.current_str() == ')':
+                            break
                         if self.current_str() == 'metaclass':
                             metaclass = self.parse_metaclass()
                             break
