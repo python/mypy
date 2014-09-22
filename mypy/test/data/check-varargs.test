@@ -114,9 +114,9 @@ b = Undefined # type: B
 c = Undefined # type: C
 o = Undefined # type: object
 
-a = f(o) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
-b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+a = f(o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+b = f(b, a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(a, b) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 o = f()
 a = f(a)
@@ -139,10 +139,10 @@ T = typevar('T')
 a = Undefined # type: A
 o = Undefined # type: object
 
-a = f(o) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
-a = f(a, o) # E: Argument 2 to "f" has incompatible type "object"; expected "A"
-a = f(a, a, o) # E: Argument 3 to "f" has incompatible type "object"; expected "A"
-a = f(a, a, a, o) # E: Argument 4 to "f" has incompatible type "object"; expected "A"
+a = f(o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = f(a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = f(a, a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = f(a, a, a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 a = f(a)
 a = f(a, a)

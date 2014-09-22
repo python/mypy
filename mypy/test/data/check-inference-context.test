@@ -719,3 +719,12 @@ f([1])
 f('')
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[None], str]"
 [builtins fixtures/isinstancelist.py]
+
+[case testIgnoringInferenceContext]
+from typing import typevar, List
+T = typevar('T')
+def f(x: List[T]) -> T: pass
+def g(y: object) -> None: pass
+a = [1]
+g(f(a))
+[builtins fixtures/list.py]

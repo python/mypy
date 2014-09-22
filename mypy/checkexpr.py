@@ -281,10 +281,14 @@ class ExpressionChecker:
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
         ret_type = callable.ret_type
         if isinstance(ret_type, TypeVar):
-            if ret_type.values:
-                # The return type is a type variable with values, but we can't easily restrict
-                # type inference to conform to the valid values. Give up and just use function
-                # arguments for type inference.
+            if ret_type.values or (not isinstance(ret_type, Instance) or
+                                   not cast(Instance, ret_type).args):
+                # The return type is a type variable. If it has values, we can't easily restrict
+                # type inference to conform to the valid values. If it's unrestricted, we could
+                # infer a too general type for the type variable if we use context. Give up and
+                # just use function arguments for type inference.
+                #
+                # See also github issues #462 and #360.
                 ret_type = NoneTyp()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substite non-None and non-erased types.
