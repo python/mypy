@@ -2660,3 +2660,12 @@ MypyFile:1(
     y
     Block:4(
       PassStmt:5())))
+
+[case testEmptySuperClass]
+class A():
+    pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    PassStmt:2()))
