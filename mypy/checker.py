@@ -1338,8 +1338,12 @@ class TypeChecker(NodeVisitor[Type]):
                         # Good!
                         return None
                     # Else fall back to the check below (which will fail).
+            super_type = self.named_type('builtins.BaseException')
+            # Type checking "raise from"
+            if s.from_expr:
+                super_type = self.accept(s.from_expr)
             self.check_subtype(typ,
-                               self.named_type('builtins.BaseException'), s,
+                               super_type, s,
                                messages.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
