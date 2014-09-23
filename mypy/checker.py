@@ -934,7 +934,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_assignment(lvalue.expr, rvalue)
             
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            assert not force_rvalue_type or isinstance(force_rvalue_type, TuppleType)
+            assert not force_rvalue_type or isinstance(force_rvalue_type, TupleType)
             
             rvalue = self.remove_parens(rvalue)
             
@@ -1033,7 +1033,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                              lvalue_type))
                                                              
                for lv, rv_type in zip(lvalues, rvalue_type.items):
-                   self.check_assignment(lv, self.temp_node(rv_type), rv_type)
+                   self.check_assignment(lv, self.temp_node(rv_type, context), rv_type)
                
        elif (is_subtype(rvalue_type,
                         self.named_generic_type('typing.Iterable',
@@ -1042,7 +1042,7 @@ class TypeChecker(NodeVisitor[Type]):
            # Rvalue is iterable.
            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
            for lv in lvalues:
-               self.check_assignment(lv, self.temp_node(item_type), item_type)
+               self.check_assignment(lv, self.temp_node(item_type, context), item_type)
        else:
            self.fail(msg, context)
                                                
@@ -1449,30 +1449,30 @@ class TypeChecker(NodeVisitor[Type]):
                                 item_type: Type, context: Context) -> None:                        
         """Type check or infer for loop or list comprehension index vars."""
         if not is_annotated:
-            
-            # TODO FIX  temp:
-        
-            return
-            
-            
-            
             # Create a temporary copy of variables with Node item type.
             # TODO this is ugly
             node_index = []  # type: List[Node]
             for i in index:
                 node_index.append(i)
             
-            self.check_assignments(node_index,
-                                   self.temp_node(item_type, context))
+            # TODO SK fix
+            
+            if len(node_index) == 1:
+                self.check_assignment(node_index[0], self.temp_node(item_type, context), context)
+            else:
+                self.check_multi_assignment(node_index,
+                                   self.temp_node(item_type, context),
+                                   context)
         elif len(index) == 1:
             v = cast(Var, index[0].node)
             if v.type:
                 self.check_single_assignment(v.type,
-                                             self.temp_node(item_type), context,
+                                             self.temp_node(item_type, context), 
+                                             context,
                                              messages.INCOMPATIBLE_TYPES_IN_FOR)
         else:
             
-            # TODO FIX  temp:
+            # TODO SK FIX  temp:
         
             return
             
@@ -1486,7 +1486,7 @@ class TypeChecker(NodeVisitor[Type]):
                 else:
                     t.append(AnyType())
             self.check_multi_assignment(t, [None] * len(index),
-                                        self.temp_node(item_type), context,
+                                        self.temp_node(item_type, context), context,
                                         messages.INCOMPATIBLE_TYPES_IN_FOR)
 
     def visit_del_stmt(self, s: DelStmt) -> Type:

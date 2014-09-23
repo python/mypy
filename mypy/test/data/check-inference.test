@@ -711,7 +711,7 @@ class A: pass
 [case testMultipleAssignmentWithPartialDefinition2]
 from typing import Undefined
 a = Undefined # type: A
-a, x = [a]
+a, x = [a, a]
 x = a
 a = x
 x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
