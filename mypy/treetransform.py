@@ -207,8 +207,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ForStmt(self.names(node.index),
                        self.node(node.expr),
                        self.block(node.body),
-                       self.optional_block(node.else_body),
-                       self.optional_types(node.types))
+                       self.optional_block(node.else_body))
 
     def visit_return_stmt(self, node: ReturnStmt) -> Node:
         return ReturnStmt(self.optional_node(node.expr))

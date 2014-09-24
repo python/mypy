@@ -1022,19 +1022,6 @@ class SemanticAnalyzer(NodeVisitor):
         for n in s.index:
             self.analyse_lvalue(n)
 
-        # Analyze index variable types.
-        for i in range(len(s.types)):
-            t = s.types[i]
-            if t:
-                s.types[i] = self.anal_type(t)
-                v = cast(Var, s.index[i].node)
-                # TODO check if redefinition
-                v.type = s.types[i]
-
-        # Report error if only some of the loop variables have annotations.
-        if s.types != [None] * len(s.types) and None in s.types:
-            self.fail('Cannot mix unannotated and annotated loop variables', s)
-
         self.loop_depth += 1
         self.visit_block(s.body)
         self.loop_depth -= 1

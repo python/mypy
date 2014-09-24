@@ -568,31 +568,20 @@ class WhileStmt(Node):
 class ForStmt(Node):
     # Index variables
     index = Undefined(List['NameExpr'])
-    # Index variable types (each may be None)
-    types = Undefined(List['mypy.types.Type'])
     # Expression to iterate
     expr = Undefined(Node)
     body = Undefined(Block)
     else_body = Undefined(Block)
 
     def __init__(self, index: List['NameExpr'], expr: Node, body: Block,
-                 else_body: Block,
-                 types: List['mypy.types.Type'] = None) -> None:
+                 else_body: Block) -> None:
         self.index = index
         self.expr = expr
         self.body = body
         self.else_body = else_body
-        self.types = types
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
-
-    def is_annotated(self) -> bool:
-        ann = False
-        for t in self.types:
-            if t is not None:
-                ann = True
-        return ann
 
 
 class ReturnStmt(Node):

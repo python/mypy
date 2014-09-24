@@ -1403,7 +1403,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
         item_type = self.analyse_iterable_item_type(s.expr)
-        self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
+        self.analyse_index_variables(s.index, item_type, s)
         self.binder.push_frame()
         self.binder.push_loop_frame()
         self.accept_in_frame(s.body, repeat_till_fixed=True)
@@ -1445,49 +1445,23 @@ class TypeChecker(NodeVisitor[Type]):
             return echk.check_call(method, [], [], expr)[0]
 
     def analyse_index_variables(self, index: List[NameExpr],
-                                is_annotated: bool,
                                 item_type: Type, context: Context) -> None:                        
         """Type check or infer for loop or list comprehension index vars."""
-        if not is_annotated:
-            # Create a temporary copy of variables with Node item type.
-            # TODO this is ugly
-            node_index = []  # type: List[Node]
-            for i in index:
-                node_index.append(i)
-            
-            # TODO SK fix
-            
-            if len(node_index) == 1:
-                self.check_assignment(node_index[0], self.temp_node(item_type, context), context)
-            else:
-                self.check_multi_assignment(node_index,
-                                   self.temp_node(item_type, context),
-                                   context)
-        elif len(index) == 1:
-            v = cast(Var, index[0].node)
-            if v.type:
-                self.check_single_assignment(v.type,
-                                             self.temp_node(item_type, context), 
-                                             context,
-                                             messages.INCOMPATIBLE_TYPES_IN_FOR)
-        else:
-            
-            # TODO SK FIX  temp:
+        # Create a temporary copy of variables with Node item type.
+        # TODO this is ugly
+        node_index = []  # type: List[Node]
+        for i in index:
+            node_index.append(i)
         
-            return
-            
-            
-            
-            t = []  # type: List[Type]
-            for ii in index:
-                v = cast(Var, ii.node)
-                if v.type:
-                    t.append(v.type)
-                else:
-                    t.append(AnyType())
-            self.check_multi_assignment(t, [None] * len(index),
-                                        self.temp_node(item_type, context), context,
-                                        messages.INCOMPATIBLE_TYPES_IN_FOR)
+        # TODO SK fix
+        
+        if len(node_index) == 1:
+            self.check_assignment(node_index[0], self.temp_node(item_type, context), context)
+        else:
+            self.check_multi_assignment(node_index,
+                               self.temp_node(item_type, context),
+                               context)
+
 
     def visit_del_stmt(self, s: DelStmt) -> Type:
         if isinstance(s.expr, IndexExpr):

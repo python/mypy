@@ -263,7 +263,6 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         self.token(r.for_tok)
         for i in range(len(o.index)):
-            self.type(o.types[i])
             self.node(o.index[i])
             self.token(r.commas[i])
         self.token(r.in_tok)
