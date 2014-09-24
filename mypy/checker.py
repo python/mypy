@@ -1009,8 +1009,9 @@ class TypeChecker(NodeVisitor[Type]):
        elif isinstance(rvalue_type, TupleType):
            # Rvalue with tuple type.                             
            if len(rvalue_type.items) != len(lvalues):
-               self.msg.incompatible_value_count_in_assignment(
-                   len(lvalues), len(rvalue_type.items), context)
+               #self.msg.incompatible_value_count_in_assignment(
+               #  len(lvalues), len(rvalue_type.items), context)
+               self.msg.wrong_number_values_to_unpack(len(rvalue_type.items), len(lvalues), context)
            else:
                if not undefined_rvalue:
                    # Create lvalue_type for type inference

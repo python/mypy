@@ -454,6 +454,15 @@ class MessageBuilder:
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
 
+    def wrong_number_values_to_unpack(self, provided: int, expected: int, context: Context) -> None:
+        if provided < expected:
+            if provided == 1:
+                self.fail('Need more than 1 value to unpack ({} expected)'.format(expected), context)
+            else:
+                self.fail('Need more than {} values to unpack ({} expected)'.format(provided, expected), context)
+        elif provided > expected:
+            self.fail('Too many values to unpack ({} expected, {} provided)'.format(expected, provided), context)
+
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),

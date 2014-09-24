@@ -219,8 +219,8 @@ from typing import Undefined, Tuple
 t1 = Undefined # type: Tuple[A, A, A]
 a = Undefined # type: A
 
-a, a = t1       # E: Too many values to assign
-a, a, a, a = t1 # E: Need 4 values to assign
+a, a = t1       # E: Too many values to unpack (2 expected, 3 provided)
+a, a, a, a = t1 # E: Need more than 3 values to unpack (4 expected)
 
 a, a, a = t1
 

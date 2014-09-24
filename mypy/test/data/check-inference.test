@@ -215,8 +215,8 @@ def f() -> None:
 [builtins fixtures/tuple.py]
 [out]
 main: In function "f":
-main, line 5: Too many values to assign
-main, line 6: Need 4 values to assign
+main, line 5: Too many values to unpack (2 expected, 3 provided)
+main, line 6: Need more than 3 values to unpack (4 expected)
 
 [case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
 import typing
@@ -639,7 +639,7 @@ class B: pass
 [out]
 main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
 main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
-main, line 8: Need 3 values to assign
+main, line 8: Need more than 2 values to unpack (3 expected)
 main, line 10: Need type annotation for variable
 
 [case testInferenceOfFor3]
