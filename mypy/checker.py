@@ -1004,7 +1004,8 @@ class TypeChecker(NodeVisitor[Type]):
            undefined_rvalue = False
        
        if isinstance(rvalue_type, AnyType):
-           pass
+           for lv in lvalues:
+               self.check_assignment(lv, self.temp_node(AnyType(), context))
        elif isinstance(rvalue_type, TupleType):
            # Rvalue with tuple type.                             
            if len(rvalue_type.items) != len(lvalues):
