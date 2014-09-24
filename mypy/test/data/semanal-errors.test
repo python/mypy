@@ -361,12 +361,17 @@ main, line 4: Invalid assignment target
 
 [case testInvalidLvalues2]
 x = y = z = 1
-x, (y, z) = 1
-x, [y, z] = 1
+x, (y, 1) = 1
+x, [y, 1] = 1
+x, [y, [z, 1]] = 1
+x, (y, (z, 1)) = 1
 x, (y) = 1 # ok
+x, (y, (z, z)) = 1 # ok
 [out]
 main, line 2: Invalid assignment target
 main, line 3: Invalid assignment target
+main, line 4: Invalid assignment target
+main, line 5: Invalid assignment target
 
 [case testInvalidLvalues3]
 x = 1
