@@ -203,7 +203,7 @@ class TransformVisitor(NodeVisitor[Node]):
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> Node:
-        return ForStmt(self.names(node.index),
+        return ForStmt(self.nodes(node.index),
                        self.node(node.expr),
                        self.block(node.body),
                        self.optional_block(node.else_body))

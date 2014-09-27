@@ -1451,7 +1451,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                          expr)
             return echk.check_call(method, [], [], expr)[0]
 
-    def analyse_index_variables(self, index: List[NameExpr],
+    def analyse_index_variables(self, index: List[Node],
                                 item_type: Type, context: Context) -> None:                        
         """Type check or infer for loop or list comprehension index vars."""
         # Create a temporary copy of variables with Node item type.
