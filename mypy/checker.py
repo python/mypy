@@ -1016,7 +1016,6 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             if not undefined_rvalue:
                 # Create lvalue_type for type inference
-                # TODO do this better
                 
                 type_parameters = []  # type: List[Type]
                 for i in range(len(lvalues)):
@@ -1069,6 +1068,11 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyse_ref_expr(lvalue)
             self.store_type(lvalue, lvalue_type)
+        elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
+            lvalue_type = TupleType(types)
+        elif isinstance(lvalue, ParenExpr):
+            return self.check_lvalue(lvalue.expr)
         else:
             lvalue_type = self.accept(lvalue)
             
