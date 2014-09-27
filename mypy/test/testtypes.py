@@ -24,6 +24,8 @@ class TypesSuite(Suite):
         super().__init__()
         self.x = UnboundType('X')  # Helpers
         self.y = UnboundType('Y')
+        self.fx = TypeFixture()
+        self.function = self.fx.std_function
 
     def test_any(self):
         assert_equal(str(AnyType()), 'Any')
@@ -43,7 +45,7 @@ class TypesSuite(Suite):
         c = Callable([self.x, self.y],
                      [ARG_POS, ARG_POS],
                      [None, None],
-                     AnyType(), False)
+                     AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
         c2 = Callable([], [], [], Void(None), False)
@@ -51,43 +53,44 @@ class TypesSuite(Suite):
 
     def test_callable_type_with_default_args(self):
         c = Callable([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
-                     AnyType(), False)
+                     AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y? =) -> Any')
 
         c2 = Callable([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
-                      AnyType(), False)
+                      AnyType(), self.function)
         assert_equal(str(c2), 'def (X? =, Y? =) -> Any')
 
     def test_callable_type_with_var_args(self):
-        c = Callable([self.x], [ARG_STAR], [None], AnyType(), False)
+        c = Callable([self.x], [ARG_STAR], [None], AnyType(), self.function)
         assert_equal(str(c), 'def (*X?) -> Any')
 
         c2 = Callable([self.x, self.y], [ARG_POS, ARG_STAR],
-                      [None, None], AnyType(), False)
+                      [None, None], AnyType(), self.function)
         assert_equal(str(c2), 'def (X?, *Y?) -> Any')
 
         c3 = Callable([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
-                      AnyType(), False)
+                      AnyType(), self.function)
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
 
     def test_tuple_type(self):
-        assert_equal(str(TupleType([])), 'Tuple[]')
-        assert_equal(str(TupleType([self.x])), 'Tuple[X?]')
-        assert_equal(str(TupleType([self.x, AnyType()])), 'Tuple[X?, Any]')
+        assert_equal(str(TupleType([], None)), 'Tuple[]')
+        assert_equal(str(TupleType([self.x], None)), 'Tuple[X?]')
+        assert_equal(str(TupleType([self.x, AnyType()], None)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self):
-        assert_equal(str(TypeVarDef('X', 1, None)), 'X')
-        assert_equal(str(TypeVarDef('X', 1, [self.x, self.y])),
+        assert_equal(str(TypeVarDef('X', 1, None, self.fx.o)), 'X')
+        assert_equal(str(TypeVarDef('X', 1, [self.x, self.y], self.fx.o)),
                      'X in (X?, Y?)')
 
     def test_generic_function_type(self):
         c = Callable([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
-                     self.y, False, None,
-                     [TypeVarDef('X', -1, None)])
+                     self.y, self.function, None,
+                     [TypeVarDef('X', -1, None, self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
-        v = [TypeVarDef('Y', -1, None), TypeVarDef('X', -2, None)]
-        c2 = Callable([], [], [], Void(None), False, None, v)
+        v = [TypeVarDef('Y', -1, None, self.fx.o),
+             TypeVarDef('X', -2, None, self.fx.o)]
+        c2 = Callable([], [], [], Void(None), self.function, None, v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
 
@@ -173,7 +176,7 @@ class TypeOpsSuite(Suite):
                           self.fx.callable_type(self.fx.void))
 
     def assert_erase(self, orig, result):
-        assert_equal(str(erase_type(orig, self.fx.basic)), str(result))
+        assert_equal(str(erase_type(orig)), str(result))
 
     # is_more_precise
 
@@ -222,7 +225,7 @@ class TypeOpsSuite(Suite):
     # Helpers
 
     def tuple(self, *a):
-        return TupleType(a)
+        return TupleType(a, self.fx.std_tuple)
 
     def callable(self, vars, *a) -> Callable:
         """callable(args, a1, ..., an, r) constructs a callable with
@@ -232,13 +235,13 @@ class TypeOpsSuite(Suite):
         tv = []  # type: List[TypeVarDef]
         n = -1
         for v in vars:
-            tv.append(TypeVarDef(v, n, None))
+            tv.append(TypeVarDef(v, n, None, self.fx.o))
             n -= 1
         return Callable(a[:-1],
                         [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1),
                         a[-1],
-                        False,
+                        self.fx.std_function,
                         None,
                         tv)
 
@@ -420,7 +423,7 @@ class JoinSuite(Suite):
         t2 = self.type_callable(self.fx.b, self.fx.b)
 
         self.assert_join(t1, t1, t1)
-        assert_true(join_types(t1, t1, self.fx.basic).is_type_obj())
+        assert_true(join_types(t1, t1).is_type_obj())
 
         self.assert_join(t1, t2, self.fx.type_type)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
@@ -441,7 +444,7 @@ class JoinSuite(Suite):
         self.assert_simple_join(t, s, join)
 
     def assert_simple_join(self, s, t, join):
-        result = join_types(s, t, self.fx.basic)
+        result = join_types(s, t)
         actual = str(result)
         expected = str(join)
         assert_equal(actual, expected,
@@ -454,7 +457,7 @@ class JoinSuite(Suite):
                         '{} not subtype of {}'.format(t, result))
 
     def tuple(self, *a):
-        return TupleType(a)
+        return TupleType(a, self.fx.std_tuple)
 
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types
@@ -462,7 +465,7 @@ class JoinSuite(Suite):
         """
         n = len(a) - 1
         return Callable(a[:-1], [ARG_POS] * n, [None] * n,
-                        a[-1], False)
+                        a[-1], self.fx.std_function)
 
     def type_callable(self, *a):
         """type_callable(a1, ..., an, r) constructs a callable with
@@ -471,7 +474,7 @@ class JoinSuite(Suite):
         """
         n = len(a) - 1
         return Callable(a[:-1], [ARG_POS] * n, [None] * n,
-                        a[-1], True)
+                        a[-1], self.fx.type_type)
 
 
 class MeetSuite(Suite):
@@ -645,7 +648,7 @@ class MeetSuite(Suite):
         self.assert_simple_meet(t, s, meet)
 
     def assert_simple_meet(self, s, t, meet):
-        result = meet_types(s, t, self.fx.basic)
+        result = meet_types(s, t)
         actual = str(result)
         expected = str(meet)
         assert_equal(actual, expected,
@@ -658,7 +661,7 @@ class MeetSuite(Suite):
                         '{} not subtype of {}'.format(result, t))
 
     def tuple(self, *a):
-        return TupleType(a)
+        return TupleType(a, self.fx.std_tuple)
 
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types
@@ -667,7 +670,7 @@ class MeetSuite(Suite):
         n = len(a) - 1
         return Callable(a[:-1],
                         [ARG_POS] * n, [None] * n,
-                        a[-1], False)
+                        a[-1], self.fx.std_function)
 
 
 class CombinedTypesSuite(Suite):

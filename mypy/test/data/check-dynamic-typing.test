@@ -109,6 +109,7 @@ class object:
 class bool: pass
 class int: pass
 class type: pass
+class function: pass
 
 [case testBinaryOperationsWithDynamicAsRightOperand]
 from typing import Undefined, Any
@@ -164,6 +165,7 @@ class object:
 class bool: pass
 class int: pass
 class type: pass
+class function: pass
 
 [case testDynamicWithUnaryExpressions]
 from typing import Undefined, Any

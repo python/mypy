@@ -470,6 +470,7 @@ class int: pass
 class str: pass
 class bool: pass
 class type: pass
+class function: pass
 
 
 -- For loop over tuple

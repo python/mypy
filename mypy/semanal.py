@@ -208,7 +208,7 @@ class SemanticAnalyzer(NodeVisitor):
             typevars = [(tvar, values) for tvar, values in typevars
                         if not self.is_defined_type_var(tvar, defn)]
             if typevars:
-                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1])
+                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1], self.object_type())
                         for i, tvar in enumerate(typevars)]
                 functype.variables = defs
 
@@ -257,7 +257,8 @@ class SemanticAnalyzer(NodeVisitor):
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
-            t.append(cast(Callable, function_type(item.func)))
+            t.append(cast(Callable, function_type(item.func,
+                                                  self.builtin_type('builtins.function'))))
             if not [dec for dec in item.decorators
                     if refers_to_fullname(dec, 'typing.overload')]:
                 self.fail("'overload' decorator expected", item)
@@ -418,10 +419,10 @@ class SemanticAnalyzer(NodeVisitor):
 
         For example, consider this class:
 
-        . class Foo(Bar, Generic[t]): ...
+        class Foo(Bar, Generic[T]): ...
 
-        Now we will remove Generic[t] from bases of Foo and infer that the
-        type variable 't' is a type argument of Foo.
+        Now we will remove Generic[T] from bases of Foo and infer that the
+        type variable 'T' is a type argument of Foo.
         """
         removed = List[int]()
         type_vars = List[TypeVarDef]()
@@ -434,7 +435,8 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 for j, tvar in enumerate(tvars):
                     name, values = tvar
-                    type_vars.append(TypeVarDef(name, j + 1, values))
+                    type_vars.append(TypeVarDef(name, j + 1, values,
+                                                self.object_type()))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -675,7 +677,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def anal_type(self, t: Type) -> Type:
         if t:
-            a = TypeAnalyser(self.lookup_qualified, self.stored_vars, self.fail)
+            a = TypeAnalyser(self.lookup_qualified,
+                             self.lookup_fully_qualified,
+                             self.stored_vars, self.fail)
             return t.accept(a)
         else:
             return None
@@ -1373,6 +1377,24 @@ class SemanticAnalyzer(NodeVisitor):
                     n = self.normalize_type_alias(n, ctx)
             return n
 
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        node = self.lookup_fully_qualified(fully_qualified_name)
+        info = cast(TypeInfo, node.node)
+        return Instance(info, [])
+
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        """Lookup a fully qualified name.
+
+        Assume that the name is defined. This happens in the global namespace -- the local
+        module namespace is ignored.
+        """
+        assert '.' in name
+        parts = name.split('.')
+        n = self.modules[parts[0]]
+        for i in range(1, len(parts) - 1):
+            n = cast(MypyFile, n.names[parts[i]].node)
+        return n.names[parts[-1]]
+
     def qualified_name(self, n: str) -> str:
         return self.cur_mod_id + '.' + n
 
@@ -1625,7 +1647,8 @@ def self_type(typ: TypeInfo) -> Instance:
     tv = List[Type]()
     for i in range(len(typ.type_vars)):
         tv.append(TypeVar(typ.type_vars[i], i + 1,
-                          typ.defn.type_vars[i].values))
+                          typ.defn.type_vars[i].values,
+                          typ.defn.type_vars[i].upper_bound))
     return Instance(typ, tv)
 
 

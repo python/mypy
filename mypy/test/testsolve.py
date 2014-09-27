@@ -141,7 +141,7 @@ class SolveSuite(Suite):
                 res.append(r[0])
             else:
                 res.append(r)
-        actual = solve_constraints(vars, constraints, self.fx.basic)
+        actual = solve_constraints(vars, constraints)
         assert_equal(str(actual), str(res))
 
     def supc(self, type_var, bound):

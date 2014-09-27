@@ -26,7 +26,6 @@ from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
 from mypy import parse
 from mypy import stats
-from mypy import transform
 
 
 debug = False
@@ -35,7 +34,6 @@ debug = False
 # Build targets (for selecting compiler passes)
 SEMANTIC_ANALYSIS = 0   # Semantic analysis only
 TYPE_CHECK = 1          # Type check
-TRANSFORM = 3           # Type check and transform for runtime type checking
 
 
 # Build flags
@@ -274,9 +272,6 @@ class BuildManager:
                        Item (m, n) indicates whether m depends on n (directly
                        or indirectly).
       missing_modules: Set of modules that could not be imported encountered so far
-
-    TODO Refactor code related to transformation to external objects.  This module
-         should not directly depend on them.
     """
 
     def __init__(self, data_dir: str,
@@ -474,9 +469,7 @@ class BuildManager:
     def final_passes(self, files: List[MypyFile],
                      types: Dict[Node, Type]) -> None:
         """Perform the code generation passes for type checked files."""
-        if self.target == TRANSFORM:
-            self.transform(files)
-        elif self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
+        if self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
             pass  # Nothing to do.
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
@@ -491,19 +484,6 @@ class BuildManager:
             else:
                 components[-1] += '.py'
             return os.path.join(self.output_dir, *components)
-
-    def transform(self, files: List[MypyFile]) -> None:
-        for f in files:
-            if f.fullname() == 'typing':
-                # The typing module is special and is currently not
-                # transformed.
-                continue
-            # Transform parse tree and produce pretty-printed output.
-            v = transform.DyncheckTransformVisitor(
-                self.type_checker.type_map,
-                self.semantic_analyzer.modules,
-                is_pretty=True)
-            f.accept(v)
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:

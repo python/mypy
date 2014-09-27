@@ -22,8 +22,7 @@ from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, BasicTypes,
-    strip_type, UnionType
+    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -68,14 +67,13 @@ class Key(AnyType):
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
-    def __init__(self, basic_types_fn) -> None:
+    def __init__(self) -> None:
         self.frames = List[Frame]()
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
         self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key
                                                    # is changed
         self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
-        self.basic_types_fn = basic_types_fn
 
         self.frames_on_escape = Dict[int, List[Frame]]()
 
@@ -138,8 +136,7 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             for other in resulting_values[1:]:
-                type = join_simple(self.frames[0][key], type,
-                                   other, self.basic_types_fn())
+                type = join_simple(self.frames[0][key], type, other)
             if not is_same_type(type, current_value):
                 self._push(key, type)
                 changed = True
@@ -156,8 +153,7 @@ class ConditionalTypeBinder:
             old_type = self._get(key, index)
             if old_type is None:
                 continue
-            replacement = join_simple(self.frames[0][key], old_type, frame[key],
-                                      self.basic_types_fn())
+            replacement = join_simple(self.frames[0][key], old_type, frame[key])
 
             if not is_same_type(replacement, old_type):
                 self._push(key, replacement, index)
@@ -269,12 +265,12 @@ class ConditionalTypeBinder:
         self.loop_frames.pop()
 
 
-def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
+def meet_frames(*frames: Frame) -> Frame:
     answer = Frame()
     for f in frames:
         for key in f:
             if key in answer:
-                answer[key] = meet_simple(answer[key], f[key], basic_types)
+                answer[key] = meet_simple(answer[key], f[key])
             else:
                 answer[key] = f[key]
     return answer
@@ -330,7 +326,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pyversion = pyversion
         self.msg = MessageBuilder(errors)
         self.type_map = {}
-        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
@@ -428,8 +424,8 @@ class TypeChecker(NodeVisitor[Type]):
         for i, item in enumerate(defn.items):
             for j, item2 in enumerate(defn.items[i + 1:]):
                 # TODO overloads involving decorators
-                sig1 = function_type(item.func)
-                sig2 = function_type(item2.func)
+                sig1 = self.function_type(item.func)
+                sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
                     self.msg.overloaded_signatures_overlap(i + 1, j + 2,
                                                            item.func)
@@ -441,8 +437,8 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
-            if not is_same_type(function_type(defn),
-                                function_type(defn.original_def)):
+            if not is_same_type(self.function_type(defn),
+                                self.function_type(defn.original_def)):
                 self.msg.incompatible_conditional_function_def(defn)
 
     def check_func_item(self, defn: FuncItem,
@@ -464,7 +460,7 @@ class TypeChecker(NodeVisitor[Type]):
         if fdef:
             self.errors.push_function(fdef.name())
 
-        typ = function_type(defn)
+        typ = self.function_type(defn)
         if type_override:
             typ = type_override
         if isinstance(typ, Callable):
@@ -483,7 +479,7 @@ class TypeChecker(NodeVisitor[Type]):
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(self.basic_types)
+            self.binder = ConditionalTypeBinder()
             self.binder.push_frame()
             defn.expanded.append(item)
 
@@ -652,21 +648,21 @@ class TypeChecker(NodeVisitor[Type]):
 
             # Construct normalized function signatures corresponding to the
             # operator methods. The first argument is the left operand and the
-            # second operatnd is the right argument -- we switch the order of
+            # second operand is the right argument -- we switch the order of
             # the arguments of the reverse method.
             forward_tweaked = Callable([forward_base,
                                         forward_type.arg_types[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        forward_type.ret_type,
-                                       is_type_obj=False,
+                                       forward_type.fallback,
                                        name=forward_type.name)
             reverse_args = reverse_type.arg_types
             reverse_tweaked = Callable([reverse_args[1], reverse_args[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        reverse_type.ret_type,
-                                       is_type_obj=False,
+                                       fallback=self.named_type('builtins.function'),
                                        name=reverse_type.name)
 
             if is_unsafe_overlapping_signatures(forward_tweaked,
@@ -691,7 +687,7 @@ class TypeChecker(NodeVisitor[Type]):
         method = defn.name()
         if method not in nodes.inplace_operator_methods:
             return
-        typ = method_type(defn)
+        typ = self.method_type(defn)
         cls = defn.info
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
@@ -762,14 +758,14 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = method_type(defn)
+            typ = self.method_type(defn)
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
             if original_type is None and isinstance(base_attr.node,
                                                     FuncDef):
-                original_type = function_type(cast(FuncDef,
-                                                   base_attr.node))
+                original_type = self.function_type(cast(FuncDef,
+                                                        base_attr.node))
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
                     method_type(original_type),
@@ -842,7 +838,7 @@ class TypeChecker(NodeVisitor[Type]):
         typ = defn.info
         self.errors.push_type(defn.name)
         old_binder = self.binder
-        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.accept(defn.defs)
         self.binder = old_binder
@@ -979,7 +975,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_multi_assignment(self, lvalues: List[Node],
                                   rvalue: Node,
                                   context: Context,
-                                  infer_lvalue_type: Type=True,
+                                  infer_lvalue_type: bool=True,
                                   msg: str = None) -> None:
        """Check the assignment of one rvalue to a number of lvalues
        for example from a ListExpr or TupleExpr
@@ -989,7 +985,7 @@ class TypeChecker(NodeVisitor[Type]):
            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
            
        # First handle case where rvalue is of form Undefined, ...
-       rvalue_type = get_undefined_tuple(rvalue)
+       rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
        undefined_rvalue = True
        if not rvalue_type:
            # Infer the type of an ordinary rvalue expression.
@@ -1028,7 +1024,7 @@ class TypeChecker(NodeVisitor[Type]):
                         #      based on the type signature of the _set method.
                         type_parameters.append(rvalue_type.items[i])   
                 
-                lvalue_type = TupleType(type_parameters)
+                lvalue_type = TupleType(type_parameters, self.named_type('builtins.tuple'))
 
                 # Infer rvalue again, now in the correct type context.
                 rvalue_type = cast(TupleType, self.accept(rvalue, lvalue_type))
@@ -1069,15 +1065,15 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type = self.expr_checker.analyse_ref_expr(lvalue)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
-            lvalue_type = TupleType(types)
+            lv = cast(Union[TupleExpr, ListExpr], lvalue)
+            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lv.items]
+            lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         elif isinstance(lvalue, ParenExpr):
             return self.check_lvalue(lvalue.expr)
         else:
             lvalue_type = self.accept(lvalue)
             
         return lvalue_type, index_lvalue, inferred
-        
         
     def is_definition(self, s: Node) -> bool:
         if isinstance(s, NameExpr):
@@ -1143,7 +1139,7 @@ class TypeChecker(NodeVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
             if restriction:
-                ans = meet_simple(known_type, restriction, self.basic_types())
+                ans = meet_simple(known_type, restriction)
                 return ans
         return known_type
 
@@ -1249,7 +1245,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.binder.allow_jump(len(self.binder.frames) - 1)
                 if not self.breaking_out:
                     broken = False
-                    ending_frames.append(meet_frames(self.basic_types(), clauses_frame, frame))
+                    ending_frames.append(meet_frames(clauses_frame, frame))
 
                 self.breaking_out = False
 
@@ -1373,7 +1369,7 @@ class TypeChecker(NodeVisitor[Type]):
                 for item in unwrapped.items:
                     tt = self.exception_type(item)
                     if t:
-                        t = join_types(t, tt, self.basic_types())
+                        t = join_types(t, tt)
                     else:
                         t = tt
                 return t
@@ -1425,7 +1421,7 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(iterable, TupleType):
             joined = NoneTyp()  # type: Type
             for item in iterable.items:
-                joined = join_types(joined, item, self.basic_types())
+                joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
                 self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
                 return AnyType()
@@ -1479,7 +1475,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_decorator(self, e: Decorator) -> Type:
         e.func.accept(self)
-        sig = function_type(e.func)  # type: Type
+        sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
         for i in range(len(e.decorators)):
             n = len(e.decorators) - 1 - i
@@ -1487,6 +1483,7 @@ class TypeChecker(NodeVisitor[Type]):
             temp = self.temp_node(sig)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)
+        sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
@@ -1641,21 +1638,6 @@ class TypeChecker(NodeVisitor[Type]):
         sym = self.lookup_qualified(name)
         return Instance(cast(TypeInfo, sym.node), [])
 
-    def named_type_if_exists(self, name: str) -> Type:
-        """Return named instance type, or UnboundType if the type was
-        not defined.
-
-        This is used to simplify test cases by avoiding the need to
-        define basic types not needed in specific test cases (tuple
-        etc.).
-        """
-        try:
-            # Assume that the name refers to a type.
-            sym = self.lookup_qualified(name)
-            return Instance(cast(TypeInfo, sym.node), [])
-        except KeyError:
-            return UnboundType(name)
-
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
 
@@ -1684,13 +1666,6 @@ class TypeChecker(NodeVisitor[Type]):
     def str_type(self) -> Instance:
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
-
-    def tuple_type(self) -> Type:
-        """Return instance type 'tuple'."""
-        # We need the tuple for analysing member access. We want to be able to
-        # do this even if tuple type is not available (useful in test cases),
-        # so we return an unbound type if there is no tuple type.
-        return self.named_type_if_exists('builtins.tuple')
 
     def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
                                msg: str = messages.INCOMPATIBLE_TYPES) -> None:
@@ -1730,7 +1705,7 @@ class TypeChecker(NodeVisitor[Type]):
             parts = name.split('.')
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
-                n = cast(MypyFile, ((n.names.get(parts[i], None).node)))
+                n = cast(MypyFile, n.names.get(parts[i], None).node)
             return n.names[parts[-1]]
 
     def enter(self) -> None:
@@ -1738,14 +1713,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def leave(self) -> None:
         self.locals = None
-
-    def basic_types(self) -> BasicTypes:
-        """Return a BasicTypes instance that contains primitive types that are
-        needed for certain type operations (joins, for example).
-        """
-        return BasicTypes(self.object_type(), self.named_type('builtins.type'),
-                          self.named_type_if_exists('builtins.tuple'),
-                          self.named_type_if_exists('builtins.function'))
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?
@@ -1776,6 +1743,12 @@ class TypeChecker(NodeVisitor[Type]):
             self.lookup_typeinfo('typing.Iterable'))
         return iterable.args[0]
 
+    def function_type(self, func: FuncBase) -> FunctionLike:
+        return function_type(func, self.named_type('builtins.function'))
+
+    def method_type(self, func: FuncBase) -> FunctionLike:
+        return method_type(func, self.named_type('builtins.function'))
+
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
                             super_info: TypeInfo) -> Type:
@@ -1805,7 +1778,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     return expand_type_by_instance(typ, inst_type)
 
 
-def get_undefined_tuple(rvalue: Node) -> Type:
+def get_undefined_tuple(rvalue: Node, tuple_type: Instance) -> Type:
     """Get tuple type corresponding to a tuple of Undefined values.
 
     The type is Tuple[Any, ...]. If rvalue is not of the right form, return
@@ -1816,7 +1789,7 @@ def get_undefined_tuple(rvalue: Node) -> Type:
             if not refers_to_fullname(item, 'typing.Undefined'):
                 break
         else:
-            return TupleType([AnyType()] * len(rvalue.items))
+            return TupleType([AnyType()] * len(rvalue.items), tuple_type)
     return None
 
 

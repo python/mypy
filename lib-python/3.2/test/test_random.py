@@ -17,7 +17,7 @@ class TestBasicOps(unittest.TestCase, Generic[RT]):
     # Subclasses must arrange for self.gen to retrieve the Random instance
     # to be tested.
 
-    gen = Undefined(RT) # Either Random or SystemRandom 
+    gen = Undefined(RT) # Either Random or SystemRandom
 
     def randomlist(self, n: int) -> List[float]:
         """Helper function to make a list of random numbers"""

@@ -14,7 +14,6 @@ from mypy.test import testtransform
 from mypy.test import testcheck
 from mypy.test import testtypegen
 from mypy.test import testoutput
-from mypy.test import testdyncheck
 
 
 class AllSuite(Suite):
@@ -37,7 +36,6 @@ class AllSuite(Suite):
         self.test_check = testcheck.TypeCheckSuite()
         self.test_typegen = testtypegen.TypeExportSuite()
         self.test_output = testoutput.OutputSuite()
-        self.test_dyncheck = testdyncheck.DyncheckTransformSuite()
         super().__init__()
 
 

@@ -39,7 +39,7 @@ def test_output(testcase):
     try:
         src = '\n'.join(testcase.input)
         # Parse and semantically analyze the source program.
-        
+
         # Test case names with a special suffix get semantically analyzed. This
         # lets us test that semantic analysis does not break source code pretty
         # printing.
@@ -54,7 +54,7 @@ def test_output(testcase):
             files = {'main': parse(src, 'main')}
         a = []
         first = True
-        
+
         # Produce an output containing the pretty-printed forms (with original
         # formatting) of all the relevant source files.
         for fnam in sorted(files.keys()):
@@ -66,7 +66,7 @@ def test_output(testcase):
                 if not first:
                     a.append('{}:'.format(fix_path(remove_prefix(
                         f.path, test_temp_dir))))
-                
+
                 v = OutputVisitor()
                 f.accept(v)
                 s = v.output()

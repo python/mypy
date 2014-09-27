@@ -2,15 +2,14 @@
 
 from typing import List, Dict
 
-from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, BasicTypes
+from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
 
 
-def solve_constraints(vars: List[int], constraints: List[Constraint],
-                      basic: BasicTypes) -> List[Type]:
+def solve_constraints(vars: List[int], constraints: List[Constraint]) -> List[Type]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable
@@ -39,12 +38,12 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
                 if bottom is None:
                     bottom = c.target
                 else:
-                    bottom = join_types(bottom, c.target, basic)
+                    bottom = join_types(bottom, c.target)
             else:
                 if top is None:
                     top = c.target
                 else:
-                    top = meet_types(top, c.target, basic)
+                    top = meet_types(top, c.target)
 
         if isinstance(top, AnyType) or isinstance(bottom, AnyType):
             res.append(AnyType())

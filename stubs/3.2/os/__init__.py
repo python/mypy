@@ -98,10 +98,10 @@ TMP_MAX = 0  # Undocumented, but used by tempfile
 
 # ----- os classes (structures) -----
 class stat_result:
-    # For backward compatibility, the return value of stat() is also 
-    # accessible as a tuple of at least 10 integers giving the most important 
-    # (and portable) members of the stat structure, in the order st_mode, 
-    # st_ino, st_dev, st_nlink, st_uid, st_gid, st_size, st_atime, st_mtime, 
+    # For backward compatibility, the return value of stat() is also
+    # accessible as a tuple of at least 10 integers giving the most important
+    # (and portable) members of the stat structure, in the order st_mode,
+    # st_ino, st_dev, st_nlink, st_uid, st_gid, st_size, st_atime, st_mtime,
     # st_ctime. More items may be added at the end by some implementations.
 
     st_mode = 0 # protection bits,
@@ -118,7 +118,7 @@ class stat_result:
 
     def __init__(self, tuple) -> None: pass
 
-    # On some Unix systems (such as Linux), the following attributes may also 
+    # On some Unix systems (such as Linux), the following attributes may also
     # be available:
     st_blocks = 0 # number of blocks allocated for file
     st_blksize = 0 # filesystem blocksize
@@ -358,11 +358,11 @@ def utime(path: bytes, times: Tuple[float, float] = None) -> None: pass
 
 # TODO onerror: function from OSError to void
 @overload
-def walk(top: str, topdown: bool = True, onerror: Any = None, 
+def walk(top: str, topdown: bool = True, onerror: Any = None,
          followlinks: bool = False) -> Iterator[Tuple[str, List[str],
                                                       List[str]]]: pass
 @overload
-def walk(top: bytes, topdown: bool = True, onerror: Any = None, 
+def walk(top: bytes, topdown: bool = True, onerror: Any = None,
          followlinks: bool = False) -> Iterator[Tuple[bytes, List[bytes],
                                                       List[bytes]]]: pass
 # walk(): "By default errors from the os.listdir() call are ignored.  If
@@ -440,12 +440,12 @@ def spawnle(mode: int, path: bytes, arg0: bytes,
             *args: Any) -> int: pass # Imprecise sig
 @overload
 def spawnlp(mode: int, file: str, arg0: str,
-            *args: str) -> int: pass  # Unix only TODO 
+            *args: str) -> int: pass  # Unix only TODO
 @overload
 def spawnlp(mode: int, file: bytes, arg0: bytes, *args: bytes) -> int: pass
 @overload
 def spawnlpe(mode: int, file: str, arg0: str, *args: Any) -> int:
-    pass # Imprecise signature; Unix only TODO 
+    pass # Imprecise signature; Unix only TODO
 @overload
 def spawnlpe(mode: int, file: bytes, arg0: bytes, *args: Any) -> int:
     pass # Imprecise signature
@@ -465,7 +465,7 @@ def spawnvp(mode: int, file: str, args: List[str]) -> int: pass  # Unix only
 def spawnvp(mode: int, file: bytes, args: List[bytes]) -> int: pass
 @overload
 def spawnvpe(mode: int, file: str, args: List[str],
-             env: Mapping[str, str]) -> int: 
+             env: Mapping[str, str]) -> int:
     pass  # Unix only
 @overload
 def spawnvpe(mode: int, file: bytes, args: List[bytes],
