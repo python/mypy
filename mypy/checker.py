@@ -978,7 +978,7 @@ class TypeChecker(NodeVisitor[Type]):
                                   infer_lvalue_type: bool=True,
                                   msg: str = None) -> None:
        """Check the assignment of one rvalue to a number of lvalues
-       for example from a ListExpr or TupleExpr
+       for example from a ListExpr or TupleExpr.
        """
        
        if not msg:
@@ -998,11 +998,9 @@ class TypeChecker(NodeVisitor[Type]):
        elif isinstance(rvalue_type, TupleType):
            self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type), 
                                                   context, undefined_rvalue, infer_lvalue_type)
-       elif self.type_is_iterable(rvalue_type):
-           self.check_multi_assignment_from_iterable(lvalues, cast(Instance, rvalue_type), 
-                                                     context, infer_lvalue_type)
        else:
-           self.fail(msg, context)
+           self.check_multi_assignment_from_iterable(lvalues, rvalue_type, 
+                                                     context, infer_lvalue_type)
               
     def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node, 
                                           rvalue_type: TupleType, context: Context, 
@@ -1037,11 +1035,14 @@ class TypeChecker(NodeVisitor[Type]):
                                                         [AnyType()])) and
                 isinstance(type, Instance))
                                
-    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Instance, 
+    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type, 
                                              context: Context, infer_lvalue_type: bool=True) -> None:
-        item_type = self.iterable_item_type(rvalue_type)
-        for lv in lvalues:
-            self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
+        if self.type_is_iterable(rvalue_type):
+            item_type = self.iterable_item_type(cast(Instance,rvalue_type))
+            for lv in lvalues:
+                self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
+        else:    
+            self.msg.type_not_iterable(rvalue_type, context)
                                          
     def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:
         lvalue_type = None # type: Type

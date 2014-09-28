@@ -463,6 +463,9 @@ class MessageBuilder:
         elif provided > expected:
             self.fail('Too many values to unpack ({} expected, {} provided)'.format(expected, provided), context)
 
+    def type_not_iterable(self, type: Type, context: Context) -> None:
+        self.fail('\'{}\' object is not iterable'.format(type), context)
+
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),

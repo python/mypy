@@ -283,8 +283,8 @@ main, line 6: Need more than 3 values to unpack (4 expected)
 [case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
 import typing
 def f() -> None:
-    a, b = f   # E: Incompatible types in assignment
-    c, d = A() # E: Incompatible types in assignment
+    a, b = f   # E: 'def ()' object is not iterable
+    c, d = A() # E: '__main__.A' object is not iterable
 class A: pass
 [builtins fixtures/for.py]
 [out]
@@ -293,8 +293,8 @@ main: In function "f":
 [case testInvalidRvalueTypeInInferredNestedTupleAssignment]
 import typing
 def f() -> None:
-    a1, (a2, b) = A(), f   # E: Incompatible types in assignment
-    a3, (c, d) = A(), A() # E: Incompatible types in assignment
+    a1, (a2, b) = A(), f   # E: 'def ()' object is not iterable
+    a3, (c, d) = A(), A() # E: '__main__.A' object is not iterable
 class A: pass
 [builtins fixtures/for.py]
 [out]
