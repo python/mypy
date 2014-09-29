@@ -315,10 +315,26 @@ raise f # E: Exception must be derived from BaseException
 
 [case testRaiseFromStatement]
 from typing import Undefined
-e = Undefined # type: Exception
-a = Undefined # type: BaseException
-raise e from a
-raise e from 1 # E: Exception must be derived from BaseException
+e = Undefined # type: BaseException
+f = Undefined # type: MyError
+a = Undefined # type: A
+raise e from a # E: Exception must be derived from BaseException
+raise e from e
+raise e from f
+class A: pass
+class MyError(BaseException): pass
+[builtins fixtures/exception.py]
+
+[case testRaiseFromClassobject]
+import typing
+class A: pass
+class MyError(BaseException): pass
+def f(): pass
+raise BaseException from BaseException
+raise BaseException from MyError
+raise BaseException from A # E: Exception must be derived from BaseException
+raise BaseException from object # E: Exception must be derived from BaseException
+raise BaseException from f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.py]
 
 [case testTryFinallyStatement]
