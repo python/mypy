@@ -1328,6 +1328,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a raise statement."""
         self.breaking_out = True
         if s.expr:
+            skip_check_subtype = False
             typ = self.accept(s.expr)
             if isinstance(typ, FunctionLike):
                 if typ.is_type_obj():
@@ -1336,14 +1337,30 @@ class TypeChecker(NodeVisitor[Type]):
                     base = self.lookup_typeinfo('builtins.BaseException')
                     if base in typeinfo.mro:
                         # Good!
+                        if s.from_expr:
+                            skip_check_subtype = True
+                        else:
+                            return None
+                    # Else fall back to the check below (which will fail).
+            if not skip_check_subtype:
+                self.check_subtype(typ,
+                                   self.named_type('builtins.BaseException'), s,
+                                   messages.INVALID_EXCEPTION)
+
+        # Type checking from
+        if s.from_expr:
+            typ = self.accept(s.from_expr)
+            if isinstance(typ, FunctionLike):
+                if typ.is_type_obj():
+                    # Cases like "from ExceptionClass".
+                    typeinfo = typ.type_object()
+                    base = self.lookup_typeinfo('builtins.BaseException')
+                    if base in typeinfo.mro:
+                        # Good!
                         return None
                     # Else fall back to the check below (which will fail).
-            super_type = cast(Type, self.named_type('builtins.BaseException'))
-            # Type checking "raise from"
-            if s.from_expr:
-                super_type = self.accept(s.from_expr)
             self.check_subtype(typ,
-                               super_type, s,
+                               self.named_type('builtins.BaseException'), s,
                                messages.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
