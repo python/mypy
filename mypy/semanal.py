@@ -993,6 +993,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         if s.expr:
             s.expr.accept(self)
+        if s.from_expr:
+            s.from_expr.accept(self)
 
     def visit_yield_stmt(self, s: YieldStmt) -> None:
         if not self.is_func_scope():
