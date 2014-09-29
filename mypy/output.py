@@ -332,6 +332,10 @@ class OutputVisitor(NodeVisitor):
         self.node(o.expr)
         self.token(o.repr.rparen)
 
+    def visit_star_expr(self, o):
+        self.token(o.repr.star)
+        self.node(o.expr)
+
     def visit_name_expr(self, o):
         # Supertype references may not have a representation.
         if o.repr:

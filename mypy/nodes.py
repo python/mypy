@@ -805,6 +805,20 @@ class ParenExpr(Node):
         return visitor.visit_paren_expr(self)
 
 
+class StarExpr(Node):
+    """Star expression"""
+
+    expr = Undefined(Node)
+    
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+        self.literal = self.expr.literal
+        self.literal_hash = ('Star', expr.literal_hash,)
+        
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_star_expr(self)
+        
+
 class RefExpr(Node):
     """Abstract base class for name-like constructs"""
 

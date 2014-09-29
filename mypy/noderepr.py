@@ -213,6 +213,11 @@ class ParenExprRepr:
         self.rparen = rparen
 
 
+class StarExprRepr:
+    def __init__(self, star: Any) -> None:
+        self.star = star
+        
+
 class NameExprRepr:
     def __init__(self, id: Any) -> None:
         self.id = id

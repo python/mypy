@@ -16,7 +16,7 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    DisjointclassExpr, ComparisonExpr, TempNode
+    DisjointclassExpr, ComparisonExpr, TempNode, StarExpr
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -254,6 +254,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_print_stmt(self, node: PrintStmt) -> Node:
         return PrintStmt(self.nodes(node.args),
                          node.newline)
+
+    def visit_star_expr(self, node: StarExpr) -> Node:
+        return StarExpr(node.expr)
 
     def visit_int_expr(self, node: IntExpr) -> Node:
         return IntExpr(node.value)
