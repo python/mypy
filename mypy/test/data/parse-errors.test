@@ -52,6 +52,11 @@ file, line 1: Parse error before end of line
 file, line 2: Parse error before end of line
 file, line 3: Parse error before end of line
 
+[case testDoubleStar]
+**a
+[out]
+file, line 1: Parse error before **
+
 [case testInvalidSuperClass]
 class A(C[):
   pass

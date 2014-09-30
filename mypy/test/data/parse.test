@@ -2714,3 +2714,89 @@ MypyFile:1(
   ClassDef:1(
     A
     PassStmt:2()))
+
+[case testStarExpression]
+*a
+*a, b
+a, *b
+a, (*x, y)
+a, (x, *y)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StarExpr:1(
+      NameExpr(a)))
+  ExpressionStmt:2(
+    TupleExpr:2(
+      StarExpr:2(
+        NameExpr(a))
+      NameExpr(b)))
+  ExpressionStmt:3(
+    TupleExpr:3(
+      NameExpr(a)
+      StarExpr:3(
+        NameExpr(b))))
+  ExpressionStmt:4(
+    TupleExpr:4(
+      NameExpr(a)
+      ParenExpr:4(
+        TupleExpr:4(
+          StarExpr:4(
+            NameExpr(x))
+          NameExpr(y)))))
+  ExpressionStmt:5(
+    TupleExpr:5(
+      NameExpr(a)
+      ParenExpr:5(
+        TupleExpr:5(
+          NameExpr(x)
+          StarExpr:5(
+            NameExpr(y)))))))
+
+[case testStarExpressionParenthesis]
+*(a)
+*(a,b)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StarExpr:1(
+      ParenExpr:1(
+        NameExpr(a))))
+  ExpressionStmt:2(
+    StarExpr:2(
+      ParenExpr:2(
+        TupleExpr:2(
+          NameExpr(a)
+          NameExpr(b))))))
+
+[case testStarExpressionInFor]
+for *a in b:
+    pass
+
+for a, *b in c:
+    pass
+    
+for *a, b in c:
+    pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    StarExpr:1(
+      NameExpr(a))
+    NameExpr(b)
+    Block:1(
+      PassStmt:2()))
+  ForStmt:4(
+    NameExpr(a)
+    StarExpr:4(
+      NameExpr(b))
+    NameExpr(c)
+    Block:4(
+      PassStmt:5()))
+  ForStmt:7(
+    StarExpr:7(
+      NameExpr(a))
+    NameExpr(b)
+    NameExpr(c)
+    Block:7(
+      PassStmt:8())))
