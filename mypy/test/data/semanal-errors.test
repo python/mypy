@@ -815,6 +815,31 @@ from typing import Undefined
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
 [out]
 
+[case testVariableDeclWithInvalidNumberOfTypesNested]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested2]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested3]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested4]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested5]
+from typing import Undefined
+x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
+[out]
+
 [case testVariableDeclWithInvalidType]
 from typing import Undefined
 x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables

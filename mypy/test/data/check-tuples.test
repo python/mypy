@@ -74,6 +74,18 @@ class A: pass
 class B(A): pass
 [builtins fixtures/tuple.py]
 
+[case testNestedTupleTypes2]
+from typing import Undefined, Tuple
+t1 = Undefined # type: (A, (A, A))
+t2 = Undefined # type: B, (B, B)
+
+t2 = t1 # E: Incompatible types in assignment (expression has type "Tuple[A, Tuple[A, A]]", variable has type "Tuple[B, Tuple[B, B]]")
+t1 = t2
+
+class A: pass
+class B(A): pass
+[builtins fixtures/tuple.py]
+
 [case testSubtypingWithNamedTupleType]
 from typing import Undefined, Tuple
 t1 = Undefined # type: Tuple[A, A]
