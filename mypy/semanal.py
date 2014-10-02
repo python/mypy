@@ -797,6 +797,8 @@ class SemanticAnalyzer(NodeVisitor):
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)) and not nested:
             items = (Any(lval)).items
+            if len(items) == 0 and isinstance(lval, TupleExpr):
+                self.fail("Can't assign to ()", lval)
             for i in items:
                 self.analyse_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
