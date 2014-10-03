@@ -869,9 +869,9 @@ class Parser:
                                                  else_tok))
         return node
 
-    def parse_for_index_variables(self) -> Tuple[List[NameExpr], List[Token]]:
+    def parse_for_index_variables(self) -> Tuple[List[Node], List[Token]]:
         # Parse index variables of a 'for' statement.
-        index = List[NameExpr]()
+        index = List[Node]()
         commas = List[Token]()
 
         is_paren = self.current_str() == '('

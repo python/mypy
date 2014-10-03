@@ -1304,8 +1304,6 @@ class SemanticAnalyzer(NodeVisitor):
             for cond in conditions:
                 cond.accept(self)
 
-        # TODO analyze variable types (see visit_for_stmt)
-
         expr.left_expr.accept(self)
         self.leave()
 

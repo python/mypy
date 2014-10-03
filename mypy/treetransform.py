@@ -371,7 +371,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.node(node.left_expr),
-                             [self.names(index) for index in node.indices],
+                             [self.nodes(index) for index in node.indices],
                              [self.node(s) for s in node.sequences],
                              [[self.node(cond) for cond in conditions]
                               for conditions in node.condlists])
