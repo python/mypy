@@ -1189,6 +1189,20 @@ MypyFile:1(
       NameExpr(y)
       NameExpr(z))))
 
+[case testGeneratorExpressionNested]
+x for y, (p, q) in z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    GeneratorExpr:1(
+      NameExpr(x)
+      NameExpr(y)
+      ParenExpr:1(
+        TupleExpr:1(
+          NameExpr(p)
+          NameExpr(q)))
+      NameExpr(z))))
+
 [case testListComprehension]
 x=[x for y in z]
 [out]
