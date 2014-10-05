@@ -389,6 +389,32 @@ main, line 4: Invalid assignment target
 main, line 5: Invalid assignment target
 main, line 6: Invalid assignment target
 
+[case testTwoStarExpressions]
+a, *b, *c = 1
+*a, (*b, c) = 1
+a, (*b, *c) = 1
+[*a, *b] = 1
+[out]
+main, line 1: Two starred expressions in assignment
+main, line 3: Two starred expressions in assignment
+main, line 4: Two starred expressions in assignment
+
+[case testStarExpressionRhs]
+b = 1
+c = 1
+d = 1
+a = *b
+a = b, (c, *d)
+[out]
+main, line 4: Can use starred expression only as assignment target
+main, line 5: Can use starred expression only as assignment target
+
+[case testStarExpressionInExp]
+a = 1
+*a + 1
+[out]
+main, line 2: Can use starred expression only as assignment target
+
 [case testInvalidDel]
 import typing
 x = 1
