@@ -1332,7 +1332,7 @@ class TypeChecker(NodeVisitor[Type]):
         if s.from_expr:
             self.type_check_raise(s.from_expr, s)
 
-    def type_check_raise(self, e: NameExpr, s: RaiseStmt) -> None:
+    def type_check_raise(self, e: Node, s: RaiseStmt) -> None:
         typ = self.accept(e)
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
