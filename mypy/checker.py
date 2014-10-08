@@ -1328,19 +1328,24 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a raise statement."""
         self.breaking_out = True
         if s.expr:
-            typ = self.accept(s.expr)
-            if isinstance(typ, FunctionLike):
-                if typ.is_type_obj():
-                    # Cases like "raise ExceptionClass".
-                    typeinfo = typ.type_object()
-                    base = self.lookup_typeinfo('builtins.BaseException')
-                    if base in typeinfo.mro:
-                        # Good!
-                        return None
-                    # Else fall back to the check below (which will fail).
-            self.check_subtype(typ,
-                               self.named_type('builtins.BaseException'), s,
-                               messages.INVALID_EXCEPTION)
+            self.type_check_raise(s.expr, s)
+        if s.from_expr:
+            self.type_check_raise(s.from_expr, s)
+
+    def type_check_raise(self, e: Node, s: RaiseStmt) -> None:
+        typ = self.accept(e)
+        if isinstance(typ, FunctionLike):
+            if typ.is_type_obj():
+                # Cases like "raise/from ExceptionClass".
+                typeinfo = typ.type_object()
+                base = self.lookup_typeinfo('builtins.BaseException')
+                if base in typeinfo.mro:
+                    # Good!
+                    return None
+                # Else fall back to the check below (which will fail).
+        self.check_subtype(typ,
+                           self.named_type('builtins.BaseException'), s,
+                           messages.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
