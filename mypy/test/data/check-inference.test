@@ -211,7 +211,7 @@ class B: pass
 [out]
 main: In function "f":
 
-[case testInferringLvarTypesInNestedTupleAssignment]
+[case testInferringLvarTypesInNestedTupleAssignment1]
 from typing import Undefined, Tuple
 def f() -> None:
     t = Undefined # type: Tuple[A, B]
@@ -228,7 +228,7 @@ class B: pass
 [out]
 main: In function "f":
 
-[case testInferringLvarTypesInNestedTupleAssignment]
+[case testInferringLvarTypesInNestedTupleAssignment2]
 import typing
 def f() -> None:
     a, (b, c) = A(), (B(), C())
