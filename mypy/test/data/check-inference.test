@@ -247,6 +247,25 @@ class C: pass
 [out]
 main: In function "f":
 
+[case testInferringLvarTypesInNestedListAssignment]
+import typing
+def f() -> None:
+    a, (b, c) = A(), [B(), C()]
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+
+    a = A()
+    b = B()
+    c = C()
+
+class A: pass
+class B: pass
+class C: pass
+[out]
+main: In function "f":
+
 [case testInferringLvarTypesInMultiDefWithNoneTypes]
 import typing
 def f() -> None:
