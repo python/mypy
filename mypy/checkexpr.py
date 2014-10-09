@@ -1,5 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
+import re
+
 from typing import Undefined, cast, List, Tuple, Dict, Function
 
 from mypy.types import (
@@ -31,7 +33,6 @@ from mypy import erasetype
 from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
-
 
 class ExpressionChecker:
     """Expression type checker.
@@ -748,6 +749,8 @@ class ExpressionChecker:
         if e.op == '*' and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
+        if e.op == '%' and isinstance(e.left, StrExpr):
+            return self.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:
@@ -758,6 +761,48 @@ class ExpressionChecker:
             return result
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
+
+    def check_str_interpolation(self, str: StrExpr, replacements: Node) -> Type:
+        regex = '%[^%]'
+        place_holders = re.findall(regex, str.value)
+        
+        replacements = self.strip_parens(replacements)
+        
+        rhs_type = self.accept(replacements)
+        rep_types = []
+        if isinstance(rhs_type, TupleType):
+            rep_types = cast(TupleType, rhs_type).items
+        else:
+            rep_types = [rhs_type]
+        
+        if len(place_holders) > len(rep_types):
+            self.msg.too_few_string_formatting_arguments(str)
+        elif len(place_holders) < len(rep_types):
+            self.msg.too_many_string_formatting_arguments(str)
+        else:
+            for ph, rep in zip(place_holders, rep_types):
+                ph_type = self.placeholder_type(ph)
+                self.chk.check_subtype(rep, ph_type, str, 
+                            messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION, 
+                            'expression has type', 'placeholder has type')
+        return self.named_type('builtins.str')
+
+    def placeholder_type(self, p: str) -> Type:
+        if p[1] == 's':
+            return AnyType()
+        elif p[1] in ['d', 'o', 'x', 'X', 'c']:
+            return self.named_type('builtins.int')
+        elif p[1] in ['e', 'E', 'f', 'g', 'G']:
+            return self.named_type('builtins.float')
+        else:
+            self.msg.unsupported_placeholder(p[1], str)
+            return None
+
+    def strip_parens(self, node: Node) -> Node:
+        if isinstance(node, ParenExpr):
+            return self.strip_parens(node.expr)
+        else:
+            return node
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.

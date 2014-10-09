@@ -35,6 +35,7 @@ INVALID_RETURN_TYPE_FOR_YIELD = \
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
+INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
     'Type of getter incompatible with setter'
@@ -562,6 +563,15 @@ class MessageBuilder:
             return True
         else:
             return False
+
+    def too_few_string_formatting_arguments(self, context: Context) -> None:
+        self.fail('Not enough arguments for format string', context)
+        
+    def too_many_string_formatting_arguments(self, context: Context) -> None:
+        self.fail('Not all arguments converted during string formatting', context)
+
+    def unsupported_placeholder(self, placeholder:str, context: Context) -> None:
+        self.fail('Unsupported format character \'%s\'' % str, context)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
