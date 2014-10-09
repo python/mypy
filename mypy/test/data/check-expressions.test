@@ -893,6 +893,34 @@ a[:None]
 [builtins fixtures/slice.py]
 
 
+-- String interpolation
+-- --------------------
+
+
+[case testStringInterpolationType]
+from typing import Undefined, Any
+i, f, s = Undefined, Undefined, Undefined # type: (int, float, str)
+'%d' % i
+'%f' % f
+'%s' % s
+'%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "float")
+[builtins fixtures/primitives.py]
+
+[case testStringInterpolationSAcceptsAnyType]
+from typing import Undefined, Any
+i, o, s = Undefined, Undefined, Undefined # type: (int, object, str)
+'%s %s %s' % (i, o, s)
+[builtins fixtures/primitives.py]
+
+[case testStringInterpolationCount]
+'%d %d' % 1  # E: Not enough arguments for format string
+'%d %d' % (1, 2)
+'%d %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting
+t = 1, 2
+'%d' % t  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.py]
+
 -- Lambdas
 -- -------
 
