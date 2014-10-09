@@ -921,6 +921,9 @@ t = 1, 2
 '%d' % t  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.py]
 
+[case testStringInterpolationInvalidPlaceholder]
+'%W' % 1  # E: Unsupported format character 'W'
+
 -- Lambdas
 -- -------
 
