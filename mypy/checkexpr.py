@@ -781,13 +781,14 @@ class ExpressionChecker:
             self.msg.too_many_string_formatting_arguments(str)
         else:
             for ph, rep in zip(place_holders, rep_types):
-                ph_type = self.placeholder_type(ph)
-                self.chk.check_subtype(rep, ph_type, str, 
+                ph_type = self.placeholder_type(ph, replacements)
+                if ph_type:
+                    self.chk.check_subtype(rep, ph_type, str, 
                             messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION, 
                             'expression has type', 'placeholder has type')
         return self.named_type('builtins.str')
 
-    def placeholder_type(self, p: str) -> Type:
+    def placeholder_type(self, p: str, context: Context) -> Type:
         if p[1] == 's':
             return AnyType()
         elif p[1] in ['d', 'o', 'x', 'X', 'c']:
@@ -795,7 +796,7 @@ class ExpressionChecker:
         elif p[1] in ['e', 'E', 'f', 'g', 'G']:
             return self.named_type('builtins.float')
         else:
-            self.msg.unsupported_placeholder(p[1], str)
+            self.msg.unsupported_placeholder(p[1], context)
             return None
 
     def strip_parens(self, node: Node) -> Node:
