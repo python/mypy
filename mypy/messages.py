@@ -570,6 +570,9 @@ class MessageBuilder:
     def too_many_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not all arguments converted during string formatting', context)
 
+    def incomplete_conversion_specifier_format(self, context: Context) -> None:
+        self.fail('Incomplete format', context)
+
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
         self.fail('Unsupported format character \'%s\'' % placeholder, context)
 
