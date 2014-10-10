@@ -921,6 +921,12 @@ t = 1, 2
 '%d' % t  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.py]
 
+[case testStringInterpolationWithAnyType]
+from typing import Undefined, Any
+a = Undefined # type: Any
+'%d %d' % a
+[builtins fixtures/primitives.py]
+
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character 'W'
 

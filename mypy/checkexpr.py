@@ -770,6 +770,8 @@ class ExpressionChecker:
             rep_types = []  # type: List[Type]
             if isinstance(rhs_type, TupleType):
                 rep_types = cast(TupleType, rhs_type).items
+            elif isinstance(rhs_type, AnyType):
+                rep_types = [AnyType()] * len(expected_types)
             else:
                 rep_types = [rhs_type]
         
