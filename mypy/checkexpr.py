@@ -801,8 +801,6 @@ class ExpressionChecker:
             if type == '':
                 self.msg.incomplete_conversion_specifier_format(context)
                 return None
-            elif type == '%' and width == '' and precision == '':
-                pass
             else:
                 expected_types.extend(self.specifier_types(width, precision, type, context))
         return expected_types
@@ -814,7 +812,8 @@ class ExpressionChecker:
             types.append( (self.named_type('builtins.int'), '* wants int', None, None) )
         if precision == '*':
             types.append( (self.named_type('builtins.int'), '* wants int', None, None) )
-        types.append( (self.conversion_type(type, context),
+        if type != '%':
+            types.append( (self.conversion_type(type, context),
                        messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                        'expression has type', 'placeholder has type') )
         return types
