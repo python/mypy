@@ -576,6 +576,18 @@ class MessageBuilder:
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
         self.fail('Unsupported format character \'%s\'' % placeholder, context)
 
+    def string_interpolation_with_star_and_key(self, context: Context) -> None:
+        self.fail('String interpolation contains both stars and mapping keys', context)
+
+    def requires_int_or_char(self, context: Context) -> None:
+        self.fail('%c requires int or char', context)
+
+    def format_requires_mapping(self, context: Context) -> None:
+        self.fail('Format requires a mapping', context)
+
+    def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
+        self.fail('String interpolation mixes specifier with and without mapping keys', context)
+
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
 

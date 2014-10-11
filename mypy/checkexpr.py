@@ -763,65 +763,137 @@ class ExpressionChecker:
             raise RuntimeError('Unknown operator {}'.format(e.op))
 
     def check_str_interpolation(self, str: StrExpr, replacements: Node) -> Type:
-        expected_types = self.parse_conversion_specifiers(str.value, str)
-        if expected_types:
+        specifiers = self.parse_conversion_specifiers(str.value)
+        checkers = self.analyse_conversion_specifiers(specifiers, str)
+        if checkers:
             replacements = self.strip_parens(replacements)
             rhs_type = self.accept(replacements)
             rep_types = []  # type: List[Type]
             if isinstance(rhs_type, TupleType):
                 rep_types = cast(TupleType, rhs_type).items
             elif isinstance(rhs_type, AnyType):
-                rep_types = [AnyType()] * len(expected_types)
+                rep_types = [AnyType()] * len(checkers)
             else:
                 rep_types = [rhs_type]
         
-            if len(expected_types) > len(rep_types):
+            if len(checkers) > len(rep_types):
                 self.msg.too_few_string_formatting_arguments(str)
-            elif len(expected_types) < len(rep_types):
+            elif len(checkers) < len(rep_types):
                 self.msg.too_many_string_formatting_arguments(str)
             else:
-                for exp, rep_type in zip(expected_types, rep_types):
-                    exp_type, msg, msg_exp, msg_ph = exp
-                    if exp_type:
-                        self.chk.check_subtype(rep_type, exp_type, str,
-                                msg, msg_exp, msg_ph)
+                if len(checkers) == 1:
+                    checkers[0](node=replacements)
+                elif isinstance(replacements, TupleExpr):
+                    for check, rep_node in zip(checkers, replacements.items):
+                        check(node=rep_node)
+                else:
+                    for check, rep_type in zip(checkers, rep_types):
+                        check(type=rep_type)
         return self.named_type('builtins.str')
 
-    def parse_conversion_specifiers(self, format: str, context: Context) -> List[Tuple[Type, str, str, str]]:
-        #key_regex = '(\((.*)\))?'  # (optional) parenthesised sequence of characters
+    class ConversionSpecifier:
+        def __init__(self, key: str, flags: str, width: str, precision: str, type: str) -> None:
+            self.key = key
+            self.flags = flags
+            self.width = width
+            self.precision = precision
+            self.type = type
+
+        def has_key(self):
+            return self.key != None
+
+        def has_star(self):
+            return self.width == '*' or self.precision == '*'
+
+    def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
+        key_regex = '(\((.*)\))?'  # (optional) parenthesised sequence of characters
         flags_regex = '([#0\-+ ]*)'  # (optional) sequence of flags
         width_regex = '(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
-        precision_regex = '(\.(\*|[0-9]+))?'  # (optional) . followed by * of numbers
+        precision_regex = '(?:\.(\*|[0-9]+))?'  # (optional) . followed by * of numbers
         length_mod_regex = '[hlL]?'  # (optional) length modifier (unused)
         type_regex = '(.)?'  # conversion type
-        regex = ('%' + flags_regex + width_regex +
+        regex = ('%' + key_regex + flags_regex + width_regex +
                       precision_regex + length_mod_regex + type_regex)
-        expected_types = []  # type: List[Tuple[Type, str, str, str]]
-        for flags, width, _, precision, type in re.findall(regex, format):
-            if type == '':
-                self.msg.incomplete_conversion_specifier_format(context)
-                return None
-            else:
-                expected_types.extend(self.specifier_types(width, precision, type, context))
-        return expected_types
+        specifiers = []
+        for parens_key, key, flags, width, precision, type in re.findall(regex, format):
+            if parens_key == '':
+                key = None
+            specifiers.append(self.ConversionSpecifier(key, flags, width, precision, type))
+        return specifiers
 
-    def specifier_types(self, width: str, precision: str, type: str,
-                        context: Context) -> List[Tuple[Type, str, str, str]]:
-        types = []  # type: List[Tuple[Type, str, str, str]]
-        if width == '*':
-            types.append( (self.named_type('builtins.int'), '* wants int', None, None) )
-        if precision == '*':
-            types.append( (self.named_type('builtins.int'), '* wants int', None, None) )
-        if type != '%':
-            types.append( (self.conversion_type(type, context),
-                       messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                       'expression has type', 'placeholder has type') )
-        return types
+    def analyse_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
+                                      context: Context) -> List[ Function[[Node, Type], None] ]:
+        has_star = any(specifier.has_star() for specifier in specifiers)
+        has_key = any(specifier.has_key() for specifier in specifiers)
+        all_have_keys = all(specifier.has_key() for specifier in specifiers)
+
+        if has_key and has_star:
+            self.msg.string_interpolation_with_star_and_key(context)
+            return None
+        if has_key and not all_have_keys:
+            self.msg.string_interpolation_mixing_key_and_non_keys(context)
+            return None
+
+        elif has_key:
+            return None # TODO
+        else:
+            checkers = []  # type: List[ Function[[Node, Type], None] ]
+            for specifier in specifiers:
+                checker = self.replacement_checkers(specifier, context)
+                if checker == None:
+                    return None
+                checkers.extend(checker)
+            return checkers
+
+    def replacement_checkers(self, specifier: ConversionSpecifier,
+                             context: Context) -> List[ Function[[Node, Type], None] ]:
+        ''' Returns a list of functions that check whether a replacement is
+        of the right type for a specifier. The functions take either a node
+        or a type. When a node is specified, the type of the node is checked
+        again, now in the right type context
+        '''
+        checkers = []  # type: List[ Function[[Node, Type], None] ]
+
+        def check_star(node: Node = None, type: Type = None) -> None:
+            expected = self.named_type('builtins.int')
+            if node:
+                type = self.accept(node, expected)
+            self.chk.check_subtype(type, expected, context, '* wants int')
+
+        if specifier.width == '*':
+            checkers.append(check_star)
+        if specifier.precision == '*':
+            checkers.append(check_star)
+        if specifier.type != '%':
+            expected_type = self.conversion_type(specifier.type, context)
+            if expected_type == None:
+                return None
+
+            if specifier.type == 'c':
+                def check_c(node: Node = None, type: Type = None) -> None:
+                    '''int, or str with length 1'''
+                    if node:
+                        type = self.accept(node, expected_type)
+                        if isinstance(node, StrExpr) and len(node.value) != 1:
+                            self.msg.requires_int_or_char(context)
+                    self.chk.check_subtype(type, expected_type, context,
+                                      messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                      'expression has type', 'placeholder has type')
+                checkers.append(check_c)
+            else:
+                def check(node: Node = None, type: Type = None) -> None:
+                    if node:
+                        type = self.accept(node, expected_type)
+                    self.chk.check_subtype(type, expected_type, context,
+                                      messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                      'expression has type', 'placeholder has type')
+                checkers.append(check)
+        return checkers
 
     def conversion_type(self, p: str, context: Context) -> Type:
         if p in ['s', 'r']:
             return AnyType()
-        elif p in ['d', 'i', 'o', 'u', 'x', 'X', 'c']:
+        elif p in ['d', 'i', 'o', 'u', 'x', 'X']:
             return self.named_type('builtins.int')
         elif p in ['e', 'E', 'f', 'F', 'g', 'G']:
             return self.named_type('builtins.float')

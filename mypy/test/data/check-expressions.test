@@ -965,6 +965,12 @@ a = Undefined # type: Any
 '%*%' % 1
 '%*% %d' % 1  # E: Not enough arguments for format string
 
+[case testStringInterpolationC]
+'%c' % 1
+'%c' % 's'
+'%c' % ''  # E: %c requires int or char
+'%c' % 'ab'  # E: %c requires int or char
+
 -- Lambdas
 -- -------
 
