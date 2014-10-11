@@ -763,32 +763,15 @@ class ExpressionChecker:
             raise RuntimeError('Unknown operator {}'.format(e.op))
 
     def check_str_interpolation(self, str: StrExpr, replacements: Node) -> Type:
+        replacements = self.strip_parens(replacements)
         specifiers = self.parse_conversion_specifiers(str.value)
-        checkers = self.analyse_conversion_specifiers(specifiers, str)
-        if checkers:
-            replacements = self.strip_parens(replacements)
-            rhs_type = self.accept(replacements)
-            rep_types = []  # type: List[Type]
-            if isinstance(rhs_type, TupleType):
-                rep_types = cast(TupleType, rhs_type).items
-            elif isinstance(rhs_type, AnyType):
-                rep_types = [AnyType()] * len(checkers)
-            else:
-                rep_types = [rhs_type]
-        
-            if len(checkers) > len(rep_types):
-                self.msg.too_few_string_formatting_arguments(str)
-            elif len(checkers) < len(rep_types):
-                self.msg.too_many_string_formatting_arguments(str)
-            else:
-                if len(checkers) == 1:
-                    checkers[0](node=replacements)
-                elif isinstance(replacements, TupleExpr):
-                    for check, rep_node in zip(checkers, replacements.items):
-                        check(node=rep_node)
-                else:
-                    for check, rep_type in zip(checkers, rep_types):
-                        check(type=rep_type)
+        has_mapping_keys = self.analyse_conversion_specifiers(specifiers, str)
+        if has_mapping_keys == None:
+            pass # Error was reported
+        elif has_mapping_keys:
+            self.check_mapping_str_interpolation(specifiers, replacements)
+        else:
+            self.check_simple_str_interpolation(specifiers, replacements)
         return self.named_type('builtins.str')
 
     class ConversionSpecifier:
@@ -806,7 +789,7 @@ class ExpressionChecker:
             return self.width == '*' or self.precision == '*'
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
-        key_regex = '(\((.*)\))?'  # (optional) parenthesised sequence of characters
+        key_regex = '(\((\w*)\))?'  # (optional) parenthesised sequence of characters
         flags_regex = '([#0\-+ ]*)'  # (optional) sequence of flags
         width_regex = '(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
         precision_regex = '(?:\.(\*|[0-9]+))?'  # (optional) . followed by * of numbers
@@ -814,7 +797,7 @@ class ExpressionChecker:
         type_regex = '(.)?'  # conversion type
         regex = ('%' + key_regex + flags_regex + width_regex +
                       precision_regex + length_mod_regex + type_regex)
-        specifiers = []
+        specifiers = []  # type: List[ExpressionChecker.ConversionSpecifier]
         for parens_key, key, flags, width, precision, type in re.findall(regex, format):
             if parens_key == '':
                 key = None
@@ -822,7 +805,7 @@ class ExpressionChecker:
         return specifiers
 
     def analyse_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
-                                      context: Context) -> List[ Function[[Node, Type], None] ]:
+                                      context: Context) -> bool:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)
         all_have_keys = all(specifier.has_key() for specifier in specifiers)
@@ -833,17 +816,78 @@ class ExpressionChecker:
         if has_key and not all_have_keys:
             self.msg.string_interpolation_mixing_key_and_non_keys(context)
             return None
+        return has_key
 
-        elif has_key:
-            return None # TODO
+    def check_simple_str_interpolation(self, specifiers: List[ConversionSpecifier],
+                                       replacements: Node) -> None:
+        checkers = self.build_replacement_checkers(specifiers, replacements)
+        if checkers == None:
+            return
+
+        rhs_type = self.accept(replacements)
+        rep_types = []  # type: List[Type]
+        if isinstance(rhs_type, TupleType):
+            rep_types = cast(TupleType, rhs_type).items
+        elif isinstance(rhs_type, AnyType):
+            return
         else:
-            checkers = []  # type: List[ Function[[Node, Type], None] ]
+            rep_types = [rhs_type]
+
+        if len(checkers) > len(rep_types):
+            self.msg.too_few_string_formatting_arguments(replacements)
+        elif len(checkers) < len(rep_types):
+            self.msg.too_many_string_formatting_arguments(replacements)
+        else:
+            if len(checkers) == 1:
+                checkers[0](node=replacements)
+            elif isinstance(replacements, TupleExpr):
+                for check, rep_node in zip(checkers, replacements.items):
+                    check(node=rep_node)
+            else:
+                for check, rep_type in zip(checkers, rep_types):
+                    check(type=rep_type)
+
+    def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
+                                       replacements: Node) -> None:
+        dict_with_only_str_literal_keys = (isinstance(replacements, DictExpr) and
+                                          all(isinstance(self.strip_parens(k), StrExpr)
+                                              for k, v in cast(DictExpr, replacements).items))
+        if dict_with_only_str_literal_keys:
+            # check key mapping
+            checkers = self.build_replacement_checkers(specifiers, replacements)
+            if checkers == None:
+                return
+
+            mapping = {} # type: Dict[str, Type]
+            for k, v in cast(DictExpr, replacements).items:
+                key_str = cast(StrExpr, k).value
+                mapping[key_str] = self.accept(v)
+
             for specifier in specifiers:
-                checker = self.replacement_checkers(specifier, context)
-                if checker == None:
-                    return None
-                checkers.extend(checker)
-            return checkers
+                if specifier.key not in mapping:
+                    self.msg.key_not_in_mapping(specifier.key, replacements)
+                    return
+                rep_type = mapping[specifier.key]
+                expected_type = self.conversion_type(specifier.type, replacements)
+                self.chk.check_subtype(rep_type, expected_type, replacements,
+                                       messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                       'expression has type', 'placeholder has type')
+        else:
+            rep_type = self.accept(replacements)
+            dict_type = self.chk.named_generic_type('builtins.dict',
+                                            [AnyType(), AnyType()])
+            self.chk.check_subtype(rep_type, dict_type, replacements, messages.FORMAT_REQUIRES_MAPPING,
+                                   'expression has type', 'expected type for mapping is')
+
+    def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
+                                   context: Context) -> List[ Function[[Node, Type], None] ]:
+        checkers = []  # type: List[ Function[[Node, Type], None] ]
+        for specifier in specifiers:
+            checker = self.replacement_checkers(specifier, context)
+            if checker == None:
+                return None
+            checkers.extend(checker)
+        return checkers
 
     def replacement_checkers(self, specifier: ConversionSpecifier,
                              context: Context) -> List[ Function[[Node, Type], None] ]:
@@ -874,7 +918,7 @@ class ExpressionChecker:
                     '''int, or str with length 1'''
                     if node:
                         type = self.accept(node, expected_type)
-                        if isinstance(node, StrExpr) and len(node.value) != 1:
+                        if isinstance(node, StrExpr) and len(cast(StrExpr, node).value) != 1:
                             self.msg.requires_int_or_char(context)
                     self.chk.check_subtype(type, expected_type, context,
                                       messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,

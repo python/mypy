@@ -60,7 +60,7 @@ CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
 INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
 INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
-
+FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
 
 class MessageBuilder:
     """Helper class for reporting type checker error messages with parameters.
@@ -582,8 +582,8 @@ class MessageBuilder:
     def requires_int_or_char(self, context: Context) -> None:
         self.fail('%c requires int or char', context)
 
-    def format_requires_mapping(self, context: Context) -> None:
-        self.fail('Format requires a mapping', context)
+    def key_not_in_mapping(self, key: str, context: Context) -> None:
+        self.fail('Key \'%s\' not found in mapping' % key, context)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
         self.fail('String interpolation mixes specifier with and without mapping keys', context)
