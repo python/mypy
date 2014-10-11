@@ -971,6 +971,44 @@ a = Undefined # type: Any
 '%c' % ''  # E: %c requires int or char
 '%c' % 'ab'  # E: %c requires int or char
 
+[case testStringInterpolationMappingTypes]
+'%(a)d %(b)s' % {'a': 1, 'b': 's'}
+'%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+
+[case testStringInterpolationMappingKeys]
+'%()d' % {'': 2}
+'%(a)d' % {'a': 1, 'b': 2, 'c': 3}
+'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+[builtins fixtures/dict.py]
+
+[case testStringInterpolationMappingDictTypes]
+from typing import Undefined, Any, Dict
+a = Undefined # type: Any
+ds, do, di = Undefined, Undefined, Undefined # type: Dict[str, int], Dict[object, int], Dict[int, int]
+'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is Dict[Any, Any])
+'%()d' % a
+'%()d' % ds
+'%()d' % do
+[builtins fixtures/dict.py]
+
+[case testStringInterpolationMappingInvalidDictTypes-skip]
+from typing import Undefined, Any, Dict
+di = Undefined # type: Dict[int, int]
+'%()d' % di  # E: Format requires a mapping (expression has type Dict[int, int], expected type for mapping is Dict[str, Any])
+[builtins fixtures/dict.py]
+
+[case testStringInterpolationMappingInvalidSpecifiers]
+'%(a)d %d' % 1  # E: String interpolation mixes specifier with and without mapping keys
+'%(b)*d' % 1  # E: String interpolation contains both stars and mapping keys
+'%(b).*d' % 1  # E: String interpolation contains both stars and mapping keys
+
+[case testStringInterpolationMappingFlagsAndLengthModifiers]
+'%(a)1d' % {'a': 1}
+'%(a).1d' % {'a': 1}
+'%(a)#1.1ld' % {'a': 1}
+[builtins fixtures/dict.py]
+
+
 -- Lambdas
 -- -------
 
