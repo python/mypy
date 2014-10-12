@@ -917,7 +917,9 @@ i, o, s = Undefined, Undefined, Undefined # type: (int, object, str)
 '%d %d' % 1  # E: Not enough arguments for format string
 '%d %d' % (1, 2)
 '%d %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting
-t = 1, 2
+t = 1, 's'
+'%d %s' % t
+'%s %d' % t  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
 '%d' % t  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.py]
 
@@ -973,7 +975,7 @@ a = Undefined # type: Any
 
 [case testStringInterpolationMappingTypes]
 '%(a)d %(b)s' % {'a': 1, 'b': 's'}
-'%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "int")
 
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}

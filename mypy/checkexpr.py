@@ -789,12 +789,12 @@ class ExpressionChecker:
             return self.width == '*' or self.precision == '*'
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
-        key_regex = '(\((\w*)\))?'  # (optional) parenthesised sequence of characters
-        flags_regex = '([#0\-+ ]*)'  # (optional) sequence of flags
-        width_regex = '(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
-        precision_regex = '(?:\.(\*|[0-9]+))?'  # (optional) . followed by * of numbers
-        length_mod_regex = '[hlL]?'  # (optional) length modifier (unused)
-        type_regex = '(.)?'  # conversion type
+        key_regex = r'(\((\w*)\))?'  # (optional) parenthesised sequence of characters
+        flags_regex = r'([#0\-+ ]*)'  # (optional) sequence of flags
+        width_regex = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
+        precision_regex = r'(?:\.(\*|[0-9]+))?'  # (optional) . followed by * of numbers
+        length_mod_regex = r'[hlL]?'  # (optional) length modifier (unused)
+        type_regex = r'(.)?'  # conversion type
         regex = ('%' + key_regex + flags_regex + width_regex +
                       precision_regex + length_mod_regex + type_regex)
         specifiers = []  # type: List[ExpressionChecker.ConversionSpecifier]
@@ -871,7 +871,7 @@ class ExpressionChecker:
                 expected_type = self.conversion_type(specifier.type, replacements)
                 self.chk.check_subtype(rep_type, expected_type, replacements,
                                        messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                                       'expression has type', 'placeholder has type')
+                                       'expression has type', 'placeholder with key \'%s\' has type' % specifier.key)
         else:
             rep_type = self.accept(replacements)
             dict_type = self.chk.named_generic_type('builtins.dict',
@@ -891,11 +891,11 @@ class ExpressionChecker:
 
     def replacement_checkers(self, specifier: ConversionSpecifier,
                              context: Context) -> List[ Function[[Node, Type], None] ]:
-        ''' Returns a list of functions that check whether a replacement is
+        """Returns a list of functions that check whether a replacement is
         of the right type for a specifier. The functions take either a node
         or a type. When a node is specified, the type of the node is checked
         again, now in the right type context
-        '''
+        """
         checkers = []  # type: List[ Function[[Node, Type], None] ]
 
         def check_star(node: Node = None, type: Type = None) -> None:
