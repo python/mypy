@@ -614,6 +614,21 @@ MypyFile:1(
         NameExpr(i)))
     IntExpr(1)
     Tuple[a?[c?], Any?, int?]))
+    
+[case testMultipleVarDef3]
+(xx, (z, i)) = 1 # type: (a[c], (Any, int))
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    ParenExpr:1(
+      TupleExpr:1(
+        NameExpr(xx)
+        ParenExpr:1(
+          TupleExpr:1(
+            NameExpr(z)
+            NameExpr(i)))))
+    IntExpr(1)
+    Tuple[a?[c?], Tuple[Any?, int?]]))
 
 [case testAnnotateAssignmentViaSelf]
 class A:

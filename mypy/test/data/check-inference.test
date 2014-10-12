@@ -194,11 +194,92 @@ class B: pass
 [out]
 main: In function "f":
 
+[case testInferringLvarTypesInTupleAssignment]
+from typing import Undefined, Tuple
+def f() -> None:
+    t = Undefined # type: Tuple[A, B]
+    a, b = t
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+    a = A()
+    b = B()
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypesInNestedTupleAssignment1]
+from typing import Undefined, Tuple
+def f() -> None:
+    t = Undefined # type: Tuple[A, B]
+    a1, (a, b) = A(), t
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+    a = A()
+    b = B()
+
+class A: pass
+class B: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypesInNestedTupleAssignment2]
+import typing
+def f() -> None:
+    a, (b, c) = A(), (B(), C())
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+
+    a = A()
+    b = B()
+    c = C()
+
+class A: pass
+class B: pass
+class C: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypesInNestedListAssignment]
+import typing
+def f() -> None:
+    a, (b, c) = A(), [B(), C()]
+    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+
+    a = A()
+    b = B()
+    c = C()
+
+class A: pass
+class B: pass
+class C: pass
+[out]
+main: In function "f":
+
 [case testInferringLvarTypesInMultiDefWithNoneTypes]
 import typing
 def f() -> None:
     a, b = A(), None # E: Need type annotation for variable
     c, d = None, A() # E: Need type annotation for variable
+
+class A: pass
+[out]
+main: In function "f":
+
+[case testInferringLvarTypesInNestedTupleAssignmentWithNoneTypes]
+import typing
+def f() -> None:
+    a1, (a2, b) = A(), (A(), None) # E: Need type annotation for variable
 
 class A: pass
 [out]
@@ -215,14 +296,24 @@ def f() -> None:
 [builtins fixtures/tuple.py]
 [out]
 main: In function "f":
-main, line 5: Too many values to assign
-main, line 6: Need 4 values to assign
+main, line 5: Too many values to unpack (2 expected, 3 provided)
+main, line 6: Need more than 3 values to unpack (4 expected)
 
 [case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
 import typing
 def f() -> None:
-    a, b = f   # E: Incompatible types in assignment
-    c, d = A() # E: Incompatible types in assignment
+    a, b = f   # E: 'def ()' object is not iterable
+    c, d = A() # E: '__main__.A' object is not iterable
+class A: pass
+[builtins fixtures/for.py]
+[out]
+main: In function "f":
+
+[case testInvalidRvalueTypeInInferredNestedTupleAssignment]
+import typing
+def f() -> None:
+    a1, (a2, b) = A(), f   # E: 'def ()' object is not iterable
+    a3, (c, d) = A(), A() # E: '__main__.A' object is not iterable
 class A: pass
 [builtins fixtures/for.py]
 [out]
@@ -237,6 +328,33 @@ class D: pass
 def f() -> None:
     a, b = List[C]()
     c, d, e = List[D]()
+    a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+    b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+    c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+    b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+
+    a = C()
+    b = C()
+    c = D()
+    d = D()
+    e = D()
+
+    a = b
+    c = d
+    d = e
+[builtins fixtures/for.py]
+[out]
+main: In function "f":
+
+[case testInferringNestedTupleAssignmentWithListRvalue]
+from typing import List
+
+class C: pass
+class D: pass
+
+def f() -> None:
+    c1, (a, b) = C(), List[C]()
+    c2, (c, d, e) = C(), List[D]()
     a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
@@ -639,7 +757,7 @@ class B: pass
 [out]
 main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
 main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
-main, line 8: Need 3 values to assign
+main, line 8: Need more than 2 values to unpack (3 expected)
 main, line 10: Need type annotation for variable
 
 [case testInferenceOfFor3]
@@ -711,7 +829,7 @@ class A: pass
 [case testMultipleAssignmentWithPartialDefinition2]
 from typing import Undefined
 a = Undefined # type: A
-a, x = [a]
+a, x = [a, a]
 x = a
 a = x
 x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")

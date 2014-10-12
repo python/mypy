@@ -408,6 +408,47 @@ MypyFile:1(
       NameExpr(x [__main__.x]))
     IntExpr(1)))
 
+[case testMultipleDefOnlySomeNewNestedTuples]
+x = 1
+y, (x, z) = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x* [__main__.x])
+    IntExpr(1))
+  AssignmentStmt:2(
+    TupleExpr:2(
+      NameExpr(y* [__main__.y])
+      ParenExpr:2(
+        TupleExpr:2(
+          NameExpr(x [__main__.x])
+          NameExpr(z* [__main__.z]))))
+    IntExpr(1)))
+
+[case testMultipleDefOnlySomeNewNestedLists]
+x = 1
+y, [x, z] = 1
+[p, [x, r]] = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x* [__main__.x])
+    IntExpr(1))
+  AssignmentStmt:2(
+    TupleExpr:2(
+      NameExpr(y* [__main__.y])
+      ListExpr:2(
+        NameExpr(x [__main__.x])
+        NameExpr(z* [__main__.z])))
+    IntExpr(1))
+  AssignmentStmt:3(
+    ListExpr:3(
+      NameExpr(p* [__main__.p])
+      ListExpr:3(
+        NameExpr(x [__main__.x])
+        NameExpr(r* [__main__.r])))
+    IntExpr(1)))
+
 [case testIndexedDel]
 x = y = 1
 del x[y]

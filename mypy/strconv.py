@@ -197,8 +197,6 @@ class StrConv(NodeVisitor[str]):
 
     def visit_for_stmt(self, o):
         a = [o.index]
-        if o.types != [None] * len(o.types):
-            a += o.types
         a.extend([o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))

@@ -663,7 +663,6 @@ NameExpr(6) : A[B]
 NameExpr(6) : A[C]
 NameExpr(6) : B
 NameExpr(6) : C
-TupleExpr(6) : Tuple[A[B], A[C]]
 NameExpr(7) : A[B]
 NameExpr(8) : A[C]
 

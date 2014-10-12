@@ -735,6 +735,7 @@ class SemanticAnalyzer(NodeVisitor):
         Only if add_global is True, add name to globals table. If nested
         is true, the lvalue is within a tuple or list lvalue expression.
         """
+        
         if isinstance(lval, NameExpr):
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and
@@ -795,7 +796,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif isinstance(lval, ParenExpr):
             self.analyse_lvalue(lval.expr, nested, add_global, explicit_type)
         elif (isinstance(lval, TupleExpr) or
-              isinstance(lval, ListExpr)) and not nested:
+              isinstance(lval, ListExpr)):
             items = (Any(lval)).items
             for i in items:
                 self.analyse_lvalue(i, nested=True, add_global=add_global,
@@ -1026,19 +1027,6 @@ class SemanticAnalyzer(NodeVisitor):
         # Bind index variables and check if they define new names.
         for n in s.index:
             self.analyse_lvalue(n)
-
-        # Analyze index variable types.
-        for i in range(len(s.types)):
-            t = s.types[i]
-            if t:
-                s.types[i] = self.anal_type(t)
-                v = cast(Var, s.index[i].node)
-                # TODO check if redefinition
-                v.type = s.types[i]
-
-        # Report error if only some of the loop variables have annotations.
-        if s.types != [None] * len(s.types) and None in s.types:
-            self.fail('Cannot mix unannotated and annotated loop variables', s)
 
         self.loop_depth += 1
         self.visit_block(s.body)

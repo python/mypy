@@ -864,7 +864,7 @@ class Parser:
             else_body = None
             else_tok = none
 
-        node = ForStmt(index, expr, body, else_body, types)
+        node = ForStmt(index, expr, body, else_body)
         self.set_repr(node, noderepr.ForStmtRepr(for_tok, commas, in_tok,
                                                  else_tok))
         return node

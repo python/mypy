@@ -1188,7 +1188,7 @@ class ExpressionChecker:
         for index, sequence, conditions in zip(gen.indices, gen.sequences,
                                                gen.condlists):
             sequence_type = self.chk.analyse_iterable_item_type(sequence)
-            self.chk.analyse_index_variables(index, False, sequence_type, gen)
+            self.chk.analyse_index_variables(index, sequence_type, gen)
             for condition in conditions:
                 self.accept(condition)
         self.chk.binder.pop_frame()
