@@ -284,11 +284,11 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(defn, FuncDef):
                 defn.info = self.type
                 defn.type = set_callable_name(defn.type, defn)
-        self.function_stack.append(defn)
-        self.enter()
         for init in defn.init:
             if init:
                 init.rvalue.accept(self)
+        self.function_stack.append(defn)
+        self.enter()
         for v in defn.args:
             self.add_local(v, defn)
         for init_ in defn.init:
@@ -735,7 +735,7 @@ class SemanticAnalyzer(NodeVisitor):
         Only if add_global is True, add name to globals table. If nested
         is true, the lvalue is within a tuple or list lvalue expression.
         """
-        
+
         if isinstance(lval, NameExpr):
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and

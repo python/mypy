@@ -514,3 +514,29 @@ MypyFile:1(
     Decorators(
       NameExpr(builtinclass [typing.builtinclass]))
     PassStmt:3()))
+
+[case testClassAttributeAsMethodDefaultArgumentValue]
+import typing
+class A:
+    X = 1
+    def f(self, x : int = X) -> None: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  ClassDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(X* [m])
+      IntExpr(1))
+    FuncDef:4(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: __main__.A, x: builtins.int =)
+      Init(
+        AssignmentStmt:4(
+          NameExpr(x [l])
+          NameExpr(X [m])))
+      Block:4(
+        PassStmt:4()))))
