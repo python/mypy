@@ -447,7 +447,6 @@ class OutputVisitor(NodeVisitor):
         for i in range(len(o.indices)):
             self.token(r.for_toks[i])
             for j in range(len(o.indices[i])):
-                self.node(o.types[i][j])
                 self.node(o.indices[i][j])
                 if j < len(o.indices[i]) - 1:
                     self.token(r.commas[0])

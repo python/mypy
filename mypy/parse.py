@@ -851,7 +851,7 @@ class Parser:
 
     def parse_for_stmt(self) -> ForStmt:
         for_tok = self.expect('for')
-        index, types, commas = self.parse_for_index_variables()
+        index, commas = self.parse_for_index_variables()
         in_tok = self.expect('in')
         expr = self.parse_expression()
 
@@ -869,11 +869,9 @@ class Parser:
                                                  else_tok))
         return node
 
-    def parse_for_index_variables(self) -> Tuple[List[NameExpr], List[Type],
-                                                 List[Token]]:
+    def parse_for_index_variables(self) -> Tuple[List[NameExpr], List[Token]]:
         # Parse index variables of a 'for' statement.
         index = List[NameExpr]()
-        types = List[Type]()
         commas = List[Token]()
 
         is_paren = self.current_str() == '('
@@ -883,7 +881,6 @@ class Parser:
         while True:
             v = self.parse_name_expr()
             index.append(v)
-            types.append(None)
             if self.current_str() != ',':
                 commas.append(none)
                 break
@@ -892,7 +889,7 @@ class Parser:
         if is_paren:
             self.expect(')')
 
-        return index, types, commas
+        return index, commas
 
     def parse_if_stmt(self) -> IfStmt:
         is_error = False
@@ -1179,7 +1176,6 @@ class Parser:
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
         indices = List[List[NameExpr]]()
         sequences = List[Node]()
-        types = List[List[Type]]()
         for_toks = List[Token]()
         in_toks = List[Token]()
         if_toklists = List[List[Token]]()
@@ -1188,9 +1184,8 @@ class Parser:
             if_toks = List[Token]()
             conds = List[Node]()
             for_toks.append(self.expect('for'))
-            index, type, commas = self.parse_for_index_variables()
+            index, commas = self.parse_for_index_variables()
             indices.append(index)
-            types.append(type)
             in_toks.append(self.expect('in'))
             sequence = self.parse_expression_list()
             sequences.append(sequence)
@@ -1200,7 +1195,7 @@ class Parser:
             if_toklists.append(if_toks)
             condlists.append(conds)
 
-        gen = GeneratorExpr(left_expr, indices, types, sequences, condlists)
+        gen = GeneratorExpr(left_expr, indices, sequences, condlists)
         gen.set_line(for_toks[0])
         self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, commas, in_toks,
                                                       if_toklists))

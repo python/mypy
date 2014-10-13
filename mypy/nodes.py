@@ -1176,16 +1176,13 @@ class GeneratorExpr(Node):
     sequences_expr = Undefined(List[Node])
     condlists = Undefined(List[List[Node]])
     indices = Undefined(List[List[NameExpr]])
-    types = Undefined(List[List['mypy.types.Type']])
 
     def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
-                 types: List[List['mypy.types.Type']], sequences: List[Node],
-                 condlists: List[List[Node]]) -> None:
+                 sequences: List[Node], condlists: List[List[Node]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
-        self.types = types
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
