@@ -95,7 +95,7 @@ Built-in types
 
 These are examples of some of the most common built-in types:
 
-.. code:: python
+.. code-block:: python
    
    int            # integer objects of arbitrary size
    float          # floating point number
@@ -120,14 +120,14 @@ Type inference
 
 The initial assignment defines a variable. If you do not explicitly specify the type of the variable, mypy infers the type based on the static type of the value expression:
 
-.. code:: python
+.. code-block:: python
    
    i = 1           # Infer type int for i
    l = [1, 2]      # Infer type List[int] for l
 
 Type inference is bidirectional and takes context into account. For example, the following is valid:
 
-.. code:: python
+.. code-block:: python
    
    def f(l: List[object]) -> None:
        l = [1, 2]  # Infer type List[object] for [1, 2]
@@ -136,14 +136,14 @@ In an assignment, the type context is determined by the assignment target. In th
 
 Note that the following is not valid, since List[int] is not compatible with List[object]:
 
-.. code:: python
+.. code-block:: python
    
    def f(l: List[object], k: List[int]) -> None:
        l = k       # Type check error: incompatible types in assignment
 
 The reason why the above assignment is disallowed is that allowing the assignment could result in non-int values stored in a list of int:
 
-.. code:: python
+.. code-block:: python
    
    def f(l: List[object], k: List[int]) -> None:
        l = k
@@ -159,21 +159,21 @@ Explicit types for collections
 
 The type checker cannot always infer the type of a list or a dictionary. This often arises when creating an empty list or dictionary and assigning it to a new variable without an explicit variable type. In these cases you can give the type explicitly using the type name as a constructor:
 
-.. code:: python
+.. code-block:: python
    
    l = List[int]()       # Create empty list with type List[int]
    d = Dict[str, int]()  # Create empty dictionary (str -> int)
 
 Similarly, you can also give an explicit type when creating an empty set:
 
-.. code:: python
+.. code-block:: python
    
    s = Set[int]()
 
 Explicit types for variables
 ****************************
 
-.. code:: python
+.. code-block:: python
    
    s = Undefined(str)   # Declare type of x to be str.
    s = 'x'              # OK
@@ -181,7 +181,7 @@ Explicit types for variables
 
 The Undefined call evaluates to a special "Undefined" object that raises an exception on any operation:
 
-.. code:: python
+.. code-block:: python
    
    s = Undefined(str)
    if s:                # Runtime error: undefined value
@@ -189,13 +189,13 @@ The Undefined call evaluates to a special "Undefined" object that raises an exce
 
 You can also override the inferred type of a variable by using a special comment after an assignment statement:
 
-.. code:: python
+.. code-block:: python
    
    x = [] # type: List[int]
 
 Here the # type comment applies both to the assignment target, in this case x, and also the initializer expression, via context. The above code is equivalent to this:
 
-.. code:: python
+.. code-block:: python
    
    x = List[int]()
 
@@ -206,7 +206,7 @@ User-defined types
 
 Each class is also a type. Any instance of a subclass is also compatible with all superclasses. All values are compatible with the object type (and also the Any type).
 
-.. code:: python
+.. code-block:: python
    
    class A:
        def f(self) -> int:        # Type of self inferred (A)
@@ -229,7 +229,7 @@ A value with the Any type is dynamically typed. Any operations are permitted on 
 
 Any is compatible with every other type, and vice versa. No implicit type check is inserted when assigning a value of type Any to a variable with a more precise type:
 
-.. code:: python
+.. code-block:: python
    
    a, s = Undefined(Any), Undefined(str)
    a = 2      # OK
@@ -242,7 +242,7 @@ Tuple types
 
 The type Tuple[t, ...] represents a tuple with the item types t, ...:
 
-.. code:: python
+.. code-block:: python
    
    def f(t: Tuple[int, str]) -> None:
        t = 1, 'foo'    # OK
@@ -253,7 +253,7 @@ Class name forward references
 
 Python does not allow references to a class object before the class is defined. Thus this code is does not work as expected:
 
-.. code:: python
+.. code-block:: python
    
    def f(x: A) -> None: # Error: Name A not defined
        ....
@@ -263,7 +263,7 @@ Python does not allow references to a class object before the class is defined. 
 
 In cases like these you can enter the type as a string literal — this is a *forward reference*:
 
-.. code:: python
+.. code-block:: python
    
    def f(x: 'A') -> None:  # OK
        ...
@@ -275,7 +275,7 @@ Of course, instead of using a string literal type, you could move the function d
 
 Any type can be entered as a string literal, and youn can combine string-literal types with non-string-literal types freely:
 
-.. code:: python
+.. code-block:: python
    
    a = Undefined(List['A'])  # OK
    n = Undefined('int')      # OK, though not useful
@@ -289,7 +289,7 @@ Instance and class attributes
 
 Mypy type checker detects if you are trying to access a missing attribute, which is a very common programming error. For this to work correctly, instance and class attributes must be defined or initialized within the class. Mypy infers the types of attributes:
 
-.. code:: python
+.. code-block:: python
    
    class A:
        def __init__(self, x: int) -> None:
@@ -301,7 +301,7 @@ Mypy type checker detects if you are trying to access a missing attribute, which
 
 This is a bit like each class having an implicitly defined __slots__ attribute. In Python semantics this is only enforced during type checking: at runtime we use standard Python semantics. You can selectively define a class as *dynamic*; dynamic classes have Python-like compile-time semantics, and they allow you to assign to arbitrary attributes anywhere in a program without the type checker complaining:
 
-.. code:: python
+.. code-block:: python
    
    from typing import Dynamic
    
@@ -319,7 +319,7 @@ Mypy also lets you read arbitrary attributes of dynamic class instances. This li
 
 You can declare variables in the class body explicitly using Undefined or a type comment:
 
-.. code:: python
+.. code-block:: python
    
    class A:
        x = Undefined(List[int])  # Declare attribute y of type List[int]
@@ -332,7 +332,7 @@ As in Python, a variable defined in the class body can used as a class or an ins
 
 Similarly, you can give explicit types to instance variables defined in a method:
 
-.. code:: python
+.. code-block:: python
    
    class A:
        def __init__(self) -> None:
@@ -343,7 +343,7 @@ Similarly, you can give explicit types to instance variables defined in a method
 
 You can only define an instance variable within a method if you assign to it explicitly using self:
 
-.. code:: python
+.. code-block:: python
    
    class A:
        def __init__(self) -> None:
@@ -356,7 +356,7 @@ Overriding statically typed methods
 
 When overriding a statically typed method, mypy checks that the override has a compatible signature:
 
-.. code:: python
+.. code-block:: python
    
    class A:
        def f(self, x: int) -> None:
@@ -382,7 +382,7 @@ You can also override a statically typed method with a dynamically typed one. Th
 
 There is no runtime enforcement that the method override returns a value that is compatible with the original return type, since types are erased in the Python semantics:
 
-.. code:: python
+.. code-block:: python
    
    class A:
        def inc(self, x: int) -> int:
@@ -402,14 +402,14 @@ Declaring multiple variable types on a line
 
 You can declare more than a single variable at a time. In order to nicely work with multiple assignment, you must give each variable a type separately:
 
-.. code:: python
+.. code-block:: python
    
    n, s = Undefined(int), Undefined(str)  # Declare an integer and a string
    i, found = 0, False # type: int, bool
 
 When using the latter form, you can optinally use parentheses around the types, assignment targets and assigned expression:
 
-.. code:: python
+.. code-block:: python
    
    i, found = 0, False # type: (int, bool)      # OK
    (i, found) = 0, False # type: int, bool      # OK
@@ -421,7 +421,7 @@ Dynamically typed code
 
 As mentioned earlier, bodies of functions that don't have have an explicit return type are dynamically typed (operations are checked at runtime). Code outside functions is statically typed by default, and types of variables are inferred. This does usually the right thing, but you can also make any variable dynamically typed by defining it explicitly with the type Any:
 
-.. code:: python
+.. code-block:: python
    
    from typing import Any
    
@@ -432,7 +432,7 @@ As mentioned earlier, bodies of functions that don't have have an explicit retur
 
 Alternatively, you can use the Undefined construct to define dynamically typed variables, as Any can be used anywhere any other type is valid:
 
-.. code:: python
+.. code-block:: python
    
    from typing import Undefined, Any
    
@@ -451,7 +451,7 @@ Abstract base classes and multiple inheritance
 
 Mypy uses Python abstract base classes for protocol types. There are several built-in abstract base classes types (for example, Sequence, Iterable and Iterator). You can define abstract base classes using the abc.ABCMeta metaclass and the abc.abstractmethod function decorator.
 
-.. code:: python
+.. code-block:: python
    
    from abc import ABCMeta, abstractmethod
    import typing
@@ -484,7 +484,7 @@ Function overloading
 
 You can define multiple instances of a function with the same name but different signatures. The first matching signature is selected at runtime when evaluating each individual call. This enables also a form of multiple dispatch.
 
-.. code:: python
+.. code-block:: python
    
    from typing import overload
    
@@ -501,7 +501,7 @@ You can define multiple instances of a function with the same name but different
 
 Overloaded function variants still define a single runtime object; the following code is valid:
 
-.. code:: python
+.. code-block:: python
    
    my_abs = abs
    my_abs(-2)      # 2 (int)
@@ -518,7 +518,7 @@ Callable types and lambdas
 
 You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments A1, ..., An and returns Rt is Function[[A1, ..., An], Rt]. Example:
 
-.. code:: python
+.. code-block:: python
    
    def twice(i: int, next: Function[[int], int]) -> int:
        return next(next(i))
@@ -530,7 +530,7 @@ You can pass around function objects and bound methods in statically typed code.
 
 Lambdas are also supported. The lambda argument and return value types cannot be given explicitly; they are always inferred based on context using bidirectional type inference:
 
-.. code:: python
+.. code-block:: python
    
    l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
 
@@ -541,7 +541,7 @@ Casts
 
 Mypy supports type casts that are usually used to coerce a statically typed value to a subtype. Unlike languages such as Java or C#, however, mypy casts are only used as hints for the type checker when using Python semantics, and they have no runtime effect. Use the function cast to perform a cast:
 
-.. code:: python
+.. code-block:: python
    
    from typing import cast
    
@@ -555,7 +555,7 @@ You don't need a cast for expressions with type Any, of when assigning to a vari
 
 You can cast to a dynamically typed value by just calling Any:
 
-.. code:: python
+.. code-block:: python
    
    from typing import Any
    
@@ -569,7 +569,7 @@ Statically typed function bodies are often identical to normal Python code, but 
 
 First, you need to specify the type when creating an empty list or dict and when you assign to a new variable, as mentioned earlier:
 
-.. code:: python
+.. code-block:: python
    
    a = List[int]()   # Explicit type required in statically typed code
    a = []            # Fine in a dynamically typed function, or if type
@@ -577,7 +577,7 @@ First, you need to specify the type when creating an empty list or dict and when
 
 Sometimes you can avoid the explicit list item type by using a list comprehension. Here a type annotation is needed:
 
-.. code:: python
+.. code-block:: python
    
    l = List[int]()
    for i in range(n):
@@ -589,7 +589,7 @@ Sometimes you can avoid the explicit list item type by using a list comprehensio
 
 No type annotation needed if using a list comprehension:
 
-.. code:: python
+.. code-block:: python
    
    l = [i * i for i in range(n)]
 
@@ -597,7 +597,7 @@ However, in more complex cases the explicit type annotation can improve the clar
 
 Second, each name within a function only has a single type. You can reuse for loop indices etc., but if you want to use a variable with multiple types within a single function, you may need to declare it with the Any type.
 
-.. code:: python
+.. code-block:: python
    
    def f() -> None:
        n = 1
@@ -610,7 +610,7 @@ Second, each name within a function only has a single type. You can reuse for lo
 
 Third, sometimes the inferred type is a subtype of the desired type. The type inference uses the first assignment to infer the type of a name:
 
-.. code:: python
+.. code-block:: python
    
    # Assume Shape is the base class of both Circle and Triangle.
    shape = Circle()    # Infer shape to be Circle
@@ -619,7 +619,7 @@ Third, sometimes the inferred type is a subtype of the desired type. The type in
 
 You can just give an explicit type for the variable in cases such the above example:
 
-.. code:: python
+.. code-block:: python
    
    shape = Circle() # type: Shape   # The variable s can be any Shape,
                                     # not just Circle
@@ -628,7 +628,7 @@ You can just give an explicit type for the variable in cases such the above exam
 
 Fourth, if you use isinstance tests or other kinds of runtime type tests, you may have to add casts (this is similar to instanceof tests in Java):
 
-.. code:: python
+.. code-block:: python
    
    def f(o: object) -> None:
        if isinstance(o, int):
@@ -649,7 +649,7 @@ The built-in collection classes are generic classes. Generic types have one or m
 
 Programs can also define new generic classes. Here is a very simple generic class that represents a stack:
 
-.. code:: python
+.. code-block:: python
    
    from typing import typevar, Generic
    
@@ -672,7 +672,7 @@ The Stack class can be used to represent a stack of any type: Stack[int], Stack[
 
 Using Stack is similar to built-in container types:
 
-.. code:: python
+.. code-block:: python
    
    stack = Stack[int]()   # Construct an empty Stack[int] instance
    stack.push(2)
@@ -681,7 +681,7 @@ Using Stack is similar to built-in container types:
 
 Type inference works for user-defined generic types as well:
 
-.. code:: python
+.. code-block:: python
    
    def process(stack: Stack[int]) -> None: ...
    
@@ -705,7 +705,7 @@ Note that built-in types list, dict and so on do not support indexing in Python.
 
 The above examples illustrate that type variables are erased at runtime when running in a Python VM. Generic Stack or list instances are just ordinary Python objects, and they have no extra runtime overhead or magic due to being generic, other than a metaclass that overloads the indexing operator. If you worry about the overhead introduced by the type indexing operation when constructing instances, you can often rewrite such code using a # type annotation, which has no runtime impact:
 
-.. code:: python
+.. code-block:: python
    
    x = List[int]()
    x = [] # type: List[int]   # Like the above but faster.
@@ -717,7 +717,7 @@ Generic functions
 
 Generic type variables can also be used to define generic functions:
 
-.. code:: python
+.. code-block:: python
    
    from typing import typevar, Sequence
    
@@ -728,7 +728,7 @@ Generic type variables can also be used to define generic functions:
 
 As with generic classes, the type variable can be replaced with any type. That means first can we used with any sequence type, and the return type is derived from the sequence item type. For example:
 
-.. code:: python
+.. code-block:: python
    
    # Assume first defined as above.
    
@@ -737,7 +737,7 @@ As with generic classes, the type variable can be replaced with any type. That m
 
 Note also that a single definition of a type variable (such as T above) can be used in multiple generic functions or classes. In this example we use the same type variable in two generic functions:
 
-.. code:: python
+.. code-block:: python
    
    from typing typevar, Sequence
    
@@ -784,7 +784,7 @@ None
 
 Currently, None is a valid value for each type, similar to null or NULL in many languages. However, it is likely that this decision will be reversed, and types do not include None default. The Optional type modifier can be used to define a type variant that includes None, such as Optional(int):
 
-.. code:: python
+.. code-block:: python
    
    def f() -> Optional[int]:
        return None # OK
@@ -795,14 +795,14 @@ Currently, None is a valid value for each type, similar to null or NULL in many 
 
 Also, most operations would not be supported on None values:
 
-.. code:: python
+.. code-block:: python
    
    def f(x: Optional[int]) -> int:
        return x + 1  # Error: Cannot add None and int
 
 Instead, an explicit None check would be required. This would benefit from more powerful type inference:
 
-.. code:: python
+.. code-block:: python
    
    def f(x: Optional[int]) -> int:
        if x is None:
@@ -820,7 +820,7 @@ Python functions often accept values of two or more different types. You can use
 
 Use the Union[...] type constructor to construct a union type. For example, the type Union[int, str] is compatible with both integers and strings. You can use an isinstance check to narrow down the type to a specific type:
 
-.. code:: python
+.. code-block:: python
    
    from typing import Union
    
@@ -842,7 +842,7 @@ More general type inference
 
 It may be useful to support type inference also for variables defined in multiple locations in an if/else statement, even if the initializer types are different:
 
-.. code:: python
+.. code-block:: python
    
    if x:
        y = None     # First definition of y
