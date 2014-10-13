@@ -353,11 +353,13 @@ main, line 2: 'yield' outside function
 (1) = 1
 (1, 1) = 1
 [1, 1] = 1
+() = 1
 [out]
 main, line 1: Invalid assignment target
 main, line 2: Invalid assignment target
 main, line 3: Invalid assignment target
 main, line 4: Invalid assignment target
+main, line 5: Can't assign to ()
 
 [case testInvalidLvalues2]
 x = y = z = 1
