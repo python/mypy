@@ -840,13 +840,16 @@ class ExpressionChecker:
             self.msg.too_many_string_formatting_arguments(replacements)
         else:
             if len(checkers) == 1:
-                checkers[0](node=replacements)
+                check_node, check_type = checkers[0]
+                check_node(replacements)
             elif isinstance(replacements, TupleExpr):
-                for check, rep_node in zip(checkers, replacements.items):
-                    check(node=rep_node)
+                for checks, rep_node in zip(checkers, replacements.items):
+                    check_node, check_type = checks
+                    check_node(rep_node)
             else:
-                for check, rep_type in zip(checkers, rep_types):
-                    check(type=rep_type)
+                for checks, rep_type in zip(checkers, rep_types):
+                    check_node, check_type = checks
+                    check_type(rep_type)
 
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
                                        replacements: Node) -> None:
@@ -878,8 +881,9 @@ class ExpressionChecker:
                                    'expression has type', 'expected type for mapping is')
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
-                                   context: Context) -> List[ Function[[Node, Type], None] ]:
-        checkers = []  # type: List[ Function[[Node, Type], None] ]
+                                   context: Context) -> List[ Tuple[ Function[[Node], None], 
+                                                                     Function[[Type], None] ] ]:
+        checkers = []  # type: List[ Tuple[ Function[[Node], None], Function[[Type], None] ] ]
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context)
             if checker == None:
@@ -888,49 +892,89 @@ class ExpressionChecker:
         return checkers
 
     def replacement_checkers(self, specifier: ConversionSpecifier,
-                             context: Context) -> List[ Function[[Node, Type], None] ]:
-        """Returns a list of functions that check whether a replacement is
-        of the right type for a specifier. The functions take either a node
-        or a type. When a node is specified, the type of the node is checked
-        again, now in the right type context
+                             context: Context) -> List[ Tuple[ Function[[Node], None], 
+                                                               Function[[Type], None] ] ]:
+        """Returns a list of tuples of two functions that check whether a replacement is
+        of the right type for the specifier. The first functions take a node and checks 
+        its type in the right type context. The second function just checks a type.
         """
-        checkers = []  # type: List[ Function[[Node, Type], None] ]
-
-        def check_star(node: Node = None, type: Type = None) -> None:
-            expected = self.named_type('builtins.int')
-            if node:
-                type = self.accept(node, expected)
-            self.chk.check_subtype(type, expected, context, '* wants int')
+        checkers = []  # type: List[ Tuple[ Function[[Node], None], Function[[Type], None] ] ]
 
         if specifier.width == '*':
-            checkers.append(check_star)
+            checkers.append(self.checkers_for_star(context))
         if specifier.precision == '*':
-            checkers.append(check_star)
-        if specifier.type != '%':
-            expected_type = self.conversion_type(specifier.type, context)
-            if expected_type == None:
+            checkers.append(self.checkers_for_star(context))
+        if specifier.type == 'c':
+            c = self.checkers_for_c_type(specifier.type, context)
+            if c == None:
                 return None
-
-            if specifier.type == 'c':
-                def check_c(node: Node = None, type: Type = None) -> None:
-                    '''int, or str with length 1'''
-                    if node:
-                        type = self.accept(node, expected_type)
-                        if isinstance(node, StrExpr) and len(cast(StrExpr, node).value) != 1:
-                            self.msg.requires_int_or_char(context)
-                    self.chk.check_subtype(type, expected_type, context,
-                                      messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                                      'expression has type', 'placeholder has type')
-                checkers.append(check_c)
-            else:
-                def check(node: Node = None, type: Type = None) -> None:
-                    if node:
-                        type = self.accept(node, expected_type)
-                    self.chk.check_subtype(type, expected_type, context,
-                                      messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                                      'expression has type', 'placeholder has type')
-                checkers.append(check)
+            checkers.append(c)
+        elif specifier.type != '%':
+            c = self.checkers_for_regular_type(specifier.type, context)
+            if c == None:
+                return None
+            checkers.append(c)
         return checkers
+
+    def checkers_for_star(self, context: Context) -> Tuple[ Function[[Node], None], 
+                                                                                 Function[[Type], None] ]:
+        """Returns a tuple of check functions that check whether, respectively,
+        a node or a type is compatible with a star in a conversion specifier
+        """
+        expected = self.named_type('builtins.int')
+
+        def check_type(type: Type = None) -> None:
+            expected = self.named_type('builtins.int')
+            self.chk.check_subtype(type, expected, context, '* wants int')
+
+        def check_node(node: Node) -> None:
+            type = self.accept(node, expected)
+            check_type(type)
+
+        return check_node, check_type
+
+    def checkers_for_regular_type(self, type: str, context: Context) -> Tuple[ Function[[Node], None], 
+                                                                               Function[[Type], None] ]:
+        """Returns a tuple of check functions that check whether, respectively,
+        a node or a type is compatible with 'type'. Return None in case of an 
+        """
+        expected_type = self.conversion_type(type, context)
+        if expected_type == None:
+            return None
+
+        def check_type(type: Type = None) -> None:
+            self.chk.check_subtype(type, expected_type, context,
+                              messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                              'expression has type', 'placeholder has type')
+
+        def check_node(node: Node) -> None:
+            type = self.accept(node, expected_type)
+            check_type(type)
+
+        return check_node, check_type
+
+    def checkers_for_c_type(self, type: str, context: Context) -> Tuple[ Function[[Node], None], 
+                                                                         Function[[Type], None] ]:
+        """Returns a tuple of check functions that check whether, respectively,
+        a node or a type is compatible with 'type' that is a character type
+        """
+        expected_type = self.conversion_type(type, context)
+        if expected_type == None:
+            return None
+
+        def check_type(type: Type = None) -> None:
+            self.chk.check_subtype(type, expected_type, context,
+                              messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                              'expression has type', 'placeholder has type')
+
+        def check_node(node: Node) -> None:
+            """int, or str with length 1"""
+            type = self.accept(node, expected_type)
+            if isinstance(node, StrExpr) and len(cast(StrExpr, node).value) != 1:
+                self.msg.requires_int_or_char(context)
+            check_type(type)
+
+        return check_node, check_type
 
     def conversion_type(self, p: str, context: Context) -> Type:
         """Return the type that is accepted for a string interpolation
