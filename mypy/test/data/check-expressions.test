@@ -903,8 +903,8 @@ i, f, s = Undefined, Undefined, Undefined # type: (int, float, str)
 '%d' % i
 '%f' % f
 '%s' % s
-'%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
-'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "float")
+'%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 [builtins fixtures/primitives.py]
 
 [case testStringInterpolationSAcceptsAnyType]
@@ -919,7 +919,7 @@ i, o, s = Undefined, Undefined, Undefined # type: (int, object, str)
 '%d %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting
 t = 1, 's'
 '%d %s' % t
-'%s %d' % t  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'%s %d' % t  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 '%d' % t  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.py]
 
@@ -966,21 +966,25 @@ a = Undefined # type: Any
 '%3% %d' % 1
 '%*%' % 1
 '%*% %d' % 1  # E: Not enough arguments for format string
+[builtins fixtures/primitives.py]
 
 [case testStringInterpolationC]
 '%c' % 1
 '%c' % 's'
 '%c' % ''  # E: %c requires int or char
 '%c' % 'ab'  # E: %c requires int or char
+[builtins fixtures/primitives.py]
 
 [case testStringInterpolationMappingTypes]
 '%(a)d %(b)s' % {'a': 1, 'b': 's'}
-'%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "int")
+'%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "Union[int, float]")
+[builtins fixtures/primitives.py]
 
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+[builtins fixtures/primitives.py]
 [builtins fixtures/dict.py]
 
 [case testStringInterpolationMappingDictTypes]
@@ -1009,6 +1013,7 @@ di = Undefined # type: Dict[int, int]
 '%(a).1d' % {'a': 1}
 '%(a)#1.1ld' % {'a': 1}
 [builtins fixtures/dict.py]
+[builtins fixtures/primitives.py]
 
 
 -- Lambdas

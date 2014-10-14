@@ -34,6 +34,7 @@ from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 
+
 class ExpressionChecker:
     """Expression type checker.
 
@@ -801,7 +802,7 @@ class ExpressionChecker:
         for parens_key, key, flags, width, precision, type in re.findall(regex, format):
             if parens_key == '':
                 key = None
-            specifiers.append(self.ConversionSpecifier(key, flags, width, precision, type))
+            specifiers.append(ExpressionChecker.ConversionSpecifier(key, flags, width, precision, type))
         return specifiers
 
     def analyse_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
@@ -827,7 +828,7 @@ class ExpressionChecker:
         rhs_type = self.accept(replacements)
         rep_types = []  # type: List[Type]
         if isinstance(rhs_type, TupleType):
-            rep_types = cast(TupleType, rhs_type).items
+            rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
             return
         else:
@@ -853,11 +854,6 @@ class ExpressionChecker:
                                           all(isinstance(self.strip_parens(k), StrExpr)
                                               for k, v in cast(DictExpr, replacements).items))
         if dict_with_only_str_literal_keys:
-            # check key mapping
-            checkers = self.build_replacement_checkers(specifiers, replacements)
-            if checkers == None:
-                return
-
             mapping = {} # type: Dict[str, Type]
             for k, v in cast(DictExpr, replacements).items:
                 key_str = cast(StrExpr, k).value
@@ -869,6 +865,8 @@ class ExpressionChecker:
                     return
                 rep_type = mapping[specifier.key]
                 expected_type = self.conversion_type(specifier.type, replacements)
+                if expected_type == None:
+                    return
                 self.chk.check_subtype(rep_type, expected_type, replacements,
                                        messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                        'expression has type', 'placeholder with key \'%s\' has type' % specifier.key)
@@ -935,14 +933,21 @@ class ExpressionChecker:
         return checkers
 
     def conversion_type(self, p: str, context: Context) -> Type:
+        """Return the type that is accepted for a string interpolation
+        conversion specifier type.
+
+        Note that both Python's float (e.g. %f) and integer (e.g. %d)
+        specifier types accept both float and integers.
+        """
         if p in ['s', 'r']:
             return AnyType()
-        elif p in ['d', 'i', 'o', 'u', 'x', 'X']:
-            return self.named_type('builtins.int')
-        elif p in ['e', 'E', 'f', 'F', 'g', 'G']:
-            return self.named_type('builtins.float')
+        elif p in ['d', 'i', 'o', 'u', 'x', 'X',
+                   'e', 'E', 'f', 'F', 'g', 'G']:
+            return UnionType([self.named_type('builtins.int'),
+                              self.named_type('builtins.float')])
         elif p in ['c']:
             return UnionType([self.named_type('builtins.int'),
+                              self.named_type('builtins.float'),
                               self.named_type('builtins.str')])
         else:
             self.msg.unsupported_placeholder(p, context)
@@ -1162,7 +1167,7 @@ class ExpressionChecker:
         if isinstance(left_type, TupleType):
             # Special case for tuples. They support indexing only by integer
             # literals.
-            index = self.unwrap(e.index)
+            index = self.strip_parens(e.index)
             ok = False
             if isinstance(index, IntExpr):
                 n = index.value
@@ -1466,18 +1471,11 @@ class ExpressionChecker:
         else:
             return False
 
-    def unwrap(self, e: Node) -> Node:
-        """Unwrap parentheses from an expression node."""
-        if isinstance(e, ParenExpr):
-            return self.unwrap(e.expr)
-        else:
-            return e
-
     def unwrap_list(self, a: List[Node]) -> List[Node]:
         """Unwrap parentheses from a list of expression nodes."""
         r = List[Node]()
         for n in a:
-            r.append(self.unwrap(n))
+            r.append(self.strip_parens(n))
         return r
 
     def erase(self, type: Type) -> Type:

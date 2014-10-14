@@ -1383,7 +1383,7 @@ class TypeChecker(NodeVisitor[Type]):
     def exception_type(self, n: Node) -> Type:
         if isinstance(n, ParenExpr):
             # Multiple exception types (...).
-            unwrapped = self.expr_checker.unwrap(n)
+            unwrapped = self.expr_checker.strip_parens(n)
             if isinstance(unwrapped, TupleExpr):
                 t = None  # type: Type
                 for item in unwrapped.items:
