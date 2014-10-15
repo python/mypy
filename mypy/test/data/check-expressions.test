@@ -927,6 +927,23 @@ class A: pass
 class B: pass
 [builtins fixtures/for.py]
 
+[case testSimpleListComprehensionNestedTuples]
+from typing import Undefined, List
+l = Undefined # type: List[(A, (A, B))]
+a = [a2 for a1, (a2, b1) in l] # type: List[A]
+b = [a2 for a1, (a2, b1) in l] # type: List[B] # E: List comprehension has incompatible type List[A]
+class A: pass
+class B: pass
+[builtins fixtures/for.py]
+
+[case testSimpleListComprehensionNestedTuples]
+from typing import Undefined, List
+l = Undefined # type: List[(int, (int, str))]
+[i+d for d, (i, s) in l]
+[i+s for d, (i, s) in l] # E: x
+[builtins fixtures/for.py]
+[builtins fixtures/primitives.py]
+
 [case testListComprehensionWithNonDirectMapping]
 from typing import Undefined, List
 a = Undefined # type: List[A]
