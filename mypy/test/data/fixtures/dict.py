@@ -19,3 +19,4 @@ class list(Iterable[T], Generic[T]): # needed by some test cases
 
 class tuple: pass
 class function: pass
+class float: pass

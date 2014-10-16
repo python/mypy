@@ -984,7 +984,6 @@ a = Undefined # type: Any
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
-[builtins fixtures/primitives.py]
 [builtins fixtures/dict.py]
 
 [case testStringInterpolationMappingDictTypes]
@@ -1013,7 +1012,6 @@ di = Undefined # type: Dict[int, int]
 '%(a).1d' % {'a': 1}
 '%(a)#1.1ld' % {'a': 1}
 [builtins fixtures/dict.py]
-[builtins fixtures/primitives.py]
 
 
 -- Lambdas
