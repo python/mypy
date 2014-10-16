@@ -936,13 +936,14 @@ class A: pass
 class B: pass
 [builtins fixtures/for.py]
 
-[case testSimpleListComprehensionNestedTuples]
+[case testSimpleListComprehensionNestedTuples2]
 from typing import Undefined, List
 l = Undefined # type: List[(int, (int, str))]
-[i+d for d, (i, s) in l]
-[i+s for d, (i, s) in l] # E: x
+a = [f(d) for d, (i, s) in l]
+b = [f(s) for d, (i, s) in l] # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+def f(x: int): pass
 [builtins fixtures/for.py]
-[builtins fixtures/primitives.py]
 
 [case testListComprehensionWithNonDirectMapping]
 from typing import Undefined, List
