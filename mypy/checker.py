@@ -16,7 +16,7 @@ from mypy.nodes import (
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr
+    LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -955,17 +955,27 @@ class TypeChecker(NodeVisitor[Type]):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
-
-            rtuple = cast(Union[TupleExpr, ListExpr], rvalue)
-
-            if len(rtuple.items) != len(lvalues):
-                self.msg.incompatible_value_count_in_assignment(
-                                len(lvalues), len(rtuple.items), context)
-            else:
-                for lv, rv in zip(lvalues, rtuple.items):
+            
+            rvalues = cast(Union[TupleExpr, ListExpr], rvalue).items
+            
+            if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
+                for lv, rv in zip(lvalues, rvalues):
                     self.check_assignment(lv, rv, infer_lvalue_type)
         else:
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
+
+    def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int, 
+                                                                    context: Context) -> bool:
+        if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
+            if len(lvalues)-1 > rvalue_count:
+                self.msg.wrong_number_values_to_unpack(rvalue_count, 
+                                len(lvalues)-1, context)
+                return False
+        elif rvalue_count != len(lvalues):
+            self.msg.wrong_number_values_to_unpack(rvalue_count,
+                            len(lvalues), context)
+            return False
+        return True
 
     def remove_parens(self, node: Node) -> Node:
         if isinstance(node, ParenExpr):
@@ -1002,47 +1012,100 @@ class TypeChecker(NodeVisitor[Type]):
        else:
            self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                      context, infer_lvalue_type)
-
+              
     def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
                                           rvalue_type: TupleType, context: Context,
-                                          undefined_rvalue: bool, infer_lvalue_type: bool = True) -> None:
-        if len(rvalue_type.items) != len(lvalues):
-            self.msg.wrong_number_values_to_unpack(len(rvalue_type.items), len(lvalues), context)
-        else:
+                                          undefined_rvalue: bool, infer_lvalue_type: bool=True) -> None:
+        if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
+            star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
+
+            left_lvs = lvalues[:star_index]
+            star_lv = lvalues[star_index] if star_index != len(lvalues) else None
+            right_lvs = lvalues[star_index+1:]
+
             if not undefined_rvalue:
-                # Create lvalue_type for type inference
-
-                type_parameters = []  # type: List[Type]
-                for i in range(len(lvalues)):
-                    sub_lvalue_type, index_expr, inferred = self.check_lvalue(lvalues[i])
-
-                    if sub_lvalue_type:
-                        type_parameters.append(sub_lvalue_type)
-                    else:  # index lvalue
-                        # TODO Figure out more precise type context, probably
-                        #      based on the type signature of the _set method.
-                        type_parameters.append(rvalue_type.items[i])
-
-                lvalue_type = TupleType(type_parameters, self.named_type('builtins.tuple'))
-
                 # Infer rvalue again, now in the correct type context.
+                lvalue_type = self.lvalue_type_for_inference(lvalues, rvalue_type)
                 rvalue_type = cast(TupleType, self.accept(rvalue, lvalue_type))
 
-            for lv, rv_type in zip(lvalues, rvalue_type.items):
+            left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
+                                            rvalue_type.items, star_index, len(lvalues))
+
+            for lv, rv_type in zip(left_lvs, left_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
+            if star_lv:
+                pass
+                # TODO
+            for lv, rv_type in zip(right_lvs, right_rv_types):
+                self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
+
+    def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
+        star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
+        left_lvs = lvalues[:star_index]
+        star_lv = lvalues[star_index] if star_index != len(lvalues) else None
+        right_lvs = lvalues[star_index+1:]
+        left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
+                                        rvalue_type.items, star_index, len(lvalues))
+
+        type_parameters = []  # type: List[Type]
+        for lv, rv_type in zip(left_lvs, left_rv_types):
+            sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
+            if sub_lvalue_type:
+                type_parameters.append(sub_lvalue_type)
+            else:  # index lvalue
+                # TODO Figure out more precise type context, probably
+                #      based on the type signature of the _set method.
+                type_parameters.append(rv_type)
+
+        if star_lv:
+            sub_lvalue_type, index_expr, inferred = self.check_lvalue(star_lv.expr)
+            if sub_lvalue_type:
+                type_parameters.extend([sub_lvalue_type] * len(star_rv_types))
+            else:  # index lvalue
+                # TODO Figure out more precise type context, probably
+                #      based on the type signature of the _set method.
+                type_parameters.extend(star_rv_types)
+
+        for lv, rv_type in zip(right_lvs, right_rv_types):
+            sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
+            if sub_lvalue_type:
+                type_parameters.append(sub_lvalue_type)
+            else:  # index lvalue
+                # TODO Figure out more precise type context, probably
+                #      based on the type signature of the _set method.
+                type_parameters.append(rv_type)
+
+        return TupleType(type_parameters, self.named_type('builtins.tuple'))
+
+    def split_around_star(self, items: List[T], star_index: int,
+                       length: int) -> Tuple[List[T], List[T], List[T]]:
+        """Splits a list of items in three to match another list of length 'length'
+        that contains a starred expression at 'star_index' in the following way:
+
+        star_index = 2, length = 5 (i.e., [a,b,*,c,d]), items = [1,2,3,4,5,6,7]
+        returns in: ([1,2], [3,4,5], [6,7])
+        """
+        nr_right_of_star = length - star_index
+        left = items[:star_index]
+        star = items[star_index:-nr_right_of_star]
+        right = items[-nr_right_of_star:]
+        return (left, star, right)
 
     def type_is_iterable(self, type: Type) -> bool:
         return (is_subtype(type, self.named_generic_type('typing.Iterable',
                                                         [AnyType()])) and
                 isinstance(type, Instance))
 
-    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
-                                             context: Context, infer_lvalue_type: bool = True) -> None:
+    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type, 
+                                             context: Context, infer_lvalue_type: bool=True) -> None:
         if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(cast(Instance,rvalue_type))
             for lv in lvalues:
-                self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
-        else:
+                if isinstance(lv, StarExpr):
+                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context), infer_lvalue_type)
+                else:
+                    self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
+        else:    
             self.msg.type_not_iterable(rvalue_type, context)
 
     def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:
