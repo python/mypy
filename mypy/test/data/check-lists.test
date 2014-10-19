@@ -22,8 +22,8 @@ from typing import Undefined, List
 a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
 a, b = [a, b]
-a, b = [a]  # E: Need 2 values to assign
-a, b = [a, b, c]  # E: Too many values to assign
+a, b = [a]  # E: Need more than 1 value to unpack (2 expected)
+a, b = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
 
 class A: pass
 class B: pass
@@ -51,12 +51,14 @@ class C: pass
 from typing import Undefined, List
 a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 
-a, b = [a, b]
-a, b = [a]  # E: Need 2 values to assign
-a, b = [a, b, c]  # E: Too many values to assign
+def f() -> None: # needed because test parser tries to parse [a, b] as section header
+    [a, b] = [a, b]
+    [a, b] = [a]  # E: Need more than 1 value to unpack (2 expected)
+    [a, b] = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
 
 class A: pass
 class B: pass
 class C: pass
 [builtins fixtures/list.py]
 [out]
+main: In function "f":

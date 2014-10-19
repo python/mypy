@@ -959,7 +959,24 @@ class TypeChecker(NodeVisitor[Type]):
             rvalues = cast(Union[TupleExpr, ListExpr], rvalue).items
             
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
-                for lv, rv in zip(lvalues, rvalues):
+                star_index = next((i for i, lv in enumerate(lvalues) if 
+                                                isinstance(lv, StarExpr)), len(lvalues))
+
+                left_lvs = lvalues[:star_index]
+                star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
+                right_lvs = lvalues[star_index+1:]
+
+                left_rvs, star_rvs, right_rvs = self.split_around_star(
+                                                rvalues, star_index, len(lvalues))
+
+                lr_pairs = list(zip(left_lvs, left_rvs))
+                if star_lv:
+                    rv_list = ListExpr(star_rvs)
+                    rv_list.set_line(rvalue.get_line())
+                    lr_pairs.append( (star_lv.expr, rv_list) )
+                lr_pairs.extend(zip(right_lvs, right_rvs))
+
+                for lv, rv in lr_pairs:
                     self.check_assignment(lv, rv, infer_lvalue_type)
         else:
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
@@ -988,29 +1005,31 @@ class TypeChecker(NodeVisitor[Type]):
                                   context: Context,
                                   infer_lvalue_type: bool = True,
                                   msg: str = None) -> None:
-       """Check the assignment of one rvalue to a number of lvalues
-       for example from a ListExpr or TupleExpr.
-       """
+        """Check the assignment of one rvalue to a number of lvalues
+        for example from a ListExpr or TupleExpr.
+        """
 
-       if not msg:
-           msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
+        if not msg:
+            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
 
-       # First handle case where rvalue is of form Undefined, ...
-       rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
-       undefined_rvalue = True
-       if not rvalue_type:
-           # Infer the type of an ordinary rvalue expression.
-           rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
-           undefined_rvalue = False
+        # First handle case where rvalue is of form Undefined, ...
+        rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
+        undefined_rvalue = True
+        if not rvalue_type:
+            # Infer the type of an ordinary rvalue expression.
+            rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
+            undefined_rvalue = False
 
-       if isinstance(rvalue_type, AnyType):
-           for lv in lvalues:
-               self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
-       elif isinstance(rvalue_type, TupleType):
-           self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type),
+        if isinstance(rvalue_type, AnyType):
+            for lv in lvalues:
+                if isinstance(lv, StarExpr):
+                    lv = lv.expr
+                self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
+        elif isinstance(rvalue_type, TupleType):
+            self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type),
                                                   context, undefined_rvalue, infer_lvalue_type)
-       else:
-           self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
+        else:
+            self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                      context, infer_lvalue_type)
               
     def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
@@ -1020,7 +1039,7 @@ class TypeChecker(NodeVisitor[Type]):
             star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
 
             left_lvs = lvalues[:star_index]
-            star_lv = lvalues[star_index] if star_index != len(lvalues) else None
+            star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
             right_lvs = lvalues[star_index+1:]
 
             if not undefined_rvalue:
@@ -1034,15 +1053,17 @@ class TypeChecker(NodeVisitor[Type]):
             for lv, rv_type in zip(left_lvs, left_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
             if star_lv:
-                pass
-                # TODO
+                nodes = [self.temp_node(rv_type, context) for rv_type in star_rv_types]
+                list_expr = ListExpr(nodes)
+                list_expr.set_line(context.get_line())
+                self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
 
     def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
         star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
-        star_lv = lvalues[star_index] if star_index != len(lvalues) else None
+        star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
         right_lvs = lvalues[star_index+1:]
         left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                                         rvalue_type.items, star_index, len(lvalues))
@@ -1085,10 +1106,11 @@ class TypeChecker(NodeVisitor[Type]):
         star_index = 2, length = 5 (i.e., [a,b,*,c,d]), items = [1,2,3,4,5,6,7]
         returns in: ([1,2], [3,4,5], [6,7])
         """
-        nr_right_of_star = length - star_index
+        nr_right_of_star = length - star_index - 1
+        right_index = nr_right_of_star if -nr_right_of_star != 0 else len(items)
         left = items[:star_index]
-        star = items[star_index:-nr_right_of_star]
-        right = items[-nr_right_of_star:]
+        star = items[star_index:right_index]
+        right = items[right_index:]
         return (left, star, right)
 
     def type_is_iterable(self, type: Type) -> bool:

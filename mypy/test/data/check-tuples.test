@@ -377,21 +377,64 @@ b = 1  # E: Incompatible types in assignment (expression has type "int", variabl
 
 
 [case testAssignmentToStarCount1]
+from typing import Undefined, List
+ca = Undefined  # type: List[int]
 a, b, *c = 1,  # E: Need more than 1 value to unpack (2 expected)
-a, b, *c = 1, 2
+a, b, *c = 1, 2  # E: Need type annotation for variable
+a, b, *ca = 1, 2
 a, b, *c = 1, 2, 3
 a, b, *c = 1, 2, 3, 4
+[builtins fixtures/list.py]
 
 [case testAssignmentToStarCount2]
+from typing import Undefined, List
+ca = Undefined  # type: List[int]
 t1 = 1,
 t2 = 1, 2
 t3 = 1, 2, 3
 t4 = 1, 2, 3, 4
 a, b, *c = t1  # E: Need more than 1 value to unpack (2 expected)
-a, b, *c = t2
+a, b, *c = t2  # E: Need type annotation for variable
+a, b, *ca = t2
 a, b, *c = t3
 a, b, *c = t4
+[builtins fixtures/list.py]
 
+[case testAssignmentToStarFromAny]
+from typing import Undefined, Any
+a, c = Any(1), C()
+p, *q = a
+c = a
+c = q
+
+class C: pass
+
+[case testAssignmentToComplexStar]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+a, *(li) = 1,
+a, *(b, c) = 1, 2  # E: Need more than 1 value to unpack (2 expected)
+a, *(b, c) = 1, 2, 3
+a, *(b, c) = 1, 2, 3, 4  # E: Too many values to unpack (2 expected, 3 provided)
+[builtins fixtures/list.py]
+
+[case testAssignmentToStarFromTupleType]
+from typing import Undefined, List, Tuple
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+ta = Undefined  # type: Tuple[A, A, A]
+a, *la = ta
+a, *li = ta  # E
+a, *na = ta
+na = la
+na = a  # E
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+main, line 6: List item 1 has incompatible type "A"
+main, line 6: List item 2 has incompatible type "A"
+main, line 9: Incompatible types in assignment (expression has type "A", variable has type List[A])
 
 -- Nested tuple assignment
 -- ----------------------------
