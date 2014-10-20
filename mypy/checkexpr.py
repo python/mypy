@@ -31,6 +31,7 @@ from mypy import erasetype
 from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
+from mypy.checkstrformat import StringFormatterChecker
 
 
 class ExpressionChecker:
@@ -44,12 +45,15 @@ class ExpressionChecker:
     # This is shared with TypeChecker, but stored also here for convenience.
     msg = Undefined(MessageBuilder)
 
+    strfrm_checker = Undefined('mypy.checkstrformat.StringFormatterChecker')
+
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
                  msg: MessageBuilder) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
+        self.strfrm_checker = mypy.checkexpr.StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -748,6 +752,8 @@ class ExpressionChecker:
         if e.op == '*' and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
+        if e.op == '%' and isinstance(e.left, StrExpr):
+            return self.strfrm_checker.check_str_interpolation(cast(StrExpr, e.left), e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:
@@ -758,6 +764,12 @@ class ExpressionChecker:
             return result
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
+
+    def strip_parens(self, node: Node) -> Node:
+        if isinstance(node, ParenExpr):
+            return self.strip_parens(node.expr)
+        else:
+            return node
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
@@ -967,7 +979,7 @@ class ExpressionChecker:
         if isinstance(left_type, TupleType):
             # Special case for tuples. They support indexing only by integer
             # literals.
-            index = self.unwrap(e.index)
+            index = self.strip_parens(e.index)
             ok = False
             if isinstance(index, IntExpr):
                 n = index.value
@@ -1271,18 +1283,11 @@ class ExpressionChecker:
         else:
             return False
 
-    def unwrap(self, e: Node) -> Node:
-        """Unwrap parentheses from an expression node."""
-        if isinstance(e, ParenExpr):
-            return self.unwrap(e.expr)
-        else:
-            return e
-
     def unwrap_list(self, a: List[Node]) -> List[Node]:
         """Unwrap parentheses from a list of expression nodes."""
         r = List[Node]()
         for n in a:
-            r.append(self.unwrap(n))
+            r.append(self.strip_parens(n))
         return r
 
     def erase(self, type: Type) -> Type:
