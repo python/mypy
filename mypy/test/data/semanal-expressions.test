@@ -250,6 +250,24 @@ MypyFile:1(
       NameExpr(x* [l])
       NameExpr(a [__main__.a]))))
 
+[case testGeneratorExpressionNestedIndex]
+a = 0
+x for x, (y, z) in a
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
+  ExpressionStmt:2(
+    GeneratorExpr:2(
+      NameExpr(x [l])
+      NameExpr(x* [l])
+      ParenExpr:2(
+        TupleExpr:2(
+          NameExpr(y* [l])
+          NameExpr(z* [l])))
+      NameExpr(a [__main__.a]))))
+
 [case testLambda]
 x = 0
 lambda: x

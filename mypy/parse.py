@@ -869,9 +869,9 @@ class Parser:
                                                  else_tok))
         return node
 
-    def parse_for_index_variables(self) -> Tuple[List[NameExpr], List[Token]]:
+    def parse_for_index_variables(self) -> Tuple[List[Node], List[Token]]:
         # Parse index variables of a 'for' statement.
-        index = List[NameExpr]()
+        index = List[Node]()
         commas = List[Token]()
 
         is_paren = self.current_str() == '('
@@ -879,7 +879,7 @@ class Parser:
             self.skip()
 
         while True:
-            v = self.parse_name_expr()
+            v = self.parse_expression(precedence['in'])  # prevent parsing of for's 'in'
             index.append(v)
             if self.current_str() != ',':
                 commas.append(none)
@@ -1174,7 +1174,7 @@ class Parser:
             return expr
 
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
-        indices = List[List[NameExpr]]()
+        indices = List[List[Node]]()
         sequences = List[Node]()
         for_toks = List[Token]()
         in_toks = List[Token]()

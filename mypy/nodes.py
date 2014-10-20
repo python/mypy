@@ -568,13 +568,13 @@ class WhileStmt(Node):
 
 class ForStmt(Node):
     # Index variables
-    index = Undefined(List['NameExpr'])
+    index = Undefined(List['Node'])
     # Expression to iterate
     expr = Undefined(Node)
     body = Undefined(Block)
     else_body = Undefined(Block)
 
-    def __init__(self, index: List['NameExpr'], expr: Node, body: Block,
+    def __init__(self, index: List['Node'], expr: Node, body: Block,
                  else_body: Block) -> None:
         self.index = index
         self.expr = expr
@@ -1175,9 +1175,9 @@ class GeneratorExpr(Node):
     left_expr = Undefined(Node)
     sequences_expr = Undefined(List[Node])
     condlists = Undefined(List[List[Node]])
-    indices = Undefined(List[List[NameExpr]])
+    indices = Undefined(List[List[Node]])
 
-    def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
+    def __init__(self, left_expr: Node, indices: List[List[Node]],
                  sequences: List[Node], condlists: List[List[Node]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences

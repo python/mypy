@@ -740,25 +740,32 @@ class B: pass
 
 [case testInferenceOfFor2]
 from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
-for x, y in [(A(), B())]:
+a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+for x, (y, z) in [(A(), (B(), C()))]:
     b = x # Fail
-    a = y # Fail
+    c = y # Fail
+    a = z # Fail
     a = x
     b = y
+    c = z
 for xx, yy, zz in [(A(), B())]: # Fail
+    pass
+for xx, (yy, zz) in [(A(), B())]: # Fail
     pass
 for xxx, yyy in [(None, None)]: # Fail
     pass
 
 class A: pass
 class B: pass
+class C: pass
 [builtins fixtures/for.py]
 [out]
 main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
-main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
-main, line 8: Need more than 2 values to unpack (3 expected)
-main, line 10: Need type annotation for variable
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "C")
+main, line 6: Incompatible types in assignment (expression has type "C", variable has type "A")
+main, line 10: Need more than 2 values to unpack (3 expected)
+main, line 12: '__main__.B' object is not iterable
+main, line 14: Need type annotation for variable
 
 [case testInferenceOfFor3]
 from typing import Undefined
