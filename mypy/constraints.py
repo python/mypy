@@ -11,8 +11,8 @@ from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
 
 
-SUBTYPE_OF = 0
-SUPERTYPE_OF = 1
+SUBTYPE_OF = 0  # type: int
+SUPERTYPE_OF = 1  # type: int
 
 
 class Constraint:

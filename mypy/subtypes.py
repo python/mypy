@@ -5,7 +5,9 @@ from mypy.types import (
     Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType, TypeList,
     is_named_instance
 )
-from mypy import sametypes
+import mypy.applytype
+import mypy.constraints
+from mypy import messages, sametypes
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
@@ -160,20 +162,24 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 def is_callable_subtype(left: Callable, right: Callable) -> bool:
     """Is left a subtype of right?"""
-    # TODO support named arguments, **args etc.
-
-    # Subtyping is not currently supported for generic functions.
-    if left.variables or right.variables:
-        return False
-
+    # TODO: Support named arguments, **args, etc.
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
         return False
+    if right.variables:
+        # Subtyping is not currently supported for generic function as the supertype.
+        return False
+    if left.variables:
+        # Apply generic type variables away in left via type inference.
+        left = unify_generic_callable(left, right)
+        if left is None:
+            return False
 
     # Check return types.
     if not is_subtype(left.ret_type, right.ret_type):
         return False
 
+    # Check argument types.
     if len(left.arg_types) < len(right.arg_types):
         return False
     if left.min_args > right.min_args:
@@ -181,15 +187,34 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     for i in range(len(right.arg_types)):
         if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
-
     if right.is_var_arg and not left.is_var_arg:
         return False
-
     if (left.is_var_arg and not right.is_var_arg and
             len(left.arg_types) <= len(right.arg_types)):
         return False
 
     return True
+
+
+def unify_generic_callable(type: Callable, target: Callable) -> Callable:
+    """Try to unify a generic callable type with another callable type.
+
+    Return unified Callable if successful; otherwise, return None.
+    """
+    constraints = []  # type: List[mypy.constraints.Constraint]
+    for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
+        c = mypy.constraints.infer_constraints(
+            arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)
+        constraints.extend(c)
+    type_var_ids = [tvar.id for tvar in type.variables]
+    inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
+    if None in inferred_vars:
+        return None
+    msg = messages.temp_message_builder()
+    applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
+    if msg.is_errors() or not isinstance(applied, Callable):
+        return None
+    return cast(Callable, applied)
 
 
 def restrict_subtype_away(t: Type, s: Type) -> Type:
