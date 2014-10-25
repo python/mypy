@@ -827,3 +827,8 @@ def replace_leading_arg_type(t: Callable, self_type: Type) -> Callable:
                     t.variables,
                     t.bound_vars,
                     t.line, None)
+
+
+def is_named_instance(t: Type, fullname: str) -> bool:
+    return (isinstance(t, Instance) and
+            cast(Instance, t).type.fullname() == fullname)

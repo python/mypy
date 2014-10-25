@@ -29,9 +29,10 @@ from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype,
+    is_subtype, is_equivalent, is_proper_subtype,
     is_more_precise, restrict_subtype_away
 )
+from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, expand_type
