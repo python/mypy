@@ -7,7 +7,8 @@ from mypy.types import (
     ErrorType, TypeVar, Callable, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike
 )
-from mypy.subtypes import is_subtype, is_equivalent, map_instance_to_supertype
+from mypy.maptype import map_instance_to_supertype
+from mypy.subtypes import is_subtype, is_equivalent
 
 
 def join_simple(declaration: Type, s: Type, t: Type) -> Type:

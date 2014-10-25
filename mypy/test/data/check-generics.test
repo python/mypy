@@ -785,3 +785,20 @@ class A:
 a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
+-- Function subtyping with generic functions
+-- -----------------------------------------
+
+
+[case testSubtypingWithGenericFunctionUsingTypevarWithValues]
+from typing import typevar, Function
+T = typevar('T', values=(int, str))
+def f(x: T) -> T: pass
+def g1(f: Function[[str], str]) -> None: pass
+g1(f)
+def g2(f: Function[[int], int]) -> None: pass
+g2(f)
+def g3(f: Function[[object], object]) -> None: pass
+g3(f) # E: Argument 1 to "g3" has incompatible type Function[["T"] -> "T"]; \
+           expected Function[["object"] -> "object"]

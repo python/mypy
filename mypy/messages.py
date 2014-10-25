@@ -578,7 +578,7 @@ class MessageBuilder:
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)
-        
+
     def too_many_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not all arguments converted during string formatting', context)
 
@@ -717,3 +717,8 @@ def callable_name(type: Callable) -> str:
         return type.name
     else:
         return 'function'
+
+
+def temp_message_builder() -> MessageBuilder:
+    """Return a message builder usable for collecting errors locally."""
+    return MessageBuilder(Errors())

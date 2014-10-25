@@ -4,15 +4,15 @@ from typing import List, cast, Undefined
 
 from mypy.types import (
     Callable, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
-    Instance, TupleType, UnionType, Overloaded, ErasedType
+    Instance, TupleType, UnionType, Overloaded, ErasedType, is_named_instance
 )
 from mypy.expandtype import expand_caller_var_args
-from mypy.subtypes import map_instance_to_supertype, is_named_instance
+from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
 
 
-SUBTYPE_OF = 0
-SUPERTYPE_OF = 1
+SUBTYPE_OF = 0  # type: int
+SUPERTYPE_OF = 1  # type: int
 
 
 class Constraint:

@@ -2,11 +2,15 @@ from typing import cast, List, Dict
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType, TypeList
+    Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType, TypeList,
+    is_named_instance
 )
-from mypy import sametypes
+import mypy.applytype
+import mypy.constraints
+from mypy import messages, sametypes
 from mypy.nodes import TypeInfo
 from mypy.expandtype import expand_type
+from mypy.maptype import map_instance_to_supertype
 
 
 def is_immutable(t: Instance) -> bool:
@@ -158,20 +162,24 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 def is_callable_subtype(left: Callable, right: Callable) -> bool:
     """Is left a subtype of right?"""
-    # TODO support named arguments, **args etc.
-
-    # Subtyping is not currently supported for generic functions.
-    if left.variables or right.variables:
-        return False
-
+    # TODO: Support named arguments, **args, etc.
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
         return False
+    if right.variables:
+        # Subtyping is not currently supported for generic function as the supertype.
+        return False
+    if left.variables:
+        # Apply generic type variables away in left via type inference.
+        left = unify_generic_callable(left, right)
+        if left is None:
+            return False
 
     # Check return types.
     if not is_subtype(left.ret_type, right.ret_type):
         return False
 
+    # Check argument types.
     if len(left.arg_types) < len(right.arg_types):
         return False
     if left.min_args > right.min_args:
@@ -179,10 +187,8 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     for i in range(len(right.arg_types)):
         if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
-
     if right.is_var_arg and not left.is_var_arg:
         return False
-
     if (left.is_var_arg and not right.is_var_arg and
             len(left.arg_types) <= len(right.arg_types)):
         return False
@@ -190,110 +196,25 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     return True
 
 
-def map_instance_to_supertype(instance: Instance,
-                              supertype: TypeInfo) -> Instance:
-    """Map an Instance type, including the type arguments, to compatible
-    Instance of a specific supertype.
+def unify_generic_callable(type: Callable, target: Callable) -> Callable:
+    """Try to unify a generic callable type with another callable type.
 
-    Assume that supertype is a supertype of instance.type.
+    Return unified Callable if successful; otherwise, return None.
     """
-    if instance.type == supertype:
-        return instance
-
-    # Strip type variables away if the supertype has none.
-    if not supertype.type_vars:
-        return Instance(supertype, [])
-
-    return map_instance_to_supertypes(instance, supertype)[0]
-
-
-def map_instance_to_direct_supertype(instance: Instance,
-                                     supertype: TypeInfo) -> Instance:
-    typ = instance.type
-
-    for base in typ.bases:
-        if base.type == supertype:
-            map = type_var_map(typ, instance.args)
-            return cast(Instance, expand_type(base, map))
-
-    # Relationship with the supertype not specified explicitly. Use AnyType
-    # type arguments implicitly.
-    # TODO Should this be an error instead?
-    return Instance(supertype, [AnyType()] * len(supertype.type_vars))
-
-
-def type_var_map(typ: TypeInfo, args: List[Type]) -> Dict[int, Type]:
-    if not args:
+    constraints = []  # type: List[mypy.constraints.Constraint]
+    for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
+        c = mypy.constraints.infer_constraints(
+            arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)
+        constraints.extend(c)
+    type_var_ids = [tvar.id for tvar in type.variables]
+    inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
+    if None in inferred_vars:
         return None
-    else:
-        tvars = {}  # type: Dict[int, Type]
-        for i in range(len(args)):
-            tvars[i + 1] = args[i]
-        return tvars
-
-
-def map_instance_to_supertypes(instance: Instance,
-                               supertype: TypeInfo) -> List[Instance]:
-    # FIX: Currently we should only have one supertype per interface, so no
-    #      need to return an array
-    result = []  # type: List[Instance]
-    for path in class_derivation_paths(instance.type, supertype):
-        types = [instance]
-        for sup in path:
-            a = []  # type: List[Instance]
-            for t in types:
-                a.extend(map_instance_to_direct_supertypes(t, sup))
-            types = a
-        result.extend(types)
-    return result
-
-
-def class_derivation_paths(typ: TypeInfo,
-                           supertype: TypeInfo) -> List[List[TypeInfo]]:
-    """Return an array of non-empty paths of direct base classes from
-    type to supertype.  Return [] if no such path could be found.
-
-      InterfaceImplementationPaths(A, B) == [[B]] if A inherits B
-      InterfaceImplementationPaths(A, C) == [[B, C]] if A inherits B and
-                                                        B inherits C
-    """
-    # FIX: Currently we might only ever have a single path, so this could be
-    #      simplified
-    result = []  # type: List[List[TypeInfo]]
-
-    for base in typ.bases:
-        if base.type == supertype:
-            result.append([base.type])
-        else:
-            # Try constructing a longer path via the base class.
-            for path in class_derivation_paths(base.type, supertype):
-                result.append([base.type] + path)
-
-    return result
-
-
-def map_instance_to_direct_supertypes(instance: Instance,
-                                      supertype: TypeInfo) -> List[Instance]:
-    # FIX: There should only be one supertypes, always.
-    typ = instance.type
-    result = []  # type: List[Instance]
-
-    for b in typ.bases:
-        if b.type == supertype:
-            map = type_var_map(typ, instance.args)
-            result.append(cast(Instance, expand_type(b, map)))
-
-    if result:
-        return result
-    else:
-        # Relationship with the supertype not specified explicitly. Use dynamic
-        # type arguments implicitly.
-        return [Instance(supertype, [AnyType()] * len(supertype.type_vars))]
-
-
-def is_named_instance(t: Type, fullname: str) -> bool:
-    return (isinstance(t, Instance) and
-            cast(Instance, t).type.fullname() == fullname)
+    msg = messages.temp_message_builder()
+    applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
+    if msg.is_errors() or not isinstance(applied, Callable):
+        return None
+    return cast(Callable, applied)
 
 
 def restrict_subtype_away(t: Type, s: Type) -> Type:

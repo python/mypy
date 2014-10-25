@@ -9,7 +9,7 @@ from mypy.types import (
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type, Decorator
 from mypy.messages import MessageBuilder
-from mypy.subtypes import map_instance_to_supertype
+from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.nodes import method_type
 from mypy.semanal import self_type

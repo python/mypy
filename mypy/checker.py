@@ -29,9 +29,10 @@ from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype,
+    is_subtype, is_equivalent, is_proper_subtype,
     is_more_precise, restrict_subtype_away
 )
+from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, expand_type
@@ -914,7 +915,7 @@ class TypeChecker(NodeVisitor[Type]):
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
         self.check_assignment(s.lvalues[-1], s.rvalue, s.type == None)
-                               
+
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
             # Make sure that rvalue type will not be reinferred.
@@ -930,23 +931,23 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             ltuple = cast(Union[TupleExpr, ListExpr], lvalue)
             rvalue = self.remove_parens(rvalue)
-            
+
             self.check_assignment_to_multiple_lvalues(ltuple.items, rvalue, lvalue, infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-            
+
             if lvalue_type:
                 rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
-                
+
                 if rvalue_type and infer_lvalue_type:
                     self.binder.assign_type(lvalue, rvalue_type)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
-        
+
             if inferred:
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
-                                         
+
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Node], rvalue: Node, context: Context,
                                              infer_lvalue_type: bool = True) -> None:
         if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
@@ -954,9 +955,9 @@ class TypeChecker(NodeVisitor[Type]):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
-            
-            rtuple = cast(Union[TupleExpr, ListExpr], rvalue) 
-            
+
+            rtuple = cast(Union[TupleExpr, ListExpr], rvalue)
+
             if len(rtuple.items) != len(lvalues):
                 self.msg.incompatible_value_count_in_assignment(
                                 len(lvalues), len(rtuple.items), context)
@@ -965,13 +966,13 @@ class TypeChecker(NodeVisitor[Type]):
                     self.check_assignment(lv, rv, infer_lvalue_type)
         else:
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
-    
+
     def remove_parens(self, node: Node) -> Node:
         if isinstance(node, ParenExpr):
             return self.remove_parens(node.expr)
         else:
             return node
-    
+
     def check_multi_assignment(self, lvalues: List[Node],
                                   rvalue: Node,
                                   context: Context,
@@ -980,10 +981,10 @@ class TypeChecker(NodeVisitor[Type]):
        """Check the assignment of one rvalue to a number of lvalues
        for example from a ListExpr or TupleExpr.
        """
-       
+
        if not msg:
            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
-           
+
        # First handle case where rvalue is of form Undefined, ...
        rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
        undefined_rvalue = True
@@ -991,64 +992,64 @@ class TypeChecker(NodeVisitor[Type]):
            # Infer the type of an ordinary rvalue expression.
            rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
            undefined_rvalue = False
-       
+
        if isinstance(rvalue_type, AnyType):
            for lv in lvalues:
                self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
        elif isinstance(rvalue_type, TupleType):
-           self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type), 
+           self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type),
                                                   context, undefined_rvalue, infer_lvalue_type)
        else:
-           self.check_multi_assignment_from_iterable(lvalues, rvalue_type, 
+           self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                      context, infer_lvalue_type)
-              
-    def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node, 
-                                          rvalue_type: TupleType, context: Context, 
+
+    def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
+                                          rvalue_type: TupleType, context: Context,
                                           undefined_rvalue: bool, infer_lvalue_type: bool = True) -> None:
         if len(rvalue_type.items) != len(lvalues):
             self.msg.wrong_number_values_to_unpack(len(rvalue_type.items), len(lvalues), context)
         else:
             if not undefined_rvalue:
                 # Create lvalue_type for type inference
-                
+
                 type_parameters = []  # type: List[Type]
                 for i in range(len(lvalues)):
                     sub_lvalue_type, index_expr, inferred = self.check_lvalue(lvalues[i])
-                    
+
                     if sub_lvalue_type:
                         type_parameters.append(sub_lvalue_type)
                     else:  # index lvalue
                         # TODO Figure out more precise type context, probably
                         #      based on the type signature of the _set method.
-                        type_parameters.append(rvalue_type.items[i])   
-                
+                        type_parameters.append(rvalue_type.items[i])
+
                 lvalue_type = TupleType(type_parameters, self.named_type('builtins.tuple'))
 
                 # Infer rvalue again, now in the correct type context.
                 rvalue_type = cast(TupleType, self.accept(rvalue, lvalue_type))
-            
+
             for lv, rv_type in zip(lvalues, rvalue_type.items):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
-                               
+
     def type_is_iterable(self, type: Type) -> bool:
         return (is_subtype(type, self.named_generic_type('typing.Iterable',
                                                         [AnyType()])) and
                 isinstance(type, Instance))
-                               
-    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type, 
+
+    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
                                              context: Context, infer_lvalue_type: bool = True) -> None:
         if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(cast(Instance,rvalue_type))
             for lv in lvalues:
                 self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
-        else:    
+        else:
             self.msg.type_not_iterable(rvalue_type, context)
-                                         
+
     def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:
         lvalue_type = None # type: Type
         index_lvalue = None # type: IndexExpr
         inferred = None # type: Var
-        
+
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
                 inferred = cast(Var, lvalue.node)
@@ -1073,9 +1074,9 @@ class TypeChecker(NodeVisitor[Type]):
             return self.check_lvalue(lvalue.expr)
         else:
             lvalue_type = self.accept(lvalue)
-            
+
         return lvalue_type, index_lvalue, inferred
-        
+
     def is_definition(self, s: Node) -> bool:
         if isinstance(s, NameExpr):
             if s.is_def:
@@ -1144,8 +1145,8 @@ class TypeChecker(NodeVisitor[Type]):
                 return ans
         return known_type
 
-    def check_simple_assignment(self, lvalue_type: Type, rvalue: Node, 
-                                context: Node, 
+    def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
+                                context: Node,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
         """Checks the assignment of rvalue to a lvalue of type lvalue_type"""
         if refers_to_fullname(rvalue, 'typing.Undefined'):
@@ -1156,7 +1157,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                               'expression has type', 'variable has type')            
+                               'expression has type', 'variable has type')
             return rvalue_type
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
@@ -1452,14 +1453,14 @@ class TypeChecker(NodeVisitor[Type]):
             return echk.check_call(method, [], [], expr)[0]
 
     def analyse_index_variables(self, index: List[Node],
-                                item_type: Type, context: Context) -> None:                        
+                                item_type: Type, context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
         # Create a temporary copy of variables with Node item type.
         # TODO this is ugly
         node_index = []  # type: List[Node]
         for i in index:
             node_index.append(i)
-        
+
         if len(node_index) == 1:
             self.check_assignment(node_index[0], self.temp_node(item_type, context))
         else:
