@@ -243,7 +243,6 @@ def mkdir(path: AnyStr, mode: int = 0o777) -> None: pass
 def makedirs(path: AnyStr, mode: int = 0o777,
              exist_ok: bool = False) -> None: pass
 def pathconf(path: str, name: str) -> int: pass  # Unix only
-
 def readlink(path: AnyStr) -> AnyStr: pass
 def remove(path: AnyStr) -> None: pass
 def removedirs(path: AnyStr) -> None: pass
@@ -256,12 +255,7 @@ def statvfs(path: str) -> statvfs_result: pass # Unix only
 def symlink(source: AnyStr, link_name: AnyStr,
             target_is_directory: bool = False) -> None:
     pass  # final argument in Windows only
-
-@overload
-def unlink(path: str) -> None: pass
-@overload
-def unlink(bytes: str) -> None: pass
-
+def unlink(path: AnyStr) -> None: pass
 def utime(path: AnyStr, times: Union[Tuple[int, int], Tuple[float, float]] = None) -> None: pass
 
 # TODO onerror: function from OSError to void
@@ -316,11 +310,8 @@ def spawnvp(mode: int, file: AnyStr, args: List[AnyStr]) -> int: pass  # Unix on
 def spawnvpe(mode: int, file: AnyStr, args: List[AnyStr],
              env: Mapping[str, str]) -> int:
     pass  # Unix only
-
 def startfile(path: str, operation: Union[str, None] = None) -> None: pass  # Windows only
-
 def system(command: AnyStr) -> int: pass
-
 def times() -> Tuple[float, float, float, float, float]: pass
 def wait() -> Tuple[int, int]: pass  # Unix only
 def waitpid(pid: int, options: int) -> Tuple[int, int]: pass
