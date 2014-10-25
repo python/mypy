@@ -411,9 +411,9 @@ a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: Tuple[A, object]
 
-b = id(a) # E: Argument 1 to "id" has incompatible type "A"; expected "B"
-a = id(b) # E: Argument 1 to "id" has incompatible type "B"; expected "A"
-a = id(c) # E: Argument 1 to "id" has incompatible type "Tuple[A, object]"; expected "A"
+b = id(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = id(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+a = id(c) # E: Incompatible types in assignment (expression has type "Tuple[A, object]", variable has type "A")
 
 a = id(a)
 b = id(b)
@@ -426,14 +426,13 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testInferringGenericFunctionTypeForLvar]
-# TODO this is actually a contextual inference test case
 from typing import Undefined, typevar
 T = typevar('T')
 def f() -> None:
     a = id
     b = Undefined # type: int
     c = Undefined # type: str
-    b = a(c) # E: Argument 1 has incompatible type "str"; expected "int"
+    b = a(c) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     b = a(b)
     c = a(c)
 def id(x: T) -> T:
@@ -479,8 +478,8 @@ T = typevar('T')
 a = Undefined # type: A
 b = Undefined # type: B
 
-b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
-b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+b = f(a, b) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = f(b, a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = f(a, b)
 a = f(b, a)
 
@@ -566,8 +565,8 @@ T = typevar('T')
 a = Undefined # type: A
 o = Undefined # type: object
 
-a = f(o)    # E: Argument 1 to "f" has incompatible type "object"; expected "A"
-a = g(a, o) # E: Argument 2 to "g" has incompatible type "object"; expected "A"
+a = f(o)    # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+a = g(a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 o = f()
 o = f(o)

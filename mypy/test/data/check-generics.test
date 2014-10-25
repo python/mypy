@@ -736,8 +736,8 @@ def f(a: List[T]) -> T: pass
 
 a, b = Undefined, Undefined # type: (A, B)
 
-b = f([a]) # E: List item 1 has incompatible type "A"
-a = f([b]) # E: List item 1 has incompatible type "B"
+b = f([a]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f([b]) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = f(b)   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 a = f([a])
