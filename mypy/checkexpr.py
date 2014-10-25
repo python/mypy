@@ -285,8 +285,12 @@ class ExpressionChecker:
                                    not cast(Instance, ctx).args):
                 # The return type is a type variable. If it has values, we can't easily restrict
                 # type inference to conform to the valid values. If it's unrestricted, we could
-                # infer a too general type for the type variable if we use context. Give up and
-                # just use function arguments for type inference.
+                # infer a too general type for the type variable if we use context, and this could
+                # result in confusing and spurious type errors elsewhere.
+                #
+                # Give up and just use function arguments for type inference. As an exception,
+                # if the context is a generic instance type, actually use it as context, as
+                # this *seems* to usually be the reasonable thing to do.
                 #
                 # See also github issues #462 and #360.
                 ret_type = NoneTyp()
