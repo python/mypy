@@ -399,6 +399,28 @@ main, line 1: Two starred expressions in assignment
 main, line 3: Two starred expressions in assignment
 main, line 4: Two starred expressions in assignment
 
+[case testTwoStarExpressionsInForStmt]
+for a, *b, *c in z:
+    pass
+for *a, (*b, c) in z:
+    pass
+for a, (*b, *c) in z:
+    pass
+for [*a, *b] in z:
+    pass
+[out]
+main, line 1: Two starred expressions in assignment
+main, line 5: Two starred expressions in assignment
+main, line 7: Two starred expressions in assignment
+
+[case testTwoStarExpressionsInGeneratorExpr]
+(a for a, *b, *c in [])
+(a for *a, (*b, c) in [])
+(a for a, (*b, *c) in [])
+[out]
+main, line 1: Two starred expressions in assignment
+main, line 3: Two starred expressions in assignment
+
 [case testStarExpressionRhs]
 b = 1
 c = 1

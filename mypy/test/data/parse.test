@@ -2800,3 +2800,32 @@ MypyFile:1(
     NameExpr(c)
     Block:7(
       PassStmt:8())))
+
+[case testStarExprInGeneratorExpr]
+x for y, *p in z
+x for *p, y in z
+x for y, *p, q in z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    GeneratorExpr:1(
+      NameExpr(x)
+      NameExpr(y)
+      StarExpr:1(
+        NameExpr(p))
+      NameExpr(z)))
+  ExpressionStmt:2(
+    GeneratorExpr:2(
+      NameExpr(x)
+      StarExpr:2(
+        NameExpr(p))
+      NameExpr(y)
+      NameExpr(z)))
+  ExpressionStmt:3(
+    GeneratorExpr:3(
+      NameExpr(x)
+      NameExpr(y)
+      StarExpr:3(
+        NameExpr(p))
+      NameExpr(q)
+      NameExpr(z))))
