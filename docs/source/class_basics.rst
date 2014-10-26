@@ -19,10 +19,10 @@ initialized within the class. Mypy infers the types of attributes:
    a.x = 2       # OK
    a.y = 3       # Error: A has no attribute y
 
-This is a bit like each class having an implicitly defined __slots__
-attribute. In Python semantics this is only enforced during type
-checking: at runtime we use standard Python semantics. You can
-selectively define a class as *dynamic*; dynamic classes have
+This is a bit like each class having an implicitly defined
+``__slots__`` attribute. In Python semantics this is only enforced
+during type checking: at runtime we use standard Python semantics. You
+can selectively define a class as *dynamic*; dynamic classes have
 Python-like compile-time semantics, and they allow you to assign to
 arbitrary attributes anywhere in a program without the type checker
 complaining:
@@ -45,8 +45,8 @@ use dynamic classes when you really need them.
 
    Dynamic classes are not implemented in the current mypy version.
 
-You can declare variables in the class body explicitly using Undefined
-or a type comment:
+You can declare variables in the class body explicitly using
+``Undefined`` or a type comment:
 
 .. code-block:: python
 
@@ -73,7 +73,7 @@ in a method:
            self.y = 0 # type: Any            # OK
 
 You can only define an instance variable within a method if you assign
-to it explicitly using self:
+to it explicitly using ``self``:
 
 .. code-block:: python
 
@@ -110,8 +110,8 @@ override has a compatible signature:
 .. note::
 
    You can also vary return types **covariantly** in overriding. For
-   example, you could override the return type 'object' with a subtype
-   such as 'int'.
+   example, you could override the return type ``object`` with a subtype
+   such as ``int``.
 
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
@@ -141,9 +141,10 @@ Abstract base classes and multiple inheritance
 **********************************************
 
 Mypy uses Python abstract base classes for protocol types. There are
-several built-in abstract base classes types (for example, Sequence,
-Iterable and Iterator). You can define abstract base classes using the
-abc.ABCMeta metaclass and the abc.abstractmethod function decorator.
+several built-in abstract base classes types (for example,
+``Sequence``, ``Iterable`` and ``Iterator``). You can define abstract
+base classes using the ``abc.ABCMeta`` metaclass and the
+``abc.abstractmethod`` function decorator.
 
 .. code-block:: python
 

@@ -42,7 +42,7 @@ can make your code difficult to understand.
 Second, each name within a function only has a single type. You can
 reuse for loop indices etc., but if you want to use a variable with
 multiple types within a single function, you may need to declare it
-with the Any type.
+with the ``Any`` type.
 
 .. code-block:: python
 
@@ -77,8 +77,8 @@ above example:
    ...
    shape = Triangle()               # OK
 
-Fourth, if you use isinstance tests or other kinds of runtime type
-tests, you may have to add casts (this is similar to instanceof tests
+Fourth, if you use ``isinstance()`` tests or other kinds of runtime type
+tests, you may have to add casts (this is similar to ``instanceof`` tests
 in Java):
 
 .. code-block:: python
@@ -89,18 +89,19 @@ in Java):
            n += 1    # o += 1 would be an error
            ...
 
-Note that the object type used in the above example is similar to
-Object in Java: it only supports operations defined for all objects,
-such as equality and isinstance(). The type Any, in contrast, supports
-all operations, even if they may fail at runtime. The cast above would
-have been unnecessary if the type of o was Any.
+Note that the ``object`` type used in the above example is similar to
+``Object`` in Java: it only supports operations defined for all
+objects, such as equality and ``isinstance()``. The type ``Any``, in
+contrast, supports all operations, even if they may fail at
+runtime. The cast above would have been unnecessary if the type of
+``o`` was ``Any``.
 
-Some consider casual use of isinstance tests a sign of bad programming
-style. Often a method override or an overloaded function is a cleaner
-way of implementing functionality that depends on the runtime types of
-values. However, use whatever techniques that work for you. Sometimes
-isinstance tests *are* the cleanest way of implementing a piece of
-functionality.
+Some consider casual use of ``isinstance()`` tests a sign of bad
+programming style. Often a method override or an overloaded function
+is a cleaner way of implementing functionality that depends on the
+runtime types of values. However, use whatever techniques that work
+for you. Sometimes isinstance tests *are* the cleanest way of
+implementing a piece of functionality.
 
 Type inference in mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error

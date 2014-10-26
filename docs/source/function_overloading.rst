@@ -39,4 +39,4 @@ programmer.
 
    As generic type variables are erased at runtime, an overloaded
    function cannot dispatch based on a generic type argument,
-   e.g. List[int] versus List[str].
+   e.g. ``List[int]`` versus ``List[str]``.

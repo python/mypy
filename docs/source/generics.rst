@@ -6,8 +6,8 @@ Defining generic classes
 
 The built-in collection classes are generic classes. Generic types
 have one or more type parameters, which can be arbitrary types. For
-example, Dict]int, str] has the type parameters int and str, and
-List[int] has a type parameter int.
+example, ``Dict[int, str]`` has the type parameters ``int`` and
+``str``, and ``List[int]`` has a type parameter ``int``.
 
 Programs can also define new generic classes. Here is a very simple
 generic class that represents a stack:
@@ -31,10 +31,10 @@ generic class that represents a stack:
        def empty(self) -> bool:
            return not self.items
 
-The Stack class can be used to represent a stack of any type:
-Stack[int], Stack[Tuple[int, str]], etc.
+The ``Stack`` class can be used to represent a stack of any type:
+``Stack[int]``, ``Stack[Tuple[int, str]]``, etc.
 
-Using Stack is similar to built-in container types:
+Using ``Stack`` is similar to built-in container types:
 
 .. code-block:: python
 
@@ -54,31 +54,31 @@ Type inference works for user-defined generic types as well:
 Generic class internals
 ***********************
 
-You may wonder what happens at runtime when you index Stack. Actually,
-indexing Stack just returns Stack:
+You may wonder what happens at runtime when you index
+``Stack``. Actually, indexing ``Stack`` just returns ``Stack``:
 
 >>> print(Stack)
 <class '__main__.Stack'>
 >>> print(Stack[int])
 <class '__main__.Stack'>
 
-Note that built-in types list, dict and so on do not support indexing
-in Python. This is why we have the aliases List, Dict and so on in the
-typing module. Indexing these aliases just gives you the target class
-in Python, similar to Stack:
+Note that built-in types ``list``, ``dict`` and so on do not support
+indexing in Python. This is why we have the aliases ``List``, ``Dict``
+and so on in the ``typing`` module. Indexing these aliases just gives
+you the target class in Python, similar to ``Stack``:
 
 >>> from typing import List
 >>> List[int]
 <class 'list'>
 
 The above examples illustrate that type variables are erased at
-runtime when running in a Python VM. Generic Stack or list instances
-are just ordinary Python objects, and they have no extra runtime
-overhead or magic due to being generic, other than a metaclass that
-overloads the indexing operator. If you worry about the overhead
-introduced by the type indexing operation when constructing instances,
-you can often rewrite such code using a # type annotation, which has
-no runtime impact:
+runtime. Generic ``Stack`` or ``list`` instances are just ordinary
+Python objects, and they have no extra runtime overhead or magic due
+to being generic, other than a metaclass that overloads the indexing
+operator. If you worry about the overhead introduced by the type
+indexing operation when constructing instances, you can usually
+rewrite such code using a ``# type:`` annotation, which has no runtime
+impact:
 
 .. code-block:: python
 
@@ -118,7 +118,7 @@ return type is derived from the sequence item type. For example:
    s = first('foo')      # s has type str.
    n = first([1, 2, 3])  # n has type int.
 
-Note also that a single definition of a type variable (such as T
+Note also that a single definition of a type variable (such as ``T``
 above) can be used in multiple generic functions or classes. In this
 example we use the same type variable in two generic functions:
 

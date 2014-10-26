@@ -22,13 +22,14 @@ example, the following is valid:
        l = [1, 2]  # Infer type List[object] for [1, 2]
 
 In an assignment, the type context is determined by the assignment
-target. In this case this is l, which has the type List[object]. The
-value expression [1, 2] is type checked in this context and given the
-type List[object]. In the previous example we introduced a new
-variable l, and here the type context was empty.
+target. In this case this is ``l``, which has the type
+``List[object]``. The value expression ``[1, 2]`` is type checked in
+this context and given the type ``List[object]``. In the previous
+example we introduced a new variable ``l``, and here the type context
+was empty.
 
-Note that the following is not valid, since List[int] is not
-compatible with List[object]:
+Note that the following is not valid, since ``List[int]`` is not
+compatible with ``List[object]``:
 
 .. code-block:: python
 
@@ -36,7 +37,7 @@ compatible with List[object]:
        l = k       # Type check error: incompatible types in assignment
 
 The reason why the above assignment is disallowed is that allowing the
-assignment could result in non-int values stored in a list of int:
+assignment could result in non-int values stored in a list of ``int``:
 
 .. code-block:: python
 
@@ -45,16 +46,16 @@ assignment could result in non-int values stored in a list of int:
        l.append('x')
        print(k[-1])  # Ouch; a string in List[int]
 
-You can still run the above program; it prints x. This illustrates the
-fact that static types are used during type checking, but they do not
-affect the runtime behavior of programs. You can run programs with
+You can still run the above program; it prints ``x``. This illustrates
+the fact that static types are used during type checking, but they do
+not affect the runtime behavior of programs. You can run programs with
 type check failures, which is often very handy when performing a large
 refactoring. Thus you can always 'work around' the type system, and it
 doesn't really limit what you can do in your program.
 
 Type inference is not used in dynamically typed functions (those
 without an explicit return type) — every local variable type defaults
-to Any, which is discussed below.
+to ``Any``, which is discussed later.
 
 Explicit types for collections
 ******************************
@@ -85,7 +86,7 @@ Explicit types for variables
    s = 'x'              # OK
    s = 1                # Type check error
 
-The Undefined call evaluates to a special "Undefined" object that
+The Undefined call evaluates to a special ``Undefined`` object that
 raises an exception on any operation:
 
 .. code-block:: python
@@ -101,20 +102,20 @@ special comment after an assignment statement:
 
    x = [] # type: List[int]
 
-Here the # type comment applies both to the assignment target, in this
-case x, and also the initializer expression, via context. The above
-code is equivalent to this:
+Here the ``# type:`` comment applies both to the assignment target, in
+this case ``x``, and also the initializer expression, via context. The
+above code is equivalent to this:
 
 .. code-block:: python
 
    x = List[int]()
 
 The type checker infers the value of a variable from the initializer,
-and if it is an empty collection such as [], the type is not
+and if it is an empty collection such as ``[]``, the type is not
 well-defined. You can declare the collection type using one of the
 above syntax alternatives.
 
-Declaring multiple variable types on a line
+Declaring multiple variable types at a time
 *******************************************
 
 You can declare more than a single variable at a time. In order to

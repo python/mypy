@@ -6,7 +6,7 @@ User-defined types
 
 Each class is also a type. Any instance of a subclass is also
 compatible with all superclasses. All values are compatible with the
-object type (and also the Any type).
+``object`` type (and also the ``Any`` type).
 
 .. code-block:: python
 
@@ -27,16 +27,16 @@ object type (and also the Any type).
 The Any type
 ************
 
-A value with the Any type is dynamically typed. Any operations are
+A value with the ``Any`` type is dynamically typed. Any operations are
 permitted on the value, and the operations are checked at runtime,
 similar to normal Python code. If you do not define a function return
-value or argument types, these default to Any. Also, a function
+value or argument types, these default to ``Any``. Also, a function
 without an explicit return type is dynamically typed. The body of a
 dynamically typed function is not checked statically.
 
-Any is compatible with every other type, and vice versa. No implicit
-type check is inserted when assigning a value of type Any to a
-variable with a more precise type:
+``Any`` is compatible with every other type, and vice versa. No
+implicit type check is inserted when assigning a value of type ``Any``
+to a variable with a more precise type:
 
 .. code-block:: python
 
@@ -51,7 +51,7 @@ generate a runtime error.
 Tuple types
 ***********
 
-The type Tuple[t, ...] represents a tuple with the item types t, ...:
+The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, |...|, ``Tn``:
 
 .. code-block:: python
 
@@ -63,8 +63,8 @@ Callable types (and lambdas)
 ****************************
 
 You can pass around function objects and bound methods in statically
-typed code. The type of a function that accepts arguments A1, ..., An
-and returns Rt is Function[[A1, ..., An], Rt]. Example:
+typed code. The type of a function that accepts arguments ``A1``, |...|, ``An``
+and returns ``Rt`` is ``Function[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
 
@@ -96,10 +96,10 @@ Python functions often accept values of two or more different
 types. You can use overloading to model this in statically typed code,
 but union types can make code like this easier to write.
 
-Use the Union[...] type constructor to construct a union type. For
-example, the type Union[int, str] is compatible with both integers and
-strings. You can use an isinstance check to narrow down the type to a
-specific type:
+Use the ``Union[T1, ..., Tn]`` type constructor to construct a union
+type. For example, the type ``Union[int, str]`` is compatible with
+both integers and strings. You can use an ``isinstance()`` check to
+narrow down the type to a specific type:
 
 .. code-block:: python
 
@@ -157,4 +157,4 @@ string-literal types with non-string-literal types freely:
 
    class A: pass
 
-String literal types are never needed in # type comments.
+String literal types are never needed in ``# type:`` comments.

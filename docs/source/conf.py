@@ -262,3 +262,5 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+rst_prolog = '.. |...| unicode:: U+2026   .. ellipsis\n'

@@ -23,8 +23,8 @@ reports type errors within the function):
    def greeting(name: str) -> str:
        return 'Hello, {}'.format(name)
 
-A None return type indicates a function that does not explicitly
-return a value. Using a None result in a statically typed context
+A ``None`` return type indicates a function that does not explicitly
+return a value. Using a ``None`` result in a statically typed context
 results in a type check error:
 
 .. code-block:: python
@@ -38,7 +38,7 @@ The typing module
 *****************
 
 We cheated a bit in the above examples: a module is type checked only
-if it imports the module typing. Here is a complete statically typed
+if it imports the module ``typing``. Here is a complete statically typed
 example from the previous section:
 
 .. code-block:: python
@@ -48,9 +48,9 @@ example from the previous section:
    def greeting(name: str) -> str:
        return 'Hello, {}'.format(name)
 
-The typing module contains many definitions that are useful in
-statically typed code. You can also use from ... import to import them
-(we'll explain Iterable later in this document):
+The ``typing`` module contains many definitions that are useful in
+statically typed code. You can also use ``from ... import`` to import
+them (we'll explain Iterable later in this document):
 
 .. code-block:: python
 
@@ -60,11 +60,11 @@ statically typed code. You can also use from ... import to import them
        for name in names:
            print('Hello, {}'.format(name))
 
-For brevity, we often omit the typing import in code examples, but you
-should always include it in modules that contain statically typed
+For brevity, we often omit the ``typing`` import in code examples, but
+you should always include it in modules that contain statically typed
 code.
 
-You can still have dynamically typed functions in modules that import typing:
+You can still have dynamically typed functions in modules that import ``typing``:
 
 .. code-block:: python
 

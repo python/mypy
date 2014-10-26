@@ -5,7 +5,7 @@ Mypy supports type casts that are usually used to coerce a statically
 typed value to a subtype. Unlike languages such as Java or C#,
 however, mypy casts are only used as hints for the type checker when
 using Python semantics, and they have no runtime effect. Use the
-function cast to perform a cast:
+function ``cast`` to perform a cast:
 
 .. code-block:: python
 
@@ -23,10 +23,14 @@ casts being checked at runtime. Use an assertion if you want to
 perform an actual runtime check. Casts are used to silence spurious
 type checker warnings.
 
-You don't need a cast for expressions with type Any, of when assigning
-to a variable with type Any, as was explained earlier.
+You don't need a cast for expressions with type ``Any``, of when
+assigning to a variable with type ``Any``, as was explained earlier.
 
-You can cast to a dynamically typed value by just calling Any:
+Any() as a cast
+***************
+
+You can cast to a dynamically typed value by just calling ``Any``;
+this is equivalent to ``cast(Any, ...)`` but shorter:
 
 .. code-block:: python
 

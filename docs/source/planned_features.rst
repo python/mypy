@@ -7,11 +7,11 @@ progress.
 None
 ----
 
-Currently, None is a valid value for each type, similar to null or
-NULL in many languages. However, it is likely that this decision will
-be reversed, and types do not include None default. The Optional type
-modifier can be used to define a type variant that includes None, such
-as Optional(int):
+Currently, ``None`` is a valid value for each type, similar to
+``null`` or ``NULL`` in many languages. However, it is likely that
+this decision will be reversed, and types do not include ``None``
+default. The ``Optional`` type modifier would be used to define a type
+variant that includes ``None``, such as ``Optional[int]``:
 
 .. code-block:: python
 
@@ -22,15 +22,15 @@ as Optional(int):
        ...
        return None # Error: None not compatible with int
 
-Also, most operations would not be supported on None values:
+Also, most operations would not be supported on ``None`` values:
 
 .. code-block:: python
 
    def f(x: Optional[int]) -> int:
        return x + 1  # Error: Cannot add None and int
 
-Instead, an explicit None check would be required. This would benefit
-from more powerful type inference:
+Instead, an explicit ``None`` check would be required. This would
+benefit from more powerful type inference:
 
 .. code-block:: python
 
@@ -41,8 +41,8 @@ from more powerful type inference:
            # The inferred type of x is just int here.
            return x + 1
 
-We would infer the type of x to be int in the else block due to the
-check against None in the if condition.
+We would infer the type of ``x`` to be int in the else block due to the
+check against ``None`` in the if condition.
 
 More general type inference
 ---------------------------
@@ -59,5 +59,6 @@ types are different:
        y = 'a'      # Second definition of y
 
 In the above example, both of the assignments would be used in type
-inference, and the type of y would be str. However, it is not obvious
-whether this would be generally desirable in more complex cases.
+inference, and the type of ``y`` would be ``str``. However, it is not
+obvious whether this would be generally desirable in more complex
+cases.
