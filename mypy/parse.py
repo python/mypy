@@ -874,10 +874,6 @@ class Parser:
         index_items = List[Node]()
         commas = List[Token]()
 
-        is_paren = self.current_str() == '('
-        if is_paren:
-            self.skip()
-
         while True:
             v = self.parse_expression(precedence['in'], star_expr_allowed=True)  # prevent parsing of for-stmt's 'in'
             index_items.append(v)
@@ -885,9 +881,6 @@ class Parser:
                 commas.append(none)
                 break
             commas.append(self.skip())
-
-        if is_paren:
-            self.expect(')')
 
         if len(index_items) == 1:
             index = index_items[0]

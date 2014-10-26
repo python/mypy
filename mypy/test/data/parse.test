@@ -1461,9 +1461,10 @@ for (i, j) in x:
 [out]
 MypyFile:1(
   ForStmt:1(
-    TupleExpr:1(
-      NameExpr(i)
-      NameExpr(j))
+    ParenExpr:1(
+      TupleExpr:1(
+        NameExpr(i)
+        NameExpr(j)))
     NameExpr(x)
     Block:1(
       PassStmt:2())))
