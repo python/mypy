@@ -6,19 +6,20 @@ Function signatures
 
 A function without a type signature is dynamically typed. You can
 declare the signature of a function using the Python 3 annotation
-syntax This makes the function statically typed (the type checker
-reports type errors within the function):
+syntax. This makes the function statically typed (the type checker
+reports type errors within the function). A function without a
+type annotation is dynamically typed, and identical to ordinary
+Python:
 
 .. code-block:: python
-
-   # Dynamically typed (identical to Python)
 
    def greeting(name):
        return 'Hello, {}'.format(name)
 
-.. code-block:: python
+This version of the above function is statically typed (but it's still
+valid Python):
 
-   # Statically typed (still valid Python)
+.. code-block:: python
 
    def greeting(name: str) -> str:
        return 'Hello, {}'.format(name)
@@ -50,7 +51,7 @@ example from the previous section:
 
 The ``typing`` module contains many definitions that are useful in
 statically typed code. You can also use ``from ... import`` to import
-them (we'll explain Iterable later in this document):
+them (we'll explain ``Iterable`` later in this document):
 
 .. code-block:: python
 
@@ -88,13 +89,13 @@ more stable.
 
    Currently the type checker checks the top levels and annotated
    functions of all modules, even those that don't import
-   typing. However, you should not rely on this, as this will change
+   ``typing``. However, you should not rely on this, as this will change
    in the future.
 
 Type checking and running programs
 **********************************
 
-You can type check a program by using the mypy tool, which is
+You can type check a program by using the ``mypy`` tool, which is
 basically a linter — it checks you program for errors without actually
 running it::
 
