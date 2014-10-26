@@ -37,32 +37,6 @@ Instead, an explicit None check would be required. This would benefit from more 
 
 We would infer the type of x to be int in the else block due to the check against None in the if condition.
 
-.. _union-types:
-
-Union types
------------
-
-Python functions often accept values of two or more different types. You can use overloading to model this in statically typed code, but union types can make code like this easier to write.
-
-Use the Union[...] type constructor to construct a union type. For example, the type Union[int, str] is compatible with both integers and strings. You can use an isinstance check to narrow down the type to a specific type:
-
-.. code-block:: python
-
-   from typing import Union
-
-   def f(x: Union[int, str]) -> None:
-       x + 1     # Error: str + int is not valid
-       if isinstance(x, int):
-           # Here type of x is int.
-           x + 1      # OK
-       else:
-           # Here type of x is str.
-           x + 'a'    # OK
-
-   f(1)    # OK
-   f('x')  # OK
-   f(1.1)  # Error
-
 More general type inference
 ---------------------------
 

@@ -48,8 +48,8 @@ The type Tuple[t, ...] represents a tuple with the item types t, ...:
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
-Callable types and lambdas
-**************************
+Callable types (and lambdas)
+****************************
 
 You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments A1, ..., An and returns Rt is Function[[A1, ..., An], Rt]. Example:
 
@@ -70,6 +70,37 @@ Lambdas are also supported. The lambda argument and return value types cannot be
    l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
 
 If you want to give the argument or return value types explicitly, use an ordinary, perhaps nested function definition.
+
+.. _union-types:
+
+Union types
+***********
+
+Python functions often accept values of two or more different
+types. You can use overloading to model this in statically typed code,
+but union types can make code like this easier to write.
+
+Use the Union[...] type constructor to construct a union type. For
+example, the type Union[int, str] is compatible with both integers and
+strings. You can use an isinstance check to narrow down the type to a
+specific type:
+
+.. code-block:: python
+
+   from typing import Union
+
+   def f(x: Union[int, str]) -> None:
+       x + 1     # Error: str + int is not valid
+       if isinstance(x, int):
+           # Here type of x is int.
+           x + 1      # OK
+       else:
+           # Here type of x is str.
+           x + 'a'    # OK
+
+   f(1)    # OK
+   f('x')  # OK
+   f(1.1)  # Error
 
 Class name forward references
 *****************************
