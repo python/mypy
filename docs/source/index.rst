@@ -9,7 +9,6 @@ Welcome to Mypy's documentation!
 .. toctree::
    :maxdepth: 2
 
-   tutorial
    basics
    builtin_types
    type_inference_and_annotations
