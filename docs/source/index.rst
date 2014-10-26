@@ -8,13 +8,26 @@ Welcome to Mypy's documentation!
 
 .. toctree::
    :maxdepth: 2
-   
+
    tutorial
+   basics
+   builtin_types
+   type_inference_and_annotations
+   kinds_of_types
+   class_basics
+   dynamic_typing
+   function_overloading
+   casts
+   common_issues
+   generics
+   supported_python_features
+   additional_features
+   planned_features
    faq
+   revision_history
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`search`
-
