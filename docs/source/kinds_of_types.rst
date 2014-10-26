@@ -4,7 +4,9 @@ Kinds of types
 User-defined types
 ******************
 
-Each class is also a type. Any instance of a subclass is also compatible with all superclasses. All values are compatible with the object type (and also the Any type).
+Each class is also a type. Any instance of a subclass is also
+compatible with all superclasses. All values are compatible with the
+object type (and also the Any type).
 
 .. code-block:: python
 
@@ -25,9 +27,16 @@ Each class is also a type. Any instance of a subclass is also compatible with al
 The Any type
 ************
 
-A value with the Any type is dynamically typed. Any operations are permitted on the value, and the operations are checked at runtime, similar to normal Python code. If you do not define a function return value or argument types, these default to Any. Also, a function without an explicit return type is dynamically typed. The body of a dynamically typed function is not checked statically.
+A value with the Any type is dynamically typed. Any operations are
+permitted on the value, and the operations are checked at runtime,
+similar to normal Python code. If you do not define a function return
+value or argument types, these default to Any. Also, a function
+without an explicit return type is dynamically typed. The body of a
+dynamically typed function is not checked statically.
 
-Any is compatible with every other type, and vice versa. No implicit type check is inserted when assigning a value of type Any to a variable with a more precise type:
+Any is compatible with every other type, and vice versa. No implicit
+type check is inserted when assigning a value of type Any to a
+variable with a more precise type:
 
 .. code-block:: python
 
@@ -35,7 +44,9 @@ Any is compatible with every other type, and vice versa. No implicit type check 
    a = 2      # OK
    s = a      # OK
 
-Declared (and inferred) types are erased at runtime (they are basically treated as comments), and thus the above code does not generate a runtime error.
+Declared (and inferred) types are erased at runtime (they are
+basically treated as comments), and thus the above code does not
+generate a runtime error.
 
 Tuple types
 ***********
@@ -51,7 +62,9 @@ The type Tuple[t, ...] represents a tuple with the item types t, ...:
 Callable types (and lambdas)
 ****************************
 
-You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments A1, ..., An and returns Rt is Function[[A1, ..., An], Rt]. Example:
+You can pass around function objects and bound methods in statically
+typed code. The type of a function that accepts arguments A1, ..., An
+and returns Rt is Function[[A1, ..., An], Rt]. Example:
 
 .. code-block:: python
 
@@ -63,13 +76,16 @@ You can pass around function objects and bound methods in statically typed code.
 
    print(twice(3, add))   # 5
 
-Lambdas are also supported. The lambda argument and return value types cannot be given explicitly; they are always inferred based on context using bidirectional type inference:
+Lambdas are also supported. The lambda argument and return value types
+cannot be given explicitly; they are always inferred based on context
+using bidirectional type inference:
 
 .. code-block:: python
 
    l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
 
-If you want to give the argument or return value types explicitly, use an ordinary, perhaps nested function definition.
+If you want to give the argument or return value types explicitly, use
+an ordinary, perhaps nested function definition.
 
 .. _union-types:
 
@@ -105,7 +121,8 @@ specific type:
 Class name forward references
 *****************************
 
-Python does not allow references to a class object before the class is defined. Thus this code is does not work as expected:
+Python does not allow references to a class object before the class is
+defined. Thus this code is does not work as expected:
 
 .. code-block:: python
 
@@ -115,7 +132,8 @@ Python does not allow references to a class object before the class is defined. 
    class A:
        ...
 
-In cases like these you can enter the type as a string literal — this is a *forward reference*:
+In cases like these you can enter the type as a string literal — this
+is a *forward reference*:
 
 .. code-block:: python
 
@@ -125,9 +143,12 @@ In cases like these you can enter the type as a string literal — this is a *fo
    class A:
        ...
 
-Of course, instead of using a string literal type, you could move the function definition after the class definition. This is not always desirable or even possible, though.
+Of course, instead of using a string literal type, you could move the
+function definition after the class definition. This is not always
+desirable or even possible, though.
 
-Any type can be entered as a string literal, and youn can combine string-literal types with non-string-literal types freely:
+Any type can be entered as a string literal, and youn can combine
+string-literal types with non-string-literal types freely:
 
 .. code-block:: python
 
