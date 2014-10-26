@@ -1537,21 +1537,10 @@ class TypeChecker(NodeVisitor[Type]):
                                                          expr)
             return echk.check_call(method, [], [], expr)[0]
 
-    def analyse_index_variables(self, index: List[Node],
-                                item_type: Type, context: Context) -> None:
+    def analyse_index_variables(self, index: Node, item_type: Type,
+                                context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
-        # Create a temporary copy of variables with Node item type.
-        # TODO this is ugly
-        node_index = []  # type: List[Node]
-        for i in index:
-            node_index.append(i)
-
-        if len(node_index) == 1:
-            self.check_assignment(node_index[0], self.temp_node(item_type, context))
-        else:
-            self.check_multi_assignment(node_index,
-                               self.temp_node(item_type, context),
-                               context)
+        self.check_assignment(index, self.temp_node(item_type, context))
 
     def visit_del_stmt(self, s: DelStmt) -> Type:
         if isinstance(s.expr, IndexExpr):

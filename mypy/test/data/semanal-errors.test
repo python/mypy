@@ -419,6 +419,7 @@ main, line 7: Two starred expressions in assignment
 (a for a, (*b, *c) in [])
 [out]
 main, line 1: Two starred expressions in assignment
+main, line 1: Name 'a' is not defined
 main, line 3: Two starred expressions in assignment
 
 [case testStarExpressionRhs]

@@ -1055,8 +1055,7 @@ class SemanticAnalyzer(NodeVisitor):
         s.expr.accept(self)
 
         # Bind index variables and check if they define new names.
-        for n in s.index:
-            self.analyse_lvalue(n)
+        self.analyse_lvalue(s.index)
 
         self.loop_depth += 1
         self.visit_block(s.body)
@@ -1333,8 +1332,7 @@ class SemanticAnalyzer(NodeVisitor):
                                                expr.condlists):
             sequence.accept(self)
             # Bind index variables.
-            for n in index:
-                self.analyse_lvalue(n)
+            self.analyse_lvalue(index)
             for cond in conditions:
                 cond.accept(self)
 
@@ -1595,8 +1593,7 @@ class FirstPass(NodeVisitor):
                                                          self.sem.cur_mod_id)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
-        for n in s.index:
-            self.sem.analyse_lvalue(n, add_global=True)
+        self.sem.analyse_lvalue(s.index, add_global=True)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for n in s.name:

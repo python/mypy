@@ -113,8 +113,9 @@ for x, y in []:
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x* [__main__.x])
-    NameExpr(y* [__main__.y])
+    TupleExpr:1(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     ListExpr:1()
     Block:1(
       ExpressionStmt:2(

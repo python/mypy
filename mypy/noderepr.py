@@ -144,10 +144,9 @@ class WhileStmtRepr:
 
 
 class ForStmtRepr:
-    def __init__(self, for_tok: Any, commas: Any, in_tok: Any,
+    def __init__(self, for_tok: Any, in_tok: Any,
                  else_tok: Any) -> None:
         self.for_tok = for_tok
-        self.commas = commas
         self.in_tok = in_tok
         self.else_tok = else_tok
 
@@ -331,10 +330,9 @@ class TypeApplicationRepr:
 
 
 class GeneratorExprRepr:
-    def __init__(self, for_toks: List[Token], commas: List[Token], in_toks: List[Token],
+    def __init__(self, for_toks: List[Token], in_toks: List[Token],
                  if_toklists: List[List[Token]]) -> None:
         self.for_toks = for_toks
-        self.commas = commas
         self.in_toks = in_toks
         self.if_toklists = if_toklists
 

@@ -203,7 +203,7 @@ class TransformVisitor(NodeVisitor[Node]):
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> Node:
-        return ForStmt(self.nodes(node.index),
+        return ForStmt(self.node(node.index),
                        self.node(node.expr),
                        self.block(node.body),
                        self.optional_block(node.else_body))
@@ -374,7 +374,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.node(node.left_expr),
-                             [self.nodes(index) for index in node.indices],
+                             [self.node(index) for index in node.indices],
                              [self.node(s) for s in node.sequences],
                              [[self.node(cond) for cond in conditions]
                               for conditions in node.condlists])
