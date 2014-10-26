@@ -1069,14 +1069,18 @@ class TypeChecker(NodeVisitor[Type]):
                                         rvalue_type.items, star_index, len(lvalues))
 
         type_parameters = []  # type: List[Type]
-        for lv, rv_type in zip(left_lvs, left_rv_types):
-            sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
-            if sub_lvalue_type:
-                type_parameters.append(sub_lvalue_type)
-            else:  # index lvalue
-                # TODO Figure out more precise type context, probably
-                #      based on the type signature of the _set method.
-                type_parameters.append(rv_type)
+
+        def append_types_for_inference(lvs: List[Node], rv_types: List[Type]) -> None:
+            for lv, rv_type in zip(lvs, rv_types):
+                sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
+                if sub_lvalue_type:
+                    type_parameters.append(sub_lvalue_type)
+                else:  # index lvalue
+                    # TODO Figure out more precise type context, probably
+                    #      based on the type signature of the _set method.
+                    type_parameters.append(rv_type)
+
+        append_types_for_inference(left_lvs, left_rv_types)
 
         if star_lv:
             sub_lvalue_type, index_expr, inferred = self.check_lvalue(star_lv.expr)
@@ -1087,19 +1091,12 @@ class TypeChecker(NodeVisitor[Type]):
                 #      based on the type signature of the _set method.
                 type_parameters.extend(star_rv_types)
 
-        for lv, rv_type in zip(right_lvs, right_rv_types):
-            sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
-            if sub_lvalue_type:
-                type_parameters.append(sub_lvalue_type)
-            else:  # index lvalue
-                # TODO Figure out more precise type context, probably
-                #      based on the type signature of the _set method.
-                type_parameters.append(rv_type)
+        append_types_for_inference(right_lvs, right_rv_types)
 
         return TupleType(type_parameters, self.named_type('builtins.tuple'))
 
     def split_around_star(self, items: List[T], star_index: int,
-                       length: int) -> Tuple[List[T], List[T], List[T]]:
+                          length: int) -> Tuple[List[T], List[T], List[T]]:
         """Splits a list of items in three to match another list of length 'length'
         that contains a starred expression at 'star_index' in the following way:
 
