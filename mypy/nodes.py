@@ -814,13 +814,13 @@ class StarExpr(Node):
         self.expr = expr
         self.literal = self.expr.literal
         self.literal_hash = ('Star', expr.literal_hash,)
-        
+
         # Whether this starred expression is used in a tuple/list and as lvalue
         self.valid = False
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_star_expr(self)
-        
+
 
 class RefExpr(Node):
     """Abstract base class for name-like constructs"""

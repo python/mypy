@@ -2775,7 +2775,7 @@ for *a in b:
 
 for a, *b in c:
     pass
-    
+
 for *a, b in c:
     pass
 [out]

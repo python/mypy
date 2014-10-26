@@ -955,11 +955,11 @@ class TypeChecker(NodeVisitor[Type]):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
-            
+
             rvalues = cast(Union[TupleExpr, ListExpr], rvalue).items
-            
+
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
-                star_index = next((i for i, lv in enumerate(lvalues) if 
+                star_index = next((i for i, lv in enumerate(lvalues) if
                                                 isinstance(lv, StarExpr)), len(lvalues))
 
                 left_lvs = lvalues[:star_index]
@@ -981,11 +981,11 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
 
-    def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int, 
+    def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int,
                                                                     context: Context) -> bool:
         if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
             if len(lvalues)-1 > rvalue_count:
-                self.msg.wrong_number_values_to_unpack(rvalue_count, 
+                self.msg.wrong_number_values_to_unpack(rvalue_count,
                                 len(lvalues)-1, context)
                 return False
         elif rvalue_count != len(lvalues):
@@ -1031,7 +1031,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                      context, infer_lvalue_type)
-              
+
     def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
                                           rvalue_type: TupleType, context: Context,
                                           undefined_rvalue: bool, infer_lvalue_type: bool=True) -> None:
@@ -1063,7 +1063,7 @@ class TypeChecker(NodeVisitor[Type]):
     def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
         star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
-        star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
+        star_lv = lvalues[star_index] if star_index != len(lvalues) else None
         right_lvs = lvalues[star_index+1:]
         left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                                         rvalue_type.items, star_index, len(lvalues))
@@ -1118,7 +1118,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                         [AnyType()])) and
                 isinstance(type, Instance))
 
-    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type, 
+    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
                                              context: Context, infer_lvalue_type: bool=True) -> None:
         if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(cast(Instance,rvalue_type))
@@ -1127,7 +1127,7 @@ class TypeChecker(NodeVisitor[Type]):
                     self.check_assignment(lv.expr, self.temp_node(rvalue_type, context), infer_lvalue_type)
                 else:
                     self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
-        else:    
+        else:
             self.msg.type_not_iterable(rvalue_type, context)
 
     def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:

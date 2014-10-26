@@ -216,7 +216,7 @@ class ParenExprRepr:
 class StarExprRepr:
     def __init__(self, star: Any) -> None:
         self.star = star
-        
+
 
 class NameExprRepr:
     def __init__(self, id: Any) -> None:
