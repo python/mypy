@@ -234,6 +234,9 @@ Skin <http://shed-skin.blogspot.co.uk/>`_ are basically statically
 typed subsets of Python. Mypy does the following important things
 differently:
 
+- RPython is primarily designed for implementing virtual machines;
+  mypy is a general-purpose language.
+
 - Mypy supports both static and dynamic typing. Dynamically typed and
   statically typed code can be freely mixed and can interact
   seamlessly.
