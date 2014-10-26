@@ -1,5 +1,5 @@
-Common issues
-=============
+Dealing with common issues
+==========================
 
 Statically typed function bodies are often identical to normal Python code, but sometimes you need to do things slightly differently. This section introduces some of the most common cases which require different conventions in statically typed code.
 

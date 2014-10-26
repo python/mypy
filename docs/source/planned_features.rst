@@ -37,6 +37,8 @@ Instead, an explicit None check would be required. This would benefit from more 
 
 We would infer the type of x to be int in the else block due to the check against None in the if condition.
 
+.. _union-types:
+
 Union types
 -----------
 

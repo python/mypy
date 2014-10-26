@@ -71,6 +71,8 @@ The above examples illustrate that type variables are erased at runtime when run
 
 The savings are rarely significant, but it could make a difference in a performance-critical loop or function. Function annotations, on the other hand, are only evaluated during the defintion of the function, not during every call. Constructing type objects in function signatures rarely has any noticeable performance impact.
 
+.. _generic-functions:
+
 Generic functions
 *****************
 
