@@ -1063,7 +1063,7 @@ class TypeChecker(NodeVisitor[Type]):
     def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
         star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
-        star_lv = lvalues[star_index] if star_index != len(lvalues) else None
+        star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
         right_lvs = lvalues[star_index+1:]
         left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                                         rvalue_type.items, star_index, len(lvalues))

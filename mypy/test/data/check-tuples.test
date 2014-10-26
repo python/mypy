@@ -436,8 +436,59 @@ main, line 6: List item 1 has incompatible type "A"
 main, line 6: List item 2 has incompatible type "A"
 main, line 9: Incompatible types in assignment (expression has type "A", variable has type List[A])
 
+[case testAssignmentToStarFromTupleInference]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+a, *l = A(), A()
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+[case testAssignmentToStarFromListInference]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+a, *l = [A(), A()]
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+[case testAssignmentToStarFromTupleTypeInference]
+from typing import Undefined, List, Tuple
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+ta = Undefined  # type: Tuple[A, A, A]
+a, *l = ta
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+[case testAssignmentToStarFromListTypeInference]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+a, *l = la
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+
 -- Nested tuple assignment
 -- ----------------------------
+
 
 [case testNestedTupleAssignment1]
 from typing import Undefined

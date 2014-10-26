@@ -1192,7 +1192,7 @@ class Parser:
             return expr
 
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
-        indices = List[List[Node]]()
+        indices = List[Node]()
         sequences = List[Node]()
         for_toks = List[Token]()
         in_toks = List[Token]()
