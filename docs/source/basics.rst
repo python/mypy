@@ -1,7 +1,7 @@
 Basics
 ======
 
-Function Signatures
+Function signatures
 *******************
 
 A function without a type signature is dynamically typed. You can declare the signature of a function using the Python 3 annotation syntax This makes the function statically typed (the type checker reports type errors within the function):
