@@ -48,6 +48,29 @@ The type Tuple[t, ...] represents a tuple with the item types t, ...:
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
+Callable types and lambdas
+**************************
+
+You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments A1, ..., An and returns Rt is Function[[A1, ..., An], Rt]. Example:
+
+.. code-block:: python
+
+   def twice(i: int, next: Function[[int], int]) -> int:
+       return next(next(i))
+
+   def add(i: int) -> int:
+       return i + 1
+
+   print(twice(3, add))   # 5
+
+Lambdas are also supported. The lambda argument and return value types cannot be given explicitly; they are always inferred based on context using bidirectional type inference:
+
+.. code-block:: python
+
+   l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
+
+If you want to give the argument or return value types explicitly, use an ordinary, perhaps nested function definition.
+
 Class name forward references
 *****************************
 
@@ -83,26 +106,3 @@ Any type can be entered as a string literal, and youn can combine string-literal
    class A: pass
 
 String literal types are never needed in # type comments.
-
-Callable types and lambdas
-**************************
-
-You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments A1, ..., An and returns Rt is Function[[A1, ..., An], Rt]. Example:
-
-.. code-block:: python
-
-   def twice(i: int, next: Function[[int], int]) -> int:
-       return next(next(i))
-
-   def add(i: int) -> int:
-       return i + 1
-
-   print(twice(3, add))   # 5
-
-Lambdas are also supported. The lambda argument and return value types cannot be given explicitly; they are always inferred based on context using bidirectional type inference:
-
-.. code-block:: python
-
-   l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
-
-If you want to give the argument or return value types explicitly, use an ordinary, perhaps nested function definition.
