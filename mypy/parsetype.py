@@ -96,7 +96,7 @@ class TypeParser:
                 if self.current_token_str() == ')':
                     break
                 items.append(self.parse_type())
-            type = TupleType(items, None)
+            type = TupleType(items, None, type.line)
         return type
 
     def parse_type_list(self) -> TypeList:
@@ -150,7 +150,7 @@ class TypeParser:
     def parse_star_type(self) -> Type:
         star = self.expect('*')
         type = self.parse_type()
-        return StarType(type, line)
+        return StarType(type, star.line)
 
     # Helpers
 
