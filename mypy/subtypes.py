@@ -195,7 +195,7 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
 
 
 def is_var_arg_callable_subtype_helper(left: Callable, right: Callable) -> bool:
-    """Is left a subtype of right, assuming left has varargs?
+    """Is left a subtype of right, assuming left has *args?
 
     See also is_callable_subtype for additional assumptions we can make.
     """
