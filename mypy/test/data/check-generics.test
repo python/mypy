@@ -802,3 +802,29 @@ g2(f)
 def g3(f: Function[[object], object]) -> None: pass
 g3(f) # E: Argument 1 to "g3" has incompatible type Function[["T"] -> "T"]; \
            expected Function[["object"] -> "object"]
+
+
+-- Special cases
+-- -------------
+
+
+[case testIdentityHigherOrderFunction]
+from typing import Function, typevar
+A = typevar('A')
+B = typevar('B')
+def square(n: int) -> int:
+    return n
+def id(f: Function[[A], B]) -> Function[[A], B]:
+    return f
+g = id(square)
+g(1)
+g('x')  # E: Argument 1 has incompatible type "str"; expected "int"
+
+
+[case testIdentityHigherOrderFunction2]
+from typing import Function, typevar
+A = typevar('A')
+def voidify(n: int) -> None: pass
+def identity(f: Function[[A], None]) -> Function[[A], None]:
+    return f
+identity(voidify)(3)
