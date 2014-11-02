@@ -4,8 +4,8 @@ Planned features
 This section introduces some language features that are still work in
 progress.
 
-None
-----
+Type checking of None
+---------------------
 
 Currently, ``None`` is a valid value for each type, similar to
 ``null`` or ``NULL`` in many languages. However, it is likely that

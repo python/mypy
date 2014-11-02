@@ -138,7 +138,7 @@ You can also define generic methods — just use a type variable in the
 method signature that is different from class type variables.
 
 Type variables with value restriction
--------------------------------------
+*************************************
 
 By default, a type variable can be replaced with any type. However, sometimes
 it's useful to have a type variable that can only have some specific types
