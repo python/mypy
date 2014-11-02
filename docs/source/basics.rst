@@ -117,3 +117,50 @@ explains how to download and install mypy.
    Depending on how mypy is configured, you may have to explicitly use
    the Python interpreter to run mypy. The mypy tool is an ordinary
    mypy (and so also Python) program.
+
+Library stubs
+*************
+
+In order to type check code that uses library modules such those
+included in the Python standard library, you need to have library
+*stubs*. A library stub defines a skeleton of the public interface
+of the library, including classes, variables and functions, and
+their types.
+
+For example, consider this code:
+
+.. code-block:: python
+
+  x = chr(4)
+
+Without a library stub, the type checker has no way of inferring the
+type of ``x`` and checking that the argument to ``chr`` has a valid
+type. Mypy comes with a library stub for Python builtins that contains
+a definition like this for ``chr``:
+
+.. code-block:: python
+
+    def chr(code: int) -> str: pass
+
+Mypy complains if it can't find a stub for a library module that you
+import.  You can create a stub easily; here is an overview:
+
+* Write a stub file for the library and store it as a ``.py`` file in
+  a directory reserved for stubs (e.g., ``myproject/stubs``).
+* Set the environment variable ``MYPYPATH`` to refer to the above directory.
+  For example::
+
+      $ export MYPYPATH=~/work/myproject/stubs
+
+Use the normal Python file name conventions for modules, e.g. ``csv.py``
+for module ``csv``, and use a subdirectory with ``__init__.py`` for packages.
+
+That's it! Now you can access the module in mypy programs and type check
+code that uses the library. If you write a stub for a library module,
+consider making it available for other programmers that use mypy or
+contributing it to mypy.
+
+There is more information about creating stubs in the
+`mypy wiki <http://www.mypy-lang.org/wiki/CreatingStubsForPythonModules>`_.
+The following sections explain the kinds of type annotations you can use
+in your programs and stub files.
