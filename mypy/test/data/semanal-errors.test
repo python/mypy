@@ -398,6 +398,16 @@ main, line 4: Invalid assignment target
 main, line 5: Invalid assignment target
 main, line 6: Invalid assignment target
 
+[case testInvalidStarType]
+a = 1  # type: *int
+[out]
+main, line 1: Star type only allowed for starred expressions
+
+[case testInvalidStarType]
+*a, b = 1  # type: int, int
+[out]
+main, line 1: Star type expected for starred expression
+
 [case testTwoStarExpressions]
 a, *b, *c = 1
 *a, (*b, c) = 1

@@ -64,7 +64,7 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType
+    replace_leading_arg_type, TupleType, UnionType, StarType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
@@ -867,6 +867,8 @@ class SemanticAnalyzer(NodeVisitor):
         return None
 
     def store_declared_types(self, lvalue: Node, typ: Type) -> None:
+        if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
+            self.fail('Star type only allowed for starred expressions', lvalue)
         if isinstance(lvalue, RefExpr):
             lvalue.is_def = False
             if isinstance(lvalue.node, Var):
@@ -884,6 +886,11 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Tuple type expected for multiple variables',
                           lvalue)
+        elif isinstance(lvalue, StarExpr):
+            if isinstance(typ, StarType):
+                self.store_declared_types(lvalue.expr, typ.type)
+            else:
+                self.fail('Star type expected for starred expression', lvalue)
         elif isinstance(lvalue, ParenExpr):
             self.store_declared_types(lvalue.expr, typ)
         else:
