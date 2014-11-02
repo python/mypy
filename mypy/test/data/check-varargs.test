@@ -501,3 +501,18 @@ f(1, 2)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/list.py]
+
+
+-- Subtyping
+-- ---------
+
+
+[case testVarArgsFunctionSubtyping]
+from typing import Function, Undefined
+x = Undefined # type: Function[[int], None]
+def f(*x: int) -> None: pass
+def g(*x: str) -> None: pass
+x = f
+x = g # E: Incompatible types in assignment (expression has type , variable has type )
+[builtins fixtures/list.py]
+[out]

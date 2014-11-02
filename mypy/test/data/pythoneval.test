@@ -911,3 +911,11 @@ def f(x: _T) -> None: pass
 [out]
 _program.py: In function "f":
 _program.py, line 2: Name '_T' is not defined
+
+[case testVarArgsFunctionSubtyping]
+import typing
+def f(*args: str) -> str: return args[0]
+map(f, ['x'])
+map(f, [1])
+[out]
+_program.py, line 4: Argument 1 to "map" has incompatible type Function[["str"] -> "str"]; expected Function[["int"] -> "str"]

@@ -180,20 +180,48 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
         return False
 
     # Check argument types.
-    if len(left.arg_types) < len(right.arg_types):
-        return False
     if left.min_args > right.min_args:
+        return False
+    if left.is_var_arg:
+        return is_var_arg_callable_subtype_helper(left, right)
+    if right.is_var_arg:
+        return False
+    if len(left.arg_types) < len(right.arg_types):
         return False
     for i in range(len(right.arg_types)):
         if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
-    if right.is_var_arg and not left.is_var_arg:
-        return False
     if (left.is_var_arg and not right.is_var_arg and
             len(left.arg_types) <= len(right.arg_types)):
         return False
 
     return True
+
+
+def is_var_arg_callable_subtype_helper(left: Callable, right: Callable) -> bool:
+    """Is left a subtype of right, assuming left has varargs?
+
+    See also is_callable_subtype for additional assumptions we can make.
+    """
+    left_fixed = left.max_fixed_args()
+    right_fixed = right.max_fixed_args()
+    num_fixed_matching = min(left_fixed, right_fixed)
+    for i in range(num_fixed_matching):
+        if not is_subtype(right.arg_types[i], left.arg_types[i]):
+            return False
+    if not right.is_var_arg:
+        for i in range(num_fixed_matching, len(right.arg_types)):
+            if not is_subtype(right.arg_types[i], left.arg_types[-1]):
+                return False
+        return True
+    else:
+        for i in range(left_fixed, right_fixed):
+            if not is_subtype(right.arg_types[i], left.arg_types[-1]):
+                return False
+        for i in range(right_fixed, left_fixed):
+            if not is_subtype(right.arg_types[-1], left.arg_types[i]):
+                return False
+        return is_subtype(right.arg_types[-1], left.arg_types[-1])
 
 
 def unify_generic_callable(type: Callable, target: Callable) -> Callable:
