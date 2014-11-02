@@ -105,12 +105,12 @@ class SubtypingSuite(Suite):
     def test_var_arg_callable_subtyping_4(self):
         self.assert_proper_subtype(
             self.fx.callable_var_arg(1, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.a, self.fx.a))
+            self.fx.callable(self.fx.b, self.fx.a))
 
     def test_var_arg_callable_subtyping_5(self):
         self.assert_proper_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.d, self.fx.a),
-            self.fx.callable(self.fx.a, self.fx.a))
+            self.fx.callable(self.fx.b, self.fx.a))
 
     def test_type_callable_subtyping(self):
         self.assert_proper_subtype(
