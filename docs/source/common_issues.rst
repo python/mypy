@@ -1,3 +1,5 @@
+.. _common_issues:
+
 Dealing with common issues
 ==========================
 

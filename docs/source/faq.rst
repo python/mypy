@@ -35,7 +35,8 @@ Here are some potential benefits of mypy-style static typing:
   grows, you can adapt tricky application logic to static typing to
   help maintenance.
 
-See also the `front page <http://www.mypy-lang.org>`_.
+See also the `front page <http://www.mypy-lang.org>`_ of the mypy web
+site.
 
 Would my project benefit from static typing?
 ********************************************
@@ -130,8 +131,8 @@ is a likely feature to be added to mypy in the future, even though we
 expect that most mypy programs will still primarily use nominal
 subtyping.
 
-I like Python as it is. I don't need static typing.
-***************************************************
+I like Python and I have no need for static typing
+**************************************************
 
 That wasn't really a question, was it? Mypy is not aimed at replacing
 Python. The goal is to give more options for Python programmers, to
@@ -149,10 +150,11 @@ runnable. Also, some Python features and syntax are still not
 supported by mypy, but this is gradually improving.
 
 The obvious difference is the availability of static type
-checking. The :doc:`mypy tutorial <tutorial>` mentions some
+checking. The section :ref:`common_issues` mentions some
 modifications to Python code that may be required to make code type
-check without errors, such as the need to make attributes explicit and
-more explicit protocol representation.
+check without errors. Also, your code must make attributes explicit and
+use a explicit protocol representation. For example, you may want to
+subclass an Abstract Base Class such as ``typing.Iterable``.
 
 Mypy will support modular, efficient type checking, and this seems to
 rule out type checking some language features, such as arbitrary
