@@ -18,6 +18,7 @@ Welcome to Mypy documentation!
    dynamic_typing
    function_overloading
    casts
+   duck_type_compatibility
    common_issues
    generics
    supported_python_features
