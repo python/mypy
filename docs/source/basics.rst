@@ -1,6 +1,10 @@
 Basics
 ======
 
+This chapter introduces some core concepts of mypy, including function
+annotations, the ``typing`` module and library stubs. Read it carefully,
+as the rest of documentation may not make much sense otherwise.
+
 Function signatures
 *******************
 
