@@ -191,10 +191,6 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
     for i in range(len(right.arg_types)):
         if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
-    if (left.is_var_arg and not right.is_var_arg and
-            len(left.arg_types) <= len(right.arg_types)):
-        return False
-
     return True
 
 
