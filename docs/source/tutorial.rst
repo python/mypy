@@ -20,7 +20,7 @@ A function without a type signature is dynamically typed. You can declare the si
    def greeting(name: str) -> str:
        return 'Hello, {}'.format(name)
 
-A None return type indicates a function that does not explicitly return a value. Using a None result in a statically typed context results in a type check error:
+A ``None`` return type indicates a function that does not explicitly return a value. Using a ``None`` result in a statically typed context results in a type check error:
 
 .. code-block:: python
    
@@ -41,7 +41,7 @@ We cheated a bit in the above examples: a module is type checked only if it impo
    def greeting(name: str) -> str:
        return 'Hello, {}'.format(name)
 
-The typing module contains many definitions that are useful in statically typed code. You can also use from ... import to import them (we'll explain Iterable later in this document):
+The typing module contains many definitions that are useful in statically typed code. You can also use ``from ... import`` to import them (we'll explain Iterable later in this document):
 
 .. code-block:: python
    
@@ -109,11 +109,11 @@ These are examples of some of the most common built-in types:
    Sequence[bool] # sequence of booleans
    Any            # dynamically typed value
 
-The type Any and type constructors List, Dict, Iterable and Sequence are defined in the typing module.
+The type ``Any`` and type constructors ``List``, ``Dict``, ``Iterable`` and ``Sequence`` are defined in the typing module.
 
-The type Dict is a *generic* class, signified by type arguments within [...]. For example, Dict[int, str] is a dictionary from integers to strings and and Dict[Any, Any] is a dictionary of dynamically typed (arbitrary) values and keys. List is another generic class. Dict and List are aliases for the built-ins dict and list, respectively.
+The type ``Dict`` is a *generic* class, signified by type arguments within ``[...]``. For example, ``Dict[int, str]`` is a dictionary from integers to strings and and ``Dict[Any, Any]`` is a dictionary of dynamically typed (arbitrary) values and keys. ``List`` is another generic class. ``Dict`` and ``List`` are aliases for the built-ins dict and list, respectively.
 
-Iterable and Sequence are generic abstract base classes that correspond to Python protocols. For example, a str object is valid when Iterable[str] or Sequence[str] is expected. Note that even though they are similar to abstract base classes defined in abc.collections (formerly collections), they are not identical, since the built-in collection type objects do not support indexing.
+``Iterable`` and ``Sequence`` are generic abstract base classes that correspond to Python protocols. For example, a str object is valid when ``Iterable[str]`` or ``Sequence[str]`` is expected. Note that even though they are similar to abstract base classes defined in ``abc.collections`` (formerly collections), they are not identical, since the built-in collection type objects do not support indexing.
 
 Type inference
 **************
@@ -132,9 +132,9 @@ Type inference is bidirectional and takes context into account. For example, the
    def f(l: List[object]) -> None:
        l = [1, 2]  # Infer type List[object] for [1, 2]
 
-In an assignment, the type context is determined by the assignment target. In this case this is l, which has the type List[object]. The value expression [1, 2] is type checked in this context and given the type List[object]. In the previous example we introduced a new variable l, and here the type context was empty.
+In an assignment, the type context is determined by the assignment target. In this case this is ``l``, which has the type ``List[object]``. The value expression ``[1, 2]`` is type checked in this context and given the type ``List[object]``. In the previous example we introduced a new variable ``l``, and here the type context was empty.
 
-Note that the following is not valid, since List[int] is not compatible with List[object]:
+Note that the following is not valid, since ``List[int]`` is not compatible with ``List[object]``:
 
 .. code-block:: python
    
@@ -152,7 +152,7 @@ The reason why the above assignment is disallowed is that allowing the assignmen
 
 You can still run the above program; it prints x. This illustrates the fact that static types are used during type checking, but they do not affect the runtime behavior of programs. You can run programs with type check failures, which is often very handy when performing a large refactoring. Thus you can always 'work around' the type system, and it doesn't really limit what you can do in your program.
 
-Type inference is not used in dynamically typed functions (those without an explicit return type) — every local variable type defaults to Any, which is discussed below.
+Type inference is not used in dynamically typed functions (those without an explicit return type) — every local variable type defaults to ``Any``, which is discussed below.
 
 Explicit types for collections
 ******************************
@@ -179,7 +179,7 @@ Explicit types for variables
    s = 'x'              # OK
    s = 1                # Type check error
 
-The Undefined call evaluates to a special "Undefined" object that raises an exception on any operation:
+The ``Undefined`` call evaluates to a special "Undefined" object that raises an exception on any operation:
 
 .. code-block:: python
    
@@ -193,18 +193,18 @@ You can also override the inferred type of a variable by using a special comment
    
    x = [] # type: List[int]
 
-Here the # type comment applies both to the assignment target, in this case x, and also the initializer expression, via context. The above code is equivalent to this:
+Here the ``# type`` comment applies both to the assignment target, in this case ``x``, and also the initializer expression, via context. The above code is equivalent to this:
 
 .. code-block:: python
    
    x = List[int]()
 
-The type checker infers the value of a variable from the initializer, and if it is an empty collection such as [], the type is not well-defined. You can declare the collection type using one of the above syntax alternatives.
+The type checker infers the value of a variable from the initializer, and if it is an empty collection such as ``[]``, the type is not well-defined. You can declare the collection type using one of the above syntax alternatives.
 
 User-defined types
 ******************
 
-Each class is also a type. Any instance of a subclass is also compatible with all superclasses. All values are compatible with the object type (and also the Any type).
+Each class is also a type. Any instance of a subclass is also compatible with all superclasses. All values are compatible with the object type (and also the ``Any`` type).
 
 .. code-block:: python
    
@@ -225,9 +225,9 @@ Each class is also a type. Any instance of a subclass is also compatible with al
 The Any type
 ************
 
-A value with the Any type is dynamically typed. Any operations are permitted on the value, and the operations are checked at runtime, similar to normal Python code. If you do not define a function return value or argument types, these default to Any. Also, a function without an explicit return type is dynamically typed. The body of a dynamically typed function is not checked statically.
+A value with the Any type is dynamically typed. Any operations are permitted on the value, and the operations are checked at runtime, similar to normal Python code. If you do not define a function return value or argument types, these default to ``Any``. Also, a function without an explicit return type is dynamically typed. The body of a dynamically typed function is not checked statically.
 
-Any is compatible with every other type, and vice versa. No implicit type check is inserted when assigning a value of type Any to a variable with a more precise type:
+Any is compatible with every other type, and vice versa. No implicit type check is inserted when assigning a value of type ``Any`` to a variable with a more precise type:
 
 .. code-block:: python
    
@@ -240,7 +240,7 @@ Declared (and inferred) types are erased at runtime (they are basically treated 
 Tuple types
 ***********
 
-The type Tuple[t, ...] represents a tuple with the item types t, ...:
+The type ``Tuple[t, ...]`` represents a tuple with the item types ``t, ...``:
 
 .. code-block:: python
    
@@ -282,7 +282,7 @@ Any type can be entered as a string literal, and youn can combine string-literal
    
    class A: pass
 
-String literal types are never needed in # type comments.
+String literal types are never needed in ``# type`` comments.
 
 Instance and class attributes
 *****************************
@@ -299,7 +299,7 @@ Mypy type checker detects if you are trying to access a missing attribute, which
    a.x = 2       # OK
    a.y = 3       # Error: A has no attribute y
 
-This is a bit like each class having an implicitly defined __slots__ attribute. In Python semantics this is only enforced during type checking: at runtime we use standard Python semantics. You can selectively define a class as *dynamic*; dynamic classes have Python-like compile-time semantics, and they allow you to assign to arbitrary attributes anywhere in a program without the type checker complaining:
+This is a bit like each class having an implicitly defined ``__slots__`` attribute. In Python semantics this is only enforced during type checking: at runtime we use standard Python semantics. You can selectively define a class as *dynamic*; dynamic classes have Python-like compile-time semantics, and they allow you to assign to arbitrary attributes anywhere in a program without the type checker complaining:
 
 .. code-block:: python
    
@@ -376,7 +376,7 @@ When overriding a statically typed method, mypy checks that the override has a c
 
 .. note::
    
-   You can also vary return types **covariantly** in overriding. For example, you could override the return type 'object' with a subtype such as 'int'.
+   You can also vary return types **covariantly** in overriding. For example, you could override the return type ``object`` with a subtype such as ``int``.
 
 You can also override a statically typed method with a dynamically typed one. This allows dynamically typed code to override methods defined in library classes without worrying about their type signatures, similar to Python.
 
@@ -419,7 +419,7 @@ When using the latter form, you can optinally use parentheses around the types, 
 Dynamically typed code
 **********************
 
-As mentioned earlier, bodies of functions that don't have have an explicit return type are dynamically typed (operations are checked at runtime). Code outside functions is statically typed by default, and types of variables are inferred. This does usually the right thing, but you can also make any variable dynamically typed by defining it explicitly with the type Any:
+As mentioned earlier, bodies of functions that don't have have an explicit return type are dynamically typed (operations are checked at runtime). Code outside functions is statically typed by default, and types of variables are inferred. This does usually the right thing, but you can also make any variable dynamically typed by defining it explicitly with the type ``Any``:
 
 .. code-block:: python
    
@@ -430,7 +430,7 @@ As mentioned earlier, bodies of functions that don't have have an explicit retur
    s = 'x'               # Type check error
    d = 'x'               # OK
 
-Alternatively, you can use the Undefined construct to define dynamically typed variables, as Any can be used anywhere any other type is valid:
+Alternatively, you can use the ``Undefined`` construct to define dynamically typed variables, as ``Any`` can be used anywhere any other type is valid:
 
 .. code-block:: python
    
@@ -449,7 +449,7 @@ Additionally, if you don't import the typing module in a file, all code outside 
 Abstract base classes and multiple inheritance
 **********************************************
 
-Mypy uses Python abstract base classes for protocol types. There are several built-in abstract base classes types (for example, Sequence, Iterable and Iterator). You can define abstract base classes using the abc.ABCMeta metaclass and the abc.abstractmethod function decorator.
+Mypy uses Python abstract base classes for protocol types. There are several built-in abstract base classes types (for example, ``Sequence``, ``Iterable`` and ``Iterator``). You can define abstract base classes using the ``abc.ABCMeta`` metaclass and the ``abc.abstractmethod`` function decorator.
 
 .. code-block:: python
    
@@ -511,12 +511,12 @@ The overload variants must be adjacent in the code. This makes code clearer, and
 
 .. note::
    
-   As generic type variables are erased at runtime, an overloaded function cannot dispatch based on a generic type argument, e.g. List[int] versus List[str].
+   As generic type variables are erased at runtime, an overloaded function cannot dispatch based on a generic type argument, e.g. ``List[int]`` versus ``List[str]``.
 
 Callable types and lambdas
 **************************
 
-You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments A1, ..., An and returns Rt is Function[[A1, ..., An], Rt]. Example:
+You can pass around function objects and bound methods in statically typed code. The type of a function that accepts arguments ``A1, ..., An`` and returns ``Rt`` is ``Function[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
    
@@ -551,9 +551,9 @@ Mypy supports type casts that are usually used to coerce a statically typed valu
 
 Supporting runtime checking of casts such as the above when using Python semantics would require emulating reified generics and this would be difficult to do and would likely degrade performance and make code more difficult to read. You should not rely in your programs on casts being checked at runtime. Use an assertion if you want to perform an actual runtime check. Casts are used to silence spurious type checker warnings.
 
-You don't need a cast for expressions with type Any, of when assigning to a variable with type Any, as was explained earlier.
+You don't need a cast for expressions with type ``Any``, of when assigning to a variable with type ``Any``, as was explained earlier.
 
-You can cast to a dynamically typed value by just calling Any:
+You can cast to a dynamically typed value by just calling ``Any``:
 
 .. code-block:: python
    
@@ -595,7 +595,7 @@ No type annotation needed if using a list comprehension:
 
 However, in more complex cases the explicit type annotation can improve the clarity of your code, whereas a complex list comprehension can make your code difficult to understand.
 
-Second, each name within a function only has a single type. You can reuse for loop indices etc., but if you want to use a variable with multiple types within a single function, you may need to declare it with the Any type.
+Second, each name within a function only has a single type. You can reuse for loop indices etc., but if you want to use a variable with multiple types within a single function, you may need to declare it with the ``Any`` type.
 
 .. code-block:: python
    
@@ -636,7 +636,7 @@ Fourth, if you use isinstance tests or other kinds of runtime type tests, you ma
            n += 1    # o += 1 would be an error
            ...
 
-Note that the object type used in the above example is similar to Object in Java: it only supports operations defined for all objects, such as equality and isinstance(). The type Any, in contrast, supports all operations, even if they may fail at runtime. The cast above would have been unnecessary if the type of o was Any.
+Note that the object type used in the above example is similar to Object in Java: it only supports operations defined for all objects, such as equality and ``isinstance()``. The type ``Any``, in contrast, supports all operations, even if they may fail at runtime. The cast above would have been unnecessary if the type of ``o`` was ``Any``.
 
 Some consider casual use of isinstance tests a sign of bad programming style. Often a method override or an overloaded function is a cleaner way of implementing functionality that depends on the runtime types of values. However, use whatever techniques that work for you. Sometimes isinstance tests *are* the cleanest way of implementing a piece of functionality.
 
@@ -645,7 +645,7 @@ Type inference in mypy is designed to work well in common cases, to be predictab
 Defining generic classes
 ************************
 
-The built-in collection classes are generic classes. Generic types have one or more type parameters, which can be arbitrary types. For example, Dict]int, str] has the type parameters int and str, and List[int] has a type parameter int.
+The built-in collection classes are generic classes. Generic types have one or more type parameters, which can be arbitrary types. For example, ``Dict[int, str]`` has the type parameters int and str, and ``List[int]`` has a type parameter int.
 
 Programs can also define new generic classes. Here is a very simple generic class that represents a stack:
 
@@ -668,7 +668,7 @@ Programs can also define new generic classes. Here is a very simple generic clas
        def empty(self) -> bool:
            return not self.items
 
-The Stack class can be used to represent a stack of any type: Stack[int], Stack[Tuple[int, str]], etc.
+The ``Stack`` class can be used to represent a stack of any type: ``Stack[int]``, ``Stack[Tuple[int, str]]``, etc.
 
 Using Stack is similar to built-in container types:
 
@@ -690,20 +690,20 @@ Type inference works for user-defined generic types as well:
 Generic class internals
 ***********************
 
-You may wonder what happens at runtime when you index Stack. Actually, indexing Stack just returns Stack:
+You may wonder what happens at runtime when you index ``Stack``. Actually, indexing ``Stack`` just returns ``Stack``:
 
 >>> print(Stack)
 <class '__main__.Stack'>
 >>> print(Stack[int])
 <class '__main__.Stack'>
 
-Note that built-in types list, dict and so on do not support indexing in Python. This is why we have the aliases List, Dict and so on in the typing module. Indexing these aliases just gives you the target class in Python, similar to Stack:
+Note that built-in types ``list``, ``dict`` and so on do not support indexing in Python. This is why we have the aliases ``List``, ``Dict`` and so on in the typing module. Indexing these aliases just gives you the target class in Python, similar to ``Stack``:
 
 >>> from typing import List
 >>> List[int]
 <class 'list'>
 
-The above examples illustrate that type variables are erased at runtime when running in a Python VM. Generic Stack or list instances are just ordinary Python objects, and they have no extra runtime overhead or magic due to being generic, other than a metaclass that overloads the indexing operator. If you worry about the overhead introduced by the type indexing operation when constructing instances, you can often rewrite such code using a # type annotation, which has no runtime impact:
+The above examples illustrate that type variables are erased at runtime when running in a Python VM. Generic ``Stack`` or ``list`` instances are just ordinary Python objects, and they have no extra runtime overhead or magic due to being generic, other than a metaclass that overloads the indexing operator. If you worry about the overhead introduced by the type indexing operation when constructing instances, you can often rewrite such code using a ``# type`` annotation, which has no runtime impact:
 
 .. code-block:: python
    
@@ -735,7 +735,7 @@ As with generic classes, the type variable can be replaced with any type. That m
    s = first('foo')      # s has type str.
    n = first([1, 2, 3])  # n has type int.
 
-Note also that a single definition of a type variable (such as T above) can be used in multiple generic functions or classes. In this example we use the same type variable in two generic functions:
+Note also that a single definition of a type variable (such as ``T`` above) can be used in multiple generic functions or classes. In this example we use the same type variable in two generic functions:
 
 .. code-block:: python
    
@@ -782,7 +782,7 @@ This section introduces some language features that are still work in progress.
 None
 ----
 
-Currently, None is a valid value for each type, similar to null or NULL in many languages. However, it is likely that this decision will be reversed, and types do not include None default. The Optional type modifier can be used to define a type variant that includes None, such as Optional(int):
+Currently, ``None`` is a valid value for each type, similar to null or NULL in many languages. However, it is likely that this decision will be reversed, and types do not include ``None`` default. The ``Optional`` type modifier can be used to define a type variant that includes ``None``, such as ``Optional(int)``:
 
 .. code-block:: python
    
@@ -793,14 +793,14 @@ Currently, None is a valid value for each type, similar to null or NULL in many 
        ...
        return None # Error: None not compatible with int
 
-Also, most operations would not be supported on None values:
+Also, most operations would not be supported on ``None`` values:
 
 .. code-block:: python
    
    def f(x: Optional[int]) -> int:
        return x + 1  # Error: Cannot add None and int
 
-Instead, an explicit None check would be required. This would benefit from more powerful type inference:
+Instead, an explicit ``None`` check would be required. This would benefit from more powerful type inference:
 
 .. code-block:: python
    
@@ -811,14 +811,14 @@ Instead, an explicit None check would be required. This would benefit from more 
            # The inferred type of x is just int here.
            return x + 1
 
-We would infer the type of x to be int in the else block due to the check against None in the if condition.
+We would infer the type of ``x`` to be ``int`` in the else block due to the check against ``None`` in the if condition.
 
 Union types
 -----------
 
 Python functions often accept values of two or more different types. You can use overloading to model this in statically typed code, but union types can make code like this easier to write.
 
-Use the Union[...] type constructor to construct a union type. For example, the type Union[int, str] is compatible with both integers and strings. You can use an isinstance check to narrow down the type to a specific type:
+Use the ``Union[...]`` type constructor to construct a union type. For example, the type ``Union[int, str]`` is compatible with both integers and strings. You can use an ``isinstance`` check to narrow down the type to a specific type:
 
 .. code-block:: python
    
@@ -849,7 +849,7 @@ It may be useful to support type inference also for variables defined in multipl
    else:
        y = 'a'      # Second definition of y
 
-In the above example, both of the assignments would be used in type inference, and the type of y would be str. However, it is not obvious whether this would be generally desirable in more complex cases.
+In the above example, both of the assignments would be used in type inference, and the type of ``y`` would be ``str``. However, it is not obvious whether this would be generally desirable in more complex cases.
 
 Revision history
 ****************
