@@ -56,7 +56,12 @@ For other Linux flavors, OS X and Windows, packages are available at
 Quick start
 -----------
 
-If you have git, first clone the mypy git repository:
+Mypy can be installed from pip:
+
+    $ pip install mypy-lang
+
+If you want to contribute and have git,
+first clone the mypy git repository:
 
     $ git clone https://github.com/JukkaL/mypy.git
 
