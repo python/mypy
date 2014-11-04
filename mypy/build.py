@@ -91,7 +91,8 @@ def build(program_path: str,
           pyversion: int = 3,
           custom_typing_module: str = None,
           html_report_dir: str = None,
-          flags: List[str] = None) -> BuildResult:
+          flags: List[str] = None,
+          python_path: bool = False) -> BuildResult:
     """Build a mypy program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -122,7 +123,7 @@ def build(program_path: str,
     data_dir = default_data_dir(bin_dir)
 
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, target, pyversion)
+    lib_path = default_lib_path(data_dir, target, pyversion, python_path)
 
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -191,7 +192,8 @@ def default_data_dir(bin_dir: str) -> str:
         raise RuntimeError("Broken installation: can't determine base dir")
 
 
-def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
+def default_lib_path(data_dir: str, target: int, pyversion: int,
+        python_path:bool) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = List[str]()
@@ -217,6 +219,10 @@ def default_lib_path(data_dir: str, target: int, pyversion: int) -> List[str]:
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
+
+    # Contents of Python's sys.path go last, to prefer the stubs
+    if python_path:
+        path.extend(sys.path)
 
     return path
 
