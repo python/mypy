@@ -248,6 +248,24 @@ The type Tuple[t, ...] represents a tuple with the item types t, ...:
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
+Starred expressions
+******************************
+
+In most cases, mypy can infer the type of starred expressions from the right-hand side of an assignment, but not always:
+
+.. code-block:: python
+
+   a, *bs = 1, 2, 3   # OK
+   p, q, *rs = 1, 2   # Error: Type of cs cannot be inferred
+
+On first line, the type of ``bs`` is inferred to be ``List[int]``. However, on the second line, mypy cannot infer the type of ``rs``, because there is no right-hand side value for ``rs`` to infer the type from. In cases like these, the starred expression needs to be annotated with a starred type:
+
+.. code-block:: python
+
+   p, q, *rs = 1, 2   # type: int, int, *List[int]
+
+Here, the type of ``rs`` is set to ``List[int]``.
+
 Class name forward references
 *****************************
 
