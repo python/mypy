@@ -605,16 +605,14 @@ class ExpressionChecker:
             # Use is_more_precise rather than is_subtype because it ignores ducktype
             # declarations. This is important since ducktype declarations are ignored
             # when performing runtime type checking.
-            if not is_more_precise(self.erase(arg_types[i]),
-                                   self.erase(
-                                       callee.arg_types[i])):
+            if not is_compatible_overload_arg(arg_types[i], callee.arg_types[i]):
                 return False
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
                 # See above for why we use is_more_precise.
-                if not is_more_precise(self.erase(arg_types[i]),
-                                       self.erase(callee.arg_types[func_fixed])):
+                if not is_compatible_overload_arg(arg_types[i],
+                                                  callee.arg_types[func_fixed]):
                     return False
         return True
 
@@ -1250,10 +1248,6 @@ class ExpressionChecker:
             r.append(self.strip_parens(n))
         return r
 
-    def erase(self, type: Type) -> Type:
-        """Replace type variable types in type with Any."""
-        return erasetype.erase_type(type)
-
 
 def is_valid_argc(nargs: int, is_var_arg: bool, callable: Callable) -> bool:
     """Return a boolean indicating whether a call expression has a
@@ -1401,3 +1395,8 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
+
+
+def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
+    actual = erasetype.erase_type(actual)
+    return isinstance(actual, AnyType) or is_more_precise(actual, erasetype.erase_type(formal))
