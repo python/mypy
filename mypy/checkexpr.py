@@ -1398,9 +1398,13 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
 
 def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
+    # TODO: Union type as the formal type.
     if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
             isinstance(formal, AnyType) or isinstance(formal, TypeVar)):
         return True
+    if isinstance(actual, UnionType):
+        return any(is_compatible_overload_arg(item, formal)
+                   for item in actual.items)
     if isinstance(formal, Instance):
         if isinstance(actual, Callable):
             actual = actual.fallback
