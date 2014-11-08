@@ -335,9 +335,11 @@ class str(Sequence[str]):
     def __getitem__(self, s: slice) -> str: pass
     def __getslice__(self, start: int, stop: int) -> str: pass
     @overload
-    def __add__(self, s: str) -> str: pass    # TODO unicode
+    def __add__(self, s: str) -> str: pass
     @overload
     def __add__(self, s: bytearray) -> str: pass
+    @overload
+    def __add__(self, s: unicode) -> unicode: pass
     def __mul__(self, n: int) -> str: pass
     def __rmul__(self, n: int) -> str: pass
     def __contains__(self, o: object) -> bool: pass
