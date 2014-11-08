@@ -284,7 +284,7 @@ def is_more_precise(t: Type, s: Type) -> bool:
     type as s, t is more precise than s.
     """
     # TODO Should List[int] be more precise than List[Any]?
-    if isinstance(s, AnyType):
+    if isinstance(s, AnyType) or isinstance(t, NoneTyp):
         return True
     if isinstance(s, Instance):
         if isinstance(t, Callable):
