@@ -365,12 +365,12 @@ class ExpressionChecker:
             context: Context) -> Tuple[Callable, List[Type]]:
         """Perform second pass of generic function type argument inference.
 
-        The second pass is needed for arguments with types such as func<s(t)>,
-        where both s and t are type variables, when the actual argument is a
-        lambda with inferred types.  The idea is to infer the type variable t
+        The second pass is needed for arguments with types such as Function[[T], S],
+        where both T and S are type variables, when the actual argument is a
+        lambda with inferred types.  The idea is to infer the type variable T
         in the first pass (based on the types of other arguments).  This lets
         us infer the argument and return type of the lambda expression and
-        thus also the type variable s in this second pass.
+        thus also the type variable S in this second pass.
 
         Return (the callee with type vars applied, inferred actual arg types).
         """
