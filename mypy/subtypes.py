@@ -160,7 +160,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
 
-def is_callable_subtype(left: Callable, right: Callable) -> bool:
+def is_callable_subtype(left: Callable, right: Callable, ignore_return: bool = False) -> bool:
     """Is left a subtype of right?"""
     # TODO: Support named arguments, **args, etc.
     # Non-type cannot be a subtype of type.
@@ -176,7 +176,7 @@ def is_callable_subtype(left: Callable, right: Callable) -> bool:
             return False
 
     # Check return types.
-    if not is_subtype(left.ret_type, right.ret_type):
+    if not ignore_return and not is_subtype(left.ret_type, right.ret_type):
         return False
 
     # Check argument types.
