@@ -71,7 +71,13 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
             if tbuiltin in sbuiltin.mro or sbuiltin in tbuiltin.mro:
                 return True
             return tbuiltin == sbuiltin
-    # We conservatively assume that non-instance types can overlap any other
+    if isinstance(t, UnionType):
+        return any(is_overlapping_types(item, s)
+                   for item in t.items)
+    if isinstance(s, UnionType):
+        return any(is_overlapping_types(t, item)
+                   for item in s.items)
+    # We conservatively assume that non-instance, non-union types can overlap any other
     # types.
     return True
 
