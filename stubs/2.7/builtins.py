@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, BinaryIO, builtinclass, ducktype
+    SupportsRound, IO, BinaryIO, builtinclass, ducktype, Union
 )
 from abc import abstractmethod, ABCMeta
 
@@ -240,10 +240,7 @@ class str(Sequence[str]):
     def center(self, width: int, fillchar: str = None) -> str: pass
     @overload
     def center(self, width: int, fillchar: bytearray = None) -> str: pass
-    @overload
-    def count(self, x: unicode) -> int: pass
-    @overload
-    def count(self, x: bytearray) -> int: pass
+    def count(self, x: Union[unicode, bytearray]) -> int: pass
     def decode(self, encoding: unicode = 'utf-8', errors: unicode = 'strict') -> unicode: pass
     def encode(self, encoding: unicode = 'utf-8', errors: unicode = 'strict') -> str: pass
     @overload
