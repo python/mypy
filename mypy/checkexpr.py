@@ -26,7 +26,7 @@ from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.expandtype import expand_type, expand_caller_var_args
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, is_more_precise
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyse_member_access, type_object_type
@@ -602,15 +602,19 @@ class ExpressionChecker:
         # Fixed function arguments.
         func_fixed = callee.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
-            if not is_subtype(self.erase(arg_types[i]),
-                              self.erase(
-                                  callee.arg_types[i])):
+            # Use is_more_precise rather than is_subtype because it ignores ducktype
+            # declarations. This is important since ducktype declarations are ignored
+            # when performing runtime type checking.
+            if not is_more_precise(self.erase(arg_types[i]),
+                                   self.erase(
+                                       callee.arg_types[i])):
                 return False
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
-                if not is_subtype(self.erase(arg_types[i]),
-                                  self.erase(callee.arg_types[func_fixed])):
+                # See above for why we use is_more_precise.
+                if not is_more_precise(self.erase(arg_types[i]),
+                                       self.erase(callee.arg_types[func_fixed])):
                     return False
         return True
 
