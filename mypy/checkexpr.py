@@ -1398,5 +1398,18 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
 
 def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
-    actual = erasetype.erase_type(actual)
-    return isinstance(actual, AnyType) or is_more_precise(actual, erasetype.erase_type(formal))
+    if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
+            isinstance(formal, AnyType) or isinstance(formal, TypeVar)):
+        return True
+    if isinstance(formal, Instance):
+        if isinstance(actual, Callable):
+            actual = actual.fallback
+        if isinstance(actual, Overloaded):
+            actual = actual.items()[0].fallback
+        if isinstance(actual, TupleType):
+            actual = actual.fallback
+        if isinstance(actual, Instance):
+            return formal.type in actual.type.mro
+        else:
+            return False
+    return is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal))
