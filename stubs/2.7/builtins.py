@@ -236,34 +236,14 @@ class unicode(Sequence[unicode]):
 class str(Sequence[str]):
     def __init__(self, object: object) -> None: pass
     def capitalize(self) -> str: pass
-    @overload
-    def center(self, width: int, fillchar: str = None) -> str: pass
-    @overload
-    def center(self, width: int, fillchar: bytearray = None) -> str: pass
+    def center(self, width: int, fillchar: Union[str, bytearray] = None) -> str: pass
     def count(self, x: Union[unicode, bytearray]) -> int: pass
     def decode(self, encoding: unicode = 'utf-8', errors: unicode = 'strict') -> unicode: pass
     def encode(self, encoding: unicode = 'utf-8', errors: unicode = 'strict') -> str: pass
-    @overload
-    def endswith(self, suffix: unicode) -> bool: pass
-    @overload
-    def endswith(self, suffix: bytearray) -> bool: pass
+    def endswith(self, suffix: Union[unicode, bytearray]) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> str: pass
-    @overload
-    def find(self, sub: unicode, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: unicode, start: int, end: int) -> int: pass
-    @overload
-    def find(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def find(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def index(self, sub: unicode, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: unicode, start: int, end: int) -> int: pass
-    @overload
-    def index(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def index(self, sub: bytearray, start: int, end: int) -> int: pass
+    def find(self, sub: Union[unicode, bytearray], start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: Union[unicode, bytearray], start: int = 0, end: int = 0) -> int: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -275,10 +255,7 @@ class str(Sequence[str]):
     def join(self, iterable: Iterable[str]) -> str: pass  # TODO unicode
     @overload
     def join(self, iterable: Iterable[bytearray]) -> str: pass
-    @overload
-    def ljust(self, width: int, fillchar: str = None) -> str: pass
-    @overload
-    def ljust(self, width: int, fillchar: bytearray = None) -> str: pass
+    def ljust(self, width: int, fillchar: Union[str, bytearray] = None) -> str: pass
     def lower(self) -> str: pass
     @overload
     def lstrip(self, chars: str = None) -> str: pass   # TODO unicode
@@ -308,10 +285,7 @@ class str(Sequence[str]):
     def rindex(self, sub: bytearray, start: int = 0) -> int: pass
     @overload
     def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def rjust(self, width: int, fillchar: str = None) -> str: pass
-    @overload
-    def rjust(self, width: int, fillchar: bytearray = None) -> str: pass
+    def rjust(self, width: int, fillchar: Union[str, bytearray] = None) -> str: pass
     @overload
     def rpartition(self, sep: str) -> Tuple[str, str, str]: pass  # TODO unicode
     @overload
@@ -332,10 +306,7 @@ class str(Sequence[str]):
     def split(self, sep: bytearray = None,     # TODO unicode
               maxsplit: int = -1) -> List[str]: pass
     def splitlines(self, keepends: bool = False) -> List[str]: pass
-    @overload
-    def startswith(self, prefix: unicode) -> bool: pass
-    @overload
-    def startswith(self, prefix: bytearray) -> bool: pass
+    def startswith(self, prefix: Union[unicode, bytearray]) -> bool: pass
     @overload
     def strip(self, chars: str = None) -> str: pass   # TODO unicode
     @overload
