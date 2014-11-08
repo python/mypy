@@ -152,7 +152,11 @@ class unicode(Sequence[unicode]):
     @overload
     def __init__(self, o: object) -> None: pass
     @overload
+    def __init__(self, o: str, encoding: str = None, errors: str = 'strict') -> None: pass
+    @overload
     def __init__(self, o: str, encoding: unicode = None, errors: unicode = 'strict') -> None: pass
+    @overload
+    def __init__(self, o: bytearray, encoding: str = None, errors: str = 'strict') -> None: pass
     @overload
     def __init__(self, o: bytearray, encoding: unicode = None,
                  errors: unicode = 'strict') -> None: pass
@@ -799,9 +803,11 @@ def next(i: Iterator[_T]) -> _T: pass
 def next(i: Iterator[_T], default: _T) -> _T: pass
 def oct(i: int) -> str: pass  # TODO __index__
 @overload
-def open(file: unicode, mode: unicode = 'r', buffering: int = -1) -> BinaryIO: pass
+def open(file: str, mode: str = 'r', buffering: int = -1) -> BinaryIO: pass
 @overload
-def open(file: int, mode: unicode = 'r', buffering: int = -1) -> BinaryIO: pass
+def open(file: unicode, mode: str = 'r', buffering: int = -1) -> BinaryIO: pass
+@overload
+def open(file: int, mode: str = 'r', buffering: int = -1) -> BinaryIO: pass
 @overload
 def ord(c: unicode) -> int: pass
 @overload
