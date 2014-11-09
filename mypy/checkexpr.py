@@ -1399,7 +1399,9 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
 def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
     if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
-            isinstance(formal, AnyType) or isinstance(formal, TypeVar)):
+            isinstance(formal, AnyType) or isinstance(formal, TypeVar) or
+            isinstance(formal, Callable)):
+        # These could match anything at runtime.
         return True
     if isinstance(actual, UnionType):
         return any(is_compatible_overload_arg(item, formal)
@@ -1418,4 +1420,5 @@ def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
             return formal.type in actual.type.mro
         else:
             return False
+    # Fall back to a conservative equality check for the remaining kinds of type.
     return is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal))
