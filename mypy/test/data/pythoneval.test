@@ -17,8 +17,8 @@ from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
 def check(o, t):
     rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
-    s = str(t).replace('sequenceiterator', 'str_iterator')
-    print(rep, s, isinstance(o, t))
+    rep = rep.replace('sequenceiterator', 'str_iterator')
+    print(rep, t, isinstance(o, t))
 
 def f():
     check('x', Sized)
@@ -291,12 +291,11 @@ The most base type
 
 [case testFunctionAttributes]
 import typing
-print(ord.__class__)
+ord.__class__
 print(type(ord.__doc__ + ''))
 print(ord.__name__)
 print(ord.__module__)
 [out]
-<class 'builtin_function_or_method'>
 <class 'str'>
 ord
 builtins
