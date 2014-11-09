@@ -4,7 +4,7 @@ from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, BinaryIO, builtinclass, ducktype, Union
+    SupportsRound, IO, BinaryIO, builtinclass, ducktype, Union, AnyStr
 )
 from abc import abstractmethod, ABCMeta
 
@@ -251,72 +251,57 @@ class str(Sequence[str]):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    @overload
-    def join(self, iterable: Iterable[str]) -> str: pass  # TODO unicode
-    @overload
-    def join(self, iterable: Iterable[bytearray]) -> str: pass
+    def join(self, iterable: Iterable[AnyStr]) -> AnyStr: pass
     def ljust(self, width: int, fillchar: Union[str, bytearray] = None) -> str: pass
     def lower(self) -> str: pass
     @overload
-    def lstrip(self, chars: str = None) -> str: pass   # TODO unicode
+    def lstrip(self, chars: Union[str, bytearray] = None) -> str: pass
     @overload
-    def lstrip(self, chars: bytearray = None) -> str: pass
+    def lstrip(self, chars: unicode) -> unicode: pass
     @overload
-    def partition(self, sep: str) -> Tuple[str, str, str]: pass   # TODO unicode
+    def partition(self, sep: str) -> Tuple[str, str, str]: pass
     @overload
-    def partition(self, sep: bytearray) -> Tuple[str, str, str]: pass
+    def partition(self, sep: bytearray) -> Tuple[str, bytearray, str]: pass
     @overload
-    def replace(self, old: str, new: str, count: int = -1) -> str: pass   # TODO unicode
+    def partition(self, sep: unicode) -> Tuple[unicode, unicode, unicode]: pass
     @overload
-    def replace(self, old: bytearray, new: bytearray, count: int = -1) -> str: pass
+    def replace(self, old: Union[str, bytearray], new: Union[str, bytearray],
+                count: int = -1) -> str: pass
     @overload
-    def rfind(self, sub: unicode, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: unicode, start: int, end: int) -> int: pass
-    @overload
-    def rfind(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def rfind(self, sub: bytearray, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: unicode, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: unicode, start: int, end: int) -> int: pass
-    @overload
-    def rindex(self, sub: bytearray, start: int = 0) -> int: pass
-    @overload
-    def rindex(self, sub: bytearray, start: int, end: int) -> int: pass
+    def replace(self, old: unicode, new: unicode, count: int = -1) -> unicode: pass
+    def rfind(self, sub: Union[unicode, bytearray], start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: Union[unicode, bytearray], start: int = 0, end: int = 0) -> int: pass
     def rjust(self, width: int, fillchar: Union[str, bytearray] = None) -> str: pass
     @overload
-    def rpartition(self, sep: str) -> Tuple[str, str, str]: pass  # TODO unicode
+    def rpartition(self, sep: str) -> Tuple[str, str, str]: pass
     @overload
-    def rpartition(self, sep: bytearray) -> Tuple[str, str, str]: pass
+    def rpartition(self, sep: bytearray) -> Tuple[str, bytearray, str]: pass
     @overload
-    def rsplit(self, sep: str = None,   # TODO unicode
-               maxsplit: int = -1) -> List[str]: pass
+    def rpartition(self, sep: unicode) -> Tuple[unicode, unicode, unicode]: pass
     @overload
-    def rsplit(self, sep: bytearray = None,
-               maxsplit: int = -1) -> List[str]: pass
+    def rsplit(self, sep: Union[str, bytearray] = None, maxsplit: int = -1) -> List[str]: pass
     @overload
-    def rstrip(self, chars: str = None) -> str: pass    # TODO unicode
+    def rsplit(self, sep: unicode, maxsplit: int = -1) -> List[unicode]: pass
     @overload
-    def rstrip(self, chars: bytearray = None) -> str: pass
+    def rstrip(self, chars: Union[str, bytearray] = None) -> str: pass
     @overload
-    def split(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass   # TODO unicode
+    def rstrip(self, chars: unicode) -> unicode: pass
     @overload
-    def split(self, sep: bytearray = None,     # TODO unicode
-              maxsplit: int = -1) -> List[str]: pass
+    def split(self, sep: Union[str, bytearray] = None, maxsplit: int = -1) -> List[str]: pass
+    @overload
+    def split(self, sep: unicode, maxsplit: int = -1) -> List[unicode]: pass
     def splitlines(self, keepends: bool = False) -> List[str]: pass
     def startswith(self, prefix: Union[unicode, bytearray]) -> bool: pass
     @overload
-    def strip(self, chars: str = None) -> str: pass   # TODO unicode
+    def strip(self, chars: Union[str, bytearray] = None) -> str: pass
     @overload
-    def strip(self, chars: bytearray = None) -> str: pass
+    def strip(self, chars: unicode) -> unicode: pass
     def swapcase(self) -> str: pass
     def title(self) -> str: pass
     @overload
-    def translate(self, table: str) -> str: pass   # TODO unicode
+    def translate(self, table: Union[str, bytearray]) -> str: pass
     @overload
-    def translate(self, table: bytearray) -> str: pass
+    def translate(self, table: unicode) -> unicode: pass
     def upper(self) -> str: pass
     def zfill(self, width: int) -> str: pass
     # TODO fromhex

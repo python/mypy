@@ -258,3 +258,14 @@ s = s + u'' # E
 [out]
 _program.py, line 5: Incompatible types in assignment (expression has type "str", variable has type "int")
 _program.py, line 6: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+
+[case testStrJoin_python2]
+import typing
+s = ''
+u = u''
+n = 0
+n = ''.join([''])   # Error
+s = ''.join([u''])  # Error
+[out]
+_program.py, line 5: Incompatible types in assignment (expression has type "str", variable has type "int")
+_program.py, line 6: Incompatible types in assignment (expression has type "unicode", variable has type "str")
