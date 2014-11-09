@@ -919,3 +919,11 @@ map(f, ['x'])
 map(f, [1])
 [out]
 _program.py, line 4: Argument 1 to "map" has incompatible type Function[["str"] -> "str"]; expected Function[["int"] -> "str"]
+
+[case testMapStr]
+import typing
+x = range(3)
+a = list(map(str, x))
+a + 1
+[out]
+_program.py, line 4: Unsupported operand types for + (List[str] and "int")

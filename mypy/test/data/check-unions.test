@@ -79,10 +79,21 @@ i = y.foo()   # E: Incompatible types in assignment (expression has type "Union[
 
 [case testUnionIndexing]
 from typing import Union, List, Undefined
-
 x = Undefined # type: Union[List[int], str]
 x[2]
 x[2] + 1 # E: Unsupported operand types for + (likely involving Union)
-
-
 [builtins fixtures/isinstancelist.py]
+
+[case testUnionAsOverloadArg]
+from typing import Union, overload
+@overload
+def f(x: Union[int, str]) -> int: pass
+@overload
+def f(x: type) -> str: pass
+x = 0
+x = f(1)
+x = f('')
+s = ''
+s = f(int)
+s = f(1)    # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+x = f(int)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
