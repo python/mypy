@@ -17,7 +17,8 @@ from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
 def check(o, t):
     rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
-    print(rep, t, isinstance(o, t))
+    s = str(t).replace('sequenceiterator', 'str_iterator')
+    print(rep, s, isinstance(o, t))
 
 def f():
     check('x', Sized)
@@ -271,7 +272,7 @@ import math
 import typing
 print(math.__name__)
 print(type(math.__dict__))
-print(type(math.__doc__))
+print(type(typing.__doc__))
 print(math.__class__)
 [out]
 math
@@ -291,12 +292,12 @@ The most base type
 [case testFunctionAttributes]
 import typing
 print(ord.__class__)
-print(ord.__doc__[:10])
+print(type(ord.__doc__ + ''))
 print(ord.__name__)
 print(ord.__module__)
 [out]
 <class 'builtin_function_or_method'>
-ord(c) ->
+<class 'str'>
 ord
 builtins
 
@@ -394,9 +395,8 @@ True
 [case testArray]
 import typing
 import array
-print(type(array.typecodes))
+array.array('b', [1, 2])
 [out]
-<class 'str'>
 
 [case testDictFromkeys]
 import typing
@@ -739,13 +739,12 @@ import typing
 import sys
 print(type(sys.stdin.encoding))
 print(type(sys.stdin.errors))
-print(type(sys.stdin.line_buffering))
+sys.stdin.line_buffering
 sys.stdin.buffer
 sys.stdin.newlines
 [out]
 <class 'str'>
 <class 'str'>
-<class 'bool'>
 
 [case testIOProperties]
 import typing
