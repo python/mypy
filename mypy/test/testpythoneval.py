@@ -25,8 +25,9 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 # Files which contain test case descriptions.
 python_eval_files = ['pythoneval.test',
-                    'python2eval.test',
-                    'pythoneval-asyncio.test']
+                    'python2eval.test']
+
+python_34_eval_files = ['pythoneval-asyncio.test']
 
 # Path to Python 3 interpreter
 python3_path = 'python3'
@@ -40,6 +41,10 @@ class PythonEvaluationSuite(Suite):
         for f in python_eval_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_python_evaluation, test_temp_dir, True)
+        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
+            for f in python_34_eval_files:
+                c += parse_test_cases(os.path.join(test_data_prefix, f),
+                    test_python_evaluation, test_temp_dir, True)
         return c
 
 
