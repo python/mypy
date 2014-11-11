@@ -197,8 +197,6 @@ class StrConv(NodeVisitor[str]):
 
     def visit_for_stmt(self, o):
         a = [o.index]
-        if o.types != [None] * len(o.types):
-            a += o.types
         a.extend([o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))
@@ -241,7 +239,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_del_stmt(self, o):
         return self.dump([o.expr], o)
-    
+
     def visit_try_stmt(self, o):
         a = [o.body]
 
@@ -404,7 +402,6 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_generator_expr(self, o):
-        # FIX types
         condlists = o.condlists if any(o.condlists) else None
         return self.dump([o.left_expr, o.indices, o.sequences, condlists], o)
 
@@ -421,15 +418,3 @@ class StrConv(NodeVisitor[str]):
         if not a[1]:
             a[1] = '<empty>'
         return self.dump(a, o)
-
-    def visit_coerce_expr(self, o):
-        return self.dump([o.expr, ('Types', [o.target_type, o.source_type])],
-                         o)
-
-    def visit_type_expr(self, o):
-        return self.dump([str(o.type)], o)
-
-    def visit_filter_node(self, o):
-        # These are for convenience. These node types are not defined in the
-        # parser module.
-        pass

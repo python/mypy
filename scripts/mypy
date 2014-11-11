@@ -76,12 +76,11 @@ def type_check_only(path: str, module: str, bin_dir: str, options: Options) -> N
                 flags=options.build_flags)
 
 
-def process_options(args: List[str]) -> Tuple[str, str, List[str], Options]:
+def process_options(args: List[str]) -> Tuple[str, str, Options]:
     """Process command line arguments.
 
     Return (mypy program path (or None),
             module to run as script (or None),
-            remaining arguments, passed to mypy program
             parsed flags)
     """
     options = Options()

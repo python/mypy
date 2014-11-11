@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.html
 
-from typing import Undefined, Mapping, Dict, List, overload, Any, Tuple, Iterator
+from typing import Undefined, Mapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr
 from builtins import OSError as error
 import os.path as path
 
@@ -98,10 +98,10 @@ TMP_MAX = 0  # Undocumented, but used by tempfile
 
 # ----- os classes (structures) -----
 class stat_result:
-    # For backward compatibility, the return value of stat() is also 
-    # accessible as a tuple of at least 10 integers giving the most important 
-    # (and portable) members of the stat structure, in the order st_mode, 
-    # st_ino, st_dev, st_nlink, st_uid, st_gid, st_size, st_atime, st_mtime, 
+    # For backward compatibility, the return value of stat() is also
+    # accessible as a tuple of at least 10 integers giving the most important
+    # (and portable) members of the stat structure, in the order st_mode,
+    # st_ino, st_dev, st_nlink, st_uid, st_gid, st_size, st_atime, st_mtime,
     # st_ctime. More items may be added at the end by some implementations.
 
     st_mode = 0 # protection bits,
@@ -118,7 +118,7 @@ class stat_result:
 
     def __init__(self, tuple) -> None: pass
 
-    # On some Unix systems (such as Linux), the following attributes may also 
+    # On some Unix systems (such as Linux), the following attributes may also
     # be available:
     st_blocks = 0 # number of blocks allocated for file
     st_blksize = 0 # filesystem blocksize
@@ -170,10 +170,7 @@ def getuid() -> int: pass  # Unix only
 def getenv(key: str, default: str = None) -> str: pass
 def getenvb(key: bytes, default: bytes = None) -> bytes: pass
 # TODO mixed str/bytes putenv arguments
-@overload
-def putenv(key: str, value: str) -> None: pass
-@overload
-def putenv(key: bytes, value: bytes) -> None: pass
+def putenv(key: AnyStr, value: AnyStr) -> None: pass
 def setegid(egid: int) -> None: pass  # Unix only
 def seteuid(euid: int) -> None: pass  # Unix only
 def setgid(gid: int) -> None: pass  # Unix only
@@ -190,10 +187,7 @@ def setuid(uid) -> None: pass  # Unix only
 def strerror(code: int) -> str: pass
 def umask(mask: int) -> int: pass
 def uname() -> Tuple[str, str, str, str, str]: pass  # Unix only
-@overload
-def unsetenv(key: str) -> None: pass
-@overload
-def unsetenv(key: bytes) -> None: pass
+def unsetenv(key: AnyStr) -> None: pass
 # Return IO or TextIO
 def fdopen(fd: int, mode: str = 'r', encoding: str = None, errors: str = None,
            newline: str = None, closefd: bool = True) -> Any: pass
@@ -212,10 +206,7 @@ def fsync(fd: int) -> None: pass
 def ftruncate(fd: int, length: int) -> None: pass  # Unix only
 def isatty(fd: int) -> bool: pass  # Unix only
 def lseek(fd: int, pos: int, how: int) -> int: pass
-@overload
-def open(file: str, flags: int, mode: int = 0o777) -> int: pass
-@overload
-def open(file: bytes, flags: int, mode: int = 0o777) -> int: pass
+def open(file: AnyStr, flags: int, mode: int = 0o777) -> int: pass
 def openpty() -> Tuple[int, int]: pass  # some flavors of Unix
 def pipe() -> Tuple[int, int]: pass
 def read(fd: int, n: int) -> bytes: pass
@@ -223,148 +214,54 @@ def tcgetpgrp(fd: int) -> int: pass  # Unix only
 def tcsetpgrp(fd: int, pg: int) -> None: pass  # Unix only
 def ttyname(fd: int) -> str: pass  # Unix only
 def write(fd: int, string: bytes) -> int: pass
-@overload
-def access(path: str, mode: int) -> bool: pass
-@overload
-def access(path: bytes, mode: int) -> bool: pass
-@overload
-def chdir(path: str) -> None: pass
-@overload
-def chdir(path: bytes) -> None: pass
+def access(path: AnyStr, mode: int) -> bool: pass
+def chdir(path: AnyStr) -> None: pass
 def fchdir(fd: int) -> None: pass
 def getcwd() -> str: pass
 def getcwdb() -> bytes: pass
 def chflags(path: str, flags: int) -> None: pass  # Unix only
 def chroot(path: str) -> None: pass  # Unix only
-
-@overload
-def chmod(path: str, mode: int) -> None: pass
-@overload
-def chmod(path: bytes, mode: int) -> None: pass
-
-@overload
-def chown(path: str, uid: int, gid: int) -> None: pass  # Unix only
-@overload
-def chown(path: bytes, uid: int, gid: int) -> None: pass  # Unix only
-
+def chmod(path: AnyStr, mode: int) -> None: pass
+def chown(path: AnyStr, uid: int, gid: int) -> None: pass  # Unix only
 def lchflags(path: str, flags: int) -> None: pass  # Unix only
 def lchmod(path: str, mode: int) -> None: pass  # Unix only
 def lchown(path: str, uid: int, gid: int) -> None: pass  # Unix only
-
-@overload
-def link(src: str, link_name: str) -> None: pass
-@overload
-def link(src: bytes, link_name: bytes) -> None: pass
+def link(src: AnyStr, link_name: AnyStr) -> None: pass
 
 @overload
 def listdir(path: str = '.') -> List[str]: pass
 @overload
 def listdir(path: bytes) -> List[bytes]: pass
 
-@overload
-def lstat(path: str) -> stat_result: pass
-@overload
-def lstat(path: bytes) -> stat_result: pass
-
+def lstat(path: AnyStr) -> stat_result: pass
 def mkfifo(path, mode: int=0o666) -> None: pass  # Unix only
-
-@overload
-def mknod(filename: str, mode: int = 0o600, device: int = 0) -> None: pass
-@overload
-def mknod(filename: bytes, mode: int = 0o600, device: int = 0) -> None: pass
-
+def mknod(filename: AnyStr, mode: int = 0o600, device: int = 0) -> None: pass
 def major(device: int) -> int: pass
 def minor(device: int) -> int: pass
 def makedev(major: int, minor: int) -> int: pass
-
-@overload
-def mkdir(path: str, mode: int = 0o777) -> None: pass
-@overload
-def mkdir(path: bytes, mode: int = 0o777) -> None: pass
-
-@overload
-def makedirs(path: str, mode: int = 0o777,
+def mkdir(path: AnyStr, mode: int = 0o777) -> None: pass
+def makedirs(path: AnyStr, mode: int = 0o777,
              exist_ok: bool = False) -> None: pass
-@overload
-def makedirs(path: bytes, mode: int = 0o777,
-             exist_ok: bool = False) -> None: pass
-
 def pathconf(path: str, name: str) -> int: pass  # Unix only
-
-@overload
-def readlink(path: str) -> str: pass
-@overload
-def readlink(path: bytes) -> bytes: pass
-
-@overload
-def remove(path: str) -> None: pass
-@overload
-def remove(path: bytes) -> None: pass
-
-@overload
-def removedirs(path: str) -> None: pass
-@overload
-def removedirs(path: bytes) -> None: pass
-
-@overload
-def rename(src: str, dst: str) -> None: pass
-@overload
-def rename(src: bytes, dst: bytes) -> None: pass
-
-@overload
-def renames(old: str, new: str) -> None: pass
-@overload
-def renames(old: bytes, new: bytes) -> None: pass
-
-@overload
-def rmdir(path: str) -> None: pass
-@overload
-def rmdir(path: bytes) -> None: pass
-
-@overload
-def stat(path: str) -> stat_result: pass
-@overload
-def stat(path: bytes) -> stat_result: pass
-
-@overload
-def stat_float_times() -> bool: pass
-@overload
-def stat_float_times(newvalue: bool) -> bool: pass
-
+def readlink(path: AnyStr) -> AnyStr: pass
+def remove(path: AnyStr) -> None: pass
+def removedirs(path: AnyStr) -> None: pass
+def rename(src: AnyStr, dst: AnyStr) -> None: pass
+def renames(old: AnyStr, new: AnyStr) -> None: pass
+def rmdir(path: AnyStr) -> None: pass
+def stat(path: AnyStr) -> stat_result: pass
+def stat_float_times(newvalue: Union[bool, None] = None) -> bool: pass
 def statvfs(path: str) -> statvfs_result: pass # Unix only
-
-@overload
-def symlink(source: str, link_name: str,
+def symlink(source: AnyStr, link_name: AnyStr,
             target_is_directory: bool = False) -> None:
     pass  # final argument in Windows only
-@overload
-def symlink(source: bytes, link_name: bytes,
-            target_is_directory: bool = False) -> None:
-    pass
-
-@overload
-def unlink(path: str) -> None: pass
-@overload
-def unlink(bytes: str) -> None: pass
-
-@overload
-def utime(path: str, times: Tuple[int, int] = None) -> None: pass
-@overload
-def utime(path: bytes, times: Tuple[int, int] = None) -> None: pass
-@overload
-def utime(path: str, times: Tuple[float, float] = None) -> None: pass
-@overload
-def utime(path: bytes, times: Tuple[float, float] = None) -> None: pass
+def unlink(path: AnyStr) -> None: pass
+def utime(path: AnyStr, times: Union[Tuple[int, int], Tuple[float, float]] = None) -> None: pass
 
 # TODO onerror: function from OSError to void
-@overload
-def walk(top: str, topdown: bool = True, onerror: Any = None, 
-         followlinks: bool = False) -> Iterator[Tuple[str, List[str],
-                                                      List[str]]]: pass
-@overload
-def walk(top: bytes, topdown: bool = True, onerror: Any = None, 
-         followlinks: bool = False) -> Iterator[Tuple[bytes, List[bytes],
-                                                      List[bytes]]]: pass
+def walk(top: AnyStr, topdown: bool = True, onerror: Any = None,
+         followlinks: bool = False) -> Iterator[Tuple[AnyStr, List[AnyStr],
+                                                      List[AnyStr]]]: pass
 # walk(): "By default errors from the os.listdir() call are ignored.  If
 # optional arg 'onerror' is specified, it should be a function; it
 # will be called with one argument, an os.error instance.  It can
@@ -373,45 +270,16 @@ def walk(top: bytes, topdown: bool = True, onerror: Any = None,
 # filename attribute of the exception object."
 
 def abort() -> 'None': pass
-
-@overload
-def execl(path: str, arg0: str, *args: str) -> None: pass
-@overload
-def execl(path: bytes, arg0: bytes, *args: bytes) -> None: pass
-@overload
-def execle(path: str, arg0: str,
+def execl(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: pass
+def execle(path: AnyStr, arg0: AnyStr,
            *args: Any) -> None: pass # Imprecise signature
-@overload
-def execle(path: bytes, arg0: bytes,
-           *args: Any) -> None: pass # Imprecise signature
-@overload
-def execlp(path: str, arg0: str, *args: str) -> None: pass
-@overload
-def execlp(path: bytes, arg0: bytes, *args: bytes) -> None: pass
-@overload
-def execlpe(path: str, arg0: str,
+def execlp(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: pass
+def execlpe(path: AnyStr, arg0: AnyStr,
             *args: Any) -> None: pass # Imprecise signature
-@overload
-def execlpe(path: bytes, arg0: bytes,
-            *args: Any) -> None: pass # Imprecise signature
-@overload
-def execv(path: str, args: List[str]) -> None: pass
-@overload
-def execv(path: bytes, args: List[bytes]) -> None: pass
-@overload
-def execve(path: str, args: List[str], env: Mapping[str, str]) -> None: pass
-@overload
-def execve(path: bytes, args: List[bytes],
-           env: Mapping[str, str]) -> None: pass
-@overload
-def execvp(file: str, args: List[str]) -> None: pass
-@overload
-def execvp(file: bytes, args: List[bytes]) -> None: pass
-@overload
-def execvpe(file: str, args: List[str],
-            env: Mapping[str, str]) -> None: pass
-@overload
-def execvpe(file: bytes, args: List[bytes],
+def execv(path: AnyStr, args: List[AnyStr]) -> None: pass
+def execve(path: AnyStr, args: List[AnyStr], env: Mapping[AnyStr, AnyStr]) -> None: pass
+def execvp(file: AnyStr, args: List[AnyStr]) -> None: pass
+def execvpe(file: AnyStr, args: List[AnyStr],
             env: Mapping[str, str]) -> None: pass
 def _exit(n: int) -> None: pass
 def fork() -> int: pass  # Unix only
@@ -428,66 +296,26 @@ class popen(_TextIOWrapper):
                  bufsize: int = -1) -> None: pass
     def close(self) -> Any: pass # may return int
 
-@overload
-def spawnl(mode: int, path: str, arg0: str, *args: str) -> int: pass
-@overload
-def spawnl(mode: int, path: bytes, arg0: bytes, *args: bytes) -> int: pass
-@overload
-def spawnle(mode: int, path: str, arg0: str,
+def spawnl(mode: int, path: AnyStr, arg0: AnyStr, *args: AnyStr) -> int: pass
+def spawnle(mode: int, path: AnyStr, arg0: AnyStr,
             *args: Any) -> int: pass # Imprecise sig
-@overload
-def spawnle(mode: int, path: bytes, arg0: bytes,
-            *args: Any) -> int: pass # Imprecise sig
-@overload
-def spawnlp(mode: int, file: str, arg0: str,
-            *args: str) -> int: pass  # Unix only TODO 
-@overload
-def spawnlp(mode: int, file: bytes, arg0: bytes, *args: bytes) -> int: pass
-@overload
-def spawnlpe(mode: int, file: str, arg0: str, *args: Any) -> int:
-    pass # Imprecise signature; Unix only TODO 
-@overload
-def spawnlpe(mode: int, file: bytes, arg0: bytes, *args: Any) -> int:
-    pass # Imprecise signature
-@overload
-def spawnv(mode: int, path: str, args: List[str]) -> int: pass
-@overload
-def spawnv(mode: int, path: bytes, args: List[bytes]) -> int: pass
-@overload
-def spawnve(mode: int, path: str, args: List[str],
+def spawnlp(mode: int, file: AnyStr, arg0: AnyStr,
+            *args: AnyStr) -> int: pass  # Unix only TODO
+def spawnlpe(mode: int, file: AnyStr, arg0: AnyStr, *args: Any) -> int:
+    pass # Imprecise signature; Unix only TODO
+def spawnv(mode: int, path: AnyStr, args: List[AnyStr]) -> int: pass
+def spawnve(mode: int, path: AnyStr, args: List[AnyStr],
             env: Mapping[str, str]) -> int: pass
-@overload
-def spawnve(mode: int, path: bytes, args: List[bytes],
-            env: Mapping[str, str]) -> int: pass
-@overload
-def spawnvp(mode: int, file: str, args: List[str]) -> int: pass  # Unix only
-@overload
-def spawnvp(mode: int, file: bytes, args: List[bytes]) -> int: pass
-@overload
-def spawnvpe(mode: int, file: str, args: List[str],
-             env: Mapping[str, str]) -> int: 
+def spawnvp(mode: int, file: AnyStr, args: List[AnyStr]) -> int: pass  # Unix only
+def spawnvpe(mode: int, file: AnyStr, args: List[AnyStr],
+             env: Mapping[str, str]) -> int:
     pass  # Unix only
-@overload
-def spawnvpe(mode: int, file: bytes, args: List[bytes],
-             env: Mapping[str, str]) -> int: pass
-
-@overload
-def startfile(path: str) -> None: pass  # Windows only
-@overload
-def startfile(path: str, operation: str) -> None: pass  # Windows only
-
-@overload
-def system(command: str) -> int: pass
-@overload
-def system(command: bytes) -> int: pass
-
+def startfile(path: str, operation: Union[str, None] = None) -> None: pass  # Windows only
+def system(command: AnyStr) -> int: pass
 def times() -> Tuple[float, float, float, float, float]: pass
 def wait() -> Tuple[int, int]: pass  # Unix only
 def waitpid(pid: int, options: int) -> Tuple[int, int]: pass
-@overload
-def wait3() -> Tuple[int, int, Any]: pass  # Unix only
-@overload
-def wait3(options: int) -> Tuple[int, int, Any]: pass  # Unix only
+def wait3(options: Union[int, None] = None) -> Tuple[int, int, Any]: pass  # Unix only
 def wait4(pid: int, options: int) -> Tuple[int, int, Any]:
     pass  # Unix only
 def WCOREDUMP(status: int) -> bool: pass  # Unix only

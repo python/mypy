@@ -3,7 +3,7 @@
 Subclass TransformVisitor to perform non-trivial transformations.
 """
 
-from typing import List, Dict
+from typing import List, Dict, cast
 
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
@@ -16,10 +16,9 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    DisjointclassExpr, CoerceExpr, TypeExpr, ComparisonExpr,
-	JavaCast, TempNode, YieldFromStmt, YieldFromExpr
+    DisjointclassExpr, ComparisonExpr, TempNode, YieldFromStmt, YieldFromExpr
 )
-from mypy.types import Type
+from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
 
 
@@ -72,7 +71,7 @@ class TransformVisitor(NodeVisitor[Node]):
                       node.arg_kinds[:],
                       [None] * len(node.init),
                       self.block(node.body),
-                      self.optional_type(node.type))
+                      cast(FunctionLike, self.optional_type(node.type)))
 
         self.copy_function_attributes(new, node)
 
@@ -91,7 +90,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        node.arg_kinds[:],
                        [None] * len(node.init),
                        self.block(node.body),
-                       self.optional_type(node.type))
+                       cast(FunctionLike, self.optional_type(node.type)))
         self.copy_function_attributes(new, node)
         return new
 
@@ -204,11 +203,10 @@ class TransformVisitor(NodeVisitor[Node]):
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> Node:
-        return ForStmt(self.names(node.index),
+        return ForStmt(self.nodes(node.index),
                        self.node(node.expr),
                        self.block(node.body),
-                       self.optional_block(node.else_body),
-                       self.optional_types(node.types))
+                       self.optional_block(node.else_body))
 
     def visit_return_stmt(self, node: ReturnStmt) -> Node:
         return ReturnStmt(self.optional_node(node.expr))
@@ -379,8 +377,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.node(node.left_expr),
-                             [self.names(index) for index in node.indices],
-                             [self.optional_types(t) for t in node.types],
+                             [self.nodes(index) for index in node.indices],
                              [self.node(s) for s in node.sequences],
                              [[self.node(cond) for cond in conditions]
                               for conditions in node.condlists])
@@ -404,15 +401,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_disjointclass_expr(self, node: DisjointclassExpr) -> Node:
         return DisjointclassExpr(node.cls)
-
-    def visit_coerce_expr(self, node: CoerceExpr) -> Node:
-        raise RuntimeError('Not supported')
-
-    def visit_type_expr(self, node: TypeExpr) -> Node:
-        raise RuntimeError('Not supported')
-
-    def visit_java_cast(self, node: JavaCast) -> Node:
-        raise RuntimeError('Not supported')
 
     def visit_temp_node(self, node: TempNode) -> Node:
         return TempNode(self.type(node.type))

@@ -7,13 +7,13 @@ t = typevar('t')
 
 class object:
     def __init__(self) -> None: pass
-    
+
 class type: pass
+class tuple: pass
+class function: pass
 class bool: pass
 class int: pass # for convenience
 class str: pass # for convenience
 
 class list(Iterable[t], Generic[t]):
     def __iter__(self) -> Iterator[t]: pass
-
-class tuple: pass

@@ -25,7 +25,8 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 # Files which contain test case descriptions.
 python_eval_files = ['pythoneval.test',
-                     'python2eval.test']
+                    'python2eval.test',
+                    'pythoneval-asyncio.test']
 
 # Path to Python 3 interpreter
 python3_path = 'python3'

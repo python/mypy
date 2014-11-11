@@ -636,6 +636,8 @@ class list(Iterable[T], Generic[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
 class int: pass
 class type: pass
+class tuple: pass
+class function: pass
 
 [case testMultipleAsssignmentWithIterable]
 from typing import Iterable, Undefined, typevar
@@ -734,8 +736,8 @@ def f(a: List[T]) -> T: pass
 
 a, b = Undefined, Undefined # type: (A, B)
 
-b = f([a]) # E: List item 1 has incompatible type "A"
-a = f([b]) # E: List item 1 has incompatible type "B"
+b = f([a]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f([b]) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = f(b)   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 a = f([a])
@@ -783,3 +785,46 @@ class A:
 a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
+-- Function subtyping with generic functions
+-- -----------------------------------------
+
+
+[case testSubtypingWithGenericFunctionUsingTypevarWithValues]
+from typing import typevar, Function
+T = typevar('T', values=(int, str))
+def f(x: T) -> T: pass
+def g1(f: Function[[str], str]) -> None: pass
+g1(f)
+def g2(f: Function[[int], int]) -> None: pass
+g2(f)
+def g3(f: Function[[object], object]) -> None: pass
+g3(f) # E: Argument 1 to "g3" has incompatible type Function[["T"] -> "T"]; \
+           expected Function[["object"] -> "object"]
+
+
+-- Special cases
+-- -------------
+
+
+[case testIdentityHigherOrderFunction]
+from typing import Function, typevar
+A = typevar('A')
+B = typevar('B')
+def square(n: int) -> int:
+    return n
+def id(f: Function[[A], B]) -> Function[[A], B]:
+    return f
+g = id(square)
+g(1)
+g('x')  # E: Argument 1 has incompatible type "str"; expected "int"
+
+
+[case testIdentityHigherOrderFunction2]
+from typing import Function, typevar
+A = typevar('A')
+def voidify(n: int) -> None: pass
+def identity(f: Function[[A], None]) -> Function[[A], None]:
+    return f
+identity(voidify)(3)

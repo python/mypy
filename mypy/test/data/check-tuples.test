@@ -74,6 +74,18 @@ class A: pass
 class B(A): pass
 [builtins fixtures/tuple.py]
 
+[case testNestedTupleTypes2]
+from typing import Undefined, Tuple
+t1 = Undefined # type: (A, (A, A))
+t2 = Undefined # type: B, (B, B)
+
+t2 = t1 # E: Incompatible types in assignment (expression has type "Tuple[A, Tuple[A, A]]", variable has type "Tuple[B, Tuple[B, B]]")
+t1 = t2
+
+class A: pass
+class B(A): pass
+[builtins fixtures/tuple.py]
+
 [case testSubtypingWithNamedTupleType]
 from typing import Undefined, Tuple
 t1 = Undefined # type: Tuple[A, A]
@@ -219,8 +231,8 @@ from typing import Undefined, Tuple
 t1 = Undefined # type: Tuple[A, A, A]
 a = Undefined # type: A
 
-a, a = t1       # E: Too many values to assign
-a, a, a, a = t1 # E: Need 4 values to assign
+a, a = t1       # E: Too many values to unpack (2 expected, 3 provided)
+a, a, a, a = t1 # E: Need more than 3 values to unpack (4 expected)
 
 a, a, a = t1
 
@@ -265,8 +277,8 @@ a, b = Undefined, Undefined # type: (A, B)
 
 a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-a3, b3 = a # type: (A, B)     # E: Incompatible types in assignment
-a4, b4 = None # type: (A, B)  # E: Incompatible types in assignment
+a3, b3 = a # type: (A, B)     # E: '__main__.A' object is not iterable
+a4, b4 = None # type: (A, B)  # E: ''None'' object is not iterable
 a5, b5 = a, b, a # type: (A, B)  # E: Too many values to assign
 
 ax, bx = a, b # type: (A, B)
@@ -278,11 +290,11 @@ class B: pass
 [case testMultipleAssignmentWithNonTupleRvalue]
 from typing import Undefined
 a, b = Undefined, Undefined # type: (A, B)
-# TODO callable f
+def f(): pass
 
-a, b = None # E: Incompatible types in assignment
-a, b = a   # E: Incompatible types in assignment
-#a, b = f   # Incompatible types in assignment
+a, b = None # E: ''None'' object is not iterable
+a, b = a   # E: '__main__.A' object is not iterable
+a, b = f   # E: 'def () -> Any' object is not iterable
 
 class A: pass
 class B: pass
@@ -360,6 +372,54 @@ a = '' # E: Incompatible types in assignment (expression has type "str", variabl
 b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
+-- Nested tuple assignment
+-- ----------------------------
+
+[case testNestedTupleAssignment1]
+from typing import Undefined
+a1, b1, c1 = Undefined, Undefined, Undefined # type: (A, B, C)
+a2, b2, c2 = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a1, (b1, c1) = a2, (b2, c2)
+a1, (a1, (b1, c1)) = a2, (a2, (b2, c2))
+a1, (a1, (a1, b1)) = a1, (a1, (a1, c1))  # Fail
+
+class A: pass
+class B: pass
+class C: pass
+[out]
+main, line 7: Incompatible types in assignment (expression has type "C", variable has type "B")
+
+[case testNestedTupleAssignment2]
+from typing import Undefined
+a1, b1, c1 = Undefined, Undefined, Undefined # type: (A, B, C)
+a2, b2, c2 = Undefined, Undefined, Undefined # type: (A, B, C)
+t = a1, b1
+
+a2, b2 = t
+(a2, b2), c2 = t, c1
+(a2, c2), c2 = t, c1  # Fail
+t, c2 = (a2, b2), c2
+t, c2 = (a2, a2), c2  # Fail
+t = a1, a1, a1  # Fail
+t = a1  # Fail
+a2, a2, a2 = t  # Fail
+a2, = t  # Fail
+a2 = t  # Fail
+
+class A: pass
+class B: pass
+class C: pass
+[out]
+main, line 8: Incompatible types in assignment (expression has type "B", variable has type "C")
+main, line 10: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A, B]")
+main, line 11: Incompatible types in assignment (expression has type "Tuple[A, A, A]", variable has type "Tuple[A, B]")
+main, line 12: Incompatible types in assignment (expression has type "A", variable has type "Tuple[A, B]")
+main, line 13: Need more than 2 values to unpack (3 expected)
+main, line 14: Too many values to unpack (1 expected, 2 provided)
+main, line 15: Incompatible types in assignment (expression has type "Tuple[A, B]", variable has type "A")
+
+
 -- Error messages
 -- --------------
 
@@ -422,6 +482,7 @@ class int: pass
 class str: pass
 class bool: pass
 class type: pass
+class function: pass
 
 
 -- For loop over tuple

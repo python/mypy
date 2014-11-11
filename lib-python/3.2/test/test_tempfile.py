@@ -247,7 +247,7 @@ class test__mkstemp_inner(TC):
             else:   flags = self._tflags
 
             (self.fd, self.name) = tempfile._mkstemp_inner(dir, pre, suf, flags)
-        
+
             self._close = os.close
             self._unlink = os.unlink
 
@@ -553,7 +553,7 @@ class test_mktemp(TC):
     class mktemped:
         def _unlink(self, path: str) -> None:
             os.unlink(path)
-        
+
         _bflags = tempfile._bin_openflags
 
         def __init__(self, dir: str, pre: str, suf: str) -> None:

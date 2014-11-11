@@ -14,5 +14,7 @@ class int: pass
 @builtinclass
 class str: pass
 
-# Definition of None is implicit
+class tuple: pass
+class function: pass
 
+# Definition of None is implicit

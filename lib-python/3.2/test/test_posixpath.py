@@ -275,7 +275,7 @@ class PosixPathTest(unittest.TestCase):
             setattr(os, 'lstat', fake_lstat) # mypy: can't modify os directly
             self.assertIs(posixpath.ismount(ABSTFN), True)
         finally:
-            os.lstat = save_lstat
+            setattr(os, 'lstat', save_lstat)
 
     def test_expanduser(self) -> None:
         self.assertEqual(posixpath.expanduser("foo"), "foo")

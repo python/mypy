@@ -15,6 +15,6 @@ class list(Iterable[T], Generic[T]):
     def __mul__(self, x: int) -> list[T]: pass
 
 class tuple: pass
-
+class function: pass
 class int: pass
 class str: pass

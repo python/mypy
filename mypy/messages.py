@@ -31,13 +31,14 @@ BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_YIELD = \
-                         'Iterator function return type expected for "yield"'
+    'Iterator function return type expected for "yield"'
 INVALID_RETURN_TYPE_FOR_YIELD_FROM = \
-                         'Iterable function return type expected for "yield from"'
+    'Iterable function return type expected for "yield from"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
+INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
     'Type of getter incompatible with setter'
@@ -62,7 +63,7 @@ CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
 INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
 INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
-
+FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
 
 class MessageBuilder:
     """Helper class for reporting type checker error messages with parameters.
@@ -457,6 +458,18 @@ class MessageBuilder:
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
 
+    def wrong_number_values_to_unpack(self, provided: int, expected: int, context: Context) -> None:
+        if provided < expected:
+            if provided == 1:
+                self.fail('Need more than 1 value to unpack ({} expected)'.format(expected), context)
+            else:
+                self.fail('Need more than {} values to unpack ({} expected)'.format(provided, expected), context)
+        elif provided > expected:
+            self.fail('Too many values to unpack ({} expected, {} provided)'.format(expected, provided), context)
+
+    def type_not_iterable(self, type: Type, context: Context) -> None:
+        self.fail('\'{}\' object is not iterable'.format(type), context)
+
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),
@@ -565,6 +578,30 @@ class MessageBuilder:
             return True
         else:
             return False
+
+    def too_few_string_formatting_arguments(self, context: Context) -> None:
+        self.fail('Not enough arguments for format string', context)
+
+    def too_many_string_formatting_arguments(self, context: Context) -> None:
+        self.fail('Not all arguments converted during string formatting', context)
+
+    def incomplete_conversion_specifier_format(self, context: Context) -> None:
+        self.fail('Incomplete format', context)
+
+    def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
+        self.fail('Unsupported format character \'%s\'' % placeholder, context)
+
+    def string_interpolation_with_star_and_key(self, context: Context) -> None:
+        self.fail('String interpolation contains both stars and mapping keys', context)
+
+    def requires_int_or_char(self, context: Context) -> None:
+        self.fail('%c requires int or char', context)
+
+    def key_not_in_mapping(self, key: str, context: Context) -> None:
+        self.fail('Key \'%s\' not found in mapping' % key, context)
+
+    def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
+        self.fail('String interpolation mixes specifier with and without mapping keys', context)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
@@ -688,3 +725,8 @@ def callable_name(type: Callable) -> str:
         return type.name
     else:
         return 'function'
+
+
+def temp_message_builder() -> MessageBuilder:
+    """Return a message builder usable for collecting errors locally."""
+    return MessageBuilder(Errors())

@@ -54,7 +54,7 @@ def mock_rename(func: Any) -> Any:
             shutil.rename = Any(_fake_rename)
             return func(*args, **kwargs)
         finally:
-            shutil.rename = builtin_rename
+            shutil.rename = Any(builtin_rename)
     return wrap
 
 class TestShutil(unittest.TestCase):

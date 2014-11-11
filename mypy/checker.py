@@ -2,7 +2,7 @@
 
 import itertools
 
-from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar
+from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar, Union
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -22,17 +22,17 @@ from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, BasicTypes,
-    strip_type, UnionType
+    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, map_instance_to_supertype, is_proper_subtype,
+    is_subtype, is_equivalent, is_proper_subtype,
     is_more_precise, restrict_subtype_away
 )
+from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, expand_type
@@ -68,14 +68,13 @@ class Key(AnyType):
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
-    def __init__(self, basic_types_fn) -> None:
+    def __init__(self) -> None:
         self.frames = List[Frame]()
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
         self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key
                                                    # is changed
         self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
-        self.basic_types_fn = basic_types_fn
 
         self.frames_on_escape = Dict[int, List[Frame]]()
 
@@ -138,14 +137,12 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             for other in resulting_values[1:]:
-                type = join_simple(self.frames[0][key], type,
-                                   other, self.basic_types_fn())
+                type = join_simple(self.frames[0][key], type, other)
             if not is_same_type(type, current_value):
                 self._push(key, type)
                 changed = True
 
         return changed
-
 
     def update_expand(self, frame: Frame, index: int = -1) -> bool:
         """Update frame to include another one, if that other one is larger than the current value.
@@ -157,8 +154,7 @@ class ConditionalTypeBinder:
             old_type = self._get(key, index)
             if old_type is None:
                 continue
-            replacement = join_simple(self.frames[0][key], old_type, frame[key],
-                                      self.basic_types_fn())
+            replacement = join_simple(self.frames[0][key], old_type, frame[key])
 
             if not is_same_type(replacement, old_type):
                 self._push(key, replacement, index)
@@ -270,12 +266,12 @@ class ConditionalTypeBinder:
         self.loop_frames.pop()
 
 
-def meet_frames(basic_types: BasicTypes, *frames: Frame) -> Frame:
+def meet_frames(*frames: Frame) -> Frame:
     answer = Frame()
     for f in frames:
         for key in f:
             if key in answer:
-                answer[key] = meet_simple(answer[key], f[key], basic_types)
+                answer[key] = meet_simple(answer[key], f[key])
             else:
                 answer[key] = f[key]
     return answer
@@ -331,7 +327,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pyversion = pyversion
         self.msg = MessageBuilder(errors)
         self.type_map = {}
-        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
@@ -387,16 +383,14 @@ class TypeChecker(NodeVisitor[Type]):
             if defn.items[0].type:
                 # Explicit types.
                 if len(defn.items) == 1:
-                    self.check_single_assignment(defn.items[0].type, None,
+                    self.check_simple_assignment(defn.items[0].type,
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
-                    lvt = List[Type]()
+                    lv = List[Node]()
                     for v in defn.items:
-                        lvt.append(v.type)
-                    self.check_multi_assignment(
-                        lvt, [None] * len(lvt),
-                        defn.init, defn.init)
+                        lv.append(self.temp_node(v.type, v))
+                    self.check_multi_assignment(lv, defn.init, defn.init)
             else:
                 init_type = self.accept(defn.init)
                 if defn.kind == LDEF and not defn.is_top_level:
@@ -431,8 +425,8 @@ class TypeChecker(NodeVisitor[Type]):
         for i, item in enumerate(defn.items):
             for j, item2 in enumerate(defn.items[i + 1:]):
                 # TODO overloads involving decorators
-                sig1 = function_type(item.func)
-                sig2 = function_type(item2.func)
+                sig1 = self.function_type(item.func)
+                sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
                     self.msg.overloaded_signatures_overlap(i + 1, j + 2,
                                                            item.func)
@@ -444,8 +438,8 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
-            if not is_same_type(function_type(defn),
-                                function_type(defn.original_def)):
+            if not is_same_type(self.function_type(defn),
+                                self.function_type(defn.original_def)):
                 self.msg.incompatible_conditional_function_def(defn)
 
     def check_func_item(self, defn: FuncItem,
@@ -467,7 +461,7 @@ class TypeChecker(NodeVisitor[Type]):
         if fdef:
             self.errors.push_function(fdef.name())
 
-        typ = function_type(defn)
+        typ = self.function_type(defn)
         if type_override:
             typ = type_override
         if isinstance(typ, Callable):
@@ -486,7 +480,7 @@ class TypeChecker(NodeVisitor[Type]):
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(self.basic_types)
+            self.binder = ConditionalTypeBinder()
             self.binder.push_frame()
             defn.expanded.append(item)
 
@@ -655,21 +649,21 @@ class TypeChecker(NodeVisitor[Type]):
 
             # Construct normalized function signatures corresponding to the
             # operator methods. The first argument is the left operand and the
-            # second operatnd is the right argument -- we switch the order of
+            # second operand is the right argument -- we switch the order of
             # the arguments of the reverse method.
             forward_tweaked = Callable([forward_base,
                                         forward_type.arg_types[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        forward_type.ret_type,
-                                       is_type_obj=False,
+                                       forward_type.fallback,
                                        name=forward_type.name)
             reverse_args = reverse_type.arg_types
             reverse_tweaked = Callable([reverse_args[1], reverse_args[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        reverse_type.ret_type,
-                                       is_type_obj=False,
+                                       fallback=self.named_type('builtins.function'),
                                        name=reverse_type.name)
 
             if is_unsafe_overlapping_signatures(forward_tweaked,
@@ -694,7 +688,7 @@ class TypeChecker(NodeVisitor[Type]):
         method = defn.name()
         if method not in nodes.inplace_operator_methods:
             return
-        typ = method_type(defn)
+        typ = self.method_type(defn)
         cls = defn.info
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
@@ -765,14 +759,14 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = method_type(defn)
+            typ = self.method_type(defn)
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
             if original_type is None and isinstance(base_attr.node,
                                                     FuncDef):
-                original_type = function_type(cast(FuncDef,
-                                                   base_attr.node))
+                original_type = self.function_type(cast(FuncDef,
+                                                        base_attr.node))
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
                     method_type(original_type),
@@ -845,7 +839,7 @@ class TypeChecker(NodeVisitor[Type]):
         typ = defn.info
         self.errors.push_type(defn.name)
         old_binder = self.binder
-        self.binder = ConditionalTypeBinder(self.basic_types)
+        self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.accept(defn.defs)
         self.binder = old_binder
@@ -920,74 +914,168 @@ class TypeChecker(NodeVisitor[Type]):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignments(self.expand_lvalues(s.lvalues[-1]), s.rvalue,
-                               s.type)
+        self.check_assignment(s.lvalues[-1], s.rvalue, s.type == None)
+
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
             # Make sure that rvalue type will not be reinferred.
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
-                self.check_assignments(self.expand_lvalues(lv), rvalue,
-                                       s.type)
+                self.check_assignment(lv, rvalue, s.type == None)
 
-    def check_assignments(self, lvalues: List[Node],
-                          rvalue: Node, force_rvalue_type: Type=None) -> None:
-        # Collect lvalue types. Index lvalues require special consideration,
-        # since we cannot typecheck them until we know the rvalue type.
-        # For each lvalue, one of lvalue_types[i] or index_lvalues[i] is not
-        # None.
-        lvalue_types = []  # type: List[Type]       # Each may be None
-        index_lvalues = []  # type: List[IndexExpr] # Each may be None
-        inferred = []  # type: List[Var]
-        is_inferred = False
+    def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
+        """Type check a single assignment: lvalue = rvalue
+        """
+        if isinstance(lvalue, ParenExpr):
+            self.check_assignment(lvalue.expr, rvalue, infer_lvalue_type)
+        elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            ltuple = cast(Union[TupleExpr, ListExpr], lvalue)
+            rvalue = self.remove_parens(rvalue)
 
-        for lv in lvalues:
-            if self.is_definition(lv):
-                is_inferred = True
-                if isinstance(lv, NameExpr):
-                    inferred.append(cast(Var, lv.node))
-                else:
-                    m = cast(MemberExpr, lv)
-                    self.accept(m.expr)
-                    inferred.append(m.def_var)
-                lvalue_types.append(None)
-                index_lvalues.append(None)
-            elif isinstance(lv, IndexExpr):
-                lvalue_types.append(None)
-                index_lvalues.append(lv)
-                inferred.append(None)
-            elif isinstance(lv, MemberExpr):
-                lvalue_types.append(
-                    self.expr_checker.analyse_ordinary_member_access(lv,
-                                                                     True))
-                self.store_type(lv, lvalue_types[-1])
-                index_lvalues.append(None)
-                inferred.append(None)
-            elif isinstance(lv, NameExpr):
-                lvalue_types.append(self.expr_checker.analyse_ref_expr(lv))
-                self.store_type(lv, lvalue_types[-1])
-                index_lvalues.append(None)
-                inferred.append(None)
-            else:
-                lvalue_types.append(self.accept(lv))
-                index_lvalues.append(None)
-                inferred.append(None)
-
-        if len(lvalues) == 1:
-            # Single lvalue.
-            rvalue_type = self.check_single_assignment(lvalue_types[0],
-                                                       index_lvalues[0], rvalue, rvalue)
-            if rvalue_type and not force_rvalue_type:
-                self.binder.assign_type(lvalues[0], rvalue_type)
+            self.check_assignment_to_multiple_lvalues(ltuple.items, rvalue, lvalue, infer_lvalue_type)
         else:
-            rvalue_types = self.check_multi_assignment(lvalue_types, index_lvalues,
-                                                       rvalue, rvalue)
-            if rvalue_types and not force_rvalue_type:
-                for lv, rt in zip(lvalues, rvalue_types):
-                    self.binder.assign_type(lv, rt)
-        if is_inferred:
-            self.infer_variable_type(inferred, lvalues, self.accept(rvalue),
-                                     rvalue)
+            lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
+
+            if lvalue_type:
+                rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
+
+                if rvalue_type and infer_lvalue_type:
+                    self.binder.assign_type(lvalue, rvalue_type)
+            elif index_lvalue:
+                self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
+
+            if inferred:
+                self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
+                                         rvalue)
+
+    def check_assignment_to_multiple_lvalues(self, lvalues: List[Node], rvalue: Node, context: Context,
+                                             infer_lvalue_type: bool = True) -> None:
+        if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
+            # Recursively go into Tuple or List expression rhs instead of
+            # using the type of rhs, because this allowed more fine grained
+            # control in cases like: a, b = [int, str] where rhs would get
+            # type List[object]
+
+            rtuple = cast(Union[TupleExpr, ListExpr], rvalue)
+
+            if len(rtuple.items) != len(lvalues):
+                self.msg.incompatible_value_count_in_assignment(
+                                len(lvalues), len(rtuple.items), context)
+            else:
+                for lv, rv in zip(lvalues, rtuple.items):
+                    self.check_assignment(lv, rv, infer_lvalue_type)
+        else:
+            self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
+
+    def remove_parens(self, node: Node) -> Node:
+        if isinstance(node, ParenExpr):
+            return self.remove_parens(node.expr)
+        else:
+            return node
+
+    def check_multi_assignment(self, lvalues: List[Node],
+                                  rvalue: Node,
+                                  context: Context,
+                                  infer_lvalue_type: bool = True,
+                                  msg: str = None) -> None:
+       """Check the assignment of one rvalue to a number of lvalues
+       for example from a ListExpr or TupleExpr.
+       """
+
+       if not msg:
+           msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
+
+       # First handle case where rvalue is of form Undefined, ...
+       rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
+       undefined_rvalue = True
+       if not rvalue_type:
+           # Infer the type of an ordinary rvalue expression.
+           rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
+           undefined_rvalue = False
+
+       if isinstance(rvalue_type, AnyType):
+           for lv in lvalues:
+               self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
+       elif isinstance(rvalue_type, TupleType):
+           self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type),
+                                                  context, undefined_rvalue, infer_lvalue_type)
+       else:
+           self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
+                                                     context, infer_lvalue_type)
+
+    def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
+                                          rvalue_type: TupleType, context: Context,
+                                          undefined_rvalue: bool, infer_lvalue_type: bool = True) -> None:
+        if len(rvalue_type.items) != len(lvalues):
+            self.msg.wrong_number_values_to_unpack(len(rvalue_type.items), len(lvalues), context)
+        else:
+            if not undefined_rvalue:
+                # Create lvalue_type for type inference
+
+                type_parameters = []  # type: List[Type]
+                for i in range(len(lvalues)):
+                    sub_lvalue_type, index_expr, inferred = self.check_lvalue(lvalues[i])
+
+                    if sub_lvalue_type:
+                        type_parameters.append(sub_lvalue_type)
+                    else:  # index lvalue
+                        # TODO Figure out more precise type context, probably
+                        #      based on the type signature of the _set method.
+                        type_parameters.append(rvalue_type.items[i])
+
+                lvalue_type = TupleType(type_parameters, self.named_type('builtins.tuple'))
+
+                # Infer rvalue again, now in the correct type context.
+                rvalue_type = cast(TupleType, self.accept(rvalue, lvalue_type))
+
+            for lv, rv_type in zip(lvalues, rvalue_type.items):
+                self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
+
+    def type_is_iterable(self, type: Type) -> bool:
+        return (is_subtype(type, self.named_generic_type('typing.Iterable',
+                                                        [AnyType()])) and
+                isinstance(type, Instance))
+
+    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
+                                             context: Context, infer_lvalue_type: bool = True) -> None:
+        if self.type_is_iterable(rvalue_type):
+            item_type = self.iterable_item_type(cast(Instance,rvalue_type))
+            for lv in lvalues:
+                self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
+        else:
+            self.msg.type_not_iterable(rvalue_type, context)
+
+    def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:
+        lvalue_type = None # type: Type
+        index_lvalue = None # type: IndexExpr
+        inferred = None # type: Var
+
+        if self.is_definition(lvalue):
+            if isinstance(lvalue, NameExpr):
+                inferred = cast(Var, lvalue.node)
+            else:
+                m = cast(MemberExpr, lvalue)
+                self.accept(m.expr)
+                inferred = m.def_var
+        elif isinstance(lvalue, IndexExpr):
+            index_lvalue = lvalue
+        elif isinstance(lvalue, MemberExpr):
+            lvalue_type = self.expr_checker.analyse_ordinary_member_access(lvalue,
+                                                                 True)
+            self.store_type(lvalue, lvalue_type)
+        elif isinstance(lvalue, NameExpr):
+            lvalue_type = self.expr_checker.analyse_ref_expr(lvalue)
+            self.store_type(lvalue, lvalue_type)
+        elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            lv = cast(Union[TupleExpr, ListExpr], lvalue)
+            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lv.items]
+            lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
+        elif isinstance(lvalue, ParenExpr):
+            return self.check_lvalue(lvalue.expr)
+        else:
+            lvalue_type = self.accept(lvalue)
+
+        return lvalue_type, index_lvalue, inferred
 
     def is_definition(self, s: Node) -> bool:
         if isinstance(s, NameExpr):
@@ -1005,17 +1093,7 @@ class TypeChecker(NodeVisitor[Type]):
             return s.is_def
         return False
 
-    def expand_lvalues(self, n: Node) -> List[Node]:
-        if isinstance(n, TupleExpr):
-            return self.expr_checker.unwrap_list(n.items)
-        elif isinstance(n, ListExpr):
-            return self.expr_checker.unwrap_list(n.items)
-        elif isinstance(n, ParenExpr):
-            return self.expand_lvalues(n.expr)
-        else:
-            return [n]
-
-    def infer_variable_type(self, names: List[Var], lvalues: List[Node],
+    def infer_variable_type(self, name: Var, lvalue: Node,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, Void):
@@ -1030,34 +1108,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Make the type more general (strip away function names etc.).
             init_type = strip_type(init_type)
 
-            if len(names) > 1:
-                if isinstance(init_type, TupleType):
-                    # Initializer with a tuple type.
-                    if len(init_type.items) == len(names):
-                        for i in range(len(names)):
-                            self.set_inferred_type(names[i], lvalues[i],
-                                                   init_type.items[i])
-                    else:
-                        self.msg.incompatible_value_count_in_assignment(
-                            len(names), len(init_type.items), context)
-                elif (isinstance(init_type, Instance) and
-                      is_subtype(init_type,
-                                 self.named_generic_type('typing.Iterable',
-                                                         [AnyType()]))):
-                    # Initializer with an iterable type.
-                    item_type = self.iterable_item_type(cast(Instance,
-                                                             init_type))
-                    for i in range(len(names)):
-                        self.set_inferred_type(names[i], lvalues[i], item_type)
-                elif isinstance(init_type, AnyType):
-                    for i in range(len(names)):
-                        self.set_inferred_type(names[i], lvalues[i], AnyType())
-                else:
-                    self.fail(messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                              context)
-            else:
-                for v in names:
-                    self.set_inferred_type(v, lvalues[0], init_type)
+            self.set_inferred_type(name, lvalue, init_type)
 
     def set_inferred_type(self, var: Var, lvalue: Node, type: Type) -> None:
         """Store inferred variable type.
@@ -1090,91 +1141,24 @@ class TypeChecker(NodeVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
             if restriction:
-                ans = meet_simple(known_type, restriction, self.basic_types())
+                ans = meet_simple(known_type, restriction)
                 return ans
         return known_type
 
-    def check_multi_assignment(self, lvalue_types: List[Type],
-                               index_lvalues: List[IndexExpr],
-                               rvalue: Node,
-                               context: Context,
-                               msg: str = None) -> List[Type]:
-        if not msg:
-            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
-        # First handle case where rvalue is of form Undefined, ...
-        rvalue_type = get_undefined_tuple(rvalue)
-        undefined_rvalue = True
-        if not rvalue_type:
-            # Infer the type of an ordinary rvalue expression.
-            rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
-            undefined_rvalue = False
-        # Try to expand rvalue to lvalue(s).
-        rvalue_types = None  # type: List[Type]
-        if isinstance(rvalue_type, AnyType):
-            pass
-        elif isinstance(rvalue_type, TupleType):
-            # Rvalue with tuple type.
-            items = []  # type: List[Type]
-            for i in range(len(lvalue_types)):
-                if lvalue_types[i]:
-                    items.append(lvalue_types[i])
-                elif i < len(rvalue_type.items):
-                    # TODO Figure out more precise type context, probably
-                    #      based on the type signature of the _set method.
-                    items.append(rvalue_type.items[i])
-            if not undefined_rvalue:
-                # Infer rvalue again, now in the correct type context.
-                rvalue_type = cast(TupleType, self.accept(rvalue,
-                                                          TupleType(items)))
-            if len(rvalue_type.items) != len(lvalue_types):
-                self.msg.incompatible_value_count_in_assignment(
-                    len(lvalue_types), len(rvalue_type.items), context)
-            else:
-                # The number of values is compatible. Check their types.
-                for j in range(len(lvalue_types)):
-                    self.check_single_assignment(
-                        lvalue_types[j], index_lvalues[j],
-                        self.temp_node(rvalue_type.items[j]), context, msg)
-                rvalue_types = rvalue_type.items
-        elif (is_subtype(rvalue_type,
-                         self.named_generic_type('typing.Iterable',
-                                                 [AnyType()])) and
-              isinstance(rvalue_type, Instance)):
-            # Rvalue is iterable.
-            rvalue_types = []
-            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
-            for k in range(len(lvalue_types)):
-                type = self.check_single_assignment(lvalue_types[k],
-                                                    index_lvalues[k],
-                                                    self.temp_node(item_type),
-                                                    context, msg)
-                rvalue_types.append(type)
-        else:
-            self.fail(msg, context)
-        return rvalue_types
-
-    def check_single_assignment(self,
-                                lvalue_type: Type, index_lvalue: IndexExpr,
-                                rvalue: Node, context: Context,
+    def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
+                                context: Node,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
-        """Type check an assignment.
-
-        If lvalue_type is None, the index_lvalue argument must be the
-        index expr for indexed assignment (__setitem__).
-        Otherwise, lvalue_type is used as the type of the lvalue.
-        """
-        if lvalue_type:
-            if refers_to_fullname(rvalue, 'typing.Undefined'):
-                # The rvalue is just 'Undefined'; this is always valid.
-                # Infer the type of 'Undefined' from the lvalue type.
-                self.store_type(rvalue, lvalue_type)
-                return None
+        """Checks the assignment of rvalue to a lvalue of type lvalue_type"""
+        if refers_to_fullname(rvalue, 'typing.Undefined'):
+            # The rvalue is just 'Undefined'; this is always valid.
+            # Infer the type of 'Undefined' from the lvalue type.
+            self.store_type(rvalue, lvalue_type)
+            return None
+        else:
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                'expression has type', 'variable has type')
             return rvalue_type
-        elif index_lvalue:
-            self.check_indexed_assignment(index_lvalue, rvalue, context)
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Node, context: Context) -> None:
@@ -1211,7 +1195,7 @@ class TypeChecker(NodeVisitor[Type]):
                     else:
                         if self.function_stack[-1].is_coroutine: # Something similar will be needed to mix return and yield
                             # If the function is a coroutine, wrap the return type in a Future
-                            typ = self.wrap_generic_type(typ, self.return_types[-1], 'asyncio.futures.Future', s)
+                            typ = self.wrap_generic_type(cast(Instance,typ), cast(Instance,self.return_types[-1]), 'asyncio.futures.Future', s)
                         self.check_subtype(
                             typ, self.return_types[-1], s,
                             messages.INCOMPATIBLE_RETURN_VALUE_TYPE
@@ -1224,7 +1208,7 @@ class TypeChecker(NodeVisitor[Type]):
                             not self.is_dynamic_function()):
                             self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def wrap_generic_type(self, typ: Type, rtyp: Type, check_type: str, context: Context) -> Type:
+    def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type: str, context: Context) -> Type:
         n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ, check_type)
         if n_diff == 1:
             return self.named_generic_type(check_type, [typ])
@@ -1234,13 +1218,13 @@ class TypeChecker(NodeVisitor[Type]):
             return typ
         return typ
 
-    def count_nested_types(self, typ: Type, check_type: str) -> int:
+    def count_nested_types(self, typ: Instance, check_type: str) -> int:
         c = 0
         while is_subtype(typ, self.named_type(check_type)):
             c += 1
-            typ = map_instance_to_supertype(typ, self.lookup_typeinfo(check_type))
+            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args), self.lookup_typeinfo(check_type))
             if typ.args:
-                typ = typ.args[0]
+                typ = cast(Instance,typ.args[0])
             else:
                 return c
         return c
@@ -1305,11 +1289,11 @@ class TypeChecker(NodeVisitor[Type]):
             self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
             return None
         if s.expr is None:
-            actual_item_type = Void()
+            actual_item_type = Void() # type: Type
         else:
             actual_item_type = self.accept(s.expr, expected_item_type)
-            if hasattr(actual_item_type, 'args') and actual_item_type.args:
-                actual_item_type = map_instance_to_supertype(actual_item_type, self.lookup_typeinfo('typing.Iterable'))
+            if hasattr(actual_item_type, 'args') and cast(Instance,actual_item_type).args:
+                actual_item_type = map_instance_to_supertype(cast(Instance,actual_item_type), self.lookup_typeinfo('typing.Iterable'))
                 actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
         self.check_subtype(actual_item_type, expected_item_type, s,
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
@@ -1337,7 +1321,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.binder.allow_jump(len(self.binder.frames) - 1)
                 if not self.breaking_out:
                     broken = False
-                    ending_frames.append(meet_frames(self.basic_types(), clauses_frame, frame))
+                    ending_frames.append(meet_frames(clauses_frame, frame))
 
                 self.breaking_out = False
 
@@ -1393,7 +1377,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         if isinstance(s.lvalue, IndexExpr):
             lv = cast(IndexExpr, s.lvalue)
-            self.check_single_assignment(None, lv, s.rvalue, s.rvalue)
+            self.check_indexed_assignment(lv, s.rvalue, s.rvalue)
         else:
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
@@ -1405,19 +1389,24 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a raise statement."""
         self.breaking_out = True
         if s.expr:
-            typ = self.accept(s.expr)
-            if isinstance(typ, FunctionLike):
-                if typ.is_type_obj():
-                    # Cases like "raise ExceptionClass".
-                    typeinfo = typ.type_object()
-                    base = self.lookup_typeinfo('builtins.BaseException')
-                    if base in typeinfo.mro:
-                        # Good!
-                        return None
-                    # Else fall back to the check below (which will fail).
-            self.check_subtype(typ,
-                               self.named_type('builtins.BaseException'), s,
-                               messages.INVALID_EXCEPTION)
+            self.type_check_raise(s.expr, s)
+        if s.from_expr:
+            self.type_check_raise(s.from_expr, s)
+
+    def type_check_raise(self, e: Node, s: RaiseStmt) -> None:
+        typ = self.accept(e)
+        if isinstance(typ, FunctionLike):
+            if typ.is_type_obj():
+                # Cases like "raise/from ExceptionClass".
+                typeinfo = typ.type_object()
+                base = self.lookup_typeinfo('builtins.BaseException')
+                if base in typeinfo.mro:
+                    # Good!
+                    return None
+                # Else fall back to the check below (which will fail).
+        self.check_subtype(typ,
+                           self.named_type('builtins.BaseException'), s,
+                           messages.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
@@ -1435,7 +1424,7 @@ class TypeChecker(NodeVisitor[Type]):
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
-                    self.check_assignments([s.vars[i]],
+                    self.check_assignment(s.vars[i],
                                            self.temp_node(t, s.vars[i]))
             self.binder.push_frame()
             self.accept(s.handlers[i])
@@ -1455,13 +1444,13 @@ class TypeChecker(NodeVisitor[Type]):
     def exception_type(self, n: Node) -> Type:
         if isinstance(n, ParenExpr):
             # Multiple exception types (...).
-            unwrapped = self.expr_checker.unwrap(n)
+            unwrapped = self.expr_checker.strip_parens(n)
             if isinstance(unwrapped, TupleExpr):
                 t = None  # type: Type
                 for item in unwrapped.items:
                     tt = self.exception_type(item)
                     if t:
-                        t = join_types(t, tt, self.basic_types())
+                        t = join_types(t, tt)
                     else:
                         t = tt
                 return t
@@ -1496,7 +1485,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
         item_type = self.analyse_iterable_item_type(s.expr)
-        self.analyse_index_variables(s.index, s.is_annotated(), item_type, s)
+        self.analyse_index_variables(s.index, item_type, s)
         self.binder.push_frame()
         self.binder.push_loop_frame()
         self.accept_in_frame(s.body, repeat_till_fixed=True)
@@ -1513,7 +1502,7 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(iterable, TupleType):
             joined = NoneTyp()  # type: Type
             for item in iterable.items:
-                joined = join_types(joined, item, self.basic_types())
+                joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
                 self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
                 return AnyType()
@@ -1537,35 +1526,21 @@ class TypeChecker(NodeVisitor[Type]):
                                                          expr)
             return echk.check_call(method, [], [], expr)[0]
 
-    def analyse_index_variables(self, index: List[NameExpr],
-                                is_annotated: bool,
+    def analyse_index_variables(self, index: List[Node],
                                 item_type: Type, context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
-        if not is_annotated:
-            # Create a temporary copy of variables with Node item type.
-            # TODO this is ugly
-            node_index = []  # type: List[Node]
-            for i in index:
-                node_index.append(i)
-            self.check_assignments(node_index,
-                                   self.temp_node(item_type, context))
-        elif len(index) == 1:
-            v = cast(Var, index[0].node)
-            if v.type:
-                self.check_single_assignment(v.type, None,
-                                             self.temp_node(item_type), context,
-                                             messages.INCOMPATIBLE_TYPES_IN_FOR)
+        # Create a temporary copy of variables with Node item type.
+        # TODO this is ugly
+        node_index = []  # type: List[Node]
+        for i in index:
+            node_index.append(i)
+
+        if len(node_index) == 1:
+            self.check_assignment(node_index[0], self.temp_node(item_type, context))
         else:
-            t = []  # type: List[Type]
-            for ii in index:
-                v = cast(Var, ii.node)
-                if v.type:
-                    t.append(v.type)
-                else:
-                    t.append(AnyType())
-            self.check_multi_assignment(t, [None] * len(index),
-                                        self.temp_node(item_type), context,
-                                        messages.INCOMPATIBLE_TYPES_IN_FOR)
+            self.check_multi_assignment(node_index,
+                               self.temp_node(item_type, context),
+                               context)
 
     def visit_del_stmt(self, s: DelStmt) -> Type:
         if isinstance(s.expr, IndexExpr):
@@ -1581,7 +1556,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_decorator(self, e: Decorator) -> Type:
         e.func.accept(self)
-        sig = function_type(e.func)  # type: Type
+        sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
         for i in range(len(e.decorators)):
             n = len(e.decorators) - 1 - i
@@ -1589,6 +1564,7 @@ class TypeChecker(NodeVisitor[Type]):
             temp = self.temp_node(sig)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)
+        sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
@@ -1600,7 +1576,7 @@ class TypeChecker(NodeVisitor[Type]):
             enter = echk.analyse_external_member_access('__enter__', ctx, expr)
             obj = echk.check_call(enter, [], [], expr)[0]
             if name:
-                self.check_assignments([name], self.temp_node(obj, expr))
+                self.check_assignment(name, self.temp_node(obj, expr))
             exit = echk.analyse_external_member_access('__exit__', ctx, expr)
             arg = self.temp_node(AnyType(), expr)
             echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
@@ -1626,17 +1602,20 @@ class TypeChecker(NodeVisitor[Type]):
         return result
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
-        result = self.expr_checker.visit_yield_from_expr(e)
-        if result.type.fullname() == "asyncio.futures.Future":
+        # result = self.expr_checker.visit_yield_from_expr(e)
+        result = self.accept(e.expr)
+        result_instance = cast(Instance, result)
+        if result_instance.type.fullname() == "asyncio.futures.Future":
             self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
-            result = result.args[0]  # Set the return type as the type inside
+            result = result_instance.args[0]  # Set the return type as the type inside
         elif is_subtype(result, self.named_type('typing.Iterable')):
             # TODO
             # Check return type Iterator[Some]
             # Maybe set result like in the Future
             pass
         else:
-            self.msg.yield_from_invalid_operand_type(e.expr, e)
+            # self.msg.yield_from_invalid_operand_type(e.expr, e)
+            self.msg.yield_from_invalid_operand_type(e.expr.accept(self), e)
         return result
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
@@ -1757,21 +1736,6 @@ class TypeChecker(NodeVisitor[Type]):
         sym = self.lookup_qualified(name)
         return Instance(cast(TypeInfo, sym.node), [])
 
-    def named_type_if_exists(self, name: str) -> Type:
-        """Return named instance type, or UnboundType if the type was
-        not defined.
-
-        This is used to simplify test cases by avoiding the need to
-        define basic types not needed in specific test cases (tuple
-        etc.).
-        """
-        try:
-            # Assume that the name refers to a type.
-            sym = self.lookup_qualified(name)
-            return Instance(cast(TypeInfo, sym.node), [])
-        except KeyError:
-            return UnboundType(name)
-
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
 
@@ -1800,13 +1764,6 @@ class TypeChecker(NodeVisitor[Type]):
     def str_type(self) -> Instance:
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
-
-    def tuple_type(self) -> Type:
-        """Return instance type 'tuple'."""
-        # We need the tuple for analysing member access. We want to be able to
-        # do this even if tuple type is not available (useful in test cases),
-        # so we return an unbound type if there is no tuple type.
-        return self.named_type_if_exists('builtins.tuple')
 
     def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
                                msg: str = messages.INCOMPATIBLE_TYPES) -> None:
@@ -1846,7 +1803,7 @@ class TypeChecker(NodeVisitor[Type]):
             parts = name.split('.')
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
-                n = cast(MypyFile, ((n.names.get(parts[i], None).node)))
+                n = cast(MypyFile, n.names.get(parts[i], None).node)
             return n.names[parts[-1]]
 
     def enter(self) -> None:
@@ -1854,14 +1811,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def leave(self) -> None:
         self.locals = None
-
-    def basic_types(self) -> BasicTypes:
-        """Return a BasicTypes instance that contains primitive types that are
-        needed for certain type operations (joins, for example).
-        """
-        return BasicTypes(self.object_type(), self.named_type('builtins.type'),
-                          self.named_type_if_exists('builtins.tuple'),
-                          self.named_type_if_exists('builtins.function'))
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?
@@ -1892,6 +1841,12 @@ class TypeChecker(NodeVisitor[Type]):
             self.lookup_typeinfo('typing.Iterable'))
         return iterable.args[0]
 
+    def function_type(self, func: FuncBase) -> FunctionLike:
+        return function_type(func, self.named_type('builtins.function'))
+
+    def method_type(self, func: FuncBase) -> FunctionLike:
+        return method_type(func, self.named_type('builtins.function'))
+
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
                             super_info: TypeInfo) -> Type:
@@ -1921,7 +1876,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     return expand_type_by_instance(typ, inst_type)
 
 
-def get_undefined_tuple(rvalue: Node) -> Type:
+def get_undefined_tuple(rvalue: Node, tuple_type: Instance) -> Type:
     """Get tuple type corresponding to a tuple of Undefined values.
 
     The type is Tuple[Any, ...]. If rvalue is not of the right form, return
@@ -1932,7 +1887,7 @@ def get_undefined_tuple(rvalue: Node) -> Type:
             if not refers_to_fullname(item, 'typing.Undefined'):
                 break
         else:
-            return TupleType([AnyType()] * len(rvalue.items))
+            return TupleType([AnyType()] * len(rvalue.items), tuple_type)
     return None
 
 

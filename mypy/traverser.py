@@ -111,7 +111,7 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
     def visit_del_stmt(self, o: DelStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
-    
+
     def visit_if_stmt(self, o: IfStmt) -> T:
         for e in o.expr:
             e.accept(self)

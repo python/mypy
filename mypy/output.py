@@ -231,7 +231,7 @@ class OutputVisitor(NodeVisitor):
 
     def visit_del_stmt(self, o):
         self.simple_stmt(o, o.expr)
-    
+
     def visit_break_stmt(self, o):
         self.simple_stmt(o)
 
@@ -266,7 +266,6 @@ class OutputVisitor(NodeVisitor):
         r = o.repr
         self.token(r.for_tok)
         for i in range(len(o.index)):
-            self.type(o.types[i])
             self.node(o.index[i])
             self.token(r.commas[i])
         self.token(r.in_tok)
@@ -454,7 +453,6 @@ class OutputVisitor(NodeVisitor):
         for i in range(len(o.indices)):
             self.token(r.for_toks[i])
             for j in range(len(o.indices[i])):
-                self.node(o.types[i][j])
                 self.node(o.indices[i][j])
                 if j < len(o.indices[i]) - 1:
                     self.token(r.commas[0])
@@ -527,7 +525,6 @@ class OutputVisitor(NodeVisitor):
             return self.result[-1][-1]
         else:
             return ''
-
 
 
 class TypeOutputVisitor:

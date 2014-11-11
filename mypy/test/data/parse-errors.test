@@ -60,13 +60,6 @@ file: In class "A":
 file, line 1: Parse error before )
 file, line 2: Parse error before end of file
 
-[case testEmptySuperClass]
-class A():
-  pass
-[out]
-file: In class "A":
-file, line 1: Parse error before )
-
 [case testMissingSuperClass]
 class A(:
   pass

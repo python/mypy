@@ -64,10 +64,13 @@ def analyse_node(lookup: Function[[str, Context], SymbolTableNode],
 class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
-    def __init__(self, lookup_func: Function[[str, Context], SymbolTableNode],
+    def __init__(self,
+                 lookup_func: Function[[str, Context], SymbolTableNode],
+                 lookup_fqn_func: Function[[str], SymbolTableNode],
                  stored_vars: Dict[Node, Type],
                  fail_func: Function[[str, Context], None]) -> None:
         self.lookup = lookup_func
+        self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
         self.stored_vars = stored_vars
 
@@ -83,13 +86,15 @@ class TypeAnalyser(TypeVisitor[Type]):
                 else:
                     rep = None
                 values = cast(TypeVarExpr, sym.node).values
-                return TypeVar(t.name, sym.tvar_id, values, False, t.line, rep)
+                return TypeVar(t.name, sym.tvar_id, values, self.builtin_type('builtins.object'),
+                               t.line, rep)
             elif sym.node.fullname() == 'builtins.None':
                 return Void()
             elif sym.node.fullname() == 'typing.Any':
                 return AnyType()
             elif sym.node.fullname() == 'typing.Tuple':
-                return TupleType(self.anal_array(t.args))
+                return TupleType(self.anal_array(t.args),
+                                 self.builtin_type('builtins.tuple'))
             elif sym.node.fullname() == 'typing.Union':
                 return UnionType(self.anal_array(t.args))
             elif sym.node.fullname() == 'typing.Function':
@@ -104,7 +109,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return t
             info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                return TupleType(self.anal_array(t.args), t.line, t.repr)
+                return TupleType(self.anal_array(t.args),
+                                 Instance(info, [], t.line),
+                                 t.line, t.repr)
             else:
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
@@ -138,7 +145,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                        t.arg_kinds,
                        t.arg_names,
                        t.ret_type.accept(self),
-                       t.is_type_obj(),
+                       self.builtin_type('builtins.function'),
                        t.name,
                        self.anal_var_defs(t.variables),
                        self.anal_bound_vars(t.bound_vars), t.line, t.repr)
@@ -146,7 +153,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         return res
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.anal_array(t.items), t.line, t.repr)
+        return TupleType(self.anal_array(t.items),
+                         self.builtin_type('builtins.tuple'),
+                         t.line, t.repr)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line, t.repr)
@@ -161,7 +170,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return Callable(self.anal_array(args),
                         [nodes.ARG_POS] * len(args), [None] * len(args),
                         ret_type=t.args[1].accept(self),
-                        is_type_obj=False)
+                        fallback=self.builtin_type('builtins.function'))
 
     def anal_array(self, a: List[Type]) -> List[Type]:
         res = List[Type]()
@@ -180,8 +189,14 @@ class TypeAnalyser(TypeVisitor[Type]):
         a = List[TypeVarDef]()
         for vd in var_defs:
             a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
+                                vd.upper_bound.accept(self),
                                 vd.line, vd.repr))
         return a
+
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        node = self.lookup_fqn_func(fully_qualified_name)
+        info = cast(TypeInfo, node.node)
+        return Instance(info, [])
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):

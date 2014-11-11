@@ -353,20 +353,27 @@ main, line 2: 'yield' outside function
 (1) = 1
 (1, 1) = 1
 [1, 1] = 1
+() = 1
 [out]
 main, line 1: Invalid assignment target
 main, line 2: Invalid assignment target
 main, line 3: Invalid assignment target
 main, line 4: Invalid assignment target
+main, line 5: Can't assign to ()
 
 [case testInvalidLvalues2]
 x = y = z = 1
-x, (y, z) = 1
-x, [y, z] = 1
+x, (y, 1) = 1
+x, [y, 1] = 1
+x, [y, [z, 1]] = 1
+x, (y, (z, 1)) = 1
 x, (y) = 1 # ok
+x, (y, (z, z)) = 1 # ok
 [out]
 main, line 2: Invalid assignment target
 main, line 3: Invalid assignment target
+main, line 4: Invalid assignment target
+main, line 5: Invalid assignment target
 
 [case testInvalidLvalues3]
 x = 1
@@ -808,6 +815,31 @@ A[1] # E: Type expected within [...]
 [case testVariableDeclWithInvalidNumberOfTypes]
 from typing import Undefined
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested2]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested3]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested4]
+from typing import Undefined
+x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
+[out]
+
+[case testVariableDeclWithInvalidNumberOfTypesNested5]
+from typing import Undefined
+x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
 [out]
 
 [case testVariableDeclWithInvalidType]

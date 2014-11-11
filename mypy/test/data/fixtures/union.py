@@ -7,6 +7,7 @@ class object:
     def __init__(self): pass
 
 class type: pass
+class function: pass
 
 # Current tuple types get special treatment in the type checker, thus there
 # is no need for type arguments here.

@@ -208,14 +208,5 @@ class NodeVisitor(Generic[T]):
     def visit_disjointclass_expr(self, o: 'mypy.nodes.DisjointclassExpr') -> T:
         pass
 
-    def visit_coerce_expr(self, o: 'mypy.nodes.CoerceExpr') -> T:
-        pass
-
-    def visit_type_expr(self, o: 'mypy.nodes.TypeExpr') -> T:
-        pass
-
-    def visit_java_cast(self, o: 'mypy.nodes.JavaCast') -> T:
-        pass
-
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
         pass

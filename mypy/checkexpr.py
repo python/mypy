@@ -12,7 +12,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, LITERAL_TYPE, YieldFromExpr
+    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, LITERAL_TYPE
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -26,11 +26,13 @@ from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.expandtype import expand_type, expand_caller_var_args
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, is_more_precise
+from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyse_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
+from mypy.checkstrformat import StringFormatterChecker
 
 
 class ExpressionChecker:
@@ -44,12 +46,15 @@ class ExpressionChecker:
     # This is shared with TypeChecker, but stored also here for convenience.
     msg = Undefined(MessageBuilder)
 
+    strfrm_checker = Undefined('mypy.checkstrformat.StringFormatterChecker')
+
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
                  msg: MessageBuilder) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
+        self.strfrm_checker = mypy.checkexpr.StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -67,15 +72,15 @@ class ExpressionChecker:
             result = self.analyse_var_ref(node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
-            result = function_type(node)
+            result = function_type(node, self.named_type('builtins.function'))
         elif isinstance(node, OverloadedFuncDef):
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = type_object_type(node, self.chk.type_type)
+            result = type_object_type(node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.chk.named_type('builtins.module')
+            result = self.named_type('builtins.module')
         elif isinstance(node, Decorator):
             result = self.analyse_var_ref(node.var, e)
         else:
@@ -97,9 +102,6 @@ class ExpressionChecker:
                 return var.type
             else:
                 return val
-
-    def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
-        return e.expr.accept(self)  # move it to checker?
 
     def visit_call_expr(self, e: CallExpr) -> Type:
         """Type check a call expression."""
@@ -280,13 +282,20 @@ class ExpressionChecker:
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
         ret_type = callable.ret_type
         if isinstance(ret_type, TypeVar):
-            if ret_type.values:
-                # The return type is a type variable with values, but we can't easily restrict
-                # type inference to conform to the valid values. Give up and just use function
-                # arguments for type inference.
+            if ret_type.values or (not isinstance(ctx, Instance) or
+                                   not cast(Instance, ctx).args):
+                # The return type is a type variable. If it has values, we can't easily restrict
+                # type inference to conform to the valid values. If it's unrestricted, we could
+                # infer a too general type for the type variable if we use context, and this could
+                # result in confusing and spurious type errors elsewhere.
+                #
+                # Give up and just use function arguments for type inference. As an exception,
+                # if the context is a generic instance type, actually use it as context, as
+                # this *seems* to usually be the reasonable thing to do.
+                #
+                # See also github issues #462 and #360.
                 ret_type = NoneTyp()
-        args = infer_type_arguments(callable.type_var_ids(), ret_type,
-                                    erased_ctx, self.chk.basic_types())
+        args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substite non-None and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
@@ -332,8 +341,7 @@ class ExpressionChecker:
                     pass1_args.append(arg)
 
             inferred_args = infer_function_type_arguments(
-                callee_type, pass1_args, arg_kinds, formal_to_actual,
-                self.chk.basic_types())  # type: List[Type]
+                callee_type, pass1_args, arg_kinds, formal_to_actual)  # type: List[Type]
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
@@ -357,12 +365,12 @@ class ExpressionChecker:
             context: Context) -> Tuple[Callable, List[Type]]:
         """Perform second pass of generic function type argument inference.
 
-        The second pass is needed for arguments with types such as func<s(t)>,
-        where both s and t are type variables, when the actual argument is a
-        lambda with inferred types.  The idea is to infer the type variable t
+        The second pass is needed for arguments with types such as Function[[T], S],
+        where both T and S are type variables, when the actual argument is a
+        lambda with inferred types.  The idea is to infer the type variable T
         in the first pass (based on the types of other arguments).  This lets
         us infer the argument and return type of the lambda expression and
-        thus also the type variable s in this second pass.
+        thus also the type variable S in this second pass.
 
         Return (the callee with type vars applied, inferred actual arg types).
         """
@@ -379,8 +387,7 @@ class ExpressionChecker:
             callee_type, args, arg_kinds, formal_to_actual)
 
         inferred_args = infer_function_type_arguments(
-            callee_type, arg_types, arg_kinds, formal_to_actual,
-            self.chk.basic_types())
+            callee_type, arg_types, arg_kinds, formal_to_actual)
 
         return callee_type, inferred_args
 
@@ -595,15 +602,17 @@ class ExpressionChecker:
         # Fixed function arguments.
         func_fixed = callee.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
-            if not is_subtype(self.erase(arg_types[i]),
-                              self.erase(
-                                  callee.arg_types[i])):
+            # Use is_more_precise rather than is_subtype because it ignores ducktype
+            # declarations. This is important since ducktype declarations are ignored
+            # when performing runtime type checking.
+            if not is_compatible_overload_arg(arg_types[i], callee.arg_types[i]):
                 return False
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
-                if not is_subtype(self.erase(arg_types[i]),
-                                  self.erase(callee.arg_types[func_fixed])):
+                # See above for why we use is_more_precise.
+                if not is_compatible_overload_arg(arg_types[i],
+                                                  callee.arg_types[func_fixed]):
                     return False
         return True
 
@@ -633,61 +642,8 @@ class ExpressionChecker:
 
     def apply_generic_arguments(self, callable: Callable, types: List[Type],
                                 context: Context) -> Type:
-        """Apply generic type arguments to a callable type.
-
-        For example, applying [int] to 'def [T] (T) -> T' results in
-        'def [-1:int] (int) -> int'. Here '[-1:int]' is an implicit bound type
-        variable.
-
-        Note that each type can be None; in this case, it will not be applied.
-        """
-        tvars = callable.variables
-        if len(tvars) != len(types):
-            self.msg.incompatible_type_application(len(tvars), len(types),
-                                                   context)
-            return AnyType()
-
-        # Check that inferred type variable values are compatible with allowed
-        # values.  Also, promote subtype values to allowed values.
-        types = types[:]
-        for i, type in enumerate(types):
-            values = callable.variables[i].values
-            if values and type:
-                if isinstance(type, AnyType):
-                    continue
-                for value in values:
-                    if is_subtype(type, value):
-                        types[i] = value
-                        break
-                else:
-                    self.msg.incompatible_typevar_value(
-                        callable, i + 1, type, context)
-
-        # Create a map from type variable id to target type.
-        id_to_type = {}  # type: Dict[int, Type]
-        for i, tv in enumerate(tvars):
-            if types[i]:
-                id_to_type[tv.id] = types[i]
-
-        # Apply arguments to argument types.
-        arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
-
-        bound_vars = [(tv.id, id_to_type[tv.id])
-                      for tv in tvars
-                      if tv.id in id_to_type]
-
-        # The callable may retain some type vars if only some were applied.
-        remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
-
-        return Callable(arg_types,
-                        callable.arg_kinds,
-                        callable.arg_names,
-                        expand_type(callable.ret_type, id_to_type),
-                        callable.is_type_obj(),
-                        callable.name,
-                        remaining_tvars,
-                        callable.bound_vars + bound_vars,
-                        callable.line, callable.repr)
+        """Simple wrapper around mypy.applytype.apply_generic_arguments."""
+        return applytype.apply_generic_arguments(callable, types, self.msg, context)
 
     def apply_generic_arguments2(self, overload: Overloaded, types: List[Type],
                                  context: Context) -> Type:
@@ -716,7 +672,7 @@ class ExpressionChecker:
             # This is a reference to a non-module attribute.
             return analyse_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False,
-                                         self.chk.basic_types(), self.msg)
+                                         self.named_type, self.msg)
 
     def analyse_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -725,7 +681,7 @@ class ExpressionChecker:
         """
         # TODO remove; no private definitions in mypy
         return analyse_member_access(member, base_type, context, False, False,
-                                     self.chk.basic_types(), self.msg)
+                                     self.named_type, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -754,6 +710,8 @@ class ExpressionChecker:
         if e.op == '*' and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
+        if e.op == '%' and isinstance(e.left, StrExpr):
+            return self.strfrm_checker.check_str_interpolation(cast(StrExpr, e.left), e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:
@@ -764,6 +722,12 @@ class ExpressionChecker:
             return result
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
+
+    def strip_parens(self, node: Node) -> Node:
+        if isinstance(node, ParenExpr):
+            return self.strip_parens(node.expr)
+        else:
+            return node
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
@@ -789,8 +753,11 @@ class ExpressionChecker:
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
                     itertype = self.chk.analyse_iterable_item_type(right)
-                    method_type = Callable([left_type], [nodes.ARG_POS], [None],
-                                           self.chk.bool_type(), False)
+                    method_type = Callable([left_type],
+                                           [nodes.ARG_POS],
+                                           [None],
+                                           self.chk.bool_type(),
+                                           self.named_type('builtins.function'))
                     sub_result = self.chk.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
@@ -817,7 +784,7 @@ class ExpressionChecker:
             else:
                 # TODO: check on void needed?
                 self.check_not_void(sub_result, e)
-                result = join.join_types(result, sub_result, self.chk.basic_types())
+                result = join.join_types(result, sub_result)
 
         return result
 
@@ -835,7 +802,7 @@ class ExpressionChecker:
         Return tuple (result type, inferred operator method type).
         """
         method_type = analyse_member_access(method, base_type, context, False, False,
-                                            self.chk.basic_types(), local_errors)
+                                            self.named_type, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -911,8 +878,7 @@ class ExpressionChecker:
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
 
-        return join.join_types(left_type, right_type,
-                               self.chk.basic_types())
+        return join.join_types(left_type, right_type)
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
@@ -920,7 +886,7 @@ class ExpressionChecker:
         Type inference is special-cased for this common construct.
         """
         right_type = self.accept(e.right)
-        if is_subtype(right_type, self.chk.named_type('builtins.int')):
+        if is_subtype(right_type, self.named_type('builtins.int')):
             # Special case: [...] * <int value>. Use the type context of the
             # OpExpr, since the multiplication does not affect the type.
             left_type = self.accept(e.left, context=self.chk.type_context[-1])
@@ -971,7 +937,7 @@ class ExpressionChecker:
         if isinstance(left_type, TupleType):
             # Special case for tuples. They support indexing only by integer
             # literals.
-            index = self.unwrap(e.index)
+            index = self.strip_parens(e.index)
             ok = False
             if isinstance(index, IntExpr):
                 n = index.value
@@ -1041,15 +1007,15 @@ class ExpressionChecker:
     def check_list_or_set_expr(self, items: List[Node], fullname: str,
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
-        tv = TypeVar('T', -1, [])
+        tv = TypeVar('T', -1, [], self.chk.object_type())
         constructor = Callable([tv],
                                [nodes.ARG_STAR],
                                [None],
                                self.chk.named_generic_type(fullname,
                                                            [tv]),
-                               False,
+                               self.named_type('builtins.function'),
                                tag,
-                               [TypeVarDef('T', -1, None)])
+                               [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -1073,25 +1039,25 @@ class ExpressionChecker:
                 tt = self.accept(item, ctx.items[i])
             self.check_not_void(tt, e)
             items.append(tt)
-        return TupleType(items)
+        return TupleType(items, self.named_type('builtins.tuple'))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
-        tv1 = TypeVar('KT', -1, [])
-        tv2 = TypeVar('VT', -2, [])
+        tv1 = TypeVar('KT', -1, [], self.chk.object_type())
+        tv2 = TypeVar('VT', -2, [], self.chk.object_type())
         constructor = Undefined(Callable)
         # The callable type represents a function like this:
         #
         #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-        constructor = Callable([TupleType([tv1, tv2])],
+        constructor = Callable([TupleType([tv1, tv2], self.named_type('builtins.tuple'))],
                                [nodes.ARG_STAR],
                                [None],
                                self.chk.named_generic_type('builtins.dict',
                                                            [tv1, tv2]),
-                               False,
+                               self.named_type('builtins.function'),
                                '<list>',
-                               [TypeVarDef('KT', -1, None),
-                                TypeVarDef('VT', -2, None)])
+                               [TypeVarDef('KT', -1, None, self.chk.object_type()),
+                                TypeVarDef('VT', -2, None, self.chk.object_type())])
         # Synthesize function arguments.
         args = List[Node]()
         for key, value in e.items:
@@ -1108,7 +1074,7 @@ class ExpressionChecker:
             ret_type = e.expr().accept(self.chk)
             if not e.args:
                 # Form 'lambda: e'; just use the inferred return type.
-                return Callable([], [], [], ret_type, is_type_obj=False)
+                return Callable([], [], [], ret_type, self.named_type('builtins.function'))
             else:
                 # TODO: Consider reporting an error. However, this is fine if
                 # we are just doing the first pass in contextual type
@@ -1157,7 +1123,7 @@ class ExpressionChecker:
             # TODO fix multiple inheritance etc
             return analyse_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
-                                         self.chk.basic_types(), self.msg,
+                                         self.named_type, self.msg,
                                          e.info.mro[1])
         else:
             # Invalid super. This has been reported by the semantic analyser.
@@ -1192,21 +1158,21 @@ class ExpressionChecker:
         for index, sequence, conditions in zip(gen.indices, gen.sequences,
                                                gen.condlists):
             sequence_type = self.chk.analyse_iterable_item_type(sequence)
-            self.chk.analyse_index_variables(index, False, sequence_type, gen)
+            self.chk.analyse_index_variables(index, sequence_type, gen)
             for condition in conditions:
                 self.accept(condition)
         self.chk.binder.pop_frame()
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        tv = TypeVar('T', -1, [])
+        tv = TypeVar('T', -1, [], self.chk.object_type())
         constructor = Callable([tv],
                                [nodes.ARG_POS],
                                [None],
                                self.chk.named_generic_type(type_name, [tv]),
-                               False,
+                               self.chk.named_type('builtins.function'),
                                id_for_messages,
-                               [TypeVarDef('T', -1, None)])
+                               [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
@@ -1218,7 +1184,7 @@ class ExpressionChecker:
         self.check_not_void(cond_type, e)
         if_type = self.accept(e.if_expr)
         else_type = self.accept(e.else_expr, context=if_type)
-        return join.join_types(if_type, else_type, self.chk.basic_types())
+        return join.join_types(if_type, else_type)
 
     #
     # Helpers
@@ -1275,23 +1241,12 @@ class ExpressionChecker:
         else:
             return False
 
-    def unwrap(self, e: Node) -> Node:
-        """Unwrap parentheses from an expression node."""
-        if isinstance(e, ParenExpr):
-            return self.unwrap(e.expr)
-        else:
-            return e
-
     def unwrap_list(self, a: List[Node]) -> List[Node]:
         """Unwrap parentheses from a list of expression nodes."""
         r = List[Node]()
         for n in a:
-            r.append(self.unwrap(n))
+            r.append(self.strip_parens(n))
         return r
-
-    def erase(self, type: Type) -> Type:
-        """Replace type variable types in type with Any."""
-        return erasetype.erase_type(type, self.chk.basic_types())
 
 
 def is_valid_argc(nargs: int, is_var_arg: bool, callable: Callable) -> bool:
@@ -1399,7 +1354,7 @@ def replace_callable_return_type(c: Callable, new_ret_type: Type) -> Callable:
                     c.arg_kinds,
                     c.arg_names,
                     new_ret_type,
-                    c.is_type_obj(),
+                    c.fallback,
                     c.name,
                     c.variables,
                     c.bound_vars,
@@ -1440,3 +1395,30 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
+
+
+def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
+    if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
+            isinstance(formal, AnyType) or isinstance(formal, TypeVar) or
+            isinstance(formal, Callable)):
+        # These could match anything at runtime.
+        return True
+    if isinstance(actual, UnionType):
+        return any(is_compatible_overload_arg(item, formal)
+                   for item in actual.items)
+    if isinstance(formal, UnionType):
+        return any(is_compatible_overload_arg(actual, item)
+                   for item in formal.items)
+    if isinstance(formal, Instance):
+        if isinstance(actual, Callable):
+            actual = actual.fallback
+        if isinstance(actual, Overloaded):
+            actual = actual.items()[0].fallback
+        if isinstance(actual, TupleType):
+            actual = actual.fallback
+        if isinstance(actual, Instance):
+            return formal.type in actual.type.mro
+        else:
+            return False
+    # Fall back to a conservative equality check for the remaining kinds of type.
+    return is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal))

@@ -123,7 +123,7 @@ t = typevar('t')
 ab, ac, b, c = Undefined, Undefined, Undefined, Undefined # type: (A[B], A[C], B, C)
 b = f(ab)
 c = f(ac)
-b = f(ac) # E: Argument 1 to "f" has incompatible type A[C]; expected A[B]
+b = f(ac) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
 b = f(b)
 c = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
 @overload
@@ -476,3 +476,23 @@ main: In class "B":
 main, line 12: Signature of "f" incompatible with supertype "A"
 main: In class "C":
 main, line 17: Signature of "f" incompatible with supertype "A"
+
+[case testOverloadingAndDucktypeCompatibility]
+from typing import overload, ducktype, builtinclass
+
+@builtinclass
+class A: pass
+
+@builtinclass
+@ducktype(A)
+class B: pass
+
+@overload
+def f(n: B) -> B:
+    return n
+@overload
+def f(n: A) -> A:
+    return n
+
+f(B()) + 'x'  # E: Unsupported left operand type for + ("B")
+f(A()) + 'x'  # E: Unsupported left operand type for + ("A")

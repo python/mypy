@@ -51,6 +51,8 @@ class TypeParser:
     def parse_type(self) -> Type:
         """Parse a type."""
         t = self.current_token()
+        if t.string == '(':
+            return self.parse_parens()
         if isinstance(t, Name):
             return self.parse_named_type()
         elif t.string == '[':
@@ -68,20 +70,31 @@ class TypeParser:
         else:
             self.parse_error()
 
+    def parse_parens(self) -> Type:
+        self.expect('(')
+        types = self.parse_types()
+        self.expect(')')
+        return types
+
     def parse_types(self) -> Type:
-        parens = False
-        if self.current_token_str() == '(':
-            self.skip()
-            parens = True
+        """ Parse either a single type or a comma separated
+        list of types as a tuple type. In the latter case, a
+        trailing comma is needed when the list contains only
+        a single type (and optional otherwise).
+
+        int   ->   int
+        int,  ->   TupleType[int]
+        int, int, int  ->  TupleType[int, int, int]
+        """
         type = self.parse_type()
         if self.current_token_str() == ',':
             items = [type]
             while self.current_token_str() == ',':
                 self.skip()
+                if self.current_token_str() == ')':
+                    break
                 items.append(self.parse_type())
-            type = TupleType(items)
-        if parens:
-            self.expect(')')
+            type = TupleType(items, None)
         return type
 
     def parse_type_list(self) -> TypeList:
@@ -177,7 +190,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
 
 
 def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
-    """Parse signature of form (...) -> ...
+    """Parse signature of form (argtype, ...) -> ...
 
     Return tuple (signature type, token index).
     """
@@ -211,4 +224,4 @@ def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
     return Callable(arg_types,
                     arg_kinds,
                     [None] * len(arg_types),
-                    ret_type, False), i
+                    ret_type, None), i

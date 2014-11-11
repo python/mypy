@@ -24,6 +24,7 @@ echo tests.py
 for t in mypy.test.testpythoneval; do
     echo $t
     "$PYTHON" "$DRIVER" -m $t || fail
+    "$PYTHON" -m $t || fail
 done
 
 # Stub checks

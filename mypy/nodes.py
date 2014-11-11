@@ -15,7 +15,7 @@ from mypy.util import dump_tagged, short_type
 
 class Context(metaclass=ABCMeta):
     """Base type for objects that are valid as error message locations."""
-    #@abstractmethod
+    @abstractmethod
     def get_line(self) -> int: pass
 
 
@@ -184,7 +184,8 @@ class ImportAll(ImportBase):
 class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
 
-    # Type signature (Callable or Overloaded)
+    # Type signature. This is usually Callable or Overloaded, but it can be something else for
+    # decorated functions/
     type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
@@ -245,7 +246,7 @@ class FuncItem(FuncBase):
 
     def __init__(self, args: List['Var'], arg_kinds: List[int],
                  init: List[Node], body: 'Block',
-                 typ: 'mypy.types.Type' = None) -> None:
+                 typ: 'mypy.types.FunctionLike' = None) -> None:
         self.args = args
         self.arg_kinds = arg_kinds
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
@@ -314,7 +315,7 @@ class FuncDef(FuncItem):
                  arg_kinds: List[int],   # Arguments kinds (nodes.ARG_*)
                  init: List[Node],       # Initializers (each may be None)
                  body: 'Block',
-                 typ: 'mypy.types.Type' = None) -> None:
+                 typ: 'mypy.types.FunctionLike' = None) -> None:
         super().__init__(args, arg_kinds, init, body, typ)
         self._name = name
 
@@ -568,32 +569,21 @@ class WhileStmt(Node):
 
 class ForStmt(Node):
     # Index variables
-    index = Undefined(List['NameExpr'])
-    # Index variable types (each may be None)
-    types = Undefined(List['mypy.types.Type'])
+    index = Undefined(List['Node'])
     # Expression to iterate
     expr = Undefined(Node)
     body = Undefined(Block)
     else_body = Undefined(Block)
 
-    def __init__(self, index: List['NameExpr'], expr: Node, body: Block,
-                 else_body: Block,
-                 types: List['mypy.types.Type'] = None) -> None:
+    def __init__(self, index: List['Node'], expr: Node, body: Block,
+                 else_body: Block) -> None:
         self.index = index
         self.expr = expr
         self.body = body
         self.else_body = else_body
-        self.types = types
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
-
-    def is_annotated(self) -> bool:
-        ann = False
-        for t in self.types:
-            if t is not None:
-                ann = True
-        return ann
 
 
 class ReturnStmt(Node):
@@ -638,10 +628,10 @@ class YieldFromStmt(Node):
 
 class DelStmt(Node):
     expr = Undefined(Node)
-    
+
     def __init__(self, expr: Node) -> None:
         self.expr = expr
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
@@ -1037,7 +1027,7 @@ reverse_op_method_set = set(reverse_op_methods.values())
 
 
 class OpExpr(Node):
-    """Binary operation (other than . or [] or comparison operators, 
+    """Binary operation (other than . or [] or comparison operators,
     which have specific nodes)."""
 
     op = ''
@@ -1070,13 +1060,13 @@ class ComparisonExpr(Node):
         self.operands = operands
         self.method_types = []
         self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = ( ('Comparison',) + tuple(operators) + 
+        self.literal_hash = ( ('Comparison',) + tuple(operators) +
                                tuple(o.literal_hash for o in operands) )
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
-    
-    
+
+
 class SliceExpr(Node):
     """Slice expression (e.g. 'x:y', 'x:', '::2' or ':').
 
@@ -1206,17 +1196,14 @@ class GeneratorExpr(Node):
     left_expr = Undefined(Node)
     sequences_expr = Undefined(List[Node])
     condlists = Undefined(List[List[Node]])
-    indices = Undefined(List[List[NameExpr]])
-    types = Undefined(List[List['mypy.types.Type']])
+    indices = Undefined(List[List[Node]])
 
-    def __init__(self, left_expr: Node, indices: List[List[NameExpr]],
-                 types: List[List['mypy.types.Type']], sequences: List[Node],
-                 condlists: List[List[Node]]) -> None:
+    def __init__(self, left_expr: Node, indices: List[List[Node]],
+                 sequences: List[Node], condlists: List[List[Node]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
-        self.types = types
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
@@ -1329,59 +1316,6 @@ class DisjointclassExpr(Node):
         return visitor.visit_disjointclass_expr(self)
 
 
-class CoerceExpr(Node):
-    """Implicit coercion expression.
-
-    This is used only when compiling/transforming.  These are inserted
-    after type checking.
-    """
-
-    expr = Undefined(Node)
-    target_type = Undefined('mypy.types.Type')
-    source_type = Undefined('mypy.types.Type')
-    is_wrapper_class = False
-
-    def __init__(self, expr: Node, target_type: 'mypy.types.Type',
-                 source_type: 'mypy.types.Type',
-                 is_wrapper_class: bool) -> None:
-        self.expr = expr
-        self.target_type = target_type
-        self.source_type = source_type
-        self.is_wrapper_class = is_wrapper_class
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_coerce_expr(self)
-
-
-class JavaCast(Node):
-    # TODO obsolete; remove
-    expr = Undefined(Node)
-    target = Undefined('mypy.types.Type')
-
-    def __init__(self, expr: Node, target: 'mypy.types.Type') -> None:
-        self.expr = expr
-        self.target = target
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_java_cast(self)
-
-
-class TypeExpr(Node):
-    """Expression that evaluates to a runtime representation of a type.
-
-    This is used only for runtime type checking. This node is always generated
-    only after type checking.
-    """
-
-    type = Undefined('mypy.types.Type')
-
-    def __init__(self, typ: 'mypy.types.Type') -> None:
-        self.type = typ
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_type_expr(self)
-
-
 class TempNode(Node):
     """Temporary dummy node used during type checking.
 
@@ -1406,14 +1340,14 @@ class TypeInfo(SymbolNode):
     the class.
     """
 
-    _fullname = None  # type: str      # Fully qualified name
-    defn = Undefined(ClassDef)         # Corresponding ClassDef
+    _fullname = None  # type: str          # Fully qualified name
+    defn = Undefined(ClassDef)             # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
-    # value always to refers to self.
+    # value always to refers to this class.
     mro = Undefined(List['TypeInfo'])
-    subtypes = Undefined(Set['TypeInfo'])  # Direct subclasses
+    subtypes = Undefined(Set['TypeInfo'])  # Direct subclasses encountered so far
     names = Undefined('SymbolTable')       # Names defined directly in this type
-    is_abstract = False       # Does the class have any abstract attributes?
+    is_abstract = False                    # Does the class have any abstract attributes?
     abstract_attributes = Undefined(List[str])
     # All classes in this build unit that are disjoint with this class.
     disjoint_classes = Undefined(List['TypeInfo'])
@@ -1646,13 +1580,13 @@ def clean_up(s: str) -> str:
     return re.sub('.*::', '', s)
 
 
-def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
+def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     if func.type:
+        assert isinstance(func.type, mypy.types.FunctionLike)
         return cast(mypy.types.FunctionLike, func.type)
     else:
         # Implicit type signature with dynamic types.
-        # Overloaded functions always have a signature, so func must be an
-        # ordinary function.
+        # Overloaded functions always have a signature, so func must be an ordinary function.
         fdef = cast(FuncDef, func)
         name = func.name()
         if name:
@@ -1664,21 +1598,20 @@ def function_type(func: FuncBase) -> 'mypy.types.FunctionLike':
                                    fdef.arg_kinds,
                                    names,
                                    mypy.types.AnyType(),
-                                   False,
+                                   fallback,
                                    name)
 
 
 @overload
-def method_type(func: FuncBase) -> 'mypy.types.FunctionLike':
+def method_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     """Return the signature of a method (omit self)."""
-    return method_type(function_type(func))
+    return method_type(function_type(func, fallback))
 
 
 @overload
 def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
     if isinstance(sig, mypy.types.Callable):
-        csig = cast(mypy.types.Callable, sig)
-        return method_callable(csig)
+        return method_callable(sig)
     else:
         osig = cast(mypy.types.Overloaded, sig)
         items = List[mypy.types.Callable]()
@@ -1692,7 +1625,7 @@ def method_callable(c: 'mypy.types.Callable') -> 'mypy.types.Callable':
                                c.arg_kinds[1:],
                                c.arg_names[1:],
                                c.ret_type,
-                               c.is_type_obj(),
+                               c.fallback,
                                c.name,
                                c.variables,
                                c.bound_vars)

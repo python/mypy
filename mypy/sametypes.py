@@ -64,9 +64,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_type_var(self, left: TypeVar) -> bool:
         return (isinstance(self.right, TypeVar) and
-                left.id == (cast(TypeVar, self.right)).id and
-                left.is_wrapper_var ==
-                cast(TypeVar, self.right).is_wrapper_var)
+                left.id == (cast(TypeVar, self.right)).id)
 
     def visit_callable(self, left: Callable) -> bool:
         # FIX generics

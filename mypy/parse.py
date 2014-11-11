@@ -6,7 +6,7 @@ representing a source file. Performs only minimal semantic checks.
 
 import re
 
-from typing import Undefined, List, Tuple, Any, Set, cast
+from typing import Undefined, List, Tuple, Any, Set, cast, Union
 
 from mypy import lex
 from mypy.lex import (
@@ -279,6 +279,8 @@ class Parser:
                 if self.current_str() == '(':
                     lparen = self.skip()
                     while True:
+                        if self.current_str() == ')':
+                            break
                         if self.current_str() == 'metaclass':
                             metaclass = self.parse_metaclass()
                             break
@@ -358,7 +360,7 @@ class Parser:
                                    kinds,
                                    [arg.name() for arg in args],
                                    sig.ret_type,
-                                   False)
+                                   None)
                 else:
                     self.check_argument_kinds(kinds, sig.arg_kinds,
                                               def_tok.line)
@@ -366,7 +368,7 @@ class Parser:
                                    kinds,
                                    [arg.name() for arg in args],
                                    sig.ret_type,
-                                   False)
+                                   None)
 
             # If there was a serious error, we really cannot build a parse tree
             # node.
@@ -401,7 +403,7 @@ class Parser:
                     "signature".format(token), line)
 
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
-                                             List[int], Type, bool,
+                                             List[int], Callable, bool,
                                              Tuple[Token, Any]]:
         """Parse function header (a name followed by arguments)
 
@@ -433,7 +435,7 @@ class Parser:
 
         return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
 
-    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Type,
+    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Callable,
                                   noderepr.FuncArgsRepr]:
         """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
@@ -467,7 +469,7 @@ class Parser:
 
     def build_func_annotation(self, ret_type: Type, arg_types: List[Type],
                               kinds: List[int], names: List[str],
-                              line: int, is_default_ret: bool = False) -> Type:
+                              line: int, is_default_ret: bool = False) -> Callable:
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
                 or arg_types != [None] * len(arg_types)):
@@ -596,7 +598,7 @@ class Parser:
                 arg_types[i] = AnyType()
         if ret_type is None:
             ret_type = AnyType()
-        return Callable(arg_types, kinds, names, ret_type, False, None,
+        return Callable(arg_types, kinds, names, ret_type, None, None,
                         None, [], line, None)
 
     # Parsing statements
@@ -772,7 +774,7 @@ class Parser:
         self.set_repr(node, noderepr.SimpleStmtRepr(assert_tok, br))
         return node
 
-    def parse_yield_stmt(self) -> YieldStmt:
+    def parse_yield_stmt(self) -> Union[YieldStmt, YieldFromStmt]:
         yield_tok = self.expect('yield')
         expr = None  # type: Node
         node = YieldStmt(expr)
@@ -780,7 +782,10 @@ class Parser:
             if isinstance(self.current(), Keyword) and self.current_str() == "from":  # Not go if it's not from
                 from_tok = self.expect("from")
                 expr = self.parse_expression()  # Here comes when yield from is not assigned
-                node = YieldFromStmt(expr)
+                node_from = YieldFromStmt(expr)
+                br = self.expect_break()
+                self.set_repr(node_from, noderepr.SimpleStmtRepr(yield_tok, br))
+                return node_from  # return here, we've gotted the type
             else:
                 expr = self.parse_expression()
                 node = YieldStmt(expr)
@@ -788,7 +793,7 @@ class Parser:
         self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
         return node
 
-    def parse_yield_from_expr(self) -> CallExpr: # Maybe the name should be yield_expr
+    def parse_yield_from_expr(self) -> YieldFromExpr:
         y_tok = self.expect("yield")
         expr = None # type: Node
         node = YieldFromExpr(expr)
@@ -874,7 +879,7 @@ class Parser:
 
     def parse_for_stmt(self) -> ForStmt:
         for_tok = self.expect('for')
-        index, types, commas = self.parse_for_index_variables()
+        index, commas = self.parse_for_index_variables()
         in_tok = self.expect('in')
         expr = self.parse_expression()
 
@@ -887,16 +892,14 @@ class Parser:
             else_body = None
             else_tok = none
 
-        node = ForStmt(index, expr, body, else_body, types)
+        node = ForStmt(index, expr, body, else_body)
         self.set_repr(node, noderepr.ForStmtRepr(for_tok, commas, in_tok,
                                                  else_tok))
         return node
 
-    def parse_for_index_variables(self) -> Tuple[List[NameExpr], List[Type],
-                                                 List[Token]]:
+    def parse_for_index_variables(self) -> Tuple[List[Node], List[Token]]:
         # Parse index variables of a 'for' statement.
-        index = List[NameExpr]()
-        types = List[Type]()
+        index = List[Node]()
         commas = List[Token]()
 
         is_paren = self.current_str() == '('
@@ -904,9 +907,8 @@ class Parser:
             self.skip()
 
         while True:
-            v = self.parse_name_expr()
+            v = self.parse_expression(precedence['in'])  # prevent parsing of for's 'in'
             index.append(v)
-            types.append(None)
             if self.current_str() != ',':
                 commas.append(none)
                 break
@@ -915,7 +917,7 @@ class Parser:
         if is_paren:
             self.expect(')')
 
-        return index, types, commas
+        return index, commas
 
     def parse_if_stmt(self) -> IfStmt:
         is_error = False
@@ -1202,9 +1204,8 @@ class Parser:
             return expr
 
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
-        indices = List[List[NameExpr]]()
+        indices = List[List[Node]]()
         sequences = List[Node]()
-        types = List[List[Type]]()
         for_toks = List[Token]()
         in_toks = List[Token]()
         if_toklists = List[List[Token]]()
@@ -1213,9 +1214,8 @@ class Parser:
             if_toks = List[Token]()
             conds = List[Node]()
             for_toks.append(self.expect('for'))
-            index, type, commas = self.parse_for_index_variables()
+            index, commas = self.parse_for_index_variables()
             indices.append(index)
-            types.append(type)
             in_toks.append(self.expect('in'))
             sequence = self.parse_expression_list()
             sequences.append(sequence)
@@ -1225,7 +1225,7 @@ class Parser:
             if_toklists.append(if_toks)
             condlists.append(conds)
 
-        gen = GeneratorExpr(left_expr, indices, types, sequences, condlists)
+        gen = GeneratorExpr(left_expr, indices, sequences, condlists)
         gen.set_line(for_toks[0])
         self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, commas, in_toks,
                                                       if_toklists))
@@ -1516,7 +1516,7 @@ class Parser:
 
             operators_str.append(op_str)
             operators.append( (op, op2) )
-            operand = self.parse_expression(prec) 
+            operand = self.parse_expression(prec)
             operands.append(operand)
 
             # Continue if next token is a comparison operator
