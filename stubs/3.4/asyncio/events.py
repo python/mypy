@@ -61,36 +61,36 @@ class AbstractEventLoop(metaclass=ABCMeta):
     # Network I/O methods returning Futures.
     @abstractmethod
     def getaddrinfo(self, host: str, port: int, *,
-        family: int=0, type: int=0, proto: int=0, flags: int=0) -> List[Tuple[int, int, int, str, tuple]]: pass
+        family: int = 0, type: int = 0, proto: int = 0, flags: int = 0) -> List[Tuple[int, int, int, str, tuple]]: pass
     @abstractmethod
-    def getnameinfo(self, sockaddr: tuple, flags: int=0) -> Tuple[str, int]: pass
+    def getnameinfo(self, sockaddr: tuple, flags: int = 0) -> Tuple[str, int]: pass
     @abstractmethod
-    def create_connection(self, protocol_factory: Any, host: str=None, port: int=None, *,
-                          ssl: Any=None, family: int=0, proto: int=0, flags: int=0, sock: Any=None,
-                          local_addr: str=None, server_hostname: str=None) -> tuple: pass
+    def create_connection(self, protocol_factory: Any, host: str = None, port: int = None, *,
+                          ssl: Any = None, family: int = 0, proto: int = 0, flags: int = 0, sock: Any = None,
+                          local_addr: str = None, server_hostname: str = None) -> tuple: pass
                           # ?? check Any
                           # return (Transport, Protocol)
     @abstractmethod
-    def create_server(self, protocol_factory: Any, host: str=None, port: int=None, *,
-                      family: int=AF_UNSPEC, flags: int=AI_PASSIVE,
-                      sock: Any=None, backlog: int=100, ssl: Any=None, reuse_address: Any=None) -> Any: pass
+    def create_server(self, protocol_factory: Any, host: str = None, port: int = None, *,
+                      family: int = AF_UNSPEC, flags: int = AI_PASSIVE,
+                      sock: Any = None, backlog: int = 100, ssl: Any = None, reuse_address: Any = None) -> Any: pass
                     # ?? check Any
                     # return Server
     @abstractmethod
     def create_unix_connection(self, protocol_factory: Any, path: str, *,
-                               ssl: Any=None, sock: Any=None,
-                               server_hostname: str=None) -> tuple: pass
+                               ssl: Any = None, sock: Any = None,
+                               server_hostname: str = None) -> tuple: pass
                     # ?? check Any
                     # return tuple(Transport, Protocol)
     @abstractmethod
     def create_unix_server(self, protocol_factory: Any, path: str, *,
-                           sock: Any=None, backlog: int=100, ssl: Any=None) -> Any: pass
+                           sock: Any = None, backlog: int = 100, ssl: Any = None) -> Any: pass
                     # ?? check Any
                     # return Server
     @abstractmethod
     def create_datagram_endpoint(self, protocol_factory: Any,
-                                 local_addr: str=None, remote_addr: str=None, *,
-                                 family: int=0, proto: int=0, flags: int=0) -> tuple: pass
+                                 local_addr: str = None, remote_addr: str = None, *,
+                                 family: int = 0, proto: int = 0, flags: int = 0) -> tuple: pass
                     #?? check Any
                     # return (Transport, Protocol)
     # Pipes and subprocesses.
@@ -103,14 +103,14 @@ class AbstractEventLoop(metaclass=ABCMeta):
                     #?? check Any
                     # return (Transport, Protocol)
     @abstractmethod
-    def subprocess_shell(self, protocol_factory: Any, cmd: Union[bytes,str], *, stdin: Any=PIPE,
-                         stdout: Any=PIPE, stderr: Any=PIPE,
+    def subprocess_shell(self, protocol_factory: Any, cmd: Union[bytes, str], *, stdin: Any = PIPE,
+                         stdout: Any = PIPE, stderr: Any = PIPE,
                          **kwargs: Dict[str, Any]) -> tuple: pass
                     #?? check Any
                     # return (Transport, Protocol)
     @abstractmethod
-    def subprocess_exec(self, protocol_factory: Any, *args: List[Any], stdin: Any=PIPE,
-                        stdout: Any=PIPE, stderr: Any=PIPE,
+    def subprocess_exec(self, protocol_factory: Any, *args: List[Any], stdin: Any = PIPE,
+                        stdout: Any = PIPE, stderr: Any = PIPE,
                         **kwargs: Dict[str, Any]) -> tuple: pass
                     #?? check Any
                     # return (Transport, Protocol)

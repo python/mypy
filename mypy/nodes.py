@@ -936,6 +936,7 @@ class YieldFromExpr(Node):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_from_expr(self)
 
+
 class IndexExpr(Node):
     """Index expression x[y].
 

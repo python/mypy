@@ -637,7 +637,7 @@ class MessageBuilder:
         self.fail('Signatures of "{}" and "{}" are incompatible'.format(
             method, other_method), context)
 
-    def yield_from_not_valid_applied(self, expr: Type, context: Context) -> Type:
+    def yield_from_invalid_operand_type(self, expr: Type, context: Context) -> Type:
         text = self.format(expr) if self.format(expr) != 'object' else expr
         self.fail('"yield from" can\'t be applied to {}'.format(text), context)
         return AnyType()

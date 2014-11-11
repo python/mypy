@@ -1210,7 +1210,7 @@ class TypeChecker(NodeVisitor[Type]):
                             self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                     else:
                         if self.function_stack[-1].is_coroutine: # Something similar will be needed to mix return and yield
-                            #If the function is a coroutine, wrap the return type in a Future
+                            # If the function is a coroutine, wrap the return type in a Future
                             typ = self.wrap_generic_type(typ, self.return_types[-1], 'asyncio.futures.Future', s)
                         self.check_subtype(
                             typ, self.return_types[-1], s,
@@ -1225,20 +1225,21 @@ class TypeChecker(NodeVisitor[Type]):
                             self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
     def wrap_generic_type(self, typ: Type, rtyp: Type, check_type: str, context: Context) -> Type:
-        n_diff = self.count_concatenated_types(rtyp, check_type) - self.count_concatenated_types(typ, check_type)
-        if n_diff >= 1:
+        n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ, check_type)
+        if n_diff == 1:
             return self.named_generic_type(check_type, [typ])
-        elif n_diff == 0:
+        elif n_diff == 0 or n_diff > 1:
             self.fail(messages.INCOMPATIBLE_RETURN_VALUE_TYPE
                 + ": expected {}, got {}".format(rtyp, typ), context)
             return typ
         return typ
 
-    def count_concatenated_types(self, typ: Type, check_type: str) -> int:
+    def count_nested_types(self, typ: Type, check_type: str) -> int:
         c = 0
         while is_subtype(typ, self.named_type(check_type)):
             c += 1
-            if hasattr(typ, 'args') and typ.args:
+            typ = map_instance_to_supertype(typ, self.lookup_typeinfo(check_type))
+            if typ.args:
                 typ = typ.args[0]
             else:
                 return c
@@ -1268,7 +1269,7 @@ class TypeChecker(NodeVisitor[Type]):
         return_type = self.return_types[-1]
         type_func = self.accept(s.expr, return_type)
         if isinstance(type_func, Instance):
-            if hasattr(type_func, 'type') and hasattr(type_func.type, 'fullname') and type_func.type.fullname() == 'asyncio.futures.Future':
+            if type_func.type.fullname() == 'asyncio.futures.Future':
                 # if is a Future, in stmt don't need to do nothing
                 # because the type Future[Some] jus matters to the main loop
                 # that python executes, in statement we shouldn't get the Future,
@@ -1277,15 +1278,15 @@ class TypeChecker(NodeVisitor[Type]):
             elif is_subtype(type_func, self.named_type('typing.Iterable')):
                 # If it's and Iterable-Like, let's check the types.
                 # Maybe just check if have __iter__? (like in analyse_iterable)
-                self.check_iterable_yf(s)
+                self.check_iterable_yield_from(s)
             else:
-                self.msg.yield_from_not_valid_applied(type_func, s)
+                self.msg.yield_from_invalid_operand_type(type_func, s)
         elif isinstance(type_func, AnyType):
-            self.check_iterable_yf(s)
+            self.check_iterable_yield_from(s)
         else:
-            self.msg.yield_from_not_valid_applied(type_func, s)
+            self.msg.yield_from_invalid_operand_type(type_func, s)
 
-    def check_iterable_yf(self, s: YieldFromStmt) -> Type:
+    def check_iterable_yield_from(self, s: YieldFromStmt) -> Type:
         """
             Check that return type is super type of Iterable (Maybe just check if have __iter__?)
             and compare it with the type of the expression
@@ -1295,9 +1296,9 @@ class TypeChecker(NodeVisitor[Type]):
             if not is_subtype(expected_item_type, self.named_type('typing.Iterable')):
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
                 return None
-            elif hasattr(expected_item_type, 'args') and expected_item_type.args:
+            elif expected_item_type.args:
+                expected_item_type = map_instance_to_supertype(expected_item_type, self.lookup_typeinfo('typing.Iterable'))
                 expected_item_type = expected_item_type.args[0]  # Take the item inside the iterator
-                # expected_item_type = expected_item_type
         elif isinstance(expected_item_type, AnyType):
             expected_item_type = AnyType()
         else:
@@ -1308,6 +1309,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             actual_item_type = self.accept(s.expr, expected_item_type)
             if hasattr(actual_item_type, 'args') and actual_item_type.args:
+                actual_item_type = map_instance_to_supertype(actual_item_type, self.lookup_typeinfo('typing.Iterable'))
                 actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
         self.check_subtype(actual_item_type, expected_item_type, s,
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
@@ -1625,7 +1627,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
         result = self.expr_checker.visit_yield_from_expr(e)
-        if hasattr(result, 'type') and result.type.fullname() == "asyncio.futures.Future":
+        if result.type.fullname() == "asyncio.futures.Future":
             self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
             result = result.args[0]  # Set the return type as the type inside
         elif is_subtype(result, self.named_type('typing.Iterable')):
@@ -1634,8 +1636,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Maybe set result like in the Future
             pass
         else:
-            self.msg.yield_from_not_valid_applied(e.expr, e)
-        self.breaking_out = False
+            self.msg.yield_from_invalid_operand_type(e.expr, e)
         return result
 
     def visit_member_expr(self, e: MemberExpr) -> Type:

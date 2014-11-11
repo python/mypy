@@ -742,7 +742,7 @@ class Parser:
         expr = None  # type: Node
         if not isinstance(self.current(), Break):
             expr = self.parse_expression()
-            if isinstance(expr, YieldFromExpr): #cant go a yield from expr
+            if isinstance(expr, YieldFromExpr): # "yield from" expressions can't be returned.
                 return None
         br = self.expect_break()
         node = ReturnStmt(expr)

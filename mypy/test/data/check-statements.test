@@ -626,7 +626,7 @@ def f() -> Iterator[None]:
 -- Iterables
 -- ----------
 
-[case testSimpleYFIter]
+[case testSimpleYieldFromWithIterator]
 from typing import Iterator
 def g() -> Iterator[str]:
     yield '42'
@@ -638,7 +638,7 @@ def f() -> Iterator[str]:
 [out]
 main: In function "f":
 
-[case testYFAppliedToAny]
+[case testYieldFromAppliedToAny]
 from typing import Any
 def g() -> Any:
     yield object()
@@ -646,7 +646,7 @@ def f() -> Any:
     yield from g()
 [out]
 
-[case testYFInFunctionReturningFunction]
+[case testYieldFromInFunctionReturningFunction]
 from typing import Iterator, Function
 def g() -> Iterator[int]:
     yield 42
@@ -655,7 +655,7 @@ def f() -> Function[[], None]:
 [out]
 main: In function "f":
 
-[case testGoodYFNotIterableReturnType]
+[case testYieldFromNotIterableReturnType]
 from typing import Iterator
 def g() -> Iterator[int]:
     yield 42
@@ -664,7 +664,7 @@ def f() -> int:
 [out]
 main: In function "f":
 
-[case testYFNotAppliedIter]
+[case testYieldFromNotAppliedIterator]
 from typing import Iterator
 def g() -> int:
     return 42
@@ -673,7 +673,7 @@ def f() -> Iterator[int]:
 [out]
 main: In function "f":
 
-[case testYFCheckIncompatibleTypesTwoIterables]
+[case testYieldFromCheckIncompatibleTypesTwoIterables]
 from typing import List, Iterator
 def g() -> Iterator[List[int]]:
     yield [2, 3, 4]
@@ -684,13 +684,13 @@ def f() -> Iterator[List[int]]:
 [out]
 main: In function "f":
 
-[case testYFNotAppliedToNothing]
+[case testYieldFromNotAppliedToNothing]
 def h():
     yield from  # E: Parse error before end of line
 [out]
 main: In function "h":
 
-[case testYFAndYieldTogether]
+[case testYieldFromAndYieldTogether]
 from typing import Iterator
 def f() -> Iterator[str]:
     yield "g1 ham"

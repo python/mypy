@@ -14,27 +14,25 @@ FIRST_EXCEPTION = 'FIRST_EXCEPTION'
 FIRST_COMPLETED = 'FIRST_COMPLETED'
 ALL_COMPLETED = 'ALL_COMPLETED'
 _T = typevar('_T')
-def coroutine(f: Any) -> Any: pass  # Here comes and go a function
-def sleep(delay: float, result: _T=None, loop: AbstractEventLoop=None) -> Future[_T]: pass
-def wait(fs: List[Any], *, loop: AbstractEventLoop=None,
-    timeout: float=None, return_when: str=ALL_COMPLETED) -> Future[Tuple[Set[Future[_T]], Set[Future[_T]]]]: pass
-def wait_for(fut: Future[_T], timeout: float, *, loop: AbstractEventLoop=None) -> Future[_T]: pass
-# def wait(fs: Union[List[Iterable], List[Future[_T]]], *, loop: AbstractEventLoop=None,
-#     timeout: int=None, return_when: str=ALL_COMPLETED) -> Future[Tuple[Set[Future[_T]], Set[Future[_T]]]]: pass
+def coroutine(f: _T) -> _T: pass  # Here comes and go a function
+def sleep(delay: float, result: _T = None, loop: AbstractEventLoop = None) -> Future[_T]: pass
+def wait(fs: List[Future[_T]], *, loop: AbstractEventLoop = None,
+    timeout: float = None, return_when: str = ALL_COMPLETED) -> Future[Tuple[Set[Future[_T]], Set[Future[_T]]]]: pass
+def wait_for(fut: Future[_T], timeout: float, *, loop: AbstractEventLoop = None) -> Future[_T]: pass
+
 
 class Task(Future[_T], Generic[_T]):
     _all_tasks = None  # type: Set[Task]
     _current_tasks = {}  # type: Dict[AbstractEventLoop, Task]
     @classmethod
-    def current_task(cls, loop: AbstractEventLoop=None) -> Task: pass
+    def current_task(cls, loop: AbstractEventLoop = None) -> Task: pass
     @classmethod
-    def all_tasks(cls, loop: AbstractEventLoop=None) -> Set[Task]: pass
-    # def __init__(self, coro: Union[Iterable[_T], Future[_T]], *, loop: AbstractEventLoop=None) -> None: pass
-    def __init__(self, coro: Future[_T], *, loop: AbstractEventLoop=None) -> None: pass
+    def all_tasks(cls, loop: AbstractEventLoop = None) -> Set[Task]: pass
+    def __init__(self, coro: Future[_T], *, loop: AbstractEventLoop = None) -> None: pass
     def __repr__(self) -> str: pass
-    def get_stack(self, *, limit: int=None) -> List[Any]: pass  # return List[stackframe]
-    def print_stack(self, *, limit: int=None, file: TextIO=None) -> None: pass
+    def get_stack(self, *, limit: int = None) -> List[Any]: pass  # return List[stackframe]
+    def print_stack(self, *, limit: int = None, file: TextIO = None) -> None: pass
     def cancel(self) -> bool: pass
-    def _step(self, value: Any=None, exc: Exception=None) -> None: pass
+    def _step(self, value: Any = None, exc: Exception = None) -> None: pass
     def _wakeup(self, future: Future[Any]) -> None: pass
 
