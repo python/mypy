@@ -41,7 +41,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    Undefined, List, Dict, Set, Tuple, cast, Any, overload, typevar
+    Undefined, List, Dict, Set, Tuple, cast, Any, overload, typevar, Union
 )
 
 from mypy.nodes import (
@@ -56,7 +56,7 @@ from mypy.nodes import (
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
-    ComparisonExpr, ARG_POS, ARG_NAMED, MroError, type_aliases
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -64,7 +64,7 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType
+    replace_leading_arg_type, TupleType, UnionType, StarType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
@@ -800,11 +800,39 @@ class SemanticAnalyzer(NodeVisitor):
             items = (Any(lval)).items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("Can't assign to ()", lval)
+            self.analyse_tuple_or_list_lvalue(cast(Union[ListExpr, TupleExpr], lval),
+                                              add_global, explicit_type)
+        elif isinstance(lval, StarExpr):
+            if nested:
+                self.analyse_lvalue(lval.expr, nested, add_global, explicit_type)
+            else:
+                self.fail('Starred assignment target must be in a list or tuple', lval)
+        else:
+            self.fail('Invalid assignment target', lval)
+
+    def analyse_tuple_or_list_lvalue(self, lval: Union[ListExpr, TupleExpr],
+                                     add_global: bool = False,
+                                     explicit_type: bool = False) -> None:
+        """Analyze an lvalue or assignment target that is a list or tuple."""
+        items = lval.items
+
+        def strip_parens(node: Node) -> Node:
+            if isinstance(node, ParenExpr):
+                return strip_parens(node.expr)
+            else:
+                return node
+
+        star_exprs = [cast(StarExpr, strip_parens(item)) for item in items
+                               if isinstance(strip_parens(item), StarExpr)]
+
+        if len(star_exprs) > 1:
+            self.fail('Two starred expressions in assignment', lval)
+        else:
+            if len(star_exprs) == 1:
+                star_exprs[0].valid = True
             for i in items:
                 self.analyse_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
-        else:
-            self.fail('Invalid assignment target', lval)
 
     def analyse_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
@@ -839,6 +867,8 @@ class SemanticAnalyzer(NodeVisitor):
         return None
 
     def store_declared_types(self, lvalue: Node, typ: Type) -> None:
+        if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
+            self.fail('Star type only allowed for starred expressions', lvalue)
         if isinstance(lvalue, RefExpr):
             lvalue.is_def = False
             if isinstance(lvalue.node, Var):
@@ -856,6 +886,11 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Tuple type expected for multiple variables',
                           lvalue)
+        elif isinstance(lvalue, StarExpr):
+            if isinstance(typ, StarType):
+                self.store_declared_types(lvalue.expr, typ.type)
+            else:
+                self.fail('Star type expected for starred expression', lvalue)
         elif isinstance(lvalue, ParenExpr):
             self.store_declared_types(lvalue.expr, typ)
         else:
@@ -1027,8 +1062,7 @@ class SemanticAnalyzer(NodeVisitor):
         s.expr.accept(self)
 
         # Bind index variables and check if they define new names.
-        for n in s.index:
-            self.analyse_lvalue(n)
+        self.analyse_lvalue(s.index)
 
         self.loop_depth += 1
         self.visit_block(s.body)
@@ -1129,6 +1163,12 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_paren_expr(self, expr: ParenExpr) -> None:
         expr.expr.accept(self)
+
+    def visit_star_expr(self, expr: StarExpr) -> None:
+        if not expr.valid:
+            self.fail('Can use starred expression only as assignment target', expr)
+        else:
+            expr.expr.accept(self)
 
     def visit_call_expr(self, expr: CallExpr) -> None:
         """Analyze a call expression.
@@ -1299,8 +1339,7 @@ class SemanticAnalyzer(NodeVisitor):
                                                expr.condlists):
             sequence.accept(self)
             # Bind index variables.
-            for n in index:
-                self.analyse_lvalue(n)
+            self.analyse_lvalue(index)
             for cond in conditions:
                 cond.accept(self)
 
@@ -1561,8 +1600,7 @@ class FirstPass(NodeVisitor):
                                                          self.sem.cur_mod_id)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
-        for n in s.index:
-            self.sem.analyse_lvalue(n, add_global=True)
+        self.sem.analyse_lvalue(s.index, add_global=True)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for n in s.name:

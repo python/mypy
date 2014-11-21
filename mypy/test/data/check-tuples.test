@@ -279,7 +279,7 @@ a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment (expression 
 a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a3, b3 = a # type: (A, B)     # E: '__main__.A' object is not iterable
 a4, b4 = None # type: (A, B)  # E: ''None'' object is not iterable
-a5, b5 = a, b, a # type: (A, B)  # E: Too many values to assign
+a5, b5 = a, b, a # type: (A, B)  # E: Too many values to unpack (2 expected, 3 provided)
 
 ax, bx = a, b # type: (A, B)
 
@@ -372,8 +372,138 @@ a = '' # E: Incompatible types in assignment (expression has type "str", variabl
 b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
+-- Assignment to starred expressions
+-- ---------------------------------
+
+
+[case testAssignmentToStarMissingAnnotation]
+from typing import Undefined, List
+t = 1, 2
+a, b, *c = 1, 2  # E: Need type annotation for variable
+aa, bb, *cc = t  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+
+[case testAssignmentToStarAnnotation]
+from typing import Undefined, List
+li, lo = Undefined, Undefined  # type: List[int], List[object]
+a, b, *c = 1, 2  # type: int, int, *List[int]
+c = lo  # E: Incompatible types in assignment (expression has type List[object], variable has type List[int])
+c = li
+[builtins fixtures/list.py]
+
+[case testAssignmentToStarCount1]
+from typing import Undefined, List
+ca = Undefined  # type: List[int]
+c = [1]
+a, b, *c = 1,  # E: Need more than 1 value to unpack (2 expected)
+a, b, *c = 1, 2
+a, b, *c = 1, 2, 3
+a, b, *c = 1, 2, 3, 4
+[builtins fixtures/list.py]
+
+[case testAssignmentToStarCount2]
+from typing import Undefined, List
+ca = Undefined  # type: List[int]
+t1 = 1,
+t2 = 1, 2
+t3 = 1, 2, 3
+t4 = 1, 2, 3, 4
+c = [1]
+a, b, *c = t1  # E: Need more than 1 value to unpack (2 expected)
+a, b, *c = t2
+a, b, *c = t3
+a, b, *c = t4
+[builtins fixtures/list.py]
+
+[case testAssignmentToStarFromAny]
+from typing import Undefined, Any
+a, c = Any(1), C()
+p, *q = a
+c = a
+c = q
+
+class C: pass
+
+[case testAssignmentToComplexStar]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+a, *(li) = 1,
+a, *(b, c) = 1, 2  # E: Need more than 1 value to unpack (2 expected)
+a, *(b, c) = 1, 2, 3
+a, *(b, c) = 1, 2, 3, 4  # E: Too many values to unpack (2 expected, 3 provided)
+[builtins fixtures/list.py]
+
+[case testAssignmentToStarFromTupleType]
+from typing import Undefined, List, Tuple
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+ta = Undefined  # type: Tuple[A, A, A]
+a, *la = ta
+a, *li = ta  # E
+a, *na = ta
+na = la
+na = a  # E
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+main, line 6: List item 1 has incompatible type "A"
+main, line 6: List item 2 has incompatible type "A"
+main, line 9: Incompatible types in assignment (expression has type "A", variable has type List[A])
+
+[case testAssignmentToStarFromTupleInference]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+a, *l = A(), A()
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+[case testAssignmentToStarFromListInference]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+a, *l = [A(), A()]
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+[case testAssignmentToStarFromTupleTypeInference]
+from typing import Undefined, List, Tuple
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+ta = Undefined  # type: Tuple[A, A, A]
+a, *l = ta
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+[case testAssignmentToStarFromListTypeInference]
+from typing import Undefined, List
+li = Undefined  # type: List[int]
+la = Undefined  # type: List[A]
+a, *l = la
+l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = la
+
+class A: pass
+[builtins fixtures/list.py]
+[out]
+
+
 -- Nested tuple assignment
 -- ----------------------------
+
 
 [case testNestedTupleAssignment1]
 from typing import Undefined

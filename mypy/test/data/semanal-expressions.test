@@ -261,11 +261,12 @@ MypyFile:1(
   ExpressionStmt:2(
     GeneratorExpr:2(
       NameExpr(x [l])
-      NameExpr(x* [l])
-      ParenExpr:2(
-        TupleExpr:2(
-          NameExpr(y* [l])
-          NameExpr(z* [l])))
+      TupleExpr:2(
+        NameExpr(x* [l])
+        ParenExpr:2(
+          TupleExpr:2(
+            NameExpr(y* [l])
+            NameExpr(z* [l]))))
       NameExpr(a [__main__.a]))))
 
 [case testLambda]

@@ -21,7 +21,7 @@ d = Undefined # type: Any
 a, b = Undefined, Undefined # type: (A, B)
 
 d, a = b, b    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-d, d = d, d, d # E: Too many values to assign
+d, d = d, d, d # E: Too many values to unpack (2 expected, 3 provided)
 
 a, b = d, d
 d, d = a, b

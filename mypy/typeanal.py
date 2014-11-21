@@ -4,7 +4,7 @@ from typing import Undefined, Function, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
     Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, Callable,
-    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor
+    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import (
@@ -153,9 +153,16 @@ class TypeAnalyser(TypeVisitor[Type]):
         return res
 
     def visit_tuple_type(self, t: TupleType) -> Type:
+        star_count = sum(1 for item in t.items if isinstance(item, StarType))
+        if star_count > 1:
+            self.fail('At most one star type allowed in a tuple', t)
+            return AnyType()
         return TupleType(self.anal_array(t.items),
                          self.builtin_type('builtins.tuple'),
                          t.line, t.repr)
+
+    def visit_star_type(self, t: StarType) -> Type:
+        return StarType(t.type.accept(self), t.line, t.repr)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line, t.repr)

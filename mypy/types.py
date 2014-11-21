@@ -390,6 +390,19 @@ class TupleType(Type):
         return visitor.visit_tuple_type(self)
 
 
+class StarType(Type):
+    """The star type *type_parameter"""
+
+    type = Undefined(Type)
+
+    def __init__(self, type: Type, line: int = -1, repr: Any = None) -> None:
+        self.type = type
+        super().__init__(line, repr)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_star_type(self)
+
+
 class UnionType(Type):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
@@ -512,6 +525,9 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
+    def visit_star_type(self, t: StarType) -> T:
+        pass
+
     def visit_union_type(self, t: UnionType) -> T:
         assert(0)               # XXX catch visitors that don't have Union cases yet
 
@@ -568,6 +584,9 @@ class TypeTranslator(TypeVisitor[Type]):
         return TupleType(self.translate_types(t.items),
                          Any(t.fallback.accept(self)),
                          t.line, t.repr)
+
+    def visit_star_type(self, t: StarType) -> Type:
+        return StarType(t.type.accept(self), t.line, t.repr)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.repr)
@@ -682,6 +701,10 @@ class TypeStrVisitor(TypeVisitor[str]):
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
 
+    def visit_star_type(self, t):
+        s = t.type.accept(self)
+        return '*{}'.format(s)
+
     def visit_union_type(self, t):
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
@@ -762,6 +785,9 @@ class TypeQuery(TypeVisitor[bool]):
 
     def visit_tuple_type(self, t: TupleType) -> bool:
         return self.query_types(t.items)
+
+    def visit_star_type(self, t: StarType) -> bool:
+        return t.type.accept(self)
 
     def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)
