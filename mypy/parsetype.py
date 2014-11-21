@@ -3,7 +3,7 @@
 from typing import List, Tuple, Union, cast
 
 from mypy.types import (
-    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, Callable
+    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, Callable, StarType
 )
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
@@ -57,6 +57,8 @@ class TypeParser:
             return self.parse_named_type()
         elif t.string == '[':
             return self.parse_type_list()
+        elif t.string == '*':
+            return self.parse_star_type()
         elif isinstance(t, StrLit):
             # Type escaped as string literal.
             typestr = t.parsed()
@@ -94,7 +96,7 @@ class TypeParser:
                 if self.current_token_str() == ')':
                     break
                 items.append(self.parse_type())
-            type = TupleType(items, None)
+            type = TupleType(items, None, type.line)
         return type
 
     def parse_type_list(self) -> TypeList:
@@ -144,6 +146,11 @@ class TypeParser:
                                                            langle,
                                                            commas, rangle))
         return typ
+
+    def parse_star_type(self) -> Type:
+        star = self.expect('*')
+        type = self.parse_type()
+        return StarType(type, star.line)
 
     # Helpers
 

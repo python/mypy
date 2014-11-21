@@ -757,6 +757,23 @@ x = 1
 y = 1
 
 
+-- Star assignment
+-- ---------------
+
+
+[case testAssignListToStarExpr]
+from typing import Undefined, List
+bs, cs = Undefined, Undefined  # type: List[A], List[B]
+*bs, b = bs
+*bs, c = cs  # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
+*ns, c = cs
+nc = cs
+
+class A: pass
+class B: pass
+[builtins fixtures/list.py]
+
+
 -- Type aliases
 -- ------------
 

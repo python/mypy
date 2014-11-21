@@ -113,8 +113,9 @@ for x, y in []:
 [out]
 MypyFile:1(
   ForStmt:1(
-    NameExpr(x* [__main__.x])
-    NameExpr(y* [__main__.y])
+    TupleExpr:1(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     ListExpr:1()
     Block:1(
       ExpressionStmt:2(
@@ -345,6 +346,38 @@ MypyFile:1(
       TupleExpr:7(
         NameExpr(x [__main__.x])
         NameExpr(y [__main__.y])))
+    IntExpr(1)))
+
+[case testStarLvalues]
+*x, y = 1
+*x, (y, *z) = 1
+*(x, q), r = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    TupleExpr:1(
+      StarExpr:1(
+        NameExpr(x* [__main__.x]))
+      NameExpr(y* [__main__.y]))
+    IntExpr(1))
+  AssignmentStmt:2(
+    TupleExpr:2(
+      StarExpr:2(
+        NameExpr(x [__main__.x]))
+      ParenExpr:2(
+        TupleExpr:2(
+          NameExpr(y [__main__.y])
+          StarExpr:2(
+            NameExpr(z* [__main__.z])))))
+    IntExpr(1))
+  AssignmentStmt:3(
+    TupleExpr:3(
+      StarExpr:3(
+        ParenExpr:3(
+          TupleExpr:3(
+            NameExpr(x [__main__.x])
+            NameExpr(q* [__main__.q]))))
+      NameExpr(r* [__main__.r]))
     IntExpr(1)))
 
 [case testMultipleDefinition]

@@ -133,6 +133,9 @@ class NodeVisitor(Generic[T]):
     def visit_paren_expr(self, o: 'mypy.nodes.ParenExpr') -> T:
         pass
 
+    def visit_star_expr(self, o: 'mypy.nodes.StarExpr') -> T:
+        pass
+
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> T:
         pass
 

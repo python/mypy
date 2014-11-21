@@ -159,6 +159,15 @@ z = 0 # type: x
 main, line 4: Invalid type "__main__.f"
 main, line 5: Invalid type "__main__.x"
 
+[case testTwoStarsInType]
+import typing
+x = 1 # type: *object, *object
+y = 1 # type: object, (*object, *object)
+z = 1 # type: *object, (object, *object)
+[out]
+main, line 2: At most one star type allowed in a tuple
+main, line 3: At most one star type allowed in a tuple
+
 [case testGlobalVarRedefinition]
 import typing
 class A: pass
@@ -388,6 +397,65 @@ main, line 3: Invalid assignment target
 main, line 4: Invalid assignment target
 main, line 5: Invalid assignment target
 main, line 6: Invalid assignment target
+
+[case testInvalidStarType]
+a = 1  # type: *int
+[out]
+main, line 1: Star type only allowed for starred expressions
+
+[case testInvalidStarType]
+*a, b = 1  # type: int, int
+[out]
+main, line 1: Star type expected for starred expression
+
+[case testTwoStarExpressions]
+a, *b, *c = 1
+*a, (*b, c) = 1
+a, (*b, *c) = 1
+[*a, *b] = 1
+[out]
+main, line 1: Two starred expressions in assignment
+main, line 3: Two starred expressions in assignment
+main, line 4: Two starred expressions in assignment
+
+[case testTwoStarExpressionsInForStmt]
+for a, *b, *c in z:
+    pass
+for *a, (*b, c) in z:
+    pass
+for a, (*b, *c) in z:
+    pass
+for [*a, *b] in z:
+    pass
+[out]
+main, line 1: Two starred expressions in assignment
+main, line 5: Two starred expressions in assignment
+main, line 7: Two starred expressions in assignment
+
+[case testTwoStarExpressionsInGeneratorExpr]
+(a for a, *b, *c in [])
+(a for *a, (*b, c) in [])
+(a for a, (*b, *c) in [])
+[out]
+main, line 1: Two starred expressions in assignment
+main, line 1: Name 'a' is not defined
+main, line 3: Two starred expressions in assignment
+
+[case testStarExpressionRhs]
+b = 1
+c = 1
+d = 1
+a = *b
+a = b, (c, *d)
+[out]
+main, line 4: Can use starred expression only as assignment target
+main, line 5: Can use starred expression only as assignment target
+
+[case testStarExpressionInExp]
+a = 1
+*a + 1
+[out]
+main, line 2: Can use starred expression only as assignment target
 
 [case testInvalidDel]
 import typing

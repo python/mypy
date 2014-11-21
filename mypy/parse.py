@@ -23,7 +23,8 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr
+    UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
+    StarExpr
 )
 from mypy import nodes
 from mypy import noderepr
@@ -44,7 +45,7 @@ precedence = {
     '&': 10,
     '^': 9,
     '|': 8,
-    '==': 7, '!=': 7, '<': 7, '>': 7, '<=': 7, '>=': 7, 'is': 7, 'in': 7,
+    '==': 7, '!=': 7, '<': 7, '>': 7, '<=': 7, '>=': 7, 'is': 7, 'in': 7, '*u': 7, # unary * for star expressions
     'not': 6,
     'and': 5,
     'or': 4,
@@ -697,7 +698,7 @@ class Parser:
         return stmt
 
     def parse_expression_or_assignment(self) -> Node:
-        e = self.parse_expression()
+        e = self.parse_expression(star_expr_allowed=True)
         if self.current_str() == '=':
             return self.parse_assignment(e)
         elif self.current_str() in op_assign:
@@ -726,11 +727,11 @@ class Parser:
         assigns = [self.expect('=')]
         lvalues = [lv]
 
-        e = self.parse_expression()
+        e = self.parse_expression(star_expr_allowed=True)
         while self.current_str() == '=':
             lvalues.append(e)
             assigns.append(self.skip())
-            e = self.parse_expression()
+            e = self.parse_expression(star_expr_allowed=True)
         br = self.expect_break()
 
         type = self.parse_type_comment(br, signature=False)
@@ -851,7 +852,7 @@ class Parser:
 
     def parse_for_stmt(self) -> ForStmt:
         for_tok = self.expect('for')
-        index, commas = self.parse_for_index_variables()
+        index = self.parse_for_index_variables()
         in_tok = self.expect('in')
         expr = self.parse_expression()
 
@@ -865,31 +866,30 @@ class Parser:
             else_tok = none
 
         node = ForStmt(index, expr, body, else_body)
-        self.set_repr(node, noderepr.ForStmtRepr(for_tok, commas, in_tok,
-                                                 else_tok))
+        self.set_repr(node, noderepr.ForStmtRepr(for_tok, in_tok, else_tok))
         return node
 
-    def parse_for_index_variables(self) -> Tuple[List[Node], List[Token]]:
+    def parse_for_index_variables(self) -> Node:
         # Parse index variables of a 'for' statement.
-        index = List[Node]()
+        index_items = List[Node]()
         commas = List[Token]()
 
-        is_paren = self.current_str() == '('
-        if is_paren:
-            self.skip()
-
         while True:
-            v = self.parse_expression(precedence['in'])  # prevent parsing of for's 'in'
-            index.append(v)
+            v = self.parse_expression(precedence['in'], star_expr_allowed=True)  # prevent parsing of for-stmt's 'in'
+            index_items.append(v)
             if self.current_str() != ',':
                 commas.append(none)
                 break
             commas.append(self.skip())
 
-        if is_paren:
-            self.expect(')')
+        if len(index_items) == 1:
+            index = index_items[0]
+        else:
+            index = TupleExpr(index_items)
+            index.set_line(index_items[0].get_line())
+            self.set_repr(index, noderepr.TupleExprRepr(none, commas, none))
 
-        return index, commas
+        return index
 
     def parse_if_stmt(self) -> IfStmt:
         is_error = False
@@ -1020,7 +1020,7 @@ class Parser:
 
     # Parsing expressions
 
-    def parse_expression(self, prec: int = 0) -> Node:
+    def parse_expression(self, prec: int = 0, star_expr_allowed: bool = False) -> Node:
         """Parse a subexpression within a specific precedence context."""
         expr = Undefined  # type: Node
         t = self.current()  # Remember token for setting the line number.
@@ -1040,6 +1040,8 @@ class Parser:
             expr = self.parse_lambda_expr()
         elif s == '{':
             expr = self.parse_dict_or_set_expr()
+        elif s == '*' and star_expr_allowed:
+            expr = self.parse_star_expr()
         else:
             if isinstance(self.current(), Name):
                 # Name expression.
@@ -1137,10 +1139,19 @@ class Parser:
             expr = self.parse_empty_tuple_expr(lparen)  # type: Node
         else:
             # Parenthesised expression.
-            expr = self.parse_expression(0)
+            expr = self.parse_expression(0, star_expr_allowed=True)
             rparen = self.expect(')')
             expr = ParenExpr(expr)
             self.set_repr(expr, noderepr.ParenExprRepr(lparen, rparen))
+        return expr
+
+    def parse_star_expr(self) -> Node:
+        star = self.expect('*')
+        expr = self.parse_expression(precedence['*u'])
+        expr = StarExpr(expr)
+        if expr.line < 0:
+            expr.set_line(star)
+        self.set_repr(expr, noderepr.StarExprRepr(star))
         return expr
 
     def parse_empty_tuple_expr(self, lparen: Any) -> TupleExpr:
@@ -1155,7 +1166,7 @@ class Parser:
         lbracket = self.expect('[')
         commas = List[Token]()
         while self.current_str() != ']' and not self.eol():
-            items.append(self.parse_expression(precedence['<for>']))
+            items.append(self.parse_expression(precedence['<for>'], star_expr_allowed=True))
             if self.current_str() != ',':
                 break
             commas.append(self.expect(','))
@@ -1174,7 +1185,7 @@ class Parser:
             return expr
 
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
-        indices = List[List[Node]]()
+        indices = List[Node]()
         sequences = List[Node]()
         for_toks = List[Token]()
         in_toks = List[Token]()
@@ -1184,7 +1195,7 @@ class Parser:
             if_toks = List[Token]()
             conds = List[Node]()
             for_toks.append(self.expect('for'))
-            index, commas = self.parse_for_index_variables()
+            index = self.parse_for_index_variables()
             indices.append(index)
             in_toks.append(self.expect('in'))
             sequence = self.parse_expression_list()
@@ -1197,8 +1208,7 @@ class Parser:
 
         gen = GeneratorExpr(left_expr, indices, sequences, condlists)
         gen.set_line(for_toks[0])
-        self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, commas, in_toks,
-                                                      if_toklists))
+        self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, in_toks, if_toklists))
         return gen
 
     def parse_expression_list(self) -> Node:
@@ -1263,7 +1273,7 @@ class Parser:
             if (self.current_str() in [')', ']', '='] or
                     isinstance(self.current(), Break)):
                 break
-            items.append(self.parse_expression(prec))
+            items.append(self.parse_expression(prec, star_expr_allowed=True))
             if self.current_str() != ',': break
         node = TupleExpr(items)
         self.set_repr(node, noderepr.TupleExprRepr(none, commas, none))
