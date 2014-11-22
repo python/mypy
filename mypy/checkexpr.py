@@ -26,7 +26,7 @@ from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.expandtype import expand_type, expand_caller_var_args
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, is_more_precise
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyse_member_access, type_object_type
@@ -365,12 +365,12 @@ class ExpressionChecker:
             context: Context) -> Tuple[Callable, List[Type]]:
         """Perform second pass of generic function type argument inference.
 
-        The second pass is needed for arguments with types such as func<s(t)>,
-        where both s and t are type variables, when the actual argument is a
-        lambda with inferred types.  The idea is to infer the type variable t
+        The second pass is needed for arguments with types such as Function[[T], S],
+        where both T and S are type variables, when the actual argument is a
+        lambda with inferred types.  The idea is to infer the type variable T
         in the first pass (based on the types of other arguments).  This lets
         us infer the argument and return type of the lambda expression and
-        thus also the type variable s in this second pass.
+        thus also the type variable S in this second pass.
 
         Return (the callee with type vars applied, inferred actual arg types).
         """
@@ -602,15 +602,17 @@ class ExpressionChecker:
         # Fixed function arguments.
         func_fixed = callee.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
-            if not is_subtype(self.erase(arg_types[i]),
-                              self.erase(
-                                  callee.arg_types[i])):
+            # Use is_more_precise rather than is_subtype because it ignores ducktype
+            # declarations. This is important since ducktype declarations are ignored
+            # when performing runtime type checking.
+            if not is_compatible_overload_arg(arg_types[i], callee.arg_types[i]):
                 return False
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
-                if not is_subtype(self.erase(arg_types[i]),
-                                  self.erase(callee.arg_types[func_fixed])):
+                # See above for why we use is_more_precise.
+                if not is_compatible_overload_arg(arg_types[i],
+                                                  callee.arg_types[func_fixed]):
                     return False
         return True
 
@@ -1246,10 +1248,6 @@ class ExpressionChecker:
             r.append(self.strip_parens(n))
         return r
 
-    def erase(self, type: Type) -> Type:
-        """Replace type variable types in type with Any."""
-        return erasetype.erase_type(type)
-
 
 def is_valid_argc(nargs: int, is_var_arg: bool, callable: Callable) -> bool:
     """Return a boolean indicating whether a call expression has a
@@ -1397,3 +1395,30 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
+
+
+def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
+    if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
+            isinstance(formal, AnyType) or isinstance(formal, TypeVar) or
+            isinstance(formal, Callable)):
+        # These could match anything at runtime.
+        return True
+    if isinstance(actual, UnionType):
+        return any(is_compatible_overload_arg(item, formal)
+                   for item in actual.items)
+    if isinstance(formal, UnionType):
+        return any(is_compatible_overload_arg(actual, item)
+                   for item in formal.items)
+    if isinstance(formal, Instance):
+        if isinstance(actual, Callable):
+            actual = actual.fallback
+        if isinstance(actual, Overloaded):
+            actual = actual.items()[0].fallback
+        if isinstance(actual, TupleType):
+            actual = actual.fallback
+        if isinstance(actual, Instance):
+            return formal.type in actual.type.mro
+        else:
+            return False
+    # Fall back to a conservative equality check for the remaining kinds of type.
+    return is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal))

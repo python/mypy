@@ -9,6 +9,7 @@ from mypy.types import (
 from mypy.expandtype import expand_caller_var_args
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
+import mypy.subtypes
 
 
 SUBTYPE_OF = 0  # type: int
@@ -234,7 +235,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         # the first overload item, and by only matching the return type. This
         # seems to work somewhat well, but we should really use a more
         # reliable technique.
-        item = overloaded.items()[0]
+        item = find_matching_overload_item(overloaded, template)
         return infer_constraints(template.ret_type, item.ret_type,
                                  self.direction)
 
@@ -282,3 +283,16 @@ def neg_op(op: int) -> int:
         return SUBTYPE_OF
     else:
         raise ValueError('Invalid operator {}'.format(op))
+
+
+def find_matching_overload_item(overloaded: Overloaded, template: Callable) -> Callable:
+    """Disambiguate overload item against a template."""
+    items = overloaded.items()
+    for item in items:
+        # Return type may be indeterminate in the template, so ignore it when performing a
+        # subtype check.
+        if mypy.subtypes.is_callable_subtype(item, template, ignore_return=True):
+            return item
+    # Fall back to the first item if we can't find a match. This is totally arbitrary --
+    # maybe we should just bail out at this point.
+    return items[0]

@@ -238,7 +238,7 @@ class TextIO(IO[str]):
     @property
     def errors(self) -> str: pass
     @property
-    def line_buffering(self) -> bool: pass
+    def line_buffering(self) -> int: pass  # int on PyPy, bool on CPython
     @property
     def newlines(self) -> Any: pass # None, str or tuple
     @abstractmethod

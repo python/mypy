@@ -568,13 +568,13 @@ class WhileStmt(Node):
 
 class ForStmt(Node):
     # Index variables
-    index = Undefined(List['Node'])
+    index = Undefined(Node)
     # Expression to iterate
     expr = Undefined(Node)
     body = Undefined(Block)
     else_body = Undefined(Block)
 
-    def __init__(self, index: List['Node'], expr: Node, body: Block,
+    def __init__(self, index: Node, expr: Node, body: Block,
                  else_body: Block) -> None:
         self.index = index
         self.expr = expr
@@ -803,6 +803,23 @@ class ParenExpr(Node):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_paren_expr(self)
+
+
+class StarExpr(Node):
+    """Star expression"""
+
+    expr = Undefined(Node)
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+        self.literal = self.expr.literal
+        self.literal_hash = ('Star', expr.literal_hash,)
+
+        # Whether this starred expression is used in a tuple/list and as lvalue
+        self.valid = False
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_star_expr(self)
 
 
 class RefExpr(Node):
@@ -1175,9 +1192,9 @@ class GeneratorExpr(Node):
     left_expr = Undefined(Node)
     sequences_expr = Undefined(List[Node])
     condlists = Undefined(List[List[Node]])
-    indices = Undefined(List[List[Node]])
+    indices = Undefined(List[Node])
 
-    def __init__(self, left_expr: Node, indices: List[List[Node]],
+    def __init__(self, left_expr: Node, indices: List[Node],
                  sequences: List[Node], condlists: List[List[Node]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences

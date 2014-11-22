@@ -17,6 +17,7 @@ from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
 def check(o, t):
     rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
+    rep = rep.replace('sequenceiterator', 'str_iterator')
     print(rep, t, isinstance(o, t))
 
 def f():
@@ -271,7 +272,7 @@ import math
 import typing
 print(math.__name__)
 print(type(math.__dict__))
-print(type(math.__doc__))
+print(type(typing.__doc__))
 print(math.__class__)
 [out]
 math
@@ -290,13 +291,12 @@ The most base type
 
 [case testFunctionAttributes]
 import typing
-print(ord.__class__)
-print(ord.__doc__[:10])
+ord.__class__
+print(type(ord.__doc__ + ''))
 print(ord.__name__)
 print(ord.__module__)
 [out]
-<class 'builtin_function_or_method'>
-ord(c) ->
+<class 'str'>
 ord
 builtins
 
@@ -394,9 +394,8 @@ True
 [case testArray]
 import typing
 import array
-print(type(array.typecodes))
+array.array('b', [1, 2])
 [out]
-<class 'str'>
 
 [case testDictFromkeys]
 import typing
@@ -739,13 +738,12 @@ import typing
 import sys
 print(type(sys.stdin.encoding))
 print(type(sys.stdin.errors))
-print(type(sys.stdin.line_buffering))
+sys.stdin.line_buffering
 sys.stdin.buffer
 sys.stdin.newlines
 [out]
 <class 'str'>
 <class 'str'>
-<class 'bool'>
 
 [case testIOProperties]
 import typing
@@ -919,3 +917,11 @@ map(f, ['x'])
 map(f, [1])
 [out]
 _program.py, line 4: Argument 1 to "map" has incompatible type Function[["str"] -> "str"]; expected Function[["int"] -> "str"]
+
+[case testMapStr]
+import typing
+x = range(3)
+a = list(map(str, x))
+a + 1
+[out]
+_program.py, line 4: Unsupported operand types for + (List[str] and "int")

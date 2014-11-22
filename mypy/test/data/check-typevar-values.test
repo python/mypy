@@ -463,3 +463,25 @@ from typing import typevar, Generic
 T = typevar('T', values=(int, str))
 class C(Generic[T]):
     def f(self, x: int = None) -> None: pass
+
+[case testTypevarValuesWithOverloadedFunctionSpecialCase]
+from typing import typevar, overload, Function
+
+T = typevar('T', values=(int, str))
+def f(x: T) -> None:
+     y = m(g, x)
+     x = y
+     y = object()
+
+A = typevar('A')
+R = typevar('R')
+def m(f: Function[[A], R], it: A) -> A: pass
+
+@overload
+def g(x: int) -> int: return x
+@overload
+def g(x: str) -> str: return x
+[out]
+main: In function "f":
+main, line 7: Incompatible types in assignment (expression has type "object", variable has type "int")
+main, line 7: Incompatible types in assignment (expression has type "object", variable has type "str")

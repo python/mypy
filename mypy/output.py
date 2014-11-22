@@ -262,9 +262,7 @@ class OutputVisitor(NodeVisitor):
     def visit_for_stmt(self, o):
         r = o.repr
         self.token(r.for_tok)
-        for i in range(len(o.index)):
-            self.node(o.index[i])
-            self.token(r.commas[i])
+        self.node(o.index)
         self.token(r.in_tok)
         self.node(o.expr)
 
@@ -331,6 +329,10 @@ class OutputVisitor(NodeVisitor):
         self.token(o.repr.lparen)
         self.node(o.expr)
         self.token(o.repr.rparen)
+
+    def visit_star_expr(self, o):
+        self.token(o.repr.star)
+        self.node(o.expr)
 
     def visit_name_expr(self, o):
         # Supertype references may not have a representation.
@@ -446,10 +448,7 @@ class OutputVisitor(NodeVisitor):
         self.node(o.left_expr)
         for i in range(len(o.indices)):
             self.token(r.for_toks[i])
-            for j in range(len(o.indices[i])):
-                self.node(o.indices[i][j])
-                if j < len(o.indices[i]) - 1:
-                    self.token(r.commas[0])
+            self.node(o.indices[i])
             self.token(r.in_toks[i])
             self.node(o.sequences[i])
             for cond, if_tok in zip(o.condlists[i], r.if_toklists[i]):

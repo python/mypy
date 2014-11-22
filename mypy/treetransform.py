@@ -16,7 +16,7 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
-    DisjointclassExpr, ComparisonExpr, TempNode
+    DisjointclassExpr, ComparisonExpr, TempNode, StarExpr
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -203,7 +203,7 @@ class TransformVisitor(NodeVisitor[Node]):
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> Node:
-        return ForStmt(self.nodes(node.index),
+        return ForStmt(self.node(node.index),
                        self.node(node.expr),
                        self.block(node.body),
                        self.optional_block(node.else_body))
@@ -254,6 +254,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_print_stmt(self, node: PrintStmt) -> Node:
         return PrintStmt(self.nodes(node.args),
                          node.newline)
+
+    def visit_star_expr(self, node: StarExpr) -> Node:
+        return StarExpr(node.expr)
 
     def visit_int_expr(self, node: IntExpr) -> Node:
         return IntExpr(node.value)
@@ -371,7 +374,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.node(node.left_expr),
-                             [self.nodes(index) for index in node.indices],
+                             [self.node(index) for index in node.indices],
                              [self.node(s) for s in node.sequences],
                              [[self.node(cond) for cond in conditions]
                               for conditions in node.condlists])

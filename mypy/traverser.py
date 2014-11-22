@@ -85,8 +85,7 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
             o.else_body.accept(self)
 
     def visit_for_stmt(self, o: ForStmt) -> T:
-        for ind in o.index:
-            ind.accept(self)
+        o.index.accept(self)
         o.expr.accept(self)
         o.body.accept(self)
         if o.else_body:
@@ -202,8 +201,7 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
         for index, sequence, conditions in zip(o.indices, o.sequences,
                                                o.condlists):
             sequence.accept(self)
-            for ind in index:
-                ind.accept(self)
+            index.accept(self)
             for cond in conditions:
                 cond.accept(self)
         o.left_expr.accept(self)
