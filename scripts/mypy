@@ -114,7 +114,7 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
             options.html_report_dir = args[1]
             options.build_flags.append('html-report')
             args = args[2:]
-        elif args[0] == '--python-path':
+        elif args[0] == '--use-python-path':
             options.python_path = True
             args = args[1:]
         else:
@@ -131,7 +131,7 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
 
     if options.python_path and options.pyversion == 2:
         usage('--py2 specified, '
-                'but --python_path will search in sys.path of Python 3')
+                'but --use-python-path will search in sys.path of Python 3')
 
     return args[0], None, options
 
@@ -152,7 +152,7 @@ Optional arguments:
   --html-report dir  generate a HTML report of type precision under dir/
   -m mod             type check module
   --verbose          more verbose messages
-  --python_path      search for modules in sys.path of running Python
+  --use-python-path  search for modules in sys.path of running Python
 
 Environment variables:
   MYPYPATH     additional module search path
