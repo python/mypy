@@ -32,9 +32,12 @@ INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_YIELD = \
     'Iterator function return type expected for "yield"'
+INVALID_RETURN_TYPE_FOR_YIELD_FROM = \
+    'Iterable function return type expected for "yield from"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
+INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
@@ -670,6 +673,11 @@ class MessageBuilder:
                                 context: Context) -> None:
         self.fail('Signatures of "{}" and "{}" are incompatible'.format(
             method, other_method), context)
+
+    def yield_from_invalid_operand_type(self, expr: Type, context: Context) -> Type:
+        text = self.format(expr) if self.format(expr) != 'object' else expr
+        self.fail('"yield from" can\'t be applied to {}'.format(text), context)
+        return AnyType()
 
 
 def capitalize(s: str) -> str:

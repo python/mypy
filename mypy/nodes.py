@@ -238,6 +238,7 @@ class FuncItem(FuncBase):
     is_overload = False    # Is this an overload variant of function with
                            # more than one overload variant?
     is_generator = False   # Contains a yield statement?
+    is_coroutine = False   # Contains @coroutine or yield from Future
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     expanded = Undefined(List['FuncItem'])  # Variants of function with type
@@ -615,6 +616,16 @@ class YieldStmt(Node):
         return visitor.visit_yield_stmt(self)
 
 
+class YieldFromStmt(Node):
+    expr = Undefined(Node)
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_yield_from_stmt(self)
+
+
 class DelStmt(Node):
     expr = Undefined(Node)
 
@@ -921,6 +932,16 @@ class CallExpr(Node):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
+
+
+class YieldFromExpr(Node):
+    expr = Undefined(Node)
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_yield_from_expr(self)
 
 
 class IndexExpr(Node):

@@ -234,6 +234,9 @@ class StrConv(NodeVisitor[str]):
     def visit_yield_stmt(self, o):
         return self.dump([o.expr], o)
 
+    def visit_yield_from_stmt(self, o):
+        return self.dump([o.expr], o)
+
     def visit_del_stmt(self, o):
         return self.dump([o.expr], o)
 
@@ -321,6 +324,12 @@ class StrConv(NodeVisitor[str]):
     def visit_member_expr(self, o):
         return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.fullname,
                                                    o.is_def)], o)
+
+    def visit_yield_from_expr(self, o):
+        if o.expr:
+            return self.dump([o.expr.accept(self)], o)
+        else:
+            return self.dump([], o)
 
     def visit_call_expr(self, o):
         if o.analyzed:

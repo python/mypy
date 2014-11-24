@@ -344,3 +344,17 @@ file, line 1: Parse error before "for"
 1 if x else for y in z
 [out]
 file, line 1: Parse error before "for"
+
+[case testYieldFromNotRightParameter]
+def f():
+    yield from
+[out]
+file: In function "f":
+file, line 2: Parse error before end of line
+
+[case testYieldFromAfterReturn]
+def f():
+    return yield from h()
+[out]
+file: In function "f":
+file, line 2: Parse error before end of line

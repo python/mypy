@@ -1,8 +1,8 @@
-from typing import Any, Function, typevar, Generic, List
+from typing import Any, Function, typevar, List, Generic, Iterable, Iterator
 from asyncio.events import AbstractEventLoop
 # __all__ = ['CancelledError', 'TimeoutError',
 #            'InvalidStateError',
-#            'Future', 'wrap_future',
+#            'wrap_future',
 #            ]
 __all__ = ['Future']
 
@@ -17,13 +17,13 @@ class _TracebackLogger:
     def clear(self) -> None: pass
     def __del__(self) -> None: pass
 
-class Future(Generic[_T]):
+class Future(Iterator[_T], Generic[_T]):
     _state = ''
     _exception = Any #Exception
     _blocking = False
     _log_traceback = False
     _tb_logger = _TracebackLogger
-    def __init__(self, loop: AbstractEventLoop) -> None: pass
+    def __init__(self, *, loop: AbstractEventLoop = None) -> None: pass
     def __repr__(self) -> str: pass
     def __del__(self) -> None: pass
     def cancel(self) -> bool: pass
@@ -32,9 +32,10 @@ class Future(Generic[_T]):
     def done(self) -> bool: pass
     def result(self) -> _T: pass
     def exception(self) -> Any: pass
-    def add_done_callback(self, fn: Function[[],Any]) -> None: pass
-    def remove_done_callback(self, fn: Function[[], Any]) -> int: pass
+    def add_done_callback(self, fn: Function[[Future[_T]], Any]) -> None: pass
+    def remove_done_callback(self, fn: Function[[Future[_T]], Any]) -> int: pass
     def set_result(self, result: _T) -> None: pass
     def set_exception(self, exception: Any) -> None: pass
     def _copy_state(self, other: Any) -> None: pass
-    def __iter__(self) -> Any: pass
+    def __iter__(self) -> Iterator[_T]: pass
+    def __next__(self) -> _T: pass
