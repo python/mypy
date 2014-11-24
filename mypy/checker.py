@@ -1792,9 +1792,10 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 extra_info = []  # type: List[str]
                 if subtype_label is not None:
-                    extra_info.append(subtype_label + ' ' + self.msg.format(subtype))
+                    extra_info.append(subtype_label + ' ' + self.msg.format(subtype, verbose=True))
                 if supertype_label is not None:
-                    extra_info.append(supertype_label + ' ' + self.msg.format(supertype))
+                    extra_info.append(supertype_label + ' ' + self.msg.format(supertype,
+                                                                              verbose=True))
                 if extra_info:
                     msg += ' (' + ', '.join(extra_info) + ')'
                 self.fail(msg, context)

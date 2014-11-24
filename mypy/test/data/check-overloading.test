@@ -167,7 +167,7 @@ class A: pass
 from typing import Undefined, overload
 t, a = Undefined, Undefined # type: (type, A)
 
-a = A # E: Incompatible types in assignment (expression has type "A", variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
 t = A
 
 class A:

@@ -118,7 +118,7 @@ class MessageBuilder:
         if self.disable_count <= 0:
             self.errors.report(context.get_line(), msg.strip())
 
-    def format(self, typ: Type) -> str:
+    def format(self, typ: Type, verbose: bool = False) -> str:
         """Convert a type to a relatively short string that is
         suitable for error messages. Mostly behave like format_simple
         below, but never return an empty string.
@@ -133,7 +133,12 @@ class MessageBuilder:
                 # The type of a type object type can be derived from the
                 # return type (this always works).
                 itype = cast(Instance, func.items()[0].ret_type)
-                return self.format(itype)
+                result = self.format(itype)
+                if verbose:
+                    # In some contexts we want to be explicit about the distinction
+                    # between type X and the type of type object X.
+                    result += ' (type object)'
+                return result
             elif isinstance(func, Callable):
                 arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return_type = strip_quotes(self.format(func.ret_type))
@@ -206,7 +211,7 @@ class MessageBuilder:
             if len(s) < 40:
                 return s
             else:
-                return 'union(length {})'.format(len(items))
+                return 'union type ({} items)'.format(len(items))
         elif isinstance(typ, Void):
             return 'None'
         elif isinstance(typ, NoneTyp):

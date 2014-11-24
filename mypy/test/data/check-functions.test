@@ -106,7 +106,7 @@ from typing import Undefined
 t = Undefined # type: type
 a = Undefined # type: A
 
-a = A # E: Incompatible types in assignment (expression has type "A", variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
 t = f # E: Incompatible types in assignment (expression has type Function[[], None], variable has type "type")
 t = A
 
