@@ -800,8 +800,8 @@ g1(f)
 def g2(f: Function[[int], int]) -> None: pass
 g2(f)
 def g3(f: Function[[object], object]) -> None: pass
-g3(f) # E: Argument 1 to "g3" has incompatible type Function[["T"] -> "T"]; \
-           expected Function[["object"] -> "object"]
+g3(f) # E: Argument 1 to "g3" has incompatible type Function[[T], T]; \
+           expected Function[[object], object]
 
 
 -- Special cases

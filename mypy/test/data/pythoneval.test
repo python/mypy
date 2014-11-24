@@ -916,7 +916,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py, line 4: Argument 1 to "map" has incompatible type Function[["str"] -> "str"]; expected Function[["int"] -> "str"]
+_program.py, line 4: Argument 1 to "map" has incompatible type Function[[str], str]; expected Function[[int], str]
 
 [case testMapStr]
 import typing
