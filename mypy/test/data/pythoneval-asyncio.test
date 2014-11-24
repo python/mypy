@@ -205,8 +205,12 @@ def h() -> 'Future[None]':
     y = yield from x
     z = yield from y
     print(z)
-    print(y)
-    print(x)
+    def normalize(future):
+        # The str conversion seems inconsistent; not sure exactly why. Normalize
+        # the result.
+        return str(future).replace('<Future finished ', 'Future<')
+    print(normalize(y))
+    print(normalize(x))
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
@@ -214,8 +218,8 @@ loop.close()
 [out]
 Before
 42
-<Future finished result=42>
-<Future finished result=<Future finished result=42>>
+Future<result=42>
+Future<result=Future<result=42>>
 
 
 [case testCoroutineWithOwnClass]
