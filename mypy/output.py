@@ -226,6 +226,9 @@ class OutputVisitor(NodeVisitor):
     def visit_yield_stmt(self, o):
         self.simple_stmt(o, o.expr)
 
+    def visit_yield_from_stmt(self, o):
+        self.simple_stmt(o, o.expr)
+
     def visit_del_stmt(self, o):
         self.simple_stmt(o, o.expr)
 
@@ -356,6 +359,9 @@ class OutputVisitor(NodeVisitor):
         self.node(o.end_index)
         self.token(o.repr.colon2)
         self.node(o.stride)
+
+    def visit_yield_from_expr(self, o):
+        o.expr.accept(self)
 
     def visit_call_expr(self, o):
         r = o.repr

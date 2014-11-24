@@ -14,7 +14,7 @@ from mypy.types import (
 from mypy import nodes
 from mypy.nodes import (
     Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
 )
 
 
@@ -108,6 +108,10 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         self.process_node(o)
         super().visit_name_expr(o)
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
+        if o.expr:
+            o.expr.accept(self)
 
     def visit_call_expr(self, o: CallExpr) -> None:
         self.process_node(o)

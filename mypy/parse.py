@@ -6,7 +6,7 @@ representing a source file. Performs only minimal semantic checks.
 
 import re
 
-from typing import Undefined, List, Tuple, Any, Set, cast
+from typing import Undefined, List, Tuple, Any, Set, cast, Union
 
 from mypy import lex
 from mypy.lex import (
@@ -24,7 +24,7 @@ from mypy.nodes import (
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
-    StarExpr
+    StarExpr, YieldFromStmt, YieldFromExpr
 )
 from mypy import nodes
 from mypy import noderepr
@@ -744,6 +744,8 @@ class Parser:
         expr = None  # type: Node
         if not isinstance(self.current(), Break):
             expr = self.parse_expression()
+            if isinstance(expr, YieldFromExpr): # "yield from" expressions can't be returned.
+                return None
         br = self.expect_break()
         node = ReturnStmt(expr)
         self.set_repr(node, noderepr.SimpleStmtRepr(return_tok, br))
@@ -772,14 +774,39 @@ class Parser:
         self.set_repr(node, noderepr.SimpleStmtRepr(assert_tok, br))
         return node
 
-    def parse_yield_stmt(self) -> YieldStmt:
+    def parse_yield_stmt(self) -> Union[YieldStmt, YieldFromStmt]:
         yield_tok = self.expect('yield')
         expr = None  # type: Node
-        if not isinstance(self.current(), Break):
-            expr = self.parse_expression()
-        br = self.expect_break()
         node = YieldStmt(expr)
+        if not isinstance(self.current(), Break):
+            if isinstance(self.current(), Keyword) and self.current_str() == "from":  # Not go if it's not from
+                from_tok = self.expect("from")
+                expr = self.parse_expression()  # Here comes when yield from is not assigned
+                node_from = YieldFromStmt(expr)
+                br = self.expect_break()
+                self.set_repr(node_from, noderepr.SimpleStmtRepr(yield_tok, br))
+                return node_from  # return here, we've gotted the type
+            else:
+                expr = self.parse_expression()
+                node = YieldStmt(expr)
+        br = self.expect_break()
         self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
+        return node
+
+    def parse_yield_from_expr(self) -> YieldFromExpr:
+        y_tok = self.expect("yield")
+        expr = None # type: Node
+        node = YieldFromExpr(expr)
+        if self.current_str() == "from":
+            f_tok = self.expect("from")
+            tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
+            node = YieldFromExpr(tok)
+        else:
+            # TODO
+            # Here comes the yield expression (ex:  x = yield 3 )
+            # tok = self.parse_expression()
+            # node = YieldExpr(tok)  # Doesn't exist now
+            pass
         return node
 
     def parse_del_stmt(self) -> DelStmt:
@@ -1056,6 +1083,8 @@ class Parser:
                 expr = self.parse_unicode_literal()
             elif isinstance(self.current(), FloatLit):
                 expr = self.parse_float_expr()
+            elif isinstance(t, Keyword) and s == "yield":
+                expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
             else:
                 # Invalid expression.
                 self.parse_error()

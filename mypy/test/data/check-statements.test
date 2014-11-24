@@ -644,6 +644,88 @@ def f() -> Iterator[None]:
 [builtins fixtures/for.py]
 
 
+-- Yield from statement
+-- --------------------
+
+-- Iterables
+-- ----------
+
+[case testSimpleYieldFromWithIterator]
+from typing import Iterator
+def g() -> Iterator[str]:
+    yield '42'
+def h() -> Iterator[int]:
+    yield 42
+def f() -> Iterator[str]:
+    yield from g()
+    yield from h()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
+[out]
+main: In function "f":
+
+[case testYieldFromAppliedToAny]
+from typing import Any
+def g() -> Any:
+    yield object()
+def f() -> Any:
+    yield from g()
+[out]
+
+[case testYieldFromInFunctionReturningFunction]
+from typing import Iterator, Function
+def g() -> Iterator[int]:
+    yield 42
+def f() -> Function[[], None]:
+    yield from g()  # E: Iterable function return type expected for "yield from"
+[out]
+main: In function "f":
+
+[case testYieldFromNotIterableReturnType]
+from typing import Iterator
+def g() -> Iterator[int]:
+    yield 42
+def f() -> int:
+    yield from g()  # E: Iterable function return type expected for "yield from"
+[out]
+main: In function "f":
+
+[case testYieldFromNotAppliedIterator]
+from typing import Iterator
+def g() -> int:
+    return 42
+def f() -> Iterator[int]:
+    yield from g()  # E: "yield from" can't be applied to "int"
+[out]
+main: In function "f":
+
+[case testYieldFromCheckIncompatibleTypesTwoIterables]
+from typing import List, Iterator
+def g() -> Iterator[List[int]]:
+    yield [2, 3, 4]
+def f() -> Iterator[List[int]]:
+    yield from g()
+    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type List[int])
+[builtins fixtures/for.py]
+[out]
+main: In function "f":
+
+[case testYieldFromNotAppliedToNothing]
+def h():
+    yield from  # E: Parse error before end of line
+[out]
+main: In function "h":
+
+[case testYieldFromAndYieldTogether]
+from typing import Iterator
+def f() -> Iterator[str]:
+    yield "g1 ham"
+    yield from g()
+    yield "g1 eggs"
+def g() -> Iterator[str]:
+    yield "g2 spam"
+    yield "g2 more spam"
+[out]
+
+
 -- With statement
 -- --------------
 
