@@ -513,6 +513,6 @@ x = Undefined # type: Function[[int], None]
 def f(*x: int) -> None: pass
 def g(*x: str) -> None: pass
 x = f
-x = g # E: Incompatible types in assignment (expression has type Function[["str"] -> None], variable has type Function[["int"] -> None])
+x = g # E: Incompatible types in assignment (expression has type Function[[str], None], variable has type Function[[int], None])
 [builtins fixtures/list.py]
 [out]

@@ -436,8 +436,8 @@ class A:
     h = f # type: Function[[A], None]
     h = f
     g = h
-    ff = f # type: Function[[B], None]  # E: Incompatible types in assignment (expression has type Function[["A"] -> None], variable has type Function[["B"] -> None])
-    g = ff                # E: Incompatible types in assignment (expression has type Function[["B"] -> None], variable has type Function[["A"] -> None])
+    ff = f # type: Function[[B], None]  # E: Incompatible types in assignment (expression has type Function[[A], None], variable has type Function[[B], None])
+    g = ff                # E: Incompatible types in assignment (expression has type Function[[B], None], variable has type Function[[A], None])
 [out]
 main: In class "A":
 

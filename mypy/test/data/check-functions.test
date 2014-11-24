@@ -30,10 +30,10 @@ class B(A): pass
 f = Undefined(Function[[B], A])
 g = Undefined(Function[[A], A])  # subtype of f
 h = Undefined(Function[[B], B])  # subtype of f
-g = h  # E: Incompatible types in assignment (expression has type Function[["B"] -> "B"], variable has type Function[["A"] -> "A"])
-h = f  # E: Incompatible types in assignment (expression has type Function[["B"] -> "A"], variable has type Function[["B"] -> "B"])
-h = g  # E: Incompatible types in assignment (expression has type Function[["A"] -> "A"], variable has type Function[["B"] -> "B"])
-g = f  # E: Incompatible types in assignment (expression has type Function[["B"] -> "A"], variable has type Function[["A"] -> "A"])
+g = h  # E: Incompatible types in assignment (expression has type Function[[B], B], variable has type Function[[A], A])
+h = f  # E: Incompatible types in assignment (expression has type Function[[B], A], variable has type Function[[B], B])
+h = g  # E: Incompatible types in assignment (expression has type Function[[A], A], variable has type Function[[B], B])
+g = f  # E: Incompatible types in assignment (expression has type Function[[B], A], variable has type Function[[A], A])
 f = g
 f = h
 f = f
@@ -44,9 +44,9 @@ h = h
 from typing import Undefined, Function
 f = Undefined # type: Function[[], None]
 a, o = Undefined, Undefined # type: (A, object)
-a = f   # E: Incompatible types in assignment (expression has type Function[[] -> None], variable has type "A")
-f = a   # E: Incompatible types in assignment (expression has type "A", variable has type Function[[] -> None])
-f = o   # E: Incompatible types in assignment (expression has type "object", variable has type Function[[] -> None])
+a = f   # E: Incompatible types in assignment (expression has type Function[[], None], variable has type "A")
+f = a   # E: Incompatible types in assignment (expression has type "A", variable has type Function[[], None])
+f = o   # E: Incompatible types in assignment (expression has type "object", variable has type Function[[], None])
 f = f() # E: Function does not return a value
 
 f = f
@@ -59,8 +59,8 @@ class A: pass
 from typing import Undefined, Function
 f = Undefined # type: Function[[], None]
 g = Undefined # type: Function[[], object]
-f = g  # E: Incompatible types in assignment (expression has type Function[[] -> "object"], variable has type Function[[] -> None])
-g = f  # E: Incompatible types in assignment (expression has type Function[[] -> None], variable has type Function[[] -> "object"])
+f = g  # E: Incompatible types in assignment (expression has type Function[[], object], variable has type Function[[], None])
+g = f  # E: Incompatible types in assignment (expression has type Function[[], None], variable has type Function[[], object])
 
 f = f
 g = g
@@ -70,9 +70,9 @@ from typing import Undefined, Function
 f = Undefined # type: Function[[A, A], None]
 g = Undefined # type: Function[[A, B], None]
 h = Undefined # type: Function[[B, B], None]
-f = g  # E: Incompatible types in assignment (expression has type Function[["A", "B"] -> None], variable has type Function[["A", "A"] -> None])
-f = h  # E: Incompatible types in assignment (expression has type Function[["B", "B"] -> None], variable has type Function[["A", "A"] -> None])
-g = h  # E: Incompatible types in assignment (expression has type Function[["B", "B"] -> None], variable has type Function[["A", "B"] -> None])
+f = g  # E: Incompatible types in assignment (expression has type Function[[A, B], None], variable has type Function[[A, A], None])
+f = h  # E: Incompatible types in assignment (expression has type Function[[B, B], None], variable has type Function[[A, A], None])
+g = h  # E: Incompatible types in assignment (expression has type Function[[B, B], None], variable has type Function[[A, B], None])
 g = f
 h = f
 h = g
@@ -89,10 +89,10 @@ f = Undefined # type: Function[[], None]
 g = Undefined # type: Function[[A], None]
 h = Undefined # type: Function[[A, A], None]
 
-f = g   # E: Incompatible types in assignment (expression has type Function[["A"] -> None], variable has type Function[[] -> None])
-f = h   # E: Incompatible types in assignment (expression has type Function[["A", "A"] -> None], variable has type Function[[] -> None])
-h = f   # E: Incompatible types in assignment (expression has type Function[[] -> None], variable has type Function[["A", "A"] -> None])
-h = g   # E: Incompatible types in assignment (expression has type Function[["A"] -> None], variable has type Function[["A", "A"] -> None])
+f = g   # E: Incompatible types in assignment (expression has type Function[[A], None], variable has type Function[[], None])
+f = h   # E: Incompatible types in assignment (expression has type Function[[A, A], None], variable has type Function[[], None])
+h = f   # E: Incompatible types in assignment (expression has type Function[[], None], variable has type Function[[A, A], None])
+h = g   # E: Incompatible types in assignment (expression has type Function[[A], None], variable has type Function[[A, A], None])
 
 f = f
 g = g
@@ -107,7 +107,7 @@ t = Undefined # type: type
 a = Undefined # type: A
 
 a = A # E: Incompatible types in assignment (expression has type "A", variable has type "A")
-t = f # E: Incompatible types in assignment (expression has type Function[[] -> None], variable has type "type")
+t = f # E: Incompatible types in assignment (expression has type Function[[], None], variable has type "type")
 t = A
 
 class A:
@@ -121,7 +121,7 @@ f = Undefined # type: Function[[AA], A]
 g = Undefined # type: Function[[B], B]
 h = Undefined # type: Function[[A], AA]
 
-h = i  # E: Incompatible types in assignment (expression has type functionlike, variable has type Function[["A"] -> "AA"])
+h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type Function[[A], AA])
 f = j
 
 f = i
@@ -159,7 +159,7 @@ a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
 b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 b = f(c)  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
-g4 = f    # E: Incompatible types in assignment (expression has type functionlike, variable has type Function[["A"] -> "B"])
+g4 = f    # E: Incompatible types in assignment (expression has type overloaded function, variable has type Function[[A], B])
 
 g1 = f
 g2 = f
@@ -553,7 +553,7 @@ f(None) # E: Too many arguments for "f"
 from typing import Any, Function
 def dec1(f: Function[[Any], None]) -> Function[[], None]: pass
 def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec2" has incompatible type Function[["Any"] -> "Any"]; expected Function[["Any", "Any"] -> None]
+@dec1 # E: Argument 1 to "dec2" has incompatible type Function[[Any], Any]; expected Function[[Any, Any], None]
 @dec2
 def f(x): pass
 
@@ -561,7 +561,7 @@ def f(x): pass
 from typing import Any, Function
 def dec1(f: Function[[Any, Any], None]) -> Function[[], None]: pass
 def dec2(f: Function[[Any, Any], None]) -> Function[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec1" has incompatible type Function[["Any"] -> None]; expected Function[["Any", "Any"] -> None]
+@dec1 # E: Argument 1 to "dec1" has incompatible type Function[[Any], None]; expected Function[[Any, Any], None]
 @dec2
 def f(x, y): pass
 

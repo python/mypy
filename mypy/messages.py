@@ -135,14 +135,14 @@ class MessageBuilder:
                 itype = cast(Instance, func.items()[0].ret_type)
                 return self.format(itype)
             elif isinstance(func, Callable):
-                arg_types = map(self.format, func.arg_types)
-                return_type = self.format(func.ret_type)
-                return 'Function[[{}] -> {}]'.format(", ".join(arg_types), return_type)
+                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
+                return_type = strip_quotes(self.format(func.ret_type))
+                return 'Function[[{}], {}]'.format(", ".join(arg_types), return_type)
             else:
                 # Use a simple representation for function types; proper
                 # function types may result in long and difficult-to-read
                 # error messages.
-                return 'functionlike'
+                return 'overloaded function'
         else:
             # Default case; we simply have to return something meaningful here.
             return 'object'

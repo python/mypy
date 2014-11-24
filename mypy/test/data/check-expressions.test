@@ -1026,7 +1026,7 @@ f = lambda: ''
 [out]
 main, line 3: "str" has no attribute "x"
 main, line 4: Incompatible return value type: expected builtins.int, got builtins.str
-main, line 4: Incompatible types in assignment (expression has type Function[[] -> "str"], variable has type Function[[] -> "int"])
+main, line 4: Incompatible types in assignment (expression has type Function[[], str], variable has type Function[[], int])
 
 [case testVoidLambda]
 import typing
@@ -1161,8 +1161,8 @@ def f() -> None:
     pass
 [out]
 main, line 5: Unsupported left operand type for + (None)
-main, line 6: Unsupported left operand type for + (Function[[] -> None])
-main, line 7: Unsupported operand types for + ("A" and Function[[] -> None])
+main, line 6: Unsupported left operand type for + (Function[[], None])
+main, line 7: Unsupported operand types for + ("A" and Function[[], None])
 
 [case testOperatorMethodWithInvalidArgCount]
 from typing import Undefined
