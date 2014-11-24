@@ -598,7 +598,7 @@ class A: pass
 [out]
 main, line 2: Cannot infer type of lambda
 main, line 3: Cannot infer type of lambda
-main, line 3: Incompatible types in assignment (expression has type , variable has type )
+main, line 3: Incompatible types in assignment (expression has type Function[[] -> "A"], variable has type Function[["A"] -> "A"])
 
 
 -- Overloads + generic functions

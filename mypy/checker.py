@@ -1231,7 +1231,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
                                 context: Node,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
-        """Checks the assignment of rvalue to a lvalue of type lvalue_type"""
+        """Checks the assignment of rvalue to a lvalue of type lvalue_type."""
         if refers_to_fullname(rvalue, 'typing.Undefined'):
             # The rvalue is just 'Undefined'; this is always valid.
             # Infer the type of 'Undefined' from the lvalue type.
@@ -1792,9 +1792,9 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 extra_info = []  # type: List[str]
                 if subtype_label is not None:
-                    extra_info.append(subtype_label + ' ' + self.msg.format_simple(subtype))
+                    extra_info.append(subtype_label + ' ' + self.msg.format(subtype))
                 if supertype_label is not None:
-                    extra_info.append(supertype_label + ' ' + self.msg.format_simple(supertype))
+                    extra_info.append(supertype_label + ' ' + self.msg.format(supertype))
                 if extra_info:
                     msg += ' (' + ', '.join(extra_info) + ')'
                 self.fail(msg, context)
