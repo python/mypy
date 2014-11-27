@@ -41,7 +41,7 @@ DO_NOT_RUN = 'do-not-run'        # Only type check, don't run the program
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build/run module as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
-
+PYTHON_FILES = 'python-files'    # Use .py files instead of .pyi
 
 # State ids. These describe the states a source file / module can be in a
 # build.
@@ -228,7 +228,8 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
 
 
 def lookup_program(module: str, lib_path: List[str]) -> str:
-    path = find_module(module, lib_path)
+    # Modules are .py and not .pyi
+    path = find_module(module, lib_path, ['.py'])
     if path:
         return path
     else:
@@ -470,7 +471,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path) is not None
+        return find_module(id, self.lib_path, ['.py', '.pyi']) is not None
 
     def final_passes(self, files: List[MypyFile],
                      types: Dict[Node, Type]) -> None:
@@ -838,7 +839,7 @@ def read_module_source_from_file(id: str,
       id:       module name, a string of form 'foo' or 'foo.bar'
       lib_path: library search path
     """
-    path = find_module(id, lib_path)
+    path = find_module(id, lib_path, ['.py', '.pyi'])
     if path is not None:
         text = ''
         try:
@@ -854,16 +855,17 @@ def read_module_source_from_file(id: str,
         return None, None
 
 
-def find_module(id: str, lib_path: List[str]) -> str:
+def find_module(id: str, lib_path: List[str], extensions: List[str]) -> str:
     """Return the path of the module source file, or None if not found."""
     for pathitem in lib_path:
-        comp = id.split('.')
-        path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + '.py')
-        text = ''
-        if not os.path.isfile(path):
-            path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
-        if os.path.isfile(path) and verify_module(id, path):
-            return path
+        for extension in extensions:
+            comp = id.split('.')
+            path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
+            text = ''
+            if not os.path.isfile(path):
+                path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
+            if os.path.isfile(path) and verify_module(id, path):
+                return path
     return None
 
 

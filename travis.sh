@@ -32,7 +32,7 @@ done
 STUBTEST=_test_stubs.py
 echo "import typing" > $STUBTEST
 cd stubs/3.2
-ls *.py | sed s/\\.py//g | sed "s/^/import /g" >> ../../$STUBTEST
+ls *.pyi | sed s/\\.pyi//g | sed "s/^/import /g" >> ../../$STUBTEST
 for m in os os.path; do
     echo "import $m" >> ../../$STUBTEST
 done
