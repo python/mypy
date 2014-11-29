@@ -248,6 +248,10 @@ xyz()
 [out]
 main, line 1: No module named 'xyz'
 
+[case testAccessingUnknownModuleIgnore]
+import xyz # mypy: ignore
+[out]
+
 [case testAccessingUnknownModule2]
 import xyz, bar
 xyz.foo()
