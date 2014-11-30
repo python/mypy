@@ -1309,6 +1309,20 @@ class TypeVarExpr(SymbolNode):
         return visitor.visit_type_var_expr(self)
 
 
+class NamedTupleExpr(Node):
+    """Named tuple expression namedtuple(...)."""
+
+    # The class representation of this named tuple (its tuple_type attribute contains
+    # the tuple item types)
+    info = Undefined('TypeInfo')
+
+    def __init__(self, info: 'TypeInfo') -> None:
+        self.info = info
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_namedtuple_expr(self)
+
+
 class DucktypeExpr(Node):
     """Ducktype class decorator expression ducktype(...)."""
 

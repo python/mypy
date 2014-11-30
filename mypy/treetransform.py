@@ -17,7 +17,7 @@ from mypy.nodes import (
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
     DisjointclassExpr, ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
-    YieldFromExpr
+    YieldFromExpr, NamedTupleExpr
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -399,6 +399,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_type_var_expr(self, node: TypeVarExpr) -> Node:
         return TypeVarExpr(node.name(), node.fullname(),
                            self.types(node.values))
+
+    def visit_namedtuple_expr(self, node: NamedTupleExpr) -> Node:
+        return NamedTupleExpr(node.info)
 
     def visit_ducktype_expr(self, node: DucktypeExpr) -> Node:
         return DucktypeExpr(node.type)

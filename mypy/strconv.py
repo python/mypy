@@ -394,6 +394,9 @@ class StrConv(NodeVisitor[str]):
         else:
             return 'TypeVarExpr:{}()'.format(o.line)
 
+    def visit_namedtuple_expr(self, o):
+        return self.dump([('Info', o.info)], o)
+
     def visit_ducktype_expr(self, o):
         return 'DucktypeExpr:{}({})'.format(o.line, o.type)
 

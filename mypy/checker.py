@@ -17,7 +17,7 @@ from mypy.nodes import (
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, YieldFromStmt
+    YieldFromExpr, YieldFromStmt, NamedTupleExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1740,7 +1740,11 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_type_application(e)
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
-        # TODO Perhaps return a special type used for type variables only?
+        # TODO: Perhaps return a special type used for type variables only?
+        return AnyType()
+
+    def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        # TODO: Perhaps return a type object type?
         return AnyType()
 
     def visit_list_expr(self, e: ListExpr) -> Type:

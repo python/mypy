@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromStmt, YieldFromExpr
+    YieldFromStmt, YieldFromExpr, NamedTupleExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1023,6 +1023,7 @@ class SemanticAnalyzer(NodeVisitor):
         info = TypeInfo(symbols, class_def)
         info.tuple_type = TupleType([AnyType() for _ in listexpr.items],
                                     self.named_type('__builtins__.tuple'))
+        call.analyzed = NamedTupleExpr(info)
         return info
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
