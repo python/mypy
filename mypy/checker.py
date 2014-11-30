@@ -1933,13 +1933,15 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 
     For example, assume
 
-      class D(Generic[S]) ...
-      class C(D[E[T]], Generic[T]) ...
+    . class D(Generic[S]) ...
+    . class C(D[E[T]], Generic[T]) ...
 
     Now S in the context of D would be mapped to E[T] in the context of C.
     """
     # Create the type of self in subtype, of form t[a1, ...].
     inst_type = self_type(sub_info)
+    if isinstance(inst_type, TupleType):
+        inst_type = inst_type.fallback
     # Map the type of self to supertype. This gets us a description of the
     # supertype type variables in terms of subtype variables, i.e. t[t1, ...]
     # so that any type variables in tN are to be interpreted in subtype

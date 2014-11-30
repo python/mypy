@@ -1799,7 +1799,7 @@ class ThirdPass(TraverserVisitor[None]):
         self.errors.report(ctx.get_line(), msg)
 
 
-def self_type(typ: TypeInfo) -> Instance:
+def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
@@ -1808,7 +1808,11 @@ def self_type(typ: TypeInfo) -> Instance:
         tv.append(TypeVar(typ.type_vars[i], i + 1,
                           typ.defn.type_vars[i].values,
                           typ.defn.type_vars[i].upper_bound))
-    return Instance(typ, tv)
+    inst = Instance(typ, tv)
+    if typ.tuple_type is None:
+        return inst
+    else:
+        return TupleType(typ.tuple_type.items, inst)
 
 
 @overload

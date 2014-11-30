@@ -36,3 +36,11 @@ x = X(x=1, y='x')
 x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
 x = X(y=1) # E: Too few arguments for "X"
+
+[case testCreateNamedTupleAndUseAsTuple]
+from collections import namedtuple
+from typing import Undefined
+X = namedtuple('X', ['x', 'y'])
+x = X(1, 'x')
+a, b = x
+a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
