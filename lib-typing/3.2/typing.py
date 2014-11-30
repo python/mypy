@@ -1,6 +1,7 @@
 """Static type checking helpers"""
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+import collections
 import inspect
 import sys
 import re
@@ -19,6 +20,7 @@ __all__ = [
     'IO',
     'List',
     'Match',
+    'NamedTuple',
     'Pattern',
     'Protocol',
     'Set',
@@ -173,9 +175,17 @@ Function = TypeAlias(callable)
 Pattern = TypeAlias(type(re.compile('')))
 Match = TypeAlias(type(re.match('', '')))
 
+
 def union(x): return x
 
+
 Union = TypeAlias(union)
+
+
+def NamedTuple(typename, fields):
+    return collections.namedtuple(typename,
+                                  (name for name, type in fields))
+
 
 class typevar:
     def __init__(self, name, *, values=None):
