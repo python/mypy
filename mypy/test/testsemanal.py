@@ -86,7 +86,7 @@ class SemAnalErrorSuite(Suite):
         c = []
         for f in semanal_error_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_semanal_error, test_temp_dir)
+                                  test_semanal_error, test_temp_dir, True)
         return c
 
 
