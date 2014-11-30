@@ -113,12 +113,21 @@ class TypeAnalyser(TypeVisitor[Type]):
                                  Instance(info, [], t.line),
                                  t.line, t.repr)
             else:
+
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
                 # checked only later, since we do not always know the
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
-                return Instance(info, self.anal_array(t.args), t.line, t.repr)
+                instance = Instance(info, self.anal_array(t.args), t.line, t.repr)
+                if info.tuple_type is None:
+                    return instance
+                else:
+                    # The class has a Tuple[...] base class so it will be
+                    # represented as a tuple type.
+                    return TupleType(self.anal_array(info.tuple_type.items),
+                                     fallback=instance,
+                                     line=t.line)
         else:
             return t
 

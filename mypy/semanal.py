@@ -708,6 +708,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.store_declared_types(lvalue, s.type)
         self.check_and_set_up_type_alias(s)
         self.process_typevar_declaration(s)
+        self.process_namedtuple_definition(s)
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
@@ -952,13 +953,77 @@ class SemanticAnalyzer(NodeVisitor):
                 return
         else:
             values = []
-        # Yes, it's a valid type variable definition!
+        # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
         typevar = TypeVarExpr(name, node.fullname, values)
         typevar.line = call.line
         call.analyzed = typevar
         node.node = typevar
+
+    def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
+        """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        if not isinstance(s.rvalue, CallExpr):
+            return
+        call = cast(CallExpr, s.rvalue)
+        named_tuple = self.check_namedtuple(call)
+        if named_tuple is None:
+            return
+        # Yes, it's a valid namedtuple definition. Add it to the symbol table.
+        lvalue = cast(NameExpr, s.lvalues[0])
+        name = lvalue.name
+        node = self.lookup(name, s)
+        node.kind = GDEF   # TODO locally defined namedtuple
+        # TODO call.analyzed
+        node.node = named_tuple
+
+    def check_namedtuple(self, call: CallExpr) -> TypeInfo:
+        """Check if a call defines a namedtuple.
+
+        If it does, return the corresponding TypeInfo. Return None otherwise.
+
+        If the definition is invalid but looks like a namedtuple,
+        report errors but return (some) TypeInfo.
+        """
+        if not isinstance(call.callee, RefExpr):
+            return None
+        callee = cast(RefExpr, call.callee)
+        if callee.fullname != 'collections.namedtuple':
+            return None
+        # Construct dummy return values for error cases.
+        error_classdef = ClassDef('namedtuple', Block([]))
+        error_typeinfo = TypeInfo(SymbolTable(), error_classdef)
+        # TODO Share code with check_argument_count in checkexpr.py?
+        if len(call.args) < 2:
+            self.fail("Too few arguments for namedtuple()", call)
+            return error_typeinfo
+        if len(call.args) > 2:
+            self.fail("Too many arguments for namedtuple()", call)
+            return error_typeinfo
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            self.fail("Unexpected arguments to namedtuple()", call)
+            return error_typeinfo
+        if not isinstance(call.args[0], StrExpr):
+            self.fail("namedtuple() expects a string literal as the first argument", call)
+            return error_typeinfo
+        if not isinstance(call.args[1], ListExpr):
+            self.fail("TODO list expr expected", call)
+            return error_typeinfo
+        listexpr = cast(ListExpr, call.args[1])
+        if any(not isinstance(item, StrExpr) for item in listexpr.items):
+            self.fail("TODO string literals expected as items")
+            error_typeinfo
+        symbols = SymbolTable()
+        name = cast(StrExpr, call.args[0]).value
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = self.qualified_name(name)
+        # TODO: add symbols
+        info = TypeInfo(symbols, class_def)
+        info.tuple_type = TupleType([AnyType() for _ in listexpr.items],
+                                    self.named_type('__builtins__.tuple'))
+        return info
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = List[Type]()

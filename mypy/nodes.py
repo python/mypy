@@ -1383,6 +1383,13 @@ class TypeInfo(SymbolNode):
     # Duck type compatibility (ducktype decorator)
     ducktype = None  # type: mypy.types.Type
 
+    # Representation of a Tuple[...] base class, if the class has any
+    # (e.g., for named tuples). If this is not None, the actual Type
+    # object used for this class is not an Instance but a TupleType;
+    # the corresponding Instance is set as the fallback type of the
+    # tuple type.
+    tuple_type = None # type: mypy.types.TupleType
+
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
         self.names = names

@@ -606,6 +606,8 @@ class TypeTranslator(TypeVisitor[Type]):
 class TypeStrVisitor(TypeVisitor[str]):
     """Visitor for pretty-printing types into strings.
 
+    This is mostly for debugging/testing.
+
     Do not preserve original formatting.
 
     Notes:
@@ -699,7 +701,11 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_tuple_type(self, t):
         s = self.list_str(t.items)
-        return 'Tuple[{}]'.format(s)
+        fallback_name = t.fallback.type.fullname()
+        if fallback_name == 'builtins.tuple':
+            return 'Tuple[{}]'.format(s)
+        else:
+            return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
 
     def visit_star_type(self, t):
         s = t.type.accept(self)

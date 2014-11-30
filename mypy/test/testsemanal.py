@@ -23,6 +23,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-modules.test',
                  'semanal-statements.test',
                  'semanal-abstractclasses.test',
+                 'semanal-namedtuple.test',
                  'semanal-python2.test']
 
 
@@ -60,7 +61,8 @@ def test_semanal(testcase):
             # TODO the test is not reliable
             if (not f.path.endswith((os.sep + 'builtins.py',
                                      'typing.py',
-                                     'abc.py'))
+                                     'abc.py',
+                                     'collections.py'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
