@@ -552,6 +552,34 @@ main: In function "g":
 main, line 4: no binding for nonlocal 'x' found
 main, line 5: Name 'x' is not defined
 
+[case testNonlocalDeclNotMatchingGlobal]
+import typing
+x = None
+def f():
+    nonlocal x
+    x = None
+[out]
+main: In function "f":
+main, line 4: no binding for nonlocal 'x' found
+main, line 5: Name 'x' is not defined
+
+[case testNonlocalDeclConflictingWithParameter]
+import typing
+def g():
+    x = None
+    def f(x):
+        nonlocal x
+        x = None
+[out]
+main: In function "f":
+main, line 5: name 'x' is already defined in local scope before nonlocal declaration
+
+[case testNonlocalDeclOutsideFunction]
+x = 2
+nonlocal x
+[out]
+main, line 2: nonlocal declaration not allowed at module level
+
 [case testGlobalAndNonlocalDecl]
 import typing
 x = 1

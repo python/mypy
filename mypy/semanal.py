@@ -1135,16 +1135,24 @@ class SemanticAnalyzer(NodeVisitor):
             self.global_decls[-1].add(name)
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
-        for name in d.names:
-            for table in reversed(self.locals[:-1]):
-                if table is not None and name in table:
-                    break
-            else:
-                self.fail("no binding for nonlocal '{}' found".format(name), d)
+        if not self.is_func_scope():
+            self.fail("nonlocal declaration not allowed at module level", d)
+        else:
+            for name in d.names:
+                for table in reversed(self.locals[:-1]):
+                    if table is not None and name in table:
+                        break
+                else:
+                    self.fail("no binding for nonlocal '{}' found".format(name), d)
 
-            if name in self.global_decls[-1]:
-                self.fail("name '{}' is nonlocal and global".format(name), d)
-            self.nonlocal_decls[-1].add(name)
+                for table in self.locals[-1]:
+                    if table is not None and name in table:
+                        self.fail("name '{}' is already defined in local "
+                                  "scope before nonlocal declaration".format(name), d)
+
+                if name in self.global_decls[-1]:
+                    self.fail("name '{}' is nonlocal and global".format(name), d)
+                self.nonlocal_decls[-1].add(name)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
