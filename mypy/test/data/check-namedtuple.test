@@ -17,3 +17,22 @@ x = Undefined(X)
 x.x
 x.y
 x.z # E: "X" has no attribute "z"
+
+[case testCreateNamedTupleWithPositionalArguments]
+from collections import namedtuple
+from typing import Undefined
+X = namedtuple('X', ['x', 'y'])
+x = X(1, 'x')
+x.x
+x.z      # E: "X" has no attribute "z"
+x = X(1) # E: Too few arguments for "X"
+x = X(1, 2, 3)  # E: Too many arguments for "X"
+
+[case testCreateNamedTupleWithKeywordArguments]
+from collections import namedtuple
+from typing import Undefined
+X = namedtuple('X', ['x', 'y'])
+x = X(x=1, y='x')
+x = X(1, y='x')
+x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
+x = X(y=1) # E: Too few arguments for "X"

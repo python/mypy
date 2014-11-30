@@ -1033,17 +1033,36 @@ class SemanticAnalyzer(NodeVisitor):
         symbols = SymbolTable()
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
-        # TODO: add symbols
         info = TypeInfo(symbols, class_def)
+        # Add named tuple items as attributes.
+        # TODO: Make them read-only.
         for item, typ in zip(items, types):
             var = Var(item)
             var.info = info
             var.type = typ
             var.ready = True
             symbols[item] = SymbolTableNode(MDEF, var)
+        # Add a __init__ method.
+        init = self.make_namedtuple_init(info, items, types)
+        symbols['__init__'] = SymbolTableNode(MDEF, init)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple'))
         info.mro = [info] + info.tuple_type.fallback.type.mro
         return info
+
+    def make_namedtuple_init(self, info: TypeInfo, items: List[str],
+                             types: List[type]) -> FuncDef:
+        args = [Var(item) for item in items]
+        for arg, type in zip(args, types):
+            arg.type = type
+            arg.ready = True
+        # TODO: Make sure that the self argument name is not visible?
+        args = [Var('__self')] + args
+        # TODO: Add type signature.
+        return FuncDef('__init__',
+                       args,
+                       [ARG_POS] * (len(items) + 1),
+                       [None] * (len(items) + 1),
+                       Block([]))
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = List[Type]()
