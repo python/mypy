@@ -1009,11 +1009,11 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("namedtuple() expects a string literal as the first argument", call)
             return error_typeinfo
         if not isinstance(call.args[1], ListExpr):
-            self.fail("list literal expected as the second argument to namedtuple()", call)
+            self.fail("List literal expected as the second argument to namedtuple()", call)
             return error_typeinfo
         listexpr = cast(ListExpr, call.args[1])
         if any(not isinstance(item, StrExpr) for item in listexpr.items):
-            self.fail("string literal expected as namedtuple() item", call)
+            self.fail("String literal expected as namedtuple() item", call)
             error_typeinfo
         symbols = SymbolTable()
         name = cast(StrExpr, call.args[0]).value
