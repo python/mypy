@@ -999,7 +999,7 @@ class SemanticAnalyzer(NodeVisitor):
         listexpr = cast(ListExpr, call.args[1])
         name = cast(StrExpr, call.args[0]).value
         items = [cast(StrExpr, item).value for item in listexpr.items]
-        types = [AnyType() for _ in listexpr.items]
+        types = [AnyType() for _ in listexpr.items]  # type: List[Type]
         info = self.build_namedtuple_typeinfo(name, items, types)
         call.analyzed = NamedTupleExpr(info).set_line(call.line)
         return info
@@ -1040,7 +1040,6 @@ class SemanticAnalyzer(NodeVisitor):
             var = Var(item)
             var.info = info
             var.type = typ
-            var.ready = True
             symbols[item] = SymbolTableNode(MDEF, var)
         # Add a __init__ method.
         init = self.make_namedtuple_init(info, items, types)
@@ -1050,11 +1049,10 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def make_namedtuple_init(self, info: TypeInfo, items: List[str],
-                             types: List[type]) -> FuncDef:
+                             types: List[Type]) -> FuncDef:
         args = [Var(item) for item in items]
         for arg, type in zip(args, types):
             arg.type = type
-            arg.ready = True
         # TODO: Make sure that the self argument name is not visible?
         args = [Var('__self')] + args
         # TODO: Add type signature.
