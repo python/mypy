@@ -943,3 +943,20 @@ x = X(a=1, b='s')
 x.c
 [out]
 _program.py, line 5: "X" has no attribute "c"
+
+[case testNamedTupleTupleOperations]
+from typing import Iterable
+from collections import namedtuple
+X = namedtuple('X', ['a', 'b'])
+def f(x: Iterable[int]) -> None: pass
+x = X(a=1, b='s')
+f(x)
+print(len(x))
+print(x.index(1))
+print(x.count(1))
+print(x + x)
+[out]
+2
+0
+1
+(1, 's', 1, 's')
