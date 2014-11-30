@@ -1015,15 +1015,21 @@ class SemanticAnalyzer(NodeVisitor):
         if any(not isinstance(item, StrExpr) for item in listexpr.items):
             self.fail("String literal expected as namedtuple() item", call)
             error_typeinfo
-        symbols = SymbolTable()
         name = cast(StrExpr, call.args[0]).value
+        items = [cast(StrExpr, item).value for item in listexpr.items]
+        types = [AnyType() for _ in listexpr.items]
+        info = self.build_namedtuple_typeinfo(name, items, types)
+        call.analyzed = NamedTupleExpr(info).set_line(call.line)
+        return info
+
+    def build_namedtuple_typeinfo(self, name: str, items: List[str],
+                                  types: List[Type]) -> TypeInfo:
+        symbols = SymbolTable()
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
         # TODO: add symbols
         info = TypeInfo(symbols, class_def)
-        info.tuple_type = TupleType([AnyType() for _ in listexpr.items],
-                                    self.named_type('__builtins__.tuple'))
-        call.analyzed = NamedTupleExpr(info).set_line(call.line)
+        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple'))
         return info
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
