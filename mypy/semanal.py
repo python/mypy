@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromStmt, YieldFromExpr
+    YieldFromStmt, YieldFromExpr, NonlocalDecl
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -103,6 +103,8 @@ class SemanticAnalyzer(NodeVisitor):
     globals = Undefined(SymbolTable)
     # Names declared using "global" (separate set for each scope)
     global_decls = Undefined(List[Set[str]])
+    # Names declated using "nonlocal" (separate set for each scope)
+    nonlocal_decls = Undefined(List[Set[str]])
     # Local names of function scopes; None for non-function scopes.
     locals = Undefined(List[SymbolTable])
     # Nested block depths of scopes
@@ -758,7 +760,8 @@ class SemanticAnalyzer(NodeVisitor):
                 v = cast(Var, lval.node)
                 assert v.name() in self.globals
             elif (self.is_func_scope() and lval.name not in self.locals[-1] and
-                  lval.name not in self.global_decls[-1]):
+                  lval.name not in self.global_decls[-1] and
+                  lval.name not in self.nonlocal_decls[-1]):
                 # Define new local name.
                 v = Var(lval.name)
                 lval.node = v
@@ -1126,8 +1129,22 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Invalid delete target', s)
 
     def visit_global_decl(self, g: GlobalDecl) -> None:
-        for n in g.names:
-            self.global_decls[-1].add(n)
+        for name in g.names:
+            if name in self.nonlocal_decls[-1]:
+                self.fail("name '{}' is nonlocal and global".format(name), g)
+            self.global_decls[-1].add(name)
+
+    def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
+        for name in d.names:
+            for table in reversed(self.locals[:-1]):
+                if table is not None and name in table:
+                    break
+            else:
+                self.fail("no binding for nonlocal '{}' found".format(name), d)
+
+            if name in self.global_decls[-1]:
+                self.fail("name '{}' is nonlocal and global".format(name), d)
+            self.nonlocal_decls[-1].add(name)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
@@ -1382,10 +1399,18 @@ class SemanticAnalyzer(NodeVisitor):
 
     def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
-        # 1. Name declared using 'global x' takes precedence
+        # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
+            else:
+                self.name_not_defined(name, ctx)
+                return None
+        # 1b. Name declared using 'nonlocal x' takes precedence
+        if name in self.nonlocal_decls[-1]:
+            for table in reversed(self.locals[:-1]):
+                if table is not None and name in table:
+                    return table[name]
             else:
                 self.name_not_defined(name, ctx)
                 return None
@@ -1459,10 +1484,12 @@ class SemanticAnalyzer(NodeVisitor):
     def enter(self) -> None:
         self.locals.append(SymbolTable())
         self.global_decls.append(set())
+        self.nonlocal_decls.append(set())
 
     def leave(self) -> None:
         self.locals.pop()
         self.global_decls.pop()
+        self.nonlocal_decls.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None
@@ -1548,6 +1575,7 @@ class FirstPass(NodeVisitor):
         sem.errors.set_file(fnam)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
+        sem.nonlocal_decls = [set()]
         sem.block_depth = [0]
 
         defs = file.defs

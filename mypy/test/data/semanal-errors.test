@@ -541,6 +541,43 @@ def f():
 main: In function "f":
 main, line 4: Name 'x' is not defined
 
+[case testInvalidNonlocalDecl]
+import typing
+def f():
+    def g():
+       nonlocal x
+       x = None
+[out]
+main: In function "g":
+main, line 4: no binding for nonlocal 'x' found
+main, line 5: Name 'x' is not defined
+
+[case testGlobalAndNonlocalDecl]
+import typing
+x = 1
+def f():
+    x = 1
+    def g():
+       global x
+       nonlocal x
+       x = None
+[out]
+main: In function "g":
+main, line 7: name 'x' is nonlocal and global
+
+[case testNonlocalAndGlobalDecl]
+import typing
+x = 1
+def f():
+    x = 1
+    def g():
+       nonlocal x
+       global x
+       x = None
+[out]
+main: In function "g":
+main, line 7: name 'x' is nonlocal and global
+
 [case testNestedFunctionAndScoping]
 import typing
 def f(x):

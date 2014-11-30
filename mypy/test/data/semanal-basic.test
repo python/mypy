@@ -291,6 +291,29 @@ MypyFile:1(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])))))
 
+[case testGlobalDeclScope]
+x = None
+def f():
+    global x
+def g():
+    x = None
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x* [__main__.x])
+    NameExpr(None [builtins.None]))
+  FuncDef:2(
+    f
+    Block:2(
+      GlobalDecl:3(
+        x)))
+  FuncDef:4(
+    g
+    Block:4(
+      AssignmentStmt:5(
+        NameExpr(x* [l])
+        NameExpr(None [builtins.None])))))
+
 [case testGlobaWithinMethod]
 x = None
 class A:
@@ -336,6 +359,60 @@ MypyFile:1(
         NameExpr(x [__main__.x]))))
   ExpressionStmt:4(
     NameExpr(x [__main__.x])))
+
+[case testNonlocalDecl]
+def g():
+    x = None
+    def f():
+        nonlocal x
+        x = None
+        x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    Block:1(
+      AssignmentStmt:2(
+        NameExpr(x* [l])
+        NameExpr(None [builtins.None]))
+      FuncDef:3(
+        f
+        Block:3(
+          NonlocalDecl:4(
+            x)
+          AssignmentStmt:5(
+            NameExpr(x [l])
+            NameExpr(None [builtins.None]))
+          ExpressionStmt:6(
+            NameExpr(x [l])))))))
+
+[case testMultipleNamesInNonlocalDecl]
+def g():
+    x, y = None, None
+    def f():
+        nonlocal x, y
+        x = y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    Block:1(
+      AssignmentStmt:2(
+        TupleExpr:2(
+          NameExpr(x* [l])
+          NameExpr(y* [l]))
+        TupleExpr:2(
+          NameExpr(None [builtins.None])
+          NameExpr(None [builtins.None])))
+      FuncDef:3(
+        f
+        Block:3(
+          NonlocalDecl:4(
+            x
+            y)
+          AssignmentStmt:5(
+            NameExpr(x [l])
+            NameExpr(y [l])))))))
 
 [case testNestedFunctions]
 def f(x):
