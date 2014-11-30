@@ -701,11 +701,11 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_tuple_type(self, t):
         s = self.list_str(t.items)
-        fallback_name = t.fallback.type.fullname()
-        if fallback_name == 'builtins.tuple':
-            return 'Tuple[{}]'.format(s)
-        else:
-            return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
+        if t.fallback:
+            fallback_name = t.fallback.type.fullname()
+            if fallback_name != 'builtins.tuple':
+                return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
+        return 'Tuple[{}]'.format(s)
 
     def visit_star_type(self, t):
         s = t.type.accept(self)
