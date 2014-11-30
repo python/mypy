@@ -369,6 +369,7 @@ main, line 2: Invalid assignment target
 main, line 3: Invalid assignment target
 main, line 4: Invalid assignment target
 main, line 5: Can't assign to ()
+--' (hack to fix syntax highlighting)
 
 [case testInvalidLvalues2]
 x = y = z = 1
