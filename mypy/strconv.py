@@ -162,6 +162,9 @@ class StrConv(NodeVisitor[str]):
     def visit_global_decl(self, o):
         return self.dump([o.names], o)
 
+    def visit_nonlocal_decl(self, o):
+        return self.dump([o.names], o)
+
     def visit_decorator(self, o):
         return self.dump([o.var, o.decorators, o.func], o)
 

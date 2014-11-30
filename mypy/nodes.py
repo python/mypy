@@ -483,6 +483,18 @@ class GlobalDecl(Node):
         return visitor.visit_global_decl(self)
 
 
+class NonlocalDecl(Node):
+    """Declaration nonlocal x, y, ..."""
+
+    names = Undefined(List[str])
+
+    def __init__(self, names: List[str]) -> None:
+        self.names = names
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_nonlocal_decl(self)
+
+
 class Block(Node):
     body = Undefined(List[Node])
     # True if we can determine that this block is not executed. For example,
