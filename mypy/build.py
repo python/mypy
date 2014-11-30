@@ -470,7 +470,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path, ['.py', '.pyi']) is not None
+        return find_module(id, self.lib_path, ['.pyi', '.py']) is not None
 
     def final_passes(self, files: List[MypyFile],
                      types: Dict[Node, Type]) -> None:
@@ -838,7 +838,7 @@ def read_module_source_from_file(id: str,
       id:       module name, a string of form 'foo' or 'foo.bar'
       lib_path: library search path
     """
-    path = find_module(id, lib_path, ['.py', '.pyi'])
+    path = find_module(id, lib_path, ['.pyi', '.py'])
     if path is not None:
         text = ''
         try:
