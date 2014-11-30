@@ -389,7 +389,7 @@ MypyFile:1(
 [case testMultipleNamesInNonlocalDecl]
 def g():
     x, y = None, None
-    def f():
+    def f(z):
         nonlocal x, y
         x = y
 [out]
@@ -406,6 +406,8 @@ MypyFile:1(
           NameExpr(None [builtins.None])))
       FuncDef:3(
         f
+        Args(
+          Var(z))
         Block:3(
           NonlocalDecl:4(
             x

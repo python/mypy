@@ -149,7 +149,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_global_decl(self, node: GlobalDecl) -> Node:
         return GlobalDecl(node.names[:])
 
-    def visit_nonlocal_decl(self, node: GlobalDecl) -> Node:
+    def visit_nonlocal_decl(self, node: NonlocalDecl) -> Node:
         return NonlocalDecl(node.names[:])
 
     def visit_block(self, node: Block) -> Block:

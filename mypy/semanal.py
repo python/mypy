@@ -1145,10 +1145,9 @@ class SemanticAnalyzer(NodeVisitor):
                 else:
                     self.fail("no binding for nonlocal '{}' found".format(name), d)
 
-                for table in self.locals[-1]:
-                    if table is not None and name in table:
-                        self.fail("name '{}' is already defined in local "
-                                  "scope before nonlocal declaration".format(name), d)
+                if self.locals[-1] is not None and name in self.locals[-1]:
+                    self.fail("name '{}' is already defined in local "
+                              "scope before nonlocal declaration".format(name), d)
 
                 if name in self.global_decls[-1]:
                     self.fail("name '{}' is nonlocal and global".format(name), d)
