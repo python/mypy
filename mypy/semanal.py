@@ -992,35 +992,41 @@ class SemanticAnalyzer(NodeVisitor):
         callee = cast(RefExpr, call.callee)
         if callee.fullname != 'collections.namedtuple':
             return None
-        # Construct dummy return values for error cases.
-        error_classdef = ClassDef('namedtuple', Block([]))
-        error_typeinfo = TypeInfo(SymbolTable(), error_classdef)
-        # TODO Share code with check_argument_count in checkexpr.py?
-        if len(call.args) < 2:
-            self.fail("Too few arguments for namedtuple()", call)
-            return error_typeinfo
-        if len(call.args) > 2:
-            self.fail("Too many arguments for namedtuple()", call)
-            return error_typeinfo
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            self.fail("Unexpected arguments to namedtuple()", call)
-            return error_typeinfo
-        if not isinstance(call.args[0], StrExpr):
-            self.fail("namedtuple() expects a string literal as the first argument", call)
-            return error_typeinfo
-        if not isinstance(call.args[1], ListExpr):
-            self.fail("List literal expected as the second argument to namedtuple()", call)
-            return error_typeinfo
+        if not self.check_namedtuple_args(call):
+            # Construct dummy return value.
+            error_classdef = ClassDef('namedtuple', Block([]))
+            return TypeInfo(SymbolTable(), error_classdef)
         listexpr = cast(ListExpr, call.args[1])
-        if any(not isinstance(item, StrExpr) for item in listexpr.items):
-            self.fail("String literal expected as namedtuple() item", call)
-            error_typeinfo
         name = cast(StrExpr, call.args[0]).value
         items = [cast(StrExpr, item).value for item in listexpr.items]
         types = [AnyType() for _ in listexpr.items]
         info = self.build_namedtuple_typeinfo(name, items, types)
         call.analyzed = NamedTupleExpr(info).set_line(call.line)
         return info
+
+    def check_namedtuple_args(self, call: CallExpr) -> bool:
+        # TODO Share code with check_argument_count in checkexpr.py?
+        args = call.args
+        if len(args) < 2:
+            self.fail("Too few arguments for namedtuple()", call)
+            return False
+        if len(args) > 2:
+            self.fail("Too many arguments for namedtuple()", call)
+            return False
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            self.fail("Unexpected arguments to namedtuple()", call)
+            return False
+        if not isinstance(args[0], StrExpr):
+            self.fail("namedtuple() expects a string literal as the first argument", call)
+            return False
+        if not isinstance(args[1], ListExpr):
+            self.fail("List literal expected as the second argument to namedtuple()", call)
+            return False
+        listexpr = cast(ListExpr, args[1])
+        if any(not isinstance(item, StrExpr) for item in listexpr.items):
+            self.fail("String literal expected as namedtuple() item", call)
+            return False
+        return True
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
