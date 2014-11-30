@@ -1090,12 +1090,18 @@ class SemanticAnalyzer(NodeVisitor):
             arg.type = type
         # TODO: Make sure that the self argument name is not visible?
         args = [Var('__self')] + args
-        # TODO: Add type signature.
+        arg_kinds = [ARG_POS] * (len(items) + 1)
+        signature = Callable([None] + types,
+                             arg_kinds,
+                             ['__self'] + items,
+                             NoneTyp(),
+                             self.named_type('__builtins__.function'),
+                             name=info.name())
         return FuncDef('__init__',
-                       args,
-                       [ARG_POS] * (len(items) + 1),
+                       args, arg_kinds,
                        [None] * (len(items) + 1),
-                       Block([]))
+                       Block([]),
+                       typ=signature)
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = List[Type]()

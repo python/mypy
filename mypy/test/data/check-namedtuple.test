@@ -56,3 +56,12 @@ i = n.b # type: int  # E: Incompatible types in assignment (expression has type 
                           variable has type "int")
 x, y = n
 x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testNamedTupleConstructorArgumentTypes]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int),
+                     ('b', str)])
+n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "int"
+n = N(1, b=2)   # E: Argument 2 to "N" has incompatible type "int"; expected "str"
+N(1, 'x')
+N(b='x', a=1)
