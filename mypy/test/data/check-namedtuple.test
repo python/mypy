@@ -8,3 +8,12 @@ b = x[0]
 a = x[1]
 a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
+
+[case testAccessingNamedTupleAttributes]
+from collections import namedtuple
+from typing import Undefined
+X = namedtuple('X', ['x', 'y'])
+x = Undefined(X)
+x.x
+x.y
+x.z # E: "X" has no attribute "z"

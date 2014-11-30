@@ -1035,7 +1035,14 @@ class SemanticAnalyzer(NodeVisitor):
         class_def.fullname = self.qualified_name(name)
         # TODO: add symbols
         info = TypeInfo(symbols, class_def)
+        for item, typ in zip(items, types):
+            var = Var(item)
+            var.info = info
+            var.type = typ
+            var.ready = True
+            symbols[item] = SymbolTableNode(MDEF, var)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple'))
+        info.mro = [info] + info.tuple_type.fallback.type.mro
         return info
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
