@@ -990,43 +990,78 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(call.callee, RefExpr):
             return None
         callee = cast(RefExpr, call.callee)
-        if callee.fullname != 'collections.namedtuple':
+        fullname = callee.fullname
+        if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
-        if not self.check_namedtuple_args(call):
-            # Construct dummy return value.
+        items, types = self.parse_namedtuple_args(call, fullname)
+        if not items:
+            # Error. Construct dummy return value.
             error_classdef = ClassDef('namedtuple', Block([]))
-            return TypeInfo(SymbolTable(), error_classdef)
-        listexpr = cast(ListExpr, call.args[1])
-        name = cast(StrExpr, call.args[0]).value
-        items = [cast(StrExpr, item).value for item in listexpr.items]
-        types = [AnyType() for _ in listexpr.items]  # type: List[Type]
-        info = self.build_namedtuple_typeinfo(name, items, types)
+            info = TypeInfo(SymbolTable(), error_classdef)
+        else:
+            listexpr = cast(ListExpr, call.args[1])
+            name = cast(StrExpr, call.args[0]).value
+            info = self.build_namedtuple_typeinfo(name, items, types)
         call.analyzed = NamedTupleExpr(info).set_line(call.line)
         return info
 
-    def check_namedtuple_args(self, call: CallExpr) -> bool:
+    def parse_namedtuple_args(self, call: CallExpr,
+                              fullname: str) -> Tuple[List[str], List[Type]]:
         # TODO Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail("Too few arguments for namedtuple()", call)
-            return False
+            return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
         if len(args) > 2:
-            self.fail("Too many arguments for namedtuple()", call)
-            return False
+            return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
         if call.arg_kinds != [ARG_POS, ARG_POS]:
-            self.fail("Unexpected arguments to namedtuple()", call)
-            return False
+            return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
         if not isinstance(args[0], StrExpr):
-            self.fail("namedtuple() expects a string literal as the first argument", call)
-            return False
+            return self.fail_namedtuple_arg(
+                "namedtuple() expects a string literal as the first argument", call)
         if not isinstance(args[1], ListExpr):
-            self.fail("List literal expected as the second argument to namedtuple()", call)
-            return False
+            return self.fail_namedtuple_arg(
+                "List literal expected as the second argument to namedtuple()", call)
         listexpr = cast(ListExpr, args[1])
-        if any(not isinstance(item, StrExpr) for item in listexpr.items):
-            self.fail("String literal expected as namedtuple() item", call)
-            return False
-        return True
+        if fullname == 'collections.namedtuple':
+            # The fields argument contains just names, with implicit Any types.
+            if any(not isinstance(item, StrExpr) for item in listexpr.items):
+                return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
+                                                call)
+            items = [cast(StrExpr, item).value for item in listexpr.items]
+            types = [AnyType() for _ in listexpr.items]  # type: List[Type]
+        else:
+            # The fields argument contains (name, type) tuples.
+            items, types = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+        return items, types
+
+    def parse_namedtuple_fields_with_types(self, nodes: List[Node],
+                                           context: Context) -> Tuple[List[str], List[Type]]:
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for item in nodes:
+            while isinstance(item, ParenExpr):
+                item = item.expr
+            if isinstance(item, TupleExpr):
+                if len(item.items) != 2:
+                    return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
+                                                    item)
+                name, type_node = item.items
+                if isinstance(name, StrExpr):
+                    items.append(name.value)
+                else:
+                    return self.fail_namedtuple_arg("Invalid NamedTuple() field name", item)
+                try:
+                    type = expr_to_unanalyzed_type(type_node)
+                except TypeTranslationError:
+                    return self.fail_namedtuple_arg('Invalid field type', type_node)
+                types.append(self.anal_type(type))
+            else:
+                return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
+        return items, types
+
+    def fail_namedtuple_arg(self, message: str, context: Context) -> Tuple[List[str], List[Type]]:
+        self.fail(message, context)
+        return [], []
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:

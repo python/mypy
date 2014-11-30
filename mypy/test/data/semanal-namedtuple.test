@@ -29,3 +29,14 @@ MypyFile:1(
     def () -> Tuple[Any, Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
+
+[case testNamedTupleWithItemTypes]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int),
+                     ('b', str)])
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple : NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
