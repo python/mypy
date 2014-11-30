@@ -1023,7 +1023,7 @@ class SemanticAnalyzer(NodeVisitor):
         info = TypeInfo(symbols, class_def)
         info.tuple_type = TupleType([AnyType() for _ in listexpr.items],
                                     self.named_type('__builtins__.tuple'))
-        call.analyzed = NamedTupleExpr(info)
+        call.analyzed = NamedTupleExpr(info).set_line(call.line)
         return info
 
     def analyze_types(self, items: List[Node]) -> List[Type]:

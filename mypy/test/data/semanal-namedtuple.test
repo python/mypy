@@ -7,12 +7,7 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple : namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    CallExpr:2(
-      NameExpr(namedtuple [collections.namedtuple])
-      Args(
-        StrExpr(N)
-        ListExpr:2(
-          StrExpr(a)))))
+    NamedTupleExpr:2(N, Tuple[Any]))
   FuncDef:3(
     f
     def () -> Tuple[Any, fallback=__main__.N]
@@ -28,13 +23,7 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple : namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    CallExpr:2(
-      NameExpr(namedtuple [collections.namedtuple])
-      Args(
-        StrExpr(N)
-        ListExpr:2(
-          StrExpr(a)
-          StrExpr(xyz)))))
+    NamedTupleExpr:2(N, Tuple[Any, Any]))
   FuncDef:3(
     f
     def () -> Tuple[Any, Any, fallback=__main__.N]
