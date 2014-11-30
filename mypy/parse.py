@@ -108,7 +108,7 @@ class Parser:
             self.errors.set_file('<input>')
 
     def parse(self, s: str) -> MypyFile:
-        self.tok = lex.lex(s)
+        self.tok = lex.lex(s, pyversion = self.pyversion)
         self.ind = 0
         self.imports = []
         self.future_options = []
@@ -678,7 +678,7 @@ class Parser:
             stmt = self.parse_class_def()
         elif ts == 'global':
             stmt = self.parse_global_decl()
-        elif ts == 'nonlocal':
+        elif ts == 'nonlocal' and self.pyversion >= 3:
             stmt = self.parse_nonlocal_decl()
         elif ts == 'assert':
             stmt = self.parse_assert_stmt()

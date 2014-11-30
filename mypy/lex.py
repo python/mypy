@@ -148,22 +148,28 @@ STR_CONTEXT = 1
 COMMENT_CONTEXT = 2
 
 
-def lex(string: str, first_line: int = 1) -> List[Token]:
+def lex(string: str, first_line: int = 1, pyversion: int = 3) -> List[Token]:
     """Analyze string and return an array of token objects.
 
     The last token is always Eof.
     """
-    l = Lexer()
+    l = Lexer(pyversion)
     l.lex(string, first_line)
     return l.tok
 
 
 # Reserved words (not including operators)
-keywords = set([
+keywords_common = set([
     'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif',
     'else', 'except', 'finally', 'from', 'for', 'global', 'if', 'import',
     'lambda', 'pass', 'raise', 'return', 'try', 'while', 'with',
     'yield'])
+
+# Reserved words specific for Python version 2
+keywords2 = set(['print'])
+
+# Reserved words specific for Python version 3
+keywords3 = set(['nonlocal'])
 
 # Alphabetical operators (reserved words)
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
@@ -279,7 +285,7 @@ class Lexer:
     # newlines within parentheses/brackets.
     open_brackets = Undefined(List[str])
 
-    def __init__(self) -> None:
+    def __init__(self, pyversion: int = 3) -> None:
         self.map = [self.unknown_character] * 256
         self.tok = []
         self.indents = [0]
@@ -302,6 +308,10 @@ class Lexer:
                             ('-+*/<>%&|^~=!,@', self.lex_misc)]:
             for c in seq:
                 self.map[ord(c)] = method
+        if pyversion == 2:
+            self.keywords = keywords_common | keywords2
+        if pyversion == 3:
+            self.keywords = keywords_common | keywords3
 
     def lex(self, s: str, first_line: int) -> None:
         """Lexically analyze a string, storing the tokens at the tok list."""
@@ -401,7 +411,7 @@ class Lexer:
         Also deal with prefixed string literals such as r'...'.
         """
         s = self.match(self.name_exp)
-        if s in keywords:
+        if s in self.keywords:
             self.add_token(Keyword(s))
         elif s in alpha_operators:
             self.add_token(Op(s))
