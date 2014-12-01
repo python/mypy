@@ -34,7 +34,8 @@ from mypy.parsetype import (
     parse_type, parse_types, parse_signature, TypeParseError
 )
 from mypy.annotations import Annotation, IgnoreAnnotation
-from mypy.parseannotation import parse_annotation
+from mypy.parseannotation import parse_annotation, AnnotationParseError
+
 
 precedence = {
     '**': 16,
@@ -1731,7 +1732,7 @@ class Parser:
                 return None
             try:
                 annotation, index = parse_annotation(tokens, 0)
-            except TypeParseError as e:
+            except AnnotationParseError as e:
                 self.parse_error_at(e.token, skip = False)
                 return None
             if index < len(tokens) - 2:
