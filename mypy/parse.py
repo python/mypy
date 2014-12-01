@@ -212,7 +212,9 @@ class Parser:
             if node is None:
                 node = ImportFrom(name, targets)
         br = self.expect_break()
-        self.imports.append(node)
+        annotation = self.parse_annotation_comment(br)
+        if not isinstance(annotation, IgnoreAnnotation):
+            self.imports.append(node)
         # TODO: Fix representation if there is a custom typing module import.
         self.set_repr(node, noderepr.ImportFromRepr(
             from_tok, components, import_tok, lparen, name_toks, rparen, br))

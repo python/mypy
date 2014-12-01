@@ -250,6 +250,12 @@ main, line 1: No module named 'xyz'
 
 [case testAccessingUnknownModuleIgnore]
 import xyz # mypy: ignore
+xyz.foo()
+[out]
+
+[case AccessingNameImportedFromUnknownModuleIgnore]
+from xyz import abc # mypy: ignore
+abc()
 [out]
 
 [case testAccessingUnknownModule2]
