@@ -108,7 +108,7 @@ class Parser:
             self.errors.set_file('<input>')
 
     def parse(self, s: str) -> MypyFile:
-        self.tok = lex.lex(s, pyversion = self.pyversion)
+        self.tok = lex.lex(s, pyversion=self.pyversion)
         self.ind = 0
         self.imports = []
         self.future_options = []

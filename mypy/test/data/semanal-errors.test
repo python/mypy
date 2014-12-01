@@ -549,7 +549,7 @@ def f():
        x = None
 [out]
 main: In function "g":
-main, line 4: no binding for nonlocal 'x' found
+main, line 4: No binding for nonlocal 'x' found
 main, line 5: Name 'x' is not defined
 
 [case testNonlocalDeclNotMatchingGlobal]
@@ -560,7 +560,7 @@ def f():
     x = None
 [out]
 main: In function "f":
-main, line 4: no binding for nonlocal 'x' found
+main, line 4: No binding for nonlocal 'x' found
 main, line 5: Name 'x' is not defined
 
 [case testNonlocalDeclConflictingWithParameter]
@@ -572,7 +572,7 @@ def g():
         x = None
 [out]
 main: In function "f":
-main, line 5: name 'x' is already defined in local scope before nonlocal declaration
+main, line 5: Name 'x' is already defined in local scope before nonlocal declaration
 
 [case testNonlocalDeclOutsideFunction]
 x = 2
@@ -591,7 +591,7 @@ def f():
        x = None
 [out]
 main: In function "g":
-main, line 7: name 'x' is nonlocal and global
+main, line 7: Name 'x' is nonlocal and global
 
 [case testNonlocalAndGlobalDecl]
 import typing
@@ -604,7 +604,7 @@ def f():
        x = None
 [out]
 main: In function "g":
-main, line 7: name 'x' is nonlocal and global
+main, line 7: Name 'x' is nonlocal and global
 
 [case testNestedFunctionAndScoping]
 import typing
