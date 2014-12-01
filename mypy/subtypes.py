@@ -132,6 +132,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             for i in range(len(left.items)):
                 if not is_subtype(left.items[i], right.items[i]):
                     return False
+            if not is_subtype(left.fallback, right.fallback):
+                return False
             return True
         else:
             return False
