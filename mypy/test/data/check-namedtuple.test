@@ -75,3 +75,10 @@ class X(N):
 x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
 s = ''
 s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testTwoNamedTuplesAsBaseClasses]
+from typing import NamedTuple
+A = NamedTuple('A', [('a', int)])
+B = NamedTuple('B', [('a', int)])
+class X(A, B):  # E: Class has two incompatible bases derived from tuple
+    pass
