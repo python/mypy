@@ -74,7 +74,10 @@ class X(N):
     pass
 x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
 s = ''
+i = 0
 s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+i, s = x
+s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testTwoNamedTuplesAsBaseClasses]
 from typing import NamedTuple
