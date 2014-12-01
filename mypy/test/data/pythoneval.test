@@ -960,3 +960,16 @@ print(x + x)
 0
 1
 (1, 's', 1, 's')
+
+[case testNamedTupleWithTypes]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int), ('b', str)])
+n = N(1, 'x')
+print(n)
+a, b = n
+print(a, b)
+print(n[0])
+[out]
+N(a=1, b='x')
+1 x
+1
