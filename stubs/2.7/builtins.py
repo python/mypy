@@ -541,6 +541,8 @@ class tuple(Sequence[Any]):
     def __gt__(self, x: tuple) -> bool: pass
     def __ge__(self, x: tuple) -> bool: pass
     def __add__(self, x: tuple) -> tuple: pass
+    def count(self, x: Any) -> int: pass
+    def index(self, x: Any) -> int: pass
 
 @builtinclass
 class function:

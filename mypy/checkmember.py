@@ -239,7 +239,7 @@ def type_object_type(info: TypeInfo, builtin_type: Function[[str], Instance]) ->
 
       def [T, S](...) -> G[T, S],
 
-    where ... are argument types for the __init__ method.
+    where ... are argument types for the __init__ method (without the self argument).
     """
     init_method = info.get_method('__init__')
     if not init_method:
