@@ -500,6 +500,11 @@ class SemanticAnalyzer(NodeVisitor):
         bases = List[Instance]()
         for i in range(len(defn.base_types)):
             base = self.anal_type(defn.base_types[i])
+            if isinstance(base, TupleType):
+                if defn.info.tuple_type:
+                    self.fail("Class has two incompatible bases derived from tuple", defn)
+                defn.info.tuple_type = base
+                base = base.fallback
             if isinstance(base, Instance):
                 defn.base_types[i] = base
                 bases.append(base)

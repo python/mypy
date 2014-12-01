@@ -65,3 +65,13 @@ n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "in
 n = N(1, b=2)   # E: Argument 2 to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
+
+[case testNamedTupleAsBaseClass]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int),
+                     ('b', str)])
+class X(N):
+    pass
+x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
+s = ''
+s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
