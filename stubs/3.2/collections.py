@@ -2,7 +2,6 @@
 
 # Based on http://docs.python.org/3.2/library/collections.html
 
-# TODO namedtuple (requires language changes)
 # TODO UserDict
 # TODO UserList
 # TODO UserString
@@ -16,6 +15,10 @@ from typing import (
 _T = typevar('_T')
 _KT = typevar('_KT')
 _VT = typevar('_VT')
+
+
+# namedtuple is special-cased in the type checker; the initializer is ignored.
+namedtuple = object()
 
 
 class deque(Sized, Iterable[_T], AbstractGeneric[_T]):

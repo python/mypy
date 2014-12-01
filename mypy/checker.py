@@ -17,7 +17,7 @@ from mypy.nodes import (
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, YieldFromStmt
+    YieldFromExpr, YieldFromStmt, NamedTupleExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1740,7 +1740,11 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_type_application(e)
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
-        # TODO Perhaps return a special type used for type variables only?
+        # TODO: Perhaps return a special type used for type variables only?
+        return AnyType()
+
+    def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        # TODO: Perhaps return a type object type?
         return AnyType()
 
     def visit_list_expr(self, e: ListExpr) -> Type:
@@ -1929,13 +1933,15 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 
     For example, assume
 
-      class D(Generic[S]) ...
-      class C(D[E[T]], Generic[T]) ...
+    . class D(Generic[S]) ...
+    . class C(D[E[T]], Generic[T]) ...
 
     Now S in the context of D would be mapped to E[T] in the context of C.
     """
     # Create the type of self in subtype, of form t[a1, ...].
     inst_type = self_type(sub_info)
+    if isinstance(inst_type, TupleType):
+        inst_type = inst_type.fallback
     # Map the type of self to supertype. This gets us a description of the
     # supertype type variables in terms of subtype variables, i.e. t[t1, ...]
     # so that any type variables in tN are to be interpreted in subtype

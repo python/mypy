@@ -394,6 +394,11 @@ class StrConv(NodeVisitor[str]):
         else:
             return 'TypeVarExpr:{}()'.format(o.line)
 
+    def visit_namedtuple_expr(self, o):
+        return 'NamedTupleExpr:{}({}, {})'.format(o.line,
+                                                  o.info.name(),
+                                                  o.info.tuple_type)
+
     def visit_ducktype_expr(self, o):
         return 'DucktypeExpr:{}({})'.format(o.line, o.type)
 
