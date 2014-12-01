@@ -1,0 +1,17 @@
+-- Test cases for annotation parser.
+
+[case testIgnoreAnnotation]
+import xyz  # mypy: ignore
+[out]
+MypyFile:1(
+  Import:1(xyz : xyz))
+
+[case testEmptyAnnotation]
+import xyz  # mypy:
+[out]
+<input>, line 1: Empty annotation
+
+[case testInvalidAnnotation]
+import xyz  # mypy: xxx
+[out]
+<input>, line 1: Parse error before "xxx"
