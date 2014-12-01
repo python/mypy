@@ -1096,7 +1096,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: Make sure that the self argument name is not visible?
         args = [Var('__self')] + args
         arg_kinds = [ARG_POS] * (len(items) + 1)
-        signature = Callable([None] + types,
+        signature = Callable([cast(Type, None)] + types,
                              arg_kinds,
                              ['__self'] + items,
                              NoneTyp(),
