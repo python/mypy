@@ -85,3 +85,18 @@ A = NamedTuple('A', [('a', int)])
 B = NamedTuple('B', [('a', int)])
 class X(A, B):  # E: Class has two incompatible bases derived from tuple
     pass
+
+[case testSelfTypeWithNamedTupleAsBase]
+from typing import NamedTuple
+A = NamedTuple('A', [('a', int), ('b', str)])
+class B(A):
+    def f(self, x: int) -> None:
+        self.f(self.a)
+        self.f(self.b)  # E: Argument 1 to "f" of "B" has incompatible type "str"; expected "int"
+        i = 0
+        s = ''
+        i, s = self
+        i, i = self  # E: Incompatible types in assignment (expression has type "str", \
+                          variable has type "int")
+[out]
+main: In member "f" of class "B":

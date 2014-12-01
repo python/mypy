@@ -166,8 +166,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         if star_count > 1:
             self.fail('At most one star type allowed in a tuple', t)
             return AnyType()
+        fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple')
         return TupleType(self.anal_array(t.items),
-                         self.builtin_type('builtins.tuple'),
+                         fallback,
                          t.line, t.repr)
 
     def visit_star_type(self, t: StarType) -> Type:
