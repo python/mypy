@@ -24,7 +24,8 @@ from mypy.nodes import (
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
-    StarExpr, YieldFromStmt, YieldFromExpr, DictionaryComprehension
+    StarExpr, YieldFromStmt, YieldFromExpr, DictionaryComprehension,
+    SetComprehension
 )
 from mypy import nodes
 from mypy import noderepr
@@ -1271,6 +1272,8 @@ class Parser:
             key = self.parse_expression(precedence['<if>'])
             if self.current_str() in [',', '}'] and items == []:
                 return self.parse_set_expr(key, lbrace)
+            elif self.current_str() == 'for' and items == []:
+                return self.parse_set_comprehension(key, lbrace)
             elif self.current_str() != ':':
                 self.parse_error()
             colons.append(self.expect(':'))
@@ -1300,6 +1303,13 @@ class Parser:
         self.set_repr(expr, noderepr.ListSetExprRepr(lbrace, commas,
                                                      rbrace, none, none))
         return expr
+
+    def parse_set_comprehension(self, expr: Node, lbrace: Token):
+        gen = self.parse_generator_expr(expr)
+        rbrace = self.expect('}')
+        set_comp = SetComprehension(gen)
+        self.set_repr(set_comp, noderepr.SetComprehensionRepr(lbrace, rbrace))
+        return set_comp
 
     def parse_dict_comprehension(self, key: Node, value: Node, lbrace: Token, colon: Token) -> DictionaryComprehension:
         indices, sequences, condlists, for_toks, in_toks, if_toklists = self.parse_comp_for()

@@ -342,6 +342,11 @@ class ListComprehensionRepr:
         self.lbracket = lbracket
         self.rbracket = rbracket
 
+class SetComprehensionRepr:
+    def __init__(self, lbrace: Any, rbrace: Any) -> None:
+        self.lbrace = lbrace
+        self.rbrace = rbrace
+
 class DictionaryComprehensionRepr:
     def __init__(self, lbrace: Any, colon: Token, for_toks: List[Token], in_toks: List[Token],
                  if_toklists: List[List[Token]], rbrace: Any) -> None:

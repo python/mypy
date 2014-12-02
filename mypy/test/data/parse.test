@@ -1584,6 +1584,36 @@ MypyFile:1(
       NameExpr(pqs)
       NameExpr(c))))
 
+[case testSetComprehension]
+a = {i for i in l}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    SetComprehension:1(
+      GeneratorExpr:1(
+        NameExpr(i)
+        NameExpr(i)
+        NameExpr(l)))))
+
+[case testSetComprehensionComplex]
+a = {x + p for x in xys for p in pqs if c}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    SetComprehension:1(
+      GeneratorExpr:1(
+        OpExpr:1(
+          +
+          NameExpr(x)
+          NameExpr(p))
+        NameExpr(x)
+        NameExpr(p)
+        NameExpr(xys)
+        NameExpr(pqs)
+        NameExpr(c)))))
+
 [case testWithStatement]
 with open('foo') as f:
   pass

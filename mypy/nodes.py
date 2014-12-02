@@ -1238,6 +1238,17 @@ class ListComprehension(Node):
         return visitor.visit_list_comprehension(self)
 
 
+class SetComprehension(Node):
+    """Set comprehension (e.g. {x + 1 for x in a})"""
+
+    generator = Undefined(GeneratorExpr)
+
+    def __init__(self, generator: GeneratorExpr) -> None:
+        self.generator = generator
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_set_comprehension(self)
+
 class DictionaryComprehension(Node):
     """Dictionary comprehension (e.g. {k: v for k, v in a}"""
 

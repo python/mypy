@@ -416,6 +416,9 @@ class StrConv(NodeVisitor[str]):
     def visit_list_comprehension(self, o):
         return self.dump([o.generator], o)
 
+    def visit_set_comprehension(self, o):
+        return self.dump([o.generator], o)
+
     def visit_dictionary_comprehension(self, o):
         condlists = o.condlists if any(o.condlists) else None
         return self.dump([o.key, o.value, o.indices, o.sequences, condlists], o)
