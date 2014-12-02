@@ -1238,6 +1238,26 @@ class ListComprehension(Node):
         return visitor.visit_list_comprehension(self)
 
 
+class DictionaryComprehension(Node):
+    """Dictionary comprehension (e.g. {k: v for k, v in a}"""
+
+    key = Undefined(Node)
+    value = Undefined(Node)
+    sequences_expr = Undefined(List[Node])
+    condlists = Undefined(List[List[Node]])
+    indices = Undefined(List[Node])
+
+    def __init__(self, key: Node, value: Node, indices: List[Node],
+                 sequences: List[Node], condlists: List[List[Node]]) -> None:
+        self.key = key
+        self.value = value
+        self.sequences = sequences
+        self.condlists = condlists
+        self.indices = indices
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_dictionary_comprehension(self)
+
 class ConditionalExpr(Node):
     """Conditional expression (e.g. x if y else z)"""
 
