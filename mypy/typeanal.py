@@ -113,12 +113,21 @@ class TypeAnalyser(TypeVisitor[Type]):
                                  Instance(info, [], t.line),
                                  t.line, t.repr)
             else:
+
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
                 # checked only later, since we do not always know the
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
-                return Instance(info, self.anal_array(t.args), t.line, t.repr)
+                instance = Instance(info, self.anal_array(t.args), t.line, t.repr)
+                if info.tuple_type is None:
+                    return instance
+                else:
+                    # The class has a Tuple[...] base class so it will be
+                    # represented as a tuple type.
+                    return TupleType(self.anal_array(info.tuple_type.items),
+                                     fallback=instance,
+                                     line=t.line)
         else:
             return t
 
@@ -157,8 +166,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         if star_count > 1:
             self.fail('At most one star type allowed in a tuple', t)
             return AnyType()
+        fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple')
         return TupleType(self.anal_array(t.items),
-                         self.builtin_type('builtins.tuple'),
+                         fallback,
                          t.line, t.repr)
 
     def visit_star_type(self, t: StarType) -> Type:

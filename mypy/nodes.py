@@ -483,6 +483,18 @@ class GlobalDecl(Node):
         return visitor.visit_global_decl(self)
 
 
+class NonlocalDecl(Node):
+    """Declaration nonlocal x, y, ..."""
+
+    names = Undefined(List[str])
+
+    def __init__(self, names: List[str]) -> None:
+        self.names = names
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_nonlocal_decl(self)
+
+
 class Block(Node):
     body = Undefined(List[Node])
     # True if we can determine that this block is not executed. For example,
@@ -1309,6 +1321,20 @@ class TypeVarExpr(SymbolNode):
         return visitor.visit_type_var_expr(self)
 
 
+class NamedTupleExpr(Node):
+    """Named tuple expression namedtuple(...)."""
+
+    # The class representation of this named tuple (its tuple_type attribute contains
+    # the tuple item types)
+    info = Undefined('TypeInfo')
+
+    def __init__(self, info: 'TypeInfo') -> None:
+        self.info = info
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_namedtuple_expr(self)
+
+
 class DucktypeExpr(Node):
     """Ducktype class decorator expression ducktype(...)."""
 
@@ -1382,6 +1408,13 @@ class TypeInfo(SymbolNode):
 
     # Duck type compatibility (ducktype decorator)
     ducktype = None  # type: mypy.types.Type
+
+    # Representation of a Tuple[...] base class, if the class has any
+    # (e.g., for named tuples). If this is not None, the actual Type
+    # object used for this class is not an Instance but a TupleType;
+    # the corresponding Instance is set as the fallback type of the
+    # tuple type.
+    tuple_type = None # type: mypy.types.TupleType
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""

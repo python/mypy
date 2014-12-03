@@ -195,6 +195,10 @@ class MessageBuilder:
             # This is similar to non-generic instance types.
             return '"{}"'.format((cast(TypeVar, typ)).name)
         elif isinstance(typ, TupleType):
+            fallback = self.format_simple(typ.fallback)
+            if fallback != '"tuple"':
+                # Prefer the name of the fallback class (if not tuple), as it's more informative.
+                return fallback
             items = []
             for t in (cast(TupleType, typ)).items:
                 items.append(strip_quotes(self.format(t)))

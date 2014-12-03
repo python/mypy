@@ -285,7 +285,10 @@ class Callable(FunctionLike):
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
-        return cast(Instance, self.ret_type).type
+        ret = self.ret_type
+        if isinstance(ret, TupleType):
+            ret = ret.fallback
+        return cast(Instance, ret).type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable(self)
@@ -606,6 +609,8 @@ class TypeTranslator(TypeVisitor[Type]):
 class TypeStrVisitor(TypeVisitor[str]):
     """Visitor for pretty-printing types into strings.
 
+    This is mostly for debugging/testing.
+
     Do not preserve original formatting.
 
     Notes:
@@ -699,6 +704,10 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_tuple_type(self, t):
         s = self.list_str(t.items)
+        if t.fallback:
+            fallback_name = t.fallback.type.fullname()
+            if fallback_name != 'builtins.tuple':
+                return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
 
     def visit_star_type(self, t):

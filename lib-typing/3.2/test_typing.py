@@ -6,7 +6,8 @@ from typing import (
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
-    cast, disjointclass, ducktype, forwardref, overload, typevar
+    cast, disjointclass, ducktype, forwardref, overload, typevar,
+    NamedTuple
 )
 
 
@@ -805,6 +806,11 @@ class TestTyping(unittest.TestCase):
         class A: pass
         self.assertIs(disjointclass(str)(A), A)
         self.assertIs(disjointclass('str')(A), A)
+
+    def test_NamedTuple(self):
+        n = NamedTuple('n', [('a', int), ('b', str)])
+        assert n(a=1, b='x') == (1, 'x')
+        assert n(1, 'x')[1] == 'x'
 
 
 @overload

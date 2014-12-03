@@ -162,6 +162,9 @@ class StrConv(NodeVisitor[str]):
     def visit_global_decl(self, o):
         return self.dump([o.names], o)
 
+    def visit_nonlocal_decl(self, o):
+        return self.dump([o.names], o)
+
     def visit_decorator(self, o):
         return self.dump([o.var, o.decorators, o.func], o)
 
@@ -393,6 +396,11 @@ class StrConv(NodeVisitor[str]):
             return self.dump([('Values', o.values)], o)
         else:
             return 'TypeVarExpr:{}()'.format(o.line)
+
+    def visit_namedtuple_expr(self, o):
+        return 'NamedTupleExpr:{}({}, {})'.format(o.line,
+                                                  o.info.name(),
+                                                  o.info.tuple_type)
 
     def visit_ducktype_expr(self, o):
         return 'DucktypeExpr:{}({})'.format(o.line, o.type)

@@ -925,3 +925,51 @@ a = list(map(str, x))
 a + 1
 [out]
 _program.py, line 4: Unsupported operand types for + (List[str] and "int")
+
+[case testNamedTuple]
+import typing
+from collections import namedtuple
+X = namedtuple('X', ['a', 'b'])
+x = X(a=1, b='s')
+print(x.a, x.b)
+[out]
+1 s
+
+[case testNamedTupleError]
+import typing
+from collections import namedtuple
+X = namedtuple('X', ['a', 'b'])
+x = X(a=1, b='s')
+x.c
+[out]
+_program.py, line 5: "X" has no attribute "c"
+
+[case testNamedTupleTupleOperations]
+from typing import Iterable
+from collections import namedtuple
+X = namedtuple('X', ['a', 'b'])
+def f(x: Iterable[int]) -> None: pass
+x = X(a=1, b='s')
+f(x)
+print(len(x))
+print(x.index(1))
+print(x.count(1))
+print(x + x)
+[out]
+2
+0
+1
+(1, 's', 1, 's')
+
+[case testNamedTupleWithTypes]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int), ('b', str)])
+n = N(1, 'x')
+print(n)
+a, b = n
+print(a, b)
+print(n[0])
+[out]
+N(a=1, b='x')
+1 x
+1

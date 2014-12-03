@@ -24,7 +24,7 @@ from mypy.nodes import (
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
-    StarExpr, YieldFromStmt, YieldFromExpr
+    StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl
 )
 from mypy import nodes
 from mypy import noderepr
@@ -108,7 +108,7 @@ class Parser:
             self.errors.set_file('<input>')
 
     def parse(self, s: str) -> MypyFile:
-        self.tok = lex.lex(s)
+        self.tok = lex.lex(s, pyversion=self.pyversion)
         self.ind = 0
         self.imports = []
         self.future_options = []
@@ -678,6 +678,8 @@ class Parser:
             stmt = self.parse_class_def()
         elif ts == 'global':
             stmt = self.parse_global_decl()
+        elif ts == 'nonlocal' and self.pyversion >= 3:
+            stmt = self.parse_nonlocal_decl()
         elif ts == 'assert':
             stmt = self.parse_assert_stmt()
         elif ts == 'yield':
@@ -840,6 +842,23 @@ class Parser:
 
     def parse_global_decl(self) -> GlobalDecl:
         global_tok = self.expect('global')
+        name_toks, names, commas = self.parse_identifier_list()
+        br = self.expect_break()
+        node = GlobalDecl(names)
+        self.set_repr(node, noderepr.GlobalDeclRepr(global_tok, name_toks,
+                                                    commas, br))
+        return node
+
+    def parse_nonlocal_decl(self) -> NonlocalDecl:
+        nonlocal_tok = self.expect('nonlocal')
+        name_toks, names, commas = self.parse_identifier_list()
+        br = self.expect_break()
+        node = NonlocalDecl(names)
+        self.set_repr(node, noderepr.NonlocalDeclRepr(nonlocal_tok, name_toks,
+                                                      commas, br))
+        return node
+
+    def parse_identifier_list(self) -> Tuple[List[Token], List[str], List[Token]]:
         names = List[str]()
         name_toks = List[Token]()
         commas = List[Token]()
@@ -850,11 +869,7 @@ class Parser:
             if self.current_str() != ',':
                 break
             commas.append(self.skip())
-        br = self.expect_break()
-        node = GlobalDecl(names)
-        self.set_repr(node, noderepr.GlobalDeclRepr(global_tok, name_toks,
-                                                    commas, br))
-        return node
+        return name_toks, names, commas
 
     def parse_while_stmt(self) -> WhileStmt:
         is_error = False

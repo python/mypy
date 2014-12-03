@@ -859,6 +859,7 @@ class B: pass
 -- Type aliases
 -- ------------
 
+
 [case testSimpleTypeAlias]
 import typing
 foo = int
@@ -885,3 +886,52 @@ f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [file m.py]
 import typing
 foo = int
+
+
+-- nonlocal and global
+-- -------------------
+
+
+[case testTypeOfGlobalUsed]
+import typing
+g = A()
+def f() -> None:
+    global g
+    g = B()
+
+class A(): pass
+class B(): pass
+[out]
+main: In function "f":
+main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testTypeOfNonlocalUsed]
+import typing
+def f() -> None:
+    a = A()
+    def g() -> None:
+        nonlocal a
+        a = B()
+
+class A(): pass
+class B(): pass
+[out]
+main: In function "g":
+main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testTypeOfOuterMostNonlocalUsed]
+import typing
+def f() -> None:
+    a = A()
+    def g() -> None:
+        a = B()
+        def h() -> None:
+            nonlocal a
+            a = A()
+            a = B()
+
+class A(): pass
+class B(): pass
+[out]
+main: In function "h":
+main, line 8: Incompatible types in assignment (expression has type "A", variable has type "B")

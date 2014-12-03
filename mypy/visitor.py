@@ -50,6 +50,9 @@ class NodeVisitor(Generic[T]):
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> T:
         pass
 
+    def visit_nonlocal_decl(self, o: 'mypy.nodes.NonlocalDecl') -> T:
+        pass
+
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
         pass
 
@@ -203,6 +206,9 @@ class NodeVisitor(Generic[T]):
         pass
 
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
+        pass
+
+    def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> T:
         pass
 
     def visit_ducktype_expr(self, o: 'mypy.nodes.DucktypeExpr') -> T:

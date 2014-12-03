@@ -43,7 +43,8 @@ files = [
     'check-unreachable-code.test',
     'check-unions.test',
     'check-isinstance.test',
-    'check-lists.test'
+    'check-lists.test',
+    'check-namedtuple.test',
 ]
 
 
