@@ -17,7 +17,7 @@ from mypy.nodes import (
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
     DisjointclassExpr, ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
-    YieldFromExpr, NamedTupleExpr
+    YieldFromExpr, NamedTupleExpr, NonlocalDecl
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -148,6 +148,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_global_decl(self, node: GlobalDecl) -> Node:
         return GlobalDecl(node.names[:])
+
+    def visit_nonlocal_decl(self, node: NonlocalDecl) -> Node:
+        return NonlocalDecl(node.names[:])
 
     def visit_block(self, node: Block) -> Block:
         return Block(self.nodes(node.body))
