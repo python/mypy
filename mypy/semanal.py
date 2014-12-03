@@ -1502,22 +1502,22 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
         self.enter()
-
-        for index, sequence, conditions in zip(expr.indices, expr.sequences,
-                                               expr.condlists):
-            sequence.accept(self)
-            # Bind index variables.
-            self.analyse_lvalue(index)
-            for cond in conditions:
-                cond.accept(self)
-
+        self.analyse_comp_for(expr)
         expr.key.accept(self)
         expr.value.accept(self)
         self.leave()
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
+        self.analyse_comp_for(expr)
+        expr.left_expr.accept(self)
+        self.leave()
 
+    def analyse_comp_for(self, expr: Union[GeneratorExpr,
+                                           DictionaryComprehension]) -> None:
+        """Analyses the 'comp_for' part of comprehensions.
+        That is the part after 'for' in (x for x in l if p)
+        """
         for index, sequence, conditions in zip(expr.indices, expr.sequences,
                                                expr.condlists):
             sequence.accept(self)
@@ -1525,9 +1525,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyse_lvalue(index)
             for cond in conditions:
                 cond.accept(self)
-
-        expr.left_expr.accept(self)
-        self.leave()
 
     def visit_func_expr(self, expr: FuncExpr) -> None:
         self.analyse_function(expr)
