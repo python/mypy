@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromStmt, YieldFromExpr, NamedTupleExpr
+    YieldFromStmt, YieldFromExpr, NamedTupleExpr, SetComprehension
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1494,6 +1494,9 @@ class SemanticAnalyzer(NodeVisitor):
             expr.types[i] = self.anal_type(expr.types[i])
 
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
+        expr.generator.accept(self)
+
+    def visit_set_comprehension(self, expr: SetComprehension) -> None:
         expr.generator.accept(self)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
