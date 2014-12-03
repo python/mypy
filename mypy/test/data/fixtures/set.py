@@ -1,6 +1,6 @@
 # Builtins stub used in set-related test cases.
 
-from typing import typevar, Generic
+from typing import typevar, Generic, Iterator, Iterable
 
 T = typevar('T')
 
@@ -14,4 +14,5 @@ class function: pass
 class int: pass
 class str: pass
 
-class set(Generic[T]): pass
+class set(Iterable[T], Generic[T]):
+    def __iter__(self) -> Iterator[T]: pass

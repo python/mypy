@@ -12,7 +12,8 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, LITERAL_TYPE
+    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
+    LITERAL_TYPE
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -1144,6 +1145,10 @@ class ExpressionChecker:
     def visit_list_comprehension(self, e: ListComprehension) -> Type:
         return self.check_generator_or_comprehension(
             e.generator, 'builtins.list', '<list-comprehension>')
+
+    def visit_set_comprehension(self, e: SetComprehension) -> Type:
+        return self.check_generator_or_comprehension(
+            e.generator, 'builtins.set', '<set-comprehension>')
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         return self.check_generator_or_comprehension(e, 'typing.Iterator',

@@ -1093,6 +1093,20 @@ class A: pass
 [builtins fixtures/for.py]
 
 
+-- Set comprehension
+-- -----------------
+
+
+[case testSimpleSetComprehension]
+from typing import Undefined, Set
+a = Undefined # type: Set[A]
+a = {x for x in a}
+b = {x for x in a} # type: Set[B] # E: Set comprehension has incompatible type Set[A]
+class A: pass
+class B: pass
+[builtins fixtures/set.py]
+
+
 -- Generator expressions
 -- ---------------------
 
