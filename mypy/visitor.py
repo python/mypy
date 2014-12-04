@@ -50,6 +50,9 @@ class NodeVisitor(Generic[T]):
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> T:
         pass
 
+    def visit_nonlocal_decl(self, o: 'mypy.nodes.NonlocalDecl') -> T:
+        pass
+
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
         pass
 

@@ -880,6 +880,22 @@ MypyFile:1(
         x
         y))))
 
+[case testNonlocalDecl]
+def f():
+  def g():
+    nonlocal x, y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      FuncDef:2(
+        g
+        Block:2(
+          NonlocalDecl:3(
+            x
+            y))))))
+
 [case testRaiseStatement]
 raise foo
 [out]
