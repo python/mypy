@@ -13,7 +13,7 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    LITERAL_TYPE
+    DictionaryComprehension, LITERAL_TYPE
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -1180,6 +1180,33 @@ class ExpressionChecker:
                                [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
+
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension):
+        """Type check a dictionary comprehension."""
+
+        self.chk.binder.push_frame()
+        for index, sequence, conditions in zip(e.indices, e.sequences,
+                                               e.condlists):
+            sequence_type = self.chk.analyse_iterable_item_type(sequence)
+            self.chk.analyse_index_variables(index, sequence_type, e)
+            for condition in conditions:
+                self.accept(condition)
+        self.chk.binder.pop_frame()
+
+        # Infer the type of the list comprehension by using a synthetic generic
+        # callable type.
+        key_tv = TypeVar('KT', -1, [], self.chk.object_type())
+        value_tv = TypeVar('VT', -2, [], self.chk.object_type())
+        constructor = Callable([key_tv, value_tv],
+                               [nodes.ARG_POS, nodes.ARG_POS],
+                               [None, None],
+                               self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
+                               self.chk.named_type('builtins.function'),
+                               '<dictionary-comprehension>',
+                               [TypeVarDef('KT', -1, None, self.chk.object_type()),
+                                TypeVarDef('VT', -2, None, self.chk.object_type())])
+        return self.check_call(constructor,
+                               [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 
     def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
         return e.type
