@@ -170,24 +170,33 @@ class Parser:
 
     def parse_import_from(self) -> Node:
         from_tok = self.expect('from')
+        
+        # Build the list of beginning relative tokens.
         relative = 0
         rel_toks = List[Token]()
         while self.current_str() == ".":
             rel_toks.append(self.expect('.'))
             relative += 1
+        
+        # Parse qualified name to actually import from.
         if self.current_str() == "import":
+            # Empty/defualt values.
             name = ""
             components = List[Token]()
         else:
             name, components = self.parse_qualified_name()
+        
         if name == self.custom_typing_module:
             name = 'typing'
+        
+        # Parse import list
         import_tok = self.expect('import')
         name_toks = List[Tuple[List[Token], Token]]()
         lparen = none
         rparen = none
         node = None  # type: ImportBase
         if self.current_str() == '*':
+            # An import all from a module node:
             name_toks.append(([self.skip()], none))
             node = ImportAll(name, relative)
         else:

@@ -1,5 +1,6 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
+import os
 import re
 from abc import abstractmethod, ABCMeta
 
@@ -140,6 +141,9 @@ class MypyFile(SymbolNode):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
+    def is_package_init_file(self) -> bool:
+        return not (self.path is None) and len(self.path) != 0 \
+            and os.path.basename(self.path) == '__init__.py'
 
 class ImportBase(Node):
     """Base class for all import statements."""

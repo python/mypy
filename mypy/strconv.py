@@ -92,10 +92,10 @@ class StrConv(NodeVisitor[str]):
         a = []
         for name, as_name in o.names:
             a.append('{} : {}'.format(name, as_name))
-        return 'ImportFrom:{}({}, [{}])'.format(o.line, o.id, ', '.join(a))
+        return 'ImportFrom:{}({}, [{}])'.format(o.line, "." * o.relative + o.id, ', '.join(a))
 
     def visit_import_all(self, o):
-        return 'ImportAll:{}({})'.format(o.line, o.id)
+        return 'ImportAll:{}({})'.format(o.line, "." * o.relative + o.id)
 
     # Definitions
 
