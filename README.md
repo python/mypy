@@ -131,7 +131,6 @@ right now (but all of these will improve):
 
  - Python 2.x support not really yet usable
  - properties with setters not supported
- - relative imports not supported
  - somewhat limited operator overloading
  - only a subset of Python standard library modules are supported, and some
    only partially
