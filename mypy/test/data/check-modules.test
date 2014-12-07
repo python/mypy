@@ -323,3 +323,37 @@ x('')
 main, line 2: No module named 'foobar'
 main, line 4: Too many arguments for "x"
 
+[case testRelativeImports]
+import typing
+import m.a
+m.a.x = m.a.y # Error
+[file m/__init__.py]
+[file m/a.py]
+import typing
+from .b import A, B, x, y
+z = x
+z = y # Error
+[file m/b.py]
+import typing
+class A: pass
+class B: pass
+x = A()
+y = B()
+[out]
+In module imported in main, line 2:
+tmp/m/a.py, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testRelativeImports2]
+import typing
+import m.a
+m.a.x = m.a.y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+[file m/__init__.py]
+[file m/a.py]
+import typing
+from .b import A, B, x, y
+[file m/b.py]
+import typing
+class A: pass
+class B: pass
+x = A()
+y = B()
