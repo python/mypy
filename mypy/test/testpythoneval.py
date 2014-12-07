@@ -63,36 +63,40 @@ def test_python_evaluation(testcase):
         args = []
         py2 = False
     # Write the program to a file.
-    program = os.path.join(test_temp_dir, '_program.py')
-    f = open(program, 'w')
-    for s in testcase.input:
-        f.write('{}\n'.format(s))
-    f.close()
+    program = '_program.py'
+    program_path = os.path.join(test_temp_dir, program)
+    with open(program_path, 'w') as file:
+        for s in testcase.input:
+            file.write('{}\n'.format(s))
     # Set up module path.
     typing_path = os.path.join(os.getcwd(), 'lib-typing', '3.2')
     assert os.path.isdir(typing_path)
-    os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
-    os.environ['MYPYPATH'] = '.'
+    env = os.environ.copy()
+    env['PYTHONPATH'] = os.pathsep.join([typing_path, os.getcwd()])
     # Type check the program.
     process = subprocess.Popen([python3_path,
-                                os.path.join('scripts', 'mypy')] + args + [program],
+                                os.path.join(os.getcwd(), 'scripts', 'mypy')] + args + [program],
                                stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
+                               stderr=subprocess.STDOUT,
+                               cwd=test_temp_dir,
+                               env=env)
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     if not process.wait():
         if py2:
             typing_path = os.path.join(os.getcwd(), 'lib-typing', '2.7')
-            os.environ['PYTHONPATH'] = os.pathsep.join([typing_path, '.'])
+            env['PYTHONPATH'] = typing_path
         process = subprocess.Popen([interpreter, program],
                                    stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
+                                   stderr=subprocess.STDOUT,
+                                   cwd=test_temp_dir,
+                                   env=env)
         outb = process.stdout.read()
         # Split output into lines.
         out += [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
-    os.remove(program)
+    os.remove(program_path)
     assert_string_arrays_equal(testcase.output, out,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
