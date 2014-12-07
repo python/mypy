@@ -166,7 +166,9 @@ keywords_common = set([
     'yield'])
 
 # Reserved words specific for Python version 2
-keywords2 = set(['print'])
+# TODO (jukka): 'print' should be here, but it breaks the parsing of Python 2
+#               builtins, since they also define the function 'print'.
+keywords2 = set([])
 
 # Reserved words specific for Python version 3
 keywords3 = set(['nonlocal'])
