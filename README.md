@@ -32,12 +32,6 @@ Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
 
 
-Changes
--------
-
-31 Aug 2014: Mypy only type checks programs, it no longer runs them.
-
-
 Requirements
 ------------
 
