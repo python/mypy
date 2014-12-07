@@ -71,6 +71,23 @@ class float: pass
 [out]
 main, line 4: Incompatible types in assignment (expression has type "float", variable has type "A")
 
+[case testComplexLiteral]
+from typing import Undefined
+a = 0.0j
+b = Undefined # type: A
+b = 1.1j
+a = 1.1j
+class A:
+    pass
+[file builtins.py]
+class object:
+    def __init__(self): pass
+class type: pass
+class function: pass
+class complex: pass
+[out]
+main, line 4: Incompatible types in assignment (expression has type "complex", variable has type "A")
+
 [case testBytesLiteral]
 from typing import Undefined
 b, a = Undefined, Undefined # type: (bytes, A)

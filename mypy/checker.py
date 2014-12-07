@@ -17,7 +17,7 @@ from mypy.nodes import (
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, YieldFromStmt, NamedTupleExpr
+    YieldFromExpr, YieldFromStmt, NamedTupleExpr, ComplexExpr
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1717,6 +1717,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_float_expr(self, e: FloatExpr) -> Type:
         return self.expr_checker.visit_float_expr(e)
+
+    def visit_complex_expr(self, e: ComplexExpr) -> Type:
+        return self.expr_checker.visit_complex_expr(e)
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         return self.expr_checker.visit_op_expr(e)
