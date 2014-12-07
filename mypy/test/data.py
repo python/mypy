@@ -4,6 +4,7 @@ import os.path
 import os
 import re
 from os import remove, rmdir
+import shutil
 
 from typing import Function, List, Tuple, Undefined
 
@@ -143,7 +144,21 @@ class DataDrivenTestCase(TestCase):
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
-                rmdir(path)
+                try:
+                    rmdir(path)
+                except OSError as error:
+                    # Most likely, there are some files in the
+                    # directory. Use rmtree to nuke the directory, but
+                    # fail the test case anyway, since this seems like
+                    # a bug in a test case -- we shouldn't leave
+                    # garbage lying around. By nuking the directory,
+                    # the next test run hopefully passes.
+                    path = error.filename
+                    # Be defensive -- only call rmtree if we're sure we aren't removing anything
+                    # valuable.
+                    if path.startswith('tmp/') and os.path.isdir(path):
+                        shutil.rmtree(path)
+                    raise
         super().tear_down()
 
 
