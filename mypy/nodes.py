@@ -1,5 +1,6 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
+import os
 import re
 from abc import abstractmethod, ABCMeta
 
@@ -140,6 +141,9 @@ class MypyFile(SymbolNode):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
+    def is_package_init_file(self) -> bool:
+        return not (self.path is None) and len(self.path) != 0 \
+            and os.path.basename(self.path) == '__init__.py'
 
 class ImportBase(Node):
     """Base class for all import statements."""
@@ -163,9 +167,10 @@ class ImportFrom(ImportBase):
 
     names = Undefined(List[Tuple[str, str]])  # Tuples (name, as name)
 
-    def __init__(self, id: str, names: List[Tuple[str, str]]) -> None:
+    def __init__(self, id: str, relative: int, names: List[Tuple[str, str]]) -> None:
         self.id = id
         self.names = names
+        self.relative = relative
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_from(self)
@@ -174,8 +179,9 @@ class ImportFrom(ImportBase):
 class ImportAll(ImportBase):
     """from m import *"""
 
-    def __init__(self, id: str) -> None:
+    def __init__(self, id: str, relative: int) -> None:
         self.id = id
+        self.relative = relative
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_all(self)

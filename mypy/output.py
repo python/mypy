@@ -55,6 +55,7 @@ class OutputVisitor(NodeVisitor):
     def output_import_from_or_all(self, o):
         r = o.repr
         self.token(r.from_tok)
+        self.tokens(r.rel_toks)
         self.tokens(r.components)
         self.token(r.import_tok)
         self.token(r.lparen)

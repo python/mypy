@@ -239,11 +239,30 @@ from m import x
 [out]
 main, line 2: No module named 'm'
 
-[case testMissingModule2]
+[case testMissingModule3]
 import typing
 from m import *
 [out]
 main, line 2: No module named 'm'
+
+[case testMissingModuleRelativeImport]
+import typing
+import m
+[file m/__init__.py]
+from .x import y
+[out]
+In module imported in main, line 2:
+tmp/m/__init__.py, line 1: No module named 'm.x'
+
+[case testMissingModuleRelativeImport2]
+import typing
+import m.a
+[file m/__init__.py]
+[file m/a.py]
+from .x import y
+[out]
+In module imported in main, line 2:
+tmp/m/a.py, line 1: No module named 'm.x'
 
 [case testModuleNotImported]
 import typing
@@ -266,6 +285,16 @@ _x = __x__ = 1
 [out]
 main, line 3: Name '_x' is not defined
 main, line 4: Name '__x__' is not defined
+
+[case testRelativeImportAtTopLevelModule]
+from . import m
+[out]
+main, line 1: No parent module -- cannot perform relative import
+
+[case testRelativeImportAtTopLevelModule]
+from .. import m
+[out]
+main, line 1: No parent module -- cannot perform relative import
 
 [case testUndefinedTypeWithQualifiedName]
 import typing

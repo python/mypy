@@ -143,8 +143,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
-        self.globals = file_node.names
+        self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
+        self.globals = file_node.names
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -605,8 +606,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_unknown_symbol(as_id, context)
 
     def visit_import_from(self, i: ImportFrom) -> None:
-        if i.id in self.modules:
-            m = self.modules[i.id]
+        i_id = self.correct_relative_import(i)
+        if i_id in self.modules:
+            m = self.modules[i_id]
             for id, as_id in i.names:
                 node = m.names.get(id, None)
                 if node:
@@ -628,9 +630,27 @@ class SemanticAnalyzer(NodeVisitor):
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
         return node
 
+    def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
+        if node.relative == 0:
+            return node.id
+
+        parts = self.cur_mod_id.split(".")
+        cur_mod_id = self.cur_mod_id
+
+        rel = node.relative
+        if self.cur_mod_node.is_package_init_file():
+            rel -= 1
+        if len(parts) < rel:
+            self.fail("Relative import climbs too many namespaces", node)
+        if rel != 0:
+            cur_mod_id = ".".join(parts[:-rel])
+
+        return cur_mod_id + (("." + node.id) if node.id else "")
+
     def visit_import_all(self, i: ImportAll) -> None:
-        if i.id in self.modules:
-            m = self.modules[i.id]
+        i_id = self.correct_relative_import(i)
+        if i_id in self.modules:
+            m = self.modules[i_id]
             for name, node in m.names.items():
                 node = self.normalize_type_alias(node, i)
                 if not name.startswith('_'):

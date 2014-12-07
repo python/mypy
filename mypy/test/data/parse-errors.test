@@ -358,3 +358,13 @@ def f():
 [out]
 file: In function "f":
 file, line 2: Parse error before end of line
+
+[case testImportDotModule]
+import .x
+[out]
+file, line 1: Parse error before .
+
+[case testImportDot]
+import .
+[out]
+file, line 1: Parse error before .
