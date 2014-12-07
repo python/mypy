@@ -462,7 +462,7 @@ class BuildManager:
             if rel != 0:
                 file_id = ".".join(file_id.split(".")[:-rel])
             new_id = file_id + "." + imp.id if imp.id else file_id
-            
+
             return new_id
 
         res = List[Tuple[str, int]]()
@@ -752,7 +752,7 @@ class ParsedFile(State):
         for id, line in self.manager.all_imported_modules_in_file(tree):
             # Omit missing modules, as otherwise we could not type check
             # programs with missing modules.
-            if not id in self.manager.missing_modules:
+            if not id in self.manager.missing_modules and id != self.id:
                 imp.append(id)
         if self.id != 'builtins':
             imp.append('builtins')

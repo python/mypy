@@ -740,4 +740,21 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y* [m.z.y])
     IntExpr(3)))
-    
+
+[case testRelativeImportFromSameModule]
+import m.x
+[file m/__init__.py]
+[file m/x.py]
+from .x import nonexistent
+[out]
+In module imported in main, line 1:
+tmp/m/x.py, line 1: Module has no attribute 'nonexistent'
+
+[case testImportFromSameModule]
+import m.x
+[file m/__init__.py]
+[file m/x.py]
+from m.x import nonexistent
+[out]
+In module imported in main, line 1:
+tmp/m/x.py, line 1: Module has no attribute 'nonexistent'
