@@ -63,8 +63,7 @@ def test_python_evaluation(testcase):
         args = []
         py2 = False
     # Write the program to a file.
-    program = '_program.py'
-    outfile = '_program.out'
+    program = os.path.join(test_temp_dir, '_program.py')
     f = open(program, 'w')
     for s in testcase.input:
         f.write('{}\n'.format(s))

@@ -973,3 +973,26 @@ print(n[0])
 N(a=1, b='x')
 1 x
 1
+
+[case testRelativeImport]
+import typing
+from m import x
+print(x)
+[file m/__init__.py]
+from .n import x
+[file m/n.py]
+x = 1
+[out]
+1
+
+[case testRelativeImport2]
+import typing
+from m.n import x
+print(x)
+[file m/__init__.py]
+[file m/n.py]
+from .nn import x
+[file m/nn.py]
+x = 2
+[out]
+2
