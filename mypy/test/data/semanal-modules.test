@@ -632,3 +632,112 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(y* [x.y])
     IntExpr(1)))
+
+[case testRelativeImport0]
+import m.x
+m.x.z.y
+[file m/__init__.py]
+[file m/x.py]
+from . import z
+[file m/z.py]
+y = 1
+[out]
+MypyFile:1(
+  Import:1(m.x : m.x)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      MemberExpr:2(
+        MemberExpr:2(
+          NameExpr(m)
+          x [m.x])
+        z [m.z])
+      y [m.z.y])))
+MypyFile:1(
+  tmp/m/x.py
+  ImportFrom:1(., [z : z]))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(y* [m.z.y])
+    IntExpr(1)))
+
+[case testRelativeImport1]
+import m.t.b as b
+b.x.y
+b.z.y
+[file m/__init__.py]
+[file m/x.py]
+y = 1
+[file m/z.py]
+y = 3
+[file m/t/__init__.py]
+[file m/t/b.py]
+from .. import x, z
+[out]
+MypyFile:1(
+  Import:1(m.t.b : b)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      MemberExpr:2(
+        NameExpr(b [m.t.b])
+        x [m.x])
+      y [m.x.y]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      MemberExpr:3(
+        NameExpr(b [m.t.b])
+        z [m.z])
+      y [m.z.y])))
+MypyFile:1(
+  tmp/m/t/b.py
+  ImportFrom:1(.., [x : x, z : z]))
+MypyFile:1(
+  tmp/m/x.py
+  AssignmentStmt:1(
+    NameExpr(y* [m.x.y])
+    IntExpr(1)))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(y* [m.z.y])
+    IntExpr(3)))
+
+[case testRelativeImport2]
+import m.t.b as b
+b.xy
+b.zy
+[file m/__init__.py]
+[file m/x.py]
+y = 1
+[file m/z.py]
+y = 3
+[file m/t/__init__.py]
+[file m/t/b.py]
+from ..x import y as xy
+from ..z import y as zy
+[out]
+MypyFile:1(
+  Import:1(m.t.b : b)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(b [m.t.b])
+      xy [m.x.y]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      NameExpr(b [m.t.b])
+      zy [m.z.y])))
+MypyFile:1(
+  tmp/m/t/b.py
+  ImportFrom:1(..x, [y : xy])
+  ImportFrom:2(..z, [y : zy]))
+MypyFile:1(
+  tmp/m/x.py
+  AssignmentStmt:1(
+    NameExpr(y* [m.x.y])
+    IntExpr(1)))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(y* [m.z.y])
+    IntExpr(3)))
+    

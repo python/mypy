@@ -16,7 +16,7 @@ import subprocess
 import sys
 from os.path import dirname, basename
 
-from typing import Undefined, Dict, List, Tuple, cast, Set
+from typing import Undefined, Dict, List, Tuple, cast, Set, Union
 
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
@@ -451,6 +451,20 @@ class BuildManager:
         Return list of tuples (module id, import line number) for all modules
         imported in file.
         """
+        def correct_rel_imp(imp: Union[ImportFrom, ImportAll]) -> str:
+            """Function to correct for relative imports."""
+            file_id = file.fullname()
+            rel = imp.relative
+            if rel == 0:
+                return imp.id
+            if os.path.basename(file.path) == '__init__.py':
+                rel -= 1
+            if rel != 0:
+                file_id = ".".join(file_id.split(".")[:-rel])
+            new_id = file_id + "." + imp.id if imp.id else file_id
+            
+            return new_id
+
         res = List[Tuple[str, int]]()
         for imp in file.imports:
             if not imp.is_unreachable:
@@ -458,14 +472,15 @@ class BuildManager:
                     for id, _ in imp.ids:
                         res.append((id, imp.line))
                 elif isinstance(imp, ImportFrom):
-                    res.append((imp.id, imp.line))
+                    cur_id = correct_rel_imp(imp)
+                    res.append((cur_id, imp.line))
                     # Also add any imported names that are submodules.
                     for name, __ in imp.names:
-                        sub_id = imp.id + '.' + name
+                        sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((sub_id, imp.line))
                 elif isinstance(imp, ImportAll):
-                    res.append((imp.id, imp.line))
+                    res.append((correct_rel_imp(imp), imp.line))
         return res
 
     def is_module(self, id: str) -> bool:
