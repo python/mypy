@@ -286,6 +286,16 @@ _x = __x__ = 1
 main, line 3: Name '_x' is not defined
 main, line 4: Name '__x__' is not defined
 
+[case testRelativeImportAtTopLevelModule]
+from . import m
+[out]
+main, line 1: No parent module -- cannot perform relative import
+
+[case testRelativeImportAtTopLevelModule]
+from .. import m
+[out]
+main, line 1: No parent module -- cannot perform relative import
+
 [case testUndefinedTypeWithQualifiedName]
 import typing
 import m

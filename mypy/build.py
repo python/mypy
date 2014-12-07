@@ -692,7 +692,13 @@ class UnprocessedFile(State):
             finally:
                 self.errors().pop_import_context()
             if not res:
-                self.fail(self.path, line, "No module named '{}'".format(id), blocker=False)
+                if id == '':
+                    # Must be from a relative import.
+                    self.fail(self.path, line,
+                              "No parent module -- cannot perform relative import".format(id),
+                              blocker=True)
+                else:
+                    self.fail(self.path, line, "No module named '{}'".format(id), blocker=False)
                 self.manager.missing_modules.add(id)
 
         # Initialize module symbol table, which was populated by the semantic

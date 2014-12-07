@@ -641,7 +641,7 @@ class SemanticAnalyzer(NodeVisitor):
         if self.cur_mod_node.is_package_init_file():
             rel -= 1
         if len(parts) < rel:
-            self.fail("Relative import climbs too many namespaces.", node)
+            self.fail("Relative import climbs too many namespaces", node)
         if rel != 0:
             cur_mod_id = ".".join(parts[:-rel])
 
