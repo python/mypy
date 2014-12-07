@@ -996,3 +996,15 @@ from .nn import x
 x = 2
 [out]
 2
+
+[case testPyiTakesPrecedenceOverPy]
+import m
+m.f(1)
+[file m.py]
+def f(x):
+    print(x)
+[file m.pyi]
+import typing
+def f(x: str) -> None: pass
+[out]
+_program.py, line 2: Argument 1 to "f" has incompatible type "int"; expected "str"
