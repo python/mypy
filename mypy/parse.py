@@ -417,6 +417,7 @@ class Parser:
           (name token, representation of arguments)
         """
         name_tok = none
+        name = ''
 
         try:
             name_tok = self.expect_type(Name)
