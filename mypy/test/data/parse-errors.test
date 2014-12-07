@@ -368,3 +368,9 @@ file, line 1: Parse error before .
 import .
 [out]
 file, line 1: Parse error before .
+
+[case testInvalidFunctionName]
+def while(): pass
+[out]
+file, line 1: Parse error before "while"
+file, line 1: Parse error before end of line
