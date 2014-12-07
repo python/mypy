@@ -171,7 +171,7 @@ class ImportFrom(ImportBase):
         self.id = id
         self.names = names
         self.relative = relative
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
@@ -182,7 +182,7 @@ class ImportAll(ImportBase):
     def __init__(self, id: str, relative: int) -> None:
         self.id = id
         self.relative = relative
-    
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 

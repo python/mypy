@@ -636,7 +636,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         parts = self.cur_mod_id.split(".")
         cur_mod_id = self.cur_mod_id
-        
+
         rel = node.relative
         if self.cur_mod_node.is_package_init_file():
             rel -= 1
@@ -644,7 +644,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("Relative import climbs too many namespaces.", node)
         if rel != 0:
             cur_mod_id = ".".join(parts[:-rel])
-            
+
         return cur_mod_id + (("." + node.id) if node.id else "")
 
     def visit_import_all(self, i: ImportAll) -> None:
