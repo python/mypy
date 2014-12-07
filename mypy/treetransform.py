@@ -280,7 +280,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_float_expr(self, node: FloatExpr) -> Node:
         return FloatExpr(node.value)
 
-    def visit_complex_expr(self, node: ComplexExpr) -> None:
+    def visit_complex_expr(self, node: ComplexExpr) -> Node:
         return ComplexExpr(node.value)
 
     def visit_paren_expr(self, node: ParenExpr) -> Node:
