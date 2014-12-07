@@ -11,7 +11,7 @@ from typing import Undefined, List, Tuple, Any, Set, cast, Union
 from mypy import lex
 from mypy.lex import (
     Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
-    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError
+    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit
 )
 import mypy.types
 from mypy.nodes import (
@@ -24,7 +24,7 @@ from mypy.nodes import (
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
-    StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl
+    StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, ComplexExpr
 )
 from mypy import nodes
 from mypy import noderepr
@@ -1098,6 +1098,8 @@ class Parser:
                 expr = self.parse_unicode_literal()
             elif isinstance(self.current(), FloatLit):
                 expr = self.parse_float_expr()
+            elif isinstance(self.current(), ComplexLit):
+                expr = self.parse_complex_expr()
             elif isinstance(t, Keyword) and s == "yield":
                 expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
             else:
@@ -1395,6 +1397,12 @@ class Parser:
         tok = self.expect_type(FloatLit)
         node = FloatExpr(float(tok.string))
         self.set_repr(node, noderepr.FloatExprRepr(tok))
+        return node
+
+    def parse_complex_expr(self) -> ComplexExpr:
+        tok = self.expect_type(ComplexLit)
+        node = ComplexExpr(complex(tok.string))
+        self.set_repr(node, noderepr.ComplexExprRepr(tok))
         return node
 
     def parse_call_expr(self, callee: Any) -> CallExpr:
@@ -1762,7 +1770,7 @@ def token_repr(tok: Token) -> str:
         return 'end of file'
     elif isinstance(tok, Keyword) or isinstance(tok, Name):
         return '"{}"'.format(tok.string)
-    elif isinstance(tok, IntLit) or isinstance(tok, FloatLit):
+    elif isinstance(tok, IntLit) or isinstance(tok, FloatLit) or isinstance(tok, ComplexLit):
         return 'numeric literal'
     elif isinstance(tok, StrLit):
         return 'string literal'

@@ -105,6 +105,10 @@ class FloatLit(Token):
     """Float literal"""
 
 
+class ComplexLit(Token):
+    """Complex literal"""
+
+
 class Punct(Token):
     """Punctuator (e.g. comma, '(' or '=')"""
 
@@ -372,11 +376,11 @@ class Lexer:
 
     # Regexps used by lex_number
 
-    # Decimal/hex/octal literal
-    number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
-    # Float literal, e.g. '1.23' or '12e+34'
+    # Decimal/hex/octal literal or integer complex literal
+    number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+[jJ?]?')
+    # Float literal, e.g. '1.23' or '12e+34' or '1.2j'
     number_exp2 = re.compile(
-        r'[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
+        r'([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+)[jJ]?')
     # These characters must not appear after a number literal.
     name_char_exp = re.compile('[a-zA-Z0-9_]')
 
@@ -397,10 +401,17 @@ class Lexer:
             self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
         elif len(s1) > len(s2):
             # Integer literal.
-            self.add_token(IntLit(s1))
+            if s1[-1] in 'jJ':
+                self.add_token(ComplexLit(s1))
+            else:
+                self.add_token(IntLit(s1))
         else:
-            # Float literal.
-            self.add_token(FloatLit(s2))
+            if s2[-1] in 'jJ':
+                # Complex literal
+                self.add_token(ComplexLit(s2))
+            else:
+                # Float literal.
+                self.add_token(FloatLit(s2))
 
     name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*')
 

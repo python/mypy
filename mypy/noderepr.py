@@ -215,6 +215,11 @@ class FloatExprRepr:
         self.float = float
 
 
+class ComplexExprRepr:
+    def __init__(self, complex: Any) -> None:
+        self.complex = complex
+
+
 class ParenExprRepr:
     def __init__(self, lparen: Any, rparen: Any) -> None:
         self.lparen = lparen
