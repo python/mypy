@@ -1,5 +1,5 @@
 [case testLiterals]
-(1, 'x', 1.1)
+(1, 'x', 1.1, 1.1j)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -7,7 +7,8 @@ MypyFile:1(
       TupleExpr:1(
         IntExpr(1)
         StrExpr(x)
-        FloatExpr(1.1)))))
+        FloatExpr(1.1)
+        ComplexExpr(1.1j)))))
 
 [case testMemberExpr]
 x = 1

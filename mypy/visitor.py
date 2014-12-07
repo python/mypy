@@ -136,6 +136,9 @@ class NodeVisitor(Generic[T]):
     def visit_float_expr(self, o: 'mypy.nodes.FloatExpr') -> T:
         pass
 
+    def visit_complex_expr(self, o: 'mypy.ndoes.ComplexExpr') -> T:
+        pass
+
     def visit_paren_expr(self, o: 'mypy.nodes.ParenExpr') -> T:
         pass
 
