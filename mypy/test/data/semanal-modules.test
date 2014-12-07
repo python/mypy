@@ -741,6 +741,51 @@ MypyFile:1(
     NameExpr(y* [m.z.y])
     IntExpr(3)))
 
+[case testRelativeImport3]
+import m.t
+m.zy
+m.xy
+m.t.y
+[file m/__init__.py]
+from .x import *
+from .z import *
+[file m/x.py]
+from .z import zy as xy
+[file m/z.py]
+zy = 3
+[file m/t/__init__.py]
+from .b import *
+[file m/t/b.py]
+from .. import xy as y
+[out]
+MypyFile:1(
+  Import:1(m.t : m.t)
+  ExpressionStmt:2(
+    MemberExpr:2(
+      NameExpr(m)
+      zy [m.z.zy]))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      NameExpr(m)
+      xy [m.z.zy]))
+  ExpressionStmt:4(
+    MemberExpr:4(
+      MemberExpr:4(
+        NameExpr(m)
+        t [m.t])
+      y [m.z.zy])))
+MypyFile:1(
+  tmp/m/t/b.py
+  ImportFrom:1(.., [xy : y]))
+MypyFile:1(
+  tmp/m/x.py
+  ImportFrom:1(.z, [zy : xy]))
+MypyFile:1(
+  tmp/m/z.py
+  AssignmentStmt:1(
+    NameExpr(zy* [m.z.zy])
+    IntExpr(3)))
+
 [case testRelativeImportFromSameModule]
 import m.x
 [file m/__init__.py]
