@@ -9,7 +9,7 @@ This module can be run as a script (lex.py FILE).
 import re
 
 from mypy.util import short_type
-from typing import List, Undefined, Function, Dict, Any, Match, Pattern
+from typing import List, Undefined, Function, Dict, Any, Match, Pattern, Set
 
 
 class Token:
@@ -168,7 +168,7 @@ keywords_common = set([
 # Reserved words specific for Python version 2
 # TODO (jukka): 'print' should be here, but it breaks the parsing of Python 2
 #               builtins, since they also define the function 'print'.
-keywords2 = set([])
+keywords2 = set([]) # type: Set[str]
 
 # Reserved words specific for Python version 3
 keywords3 = set(['nonlocal'])
