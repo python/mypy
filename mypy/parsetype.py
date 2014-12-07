@@ -127,7 +127,7 @@ class TypeParser:
             components.append(t)
             name += '.' + t.string
 
-        langle, rangle = none, none
+        lbracket, rbracket = none, none
         commas = []  # type: List[Token]
         args = []  # type: List[Type]
         if self.current_token_str() == '[':
@@ -143,8 +143,8 @@ class TypeParser:
             rbracket = self.expect(']')
 
         typ = UnboundType(name, args, line, CommonTypeRepr(components,
-                                                           langle,
-                                                           commas, rangle))
+                                                           lbracket,
+                                                           commas, rbracket))
         return typ
 
     def parse_star_type(self) -> Type:
