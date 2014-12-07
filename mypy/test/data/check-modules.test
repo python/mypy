@@ -1,3 +1,4 @@
+
 -- Test cases for the type checker.
 
 [case testAccessImportedDefinitions]
@@ -136,6 +137,24 @@ class C:
 def f() -> None: pass
 [out]
 main: In class "C":
+
+[case testImportWithStub]
+import _m
+_m.f("hola")
+[file _m.pyi]
+def f(c:str) -> None: pass
+[out]
+
+
+[case testImportWithStubIncompatibleType]
+import _m
+_m.f("hola")
+_m.f(12)  # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+[file _m.py]
+def f(c):
+  print(c)
+[file _m.pyi]
+def f(c:str) -> None: pass
 
 [case testInvalidOperationsOnModules]
 import m
