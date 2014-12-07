@@ -136,11 +136,14 @@ class DataDrivenTestCase(TestCase):
             self.perform(self)
 
     def tear_down(self) -> None:
+        # First remove files.
+        for is_dir, path in reversed(self.clean_up):
+            if not is_dir:
+                remove(path)
+        # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
                 rmdir(path)
-            else:
-                remove(path)
         super().tear_down()
 
 
