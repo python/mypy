@@ -34,6 +34,7 @@ for py_version in ['3.4', '3.3', '3.2', '2.7']:
     for stub_dir in stub_dirs:
         target = os.path.join('lib', 'mypy', 'stubs', py_version, stub_dir)
         files = glob.glob(os.path.join(base, stub_dir, '*.py'))
+        files += glob.glob(os.path.join(base, stub_dir, '*.pyi'))
         stubs.append((target, files))
 
 classifiers = [

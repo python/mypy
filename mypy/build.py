@@ -42,7 +42,6 @@ VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build/run module as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
-
 # State ids. These describe the states a source file / module can be in a
 # build.
 
@@ -228,6 +227,7 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
 
 
 def lookup_program(module: str, lib_path: List[str]) -> str:
+    # Modules are .py and not .pyi
     path = find_module(module, lib_path)
     if path:
         return path
@@ -877,14 +877,16 @@ def read_module_source_from_file(id: str,
 
 def find_module(id: str, lib_path: List[str]) -> str:
     """Return the path of the module source file, or None if not found."""
+    extensions = ['.pyi', '.py']
     for pathitem in lib_path:
-        comp = id.split('.')
-        path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + '.py')
-        text = ''
-        if not os.path.isfile(path):
-            path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
-        if os.path.isfile(path) and verify_module(id, path):
-            return path
+        for extension in extensions:
+            comp = id.split('.')
+            path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
+            text = ''
+            if not os.path.isfile(path):
+                path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
+            if os.path.isfile(path) and verify_module(id, path):
+                return path
     return None
 
 
