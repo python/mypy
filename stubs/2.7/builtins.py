@@ -143,7 +143,7 @@ class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
 @builtinclass
 class complex(SupportsAbs[float]):
     @overload
-    def __init__(self, re: float, im: float = 0.0) -> None: pass
+    def __init__(self, re: float = 0.0, im: float = 0.0) -> None: pass
     @overload
     def __init__(self, s: str) -> None: pass
 
