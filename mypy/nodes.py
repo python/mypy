@@ -820,6 +820,20 @@ class FloatExpr(Node):
         return visitor.visit_float_expr(self)
 
 
+class ComplexExpr(Node):
+    """Complex literal"""
+
+    value = 0.0j
+    literal = LITERAL_YES
+
+    def __init__(self, value: complex) -> None:
+        self.value = value
+        self.literal_hash = value
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_complex_expr(self)
+
+
 class ParenExpr(Node):
     """Parenthesised expression"""
 

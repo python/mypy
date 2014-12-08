@@ -297,6 +297,9 @@ class StrConv(NodeVisitor[str]):
     def visit_float_expr(self, o):
         return 'FloatExpr({})'.format(o.value)
 
+    def visit_complex_expr(self, o):
+        return 'ComplexExpr({})'.format(o.value)
+
     def visit_paren_expr(self, o):
         return self.dump([o.expr], o)
 

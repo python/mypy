@@ -287,3 +287,23 @@ x = X(a=1, b='s')
 x.c
 [out]
 _program.py, line 5: "X" has no attribute "c"
+
+[case testAssignToComplexReal_python2]
+import typing
+x = 4j
+y = x.real
+y = x         # Error
+x.imag = 2.0  # Error
+[out]
+_program.py, line 4: Incompatible types in assignment (expression has type "complex", variable has type "float")
+_program.py, line 5: Property "imag" defined in "complex" is read-only
+
+[case testComplexArithmetic]
+import typing
+print(5 + 8j)
+print(3j * 2.0)
+print(4j / 2.0)
+[out]
+(5+8j)
+6j
+2j
