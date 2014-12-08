@@ -1008,3 +1008,23 @@ import typing
 def f(x: str) -> None: pass
 [out]
 _program.py, line 2: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAssignToComplexReal]
+import typing
+x = 4j
+y = x.real
+y = x         # Error
+x.real = 2.0  # Error
+[out]
+_program.py, line 4: Incompatible types in assignment (expression has type "complex", variable has type "float")
+_program.py, line 5: Property "real" defined in "complex" is read-only
+
+[case testComplexArithmetic]
+import typing
+print(5 + 8j)
+print(3j * 2.0)
+print(4J / 2.0)
+[out]
+(5+8j)
+6j
+2j

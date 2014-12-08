@@ -144,8 +144,10 @@ class complex(SupportsAbs[float]):
     @overload
     def __init__(self, s: str) -> None: pass
 
-    real = 0.0
-    imag = 0.0
+    @property
+    def real(self) -> float: pass
+    @property
+    def imag(self) -> float: pass
 
     def conjugate(self) -> complex: pass
 
