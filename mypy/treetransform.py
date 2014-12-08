@@ -18,7 +18,7 @@ from mypy.nodes import (
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
     DisjointclassExpr, ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
-    DictionaryComprehension
+    DictionaryComprehension, ComplexExpr
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -280,6 +280,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_float_expr(self, node: FloatExpr) -> Node:
         return FloatExpr(node.value)
+
+    def visit_complex_expr(self, node: ComplexExpr) -> Node:
+        return ComplexExpr(node.value)
 
     def visit_paren_expr(self, node: ParenExpr) -> Node:
         return ParenExpr(self.node(node.expr))

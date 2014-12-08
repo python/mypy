@@ -105,6 +105,10 @@ class FloatLit(Token):
     """Float literal"""
 
 
+class ComplexLit(Token):
+    """Complex literal"""
+
+
 class Punct(Token):
     """Punctuator (e.g. comma, '(' or '=')"""
 
@@ -374,11 +378,14 @@ class Lexer:
 
     # Regexps used by lex_number
 
-    # Decimal/hex/octal literal
+    # Decimal/hex/octal literal or integer complex literal
     number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
-    # Float literal, e.g. '1.23' or '12e+34'
+    # Float literal, e.g. '1.23' or '12e+34' or '1.2j'
     number_exp2 = re.compile(
         r'[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
+    # Complex literal, e.g. '3j' or '1.5e2J'
+    number_complex = re.compile(
+        r'([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+([eE][-+]?[0-9]+)?)[jJ]')
     # These characters must not appear after a number literal.
     name_char_exp = re.compile('[a-zA-Z0-9_]')
 
@@ -389,20 +396,24 @@ class Lexer:
         """
         s1 = self.match(self.number_exp1)
         s2 = self.match(self.number_exp2)
+        sc = self.match(self.number_complex)
 
-        maxlen = max(len(s1), len(s2))
+        maxlen = max(len(s1), len(s2), len(sc))
         if self.name_char_exp.match(
                 self.s[self.i + maxlen:self.i + maxlen + 1]) is not None:
             # Error: alphanumeric character after number literal.
             s3 = self.match(re.compile('[0-9][0-9a-zA-Z_]*'))
             maxlen = max(maxlen, len(s3))
             self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
-        elif len(s1) > len(s2):
+        elif len(s1) == maxlen:
             # Integer literal.
             self.add_token(IntLit(s1))
-        else:
+        elif len(s2) == maxlen:
             # Float literal.
             self.add_token(FloatLit(s2))
+        else:
+            # Complex literal.
+            self.add_token(ComplexLit(sc))
 
     name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*')
 

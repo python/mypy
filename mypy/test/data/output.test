@@ -46,6 +46,7 @@ x = [ + 1, - 2, ~ 3, not 4 ]
 r'foo' r"foo"
 '''foo''' """bar"""
 b'foo' b"foo"
+3j + 2J + 1.1j + 1e3J + -1j + .1j
 
 [case testTupleLiterals]
 ( )

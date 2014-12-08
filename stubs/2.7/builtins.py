@@ -141,9 +141,36 @@ class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     def __hash__(self) -> int: pass
 
 @builtinclass
-class complex:
-    def __init__(self, re: float, im: float = 0.0) -> None: pass
-    # TODO this is just a placeholder; add more members
+class complex(SupportsAbs[float]):
+    @overload
+    def __init__(self, re: float = 0.0, im: float = 0.0) -> None: pass
+    @overload
+    def __init__(self, s: str) -> None: pass
+
+    real = 0.0
+    imag = 0.0
+
+    def conjugate(self) -> complex: pass
+
+    def __add__(self, x: complex) -> complex: pass
+    def __sub__(self, x: complex) -> complex: pass
+    def __mul__(self, x: complex) -> complex: pass
+    def __pow__(self, x: complex) -> complex: pass
+    def __truediv__(self, x: complex) -> complex: pass
+    def __radd__(self, x: complex) -> complex: pass
+    def __rsub__(self, x: complex) -> complex: pass
+    def __rmul__(self, x: complex) -> complex: pass
+    def __rpow__(self, x: complex) -> complex: pass
+    def __rtruediv__(self, x: complex) -> complex: pass
+
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
+    def __neg__(self) -> complex: pass
+    def __pos__(self) -> complex: pass
+
+    def __str__(self) -> str: pass
+    def __abs__(self) -> float: pass
+    def __hash__(self) -> int: pass
 
 @builtinclass
 class unicode(Sequence[unicode]):
