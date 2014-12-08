@@ -1267,6 +1267,7 @@ class SetComprehension(Node):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_comprehension(self)
 
+
 class DictionaryComprehension(Node):
     """Dictionary comprehension (e.g. {k: v for k, v in a}"""
 
@@ -1286,6 +1287,7 @@ class DictionaryComprehension(Node):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)
+
 
 class ConditionalExpr(Node):
     """Conditional expression (e.g. x if y else z)"""
