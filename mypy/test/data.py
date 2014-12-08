@@ -144,9 +144,15 @@ class DataDrivenTestCase(TestCase):
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
+                pycache = os.path.join(path, '__pycache__')
+                if os.path.isdir(pycache):
+                    shutil.rmtree(pycache)
                 try:
                     rmdir(path)
                 except OSError as error:
+                    print(' ** Error removing directory %s -- contents:' % path)
+                    for item in os.listdir(path):
+                        print('  ', item)
                     # Most likely, there are some files in the
                     # directory. Use rmtree to nuke the directory, but
                     # fail the test case anyway, since this seems like
