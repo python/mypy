@@ -16,7 +16,8 @@ from mypy.errors import CompileError
 
 class ParserSuite(Suite):
     parse_files = ['parse.test',
-                   'parse-python2.test']
+                   'parse-python2.test',
+                   'parse-annotation.test']
 
     def cases(self):
         # The test case descriptions are stored in data files.

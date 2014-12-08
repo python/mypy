@@ -34,6 +34,8 @@ from mypy.types import Void, Type, Callable, AnyType, UnboundType
 from mypy.parsetype import (
     parse_type, parse_types, parse_signature, TypeParseError
 )
+from mypy.annotations import Annotation, IgnoreAnnotation
+from mypy.parseannotation import parse_annotation, AnnotationParseError
 
 
 precedence = {
@@ -163,8 +165,10 @@ class Parser:
                 break
             commas.append(self.expect(','))
         br = self.expect_break()
+        annotation = self.parse_annotation_comment(br)
         node = Import(ids)
-        self.imports.append(node)
+        if not isinstance(annotation, IgnoreAnnotation):
+            self.imports.append(node)
         self.set_repr(node, noderepr.ImportRepr(import_tok, id_toks, as_names,
                                                 commas, br))
         return node
@@ -227,7 +231,9 @@ class Parser:
             if node is None:
                 node = ImportFrom(name, relative, targets)
         br = self.expect_break()
-        self.imports.append(node)
+        annotation = self.parse_annotation_comment(br)
+        if not isinstance(annotation, IgnoreAnnotation):
+            self.imports.append(node)
         # TODO: Fix representation if there is a custom typing module import.
         self.set_repr(node, noderepr.ImportFromRepr(
             from_tok, rel_toks, components, import_tok, lparen, name_toks, rparen, br))
@@ -1751,7 +1757,7 @@ class Parser:
             raise ParseError()
         return typ
 
-    annotation_prefix_re = re.compile(r'#\s*type:')
+    type_annotation_prefix_re = re.compile(r'#\s*type:')
 
     def parse_type_comment(self, token: Token, signature: bool) -> Type:
         """Parse a '# type: ...' annotation.
@@ -1760,7 +1766,7 @@ class Parser:
         a type signature of form (...) -> t.
         """
         whitespace_or_comments = token.rep().strip()
-        if self.annotation_prefix_re.match(whitespace_or_comments):
+        if self.type_annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
             tokens = lex.lex(type_as_str, token.line)
             if len(tokens) < 2:
@@ -1779,6 +1785,30 @@ class Parser:
                 self.parse_error_at(tokens[index], skip=False)
                 return None
             return type
+        else:
+            return None
+
+    annotation_prefix_re = re.compile(r'#\s*mypy:')
+
+    def parse_annotation_comment(self, token: Token) -> Annotation:
+        """Parse a '# mypy: ...' annotation"""
+        whitespace_or_comments = token.rep().strip()
+        if self.annotation_prefix_re.match(whitespace_or_comments):
+            annotation_as_str = whitespace_or_comments.split(':', 1)[1].strip()
+            tokens = lex.lex(annotation_as_str, token.line)
+            if len(tokens) < 2:
+                # Empty annotation (only Eof token)
+                self.errors.report(token.line, 'Empty annotation')
+                return None
+            try:
+                annotation, index = parse_annotation(tokens, 0)
+            except AnnotationParseError as e:
+                self.parse_error_at(e.token, skip = False)
+                return None
+            if index < len(tokens) - 2:
+                self.parse_error_at(tokens[index], skip=False)
+                return None
+            return annotation
         else:
             return None
 
