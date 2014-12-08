@@ -276,6 +276,8 @@ class MessageBuilder:
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
+        elif member == '__call__':
+            self.fail('{} not callable'.format(self.format(typ)), context)
         else:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
