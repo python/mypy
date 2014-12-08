@@ -320,6 +320,9 @@ with bar() as x:
 with f() as x, y() as z:
   pass
 
+[case testEllipsis]
+...
+
 
 -- Function definitions
 -- --------------------
