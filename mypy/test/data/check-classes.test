@@ -1133,6 +1133,27 @@ main, line 8: Argument 1 of "__iadd__" incompatible with "__add__" of supertype 
 main, line 8: Signatures of "__iadd__" and "__add__" are incompatible
 
 
+-- Callable objects
+-- ----------------
+
+
+[case testCallableObject]
+import typing
+
+a = A()
+b = B()
+
+a = a(a)
+a = a(b)
+b = a(a)
+
+class A:
+    def __call__(self, x: A) -> A:
+class B: pass
+[out]
+X
+
+
 -- Special cases
 -- -------------
 
