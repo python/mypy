@@ -17,7 +17,8 @@ from mypy.nodes import (
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, YieldFromStmt, NamedTupleExpr
+    YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
+    DictionaryComprehension
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1768,8 +1769,14 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_list_comprehension(self, e: ListComprehension) -> Type:
         return self.expr_checker.visit_list_comprehension(e)
 
+    def visit_set_comprehension(self, e: SetComprehension) -> Type:
+        return self.expr_checker.visit_set_comprehension(e)
+
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         return self.expr_checker.visit_generator_expr(e)
+
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
+        return self.expr_checker.visit_dictionary_comprehension(e)
 
     def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
         return self.expr_checker.visit_undefined_expr(e)

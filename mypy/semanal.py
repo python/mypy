@@ -57,7 +57,8 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl
+    YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
+    SetComprehension, DictionaryComprehension
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1540,9 +1541,27 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
         expr.generator.accept(self)
 
+    def visit_set_comprehension(self, expr: SetComprehension) -> None:
+        expr.generator.accept(self)
+
+    def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
+        self.enter()
+        self.analyse_comp_for(expr)
+        expr.key.accept(self)
+        expr.value.accept(self)
+        self.leave()
+
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
+        self.analyse_comp_for(expr)
+        expr.left_expr.accept(self)
+        self.leave()
 
+    def analyse_comp_for(self, expr: Union[GeneratorExpr,
+                                           DictionaryComprehension]) -> None:
+        """Analyses the 'comp_for' part of comprehensions.
+        That is the part after 'for' in (x for x in l if p)
+        """
         for index, sequence, conditions in zip(expr.indices, expr.sequences,
                                                expr.condlists):
             sequence.accept(self)
@@ -1550,9 +1569,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyse_lvalue(index)
             for cond in conditions:
                 cond.accept(self)
-
-        expr.left_expr.accept(self)
-        self.leave()
 
     def visit_func_expr(self, expr: FuncExpr) -> None:
         self.analyse_function(expr)

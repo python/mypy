@@ -24,7 +24,8 @@ from mypy.nodes import (
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
-    StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl
+    StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl,DictionaryComprehension,
+    SetComprehension
 )
 from mypy import nodes
 from mypy import noderepr
@@ -1248,6 +1249,15 @@ class Parser:
             return expr
 
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
+        indices, sequences, condlists, for_toks, in_toks, if_toklists = self.parse_comp_for()
+
+        gen = GeneratorExpr(left_expr, indices, sequences, condlists)
+        gen.set_line(for_toks[0])
+        self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, in_toks, if_toklists))
+        return gen
+
+    def parse_comp_for(self) -> Tuple[List[Node], List[Node], List[List[Node]],
+                                      List[Token], List[Token], List[List[Token]]]:
         indices = List[Node]()
         sequences = List[Node]()
         for_toks = List[Token]()
@@ -1269,10 +1279,7 @@ class Parser:
             if_toklists.append(if_toks)
             condlists.append(conds)
 
-        gen = GeneratorExpr(left_expr, indices, sequences, condlists)
-        gen.set_line(for_toks[0])
-        self.set_repr(gen, noderepr.GeneratorExprRepr(for_toks, in_toks, if_toklists))
-        return gen
+        return indices, sequences, condlists, for_toks, in_toks, if_toklists
 
     def parse_expression_list(self) -> Node:
         prec = precedence['<if>']
@@ -1296,13 +1303,17 @@ class Parser:
         colons = List[Token]()
         commas = List[Token]()
         while self.current_str() != '}' and not self.eol():
-            key = self.parse_expression(precedence[','])
+            key = self.parse_expression(precedence['<if>'])
             if self.current_str() in [',', '}'] and items == []:
                 return self.parse_set_expr(key, lbrace)
+            elif self.current_str() == 'for' and items == []:
+                return self.parse_set_comprehension(key, lbrace)
             elif self.current_str() != ':':
                 self.parse_error()
             colons.append(self.expect(':'))
-            value = self.parse_expression(precedence[','])
+            value = self.parse_expression(precedence['<if>'])
+            if self.current_str() == 'for' and items == []:
+                return self.parse_dict_comprehension(key, value, lbrace, colons[0])
             items.append((key, value))
             if self.current_str() != ',':
                 break
@@ -1326,6 +1337,21 @@ class Parser:
         self.set_repr(expr, noderepr.ListSetExprRepr(lbrace, commas,
                                                      rbrace, none, none))
         return expr
+
+    def parse_set_comprehension(self, expr: Node, lbrace: Token):
+        gen = self.parse_generator_expr(expr)
+        rbrace = self.expect('}')
+        set_comp = SetComprehension(gen)
+        self.set_repr(set_comp, noderepr.SetComprehensionRepr(lbrace, rbrace))
+        return set_comp
+
+    def parse_dict_comprehension(self, key: Node, value: Node, lbrace: Token, colon: Token) -> DictionaryComprehension:
+        indices, sequences, condlists, for_toks, in_toks, if_toklists = self.parse_comp_for()
+        dic = DictionaryComprehension(key, value, indices, sequences, condlists)
+        dic.set_line(colon)
+        rbrace = self.expect('}')
+        self.set_repr(dic, noderepr.DictionaryComprehensionRepr(lbrace, colon, for_toks, in_toks, if_toklists, rbrace))
+        return dic
 
     def parse_tuple_expr(self, expr: Node,
                          prec: int = precedence[',']) -> TupleExpr:

@@ -196,6 +196,12 @@ class NodeVisitor(Generic[T]):
     def visit_list_comprehension(self, o: 'mypy.nodes.ListComprehension') -> T:
         pass
 
+    def visit_set_comprehension(self, o: 'mypy.nodes.SetComprehension') -> T:
+        pass
+
+    def visit_dictionary_comprehension(self, o: 'mypy.nodes.DictionaryComprehension') -> T:
+        pass
+
     def visit_generator_expr(self, o: 'mypy.nodes.GeneratorExpr') -> T:
         pass
 

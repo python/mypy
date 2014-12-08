@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import Undefined, cast, List, Tuple, Dict, Function
+from typing import Undefined, cast, List, Tuple, Dict, Function, Union
 
 from mypy.types import (
     Type, AnyType, Callable, Overloaded, NoneTyp, Void, TypeVarDef,
@@ -12,7 +12,8 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, LITERAL_TYPE
+    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
+    DictionaryComprehension, LITERAL_TYPE
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -1145,6 +1146,10 @@ class ExpressionChecker:
         return self.check_generator_or_comprehension(
             e.generator, 'builtins.list', '<list-comprehension>')
 
+    def visit_set_comprehension(self, e: SetComprehension) -> Type:
+        return self.check_generator_or_comprehension(
+            e.generator, 'builtins.set', '<set-comprehension>')
+
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         return self.check_generator_or_comprehension(e, 'typing.Iterator',
                                                      '<generator>')
@@ -1153,15 +1158,7 @@ class ExpressionChecker:
                                          type_name: str,
                                          id_for_messages: str) -> Type:
         """Type check a generator expression or a list comprehension."""
-
-        self.chk.binder.push_frame()
-        for index, sequence, conditions in zip(gen.indices, gen.sequences,
-                                               gen.condlists):
-            sequence_type = self.chk.analyse_iterable_item_type(sequence)
-            self.chk.analyse_index_variables(index, sequence_type, gen)
-            for condition in conditions:
-                self.accept(condition)
-        self.chk.binder.pop_frame()
+        self.check_for_comp(gen)
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
@@ -1175,6 +1172,38 @@ class ExpressionChecker:
                                [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
+
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension):
+        """Type check a dictionary comprehension."""
+        self.check_for_comp(e)
+
+        # Infer the type of the list comprehension by using a synthetic generic
+        # callable type.
+        key_tv = TypeVar('KT', -1, [], self.chk.object_type())
+        value_tv = TypeVar('VT', -2, [], self.chk.object_type())
+        constructor = Callable([key_tv, value_tv],
+                               [nodes.ARG_POS, nodes.ARG_POS],
+                               [None, None],
+                               self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
+                               self.chk.named_type('builtins.function'),
+                               '<dictionary-comprehension>',
+                               [TypeVarDef('KT', -1, None, self.chk.object_type()),
+                                TypeVarDef('VT', -2, None, self.chk.object_type())])
+        return self.check_call(constructor,
+                               [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
+
+    def check_for_comp(self, e: Union[GeneratorExpr, DictionaryComprehension]) -> None:
+        """Check the for_comp part of comprehensions. That is the part from 'for':
+        ... for x in y if z
+        """
+        self.chk.binder.push_frame()
+        for index, sequence, conditions in zip(e.indices, e.sequences,
+                                               e.condlists):
+            sequence_type = self.chk.analyse_iterable_item_type(sequence)
+            self.chk.analyse_index_variables(index, sequence_type, e)
+            for condition in conditions:
+                self.accept(condition)
+        self.chk.binder.pop_frame()
 
     def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
         return e.type
