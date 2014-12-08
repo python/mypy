@@ -17,7 +17,8 @@ from mypy.nodes import (
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, UndefinedExpr, TypeVarExpr, DucktypeExpr,
     DisjointclassExpr, ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
-    YieldFromExpr, NamedTupleExpr, NonlocalDecl
+    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
+    DictionaryComprehension
 )
 from mypy.types import Type, FunctionLike
 from mypy.visitor import NodeVisitor
@@ -378,6 +379,18 @@ class TransformVisitor(NodeVisitor[Node]):
         generator = self.duplicate_generator(node.generator)
         generator.set_line(node.generator.line)
         return ListComprehension(generator)
+
+    def visit_set_comprehension(self, node: SetComprehension) -> Node:
+        generator = self.duplicate_generator(node.generator)
+        generator.set_line(node.generator.line)
+        return SetComprehension(generator)
+
+    def visit_dictionary_comprehension(self, node: DictionaryComprehension) -> Node:
+        return DictionaryComprehension(self.node(node.key), self.node(node.value),
+                             [self.node(index) for index in node.indices],
+                             [self.node(s) for s in node.sequences],
+                             [[self.node(cond) for cond in conditions]
+                              for conditions in node.condlists])
 
     def visit_generator_expr(self, node: GeneratorExpr) -> Node:
         return self.duplicate_generator(node)

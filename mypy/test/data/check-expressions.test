@@ -1093,6 +1093,55 @@ class A: pass
 [builtins fixtures/for.py]
 
 
+-- Set comprehension
+-- -----------------
+
+
+[case testSimpleSetComprehension]
+from typing import Undefined, Set
+a = Undefined # type: Set[A]
+a = {x for x in a}
+b = {x for x in a} # type: Set[B] # E: Set comprehension has incompatible type Set[A]
+class A: pass
+class B: pass
+[builtins fixtures/set.py]
+
+
+-- Dictionary comprehension
+-- -----------------
+
+
+[case testSimpleDictionaryComprehension]
+from typing import Undefined, Dict, List, Tuple
+abd = Undefined # type: Dict[A, B]
+abl = Undefined # type: List[Tuple[A, B]]
+abd = {a: b for a, b in abl}
+x = {a: b for a, b in abl} # type: Dict[B, A]
+y = {a: b for a, b in abl} # type: A
+class A: pass
+class B: pass
+[builtins fixtures/dict.py]
+[out]
+main, line 5: Key expression in dictionary comprehension has incompatible type "A"; expected type "B"
+main, line 5: Value expression in dictionary comprehension has incompatible type "B"; expected type "A"
+main, line 6: Incompatible types in assignment (expression has type Dict[A, B], variable has type "A")
+
+
+[case testDictionaryComprehensionWithNonDirectMapping]
+from typing import Undefined, Dict, List, Tuple
+abd = Undefined # type: Dict[A, B]
+abl = Undefined # type: List[Tuple[A, B]]
+abd = {a: f(b) for a, b in abl}
+class A: pass
+class B: pass
+class C: pass
+def f(b: A) -> C: pass
+[builtins fixtures/dict.py]
+[out]
+main, line 4: Argument 1 to "f" has incompatible type "B"; expected "A"
+main, line 4: Value expression in dictionary comprehension has incompatible type "C"; expected type "B"
+
+
 -- Generator expressions
 -- ---------------------
 

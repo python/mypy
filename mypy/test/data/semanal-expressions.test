@@ -236,6 +236,81 @@ MypyFile:1(
         NameExpr(a [__main__.a])
         NameExpr(x [l])))))
 
+[case testSetComprehension]
+a = 0
+({x + 1 for x in a})
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
+  ExpressionStmt:2(
+    ParenExpr:2(
+      SetComprehension:2(
+        GeneratorExpr:2(
+          OpExpr:2(
+            +
+            NameExpr(x [l])
+            IntExpr(1))
+          NameExpr(x* [l])
+          NameExpr(a [__main__.a]))))))
+
+[case testSetComprehensionWithCondition]
+a = 0
+a = {x for x in a if x}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
+  AssignmentStmt:2(
+    NameExpr(a [__main__.a])
+    SetComprehension:2(
+      GeneratorExpr:2(
+        NameExpr(x [l])
+        NameExpr(x* [l])
+        NameExpr(a [__main__.a])
+        NameExpr(x [l])))))
+
+[case testDictionaryComprehension]
+a = 0
+({x: x + 1 for x in a})
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
+  ExpressionStmt:2(
+    ParenExpr:2(
+      DictionaryComprehension:2(
+        NameExpr(x [l])
+        OpExpr:2(
+          +
+          NameExpr(x [l])
+          IntExpr(1))
+        NameExpr(x* [l])
+        NameExpr(a [__main__.a])))))
+
+[case testDictionaryComprehensionWithCondition]
+a = 0
+a = {x: x + 1 for x in a if x}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a* [__main__.a])
+    IntExpr(0))
+  AssignmentStmt:2(
+    NameExpr(a [__main__.a])
+    DictionaryComprehension:2(
+      NameExpr(x [l])
+      OpExpr:2(
+        +
+        NameExpr(x [l])
+        IntExpr(1))
+      NameExpr(x* [l])
+      NameExpr(a [__main__.a])
+      NameExpr(x [l]))))
+
 [case testGeneratorExpression]
 a = 0
 x for x in a
