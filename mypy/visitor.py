@@ -139,6 +139,9 @@ class NodeVisitor(Generic[T]):
     def visit_complex_expr(self, o: 'mypy.nodes.ComplexExpr') -> T:
         pass
 
+    def visit_ellipsis(self, o: 'mypy.nodes.EllipsisNode') -> T:
+        pass
+
     def visit_paren_expr(self, o: 'mypy.nodes.ParenExpr') -> T:
         pass
 

@@ -25,7 +25,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr
+    SetComprehension, ComplexExpr, EllipsisNode
 )
 from mypy import nodes
 from mypy import noderepr
@@ -831,6 +831,12 @@ class Parser:
             pass
         return node
 
+    def parse_ellipsis(self) -> EllipsisNode:
+        ellipsis_tok = self.expect('...')
+        node = EllipsisNode()
+        self.set_repr(node, noderepr.EllipsisNodeRepr(ellipsis_tok))
+        return node
+
     def parse_del_stmt(self) -> DelStmt:
         del_tok = self.expect('del')
         expr = self.parse_expression()
@@ -1122,6 +1128,8 @@ class Parser:
                 expr = self.parse_complex_expr()
             elif isinstance(t, Keyword) and s == "yield":
                 expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
+            elif isinstance(t, Keyword) and s == '...':
+                expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
                 self.parse_error()
@@ -1848,6 +1856,8 @@ def token_repr(tok: Token) -> str:
                 return 'non-ASCII character in string'
             elif t == lex.INVALID_DEDENT:
                 return 'inconsistent indentation'
+            elif t == lex.ELLIPSIS_ERROR:
+                return 'invalid ellipsis'
         raise ValueError('Unknown token {}'.format(repr(tok)))
 
 
