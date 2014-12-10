@@ -482,7 +482,7 @@ f2 = A
 class A:
   def __init__(self, a, b): pass
 [out]
-main, line 6: Too few arguments for "A"
+main, line 6: Missing positional arguments "a", "b" in call to "A"
 main, line 7: Incompatible types in assignment (expression has type "A" (type object), variable has type Function[[A], A])
 
 [case testUsingImplicitTypeObjectWithIs]
