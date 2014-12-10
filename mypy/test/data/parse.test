@@ -2950,6 +2950,7 @@ MypyFile:1(
 [case testEllipsis]
 ...
 a[1,...,2]
+....__class__
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -2960,4 +2961,8 @@ MypyFile:1(
       TupleExpr:2(
         IntExpr(1)
         Ellipsis
-        IntExpr(2)))))
+        IntExpr(2))))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      Ellipsis
+      __class__)))

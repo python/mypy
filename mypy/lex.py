@@ -429,7 +429,7 @@ class Lexer:
             self.add_token(ComplexLit(sc))
 
     def lex_ellipsis(self) -> None:
-        ellipsis = self.match(re.compile('\.\.\.[0-9a-zA-Z_.]*'))
+        ellipsis = self.match(re.compile('\.\.\.[0-9a-zA-Z_]*'))
         if len(ellipsis) == 3:
             self.add_token(Keyword('...'))
         else:
