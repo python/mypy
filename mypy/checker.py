@@ -18,7 +18,7 @@ from mypy.nodes import (
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr
+    DictionaryComprehension, ComplexExpr, EllipsisNode
 )
 from mypy.nodes import function_type, method_type
 from mypy import nodes
@@ -1721,6 +1721,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_complex_expr(self, e: ComplexExpr) -> Type:
         return self.expr_checker.visit_complex_expr(e)
+
+    def visit_ellipsis(self, e: EllipsisNode) -> Type:
+        return self.expr_checker.visit_ellipsis(e)
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         return self.expr_checker.visit_op_expr(e)

@@ -62,6 +62,12 @@ NameExpr(6) : A
 NameExpr(7) : B
 NameExpr(10) : A
 
+[case testEllipsis]
+import typing
+...
+[out]
+EllipsisNode(2) : builtins.ellipsis
+
 [case testMemberAccess]
 ## MemberExpr|CallExpr
 from typing import Undefined

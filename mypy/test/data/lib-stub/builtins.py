@@ -17,4 +17,8 @@ class str: pass
 class tuple: pass
 class function: pass
 
+@builtinclass
+class ellipsis:
+    def __init__(self) -> None: pass
+
 # Definition of None is implicit
