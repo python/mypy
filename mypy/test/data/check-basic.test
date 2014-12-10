@@ -113,7 +113,7 @@ def f(x, y) -> None: pass
 f(object())
 f(object(), object(), object())
 [out]
-main, line 3: Too few arguments for "f"
+main, line 3: Missing positional arguments "x", "y" in call to "f"
 main, line 4: Too many arguments for "f"
 
 
