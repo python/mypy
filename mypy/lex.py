@@ -117,6 +117,10 @@ class Colon(Token):
     pass
 
 
+class EllipsisToken(Token):
+    pass
+
+
 class Op(Token):
     """Operator (e.g. '+' or 'in')"""
 
@@ -146,7 +150,6 @@ NON_ASCII_CHARACTER_IN_STRING = 4
 INVALID_UTF8_SEQUENCE = 5
 INVALID_BACKSLASH = 6
 INVALID_DEDENT = 7
-ELLIPSIS_ERROR = 8
 
 # Encoding contexts
 STR_CONTEXT = 1
@@ -176,7 +179,7 @@ keywords_common = set([
 keywords2 = set([]) # type: Set[str]
 
 # Reserved words specific for Python version 3
-keywords3 = set(['nonlocal', '...'])
+keywords3 = set(['nonlocal'])
 
 # Alphabetical operators (reserved words)
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
@@ -429,11 +432,7 @@ class Lexer:
             self.add_token(ComplexLit(sc))
 
     def lex_ellipsis(self) -> None:
-        ellipsis = self.match(re.compile('\.\.\.[0-9a-zA-Z_]*'))
-        if len(ellipsis) == 3:
-            self.add_token(Keyword('...'))
-        else:
-            self.add_token(LexError(ellipsis, ELLIPSIS_ERROR))
+        self.add_token(EllipsisToken('...'))
 
     name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*')
 

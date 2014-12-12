@@ -11,7 +11,8 @@ from typing import Undefined, List, Tuple, Any, Set, cast, Union
 from mypy import lex
 from mypy.lex import (
     Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
-    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit
+    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
+    EllipsisToken
 )
 import mypy.types
 from mypy.nodes import (
@@ -1128,7 +1129,7 @@ class Parser:
                 expr = self.parse_complex_expr()
             elif isinstance(t, Keyword) and s == "yield":
                 expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
-            elif isinstance(t, Keyword) and s == '...':
+            elif isinstance(t, EllipsisToken):
                 expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
@@ -1856,8 +1857,6 @@ def token_repr(tok: Token) -> str:
                 return 'non-ASCII character in string'
             elif t == lex.INVALID_DEDENT:
                 return 'inconsistent indentation'
-            elif t == lex.ELLIPSIS_ERROR:
-                return 'invalid ellipsis'
         raise ValueError('Unknown token {}'.format(repr(tok)))
 
 
