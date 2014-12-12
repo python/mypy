@@ -721,6 +721,7 @@ def __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] =
 
 @builtinclass
 class ellipsis:
+    # TODO not defined in builtins!
     def __init__(self) -> None: pass
 
 Ellipsis = ellipsis()
