@@ -1,3 +1,5 @@
+-- Semantic analysis of named tuples
+
 [case testSimpleNamedtuple]
 from collections import namedtuple
 N = namedtuple('N', ['a'])
@@ -65,9 +67,33 @@ MypyFile:1(
       __main__.N)
     PassStmt:2()))
 
+-- Errors
+
+[case testNamedTupleWithTooFewArguments]
+from collections import namedtuple
+N = namedtuple('N') # E: Too few arguments for namedtuple()
+
+[case testNamedTupleWithTooManyArguments]
+from collections import namedtuple
+N = namedtuple('N', ['x'], 'y') # E: Too many arguments for namedtuple()
+
+[case testNamedTupleWithInvalidName]
+from collections import namedtuple
+N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first argument
+
+[case testNamedTupleWithInvalidItems]
+from collections import namedtuple
+N = namedtuple('N', 1) # E: List literal expected as the second argument to namedtuple()
+
+[case testNamedTupleWithInvalidItems2]
+from collections import namedtuple
+N = namedtuple('N', ['x', 1]) # E: String literal expected as namedtuple() item
+
+[case testNamedTupleWithInvalidArgs]
+from collections import namedtuple
+N = namedtuple('N', x=['x']) # E: Unexpected arguments to namedtuple()
+
 [case testInvalidNamedTupleBaseClass]
 from typing import NamedTuple
-class A(NamedTuple('N', [1])): pass
+class A(NamedTuple('N', [1])): pass # E: Tuple expected as NamedTuple() field
 class B(A): pass
-[out]
-main, line 2: Tuple expected as NamedTuple() field
