@@ -70,8 +70,8 @@ class OutputVisitor(NodeVisitor):
         self.tokens([r.class_tok, r.name])
         self.type_vars(o.type_vars)
         self.token(r.lparen)
-        for i in range(len(o.base_exprs)):
-            if o.base_exprs[i].repr:
+        for i in range(len(o.base_type_exprs)):
+            if o.base_type_exprs[i].repr:
                 self.node(o.base_type_exprs[i])
             if i < len(r.commas):
                 self.token(r.commas[i])
