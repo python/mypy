@@ -64,3 +64,10 @@ MypyFile:1(
     BaseType(
       __main__.N)
     PassStmt:2()))
+
+[case testInvalidNamedTupleBaseClass]
+from typing import NamedTuple
+class A(NamedTuple('N', [1])): pass
+class B(A): pass
+[out]
+main, line 2: Tuple expected as NamedTuple() field
