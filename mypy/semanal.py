@@ -509,12 +509,12 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
         for base_expr in defn.base_type_exprs:
+            # The base class is originallly an expression; convert it to a type.
             try:
-                base = expr_to_unanalyzed_type(base_expr)
+                base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
                 return
-            base = self.anal_type(base)
             if isinstance(base, TupleType):
                 if defn.info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
@@ -541,6 +541,18 @@ class SemanticAnalyzer(NodeVisitor):
             # the MRO. Fix MRO if needed.
             if defn.info.mro[-1].fullname() != 'builtins.object':
                 defn.info.mro.append(self.object_type().type)
+
+    def expr_to_analyzed_type(self, expr: Node) -> Type:
+        if isinstance(expr, CallExpr):
+            expr.accept(self)
+            info = self.check_namedtuple(expr)
+            if info is None:
+                # Some form of namedtuple is the only valid type that looks like a call
+                # expression. This isn't a valid type.
+                raise TypeTranslationError()
+            return Instance(info, [])
+        typ = expr_to_unanalyzed_type(expr)
+        return self.anal_type(typ)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         base_classes = List[str]()
@@ -1005,10 +1017,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
-        if not isinstance(s.rvalue, CallExpr):
-            return
-        call = cast(CallExpr, s.rvalue)
-        named_tuple = self.check_namedtuple(call)
+        named_tuple = self.check_namedtuple(s.rvalue)
         if named_tuple is None:
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
@@ -1019,7 +1028,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, call: CallExpr) -> TypeInfo:
+    def check_namedtuple(self, node: Node) -> TypeInfo:
         """Check if a call defines a namedtuple.
 
         If it does, return the corresponding TypeInfo. Return None otherwise.
@@ -1027,6 +1036,9 @@ class SemanticAnalyzer(NodeVisitor):
         If the definition is invalid but looks like a namedtuple,
         report errors but return (some) TypeInfo.
         """
+        if not isinstance(node, CallExpr):
+            return None
+        call = cast(CallExpr, node)
         if not isinstance(call.callee, RefExpr):
             return None
         callee = cast(RefExpr, call.callee)

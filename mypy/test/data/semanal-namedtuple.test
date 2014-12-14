@@ -45,4 +45,10 @@ MypyFile:1(
 from collections import namedtuple
 class A(namedtuple('N', ['x'])): pass
 [out]
-.
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple : namedtuple])
+  ClassDef:2(
+    A
+    BaseType(
+      __main__.N)
+    PassStmt:2()))
