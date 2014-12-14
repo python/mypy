@@ -131,10 +131,11 @@ class TransformVisitor(NodeVisitor[Node]):
         new = ClassDef(node.name,
                        self.block(node.defs),
                        node.type_vars,
-                       self.types(node.base_types),
+                       self.nodes(node.base_type_exprs),
                        node.metaclass)
         new.fullname = node.fullname
         new.info = node.info
+        new.base_types = self.types(node.base_types)
         new.decorators = [decorator.accept(self)
                           for decorator in node.decorators]
         new.is_builtinclass = node.is_builtinclass

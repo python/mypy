@@ -501,23 +501,27 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
-        bases = List[Instance]()
-        for i in range(len(defn.base_types)):
-            base = self.anal_type(defn.base_types[i])
+        for base_expr in defn.base_type_exprs:
+            try:
+                base = expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                self.fail('Invalid base class', base_expr)
+                return
+            base = self.anal_type(base)
             if isinstance(base, TupleType):
                 if defn.info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                 defn.info.tuple_type = base
                 base = base.fallback
             if isinstance(base, Instance):
-                defn.base_types[i] = base
-                bases.append(base)
+                defn.base_types.append(base)
+            else:
+                self.fail('Invalid base class', base_expr)
         # Add 'object' as implicit base if there is no other base class.
-        if (not bases and defn.fullname != 'builtins.object'):
+        if (not defn.base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
-            bases.append(obj)
-        defn.info.bases = bases
+        defn.info.base_types = defn.base_types
         if not self.verify_base_classes(defn):
             return
         try:

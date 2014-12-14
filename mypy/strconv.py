@@ -127,6 +127,8 @@ class StrConv(NodeVisitor[str]):
         if len(o.base_types) > 1 or (len(o.base_types) == 1
                                      and o.base_types[0].repr):
             a.insert(1, ('BaseType', o.base_types))
+        elif len(o.base_type_exprs) > 0:
+            a.insert(1, ('BaseTypeExpr', o.base_type_exprs))
         if o.type_vars:
             a.insert(1, ('TypeVars', o.type_vars))
         if o.metaclass:
