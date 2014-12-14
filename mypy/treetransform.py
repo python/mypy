@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr
 )
-from mypy.types import Type, FunctionLike
+from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
 
 
@@ -135,7 +135,9 @@ class TransformVisitor(NodeVisitor[Node]):
                        node.metaclass)
         new.fullname = node.fullname
         new.info = node.info
-        new.base_types = self.types(node.base_types)
+        new.base_types = []
+        for base in node.base_types:
+            new.base_types.append(cast(Instance, self.type(base)))
         new.decorators = [decorator.accept(self)
                           for decorator in node.decorators]
         new.is_builtinclass = node.is_builtinclass

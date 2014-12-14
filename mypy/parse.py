@@ -321,7 +321,7 @@ class Parser:
             self.errors.pop_type()
             self.is_class_body = old_is_class_body
 
-    def parse_super_type(self) -> Type:
+    def parse_super_type(self) -> Node:
         return self.parse_expression(precedence[','])
 
     def parse_metaclass(self) -> str:

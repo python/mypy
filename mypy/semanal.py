@@ -521,7 +521,7 @@ class SemanticAnalyzer(NodeVisitor):
         if (not defn.base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
-        defn.info.base_types = defn.base_types
+        defn.info.bases = defn.base_types
         if not self.verify_base_classes(defn):
             return
         try:
