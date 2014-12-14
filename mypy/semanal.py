@@ -1396,7 +1396,7 @@ class SemanticAnalyzer(NodeVisitor):
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
-            # Pigguback CastExpr object to the CallExpr object; it takes
+            # Piggyback CastExpr object to the CallExpr object; it takes
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
