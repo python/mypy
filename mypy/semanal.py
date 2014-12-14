@@ -424,14 +424,21 @@ class SemanticAnalyzer(NodeVisitor):
 
         For example, consider this class:
 
-        class Foo(Bar, Generic[T]): ...
+        . class Foo(Bar, Generic[T]): ...
 
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
+
+        Note that this is performed *before* semantic analysis.
         """
         removed = List[int]()
         type_vars = List[TypeVarDef]()
-        for i, base in enumerate(defn.base_types):
+        for i, base_expr in enumerate(defn.base_type_exprs):
+            try:
+                base = expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                # This error will be caught later.
+                continue
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
                 if type_vars:
@@ -447,7 +454,7 @@ class SemanticAnalyzer(NodeVisitor):
             if defn.info:
                 defn.info.type_vars = [tv.name for tv in type_vars]
         for i in reversed(removed):
-            del defn.base_types[i]
+            del defn.base_type_exprs[i]
 
     def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str,
                                                                  List[Type]]]:
@@ -515,7 +522,7 @@ class SemanticAnalyzer(NodeVisitor):
                 base = base.fallback
             if isinstance(base, Instance):
                 defn.base_types.append(base)
-            else:
+            elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
         # Add 'object' as implicit base if there is no other base class.
         if (not defn.base_types and defn.fullname != 'builtins.object'):

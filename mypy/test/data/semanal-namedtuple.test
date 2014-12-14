@@ -42,7 +42,7 @@ MypyFile:1(
     NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
 
 [case testNamedTupleBaseClass]
-from collection import namedtuple
+from collections import namedtuple
 class A(namedtuple('N', ['x'])): pass
 [out]
 .
