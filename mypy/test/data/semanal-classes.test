@@ -550,3 +550,15 @@ class C(Function[[], int]): pass
 main, line 2: Invalid base class
 main, line 3: Invalid base class
 main, line 4: Invalid base class
+
+[case testTupleAsBaseClass]
+from typing import Tuple
+class A(Tuple[int, str]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple : Tuple])
+  ClassDef:2(
+    A
+    BaseType(
+      builtins.tuple)
+    PassStmt:2()))
