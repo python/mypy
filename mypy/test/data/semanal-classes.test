@@ -559,6 +559,8 @@ MypyFile:1(
   ImportFrom:1(typing, [Tuple : Tuple])
   ClassDef:2(
     A
+    TupleType(
+      Tuple[builtins.int, builtins.str])
     BaseType(
       builtins.tuple)
     PassStmt:2()))

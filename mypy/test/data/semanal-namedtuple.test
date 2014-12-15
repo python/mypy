@@ -55,6 +55,8 @@ MypyFile:1(
     NamedTupleExpr:2(N, Tuple[Any]))
   ClassDef:3(
     A
+    TupleType(
+      Tuple[Any, fallback=__main__.N])
     BaseType(
       __main__.N)
     PassStmt:3()))
@@ -67,6 +69,8 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple : namedtuple])
   ClassDef:2(
     A
+    TupleType(
+      Tuple[Any, fallback=__main__.N])
     BaseType(
       __main__.N)
     PassStmt:2()))
@@ -79,6 +83,8 @@ MypyFile:1(
   ImportFrom:1(typing, [NamedTuple : NamedTuple])
   ClassDef:2(
     A
+    TupleType(
+      Tuple[builtins.int, fallback=__main__.N])
     BaseType(
       __main__.N)
     PassStmt:2()))
