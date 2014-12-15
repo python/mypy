@@ -119,3 +119,10 @@ N = namedtuple('N', x=['x']) # E: Unexpected arguments to namedtuple()
 from typing import NamedTuple
 class A(NamedTuple('N', [1])): pass # E: Tuple expected as NamedTuple() field
 class B(A): pass
+
+[case testInvalidNamedTupleBaseClass2]
+class A(NamedTuple('N', [1])): pass
+class B(A): pass
+[out]
+main, line 1: Name 'NamedTuple' is not defined
+main, line 1: Invalid base class
