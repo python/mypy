@@ -298,12 +298,25 @@ x.imag = 2.0  # Error
 _program.py, line 4: Incompatible types in assignment (expression has type "complex", variable has type "float")
 _program.py, line 5: Property "imag" defined in "complex" is read-only
 
-[case testComplexArithmetic]
+[case testComplexArithmetic_python2]
 import typing
-print(5 + 8j)
-print(3j * 2.0)
-print(4j / 2.0)
+print 5 + 8j
+print 3j * 2.0
+print 4j / 2.0
 [out]
 (5+8j)
 6j
 2j
+
+[case testNamedTupleWithTypes_python2]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int), ('b', str)])
+n = N(1, 'x')
+print n
+a, b = n
+print a, b
+print n[0]
+[out]
+N(a=1, b='x')
+1 x
+1
