@@ -1070,20 +1070,27 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(args[0], StrExpr):
             return self.fail_namedtuple_arg(
                 "namedtuple() expects a string literal as the first argument", call)
+        types = [] # type: List[Type]
         if not isinstance(args[1], ListExpr):
-            return self.fail_namedtuple_arg(
-                "List literal expected as the second argument to namedtuple()", call)
-        listexpr = cast(ListExpr, args[1])
-        if fullname == 'collections.namedtuple':
-            # The fields argument contains just names, with implicit Any types.
-            if any(not isinstance(item, StrExpr) for item in listexpr.items):
-                return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
-                                                call)
-            items = [cast(StrExpr, item).value for item in listexpr.items]
-            types = [AnyType() for _ in listexpr.items]  # type: List[Type]
+            if fullname == 'collections.namedtuple' and isinstance(args[1], StrExpr):
+                str_expr = cast(StrExpr, args[1])
+                items = str_expr.value.split()
+            else:
+                return self.fail_namedtuple_arg(
+                    "List literal expected as the second argument to namedtuple()", call)
         else:
-            # The fields argument contains (name, type) tuples.
-            items, types = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+            listexpr = cast(ListExpr, args[1])
+            if fullname == 'collections.namedtuple':
+                # The fields argument contains just names, with implicit Any types.
+                if any(not isinstance(item, StrExpr) for item in listexpr.items):
+                    return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
+                                                    call)
+                items = [cast(StrExpr, item).value for item in listexpr.items]
+            else:
+                # The fields argument contains (name, type) tuples.
+                items, types = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+        if not types:
+            types = [AnyType() for _ in items]
         return items, types
 
     def parse_namedtuple_fields_with_types(self, nodes: List[Node],
