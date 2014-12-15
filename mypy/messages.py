@@ -403,9 +403,10 @@ class MessageBuilder:
         else:
             self.too_many_arguments(callee, context)
 
-    def too_few_arguments(self, callee: Callable, context: Context) -> None:
-        if len(context.arg_names) >= 1:
-            diff = [k for k in callee.arg_names if k not in context.arg_names]
+    def too_few_arguments(self, callee: Callable, context: Context,
+                          argument_names: List[str]) -> None:
+        if argument_names is not None and len(argument_names) >= 1:
+            diff = [k for k in callee.arg_names if k not in argument_names]
             if len(diff) == 1:
                 msg = 'Missing positional argument'
             else:
