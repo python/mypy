@@ -520,7 +520,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                 defn.info.tuple_type = base
                 base = base.fallback
-            if isinstance(base, Instance):
+            if isinstance(base, Instance) or isinstance(base, TupleType):
                 defn.base_types.append(base)
             elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
@@ -550,7 +550,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
-            return Instance(info, [])
+            fallback = Instance(info, [])
+            return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
         return self.anal_type(typ)
 
@@ -1048,8 +1049,7 @@ class SemanticAnalyzer(NodeVisitor):
         items, types = self.parse_namedtuple_args(call, fullname)
         if not items:
             # Error. Construct dummy return value.
-            error_classdef = ClassDef('namedtuple', Block([]))
-            info = TypeInfo(SymbolTable(), error_classdef)
+            return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
             listexpr = cast(ListExpr, call.args[1])
             name = cast(StrExpr, call.args[0]).value

@@ -79,11 +79,29 @@ s = x.a  # E: Incompatible types in assignment (expression has type "int", varia
 i, s = x
 s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testNamedTupleAsBaseClass2]
+from typing import NamedTuple
+class X(NamedTuple('N', [('a', int),
+                         ('b', str)])):
+    pass
+x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
+s = ''
+i = 0
+s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+i, s = x
+s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
 [case testTwoNamedTuplesAsBaseClasses]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int)])
 B = NamedTuple('B', [('a', int)])
 class X(A, B):  # E: Class has two incompatible bases derived from tuple
+    pass
+
+[case testTwoNamedTuplesAsBaseClasses2]
+from typing import NamedTuple
+A = NamedTuple('A', [('a', int)])
+class X(A, NamedTuple('B', [('a', int)])): # E: Class has two incompatible bases derived from tuple
     pass
 
 [case testSelfTypeWithNamedTupleAsBase]

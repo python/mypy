@@ -415,8 +415,9 @@ class ClassDef(Node):
     type_vars = Undefined(List['mypy.types.TypeVarDef'])
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs = Undefined(List[Node])
-    # Semantically analyzed base types, derived from base_type_exprs during semantic analysis
-    base_types = Undefined(List['mypy.types.Instance'])
+    # Semantically analyzed base types, derived from base_type_exprs during semantic analysis.
+    # These can be Instances or TupleTypes.
+    base_types = Undefined(List['mypy.types.Type'])
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''
     decorators = Undefined(List[Node])
