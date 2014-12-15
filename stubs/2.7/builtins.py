@@ -98,6 +98,7 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __hash__(self) -> int: pass
 
 @builtinclass
+@ducktype(complex)
 class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     @overload
     def __init__(self) -> None: pass
@@ -158,11 +159,13 @@ class complex(SupportsAbs[float]):
     def __sub__(self, x: complex) -> complex: pass
     def __mul__(self, x: complex) -> complex: pass
     def __pow__(self, x: complex) -> complex: pass
+    def __div__(self, x: complex) -> complex: pass
     def __truediv__(self, x: complex) -> complex: pass
     def __radd__(self, x: complex) -> complex: pass
     def __rsub__(self, x: complex) -> complex: pass
     def __rmul__(self, x: complex) -> complex: pass
     def __rpow__(self, x: complex) -> complex: pass
+    def __rdiv__(self, x: complex) -> complex: pass
     def __rtruediv__(self, x: complex) -> complex: pass
 
     def __eq__(self, x: object) -> bool: pass
