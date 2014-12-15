@@ -935,6 +935,15 @@ print(x.a, x.b)
 [out]
 1 s
 
+[case testNamedTupleShortSyntax]
+import typing
+from collections import namedtuple
+X = namedtuple('X', ' a  b ')
+x = X(a=1, b='s')
+print(x.a, x.b)
+[out]
+1 s
+
 [case testNamedTupleError]
 import typing
 from collections import namedtuple
