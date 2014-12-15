@@ -413,7 +413,10 @@ class ClassDef(Node):
     fullname = None  # type: str   # Fully qualified name of the class
     defs = Undefined('Block')
     type_vars = Undefined(List['mypy.types.TypeVarDef'])
-    # Base classes (Instance or UnboundType).
+    # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
+    base_type_exprs = Undefined(List[Node])
+    # Semantically analyzed base types, derived from base_type_exprs during semantic analysis.
+    # These can be Instances or TupleTypes.
     base_types = Undefined(List['mypy.types.Type'])
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''
@@ -423,14 +426,15 @@ class ClassDef(Node):
 
     def __init__(self, name: str, defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
-                 base_types: List['mypy.types.Type'] = None,
+                 base_type_exprs: List[Node] = None,
                  metaclass: str = None) -> None:
-        if not base_types:
-            base_types = []
+        if not base_type_exprs:
+            base_type_exprs = []
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
-        self.base_types = base_types
+        self.base_type_exprs = base_type_exprs
+        self.base_types = []  # Not yet semantically analyzed --> don't know base types
         self.metaclass = metaclass
         self.decorators = []
 

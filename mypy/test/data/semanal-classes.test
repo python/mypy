@@ -540,3 +540,27 @@ MypyFile:1(
           NameExpr(X [m])))
       Block:4(
         PassStmt:4()))))
+
+[case testInvalidBaseClass]
+from typing import Any, Function
+class A(None): pass
+class B(Any): pass
+class C(Function[[], int]): pass
+[out]
+main, line 2: Invalid base class
+main, line 3: Invalid base class
+main, line 4: Invalid base class
+
+[case testTupleAsBaseClass]
+from typing import Tuple
+class A(Tuple[int, str]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple : Tuple])
+  ClassDef:2(
+    A
+    TupleType(
+      Tuple[builtins.int, builtins.str])
+    BaseType(
+      builtins.tuple)
+    PassStmt:2()))

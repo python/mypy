@@ -424,14 +424,21 @@ class SemanticAnalyzer(NodeVisitor):
 
         For example, consider this class:
 
-        class Foo(Bar, Generic[T]): ...
+        . class Foo(Bar, Generic[T]): ...
 
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
+
+        Note that this is performed *before* semantic analysis.
         """
         removed = List[int]()
         type_vars = List[TypeVarDef]()
-        for i, base in enumerate(defn.base_types):
+        for i, base_expr in enumerate(defn.base_type_exprs):
+            try:
+                base = expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                # This error will be caught later.
+                continue
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
                 if type_vars:
@@ -447,7 +454,7 @@ class SemanticAnalyzer(NodeVisitor):
             if defn.info:
                 defn.info.type_vars = [tv.name for tv in type_vars]
         for i in reversed(removed):
-            del defn.base_types[i]
+            del defn.base_type_exprs[i]
 
     def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str,
                                                                  List[Type]]]:
@@ -501,23 +508,27 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
-        bases = List[Instance]()
-        for i in range(len(defn.base_types)):
-            base = self.anal_type(defn.base_types[i])
+        for base_expr in defn.base_type_exprs:
+            # The base class is originallly an expression; convert it to a type.
+            try:
+                base = self.expr_to_analyzed_type(base_expr)
+            except TypeTranslationError:
+                self.fail('Invalid base class', base_expr)
+                return
             if isinstance(base, TupleType):
                 if defn.info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                 defn.info.tuple_type = base
                 base = base.fallback
-            if isinstance(base, Instance):
-                defn.base_types[i] = base
-                bases.append(base)
+            if isinstance(base, Instance) or isinstance(base, TupleType):
+                defn.base_types.append(base)
+            elif not isinstance(base, UnboundType):
+                self.fail('Invalid base class', base_expr)
         # Add 'object' as implicit base if there is no other base class.
-        if (not bases and defn.fullname != 'builtins.object'):
+        if (not defn.base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
-            bases.append(obj)
-        defn.info.bases = bases
+        defn.info.bases = defn.base_types
         if not self.verify_base_classes(defn):
             return
         try:
@@ -530,6 +541,19 @@ class SemanticAnalyzer(NodeVisitor):
             # the MRO. Fix MRO if needed.
             if defn.info.mro[-1].fullname() != 'builtins.object':
                 defn.info.mro.append(self.object_type().type)
+
+    def expr_to_analyzed_type(self, expr: Node) -> Type:
+        if isinstance(expr, CallExpr):
+            expr.accept(self)
+            info = self.check_namedtuple(expr)
+            if info is None:
+                # Some form of namedtuple is the only valid type that looks like a call
+                # expression. This isn't a valid type.
+                raise TypeTranslationError()
+            fallback = Instance(info, [])
+            return TupleType(info.tuple_type.items, fallback=fallback)
+        typ = expr_to_unanalyzed_type(expr)
+        return self.anal_type(typ)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         base_classes = List[str]()
@@ -994,10 +1018,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
-        if not isinstance(s.rvalue, CallExpr):
-            return
-        call = cast(CallExpr, s.rvalue)
-        named_tuple = self.check_namedtuple(call)
+        named_tuple = self.check_namedtuple(s.rvalue)
         if named_tuple is None:
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
@@ -1008,7 +1029,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, call: CallExpr) -> TypeInfo:
+    def check_namedtuple(self, node: Node) -> TypeInfo:
         """Check if a call defines a namedtuple.
 
         If it does, return the corresponding TypeInfo. Return None otherwise.
@@ -1016,6 +1037,9 @@ class SemanticAnalyzer(NodeVisitor):
         If the definition is invalid but looks like a namedtuple,
         report errors but return (some) TypeInfo.
         """
+        if not isinstance(node, CallExpr):
+            return None
+        call = cast(CallExpr, node)
         if not isinstance(call.callee, RefExpr):
             return None
         callee = cast(RefExpr, call.callee)
@@ -1025,8 +1049,7 @@ class SemanticAnalyzer(NodeVisitor):
         items, types = self.parse_namedtuple_args(call, fullname)
         if not items:
             # Error. Construct dummy return value.
-            error_classdef = ClassDef('namedtuple', Block([]))
-            info = TypeInfo(SymbolTable(), error_classdef)
+            return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
             listexpr = cast(ListExpr, call.args[1])
             name = cast(StrExpr, call.args[0]).value
@@ -1396,7 +1419,7 @@ class SemanticAnalyzer(NodeVisitor):
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
-            # Pigguback CastExpr object to the CallExpr object; it takes
+            # Piggyback CastExpr object to the CallExpr object; it takes
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line

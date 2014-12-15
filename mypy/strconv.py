@@ -123,10 +123,11 @@ class StrConv(NodeVisitor[str]):
     def visit_class_def(self, o):
         a = [o.name, o.defs.body]
         # Display base types unless they are implicitly just builtins.object
-        # (in this case there is no representation).
-        if len(o.base_types) > 1 or (len(o.base_types) == 1
-                                     and o.base_types[0].repr):
+        # (in this case base_type_exprs is empty).
+        if o.base_types and o.base_type_exprs:
             a.insert(1, ('BaseType', o.base_types))
+        elif len(o.base_type_exprs) > 0:
+            a.insert(1, ('BaseTypeExpr', o.base_type_exprs))
         if o.type_vars:
             a.insert(1, ('TypeVars', o.type_vars))
         if o.metaclass:
@@ -140,6 +141,8 @@ class StrConv(NodeVisitor[str]):
         if o.info and o.info.disjoint_classes:
             a.insert(1, ('Disjointclasses', [info.fullname() for
                                              info in o.info.disjoint_classes]))
+        if o.info and o.info.tuple_type:
+            a.insert(1, ('TupleType', [o.info.tuple_type]))
         return self.dump(a, o)
 
     def visit_var_def(self, o):

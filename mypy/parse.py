@@ -288,7 +288,7 @@ class Parser:
         metaclass = None  # type: str
 
         try:
-            commas, base_types = List[Token](), List[Type]()
+            commas, base_types = List[Token](), List[Node]()
             try:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
@@ -321,11 +321,8 @@ class Parser:
             self.errors.pop_type()
             self.is_class_body = old_is_class_body
 
-    def parse_super_type(self) -> Type:
-        if (isinstance(self.current(), Name) and self.current_str() != 'void'):
-            return self.parse_type()
-        else:
-            self.parse_error()
+    def parse_super_type(self) -> Node:
+        return self.parse_expression(precedence[','])
 
     def parse_metaclass(self) -> str:
         self.expect('metaclass')
