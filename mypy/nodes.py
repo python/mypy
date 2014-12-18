@@ -907,15 +907,12 @@ class MemberExpr(RefExpr):
     name = None  # type: str
     # The variable node related to a definition.
     def_var = None  # type: Var
-    # Is this direct assignment to a data member (bypassing accessors)?
-    direct = False
 
-    def __init__(self, expr: Node, name: str, direct: bool = False) -> None:
+    def __init__(self, expr: Node, name: str) -> None:
         self.expr = expr
         self.name = name
-        self.direct = direct
         self.literal = self.expr.literal
-        self.literal_hash = ('Member', expr.literal_hash, name, direct)
+        self.literal_hash = ('Member', expr.literal_hash, name)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
