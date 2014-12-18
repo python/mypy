@@ -337,10 +337,6 @@ class FuncDef(FuncItem):
     def is_constructor(self) -> bool:
         return self.info is not None and self._name == '__init__'
 
-    def get_name(self) -> str:
-        """TODO merge with name()"""
-        return self._name
-
 
 class Decorator(SymbolNode):
     """A decorated function.
