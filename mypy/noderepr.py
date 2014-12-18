@@ -288,15 +288,3 @@ class TypeApplicationRepr:
         self.langle = langle
         self.commas = commas
         self.rangle = rangle
-
-
-class ListComprehensionRepr:
-    def __init__(self, lbracket: Any, rbracket: Any) -> None:
-        self.lbracket = lbracket
-        self.rbracket = rbracket
-
-
-class SetComprehensionRepr:
-    def __init__(self, lbrace: Any, rbrace: Any) -> None:
-        self.lbrace = lbrace
-        self.rbrace = rbrace

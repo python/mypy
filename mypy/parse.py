@@ -1214,10 +1214,7 @@ class Parser:
             items[0] = self.parse_generator_expr(items[0])
         rbracket = self.expect(']')
         if len(items) == 1 and isinstance(items[0], GeneratorExpr):
-            list_comp = ListComprehension(cast(GeneratorExpr, items[0]))
-            self.set_repr(list_comp, noderepr.ListComprehensionRepr(lbracket,
-                                                                    rbracket))
-            return list_comp
+            return ListComprehension(cast(GeneratorExpr, items[0]))
         else:
             expr = ListExpr(items)
             self.set_repr(expr, noderepr.ListSetExprRepr(lbracket, commas,
@@ -1277,7 +1274,7 @@ class Parser:
             if self.current_str() in [',', '}'] and items == []:
                 return self.parse_set_expr(key, lbrace)
             elif self.current_str() == 'for' and items == []:
-                return self.parse_set_comprehension(key, lbrace)
+                return self.parse_set_comprehension(key)
             elif self.current_str() != ':':
                 self.parse_error()
             colons.append(self.expect(':'))
@@ -1308,11 +1305,10 @@ class Parser:
                                                      rbrace, none, none))
         return expr
 
-    def parse_set_comprehension(self, expr: Node, lbrace: Token):
+    def parse_set_comprehension(self, expr: Node):
         gen = self.parse_generator_expr(expr)
-        rbrace = self.expect('}')
+        self.expect('}')
         set_comp = SetComprehension(gen)
-        self.set_repr(set_comp, noderepr.SetComprehensionRepr(lbrace, rbrace))
         return set_comp
 
     def parse_dict_comprehension(self, key: Node, value: Node, colon: Token) -> DictionaryComprehension:
