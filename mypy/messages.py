@@ -396,13 +396,6 @@ class MessageBuilder:
         self.fail('Invalid index type {} for {}'.format(
             self.format(index_type), base_str), context)
 
-    def invalid_argument_count(self, callee: Callable, num_args: int,
-                               context: Context) -> None:
-        if num_args < len(callee.arg_types):
-            self.too_few_arguments(callee, context)
-        else:
-            self.too_many_arguments(callee, context)
-
     def too_few_arguments(self, callee: Callable, context: Context,
                           argument_names: List[str]) -> None:
         if argument_names is not None and len(argument_names) >= 1:
