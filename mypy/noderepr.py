@@ -251,17 +251,6 @@ class SuperExprRepr:
         self.name = name
 
 
-class ListSetExprRepr:
-    # [...] or {...}
-    def __init__(self, lbracket: Any, commas: List[Token], rbracket: Any,
-                 langle: Any, rangle: Any) -> None:
-        self.lbracket = lbracket
-        self.commas = commas
-        self.rbracket = rbracket
-        self.langle = langle
-        self.rangle = rangle
-
-
 class TupleExprRepr:
     def __init__(self, lparen: Any, commas: List[Token], rparen: Any) -> None:
         # Note: lparen and rparen may be empty.

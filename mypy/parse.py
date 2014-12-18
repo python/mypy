@@ -1203,22 +1203,19 @@ class Parser:
     def parse_list_expr(self) -> Node:
         """Parse list literal or list comprehension."""
         items = List[Node]()
-        lbracket = self.expect('[')
-        commas = List[Token]()
+        self.expect('[')
         while self.current_str() != ']' and not self.eol():
             items.append(self.parse_expression(precedence['<for>'], star_expr_allowed=True))
             if self.current_str() != ',':
                 break
-            commas.append(self.expect(','))
+            self.expect(',')
         if self.current_str() == 'for' and len(items) == 1:
             items[0] = self.parse_generator_expr(items[0])
-        rbracket = self.expect(']')
+        self.expect(']')
         if len(items) == 1 and isinstance(items[0], GeneratorExpr):
             return ListComprehension(cast(GeneratorExpr, items[0]))
         else:
             expr = ListExpr(items)
-            self.set_repr(expr, noderepr.ListSetExprRepr(lbracket, commas,
-                                                         rbracket, none, none))
             return expr
 
     def parse_generator_expr(self, left_expr: Node) -> GeneratorExpr:
@@ -1266,20 +1263,19 @@ class Parser:
 
     def parse_dict_or_set_expr(self) -> Node:
         items = List[Tuple[Node, Node]]()
-        lbrace = self.expect('{')
-        colons = List[Token]()
+        self.expect('{')
         while self.current_str() != '}' and not self.eol():
             key = self.parse_expression(precedence['<if>'])
             if self.current_str() in [',', '}'] and items == []:
-                return self.parse_set_expr(key, lbrace)
+                return self.parse_set_expr(key)
             elif self.current_str() == 'for' and items == []:
                 return self.parse_set_comprehension(key)
             elif self.current_str() != ':':
                 self.parse_error()
-            colons.append(self.expect(':'))
+            colon = self.expect(':')
             value = self.parse_expression(precedence['<if>'])
             if self.current_str() == 'for' and items == []:
-                return self.parse_dict_comprehension(key, value, colons[0])
+                return self.parse_dict_comprehension(key, value, colon)
             items.append((key, value))
             if self.current_str() != ',':
                 break
@@ -1288,18 +1284,15 @@ class Parser:
         node = DictExpr(items)
         return node
 
-    def parse_set_expr(self, first: Node, lbrace: Token) -> SetExpr:
+    def parse_set_expr(self, first: Node) -> SetExpr:
         items = [first]
-        commas = List[Token]()
         while self.current_str() != '}' and not self.eol():
-            commas.append(self.expect(','))
+            self.expect(',')
             if self.current_str() == '}':
                 break
             items.append(self.parse_expression(precedence[',']))
-        rbrace = self.expect('}')
+        self.expect('}')
         expr = SetExpr(items)
-        self.set_repr(expr, noderepr.ListSetExprRepr(lbrace, commas,
-                                                     rbrace, none, none))
         return expr
 
     def parse_set_comprehension(self, expr: Node):
