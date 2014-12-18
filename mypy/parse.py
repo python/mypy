@@ -1695,9 +1695,6 @@ class Parser:
     def expect_break(self) -> Token:
         return self.expect_type(Break)
 
-    def expect_end(self) -> Tuple[Token, Token]:
-        return self.expect('end'), self.expect_type(Break)
-
     def current(self) -> Token:
         return self.tok[self.ind]
 
