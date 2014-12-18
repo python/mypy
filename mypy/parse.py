@@ -123,9 +123,8 @@ class Parser:
         """Parse a mypy source file."""
         is_bom = self.parse_bom()
         defs = self.parse_defs()
-        eof = self.expect_type(Eof)
+        self.expect_type(Eof)
         node = MypyFile(defs, self.imports, is_bom)
-        self.set_repr(node, noderepr.MypyFileRepr(eof))
         return node
 
     # Parse the initial part
@@ -141,73 +140,59 @@ class Parser:
             return False
 
     def parse_import(self) -> Import:
-        import_tok = self.expect('import')
+        self.expect('import')
         ids = List[Tuple[str, str]]()
-        id_toks = List[List[Token]]()
-        commas = List[Token]()
-        as_names = List[Tuple[Token, Token]]()
         while True:
-            id, components = self.parse_qualified_name()
+            id = self.parse_qualified_name()
             if id == self.custom_typing_module:
                 id = 'typing'
-            id_toks.append(components)
             as_id = id
             if self.current_str() == 'as':
-                as_tok = self.expect('as')
+                self.expect('as')
                 name_tok = self.expect_type(Name)
                 as_id = name_tok.string
-                as_names.append((as_tok, name_tok))
-            else:
-                as_names.append(None)
             ids.append((id, as_id))
             if self.current_str() != ',':
                 break
-            commas.append(self.expect(','))
-        br = self.expect_break()
+            self.expect(',')
+        self.expect_break()
         node = Import(ids)
         self.imports.append(node)
-        self.set_repr(node, noderepr.ImportRepr(import_tok, id_toks, as_names,
-                                                commas, br))
         return node
 
     def parse_import_from(self) -> Node:
-        from_tok = self.expect('from')
+        self.expect('from')
 
         # Build the list of beginning relative tokens.
         relative = 0
-        rel_toks = List[Token]()
         while self.current_str() == ".":
-            rel_toks.append(self.expect('.'))
+            self.expect('.')
             relative += 1
 
         # Parse qualified name to actually import from.
         if self.current_str() == "import":
             # Empty/defualt values.
             name = ""
-            components = List[Token]()
         else:
-            name, components = self.parse_qualified_name()
+            name = self.parse_qualified_name()
 
         if name == self.custom_typing_module:
             name = 'typing'
 
         # Parse import list
-        import_tok = self.expect('import')
-        name_toks = List[Tuple[List[Token], Token]]()
-        lparen = none
-        rparen = none
+        self.expect('import')
         node = None  # type: ImportBase
         if self.current_str() == '*':
             # An import all from a module node:
-            name_toks.append(([self.skip()], none))
+            self.skip()
             node = ImportAll(name, relative)
         else:
             is_paren = self.current_str() == '('
             if is_paren:
-                lparen = self.expect('(')
+                self.expect('(')
             targets = List[Tuple[str, str]]()
             while True:
-                id, as_id, toks = self.parse_import_name()
+                id, as_id = self.parse_import_name()
                 if '%s.%s' % (name, id) == self.custom_typing_module:
                     if targets or self.current_str() == ',':
                         self.fail('You cannot import any other modules when you '
@@ -218,52 +203,43 @@ class Parser:
                     break
                 targets.append((id, as_id))
                 if self.current_str() != ',':
-                    name_toks.append((toks, none))
                     break
-                name_toks.append((toks, self.expect(',')))
+                self.expect(',')
                 if is_paren and self.current_str() == ')':
                     break
             if is_paren:
-                rparen = self.expect(')')
+                self.expect(')')
             if node is None:
                 node = ImportFrom(name, relative, targets)
-        br = self.expect_break()
+        self.expect_break()
         self.imports.append(node)
-        # TODO: Fix representation if there is a custom typing module import.
-        self.set_repr(node, noderepr.ImportFromRepr(
-            from_tok, rel_toks, components, import_tok, lparen, name_toks, rparen, br))
         if name == '__future__':
             self.future_options.extend(target[0] for target in targets)
         return node
 
-    def parse_import_name(self) -> Tuple[str, str, List[Token]]:
+    def parse_import_name(self) -> Tuple[str, str]:
         tok = self.expect_type(Name)
         name = tok.string
-        tokens = [tok]
         if self.current_str() == 'as':
-            tokens.append(self.skip())
+            self.skip()
             as_name = self.expect_type(Name)
-            tokens.append(as_name)
-            return name, as_name.string, tokens
+            return name, as_name.string
         else:
-            return name, name, tokens
+            return name, name
 
-    def parse_qualified_name(self) -> Tuple[str, List[Token]]:
+    def parse_qualified_name(self) -> str:
         """Parse a name with an optional module qualifier.
 
         Return a tuple with the name as a string and a token array
         containing all the components of the name.
         """
-        components = List[Token]()
         tok = self.expect_type(Name)
         n = tok.string
-        components.append(tok)
         while self.current_str() == '.':
-            components.append(self.expect('.'))
+            self.expect('.')
             tok = self.expect_type(Name)
             n += '.' + tok.string
-            components.append(tok)
-        return n, components
+        return n
 
     # Parsing global definitions
 
@@ -328,7 +304,7 @@ class Parser:
     def parse_metaclass(self) -> str:
         self.expect('metaclass')
         self.expect('=')
-        return self.parse_qualified_name()[0]
+        return self.parse_qualified_name()
 
     def parse_decorated_function_or_class(self) -> Node:
         ats = List[Token]()
