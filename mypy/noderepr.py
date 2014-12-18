@@ -15,27 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class FuncRepr:
-    def __init__(self, def_tok: Any, name: Any, args: 'FuncArgsRepr') -> None:
-        # Note: name may be empty.
-        self.def_tok = def_tok
-        self.name = name
-        self.args = args
-
-
-class FuncArgsRepr:
-    """Representation of a set of function arguments."""
-    def __init__(self, lseparator: Any, rseparator: Any, arg_names: Any,
-                 commas: Any, assigns: Any, asterisk: Any) -> None:
-        # Lseparator and rseparator are '(' and ')', respectively.
-        self.lseparator = lseparator
-        self.rseparator = rseparator
-        self.arg_names = arg_names
-        self.commas = commas
-        self.assigns = assigns
-        self.asterisk = asterisk
-
-
 class VarRepr:
     def __init__(self, name: Any, comma: Any) -> None:
         # Note_ comma may be empty.

@@ -335,7 +335,7 @@ class Parser:
         self.is_class_body = False
         try:
             (name, args, init, kinds,
-             typ, is_error, toks) = self.parse_function_header()
+             typ, is_error) = self.parse_function_header()
 
             body, comment_type = self.parse_block(allow_type=True)
             if comment_type:
@@ -369,10 +369,7 @@ class Parser:
                 return None
 
             node = FuncDef(name, args, kinds, init, body, typ)
-            name_tok, arg_reprs = toks
-            node.set_line(name_tok)
-            self.set_repr(node, noderepr.FuncRepr(def_tok, name_tok,
-                                                  arg_reprs))
+            node.set_line(def_tok)
             return node
         finally:
             self.errors.pop_function()
@@ -396,8 +393,7 @@ class Parser:
                     "signature".format(token), line)
 
     def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
-                                             List[int], Callable, bool,
-                                             Tuple[Token, Any]]:
+                                             List[int], Callable, bool]:
         """Parse function header (a name followed by arguments)
 
         Returns a 7-tuple with the following items:
@@ -409,7 +405,6 @@ class Parser:
           error flag (True if error)
           (name token, representation of arguments)
         """
-        name_tok = none
         name = ''
 
         try:
@@ -418,19 +413,18 @@ class Parser:
 
             self.errors.push_function(name)
 
-            (args, init, kinds, typ, arg_repr) = self.parse_args()
+            (args, init, kinds, typ) = self.parse_args()
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1  # Kludge: go back to the Break token
             # Resynchronise parsing by going back over :, if present.
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
-            return (name, [], [], [], None, True, (name_tok, None))
+            return (name, [], [], [], None, True)
 
-        return (name, args, init, kinds, typ, False, (name_tok, arg_repr))
+        return (name, args, init, kinds, typ, False)
 
-    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Callable,
-                                  noderepr.FuncArgsRepr]:
+    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], Callable]:
         """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
 
@@ -440,7 +434,7 @@ class Parser:
          commas, asterisk,
          assigns, arg_types) = self.parse_arg_list()
 
-        rparen = self.expect(')')
+        self.expect(')')
 
         if self.current_str() == '->':
             self.skip()
@@ -457,9 +451,7 @@ class Parser:
         annotation = self.build_func_annotation(
             ret_type, arg_types, kinds, names, lparen.line)
 
-        return (args, init, kinds, annotation,
-                noderepr.FuncArgsRepr(lparen, rparen, arg_names, commas,
-                                      assigns, asterisk))
+        return args, init, kinds, annotation
 
     def build_func_annotation(self, ret_type: Type, arg_types: List[Type],
                               kinds: List[int], names: List[str],
@@ -1628,11 +1620,6 @@ class Parser:
         body.set_line(colon)
 
         node = FuncExpr(args, kinds, init, body, typ)
-        self.set_repr(node,
-                      noderepr.FuncExprRepr(
-                          lambda_tok, colon,
-                          noderepr.FuncArgsRepr(none, none, arg_names, commas,
-                                                assigns, asterisk)))
         return node
 
     # Helper methods
