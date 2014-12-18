@@ -117,6 +117,10 @@ class Colon(Token):
     pass
 
 
+class EllipsisToken(Token):
+    pass
+
+
 class Op(Token):
     """Operator (e.g. '+' or 'in')"""
 
@@ -291,11 +295,14 @@ class Lexer:
     # newlines within parentheses/brackets.
     open_brackets = Undefined(List[str])
 
+    pyversion = 3
+
     def __init__(self, pyversion: int = 3) -> None:
         self.map = [self.unknown_character] * 256
         self.tok = []
         self.indents = [0]
         self.open_brackets = []
+        self.pyversion = pyversion
         # Fill in the map from valid character codes to relevant lexer methods.
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
                             ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
@@ -363,10 +370,13 @@ class Lexer:
     def lex_number_or_dot(self) -> None:
         """Analyse a token starting with a dot.
 
-        It can be the member access operator or a float literal such as '.123'.
+        It can be the member access operator, a float literal such as '.123',
+        or an ellipsis (for Python 3)
         """
         if self.is_at_number():
             self.lex_number()
+        elif self.is_at_ellipsis() and self.pyversion >= 3:
+            self.lex_ellipsis()
         else:
             self.lex_misc()
 
@@ -375,6 +385,12 @@ class Lexer:
     def is_at_number(self) -> bool:
         """Is the current location at a numeric literal?"""
         return self.match(self.number_exp) != ''
+
+    ellipsis_exp = re.compile(r'\.\.\.')
+
+    def is_at_ellipsis(self) -> bool:
+        """Is the current location at a ellipsis '...'"""
+        return self.match(self.ellipsis_exp) != ''
 
     # Regexps used by lex_number
 
@@ -414,6 +430,9 @@ class Lexer:
         else:
             # Complex literal.
             self.add_token(ComplexLit(sc))
+
+    def lex_ellipsis(self) -> None:
+        self.add_token(EllipsisToken('...'))
 
     name_exp = re.compile('[a-zA-Z_][a-zA-Z0-9_]*')
 

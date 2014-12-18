@@ -717,6 +717,15 @@ def zip(iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3],
 def __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] = {},
                fromlist: List[str] = [], level: int = -1) -> Any: pass
 
+# Ellipsis
+
+@builtinclass
+class ellipsis:
+    # TODO not defined in builtins!
+    def __init__(self) -> None: pass
+
+Ellipsis = ellipsis()
+
 # Exceptions
 
 @builtinclass

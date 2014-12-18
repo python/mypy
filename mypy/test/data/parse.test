@@ -2973,3 +2973,23 @@ MypyFile:1(
           ListExpr:1(
             StrExpr(y)))))
     PassStmt:1()))
+
+[case testEllipsis]
+...
+a[1,...,2]
+....__class__
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    Ellipsis)
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(a)
+      TupleExpr:2(
+        IntExpr(1)
+        Ellipsis
+        IntExpr(2))))
+  ExpressionStmt:3(
+    MemberExpr:3(
+      Ellipsis
+      __class__)))

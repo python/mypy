@@ -341,6 +341,9 @@ class OutputVisitor(NodeVisitor):
     def visit_complex_expr(self, o):
         self.token(o.repr.complex)
 
+    def visit_ellipsis(self, o):
+        self.token(o.repr.ellipsis)
+
     def visit_paren_expr(self, o):
         self.token(o.repr.lparen)
         self.node(o.expr)

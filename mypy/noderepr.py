@@ -222,6 +222,11 @@ class ComplexExprRepr:
         self.complex = complex
 
 
+class EllipsisNodeRepr:
+    def __init__(self, ellipsis_tok) -> None:
+        self.ellipsis = ellipsis_tok
+
+
 class ParenExprRepr:
     def __init__(self, lparen: Any, rparen: Any) -> None:
         self.lparen = lparen

@@ -11,7 +11,8 @@ from typing import Undefined, List, Tuple, Any, Set, cast, Union
 from mypy import lex
 from mypy.lex import (
     Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
-    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit
+    UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
+    EllipsisToken
 )
 import mypy.types
 from mypy.nodes import (
@@ -25,7 +26,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr
+    SetComprehension, ComplexExpr, EllipsisNode
 )
 from mypy import nodes
 from mypy import noderepr
@@ -828,6 +829,12 @@ class Parser:
             pass
         return node
 
+    def parse_ellipsis(self) -> EllipsisNode:
+        ellipsis_tok = self.expect('...')
+        node = EllipsisNode()
+        self.set_repr(node, noderepr.EllipsisNodeRepr(ellipsis_tok))
+        return node
+
     def parse_del_stmt(self) -> DelStmt:
         del_tok = self.expect('del')
         expr = self.parse_expression()
@@ -1119,6 +1126,8 @@ class Parser:
                 expr = self.parse_complex_expr()
             elif isinstance(t, Keyword) and s == "yield":
                 expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
+            elif isinstance(t, EllipsisToken):
+                expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
                 self.parse_error()
