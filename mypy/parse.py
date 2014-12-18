@@ -1268,7 +1268,6 @@ class Parser:
         items = List[Tuple[Node, Node]]()
         lbrace = self.expect('{')
         colons = List[Token]()
-        commas = List[Token]()
         while self.current_str() != '}' and not self.eol():
             key = self.parse_expression(precedence['<if>'])
             if self.current_str() in [',', '}'] and items == []:
@@ -1284,11 +1283,9 @@ class Parser:
             items.append((key, value))
             if self.current_str() != ',':
                 break
-            commas.append(self.expect(','))
-        rbrace = self.expect('}')
+            self.expect(',')
+        self.expect('}')
         node = DictExpr(items)
-        self.set_repr(node, noderepr.DictExprRepr(lbrace, colons, commas,
-                                                  rbrace, none, none, none))
         return node
 
     def parse_set_expr(self, first: Node, lbrace: Token) -> SetExpr:

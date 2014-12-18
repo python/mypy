@@ -270,19 +270,6 @@ class TupleExprRepr:
         self.rparen = rparen
 
 
-class DictExprRepr:
-    def __init__(self, lbrace: Any, colons: List[Token], commas: List[Token],
-                 rbrace: Any, langle: Any, type_comma: Any,
-                 rangle: Any) -> None:
-        self.lbrace = lbrace
-        self.colons = colons
-        self.commas = commas
-        self.rbrace = rbrace
-        self.langle = langle
-        self.type_comma = type_comma
-        self.rangle = rangle
-
-
 class TypeApplicationRepr:
     def __init__(self, langle: Any, commas: Any, rangle: Any) -> None:
         self.langle = langle
