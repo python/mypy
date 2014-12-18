@@ -1415,6 +1415,16 @@ class DisjointclassExpr(Node):
         return visitor.visit_disjointclass_expr(self)
 
 
+# Constants
+
+
+class EllipsisNode(Node):
+    """Ellipsis (...)"""
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_ellipsis(self)
+
+
 class TempNode(Node):
     """Temporary dummy node used during type checking.
 

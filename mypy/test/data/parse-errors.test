@@ -374,3 +374,12 @@ def while(): pass
 [out]
 file, line 1: Parse error before "while"
 file, line 1: Parse error before end of line
+
+[case testInvalidEllipsis1]
+...0
+..._
+...a
+[out]
+file, line 1: Parse error before numeric literal
+file, line 2: Parse error before "_"
+file, line 3: Parse error before "a"

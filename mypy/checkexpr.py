@@ -13,7 +13,7 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, LITERAL_TYPE
+    DictionaryComprehension, ComplexExpr, EllipsisNode, LITERAL_TYPE
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -707,6 +707,10 @@ class ExpressionChecker:
     def visit_complex_expr(self, e: ComplexExpr) -> Type:
         """Type check a complex literal."""
         return self.named_type('builtins.complex')
+
+    def visit_ellipsis(self, e: EllipsisNode) -> Type:
+        """Type check ..."""
+        return self.named_type('builtins.ellipsis')
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""

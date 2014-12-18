@@ -1276,3 +1276,29 @@ class B:
 class C(B):
     pass
 [out]
+
+
+-- Ellipsis
+-- --------
+
+
+[case testEllipsis]
+from typing import Undefined
+a = Undefined  # type: A
+a = ...  # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "A")
+b = ...
+c = ...
+b = c
+....__class__
+....a  # E: "ellipsis" has no attribute "a"
+
+class A: pass
+[file builtins.py]
+class object:
+    def __init__(self): pass
+class ellipsis:
+    def __init__(self): pass
+    __class__ = object()
+class type: pass
+class function: pass
+[out]
