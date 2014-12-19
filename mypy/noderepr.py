@@ -15,20 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class WhileStmtRepr:
-    def __init__(self, while_tok: Any, else_tok: Any) -> None:
-        self.while_tok = while_tok
-        self.else_tok = else_tok
-
-
-class ForStmtRepr:
-    def __init__(self, for_tok: Any, in_tok: Any,
-                 else_tok: Any) -> None:
-        self.for_tok = for_tok
-        self.in_tok = in_tok
-        self.else_tok = else_tok
-
-
 class SimpleStmtRepr:
     """Representation for break, continue, pass, return and assert."""
     def __init__(self, keyword: Any, br: Any) -> None:

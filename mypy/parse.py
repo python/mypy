@@ -843,42 +843,38 @@ class Parser:
 
     def parse_while_stmt(self) -> WhileStmt:
         is_error = False
-        while_tok = self.expect('while')
+        self.expect('while')
         try:
             expr = self.parse_expression()
         except ParseError:
             is_error = True
         body, _ = self.parse_block()
         if self.current_str() == 'else':
-            else_tok = self.expect('else')
+            self.expect('else')
             else_body, _ = self.parse_block()
         else:
             else_body = None
-            else_tok = none
         if is_error is not None:
             node = WhileStmt(expr, body, else_body)
-            self.set_repr(node, noderepr.WhileStmtRepr(while_tok, else_tok))
             return node
         else:
             return None
 
     def parse_for_stmt(self) -> ForStmt:
-        for_tok = self.expect('for')
+        self.expect('for')
         index = self.parse_for_index_variables()
-        in_tok = self.expect('in')
+        self.expect('in')
         expr = self.parse_expression()
 
         body, _ = self.parse_block()
 
         if self.current_str() == 'else':
-            else_tok = self.expect('else')
+            self.expect('else')
             else_body, _ = self.parse_block()
         else:
             else_body = None
-            else_tok = none
 
         node = ForStmt(index, expr, body, else_body)
-        self.set_repr(node, noderepr.ForStmtRepr(for_tok, in_tok, else_tok))
         return node
 
     def parse_for_index_variables(self) -> Node:
