@@ -1268,7 +1268,6 @@ class Parser:
         tok = self.expect_type(Name)
         node = NameExpr(tok.string)
         node.set_line(tok)
-        self.set_repr(node, noderepr.NameExprRepr(tok))
         return node
 
     def parse_int_expr(self) -> IntExpr:
@@ -1405,20 +1404,15 @@ class Parser:
         return args, kinds, names, commas, star, star2, keywords
 
     def parse_member_expr(self, expr: Any) -> Node:
-        dot = self.expect('.')
+        self.expect('.')
         name = self.expect_type(Name)
         node = Undefined(Node)
         if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
                 and expr.callee.name == 'super'):
             # super() expression
             node = SuperExpr(name.string)
-            self.set_repr(node,
-                          noderepr.SuperExprRepr(expr.callee.repr.id,
-                                                 expr.repr.lparen,
-                                                 expr.repr.rparen, dot, name))
         else:
             node = MemberExpr(expr, name.string)
-            self.set_repr(node, noderepr.MemberExprRepr(dot, name))
         return node
 
     def parse_index_expr(self, base: Any) -> IndexExpr:
@@ -1459,37 +1453,33 @@ class Parser:
         return node
 
     def parse_comparison_expr(self, left: Node, prec: int) -> ComparisonExpr:
-        operators = []  # type: List[Tuple[Token, Token]]
         operators_str = []  # type: List[str]
         operands = [left]
 
         while True:
             op = self.expect_type(Op)
-            op2 = none
             op_str = op.string
             if op_str == 'not':
                 if self.current_str() == 'in':
                     op_str = 'not in'
-                    op2 = self.skip()
+                    self.skip()
                 else:
                     self.parse_error()
             elif op_str == 'is' and self.current_str() == 'not':
                 op_str = 'is not'
-                op2 = self.skip()
+                self.skip()
 
             operators_str.append(op_str)
-            operators.append( (op, op2) )
             operand = self.parse_expression(prec)
             operands.append(operand)
 
             # Continue if next token is a comparison operator
-            t = self.current()
+            self.current()
             s = self.current_str()
             if s not in op_comp:
                 break
 
         node = ComparisonExpr(operators_str, operands)
-        self.set_repr(node, noderepr.ComparisonExprRepr(operators))
         return node
 
 

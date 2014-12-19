@@ -15,22 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class NameExprRepr:
-    def __init__(self, id: Any) -> None:
-        self.id = id
-
-
-class MemberExprRepr:
-    def __init__(self, dot: Any, name: Any) -> None:
-        self.dot = dot
-        self.name = name
-
-class ComparisonExprRepr:
-    def __init__(self, operators: List[Any]) -> None:
-        # List of tupples of (op, op2).
-        # Note: op2 may be empty; it is used for "is not" and "not in".
-        self.operators = operators
-
 class CallExprRepr:
     def __init__(self, lparen: Any, commas: List[Token], star: Any, star2: Any,
                  keywords: List[List[Token]], rparen: Any) -> None:
@@ -76,16 +60,6 @@ class FuncExprRepr:
         self.lambda_tok = lambda_tok
         self.colon = colon
         self.args = args
-
-
-class SuperExprRepr:
-    def __init__(self, super_tok: Any, lparen: Any, rparen: Any, dot: Any,
-                 name: Any) -> None:
-        self.super_tok = super_tok
-        self.lparen = lparen
-        self.rparen = rparen
-        self.dot = dot
-        self.name = name
 
 
 class TupleExprRepr:
