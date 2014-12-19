@@ -777,9 +777,8 @@ class Parser:
         return node
 
     def parse_ellipsis(self) -> EllipsisNode:
-        ellipsis_tok = self.expect('...')
+        self.expect('...')
         node = EllipsisNode()
-        self.set_repr(node, noderepr.EllipsisNodeRepr(ellipsis_tok))
         return node
 
     def parse_del_stmt(self) -> DelStmt:
@@ -1332,13 +1331,11 @@ class Parser:
     def parse_float_expr(self) -> FloatExpr:
         tok = self.expect_type(FloatLit)
         node = FloatExpr(float(tok.string))
-        self.set_repr(node, noderepr.FloatExprRepr(tok))
         return node
 
     def parse_complex_expr(self) -> ComplexExpr:
         tok = self.expect_type(ComplexLit)
         node = ComplexExpr(complex(tok.string))
-        self.set_repr(node, noderepr.ComplexExprRepr(tok))
         return node
 
     def parse_call_expr(self, callee: Any) -> CallExpr:

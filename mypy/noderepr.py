@@ -15,21 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class FloatExprRepr:
-    def __init__(self, float: Any) -> None:
-        self.float = float
-
-
-class ComplexExprRepr:
-    def __init__(self, complex: Any) -> None:
-        self.complex = complex
-
-
-class EllipsisNodeRepr:
-    def __init__(self, ellipsis_tok) -> None:
-        self.ellipsis = ellipsis_tok
-
-
 class ParenExprRepr:
     def __init__(self, lparen: Any, rparen: Any) -> None:
         self.lparen = lparen
