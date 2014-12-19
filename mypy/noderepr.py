@@ -15,23 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class VarRepr:
-    def __init__(self, name: Any, comma: Any) -> None:
-        # Note_ comma may be empty.
-        self.name = name
-        self.comma = comma
-
-
-class TypeDefRepr:
-    def __init__(self, class_tok: Any, name: Any, lparen: Any, commas: Any,
-                 rparen: Any) -> None:
-        self.class_tok = class_tok
-        self.name = name
-        self.lparen = lparen
-        self.commas = commas
-        self.rparen = rparen
-
-
 class VarDefRepr:
     def __init__(self, assign: Any, br: Any) -> None:
         # Note: assign may be empty.

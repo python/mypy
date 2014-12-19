@@ -259,9 +259,7 @@ class Parser:
         old_is_class_body = self.is_class_body
         self.is_class_body = True
 
-        type_tok = self.expect('class')
-        lparen = none
-        rparen = none
+        self.expect('class')
         metaclass = None  # type: str
 
         try:
@@ -273,7 +271,7 @@ class Parser:
                 self.errors.push_type(name)
 
                 if self.current_str() == '(':
-                    lparen = self.skip()
+                    self.skip()
                     while True:
                         if self.current_str() == ')':
                             break
@@ -284,15 +282,13 @@ class Parser:
                         if self.current_str() != ',':
                             break
                         commas.append(self.skip())
-                    rparen = self.expect(')')
+                    self.expect(')')
             except ParseError:
                 pass
 
             defs, _ = self.parse_block()
 
             node = ClassDef(name, defs, None, base_types, metaclass=metaclass)
-            self.set_repr(node, noderepr.TypeDefRepr(type_tok, name_tok,
-                                                     lparen, commas, rparen))
             return node
         finally:
             self.errors.pop_type()
@@ -514,7 +510,6 @@ class Parser:
                     arg_names.append(name)
                     names.append(name.string)
                     var_arg = Var(name.string)
-                    self.set_repr(var_arg, noderepr.VarRepr(name, none))
                     args.append(var_arg)
                     init.append(None)
                     assigns.append(none)
