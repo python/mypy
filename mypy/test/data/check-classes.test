@@ -1133,6 +1133,20 @@ main, line 8: Argument 1 of "__iadd__" incompatible with "__add__" of supertype 
 main, line 8: Signatures of "__iadd__" and "__add__" are incompatible
 
 
+[case testGetAttr]
+from typing import Undefined
+a, b = Undefined, Undefined  # type: A, B
+class A:
+    def __getattr__(self, x: str) -> A:
+        return A()
+class B: pass
+
+a = a.foo
+b = a.bar
+[out]
+main, line 9: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+
 -- Callable objects
 -- ----------------
 
