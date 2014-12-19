@@ -15,17 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class ParenExprRepr:
-    def __init__(self, lparen: Any, rparen: Any) -> None:
-        self.lparen = lparen
-        self.rparen = rparen
-
-
-class StarExprRepr:
-    def __init__(self, star: Any) -> None:
-        self.star = star
-
-
 class NameExprRepr:
     def __init__(self, id: Any) -> None:
         self.id = id

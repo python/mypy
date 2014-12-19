@@ -1123,9 +1123,8 @@ class Parser:
         else:
             # Parenthesised expression.
             expr = self.parse_expression(0, star_expr_allowed=True)
-            rparen = self.expect(')')
+            self.expect(')')
             expr = ParenExpr(expr)
-            self.set_repr(expr, noderepr.ParenExprRepr(lparen, rparen))
         return expr
 
     def parse_star_expr(self) -> Node:
@@ -1134,7 +1133,6 @@ class Parser:
         expr = StarExpr(expr)
         if expr.line < 0:
             expr.set_line(star)
-        self.set_repr(expr, noderepr.StarExprRepr(star))
         return expr
 
     def parse_empty_tuple_expr(self, lparen: Any) -> TupleExpr:
