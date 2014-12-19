@@ -15,22 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class UnaryExprRepr:
-    def __init__(self, op: Any) -> None:
-        self.op = op
-
-
-class OpExprRepr:
-    def __init__(self, op: Any) -> None:
-        self.op = op
-
-
-class CastExprRepr:
-    def __init__(self, lparen: Any, rparen: Any) -> None:
-        self.lparen = lparen
-        self.rparen = rparen
-
-
 class FuncExprRepr:
     def __init__(self, lambda_tok: Any, colon: Any, args: Any) -> None:
         self.lambda_tok = lambda_tok

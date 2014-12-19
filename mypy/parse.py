@@ -1432,7 +1432,6 @@ class Parser:
             self.parse_error()
         right = self.parse_expression(prec)
         node = OpExpr(op_str, left, right)
-        self.set_repr(node, noderepr.OpExprRepr(op))
         return node
 
     def parse_comparison_expr(self, left: Node, prec: int) -> ComparisonExpr:
@@ -1475,7 +1474,6 @@ class Parser:
             prec = precedence[op]
         expr = self.parse_expression(prec)
         node = UnaryExpr(op, expr)
-        self.set_repr(node, noderepr.UnaryExprRepr(op_tok))
         return node
 
     def parse_lambda_expr(self) -> FuncExpr:
