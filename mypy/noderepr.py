@@ -15,16 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class IntExprRepr:
-    def __init__(self, int: Any) -> None:
-        self.int = int
-
-
-class StrExprRepr:
-    def __init__(self, string: List[Token]) -> None:
-        self.string = string
-
-
 class FloatExprRepr:
     def __init__(self, float: Any) -> None:
         self.float = float
