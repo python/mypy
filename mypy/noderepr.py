@@ -15,18 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class IndexExprRepr:
-    def __init__(self, lbracket: Any, rbracket: Any) -> None:
-        self.lbracket = lbracket
-        self.rbracket = rbracket
-
-
-class SliceExprRepr:
-    def __init__(self, colon: Any, colon2: Any) -> None:
-        self.colon = colon
-        self.colon2 = colon2
-
-
 class UnaryExprRepr:
     def __init__(self, op: Any) -> None:
         self.op = op

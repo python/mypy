@@ -1402,7 +1402,7 @@ class Parser:
         return node
 
     def parse_index_expr(self, base: Any) -> IndexExpr:
-        lbracket = self.expect('[')
+        self.expect('[')
         if self.current_str() != ':':
             index = self.parse_expression(0)
         else:
@@ -1414,17 +1414,14 @@ class Parser:
                 end_index = self.parse_expression(0)
             else:
                 end_index = None
-            colon2 = none
             stride = None  # type: Node
             if self.current_str() == ':':
-                colon2 = self.expect(':')
+                self.expect(':')
                 if self.current_str() != ']':
                     stride = self.parse_expression()
             index = SliceExpr(index, end_index, stride).set_line(colon.line)
-            self.set_repr(index, noderepr.SliceExprRepr(colon, colon2))
-        rbracket = self.expect(']')
+        self.expect(']')
         node = IndexExpr(base, index)
-        self.set_repr(node, noderepr.IndexExprRepr(lbracket, rbracket))
         return node
 
     def parse_bin_op_expr(self, left: Node, prec: int) -> OpExpr:
