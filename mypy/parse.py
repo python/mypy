@@ -303,13 +303,11 @@ class Parser:
         return self.parse_qualified_name()
 
     def parse_decorated_function_or_class(self) -> Node:
-        ats = List[Token]()
-        brs = List[Token]()
         decorators = List[Node]()
         while self.current_str() == '@':
-            ats.append(self.expect('@'))
+            self.expect('@')
             decorators.append(self.parse_expression())
-            brs.append(self.expect_break())
+            self.expect_break()
         if self.current_str() != 'class':
             func = self.parse_function()
             func.is_decorated = True
@@ -318,7 +316,6 @@ class Parser:
             var.is_ready = False
             var.set_line(decorators[0].line)
             node = Decorator(func, decorators, var)
-            self.set_repr(node, noderepr.DecoratorRepr(ats, brs))
             return node
         else:
             cls = self.parse_class_def()

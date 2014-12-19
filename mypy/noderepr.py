@@ -15,19 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class VarDefRepr:
-    def __init__(self, assign: Any, br: Any) -> None:
-        # Note: assign may be empty.
-        self.assign = assign
-        self.br = br
-
-
-class DecoratorRepr:
-    def __init__(self, ats: Any, brs: Any) -> None:
-        self.ats = ats
-        self.brs = brs
-
-
 class BlockRepr:
     def __init__(self, colon: Any, br: Any, indent: Any, dedent: Any) -> None:
         self.colon = colon
