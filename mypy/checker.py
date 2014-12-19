@@ -506,6 +506,8 @@ class TypeChecker(NodeVisitor[Type]):
 
             if name in nodes.reverse_op_method_set:
                 self.check_reverse_op_method(item, typ, name)
+            elif name == '__getattr__':
+                self.check_getattr_method(typ, defn)
 
             # Push return type.
             self.return_types.append(typ.ret_type)
@@ -706,6 +708,15 @@ class TypeChecker(NodeVisitor[Type]):
                 fail = True
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
+
+    def check_getattr_method(self, typ: Callable, context: Context) -> None:
+        method_type = Callable([AnyType(), self.named_type('builtins.str')],
+                               [nodes.ARG_POS, nodes.ARG_POS],
+                               [None],
+                               AnyType(),
+                               self.named_type('builtins.function'))
+        if not is_subtype(typ, method_type):
+            self.msg.invalid_signature(typ, context)
 
     def expand_typevars(self, defn: FuncItem,
                         typ: Callable) -> List[Tuple[FuncItem, Callable]]:

@@ -145,15 +145,14 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__']:
-        if is_lvalue:
-            pass # TODO
-        else:
+        if not is_lvalue:
             method = info.get_method('__getattr__')
             if method:
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(
                     method_type(method, builtin_type('builtins.function')), typ)
-                return getattr_type.ret_type
+                if isinstance(getattr_type, Callable):
+                    return getattr_type.ret_type
 
     # Could not find the member.
     if is_super:

@@ -1147,6 +1147,22 @@ b = a.bar
 main, line 9: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 
+[case testGetAttrSignature]
+class A:
+    def __getattr__(self, x: str) -> A: pass
+class B:
+    def __getattr__(self, x: A) -> B: pass
+class C:
+    def __getattr__(self, x: str, y: str) -> C: pass
+class D:
+    def __getattr__(self, x: str) -> None: pass
+[out]
+main: In member "__getattr__" of class "B":
+main, line 4: Invalid signature "def (self: __main__.B, x: __main__.A) -> __main__.B"
+main: In member "__getattr__" of class "C":
+main, line 6: Invalid signature "def (self: __main__.C, x: builtins.str, y: builtins.str) -> __main__.C"
+
+
 -- Callable objects
 -- ----------------
 
