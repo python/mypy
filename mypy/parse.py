@@ -869,22 +869,19 @@ class Parser:
     def parse_for_index_variables(self) -> Node:
         # Parse index variables of a 'for' statement.
         index_items = List[Node]()
-        commas = List[Token]()
 
         while True:
             v = self.parse_expression(precedence['in'], star_expr_allowed=True)  # prevent parsing of for-stmt's 'in'
             index_items.append(v)
             if self.current_str() != ',':
-                commas.append(none)
                 break
-            commas.append(self.skip())
+            self.skip()
 
         if len(index_items) == 1:
             index = index_items[0]
         else:
             index = TupleExpr(index_items)
             index.set_line(index_items[0].get_line())
-            self.set_repr(index, noderepr.TupleExprRepr(none, commas, none))
 
         return index
 
@@ -1116,10 +1113,10 @@ class Parser:
         return expr
 
     def parse_parentheses(self) -> Node:
-        lparen = self.skip()
+        self.skip()
         if self.current_str() == ')':
             # Empty tuple ().
-            expr = self.parse_empty_tuple_expr(lparen)  # type: Node
+            expr = self.parse_empty_tuple_expr()  # type: Node
         else:
             # Parenthesised expression.
             expr = self.parse_expression(0, star_expr_allowed=True)
@@ -1135,10 +1132,9 @@ class Parser:
             expr.set_line(star)
         return expr
 
-    def parse_empty_tuple_expr(self, lparen: Any) -> TupleExpr:
-        rparen = self.expect(')')
+    def parse_empty_tuple_expr(self) -> TupleExpr:
+        self.expect(')')
         node = TupleExpr([])
-        self.set_repr(node, noderepr.TupleExprRepr(lparen, [], rparen))
         return node
 
     def parse_list_expr(self) -> Node:
@@ -1252,16 +1248,14 @@ class Parser:
     def parse_tuple_expr(self, expr: Node,
                          prec: int = precedence[',']) -> TupleExpr:
         items = [expr]
-        commas = List[Token]()
         while True:
-            commas.append(self.expect(','))
+            self.expect(',')
             if (self.current_str() in [')', ']', '='] or
                     isinstance(self.current(), Break)):
                 break
             items.append(self.parse_expression(prec, star_expr_allowed=True))
             if self.current_str() != ',': break
         node = TupleExpr(items)
-        self.set_repr(node, noderepr.TupleExprRepr(none, commas, none))
         return node
 
     def parse_name_expr(self) -> NameExpr:
