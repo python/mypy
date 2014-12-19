@@ -196,7 +196,7 @@ class Parser:
                     if targets or self.current_str() == ',':
                         self.fail('You cannot import any other modules when you '
                                   'import a custom typing module',
-                                  toks[0].line)
+                                  self.current().line)
                     node = Import([('typing', as_id)])
                     self.skip_until_break()
                     break
