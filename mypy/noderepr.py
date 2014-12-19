@@ -15,23 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class ExpressionStmtRepr:
-    def __init__(self, br: Any) -> None:
-        self.br = br
-
-
-class AssignmentStmtRepr:
-    def __init__(self, assigns: List[Token], br: Any) -> None:
-        self.assigns = assigns
-        self.br = br
-
-
-class OperatorAssignmentStmtRepr:
-    def __init__(self, assign: Any, br: Any) -> None:
-        self.assign = assign
-        self.br = br
-
-
 class WhileStmtRepr:
     def __init__(self, while_tok: Any, else_tok: Any) -> None:
         self.while_tok = while_tok

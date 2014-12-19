@@ -681,18 +681,15 @@ class Parser:
         elif self.current_str() in op_assign:
             # Operator assignment statement.
             op = self.current_str()[:-1]
-            assign = self.skip()
+            self.skip()
             r = self.parse_expression()
-            br = self.expect_break()
+            self.expect_break()
             node = OperatorAssignmentStmt(op, e, r)
-            self.set_repr(node,
-                          noderepr.OperatorAssignmentStmtRepr(assign, br))
             return node
         else:
             # Expression statement.
-            br = self.expect_break()
+            self.expect_break()
             expr = ExpressionStmt(e)
-            self.set_repr(expr, noderepr.ExpressionStmtRepr(br))
             return expr
 
     def parse_assignment(self, lv: Any) -> Node:
@@ -713,7 +710,6 @@ class Parser:
 
         type = self.parse_type_comment(br, signature=False)
         assignment = AssignmentStmt(lvalues, e, type)
-        self.set_repr(assignment, noderepr.AssignmentStmtRepr(assigns, br))
         return assignment
 
     def parse_return_stmt(self) -> ReturnStmt:
