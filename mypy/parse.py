@@ -822,35 +822,28 @@ class Parser:
         return node
 
     def parse_global_decl(self) -> GlobalDecl:
-        global_tok = self.expect('global')
-        name_toks, names, commas = self.parse_identifier_list()
-        br = self.expect_break()
+        self.expect('global')
+        names = self.parse_identifier_list()
+        self.expect_break()
         node = GlobalDecl(names)
-        self.set_repr(node, noderepr.GlobalDeclRepr(global_tok, name_toks,
-                                                    commas, br))
         return node
 
     def parse_nonlocal_decl(self) -> NonlocalDecl:
-        nonlocal_tok = self.expect('nonlocal')
-        name_toks, names, commas = self.parse_identifier_list()
-        br = self.expect_break()
+        self.expect('nonlocal')
+        names = self.parse_identifier_list()
+        self.expect_break()
         node = NonlocalDecl(names)
-        self.set_repr(node, noderepr.NonlocalDeclRepr(nonlocal_tok, name_toks,
-                                                      commas, br))
         return node
 
-    def parse_identifier_list(self) -> Tuple[List[Token], List[str], List[Token]]:
+    def parse_identifier_list(self) -> List[str]:
         names = List[str]()
-        name_toks = List[Token]()
-        commas = List[Token]()
         while True:
             n = self.expect_type(Name)
             names.append(n.string)
-            name_toks.append(n)
             if self.current_str() != ',':
                 break
-            commas.append(self.skip())
-        return name_toks, names, commas
+            self.skip()
+        return names
 
     def parse_while_stmt(self) -> WhileStmt:
         is_error = False

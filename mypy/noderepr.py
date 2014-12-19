@@ -15,24 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class GlobalDeclRepr:
-    def __init__(self, global_tok: Any, names: List[Token],
-                 commas: List[Token], br: Any) -> None:
-        self.global_tok = global_tok
-        self.names = names
-        self.commas = commas
-        self.br = br
-
-
-class NonlocalDeclRepr:
-    def __init__(self, nonlocal_tok: Any, names: List[Token],
-                 commas: List[Token], br: Any) -> None:
-        self.nonlocal_tok = nonlocal_tok
-        self.names = names
-        self.commas = commas
-        self.br = br
-
-
 class ExpressionStmtRepr:
     def __init__(self, br: Any) -> None:
         self.br = br
