@@ -724,18 +724,16 @@ class Parser:
         return node
 
     def parse_raise_stmt(self) -> RaiseStmt:
-        raise_tok = self.expect('raise')
+        self.expect('raise')
         expr = None  # type: Node
         from_expr = None  # type: Node
-        from_tok = none
         if not isinstance(self.current(), Break):
             expr = self.parse_expression()
             if self.current_str() == 'from':
-                from_tok = self.expect('from')
+                self.expect('from')
                 from_expr = self.parse_expression()
-        br = self.expect_break()
+        self.expect_break()
         node = RaiseStmt(expr, from_expr)
-        self.set_repr(node, noderepr.RaiseStmtRepr(raise_tok, from_tok, br))
         return node
 
     def parse_assert_stmt(self) -> AssertStmt:
@@ -894,7 +892,7 @@ class Parser:
     def parse_if_stmt(self) -> IfStmt:
         is_error = False
 
-        if_tok = self.expect('if')
+        self.expect('if')
         expr = List[Node]()
         try:
             expr.append(self.parse_expression())
@@ -903,9 +901,8 @@ class Parser:
 
         body = [self.parse_block()[0]]
 
-        elif_toks = List[Token]()
         while self.current_str() == 'elif':
-            elif_toks.append(self.expect('elif'))
+            self.expect('elif')
             try:
                 expr.append(self.parse_expression())
             except ParseError:
@@ -913,69 +910,54 @@ class Parser:
             body.append(self.parse_block()[0])
 
         if self.current_str() == 'else':
-            else_tok = self.expect('else')
+            self.expect('else')
             else_body, _ = self.parse_block()
         else:
-            else_tok = none
             else_body = None
 
         if not is_error:
             node = IfStmt(expr, body, else_body)
-            self.set_repr(node, noderepr.IfStmtRepr(if_tok, elif_toks,
-                                                    else_tok))
             return node
         else:
             return None
 
     def parse_try_stmt(self) -> Node:
-        try_tok = self.expect('try')
+        self.expect('try')
         body, _ = self.parse_block()
         is_error = False
         vars = List[NameExpr]()
         types = List[Node]()
         handlers = List[Block]()
-        except_toks, name_toks, as_toks, except_brs = (List[Token](),
-                                                       List[Token](),
-                                                       List[Token](),
-                                                       List[Token]())
         while self.current_str() == 'except':
-            except_toks.append(self.expect('except'))
+            self.expect('except')
             if not isinstance(self.current(), Colon):
                 try:
                     t = self.current()
                     types.append(self.parse_expression().set_line(t))
                     if self.current_str() == 'as':
-                        as_toks.append(self.expect('as'))
+                        self.expect('as')
                         vars.append(self.parse_name_expr())
                     else:
-                        name_toks.append(none)
                         vars.append(None)
-                        as_toks.append(none)
                 except ParseError:
                     is_error = True
             else:
                 types.append(None)
                 vars.append(None)
-                as_toks.append(none)
             handlers.append(self.parse_block()[0])
         if not is_error:
             if self.current_str() == 'else':
-                else_tok = self.skip()
+                self.skip()
                 else_body, _ = self.parse_block()
             else:
-                else_tok = none
                 else_body = None
             if self.current_str() == 'finally':
-                finally_tok = self.expect('finally')
+                self.expect('finally')
                 finally_body, _ = self.parse_block()
             else:
-                finally_tok = none
                 finally_body = None
             node = TryStmt(body, vars, types, handlers, else_body,
                            finally_body)
-            self.set_repr(node, noderepr.TryStmtRepr(try_tok, except_toks,
-                                                     name_toks, as_toks,
-                                                     else_tok, finally_tok))
             return node
         else:
             return None

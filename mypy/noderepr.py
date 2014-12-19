@@ -15,32 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class IfStmtRepr:
-    def __init__(self, if_tok: Any, elif_toks: Any, else_tok: Any) -> None:
-        # Note: else_tok may be empty.
-        self.if_tok = if_tok
-        self.elif_toks = elif_toks
-        self.else_tok = else_tok
-
-
-class RaiseStmtRepr:
-    def __init__(self, raise_tok: Any, from_tok: Any, br: Any) -> None:
-        self.raise_tok = raise_tok
-        self.from_tok = from_tok
-        self.br = br
-
-
-class TryStmtRepr:
-    def __init__(self, try_tok: Any, except_toks: Any, name_toks: Any,
-                 as_toks: Any, else_tok: Any, finally_tok: Any) -> None:
-        self.try_tok = try_tok
-        self.except_toks = except_toks
-        self.name_toks = name_toks
-        self.as_toks = as_toks
-        self.else_tok = else_tok
-        self.finally_tok = finally_tok
-
-
 class WithStmtRepr:
     def __init__(self, with_tok: Any, as_toks: Any, commas: Any) -> None:
         self.with_tok = with_tok
