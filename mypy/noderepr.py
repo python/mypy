@@ -15,13 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class WithStmtRepr:
-    def __init__(self, with_tok: Any, as_toks: Any, commas: Any) -> None:
-        self.with_tok = with_tok
-        self.as_toks = as_toks
-        self.commas = commas
-
-
 class IntExprRepr:
     def __init__(self, int: Any) -> None:
         self.int = int

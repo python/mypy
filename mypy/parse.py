@@ -963,27 +963,23 @@ class Parser:
             return None
 
     def parse_with_stmt(self) -> WithStmt:
-        with_tok = self.expect('with')
-        as_toks = List[Token]()
-        commas = List[Token]()
+        self.expect('with')
         expr = List[Node]()
         name = List[NameExpr]()
         while True:
             e = self.parse_expression(precedence[','])
             if self.current_str() == 'as':
-                as_toks.append(self.expect('as'))
+                self.expect('as')
                 n = self.parse_name_expr()
             else:
-                as_toks.append(none)
                 n = None
             expr.append(e)
             name.append(n)
             if self.current_str() != ',':
                 break
-            commas.append(self.expect(','))
+            self.expect(',')
         body, _ = self.parse_block()
         node = WithStmt(expr, name, body)
-        self.set_repr(node, noderepr.WithStmtRepr(with_tok, as_toks, commas))
         return node
 
     def parse_print_stmt(self) -> PrintStmt:
