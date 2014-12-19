@@ -713,15 +713,14 @@ class Parser:
         return assignment
 
     def parse_return_stmt(self) -> ReturnStmt:
-        return_tok = self.expect('return')
+        self.expect('return')
         expr = None  # type: Node
         if not isinstance(self.current(), Break):
             expr = self.parse_expression()
             if isinstance(expr, YieldFromExpr): # "yield from" expressions can't be returned.
                 return None
-        br = self.expect_break()
+        self.expect_break()
         node = ReturnStmt(expr)
-        self.set_repr(node, noderepr.SimpleStmtRepr(return_tok, br))
         return node
 
     def parse_raise_stmt(self) -> RaiseStmt:
@@ -740,30 +739,27 @@ class Parser:
         return node
 
     def parse_assert_stmt(self) -> AssertStmt:
-        assert_tok = self.expect('assert')
+        self.expect('assert')
         expr = self.parse_expression()
-        br = self.expect_break()
+        self.expect_break()
         node = AssertStmt(expr)
-        self.set_repr(node, noderepr.SimpleStmtRepr(assert_tok, br))
         return node
 
     def parse_yield_stmt(self) -> Union[YieldStmt, YieldFromStmt]:
-        yield_tok = self.expect('yield')
+        self.expect('yield')
         expr = None  # type: Node
         node = YieldStmt(expr)
         if not isinstance(self.current(), Break):
             if isinstance(self.current(), Keyword) and self.current_str() == "from":  # Not go if it's not from
-                from_tok = self.expect("from")
+                self.expect("from")
                 expr = self.parse_expression()  # Here comes when yield from is not assigned
                 node_from = YieldFromStmt(expr)
-                br = self.expect_break()
-                self.set_repr(node_from, noderepr.SimpleStmtRepr(yield_tok, br))
+                self.expect_break()
                 return node_from  # return here, we've gotted the type
             else:
                 expr = self.parse_expression()
                 node = YieldStmt(expr)
-        br = self.expect_break()
-        self.set_repr(node, noderepr.SimpleStmtRepr(yield_tok, br))
+        self.expect_break()
         return node
 
     def parse_yield_from_expr(self) -> YieldFromExpr:
@@ -789,32 +785,28 @@ class Parser:
         return node
 
     def parse_del_stmt(self) -> DelStmt:
-        del_tok = self.expect('del')
+        self.expect('del')
         expr = self.parse_expression()
-        br = self.expect_break()
+        self.expect_break()
         node = DelStmt(expr)
-        self.set_repr(node, noderepr.SimpleStmtRepr(del_tok, br))
         return node
 
     def parse_break_stmt(self) -> BreakStmt:
-        break_tok = self.expect('break')
-        br = self.expect_break()
+        self.expect('break')
+        self.expect_break()
         node = BreakStmt()
-        self.set_repr(node, noderepr.SimpleStmtRepr(break_tok, br))
         return node
 
     def parse_continue_stmt(self) -> ContinueStmt:
-        continue_tok = self.expect('continue')
-        br = self.expect_break()
+        self.expect('continue')
+        self.expect_break()
         node = ContinueStmt()
-        self.set_repr(node, noderepr.SimpleStmtRepr(continue_tok, br))
         return node
 
     def parse_pass_stmt(self) -> PassStmt:
-        pass_tok = self.expect('pass')
-        br = self.expect_break()
+        self.expect('pass')
+        self.expect_break()
         node = PassStmt()
-        self.set_repr(node, noderepr.SimpleStmtRepr(pass_tok, br))
         return node
 
     def parse_global_decl(self) -> GlobalDecl:

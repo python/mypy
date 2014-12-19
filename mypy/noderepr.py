@@ -15,13 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class SimpleStmtRepr:
-    """Representation for break, continue, pass, return and assert."""
-    def __init__(self, keyword: Any, br: Any) -> None:
-        self.keyword = keyword
-        self.br = br
-
-
 class IfStmtRepr:
     def __init__(self, if_tok: Any, elif_toks: Any, else_tok: Any) -> None:
         # Note: else_tok may be empty.
