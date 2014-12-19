@@ -586,13 +586,12 @@ class Parser:
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
             node = Block([self.parse_statement()]).set_line(colon)
-            self.set_repr(node, noderepr.BlockRepr(colon, none, none, none))
             return cast(Block, node), None
         else:
             # Indented block.
             br = self.expect_break()
             type = self.parse_type_comment(br, signature=True)
-            indent = self.expect_indent()
+            self.expect_indent()
             stmt = []  # type: List[Node]
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
@@ -603,11 +602,9 @@ class Parser:
                             stmt.append(s)
                 except ParseError:
                     pass
-            dedent = none
             if isinstance(self.current(), Dedent):
-                dedent = self.skip()
+                self.skip()
             node = Block(stmt).set_line(colon)
-            self.set_repr(node, noderepr.BlockRepr(colon, br, indent, dedent))
             return cast(Block, node), type
 
     def try_combine_overloads(self, s: Node, stmt: List[Node]) -> bool:

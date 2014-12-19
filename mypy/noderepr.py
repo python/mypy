@@ -15,14 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class BlockRepr:
-    def __init__(self, colon: Any, br: Any, indent: Any, dedent: Any) -> None:
-        self.colon = colon
-        self.br = br
-        self.indent = indent
-        self.dedent = dedent
-
-
 class GlobalDeclRepr:
     def __init__(self, global_tok: Any, names: List[Token],
                  commas: List[Token], br: Any) -> None:
