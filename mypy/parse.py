@@ -1336,36 +1336,23 @@ class Parser:
         return node
 
     def parse_call_expr(self, callee: Any) -> CallExpr:
-        lparen = self.expect('(')
-        (args, kinds, names,
-         commas, star, star2, assigns) = self.parse_arg_expr()
-        rparen = self.expect(')')
+        self.expect('(')
+        args, kinds, names = self.parse_arg_expr()
+        self.expect(')')
         node = CallExpr(callee, args, kinds, names)
-        self.set_repr(node, noderepr.CallExprRepr(lparen, commas, star, star2,
-                                                  assigns, rparen))
         return node
 
-    def parse_arg_expr(self) -> Tuple[List[Node], List[int], List[str],
-                                      List[Token], Token, Token,
-                                      List[List[Token]]]:
+    def parse_arg_expr(self) -> Tuple[List[Node], List[int], List[str]]:
         """Parse arguments in a call expression (within '(' and ')').
 
         Return a tuple with these items:
           argument expressions
           argument kinds
           argument names (for named arguments; None for ordinary args)
-          comma tokens
-          * token (if any)
-          ** token (if any)
-          (assignment, name) tokens
         """
         args = []   # type: List[Node]
         kinds = []  # type: List[int]
         names = []  # type: List[str]
-        star = none
-        star2 = none
-        commas = []    # type: List[Token]
-        keywords = []  # type: List[List[Token]]
         var_arg = False
         dict_arg = False
         named_args = False
@@ -1373,21 +1360,20 @@ class Parser:
             if isinstance(self.current(), Name) and self.peek().string == '=':
                 # Named argument
                 name = self.expect_type(Name)
-                assign = self.expect('=')
+                self.expect('=')
                 kinds.append(nodes.ARG_NAMED)
                 names.append(name.string)
-                keywords.append([name, assign])
                 named_args = True
             elif (self.current_str() == '*' and not var_arg and not dict_arg
                     and not named_args):
                 # *args
                 var_arg = True
-                star = self.expect('*')
+                self.expect('*')
                 kinds.append(nodes.ARG_STAR)
                 names.append(None)
             elif self.current_str() == '**':
                 # **kwargs
-                star2 = self.expect('**')
+                self.expect('**')
                 dict_arg = True
                 kinds.append(nodes.ARG_STAR2)
                 names.append(None)
@@ -1400,8 +1386,8 @@ class Parser:
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() != ',':
                 break
-            commas.append(self.expect(','))
-        return args, kinds, names, commas, star, star2, keywords
+            self.expect(',')
+        return args, kinds, names
 
     def parse_member_expr(self, expr: Any) -> Node:
         self.expect('.')

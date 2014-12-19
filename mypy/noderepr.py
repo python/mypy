@@ -15,18 +15,6 @@ from typing import Any, List, Tuple, Undefined
 from mypy.lex import Token
 
 
-class CallExprRepr:
-    def __init__(self, lparen: Any, commas: List[Token], star: Any, star2: Any,
-                 keywords: List[List[Token]], rparen: Any) -> None:
-        # Asterisk may be empty.
-        self.lparen = lparen
-        self.commas = commas
-        self.star = star
-        self.star2 = star2
-        self.keywords = keywords
-        self.rparen = rparen
-
-
 class IndexExprRepr:
     def __init__(self, lbracket: Any, rbracket: Any) -> None:
         self.lbracket = lbracket
