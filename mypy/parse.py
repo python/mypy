@@ -46,7 +46,8 @@ precedence = {
     '&': 10,
     '^': 9,
     '|': 8,
-    '==': 7, '!=': 7, '<': 7, '>': 7, '<=': 7, '>=': 7, 'is': 7, 'in': 7, '*u': 7, # unary * for star expressions
+    '==': 7, '!=': 7, '<': 7, '>': 7, '<=': 7, '>=': 7, 'is': 7, 'in': 7,
+    '*u': 7, # unary * for star expressions
     'not': 6,
     'and': 5,
     'or': 4,
@@ -747,7 +748,7 @@ class Parser:
         expr = None  # type: Node
         node = YieldStmt(expr)
         if not isinstance(self.current(), Break):
-            if isinstance(self.current(), Keyword) and self.current_str() == "from":  # Not go if it's not from
+            if self.current_str() == "from":
                 self.expect("from")
                 expr = self.parse_expression()  # Here comes when yield from is not assigned
                 node_from = YieldFromStmt(expr)
@@ -870,7 +871,8 @@ class Parser:
         index_items = List[Node]()
 
         while True:
-            v = self.parse_expression(precedence['in'], star_expr_allowed=True)  # prevent parsing of for-stmt's 'in'
+            v = self.parse_expression(precedence['in'],
+                                      star_expr_allowed=True)  # Prevent parsing of for stmt 'in'
             index_items.append(v)
             if self.current_str() != ',':
                 break
@@ -1237,7 +1239,8 @@ class Parser:
         set_comp = SetComprehension(gen)
         return set_comp
 
-    def parse_dict_comprehension(self, key: Node, value: Node, colon: Token) -> DictionaryComprehension:
+    def parse_dict_comprehension(self, key: Node, value: Node,
+                                 colon: Token) -> DictionaryComprehension:
         indices, sequences, condlists = self.parse_comp_for()
         dic = DictionaryComprehension(key, value, indices, sequences, condlists)
         dic.set_line(colon)
@@ -1457,7 +1460,6 @@ class Parser:
         node = ComparisonExpr(operators_str, operands)
         return node
 
-
     def parse_unary_expr(self) -> UnaryExpr:
         op_tok = self.skip()
         op = op_tok.string
@@ -1533,9 +1535,6 @@ class Parser:
 
     def expect_break(self) -> Token:
         return self.expect_type(Break)
-
-    def expect_end(self) -> Tuple[Token, Token]:
-        return self.expect('end'), self.expect_type(Break)
 
     def current(self) -> Token:
         return self.tok[self.ind]
