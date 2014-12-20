@@ -1723,3 +1723,4 @@ if __name__ == '__main__':
     except CompileError as e:
         for msg in e.messages:
             print(msg)
+        sys.exit(1)
