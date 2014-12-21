@@ -206,6 +206,11 @@ class ExpressionChecker:
             self.msg.disable_type_names -= 1
             return (UnionType.make_simplified_union([res[0] for res in results]),
                     callee)
+        elif isinstance(callee, Instance):
+            call_function = analyse_member_access('__call__', callee, context,
+                                         False, False, self.named_type, self.msg)
+            return self.check_call(call_function, args, arg_kinds, context, arg_names,
+                                   callable_node, arg_messages)
         else:
             return self.msg.not_callable(callee, context), AnyType()
 
