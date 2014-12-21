@@ -25,7 +25,7 @@ X = namedtuple('X', ['x', 'y'])
 x = X(1, 'x')
 x.x
 x.z      # E: "X" has no attribute "z"
-x = X(1) # E: Missing positional arguments "x", "y" in call to "X"
+x = X(1) # E: Too few arguments for "X"
 x = X(1, 2, 3)  # E: Too many arguments for "X"
 
 [case testCreateNamedTupleWithKeywordArguments]
