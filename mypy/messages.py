@@ -398,7 +398,8 @@ class MessageBuilder:
 
     def too_few_arguments(self, callee: Callable, context: Context,
                           argument_names: List[str]) -> None:
-        if argument_names is not None and len(argument_names) >= 1:
+        if (argument_names is not None and not all(k is None for k in argument_names)
+                and len(argument_names) >= 1):
             diff = [k for k in callee.arg_names if k not in argument_names]
             if len(diff) == 1:
                 msg = 'Missing positional argument'
