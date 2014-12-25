@@ -146,7 +146,7 @@ right-hand side of an assignment, but not always:
 .. code-block:: python
 
     a, *bs = 1, 2, 3   # OK
-    p, q, *rs = 1, 2   # Error: Type of cs cannot be inferred
+    p, q, *rs = 1, 2   # Error: Type of rs cannot be inferred
 
 On first line, the type of ``bs`` is inferred to be
 ``List[int]``. However, on the second line, mypy cannot infer the type
