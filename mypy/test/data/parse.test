@@ -43,11 +43,10 @@ MypyFile:1(
     OpExpr:2(
       *
       IntExpr(123)
-      ParenExpr:2(
-        OpExpr:2(
-          +
-          IntExpr(2)
-          NameExpr(x)))))
+      OpExpr:2(
+        +
+        IntExpr(2)
+        NameExpr(x))))
   ExpressionStmt:3(
     CallExpr:3(
       MemberExpr:3(
@@ -219,24 +218,21 @@ MypyFile:1(
   ExpressionStmt:1(
     TupleExpr:1())
   ExpressionStmt:2(
-    ParenExpr:2(
-      TupleExpr:2(
-        IntExpr(1))))
+    TupleExpr:2(
+      IntExpr(1)))
   ExpressionStmt:3(
-    ParenExpr:3(
-      TupleExpr:3(
-        IntExpr(1)
-        NameExpr(foo))))
+    TupleExpr:3(
+      IntExpr(1)
+      NameExpr(foo)))
   AssignmentStmt:4(
     TupleExpr:4(
       NameExpr(a)
       NameExpr(b))
     TupleExpr:4(
       IntExpr(1)
-      ParenExpr:4(
-        TupleExpr:4(
-          IntExpr(2)
-          IntExpr(3))))))
+      TupleExpr:4(
+        IntExpr(2)
+        IntExpr(3)))))
 
 [case testSimpleFunction]
 def main():
@@ -567,13 +563,12 @@ MypyFile:1(
         NameExpr(y)
         IntExpr(2))))
   ExpressionStmt:6(
-    ParenExpr:6(
-      ComparisonExpr:6(
-        <
-        >
-        NameExpr(a)
-        NameExpr(b)
-        NameExpr(c)))))
+    ComparisonExpr:6(
+      <
+      >
+      NameExpr(a)
+      NameExpr(b)
+      NameExpr(c))))
 
 [case testLineContinuation]
 if (1 +
@@ -583,11 +578,10 @@ if (1 +
 MypyFile:1(
   IfStmt:1(
     If(
-      ParenExpr:1(
-        OpExpr:1(
-          +
-          IntExpr(1)
-          IntExpr(2))))
+      OpExpr:1(
+        +
+        IntExpr(1)
+        IntExpr(2)))
     Then(
       PassStmt:3())))
 
@@ -607,11 +601,10 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    ParenExpr:1(
-      TupleExpr:1(
-        NameExpr(xx)
-        NameExpr(z)
-        NameExpr(i)))
+    TupleExpr:1(
+      NameExpr(xx)
+      NameExpr(z)
+      NameExpr(i))
     IntExpr(1)
     Tuple[a?[c?], Any?, int?]))
 
@@ -620,13 +613,11 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    ParenExpr:1(
+    TupleExpr:1(
+      NameExpr(xx)
       TupleExpr:1(
-        NameExpr(xx)
-        ParenExpr:1(
-          TupleExpr:1(
-            NameExpr(z)
-            NameExpr(i)))))
+        NameExpr(z)
+        NameExpr(i)))
     IntExpr(1)
     Tuple[a?[c?], Tuple[Any?, int?]]))
 
@@ -666,14 +657,12 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    ParenExpr:1(
-      TupleExpr:1(
-        NameExpr(x)
-        NameExpr(y)))
-    ParenExpr:2(
-      TupleExpr:2(
-        IntExpr(1)
-        IntExpr(2)))
+    TupleExpr:1(
+      NameExpr(x)
+      NameExpr(y))
+    TupleExpr:2(
+      IntExpr(1)
+      IntExpr(2))
     Tuple[foo?, bar?]))
 
 [case testWhitespaceAndCommentAnnotation]
@@ -845,10 +834,9 @@ MypyFile:1(
   ForStmt:3(
     TupleExpr:3(
       NameExpr(x)
-      ParenExpr:3(
-        TupleExpr:3(
-          NameExpr(y)
-          NameExpr(w))))
+      TupleExpr:3(
+        NameExpr(y)
+        NameExpr(w)))
     NameExpr(z)
     Block:3(
       ExpressionStmt:4(
@@ -856,10 +844,9 @@ MypyFile:1(
   ForStmt:5(
     ListExpr:5(
       NameExpr(x)
-      ParenExpr:5(
-        TupleExpr:5(
-          NameExpr(y)
-          NameExpr(w))))
+      TupleExpr:5(
+        NameExpr(y)
+        NameExpr(w)))
     NameExpr(z)
     Block:5(
       ExpressionStmt:6(
@@ -1141,10 +1128,9 @@ MypyFile:1(
           IntExpr(2)))
       AssignmentStmt:3(
         NameExpr(z)
-        ParenExpr:3(
-          TupleExpr:3(
-            IntExpr(1)
-            IntExpr(2)))))
+        TupleExpr:3(
+          IntExpr(1)
+          IntExpr(2))))
     Block:3(
       PassStmt:4())))
 
@@ -1223,10 +1209,9 @@ MypyFile:1(
       NameExpr(x)
       TupleExpr:1(
         NameExpr(y)
-        ParenExpr:1(
-          TupleExpr:1(
-            NameExpr(p)
-            NameExpr(q))))
+        TupleExpr:1(
+          NameExpr(p)
+          NameExpr(q)))
       NameExpr(z))))
 
 [case testListComprehension]
@@ -1249,10 +1234,9 @@ MypyFile:1(
     NameExpr(x)
     ListComprehension:1(
       GeneratorExpr:1(
-        ParenExpr:1(
-          TupleExpr:1(
-            NameExpr(x)
-            NameExpr(y)))
+        TupleExpr:1(
+          NameExpr(x)
+          NameExpr(y))
         TupleExpr:1(
           NameExpr(y)
           NameExpr(z))
@@ -1265,15 +1249,14 @@ MypyFile:1(
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    ParenExpr:1(
-      ListComprehension:1(
-        GeneratorExpr:1(
-          OpExpr:1(
-            +
-            NameExpr(x)
-            IntExpr(1))
+    ListComprehension:1(
+      GeneratorExpr:1(
+        OpExpr:1(
+          +
           NameExpr(x)
-          NameExpr(a))))))
+          IntExpr(1))
+        NameExpr(x)
+        NameExpr(a)))))
 
 [case testSlices]
 x[1:2]
@@ -1513,10 +1496,9 @@ for (i, j) in x:
 [out]
 MypyFile:1(
   ForStmt:1(
-    ParenExpr:1(
-      TupleExpr:1(
-        NameExpr(i)
-        NameExpr(j)))
+    TupleExpr:1(
+      NameExpr(i)
+      NameExpr(j))
     NameExpr(x)
     Block:1(
       PassStmt:2())))
@@ -1567,12 +1549,11 @@ MypyFile:1(
         NameExpr(x)
         NameExpr(y)
         NameExpr(z)
-        ParenExpr:1(
-          ConditionalExpr:1(
-            Condition(
-              IntExpr(2))
-            IntExpr(1)
-            IntExpr(3)))
+        ConditionalExpr:1(
+          Condition(
+            IntExpr(2))
+          IntExpr(1)
+          IntExpr(3))
         IntExpr(1)))))
 
 [case testDictionaryComprehension]
@@ -1705,8 +1686,7 @@ MypyFile:1(
   ExpressionStmt:1(
     StrExpr(fbar))
   ExpressionStmt:2(
-    ParenExpr:2(
-      StrExpr(xyz))))
+    StrExpr(xyz)))
 
 [case testCatchAllExcept]
 try:
@@ -1770,17 +1750,15 @@ MypyFile:1(
   TryStmt:1(
     Block:1(
       PassStmt:2())
-    ParenExpr:3(
-      TupleExpr:3(
-        NameExpr(x)
-        NameExpr(y)))
+    TupleExpr:3(
+      NameExpr(x)
+      NameExpr(y))
     Block:3(
       PassStmt:4())
-    ParenExpr:5(
-      TupleExpr:5(
-        NameExpr(a)
-        NameExpr(b)
-        NameExpr(c)))
+    TupleExpr:5(
+      NameExpr(a)
+      NameExpr(b)
+      NameExpr(c))
     NameExpr(e)
     Block:5(
       PassStmt:6())))
@@ -2863,19 +2841,17 @@ MypyFile:1(
   ExpressionStmt:4(
     TupleExpr:4(
       NameExpr(a)
-      ParenExpr:4(
-        TupleExpr:4(
-          StarExpr:4(
-            NameExpr(x))
-          NameExpr(y)))))
+      TupleExpr:4(
+        StarExpr:4(
+          NameExpr(x))
+        NameExpr(y))))
   ExpressionStmt:5(
     TupleExpr:5(
       NameExpr(a)
-      ParenExpr:5(
-        TupleExpr:5(
-          NameExpr(x)
-          StarExpr:5(
-            NameExpr(y)))))))
+      TupleExpr:5(
+        NameExpr(x)
+        StarExpr:5(
+          NameExpr(y))))))
 
 [case testStarExpressionParenthesis]
 *(a)
@@ -2884,14 +2860,12 @@ MypyFile:1(
 MypyFile:1(
   ExpressionStmt:1(
     StarExpr:1(
-      ParenExpr:1(
-        NameExpr(a))))
+      NameExpr(a)))
   ExpressionStmt:2(
     StarExpr:2(
-      ParenExpr:2(
-        TupleExpr:2(
-          NameExpr(a)
-          NameExpr(b))))))
+      TupleExpr:2(
+        NameExpr(a)
+        NameExpr(b)))))
 
 [case testStarExpressionInFor]
 for *a in b:
