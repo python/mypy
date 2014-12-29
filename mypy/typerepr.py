@@ -9,17 +9,6 @@ from typing import List, Any
 from mypy.lex import Token
 
 
-class CommonTypeRepr:
-    """Representation of UnboundType, Instance and CallableType."""
-    def __init__(self, components: List[Token], langle, commas: List[Token],
-                 rangle: Any) -> None:
-        # Note: langle and rangle may be empty.
-        self.components = components
-        self.langle = langle
-        self.commas = commas
-        self.rangle = rangle
-
-
 class ListTypeRepr:
     """Representation of list type t[]."""
     def __init__(self, lbracket, rbracket) -> None:

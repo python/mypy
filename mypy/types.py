@@ -64,13 +64,12 @@ class UnboundType(Type):
     name = ''
     args = Undefined(List[Type])
 
-    def __init__(self, name: str, args: List[Type] = None, line: int = -1,
-                 repr: Any = None) -> None:
+    def __init__(self, name: str, args: List[Type] = None, line: int = -1) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)

@@ -5,7 +5,7 @@ from typing import List, Tuple, Union, cast
 from mypy.types import (
     Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType
 )
-from mypy.typerepr import CommonTypeRepr, ListTypeRepr
+from mypy.typerepr import ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
 
@@ -142,9 +142,7 @@ class TypeParser:
 
             rbracket = self.expect(']')
 
-        typ = UnboundType(name, args, line, CommonTypeRepr(components,
-                                                           lbracket,
-                                                           commas, rbracket))
+        typ = UnboundType(name, args, line)
         return typ
 
     def parse_star_type(self) -> Type:
