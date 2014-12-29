@@ -342,10 +342,9 @@ MypyFile:1(
       NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:7(
-    ParenExpr:7(
-      TupleExpr:7(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])))
+    TupleExpr:7(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y]))
     IntExpr(1)))
 
 [case testStarLvalues]
@@ -364,19 +363,17 @@ MypyFile:1(
     TupleExpr:2(
       StarExpr:2(
         NameExpr(x [__main__.x]))
-      ParenExpr:2(
-        TupleExpr:2(
-          NameExpr(y [__main__.y])
-          StarExpr:2(
-            NameExpr(z* [__main__.z])))))
+      TupleExpr:2(
+        NameExpr(y [__main__.y])
+        StarExpr:2(
+          NameExpr(z* [__main__.z]))))
     IntExpr(1))
   AssignmentStmt:3(
     TupleExpr:3(
       StarExpr:3(
-        ParenExpr:3(
-          TupleExpr:3(
-            NameExpr(x [__main__.x])
-            NameExpr(q* [__main__.q]))))
+        TupleExpr:3(
+          NameExpr(x [__main__.x])
+          NameExpr(q* [__main__.q])))
       NameExpr(r* [__main__.r]))
     IntExpr(1)))
 
@@ -402,13 +399,11 @@ MypyFile:1(
 [out]
 MypyFile:1(
   AssignmentStmt:1(
-    ParenExpr:1(
-      NameExpr(x* [__main__.x]))
+    NameExpr(x* [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
-    ParenExpr:2(
-      ListExpr:2(
-        NameExpr(y* [__main__.y])))
+    ListExpr:2(
+      NameExpr(y* [__main__.y]))
     IntExpr(2)))
 
 [case testLocalComplexDefinition]
@@ -421,8 +416,7 @@ MypyFile:1(
     f
     Block:1(
       AssignmentStmt:2(
-        ParenExpr:2(
-          NameExpr(x* [l]))
+        NameExpr(x* [l])
         IntExpr(1))
       ExpressionStmt:3(
         NameExpr(x [l])))))
@@ -452,10 +446,9 @@ MypyFile:1(
   AssignmentStmt:2(
     TupleExpr:2(
       NameExpr(y* [__main__.y])
-      ParenExpr:2(
-        TupleExpr:2(
-          NameExpr(x [__main__.x])
-          NameExpr(z* [__main__.z]))))
+      TupleExpr:2(
+        NameExpr(x [__main__.x])
+        NameExpr(z* [__main__.z])))
     IntExpr(1)))
 
 [case testMultipleDefOnlySomeNewNestedLists]
@@ -603,10 +596,9 @@ MypyFile:1(
   TryStmt:2(
     Block:2(
       PassStmt:3())
-    ParenExpr:4(
-      TupleExpr:4(
-        NameExpr(c [__main__.c])
-        NameExpr(object [builtins.object])))
+    TupleExpr:4(
+      NameExpr(c [__main__.c])
+      NameExpr(object [builtins.object]))
     NameExpr(e* [__main__.e])
     Block:4(
       ExpressionStmt:5(

@@ -28,11 +28,10 @@ MypyFile:1(
     NameExpr(z* [__main__.z])
     IntExpr(3))
   ExpressionStmt:3(
-    ParenExpr:3(
-      TupleExpr:3(
-        NameExpr(x [__main__.x])
-        NameExpr(y [__main__.y])
-        NameExpr(z [__main__.z])))))
+    TupleExpr:3(
+      NameExpr(x [__main__.x])
+      NameExpr(y [__main__.y])
+      NameExpr(z [__main__.z]))))
 
 [case testEmptyFunction]
 def f(): pass
@@ -81,10 +80,9 @@ MypyFile:1(
       Var(y))
     Block:1(
       ExpressionStmt:2(
-        ParenExpr:2(
-          TupleExpr:2(
-            NameExpr(x [l])
-            NameExpr(y [l])))))))
+        TupleExpr:2(
+          NameExpr(x [l])
+          NameExpr(y [l]))))))
 
 [case testLocalVar]
 def f():

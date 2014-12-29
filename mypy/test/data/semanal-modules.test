@@ -519,10 +519,9 @@ MypyFile:1(
     MemberExpr:2(
       NameExpr(_m)
       x [_m.x])
-    ParenExpr:2(
-      MemberExpr:3(
-        NameExpr(_m)
-        x [_m.x]))))
+    MemberExpr:3(
+      NameExpr(_m)
+      x [_m.x])))
 
 [case testAssignmentThatRefersToModule]
 import _m
