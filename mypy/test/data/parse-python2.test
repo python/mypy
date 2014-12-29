@@ -39,10 +39,9 @@ MypyFile:1(
     IntExpr(3)
     Newline)
   PrintStmt:3(
-    ParenExpr:3(
-      TupleExpr:3(
-        IntExpr(4)
-        IntExpr(5)))
+    TupleExpr:3(
+      IntExpr(4)
+      IntExpr(5))
     Newline))
 
 [case testSimpleWithTrailingComma]
@@ -57,7 +56,6 @@ MypyFile:1(
     IntExpr(2)
     IntExpr(3))
   PrintStmt:3(
-    ParenExpr:3(
-      TupleExpr:3(
-        IntExpr(4)
-        IntExpr(5)))))
+    TupleExpr:3(
+      IntExpr(4)
+      IntExpr(5))))
