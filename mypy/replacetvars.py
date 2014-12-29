@@ -4,7 +4,6 @@ import typing
 
 from mypy.lex import Token
 from mypy.types import Type, AnyType, NoneTyp, TypeTranslator, TypeVarType
-from mypy.typerepr import AnyRepr
 
 
 def replace_type_vars(typ: Type, func_tvars: bool = True) -> Type:
@@ -25,11 +24,8 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         if t.id > 0 or self.func_tvars:
-            if t.repr is not None:
-                # Give a representation for the dynamic type.
-                tok = Token('Any')
-                tok.pre = t.repr.name.pre
-                return AnyType(t.line, AnyRepr(tok))
+            if t.line is not None:
+                return AnyType(t.line)
             else:
                 return AnyType()
         else:

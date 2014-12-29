@@ -9,19 +9,6 @@ from typing import List, Any
 from mypy.lex import Token
 
 
-class ListTypeRepr:
-    """Representation of list type t[]."""
-    def __init__(self, lbracket, rbracket) -> None:
-        self.lbracket = lbracket
-        self.rbracket = rbracket
-
-
-class AnyRepr:
-    """Representation of Any."""
-    def __init__(self, any_tok: Any) -> None:
-        self.any_tok = any_tok
-
-
 class VoidRepr:
     """Representation of the 'None' type."""
     def __init__(self, void: Any) -> None:

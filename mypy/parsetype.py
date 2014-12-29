@@ -5,7 +5,6 @@ from typing import List, Tuple, Union, cast
 from mypy.types import (
     Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType
 )
-from mypy.typerepr import ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
 
