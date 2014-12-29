@@ -6,7 +6,6 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
-from mypy.typerepr import TypeVarRepr
 from mypy.nodes import (
     GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, Var, Node,
     IndexExpr, NameExpr, TupleExpr, RefExpr
@@ -75,14 +74,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
-                if t.repr:
-                    rep = TypeVarRepr(t.repr.components[0])
-                else:
-                    rep = None
                 values = cast(TypeVarExpr, sym.node).values
                 return TypeVarType(t.name, sym.tvar_id, values,
                                    self.builtin_type('builtins.object'),
-                                   t.line, rep)
+                                   t.line)
             elif fullname == 'builtins.None':
                 return Void()
             elif fullname == 'typing.Any':

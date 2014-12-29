@@ -194,12 +194,12 @@ class TypeVarType(Type):
     upper_bound = Undefined(Type)   # Upper bound for values (currently always 'object')
 
     def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
-                 line: int = -1, repr: Any = None) -> None:
+                 line: int = -1) -> None:
         self.name = name
         self.id = id
         self.values = values
         self.upper_bound = upper_bound
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
