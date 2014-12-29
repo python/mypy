@@ -856,7 +856,6 @@ t = typevar('t')
 class C(Generic[t]): pass
 cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
-cast((str).str, None)    # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
 cast([int, str], None)   # E: Invalid type
 [out]
@@ -1099,7 +1098,7 @@ g = typevar('g', x=(int, str)) # E: Unexpected keyword argument 'x' to typevar()
 
 [case testInvalidTypevarValues]
 from typing import typevar
-a = typevar('a', values=int) # E: The values argument must be in parentheses (...)
+a = typevar('a', values=int) # E: The values argument must be a tuple literal
 b = typevar('b', values=(int)) # E: The values argument must be a tuple literal
 c = typevar('c', values=(int, 2)) # E: Type expected
 [out]
