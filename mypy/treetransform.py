@@ -11,7 +11,7 @@ from mypy.nodes import (
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, YieldStmt, DelStmt, BreakStmt, ContinueStmt,
     PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
-    CastExpr, ParenExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
+    CastExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
@@ -286,9 +286,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_complex_expr(self, node: ComplexExpr) -> Node:
         return ComplexExpr(node.value)
-
-    def visit_paren_expr(self, node: ParenExpr) -> Node:
-        return ParenExpr(self.node(node.expr))
 
     def visit_name_expr(self, node: NameExpr) -> Node:
         return self.duplicate_name(node)

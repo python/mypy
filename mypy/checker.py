@@ -9,7 +9,7 @@ from mypy.nodes import (
     SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
-    TupleExpr, ListExpr, ParenExpr, ExpressionStmt, ReturnStmt, IfStmt,
+    TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, YieldStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
@@ -928,11 +928,8 @@ class TypeChecker(NodeVisitor[Type]):
     def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
         """Type check a single assignment: lvalue = rvalue
         """
-        if isinstance(lvalue, ParenExpr):
-            self.check_assignment(lvalue.expr, rvalue, infer_lvalue_type)
-        elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+        if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             ltuple = cast(Union[TupleExpr, ListExpr], lvalue)
-            rvalue = self.remove_parens(rvalue)
 
             self.check_assignment_to_multiple_lvalues(ltuple.items, rvalue, lvalue, infer_lvalue_type)
         else:
@@ -995,12 +992,6 @@ class TypeChecker(NodeVisitor[Type]):
                             len(lvalues), context)
             return False
         return True
-
-    def remove_parens(self, node: Node) -> Node:
-        if isinstance(node, ParenExpr):
-            return self.remove_parens(node.expr)
-        else:
-            return node
 
     def check_multi_assignment(self, lvalues: List[Node],
                                   rvalue: Node,
@@ -1154,8 +1145,6 @@ class TypeChecker(NodeVisitor[Type]):
             lv = cast(Union[TupleExpr, ListExpr], lvalue)
             types = [self.check_lvalue(sub_expr)[0] for sub_expr in lv.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
-        elif isinstance(lvalue, ParenExpr):
-            return self.check_lvalue(lvalue.expr)
         else:
             lvalue_type = self.accept(lvalue)
 
@@ -1526,18 +1515,15 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(s.finally_body)
 
     def exception_type(self, n: Node) -> Type:
-        if isinstance(n, ParenExpr):
-            # Multiple exception types (...).
-            unwrapped = self.expr_checker.strip_parens(n)
-            if isinstance(unwrapped, TupleExpr):
-                t = None  # type: Type
-                for item in unwrapped.items:
-                    tt = self.exception_type(item)
-                    if t:
-                        t = join_types(t, tt)
-                    else:
-                        t = tt
-                return t
+        if isinstance(n, TupleExpr):
+            t = None  # type: Type
+            for item in n.items:
+                tt = self.exception_type(item)
+                if t:
+                    t = join_types(t, tt)
+                else:
+                    t = tt
+            return t
         else:
             # A single exception type; should evaluate to a type object type.
             type = self.accept(n)
@@ -1665,9 +1651,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         return self.expr_checker.visit_name_expr(e)
-
-    def visit_paren_expr(self, e: ParenExpr) -> Type:
-        return self.expr_checker.visit_paren_expr(e)
 
     def visit_call_expr(self, e: CallExpr) -> Type:
         result = self.expr_checker.visit_call_expr(e)

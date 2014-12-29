@@ -10,7 +10,7 @@ from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
-    TupleExpr, DictExpr, FuncExpr, SuperExpr, ParenExpr, SliceExpr, Context,
+    TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisNode, LITERAL_TYPE
@@ -737,12 +737,6 @@ class ExpressionChecker:
         else:
             raise RuntimeError('Unknown operator {}'.format(e.op))
 
-    def strip_parens(self, node: Node) -> Node:
-        if isinstance(node, ParenExpr):
-            return self.strip_parens(node.expr)
-        else:
-            return node
-
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
 
@@ -951,7 +945,7 @@ class ExpressionChecker:
         if isinstance(left_type, TupleType):
             # Special case for tuples. They support indexing only by integer
             # literals.
-            index = self.strip_parens(e.index)
+            index = e.index
             ok = False
             if isinstance(index, IntExpr):
                 n = index.value
@@ -1143,10 +1137,6 @@ class ExpressionChecker:
             # Invalid super. This has been reported by the semantic analyser.
             return AnyType()
 
-    def visit_paren_expr(self, e: ParenExpr) -> Type:
-        """Type check a parenthesised expression."""
-        return self.accept(e.expr, self.chk.type_context[-1])
-
     def visit_slice_expr(self, e: SliceExpr) -> Type:
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
@@ -1282,13 +1272,6 @@ class ExpressionChecker:
             return result
         else:
             return False
-
-    def unwrap_list(self, a: List[Node]) -> List[Node]:
-        """Unwrap parentheses from a list of expression nodes."""
-        r = List[Node]()
-        for n in a:
-            r.append(self.strip_parens(n))
-        return r
 
 
 def is_valid_argc(nargs: int, is_var_arg: bool, callable: Callable) -> bool:

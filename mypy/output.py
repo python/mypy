@@ -344,11 +344,6 @@ class OutputVisitor(NodeVisitor):
     def visit_ellipsis(self, o):
         self.token(o.repr.ellipsis)
 
-    def visit_paren_expr(self, o):
-        self.token(o.repr.lparen)
-        self.node(o.expr)
-        self.token(o.repr.rparen)
-
     def visit_star_expr(self, o):
         self.token(o.repr.star)
         self.node(o.expr)

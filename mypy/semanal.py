@@ -48,7 +48,7 @@ from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, VarDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
-    IndexExpr, ParenExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
+    IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
@@ -848,8 +848,6 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Unexpected type declaration', lval)
             if not add_global:
                 lval.accept(self)
-        elif isinstance(lval, ParenExpr):
-            self.analyse_lvalue(lval.expr, nested, add_global, explicit_type)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)):
             items = (Any(lval)).items
@@ -870,15 +868,8 @@ class SemanticAnalyzer(NodeVisitor):
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
-
-        def strip_parens(node: Node) -> Node:
-            if isinstance(node, ParenExpr):
-                return strip_parens(node.expr)
-            else:
-                return node
-
-        star_exprs = [cast(StarExpr, strip_parens(item)) for item in items
-                               if isinstance(strip_parens(item), StarExpr)]
+        star_exprs = [cast(StarExpr, item) for item in items
+                               if isinstance(item, StarExpr)]
 
         if len(star_exprs) > 1:
             self.fail('Two starred expressions in assignment', lval)
@@ -946,8 +937,6 @@ class SemanticAnalyzer(NodeVisitor):
                 self.store_declared_types(lvalue.expr, typ.type)
             else:
                 self.fail('Star type expected for starred expression', lvalue)
-        elif isinstance(lvalue, ParenExpr):
-            self.store_declared_types(lvalue.expr, typ)
         else:
             raise RuntimeError('Internal error (%s)' % type(lvalue))
 
@@ -993,16 +982,11 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Unexpected keyword argument '{}' to typevar()".
                           format(call.arg_names[1]), s)
                 return
-            if isinstance(call.args[1], ParenExpr):
-                expr = cast(ParenExpr, call.args[1]).expr
-                if isinstance(expr, TupleExpr):
-                    values = self.analyze_types(expr.items)
-                else:
-                    self.fail('The values argument must be a tuple literal', s)
-                    return
+            expr = call.args[1]
+            if isinstance(expr, TupleExpr):
+                values = self.analyze_types(expr.items)
             else:
-                self.fail('The values argument must be in parentheses (...)',
-                          s)
+                self.fail('The values argument must be a tuple literal', s)
                 return
         else:
             values = []
@@ -1098,8 +1082,6 @@ class SemanticAnalyzer(NodeVisitor):
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
-            while isinstance(item, ParenExpr):
-                item = item.expr
             if isinstance(item, TupleExpr):
                 if len(item.items) != 2:
                     return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
@@ -1393,9 +1375,6 @@ class SemanticAnalyzer(NodeVisitor):
         for key, value in expr.items:
             key.accept(self)
             value.accept(self)
-
-    def visit_paren_expr(self, expr: ParenExpr) -> None:
-        expr.expr.accept(self)
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:

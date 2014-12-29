@@ -306,9 +306,6 @@ class StrConv(NodeVisitor[str]):
     def visit_ellipsis(self, o):
         return 'Ellipsis'
 
-    def visit_paren_expr(self, o):
-        return self.dump([o.expr], o)
-
     def visit_star_expr(self, o):
         return self.dump([o.expr], o)
 

@@ -20,7 +20,7 @@ from mypy.nodes import (
     ClassDef, Decorator, Block, Var, VarDef, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr, ParenExpr,
+    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
@@ -1122,7 +1122,6 @@ class Parser:
             # Parenthesised expression.
             expr = self.parse_expression(0, star_expr_allowed=True)
             self.expect(')')
-            expr = ParenExpr(expr)
         return expr
 
     def parse_star_expr(self) -> Node:
@@ -1626,27 +1625,6 @@ class Parser:
         else:
             return None
 
-    # Representation management
-
-    def set_repr(self, node: Node, repr: Any) -> None:
-        node.repr = repr
-
-    def repr(self, node: Node) -> Any:
-        return node.repr
-
-    def paren_repr(self, e: Node) -> Tuple[List[Token], List[Token]]:
-        """If e is a ParenExpr, return an array of left-paren tokens
-        (more that one if nested parens) and an array of corresponding
-        right-paren tokens.  Otherwise, return [], [].
-        """
-        if isinstance(e, ParenExpr):
-            lp, rp = self.paren_repr(e.expr)
-            lp.insert(0, self.repr(e).lparen)
-            rp.append(self.repr(e).rparen)
-            return lp, rp
-        else:
-            return [], []
-
 
 class ParseError(Exception): pass
 
@@ -1693,18 +1671,6 @@ def token_repr(tok: Token) -> str:
             elif t == lex.INVALID_DEDENT:
                 return 'inconsistent indentation'
         raise ValueError('Unknown token {}'.format(repr(tok)))
-
-
-def unwrap_parens(node: Node) -> Node:
-    """Unwrap any outer parentheses in node.
-
-    If the node is a parenthesised expression, recursively find the first
-    non-parenthesised subexpression and return that. Otherwise, return node.
-    """
-    if isinstance(node, ParenExpr):
-        return unwrap_parens(node.expr)
-    else:
-        return node
 
 
 if __name__ == '__main__':

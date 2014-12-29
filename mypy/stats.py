@@ -86,8 +86,6 @@ class StatisticsVisitor(TraverserVisitor):
         elif self.inferred:
             for lvalue in o.lvalues:
                 lvalue_ref = lvalue
-                if isinstance(lvalue_ref, nodes.ParenExpr):
-                    lvalue = lvalue_ref.expr
                 if isinstance(lvalue, nodes.TupleExpr):
                     items = lvalue.items
                 elif isinstance(lvalue, nodes.ListExpr):
