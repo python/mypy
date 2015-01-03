@@ -1268,15 +1268,7 @@ class Parser:
 
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)
-        s = tok.string
-        v = 0
-        if len(s) > 2 and s[1] in 'xX':
-            v = int(s[2:], 16)
-        elif len(s) > 2 and s[1] in 'oO':
-            v = int(s[2:], 8)
-        else:
-            v = int(s)
-        node = IntExpr(v)
+        node = IntExpr(int(tok.string, 0))
         return node
 
     def parse_str_expr(self) -> Node:

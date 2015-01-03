@@ -394,8 +394,8 @@ class Lexer:
 
     # Regexps used by lex_number
 
-    # Decimal/hex/octal literal or integer complex literal
-    number_exp1 = re.compile('0[xXoO][0-9a-fA-F]+|[0-9]+')
+    # Decimal/hex/octal/binary literal or integer complex literal
+    number_exp1 = re.compile('0[xXoObB][0-9a-fA-F]+|[0-9]+')
     # Float literal, e.g. '1.23' or '12e+34' or '1.2j'
     number_exp2 = re.compile(
         r'[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
