@@ -46,6 +46,10 @@ class LexerSuite(Suite):
         self.assert_lex('0o0 0o127 0O1',
                         'IntLit(0o0) IntLit( 0o127) IntLit( 0O1) ...')
 
+    def test_bin_int_literals(self):
+        self.assert_lex('0b0 0b110 0B1',
+                        'IntLit(0b0) IntLit( 0b110) IntLit( 0B1) ...')
+
     def test_float_literals(self):
         self.assert_lex('1.2 .1 1.',
                         'FloatLit(1.2) FloatLit( .1) FloatLit( 1.) ...')
