@@ -218,7 +218,7 @@ this is correct for ``concat``, since ``concat`` actually returns a
 
 .. code-block:: python
 
-    >>> prin(type(ss))
+    >>> print(type(ss))
     <class 'str'>
 
 You can also use a ``typevar`` with ``values`` when defining a generic
