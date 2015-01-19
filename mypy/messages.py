@@ -698,6 +698,9 @@ class MessageBuilder:
         self.fail('"yield from" can\'t be applied to {}'.format(text), context)
         return AnyType()
 
+    def invalid_signature(self, func_type: Type, context: Context) -> None:
+        self.fail('Invalid signature "{}"'.format(func_type), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
