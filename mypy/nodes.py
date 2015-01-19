@@ -535,8 +535,7 @@ class AssignmentStmt(Node):
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
     that define new names, and assignments with explicit types (# type).
 
-    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr or
-    ParenExpr.
+    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
     """
 
     lvalues = Undefined(List[Node])
@@ -831,20 +830,6 @@ class ComplexExpr(Node):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
-
-
-class ParenExpr(Node):
-    """Parenthesised expression"""
-
-    expr = Undefined(Node)
-
-    def __init__(self, expr: Node) -> None:
-        self.expr = expr
-        self.literal = self.expr.literal
-        self.literal_hash = ('Paren', expr.literal_hash,)
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_paren_expr(self)
 
 
 class StarExpr(Node):

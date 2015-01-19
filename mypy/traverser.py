@@ -7,7 +7,7 @@ from mypy.nodes import (
     Block, MypyFile, VarDef, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, YieldStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, ParenExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
+    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
     FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromStmt, YieldFromExpr
@@ -142,9 +142,6 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
             if o.name[i] is not None:
                 o.name[i].accept(self)
         o.body.accept(self)
-
-    def visit_paren_expr(self, o: ParenExpr) -> T:
-        o.expr.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> T:
         o.expr.accept(self)

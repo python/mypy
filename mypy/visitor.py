@@ -142,9 +142,6 @@ class NodeVisitor(Generic[T]):
     def visit_ellipsis(self, o: 'mypy.nodes.EllipsisNode') -> T:
         pass
 
-    def visit_paren_expr(self, o: 'mypy.nodes.ParenExpr') -> T:
-        pass
-
     def visit_star_expr(self, o: 'mypy.nodes.StarExpr') -> T:
         pass
 

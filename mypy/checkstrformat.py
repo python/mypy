@@ -56,7 +56,6 @@ class StringFormatterChecker:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
-        replacements = self.exprchk.strip_parens(replacements)
         specifiers = self.parse_conversion_specifiers(str.value)
         has_mapping_keys = self.analyse_conversion_specifiers(specifiers, str)
         if has_mapping_keys == None:
@@ -132,7 +131,7 @@ class StringFormatterChecker:
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
                                        replacements: Node) -> None:
         dict_with_only_str_literal_keys = (isinstance(replacements, DictExpr) and
-                                          all(isinstance(self.exprchk.strip_parens(k), StrExpr)
+                                          all(isinstance(k, StrExpr)
                                               for k, v in cast(DictExpr, replacements).items))
         if dict_with_only_str_literal_keys:
             mapping = {} # type: Dict[str, Type]

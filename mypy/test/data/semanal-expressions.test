@@ -3,12 +3,11 @@
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    ParenExpr:1(
-      TupleExpr:1(
-        IntExpr(1)
-        StrExpr(x)
-        FloatExpr(1.1)
-        ComplexExpr(1.1j)))))
+    TupleExpr:1(
+      IntExpr(1)
+      StrExpr(x)
+      FloatExpr(1.1)
+      ComplexExpr(1.1j))))
 
 [case testMemberExpr]
 x = 1
@@ -159,12 +158,11 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(1))
   ExpressionStmt:2(
-    ParenExpr:2(
-      TupleExpr:2(
-        ListExpr:2()
-        ListExpr:2(
-          NameExpr(x [__main__.x])
-          NameExpr(y [__main__.y]))))))
+    TupleExpr:2(
+      ListExpr:2()
+      ListExpr:2(
+        NameExpr(x [__main__.x])
+        NameExpr(y [__main__.y])))))
 
 [case testDictLiterals]
 x = y = 1
@@ -192,15 +190,14 @@ MypyFile:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStmt:2(
-    ParenExpr:2(
-      ListComprehension:2(
-        GeneratorExpr:2(
-          OpExpr:2(
-            +
-            NameExpr(x [l])
-            IntExpr(1))
-          NameExpr(x* [l])
-          NameExpr(a [__main__.a]))))))
+    ListComprehension:2(
+      GeneratorExpr:2(
+        OpExpr:2(
+          +
+          NameExpr(x [l])
+          IntExpr(1))
+        NameExpr(x* [l])
+        NameExpr(a [__main__.a])))))
 
 [case testListComprehensionInFunction]
 def f(a) -> None:
@@ -246,15 +243,14 @@ MypyFile:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStmt:2(
-    ParenExpr:2(
-      SetComprehension:2(
-        GeneratorExpr:2(
-          OpExpr:2(
-            +
-            NameExpr(x [l])
-            IntExpr(1))
-          NameExpr(x* [l])
-          NameExpr(a [__main__.a]))))))
+    SetComprehension:2(
+      GeneratorExpr:2(
+        OpExpr:2(
+          +
+          NameExpr(x [l])
+          IntExpr(1))
+        NameExpr(x* [l])
+        NameExpr(a [__main__.a])))))
 
 [case testSetComprehensionWithCondition]
 a = 0
@@ -282,15 +278,14 @@ MypyFile:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStmt:2(
-    ParenExpr:2(
-      DictionaryComprehension:2(
+    DictionaryComprehension:2(
+      NameExpr(x [l])
+      OpExpr:2(
+        +
         NameExpr(x [l])
-        OpExpr:2(
-          +
-          NameExpr(x [l])
-          IntExpr(1))
-        NameExpr(x* [l])
-        NameExpr(a [__main__.a])))))
+        IntExpr(1))
+      NameExpr(x* [l])
+      NameExpr(a [__main__.a]))))
 
 [case testDictionaryComprehensionWithCondition]
 a = 0
@@ -339,10 +334,9 @@ MypyFile:1(
       NameExpr(x [l])
       TupleExpr:2(
         NameExpr(x* [l])
-        ParenExpr:2(
-          TupleExpr:2(
-            NameExpr(y* [l])
-            NameExpr(z* [l]))))
+        TupleExpr:2(
+          NameExpr(y* [l])
+          NameExpr(z* [l])))
       NameExpr(a [__main__.a]))))
 
 [case testLambda]

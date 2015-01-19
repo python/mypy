@@ -515,7 +515,6 @@ class A:
 o = Undefined # type: object
 [out]
 NameExpr(4) : Any
-ParenExpr(4) : Any
 NameExpr(5) : builtins.object
 NameExpr(6) : Any
 NameExpr(7) : Any
