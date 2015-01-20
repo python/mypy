@@ -478,7 +478,7 @@ class ExpressionChecker:
             if kind == nodes.ARG_POS and (not formal_to_actual[i] and
                                           not is_error):
                 # No actual for a mandatory positional formal.
-                self.msg.too_few_arguments(callee, context)
+                self.msg.too_few_arguments(callee, context, actual_names)
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED] and is_duplicate_mapping(
                     formal_to_actual[i], actual_kinds):

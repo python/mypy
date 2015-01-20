@@ -35,7 +35,7 @@ X = namedtuple('X', ['x', 'y'])
 x = X(x=1, y='x')
 x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
-x = X(y=1) # E: Too few arguments for "X"
+x = X(y=1) # E: Missing positional argument "x" in call to "X"
 
 [case testCreateNamedTupleAndUseAsTuple]
 from collections import namedtuple

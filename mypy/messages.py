@@ -406,17 +406,21 @@ class MessageBuilder:
         self.fail('Invalid index type {} for {}'.format(
             self.format(index_type), base_str), context)
 
-    def invalid_argument_count(self, callee: Callable, num_args: int,
-                               context: Context) -> None:
-        if num_args < len(callee.arg_types):
-            self.too_few_arguments(callee, context)
+    def too_few_arguments(self, callee: Callable, context: Context,
+                          argument_names: List[str]) -> None:
+        if (argument_names is not None and not all(k is None for k in argument_names)
+                and len(argument_names) >= 1):
+            diff = [k for k in callee.arg_names if k not in argument_names]
+            if len(diff) == 1:
+                msg = 'Missing positional argument'
+            else:
+                msg = 'Missing positional arguments'
+            if callee.name and diff:
+                msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
         else:
-            self.too_many_arguments(callee, context)
-
-    def too_few_arguments(self, callee: Callable, context: Context) -> None:
-        msg = 'Too few arguments'
-        if callee.name:
-            msg += ' for {}'.format(callee.name)
+            msg = 'Too few arguments'
+            if callee.name:
+                msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
     def too_many_arguments(self, callee: Callable, context: Context) -> None:
