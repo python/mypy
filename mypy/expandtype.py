@@ -64,14 +64,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types(t.args)
-        return Instance(t.type, args, t.line, t.repr)
+        return Instance(t.type, args, t.line)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
             inst = cast(Instance, repl)
             # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, inst.line, inst.repr, True)
+            return Instance(inst.type, inst.args, inst.line, True)
         else:
             return repl
 
@@ -83,7 +83,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                         t.fallback,
                         t.name,
                         t.variables,
-                        self.expand_bound_vars(t.bound_vars), t.line, t.repr)
+                        self.expand_bound_vars(t.bound_vars), t.line)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]
@@ -92,10 +92,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.expand_types(t.items), t.fallback, t.line, t.repr)
+        return TupleType(self.expand_types(t.items), t.fallback, t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.expand_types(t.items), t.line, t.repr)
+        return UnionType(self.expand_types(t.items), t.line)
 
     def expand_types(self, types: List[Type]) -> List[Type]:
         a = []  # type: List[Type]
@@ -121,7 +121,7 @@ def update_callable_implicit_bounds(
                     t.fallback,
                     t.name,
                     t.variables,
-                    arg_types, t.line, t.repr)
+                    arg_types, t.line)
 
 
 def expand_caller_var_args(arg_types: List[Type],

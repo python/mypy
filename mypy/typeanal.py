@@ -110,14 +110,14 @@ class TypeAnalyser(TypeVisitor[Type]):
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args),
                                  Instance(info, [], t.line),
-                                 t.line, t.repr)
+                                 t.line)
             else:
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
                 # checked only later, since we do not always know the
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
-                instance = Instance(info, self.anal_array(t.args), t.line, t.repr)
+                instance = Instance(info, self.anal_array(t.args), t.line)
                 if info.tuple_type is None:
                     return instance
                 else:
@@ -155,7 +155,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                        self.builtin_type('builtins.function'),
                        t.name,
                        self.anal_var_defs(t.variables),
-                       self.anal_bound_vars(t.bound_vars), t.line, t.repr)
+                       self.anal_bound_vars(t.bound_vars), t.line)
 
         return res
 
@@ -167,13 +167,13 @@ class TypeAnalyser(TypeVisitor[Type]):
         fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple')
         return TupleType(self.anal_array(t.items),
                          fallback,
-                         t.line, t.repr)
+                         t.line)
 
     def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line, t.repr)
+        return StarType(t.type.accept(self), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.anal_array(t.items), t.line, t.repr)
+        return UnionType(self.anal_array(t.items), t.line)
 
     def analyze_function_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
@@ -205,7 +205,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         for vd in var_defs:
             a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),
-                                vd.line, vd.repr))
+                                vd.line))
         return a
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:

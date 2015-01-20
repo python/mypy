@@ -13,11 +13,9 @@ class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
     line = 0
-    repr = Undefined(Any)
 
-    def __init__(self, line: int = -1, repr=None) -> None:
+    def __init__(self, line: int = -1) -> None:
         self.line = line
-        self.repr = repr
 
     def get_line(self) -> int:
         return self.line
@@ -37,16 +35,13 @@ class TypeVarDef(mypy.nodes.Context):
     values = Undefined(List[Type])
     upper_bound = Undefined(Type)
     line = 0
-    repr = Undefined(Any)
 
-    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type, line: int = -1,
-                 repr: Any = None) -> None:
+    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type, line: int = -1) -> None:
         self.name = name
         self.id = id
         self.values = values
         self.upper_bound = upper_bound
         self.line = line
-        self.repr = repr
 
     def get_line(self) -> int:
         return self.line
@@ -91,9 +86,8 @@ class TypeList(Type):
 
     items = Undefined(List[Type])
 
-    def __init__(self, items: List[Type], line: int = -1,
-                 repr: Any = None) -> None:
-        super().__init__(line, repr)
+    def __init__(self, items: List[Type], line: int = -1) -> None:
+        super().__init__(line)
         self.items = items
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -116,16 +110,15 @@ class Void(Type):
 
     source = ''   # May be None; function that generated this value
 
-    def __init__(self, source: str = None, line: int = -1,
-                 repr: Any = None) -> None:
+    def __init__(self, source: str = None, line: int = -1) -> None:
         self.source = source
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_void(self)
 
     def with_source(self, source: str) -> 'Void':
-        return Void(source, self.line, self.repr)
+        return Void(source, self.line)
 
 
 class NoneTyp(Type):
@@ -141,8 +134,8 @@ class NoneTyp(Type):
     to do anything with the return value.
     """
 
-    def __init__(self, line: int = -1, repr=None) -> None:
-        super().__init__(line, repr)
+    def __init__(self, line: int = -1) -> None:
+        super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
@@ -170,12 +163,11 @@ class Instance(Type):
     erased = False      # True if result of type variable substitution
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, repr: Any = None,
-                 erased: Any = False) -> None:
+                 line: int = -1, erased: Any = False) -> None:
         self.type = typ
         self.args = args
         self.erased = erased
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
@@ -261,7 +253,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: str = None, variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
-                 line: int = -1, repr: Any = None) -> None:
+                 line: int = -1) -> None:
         if variables is None:
             variables = []
         if not bound_vars:
@@ -277,7 +269,7 @@ class CallableType(FunctionLike):
         self.name = name
         self.variables = variables
         self.bound_vars = bound_vars
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.fullname() == 'builtins.type'
@@ -305,7 +297,7 @@ class CallableType(FunctionLike):
                         name,
                         self.variables,
                         self.bound_vars,
-                        self.line, self.repr)
+                        self.line)
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -338,7 +330,7 @@ class Overloaded(FunctionLike):
     def __init__(self, items: List[CallableType]) -> None:
         self._items = items
         self.fallback = items[0].fallback
-        super().__init__(items[0].line, None)
+        super().__init__(items[0].line)
 
     def items(self) -> List[CallableType]:
         return self._items
@@ -379,11 +371,10 @@ class TupleType(Type):
     items = Undefined(List[Type])
     fallback = Undefined(Instance)
 
-    def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
-                 repr: Any = None) -> None:
+    def __init__(self, items: List[Type], fallback: Instance, line: int = -1) -> None:
         self.items = items
         self.fallback = fallback
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def length(self) -> int:
         return len(self.items)
@@ -397,9 +388,9 @@ class StarType(Type):
 
     type = Undefined(Type)
 
-    def __init__(self, type: Type, line: int = -1, repr: Any = None) -> None:
+    def __init__(self, type: Type, line: int = -1) -> None:
         self.type = type
-        super().__init__(line, repr)
+        super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_star_type(self)
@@ -410,22 +401,21 @@ class UnionType(Type):
 
     items = Undefined(List[Type])
 
-    def __init__(self, items: List[Type], line: int = -1,
-                 repr: Any = None) -> None:
+    def __init__(self, items: List[Type], line: int = -1) -> None:
         self.items = items
-        super().__init__(line, repr)
+        super().__init__(line)
 
     @staticmethod
-    def make_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
+    def make_union(items: List[Type], line: int = -1) -> Type:
         if len(items) > 1:
-            return UnionType(items, line, repr)
+            return UnionType(items, line)
         elif len(items) == 1:
             return items[0]
         else:
             return Void()
 
     @staticmethod
-    def make_simplified_union(items: List[Type], line: int = -1, repr: Any = None) -> Type:
+    def make_simplified_union(items: List[Type], line: int = -1) -> Type:
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -566,7 +556,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, self.translate_types(t.args), t.line, t.repr)
+        return Instance(t.type, self.translate_types(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
@@ -580,18 +570,18 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.name,
                         self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
-                        t.line, t.repr)
+                        t.line)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
                          cast(Any, t.fallback.accept(self)),
-                         t.line, t.repr)
+                         t.line)
 
     def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line, t.repr)
+        return StarType(t.type.accept(self), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.translate_types(t.items), t.line, t.repr)
+        return UnionType(self.translate_types(t.items), t.line)
 
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
@@ -860,7 +850,7 @@ def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
                     t.name,
                     t.variables,
                     t.bound_vars,
-                    t.line, None)
+                    t.line)
 
 
 def is_named_instance(t: Type, fullname: str) -> bool:

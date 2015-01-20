@@ -252,7 +252,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
                         t.name,
                         vars + t.variables,
                         t.bound_vars,
-                        t.line, None)
+                        t.line)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod, builtin_type))
                            for i in t.items()])

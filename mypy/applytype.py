@@ -61,4 +61,4 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     callable.name,
                     remaining_tvars,
                     callable.bound_vars + bound_vars,
-                    callable.line, callable.repr)
+                    callable.line)

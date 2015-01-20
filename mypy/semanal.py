@@ -2033,7 +2033,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
         # We can detect implicit self type by it having no representation.
-        if not sig.arg_types[0].repr:
+        if True: # TODO(Sander)
             return replace_leading_arg_type(sig, new)
         else:
             return sig

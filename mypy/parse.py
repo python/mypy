@@ -582,7 +582,7 @@ class Parser:
         if ret_type is None:
             ret_type = AnyType()
         return CallableType(arg_types, kinds, names, ret_type, None, None,
-                        None, [], line, None)
+                        None, [], line)
 
     # Parsing statements
 
