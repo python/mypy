@@ -5,6 +5,7 @@ import collections
 import inspect
 import sys
 import re
+import functools
 
 
 __all__ = [
@@ -22,7 +23,6 @@ __all__ = [
     'Match',
     'NamedTuple',
     'Pattern',
-    'Protocol',
     'Set',
     'Tuple',
     'Undefined',
@@ -91,7 +91,7 @@ class AbstractGenericMeta(ABCMeta):
         cls = super().__new__(mcls, name, bases, namespace)
         # 'Protocol' must be an explicit base class in order for a class to
         # be a protocol.
-        cls._is_protocol = name == 'Protocol' or Protocol in bases
+        cls._is_protocol = name == '_Protocol' or _Protocol in bases
         return cls
 
     def __getitem__(self, args):
@@ -99,8 +99,8 @@ class AbstractGenericMeta(ABCMeta):
         return self
 
 
-class Protocol(metaclass=AbstractGenericMeta):
-    """Base class for protocol classes."""
+class _Protocol(metaclass=AbstractGenericMeta):
+    """Internal base class for protocol classes (structural isinstance checks)."""
 
     @classmethod
     def __subclasshook__(cls, c):
@@ -108,7 +108,7 @@ class Protocol(metaclass=AbstractGenericMeta):
             # No structural checks since this isn't a protocol.
             return NotImplemented
 
-        if cls is Protocol:
+        if cls is _Protocol:
             # Every class is a subclass of the empty protocol.
             return True
 
@@ -125,7 +125,7 @@ class Protocol(metaclass=AbstractGenericMeta):
         # Get all Protocol base classes.
         protocol_bases = []
         for c in cls.__mro__:
-            if getattr(c, '_is_protocol', False) and c.__name__ != 'Protocol':
+            if getattr(c, '_is_protocol', False) and c.__name__ != '_Protocol':
                 protocol_bases.append(c)
 
         # Get attributes included in protocol.
@@ -226,6 +226,7 @@ def overload(func):
     if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
         orig_func = locals[func.__name__]
 
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             ret, ok = orig_func.dispatch(*args, **kwargs)
             if ok:
@@ -234,7 +235,6 @@ def overload(func):
         wrapper.isoverload = True
         wrapper.dispatch = make_dispatcher(func, orig_func.dispatch)
         wrapper.next = orig_func
-        wrapper.__name__ = func.__name__
         if hasattr(func, '__isabstractmethod__'):
             # Note that we can't reliably check that abstractmethod is
             # used consistently across overload variants, so we let a
@@ -370,47 +370,47 @@ KT = typevar('KT')
 VT = typevar('VT')
 
 
-class SupportsInt(Protocol):
+class SupportsInt(_Protocol):
     @abstractmethod
     def __int__(self) -> int: pass
 
 
-class SupportsFloat(Protocol):
+class SupportsFloat(_Protocol):
     @abstractmethod
     def __float__(self) -> float: pass
 
 
-class SupportsAbs(Protocol[T]):
+class SupportsAbs(_Protocol[T]):
     @abstractmethod
     def __abs__(self) -> T: pass
 
 
-class SupportsRound(Protocol[T]):
+class SupportsRound(_Protocol[T]):
     @abstractmethod
     def __round__(self, ndigits: int = 0) -> T: pass
 
 
-class Reversible(Protocol[T]):
+class Reversible(_Protocol[T]):
     @abstractmethod
     def __reversed__(self) -> 'Iterator[T]': pass
 
 
-class Sized(Protocol):
+class Sized(_Protocol):
     @abstractmethod
     def __len__(self) -> int: pass
 
 
-class Container(Protocol[T]):
+class Container(_Protocol[T]):
     @abstractmethod
     def __contains__(self, x) -> bool: pass
 
 
-class Iterable(Protocol[T]):
+class Iterable(_Protocol[T]):
     @abstractmethod
     def __iter__(self) -> 'Iterator[T]': pass
 
 
-class Iterator(Iterable[T], Protocol[T]):
+class Iterator(Iterable[T], _Protocol[T]):
     @abstractmethod
     def __next__(self) -> T: pass
 
