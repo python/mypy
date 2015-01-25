@@ -708,13 +708,13 @@ a = [] # type: Any
 ListExpr(2) : builtins.list[Any]
 
 [case testHigherOrderFunction]
-from typing import typevar, Function, List
+from typing import typevar, Callable, List
 t = typevar('t')
 s = typevar('s')
 map(
     f,
     [A()])
-def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
+def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
@@ -733,8 +733,8 @@ NameExpr(6) : def () -> A
 
 
 [case testLambdaWithTypeInferredFromContext]
-from typing import Function, Undefined
-f = lambda x: x.a # type: Function[[B], A]
+from typing import Callable, Undefined
+f = lambda x: x.a # type: Callable[[B], A]
 class A: pass
 class B:
   a = Undefined # type: A
@@ -761,8 +761,8 @@ FuncExpr(3) : def () -> builtins.list[builtins.int]
 NameExpr(3) : def () -> builtins.list[builtins.int]
 
 [case testLambdaWithInferredType2]
-from typing import List, Function, Undefined
-f = lambda x: [] # type: Function[[B], List[A]]
+from typing import List, Callable, Undefined
+f = lambda x: [] # type: Callable[[B], List[A]]
 class A: pass
 class B:
   a = Undefined # type: A
@@ -772,13 +772,13 @@ FuncExpr(2) : def (B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction]
-from typing import typevar, Function, Undefined, List
+from typing import typevar, Callable, Undefined, List
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
 map(
   lambda x: f(x), l)
-def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
+def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
@@ -794,13 +794,13 @@ NameExpr(6) : A
 
 [case testLambdaAndHigherOrderFunction2]
 ## FuncExpr|NameExpr|ListExpr
-from typing import typevar, Undefined, List, Function
+from typing import typevar, Undefined, List, Callable
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
 map(
   lambda x: [f(x)], l)
-def map(f: Function[[t], List[s]], a: List[t]) -> List[s]: pass
+def map(f: Callable[[t], List[s]], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
@@ -814,14 +814,14 @@ NameExpr(7) : builtins.list[A]
 NameExpr(7) : A
 
 [case testLambdaInListAndHigherOrderFunction]
-from typing import typevar, Undefined, Function, List
+from typing import typevar, Undefined, Callable, List
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
 map(
   [lambda x: x],
   l)
-def map(f: List[Function[[t], s]], a: List[t]) -> List[s]: pass
+def map(f: List[Callable[[t], s]], a: List[t]) -> List[s]: pass
 class A: pass
 [builtins fixtures/list.py]
 [out]
@@ -835,14 +835,14 @@ NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction3]
-from typing import typevar, Undefined, Function, List
+from typing import typevar, Undefined, Callable, List
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
 map(
   lambda x: x.b,
   l)
-def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
+def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A:
   b = Undefined # type: B
 class B: pass
@@ -856,14 +856,14 @@ NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunctionAndKeywordArgs]
-from typing import typevar, Function, List, Undefined
+from typing import typevar, Callable, List, Undefined
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
 map(
   a=l,
   f=lambda x: x.b)
-def map(f: Function[[t], s], a: List[t]) -> List[s]: pass
+def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A:
   b = Undefined # type: B
 class B: pass
@@ -1083,7 +1083,7 @@ A() + Any(1)
 OpExpr(5) : Any
 
 
--- Function overloading
+-- Callable overloading
 -- --------------------
 
 
@@ -1120,7 +1120,7 @@ CallExpr(12) : B
 
 
 [case testOverloadedErasedType]
-from typing import Function
+from typing import Callable
 from typing import List
 from typing import overload
 from typing import typevar
@@ -1130,7 +1130,7 @@ V = typevar("V")
 
 def fun(s: int) -> int: pass
 
-def m(fun: Function[[T], V], iter: List[T]) -> None: pass
+def m(fun: Callable[[T], V], iter: List[T]) -> None: pass
 
 nums = [1] # type: List[int]
 m(fun,

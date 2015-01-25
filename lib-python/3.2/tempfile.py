@@ -37,7 +37,7 @@ import errno as _errno
 from random import Random as _Random
 
 from typing import (
-    Any as _Any, Function as _Function, Iterator as _Iterator,
+    Any as _Any, Callable as _Callable, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
     Iterable as _Iterable, IO as _IO, ducktype as _ducktype,
     Traceback as _Traceback
@@ -62,7 +62,7 @@ else:
 
 try:
     import _thread
-    _allocate_lock = _thread.allocate_lock # type: _Function[[], _Any]
+    _allocate_lock = _thread.allocate_lock # type: _Callable[[], _Any]
 except ImportError:
     import _dummy_thread
     _allocate_lock = _dummy_thread.allocate_lock
@@ -89,7 +89,7 @@ template = "tmp"
 _once_lock = _allocate_lock()
 
 if hasattr(_os, "lstat"):
-    _stat = _os.lstat # type: _Function[[str], object]
+    _stat = _os.lstat # type: _Callable[[str], object]
 elif hasattr(_os, "stat"):
     _stat = _os.stat
 else:

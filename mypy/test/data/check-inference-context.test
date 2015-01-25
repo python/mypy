@@ -564,8 +564,8 @@ class C(Generic[s, t]): pass
 
 
 [case testInferLambdaArgumentTypeUsingContext]
-from typing import Undefined, Function
-f = Undefined # type: Function[[B], A]
+from typing import Undefined, Callable
+f = Undefined # type: Callable[[B], A]
 f = lambda x: x.o
 f = lambda x: x.x # E: "B" has no attribute "x"
 class A: pass
@@ -573,8 +573,8 @@ class B:
   o = Undefined # type: A
 
 [case testInferLambdaReturnTypeUsingContext]
-from typing import Undefined, List, Function
-f = Undefined # type: Function[[], List[A]]
+from typing import Undefined, List, Callable
+f = Undefined # type: Callable[[], List[A]]
 f = lambda: []
 f = lambda: [B()]  # E: List item 1 has incompatible type "B"
 class A: pass
@@ -582,23 +582,23 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testInferLambdaAsGenericFunctionArgument]
-from typing import typevar, List, Any, Function, Undefined
+from typing import typevar, List, Any, Callable, Undefined
 t = typevar('t')
 class A:
   x = Undefined # type: A
-def f(a: List[t], fn: Function[[t], Any]) -> None: pass
+def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
 f(List[A](), lambda a: a.x)
 [builtins fixtures/list.py]
 
 [case testInvalidContextForLambda]
-from typing import Function
-f = lambda x: A() # type: Function[[], A]
-f2 = lambda: A() # type: Function[[A], A]
+from typing import Callable
+f = lambda x: A() # type: Callable[[], A]
+f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
 main, line 2: Cannot infer type of lambda
 main, line 3: Cannot infer type of lambda
-main, line 3: Incompatible types in assignment (expression has type Function[[], A], variable has type Function[[A], A])
+main, line 3: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
 
 
 -- Overloads + generic functions
@@ -606,10 +606,10 @@ main, line 3: Incompatible types in assignment (expression has type Function[[],
 
 
 [case testMapWithOverloadedFunc]
-from typing import typevar, Function, List, overload, Any
+from typing import typevar, Callable, List, overload, Any
 t = typevar('t')
 s = typevar('s')
-def map(f: Function[[t], s], seq: List[t]) -> List[s]: pass
+def map(f: Callable[[t], s], seq: List[t]) -> List[s]: pass
 
 @overload
 def g(o: object) -> 'B': pass
@@ -675,12 +675,12 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testLambdaInListAndHigherOrderFunction]
-from typing import typevar, Function, List
+from typing import typevar, Callable, List
 t = typevar('t')
 s = typevar('s')
 map(
   [lambda x: x], [])
-def map(f: List[Function[[t], s]], a: List[t]) -> List[s]: pass
+def map(f: List[Callable[[t], s]], a: List[t]) -> List[s]: pass
 class A: pass
 [builtins fixtures/list.py]
 [out]

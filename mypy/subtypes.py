@@ -2,7 +2,7 @@ from typing import cast, List, Dict
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType, TypeList,
+    Instance, TypeVar, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
     is_named_instance
 )
 import mypy.applytype
@@ -100,9 +100,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return is_named_instance(self.right, 'builtins.object')
 
-    def visit_callable(self, left: Callable) -> bool:
+    def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
-        if isinstance(right, Callable):
+        if isinstance(right, CallableType):
             return is_callable_subtype(left, right)
         elif isinstance(right, Overloaded):
             return all(is_subtype(left, item) for item in right.items())
@@ -142,7 +142,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if is_named_instance(right, 'builtins.object'):
             return True
-        elif isinstance(right, Callable) or is_named_instance(
+        elif isinstance(right, CallableType) or is_named_instance(
                 right, 'builtins.type'):
             for item in left.items():
                 if is_subtype(item, right):
@@ -162,7 +162,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
 
-def is_callable_subtype(left: Callable, right: Callable, ignore_return: bool = False) -> bool:
+def is_callable_subtype(left: CallableType, right: CallableType, ignore_return: bool = False) -> bool:
     """Is left a subtype of right?"""
     # TODO: Support named arguments, **args, etc.
     # Non-type cannot be a subtype of type.
@@ -196,7 +196,7 @@ def is_callable_subtype(left: Callable, right: Callable, ignore_return: bool = F
     return True
 
 
-def is_var_arg_callable_subtype_helper(left: Callable, right: Callable) -> bool:
+def is_var_arg_callable_subtype_helper(left: CallableType, right: CallableType) -> bool:
     """Is left a subtype of right, assuming left has *args?
 
     See also is_callable_subtype for additional assumptions we can make.
@@ -222,10 +222,10 @@ def is_var_arg_callable_subtype_helper(left: Callable, right: Callable) -> bool:
         return is_subtype(right.arg_types[-1], left.arg_types[-1])
 
 
-def unify_generic_callable(type: Callable, target: Callable) -> Callable:
+def unify_generic_callable(type: CallableType, target: CallableType) -> CallableType:
     """Try to unify a generic callable type with another callable type.
 
-    Return unified Callable if successful; otherwise, return None.
+    Return unified CallableType if successful; otherwise, return None.
     """
     constraints = []  # type: List[mypy.constraints.Constraint]
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
@@ -238,9 +238,9 @@ def unify_generic_callable(type: Callable, target: Callable) -> Callable:
         return None
     msg = messages.temp_message_builder()
     applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
-    if msg.is_errors() or not isinstance(applied, Callable):
+    if msg.is_errors() or not isinstance(applied, CallableType):
         return None
-    return cast(Callable, applied)
+    return cast(CallableType, applied)
 
 
 def restrict_subtype_away(t: Type, s: Type) -> Type:
@@ -289,7 +289,7 @@ def is_more_precise(t: Type, s: Type) -> bool:
     if isinstance(s, AnyType):
         return True
     if isinstance(s, Instance):
-        if isinstance(t, Callable):
+        if isinstance(t, CallableType):
             # Fall back to subclass check and ignore other properties of the callable.
             return is_proper_subtype(t.fallback, s)
         return is_proper_subtype(t, s)

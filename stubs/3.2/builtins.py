@@ -2,7 +2,7 @@
 
 from typing import (
     Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
-    Sequence, Mapping, Tuple, List, Any, Dict, Function, Generic, Set,
+    Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, builtinclass, ducktype, Union
 )
@@ -456,7 +456,7 @@ class list(Sequence[_T], Reversible[_T], AbstractGeneric[_T]):
     def insert(self, index: int, object: _T) -> None: pass
     def remove(self, object: _T) -> None: pass
     def reverse(self) -> None: pass
-    def sort(self, *, key: Function[[_T], Any] = None, reverse: bool = False) -> None: pass
+    def sort(self, *, key: Callable[[_T], Any] = None, reverse: bool = False) -> None: pass
 
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[_T]: pass
@@ -633,7 +633,7 @@ _N = typevar('_N', values=(int, float))
 def divmod(a: _N, b: _N) -> Tuple[_N, _N]: pass
 def eval(source: str, globals: Dict[str, Any] = None,
          locals: Mapping[str, Any] = None) -> Any: pass  # TODO code object as source
-def filter(function: Function[[_T], Any], iterable: Iterable[_T]) -> Iterator[_T]: pass
+def filter(function: Callable[[_T], Any], iterable: Iterable[_T]) -> Iterator[_T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
 def getattr(o: Any, name: str, default: Any = None) -> Any: pass
 def globals() -> Dict[str, Any]: pass
@@ -645,7 +645,7 @@ def input(prompt: str = None) -> str: pass
 @overload
 def iter(iterable: Iterable[_T]) -> Iterator[_T]: pass
 @overload
-def iter(function: Function[[], _T], sentinel: _T) -> Iterator[_T]: pass
+def iter(function: Callable[[], _T], sentinel: _T) -> Iterator[_T]: pass
 def isinstance(o: object, t: Union[type, tuple]) -> bool: pass
 def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO support this
@@ -656,9 +656,9 @@ def len(o: Sized) -> int: pass
 def len(o: tuple) -> int: pass
 def locals() -> Dict[str, Any]: pass
 @overload
-def map(func: Function[[_T1], _S], iter1: Iterable[_T1]) -> Iterator[_S]: pass
+def map(func: Callable[[_T1], _S], iter1: Iterable[_T1]) -> Iterator[_S]: pass
 @overload
-def map(func: Function[[_T1, _T2], _S], iter1: Iterable[_T1],
+def map(func: Callable[[_T1, _T2], _S], iter1: Iterable[_T1],
         iter2: Iterable[_T2]) -> Iterator[_S]: pass  # TODO more than two iterables
 @overload
 def max(iterable: Iterable[_T]) -> _T: pass  # TODO keyword argument key
@@ -700,7 +700,7 @@ def round(number: SupportsRound[_T]) -> _T: pass
 @overload
 def round(number: SupportsRound[_T], ndigits: int) -> _T: pass
 def setattr(object: Any, name: str, value: Any) -> None: pass
-def sorted(iterable: Iterable[_T], *, key: Function[[_T], Any] = None,
+def sorted(iterable: Iterable[_T], *, key: Callable[[_T], Any] = None,
            reverse: bool = False) -> List[_T]: pass
 def sum(iterable: Iterable[_T], start: _T = None) -> _T: pass
 @overload

@@ -13,7 +13,7 @@ typevar = object()
 Generic = object()
 AbstractGeneric = object()
 Tuple = object()
-Function = object()
+Callable = object()
 builtinclass = object()
 ducktype = object()
 disjointclass = object()
@@ -291,12 +291,12 @@ class Pattern(Generic[AnyStr]):
     def sub(self, repl: AnyStr, string: AnyStr,
             count: int = 0) -> AnyStr: pass
     @overload
-    def sub(self, repl: Function[[Match[AnyStr]], AnyStr], string: AnyStr,
+    def sub(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr,
             count: int = 0) -> AnyStr: pass
 
     @overload
     def subn(self, repl: AnyStr, string: AnyStr,
              count: int = 0) -> Tuple[AnyStr, int]: pass
     @overload
-    def subn(self, repl: Function[[Match[AnyStr]], AnyStr], string: AnyStr,
+    def subn(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr,
              count: int = 0) -> Tuple[AnyStr, int]: pass

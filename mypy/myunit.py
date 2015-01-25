@@ -3,7 +3,7 @@ import re
 import time
 import traceback
 
-from typing import List, Tuple, Any, Function, overload, Undefined
+from typing import List, Tuple, Any, Callable, overload, Undefined
 
 
 # TODO remove global state
@@ -87,7 +87,7 @@ def fail() -> None:
 
 class TestCase:
     def __init__(self, name: str, suite: 'Suite' = None,
-                 func: Function[[], None] = None) -> None:
+                 func: Callable[[], None] = None) -> None:
         self.func = func
         self.name = name
         self.suite = suite
@@ -132,7 +132,7 @@ class Suite:
         self._test_cases.append(test)
 
     @overload
-    def add_test(self, test: Tuple[str, Function[[], None]]) -> None:
+    def add_test(self, test: Tuple[str, Callable[[], None]]) -> None:
         self._test_cases.append(test)
 
     @overload

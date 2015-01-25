@@ -1,4 +1,4 @@
-from typing import Any, Iterable, typevar, Set, Dict, List, TextIO, Union, Tuple, Generic, Function
+from typing import Any, Iterable, typevar, Set, Dict, List, TextIO, Union, Tuple, Generic, Callable
 from asyncio.events import AbstractEventLoop
 from asyncio.futures import Future
 # __all__ = ['iscoroutinefunction', 'iscoroutine',

@@ -9,7 +9,7 @@
 
 from typing import (
     typevar, Iterable, AbstractGeneric, Iterator, Dict, Generic, overload,
-    Mapping, List, Tuple, Undefined, Function, Set, Sequence, Sized
+    Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized
 )
 
 _T = typevar('_T')
@@ -80,7 +80,7 @@ class OrderedDict(Dict[_KT, _VT], Generic[_KT, _VT]):
 
 
 class defaultdict(Dict[_KT, _VT], Generic[_KT, _VT]):
-    default_factory = Undefined(Function[[], _VT])
+    default_factory = Undefined(Callable[[], _VT])
 
     @overload
     def __init__(self) -> None: pass
@@ -89,12 +89,12 @@ class defaultdict(Dict[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self, iterable: Iterable[Tuple[_KT, _VT]]) -> None: pass
     @overload
-    def __init__(self, default_factory: Function[[], _VT]) -> None: pass
+    def __init__(self, default_factory: Callable[[], _VT]) -> None: pass
     @overload
-    def __init__(self, default_factory: Function[[], _VT],
+    def __init__(self, default_factory: Callable[[], _VT],
                  map: Mapping[_KT, _VT]) -> None: pass
     @overload
-    def __init__(self, default_factory: Function[[], _VT],
+    def __init__(self, default_factory: Callable[[], _VT],
                  iterable: Iterable[Tuple[_KT, _VT]]) -> None: pass
     # TODO __init__ keyword args
 

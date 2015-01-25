@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/subprocess.html
 
-from typing import Sequence, Any, Mapping, Undefined, Function, Tuple, IO
+from typing import Sequence, Any, Mapping, Undefined, Callable, Tuple, IO
 
 # TODO force keyword arguments
 # TODO more keyword arguments
@@ -40,7 +40,7 @@ class Popen:
                   stdin: Any = None,
                   stdout: Any = None,
                   stderr: Any = None,
-                  preexec_fn: Function[[], Any] = None,
+                  preexec_fn: Callable[[], Any] = None,
                   close_fds: bool = True,
                   shell: bool = False,
                   cwd: str = None,

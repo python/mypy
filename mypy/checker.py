@@ -2,7 +2,7 @@
 
 import itertools
 
-from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar, Union
+from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Callable, typevar, Union
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -23,7 +23,7 @@ from mypy.nodes import (
 from mypy.nodes import function_type, method_type
 from mypy import nodes
 from mypy.types import (
-    Type, AnyType, Callable, Void, FunctionLike, Overloaded, TupleType,
+    Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type, UnionType
 )
 from mypy.sametypes import is_same_type
@@ -445,7 +445,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.incompatible_conditional_function_def(defn)
 
     def check_func_item(self, defn: FuncItem,
-                        type_override: Callable = None,
+                        type_override: CallableType = None,
                         name: str = None) -> Type:
         """Type check a function.
 
@@ -466,7 +466,7 @@ class TypeChecker(NodeVisitor[Type]):
         typ = self.function_type(defn)
         if type_override:
             typ = type_override
-        if isinstance(typ, Callable):
+        if isinstance(typ, CallableType):
             self.check_func_def(defn, typ, name)
         else:
             raise RuntimeError('Not supported')
@@ -477,7 +477,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.dynamic_funcs.pop()
         self.function_stack.pop()
 
-    def check_func_def(self, defn: FuncItem, typ: Callable, name: str) -> None:
+    def check_func_def(self, defn: FuncItem, typ: CallableType, name: str) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         for item, typ in self.expand_typevars(defn, typ):
@@ -541,7 +541,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.leave()
             self.binder = old_binder
 
-    def check_reverse_op_method(self, defn: FuncItem, typ: Callable,
+    def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
                                 method: str) -> None:
         """Check a reverse operator method such as __radd__."""
 
@@ -609,7 +609,7 @@ class TypeChecker(NodeVisitor[Type]):
                 defn)
 
     def check_overlapping_op_methods(self,
-                                     reverse_type: Callable,
+                                     reverse_type: CallableType,
                                      reverse_name: str,
                                      reverse_class: TypeInfo,
                                      forward_type: Type,
@@ -645,7 +645,7 @@ class TypeChecker(NodeVisitor[Type]):
         # of x in __radd__ would not be A, the methods could be
         # non-overlapping.
 
-        if isinstance(forward_type, Callable):
+        if isinstance(forward_type, CallableType):
             # TODO check argument kinds
             if len(forward_type.arg_types) < 1:
                 # Not a valid operator method -- can't succeed anyway.
@@ -655,7 +655,7 @@ class TypeChecker(NodeVisitor[Type]):
             # operator methods. The first argument is the left operand and the
             # second operand is the right argument -- we switch the order of
             # the arguments of the reverse method.
-            forward_tweaked = Callable([forward_base,
+            forward_tweaked = CallableType([forward_base,
                                         forward_type.arg_types[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
@@ -663,7 +663,7 @@ class TypeChecker(NodeVisitor[Type]):
                                        forward_type.fallback,
                                        name=forward_type.name)
             reverse_args = reverse_type.arg_types
-            reverse_tweaked = Callable([reverse_args[1], reverse_args[0]],
+            reverse_tweaked = CallableType([reverse_args[1], reverse_args[0]],
                                        [nodes.ARG_POS] * 2,
                                        [None] * 2,
                                        reverse_type.ret_type,
@@ -682,7 +682,7 @@ class TypeChecker(NodeVisitor[Type]):
                     item, forward_name, forward_base, context)
         else:
             # TODO what about this?
-            assert False, 'Forward operator method type is not Callable'
+            assert False, 'Forward operator method type is not CallableType'
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -709,8 +709,8 @@ class TypeChecker(NodeVisitor[Type]):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def check_getattr_method(self, typ: Callable, context: Context) -> None:
-        method_type = Callable([AnyType(), self.named_type('builtins.str')],
+    def check_getattr_method(self, typ: CallableType, context: Context) -> None:
+        method_type = CallableType([AnyType(), self.named_type('builtins.str')],
                                [nodes.ARG_POS, nodes.ARG_POS],
                                [None],
                                AnyType(),
@@ -719,7 +719,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.msg.invalid_signature(typ, context)
 
     def expand_typevars(self, defn: FuncItem,
-                        typ: Callable) -> List[Tuple[FuncItem, Callable]]:
+                        typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
         subst = List[List[Tuple[int, Type]]]()
         tvars = typ.variables or []
@@ -732,10 +732,10 @@ class TypeChecker(NodeVisitor[Type]):
                 subst.append([(tvar.id, value)
                               for value in tvar.values])
         if subst:
-            result = List[Tuple[FuncItem, Callable]]()
+            result = List[Tuple[FuncItem, CallableType]]()
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
-                expanded = cast(Callable, expand_type(typ, mapping))
+                expanded = cast(CallableType, expand_type(typ, mapping))
                 result.append((expand_func(defn, mapping), expanded))
             return result
         else:
@@ -811,10 +811,10 @@ class TypeChecker(NodeVisitor[Type]):
         """
         if (isinstance(override, Overloaded) or
                 isinstance(original, Overloaded) or
-                len(cast(Callable, override).arg_types) !=
-                len(cast(Callable, original).arg_types) or
-                cast(Callable, override).min_args !=
-                cast(Callable, original).min_args):
+                len(cast(CallableType, override).arg_types) !=
+                len(cast(CallableType, original).arg_types) or
+                cast(CallableType, override).min_args !=
+                cast(CallableType, original).min_args):
             # Use boolean variable to clarify code.
             fail = False
             if not is_subtype(override, original):
@@ -834,8 +834,8 @@ class TypeChecker(NodeVisitor[Type]):
             # signatures having the same number of arguments and no
             # overloads.
 
-            coverride = cast(Callable, override)
-            coriginal = cast(Callable, original)
+            coverride = cast(CallableType, override)
+            coriginal = cast(CallableType, original)
 
             for i in range(len(coverride.arg_types)):
                 if not is_subtype(coriginal.arg_types[i],
@@ -2056,8 +2056,8 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
     TODO If argument types vary covariantly, the return type may vary
          covariantly as well.
     """
-    if isinstance(signature, Callable):
-        if isinstance(other, Callable):
+    if isinstance(signature, CallableType):
+        if isinstance(other, CallableType):
             # TODO varargs
             # TODO keyword args
             # TODO erasure
@@ -2093,8 +2093,8 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     # TODO should an overload with additional items be allowed to be more
     #      general than one with fewer items (or just one item)?
     # TODO check argument kinds
-    if isinstance(t, Callable):
-        if isinstance(s, Callable):
+    if isinstance(t, CallableType):
+        if isinstance(s, CallableType):
             return all(is_proper_subtype(args, argt)
                        for argt, args in zip(t.arg_types, s.arg_types))
     elif isinstance(t, FunctionLike):
@@ -2105,13 +2105,13 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     return False
 
 
-def is_same_arg_prefix(t: Callable, s: Callable) -> bool:
+def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
     # TODO check argument kinds
     return all(is_same_type(argt, args)
                for argt, args in zip(t.arg_types, s.arg_types))
 
 
-def is_more_precise_signature(t: Callable, s: Callable) -> bool:
+def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
     """Is t more precise than s?
 
     A signature t is more precise than s if all argument types and the return

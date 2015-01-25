@@ -9,7 +9,7 @@ from typing import Any, Dict, List, cast, Tuple
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVar,
-    TypeQuery, ANY_TYPE_STRATEGY, Callable
+    TypeQuery, ANY_TYPE_STRATEGY, CallableType
 )
 from mypy import nodes
 from mypy.nodes import (
@@ -56,7 +56,7 @@ class StatisticsVisitor(TraverserVisitor):
                 self.visit_func_def(cast(FuncDef, defn))
         else:
             if o.type:
-                sig = cast(Callable, o.type)
+                sig = cast(CallableType, o.type)
                 arg_types = sig.arg_types
                 if (sig.arg_names and sig.arg_names[0] == 'self' and
                         not self.inferred):
@@ -239,7 +239,7 @@ def is_imprecise2(t: Type) -> bool:
 
 
 class HasAnyQuery2(HasAnyQuery):
-    def visit_callable(self, t: Callable) -> bool:
+    def visit_callable_type(self, t: CallableType) -> bool:
         # We don't want to flag references to functions with some Any
         # argument types (etc.) since they generally don't mean trouble.
         return False

@@ -1,9 +1,9 @@
 """Semantic analysis of types"""
 
-from typing import Undefined, Function, cast, List, Tuple, Dict, Any, Union
+from typing import Undefined, Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
-    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, Callable,
+    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
 from mypy.typerepr import TypeVarRepr
@@ -15,7 +15,7 @@ from mypy.sametypes import is_same_type
 from mypy import nodes
 
 
-def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
+def analyse_name(lookup: Callable[[str, Context], SymbolTableNode],
                  name: str, ctx: Context) -> Any:
     """Convert a name into the constructor for the associated Type"""
     if name is None:
@@ -41,7 +41,7 @@ def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
         return UnionType
 
 
-def analyse_node(lookup: Function[[str, Context], SymbolTableNode],
+def analyse_node(lookup: Callable[[str, Context], SymbolTableNode],
                  node: Node, ctx: Context) -> Type:
     if isinstance(node, IndexExpr):
         if isinstance(node.base, NameExpr):
@@ -65,10 +65,10 @@ class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
     def __init__(self,
-                 lookup_func: Function[[str, Context], SymbolTableNode],
-                 lookup_fqn_func: Function[[str], SymbolTableNode],
+                 lookup_func: Callable[[str, Context], SymbolTableNode],
+                 lookup_fqn_func: Callable[[str], SymbolTableNode],
                  stored_vars: Dict[Node, Type],
-                 fail_func: Function[[str, Context], None]) -> None:
+                 fail_func: Callable[[str, Context], None]) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
@@ -97,7 +97,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                  self.builtin_type('builtins.tuple'))
             elif sym.node.fullname() == 'typing.Union':
                 return UnionType(self.anal_array(t.args))
-            elif sym.node.fullname() == 'typing.Function':
+            elif sym.node.fullname() == 'typing.Callable':
                 return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
@@ -149,8 +149,8 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVar) -> Type:
         raise RuntimeError('TypeVar is already analysed')
 
-    def visit_callable(self, t: Callable) -> Type:
-        res = Callable(self.anal_array(t.arg_types),
+    def visit_callable_type(self, t: CallableType) -> Type:
+        res = CallableType(self.anal_array(t.arg_types),
                        t.arg_kinds,
                        t.arg_names,
                        t.ret_type.accept(self),
@@ -184,7 +184,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             self.fail('Invalid function type', t)
             return AnyType()
         args = (cast(TypeList, t.args[0])).items
-        return Callable(self.anal_array(args),
+        return CallableType(self.anal_array(args),
                         [nodes.ARG_POS] * len(args), [None] * len(args),
                         ret_type=t.args[1].accept(self),
                         fallback=self.builtin_type('builtins.function'))
@@ -236,7 +236,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     to types.
     """
 
-    def __init__(self, fail_func: Function[[str, Context], None]) -> None:
+    def __init__(self, fail_func: Callable[[str, Context], None]) -> None:
         self.fail = fail_func
 
     def visit_instance(self, t: Instance) -> None:
@@ -285,7 +285,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 self.fail('Invalid type argument value for "{}"'.format(
                     type.name()), context)
 
-    def visit_callable(self, t: Callable) -> None:
+    def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)

@@ -6,14 +6,14 @@ import re
 from os import remove, rmdir
 import shutil
 
-from typing import Function, List, Tuple, Undefined
+from typing import Callable, List, Tuple, Undefined
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
 
 def parse_test_cases(
         path: str,
-        perform: Function[['DataDrivenTestCase'], None],
+        perform: Callable[['DataDrivenTestCase'], None],
         base_path: str = '.',
         optional_out: bool = False,
         include_path: str = None) -> List['DataDrivenTestCase']:
@@ -88,7 +88,7 @@ class DataDrivenTestCase(TestCase):
     file = ''
     line = 0
 
-    perform = Undefined(Function[['DataDrivenTestCase'], None])
+    perform = Undefined(Callable[['DataDrivenTestCase'], None])
 
     # (file path, file content) tuples
     files = Undefined(List[Tuple[str, str]])

@@ -190,7 +190,7 @@ class ImportAll(ImportBase):
 class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
 
-    # Type signature. This is usually Callable or Overloaded, but it can be something else for
+    # Type signature. This is usually CallableType or Overloaded, but it can be something else for
     # decorated functions/
     type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
@@ -1688,7 +1688,7 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         names = []  # type: List[str]
         for arg in fdef.args:
             names.append(arg.name())
-        return mypy.types.Callable([mypy.types.AnyType()] * len(fdef.args),
+        return mypy.types.CallableType([mypy.types.AnyType()] * len(fdef.args),
                                    fdef.arg_kinds,
                                    names,
                                    mypy.types.AnyType(),
@@ -1704,18 +1704,18 @@ def method_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.
 
 @overload
 def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
-    if isinstance(sig, mypy.types.Callable):
+    if isinstance(sig, mypy.types.CallableType):
         return method_callable(sig)
     else:
         osig = cast(mypy.types.Overloaded, sig)
-        items = List[mypy.types.Callable]()
+        items = List[mypy.types.CallableType]()
         for c in osig.items():
             items.append(method_callable(c))
         return mypy.types.Overloaded(items)
 
 
-def method_callable(c: 'mypy.types.Callable') -> 'mypy.types.Callable':
-    return mypy.types.Callable(c.arg_types[1:],
+def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.CallableType':
+    return mypy.types.CallableType(c.arg_types[1:],
                                c.arg_kinds[1:],
                                c.arg_names[1:],
                                c.ret_type,

@@ -9,7 +9,7 @@ This module can be run as a script (lex.py FILE).
 import re
 
 from mypy.util import short_type
-from typing import List, Undefined, Function, Dict, Any, Match, Pattern, Set
+from typing import List, Undefined, Callable, Dict, Any, Match, Pattern, Set
 
 
 class Token:
@@ -286,7 +286,7 @@ class Lexer:
 
     # Table from byte character value to lexer method. E.g. entry at ord('0')
     # contains the method lex_number().
-    map = Undefined(List[Function[[], None]])
+    map = Undefined(List[Callable[[], None]])
 
     # Indent levels of currently open blocks, in spaces.
     indents = Undefined(List[int])

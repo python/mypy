@@ -542,10 +542,10 @@ MypyFile:1(
         PassStmt:4()))))
 
 [case testInvalidBaseClass]
-from typing import Any, Function
+from typing import Any, Callable
 class A(None): pass
 class B(Any): pass
-class C(Function[[], int]): pass
+class C(Callable[[], int]): pass
 [out]
 main, line 2: Invalid base class
 main, line 3: Invalid base class

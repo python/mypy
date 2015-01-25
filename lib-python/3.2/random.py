@@ -45,7 +45,7 @@ from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
 from typing import (
-    Any, typevar, Iterable, Sequence, List, Function, Set, cast, SupportsInt, Union
+    Any, typevar, Iterable, Sequence, List, Callable, Set, cast, SupportsInt, Union
 )
 
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",
@@ -170,7 +170,7 @@ class Random(_random.Random):
 ## -------------------- integer methods  -------------------
 
     def randrange(self, start: SupportsInt, stop: SupportsInt = None,
-                  step: int = 1, int: Function[[SupportsInt],
+                  step: int = 1, int: Callable[[SupportsInt],
                                                int] = int) -> int:
         """Choose a random item from range(start, stop[, step]).
 
@@ -222,9 +222,9 @@ class Random(_random.Random):
 
         return self.randrange(a, b+1)
 
-    def _randbelow(self, n: int, int: Function[[float], int] = int,
+    def _randbelow(self, n: int, int: Callable[[float], int] = int,
                    maxsize: int = 1<<BPF,
-                   type: Function[[object], type] = type,
+                   type: Callable[[object], type] = type,
                    Method: type = _MethodType,
                    BuiltinMethod: type = _BuiltinMethodType) -> int:
         "Return a random int in the range [0,n).  Raises ValueError if n==0."
@@ -264,8 +264,8 @@ class Random(_random.Random):
         return seq[i]
 
     def shuffle(self, x: List[T],
-                random: Function[[], float] = None,
-                int: Function[[float], int] = int) -> None:
+                random: Callable[[], float] = None,
+                int: Callable[[float], int] = int) -> None:
         """x, random=random.random -> shuffle list x in place; return None.
 
         Optional arg random is a 0-argument function returning a random

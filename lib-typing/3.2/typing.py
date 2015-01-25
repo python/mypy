@@ -14,7 +14,7 @@ __all__ = [
     'Any',
     'AnyStr',
     'Dict',
-    'Function',
+    'Callable',
     'Generic',
     'GenericMeta',
     'IO',
@@ -171,7 +171,7 @@ List = TypeAlias(list)
 Dict = TypeAlias(dict)
 Set = TypeAlias(set)
 Tuple = TypeAlias(tuple)
-Function = TypeAlias(callable)
+Callable = TypeAlias(callable)
 Pattern = TypeAlias(type(re.compile('')))
 Match = TypeAlias(type(re.match('', '')))
 

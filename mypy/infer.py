@@ -3,12 +3,12 @@
 from typing import List
 
 from mypy.constraints import infer_constraints, infer_constraints_for_callable
-from mypy.types import Type, Callable
+from mypy.types import Type, CallableType
 from mypy.solve import solve_constraints
 from mypy.constraints import SUBTYPE_OF
 
 
-def infer_function_type_arguments(callee_type: Callable,
+def infer_function_type_arguments(callee_type: CallableType,
                                   arg_types: List[Type],
                                   arg_kinds: List[int],
                                   formal_to_actual: List[List[int]]) -> List[Type]:

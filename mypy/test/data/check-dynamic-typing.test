@@ -292,15 +292,15 @@ class A: pass
 
 
 [case testImplicitGlobalFunctionSignature]
-from typing import Undefined, Any, Function
+from typing import Undefined, Any, Callable
 x = Undefined # type: Any
 a = Undefined # type: A
-g = Undefined # type: Function[[], None]
-h = Undefined # type: Function[[A], None]
+g = Undefined # type: Callable[[], None]
+h = Undefined # type: Callable[[A], None]
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
-g = f   # E: Incompatible types in assignment (expression has type Function[[Any], Any], variable has type Function[[], None])
+g = f   # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
 f(a)
 f(x)
 a = f(a)
@@ -311,16 +311,16 @@ def f(x): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDifferentArgCounts]
-from typing import Undefined, Function
-g0 = Undefined # type: Function[[], None]
-g1 = Undefined # type: Function[[A], None]
-g2 = Undefined # type: Function[[A, A], None]
+from typing import Undefined, Callable
+g0 = Undefined # type: Callable[[], None]
+g1 = Undefined # type: Callable[[A], None]
+g2 = Undefined # type: Callable[[A, A], None]
 a = Undefined # type: A
 
-g1 = f0 # E: Incompatible types in assignment (expression has type Function[[], Any], variable has type Function[[A], None])
-g2 = f0 # E: Incompatible types in assignment (expression has type Function[[], Any], variable has type Function[[A, A], None])
-g0 = f2 # E: Incompatible types in assignment (expression has type Function[[Any, Any], Any], variable has type Function[[], None])
-g1 = f2 # E: Incompatible types in assignment (expression has type Function[[Any, Any], Any], variable has type Function[[A], None])
+g1 = f0 # E: Incompatible types in assignment (expression has type Callable[[], Any], variable has type Callable[[A], None])
+g2 = f0 # E: Incompatible types in assignment (expression has type Callable[[], Any], variable has type Callable[[A, A], None])
+g0 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[], None])
+g1 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[A], None])
 
 g0 = g0
 g2 = f2
@@ -334,14 +334,14 @@ def f2(x, y): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDefaultArgs]
-from typing import Undefined, Function
+from typing import Undefined, Callable
 a, b = Undefined, Undefined # type: (A, B)
 
-g0 = Undefined # type: Function[[], None]
-g1 = Undefined # type: Function[[A], None]
-g2 = Undefined # type: Function[[A, A], None]
-g3 = Undefined # type: Function[[A, A, A], None]
-g4 = Undefined # type: Function[[A, A, A, A], None]
+g0 = Undefined # type: Callable[[], None]
+g1 = Undefined # type: Callable[[A], None]
+g2 = Undefined # type: Callable[[A, A], None]
+g3 = Undefined # type: Callable[[A, A, A], None]
+g4 = Undefined # type: Callable[[A, A, A, A], None]
 
 f01(a, a)       # Fail
 f13()           # Fail
@@ -371,9 +371,9 @@ class B: pass
 main, line 10: Too many arguments for "f01"
 main, line 11: Too few arguments for "f13"
 main, line 12: Too many arguments for "f13"
-main, line 13: Incompatible types in assignment (expression has type Function[[Any], Any], variable has type Function[[A, A], None])
-main, line 14: Incompatible types in assignment (expression has type Function[[Any, Any, Any], Any], variable has type Function[[], None])
-main, line 15: Incompatible types in assignment (expression has type Function[[Any, Any, Any], Any], variable has type Function[[A, A, A, A], None])
+main, line 13: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
+main, line 14: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[], None])
+main, line 15: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[A, A, A, A], None])
 
 [case testSkipTypeCheckingWithImplicitSignature]
 from typing import Undefined
@@ -399,15 +399,15 @@ def g(x, y=a, z=a()):
 class A: pass
 
 [case testImplicitMethodSignature]
-from typing import Undefined, Function
-g0 = Undefined # type: Function[[], None]
-g1 = Undefined # type: Function[[A], None]
-g2 = Undefined # type: Function[[A, A], None]
+from typing import Undefined, Callable
+g0 = Undefined # type: Callable[[], None]
+g1 = Undefined # type: Callable[[A], None]
+g2 = Undefined # type: Callable[[A, A], None]
 a = Undefined # type: A
 
-g0 = a.f # E: Incompatible types in assignment (expression has type Function[[Any], Any], variable has type Function[[], None])
-g2 = a.f # E: Incompatible types in assignment (expression has type Function[[Any], Any], variable has type Function[[A, A], None])
-a = a.f  # E: Incompatible types in assignment (expression has type Function[[Any], Any], variable has type "A")
+g0 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
+g2 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
+a = a.f  # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type "A")
 
 class A:
     def g(self) -> None:
@@ -427,12 +427,12 @@ class A:
         a()
 
 [case testImplicitInheritedMethod]
-from typing import Undefined, Function
-g0 = Undefined # type: Function[[], None]
-g1 = Undefined # type: Function[[A], None]
+from typing import Undefined, Callable
+g0 = Undefined # type: Callable[[], None]
+g1 = Undefined # type: Callable[[A], None]
 a = Undefined # type: A
 
-g0 = a.f # E: Incompatible types in assignment (expression has type Function[[Any], Any], variable has type Function[[], None])
+g0 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
 
 g1 = a.f
 a = a.f(a)
@@ -468,9 +468,9 @@ f(o, o, o)
 
 
 [case testInitMethodWithImplicitSignature]
-from typing import Undefined, Function
-f1 = Undefined # type: Function[[A], A]
-f2 = Undefined # type: Function[[A, A], A]
+from typing import Undefined, Callable
+f1 = Undefined # type: Callable[[A], A]
+f2 = Undefined # type: Callable[[A, A], A]
 a = Undefined # type: A
 
 A(a)   # Fail
@@ -483,7 +483,7 @@ class A:
   def __init__(self, a, b): pass
 [out]
 main, line 6: Too few arguments for "A"
-main, line 7: Incompatible types in assignment (expression has type "A" (type object), variable has type Function[[A], A])
+main, line 7: Incompatible types in assignment (expression has type "A" (type object), variable has type Callable[[A], A])
 
 [case testUsingImplicitTypeObjectWithIs]
 from typing import Undefined
@@ -529,13 +529,13 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testFunctionTypeCompatibilityAndReturnTypes]
-from typing import Undefined, Any, Function
-f1 = Undefined # type: Function[[], Any]
-f11 = Undefined # type: Function[[], Any]
-f2 = Undefined # type: Function[[], A]
-f3 = Undefined # type: Function[[], None]
+from typing import Undefined, Any, Callable
+f1 = Undefined # type: Callable[[], Any]
+f11 = Undefined # type: Callable[[], Any]
+f2 = Undefined # type: Callable[[], A]
+f3 = Undefined # type: Callable[[], None]
 
-f2 = f3 # E: Incompatible types in assignment (expression has type Function[[], None], variable has type Function[[], A])
+f2 = f3 # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], A])
 
 f1 = f2
 f1 = f3
@@ -545,10 +545,10 @@ f3 = f11
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentTypes]
-from typing import Undefined, Any, Function
-f1 = Undefined # type: Function[[A, Any], None]
-f2 = Undefined # type: Function[[Any, A], None]
-f3 = Undefined # type: Function[[A, A], None]
+from typing import Undefined, Any, Callable
+f1 = Undefined # type: Callable[[A, Any], None]
+f2 = Undefined # type: Callable[[Any, A], None]
+f3 = Undefined # type: Callable[[A, A], None]
 
 f1 = f1
 f1 = f2
@@ -565,11 +565,11 @@ f3 = f3
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentCounts]
-from typing import Undefined, Any, Function
-f1 = Undefined # type: Function[[Any], None]
-f2 = Undefined # type: Function[[Any, Any], None]
+from typing import Undefined, Any, Callable
+f1 = Undefined # type: Callable[[Any], None]
+f2 = Undefined # type: Callable[[Any, Any], None]
 
-f1 = f2 # E: Incompatible types in assignment (expression has type Function[[Any, Any], None], variable has type Function[[Any], None])
+f1 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
 
 -- Overriding

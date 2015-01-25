@@ -465,7 +465,7 @@ class C(Generic[T]):
     def f(self, x: int = None) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
-from typing import typevar, overload, Function
+from typing import typevar, overload, Callable
 
 T = typevar('T', values=(int, str))
 def f(x: T) -> None:
@@ -475,7 +475,7 @@ def f(x: T) -> None:
 
 A = typevar('A')
 R = typevar('R')
-def m(f: Function[[A], R], it: A) -> A: pass
+def m(f: Callable[[A], R], it: A) -> A: pass
 
 @overload
 def g(x: int) -> int: return x

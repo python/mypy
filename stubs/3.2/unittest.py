@@ -8,7 +8,7 @@
 # Only a subset of functionality is included.
 
 from typing import (
-    Any, Function, Iterable, Undefined, Tuple, List, TextIO, Sequence,
+    Any, Callable, Iterable, Undefined, Tuple, List, TextIO, Sequence,
     overload, typevar, Pattern
 )
 from abc import abstractmethod, ABCMeta
@@ -129,10 +129,10 @@ class TestCase(Testable):
     def addCleanup(function: Any, *args: Any, **kwargs: Any) -> None: pass
     def skipTest(self, reason: Any) -> None: pass
 
-class FunctionTestCase(Testable):
-    def __init__(self, testFunc: Function[[], None],
-                 setUp: Function[[], None] = None,
-                 tearDown: Function[[], None] = None,
+class CallableTestCase(Testable):
+    def __init__(self, testFunc: Callable[[], None],
+                 setUp: Callable[[], None] = None,
+                 tearDown: Callable[[], None] = None,
                  description: str = None) -> None: pass
     def run(self, result: TestResult) -> None: pass
     def debug(self) -> None: pass

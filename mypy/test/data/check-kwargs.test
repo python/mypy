@@ -95,8 +95,8 @@ f = Undefined # type: Any
 f(x=None, x=None)
 
 [case testKeywordArgumentWithFunctionObject]
-from typing import Undefined, Function
-f = Undefined # type: Function[[A, B], None]
+from typing import Undefined, Callable
+f = Undefined # type: Callable[[A, B], None]
 f(a=A(), b=B())
 f(A(), b=B())
 class A: pass

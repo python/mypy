@@ -1036,20 +1036,20 @@ di = Undefined # type: Dict[int, int]
 
 
 [case testTrivialLambda]
-from typing import Function
-f = lambda: 1 # type: Function[[], int]
+from typing import Callable
+f = lambda: 1 # type: Callable[[], int]
 f = lambda: ''.x
 f = lambda: ''
 [out]
 main, line 3: "str" has no attribute "x"
 main, line 4: Incompatible return value type: expected builtins.int, got builtins.str
-main, line 4: Incompatible types in assignment (expression has type Function[[], str], variable has type Function[[], int])
+main, line 4: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
 
 [case testVoidLambda]
 import typing
 def void() -> None:
     pass
-x = lambda: void() # type: typing.Function[[], None]
+x = lambda: void() # type: typing.Callable[[], None]
 
 
 -- List comprehensions
@@ -1227,8 +1227,8 @@ def f() -> None:
     pass
 [out]
 main, line 5: Unsupported left operand type for + (None)
-main, line 6: Unsupported left operand type for + (Function[[], None])
-main, line 7: Unsupported operand types for + ("A" and Function[[], None])
+main, line 6: Unsupported left operand type for + (Callable[[], None])
+main, line 7: Unsupported operand types for + ("A" and Callable[[], None])
 
 [case testOperatorMethodWithInvalidArgCount]
 from typing import Undefined

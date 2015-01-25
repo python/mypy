@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from typing import Undefined, Tuple, List, typevar, Sequence, Any, Function
+from typing import Undefined, Tuple, List, typevar, Sequence, Any, Callable
 
 
 T = typevar('T')
@@ -300,7 +300,7 @@ class CompileError(Exception):
         self.messages = messages
 
 
-def stable_sort(a: Sequence[T], key: Function[[T], Any]) -> List[T]:
+def stable_sort(a: Sequence[T], key: Callable[[T], Any]) -> List[T]:
     """Perform a stable sort of a sequence.
 
     If the original sequence has a[n] == a[n+m] (when comparing using

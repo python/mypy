@@ -6,7 +6,7 @@ It contains class TypeInfos and Type objects.
 from typing import List
 
 from mypy.types import (
-    TypeVar, AnyType, Void, ErrorType, NoneTyp, Instance, Callable, TypeVarDef
+    TypeVar, AnyType, Void, ErrorType, NoneTyp, Instance, CallableType, TypeVarDef
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
@@ -132,7 +132,7 @@ class TypeFixture:
         """callable(a1, ..., an, r) constructs a callable with argument types
         a1, ... an and return type r.
         """
-        return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
+        return CallableType(a[:-1], [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1), a[-1], self.std_function)
 
     def callable_type(self, *a):
@@ -140,7 +140,7 @@ class TypeFixture:
         argument types a1, ... an and return type r, and which
         represents a type.
         """
-        return Callable(a[:-1], [ARG_POS] * (len(a) - 1),
+        return CallableType(a[:-1], [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1), a[-1], self.type_type)
 
     def callable_default(self, min_args, *a):
@@ -149,7 +149,7 @@ class TypeFixture:
         with min_args mandatory fixed arguments.
         """
         n = len(a) - 1
-        return Callable(a[:-1],
+        return CallableType(a[:-1],
                         [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
                         [None] * n,
                         a[-1], self.std_function)
@@ -159,7 +159,7 @@ class TypeFixture:
         with argument types a1, ... *an and return type r.
         """
         n = len(a) - 1
-        return Callable(a[:-1],
+        return CallableType(a[:-1],
                         [ARG_POS] * min_args +
                         [ARG_OPT] * (n - 1 - min_args) +
                         [ARG_STAR], [None] * n,

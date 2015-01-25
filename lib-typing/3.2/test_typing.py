@@ -2,7 +2,7 @@ from abc import abstractmethod, ABCMeta
 import unittest
 
 from typing import (
-    List, Dict, Set, Tuple, Pattern, Match, Any, Function, Generic,
+    List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
@@ -45,11 +45,11 @@ class TestTyping(unittest.TestCase):
         s = 'x'
         self.assertIs(Any(s), s)
 
-    def test_Function(self):
-        # Just check that we can call Function. Don't care about return value.
-        Function[[], int]
-        Function[[int], None]
-        Function[[int, str], bool]
+    def test_Callable(self):
+        # Just check that we can call Callable. Don't care about return value.
+        Callable[[], int]
+        Callable[[int], None]
+        Callable[[int, str], bool]
 
     def test_cast(self):
         o = object()
@@ -269,7 +269,7 @@ class TestTyping(unittest.TestCase):
 
     def test_function_type_dispatch_in_overload(self):
         @overload
-        def f(x:Function[[], str]): return 1
+        def f(x:Callable[[], str]): return 1
         @overload
         def f(x): return 2
 
@@ -691,7 +691,7 @@ class TestTyping(unittest.TestCase):
 
     def test_function_type_string_literal_in_overload(self):
         @overload
-        def f(a:'Function[[], int]'): return 1
+        def f(a:'Callable[[], int]'): return 1
         @overload
         def f(a): return 2
 

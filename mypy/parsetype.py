@@ -3,7 +3,7 @@
 from typing import List, Tuple, Union, cast
 
 from mypy.types import (
-    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, Callable, StarType
+    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType
 )
 from mypy.typerepr import CommonTypeRepr, ListTypeRepr
 from mypy.lex import Token, Name, StrLit, Break, lex
@@ -196,7 +196,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
     return result
 
 
-def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
+def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
     """Parse signature of form (argtype, ...) -> ...
 
     Return tuple (signature type, token index).
@@ -228,7 +228,7 @@ def parse_signature(tokens: List[Token]) -> Tuple[Callable, int]:
         raise TypeParseError(tokens[i], i)
     i += 1
     ret_type, i = parse_type(tokens, i)
-    return Callable(arg_types,
+    return CallableType(arg_types,
                     arg_kinds,
                     [None] * len(arg_types),
                     ret_type, None), i

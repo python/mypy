@@ -508,11 +508,11 @@ f(1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 
 
 [case testVarArgsFunctionSubtyping]
-from typing import Function, Undefined
-x = Undefined # type: Function[[int], None]
+from typing import Callable, Undefined
+x = Undefined # type: Callable[[int], None]
 def f(*x: int) -> None: pass
 def g(*x: str) -> None: pass
 x = f
-x = g # E: Incompatible types in assignment (expression has type Function[[str], None], variable has type Function[[int], None])
+x = g # E: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
 [builtins fixtures/list.py]
 [out]
