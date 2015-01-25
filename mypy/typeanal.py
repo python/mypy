@@ -1,6 +1,6 @@
 """Semantic analysis of types"""
 
-from typing import Undefined, Function, cast, List, Tuple, Dict, Any, Union
+from typing import Undefined, Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
     Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, CallableType,
@@ -97,7 +97,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                  self.builtin_type('builtins.tuple'))
             elif sym.node.fullname() == 'typing.Union':
                 return UnionType(self.anal_array(t.args))
-            elif sym.node.fullname() == 'typing.Function':
+            elif sym.node.fullname() == 'typing.Callable':
                 return self.analyze_function_type(t)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname

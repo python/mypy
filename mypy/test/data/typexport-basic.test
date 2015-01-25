@@ -708,7 +708,7 @@ a = [] # type: Any
 ListExpr(2) : builtins.list[Any]
 
 [case testHigherOrderFunction]
-from typing import typevar, Function, List
+from typing import typevar, Callable, List
 t = typevar('t')
 s = typevar('s')
 map(
@@ -733,7 +733,7 @@ NameExpr(6) : def () -> A
 
 
 [case testLambdaWithTypeInferredFromContext]
-from typing import Function, Undefined
+from typing import Callable, Undefined
 f = lambda x: x.a # type: Callable[[B], A]
 class A: pass
 class B:
@@ -761,7 +761,7 @@ FuncExpr(3) : def () -> builtins.list[builtins.int]
 NameExpr(3) : def () -> builtins.list[builtins.int]
 
 [case testLambdaWithInferredType2]
-from typing import List, Function, Undefined
+from typing import List, Callable, Undefined
 f = lambda x: [] # type: Callable[[B], List[A]]
 class A: pass
 class B:
@@ -772,7 +772,7 @@ FuncExpr(2) : def (B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction]
-from typing import typevar, Function, Undefined, List
+from typing import typevar, Callable, Undefined, List
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
@@ -794,7 +794,7 @@ NameExpr(6) : A
 
 [case testLambdaAndHigherOrderFunction2]
 ## FuncExpr|NameExpr|ListExpr
-from typing import typevar, Undefined, List, Function
+from typing import typevar, Undefined, List, Callable
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
@@ -814,7 +814,7 @@ NameExpr(7) : builtins.list[A]
 NameExpr(7) : A
 
 [case testLambdaInListAndHigherOrderFunction]
-from typing import typevar, Undefined, Function, List
+from typing import typevar, Undefined, Callable, List
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
@@ -835,7 +835,7 @@ NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction3]
-from typing import typevar, Undefined, Function, List
+from typing import typevar, Undefined, Callable, List
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
@@ -856,7 +856,7 @@ NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunctionAndKeywordArgs]
-from typing import typevar, Function, List, Undefined
+from typing import typevar, Callable, List, Undefined
 t = typevar('t')
 s = typevar('s')
 l = Undefined # type: List[A]
@@ -1083,7 +1083,7 @@ A() + Any(1)
 OpExpr(5) : Any
 
 
--- Function overloading
+-- Callable overloading
 -- --------------------
 
 
@@ -1120,7 +1120,7 @@ CallExpr(12) : B
 
 
 [case testOverloadedErasedType]
-from typing import Function
+from typing import Callable
 from typing import List
 from typing import overload
 from typing import typevar

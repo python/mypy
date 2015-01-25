@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Function, List
+from typing import cast, Callable, List
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,

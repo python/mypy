@@ -86,7 +86,7 @@ class ErrorType(Type):
 class TypeList(Type):
     """A list of types [...].
 
-    This is only used for the arguments of a Function type, i.e. for
+    This is only used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret].
     """
 
