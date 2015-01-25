@@ -271,7 +271,7 @@ finally:
     loop.close()
 [out]
 _program.py: In function "test":
-_program.py, line 13: Callable does not return a value
+_program.py, line 13: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 import asyncio
