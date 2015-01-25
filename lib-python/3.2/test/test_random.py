@@ -8,7 +8,7 @@ import warnings
 from math import log, exp, pi, fsum, sin
 from test import support
 
-from typing import Undefined, Any, Dict, List, Function, Generic, typevar
+from typing import Undefined, Any, Dict, List, Callable, Generic, typevar
 
 RT = typevar('RT', values=(random.Random, random.SystemRandom))
 

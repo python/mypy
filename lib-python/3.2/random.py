@@ -45,7 +45,7 @@ from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
 from typing import (
-    Any, typevar, Iterable, Sequence, List, Function, Set, cast, SupportsInt, Union
+    Any, typevar, Iterable, Sequence, List, Callable, Set, cast, SupportsInt, Union
 )
 
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",

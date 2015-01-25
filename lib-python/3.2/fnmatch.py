@@ -14,7 +14,7 @@ import posixpath
 import re
 import functools
 
-from typing import Iterable, List, AnyStr, Any, Function, Match
+from typing import Iterable, List, AnyStr, Any, Callable, Match
 
 __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
 

@@ -17,7 +17,7 @@ import gc
 
 import resource
 
-from typing import Any, Dict, Function, Iterable, List, Set, Tuple
+from typing import Any, Dict, Callable, Iterable, List, Set, Tuple
 
 mswindows = (sys.platform == "win32")
 

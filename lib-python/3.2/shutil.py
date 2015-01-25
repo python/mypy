@@ -15,7 +15,7 @@ import tarfile
 import builtins
 
 from typing import (
-    Any, AnyStr, IO, List, Iterable, Function, Tuple, Dict, Sequence, cast,
+    Any, AnyStr, IO, List, Iterable, Callable, Tuple, Dict, Sequence, cast,
     Traceback
 )
 

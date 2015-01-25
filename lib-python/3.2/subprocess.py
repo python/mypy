@@ -348,7 +348,7 @@ import warnings
 import errno
 
 from typing import (
-    Any, Tuple, List, Sequence, Undefined, Function, Mapping, cast, Set, Dict,
+    Any, Tuple, List, Sequence, Undefined, Callable, Mapping, cast, Set, Dict,
     IO, TextIO, Traceback, AnyStr
 )
 

@@ -24,7 +24,7 @@ from test import support
 from test.support import check_warnings, captured_stdout
 
 from typing import (
-    Any, Function, Tuple, List, Sequence, BinaryIO, overload, Traceback, IO,
+    Any, Callable, Tuple, List, Sequence, BinaryIO, overload, Traceback, IO,
     ducktype
 )
 

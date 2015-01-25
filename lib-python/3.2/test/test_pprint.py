@@ -6,7 +6,7 @@ import random
 import collections
 import itertools
 
-from typing import List, Any, Dict, Tuple, cast, Undefined, Function
+from typing import List, Any, Dict, Tuple, cast, Undefined, Callable
 
 # list, tuple and dict subclasses that do or don't overwrite __repr__
 class list2(list):

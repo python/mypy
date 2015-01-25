@@ -5,7 +5,7 @@ import unittest
 
 from fnmatch import fnmatch, fnmatchcase, translate, filter
 
-from typing import Any, AnyStr, Function
+from typing import Any, AnyStr, Callable
 
 class FnmatchTestCase(unittest.TestCase):
 
