@@ -2,7 +2,7 @@
 
 import itertools
 
-from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Function, typevar, Union
+from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Callable, typevar, Union
 
 from mypy.errors import Errors
 from mypy.nodes import (
