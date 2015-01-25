@@ -3,7 +3,7 @@
 # NOTE: These are incomplete!
 
 from typing import (
-    typevar, Generic, Any, Function, overload, Mapping, Iterator, Dict, Tuple,
+    typevar, Generic, Any, Callable, overload, Mapping, Iterator, Dict, Tuple,
     Iterable
 )
 
@@ -15,7 +15,7 @@ class ReferenceType(Generic[_T]):
     # TODO members
     pass
 
-def ref(o: _T, callback: Function[[ReferenceType[_T]],
+def ref(o: _T, callback: Callable[[ReferenceType[_T]],
                                  Any] = None) -> ReferenceType[_T]: pass
 
 # TODO callback

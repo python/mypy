@@ -159,7 +159,7 @@ def copy2(src: str, dst: str) -> None:
     copyfile(src, dst)
     copystat(src, dst)
 
-def ignore_patterns(*patterns: str) -> Function[[str, List[str]],
+def ignore_patterns(*patterns: str) -> Callable[[str, List[str]],
                                                 Iterable[str]]:
     """Function that can be used as copytree() ignore parameter.
 
@@ -173,8 +173,8 @@ def ignore_patterns(*patterns: str) -> Function[[str, List[str]],
     return _ignore_patterns
 
 def copytree(src: str, dst: str, symlinks: bool = False,
-             ignore: Function[[str, List[str]], Iterable[str]] = None,
-             copy_function: Function[[str, str], None] = copy2,
+             ignore: Callable[[str, List[str]], Iterable[str]] = None,
+             copy_function: Callable[[str, str], None] = copy2,
              ignore_dangling_symlinks: bool = False) -> None:
     """Recursively copy a directory tree.
 
@@ -257,7 +257,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
         raise Error(errors)
 
 def rmtree(path: str, ignore_errors: bool = False,
-           onerror: Function[[Any, str, Tuple[type, BaseException, Traceback]],
+           onerror: Callable[[Any, str, Tuple[type, BaseException, Traceback]],
                               None] = None) -> None:
     """Recursively delete a directory tree.
 

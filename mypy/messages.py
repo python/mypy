@@ -142,7 +142,7 @@ class MessageBuilder:
             elif isinstance(func, CallableType):
                 arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return_type = strip_quotes(self.format(func.ret_type))
-                return 'Function[[{}], {}]'.format(", ".join(arg_types), return_type)
+                return 'Callable[[{}], {}]'.format(", ".join(arg_types), return_type)
             else:
                 # Use a simple representation for function types; proper
                 # function types may result in long and difficult-to-read

@@ -19,7 +19,7 @@ from mypy import subtypes
 
 def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                           is_super: bool,
-                          builtin_type: Function[[str], Instance],
+                          builtin_type: Callable[[str], Instance],
                           msg: MessageBuilder, override_info: TypeInfo = None,
                           report_type: Type = None) -> Type:
     """Analyse attribute access.
@@ -94,7 +94,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
 
 def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               node: Context, is_lvalue: bool, is_super: bool,
-                              builtin_type: Function[[str], Instance],
+                              builtin_type: Callable[[str], Instance],
                               msg: MessageBuilder,
                               report_type: Type = None) -> Type:
     """Analyse attribute access that does not target a method.
@@ -190,7 +190,7 @@ def analyse_class_attribute_access(itype: Instance,
                                    name: str,
                                    context: Context,
                                    is_lvalue: bool,
-                                   builtin_type: Function[[str], Instance],
+                                   builtin_type: Callable[[str], Instance],
                                    msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
     if not node:
@@ -216,7 +216,7 @@ def analyse_class_attribute_access(itype: Instance,
 
 
 def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
-                    builtin_type: Function[[str], Instance]) -> Type:
+                    builtin_type: Callable[[str], Instance]) -> Type:
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'))
@@ -243,7 +243,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
     return t
 
 
-def type_object_type(info: TypeInfo, builtin_type: Function[[str], Instance]) -> Type:
+def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) -> Type:
     """Return the type of a type object.
 
     For a generic type G with type variables T and S the type is of form

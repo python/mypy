@@ -87,7 +87,7 @@ class TypeList(Type):
     """A list of types [...].
 
     This is only used for the arguments of a Function type, i.e. for
-    [arg, ...] in Function[[arg, ...], ret].
+    [arg, ...] in Callable[[arg, ...], ret].
     """
 
     items = Undefined(List[Type])

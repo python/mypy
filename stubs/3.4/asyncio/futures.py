@@ -1,4 +1,4 @@
-from typing import Any, Function, typevar, List, Generic, Iterable, Iterator
+from typing import Any, Callable, typevar, List, Generic, Iterable, Iterator
 from asyncio.events import AbstractEventLoop
 # __all__ = ['CancelledError', 'TimeoutError',
 #            'InvalidStateError',
@@ -32,8 +32,8 @@ class Future(Iterator[_T], Generic[_T]):
     def done(self) -> bool: pass
     def result(self) -> _T: pass
     def exception(self) -> Any: pass
-    def add_done_callback(self, fn: Function[[Future[_T]], Any]) -> None: pass
-    def remove_done_callback(self, fn: Function[[Future[_T]], Any]) -> int: pass
+    def add_done_callback(self, fn: Callable[[Future[_T]], Any]) -> None: pass
+    def remove_done_callback(self, fn: Callable[[Future[_T]], Any]) -> int: pass
     def set_result(self, result: _T) -> None: pass
     def set_exception(self, exception: Any) -> None: pass
     def _copy_state(self, other: Any) -> None: pass

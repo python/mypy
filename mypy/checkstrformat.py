@@ -158,9 +158,9 @@ class StringFormatterChecker:
                                    'expression has type', 'expected type for mapping is')
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
-                                   context: Context) -> List[ Tuple[ Function[[Node], None],
-                                                                     Function[[Type], None] ] ]:
-        checkers = []  # type: List[ Tuple[ Function[[Node], None], Function[[Type], None] ] ]
+                                   context: Context) -> List[ Tuple[ Callable[[Node], None],
+                                                                     Callable[[Type], None] ] ]:
+        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Function[[Type], None] ] ]
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context)
             if checker == None:
@@ -169,13 +169,13 @@ class StringFormatterChecker:
         return checkers
 
     def replacement_checkers(self, specifier: ConversionSpecifier,
-                             context: Context) -> List[ Tuple[ Function[[Node], None],
-                                                               Function[[Type], None] ] ]:
+                             context: Context) -> List[ Tuple[ Callable[[Node], None],
+                                                               Callable[[Type], None] ] ]:
         """Returns a list of tuples of two functions that check whether a replacement is
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers = []  # type: List[ Tuple[ Function[[Node], None], Function[[Type], None] ] ]
+        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Function[[Type], None] ] ]
 
         if specifier.width == '*':
             checkers.append(self.checkers_for_star(context))
@@ -193,8 +193,8 @@ class StringFormatterChecker:
             checkers.append(c)
         return checkers
 
-    def checkers_for_star(self, context: Context) -> Tuple[ Function[[Node], None],
-                                                                                 Function[[Type], None] ]:
+    def checkers_for_star(self, context: Context) -> Tuple[ Callable[[Node], None],
+                                                                                 Callable[[Type], None] ]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with a star in a conversion specifier
         """
@@ -210,8 +210,8 @@ class StringFormatterChecker:
 
         return check_node, check_type
 
-    def checkers_for_regular_type(self, type: str, context: Context) -> Tuple[ Function[[Node], None],
-                                                                               Function[[Type], None] ]:
+    def checkers_for_regular_type(self, type: str, context: Context) -> Tuple[ Callable[[Node], None],
+                                                                               Callable[[Type], None] ]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type'. Return None in case of an
         """
@@ -230,8 +230,8 @@ class StringFormatterChecker:
 
         return check_node, check_type
 
-    def checkers_for_c_type(self, type: str, context: Context) -> Tuple[ Function[[Node], None],
-                                                                         Function[[Type], None] ]:
+    def checkers_for_c_type(self, type: str, context: Context) -> Tuple[ Callable[[Node], None],
+                                                                         Callable[[Type], None] ]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type
         """

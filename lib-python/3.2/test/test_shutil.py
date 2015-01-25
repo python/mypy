@@ -129,7 +129,7 @@ class TestShutil(unittest.TestCase):
             # Clean up.
             shutil.rmtree(TESTFN)
 
-    def check_args_to_onerror(self, func: Function[[str], Any], arg: str,
+    def check_args_to_onerror(self, func: Callable[[str], Any], arg: str,
                               exc: Tuple[type, BaseException,
                                          Traceback]) -> None:
         # test_rmtree_errors deliberately runs rmtree
@@ -409,7 +409,7 @@ class TestShutil(unittest.TestCase):
         self.assertIn('test.txt', os.listdir(dst_dir))
 
     def _copy_file(self,
-                   method: Function[[str, str], None]) -> Tuple[str, str]:
+                   method: Callable[[str, str], None]) -> Tuple[str, str]:
         fname = 'test.txt'
         tmpdir = self.mkdtemp()
         self.write_file([tmpdir, fname])

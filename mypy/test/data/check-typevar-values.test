@@ -475,7 +475,7 @@ def f(x: T) -> None:
 
 A = typevar('A')
 R = typevar('R')
-def m(f: Function[[A], R], it: A) -> A: pass
+def m(f: Callable[[A], R], it: A) -> A: pass
 
 @overload
 def g(x: int) -> int: return x

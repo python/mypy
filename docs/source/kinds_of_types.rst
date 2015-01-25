@@ -64,11 +64,11 @@ Callable types (and lambdas)
 
 You can pass around function objects and bound methods in statically
 typed code. The type of a function that accepts arguments ``A1``, |...|, ``An``
-and returns ``Rt`` is ``Function[[A1, ..., An], Rt]``. Example:
+and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
 
-   def twice(i: int, next: Function[[int], int]) -> int:
+   def twice(i: int, next: Callable[[int], int]) -> int:
        return next(next(i))
 
    def add(i: int) -> int:

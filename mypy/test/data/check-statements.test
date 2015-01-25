@@ -603,7 +603,7 @@ def f() -> Any:
 
 [case testYieldInFunctionReturningFunction]
 from typing import Function
-def f() -> Function[[], None]:
+def f() -> Callable[[], None]:
     yield object() # E: Iterator function return type expected for "yield"
 [out]
 main: In function "f":
@@ -674,7 +674,7 @@ def f() -> Any:
 from typing import Iterator, Function
 def g() -> Iterator[int]:
     yield 42
-def f() -> Function[[], None]:
+def f() -> Callable[[], None]:
     yield from g()  # E: Iterable function return type expected for "yield from"
 [out]
 main: In function "f":

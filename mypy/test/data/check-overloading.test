@@ -160,7 +160,7 @@ o = f
 @overload
 def f(a: 'A') -> None: pass
 @overload
-def f(a: Function[[], None]) -> None: pass
+def f(a: Callable[[], None]) -> None: pass
 class A: pass
 
 [case testCompatibilityOfIntersectionTypeObjectWithStdType]
@@ -231,7 +231,7 @@ class A: pass
 @overload
 def f(x: A) -> None: pass
 @overload
-def f(x: Function[[], None]) -> None: pass
+def f(x: Callable[[], None]) -> None: pass
 
 f(A())
 [builtins fixtures/function.py]

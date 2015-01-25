@@ -7,7 +7,7 @@
 # cases don't use them.
 
 from typing import (
-    overload, List, Iterable, Function, Any, Tuple, Sequence, IO, AnyStr
+    overload, List, Iterable, Callable, Any, Tuple, Sequence, IO, AnyStr
 )
 
 def copyfileobj(fsrc: IO[AnyStr], fdst: IO[AnyStr],
@@ -18,14 +18,14 @@ def copymode(src: str, dst: str) -> None: pass
 def copystat(src: str, dst: str) -> None: pass
 def copy(src: str, dst: str) -> None: pass
 def copy2(src: str, dst: str) -> None: pass
-def ignore_patterns(*patterns: str) -> Function[[str, List[str]],
+def ignore_patterns(*patterns: str) -> Callable[[str, List[str]],
                                                 Iterable[str]]: pass
 def copytree(src: str, dst: str, symlinks: bool = False,
-             ignore: Function[[str, List[str]], Iterable[str]] = None,
-             copy_function: Function[[str, str], None] = copy2,
+             ignore: Callable[[str, List[str]], Iterable[str]] = None,
+             copy_function: Callable[[str, str], None] = copy2,
              ignore_dangling_symlinks: bool = False) -> None: pass
 def rmtree(path: str, ignore_errors: bool = False,
-           onerror: Function[[Any, str, Any], None] = None) -> None: pass
+           onerror: Callable[[Any, str, Any], None] = None) -> None: pass
 def move(src: str, dst: str) -> None: pass
 
 class Error(Exception): pass

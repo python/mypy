@@ -23,7 +23,7 @@ T = typevar('T')
 ABSTFN = abspath(support.TESTFN)
 
 def skip_if_ABSTFN_contains_backslash(
-        test: Function[[T], None]) -> Function[[T], None]:
+        test: Callable[[T], None]) -> Function[[T], None]:
     """
     On Windows, posixpath.abspath still returns paths with backslashes
     instead of posix forward slashes. If this is the case, several tests

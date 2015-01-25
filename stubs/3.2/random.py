@@ -8,7 +8,7 @@
 
 import _random
 from typing import (
-    Any, typevar, Sequence, List, Function, AbstractSet, Union
+    Any, typevar, Sequence, List, Callable, AbstractSet, Union
 )
 
 _T = typevar('_T')
@@ -22,7 +22,7 @@ class Random(_random.Random):
     def randrange(self, start: int, stop: Union[int, None] = None, step: int = 1) -> int: pass
     def randint(self, a: int, b: int) -> int: pass
     def choice(self, seq: Sequence[_T]) -> _T: pass
-    def shuffle(self, x: List[Any], random: Union[Function[[], float], None] = None) -> None: pass
+    def shuffle(self, x: List[Any], random: Union[Callable[[], float], None] = None) -> None: pass
     def sample(self, population: Union[Sequence[_T], AbstractSet[_T]], k: int) -> List[_T]: pass
     def random(self) -> float: pass
     def uniform(self, a: float, b: float) -> float: pass
@@ -53,7 +53,7 @@ def getrandbits(k: int) -> int: pass
 def randrange(start: int, stop: Union[None, int] = None, step: int = 1) -> int: pass
 def randint(a: int, b: int) -> int: pass
 def choice(seq: Sequence[_T]) -> _T: pass
-def shuffle(x: List[Any], random: Union[Function[[], float], None] = None) -> None: pass
+def shuffle(x: List[Any], random: Union[Callable[[], float], None] = None) -> None: pass
 def sample(population: Union[Sequence[_T], AbstractSet[_T]], k: int) -> List[_T]: pass
 def random() -> float: pass
 def uniform(a: float, b: float) -> float: pass

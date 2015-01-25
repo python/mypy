@@ -456,7 +456,7 @@ class QueryTestCase(unittest.TestCase):
         keys = [Unorderable() for i in range(n)]
         random.shuffle(keys)
         skeys = sorted(keys, key=id)
-        clean = Undefined(Function[[str], str])
+        clean = Undefined(Callable[[str], str])
         clean = lambda s: s.replace(' ', '').replace('\n','')
 
         self.assertEqual(clean(pprint.pformat(set(keys))),

@@ -219,8 +219,8 @@ class SystemRandom_TestBasicOps(TestBasicOps[random.SystemRandom]):
         self.assertRaises(ValueError, self.gen.getrandbits, -1)
         self.assertRaises(TypeError, self.gen.getrandbits, 10.1)
 
-    def test_randbelow_logic(self, _log: Function[[float, float], float] = log,
-                             int: Function[[float], int] = int) -> None:
+    def test_randbelow_logic(self, _log: Callable[[float, float], float] = log,
+                             int: Callable[[float], int] = int) -> None:
         # check bitcount transition points:  2**i and 2**(i+1)-1
         # show that: k = int(1.001 + _log(n, 2))
         # is equal to or one greater than the number of bits in n
@@ -388,8 +388,8 @@ class MersenneTwister_TestBasicOps(TestBasicOps[random.Random]):
         self.assertRaises(ValueError, self.gen.getrandbits, -1)
 
     def test_randbelow_logic(self,
-                             _log: Function[[int, float], float] = log,
-                             int: Function[[float], int] = int) -> None:
+                             _log: Callable[[int, float], float] = log,
+                             int: Callable[[float], int] = int) -> None:
         # check bitcount transition points:  2**i and 2**(i+1)-1
         # show that: k = int(1.001 + _log(n, 2))
         # is equal to or one greater than the number of bits in n

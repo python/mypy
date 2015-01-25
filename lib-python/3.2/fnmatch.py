@@ -39,7 +39,7 @@ def fnmatch(name: AnyStr, pat: AnyStr) -> bool:
 
 @functools.lru_cache(maxsize=250)
 def _compile_pattern(pat: AnyStr,
-                     is_bytes: bool = False) -> Function[[AnyStr],
+                     is_bytes: bool = False) -> Callable[[AnyStr],
                                                          Match[AnyStr]]:
     if isinstance(pat, bytes):
         pat_str = str(pat, 'ISO-8859-1')

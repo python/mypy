@@ -47,9 +47,9 @@ class TestTyping(unittest.TestCase):
 
     def test_Function(self):
         # Just check that we can call Function. Don't care about return value.
-        Function[[], int]
-        Function[[int], None]
-        Function[[int, str], bool]
+        Callable[[], int]
+        Callable[[int], None]
+        Callable[[int, str], bool]
 
     def test_cast(self):
         o = object()
@@ -269,7 +269,7 @@ class TestTyping(unittest.TestCase):
 
     def test_function_type_dispatch_in_overload(self):
         @overload
-        def f(x:Function[[], str]): return 1
+        def f(x:Callable[[], str]): return 1
         @overload
         def f(x): return 2
 
@@ -691,7 +691,7 @@ class TestTyping(unittest.TestCase):
 
     def test_function_type_string_literal_in_overload(self):
         @overload
-        def f(a:'Function[[], int]'): return 1
+        def f(a:'Callable[[], int]'): return 1
         @overload
         def f(a): return 2
 

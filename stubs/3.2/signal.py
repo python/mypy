@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/signal.html
 
-from typing import Any, overload, Function
+from typing import Any, overload, Callable
 
 SIG_DFL = 0
 SIG_IGN = 0
@@ -47,5 +47,5 @@ def siginterrupt(signalnum: int, flag: bool) -> None: pass
 def signal(signalnum: int, handler: int) -> Any: pass
 @overload
 def signal(signalnum: int,
-           handler: Function[[int, Any], None]) -> Any:
+           handler: Callable[[int, Any], None]) -> Any:
     pass # TODO frame object type

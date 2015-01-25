@@ -1,6 +1,6 @@
 # TODO these are incomplete
 
-from typing import Any, List, overload, Function
+from typing import Any, List, overload, Callable
 
 class TarError(Exception): pass
 
@@ -25,8 +25,8 @@ class TarFile:
                 set_attrs: bool = True) -> None: pass
 
     def add(self, name: str, arcname: str = None, recursive: bool = True,
-            exclude: Function[[str], bool] = None, *,
-            filter: 'Function[[TarFile], TarFile]' = None) -> None: pass
+            exclude: Callable[[str], bool] = None, *,
+            filter: 'Callable[[TarFile], TarFile]' = None) -> None: pass
     def close(self) -> None: pass
 
 def open(name: str, mode: str = 'r', fileobj: Any = None, bufsize: int = 10240,

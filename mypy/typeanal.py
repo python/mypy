@@ -15,7 +15,7 @@ from mypy.sametypes import is_same_type
 from mypy import nodes
 
 
-def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
+def analyse_name(lookup: Callable[[str, Context], SymbolTableNode],
                  name: str, ctx: Context) -> Any:
     """Convert a name into the constructor for the associated Type"""
     if name is None:
@@ -41,7 +41,7 @@ def analyse_name(lookup: Function[[str, Context], SymbolTableNode],
         return UnionType
 
 
-def analyse_node(lookup: Function[[str, Context], SymbolTableNode],
+def analyse_node(lookup: Callable[[str, Context], SymbolTableNode],
                  node: Node, ctx: Context) -> Type:
     if isinstance(node, IndexExpr):
         if isinstance(node.base, NameExpr):
@@ -65,10 +65,10 @@ class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2)."""
 
     def __init__(self,
-                 lookup_func: Function[[str, Context], SymbolTableNode],
-                 lookup_fqn_func: Function[[str], SymbolTableNode],
+                 lookup_func: Callable[[str, Context], SymbolTableNode],
+                 lookup_fqn_func: Callable[[str], SymbolTableNode],
                  stored_vars: Dict[Node, Type],
-                 fail_func: Function[[str, Context], None]) -> None:
+                 fail_func: Callable[[str, Context], None]) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
@@ -236,7 +236,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     to types.
     """
 
-    def __init__(self, fail_func: Function[[str, Context], None]) -> None:
+    def __init__(self, fail_func: Callable[[str, Context], None]) -> None:
         self.fail = fail_func
 
     def visit_instance(self, t: Instance) -> None:

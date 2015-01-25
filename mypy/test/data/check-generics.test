@@ -690,7 +690,7 @@ class B: pass
 from typing import Undefined, Function, typevar, Generic
 S = typevar('S')
 T = typevar('T')
-a = Undefined # type: A[object, Function[[], None]]
+a = Undefined # type: A[object, Callable[[], None]]
 f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "B"
 
 def f(a: 'B') -> None: pass
@@ -795,13 +795,13 @@ a = '' # E: Incompatible types in assignment (expression has type "str", variabl
 from typing import typevar, Function
 T = typevar('T', values=(int, str))
 def f(x: T) -> T: pass
-def g1(f: Function[[str], str]) -> None: pass
+def g1(f: Callable[[str], str]) -> None: pass
 g1(f)
-def g2(f: Function[[int], int]) -> None: pass
+def g2(f: Callable[[int], int]) -> None: pass
 g2(f)
-def g3(f: Function[[object], object]) -> None: pass
-g3(f) # E: Argument 1 to "g3" has incompatible type Function[[T], T]; \
-           expected Function[[object], object]
+def g3(f: Callable[[object], object]) -> None: pass
+g3(f) # E: Argument 1 to "g3" has incompatible type Callable[[T], T]; \
+           expected Callable[[object], object]
 
 
 -- Special cases
@@ -814,7 +814,7 @@ A = typevar('A')
 B = typevar('B')
 def square(n: int) -> int:
     return n
-def id(f: Function[[A], B]) -> Function[[A], B]:
+def id(f: Callable[[A], B]) -> Function[[A], B]:
     return f
 g = id(square)
 g(1)
@@ -825,6 +825,6 @@ g('x')  # E: Argument 1 has incompatible type "str"; expected "int"
 from typing import Function, typevar
 A = typevar('A')
 def voidify(n: int) -> None: pass
-def identity(f: Function[[A], None]) -> Function[[A], None]:
+def identity(f: Callable[[A], None]) -> Function[[A], None]:
     return f
 identity(voidify)(3)

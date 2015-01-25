@@ -2364,7 +2364,7 @@ MypyFile:1(
         NameExpr(kwargs)))))
 
 [case testSimpleFunctionType]
-f = None # type: Function[[], None]
+f = None # type: Callable[[], None]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -2373,7 +2373,7 @@ MypyFile:1(
     Function?[<TypeList >, None?]))
 
 [case testFunctionTypeWithArgument]
-f = None # type: Function[[str], int]
+f = None # type: Callable[[str], int]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -2382,7 +2382,7 @@ MypyFile:1(
     Function?[<TypeList str?>, int?]))
 
 [case testFunctionTypeWithTwoArguments]
-f = None # type: Function[[a[b], x.y], List[int]]
+f = None # type: Callable[[a[b], x.y], List[int]]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -2391,7 +2391,7 @@ MypyFile:1(
     Function?[<TypeList a?[b?], x.y?>, List?[int?]]))
 
 [case testFunctionTypeWithExtraComma]
-def f(x: Function[[str,], int]): pass
+def f(x: Callable[[str,], int]): pass
 [out]
 MypyFile:1(
   FuncDef:1(

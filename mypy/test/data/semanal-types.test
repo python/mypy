@@ -460,7 +460,7 @@ MypyFile:1(
 
 [case testCastToFunctionType]
 from typing import Function, cast
-cast(Function[[int], str], None)
+cast(Callable[[int], str], None)
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Function : Function, cast : cast])
@@ -579,7 +579,7 @@ MypyFile:1(
 from typing import typevar, Function, Generic
 t = typevar('t')
 class A(Generic[t]): pass
-def f(x: Function[[int, t], int]) -> None: pass
+def f(x: Callable[[int, t], int]) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [typevar : typevar, Function : Function, Generic : Generic])
@@ -603,7 +603,7 @@ MypyFile:1(
 from typing import typevar, Function, Generic
 t = typevar('t')
 class A(Generic[t]): pass
-def f(x: Function[[], t]) -> None: pass
+def f(x: Callable[[], t]) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [typevar : typevar, Function : Function, Generic : Generic])
@@ -780,8 +780,8 @@ MypyFile:1(
 
 [case testFunctionTypes]
 from typing import Function
-f = None # type: Function[[object, int], str]
-g = None # type: Function[[], None]
+f = None # type: Callable[[object, int], str]
+g = None # type: Callable[[], None]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Function : Function])

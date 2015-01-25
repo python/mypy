@@ -1,4 +1,4 @@
-from typing import Any, typevar, List, Function, Tuple, Union, Dict, Undefined
+from typing import Any, typevar, List, Callable, Tuple, Union, Dict, Undefined
 from abc import ABCMeta, abstractmethod
 from asyncio.futures import Future
 
@@ -23,7 +23,7 @@ class Handle:
     __slots__ = [] # type: List[str]
     _cancelled = False
     _args = [] # type: List[Any]
-    def __init__(self, callback: Function[[],Any], args: List[Any],
+    def __init__(self, callback: Callable[[],Any], args: List[Any],
         loop: AbstractEventLoop) -> None: pass
     def __repr__(self) -> str: pass
     def cancel(self) -> None: pass
@@ -43,19 +43,19 @@ class AbstractEventLoop(metaclass=ABCMeta):
     def close(self) -> None: pass
     # Methods scheduling callbacks.  All these return Handles.
     @abstractmethod
-    def call_soon(self, callback: Function[[],Any], *args: Any) -> Handle: pass
+    def call_soon(self, callback: Callable[[],Any], *args: Any) -> Handle: pass
     @abstractmethod
-    def call_later(self, delay: Union[int, float], callback: Function[[],Any], *args: Any) -> Handle: pass
+    def call_later(self, delay: Union[int, float], callback: Callable[[],Any], *args: Any) -> Handle: pass
     @abstractmethod
-    def call_at(self, when: float, callback: Function[[],Any], *args: Any) -> Handle: pass
+    def call_at(self, when: float, callback: Callable[[],Any], *args: Any) -> Handle: pass
     @abstractmethod
     def time(self) -> float: pass
     # Methods for interacting with threads
     @abstractmethod
-    def call_soon_threadsafe(self, callback: Function[[],Any], *args: Any) -> Handle: pass
+    def call_soon_threadsafe(self, callback: Callable[[],Any], *args: Any) -> Handle: pass
     @abstractmethod
     def run_in_executor(self, executor: Any,
-        callback: Function[[],Any], *args: Any) -> Future[Any]: pass
+        callback: Callable[[],Any], *args: Any) -> Future[Any]: pass
     @abstractmethod
     def set_default_executor(self, executor: Any) -> None: pass
     # Network I/O methods returning Futures.
@@ -115,11 +115,11 @@ class AbstractEventLoop(metaclass=ABCMeta):
                     #?? check Any
                     # return (Transport, Protocol)
     @abstractmethod
-    def add_reader(self, fd: int, callback: Function[[],Any], *args: List[Any]) -> None: pass
+    def add_reader(self, fd: int, callback: Callable[[],Any], *args: List[Any]) -> None: pass
     @abstractmethod
     def remove_reader(self, fd: int) -> None: pass
     @abstractmethod
-    def add_writer(self, fd: int, callback: Function[[],Any], *args: List[Any]) -> None: pass
+    def add_writer(self, fd: int, callback: Callable[[],Any], *args: List[Any]) -> None: pass
     @abstractmethod
     def remove_writer(self, fd: int) -> None: pass
     # Completion based I/O methods returning Futures.
@@ -133,12 +133,12 @@ class AbstractEventLoop(metaclass=ABCMeta):
     def sock_accept(self, sock: Any) -> Any: pass
     # Signal handling.
     @abstractmethod
-    def add_signal_handler(self, sig: int, callback: Function[[],Any], *args: List[Any]) -> None: pass
+    def add_signal_handler(self, sig: int, callback: Callable[[],Any], *args: List[Any]) -> None: pass
     @abstractmethod
     def remove_signal_handler(self, sig: int) -> None: pass
     # Error handlers.
     @abstractmethod
-    def set_exception_handler(self, handler: Function[[], Any]) -> None: pass
+    def set_exception_handler(self, handler: Callable[[], Any]) -> None: pass
     @abstractmethod
     def default_exception_handler(self, context: Any) -> None: pass
     @abstractmethod

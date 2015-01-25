@@ -433,11 +433,11 @@ class B: pass
 class A:
     def f(self) -> None: pass
     g = f
-    h = f # type: Function[[A], None]
+    h = f # type: Callable[[A], None]
     h = f
     g = h
-    ff = f # type: Function[[B], None]  # E: Incompatible types in assignment (expression has type Function[[A], None], variable has type Function[[B], None])
-    g = ff                # E: Incompatible types in assignment (expression has type Function[[B], None], variable has type Function[[A], None])
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Function[[A], None], variable has type Function[[B], None])
+    g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Function[[A], None])
 [out]
 main: In class "A":
 
@@ -988,7 +988,7 @@ from typing import Any, Tuple, Function
 class A:
     def __radd__(self, x: Tuple[int, str]) -> int: pass
 class B:
-    def __radd__(self, x: Function[[], int]) -> int: pass
+    def __radd__(self, x: Callable[[], int]) -> int: pass
 class C:
     def __radd__(self, x: Any) -> int: pass
 [out]

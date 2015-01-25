@@ -50,9 +50,9 @@ class TestTyping(unittest.TestCase):
 
     def test_Function(self):
         # Just check that we can call Function. Don't care about return value.
-        Function[[], int]
-        Function[[int], None]
-        Function[[int, unicode], bool]
+        Callable[[], int]
+        Callable[[int], None]
+        Callable[[int, unicode], bool]
 
     def test_cast(self):
         o = object()

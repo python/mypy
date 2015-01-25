@@ -371,7 +371,7 @@ class ExpressionChecker:
             context: Context) -> Tuple[CallableType, List[Type]]:
         """Perform second pass of generic function type argument inference.
 
-        The second pass is needed for arguments with types such as Function[[T], S],
+        The second pass is needed for arguments with types such as Callable[[T], S],
         where both T and S are type variables, when the actual argument is a
         lambda with inferred types.  The idea is to infer the type variable T
         in the first pass (based on the types of other arguments).  This lets
@@ -1295,7 +1295,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                            caller_names: List[str],
                            callee_kinds: List[int],
                            callee_names: List[str],
-                           caller_arg_type: Function[[int],
+                           caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
     """Calculate mapping between actual (caller) args and formals.
 
@@ -1390,7 +1390,7 @@ class ArgInferSecondPassQuery(types.TypeQuery):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
-    type anywhere. For example, the result for Function[[], T] is True if t is
+    type anywhere. For example, the result for Callable[[], T] is True if t is
     a type variable.
     """
     def __init__(self) -> None:

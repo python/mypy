@@ -650,7 +650,7 @@ class Popen(object):
     def __init__(self, args: Sequence[Any], bufsize: int = 0,
                  executable: str = None, stdin: Any = None,
                  stdout: Any = None, stderr: Any = None,
-                 preexec_fn: Function[[], Any] = None,
+                 preexec_fn: Callable[[], Any] = None,
                  close_fds: Any = _PLATFORM_DEFAULT_CLOSE_FDS,
                  shell: int = False, cwd: str = None,
                  env: Mapping[str, str] = None,
@@ -924,7 +924,7 @@ class Popen(object):
 
 
         def _execute_child(self, args: Sequence[str], executable: str,
-                           preexec_fn: Function[[], Any], close_fds: Any,
+                           preexec_fn: Callable[[], Any], close_fds: Any,
                            pass_fds: Any, cwd: str, env: Mapping[str, str],
                            universal_newlines: int,
                            startupinfo: STARTUPINFO, creationflags: int,
@@ -1021,10 +1021,10 @@ class Popen(object):
         from _subprocess import Handle
 
         def _internal_poll_win(self, _deadstate: int = None,
-                _WaitForSingleObject: Function[[Handle, int], int] =
+                _WaitForSingleObject: Callable[[Handle, int], int] =
                                _subprocess.WaitForSingleObject,
                 _WAIT_OBJECT_0: int = _subprocess.WAIT_OBJECT_0,
-                _GetExitCodeProcess: Function[[Handle], int] =
+                _GetExitCodeProcess: Callable[[Handle], int] =
                                     _subprocess.GetExitCodeProcess) -> int:
             if self.returncode is None:
                 if _WaitForSingleObject(self._handle, 0) == _WAIT_OBJECT_0:
@@ -1170,7 +1170,7 @@ class Popen(object):
 
 
         def _execute_child(self, args: Sequence[str], executable: str,
-                           preexec_fn: Function[[], Any], close_fds: Any,
+                           preexec_fn: Callable[[], Any], close_fds: Any,
                            pass_fds: Any, cwd: str, env: Mapping[str, str],
                            universal_newlines: int,
                            startupinfo: 'STARTUPINFO', creationflags: int,
@@ -1400,10 +1400,10 @@ class Popen(object):
 
         def _handle_exitstatus(
                 self, sts: int,
-                _WIFSIGNALED: Function[[int], bool] = os.WIFSIGNALED,
-                _WTERMSIG: Function[[int], bool] = os.WTERMSIG,
-                _WIFEXITED: Function[[int], bool] = os.WIFEXITED,
-                _WEXITSTATUS: Function[[int], bool] = os.WEXITSTATUS) -> None:
+                _WIFSIGNALED: Callable[[int], bool] = os.WIFSIGNALED,
+                _WTERMSIG: Callable[[int], bool] = os.WTERMSIG,
+                _WIFEXITED: Callable[[int], bool] = os.WIFEXITED,
+                _WEXITSTATUS: Callable[[int], bool] = os.WEXITSTATUS) -> None:
             # This method is called (indirectly) by __del__, so it cannot
             # refer to anything outside of its local scope."""
             if _WIFSIGNALED(sts):
@@ -1426,7 +1426,7 @@ class Popen(object):
             return self._internal_poll_posix(_deadstate)
 
         def _internal_poll_posix(self, _deadstate: int = None,
-                                 _waitpid: Function[[int, int],
+                                 _waitpid: Callable[[int, int],
                                                  Tuple[int, int]] = os.waitpid,
                                  _WNOHANG: int = os.WNOHANG,
                                  _os_error: Any = os.error) -> int:

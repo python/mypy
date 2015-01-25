@@ -1,10 +1,10 @@
 # Stubs for inspect
 
-from typing import Undefined, Any, Tuple, List, Function
+from typing import Undefined, Any, Tuple, List, Callable
 
 _object = object
 
-def getmembers(obj: object, predicate: Function[[Any], bool]) -> List[Tuple[str, object]]: pass
+def getmembers(obj: object, predicate: Callable[[Any], bool]) -> List[Tuple[str, object]]: pass
 
 def isclass(obj: object) -> bool: pass
 

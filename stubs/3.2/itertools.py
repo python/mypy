@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/itertools.html
 
-from typing import (Iterator, typevar, Iterable, overload, Any, Function, Tuple,
+from typing import (Iterator, typevar, Iterable, overload, Any, Callable, Tuple,
                     Union, Sequence)
 
 _T = typevar('_T')
@@ -21,16 +21,16 @@ def accumulate(iterable: Iterable[_T]) -> Iterator[_T]: pass
 def chain(*iterables: Iterable[_T]) -> Iterator[_T]: pass
 # TODO chain.from_Iterable
 def compress(data: Iterable[_T], selectors: Iterable[Any]) -> Iterator[_T]: pass
-def dropwhile(predicate: Function[[_T], Any],
+def dropwhile(predicate: Callable[[_T], Any],
               iterable: Iterable[_T]) -> Iterator[_T]: pass
-def filterfalse(predicate: Function[[_T], Any],
+def filterfalse(predicate: Callable[[_T], Any],
                 iterable: Iterable[_T]) -> Iterator[_T]: pass
 
 @overload
 def groupby(iterable: Iterable[_T]) -> Iterator[Tuple[_T, Iterator[_T]]]: pass
 @overload
 def groupby(iterable: Iterable[_T],
-            key: Function[[_T], _S]) -> Iterator[Tuple[_S, Iterator[_T]]]: pass
+            key: Callable[[_T], _S]) -> Iterator[Tuple[_S, Iterator[_T]]]: pass
 
 @overload
 def islice(iterable: Iterable[_T], stop: int) -> Iterator[_T]: pass
@@ -39,7 +39,7 @@ def islice(iterable: Iterable[_T], start: int, stop: int,
            step: int = 1) -> Iterator[_T]: pass
 
 def starmap(func: Any, iterable: Iterable[Any]) -> Iterator[Any]: pass
-def takewhile(predicate: Function[[_T], Any],
+def takewhile(predicate: Callable[[_T], Any],
               iterable: Iterable[_T]) -> Iterator[_T]: pass
 def tee(iterable: Iterable[Any], n: int = 2) -> Iterator[Any]: pass
 def zip_longest(*p: Iterable[Any],

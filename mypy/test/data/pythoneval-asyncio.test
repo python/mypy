@@ -379,7 +379,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py, line 17: Argument 1 to "add_done_callback" of "Future" has incompatible type Function[[Future[int]], None]; expected Function[[Future[str]], Any]
+_program.py, line 17: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Function[[Future[str]], Any]
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
