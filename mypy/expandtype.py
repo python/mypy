@@ -112,7 +112,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
 
 def update_callable_implicit_bounds(
-        t: CallableType, arg_types: List[Tuple[int, Type]]) -> Callable:
+        t: CallableType, arg_types: List[Tuple[int, Type]]) -> CallableType:
     # FIX what if there are existing bounds?
     return CallableType(t.arg_types,
                     t.arg_kinds,

@@ -285,7 +285,7 @@ def neg_op(op: int) -> int:
         raise ValueError('Invalid operator {}'.format(op))
 
 
-def find_matching_overload_item(overloaded: Overloaded, template: CallableType) -> Callable:
+def find_matching_overload_item(overloaded: Overloaded, template: CallableType) -> CallableType:
     """Disambiguate overload item against a template."""
     items = overloaded.items()
     for item in items:

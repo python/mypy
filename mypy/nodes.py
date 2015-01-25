@@ -1714,7 +1714,7 @@ def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
         return mypy.types.Overloaded(items)
 
 
-def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.Callable':
+def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.CallableType':
     return mypy.types.CallableType(c.arg_types[1:],
                                c.arg_kinds[1:],
                                c.arg_names[1:],

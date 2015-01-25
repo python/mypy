@@ -270,7 +270,7 @@ def type_object_type(info: TypeInfo, builtin_type: Function[[str], Instance]) ->
             return Overloaded(items)
 
 
-def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance) -> Callable:
+def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):

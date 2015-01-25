@@ -217,7 +217,7 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     return res
 
 
-def is_similar_callables(t: CallableType, s: Callable) -> bool:
+def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     """Return True if t and s are equivalent and have identical numbers of
     arguments, default arguments and varargs.
     """
@@ -226,7 +226,7 @@ def is_similar_callables(t: CallableType, s: Callable) -> bool:
             and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
 
 
-def combine_similar_callables(t: CallableType, s: Callable) -> Callable:
+def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types = []  # type: List[Type]
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))

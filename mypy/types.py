@@ -848,7 +848,7 @@ def strip_type(typ: Type) -> Type:
         return typ
 
 
-def replace_leading_arg_type(t: CallableType, self_type: Type) -> Callable:
+def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
     """Return a copy of a callable type with a different self argument type.
 
     Assume that the callable is the signature of a method.

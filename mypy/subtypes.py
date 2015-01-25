@@ -162,7 +162,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
 
-def is_callable_subtype(left: CallableType, right: Callable, ignore_return: bool = False) -> bool:
+def is_callable_subtype(left: CallableType, right: CallableType, ignore_return: bool = False) -> bool:
     """Is left a subtype of right?"""
     # TODO: Support named arguments, **args, etc.
     # Non-type cannot be a subtype of type.
@@ -196,7 +196,7 @@ def is_callable_subtype(left: CallableType, right: Callable, ignore_return: bool
     return True
 
 
-def is_var_arg_callable_subtype_helper(left: CallableType, right: Callable) -> bool:
+def is_var_arg_callable_subtype_helper(left: CallableType, right: CallableType) -> bool:
     """Is left a subtype of right, assuming left has *args?
 
     See also is_callable_subtype for additional assumptions we can make.
@@ -222,7 +222,7 @@ def is_var_arg_callable_subtype_helper(left: CallableType, right: Callable) -> b
         return is_subtype(right.arg_types[-1], left.arg_types[-1])
 
 
-def unify_generic_callable(type: CallableType, target: Callable) -> Callable:
+def unify_generic_callable(type: CallableType, target: CallableType) -> CallableType:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.

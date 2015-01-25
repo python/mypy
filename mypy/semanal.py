@@ -1942,7 +1942,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 
 @overload
-def replace_implicit_first_type(sig: CallableType, new: Type) -> Callable:
+def replace_implicit_first_type(sig: CallableType, new: Type) -> CallableType:
     # We can detect implicit self type by it having no representation.
     if not sig.arg_types[0].repr:
         return replace_leading_arg_type(sig, new)

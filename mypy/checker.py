@@ -719,7 +719,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.msg.invalid_signature(typ, context)
 
     def expand_typevars(self, defn: FuncItem,
-                        typ: CallableType) -> List[Tuple[FuncItem, Callable]]:
+                        typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
         subst = List[List[Tuple[int, Type]]]()
         tvars = typ.variables or []
@@ -2105,13 +2105,13 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     return False
 
 
-def is_same_arg_prefix(t: CallableType, s: Callable) -> bool:
+def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
     # TODO check argument kinds
     return all(is_same_type(argt, args)
                for argt, args in zip(t.arg_types, s.arg_types))
 
 
-def is_more_precise_signature(t: CallableType, s: Callable) -> bool:
+def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
     """Is t more precise than s?
 
     A signature t is more precise than s if all argument types and the return

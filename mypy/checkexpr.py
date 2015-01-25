@@ -270,7 +270,7 @@ class ExpressionChecker:
         return res
 
     def infer_function_type_arguments_using_context(
-            self, callable: CallableType, error_context: Context) -> Callable:
+            self, callable: CallableType, error_context: Context) -> CallableType:
         """Unify callable return type to type context to infer type vars.
 
         For example, if the return type is set[t] where 't' is a type variable
@@ -1373,7 +1373,7 @@ def is_duplicate_mapping(mapping: List[int], actual_kinds: List[int]) -> bool:
         actual_kinds[mapping[1]] == nodes.ARG_STAR2)
 
 
-def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callable:
+def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:
     """Return a copy of a callable type with a different return type."""
     return CallableType(c.arg_types,
                     c.arg_kinds,
