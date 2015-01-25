@@ -37,7 +37,7 @@ import errno as _errno
 from random import Random as _Random
 
 from typing import (
-    Any as _Any, Callable as _Function, Iterator as _Iterator,
+    Any as _Any, Callable as _Callable, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
     Iterable as _Iterable, IO as _IO, ducktype as _ducktype,
     Traceback as _Traceback
