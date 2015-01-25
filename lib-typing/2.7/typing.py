@@ -23,7 +23,6 @@ __all__ = [
     'Match',
     'NamedTuple',
     'Pattern',
-    'Protocol',
     'Set',
     'Tuple',
     'Undefined',
@@ -33,7 +32,7 @@ __all__ = [
     'forwardref',
     'overload',
     'typevar',
-    # Protocols and abstract base classes
+    # _Protocols and abstract base classes
     'Container',
     'Iterable',
     'Iterator',
@@ -92,9 +91,9 @@ class AbstractGenericMeta(ABCMeta):
 
     def __new__(mcls, name, bases, namespace):
         cls = ABCMeta.__new__(mcls, name, bases, namespace)
-        # 'Protocol' must be an explicit base class in order for a class to
+        # '_Protocol' must be an explicit base class in order for a class to
         # be a protocol.
-        cls._is_protocol = name == u'Protocol' or Protocol in bases
+        cls._is_protocol = name == u'_Protocol' or _Protocol in bases
         return cls
 
     def __getitem__(self, args):
@@ -102,7 +101,7 @@ class AbstractGenericMeta(ABCMeta):
         return self
 
 
-class Protocol(object):
+class _Protocol(object):
     __metaclass__ = AbstractGenericMeta
     """Base class for protocol classes."""
 
@@ -112,7 +111,7 @@ class Protocol(object):
             # No structural checks since this isn't a protocol.
             return NotImplemented
 
-        if cls is Protocol:
+        if cls is _Protocol:
             # Every class is a subclass of the empty protocol.
             return True
 
@@ -126,10 +125,10 @@ class Protocol(object):
 
     @classmethod
     def _get_protocol_attrs(cls):
-        # Get all Protocol base classes.
+        # Get all _Protocol base classes.
         protocol_bases = []
         for c in cls.__mro__:
-            if getattr(c, '_is_protocol', False) and c.__name__ != 'Protocol':
+            if getattr(c, '_is_protocol', False) and c.__name__ != '_Protocol':
                 protocol_bases.append(c)
 
         # Get attributes included in protocol.
@@ -393,42 +392,42 @@ KT = typevar('KT')
 VT = typevar('VT')
 
 
-class SupportsInt(Protocol):
+class SupportsInt(_Protocol):
     @abstractmethod
     def __int__(self): pass
 
 
-class SupportsFloat(Protocol):
+class SupportsFloat(_Protocol):
     @abstractmethod
     def __float__(self): pass
 
 
-class SupportsAbs(Protocol[T]):
+class SupportsAbs(_Protocol[T]):
     @abstractmethod
     def __abs__(self): pass
 
 
-class Reversible(Protocol[T]):
+class Reversible(_Protocol[T]):
     @abstractmethod
     def __reversed__(self): pass
 
 
-class Sized(Protocol):
+class Sized(_Protocol):
     @abstractmethod
     def __len__(self): pass
 
 
-class Container(Protocol[T]):
+class Container(_Protocol[T]):
     @abstractmethod
     def __contains__(self, x): pass
 
 
-class Iterable(Protocol[T]):
+class Iterable(_Protocol[T]):
     @abstractmethod
     def __iter__(self): pass
 
 
-class Iterator(Iterable[T], Protocol[T]):
+class Iterator(Iterable[T], _Protocol[T]):
     @abstractmethod
     def next(self): pass
 

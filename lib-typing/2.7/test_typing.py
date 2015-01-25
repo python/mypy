@@ -4,7 +4,7 @@ import unittest
 
 from typing import (
     List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
-    AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
+    AbstractGeneric, _Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, Reversible, Undefined, AnyStr, annotations, builtinclass,
     cast, disjointclass, ducktype, forwardref, overload, typevar
@@ -438,7 +438,7 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance('', Reversible)
 
     def test_simple_protocol(self):
-        class P(Protocol):
+        class P(_Protocol):
             def f(self): pass
 
         class A(object):
@@ -455,16 +455,16 @@ class TestTyping(unittest.TestCase):
 
         self.assertTrue(issubclass(A, P))
         self.assertFalse(issubclass(B, P))
-        self.assertTrue(issubclass(P, Protocol))
-        self.assertTrue(issubclass(Protocol, Protocol))
-        self.assertTrue(issubclass(A, Protocol))
+        self.assertTrue(issubclass(P, _Protocol))
+        self.assertTrue(issubclass(_Protocol, _Protocol))
+        self.assertTrue(issubclass(A, _Protocol))
 
     def test_issubclass_of_protocol(self):
         class A(object): pass
-        self.assertTrue(issubclass(A, Protocol))
+        self.assertTrue(issubclass(A, _Protocol))
 
     def test_protocol_with_two_attrs(self):
-        class P(Protocol):
+        class P(_Protocol):
             def __int__(self): pass
             x = 0
 
@@ -486,9 +486,9 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(C(), P)
 
     def test_protocol_inheritance(self):
-        class P(Protocol):
+        class P(_Protocol):
             def f(self): pass
-        class PP(P, Protocol):
+        class PP(P, _Protocol):
             def g(self): pass
 
         class A(object):
@@ -508,18 +508,18 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(A(), PP)
         self.assertNotIsInstance(C(), PP)
 
-        class AA(Protocol):
+        class AA(_Protocol):
             def f(self): return 1
         class BB(AA): pass
 
         self.assertEqual(BB().f(), 1)
 
         class CC(AA): pass
-        # BB is not a protocol since it doesn't explicitly subclass Protocol.
+        # BB is not a protocol since it doesn't explicitly subclass _Protocol.
         self.assertNotIsInstance(CC(), BB)
 
     def test_builtin_class_and_protocol(self):
-        class P(Protocol):
+        class P(_Protocol):
             def __add__(self): pass
 
         self.assertIsInstance('', P)
@@ -532,14 +532,14 @@ class TestTyping(unittest.TestCase):
 
     def test_generic_protocol(self):
         t = typevar('t')
-        class P(Protocol[t]):
+        class P(_Protocol[t]):
             x = 1
         class A(object):
             x = 2
         self.assertIsInstance(A(), P)
 
     def test_indexing_in_protocol(self):
-        class P(Protocol):
+        class P(_Protocol):
             def __getitem__(self): pass
         class A(object):
             def __getitem__(self): pass
@@ -609,11 +609,11 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(B(), Iterator)
 
     def test_multiple_protocol_inheritance(self):
-        class P(Protocol):
+        class P(_Protocol):
             x = 1
-        class P2(Protocol):
+        class P2(_Protocol):
             y = 1
-        class P3(P, P2, Protocol): pass
+        class P3(P, P2, _Protocol): pass
 
         class A(object):
             x = 1
@@ -628,7 +628,7 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(C(), P3)
 
     def test_protocol_docstrings(self):
-        class P(Protocol):
+        class P(_Protocol):
             u"""blah"""
             def f(self): pass
         class A(object):
@@ -769,7 +769,7 @@ class TestTyping(unittest.TestCase):
         B()
 
     def test_protocol_with_abstract_method(self):
-        class A(Protocol):
+        class A(_Protocol):
             @abstractmethod
             def f(self): pass
 
@@ -777,7 +777,7 @@ class TestTyping(unittest.TestCase):
             A()  # No implementation for abstract method.
 
     def test_protocol_inheritance_with_abstract_method(self):
-        class A(Protocol):
+        class A(_Protocol):
             @abstractmethod
             def f(self): pass
         class B(A):
