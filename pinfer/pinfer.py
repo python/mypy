@@ -220,7 +220,7 @@ def annotate_file(path):
         replacements.append((def_start_offset, def_end_offset, annotated_def))
 
     # ideally, we'd put this after the docstring
-    replacements.append((0, 0, "from typing import List, Dict, Set, Tuple, Function, Pattern, Match, Union, Optional\n"))
+    replacements.append((0, 0, "from typing import List, Dict, Set, Tuple, Callable, Pattern, Match, Union, Optional\n"))
 
     # absurdly inefficient algorithm: replace with O(n) writer
 
@@ -441,7 +441,7 @@ def infer_value_type(value, depth=0):
     elif isinstance(value, set):
         return Generic('Set', [infer_value_types(value, depth)])
     elif isinstance(value, types.MethodType) or isinstance(value, types.FunctionType):
-        return Instance(Function)
+        return Instance(Callable)
     else:
         for t in type(value).mro():
             if get_defining_file(t) in ignore_files:
@@ -680,7 +680,7 @@ class Any(TypeBase):
 
 
 class AnyStr(object): pass
-class Function(object): pass
+class Callable(object): pass
 import re
 Pattern = type(re.compile(u''))
 Match = type(re.match(u'', u''))
