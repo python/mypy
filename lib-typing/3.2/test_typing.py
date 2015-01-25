@@ -2,7 +2,7 @@ from abc import abstractmethod, ABCMeta
 import unittest
 
 from typing import (
-    List, Dict, Set, Tuple, Pattern, Match, Any, Function, Generic,
+    List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
@@ -45,8 +45,8 @@ class TestTyping(unittest.TestCase):
         s = 'x'
         self.assertIs(Any(s), s)
 
-    def test_Function(self):
-        # Just check that we can call Function. Don't care about return value.
+    def test_Callable(self):
+        # Just check that we can call Callable. Don't care about return value.
         Callable[[], int]
         Callable[[int], None]
         Callable[[int, str], bool]

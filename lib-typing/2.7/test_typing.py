@@ -4,7 +4,7 @@ import unittest
 
 from typing import (
     List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
-    Function, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
+    Callable, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
     Sequence, AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, Reversible, Undefined, cast, forwardref, overload, typevar
 )
@@ -48,8 +48,8 @@ class TestTyping(unittest.TestCase):
         s = u'x'
         self.assertIs(Any(s), s)
 
-    def test_Function(self):
-        # Just check that we can call Function. Don't care about return value.
+    def test_Callable(self):
+        # Just check that we can call Callable. Don't care about return value.
         Callable[[], int]
         Callable[[int], None]
         Callable[[int, unicode], bool]
