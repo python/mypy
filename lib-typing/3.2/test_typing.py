@@ -6,8 +6,7 @@ from typing import (
     AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
-    cast, disjointclass, ducktype, forwardref, overload, typevar,
-    NamedTuple
+    cast, disjointclass, ducktype, forwardref, overload, typevar
 )
 
 
@@ -60,6 +59,11 @@ class TestTyping(unittest.TestCase):
         self.assertIs(cast('xyz', s), s)
         # cast does not check type validity; anything goes.
         self.assertIs(cast(o, s), s)
+
+    def test_annotations(self):
+        def f(x: int) -> str: return 'string'
+
+        self.assertEqual(f.__annotations__, {'x': int, 'return': str})
 
     def test_simple_overload(self):
         @overload
@@ -163,14 +167,13 @@ class TestTyping(unittest.TestCase):
         @overload
         def f(x:Any): return 2
 
-        msg1 = r'f\(\) takes exactly 1 argument \(%d given\)'
-        msg2 = r'f\(\) takes exactly 1 positional argument \(%d given\)'
+        msg = r'f\(\) .* 1 .*argument.*'
 
-        with self.assertRaisesRegex(TypeError, msg1 % 0):
+        with self.assertRaisesRegex(TypeError, msg):
             f()
-        with self.assertRaisesRegex(TypeError, msg2 % 2):
+        with self.assertRaisesRegex(TypeError, msg):
             f(1, 2)
-        with self.assertRaisesRegex(TypeError, msg2 % 3):
+        with self.assertRaisesRegex(TypeError, msg):
             f('x', 'y', 'z')
 
     def test_overload_with_variable_argument_counts(self):
@@ -190,7 +193,7 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(g(), None)
         self.assertEqual(g(1), 2)
 
-        msg = r'g\(\) takes no arguments \(2 given\)'
+        msg = r'g\(\) takes (no)|(0 positional) arguments.*'
         with self.assertRaisesRegex(TypeError, msg):
             g(1, 2)
 
@@ -232,7 +235,7 @@ class TestTyping(unittest.TestCase):
         @overload
         def f(x): return 2
 
-        self.assertRegex(str(f), '^<function f at.*>$')
+        self.assertRegex(str(f), r'^<function (.*\.<locals>\.)?f at.*>$')
 
     def test_overload_with_default_arg_values(self):
         @overload
@@ -267,7 +270,7 @@ class TestTyping(unittest.TestCase):
         # Fall back to the last overload variant if no annotation matches.
         self.assertEqual(f(()), 2)
 
-    def test_function_type_dispatch_in_overload(self):
+    def test_callable_type_dispatch_in_overload(self):
         @overload
         def f(x:Callable[[], str]): return 1
         @overload
@@ -278,7 +281,7 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f('x'.find), 1)
         self.assertEqual(f(str), 1)
         self.assertEqual(f(TestTyping), 1)
-        self.assertEqual(f(self.test_function_type_dispatch_in_overload), 1)
+        self.assertEqual(f(self.test_callable_type_dispatch_in_overload), 1)
         self.assertEqual(f(self.assertEqual), 1)
         self.assertEqual(f(TestTyping.assertEqual), 1)
 
@@ -478,6 +481,16 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(A(), PP)
         self.assertNotIsInstance(C(), PP)
 
+        class AA(Protocol):
+            def f(self): return 1
+        class BB(AA): pass
+
+        self.assertEqual(BB().f(), 1)
+
+        class CC(AA): pass
+        # BB is not a protocol since it doesn't explicitly subclass Protocol.
+        self.assertNotIsInstance(CC(), BB)
+
     def test_builtin_class_and_protocol(self):
         class P(Protocol):
             def __add__(self): pass
@@ -643,15 +656,6 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(Dummy()), 1)
         self.assertEqual(f(2), 2)
 
-    def test_module_ref_string_literal_in_overload(self):
-        @overload
-        def f(a:'Dummy'): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f(Dummy()), 1)
-        self.assertEqual(f(2), 2)
-
     def test_local_ref_string_literal_in_overload(self):
         @overload
         def f(a:'C'): return 1
@@ -689,7 +693,7 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(()), 1)
         self.assertEqual(f([]), 2)
 
-    def test_function_type_string_literal_in_overload(self):
+    def test_callable_type_string_literal_in_overload(self):
         @overload
         def f(a:'Callable[[], int]'): return 1
         @overload
@@ -732,17 +736,6 @@ class TestTyping(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             A()  # No implementation for abstract method.
-
-    def test_protocol_inheritance(self):
-        class A(Protocol):
-            def f(self): return 1
-        class B(A): pass
-
-        self.assertEqual(B().f(), 1)
-
-        class C(A): pass
-        # B is not a protocol since it doesn't explicitly subclass Protocol.
-        self.assertNotIsInstance(C(), B)
 
     def test_protocol_inheritance_with_abstract_method(self):
         class A(Protocol):
@@ -806,11 +799,6 @@ class TestTyping(unittest.TestCase):
         class A: pass
         self.assertIs(disjointclass(str)(A), A)
         self.assertIs(disjointclass('str')(A), A)
-
-    def test_NamedTuple(self):
-        n = NamedTuple('n', [('a', int), ('b', str)])
-        assert n(a=1, b='x') == (1, 'x')
-        assert n(1, 'x')[1] == 'x'
 
 
 @overload
