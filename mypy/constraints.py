@@ -202,7 +202,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         else:
             return []
 
-    def visit_callable(self, template: CallableType) -> List[Constraint]:
+    def visit_callable_type(self, template: CallableType) -> List[Constraint]:
         if isinstance(self.actual, CallableType):
             cactual = cast(CallableType, self.actual)
             # FIX verify argument counts

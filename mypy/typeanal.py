@@ -149,7 +149,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVar) -> Type:
         raise RuntimeError('TypeVar is already analysed')
 
-    def visit_callable(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> Type:
         res = CallableType(self.anal_array(t.arg_types),
                        t.arg_kinds,
                        t.arg_names,
@@ -285,7 +285,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 self.fail('Invalid type argument value for "{}"'.format(
                     type.name()), context)
 
-    def visit_callable(self, t: CallableType) -> None:
+    def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)

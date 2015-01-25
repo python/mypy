@@ -75,7 +75,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         else:
             return repl
 
-    def visit_callable(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> Type:
         return CallableType(self.expand_types(t.arg_types),
                         t.arg_kinds,
                         t.arg_names,

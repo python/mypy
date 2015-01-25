@@ -239,7 +239,7 @@ def is_imprecise2(t: Type) -> bool:
 
 
 class HasAnyQuery2(HasAnyQuery):
-    def visit_callable(self, t: CallableType) -> bool:
+    def visit_callable_type(self, t: CallableType) -> bool:
         # We don't want to flag references to functions with some Any
         # argument types (etc.) since they generally don't mean trouble.
         return False

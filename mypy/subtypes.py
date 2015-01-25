@@ -100,7 +100,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return is_named_instance(self.right, 'builtins.object')
 
-    def visit_callable(self, left: CallableType) -> bool:
+    def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
             return is_callable_subtype(left, right)

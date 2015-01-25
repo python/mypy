@@ -291,7 +291,7 @@ class CallableType(FunctionLike):
         return cast(Instance, ret).type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_callable(self)
+        return visitor.visit_callable_type(self)
 
     def with_name(self, name: str) -> 'CallableType':
         """Return a copy of this type with the specified name."""
@@ -519,7 +519,7 @@ class TypeVisitor(Generic[T]):
     def visit_instance(self, t: Instance) -> T:
         pass
 
-    def visit_callable(self, t: CallableType) -> T:
+    def visit_callable_type(self, t: CallableType) -> T:
         pass
 
     def visit_overloaded(self, t: Overloaded) -> T:
@@ -572,7 +572,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVar) -> Type:
         return t
 
-    def visit_callable(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> Type:
         return CallableType(self.translate_types(t.arg_types),
                         t.arg_kinds,
                         t.arg_names,
@@ -660,7 +660,7 @@ class TypeStrVisitor(TypeVisitor[str]):
             # Named type variable type.
             return '{}`{}'.format(t.name, t.id)
 
-    def visit_callable(self, t):
+    def visit_callable_type(self, t):
         s = ''
         bare_asterisk = False
         for i in range(len(t.arg_types)):
@@ -788,7 +788,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_instance(self, t: Instance) -> bool:
         return self.query_types(t.args)
 
-    def visit_callable(self, t: CallableType) -> bool:
+    def visit_callable_type(self, t: CallableType) -> bool:
         # FIX generics
         return self.query_types(t.arg_types + [t.ret_type])
 

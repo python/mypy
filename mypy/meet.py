@@ -168,7 +168,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_callable(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(
                 t, cast(CallableType, self.s)):
             return combine_similar_callables(t, cast(CallableType, self.s))
