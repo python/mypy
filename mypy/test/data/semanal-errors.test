@@ -141,7 +141,7 @@ x = Undefined(Tuple[A[int]]) # E: "A" expects no type arguments, but 1 given
 [out]
 
 [case testInvalidNumberOfGenericArgsInFunctionType]
-from typing import Function, Undefined
+from typing import Callable, Undefined
 class A: pass
 x = Undefined(Callable[[A[int]], int]) \
               # E: "A" expects no type arguments, but 1 given
@@ -899,7 +899,7 @@ def f(x:[int, str]) -> None: # E: Invalid type
 main: In function "f":
 
 [case testInvalidFunctionType]
-from typing import Function
+from typing import Callable
 x = None # type: Callable[int, str]
 y = None # type: Callable[int]
 z = None # type: Callable[int, int, int]

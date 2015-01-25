@@ -921,14 +921,14 @@ a.b = B() # E: Incompatible types in assignment (expression has type "B", variab
 from typing import List, Callable, Undefined
 l = lambda: List[int]()
 f1 = l # type: Callable[[], List[int]]
-f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type Callable[[], List[int]], variable has type Function[[], List[str]])
+f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type Callable[[], List[int]], variable has type Callable[[], List[str]])
 [builtins fixtures/list.py]
 
 [case testInferLambdaType2]
 from typing import List, Callable
 l = lambda: [B()]
 f1 = l # type: Callable[[], List[B]]
-f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type Callable[[], List[B]], variable has type Function[[], List[A]])
+f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type Callable[[], List[B]], variable has type Callable[[], List[A]])
 
 class A: pass
 class B: pass

@@ -1036,14 +1036,14 @@ di = Undefined # type: Dict[int, int]
 
 
 [case testTrivialLambda]
-from typing import Function
+from typing import Callable
 f = lambda: 1 # type: Callable[[], int]
 f = lambda: ''.x
 f = lambda: ''
 [out]
 main, line 3: "str" has no attribute "x"
 main, line 4: Incompatible return value type: expected builtins.int, got builtins.str
-main, line 4: Incompatible types in assignment (expression has type Callable[[], str], variable has type Function[[], int])
+main, line 4: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
 
 [case testVoidLambda]
 import typing

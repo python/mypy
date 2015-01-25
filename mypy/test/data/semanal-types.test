@@ -463,7 +463,7 @@ from typing import Callable, cast
 cast(Callable[[int], str], None)
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Callable : Function, cast : cast])
+  ImportFrom:1(typing, [Callable : Callable, cast : cast])
   ExpressionStmt:2(
     CastExpr:2(
       NameExpr(None [builtins.None])
@@ -582,7 +582,7 @@ class A(Generic[t]): pass
 def f(x: Callable[[int, t], int]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Callable : Function, Generic : Generic])
+  ImportFrom:1(typing, [typevar : typevar, Callable : Callable, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -606,7 +606,7 @@ class A(Generic[t]): pass
 def f(x: Callable[[], t]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Callable : Function, Generic : Generic])
+  ImportFrom:1(typing, [typevar : typevar, Callable : Callable, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -784,7 +784,7 @@ f = None # type: Callable[[object, int], str]
 g = None # type: Callable[[], None]
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Callable : Function])
+  ImportFrom:1(typing, [Callable : Callable])
   AssignmentStmt:2(
     NameExpr(f [__main__.f])
     NameExpr(None [builtins.None])

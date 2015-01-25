@@ -428,7 +428,7 @@ class A:
 main: In class "A":
 
 [case testMethodRefInClassBody]
-from typing import Function
+from typing import Callable
 class B: pass
 class A:
     def f(self) -> None: pass
@@ -436,8 +436,8 @@ class A:
     h = f # type: Callable[[A], None]
     h = f
     g = h
-    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Function[[A], None], variable has type Function[[B], None])
-    g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Function[[A], None])
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Function[[B], None])
+    g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Callable[[A], None])
 [out]
 main: In class "A":
 
@@ -984,7 +984,7 @@ main: In member "__radd__" of class "B":
 main, line 4: "Any" return type expected since argument to __radd__ does not support __add__
 
 [case testReverseOperatorMethoddArgumentType2]
-from typing import Any, Tuple, Function
+from typing import Any, Tuple, Callable
 class A:
     def __radd__(self, x: Tuple[int, str]) -> int: pass
 class B:
