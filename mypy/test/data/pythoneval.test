@@ -762,7 +762,7 @@ print('>', sorted(s.union('foo')))
 > ['f', 'o', 'x', 'y']
 
 [case testOverloadedErasedType]
-from typing import overload, typevar, Function, List
+from typing import overload, typevar, Callable, List
 
 T = typevar("T")
 V = typevar("V")
@@ -916,7 +916,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py, line 4: Argument 1 to "map" has incompatible type Callable[[str], str]; expected Function[[int], str]
+_program.py, line 4: Argument 1 to "map" has incompatible type Callable[[str], str]; expected Callable[[int], str]
 
 [case testMapStr]
 import typing

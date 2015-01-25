@@ -271,7 +271,7 @@ finally:
     loop.close()
 [out]
 _program.py: In function "test":
-_program.py, line 13: Function does not return a value
+_program.py, line 13: Callable does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 import asyncio
@@ -379,7 +379,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py, line 17: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Function[[Future[str]], Any]
+_program.py, line 17: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Callable[[Future[str]], Any]
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
