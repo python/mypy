@@ -67,268 +67,6 @@ class TestTyping(unittest.TestCase):
 
         self.assertEqual(f.__annotations__, {'x': int, 'return': unicode})
 
-    def test_simple_overload(self):
-        @overload
-        @annotations(x=unicode, returns=unicode)
-        def f(x): return x + 'string'
-        @overload
-        @annotations(x=int, returns=unicode)
-        def f(x): return x + 1
-
-        self.assertEqual(f('x'), 'xstring')
-        self.assertEqual(f(1), 2)
-
-        @overload
-        @annotations(x=int, returns=unicode)
-        def g(x): return 'integer'
-        @overload
-        @annotations(x=unicode, returns=unicode)
-        def g(x): return 'string'
-
-        self.assertEqual(g('x'), 'string')
-        self.assertEqual(g(1), 'integer')
-
-    def test_overload_with_three_variants(self):
-        @overload
-        @annotations(x=unicode, returns=unicode)
-        def f(x): return 'string'
-        @overload
-        @annotations(x=int, returns=unicode)
-        def f(x): return 'integer'
-        @overload
-        @annotations(x=float, returns=unicode)
-        def f(x): return 'floating'
-
-        self.assertEqual(f('x'), 'string')
-        self.assertEqual(f(1), 'integer')
-        self.assertEqual(f(1.0), 'floating')
-
-    def test_overload_with_two_args(self):
-        @overload
-        @annotations(x=unicode, y=unicode, returns=int)
-        def f(x, y): return (1, x, y)
-        @overload
-        @annotations(x=unicode, y=int, returns=int)
-        def f(x, y): return (2, x, y)
-
-        self.assertEqual(f('x', 'y'), (1, 'x', 'y'))
-        self.assertEqual(f('z', 3), (2, 'z', 3))
-
-        @overload
-        @annotations(x=unicode, y=unicode, returns=int)
-        def g(x, y): return 1
-        @overload
-        @annotations(x=int, y=unicode, returns=int)
-        def g(x, y): return 2
-
-        self.assertEqual(g('x', 'y'), 1)
-        self.assertEqual(g('x', 1), 2)
-
-    def test_global_overload(self):
-        self.assertEqual(global_overload('x'), 's')
-        self.assertEqual(global_overload(1), 'i')
-
-    def test_partial_overload_annotation(self):
-        @overload
-        @annotations(x=unicode, returns=int)
-        def f(x, y): return 1
-        @overload
-        @annotations(y=int, returns=int)
-        def f(x, y): return 2
-
-        self.assertEqual(f('x', object()), 1)
-        self.assertEqual(f(object(), 1), 2)
-
-    @overload
-    @annotations(x=unicode, returns=unicode)
-    def method_overload(self, x):
-        return 's'
-
-    @overload
-    @annotations(x=int, returns=unicode)
-    def method_overload(self, x):
-        return 'i'
-
-    def test_method_overload(self):
-        self.assertEqual(self.method_overload('x'), 's')
-        self.assertEqual(self.method_overload(1), 'i')
-
-    def test_overload_with_any_type(self):
-        @overload
-        @annotations(x=Any, y=int)
-        def f(x, y): return 1
-        @overload
-        @annotations(x=Any, y=Any)
-        def f(x, y): return 2
-
-        self.assertEqual(f((), 0), 1)
-        self.assertEqual(f((), ()), 2)
-
-    def test_overload_with_type_alias(self):
-        @overload
-        @annotations(x=List[int])
-        def f(x): return 1
-        @overload
-        @annotations(x=Dict[int, unicode])
-        def f(x): return 2
-        @overload
-        @annotations(x=Tuple[int, unicode])
-        def f(x): return 3
-        @overload
-        def f(x): return 4
-
-        self.assertEqual(f([]), 1)
-        self.assertEqual(f({}), 2)
-        self.assertEqual(f(()), 3)
-        self.assertEqual(f((1, 'x')), 3)
-        self.assertEqual(f(1), 4)
-
-    def test_call_overload_with_invalid_arg_count(self):
-        @overload
-        @annotations(x=int)
-        def f(x): return 1
-        @overload
-        @annotations(x=Any)
-        def f(x): return 2
-
-        msg = r'f\(\) takes exactly 1 argument \(%d given\)'
-
-        with self.assertRaisesRegexp(TypeError, msg % 0):
-            f()
-        with self.assertRaisesRegexp(TypeError, msg % 2):
-            f(1, 2)
-        with self.assertRaisesRegexp(TypeError, msg % 3):
-            f('x', 'y', 'z')
-
-    def test_overload_with_variable_argument_counts(self):
-        @overload
-        def f(): return None
-        @overload
-        def f(x): return x
-
-        self.assertEqual(f(), None)
-        self.assertEqual(f(1), 1)
-
-        @overload
-        def g(x): return x + 1
-        @overload
-        def g(): return None
-
-        self.assertEqual(g(), None)
-        self.assertEqual(g(1), 2)
-
-        msg = r'g\(\) takes no arguments \(2 given\)'
-        with self.assertRaisesRegexp(TypeError, msg):
-            g(1, 2)
-
-    def test_overload_dispatch_order(self):
-        class A(object): pass
-        class B(A): pass
-        class C(B): pass
-
-        @overload
-        @annotations(x=B)
-        def f(x): return 'B'
-        @overload
-        @annotations(x=A)
-        def f(x): return 'A'
-
-        self.assertEqual(f(B()), 'B')
-        self.assertEqual(f(A()), 'A')
-
-        @overload
-        @annotations(x=C)
-        def g(x): return 'C'
-        @overload
-        @annotations(x=B)
-        def g(x): return 'B'
-        @overload
-        @annotations(x=A)
-        def g(x): return 'A'
-
-        self.assertEqual(g(C()), 'C')
-        self.assertEqual(g(B()), 'B')
-        self.assertEqual(g(A()), 'A')
-
-    def test_name_of_overloaded_function(self):
-        @overload
-        @annotations(x=unicode)
-        def f(x): return 1
-        @overload
-        def f(x): return 2
-
-        self.assertEqual(f.__name__, 'f')
-
-    def test_overloaded_function_as_str(self):
-        @overload
-        @annotations(x=unicode)
-        def f(x): return 1
-        @overload
-        def f(x): return 2
-
-        self.assertRegexpMatches(unicode(f), '^<function f at.*>$')
-
-    def test_overload_with_default_arg_values(self):
-        @overload
-        @annotations(x=unicode)
-        def f(x='x'): return x + '!'
-        @overload
-        def f(y): return y + 1
-
-        self.assertEqual(f(), 'x!')
-        self.assertEqual(f('y'), 'y!')
-        self.assertEqual(f(3), 4)
-
-        @overload
-        @annotations(a=int, x=unicode, y=unicode)
-        def g(a, x='x', y='z'): return 1
-        @overload
-        def g(a, x=1): return 2
-
-        self.assertEqual(g(1), 1)
-        self.assertEqual(g('x'), 2)
-        self.assertEqual(g(1, 'XX'), 1)
-        self.assertEqual(g(1, 2), 2)
-        self.assertEqual(g(1, 'XX', 'YY'), 1)
-
-        with self.assertRaises(TypeError):
-            g(1, 'x', 2)
-
-    def test_no_matching_overload(self):
-        @overload
-        @annotations(x=unicode)
-        def f(x): return 1
-        @overload
-        @annotations(x=int)
-        def f(x): return 2
-
-        # Fall back to the last overload variant if no annotation matches.
-        self.assertEqual(f(()), 2)
-
-    def test_callable_type_dispatch_in_overload(self):
-        @overload
-        @annotations(x=Callable[[], unicode])
-        def f(x): return 1
-        @overload
-        def f(x): return 2
-
-        self.assertEqual(f(ord), 1)
-        self.assertEqual(f(unicode.find), 1)
-        self.assertEqual(f('x'.find), 1)
-        self.assertEqual(f(unicode), 1)
-        self.assertEqual(f(TestTyping), 1)
-        self.assertEqual(f(self.test_callable_type_dispatch_in_overload), 1)
-        self.assertEqual(f(self.assertEqual), 1)
-        self.assertEqual(f(TestTyping.assertEqual), 1)
-
-        class A(object):
-            def __call__(self): pass
-
-        self.assertEqual(f(A()), 1)
-
-        self.assertEqual(f(1), 2)
-        self.assertEqual(f(object()), 2)
-
     def test_typevar(self):
         t = typevar('t')
         self.assertEqual(t.name, 't')
@@ -342,18 +80,6 @@ class TestTyping(unittest.TestCase):
     def test_predefined_typevars(self):
         self.assertEqual(AnyStr.name, 'AnyStr')
         self.assertEqual(AnyStr.values, (str, unicode))
-
-    def test_typevar_in_overload(self):
-        t = typevar('t')
-
-        @overload
-        @annotations(x=t, y=unicode)
-        def f(x, y): return 1
-        @overload
-        def f(x, y): return 2
-
-        self.assertEqual(f((), 'x'), 1)
-        self.assertEqual(f((), 1.1), 2)
 
     def test_simple_generic_class(self):
         t = typevar('t')
@@ -668,92 +394,6 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             if not Undefined: pass
 
-    def test_simple_string_literal_in_overload(self):
-        @overload
-        @annotations(a='unicode', returns='unicode')
-        def f(a): return 's'
-        @overload
-        @annotations(a='int', returns='unicode')
-        def f(a): return 'i'
-
-        self.assertEqual(f(''), 's')
-        self.assertEqual(f(2), 'i')
-
-    def test_module_ref_string_literal_in_overload(self):
-        @overload
-        @annotations(a='Dummy')
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f(Dummy()), 1)
-        self.assertEqual(f(2), 2)
-
-    def test_local_ref_string_literal_in_overload(self):
-        @overload
-        @annotations(a='C')
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        class C(object): pass
-        self.assertEqual(f(C()), 1)
-        self.assertEqual(f(2), 2)
-
-    def test_any_string_literal_in_overload(self):
-        @overload
-        @annotations(a='Any')
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f(object()), 1)
-        self.assertEqual(f(None), 1)
-
-    def test_generic_type_string_literal_in_overload(self):
-        @overload
-        @annotations(a='List[int]')
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f([]), 1)
-        self.assertEqual(f(()), 2)
-
-    def test_tuple_type_string_literal_in_overload(self):
-        @overload
-        @annotations(a='Tuple[int]')
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f(()), 1)
-        self.assertEqual(f([]), 2)
-
-    def test_callable_type_string_literal_in_overload(self):
-        @overload
-        @annotations(a='Callable[[], int]')
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f(ord), 1)
-        self.assertEqual(f([]), 2)
-
-    def test_forward_ref_in_overload(self):
-        A = forwardref('A')
-
-        @overload
-        @annotations(a=A)
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        class A(object): pass
-
-        self.assertEqual(f(A()), 1)
-        self.assertEqual(f(object()), 2)
-
     def test_construct_class_with_abstract_method(self):
         t = typevar('t')
 
@@ -789,48 +429,6 @@ class TestTyping(unittest.TestCase):
             def f(self): pass
         C()
 
-    def test_overloaded_abstract_method(self):
-        class A():
-            __metaclass__ = ABCMeta
-            @abstractmethod
-            @overload
-            @annotations(x=int)
-            def f(self, x): pass
-            @abstractmethod
-            @overload
-            def f(self, x): pass
-
-        with self.assertRaises(TypeError):
-            A()
-
-        class B():
-            __metaclass__ = ABCMeta
-            @overload
-            @abstractmethod
-            @annotations(x=int, returns=int)
-            def f(self, x): pass
-
-            @overload
-            @abstractmethod
-            @annotations(returns=None)
-            def f(self, x): pass
-
-        with self.assertRaises(TypeError):
-            B()
-
-        class C(B):
-            @overload
-            @annotations(x=int, returns=int)
-            def f(self, x):
-                return 1
-
-            @overload
-            def f(self, x):
-                return 'x'
-
-        self.assertEqual(C().f(2), 1)
-        self.assertEqual(C().f(None), 'x')
-
     def test_builtinclass(self):
         class A: pass
         self.assertIs(builtinclass(int), int)
@@ -845,17 +443,18 @@ class TestTyping(unittest.TestCase):
         self.assertIs(disjointclass(str)(A), A)
         self.assertIs(disjointclass('str')(A), A)
 
-
-@overload
-@annotations(x=unicode, returns=unicode)
-def global_overload(x):
-    return 's'
-
-
-@overload
-@annotations(x=int, returns=unicode)
-def global_overload(x):
-    return 'i'
+    def test_overload(self):
+        with self.assertRaises(RuntimeError):
+            @overload
+            def f(): pass
+        with self.assertRaises(RuntimeError):
+            @overload
+            def g(x): pass
+        with self.assertRaises(RuntimeError):
+            @overload
+            def h(x): pass
+            @overload
+            def h(x): pass
 
 
 class Dummy(object):
