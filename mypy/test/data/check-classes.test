@@ -1163,7 +1163,7 @@ main: In member "__getattr__" of class "C":
 main, line 6: Invalid signature "def (self: __main__.C, x: builtins.str, y: builtins.str) -> __main__.C"
 
 
--- Callable objects
+-- CallableType objects
 -- ----------------
 
 

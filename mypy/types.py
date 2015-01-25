@@ -216,7 +216,7 @@ class FunctionLike(Type):
     def type_object(self) -> mypy.nodes.TypeInfo: pass
 
     @abstractmethod
-    def items(self) -> List['Callable']: pass
+    def items(self) -> List['CallableType']: pass
 
     @abstractmethod
     def with_name(self, name: str) -> 'FunctionLike': pass
@@ -225,7 +225,7 @@ class FunctionLike(Type):
     fallback = Undefined(Instance)
 
 
-class Callable(FunctionLike):
+class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
     arg_types = Undefined(List[Type])  # Types of function arguments
@@ -293,12 +293,12 @@ class Callable(FunctionLike):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable(self)
 
-    def with_name(self, name: str) -> 'Callable':
+    def with_name(self, name: str) -> 'CallableType':
         """Return a copy of this type with the specified name."""
         ret = self.ret_type
         if isinstance(ret, Void):
             ret = ret.with_source(name)
-        return Callable(self.arg_types,
+        return CallableType(self.arg_types,
                         self.arg_kinds,
                         self.arg_names,
                         ret,
@@ -314,7 +314,7 @@ class Callable(FunctionLike):
             n -= 1
         return n
 
-    def items(self) -> List['Callable']:
+    def items(self) -> List['CallableType']:
         return [self]
 
     def is_generic(self) -> bool:
@@ -328,20 +328,20 @@ class Callable(FunctionLike):
 
 
 class Overloaded(FunctionLike):
-    """Overloaded function type T1, ... Tn, where each Ti is Callable.
+    """Overloaded function type T1, ... Tn, where each Ti is CallableType.
 
     The variant to call is chosen based on runtime argument types; the first
     matching signature is the target.
     """
 
-    _items = Undefined(List[Callable])  # Must not be empty
+    _items = Undefined(List[CallableType])  # Must not be empty
 
-    def __init__(self, items: List[Callable]) -> None:
+    def __init__(self, items: List[CallableType]) -> None:
         self._items = items
         self.fallback = items[0].fallback
         super().__init__(items[0].line, None)
 
-    def items(self) -> List[Callable]:
+    def items(self) -> List[CallableType]:
         return self._items
 
     def name(self) -> str:
@@ -358,7 +358,7 @@ class Overloaded(FunctionLike):
         return self._items[0].type_object()
 
     def with_name(self, name: str) -> 'Overloaded':
-        ni = List[Callable]()
+        ni = List[CallableType]()
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
@@ -519,7 +519,7 @@ class TypeVisitor(Generic[T]):
     def visit_instance(self, t: Instance) -> T:
         pass
 
-    def visit_callable(self, t: Callable) -> T:
+    def visit_callable(self, t: CallableType) -> T:
         pass
 
     def visit_overloaded(self, t: Overloaded) -> T:
@@ -572,8 +572,8 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVar) -> Type:
         return t
 
-    def visit_callable(self, t: Callable) -> Type:
-        return Callable(self.translate_types(t.arg_types),
+    def visit_callable(self, t: CallableType) -> Type:
+        return CallableType(self.translate_types(t.arg_types),
                         t.arg_kinds,
                         t.arg_names,
                         t.ret_type.accept(self),
@@ -788,7 +788,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_instance(self, t: Instance) -> bool:
         return self.query_types(t.args)
 
-    def visit_callable(self, t: Callable) -> bool:
+    def visit_callable(self, t: CallableType) -> bool:
         # FIX generics
         return self.query_types(t.arg_types + [t.ret_type])
 
@@ -833,8 +833,8 @@ class TypeQuery(TypeVisitor[bool]):
 def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
 
-    if isinstance(typ, Callable):
-        return Callable(typ.arg_types,
+    if isinstance(typ, CallableType):
+        return CallableType(typ.arg_types,
                         typ.arg_kinds,
                         typ.arg_names,
                         typ.ret_type,
@@ -842,18 +842,18 @@ def strip_type(typ: Type) -> Type:
                         None,
                         typ.variables)
     elif isinstance(typ, Overloaded):
-        return Overloaded([cast(Callable, strip_type(item))
+        return Overloaded([cast(CallableType, strip_type(item))
                            for item in typ.items()])
     else:
         return typ
 
 
-def replace_leading_arg_type(t: Callable, self_type: Type) -> Callable:
+def replace_leading_arg_type(t: CallableType, self_type: Type) -> Callable:
     """Return a copy of a callable type with a different self argument type.
 
     Assume that the callable is the signature of a method.
     """
-    return Callable([self_type] + t.arg_types[1:],
+    return CallableType([self_type] + t.arg_types[1:],
                     t.arg_kinds,
                     t.arg_names,
                     t.ret_type,

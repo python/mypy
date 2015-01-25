@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, List, cast, Undefined
 
 from mypy.types import (
-    Type, Instance, Callable, TypeVisitor, UnboundType, ErrorType, AnyType,
+    Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
     Void, NoneTyp, TypeVar, Overloaded, TupleType, UnionType, ErasedType, TypeList
 )
 
@@ -22,11 +22,11 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
         for i in range(len(instance.args)):
             variables[i + 1] = instance.args[i]
         typ = expand_type(typ, variables)
-        if isinstance(typ, Callable):
+        if isinstance(typ, CallableType):
             bounds = []  # type: List[Tuple[int, Type]]
             for j in range(len(instance.args)):
                 bounds.append((j + 1, instance.args[j]))
-            typ = update_callable_implicit_bounds(cast(Callable, typ), bounds)
+            typ = update_callable_implicit_bounds(cast(CallableType, typ), bounds)
         else:
             pass
         return typ
@@ -75,8 +75,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         else:
             return repl
 
-    def visit_callable(self, t: Callable) -> Type:
-        return Callable(self.expand_types(t.arg_types),
+    def visit_callable(self, t: CallableType) -> Type:
+        return CallableType(self.expand_types(t.arg_types),
                         t.arg_kinds,
                         t.arg_names,
                         t.ret_type.accept(self),
@@ -86,9 +86,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                         self.expand_bound_vars(t.bound_vars), t.line, t.repr)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items = []  # type: List[Callable]
+        items = []  # type: List[CallableType]
         for item in t.items():
-            items.append(cast(Callable, item.accept(self)))
+            items.append(cast(CallableType, item.accept(self)))
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
@@ -112,9 +112,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
 
 def update_callable_implicit_bounds(
-        t: Callable, arg_types: List[Tuple[int, Type]]) -> Callable:
+        t: CallableType, arg_types: List[Tuple[int, Type]]) -> Callable:
     # FIX what if there are existing bounds?
-    return Callable(t.arg_types,
+    return CallableType(t.arg_types,
                     t.arg_kinds,
                     t.arg_names,
                     t.ret_type,

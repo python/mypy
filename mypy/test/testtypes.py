@@ -10,7 +10,7 @@ from mypy.expandtype import expand_type
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
-    UnboundType, AnyType, Void, Callable, TupleType, TypeVarDef, Type,
+    UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
     Instance, NoneTyp, ErrorType
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
@@ -42,33 +42,33 @@ class TypesSuite(Suite):
         assert_equal(str(Void(None)), 'void')
 
     def test_callable_type(self):
-        c = Callable([self.x, self.y],
+        c = CallableType([self.x, self.y],
                      [ARG_POS, ARG_POS],
                      [None, None],
                      AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
-        c2 = Callable([], [], [], Void(None), False)
+        c2 = CallableType([], [], [], Void(None), False)
         assert_equal(str(c2), 'def ()')
 
     def test_callable_type_with_default_args(self):
-        c = Callable([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
+        c = CallableType([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
                      AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y? =) -> Any')
 
-        c2 = Callable([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
+        c2 = CallableType([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
                       AnyType(), self.function)
         assert_equal(str(c2), 'def (X? =, Y? =) -> Any')
 
     def test_callable_type_with_var_args(self):
-        c = Callable([self.x], [ARG_STAR], [None], AnyType(), self.function)
+        c = CallableType([self.x], [ARG_STAR], [None], AnyType(), self.function)
         assert_equal(str(c), 'def (*X?) -> Any')
 
-        c2 = Callable([self.x, self.y], [ARG_POS, ARG_STAR],
+        c2 = CallableType([self.x, self.y], [ARG_POS, ARG_STAR],
                       [None, None], AnyType(), self.function)
         assert_equal(str(c2), 'def (X?, *Y?) -> Any')
 
-        c3 = Callable([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
+        c3 = CallableType([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
                       AnyType(), self.function)
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
 
@@ -83,14 +83,14 @@ class TypesSuite(Suite):
                      'X in (X?, Y?)')
 
     def test_generic_function_type(self):
-        c = Callable([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
+        c = CallableType([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
                      self.y, self.function, None,
                      [TypeVarDef('X', -1, None, self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
         v = [TypeVarDef('Y', -1, None, self.fx.o),
              TypeVarDef('X', -2, None, self.fx.o)]
-        c2 = Callable([], [], [], Void(None), self.function, None, v)
+        c2 = CallableType([], [], [], Void(None), self.function, None, v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
 
@@ -227,7 +227,7 @@ class TypeOpsSuite(Suite):
     def tuple(self, *a):
         return TupleType(a, self.fx.std_tuple)
 
-    def callable(self, vars, *a) -> Callable:
+    def callable(self, vars, *a) -> CallableType:
         """callable(args, a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r and type arguments
         vars.
@@ -237,7 +237,7 @@ class TypeOpsSuite(Suite):
         for v in vars:
             tv.append(TypeVarDef(v, n, None, self.fx.o))
             n -= 1
-        return Callable(a[:-1],
+        return CallableType(a[:-1],
                         [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1),
                         a[-1],
@@ -464,7 +464,7 @@ class JoinSuite(Suite):
         a1, ... an and return type r.
         """
         n = len(a) - 1
-        return Callable(a[:-1], [ARG_POS] * n, [None] * n,
+        return CallableType(a[:-1], [ARG_POS] * n, [None] * n,
                         a[-1], self.fx.std_function)
 
     def type_callable(self, *a):
@@ -473,7 +473,7 @@ class JoinSuite(Suite):
         represents a type.
         """
         n = len(a) - 1
-        return Callable(a[:-1], [ARG_POS] * n, [None] * n,
+        return CallableType(a[:-1], [ARG_POS] * n, [None] * n,
                         a[-1], self.fx.type_type)
 
 
@@ -668,7 +668,7 @@ class MeetSuite(Suite):
         a1, ... an and return type r.
         """
         n = len(a) - 1
-        return Callable(a[:-1],
+        return CallableType(a[:-1],
                         [ARG_POS] * n, [None] * n,
                         a[-1], self.fx.std_function)
 

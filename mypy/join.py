@@ -4,7 +4,7 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVar, Callable, TupleType, ErasedType, TypeList,
+    ErrorType, TypeVar, CallableType, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike
 )
 from mypy.maptype import map_instance_to_supertype
@@ -124,10 +124,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_callable(self, t: Callable) -> Type:
-        if isinstance(self.s, Callable) and is_similar_callables(
-                t, cast(Callable, self.s)):
-            return combine_similar_callables(t, cast(Callable, self.s))
+    def visit_callable(self, t: CallableType) -> Type:
+        if isinstance(self.s, CallableType) and is_similar_callables(
+                t, cast(CallableType, self.s)):
+            return combine_similar_callables(t, cast(CallableType, self.s))
         elif t.is_type_obj() and is_subtype(self.s, t.fallback):
             return t.fallback
         elif (t.is_type_obj() and isinstance(self.s, Instance) and
@@ -217,7 +217,7 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     return res
 
 
-def is_similar_callables(t: Callable, s: Callable) -> bool:
+def is_similar_callables(t: CallableType, s: Callable) -> bool:
     """Return True if t and s are equivalent and have identical numbers of
     arguments, default arguments and varargs.
     """
@@ -226,7 +226,7 @@ def is_similar_callables(t: Callable, s: Callable) -> bool:
             and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
 
 
-def combine_similar_callables(t: Callable, s: Callable) -> Callable:
+def combine_similar_callables(t: CallableType, s: Callable) -> Callable:
     arg_types = []  # type: List[Type]
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
@@ -237,7 +237,7 @@ def combine_similar_callables(t: Callable, s: Callable) -> Callable:
         fallback = t.fallback
     else:
         fallback = s.fallback
-    return Callable(arg_types,
+    return CallableType(arg_types,
                     t.arg_kinds,
                     t.arg_names,
                     join_types(t.ret_type, s.ret_type),

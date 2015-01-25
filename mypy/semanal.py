@@ -64,7 +64,7 @@ from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors
 from mypy.types import (
-    NoneTyp, Callable, Overloaded, Instance, Type, TypeVar, AnyType,
+    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVar, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
     replace_leading_arg_type, TupleType, UnionType, StarType
 )
@@ -207,7 +207,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn is generic.
         """
         if defn.type:
-            functype = cast(Callable, defn.type)
+            functype = cast(CallableType, defn.type)
             typevars = self.infer_type_variables(functype)
             # Do not define a new type variable if already defined in scope.
             typevars = [(tvar, values) for tvar, values in typevars
@@ -218,7 +218,7 @@ class SemanticAnalyzer(NodeVisitor):
                 functype.variables = defs
 
     def infer_type_variables(self,
-                             type: Callable) -> List[Tuple[str, List[Type]]]:
+                             type: CallableType) -> List[Tuple[str, List[Type]]]:
         """Return list of unique type variables referred to in a callable."""
         names = List[str]()
         values = List[List[Type]]()
@@ -256,13 +256,13 @@ class SemanticAnalyzer(NodeVisitor):
         return self.lookup_qualified(tvar, context).kind == TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        t = List[Callable]()
+        t = List[CallableType]()
         for item in defn.items:
             # TODO support decorated overloaded functions properly
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
-            t.append(cast(Callable, function_type(item.func,
+            t.append(cast(CallableType, function_type(item.func,
                                                   self.builtin_type('builtins.function'))))
             if not [dec for dec in item.decorators
                     if refers_to_fullname(dec, 'typing.overload')]:
@@ -317,7 +317,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.type:
             tt = defn.type
             names = self.type_var_names()
-            items = cast(Callable, tt).variables
+            items = cast(CallableType, tt).variables
             for i, item in enumerate(items):
                 name = item.name
                 if name in names:
@@ -341,7 +341,7 @@ class SemanticAnalyzer(NodeVisitor):
         return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
-        sig = cast(Callable, fdef.type)
+        sig = cast(CallableType, fdef.type)
         if len(sig.arg_types) < len(fdef.args):
             self.fail('Type signature has too few arguments', fdef)
         elif len(sig.arg_types) > len(fdef.args):
@@ -1132,7 +1132,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: Make sure that the self argument name is not visible?
         args = [Var('__self')] + args
         arg_kinds = [ARG_POS] * (len(items) + 1)
-        signature = Callable([cast(Type, None)] + types,
+        signature = CallableType([cast(Type, None)] + types,
                              arg_kinds,
                              ['__self'] + items,
                              NoneTyp(),
@@ -1942,7 +1942,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 
 @overload
-def replace_implicit_first_type(sig: Callable, new: Type) -> Callable:
+def replace_implicit_first_type(sig: CallableType, new: Type) -> Callable:
     # We can detect implicit self type by it having no representation.
     if not sig.arg_types[0].repr:
         return replace_leading_arg_type(sig, new)

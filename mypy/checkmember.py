@@ -3,7 +3,7 @@
 from typing import cast, Function, List
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, Callable, FunctionLike, TypeVarDef,
+    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVar, TypeTranslator, UnionType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
@@ -133,7 +133,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
                     if var.is_property:
                         # A property cannot have an overloaded type => the cast
                         # is fine.
-                        return cast(Callable, signature).ret_type
+                        return cast(CallableType, signature).ret_type
                     else:
                         return signature
             return t
@@ -151,7 +151,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(
                     method_type(method, builtin_type('builtins.function')), typ)
-                if isinstance(getattr_type, Callable):
+                if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
 
     # Could not find the member.
@@ -217,7 +217,7 @@ def analyse_class_attribute_access(itype: Instance,
 
 def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
                     builtin_type: Function[[str], Instance]) -> Type:
-    if isinstance(t, Callable):
+    if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'))
                 for i, n in enumerate(info.type_vars)]
@@ -228,7 +228,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
             arg_types = arg_types[1:]
             arg_kinds = arg_kinds[1:]
             arg_names = arg_names[1:]
-        return Callable(arg_types,
+        return CallableType(arg_types,
                         arg_kinds,
                         arg_names,
                         t.ret_type,
@@ -238,7 +238,7 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
                         t.bound_vars,
                         t.line, None)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(Callable, add_class_tvars(i, info, is_classmethod, builtin_type))
+        return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod, builtin_type))
                            for i in t.items()])
     return t
 
@@ -260,17 +260,17 @@ def type_object_type(info: TypeInfo, builtin_type: Function[[str], Instance]) ->
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
         init_type = method_type(init_method, builtin_type('builtins.function'))
-        if isinstance(init_type, Callable):
+        if isinstance(init_type, CallableType):
             return class_callable(init_type, info, builtin_type('builtins.type'))
         else:
             # Overloaded __init__.
-            items = []  # type: List[Callable]
+            items = []  # type: List[CallableType]
             for it in cast(Overloaded, init_type).items():
                 items.append(class_callable(it, info, builtin_type('builtins.type')))
             return Overloaded(items)
 
 
-def class_callable(init_type: Callable, info: TypeInfo, type_type: Instance) -> Callable:
+def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance) -> Callable:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
@@ -279,7 +279,7 @@ def class_callable(init_type: Callable, info: TypeInfo, type_type: Instance) -> 
     initvars = init_type.variables
     variables.extend(initvars)
 
-    c = Callable(init_type.arg_types,
+    c = CallableType(init_type.arg_types,
                  init_type.arg_kinds,
                  init_type.arg_names,
                  self_type(info),
@@ -289,9 +289,9 @@ def class_callable(init_type: Callable, info: TypeInfo, type_type: Instance) -> 
     return convert_class_tvars_to_func_tvars(c, len(initvars))
 
 
-def convert_class_tvars_to_func_tvars(callable: Callable,
-                                      num_func_tvars: int) -> Callable:
-    return cast(Callable, callable.accept(TvarTranslator(num_func_tvars)))
+def convert_class_tvars_to_func_tvars(callable: CallableType,
+                                      num_func_tvars: int) -> CallableType:
+    return cast(CallableType, callable.accept(TvarTranslator(num_func_tvars)))
 
 
 class TvarTranslator(TypeTranslator):

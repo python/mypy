@@ -3,7 +3,7 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
-    Instance, Callable, TupleType, ErasedType, TypeList, UnionType
+    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
@@ -168,10 +168,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_callable(self, t: Callable) -> Type:
-        if isinstance(self.s, Callable) and is_similar_callables(
-                t, cast(Callable, self.s)):
-            return combine_similar_callables(t, cast(Callable, self.s))
+    def visit_callable(self, t: CallableType) -> Type:
+        if isinstance(self.s, CallableType) and is_similar_callables(
+                t, cast(CallableType, self.s)):
+            return combine_similar_callables(t, cast(CallableType, self.s))
         else:
             return self.default(self.s)
 

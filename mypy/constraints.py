@@ -3,7 +3,7 @@
 from typing import List, cast, Undefined
 
 from mypy.types import (
-    Callable, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
+    CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
     Instance, TupleType, UnionType, Overloaded, ErasedType, is_named_instance
 )
 from mypy.expandtype import expand_caller_var_args
@@ -40,7 +40,7 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: Callable, arg_types: List[Type], arg_kinds: List[int],
+        callee: CallableType, arg_types: List[Type], arg_kinds: List[int],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
@@ -202,9 +202,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         else:
             return []
 
-    def visit_callable(self, template: Callable) -> List[Constraint]:
-        if isinstance(self.actual, Callable):
-            cactual = cast(Callable, self.actual)
+    def visit_callable(self, template: CallableType) -> List[Constraint]:
+        if isinstance(self.actual, CallableType):
+            cactual = cast(CallableType, self.actual)
             # FIX verify argument counts
             # FIX what if one of the functions is generic
             res = []  # type: List[Constraint]
@@ -229,7 +229,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return []
 
     def infer_against_overloaded(self, overloaded: Overloaded,
-                                 template: Callable) -> List[Constraint]:
+                                 template: CallableType) -> List[Constraint]:
         # Create constraints by matching an overloaded type against a template.
         # This is tricky to do in general. We cheat by only matching against
         # the first overload item, and by only matching the return type. This
@@ -285,7 +285,7 @@ def neg_op(op: int) -> int:
         raise ValueError('Invalid operator {}'.format(op))
 
 
-def find_matching_overload_item(overloaded: Overloaded, template: Callable) -> Callable:
+def find_matching_overload_item(overloaded: Overloaded, template: CallableType) -> Callable:
     """Disambiguate overload item against a template."""
     items = overloaded.items()
     for item in items:

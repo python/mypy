@@ -2,7 +2,7 @@ import typing
 
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
-    Instance, TypeVar, Callable, TupleType, UnionType, Overloaded, ErasedType,
+    Instance, TypeVar, CallableType, TupleType, UnionType, Overloaded, ErasedType,
     TypeTranslator, TypeList
 )
 
@@ -53,9 +53,9 @@ class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVar) -> Type:
         return AnyType()
 
-    def visit_callable(self, t: Callable) -> Type:
+    def visit_callable(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        return Callable([], [], [], Void(), t.fallback)
+        return CallableType([], [], [], Void(), t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         return t.items()[0].accept(self)

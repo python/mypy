@@ -1,7 +1,7 @@
 from typing import List, cast
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, Callable,
+    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
     TypeVar, Instance, TypeVisitor, ErasedType, TypeList
 )
 
@@ -66,10 +66,10 @@ class SameTypeVisitor(TypeVisitor[bool]):
         return (isinstance(self.right, TypeVar) and
                 left.id == (cast(TypeVar, self.right)).id)
 
-    def visit_callable(self, left: Callable) -> bool:
+    def visit_callable(self, left: CallableType) -> bool:
         # FIX generics
-        if isinstance(self.right, Callable):
-            cright = cast(Callable, self.right)
+        if isinstance(self.right, CallableType):
+            cright = cast(CallableType, self.right)
             return (is_same_type(left.ret_type, cright.ret_type) and
                     is_same_types(left.arg_types, cright.arg_types) and
                     left.arg_names == cright.arg_names and

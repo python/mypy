@@ -3,7 +3,7 @@
 from typing import Undefined, Function, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
-    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, Callable,
+    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
 from mypy.typerepr import TypeVarRepr
@@ -149,8 +149,8 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVar) -> Type:
         raise RuntimeError('TypeVar is already analysed')
 
-    def visit_callable(self, t: Callable) -> Type:
-        res = Callable(self.anal_array(t.arg_types),
+    def visit_callable(self, t: CallableType) -> Type:
+        res = CallableType(self.anal_array(t.arg_types),
                        t.arg_kinds,
                        t.arg_names,
                        t.ret_type.accept(self),
@@ -184,7 +184,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             self.fail('Invalid function type', t)
             return AnyType()
         args = (cast(TypeList, t.args[0])).items
-        return Callable(self.anal_array(args),
+        return CallableType(self.anal_array(args),
                         [nodes.ARG_POS] * len(args), [None] * len(args),
                         ret_type=t.args[1].accept(self),
                         fallback=self.builtin_type('builtins.function'))
@@ -285,7 +285,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 self.fail('Invalid type argument value for "{}"'.format(
                     type.name()), context)
 
-    def visit_callable(self, t: Callable) -> None:
+    def visit_callable(self, t: CallableType) -> None:
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)

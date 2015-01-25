@@ -2,12 +2,12 @@ from typing import List, Dict
 
 import mypy.subtypes
 from mypy.expandtype import expand_type
-from mypy.types import Type, Callable, AnyType
+from mypy.types import Type, CallableType, AnyType
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
 
-def apply_generic_arguments(callable: Callable, types: List[Type],
+def apply_generic_arguments(callable: CallableType, types: List[Type],
                             msg: MessageBuilder, context: Context) -> Type:
     """Apply generic type arguments to a callable type.
 
@@ -53,7 +53,7 @@ def apply_generic_arguments(callable: Callable, types: List[Type],
     # The callable may retain some type vars if only some were applied.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
-    return Callable(arg_types,
+    return CallableType(arg_types,
                     callable.arg_kinds,
                     callable.arg_names,
                     expand_type(callable.ret_type, id_to_type),

@@ -9,7 +9,7 @@ from typing import Undefined, cast, List, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, Callable, Instance, TypeVar, TupleType, UnionType, Void, NoneTyp, AnyType,
+    Type, CallableType, Instance, TypeVar, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
 from mypy.nodes import (
@@ -139,7 +139,7 @@ class MessageBuilder:
                     # between type X and the type of type object X.
                     result += ' (type object)'
                 return result
-            elif isinstance(func, Callable):
+            elif isinstance(func, CallableType):
                 arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return_type = strip_quotes(self.format(func.ret_type))
                 return 'Function[[{}], {}]'.format(", ".join(arg_types), return_type)
@@ -334,7 +334,7 @@ class MessageBuilder:
         self.fail('{} not callable'.format(self.format(typ)), context)
         return AnyType()
 
-    def incompatible_argument(self, n: int, callee: Callable, arg_type: Type,
+    def incompatible_argument(self, n: int, callee: CallableType, arg_type: Type,
                               context: Context) -> None:
         """Report an error about an incompatible argument type.
 
@@ -406,7 +406,7 @@ class MessageBuilder:
         self.fail('Invalid index type {} for {}'.format(
             self.format(index_type), base_str), context)
 
-    def too_few_arguments(self, callee: Callable, context: Context,
+    def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: List[str]) -> None:
         if (argument_names is not None and not all(k is None for k in argument_names)
                 and len(argument_names) >= 1):
@@ -423,27 +423,27 @@ class MessageBuilder:
                 msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
-    def too_many_arguments(self, callee: Callable, context: Context) -> None:
+    def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments'
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
-    def too_many_positional_arguments(self, callee: Callable,
+    def too_many_positional_arguments(self, callee: CallableType,
                                       context: Context) -> None:
         msg = 'Too many positional arguments'
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
-    def unexpected_keyword_argument(self, callee: Callable, name: str,
+    def unexpected_keyword_argument(self, callee: CallableType, name: str,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name)
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
-    def duplicate_argument_value(self, callee: Callable, index: int,
+    def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
         self.fail('{} gets multiple values for keyword argument "{}"'.
                   format(capitalize(callable_name(callee)),
@@ -562,7 +562,7 @@ class MessageBuilder:
         self.fail('Array item {} has incompatible type {}'.format(
             index, self.format(typ)), context)
 
-    def could_not_infer_type_arguments(self, callee_type: Callable, n: int,
+    def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
         if callee_type.name and n > 0:
             self.fail('Cannot infer type argument {} of {}'.format(
@@ -629,7 +629,7 @@ class MessageBuilder:
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
 
-    def invalid_method_type(self, sig: Callable, context: Context) -> None:
+    def invalid_method_type(self, sig: CallableType, context: Context) -> None:
         self.fail('Invalid method type', context)
 
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
@@ -660,7 +660,7 @@ class MessageBuilder:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
             name, type.name()), context)
 
-    def incompatible_typevar_value(self, callee: Callable, index: int,
+    def incompatible_typevar_value(self, callee: CallableType, index: int,
                                    type: Type, context: Context) -> None:
         self.fail('Type argument {} of {} has incompatible value {}'.format(
             index, callable_name(callee), self.format(type)), context)
@@ -746,7 +746,7 @@ def format_string_list(s: Iterable[str]) -> str:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
 
 
-def callable_name(type: Callable) -> str:
+def callable_name(type: CallableType) -> str:
     if type.name:
         return type.name
     else:
