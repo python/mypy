@@ -5,7 +5,7 @@ import re
 from abc import abstractmethod, ABCMeta
 
 from typing import (
-    Any, overload, typevar, Undefined, List, Tuple, cast, Set, Dict
+    Any, overload, typevar, Undefined, List, Tuple, cast, Set, Dict, Union
 )
 
 from mypy.lex import Token
@@ -84,14 +84,11 @@ class Node(Context):
             return repr(self)
         return ans
 
-    @overload
-    def set_line(self, tok: Token) -> 'Node':
-        self.line = tok.line
-        return self
-
-    @overload
-    def set_line(self, line: int) -> 'Node':
-        self.line = line
+    def set_line(self, target: Union[Token, int]) -> 'Node':
+        if isinstance(target, int):
+            self.line = target
+        else:
+            self.line = target.line
         return self
 
     def get_line(self) -> int:
@@ -278,16 +275,8 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    @overload
-    def set_line(self, tok: Token) -> Node:
-        super().set_line(tok)
-        for n in self.args:
-            n.line = self.line
-        return self
-
-    @overload
-    def set_line(self, tok: int) -> Node:
-        super().set_line(tok)
+    def set_line(self, target: Union[Token, int]) -> Node:
+        super().set_line(target)
         for n in self.args:
             n.line = self.line
         return self
@@ -458,16 +447,8 @@ class VarDef(Node):
     def info(self) -> 'TypeInfo':
         return self.items[0].info
 
-    @overload
-    def set_line(self, tok: Token) -> Node:
-        super().set_line(tok)
-        for n in self.items:
-            n.line = self.line
-        return self
-
-    @overload
-    def set_line(self, tok: int) -> Node:
-        super().set_line(tok)
+    def set_line(self, target: Union[Token, int]) -> Node:
+        super().set_line(target)
         for n in self.items:
             n.line = self.line
         return self

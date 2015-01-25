@@ -1542,26 +1542,21 @@ class TypeChecker(NodeVisitor[Type]):
         self.fail('Unsupported exception', n)
         return AnyType()
 
-    @overload
-    def check_exception_type(self, type: FunctionLike,
-                             context: Context) -> Type:
-        item = type.items()[0]
-        ret = item.ret_type
-        if (is_subtype(ret, self.named_type('builtins.BaseException'))
-                and item.is_type_obj()):
-            return ret
+    def check_exception_type(self, type: Type, context: Context) -> Type:
+        if isinstance(type, FunctionLike):
+            item = type.items()[0]
+            ret = item.ret_type
+            if (is_subtype(ret, self.named_type('builtins.BaseException'))
+                    and item.is_type_obj()):
+                return ret
+            else:
+                self.fail(messages.INVALID_EXCEPTION_TYPE, context)
+                return AnyType()
+        elif isinstance(type, AnyType):
+            return AnyType()
         else:
             self.fail(messages.INVALID_EXCEPTION_TYPE, context)
             return AnyType()
-
-    @overload
-    def check_exception_type(self, type: AnyType, context: Context) -> Type:
-        return AnyType()
-
-    @overload
-    def check_exception_type(self, type: Type, context: Context) -> Type:
-        self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-        return AnyType()
 
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""

@@ -3,7 +3,7 @@ import re
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, overload, Undefined
+from typing import List, Tuple, Any, Callable, overload, Undefined, Union
 
 
 # TODO remove global state
@@ -127,16 +127,9 @@ class Suite:
                 else:
                     self.add_test(TestCase(m, self, getattr(self, m)))
 
-    @overload
-    def add_test(self, test: TestCase) -> None:
-        self._test_cases.append(test)
-
-    @overload
-    def add_test(self, test: Tuple[str, Callable[[], None]]) -> None:
-        self._test_cases.append(test)
-
-    @overload
-    def add_test(self, test: Tuple[str, 'Suite']) -> None:
+    def add_test(self, test: Union[TestCase,
+                                   Tuple[str, Callable[[], None]],
+                                   Tuple[str, 'Suite']]) -> None:
         self._test_cases.append(test)
 
     def cases(self) -> List[Any]:
