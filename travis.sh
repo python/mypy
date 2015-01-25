@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PYTHON=python
+PYTHON=~/Python-3.2.3/python
 
 result=0
 

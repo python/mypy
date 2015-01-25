@@ -1677,20 +1677,19 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
                                    name)
 
 
-@overload
-def method_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
+def method_type_with_fallback(func: FuncBase,
+                              fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     """Return the signature of a method (omit self)."""
     return method_type(function_type(func, fallback))
 
 
-@overload
 def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
     if isinstance(sig, mypy.types.CallableType):
         return method_callable(sig)
     else:
-        osig = cast(mypy.types.Overloaded, sig)
+        sig = cast(mypy.types.Overloaded, sig)
         items = List[mypy.types.CallableType]()
-        for c in osig.items():
+        for c in sig.items():
             items.append(method_callable(c))
         return mypy.types.Overloaded(items)
 

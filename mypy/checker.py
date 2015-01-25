@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisNode
 )
-from mypy.nodes import function_type, method_type
+from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
@@ -1924,7 +1924,7 @@ class TypeChecker(NodeVisitor[Type]):
         return function_type(func, self.named_type('builtins.function'))
 
     def method_type(self, func: FuncBase) -> FunctionLike:
-        return method_type(func, self.named_type('builtins.function'))
+        return method_type_with_fallback(func, self.named_type('builtins.function'))
 
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
