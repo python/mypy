@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from typing import Undefined, Tuple, List, typevar, Sequence, Any, Function
+from typing import Undefined, Tuple, List, typevar, Sequence, Any, Callable
 
 
 T = typevar('T')

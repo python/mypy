@@ -2,7 +2,7 @@
 
 import re
 
-from typing import Undefined, cast, List, Tuple, Dict, Function
+from typing import Undefined, cast, List, Tuple, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
@@ -160,7 +160,7 @@ class StringFormatterChecker:
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
                                    context: Context) -> List[ Tuple[ Callable[[Node], None],
                                                                      Callable[[Type], None] ] ]:
-        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Function[[Type], None] ] ]
+        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Callable[[Type], None] ] ]
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context)
             if checker == None:
@@ -175,7 +175,7 @@ class StringFormatterChecker:
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Function[[Type], None] ] ]
+        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Callable[[Type], None] ] ]
 
         if specifier.width == '*':
             checkers.append(self.checkers_for_star(context))

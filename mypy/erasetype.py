@@ -17,7 +17,7 @@ def erase_type(typ: Type) -> Type:
       A -> A
       B[X] -> B[Any]
       Tuple[A, B] -> tuple
-      Callable[...] -> Function[[], None]
+      Callable[...] -> Callable[[], None]
     """
 
     return typ.accept(EraseTypeVisitor())
