@@ -1,12 +1,13 @@
-from __future__ import with_statement
+from __future__ import with_statement, unicode_literals
 from abc import abstractmethod, ABCMeta
 import unittest
 
 from typing import (
-    List, Dict, Set, Tuple, Pattern, BytesPattern, Match, BytesMatch, Any,
-    Callable, Generic, AbstractGeneric, Protocol, Sized, Iterable, Iterator,
-    Sequence, AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
-    SupportsAbs, Reversible, Undefined, cast, forwardref, overload, typevar
+    List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
+    AbstractGeneric, Protocol, Sized, Iterable, Iterator, Sequence,
+    AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
+    SupportsAbs, Reversible, Undefined, AnyStr, annotations, builtinclass,
+    cast, disjointclass, ducktype, forwardref, overload, typevar
 )
 
 
@@ -30,22 +31,18 @@ class TestTyping(unittest.TestCase):
 
     def test_Pattern(self):
         import re
-        self.assertIs(type(re.compile(u'')), Pattern)
-        self.assertIs(type(re.compile('')), BytesPattern)
-        # Note that actually Pattern is the same as BytesPattern, which is
-        # a bit awkward.
+        self.assertIs(type(re.compile('')), Pattern[unicode])
+        self.assertIs(type(re.compile(b'')), Pattern[str])
 
     def test_Match(self):
         import re
-        self.assertIs(type(re.match(u'', u'')), Match)
-        self.assertIs(type(re.match('', '')), BytesMatch)
-        # Note that actually Match is the same as BytesMatch, which is
-        # a bit awkward.
+        self.assertIs(type(re.match('', '')), Match[unicode])
+        self.assertIs(type(re.match(b'', b'')), Match[str])
 
     def test_Any(self):
         o = object()
         self.assertIs(Any(o), o)
-        s = u'x'
+        s = 'x'
         self.assertIs(Any(s), s)
 
     def test_Callable(self):
@@ -58,106 +55,124 @@ class TestTyping(unittest.TestCase):
         o = object()
         # cast performs no runtime checks!
         self.assertIs(cast(int, o), o)
-        s = u'x'
+        s = 'x'
         self.assertIs(cast(unicode, s), s)
-        self.assertIs(cast(u'xyz', s), s)
+        self.assertIs(cast('xyz', s), s)
         # cast does not check type validity; anything goes.
         self.assertIs(cast(o, s), s)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
+    def test_annotations(self):
+        @annotations(x=int, returns=unicode)
+        def f(x): return 'string'
+
+        self.assertEqual(f.__annotations__, {'x': int, 'return': unicode})
+
     def test_simple_overload(self):
         @overload
-        def f(x): return x + u'string'
+        @annotations(x=unicode, returns=unicode)
+        def f(x): return x + 'string'
         @overload
+        @annotations(x=int, returns=unicode)
         def f(x): return x + 1
 
-        self.assertEqual(f(u'x'), u'xstring')
+        self.assertEqual(f('x'), 'xstring')
         self.assertEqual(f(1), 2)
 
         @overload
-        def g(x): return u'integer'
+        @annotations(x=int, returns=unicode)
+        def g(x): return 'integer'
         @overload
-        def g(x): return u'string'
+        @annotations(x=unicode, returns=unicode)
+        def g(x): return 'string'
 
-        self.assertEqual(g(u'x'), u'string')
-        self.assertEqual(g(1), u'integer')
+        self.assertEqual(g('x'), 'string')
+        self.assertEqual(g(1), 'integer')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_with_three_variants(self):
         @overload
-        def f(x): return u'string'
+        @annotations(x=unicode, returns=unicode)
+        def f(x): return 'string'
         @overload
-        def f(x): return u'integer'
+        @annotations(x=int, returns=unicode)
+        def f(x): return 'integer'
         @overload
-        def f(x): return u'floating'
+        @annotations(x=float, returns=unicode)
+        def f(x): return 'floating'
 
-        self.assertEqual(f(u'x'), u'string')
-        self.assertEqual(f(1), u'integer')
-        self.assertEqual(f(1.0), u'floating')
+        self.assertEqual(f('x'), 'string')
+        self.assertEqual(f(1), 'integer')
+        self.assertEqual(f(1.0), 'floating')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_with_two_args(self):
         @overload
+        @annotations(x=unicode, y=unicode, returns=int)
         def f(x, y): return (1, x, y)
         @overload
+        @annotations(x=unicode, y=int, returns=int)
         def f(x, y): return (2, x, y)
 
-        self.assertEqual(f(u'x', u'y'), (1, u'x', u'y'))
-        self.assertEqual(f(u'z', 3), (2, u'z', 3))
+        self.assertEqual(f('x', 'y'), (1, 'x', 'y'))
+        self.assertEqual(f('z', 3), (2, 'z', 3))
 
         @overload
+        @annotations(x=unicode, y=unicode, returns=int)
         def g(x, y): return 1
         @overload
+        @annotations(x=int, y=unicode, returns=int)
         def g(x, y): return 2
 
-        self.assertEqual(g(u'x', u'y'), 1)
-        self.assertEqual(g(u'x', 1), 2)
+        self.assertEqual(g('x', 'y'), 1)
+        self.assertEqual(g('x', 1), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_global_overload(self):
-        self.assertEqual(global_overload(u'x'), u's')
-        self.assertEqual(global_overload(1), u'i')
+        self.assertEqual(global_overload('x'), 's')
+        self.assertEqual(global_overload(1), 'i')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_partial_overload_annotation(self):
         @overload
+        @annotations(x=unicode, returns=int)
         def f(x, y): return 1
         @overload
+        @annotations(y=int, returns=int)
         def f(x, y): return 2
 
-        self.assertEqual(f(u'x', object()), 1)
+        self.assertEqual(f('x', object()), 1)
         self.assertEqual(f(object(), 1), 2)
 
     @overload
+    @annotations(x=unicode, returns=unicode)
     def method_overload(self, x):
-        return u's'
+        return 's'
 
     @overload
+    @annotations(x=int, returns=unicode)
     def method_overload(self, x):
-        return u'i'
+        return 'i'
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_method_overload(self):
-        self.assertEqual(self.method_overload(u'x'), u's')
-        self.assertEqual(self.method_overload(1), u'i')
+        self.assertEqual(self.method_overload('x'), 's')
+        self.assertEqual(self.method_overload(1), 'i')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_with_any_type(self):
         @overload
+        @annotations(x=Any, y=int)
         def f(x, y): return 1
         @overload
+        @annotations(x=Any, y=Any)
         def f(x, y): return 2
 
         self.assertEqual(f((), 0), 1)
         self.assertEqual(f((), ()), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_with_type_alias(self):
         @overload
+        @annotations(x=List[int])
         def f(x): return 1
         @overload
+        @annotations(x=Dict[int, unicode])
         def f(x): return 2
         @overload
+        @annotations(x=Tuple[int, unicode])
         def f(x): return 3
         @overload
         def f(x): return 4
@@ -165,27 +180,26 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f([]), 1)
         self.assertEqual(f({}), 2)
         self.assertEqual(f(()), 3)
-        self.assertEqual(f((1, u'x')), 3)
+        self.assertEqual(f((1, 'x')), 3)
         self.assertEqual(f(1), 4)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_call_overload_with_invalid_arg_count(self):
         @overload
+        @annotations(x=int)
         def f(x): return 1
         @overload
+        @annotations(x=Any)
         def f(x): return 2
 
-        msg1 = ur'f\(\) takes exactly 1 argument \(%d given\)'
-        msg2 = ur'f\(\) takes exactly 1 positional argument \(%d given\)'
+        msg = r'f\(\) takes exactly 1 argument \(%d given\)'
 
-        with self.assertRaisesRegex(TypeError, msg1 % 0):
+        with self.assertRaisesRegexp(TypeError, msg % 0):
             f()
-        with self.assertRaisesRegex(TypeError, msg2 % 2):
+        with self.assertRaisesRegexp(TypeError, msg % 2):
             f(1, 2)
-        with self.assertRaisesRegex(TypeError, msg2 % 3):
-            f(u'x', u'y', u'z')
+        with self.assertRaisesRegexp(TypeError, msg % 3):
+            f('x', 'y', 'z')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_with_variable_argument_counts(self):
         @overload
         def f(): return None
@@ -203,101 +217,107 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(g(), None)
         self.assertEqual(g(1), 2)
 
-        msg = ur'g\(\) takes no arguments \(2 given\)'
-        with self.assertRaisesRegex(TypeError, msg):
+        msg = r'g\(\) takes no arguments \(2 given\)'
+        with self.assertRaisesRegexp(TypeError, msg):
             g(1, 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_dispatch_order(self):
         class A(object): pass
         class B(A): pass
         class C(B): pass
 
         @overload
-        def f(x): return u'B'
+        @annotations(x=B)
+        def f(x): return 'B'
         @overload
-        def f(x): return u'A'
+        @annotations(x=A)
+        def f(x): return 'A'
 
-        self.assertEqual(f(B()), u'B')
-        self.assertEqual(f(A()), u'A')
+        self.assertEqual(f(B()), 'B')
+        self.assertEqual(f(A()), 'A')
 
         @overload
-        def g(x): return u'C'
+        @annotations(x=C)
+        def g(x): return 'C'
         @overload
-        def g(x): return u'B'
+        @annotations(x=B)
+        def g(x): return 'B'
         @overload
-        def g(x): return u'A'
+        @annotations(x=A)
+        def g(x): return 'A'
 
-        self.assertEqual(g(C()), u'C')
-        self.assertEqual(g(B()), u'B')
-        self.assertEqual(g(A()), u'A')
+        self.assertEqual(g(C()), 'C')
+        self.assertEqual(g(B()), 'B')
+        self.assertEqual(g(A()), 'A')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_name_of_overloaded_function(self):
         @overload
+        @annotations(x=unicode)
         def f(x): return 1
         @overload
         def f(x): return 2
 
-        self.assertEqual(f.__name__, u'f')
+        self.assertEqual(f.__name__, 'f')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overloaded_function_as_str(self):
         @overload
+        @annotations(x=unicode)
         def f(x): return 1
         @overload
         def f(x): return 2
 
-        self.assertRegex(unicode(f), u'^<function f at.*>$')
+        self.assertRegexpMatches(unicode(f), '^<function f at.*>$')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overload_with_default_arg_values(self):
         @overload
-        def f(x=u'x'): return x + u'!'
+        @annotations(x=unicode)
+        def f(x='x'): return x + '!'
         @overload
         def f(y): return y + 1
 
-        self.assertEqual(f(), u'x!')
-        self.assertEqual(f(u'y'), u'y!')
+        self.assertEqual(f(), 'x!')
+        self.assertEqual(f('y'), 'y!')
         self.assertEqual(f(3), 4)
 
         @overload
-        def g(a, x=u'x', y=u'z'): return 1
+        @annotations(a=int, x=unicode, y=unicode)
+        def g(a, x='x', y='z'): return 1
         @overload
         def g(a, x=1): return 2
 
         self.assertEqual(g(1), 1)
-        self.assertEqual(g(u'x'), 2)
-        self.assertEqual(g(1, u'XX'), 1)
+        self.assertEqual(g('x'), 2)
+        self.assertEqual(g(1, 'XX'), 1)
         self.assertEqual(g(1, 2), 2)
-        self.assertEqual(g(1, u'XX', u'YY'), 1)
+        self.assertEqual(g(1, 'XX', 'YY'), 1)
 
         with self.assertRaises(TypeError):
-            g(1, u'x', 2)
+            g(1, 'x', 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_no_matching_overload(self):
         @overload
+        @annotations(x=unicode)
         def f(x): return 1
         @overload
+        @annotations(x=int)
         def f(x): return 2
 
         # Fall back to the last overload variant if no annotation matches.
         self.assertEqual(f(()), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
-    def test_function_type_dispatch_in_overload(self):
+    def test_callable_type_dispatch_in_overload(self):
         @overload
+        @annotations(x=Callable[[], unicode])
         def f(x): return 1
         @overload
         def f(x): return 2
 
         self.assertEqual(f(ord), 1)
         self.assertEqual(f(unicode.find), 1)
-        self.assertEqual(f(u'x'.find), 1)
+        self.assertEqual(f('x'.find), 1)
         self.assertEqual(f(unicode), 1)
         self.assertEqual(f(TestTyping), 1)
-        self.assertEqual(f(self.test_function_type_dispatch_in_overload), 1)
+        self.assertEqual(f(self.test_callable_type_dispatch_in_overload), 1)
         self.assertEqual(f(self.assertEqual), 1)
         self.assertEqual(f(TestTyping.assertEqual), 1)
 
@@ -310,23 +330,33 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(object()), 2)
 
     def test_typevar(self):
-        t = typevar(u't')
-        self.assertEqual(t.name, u't')
+        t = typevar('t')
+        self.assertEqual(t.name, 't')
+        self.assertIsNone(t.values)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
+    def test_typevar_values(self):
+        t = typevar('t', values=(int, unicode))
+        self.assertEqual(t.name, 't')
+        self.assertEqual(t.values, (int, unicode))
+
+    def test_predefined_typevars(self):
+        self.assertEqual(AnyStr.name, 'AnyStr')
+        self.assertEqual(AnyStr.values, (str, unicode))
+
     def test_typevar_in_overload(self):
-        t = typevar(u't')
+        t = typevar('t')
 
         @overload
+        @annotations(x=t, y=unicode)
         def f(x, y): return 1
         @overload
         def f(x, y): return 2
 
-        self.assertEqual(f((), u'x'), 1)
+        self.assertEqual(f((), 'x'), 1)
         self.assertEqual(f((), 1.1), 2)
 
     def test_simple_generic_class(self):
-        t = typevar(u't')
+        t = typevar('t')
 
         class C(Generic[t]):
             pass
@@ -336,8 +366,8 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(C[int](), C)
 
     def test_generic_class_with_two_typeargs(self):
-        t = typevar(u't')
-        u = typevar(u'u')
+        t = typevar('t')
+        u = typevar('u')
 
         class C(Generic[t, u]):
             pass
@@ -347,7 +377,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(C[int, unicode](), C)
 
     def test_abstract_generic_class(self):
-        t = typevar(u't')
+        t = typevar('t')
         class C(AbstractGeneric[t]):
             pass
         class D(object):
@@ -362,8 +392,8 @@ class TestTyping(unittest.TestCase):
 
         self.assertIsInstance([], Sequence)
         self.assertIsInstance((), Sequence)
-        self.assertIsInstance(u'', Sequence)
         self.assertIsInstance('', Sequence)
+        self.assertIsInstance(b'', Sequence)
         self.assertIsInstance(xrange(5), Sequence)
         self.assertNotIsInstance({}, Sequence)
 
@@ -384,28 +414,28 @@ class TestTyping(unittest.TestCase):
     def test_supports_int(self):
         self.assertIsInstance(1, SupportsInt)
         self.assertIsInstance(1.1, SupportsInt)
-        self.assertNotIsInstance(u'', SupportsInt)
         self.assertNotIsInstance('', SupportsInt)
+        self.assertNotIsInstance(b'', SupportsInt)
         self.assertNotIsInstance((), SupportsInt)
 
     def test_supports_float(self):
         self.assertIsInstance(1.1, SupportsFloat)
         self.assertIsInstance(1, SupportsFloat)
-        self.assertNotIsInstance(u'', SupportsFloat)
         self.assertNotIsInstance('', SupportsFloat)
+        self.assertNotIsInstance(b'', SupportsFloat)
         self.assertNotIsInstance((), SupportsFloat)
 
     def test_supports_abs(self):
         self.assertIsInstance(1.1, SupportsAbs)
         self.assertIsInstance(1, SupportsAbs)
-        self.assertNotIsInstance(u'', SupportsAbs)
+        self.assertNotIsInstance('', SupportsAbs)
         self.assertNotIsInstance((), SupportsAbs)
 
     def test_reversible(self):
         self.assertIsInstance([], Reversible)
         self.assertIsInstance(xrange(1), Reversible)
         self.assertNotIsInstance((), Reversible)
-        self.assertNotIsInstance(u'', Reversible)
+        self.assertNotIsInstance('', Reversible)
 
     def test_simple_protocol(self):
         class P(Protocol):
@@ -478,11 +508,21 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(A(), PP)
         self.assertNotIsInstance(C(), PP)
 
+        class AA(Protocol):
+            def f(self): return 1
+        class BB(AA): pass
+
+        self.assertEqual(BB().f(), 1)
+
+        class CC(AA): pass
+        # BB is not a protocol since it doesn't explicitly subclass Protocol.
+        self.assertNotIsInstance(CC(), BB)
+
     def test_builtin_class_and_protocol(self):
         class P(Protocol):
             def __add__(self): pass
 
-        self.assertIsInstance(u'', P)
+        self.assertIsInstance('', P)
         self.assertIsInstance([], P)
         self.assertIsInstance(1, P)
         self.assertNotIsInstance({}, P)
@@ -491,7 +531,7 @@ class TestTyping(unittest.TestCase):
         self.assertFalse(issubclass(dict, P))
 
     def test_generic_protocol(self):
-        t = typevar(u't')
+        t = typevar('t')
         class P(Protocol[t]):
             x = 1
         class A(object):
@@ -511,8 +551,8 @@ class TestTyping(unittest.TestCase):
     def test_sized(self):
         self.assertIsInstance([], Sized)
         self.assertIsInstance((), Sized)
-        self.assertIsInstance(u'', Sized)
         self.assertIsInstance('', Sized)
+        self.assertIsInstance(b'', Sized)
         self.assertIsInstance({}, Sized)
         self.assertIsInstance(set(), Sized)
         self.assertIsInstance(xrange(5), Sized)
@@ -532,7 +572,7 @@ class TestTyping(unittest.TestCase):
         self.assertNotIsInstance(1, Iterable)
 
     def test_iterator(self):
-        self.assertIsInstance(iter(u''), Iterator)
+        self.assertIsInstance(iter(''), Iterator)
         self.assertIsInstance(iter([]), Iterator)
         self.assertIsInstance(iter({}), Iterator)
         self.assertNotIsInstance([], Iterator)
@@ -596,20 +636,23 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(A(), P)
 
     def test_forward_ref_in_annotation(self):
-        A = forwardref(u'A')
+        A = forwardref('A')
+        @annotations(a=A, returns=A)
         def f(a):
             return a
-        self.assertEqual(A.name, u'A')
+        self.assertEqual(A.name, 'A')
         class A(object): pass
 
     def test_string_literal_in_annotation(self):
+        @annotations(a='unicode', returns='unicode')
         def f(a):
-            return a + u'x'
+            return a + 'x'
+        @annotations(a='Iterable[int]', returns='List[int]')
         def f(a):
             return list(a)
 
     def test_undefined(self):
-        self.assertEqual(unicode(Undefined), u'<typing.Undefined>')
+        self.assertEqual(unicode(Undefined), '<typing.Undefined>')
         with self.assertRaises(AttributeError):
             Undefined.x = 1
         with self.assertRaises(AttributeError):
@@ -625,19 +668,20 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             if not Undefined: pass
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_simple_string_literal_in_overload(self):
         @overload
-        def f(a): return u's'
+        @annotations(a='unicode', returns='unicode')
+        def f(a): return 's'
         @overload
-        def f(a): return u'i'
+        @annotations(a='int', returns='unicode')
+        def f(a): return 'i'
 
-        self.assertEqual(f(u''), u's')
-        self.assertEqual(f(2), u'i')
+        self.assertEqual(f(''), 's')
+        self.assertEqual(f(2), 'i')
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_module_ref_string_literal_in_overload(self):
         @overload
+        @annotations(a='Dummy')
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -645,19 +689,9 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(Dummy()), 1)
         self.assertEqual(f(2), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
-    def test_module_ref_string_literal_in_overload(self):
-        @overload
-        def f(a): return 1
-        @overload
-        def f(a): return 2
-
-        self.assertEqual(f(Dummy()), 1)
-        self.assertEqual(f(2), 2)
-
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_local_ref_string_literal_in_overload(self):
         @overload
+        @annotations(a='C')
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -666,9 +700,9 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(C()), 1)
         self.assertEqual(f(2), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_any_string_literal_in_overload(self):
         @overload
+        @annotations(a='Any')
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -676,9 +710,9 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(object()), 1)
         self.assertEqual(f(None), 1)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_generic_type_string_literal_in_overload(self):
         @overload
+        @annotations(a='List[int]')
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -686,9 +720,9 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f([]), 1)
         self.assertEqual(f(()), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_tuple_type_string_literal_in_overload(self):
         @overload
+        @annotations(a='Tuple[int]')
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -696,9 +730,9 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(()), 1)
         self.assertEqual(f([]), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
-    def test_function_type_string_literal_in_overload(self):
+    def test_callable_type_string_literal_in_overload(self):
         @overload
+        @annotations(a='Callable[[], int]')
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -706,11 +740,11 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(ord), 1)
         self.assertEqual(f([]), 2)
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_forward_ref_in_overload(self):
-        A = forwardref(u'A')
+        A = forwardref('A')
 
         @overload
+        @annotations(a=A)
         def f(a): return 1
         @overload
         def f(a): return 2
@@ -721,7 +755,7 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f(object()), 2)
 
     def test_construct_class_with_abstract_method(self):
-        t = typevar(u't')
+        t = typevar('t')
 
         class A(AbstractGeneric[t]):
             @abstractmethod
@@ -742,17 +776,6 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             A()  # No implementation for abstract method.
 
-    def test_protocol_inheritance(self):
-        class A(Protocol):
-            def f(self): return 1
-        class B(A): pass
-
-        self.assertEqual(B().f(), 1)
-
-        class C(A): pass
-        # B is not a protocol since it doesn't explicitly subclass Protocol.
-        self.assertNotIsInstance(C(), B)
-
     def test_protocol_inheritance_with_abstract_method(self):
         class A(Protocol):
             @abstractmethod
@@ -766,12 +789,12 @@ class TestTyping(unittest.TestCase):
             def f(self): pass
         C()
 
-    @unittest.skip("overloads not supported in 2.7 yet")
     def test_overloaded_abstract_method(self):
         class A():
             __metaclass__ = ABCMeta
             @abstractmethod
             @overload
+            @annotations(x=int)
             def f(self, x): pass
             @abstractmethod
             @overload
@@ -784,10 +807,12 @@ class TestTyping(unittest.TestCase):
             __metaclass__ = ABCMeta
             @overload
             @abstractmethod
+            @annotations(x=int, returns=int)
             def f(self, x): pass
 
             @overload
             @abstractmethod
+            @annotations(returns=None)
             def f(self, x): pass
 
         with self.assertRaises(TypeError):
@@ -795,30 +820,47 @@ class TestTyping(unittest.TestCase):
 
         class C(B):
             @overload
+            @annotations(x=int, returns=int)
             def f(self, x):
                 return 1
 
             @overload
             def f(self, x):
-                return u'x'
+                return 'x'
 
         self.assertEqual(C().f(2), 1)
-        self.assertEqual(C().f(None), u'x')
+        self.assertEqual(C().f(None), 'x')
+
+    def test_builtinclass(self):
+        class A: pass
+        self.assertIs(builtinclass(int), int)
+        self.assertIs(builtinclass(A), A)
+
+    def test_ducktype(self):
+        class A: pass
+        self.assertIs(ducktype(str)(A), A)
+
+    def test_disjointclass(self):
+        class A: pass
+        self.assertIs(disjointclass(str)(A), A)
+        self.assertIs(disjointclass('str')(A), A)
 
 
 @overload
+@annotations(x=unicode, returns=unicode)
 def global_overload(x):
-    return u's'
+    return 's'
 
 
 @overload
+@annotations(x=int, returns=unicode)
 def global_overload(x):
-    return u'i'
+    return 'i'
 
 
 class Dummy(object):
     u"""Dummy class defined in module scope"""
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     unittest.main()

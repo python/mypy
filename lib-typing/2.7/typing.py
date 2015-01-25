@@ -5,6 +5,7 @@ import collections
 import inspect
 import sys
 import re
+import functools
 
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
     'Tuple',
     'Undefined',
     'Union',
+    'annotations',
     'cast',
     'forwardref',
     'overload',
@@ -42,6 +44,31 @@ __all__ = [
     'BinaryIO',
     'TextIO',
 ]
+
+
+def builtinclass(cls):
+    """Mark a class as a built-in/extension class for type checking."""
+    return cls
+
+
+def ducktype(type):
+    """Return a duck type declaration decorator.
+
+    The decorator only affects type checking.
+    """
+    def decorator(cls):
+        return cls
+    return decorator
+
+
+def disjointclass(type):
+    """Return a disjoint class declaration decorator.
+
+    The decorator only affects type checking.
+    """
+    def decorator(cls):
+        return cls
+    return decorator
 
 
 class GenericMeta(type):
@@ -189,6 +216,20 @@ def cast(type, object):
     return object
 
 
+def annotations(**kwargs):
+    """Add Python 3 style __annotations__ to a Python 2 function.
+
+    The return annotation should be specified via the 'returns' keyword
+    argument to be syntactically valid.
+    """
+    def wrapper(func):
+        if 'returns' in kwargs:
+            kwargs['return'] = kwargs.pop('returns')
+        func.__annotations__ = kwargs
+        return func
+    return wrapper
+
+
 def overload(func):
     """Function decorator for defining overloaded functions."""
     frame = sys._getframe(1)
@@ -201,6 +242,7 @@ def overload(func):
     if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
         orig_func = locals[func.__name__]
 
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             ret, ok = orig_func.dispatch(*args, **kwargs)
             if ok:
@@ -209,7 +251,6 @@ def overload(func):
         wrapper.isoverload = True
         wrapper.dispatch = make_dispatcher(func, orig_func.dispatch)
         wrapper.next = orig_func
-        wrapper.__name__ = func.__name__
         if hasattr(func, '__isabstractmethod__'):
             # Note that we can't reliably check that abstractmethod is
             # used consistently across overload variants, so we let a
@@ -235,9 +276,10 @@ def make_dispatcher(func, previous=None):
     """
     (args, varargs, varkw, defaults) = inspect.getargspec(func)
 
+    annotations = getattr(func, '__annotations__', {})
     argtypes = []
     for arg in args:
-        ann = None  # annotations.get(arg)
+        ann = annotations.get(arg)
         if isinstance(ann, forwardref):
             ann = ann.name
         if is_erased_type(ann):
