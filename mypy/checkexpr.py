@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import Undefined, cast, List, Tuple, Dict, Function, Union
+from typing import Undefined, cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
