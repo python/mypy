@@ -687,7 +687,7 @@ class A(Generic[S, T]): pass
 class B: pass
 
 [case testErrorWithShorterGenericTypeName2]
-from typing import Undefined, Function, typevar, Generic
+from typing import Undefined, Callable, typevar, Generic
 S = typevar('S')
 T = typevar('T')
 a = Undefined # type: A[object, Callable[[], None]]
@@ -787,12 +787,12 @@ a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
--- Function subtyping with generic functions
+-- Callable subtyping with generic functions
 -- -----------------------------------------
 
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
-from typing import typevar, Function
+from typing import typevar, Callable
 T = typevar('T', values=(int, str))
 def f(x: T) -> T: pass
 def g1(f: Callable[[str], str]) -> None: pass
@@ -809,12 +809,12 @@ g3(f) # E: Argument 1 to "g3" has incompatible type Callable[[T], T]; \
 
 
 [case testIdentityHigherOrderFunction]
-from typing import Function, typevar
+from typing import Callable, typevar
 A = typevar('A')
 B = typevar('B')
 def square(n: int) -> int:
     return n
-def id(f: Callable[[A], B]) -> Function[[A], B]:
+def id(f: Callable[[A], B]) -> Callable[[A], B]:
     return f
 g = id(square)
 g(1)
@@ -822,9 +822,9 @@ g('x')  # E: Argument 1 has incompatible type "str"; expected "int"
 
 
 [case testIdentityHigherOrderFunction2]
-from typing import Function, typevar
+from typing import Callable, typevar
 A = typevar('A')
 def voidify(n: int) -> None: pass
-def identity(f: Callable[[A], None]) -> Function[[A], None]:
+def identity(f: Callable[[A], None]) -> Callable[[A], None]:
     return f
 identity(voidify)(3)
