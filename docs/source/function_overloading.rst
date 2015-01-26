@@ -1,28 +1,40 @@
-Function overloading
-====================
+Function overloading in stubs
+=============================
 
-You can define multiple instances of a function with the same name but
-different signatures. The first matching signature is selected at
-runtime when evaluating each individual call. This enables also a form
-of multiple dispatch.
+Sometimes you have a library function that seems to call for two or
+more signatures.  That's okay -- you can define multiple *overloaded*
+instances of a function with the same name but different signatures in
+a stub file (this feature is not supported for user code, at least not
+yet) using the ``@overload`` decorator. For example, we can define an
+``abs`` function that works for both ``int`` and ``float`` arguments:
 
 .. code-block:: python
+
+   # This is a stub file!
 
    from typing import overload
 
    @overload
-   def abs(n: int) -> int:
-       return n if n >= 0 else -n
+   def abs(n: int) -> int: pass
 
    @overload
-   def abs(n: float) -> float:
-       return n if n >= 0.0 else -n
+   def abs(n: float) -> float: pass
 
-   abs(-2)     # 2 (int)
-   abs(-1.5)   # 1.5 (float)
+Note that we can't use ``Union[int, float]`` as the argument type,
+since this wouldn't allow us to express that the the return
+type depends on the argument type.
 
-Overloaded function variants still define a single runtime object; the
-following code is valid:
+Now if we import ``abs`` as defined in the above library stub, we can
+write code like this, and the types are inferred correctly:
+
+.. code-block:: python
+
+   n = abs(-2)     # 2 (int)
+   f = abs(-1.5)   # 1.5 (float)
+
+Overloaded function variants are still ordinary Python functions and
+they still define a single runtime object. The following code is
+thus valid:
 
 .. code-block:: python
 
@@ -31,12 +43,18 @@ following code is valid:
    my_abs(-1.5)    # 1.5 (float)
 
 The overload variants must be adjacent in the code. This makes code
-clearer, and otherwise there would be awkward corner cases such as
-partially defined overloaded functions that could surprise the unwary
-programmer.
+clearer, as you don't have to hunt for overload variants across the
+file.
 
 .. note::
 
-   As generic type variables are erased at runtime, an overloaded
-   function cannot dispatch based on a generic type argument,
+   As generic type variables are erased at runtime when constructing
+   instances of generic types, an overloaded function cannot have
+   variants that only differ in a generic type argument,
    e.g. ``List[int]`` versus ``List[str]``.
+
+.. note::
+
+   If you are writing a regular module rather than a stub, you can
+   often use a type variable with a value restriction to represent
+   functions as ``abs`` above (see :ref:`type-variable-value-restriction`).

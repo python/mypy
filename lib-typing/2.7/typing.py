@@ -230,109 +230,7 @@ def annotations(**kwargs):
 
 
 def overload(func):
-    """Function decorator for defining overloaded functions."""
-    frame = sys._getframe(1)
-    locals = frame.f_locals
-    # See if there is a previous overload variant available.  Also verify
-    # that the existing function really is overloaded: otherwise, replace
-    # the definition.  The latter is actually important if we want to reload
-    # a library module such as genericpath with a custom one that uses
-    # overloading in the implementation.
-    if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
-        orig_func = locals[func.__name__]
-
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            ret, ok = orig_func.dispatch(*args, **kwargs)
-            if ok:
-                return ret
-            return func(*args, **kwargs)
-        wrapper.isoverload = True
-        wrapper.dispatch = make_dispatcher(func, orig_func.dispatch)
-        wrapper.next = orig_func
-        if hasattr(func, '__isabstractmethod__'):
-            # Note that we can't reliably check that abstractmethod is
-            # used consistently across overload variants, so we let a
-            # static checker do it.
-            wrapper.__isabstractmethod__ = func.__isabstractmethod__
-        return wrapper
-    else:
-        # Return the initial overload variant.
-        func.isoverload = True
-        func.dispatch = make_dispatcher(func)
-        func.next = None
-        return func
-
-
-def is_erased_type(t):
-    return t is Any or isinstance(t, typevar)
-
-
-def make_dispatcher(func, previous=None):
-    """Create argument dispatcher for an overloaded function.
-
-    Also handle chaining of multiple overload variants.
-    """
-    (args, varargs, varkw, defaults) = inspect.getargspec(func)
-
-    annotations = getattr(func, '__annotations__', {})
-    argtypes = []
-    for arg in args:
-        ann = annotations.get(arg)
-        if isinstance(ann, forwardref):
-            ann = ann.name
-        if is_erased_type(ann):
-            ann = None
-        elif isinstance(ann, unicode):
-            # The annotation is a string => evaluate it lazily when the
-            # overloaded function is first called.
-            frame = sys._getframe(2)
-            t = [None]
-            ann_str = ann
-
-            def check(x):
-                if not t[0]:
-                    # Evaluate string in the context of the overload caller.
-                    t[0] = eval(ann_str, frame.f_globals, frame.f_locals)
-                    if is_erased_type(t[0]):
-                        # Anything goes.
-                        t[0] = object
-                if isinstance(t[0], type):
-                    return isinstance(x, t[0])
-                else:
-                    return t[0](x)
-            ann = check
-        argtypes.append(ann)
-
-    maxargs = len(argtypes)
-    minargs = maxargs
-    if defaults:
-        minargs = len(argtypes) - len(defaults)
-
-    def dispatch(*args, **kwargs):
-        if previous:
-            ret, ok = previous(*args, **kwargs)
-            if ok:
-                return ret, ok
-
-        nargs = len(args)
-        if nargs < minargs or nargs > maxargs:
-            # Invalid argument count.
-            return None, False
-
-        for i in xrange(nargs):
-            argtype = argtypes[i]
-            if argtype:
-                if isinstance(argtype, type):
-                    if not isinstance(args[i], argtype):
-                        break
-                else:
-                    if not argtype(args[i]):
-                        break
-        else:
-            return func(*args, **kwargs), True
-        return None, False
-    return dispatch
+    raise RuntimeError("Overloading only supported in library stubs")
 
 
 class Undefined(object):
@@ -566,13 +464,8 @@ class IO(AbstractGeneric[AnyStr]):
 
 
 class BinaryIO(IO[str]):
-    @overload
     @abstractmethod
     def write(self, s): pass
-    @overload
-    @abstractmethod
-    def write(self, s): pass
-
     @abstractmethod
     def __enter__(self): pass
 

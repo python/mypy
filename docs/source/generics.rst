@@ -137,6 +137,8 @@ example we use the same type variable in two generic functions:
 You can also define generic methods — just use a type variable in the
 method signature that is different from class type variables.
 
+.. _type-variable-value-restriction:
+
 Type variables with value restriction
 *************************************
 
@@ -184,20 +186,6 @@ will reject this function:
 
    def union_concat(x: Union[str, bytes], y: Union[str, bytes]) -> Union[str, bytes]:
        return x + y  # Error: can't concatenate str and bytes
-
-The original, valid definition of ``concat`` is more or less
-equivalent to this overloaded function, but it's much shorter,
-cleaner and more efficient:
-
-.. code-block:: python
-
-   @overload
-   def overload_concat(x: str, y: str) -> str:
-       return x + y
-
-   @overload
-   def overload_concat(x: bytes, y: bytes) -> bytes:
-       return x + y
 
 Another interesting special case is calling ``concat()`` with a
 subtype of ``str``:

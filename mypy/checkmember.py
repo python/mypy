@@ -11,7 +11,7 @@ from mypy.nodes import ARG_POS, function_type, Decorator
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
-from mypy.nodes import method_type
+from mypy.nodes import method_type, method_type_with_fallback
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
@@ -51,7 +51,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                 msg.cant_assign_to_method(node)
             typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(
-                method_type(method, builtin_type('builtins.function')), typ)
+                method_type_with_fallback(method, builtin_type('builtins.function')), typ)
         else:
             # Not a method.
             return analyse_member_var_access(name, typ, info, node,
@@ -150,7 +150,7 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
             if method:
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(
-                    method_type(method, builtin_type('builtins.function')), typ)
+                    method_type_with_fallback(method, builtin_type('builtins.function')), typ)
                 if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
 
@@ -259,7 +259,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     else:
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
-        init_type = method_type(init_method, builtin_type('builtins.function'))
+        init_type = method_type_with_fallback(init_method, builtin_type('builtins.function'))
         if isinstance(init_type, CallableType):
             return class_callable(init_type, info, builtin_type('builtins.type'))
         else:

@@ -1941,20 +1941,17 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
         return TupleType(typ.tuple_type.items, inst)
 
 
-@overload
-def replace_implicit_first_type(sig: CallableType, new: Type) -> CallableType:
-    # We can detect implicit self type by it having no representation.
-    if not sig.arg_types[0].repr:
-        return replace_leading_arg_type(sig, new)
-    else:
-        return sig
-
-
-@overload
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
-    osig = cast(Overloaded, sig)
-    return Overloaded([replace_implicit_first_type(i, new)
-                       for i in osig.items()])
+    if isinstance(sig, CallableType):
+        # We can detect implicit self type by it having no representation.
+        if not sig.arg_types[0].repr:
+            return replace_leading_arg_type(sig, new)
+        else:
+            return sig
+    else:
+        sig = cast(Overloaded, sig)
+        return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))
+                           for i in sig.items()])
 
 
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:

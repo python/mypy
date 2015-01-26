@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisNode
 )
-from mypy.nodes import function_type, method_type
+from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
@@ -1542,26 +1542,21 @@ class TypeChecker(NodeVisitor[Type]):
         self.fail('Unsupported exception', n)
         return AnyType()
 
-    @overload
-    def check_exception_type(self, type: FunctionLike,
-                             context: Context) -> Type:
-        item = type.items()[0]
-        ret = item.ret_type
-        if (is_subtype(ret, self.named_type('builtins.BaseException'))
-                and item.is_type_obj()):
-            return ret
+    def check_exception_type(self, type: Type, context: Context) -> Type:
+        if isinstance(type, FunctionLike):
+            item = type.items()[0]
+            ret = item.ret_type
+            if (is_subtype(ret, self.named_type('builtins.BaseException'))
+                    and item.is_type_obj()):
+                return ret
+            else:
+                self.fail(messages.INVALID_EXCEPTION_TYPE, context)
+                return AnyType()
+        elif isinstance(type, AnyType):
+            return AnyType()
         else:
             self.fail(messages.INVALID_EXCEPTION_TYPE, context)
             return AnyType()
-
-    @overload
-    def check_exception_type(self, type: AnyType, context: Context) -> Type:
-        return AnyType()
-
-    @overload
-    def check_exception_type(self, type: Type, context: Context) -> Type:
-        self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-        return AnyType()
 
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
@@ -1929,7 +1924,7 @@ class TypeChecker(NodeVisitor[Type]):
         return function_type(func, self.named_type('builtins.function'))
 
     def method_type(self, func: FuncBase) -> FunctionLike:
-        return method_type(func, self.named_type('builtins.function'))
+        return method_type_with_fallback(func, self.named_type('builtins.function'))
 
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,

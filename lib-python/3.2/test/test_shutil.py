@@ -24,8 +24,7 @@ from test import support
 from test.support import check_warnings, captured_stdout
 
 from typing import (
-    Any, Callable, Tuple, List, Sequence, BinaryIO, overload, Traceback, IO,
-    ducktype
+    Any, Callable, Tuple, List, Sequence, BinaryIO, Traceback, IO, Union, ducktype, cast
 )
 
 import bz2
@@ -69,23 +68,21 @@ class TestShutil(unittest.TestCase):
             d = self.tempdirs.pop()
             shutil.rmtree(d, os.name in ('nt', 'cygwin'))
 
-    @overload
-    def write_file(self, path: str, content: str = 'xxx') -> None:
+    def write_file(self, path: Union[str, List[str], tuple], content: str = 'xxx') -> None:
         """Writes a file in the given path.
 
 
         path can be a string or a sequence.
         """
+        if isinstance(path, list):
+            path = os.path.join(*path)
+        elif isinstance(path, tuple):
+            path = cast(str, os.path.join(*path))
         f = open(path, 'w')
         try:
             f.write(content)
         finally:
             f.close()
-
-    @overload
-    def write_file(self, path: Sequence[str], content: str = 'xxx') -> None:
-        # JLe: work around mypy issue #238
-        self.write_file(os.path.join(*list(path)), content)
 
     def mkdtemp(self) -> str:
         """Create a temporary directory that will be cleaned up.

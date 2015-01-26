@@ -47,50 +47,6 @@ print(len(A()))
 [out]
 5
 
-[case testAbstractClassInOverload]
-from typing import overload, Sized
-class A(Sized):
-    def __len__(self): return 5
-class B:
-    def __len__(self): return 6
-@overload
-def f(s: Sized) -> None: print('sized')
-@overload
-def f(s) -> None: print('other')
-f('x')
-f(A())
-f(1)
-f(B())  # Sized is actually a Protocol
-[out]
-sized
-sized
-other
-sized
-
-[case testOverloadUsingMatchAndPattern-skip]
-import re
-from typing import overload, Any, Match, Pattern
-@overload
-def f(x: Match) -> None: print('match')
-@overload
-def f(x: Any) -> None: print('something else')
-
-f(1)
-f(re.match('x', 'x'))
-
-@overload
-def g(x: Pattern) -> None: print('pattern')
-@overload
-def g(x: Any) -> None: print('something else')
-
-g(1)
-g(re.compile(''))
-[out]
-something else
-match
-something else
-pattern
-
 [case testReversed]
 from typing import Reversible
 class A(Reversible):
@@ -164,50 +120,6 @@ print(round(A(), 2))
 2
 x0
 x2
-
-[case testOverloadUsingSupportsInt]
-from typing import overload, SupportsInt
-@overload
-def f(i: SupportsInt) -> None: print('int-like')
-@overload
-def f(i) -> None: print('other')
-f(1.2)
-f(3)
-f('x')
-f([2])
-[out]
-int-like
-int-like
-other
-other
-
-[case testOverloadWithOptionalArg]
-from typing import overload
-@overload
-def f(x: int, y: str = 'x') -> None: print(x, y)
-@overload
-def f(x: str) -> None: print(x)
-f(1)
-f('x')
-f(1, 'y')
-[out]
-1 x
-x
-1 y
-
-[case testOverloadWithOptionalArg2-skip]
-from typing import overload
-@overload
-def f(x: int, y: str = 'x') -> None: print(x, y)
-@overload
-def f(x: str) -> None: print(x)
-f(x=1)
-f(x='x')
-f(x=1, y='y')
-[out]
-1 x
-x
-1 y
 
 [case testCallMethodViaTypeObject]
 import typing
@@ -676,27 +588,6 @@ _program.py, line 3: Unsupported operand types for > ("str" and "bytes")
 _program.py, line 4: Unsupported operand types for > ("bytearray" and "str")
 _program.py, line 5: Unsupported operand types for > ("str" and "bytearray")
 
-[case testOverloadedOperatorMethodAndReverseMethod]
-from typing import overload
-class A:
-    @overload
-    def __add__(self, x: 'A') -> int: return 1
-    @overload
-    def __add__(self, x: int) -> int:
-        if isinstance(x, int):
-            return 2
-        else:
-            return NotImplemented
-class B:
-    def __radd__(self, x: A) -> int: return 3
-print(A() + A())
-print(A() + 1)
-print(A() + B())
-[out]
-1
-2
-3
-
 [case testInplaceOperatorMethod]
 import typing
 a = [1]
@@ -760,25 +651,6 @@ s = {'x', 'y'}
 print('>', sorted(s.union('foo')))
 [out]
 > ['f', 'o', 'x', 'y']
-
-[case testOverloadedErasedType]
-from typing import overload, typevar, Callable, List
-
-T = typevar("T")
-V = typevar("V")
-
-@overload
-def fun(x: int) -> int: return 1
-@overload
-def fun(x: str) -> int: return 2
-
-def m(fun: Callable[[T], V], iter: List[T]) -> int: return 17
-
-nums = [1] # type: List[int]
-print('>', m(lambda x: fun(x),
-             nums))
-[out]
-> 17
 
 [case testFromFuturePrintFunction]
 from __future__ import print_function

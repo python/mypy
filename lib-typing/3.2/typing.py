@@ -215,108 +215,7 @@ def cast(type, object):
 
 
 def overload(func):
-    """Function decorator for defining overloaded functions."""
-    frame = sys._getframe(1)
-    locals = frame.f_locals
-    # See if there is a previous overload variant available.  Also verify
-    # that the existing function really is overloaded: otherwise, replace
-    # the definition.  The latter is actually important if we want to reload
-    # a library module such as genericpath with a custom one that uses
-    # overloading in the implementation.
-    if func.__name__ in locals and hasattr(locals[func.__name__], 'dispatch'):
-        orig_func = locals[func.__name__]
-
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            ret, ok = orig_func.dispatch(*args, **kwargs)
-            if ok:
-                return ret
-            return func(*args, **kwargs)
-        wrapper.isoverload = True
-        wrapper.dispatch = make_dispatcher(func, orig_func.dispatch)
-        wrapper.next = orig_func
-        if hasattr(func, '__isabstractmethod__'):
-            # Note that we can't reliably check that abstractmethod is
-            # used consistently across overload variants, so we let a
-            # static checker do it.
-            wrapper.__isabstractmethod__ = func.__isabstractmethod__
-        return wrapper
-    else:
-        # Return the initial overload variant.
-        func.isoverload = True
-        func.dispatch = make_dispatcher(func)
-        func.next = None
-        return func
-
-
-def is_erased_type(t):
-    return t is Any or isinstance(t, typevar)
-
-
-def make_dispatcher(func, previous=None):
-    """Create argument dispatcher for an overloaded function.
-
-    Also handle chaining of multiple overload variants.
-    """
-    (args, varargs, varkw, defaults,
-     kwonlyargs, kwonlydefaults, annotations) = inspect.getfullargspec(func)
-
-    argtypes = []
-    for arg in args:
-        ann = annotations.get(arg)
-        if isinstance(ann, forwardref):
-            ann = ann.name
-        if is_erased_type(ann):
-            ann = None
-        elif isinstance(ann, str):
-            # The annotation is a string => evaluate it lazily when the
-            # overloaded function is first called.
-            frame = sys._getframe(2)
-            t = [None]
-            ann_str = ann
-            def check(x):
-                if not t[0]:
-                    # Evaluate string in the context of the overload caller.
-                    t[0] = eval(ann_str, frame.f_globals, frame.f_locals)
-                    if is_erased_type(t[0]):
-                        # Anything goes.
-                        t[0] = object
-                if isinstance(t[0], type):
-                    return isinstance(x, t[0])
-                else:
-                    return t[0](x)
-            ann = check
-        argtypes.append(ann)
-
-    maxargs = len(argtypes)
-    minargs = maxargs
-    if defaults:
-        minargs = len(argtypes) - len(defaults)
-
-    def dispatch(*args, **kwargs):
-        if previous:
-            ret, ok = previous(*args, **kwargs)
-            if ok:
-                return ret, ok
-
-        nargs = len(args)
-        if nargs < minargs or nargs > maxargs:
-            # Invalid argument count.
-            return None, False
-
-        for i in range(nargs):
-            argtype = argtypes[i]
-            if argtype:
-                if isinstance(argtype, type):
-                    if not isinstance(args[i], argtype):
-                        break
-                else:
-                    if not argtype(args[i]):
-                        break
-        else:
-            return func(*args, **kwargs), True
-        return None, False
-    return dispatch
+    raise RuntimeError("Overloading only supported in library stubs")
 
 
 class Undefined:
@@ -417,12 +316,7 @@ class Iterator(Iterable[T], _Protocol[T]):
 
 class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
     @abstractmethod
-    @overload
-    def __getitem__(self, i: int) -> T: pass
-
-    @abstractmethod
-    @overload
-    def __getitem__(self, s: slice) -> 'Sequence[T]': pass
+    def __getitem__(self, x): pass
 
     @abstractmethod
     def __reversed__(self, s: slice) -> Iterator[T]: pass
@@ -471,34 +365,16 @@ class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
     def clear(self) -> None: pass
     @abstractmethod
     def copy(self) -> 'Mapping[KT, VT]': pass
-    @overload
     @abstractmethod
-    def get(self, k: KT) -> VT: pass
-    @overload
+    def get(self, k): pass
     @abstractmethod
-    def get(self, k: KT, default: VT) -> VT: pass
-    @overload
-    @abstractmethod
-    def pop(self, k: KT) -> VT: pass
-    @overload
-    @abstractmethod
-    def pop(self, k: KT, default: VT) -> VT: pass
+    def pop(self, k, default=None): pass
     @abstractmethod
     def popitem(self) -> Tuple[KT, VT]: pass
-    @overload
     @abstractmethod
-    def setdefault(self, k: KT) -> VT: pass
-    @overload
+    def setdefault(self, k, default=None): pass
     @abstractmethod
-    def setdefault(self, k: KT, default: VT) -> VT: pass
-
-    @overload
-    @abstractmethod
-    def update(self, m: 'Mapping[KT, VT]') -> None: pass
-    @overload
-    @abstractmethod
-    def update(self, m: Iterable[Tuple[KT, VT]]) -> None: pass
-
+    def update(self, m: Union['Mapping[KT, VT]', Iterable[Tuple[KT, VT]]]) -> None: pass
     @abstractmethod
     def keys(self) -> AbstractSet[KT]: pass
     @abstractmethod
@@ -560,13 +436,8 @@ class IO(AbstractGeneric[AnyStr]):
 
 
 class BinaryIO(IO[bytes]):
-    @overload
     @abstractmethod
-    def write(self, s: bytes) -> int: pass
-    @overload
-    @abstractmethod
-    def write(self, s: bytearray) -> int: pass
-
+    def write(self, s: Union[bytes, bytearray]) -> int: pass
     @abstractmethod
     def __enter__(self) -> 'BinaryIO': pass
 
