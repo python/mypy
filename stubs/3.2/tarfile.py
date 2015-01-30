@@ -29,5 +29,5 @@ class TarFile:
             filter: 'Callable[[TarFile], TarFile]' = None) -> None: pass
     def close(self) -> None: pass
 
-def open(name: str, mode: str = 'r', fileobj: Any = None, bufsize: int = 10240,
+def open(name: str = None, mode: str = 'r', fileobj: Any = None, bufsize: int = 10240,
          **kwargs) -> TarFile: pass
