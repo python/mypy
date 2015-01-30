@@ -8,7 +8,8 @@ from typing import Sequence, Any, Mapping, Undefined, Callable, Tuple, IO
 # TODO more keyword arguments
 def call(args: Sequence[str], *, stdin: Any = None, stdout: Any = None,
          stderr: Any = None, shell: bool = False,
-         env: Mapping[str, str] = None) -> int: pass
+         env: Mapping[str, str] = None,
+         cwd: str = None) -> int: pass
 def check_call(args: Sequence[str], *, stdin: Any = None, stdout: Any = None,
                stderr: Any = None, shell: bool = False,
                env: Mapping[str, str] = None) -> int: pass
