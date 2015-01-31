@@ -105,6 +105,28 @@ MypyFile:1(
     Block:4(
       PassStmt:4())))
 
+[case testQualifiedSimpleTypeAlias]
+import typing
+import _m
+A2 = _m.A
+x = 1 # type: A2
+[file _m.py]
+import typing
+class A: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  Import:2(_m : _m)
+  AssignmentStmt:3(
+    NameExpr(A2* [__main__.A2])
+    MemberExpr:3(
+      NameExpr(_m)
+      A [_m.A]))
+  AssignmentStmt:4(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    _m.A))
+
 [case testUnionTypeAlias]
 from typing import Union
 U = Union[int, str]
