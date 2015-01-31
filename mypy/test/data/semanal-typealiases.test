@@ -274,3 +274,43 @@ MypyFile:1(
     def (x: builtins.list[builtins.int])
     Block:3(
       PassStmt:3())))
+
+[case testImportUnionTypeAlias]
+import typing
+from _m import U
+def f(x: U) -> None: pass
+[file _m.py]
+from typing import Union
+class A: pass
+U = Union[int, A]
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  ImportFrom:2(_m, [U : U])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, _m.A])
+    Block:3(
+      PassStmt:3())))
+
+[case testImportUnionTypeAlias2]
+import typing
+import _m
+def f(x: _m.U) -> None: pass
+[file _m.py]
+from typing import Union
+class A: pass
+U = Union[int, A]
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  Import:2(_m : _m)
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, _m.A])
+    Block:3(
+      PassStmt:3())))

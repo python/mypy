@@ -635,8 +635,10 @@ class SemanticAnalyzer(NodeVisitor):
                     node = self.normalize_type_alias(node, i)
                     if not node:
                         return
-                    self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
-                                                           self.cur_mod_id), i)
+                    symbol = SymbolTableNode(node.kind, node.node,
+                                             self.cur_mod_id,
+                                             node.type_override)
+                    self.add_symbol(as_id, symbol, i)
                 else:
                     self.fail("Module has no attribute '{}'".format(id), i)
         else:
