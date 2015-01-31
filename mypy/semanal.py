@@ -747,13 +747,12 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.fail)
-                if res:
+                if res and (not isinstance(res, Instance) or cast(Instance, res).args):
                     # XXX Need to remove this later if reassigned.
                     x = cast(NameExpr, s.lvalues[0])
-                    if not isinstance(res, Instance):
-                        node = self.lookup(x.name, x)
-                        node.kind = TYPE_ALIAS
-                        node.type_override = res
+                    node = self.lookup(x.name, x)
+                    node.kind = TYPE_ALIAS
+                    node.type_override = res
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:

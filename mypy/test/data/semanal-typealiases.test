@@ -221,3 +221,56 @@ MypyFile:1(
     def (x: def (builtins.int))
     Block:3(
       PassStmt:3())))
+
+[case testGenericTypeAlias]
+from typing import Generic, typevar
+T = typevar('T')
+class G(Generic[T]): pass
+A = G[int]
+def f(x: A) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Generic : Generic, typevar : typevar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2())
+  ClassDef:3(
+    G
+    TypeVars(
+      T)
+    PassStmt:3())
+  AssignmentStmt:4(
+    NameExpr(A* [__main__.A])
+    TypeApplication:4(
+      NameExpr(G [__main__.G])
+      Types(
+        builtins.int)))
+  FuncDef:5(
+    f
+    Args(
+      Var(x))
+    def (x: __main__.G[builtins.int])
+    Block:5(
+      PassStmt:5())))
+
+[case testGenericTypeAlias2]
+from typing import List
+A = List[int]
+def f(x: A) -> None: pass
+[builtins fixtures/list.py]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [List : List])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    TypeApplication:2(
+      NameExpr(List [builtins.list])
+      Types(
+        builtins.int)))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.list[builtins.int])
+    Block:3(
+      PassStmt:3())))
