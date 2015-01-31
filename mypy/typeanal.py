@@ -31,7 +31,9 @@ def analyse_type_alias(node: Node,
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
     if isinstance(node, RefExpr):
-        if not (isinstance(node.node, TypeInfo) or node.fullname == 'typing.Any'):
+        if not (isinstance(node.node, TypeInfo) or
+                node.fullname == 'typing.Any' or
+                node.kind == TYPE_ALIAS):
             return None
     elif isinstance(node, IndexExpr):
         base = node.base

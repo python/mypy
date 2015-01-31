@@ -406,3 +406,26 @@ MypyFile:1(
     NameExpr(a [__main__.a])
     IntExpr(1)
     Any))
+
+[case testTypeAliasAlias]
+from typing import Union
+U = Union[int, str]
+U2 = U
+x = 1 # type: U2
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  AssignmentStmt:2(
+    NameExpr(U* [__main__.U])
+    IndexExpr:2(
+      NameExpr(Union [typing.Union])
+      TupleExpr:2(
+        NameExpr(int [builtins.int])
+        NameExpr(str [builtins.str]))))
+  AssignmentStmt:3(
+    NameExpr(U2* [__main__.U2])
+    NameExpr(U [__main__.U]))
+  AssignmentStmt:4(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    Union[builtins.int, builtins.str]))
