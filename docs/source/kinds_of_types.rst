@@ -51,7 +51,7 @@ generate a runtime error.
 Tuple types
 ***********
 
-The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, |...|, ``Tn``:
+The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
 
 .. code-block:: python
 
@@ -63,7 +63,7 @@ Callable types (and lambdas)
 ****************************
 
 You can pass around function objects and bound methods in statically
-typed code. The type of a function that accepts arguments ``A1``, |...|, ``An``
+typed code. The type of a function that accepts arguments ``A1``, ..., ``An``
 and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
