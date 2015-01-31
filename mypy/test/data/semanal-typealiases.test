@@ -352,3 +352,35 @@ MypyFile:1(
     def (x: builtins.int)
     Block:3(
       PassStmt:3())))
+
+[case testAnyTypeAlias]
+from typing import Any
+A = Any
+a = 1 # type: A
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any : Any])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    NameExpr(Any [typing.Any]))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    Any))
+
+[case testAnyTypeAlias2]
+import typing
+A = typing.Any
+a = 1 # type: A
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    MemberExpr:2(
+      NameExpr(typing)
+      Any [typing.Any]))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    Any))
