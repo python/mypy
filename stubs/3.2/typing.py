@@ -19,16 +19,12 @@ ducktype = object()
 disjointclass = object()
 NamedTuple = object()
 
-# Type aliases
+# Type aliases and type constructors
 
 class TypeAlias:
-    """Class for defining generic aliases for library types."""
-
-    def __init__(self, target_type):
-        self.target_type = target_type
-
-    def __getitem__(self, typeargs):
-        return self.target_type
+    # Class for defining generic aliases for library types.
+    def __init__(self, target_type): pass
+    def __getitem__(self, typeargs): pass
 
 Union = TypeAlias(object)
 List = TypeAlias(object)
