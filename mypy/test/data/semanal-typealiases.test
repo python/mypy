@@ -84,21 +84,45 @@ MypyFile:1(
             Args()))))))
 
 [case testSimpleTypeAlias]
+import typing
 class A: pass
 A2 = A
 def f(x: A2) -> A: pass
 [out]
 MypyFile:1(
-  ClassDef:1(
+  Import:1(typing : typing)
+  ClassDef:2(
     A
-    PassStmt:1())
-  AssignmentStmt:2(
+    PassStmt:2())
+  AssignmentStmt:3(
     NameExpr(A2* [__main__.A2])
     NameExpr(A [__main__.A]))
-  FuncDef:3(
+  FuncDef:4(
     f
     Args(
       Var(x))
     def (x: __main__.A) -> __main__.A
+    Block:4(
+      PassStmt:4())))
+
+[case testUnionTypeAlias]
+from typing import Union
+U = Union[int, str]
+def f(x: U) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  AssignmentStmt:2(
+    NameExpr(U* [__main__.U])
+    IndexExpr:2(
+      NameExpr(Union [typing.Union])
+      TupleExpr:2(
+        NameExpr(int [builtins.int])
+        NameExpr(str [builtins.str]))))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, builtins.str])
     Block:3(
       PassStmt:3())))
