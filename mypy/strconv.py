@@ -403,7 +403,7 @@ class StrConv(NodeVisitor[str]):
         else:
             return 'TypeVarExpr:{}()'.format(o.line)
 
-    def visit_type_alias_Expr(self, o):
+    def visit_type_alias_expr(self, o):
         return 'TypeAliasExpr({})'.format(o.type)
 
     def visit_namedtuple_expr(self, o):
