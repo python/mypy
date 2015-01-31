@@ -45,6 +45,7 @@ files = [
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-type-aliases.test',
 ]
 
 

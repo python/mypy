@@ -8,57 +8,52 @@ from mypy.types import (
 )
 from mypy.typerepr import TypeVarRepr
 from mypy.nodes import (
-    GDEF, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, Var, Node,
-    IndexExpr, NameExpr, TupleExpr
+    GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, Var, Node,
+    IndexExpr, NameExpr, TupleExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
+from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy import nodes
 
 
-def analyse_name(lookup: Callable[[str, Context], SymbolTableNode],
-                 name: str, ctx: Context) -> Any:
-    """Convert a name into the constructor for the associated Type"""
-    if name is None:
-        return None
-    if name.startswith('builtins.'):
-        # TODO: Not sure if this works...
-        kind = name.split('.')[1]
-        sym = lookup(kind, ctx)
-        if isinstance(sym.node, TypeInfo):
-            res = Instance(cast(TypeInfo, sym.node), [])
-            return lambda: res
-    elif name == 'typing.Any':
-        return AnyType
-    elif name == 'typing.Tuple':
-        return TupleType
-    elif name == 'typing.List':
-        raise NotImplementedError
-    elif name == 'typing.Dict':
-        raise NotImplementedError
-    elif name == 'typing.Set':
-        raise NotImplementedError
-    elif name == 'typing.Union':
-        return UnionType
+type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
 
 
-def analyse_node(lookup: Callable[[str, Context], SymbolTableNode],
-                 node: Node, ctx: Context) -> Type:
-    if isinstance(node, IndexExpr):
-        if isinstance(node.base, NameExpr):
-            type_type = analyse_name(lookup, node.base.fullname, ctx)
-            if type_type is None:
+def analyse_type_alias(node: Node,
+                       lookup_func: Callable[[str, Context], SymbolTableNode],
+                       lookup_fqn_func: Callable[[str], SymbolTableNode],
+                       fail_func: Callable[[str, Context], None]) -> Type:
+    """Return type if node is valid as a type alias rvalue.
+
+    Return None otherwise. 'node' must have been semantically analyzed.
+    """
+    # Quickly return None if the expression doesn't look like a type. Note
+    # that we don't support straight string literals as type aliases
+    # (only string literals within index expressions).
+    if isinstance(node, RefExpr):
+        if not (isinstance(node.node, TypeInfo) or
+                node.fullname == 'typing.Any' or
+                node.kind == TYPE_ALIAS):
+            return None
+    elif isinstance(node, IndexExpr):
+        base = node.base
+        if isinstance(base, RefExpr):
+            if not (isinstance(base.node, TypeInfo) or
+                    base.fullname in type_constructors):
                 return None
-            type_ind = Undefined(Any)
-            if isinstance(node.index, TupleExpr):
-                type_ind = [analyse_node(lookup, x, ctx) for x in node.index.items]
-            else:
-                type_ind = analyse_node(lookup, node.index, ctx)
-            result = type_type(type_ind)
-            return result
-    elif isinstance(node, NameExpr):
-        type_type = analyse_name(lookup, node.fullname, ctx)
-        if type_type:
-            return type_type()
+        else:
+            return None
+    else:
+        return None
+
+    # It's a type alias (though it may be an invalid one).
+    try:
+        type = expr_to_unanalyzed_type(node)
+    except TypeTranslationError:
+        fail_func('Invalid type alias', node)
+        return None
+    analyser = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func)
+    return type.accept(analyser)
 
 
 class TypeAnalyser(TypeVisitor[Type]):
@@ -67,12 +62,10 @@ class TypeAnalyser(TypeVisitor[Type]):
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
-                 stored_vars: Dict[Node, Type],
                  fail_func: Callable[[str, Context], None]) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
-        self.stored_vars = stored_vars
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         sym = self.lookup(t.name, t)
@@ -99,12 +92,13 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return UnionType(self.anal_array(t.args))
             elif sym.node.fullname() == 'typing.Callable':
                 return self.analyze_function_type(t)
+            elif sym.kind == TYPE_ALIAS:
+                # TODO: Generic type aliases.
+                return sym.type_override
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
                     name = sym.node.name()
-                if sym.node in self.stored_vars:
-                    return self.stored_vars[sym.node]
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = cast(TypeInfo, sym.node)

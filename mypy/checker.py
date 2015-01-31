@@ -18,7 +18,7 @@ from mypy.nodes import (
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisNode
+    DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -937,12 +937,12 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_assignment(lv, rvalue, s.type == None)
 
     def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
-        """Type check a single assignment: lvalue = rvalue
-        """
+        """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             ltuple = cast(Union[TupleExpr, ListExpr], lvalue)
 
-            self.check_assignment_to_multiple_lvalues(ltuple.items, rvalue, lvalue, infer_lvalue_type)
+            self.check_assignment_to_multiple_lvalues(ltuple.items, rvalue, lvalue,
+                                                      infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
@@ -958,7 +958,8 @@ class TypeChecker(NodeVisitor[Type]):
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
 
-    def check_assignment_to_multiple_lvalues(self, lvalues: List[Node], rvalue: Node, context: Context,
+    def check_assignment_to_multiple_lvalues(self, lvalues: List[Node], rvalue: Node,
+                                             context: Context,
                                              infer_lvalue_type: bool = True) -> None:
         if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
             # Recursively go into Tuple or List expression rhs instead of
@@ -973,7 +974,8 @@ class TypeChecker(NodeVisitor[Type]):
                                                 isinstance(lv, StarExpr)), len(lvalues))
 
                 left_lvs = lvalues[:star_index]
-                star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
+                star_lv = cast(StarExpr,
+                               lvalues[star_index]) if star_index != len(lvalues) else None
                 right_lvs = lvalues[star_index+1:]
 
                 left_rvs, star_rvs, right_rvs = self.split_around_star(
@@ -1734,6 +1736,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_type_application(self, e: TypeApplication) -> Type:
         return self.expr_checker.visit_type_application(e)
+
+    def visit_type_alias_expr(self, e: TypeAliasExpr) -> Type:
+        return self.expr_checker.visit_type_alias_expr(e)
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
         # TODO: Perhaps return a special type used for type variables only?

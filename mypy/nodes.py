@@ -26,7 +26,8 @@ import mypy.types
 T = typevar('T')
 
 
-# Variable kind constants
+# Symbol table node kinds
+#
 # TODO rename to use more descriptive names
 
 LDEF = 0  # type: int
@@ -37,8 +38,9 @@ MODULE_REF = 3  # type: int
 # valid as a type. A type variable is valid as a type (kind TVAR) within
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-UNBOUND_TVAR = 4  # type: 'int'
+UNBOUND_TVAR = 4  # type: int
 TVAR = 5  # type: int
+TYPE_ALIAS = 6  # type: int
 
 
 LITERAL_YES = 2
@@ -941,7 +943,7 @@ class YieldFromExpr(Node):
 class IndexExpr(Node):
     """Index expression x[y].
 
-    Also wraps type application as a special form.
+    Also wraps type application such as List[int] as a special form.
     """
 
     base = Undefined(Node)
@@ -949,8 +951,8 @@ class IndexExpr(Node):
     # Inferred __getitem__ method type
     method_type = None  # type: mypy.types.Type
     # If not None, this is actually semantically a type application
-    # Class[type, ...].
-    analyzed = Undefined('TypeApplication')
+    # Class[type, ...] or a type alias initializer.
+    analyzed = Undefined(Union['TypeApplication', 'TypeAliasExpr'])
 
     def __init__(self, base: Node, index: Node) -> None:
         self.base = base
@@ -1336,6 +1338,18 @@ class TypeVarExpr(SymbolNode):
         return visitor.visit_type_var_expr(self)
 
 
+class TypeAliasExpr(Node):
+    """Type alias expression (rvalue)."""
+
+    type = Undefined('mypy.types.Type')
+
+    def __init__(self, type: 'mypy.types.Type') -> None:
+        self.type = type
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_type_alias_expr(self)
+
+
 class NamedTupleExpr(Node):
     """Named tuple expression namedtuple(...)."""
 
@@ -1590,7 +1604,7 @@ class SymbolTableNode:
     tvar_id = 0
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
-    # If None, fall back to type of node
+    # If this not None, override the type of the 'node' attribute.
     type_override = Undefined('mypy.types.Type')
 
     def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,

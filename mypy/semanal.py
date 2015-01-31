@@ -58,7 +58,7 @@ from mypy.nodes import (
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
-    SetComprehension, DictionaryComprehension
+    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -69,8 +69,8 @@ from mypy.types import (
     replace_leading_arg_type, TupleType, UnionType, StarType
 )
 from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
-from mypy.parsetype import parse_str_as_type, TypeParseError
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
+from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 
 
 T = typevar('T')
@@ -80,10 +80,6 @@ T = typevar('T')
 ALWAYS_TRUE = 0
 ALWAYS_FALSE = 1
 TRUTH_VALUE_UNKNOWN = 2
-
-
-class TypeTranslationError(Exception):
-    """Exception raised when an expression is not valid as a type."""
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -140,7 +136,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors = errors
         self.modules = {}
         self.pyversion = pyversion
-        self.stored_vars = Dict[Node, Type]()
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -640,8 +635,10 @@ class SemanticAnalyzer(NodeVisitor):
                     node = self.normalize_type_alias(node, i)
                     if not node:
                         return
-                    self.add_symbol(as_id, SymbolTableNode(node.kind, node.node,
-                                                           self.cur_mod_id), i)
+                    symbol = SymbolTableNode(node.kind, node.node,
+                                             self.cur_mod_id,
+                                             node.type_override)
+                    self.add_symbol(as_id, symbol, i)
                 else:
                     self.fail("Module has no attribute '{}'".format(id), i)
         else:
@@ -732,7 +729,7 @@ class SemanticAnalyzer(NodeVisitor):
         if t:
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
-                             self.stored_vars, self.fail)
+                             self.fail)
             return t.accept(a)
         else:
             return None
@@ -745,15 +742,21 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type)
         else:
             s.type = self.infer_type_from_undefined(s.rvalue)
-            # For simple assignments, allow binding type aliases
+            # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
-                res = analyse_node(self.lookup_qualified, s.rvalue, s)
-                if res:
-                    # XXX Need to remove this later if reassigned
-                    x = cast(NameExpr, s.lvalues[0])
-                    self.stored_vars[x.node] = res
-
+                res = analyse_type_alias(s.rvalue,
+                                         self.lookup_qualified,
+                                         self.lookup_fully_qualified,
+                                         self.fail)
+                if res and (not isinstance(res, Instance) or cast(Instance, res).args):
+                    # TODO: What if this gets reassigned?
+                    name = cast(NameExpr, s.lvalues[0])
+                    node = self.lookup(name.name, name)
+                    node.kind = TYPE_ALIAS
+                    node.type_override = res
+                    if isinstance(s.rvalue, IndexExpr):
+                        s.rvalue.analyzed = TypeAliasExpr(res)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1976,63 +1979,6 @@ def refers_to_class_or_function(node: Node) -> bool:
     return (isinstance(node, RefExpr) and
             isinstance(cast(RefExpr, node).node, (TypeInfo, FuncDef,
                                                   OverloadedFuncDef)))
-
-
-def expr_to_unanalyzed_type(expr: Node) -> Type:
-    """Translate an expression to the corresonding type.
-
-    The result is not semantically analyzed. It can be UnboundType or ListType.
-    Raise TypeTranslationError if the expression cannot represent a type.
-    """
-    if isinstance(expr, NameExpr):
-        name = expr.name
-        return UnboundType(name, line=expr.line)
-    elif isinstance(expr, MemberExpr):
-        fullname = get_member_expr_fullname(expr)
-        if fullname:
-            return UnboundType(fullname, line=expr.line)
-        else:
-            raise TypeTranslationError()
-    elif isinstance(expr, IndexExpr):
-        base = expr_to_unanalyzed_type(expr.base)
-        if isinstance(base, UnboundType):
-            if base.args:
-                raise TypeTranslationError()
-            if isinstance(expr.index, TupleExpr):
-                args = cast(TupleExpr, expr.index).items
-            else:
-                args = [expr.index]
-            base.args = [expr_to_unanalyzed_type(arg) for arg in args]
-            return base
-        else:
-            raise TypeTranslationError()
-    elif isinstance(expr, ListExpr):
-        return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
-                        line=expr.line)
-    elif isinstance(expr, StrExpr):
-        # Parse string literal type.
-        try:
-            result = parse_str_as_type(expr.value, expr.line)
-        except TypeParseError:
-            raise TypeTranslationError()
-        return result
-    else:
-        raise TypeTranslationError()
-
-
-def get_member_expr_fullname(expr: MemberExpr) -> str:
-    """Return the qualified name represention of a member expression.
-
-    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
-    argument cannot be represented in this form.
-    """
-    if isinstance(expr.expr, NameExpr):
-        initial = cast(NameExpr, expr.expr).name
-    elif isinstance(expr.expr, MemberExpr):
-        initial = get_member_expr_fullname(cast(MemberExpr, expr.expr))
-    else:
-        return None
-    return '{}.{}'.format(initial, expr.name)
 
 
 def find_duplicate(list: List[T]) -> T:
