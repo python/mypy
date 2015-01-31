@@ -449,3 +449,55 @@ MypyFile:1(
     NameExpr(x [__main__.x])
     IntExpr(1)
     Union[builtins.int, builtins.str]))
+
+[case testListTypeDoesNotGenerateAlias]
+import typing
+A = [int, str]
+a = 1 # type: A  # E: Invalid type "__main__.A"
+
+[case testCantUseStringLiteralAsTypeAlias]
+from typing import Union
+A = 'Union[int, str]'
+a = 1 # type: A  # E: Invalid type "__main__.A"
+
+[case testStringLiteralTypeAsAliasComponent]
+from typing import Union
+A = Union['int', str]
+a = 1 # type: A
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    IndexExpr:2(
+      NameExpr(Union [typing.Union])
+      TupleExpr:2(
+        StrExpr(int)
+        NameExpr(str [builtins.str]))))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    Union[builtins.int, builtins.str]))
+
+[case testComplexTypeAlias]
+from typing import Union, Tuple, Any
+A = Union['int', Tuple[int, Any]]
+a = 1 # type: A
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union, Tuple : Tuple, Any : Any])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    IndexExpr:2(
+      NameExpr(Union [typing.Union])
+      TupleExpr:2(
+        StrExpr(int)
+        IndexExpr:2(
+          NameExpr(Tuple [typing.Tuple])
+          TupleExpr:2(
+            NameExpr(int [builtins.int])
+            NameExpr(Any [typing.Any]))))))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    Union[builtins.int, Tuple[builtins.int, Any]]))
