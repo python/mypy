@@ -1341,7 +1341,7 @@ class TypeVarExpr(SymbolNode):
 class TypeAliasExpr(Node):
     """Type alias expression (rvalue)."""
 
-    type = Undefined('mypy.typesType')
+    type = Undefined('mypy.types.Type')
 
     def __init__(self, type: 'mypy.types.Type') -> None:
         self.type = type
