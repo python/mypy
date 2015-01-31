@@ -941,7 +941,7 @@ class YieldFromExpr(Node):
 class IndexExpr(Node):
     """Index expression x[y].
 
-    Also wraps type application as a special form.
+    Also wraps type application such as List[int] as a special form.
     """
 
     base = Undefined(Node)
