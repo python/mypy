@@ -314,3 +314,41 @@ MypyFile:1(
     def (x: Union[builtins.int, _m.A])
     Block:3(
       PassStmt:3())))
+
+[case testImportSimpleTypeAlias]
+import typing
+from _m import A
+def f(x: A) -> None: pass
+[file _m.py]
+import typing
+A = int
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  ImportFrom:2(_m, [A : A])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:3(
+      PassStmt:3())))
+
+[case testImportSimpleTypeAlias2]
+import typing
+import _m
+def f(x: _m.A) -> None: pass
+[file _m.py]
+import typing
+A = int
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  Import:2(_m : _m)
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:3(
+      PassStmt:3())))
