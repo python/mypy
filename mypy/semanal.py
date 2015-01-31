@@ -69,7 +69,7 @@ from mypy.types import (
     replace_leading_arg_type, TupleType, UnionType, StarType
 )
 from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_node
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type
 from mypy.parsetype import parse_str_as_type, TypeParseError
 
 
@@ -745,12 +745,12 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type)
         else:
             s.type = self.infer_type_from_undefined(s.rvalue)
-            # For simple assignments, allow binding type aliases
+            # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
-                res = analyse_node(self.lookup_qualified, s.rvalue, s)
+                res = analyse_type(self.lookup_qualified, s.rvalue, s)
                 if res:
-                    # XXX Need to remove this later if reassigned
+                    # XXX Need to remove this later if reassigned.
                     x = cast(NameExpr, s.lvalues[0])
                     self.stored_vars[x.node] = res
 

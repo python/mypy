@@ -41,7 +41,7 @@ def analyse_name(lookup: Callable[[str, Context], SymbolTableNode],
         return UnionType
 
 
-def analyse_node(lookup: Callable[[str, Context], SymbolTableNode],
+def analyse_type(lookup: Callable[[str, Context], SymbolTableNode],
                  node: Node, ctx: Context) -> Type:
     if isinstance(node, IndexExpr):
         if isinstance(node.base, NameExpr):
@@ -50,9 +50,9 @@ def analyse_node(lookup: Callable[[str, Context], SymbolTableNode],
                 return None
             type_ind = Undefined(Any)
             if isinstance(node.index, TupleExpr):
-                type_ind = [analyse_node(lookup, x, ctx) for x in node.index.items]
+                type_ind = [analyse_type(lookup, x, ctx) for x in node.index.items]
             else:
-                type_ind = analyse_node(lookup, node.index, ctx)
+                type_ind = analyse_type(lookup, node.index, ctx)
             result = type_type(type_ind)
             return result
     elif isinstance(node, NameExpr):
