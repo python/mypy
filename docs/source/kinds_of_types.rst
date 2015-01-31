@@ -158,3 +158,28 @@ string-literal types with non-string-literal types freely:
    class A: pass
 
 String literal types are never needed in ``# type:`` comments.
+
+Type aliases
+************
+
+In certain situations, type names may end up being long and painful to type:
+
+.. code-block:: python
+   
+   def f() -> Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]:
+      ...
+
+When cases like this arise, you can define a type alias by simply assigning the type to a variable:
+
+.. code-block:: python
+   
+   MagicType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
+   # now we can use MagicType in place of the full name
+   def f() -> MagicType():
+      ...
+
+Of course, you can also instantinate type aliases:
+
+.. code-block:: python
+   
+   t = MagicType(('abc', []))
