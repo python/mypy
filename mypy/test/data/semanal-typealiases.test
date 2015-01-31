@@ -126,3 +126,98 @@ MypyFile:1(
     def (x: Union[builtins.int, builtins.str])
     Block:3(
       PassStmt:3())))
+
+[case testUnionTypeAlias2]
+from typing import Union
+class A: pass
+U = Union[int, A]
+def f(x: U) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  ClassDef:2(
+    A
+    PassStmt:2())
+  AssignmentStmt:3(
+    NameExpr(U* [__main__.U])
+    IndexExpr:3(
+      NameExpr(Union [typing.Union])
+      TupleExpr:3(
+        NameExpr(int [builtins.int])
+        NameExpr(A [__main__.A]))))
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, __main__.A])
+    Block:4(
+      PassStmt:4())))
+
+[case testUnionTypeAliasWithQualifiedUnion]
+import typing
+U = typing.Union[int, str]
+def f(x: U) -> None: pass
+[out]
+MypyFile:1(
+  Import:1(typing : typing)
+  AssignmentStmt:2(
+    NameExpr(U* [__main__.U])
+    IndexExpr:2(
+      MemberExpr:2(
+        NameExpr(typing)
+        Union [typing.Union])
+      TupleExpr:2(
+        NameExpr(int [builtins.int])
+        NameExpr(str [builtins.str]))))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, builtins.str])
+    Block:3(
+      PassStmt:3())))
+
+[case testTupleTypeAlias]
+from typing import Tuple
+T = Tuple[int, str]
+def f(x: T) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple : Tuple])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    IndexExpr:2(
+      NameExpr(Tuple [typing.Tuple])
+      TupleExpr:2(
+        NameExpr(int [builtins.int])
+        NameExpr(str [builtins.str]))))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: Tuple[builtins.int, builtins.str])
+    Block:3(
+      PassStmt:3())))
+
+[case testCallableTypeAlias]
+from typing import Callable
+C = Callable[[int], None]
+def f(x: C) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable : Callable])
+  AssignmentStmt:2(
+    NameExpr(C* [__main__.C])
+    IndexExpr:2(
+      NameExpr(Callable [typing.Callable])
+      TupleExpr:2(
+        ListExpr:2(
+          NameExpr(int [builtins.int]))
+        NameExpr(None [builtins.None]))))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: def (builtins.int))
+    Block:3(
+      PassStmt:3())))
