@@ -13,7 +13,8 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisNode, LITERAL_TYPE
+    DictionaryComprehension, ComplexExpr, EllipsisNode, LITERAL_TYPE,
+    TypeAliasExpr
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type, method_type
@@ -1003,6 +1004,9 @@ class ExpressionChecker:
             new_type = AnyType()
         self.chk.type_map[tapp.expr] = new_type
         return new_type
+
+    def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
+        return AnyType()
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""

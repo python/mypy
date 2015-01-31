@@ -951,8 +951,8 @@ class IndexExpr(Node):
     # Inferred __getitem__ method type
     method_type = None  # type: mypy.types.Type
     # If not None, this is actually semantically a type application
-    # Class[type, ...].
-    analyzed = Undefined('TypeApplication')
+    # Class[type, ...] or a type alias initializer.
+    analyzed = Undefined(Union['TypeApplication', 'TypeAliasExpr'])
 
     def __init__(self, base: Node, index: Node) -> None:
         self.base = base
@@ -1336,6 +1336,18 @@ class TypeVarExpr(SymbolNode):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
+
+
+class TypeAliasExpr(Node):
+    """Type alias expression (rvalue)."""
+
+    type = Undefined('mypy.typesType')
+
+    def __init__(self, type: 'mypy.types.Type') -> None:
+        self.type = type
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_type_alias_expr(self)
 
 
 class NamedTupleExpr(Node):

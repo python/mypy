@@ -58,7 +58,7 @@ from mypy.nodes import (
     StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
-    SetComprehension, DictionaryComprehension, TYPE_ALIAS
+    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -750,11 +750,13 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_fully_qualified,
                                          self.fail)
                 if res and (not isinstance(res, Instance) or cast(Instance, res).args):
-                    # XXX Need to remove this later if reassigned.
-                    x = cast(NameExpr, s.lvalues[0])
-                    node = self.lookup(x.name, x)
+                    # TODO: What if this gets reassigned?
+                    name = cast(NameExpr, s.lvalues[0])
+                    node = self.lookup(name.name, name)
                     node.kind = TYPE_ALIAS
                     node.type_override = res
+                    if isinstance(s.rvalue, IndexExpr):
+                        s.rvalue.analyzed = TypeAliasExpr(res)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:

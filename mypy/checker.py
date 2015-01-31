@@ -18,7 +18,7 @@ from mypy.nodes import (
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisNode
+    DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -1736,6 +1736,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_type_application(self, e: TypeApplication) -> Type:
         return self.expr_checker.visit_type_application(e)
+
+    def visit_type_alias_expr(self, e: TypeAliasExpr) -> Type:
+        return self.expr_checker.visit_type_alias_expr(e)
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
         # TODO: Perhaps return a special type used for type variables only?
