@@ -40,6 +40,9 @@ class type:
     __dict__ = Undefined # type: Dict[unicode, Any]
 
     def __init__(self, o: object) -> None: pass
+    # TODO: __new__ may have to be special and not a static method.
+    @staticmethod
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: pass
 
 @builtinclass
 @ducktype(float)

@@ -945,3 +945,13 @@ def f(x: A) -> None:
 [out]
 _program.py: In function "f":
 _program.py, line 5: Argument 1 has incompatible type "str"; expected "int"
+
+[case testSuperNew]
+from typing import Dict, Any
+class MyType(type):
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type:
+        return super().__new__(cls, name + 'x', bases, namespace)
+class A(metaclass=MyType): pass
+print(type(A()).__name__)
+[out]
+Ax

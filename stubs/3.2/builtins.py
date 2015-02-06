@@ -45,6 +45,8 @@ class type:
     __dict__ = Undefined # type: Dict[str, Any]
 
     def __init__(self, o: object) -> None: pass
+    @staticmethod
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: pass
 
 @builtinclass
 @ducktype(float)

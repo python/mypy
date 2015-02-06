@@ -321,10 +321,22 @@ N(a=1, b='x')
 1 x
 1
 
-[case testUnionTypeAlias]
+[case testUnionTypeAlias_python2]
 from typing import Union
 U = Union[int, str]
 u = 1 # type: U
 u = 1.1
 [out]
 _program.py, line 4: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
+
+[case testSuperNew_python2]
+from typing import Dict, Any
+class MyType(type):
+    def __new__(cls, name, bases, namespace):
+        # type: (str, tuple, Dict[str, Any]) -> type
+        return super(MyType, cls).__new__(cls, name + 'x', bases, namespace)
+class A(object):
+    __metaclass__ = MyType
+print(type(A()).__name__)
+[out]
+Ax
