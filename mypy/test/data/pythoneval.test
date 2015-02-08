@@ -955,3 +955,16 @@ class A(metaclass=MyType): pass
 print(type(A()).__name__)
 [out]
 Ax
+
+[case testSubclassBothGenericAndNonGenericABC]
+from typing import Generic, typevar
+from abc import ABCMeta
+T = typevar('T')
+class A(metaclass=ABCMeta): pass
+class B(Generic[T]): pass
+class C(A, B): pass
+class D(B, A): pass
+class E(A, B[T], Generic[T]): pass
+class F(B[T], A, Generic[T]): pass
+def f(e: E[int], f: F[int]) -> None: pass
+[out]
