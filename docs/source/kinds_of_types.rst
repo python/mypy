@@ -51,7 +51,7 @@ generate a runtime error.
 Tuple types
 ***********
 
-The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, |...|, ``Tn``:
+The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
 
 .. code-block:: python
 
@@ -63,7 +63,7 @@ Callable types (and lambdas)
 ****************************
 
 You can pass around function objects and bound methods in statically
-typed code. The type of a function that accepts arguments ``A1``, |...|, ``An``
+typed code. The type of a function that accepts arguments ``A1``, ..., ``An``
 and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
@@ -158,3 +158,29 @@ string-literal types with non-string-literal types freely:
    class A: pass
 
 String literal types are never needed in ``# type:`` comments.
+
+Type aliases
+************
+
+In certain situations, type names may end up being long and painful to type:
+
+.. code-block:: python
+
+   def f() -> Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]:
+       ...
+
+When cases like this arise, you can define a type alias by simply
+assigning the type to a variable:
+
+.. code-block:: python
+
+   AliasType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
+
+   # Now we can use AliasType in place of the full name:
+
+   def f() -> AliasType:
+       ...
+
+A type alias does not create a new type. It's just a shorthand notation
+for another type -- it's equivalent to the target type. Type aliases
+can be imported from modules like any names.
