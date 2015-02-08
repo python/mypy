@@ -955,3 +955,11 @@ class A(metaclass=MyType): pass
 print(type(A()).__name__)
 [out]
 Ax
+
+[case testEscapeInTripleQuotedStrLiteral]
+print('''\'''')
+print(r"""\"""$""")
+[out]
+'
+\"""$
+--' (hack to fix syntax highlighting)

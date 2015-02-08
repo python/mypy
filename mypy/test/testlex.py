@@ -247,10 +247,14 @@ class LexerSuite(Suite):
                         r"StrLit('''\'''') ...")
         self.assert_lex(r'"""\""""',
                         r'StrLit("""\"""") ...')
+        self.assert_lex(r'"""\\"""',
+                        r'StrLit("""\\""") ...')
 
     def test_escapes_in_triple_quoted_raw_literals(self):
         self.assert_lex(r"r'''\''''",
                         r"StrLit(r'''\'''') ...")
+        self.assert_lex(r"r'''\\'''",
+                        r"StrLit(r'''\\''') ...")
         self.assert_lex(r'r"""\""""',
                         r'StrLit(r"""\"""") ...')
 
