@@ -242,6 +242,18 @@ class LexerSuite(Suite):
 
         self.assert_lex("r'''" + '\n' + "x'''", "StrLit(r'''\\nx''') ...")
 
+    def test_escapes_in_triple_quoted_literals(self):
+        self.assert_lex(r"'''\''''",
+                        r"StrLit('''\'''') ...")
+        self.assert_lex(r'"""\""""',
+                        r'StrLit("""\"""") ...')
+
+    def test_escapes_in_triple_quoted_raw_literals(self):
+        self.assert_lex(r"r'''\''''",
+                        r"StrLit(r'''\'''') ...")
+        self.assert_lex(r'r"""\""""',
+                        r'StrLit(r"""\"""") ...')
+
     def test_bytes(self):
         self.assert_lex("b'\\'' b'foo bar'",
                         "BytesLit(b'\\'') BytesLit( b'foo bar') ...")

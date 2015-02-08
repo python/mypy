@@ -470,7 +470,7 @@ class Lexer:
     # Start of a ''' literal, e.g. b'''
     str_exp_single3 = re.compile("[a-z]*'''")
     # End of a ''' literal, e.g. foo'''
-    str_exp_single3end = re.compile(r"[^\n\r]*?'''")
+    str_exp_single3end = re.compile(r"([^\n\r\\]|\\[^\n\r])*?'''")
 
     # The following are similar to above (but use double quotes).
 
@@ -484,7 +484,7 @@ class Lexer:
         r'([^"\r\n]|"")*("|\\(\n|\r\n?))')
 
     str_exp_double3 = re.compile('[a-z]*"""')
-    str_exp_double3end = re.compile(r'[^\n\r]*?"""')
+    str_exp_double3end = re.compile(r'([^\n\r\\]|\\[^\n\r])*?"""')
 
     def lex_str_single(self) -> None:
         """Analyse single-quoted string literal"""
