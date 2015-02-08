@@ -965,3 +965,11 @@ f([0, 0, 1, 1, 1])
 [out]
 2
 3
+
+[case testEscapeInTripleQuotedStrLiteral]
+print('''\'''')
+print(r"""\"""$""")
+[out]
+'
+\"""$
+--' (hack to fix syntax highlighting)
