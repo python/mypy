@@ -955,3 +955,13 @@ class A(metaclass=MyType): pass
 print(type(A()).__name__)
 [out]
 Ax
+
+[case testSequenceIndexAndCount]
+from typing import Sequence
+def f(x: Sequence[int]) -> None:
+    print(x.index(1))
+    print(x.count(1))
+f([0, 0, 1, 1, 1])
+[out]
+2
+3
