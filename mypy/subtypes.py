@@ -32,7 +32,7 @@ def is_subtype(left: Type, right: Type) -> bool:
             or isinstance(right, ErasedType)):
         return True
     elif isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any(is_subtype(left, item) for item in right.items)
+        return any(is_subtype(left, item) for item in cast(UnionType, right).items)
     else:
         return left.accept(SubtypeVisitor(right))
 
