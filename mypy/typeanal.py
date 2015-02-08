@@ -89,7 +89,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TupleType(self.anal_array(t.args),
                                  self.builtin_type('builtins.tuple'))
             elif sym.node.fullname() == 'typing.Union':
-                return UnionType(self.anal_array(t.args))
+                items = self.anal_array(t.args)
+                items = [item for item in items if not isinstance(item, Void)]
+                return UnionType.make_union(items)
             elif sym.node.fullname() == 'typing.Callable':
                 return self.analyze_function_type(t)
             elif sym.kind == TYPE_ALIAS:

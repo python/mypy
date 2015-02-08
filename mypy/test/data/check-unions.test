@@ -97,3 +97,9 @@ s = ''
 s = f(int)
 s = f(1)    # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 x = f(int)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testUnionWithNoneItem]
+from typing import Union
+def f() -> Union[int, None]: pass
+x = 1
+x = f()

@@ -31,9 +31,7 @@ def is_subtype(left: Type, right: Type) -> bool:
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
-    elif isinstance(left, UnionType):
-        return all(is_subtype(item, right) for item in left.items)
-    elif isinstance(right, UnionType):
+    elif isinstance(right, UnionType) and not isinstance(left, UnionType):
         return any(is_subtype(left, item) for item in right.items)
     else:
         return left.accept(SubtypeVisitor(right))
@@ -160,6 +158,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         else:
             return False
+
+    def visit_union_type(self, left: UnionType) -> bool:
+        return all(is_subtype(item, self.right) for item in left.items)
 
 
 def is_callable_subtype(left: CallableType, right: CallableType, ignore_return: bool = False) -> bool:

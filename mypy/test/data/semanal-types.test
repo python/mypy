@@ -1466,3 +1466,59 @@ MypyFile:1(
     BaseType(
       __main__.B)
     PassStmt:7()))
+
+[case testUnionType]
+from typing import Union
+def f(x: Union[int, str]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, builtins.str])
+    Block:2(
+      PassStmt:2())))
+
+[case testUnionTypeWithNoneItem]
+from typing import Union
+def f(x: Union[int, None]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:2(
+      PassStmt:2())))
+
+[case testUnionTypeWithNoneItemAndTwoItems]
+from typing import Union
+def f(x: Union[int, None, str]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: Union[builtins.int, builtins.str])
+    Block:2(
+      PassStmt:2())))
+
+[case testUnionTypeWithSingleItem]
+from typing import Union
+def f(x: Union[int]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union : Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:2(
+      PassStmt:2())))
