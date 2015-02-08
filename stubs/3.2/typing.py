@@ -85,6 +85,10 @@ class Sequence(Iterable[_T], Sized, AbstractGeneric[_T]):
     @overload
     @abstractmethod
     def __getitem__(self, s: slice) -> Sequence[_T]: pass
+    @abstractmethod
+    def index(self, x: Any) -> int: pass
+    @abstractmethod
+    def count(self, x: Any) -> int: pass
 
 class AbstractSet(Iterable[_T], Sized, AbstractGeneric[_T]):
     @abstractmethod

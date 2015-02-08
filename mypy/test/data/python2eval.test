@@ -340,3 +340,13 @@ class A(object):
 print(type(A()).__name__)
 [out]
 Ax
+
+[case testSequenceIndexAndCount_python2]
+from typing import Sequence
+def f(x): # type: (Sequence[int]) -> None
+    print(x.index(1))
+    print(x.count(1))
+f([0, 0, 1, 1, 1])
+[out]
+2
+3
