@@ -437,8 +437,7 @@ class SemanticAnalyzer(NodeVisitor):
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
                 if type_vars:
-                    self.fail('Duplicate Generic or AbstractGeneric in bases',
-                              defn)
+                    self.fail('Duplicate Generic in bases', defn)
                 removed.append(i)
                 for j, tvar in enumerate(tvars):
                     name, values = tvar
@@ -459,8 +458,7 @@ class SemanticAnalyzer(NodeVisitor):
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None:
             return None
-        if sym.node.fullname() in ('typing.Generic',
-                                   'typing.AbstractGeneric'):
+        if sym.node.fullname() == 'typing.Generic':
             tvars = List[Tuple[str, List[Type]]]()
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
