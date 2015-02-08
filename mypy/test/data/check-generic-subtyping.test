@@ -342,7 +342,7 @@ main: In member "g" of class "A":
 
 
 [case testSubtypingWithGenericTypeSubclassingGenericAbstractClass]
-from typing import Undefined, typevar, Generic, AbstractGeneric
+from typing import Undefined, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
 S = typevar('S')
@@ -358,20 +358,20 @@ adc = ic # E: Incompatible types in assignment (expression has type I[C], variab
 ic = adc
 id = acd
 
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self): pass
-class A(I[S], AbstractGeneric[T, S]): pass
+class A(I[S], Generic[T, S]): pass
 class C: pass
 class D: pass
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance]
-from typing import Undefined, typevar, AbstractGeneric
+from typing import Undefined, typevar, Generic
 S = typevar('S')
 a, b = Undefined, Undefined # type: (A, B)
 ic, id, ie = Undefined, Undefined, Undefined # type: (I[C], I[D], I[E])
 
-class I(AbstractGeneric[S]): pass
+class I(Generic[S]): pass
 class B(I[C]): pass
 class A(B): pass
 
@@ -390,9 +390,9 @@ class E: pass
 [out]
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
-from typing import typevar, AbstractGeneric
+from typing import typevar, Generic
 T = typevar('T')
-class I(AbstractGeneric[T]): pass
+class I(Generic[T]): pass
 class A(I[C]): pass
 class B(A, I[D]): pass # Fail
 
@@ -403,7 +403,7 @@ main: In class "B":
 main, line 5: Class "B" has base "I" duplicated inconsistently
 
 [case testSubtypingAndABCExtension]
-from typing import Undefined, typevar, AbstractGeneric, Generic
+from typing import Undefined, typevar, Generic
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
 a, i, j = Undefined, Undefined, Undefined # type: (A[object], I[object], J[object])
@@ -414,10 +414,10 @@ jj = i
 a = i # E: Incompatible types in assignment (expression has type I[object], variable has type A[object])
 a = j # E: Incompatible types in assignment (expression has type J[object], variable has type A[object])
 
-class J(AbstractGeneric[t]): pass
+class J(Generic[t]): pass
 class X(metaclass=ABCMeta): pass
-class I(X, J[t], AbstractGeneric[t]): pass
-class A(I[t], AbstractGeneric[t]): pass
+class I(X, J[t], Generic[t]): pass
+class A(I[t], Generic[t]): pass
 
 
 -- Subclassing a generic ABC
@@ -425,10 +425,10 @@ class A(I[t], AbstractGeneric[t]): pass
 
 
 [case testSubclassingGenericABC1]
-from typing import typevar, AbstractGeneric
+from typing import typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
     @abstractmethod
@@ -448,7 +448,7 @@ main: In class "A":
 
 
 [case testSubclassingGenenericABCWithDeepHierarchy]
-from typing import Undefined, Any, typevar, AbstractGeneric
+from typing import Undefined, Any, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: A
@@ -457,7 +457,7 @@ ic, id = Undefined, Undefined # type: (I[C], I[D])
 id = a # Fail
 ic = a
 
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
     @abstractmethod
@@ -476,10 +476,10 @@ main, line 7: Incompatible types in assignment (expression has type "A", variabl
 main: In class "A":
 
 [case testSubclassingGenenericABCWithDeepHierarchy2]
-from typing import Any, typevar, AbstractGeneric
+from typing import Any, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
 class B(I[C]):
@@ -498,7 +498,7 @@ main: In class "A":
 
 
 [case testSubclassingGenericABCWithImplicitAny]
-from typing import Undefined, Any, typevar, AbstractGeneric
+from typing import Undefined, Any, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: Any
@@ -508,7 +508,7 @@ id = Undefined # type: I[D]
 ic = a
 id = a
 
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
 class A(I):
@@ -518,7 +518,7 @@ class C: pass
 class D: pass
 
 [case testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy]
-from typing import Undefined, Any, typevar, AbstractGeneric
+from typing import Undefined, Any, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: Any
@@ -528,7 +528,7 @@ id = Undefined # type: I[D]
 ic = a
 id = a
 
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
 class B(I):
@@ -539,7 +539,7 @@ class C: pass
 class D: pass
 
 [case testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2]
-from typing import Undefined, Any, typevar, AbstractGeneric
+from typing import Undefined, Any, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
 a = Undefined # type: Any
@@ -549,7 +549,7 @@ jd = Undefined # type: J[D]
 jc = a
 jd = a
 
-class J(AbstractGeneric[T]):
+class J(Generic[T]):
     @abstractmethod
     def f(self, a: T, b: T) -> None: pass
 class I(J):
@@ -567,10 +567,10 @@ class D: pass
 
 
 [case testAccessingGenericABCMembers]
-from typing import Undefined, typevar, AbstractGeneric
+from typing import Undefined, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
-class I(AbstractGeneric[T]):
+class I(Generic[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
 class A: pass
@@ -583,13 +583,13 @@ ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"; expected "A"
 ia.f(a)
 
 [case testAccessingInheritedGenericABCMembers]
-from typing import Undefined, typevar, AbstractGeneric
+from typing import Undefined, typevar, Generic
 from abc import abstractmethod
 T = typevar('T')
-class J(AbstractGeneric[T]):
+class J(Generic[T]):
     @abstractmethod
     def f(self, a: T) -> None: pass
-class I(J[T], AbstractGeneric[T]): pass
+class I(J[T], Generic[T]): pass
 class A: pass
 class B: pass
 a, b = Undefined, Undefined # type: (A, B)
