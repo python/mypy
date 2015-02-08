@@ -10,8 +10,6 @@ import functools
 
 __all__ = [
     # Type system related
-    'AbstractGeneric',
-    'AbstractGenericMeta',
     'Any',
     'AnyStr',
     'Dict',
@@ -70,23 +68,10 @@ def disjointclass(type):
     return decorator
 
 
-class GenericMeta(type):
-    """Metaclass for generic classes that support indexing by types."""
+class GenericMeta(ABCMeta):
+    """Metaclass for generic classes that support type indexing.
 
-    def __getitem__(self, args):
-        # Just ignore args; they are for compile-time checks only.
-        return self
-
-
-class Generic(object):
-    __metaclass__ = GenericMeta
-    """Base class for generic classes."""
-
-
-class AbstractGenericMeta(ABCMeta):
-    """Metaclass for abstract generic classes that support type indexing.
-
-    This is used for both protocols and ordinary abstract classes.
+    This is used for ABCs and ordinary classes.
     """
 
     def __new__(mcls, name, bases, namespace):
@@ -102,7 +87,7 @@ class AbstractGenericMeta(ABCMeta):
 
 
 class _Protocol(object):
-    __metaclass__ = AbstractGenericMeta
+    __metaclass__ = GenericMeta
     """Base class for protocol classes."""
 
     @classmethod
@@ -152,9 +137,9 @@ class _Protocol(object):
         return attrs
 
 
-class AbstractGeneric(object):
-    __metaclass__ = AbstractGenericMeta
-    """Base class for abstract generic classes."""
+class Generic(object):
+    __metaclass__ = GenericMeta
+    """Base class for (abstract) generic classes."""
 
 
 class TypeAlias(object):
@@ -330,7 +315,7 @@ class Iterator(Iterable[T], _Protocol[T]):
     def next(self): pass
 
 
-class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
+class Sequence(Sized, Iterable[T], Container[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, i): pass
 
@@ -351,7 +336,7 @@ for t in list, tuple, unicode, str, xrange:
     Sequence.register(t)
 
 
-class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
+class AbstractSet(Sized, Iterable[T], Generic[T]):
     @abstractmethod
     def __contains__(self, x): pass
     @abstractmethod
@@ -370,7 +355,7 @@ for t in set, frozenset, type({}.keys()), type({}.items()):
     AbstractSet.register(t)
 
 
-class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
+class Mapping(Sized, Iterable[KT], Generic[KT, VT]):
     @abstractmethod
     def __getitem__(self, k): pass
     @abstractmethod
@@ -419,7 +404,7 @@ Mapping.register(dict)
 # Note that the BinaryIO and TextIO classes must be in sync with typing module stubs.
 
 
-class IO(AbstractGeneric[AnyStr]):
+class IO(Generic[AnyStr]):
     @abstractproperty
     def mode(self): pass
     @abstractproperty

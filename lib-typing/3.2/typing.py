@@ -10,8 +10,6 @@ import functools
 
 __all__ = [
     # Type system related
-    'AbstractGeneric',
-    'AbstractGenericMeta',
     'Any',
     'AnyStr',
     'Dict',
@@ -69,22 +67,10 @@ def disjointclass(type):
     return decorator
 
 
-class GenericMeta(type):
-    """Metaclass for generic classes that support indexing by types."""
+class GenericMeta(ABCMeta):
+    """Metaclass for (abstract) generic classes that support type indexing.
 
-    def __getitem__(self, args):
-        # Just ignore args; they are for compile-time checks only.
-        return self
-
-
-class Generic(metaclass=GenericMeta):
-    """Base class for generic classes."""
-
-
-class AbstractGenericMeta(ABCMeta):
-    """Metaclass for abstract generic classes that support type indexing.
-
-    This is used for both protocols and ordinary abstract classes.
+    This is used for both ABCs and ordinary classes.
     """
 
     def __new__(mcls, name, bases, namespace):
@@ -99,7 +85,7 @@ class AbstractGenericMeta(ABCMeta):
         return self
 
 
-class _Protocol(metaclass=AbstractGenericMeta):
+class _Protocol(metaclass=GenericMeta):
     """Internal base class for protocol classes (structural isinstance checks)."""
 
     @classmethod
@@ -149,8 +135,8 @@ class _Protocol(metaclass=AbstractGenericMeta):
         return attrs
 
 
-class AbstractGeneric(metaclass=AbstractGenericMeta):
-    """Base class for abstract generic classes."""
+class Generic(metaclass=GenericMeta):
+    """Base class for (abstract) generic classes."""
 
 
 class TypeAlias:
@@ -314,7 +300,7 @@ class Iterator(Iterable[T], _Protocol[T]):
     def __next__(self) -> T: pass
 
 
-class Sequence(Sized, Iterable[T], Container[T], AbstractGeneric[T]):
+class Sequence(Sized, Iterable[T], Container[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, x): pass
 
@@ -332,7 +318,7 @@ for t in list, tuple, str, bytes, range:
     Sequence.register(t)
 
 
-class AbstractSet(Sized, Iterable[T], AbstractGeneric[T]):
+class AbstractSet(Sized, Iterable[T], Generic[T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     @abstractmethod
@@ -351,7 +337,7 @@ for t in set, frozenset, type({}.keys()), type({}.items()):
     AbstractSet.register(t)
 
 
-class Mapping(Sized, Iterable[KT], AbstractGeneric[KT, VT]):
+class Mapping(Sized, Iterable[KT], Generic[KT, VT]):
     @abstractmethod
     def __getitem__(self, k: KT) -> VT: pass
     @abstractmethod
@@ -391,7 +377,7 @@ Mapping.register(dict)
 # stubs.
 
 
-class IO(AbstractGeneric[AnyStr]):
+class IO(Generic[AnyStr]):
     @abstractproperty
     def mode(self) -> str: pass
     @abstractproperty

@@ -500,26 +500,26 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testInferenceWithAbstractClassContext]
-from typing import typevar, AbstractGeneric
+from typing import typevar, Generic
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
 x = A() # type: I[int]
 y = A[object]() # type: I[int] # E: Incompatible types in assignment (expression has type A[object], variable has type I[int])
 
-class I(AbstractGeneric[t]):
-  @abstractmethod
-  def f(self): pass
-class A(I[t], AbstractGeneric[t]):
-  def f(self): pass
+class I(Generic[t]):
+    @abstractmethod
+    def f(self): pass
+class A(I[t], Generic[t]):
+    def f(self): pass
 
 [case testInferenceWithAbstractClassContext2]
-from typing import typevar, AbstractGeneric
+from typing import typevar, Generic
 from abc import abstractmethod, ABCMeta
 t = typevar('t')
 a = f(A()) # type: A[int]
 aa = f(A[int]())
-class I(AbstractGeneric[t]): pass
-class A(I[t], AbstractGeneric[t]): pass
+class I(Generic[t]): pass
+class A(I[t], Generic[t]): pass
 def f(i: I[t]) -> A[t]: pass
 
 [case testInferenceWithAbstractClassContext3]

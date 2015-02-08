@@ -11,7 +11,6 @@ Undefined = object()
 Any = object()
 typevar = object()
 Generic = object()
-AbstractGeneric = object()
 Tuple = object()
 Callable = object()
 builtinclass = object()
@@ -50,17 +49,17 @@ class SupportsFloat(metaclass=ABCMeta):
     @abstractmethod
     def __float__(self) -> float: pass
 
-class SupportsAbs(AbstractGeneric[_T]):
+class SupportsAbs(Generic[_T]):
     @abstractmethod
     def __abs__(self) -> _T: pass
 
 @disjointclass(int)
 @disjointclass(float)
-class SupportsRound(AbstractGeneric[_T]):
+class SupportsRound(Generic[_T]):
     @abstractmethod
     def __round__(self, ndigits: int = 0) -> _T: pass
 
-class Reversible(AbstractGeneric[_T]):
+class Reversible(Generic[_T]):
     @abstractmethod
     def __reversed__(self) -> Iterator[_T]: pass
 
@@ -68,15 +67,15 @@ class Sized(metaclass=ABCMeta):
     @abstractmethod
     def __len__(self) -> int: pass
 
-class Iterable(AbstractGeneric[_T]):
+class Iterable(Generic[_T]):
     @abstractmethod
     def __iter__(self) -> Iterator[_T]: pass
 
-class Iterator(Iterable[_T], AbstractGeneric[_T]):
+class Iterator(Iterable[_T], Generic[_T]):
     @abstractmethod
     def next(self) -> _T: pass
 
-class Sequence(Sized, Iterable[_T], AbstractGeneric[_T]):
+class Sequence(Sized, Iterable[_T], Generic[_T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     @overload
@@ -90,7 +89,7 @@ class Sequence(Sized, Iterable[_T], AbstractGeneric[_T]):
     @abstractmethod
     def count(self, x: Any) -> int: pass
 
-class AbstractSet(Sized, Iterable[_T], AbstractGeneric[_T]):
+class AbstractSet(Sized, Iterable[_T], Generic[_T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     # TODO __le__, __lt__, __gt__, __ge__
@@ -106,7 +105,7 @@ class AbstractSet(Sized, Iterable[_T], AbstractGeneric[_T]):
     @abstractmethod
     def isdisjoint(self, s: AbstractSet[_T]) -> bool: pass
 
-class Mapping(Sized, Iterable[_KT], AbstractGeneric[_KT, _VT]):
+class Mapping(Sized, Iterable[_KT], Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass
     @abstractmethod
@@ -162,7 +161,7 @@ class Mapping(Sized, Iterable[_KT], AbstractGeneric[_KT, _VT]):
     @abstractmethod
     def iteritems(self) -> Iterator[Tuple[_KT, _VT]]: pass
 
-class IO(Iterable[AnyStr], AbstractGeneric[AnyStr]):
+class IO(Iterable[AnyStr], Generic[AnyStr]):
     # TODO detach
     # TODO use abstract properties
     @property

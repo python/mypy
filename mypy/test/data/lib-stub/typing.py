@@ -10,7 +10,6 @@ Any = object()
 Union = object()
 typevar = object()
 Generic = object()
-AbstractGeneric = object()
 Tuple = object()
 Callable = object()
 builtinclass = object()
@@ -25,10 +24,10 @@ Set = object()
 
 T = typevar('T')
 
-class Iterable(AbstractGeneric[T]):
+class Iterable(Generic[T]):
     @abstractmethod
     def __iter__(self) -> 'Iterator[T]': pass
 
-class Iterator(Iterable[T], AbstractGeneric[T]):
+class Iterator(Iterable[T], Generic[T]):
     @abstractmethod
     def __next__(self) -> T: pass
