@@ -4,7 +4,7 @@ import unittest
 
 from typing import (
     List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
-    AbstractGeneric, _Protocol, Sized, Iterable, Iterator, Sequence,
+    _Protocol, Sized, Iterable, Iterator, Sequence,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, Reversible, Undefined, AnyStr, annotations, builtinclass,
     cast, disjointclass, ducktype, forwardref, overload, typevar
@@ -104,11 +104,10 @@ class TestTyping(unittest.TestCase):
 
     def test_abstract_generic_class(self):
         t = typevar('t')
-        class C(AbstractGeneric[t]):
+        class C(Generic[t]):
             pass
         class D(object):
             pass
-        self.assertIs(C[int], C)
         self.assertNotIsInstance(D(), C)
         C.register(D)
         self.assertIsInstance(D(), C)
@@ -397,7 +396,7 @@ class TestTyping(unittest.TestCase):
     def test_construct_class_with_abstract_method(self):
         t = typevar('t')
 
-        class A(AbstractGeneric[t]):
+        class A(Generic[t]):
             @abstractmethod
             def f(self): pass
 
