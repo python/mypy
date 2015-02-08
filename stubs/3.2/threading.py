@@ -39,3 +39,5 @@ class RLock:
     def release(self) -> None: pass
     def __enter__(self) -> bool: pass
     def __exit__(self, type, value, traceback) -> bool: pass
+
+class Lock(): pass

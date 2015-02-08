@@ -402,6 +402,11 @@ class bytearray(Sequence[int]):
     def __ge__(self, x: _byte_types) -> bool: pass
 
 @builtinclass
+class memoryview():
+    # TODO arg can be any obj supporting the buffer protocol
+    def __init__(self, bytearray) -> None: pass
+
+@builtinclass
 class bool(int, SupportsInt, SupportsFloat):
     def __init__(self, o: object = False) -> None: pass
 
@@ -635,6 +640,8 @@ _N = typevar('_N', values=(int, float))
 def divmod(a: _N, b: _N) -> Tuple[_N, _N]: pass
 def eval(source: str, globals: Dict[str, Any] = None,
          locals: Mapping[str, Any] = None) -> Any: pass  # TODO code object as source
+def exec(object: str, globals: Dict[str, Any] = None,
+         locals: Mapping[str, Any] = None) -> Any: pass  # TODO code object as source
 def filter(function: Callable[[_T], Any], iterable: Iterable[_T]) -> Iterator[_T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
 def getattr(o: Any, name: str, default: Any = None) -> Any: pass
@@ -657,6 +664,7 @@ def len(o: Sized) -> int: pass
 @overload
 def len(o: tuple) -> int: pass
 def locals() -> Dict[str, Any]: pass
+def vars(Any) -> Dict[str, Any]: pass
 @overload
 def map(func: Callable[[_T1], _S], iter1: Iterable[_T1]) -> Iterator[_S]: pass
 @overload
@@ -764,6 +772,9 @@ class NameError(Exception): pass
 class NotImplementedError(RuntimeError): pass
 class OSError(EnvironmentError): pass
 class WindowsError(OSError): pass  # TODO Windows-only
+class ProcessLookupError(OSError): pass
+class ConnectionError(OSError): pass
+class ConnectionResetError(ConnectionError): pass
 # TODO: VMSError?
 class OverflowError(ArithmeticError): pass
 class ReferenceError(Exception): pass
