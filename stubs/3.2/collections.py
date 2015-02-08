@@ -8,7 +8,7 @@
 # TODO more abstract base classes (interfaces in mypy)
 
 from typing import (
-    typevar, Iterable, AbstractGeneric, Iterator, Dict, Generic, overload,
+    typevar, Iterable, Generic, Iterator, Dict, overload,
     Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized
 )
 
@@ -21,7 +21,7 @@ _VT = typevar('_VT')
 namedtuple = object()
 
 
-class deque(Sized, Iterable[_T], AbstractGeneric[_T]):
+class deque(Sized, Iterable[_T], Generic[_T]):
     # TODO int with None default
     maxlen = 0 # TODO readonly
     def __init__(self, iterable: Iterable[_T] = None,

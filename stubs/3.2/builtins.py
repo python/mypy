@@ -1,7 +1,7 @@
 # Stubs for builtins
 
 from typing import (
-    Undefined, typevar, AbstractGeneric, Iterator, Iterable, overload,
+    Undefined, typevar, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, builtinclass, ducktype, Union
@@ -443,7 +443,7 @@ class function:
     __code__ = Undefined(Any)
 
 @builtinclass
-class list(Sequence[_T], Reversible[_T], AbstractGeneric[_T]):
+class list(Sequence[_T], Reversible[_T], Generic[_T]):
     @overload
     def __init__(self) -> None: pass
     @overload
