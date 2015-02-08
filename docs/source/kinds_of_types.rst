@@ -165,21 +165,22 @@ Type aliases
 In certain situations, type names may end up being long and painful to type:
 
 .. code-block:: python
-   
+
    def f() -> Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]:
-      ...
+       ...
 
-When cases like this arise, you can define a type alias by simply assigning the type to a variable:
-
-.. code-block:: python
-   
-   MagicType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
-   # now we can use MagicType in place of the full name
-   def f() -> MagicType():
-      ...
-
-Of course, you can also instantinate type aliases:
+When cases like this arise, you can define a type alias by simply
+assigning the type to a variable:
 
 .. code-block:: python
-   
-   t = MagicType(('abc', []))
+
+   AliasType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
+
+   # Now we can use AliasType in place of the full name:
+
+   def f() -> AliasType:
+       ...
+
+A type alias does not create a new type. It's just a shorthand notation
+for another type -- it's equivalent to the target type. Type aliases
+can be imported from modules like any names.
