@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Tuple, Undefined, Union, overload, disjointclass
+from typing import SupportsAbs, Tuple, Undefined, Union, overload, disjointclass
 
 MINYEAR = 0
 MAXYEAR = 0
@@ -89,9 +89,15 @@ class time:
 _date = date
 _time = time
 
+@disjointclass(int)
+@disjointclass(float)
 @disjointclass(date)
 @disjointclass(datetime)
-class timedelta:
+class timedelta(SupportsAbs[timedelta]):
+    min = Undefined(timedelta)
+    max = Undefined(timedelta)
+    resolution = Undefined(timedelta)
+
     def __init__(self, days: int = 0, seconds: int = 0, microseconds: int = 0,
                  milliseconds: int = 0, minutes: int = 0, hours: int = 0,
                  weeks: int = 0) -> None: pass
@@ -102,6 +108,32 @@ class timedelta:
     def seconds(self) -> int: pass
     @property
     def microseconds(self) -> int: pass
+
+    def total_seconds(self) -> float: pass
+    def __add__(self, other: timedelta) -> timedelta: pass
+    def __radd__(self, other: timedelta) -> timedelta: pass
+    def __sub__(self, other: timedelta) -> timedelta: pass
+    def __rsub(self, other: timedelta) -> timedelta: pass
+    def __neg__(self) -> timedelta: pass
+    def __pos__(self) -> timedelta: pass
+    def __abs__(self) -> timedelta: pass
+    def __mul__(self, other: float) -> timedelta: pass
+    def __rmul__(self, other: float) -> timedelta: pass
+    @overload
+    def __floordiv__(self, other: timedelta) -> int: pass
+    @overload
+    def __floordiv__(self, other: int) -> timedelta: pass
+    @overload
+    def __truediv__(self, other: timedelta) -> float: pass
+    @overload
+    def __truediv__(self, other: float) -> timedelta: pass
+    def __mod__(self, other: timedelta) -> timedelta: pass
+    def __divmod__(self, other: timedelta) -> Tuple[int, timedelta]: pass
+    def __le__(self, other: timedelta) -> bool: pass
+    def __lt__(self, other: timedelta) -> bool: pass
+    def __ge__(self, other: timedelta) -> bool: pass
+    def __gt__(self, other: timedelta) -> bool: pass
+
 
 class datetime:
     min = Undefined(datetime)
