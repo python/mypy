@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Callable, typevar, Union
 
 class Thread:
     name = ''
@@ -14,8 +14,7 @@ class Thread:
                  verbose: Any = None) -> None: pass
     def start(self) -> None: pass
     def run(self) -> None: pass
-    # TODO None value for float
-    def join(self, timeout: float = None) -> None: pass
+    def join(self, timeout: float = 0.0) -> None: pass
     def is_alive(self) -> bool: pass
 
     # Legacy methods
@@ -29,15 +28,29 @@ class Event:
     def set(self) -> None: pass
     def clear(self) -> None: pass
     # TODO can it return None?
-    # TOOD None value for float
-    def wait(self, timeout: float = None) -> bool: pass
+    def wait(self, timeout: float = 0.0) -> bool: pass
 
-class RLock:
-    # TODO may return None
-    def acquire(self, blocking: bool = True,
-                timeout: float = -1.0) -> bool: pass
+class Lock:
+    def acquire(self, blocking: bool = True, timeout: float = -1.0) -> bool: pass
     def release(self) -> None: pass
     def __enter__(self) -> bool: pass
-    def __exit__(self, type, value, traceback) -> bool: pass
+    def __exit__(self, *args): pass
 
-class Lock(): pass
+class RLock:
+    def acquire(self, blocking: bool = True,
+                timeout: float = -1.0) -> Optional[bool]: pass
+    def release(self) -> None: pass
+    def __enter__(self) -> bool: pass
+    def __exit__(self, *args): pass
+
+_T = typevar('_T')
+
+class Condition:
+    def acquire(self, blocking: bool = True, timeout: float = -1.0) -> bool: pass
+    def release(self) -> None: pass
+    def notify(self, n: int = 1) -> None: pass
+    def notify_all(self) -> None: pass
+    def wait(self, timeout: float = None) -> bool: pass
+    def wait_for(self, predicate: Callable[[], _T], timeout: float = None) -> Union[_T, bool]: pass
+    def __enter__(self) -> bool: pass
+    def __exit__(self, *args): pass
