@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Tuple, Undefined, overload, disjointclass
+from typing import Tuple, Undefined, Union, overload, disjointclass
 
 MINYEAR = 0
 MAXYEAR = 0
@@ -55,6 +55,10 @@ class date:
     def isocalendar(self) -> Tuple[int, int, int]: pass
 
 class time:
+    min = Undefined(time)
+    max = Undefined(time)
+    resolution = Undefined(timedelta)
+
     def __init__(self, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0,
                  tzinfo: tzinfo = None) -> None: pass
 
@@ -68,6 +72,19 @@ class time:
     def microsecond(self) -> int: pass
     @property
     def tzinfo(self) -> _tzinfo: pass
+
+    def __le__(self, other: time) -> bool: pass
+    def __lt__(self, other: time) -> bool: pass
+    def __ge__(self, other: time) -> bool: pass
+    def __gt__(self, other: time) -> bool: pass
+    def isoformat(self) -> str: pass
+    def strftime(self, fmt: str) -> str: pass
+    def __format__(self, fmt: str) -> str: pass
+    def utcoffset(self) -> int: pass
+    def tzname(self) -> str: pass
+    def dst(self) -> int: pass
+    def replace(self, hour: int = None, minute: int = None, second: int = None,
+                microsecond: int = None, tzinfo: Union[_tzinfo, bool] = True) -> time: pass
 
 _date = date
 _time = time
@@ -124,7 +141,7 @@ class datetime:
     def timetz(self) -> _time: pass
     def replace(self, year: int = None, month: int = None, day: int = None, hour: int = None,
                 minute: int = None, second: int = None, microsecond: int = None, tzinfo:
-                _tzinfo = None) -> datetime: pass
+                Union[_tzinfo, bool] = True) -> datetime: pass
     def astimezone(self, tz: timezone = None) -> datetime: pass
     def ctime(self) -> str: pass
     def isoformat(self, sep: str = 'T') -> str: pass
