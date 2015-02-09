@@ -1538,3 +1538,4 @@ MypyFile:1(
 from typing import Optional
 x = 1  # type: Optional[int, str]  # E: Optional[...] must have exactly one type argument
 y = 1  # type: Optional[x]  # E: Invalid type "__main__.x"
+[out]
