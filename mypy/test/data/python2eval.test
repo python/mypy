@@ -350,3 +350,11 @@ f([0, 0, 1, 1, 1])
 [out]
 2
 3
+
+[case testOptional_python2]
+from typing import Optional
+def f(): # type: () -> Optional[int]
+    pass
+x = f()
+y = 1
+y = x
