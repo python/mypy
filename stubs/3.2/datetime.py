@@ -2,13 +2,23 @@
 
 # NOTE: These are incomplete!
 
-from typing import SupportsAbs, Tuple, Undefined, Union, overload, disjointclass
+from typing import Optional, SupportsAbs, Tuple, Undefined, Union, overload, disjointclass
 
 MINYEAR = 0
 MAXYEAR = 0
 
-class tzinfo: pass
-class timezone(tzinfo): pass
+class tzinfo:
+    def tzname(self, dt: Optional[datetime]) -> str: pass
+    def utcoffset(self, dt: Optional[datetime]) -> int: pass
+    def dst(self, dt: Optional[datetime]) -> int: pass
+    def fromutc(self, dt: datetime) -> datetime: pass
+
+class timezone(tzinfo):
+    utc = Undefined(tzinfo)
+    min = Undefined(tzinfo)
+    max = Undefined(tzinfo)
+
+    def __init__(self, offset: timedelta, name: str = '') -> None: pass
 
 _tzinfo = tzinfo
 _timezone = timezone
@@ -80,9 +90,9 @@ class time:
     def isoformat(self) -> str: pass
     def strftime(self, fmt: str) -> str: pass
     def __format__(self, fmt: str) -> str: pass
-    def utcoffset(self) -> int: pass
-    def tzname(self) -> str: pass
-    def dst(self) -> int: pass
+    def utcoffset(self) -> Optional[int]: pass
+    def tzname(self) -> Optional[str]: pass
+    def dst(self) -> Optional[int]: pass
     def replace(self, hour: int = None, minute: int = None, second: int = None,
                 microsecond: int = None, tzinfo: Union[_tzinfo, bool] = True) -> time: pass
 
@@ -179,9 +189,9 @@ class datetime:
     def isoformat(self, sep: str = 'T') -> str: pass
     @classmethod
     def strptime(cls, date_string: str, format: str) -> datetime: pass
-    def utcoffset(self) -> int: pass
-    def tzname(self) -> str: pass
-    def dst(self) -> int: pass
+    def utcoffset(self) -> Optional[int]: pass
+    def tzname(self) -> Optional[str]: pass
+    def dst(self) -> Optional[int]: pass
     def __le__(self, other: datetime) -> bool: pass
     def __lt__(self, other: datetime) -> bool: pass
     def __ge__(self, other: datetime) -> bool: pass
