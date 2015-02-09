@@ -4,7 +4,7 @@ import unittest
 
 from typing import (
     List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
-    _Protocol, Sized, Iterable, Iterator, Sequence,
+    _Protocol, Sized, Iterable, Iterator, Sequence, Union, Optional,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, Reversible, Undefined, AnyStr, annotations, builtinclass,
     cast, disjointclass, ducktype, forwardref, overload, typevar
@@ -454,6 +454,11 @@ class TestTyping(unittest.TestCase):
             def h(x): pass
             @overload
             def h(x): pass
+
+    def test_optional(self):
+        # TODO: This test actually isn't very useful right now, but it will make sense
+        #       once Union is modified to keep track of the given type arguments.
+        self.assertEqual(Optional[int], Union[int, None])
 
 
 class Dummy(object):
