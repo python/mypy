@@ -41,7 +41,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    Undefined, List, Dict, Set, Tuple, cast, Any, overload, typevar, Union
+    Undefined, List, Dict, Set, Tuple, cast, Any, overload, typevar, Union, Optional
 )
 
 from mypy.nodes import (
@@ -80,6 +80,12 @@ T = typevar('T')
 ALWAYS_TRUE = 0
 ALWAYS_FALSE = 1
 TRUTH_VALUE_UNKNOWN = 2
+
+
+# Map from obsolete name to the current spelling.
+obsolete_name_mapping = {
+    'typing.Function': 'typing.Callable',
+}
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -638,7 +644,11 @@ class SemanticAnalyzer(NodeVisitor):
                                              node.type_override)
                     self.add_symbol(as_id, symbol, i)
                 else:
-                    self.fail("Module has no attribute '{}'".format(id), i)
+                    message = "Module has no attribute '{}'".format(id)
+                    extra = self.undefined_name_extra_info('{}.{}'.format(i_id, id))
+                    if extra:
+                        message += " {}".format(extra)
+                    self.fail(message, i)
         else:
             for id, as_id in i.names:
                 self.add_unknown_symbol(as_id, i)
@@ -1640,7 +1650,15 @@ class SemanticAnalyzer(NodeVisitor):
                     return node
         # Give up.
         self.name_not_defined(name, ctx)
+        self.check_for_obsolete_short_name(name, ctx)
         return None
+
+    def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
+        matches = [obsolete_name
+                   for obsolete_name in obsolete_name_mapping
+                   if obsolete_name.rsplit('.', 1)[-1] == name]
+        if len(matches) == 1:
+            self.fail("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def lookup_qualified(self, name: str, ctx: Context) -> SymbolTableNode:
         if '.' not in name:
@@ -1746,13 +1764,23 @@ class SemanticAnalyzer(NodeVisitor):
                 self.name_already_defined(n, ctx)
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
-        self.fail("Name '{}' is not defined".format(name), ctx)
+        message = "Name '{}' is not defined".format(name)
+        extra = self.undefined_name_extra_info(name)
+        if extra:
+            message += ' {}'.format(extra)
+        self.fail(message, ctx)
 
     def name_already_defined(self, name: str, ctx: Context) -> None:
         self.fail("Name '{}' already defined".format(name), ctx)
 
     def fail(self, msg: str, ctx: Context) -> None:
         self.errors.report(ctx.get_line(), msg)
+
+    def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
+        if fullname in obsolete_name_mapping:
+            return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
+        else:
+            return None
 
 
 class FirstPass(NodeVisitor):

@@ -1280,3 +1280,29 @@ def f() -> List[int]: pass
 [out]
 main: In function "f":
 main, line 2: Name 'List' is not defined
+
+[case testImportObsoleteTypingFunction]
+from typing import Function # E: Module has no attribute 'Function' (it's now called 'typing.Callable')
+from _m import Function # E: Module has no attribute 'Function'
+[file _m.py]
+[out]
+
+[case testTypeRefresToObsoleteTypingFunction]
+import typing
+import _m
+def f(x: typing.Function[[], None]) -> None: pass
+def g(x: _m.Function[[], None]) -> None: pass
+[file _m.py]
+[out]
+main: In function "f":
+main, line 3: Name 'typing.Function' is not defined (it's now called 'typing.Callable')
+--'
+main: In function "g":
+main, line 4: Name '_m.Function' is not defined
+
+[case testUnqualifiedNameRefersToObsoleteTypingFunction]
+from typing import Undefined
+x = Undefined(Function[[], None])
+[out]
+main, line 2: Name 'Function' is not defined
+main, line 2: (Did you mean 'typing.Callable'?)
