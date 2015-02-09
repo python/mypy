@@ -185,8 +185,8 @@ class str(Sequence[str]):
     def center(self, width: int, fillchar: str = ' ') -> str: pass
     def count(self, x: str) -> int: pass
     def encode(self, encoding: str = 'utf-8', errors: str = 'strict') -> bytes: pass
-    def endswith(self, suffix: str, start: int = 0,
-                 end: int = None) -> bool: pass  # TODO tuple suffix; None value for int
+    def endswith(self, suffix: Union[str, tuple], start: int = None,
+                 end: int = None) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> str: pass
     def find(self, sub: str, start: int = 0, end: int = 0) -> int: pass
     def format(self, *args: Any, **kwargs: Any) -> str: pass
@@ -217,8 +217,8 @@ class str(Sequence[str]):
     def rstrip(self, chars: str = None) -> str: pass
     def split(self, sep: str = None, maxsplit: int = -1) -> List[str]: pass
     def splitlines(self, keepends: bool = False) -> List[str]: pass
-    def startswith(self, prefix: str, start: int = 0,
-                   end: int = None) -> bool: pass  # TODO tuple prefix; None value for int
+    def startswith(self, prefix: Union[str, tuple], start: int = None,
+                   end: int = None) -> bool: pass
     def strip(self, chars: str = None) -> str: pass
     def swapcase(self) -> str: pass
     def title(self) -> str: pass

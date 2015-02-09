@@ -3,7 +3,9 @@
 
 # based on http://docs.python.org/3.2/library/os.html
 
-from typing import Undefined, Mapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr
+from typing import (
+    Undefined, Mapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr, Optional
+)
 from builtins import OSError as error
 import os.path as path
 
@@ -193,7 +195,7 @@ def fdopen(fd: int, mode: str = 'r', encoding: str = None, errors: str = None,
            newline: str = None, closefd: bool = True) -> Any: pass
 def close(fd: int) -> None: pass
 def closerange(fd_low: int, fd_high: int) -> None: pass
-def device_encoding(fd: int) -> str: pass # May return None
+def device_encoding(fd: int) -> Optional[str]: pass
 def dup(fd: int) -> int: pass
 def dup2(fd: int, fd2: int) -> None: pass
 def fchmod(fd: int, intmode) -> None: pass  # Unix only

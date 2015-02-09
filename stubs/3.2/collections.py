@@ -9,7 +9,8 @@
 
 from typing import (
     typevar, Iterable, Generic, Iterator, Dict, overload,
-    Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized
+    Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized,
+    Optional
 )
 
 _T = typevar('_T')
@@ -22,8 +23,7 @@ namedtuple = object()
 
 
 class deque(Sized, Iterable[_T], Generic[_T]):
-    # TODO int with None default
-    maxlen = 0 # TODO readonly
+    maxlen = 0 # type: Optional[int] # TODO readonly
     def __init__(self, iterable: Iterable[_T] = None,
                  maxlen: int = None) -> None: pass
     def append(self, x: _T) -> None: pass

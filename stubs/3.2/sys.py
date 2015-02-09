@@ -4,7 +4,8 @@
 # based on http://docs.python.org/3.2/library/sys.html
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload, Traceback
+    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload, Traceback,
+    Optional
 )
 
 # ----- sys variables -----
@@ -110,11 +111,11 @@ class _version_info:
 def call_tracing(fn: Any, args: Any) -> object: pass
 def _clear_type_cache() -> None: pass
 def _current_frames() -> Dict[int, Any]: pass
-def displayhook(value: int) -> None: pass  # value might be None
+def displayhook(value: Optional[int]) -> None: pass
 def excepthook(type_: type, value: BaseException,
                traceback: Traceback) -> None: pass
 def exc_info() -> Tuple[type, BaseException, Traceback]: pass
-def exit(arg: int = 0) -> None: pass  # arg might be None
+def exit(arg: int = None) -> None: pass
 def getcheckinterval() -> int: pass  # deprecated
 def getdefaultencoding() -> str: pass
 def getdlopenflags() -> int: pass  # Unix only
@@ -139,7 +140,7 @@ def gettrace() -> Any: pass # TODO return
 def getwindowsversion() -> Any: pass  # Windows only, TODO return type
 def intern(string: str) -> str: pass
 def setcheckinterval(interval: int) -> None: pass  # deprecated
-#def setdlopenflags(n: int) -> None: pass  # Linux only
+def setdlopenflags(n: int) -> None: pass  # Linux only
 def setprofile(profilefunc: Any) -> None: pass # TODO type
 def setrecursionlimit(limit: int) -> None: pass
 def setswitchinterval(interval: float) -> None: pass
