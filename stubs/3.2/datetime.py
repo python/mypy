@@ -19,6 +19,7 @@ class timezone(tzinfo):
     max = Undefined(tzinfo)
 
     def __init__(self, offset: timedelta, name: str = '') -> None: pass
+    def __hash__(self) -> int: pass
 
 _tzinfo = tzinfo
 _timezone = timezone
@@ -60,6 +61,7 @@ class date:
     def __sub__(self, other: timedelta) -> date: pass
     @overload
     def __sub__(self, other: date) -> timedelta: pass
+    def __hash__(self) -> int: pass
     def weekday(self) -> int: pass
     def isoweekday(self) -> int: pass
     def isocalendar(self) -> Tuple[int, int, int]: pass
@@ -87,6 +89,7 @@ class time:
     def __lt__(self, other: time) -> bool: pass
     def __ge__(self, other: time) -> bool: pass
     def __gt__(self, other: time) -> bool: pass
+    def __hash__(self) -> int: pass
     def isoformat(self) -> str: pass
     def strftime(self, fmt: str) -> str: pass
     def __format__(self, fmt: str) -> str: pass
@@ -143,6 +146,7 @@ class timedelta(SupportsAbs[timedelta]):
     def __lt__(self, other: timedelta) -> bool: pass
     def __ge__(self, other: timedelta) -> bool: pass
     def __gt__(self, other: timedelta) -> bool: pass
+    def __hash__(self) -> int: pass
 
 
 class datetime:
@@ -201,3 +205,4 @@ class datetime:
     def __sub__(self, other: datetime) -> timedelta: pass
     @overload
     def __sub__(self, other: timedelta) -> datetime: pass
+    def __hash__(self) -> int: pass
