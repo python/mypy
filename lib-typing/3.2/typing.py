@@ -20,6 +20,7 @@ __all__ = [
     'List',
     'Match',
     'NamedTuple',
+    'Optional',
     'Pattern',
     'Set',
     'Tuple',
@@ -166,6 +167,14 @@ def union(x): return x
 
 
 Union = TypeAlias(union)
+
+
+class _Optional:
+    def __getitem__(self, typearg):
+        return Union[typearg, None]
+
+
+Optional = _Optional()
 
 
 def NamedTuple(typename, fields):

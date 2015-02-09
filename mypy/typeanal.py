@@ -70,6 +70,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         sym = self.lookup(t.name, t)
         if sym is not None:
+            fullname = sym.node.fullname()
             if sym.kind == TVAR:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
@@ -81,18 +82,24 @@ class TypeAnalyser(TypeVisitor[Type]):
                 values = cast(TypeVarExpr, sym.node).values
                 return TypeVar(t.name, sym.tvar_id, values, self.builtin_type('builtins.object'),
                                t.line, rep)
-            elif sym.node.fullname() == 'builtins.None':
+            elif fullname == 'builtins.None':
                 return Void()
-            elif sym.node.fullname() == 'typing.Any':
+            elif fullname == 'typing.Any':
                 return AnyType()
-            elif sym.node.fullname() == 'typing.Tuple':
+            elif fullname == 'typing.Tuple':
                 return TupleType(self.anal_array(t.args),
                                  self.builtin_type('builtins.tuple'))
-            elif sym.node.fullname() == 'typing.Union':
+            elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
                 items = [item for item in items if not isinstance(item, Void)]
                 return UnionType.make_union(items)
-            elif sym.node.fullname() == 'typing.Callable':
+            elif fullname == 'typing.Optional':
+                if len(t.args) != 1:
+                    self.fail('Optional[...] must have exactly one type argument', t)
+                items = self.anal_array(t.args)
+                # Currently Optional[t] is just an alias for t.
+                return items[0]
+            elif fullname == 'typing.Callable':
                 return self.analyze_function_type(t)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
@@ -109,7 +116,6 @@ class TypeAnalyser(TypeVisitor[Type]):
                                  Instance(info, [], t.line),
                                  t.line, t.repr)
             else:
-
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
                 # checked only later, since we do not always know the

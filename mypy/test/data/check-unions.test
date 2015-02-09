@@ -103,3 +103,10 @@ from typing import Union
 def f() -> Union[int, None]: pass
 x = 1
 x = f()
+
+[case testOptional]
+from typing import Optional
+def f(x: Optional[int]) -> None: pass
+f(1)
+f(None)
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"

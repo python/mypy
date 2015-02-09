@@ -1522,3 +1522,20 @@ MypyFile:1(
     def (x: builtins.int)
     Block:2(
       PassStmt:2())))
+
+[case testOptionalTypes]
+from typing import Optional
+x = 1  # type: Optional[int]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Optional : Optional])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int))
+
+[case testInvalidOptionalType]
+from typing import Optional
+x = 1  # type: Optional[int, str]  # E: Optional[...] must have exactly one type argument
+y = 1  # type: Optional[x]  # E: Invalid type "__main__.x"
+[out]

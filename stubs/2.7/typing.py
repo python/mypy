@@ -26,6 +26,7 @@ class TypeAlias:
     def __getitem__(self, typeargs): pass
 
 Union = TypeAlias(object)
+Optional = TypeAlias(object)
 List = TypeAlias(object)
 Dict = TypeAlias(object)
 Set = TypeAlias(object)

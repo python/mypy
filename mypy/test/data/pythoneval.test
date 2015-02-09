@@ -986,3 +986,10 @@ class E(A, B[T], Generic[T]): pass
 class F(B[T], A, Generic[T]): pass
 def f(e: E[int], f: F[int]) -> None: pass
 [out]
+
+[case testOptional]
+from typing import Optional
+def f() -> Optional[int]: pass
+x = f()
+y = 1
+y = x
