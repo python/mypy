@@ -51,8 +51,8 @@ You can declare variables in the class body explicitly using
 .. code-block:: python
 
    class A:
-       x = Undefined(List[int])  # Declare attribute y of type List[int]
-       y = 0  # type: Any        # Declare attribute x of type Any
+       x = Undefined(List[int])  # Declare attribute x of type List[int]
+       y = 0  # type: Any        # Declare attribute y of type Any
 
    a = A()
    a.x = [1]     # OK
