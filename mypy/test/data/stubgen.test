@@ -153,11 +153,19 @@ class B(C): pass
 [out]
 class B: pass
 
+[case testDecoratedFunction]
+@decorator
+def foo(x): pass
+[out]
+def foo(x): pass
+
 -- More test cases:
---   empty line before/after non-empty classes
+--   decorated function
 --   multiple variable assignment
 --   kw-only args
+--   property
 --   only include stuff in __all__
 --   namedtuple
+--   empty line before/after non-empty classes
 --   packages
 --   ? general base classes
