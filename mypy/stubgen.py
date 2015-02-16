@@ -5,7 +5,8 @@ import os.path
 import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
-    IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, ARG_STAR, ARG_STAR2
+    IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
+    ARG_STAR, ARG_STAR2
 )
 
 
@@ -25,6 +26,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._indent = ''
 
     def visit_func_def(self, o):
+        self_inits = find_self_initializers(o)
+        for init in self_inits:
+            self.add_init(init)
         self.add("%sdef %s(" % (self._indent, o.name()))
         args = []
         for i, (arg, kind) in enumerate(zip(o.args, o.arg_kinds)):
@@ -67,9 +71,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]
         if isinstance(lvalue, NameExpr):
-            self.add('%s%s = Undefined(Any)' % (self._indent, lvalue.name))
-            self.add_import('Undefined')
-            self.add_import('Any')
+            self.add_init(lvalue.name)
+
+    def add_init(self, lvalue):
+        self.add('%s%s = Undefined(Any)\n' % (self._indent, lvalue))
+        self.add_import('Undefined')
+        self.add_import('Any')
 
     def add(self, string):
         self._output.append(string)
@@ -84,3 +91,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         else:
             imports = ''
         return imports + ''.join(self._output)
+
+
+def find_self_initializers(fdef):
+    results = []
+    class SelfTraverser(mypy.traverser.TraverserVisitor):
+        def visit_assignment_stmt(self, o):
+            lvalue = o.lvalues[0]
+            if (isinstance(lvalue, MemberExpr) and
+                    isinstance(lvalue.expr, NameExpr) and
+                    lvalue.expr.name == 'self'):
+                results.append(lvalue.name)
+    fdef.accept(SelfTraverser())
+    return results
