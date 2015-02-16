@@ -13,6 +13,7 @@ from mypy.test import testsemanal
 from mypy.test import testtransform
 from mypy.test import testcheck
 from mypy.test import testtypegen
+from mypy.test import teststubgen
 
 
 class AllSuite(Suite):
@@ -34,6 +35,7 @@ class AllSuite(Suite):
         self.test_transform = testtransform.TransformSuite()
         self.test_check = testcheck.TypeCheckSuite()
         self.test_typegen = testtypegen.TypeExportSuite()
+        self.test_stubgen = teststubgen.StubgenSuite()
         super().__init__()
 
 

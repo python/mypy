@@ -1,0 +1,480 @@
+[case testEmptyFile]
+[out]
+
+[case testSingleFunction]
+def f():
+    x = 1
+[out]
+def f(): pass
+
+[case testTwoFunctions]
+def f(a, b):
+    x = 1
+def g(arg):
+    pass
+[out]
+def f(a, b): pass
+def g(arg): pass
+
+[case testDefaltArgInt]
+def f(a, b=2): pass
+def g(b=-1, c=0): pass
+[out]
+def f(a, b=2): pass
+def g(b=-1, c=0): pass
+
+[case testDefaultArgNone]
+def f(x=None): pass
+[out]
+def f(x=None): pass
+
+[case testDefaultArgBool]
+def f(x=True, y=False): pass
+[out]
+def f(x=True, y=False): pass
+
+[case testDefaultArgStr]
+def f(x='foo'): pass
+[out]
+def f(x=''): pass
+
+[case testDefaultArgBytes]
+def f(x=b'foo'): pass
+[out]
+def f(x=b''): pass
+
+[case testDefaultArgFloat]
+def f(x=1.2): pass
+[out]
+def f(x=0.0): pass
+
+[case testDefaultArgOther]
+def f(x=ord): pass
+[out]
+from typing import Undefined
+
+def f(x=Undefined): pass
+
+[case testVarArgs]
+def f(x, *y): pass
+[out]
+def f(x, *y): pass
+
+[case testKwVarArgs]
+def f(x, **y): pass
+[out]
+def f(x, **y): pass
+
+[case testClass]
+class A:
+    def f(self, x):
+        x = 1
+def g(): pass
+[out]
+class A:
+    def f(self, x): pass
+
+def g(): pass
+
+[case testVariable]
+x = 1
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+
+[case testClassVariable]
+class C:
+    x = 1
+[out]
+from typing import Undefined, Any
+
+class C:
+    x = Undefined(Any)
+
+[case testSelfAssignment]
+class C:
+    def __init__(self):
+        self.x = 1
+        x.y = 2
+[out]
+from typing import Undefined, Any
+
+class C:
+    x = Undefined(Any)
+    def __init__(self): pass
+
+[case testSelfAndClassBodyAssignment]
+x = 1
+class C:
+    x = 1
+    def __init__(self):
+        self.x = 1
+        self.x = 1
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+
+class C:
+    x = Undefined(Any)
+    def __init__(self): pass
+
+[case testEmptyClass]
+class A: pass
+[out]
+class A: pass
+
+[case testPrivateFunction]
+def _f(): pass
+def g(): pass
+[out]
+def g(): pass
+
+[case testPrivateMethod]
+class A:
+    def _f(self): pass
+[out]
+class A: pass
+
+[case testPrivateVar]
+_x = 1
+class A:
+    _y = 1
+[out]
+class A: pass
+
+[case testSpecialInternalVar]
+__all__ = []
+__author__ = ''
+__version__ = ''
+[out]
+
+[case testBaseClass]
+class A: pass
+class B(A): pass
+[out]
+class A: pass
+class B(A): pass
+
+[case testDecoratedFunction]
+@decorator
+def foo(x): pass
+[out]
+def foo(x): pass
+
+[case testMultipleAssignment]
+x, y = 1, 2
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+y = Undefined(Any)
+
+[case testMultipleAssignment2]
+[x, y] = 1, 2
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+y = Undefined(Any)
+
+[case testKeywordOnlyArg]
+def f(x, *, y=1): pass
+def g(x, *, y=1, z=2): pass
+[out]
+def f(x, *, y=1): pass
+def g(x, *, y=1, z=2): pass
+
+[case testProperty]
+class A:
+    @property
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): pass
+[out]
+class A:
+    @property
+    def f(self): pass
+    @f.setter
+    def f(self, x): pass
+
+[case testStaticMethod]
+class A:
+    @staticmethod
+    def f(x): pass
+[out]
+class A:
+    @staticmethod
+    def f(x): pass
+
+[case testClassMethod]
+class A:
+    @classmethod
+    def f(cls): pass
+[out]
+class A:
+    @classmethod
+    def f(cls): pass
+
+[case testIfMainCheck]
+def a(): pass
+if __name__ == '__main__':
+    x = 1
+    def f(): pass
+def b(): pass
+[out]
+def a(): pass
+def b(): pass
+
+[case testImportStar]
+from x import *
+from a.b import *
+def f(): pass
+[out]
+from x import *
+from a.b import *
+
+def f(): pass
+
+[case testNoSpacesBetweenEmptyClasses]
+class X:
+    def g(self): pass
+class A: pass
+class B: pass
+class C:
+    def f(self): pass
+[out]
+class X:
+    def g(self): pass
+
+class A: pass
+class B: pass
+
+class C:
+    def f(self): pass
+
+[case testExceptionBaseClasses]
+class A(Exception): pass
+class B(ValueError): pass
+[out]
+class A(Exception): pass
+class B(ValueError): pass
+
+[case testOmitSomeSpecialMethos]
+class A:
+    def __str__(self): pass
+    def __repr__(self): pass
+    def __eq__(self): pass
+    def __getstate__(self): pass
+    def __setstate__(self, state): pass
+[out]
+class A:
+    def __eq__(self): pass
+
+[case testOmitDefsNotInAll_import]
+__all__ = [] + ['f']
+def f(): pass
+def g(): pass
+[out]
+def f(): pass
+
+[case testVarDefsNotInAll_import]
+__all__ = [] + ['f', 'g']
+def f(): pass
+x = 1
+y = 1
+def g(): pass
+[out]
+def f(): pass
+def g(): pass
+
+[case testIncludeClassNotInAll_import]
+__all__ = [] + ['f']
+def f(): pass
+class A: pass
+[out]
+def f(): pass
+
+class A: pass
+
+[case testAllAndClass_import]
+__all__ = ['A']
+class A:
+    x = 1
+    def f(self): pass
+[out]
+from typing import Undefined, Any
+
+class A:
+    x = Undefined(Any)
+    def f(self): pass
+
+[case testMultiplePrivateDefs]
+class A: pass
+_x = 1
+_y = 1
+_z = 1
+class C: pass
+[out]
+class A: pass
+class C: pass
+
+[case testIncludeFromImportIfInAll_import]
+from re import match, search, sub
+__all__ = ['match', 'sub', 'x']
+x = 1
+[out]
+from typing import Undefined, Any
+from re import match, sub
+
+match = match
+sub = sub
+
+x = Undefined(Any)
+
+[case testRelativeImportAll]
+from .x import *
+[out]
+from .x import *
+
+[case testCommentForUndefinedName_import]
+__all__ = ['f', 'x', 'C', 'g']
+def f(): pass
+x = 1
+class C:
+    def g(self): pass
+[out]
+from typing import Undefined, Any
+
+def f(): pass
+
+x = Undefined(Any)
+
+class C:
+    def g(self): pass
+
+# Names in __all__ with no definition:
+#   g
+
+[case testIgnoreSlots]
+class A:
+    __slots__ = ()
+[out]
+class A: pass
+
+[case testSkipPrivateProperty]
+class A:
+    @property
+    def _foo(self): pass
+[out]
+class A: pass
+
+[case testSkipPrivateStaticAndClassMethod]
+class A:
+    @staticmethod
+    def _foo(): pass
+    @classmethod
+    def _bar(cls): pass
+[out]
+class A: pass
+
+[case testNamedtuple]
+import collections, x
+X = collections.namedtuple('X', ['a', 'b'])
+[out]
+from collections import namedtuple
+
+X = namedtuple('X', ['a', 'b'])
+
+[case testNamedtupleAltSyntax]
+from collections import namedtuple, x
+X = namedtuple('X', 'a b')
+[out]
+from collections import namedtuple
+
+X = namedtuple('X', 'a b')
+
+[case testNamedtupleWithUnderscore]
+from collections import namedtuple as _namedtuple
+def f(): pass
+X = _namedtuple('X', 'a b')
+def g(): pass
+[out]
+from collections import namedtuple
+
+def f(): pass
+
+X = namedtuple('X', 'a b')
+
+def g(): pass
+
+[case testNamedtupleBaseClass]
+import collections, x
+_X = collections.namedtuple('_X', ['a', 'b'])
+class Y(_X): pass
+[out]
+from collections import namedtuple
+
+_X = namedtuple('_X', ['a', 'b'])
+
+class Y(_X): pass
+
+[case testArbitraryBaseClass]
+import x
+class D(x.C): pass
+[out]
+import x
+
+class D(x.C): pass
+
+[case testArbitraryBaseClass]
+import x.y
+class D(x.y.C): pass
+[out]
+import x.y
+
+class D(x.y.C): pass
+
+[case testUnqualifiedArbitraryBaseClassWithNoDef]
+class A(int): pass
+[out]
+class A(int): pass
+
+[case testUnqualifiedArbitraryBaseClass]
+from x import X
+class A(X): pass
+[out]
+from x import X
+
+class A(X): pass
+
+[case testUnqualifiedArbitraryBaseClassWithImportAs]
+from x import X as _X
+class A(_X): pass
+[out]
+from x import X as _X
+
+class A(_X): pass
+
+[case testObjectBaseClass]
+class A(object): pass
+[out]
+class A: pass
+
+[case testEmptyLines]
+def x(): pass
+def f():
+    class A:
+        def f(self):
+            self.x = 1
+def g(): pass
+[out]
+def x(): pass
+def f(): pass
+def g(): pass
+
+
+-- More features/fixes:
+--   do not export deleted names
