@@ -1,0 +1,29 @@
+[case testEmptyFile]
+[out]
+
+[case testSingleFunction]
+def f():
+    x = 1
+[out]
+def f(): pass
+
+[case testTwoFunctions]
+def f(a, b):
+    x = 1
+def g(arg):
+    pass
+[out]
+def f(a, b): pass
+def g(arg): pass
+
+-- More test cases:
+--   more kinds of function args (def args, *args, **args)
+--   variables
+--   classes
+--   kw-only args
+--   multiple variable assignment
+--   self.x initialization
+--   skip __ attributes
+--   skip _ functions/variables
+--   only include stuff in __all__
+--   packages
