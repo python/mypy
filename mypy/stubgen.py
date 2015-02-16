@@ -38,6 +38,7 @@ CLASS = 'CLASS'
 EMPTY_CLASS = 'EMPTY_CLASS'
 VAR = 'VAR'
 IMPORT_ALIAS = 'IMPORT_ALIAS'
+NOT_IN_ALL = 'NOT_IN_ALL'
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
@@ -56,6 +57,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_func_def(self, o):
         if self.is_private_name(o.name()):
+            return
+        if self.is_not_in_all(o.name()):
+            self.add_name_not_in_all(o.name())
             return
         if not self._indent and self._state not in (EMPTY, FUNC):
             self.add('\n')
@@ -99,6 +103,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("): pass\n")
         self._state = FUNC
+
+    def add_name_not_in_all(self, name):
+        if self._state not in (EMPTY, NOT_IN_ALL):
+            self.add('\n')
+        self.add('# %s not in __all__\n' % name)
+        self._state = NOT_IN_ALL
 
     def visit_decorator(self, o):
         for decorator in o.decorators:
@@ -156,6 +166,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                         init = '\n' + init
                         sep = True
                     self.add(init)
+                elif self.is_not_in_all(item.name):
+                    self.add_name_not_in_all(item.name)
         if found:
             self._state = VAR
 
@@ -189,7 +201,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def get_init(self, lvalue):
         if lvalue in self._vars[-1]:
             return None
-        if self.is_private_name(lvalue):
+        if self.is_private_name(lvalue) or self.is_not_in_all(lvalue):
             return None
         self._vars[-1].append(lvalue)
         self.add_import('Undefined')
@@ -216,9 +228,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             imports += '\n'
         return imports + ''.join(self._output)
 
+    def is_not_in_all(self, name):
+        if self.is_private_name(name):
+            return False
+        return self.is_top_level() and self._all_ and name not in self._all_
+
     def is_private_name(self, name):
-        if self.is_top_level() and self._all_ and name not in self._all_:
-            return True
         return name.startswith('_') and (not name.endswith('__')
                                          or name in ('__all__',
                                                      '__author__',

@@ -280,6 +280,22 @@ def g(): pass
 [out]
 def f(): pass
 
+# g not in __all__
+
+[case testVarDefsNotInAll_import]
+__all__ = [] + ['f', 'g']
+def f(): pass
+x = 1
+y = 1
+def g(): pass
+[out]
+def f(): pass
+
+# x not in __all__
+# y not in __all__
+
+def g(): pass
+
 [case testIncludeClassNotInAll_import]
 __all__ = [] + ['f']
 def f(): pass
