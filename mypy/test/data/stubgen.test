@@ -182,8 +182,21 @@ def g(x, *, y=1, z=2): pass
 def f(x, *, y=1): pass
 def g(x, *, y=1, z=2): pass
 
+[case testProperty]
+class A:
+    @property
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): pass
+[out]
+class A:
+    @property
+    def f(self): pass
+    @f.setter
+    def f(self, x): pass
+
 -- More test cases:
---   property
 --   only include stuff in __all__
 --   namedtuple
 --   empty line before/after non-empty classes

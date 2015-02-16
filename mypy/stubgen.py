@@ -71,6 +71,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("): pass\n")
 
+    def visit_decorator(self, o):
+        for decorator in o.decorators:
+            if isinstance(decorator, NameExpr) and decorator.name == 'property':
+                self.add('%s@property\n' % self._indent)
+            elif (isinstance(decorator, MemberExpr) and decorator.name == 'setter' and
+                  isinstance(decorator.expr, NameExpr)):
+                self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+        super().visit_decorator(o)
+
     def visit_class_def(self, o):
         self.add('class %s' % o.name)
         base_types = []
