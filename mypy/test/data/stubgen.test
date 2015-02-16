@@ -16,6 +16,36 @@ def g(arg):
 def f(a, b): pass
 def g(arg): pass
 
+[case testDefaltArgInt]
+def f(a, b=2): pass
+def g(b=-1, c=0): pass
+[out]
+def f(a, b=2): pass
+def g(b=-1, c=0): pass
+
+[case testDefaultArgNone]
+def f(x=None): pass
+[out]
+def f(x=None): pass
+
+[case testDefaultArgStr]
+def f(x='foo'): pass
+[out]
+def f(x=''): pass
+
+[case testDefaultArgBytes]
+def f(x=b'foo'): pass
+[out]
+def f(x=b''): pass
+
+[case testDefaultArgOther]
+def f(x=ord): pass
+[out]
+from typing import Undefined
+
+def f(x=Undefined): pass
+
+
 -- More test cases:
 --   more kinds of function args (def args, *args, **args)
 --   variables
