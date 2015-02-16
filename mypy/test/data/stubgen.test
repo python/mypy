@@ -141,6 +141,8 @@ class A: pass
 
 [case testSpecialInternalVar]
 __all__ = []
+__author__ = ''
+__version__ = ''
 [out]
 
 [case testBaseClass]

@@ -184,7 +184,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return imports + ''.join(self._output)
 
     def is_private_name(self, name):
-        return name.startswith('_') and (not name.endswith('__') or name == '__all__')
+        return name.startswith('_') and (not name.endswith('__')
+                                         or name in ('__all__', '__author__', '__version__'))
 
 
 def find_self_initializers(fdef):
