@@ -33,6 +33,9 @@ def generate_stub_for_module(module, output_dir, quiet=False):
     imp.reload(mod)
     for attr in module.split('.')[1:]:
         mod = getattr(mod, attr)
+    if not hasattr(mod, '__file__'):
+        print('ERROR: %s has no __file__ attribute; skipping' % module)
+        return
     target = '/'.join(module.split('.')[:-1])
     modfnam = os.path.basename(mod.__file__)
     if modfnam == '__init__.py':
