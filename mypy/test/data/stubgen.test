@@ -385,8 +385,49 @@ class A:
 [out]
 class A: pass
 
+[case testNamedtuple]
+import collections, x
+X = collections.namedtuple('X', ['a', 'b'])
+[out]
+from collections import namedtuple
+
+X = namedtuple('X', ['a', 'b'])
+
+[case testNamedtupleAltSyntax]
+from collections import namedtuple, x
+X = namedtuple('X', 'a b')
+[out]
+from collections import namedtuple
+
+X = namedtuple('X', 'a b')
+
+[case testNamedtupleWithUnderscore]
+from collections import namedtuple as _namedtuple
+def f(): pass
+X = _namedtuple('X', 'a b')
+def g(): pass
+[out]
+from collections import namedtuple
+
+def f(): pass
+
+X = namedtuple('X', 'a b')
+
+def g(): pass
+
+[case testNamedtupleBaseClass]
+import collections, x
+_X = collections.namedtuple('_X', ['a', 'b'])
+class Y(_X): pass
+[out]
+from collections import namedtuple
+
+_X = namedtuple('_X', ['a', 'b'])
+
+class Y(_X): pass
+
 
 -- More features/fixes:
---   namedtuple
+--   general base classes
+--     - yup, we should include them, and potentially generate an import
 --   do not export deleted names
---   ? general base classes

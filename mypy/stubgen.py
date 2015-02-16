@@ -7,7 +7,7 @@ import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ComparisonExpr, ARG_STAR, ARG_STAR2, ARG_NAMED
+    ListExpr, ComparisonExpr, CallExpr, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 
 
@@ -173,6 +173,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]
+        if isinstance(lvalue, NameExpr) and self.is_namedtuple(o.rvalue):
+            self.process_namedtuple(lvalue, o.rvalue)
+            return
         if isinstance(lvalue, (TupleExpr, ListExpr)):
             items = lvalue.items
         else:
@@ -191,6 +194,29 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     self.record_name(item.name)
         if found:
             self._state = VAR
+
+    def is_namedtuple(self, expr):
+        if not isinstance(expr, CallExpr):
+            return False
+        callee = expr.callee
+        return ((isinstance(callee, NameExpr) and callee.name.endswith('namedtuple')) or
+                (isinstance(callee, MemberExpr) and callee.name == 'namedtuple'))
+
+    def process_namedtuple(self, lvalue, rvalue):
+        self.add_import_line('from collections import namedtuple\n')
+        if self._state != EMPTY:
+            self.add('\n')
+        name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
+        if isinstance(rvalue.args[1], StrExpr):
+            items = repr(rvalue.args[1].value)
+        elif isinstance(rvalue.args[1], ListExpr):
+            list_items = rvalue.args[1].items
+            items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
+        else:
+            items = '<ERROR>'
+        self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
+        self._classes.add(lvalue.name)
+        self._state = CLASS
 
     def visit_if_stmt(self, o):
         # Ignore if __name__ == '__main__'.
@@ -238,7 +264,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._imports.append(name)
 
     def add_import_line(self, line):
-        self._import_lines.append(line)
+        if line not in self._import_lines:
+            self._import_lines.append(line)
 
     def output(self):
         imports = ''
