@@ -149,6 +149,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if not self._indent and self._state != EMPTY:
             sep = len(self._output)
             self.add('\n')
+        else:
+            sep = None
         self.add('class %s' % o.name)
         self.record_name(o.name)
         base_types = []
@@ -167,7 +169,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._indent = self._indent[:-4]
         self._vars.pop()
         if len(self._output) == n:
-            if self._state == EMPTY_CLASS:
+            if self._state == EMPTY_CLASS and sep is not None:
                 self._output[sep] = ''
             self._output[-1] = self._output[-1][:-1] + ' pass\n'
             self._state = EMPTY_CLASS
