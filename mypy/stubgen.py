@@ -171,14 +171,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         super().visit_if_stmt(o)
 
     def visit_import_all(self, o):
-        self.add_import_line('from %s import *\n' % o.id)
+        self.add_import_line('from %s%s import *\n' % ('.' * o.relative, o.id))
 
     def visit_import_from(self, o):
         if self._all_:
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names if name in self._all_ and name == alias]
             if names:
-                self.add_import_line('from %s import %s\n' % (o.id, ', '.join(names)))
+                self.add_import_line('from %s%s import %s\n' % (
+                    '.' * o.relative, o.id, ', '.join(names)))
                 if self._state not in (EMPTY, IMPORT_ALIAS):
                     self.add('\n')
                 for name in names:
@@ -211,7 +212,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             imports += 'from typing import %s\n' % ", ".join(self._imports)
         if self._import_lines:
             imports += ''.join(self._import_lines)
-        if imports:
+        if imports and self._output:
             imports += '\n'
         return imports + ''.join(self._output)
 

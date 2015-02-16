@@ -324,9 +324,12 @@ sub = sub
 
 x = Undefined(Any)
 
+[case testRelativeImportAll]
+from .x import *
+[out]
+from .x import *
 
 -- More features:
---   relative imports
 --   mark as comments stuff in __all__ but no definition seen
 --   mark as comments stuff not in __all_ but with public names (at least classes)
 --   packages (create directory, find __init__, etc.)
