@@ -11,12 +11,17 @@ from mypy.nodes import (
 )
 
 
-def generate_stub(path, output_dir, _all_=None, quiet=False):
+def generate_stub(path, output_dir, _all_=None, quiet=False, target=None):
     source = open(path).read()
     ast = mypy.parse.parse(source)
     gen = StubGenerator(_all_)
     ast.accept(gen)
-    target = os.path.join(output_dir, os.path.basename(path))
+    if not target:
+        target = os.path.join(output_dir, os.path.basename(path))
+    for i in range(target.count('/')):
+        subdir = os.path.dirname(target)
+        if subdir and not os.path.isdir(subdir):
+            os.makedirs(subdir)
     with open(target, 'w') as file:
         file.write(''.join(gen.output()))
     if not quiet:
@@ -28,7 +33,14 @@ def generate_stub_for_module(module, output_dir, quiet=False):
     imp.reload(mod)
     for attr in module.split('.')[1:]:
         mod = getattr(mod, attr)
-    generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None), quiet)
+    target = '/'.join(module.split('.')[:-1])
+    modfnam = os.path.basename(mod.__file__)
+    if modfnam == '__init__.py':
+        target = os.path.join(target, module.split('.')[-1], '__init__.py')
+    else:
+        target = os.path.join(target, modfnam)
+    target = os.path.join(output_dir, target)
+    generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None), quiet, target=target)
 
 
 # What was generated previously.
@@ -59,7 +71,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if undefined_names:
             if self._state != EMPTY:
                 self.add('\n')
-            self.add('# Names in __all__ but no definition generated:\n')
+            self.add('# Names in __all__ with no definition:\n')
             for name in undefined_names:
                 self.add('#   %s\n' % name)
 

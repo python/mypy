@@ -361,13 +361,11 @@ x = Undefined(Any)
 class C:
     def g(self): pass
 
-# Names in __all__ but no definition generated:
+# Names in __all__ with no definition:
 #   g
 
 
 -- More features:
---   packages (create directory, find __init__, etc.)
-
 --   namedtuple
 --   do not export deleted names
 --   ? general base classes
