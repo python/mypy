@@ -345,9 +345,27 @@ from .x import *
 [out]
 from .x import *
 
+[case testCommentForUndefinedName_import]
+__all__ = ['f', 'x', 'C', 'g']
+def f(): pass
+x = 1
+class C:
+    def g(self): pass
+[out]
+from typing import Undefined, Any
+
+def f(): pass
+
+x = Undefined(Any)
+
+class C:
+    def g(self): pass
+
+# Names in __all__ but no definition generated:
+#   g
+
+
 -- More features:
---   mark as comments stuff in __all__ but no definition seen
---   mark as comments stuff not in __all_ but with public names (at least classes)
 --   packages (create directory, find __init__, etc.)
 
 --   namedtuple

@@ -50,10 +50,18 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._indent = ''
         self._vars = [[]]
         self._state = EMPTY
+        self._toplevel_names = []
 
     def visit_mypy_file(self, o):
         self._classes = find_classes(o)
         super().visit_mypy_file(o)
+        undefined_names = [name for name in self._all_ or [] if name not in self._toplevel_names]
+        if undefined_names:
+            if self._state != EMPTY:
+                self.add('\n')
+            self.add('# Names in __all__ but no definition generated:\n')
+            for name in undefined_names:
+                self.add('#   %s\n' % name)
 
     def visit_func_def(self, o):
         if self.is_private_name(o.name()):
@@ -69,6 +77,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if init_code:
                 self.add(init_code)
         self.add("%sdef %s(" % (self._indent, o.name()))
+        self.record_name(o.name())
         args = []
         for i, (arg, kind) in enumerate(zip(o.args, o.arg_kinds)):
             name = arg.name()
@@ -126,6 +135,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             sep = len(self._output)
             self.add('\n')
         self.add('class %s' % o.name)
+        self.record_name(o.name)
         base_types = []
         for base in o.base_type_exprs:
             if isinstance(base, NameExpr) and (base.name in self._classes or
@@ -166,6 +176,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                         init = '\n' + init
                         sep = True
                     self.add(init)
+                    self.record_name(item.name)
                 elif self.is_not_in_all(item.name):
                     self.add_name_not_in_all(item.name)
         if found:
@@ -196,6 +207,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     self.add('\n')
                 for name in names:
                     self.add('%s = %s\n' % (name, name))
+                    self.record_name(name)
                 self._state = IMPORT_ALIAS
 
     def get_init(self, lvalue):
@@ -245,6 +257,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def is_top_level(self):
         return self._indent == ''
+
+    def record_name(self, name):
+        if self.is_top_level():
+            self._toplevel_names.append(name)
 
 
 def find_self_initializers(fdef):
