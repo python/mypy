@@ -83,7 +83,7 @@ class _PathParents(Sequence):
     def __getitem__(self, idx): pass
 
 class PurePath:
-    def __new__(cls, *args): pass
+    def __init__(self, *args): pass
     def __reduce__(self): pass
     def as_posix(self): pass
     def __bytes__(self): pass
@@ -127,7 +127,7 @@ class PurePosixPath(PurePath): pass
 class PureWindowsPath(PurePath): pass
 
 class Path(PurePath):
-    def __new__(cls, *args, **kwargs): pass
+    def __init__(self, *args, **kwargs): pass
     def __enter__(self): pass
     def __exit__(self, t, v, tb): pass
     @classmethod
