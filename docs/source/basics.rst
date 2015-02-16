@@ -100,13 +100,13 @@ Type checking and running programs
 **********************************
 
 You can type check a program by using the ``mypy`` tool, which is
-basically a linter — it checks you program for errors without actually
+basically a linter — it checks your program for errors without actually
 running it::
 
    $ mypy program.py
 
 You can always run a mypy program as a Python program, without type
-checking, even it it has type errors::
+checking, even if it has type errors::
 
    $ python3 program.py
 
@@ -125,7 +125,7 @@ explains how to download and install mypy.
 Library stubs
 *************
 
-In order to type check code that uses library modules such those
+In order to type check code that uses library modules such as those
 included in the Python standard library, you need to have library
 *stubs*. A library stub defines a skeleton of the public interface
 of the library, including classes, variables and functions, and
