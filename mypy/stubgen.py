@@ -7,7 +7,7 @@ import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ComparisonExpr, CallExpr, ARG_STAR, ARG_STAR2, ARG_NAMED
+    ListExpr, ComparisonExpr, CallExpr, ClassDef, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 
 
@@ -66,9 +66,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._vars = [[]]
         self._state = EMPTY
         self._toplevel_names = []
+        self._classes = []
+        self._base_classes = []
 
     def visit_mypy_file(self, o):
         self._classes = find_classes(o)
+        for node in o.defs:
+            if isinstance(node, ClassDef):
+                self._base_classes.extend(self.get_base_types(node))
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or [] if name not in self._toplevel_names]
         if undefined_names:
@@ -169,10 +174,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def get_base_types(self, cdef):
         base_types = []
         for base in cdef.base_type_exprs:
-            if isinstance(base, NameExpr) and (base.name in self._classes or
-                                               base.name.endswith('Exception') or
-                                               base.name.endswith('Error')):
-                base_types.append(base.name)
+            if isinstance(base, NameExpr):
+                if base.name != 'object':
+                    base_types.append(base.name)
             elif isinstance(base, MemberExpr):
                 modname = get_qualified_name(base.expr)
                 base_types.append('%s.%s' % (modname, base.name))
@@ -243,7 +247,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_import_from(self, o):
         if self._all_:
             # Include import froms that import names defined in __all__.
-            names = [name for name, alias in o.names if name in self._all_ and name == alias]
+            names = [name for name, alias in o.names
+                     if name in self._all_ and name == alias]
             if names:
                 self.add_import_line('from %s%s import %s\n' % (
                     '.' * o.relative, o.id, ', '.join(names)))
@@ -253,6 +258,18 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     self.add('%s = %s\n' % (name, name))
                     self.record_name(name)
                 self._state = IMPORT_ALIAS
+        # Import names used as base classes.
+        names = [(name, alias) for name, alias in o.names
+                 if alias in self._base_classes]
+        if names:
+            imp_names = []
+            for name, alias in names:
+                if alias != name:
+                    imp_names.append('%s as %s' % (name, alias))
+                else:
+                    imp_names.append(name)
+            self.add_import_line('from %s%s import %s\n' % (
+                '.' * o.relative, o.id, ', '.join(imp_names)))
 
     def get_init(self, lvalue):
         if lvalue in self._vars[-1]:

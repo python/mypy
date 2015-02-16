@@ -157,11 +157,6 @@ class B(A): pass
 class A: pass
 class B(A): pass
 
-[case testBaseClassNotInCurrentModule]
-class B(C): pass
-[out]
-class B: pass
-
 [case testDecoratedFunction]
 @decorator
 def foo(x): pass
@@ -442,7 +437,32 @@ import x.y
 
 class D(x.y.C): pass
 
+[case testUnqualifiedArbitraryBaseClassWithNoDef]
+class A(int): pass
+[out]
+class A(int): pass
+
+[case testUnqualifiedArbitraryBaseClass]
+from x import X
+class A(X): pass
+[out]
+from x import X
+
+class A(X): pass
+
+[case testUnqualifiedArbitraryBaseClassWithImportAs]
+from x import X as _X
+class A(_X): pass
+[out]
+from x import X as _X
+
+class A(_X): pass
+
+[case testObjectBaseClass]
+class A(object): pass
+[out]
+class A: pass
+
 
 -- More features/fixes:
---   general base classes
 --   do not export deleted names
