@@ -255,9 +255,17 @@ class B: pass
 class C:
     def f(self): pass
 
+[case testExceptionBaseClasses]
+class A(Exception): pass
+class B(ValueError): pass
+[out]
+class A(Exception): pass
+class B(ValueError): pass
+
 
 -- More test cases:
 --   only include stuff in __all__
+--   include from import for stuff in __all__
 --   mark as comments stuff in __all__ but no definition seen
 --   mark as comments stuff not in __all_ but with public names (at least classes)
 --   namedtuple

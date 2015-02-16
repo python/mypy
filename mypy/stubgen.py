@@ -102,7 +102,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add('class %s' % o.name)
         base_types = []
         for base in o.base_type_exprs:
-            if isinstance(base, NameExpr) and base.name in self._classes:
+            if isinstance(base, NameExpr) and (base.name in self._classes or
+                                               base.name.endswith('Exception') or
+                                               base.name.endswith('Error')):
                 base_types.append(base.name)
         if base_types:
             self.add('(%s)' % ', '.join(base_types))
