@@ -261,7 +261,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__str__',
                                                      '__repr__',
                                                      '__getstate__',
-                                                     '__setstate__'))
+                                                     '__setstate__',
+                                                     '__slots__'))
 
     def is_top_level(self):
         return self._indent == ''

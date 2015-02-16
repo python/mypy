@@ -363,8 +363,15 @@ class C:
 # Names in __all__ with no definition:
 #   g
 
+[case testIgnoreSlots]
+class A:
+    __slots__ = ()
+[out]
+class A: pass
 
--- More features:
+
+-- More features/fixes:
+--   skip properties with _ prefix
 --   namedtuple
 --   do not export deleted names
 --   ? general base classes
