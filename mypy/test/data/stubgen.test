@@ -313,7 +313,6 @@ class C: pass
 
 
 -- More features:
---   replace module if exists
 --   include from import for stuff in __all__
 --   mark as comments stuff in __all__ but no definition seen
 --   mark as comments stuff not in __all_ but with public names (at least classes)

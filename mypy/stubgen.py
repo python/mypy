@@ -15,12 +15,16 @@ def generate_stub(path, output_dir, _all_=None):
     ast = mypy.parse.parse(source)
     gen = StubGenerator(_all_)
     ast.accept(gen)
-    with open(os.path.join(output_dir, os.path.basename(path)), 'w') as file:
+    target = os.path.join(output_dir, os.path.basename(path))
+    with open(target, 'w') as file:
         file.write(''.join(gen.output()))
+    print('Created %s' % target)
 
 
 def generate_stub_for_module(module, output_dir):
     mod = __import__(module)
+    for attr in module.split('.')[1:]:
+        mod = getattr(mod, attr)
     generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None))
 
 
@@ -235,5 +239,7 @@ def find_classes(cdef):
 
 if __name__ == '__main__':
     import sys
+    if not os.path.isdir('out'):
+        raise SystemExit('Directory out does not exist')
     for module in sys.argv[1:]:
-        generate_stub_for_module(module, '.')
+        generate_stub_for_module(module, 'out')
