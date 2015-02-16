@@ -49,15 +49,11 @@ class _NormalAccessor(_Accessor):
     listdir = Undefined(Any)
     chmod = Undefined(Any)
     lchmod = Undefined(Any)
-    def lchmod(self, pathobj, mode): pass
     mkdir = Undefined(Any)
     unlink = Undefined(Any)
     rmdir = Undefined(Any)
     rename = Undefined(Any)
     replace = Undefined(Any)
-    symlink = Undefined(Any)
-    def symlink(a, b, target_is_directory): pass
-    @staticmethod
     def symlink(a, b, target_is_directory): pass
     utime = Undefined(Any)
     def readlink(self, path): pass
