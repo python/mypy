@@ -45,7 +45,8 @@ class SMTP:
     esmtp_features = Undefined(Any)
     source_address = Undefined(Any)
     local_hostname = Undefined(Any)
-    def __init__(self, host='', port=0, local_hostname=None, timeout=Undefined, source_address=None): pass
+    def __init__(self, host='', port=0, local_hostname=None, timeout=Undefined,
+                 source_address=None): pass
     def __enter__(self): pass
     def __exit__(self, *args): pass
     def set_debuglevel(self, debuglevel): pass
@@ -70,8 +71,10 @@ class SMTP:
     def ehlo_or_helo_if_needed(self): pass
     def login(self, user, password): pass
     def starttls(self, keyfile=None, certfile=None, context=None): pass
-    def sendmail(self, from_addr, to_addrs, msg, mail_options=Undefined, rcpt_options=Undefined): pass
-    def send_message(self, msg, from_addr=None, to_addrs=None, mail_options=Undefined, rcpt_options=Undefined): pass
+    def sendmail(self, from_addr, to_addrs, msg, mail_options=Undefined,
+                 rcpt_options=Undefined): pass
+    def send_message(self, msg, from_addr=None, to_addrs=None, mail_options=Undefined,
+                     rcpt_options=Undefined): pass
     def close(self): pass
     def quit(self): pass
 
@@ -80,7 +83,8 @@ class SMTP_SSL(SMTP):
     keyfile = Undefined(Any)
     certfile = Undefined(Any)
     context = Undefined(Any)
-    def __init__(self, host='', port=0, local_hostname=None, keyfile=None, certfile=None, timeout=Undefined, source_address=None, context=None): pass
+    def __init__(self, host='', port=0, local_hostname=None, keyfile=None, certfile=None,
+                 timeout=Undefined, source_address=None, context=None): pass
 
 class LMTP(SMTP):
     ehlo_msg = Undefined(Any)
