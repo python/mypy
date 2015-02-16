@@ -82,7 +82,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self.is_private_name(o.name()):
             return
         if self.is_not_in_all(o.name()):
-            self.add_name_not_in_all(o.name())
             return
         if not self._indent and self._state not in (EMPTY, FUNC):
             self.add('\n')
@@ -127,12 +126,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("): pass\n")
         self._state = FUNC
-
-    def add_name_not_in_all(self, name):
-        if self._state not in (EMPTY, NOT_IN_ALL):
-            self.add('\n')
-        self.add('# %s not in __all__\n' % name)
-        self._state = NOT_IN_ALL
 
     def visit_decorator(self, o):
         for decorator in o.decorators:
@@ -194,8 +187,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                         sep = True
                     self.add(init)
                     self.record_name(item.name)
-                elif self.is_not_in_all(item.name):
-                    self.add_name_not_in_all(item.name)
         if found:
             self._state = VAR
 
