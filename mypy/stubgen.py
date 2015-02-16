@@ -5,8 +5,8 @@ import os.path
 import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
-    IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
-    ARG_STAR, ARG_STAR2
+    IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
+    ListExpr, ARG_STAR, ARG_STAR2
 )
 
 
@@ -89,8 +89,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]
-        if isinstance(lvalue, NameExpr):
-            self.add_init(lvalue.name)
+        if isinstance(lvalue, (TupleExpr, ListExpr)):
+            items = lvalue.items
+        else:
+            items = [lvalue]
+        for item in items:
+            if isinstance(item, NameExpr):
+                self.add_init(item.name)
 
     def add_init(self, lvalue):
         if lvalue in self._vars[-1]:

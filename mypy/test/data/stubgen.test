@@ -159,9 +159,23 @@ def foo(x): pass
 [out]
 def foo(x): pass
 
+[case testMultipleAssignment]
+x, y = 1, 2
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+y = Undefined(Any)
+
+[case testMultipleAssignment2]
+[x, y] = 1, 2
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+y = Undefined(Any)
+
 -- More test cases:
---   decorated function
---   multiple variable assignment
 --   kw-only args
 --   property
 --   only include stuff in __all__
