@@ -28,6 +28,11 @@ def f(x=None): pass
 [out]
 def f(x=None): pass
 
+[case testDefaultArgBool]
+def f(x=True, y=False): pass
+[out]
+def f(x=True, y=False): pass
+
 [case testDefaultArgStr]
 def f(x='foo'): pass
 [out]

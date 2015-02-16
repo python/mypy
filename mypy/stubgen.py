@@ -112,7 +112,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     arg += "0.0"
                 elif isinstance(init, UnaryExpr):
                     arg += '-%s' % init.expr.value
-                elif isinstance(init, NameExpr) and init.name == 'None':
+                elif isinstance(init, NameExpr) and init.name in ('None', 'True', 'False'):
                     arg += init.name
                 else:
                     self.add_import("Undefined")
