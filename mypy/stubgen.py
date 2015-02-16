@@ -148,12 +148,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             sep = None
         self.add('class %s' % o.name)
         self.record_name(o.name)
-        base_types = []
-        for base in o.base_type_exprs:
-            if isinstance(base, NameExpr) and (base.name in self._classes or
-                                               base.name.endswith('Exception') or
-                                               base.name.endswith('Error')):
-                base_types.append(base.name)
+        base_types = self.get_base_types(o)
         if base_types:
             self.add('(%s)' % ', '.join(base_types))
         self.add(':\n')
@@ -170,6 +165,19 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = EMPTY_CLASS
         else:
             self._state = CLASS
+
+    def get_base_types(self, cdef):
+        base_types = []
+        for base in cdef.base_type_exprs:
+            if isinstance(base, NameExpr) and (base.name in self._classes or
+                                               base.name.endswith('Exception') or
+                                               base.name.endswith('Error')):
+                base_types.append(base.name)
+            elif isinstance(base, MemberExpr) and isinstance(base.expr, NameExpr):
+                modname = base.expr.name
+                base_types.append('%s.%s' % (modname, base.name))
+                self.add_import_line('import %s\n' % modname)
+        return base_types
 
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]

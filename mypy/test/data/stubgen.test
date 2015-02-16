@@ -426,8 +426,15 @@ _X = namedtuple('_X', ['a', 'b'])
 
 class Y(_X): pass
 
+[case testArbitraryBaseClass]
+import x
+class D(x.C): pass
+[out]
+import x
+
+class D(x.C): pass
+
 
 -- More features/fixes:
 --   general base classes
---     - yup, we should include them, and potentially generate an import
 --   do not export deleted names
