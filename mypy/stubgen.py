@@ -64,6 +64,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         super().visit_class_def(o)
         self._indent = self._indent[:-4]
 
+    def visit_assignment_stmt(self, o):
+        lvalue = o.lvalues[0]
+        if isinstance(lvalue, NameExpr):
+            self.add('%s%s = Undefined(Any)' % (self._indent, lvalue.name))
+            self.add_import('Undefined')
+            self.add_import('Any')
+
     def add(self, string):
         self._output.append(string)
 

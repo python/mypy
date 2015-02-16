@@ -70,6 +70,22 @@ class A:
     def f(self, x): pass
 def g(): pass
 
+[case testVariable]
+x = 1
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+
+[case testClassVariable]
+class C:
+    x = 1
+[out]
+from typing import Undefined, Any
+
+class C:
+    x = Undefined(Any)
+
 -- More test cases:
 --   variables
 --   self.x initialization
