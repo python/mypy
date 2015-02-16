@@ -80,7 +80,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if self._state != EMPTY:
                 self.add('\n')
             self.add('# Names in __all__ with no definition:\n')
-            for name in undefined_names:
+            for name in sorted(undefined_names):
                 self.add('#   %s\n' % name)
 
     def visit_func_def(self, o):
