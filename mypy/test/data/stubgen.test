@@ -434,6 +434,14 @@ import x
 
 class D(x.C): pass
 
+[case testArbitraryBaseClass]
+import x.y
+class D(x.y.C): pass
+[out]
+import x.y
+
+class D(x.y.C): pass
+
 
 -- More features/fixes:
 --   general base classes

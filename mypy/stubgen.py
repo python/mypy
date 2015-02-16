@@ -173,8 +173,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                base.name.endswith('Exception') or
                                                base.name.endswith('Error')):
                 base_types.append(base.name)
-            elif isinstance(base, MemberExpr) and isinstance(base.expr, NameExpr):
-                modname = base.expr.name
+            elif isinstance(base, MemberExpr):
+                modname = get_qualified_name(base.expr)
                 base_types.append('%s.%s' % (modname, base.name))
                 self.add_import_line('import %s\n' % modname)
         return base_types
@@ -329,6 +329,15 @@ def find_classes(cdef):
             results.add(o.name)
     cdef.accept(ClassTraverser())
     return results
+
+
+def get_qualified_name(o):
+    if isinstance(o, NameExpr):
+        return o.name
+    elif isinstance(o, MemberExpr):
+        return '%s.%s' % (get_qualified_name(o.expr), o.name)
+    else:
+        return '<ERROR>'
 
 
 if __name__ == '__main__':
