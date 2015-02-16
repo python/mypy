@@ -68,6 +68,7 @@ def g(): pass
 [out]
 class A:
     def f(self, x): pass
+
 def g(): pass
 
 [case testVariable]
@@ -109,6 +110,7 @@ class C:
 from typing import Undefined, Any
 
 x = Undefined(Any)
+
 class C:
     x = Undefined(Any)
     def __init__(self): pass
@@ -234,12 +236,30 @@ from a.b import *
 
 def f(): pass
 
+[case testNoSpacesBetweenEmptyClasses]
+class X:
+    def g(self): pass
+class A: pass
+class B: pass
+class C:
+    def f(self): pass
+[out]
+class X:
+    def g(self): pass
+
+class A: pass
+class B: pass
+
+class C:
+    def f(self): pass
+
 
 -- More test cases:
 --   only include stuff in __all__
+--   mark as comments stuff in __all__ but no definition seen
+--   mark as comments stuff not in __all_ but with public names (at least classes)
 --   namedtuple
 --   do not export deleted names
---   ? sort -- variables first, then classes, then functions
 --   empty line before/after non-empty classes
 --   packages
 --   ? general base classes

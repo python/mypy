@@ -19,6 +19,14 @@ def generate_stub(path, output_dir):
         file.write(''.join(gen.output()))
 
 
+# What was generated previously.
+EMPTY = 'EMPTY'
+FUNC = 'FUNC'
+CLASS = 'CLASS'
+EMPTY_CLASS = 'EMPTY_CLASS'
+VAR = 'VAR'
+
+
 class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(self):
         self._output = []
@@ -26,6 +34,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._imports = []
         self._indent = ''
         self._vars = [[]]
+        self._state = EMPTY
 
     def visit_mypy_file(self, o):
         self._classes = find_classes(o)
@@ -34,6 +43,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_func_def(self, o):
         if self.is_private_name(o.name()):
             return
+        if not self._indent and self._state not in (EMPTY, FUNC):
+            self.add('\n')
         self_inits = find_self_initializers(o)
         for init in self_inits:
             self.add_init(init)
@@ -71,6 +82,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             args.append(arg)
         self.add(', '.join(args))
         self.add("): pass\n")
+        self._state = FUNC
 
     def visit_decorator(self, o):
         for decorator in o.decorators:
@@ -84,6 +96,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         super().visit_decorator(o)
 
     def visit_class_def(self, o):
+        if not self._indent and self._state != EMPTY:
+            sep = len(self._output)
+            self.add('\n')
         self.add('class %s' % o.name)
         base_types = []
         for base in o.base_type_exprs:
@@ -99,7 +114,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._indent = self._indent[:-4]
         self._vars.pop()
         if len(self._output) == n:
+            if self._state == EMPTY_CLASS:
+                self._output[sep] = ''
             self._output[-1] = self._output[-1][:-1] + ' pass\n'
+            self._state = EMPTY_CLASS
+        else:
+            self._state = CLASS
 
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]
@@ -107,9 +127,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             items = lvalue.items
         else:
             items = [lvalue]
+        sep = False
+        found = False
         for item in items:
             if isinstance(item, NameExpr):
-                self.add_init(item.name)
+                if not sep and not self._indent and self._state not in (EMPTY, VAR):
+                    self.add('\n')
+                    sep = True
+                found = self.add_init(item.name) or found
+        if found:
+            self._state = VAR
 
     def visit_if_stmt(self, o):
         # Ignore if __name__ == '__main__'.
@@ -127,13 +154,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def add_init(self, lvalue):
         if lvalue in self._vars[-1]:
-            return
+            return False
         if self.is_private_name(lvalue):
-            return
+            return False
         self._vars[-1].append(lvalue)
         self.add('%s%s = Undefined(Any)\n' % (self._indent, lvalue))
         self.add_import('Undefined')
         self.add_import('Any')
+        return True
 
     def add(self, string):
         self._output.append(string)
