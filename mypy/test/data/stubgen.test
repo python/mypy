@@ -463,6 +463,18 @@ class A(object): pass
 [out]
 class A: pass
 
+[case testEmptyLines]
+def x(): pass
+def f():
+    class A:
+        def f(self):
+            self.x = 1
+def g(): pass
+[out]
+def x(): pass
+def f(): pass
+def g(): pass
+
 
 -- More features/fixes:
 --   do not export deleted names

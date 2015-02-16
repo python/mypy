@@ -90,11 +90,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         if not self._indent and self._state not in (EMPTY, FUNC):
             self.add('\n')
-        self_inits = find_self_initializers(o)
-        for init in self_inits:
-            init_code = self.get_init(init)
-            if init_code:
-                self.add(init_code)
+        if not self.is_top_level():
+            self_inits = find_self_initializers(o)
+            for init in self_inits:
+                init_code = self.get_init(init)
+                if init_code:
+                    self.add(init_code)
         self.add("%sdef %s(" % (self._indent, o.name()))
         self.record_name(o.name())
         args = []
