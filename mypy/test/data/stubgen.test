@@ -38,6 +38,11 @@ def f(x=b'foo'): pass
 [out]
 def f(x=b''): pass
 
+[case testDefaultArgFloat]
+def f(x=1.2): pass
+[out]
+def f(x=0.0): pass
+
 [case testDefaultArgOther]
 def f(x=ord): pass
 [out]

@@ -4,7 +4,7 @@ import os.path
 
 import mypy.parse
 import mypy.traverser
-from mypy.nodes import IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr
+from mypy.nodes import IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr
 
 
 def generate_stub(path, output_dir):
@@ -36,6 +36,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     arg += "''"
                 elif isinstance(init, BytesExpr):
                     arg += "b''"
+                elif isinstance(init, FloatExpr):
+                    arg += "0.0"
                 elif isinstance(init, UnaryExpr):
                     arg += '-%s' % init.expr.value
                 elif isinstance(init, NameExpr) and init.name == 'None':
