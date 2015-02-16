@@ -214,10 +214,31 @@ class A:
     @classmethod
     def f(cls): pass
 
+[case testIfMainCheck]
+def a(): pass
+if __name__ == '__main__':
+    x = 1
+    def f(): pass
+def b(): pass
+[out]
+def a(): pass
+def b(): pass
+
+[case testImportStar]
+from x import *
+from a.b import *
+def f(): pass
+[out]
+from x import *
+from a.b import *
+
+def f(): pass
+
 
 -- More test cases:
 --   only include stuff in __all__
 --   namedtuple
+--   do not export deleted names
 --   ? sort -- variables first, then classes, then functions
 --   empty line before/after non-empty classes
 --   packages

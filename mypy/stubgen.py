@@ -6,7 +6,7 @@ import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ARG_STAR, ARG_STAR2, ARG_NAMED
+    ListExpr, ComparisonExpr, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 
 
@@ -22,6 +22,7 @@ def generate_stub(path, output_dir):
 class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(self):
         self._output = []
+        self._import_lines = []
         self._imports = []
         self._indent = ''
         self._vars = [[]]
@@ -110,6 +111,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if isinstance(item, NameExpr):
                 self.add_init(item.name)
 
+    def visit_if_stmt(self, o):
+        # Ignore if __name__ == '__main__'.
+        expr = o.expr[0]
+        if (isinstance(expr, ComparisonExpr) and
+                isinstance(expr.operands[0], NameExpr) and
+                isinstance(expr.operands[1], StrExpr) and
+                expr.operands[0].name == '__name__' and
+                '__main__' in expr.operands[1].value):
+            return
+        super().visit_if_stmt(o)
+
+    def visit_import_all(self, o):
+        self.add_import_line('from %s import *\n' % o.id)
+
     def add_init(self, lvalue):
         if lvalue in self._vars[-1]:
             return
@@ -127,11 +142,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if name not in self._imports:
             self._imports.append(name)
 
+    def add_import_line(self, line):
+        self._import_lines.append(line)
+
     def output(self):
+        imports = ''
         if self._imports:
-            imports = 'from typing import %s\n\n' % ", ".join(self._imports)
-        else:
-            imports = ''
+            imports += 'from typing import %s\n' % ", ".join(self._imports)
+        if self._import_lines:
+            imports += ''.join(self._import_lines)
+        if imports:
+            imports += '\n'
         return imports + ''.join(self._output)
 
     def is_private_name(self, name):
