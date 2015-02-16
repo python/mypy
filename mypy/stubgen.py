@@ -173,7 +173,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add('\n')
         else:
             sep = None
-        self.add('class %s' % o.name)
+        self.add('%sclass %s' % (self._indent, o.name))
         self.record_name(o.name)
         base_types = self.get_base_types(o)
         if base_types:
