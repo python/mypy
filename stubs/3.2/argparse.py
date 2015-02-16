@@ -15,13 +15,6 @@ class _AttributeHolder: pass
 
 class HelpFormatter:
     def __init__(self, prog, indent_increment=2, max_help_position=24, width=None): pass
-    class _Section:
-        formatter = Undefined(Any)
-        parent = Undefined(Any)
-        heading = Undefined(Any)
-        items = Undefined(Any)
-        def __init__(self, formatter, parent, heading=None): pass
-        def format_help(self): pass
     def start_section(self, heading): pass
     def end_section(self): pass
     def add_text(self, text): pass
@@ -98,8 +91,6 @@ class _VersionAction(Action):
     def __call__(self, parser, namespace, values, option_string=None): pass
 
 class _SubParsersAction(Action):
-    class _ChoicesPseudoAction(Action):
-        def __init__(self, name, aliases, help): pass
     def __init__(self, option_strings, prog, parser_class, dest=Undefined, help=None,
                  metavar=None): pass
     def add_parser(self, name, **kwargs): pass
