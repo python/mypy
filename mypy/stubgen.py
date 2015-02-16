@@ -26,6 +26,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._indent = ''
         self._vars = [[]]
 
+    def visit_mypy_file(self, o):
+        self._classes = find_classes(o)
+        super().visit_mypy_file(o)
+
     def visit_func_def(self, o):
         if self.is_private_name(o.name()):
             return
@@ -66,7 +70,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add("): pass\n")
 
     def visit_class_def(self, o):
-        self.add('class %s:\n' % o.name)
+        self.add('class %s' % o.name)
+        base_types = []
+        for base in o.base_type_exprs:
+            if isinstance(base, NameExpr) and base.name in self._classes:
+                base_types.append(base.name)
+        if base_types:
+            self.add('(%s)' % ', '.join(base_types))
+        self.add(':\n')
         n = len(self._output)
         self._indent += '    '
         self._vars.append([])
@@ -119,6 +130,15 @@ def find_self_initializers(fdef):
                     lvalue.expr.name == 'self'):
                 results.append(lvalue.name)
     fdef.accept(SelfTraverser())
+    return results
+
+
+def find_classes(cdef):
+    results = set()
+    class ClassTraverser(mypy.traverser.TraverserVisitor):
+        def visit_class_def(self, o):
+            results.add(o.name)
+    cdef.accept(ClassTraverser())
     return results
 
 

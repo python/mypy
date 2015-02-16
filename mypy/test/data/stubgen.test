@@ -141,10 +141,23 @@ class A: pass
 __all__ = []
 [out]
 
+[case testBaseClass]
+class A: pass
+class B(A): pass
+[out]
+class A: pass
+class B(A): pass
+
+[case testBaseClassNotInCurrentModule]
+class B(C): pass
+[out]
+class B: pass
+
 -- More test cases:
---   base classes defined in current module
+--   empty line before/after non-empty classes
 --   multiple variable assignment
 --   kw-only args
 --   only include stuff in __all__
+--   namedtuple
 --   packages
---   ? base classes
+--   ? general base classes
