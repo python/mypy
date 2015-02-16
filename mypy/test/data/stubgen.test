@@ -196,9 +196,29 @@ class A:
     @f.setter
     def f(self, x): pass
 
+[case testStaticMethod]
+class A:
+    @staticmethod
+    def f(x): pass
+[out]
+class A:
+    @staticmethod
+    def f(x): pass
+
+[case testClassMethod]
+class A:
+    @classmethod
+    def f(cls): pass
+[out]
+class A:
+    @classmethod
+    def f(cls): pass
+
+
 -- More test cases:
 --   only include stuff in __all__
 --   namedtuple
+--   ? sort -- variables first, then classes, then functions
 --   empty line before/after non-empty classes
 --   packages
 --   ? general base classes
