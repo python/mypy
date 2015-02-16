@@ -118,11 +118,33 @@ class A: pass
 [out]
 class A: pass
 
+[case testPrivateFunction]
+def _f(): pass
+def g(): pass
+[out]
+def g(): pass
+
+[case testPrivateMethod]
+class A:
+    def _f(self): pass
+[out]
+class A: pass
+
+[case testPrivateVar]
+_x = 1
+class A:
+    _y = 1
+[out]
+class A: pass
+
+[case testSpecialInternalVar]
+__all__ = []
+[out]
+
 -- More test cases:
+--   base classes defined in current module
 --   multiple variable assignment
 --   kw-only args
---   skip __ attributes
---   skip _ functions/variables
 --   only include stuff in __all__
 --   packages
 --   ? base classes

@@ -27,6 +27,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._vars = [[]]
 
     def visit_func_def(self, o):
+        if self.is_private_name(o.name()):
+            return
         self_inits = find_self_initializers(o)
         for init in self_inits:
             self.add_init(init)
@@ -82,6 +84,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def add_init(self, lvalue):
         if lvalue in self._vars[-1]:
             return
+        if self.is_private_name(lvalue):
+            return
         self._vars[-1].append(lvalue)
         self.add('%s%s = Undefined(Any)\n' % (self._indent, lvalue))
         self.add_import('Undefined')
@@ -100,6 +104,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         else:
             imports = ''
         return imports + ''.join(self._output)
+
+    def is_private_name(self, name):
+        return name.startswith('_') and (not name.endswith('__') or name == '__all__')
 
 
 def find_self_initializers(fdef):
