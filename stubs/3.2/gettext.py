@@ -26,7 +26,8 @@ class GNUTranslations(NullTranslations):
     def ngettext(self, msgid1, msgid2, n): pass
 
 def find(domain, localedir=None, languages=None, all=False): pass
-def translation(domain, localedir=None, languages=None, class_=None, fallback=False, codeset=None): pass
+def translation(domain, localedir=None, languages=None, class_=None, fallback=False,
+                codeset=None): pass
 def install(domain, localedir=None, codeset=None, names=None): pass
 def textdomain(domain=None): pass
 def bindtextdomain(domain, localedir=None): pass
