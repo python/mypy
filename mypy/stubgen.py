@@ -65,11 +65,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_class_def(self, o):
         self.add('class %s:\n' % o.name)
+        n = len(self._output)
         self._indent += '    '
         self._vars.append([])
         super().visit_class_def(o)
         self._indent = self._indent[:-4]
         self._vars.pop()
+        if len(self._output) == n:
+            self._output[-1] = self._output[-1][:-1] + ' pass\n'
 
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]
@@ -110,3 +113,9 @@ def find_self_initializers(fdef):
                 results.append(lvalue.name)
     fdef.accept(SelfTraverser())
     return results
+
+
+if __name__ == '__main__':
+    import sys
+    for path in sys.argv[1:]:
+        generate_stub(path, '.')

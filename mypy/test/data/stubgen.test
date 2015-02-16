@@ -113,6 +113,11 @@ class C:
     x = Undefined(Any)
     def __init__(self): pass
 
+[case testEmptyClass]
+class A: pass
+[out]
+class A: pass
+
 -- More test cases:
 --   multiple variable assignment
 --   kw-only args
