@@ -50,14 +50,23 @@ from typing import Undefined
 
 def f(x=Undefined): pass
 
+[case testVarArgs]
+def f(x, *y): pass
+[out]
+def f(x, *y): pass
+
+[case testKwVarArgs]
+def f(x, **y): pass
+[out]
+def f(x, **y): pass
+
 
 -- More test cases:
---   more kinds of function args (def args, *args, **args)
 --   variables
 --   classes
---   kw-only args
---   multiple variable assignment
 --   self.x initialization
+--   multiple variable assignment
+--   kw-only args
 --   skip __ attributes
 --   skip _ functions/variables
 --   only include stuff in __all__

@@ -4,7 +4,9 @@ import os.path
 
 import mypy.parse
 import mypy.traverser
-from mypy.nodes import IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr
+from mypy.nodes import (
+    IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, ARG_STAR, ARG_STAR2
+)
 
 
 def generate_stub(path, output_dir):
@@ -45,6 +47,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 else:
                     self.add_import("Undefined")
                     arg += 'Undefined'
+            elif kind == ARG_STAR:
+                arg = '*%s' % name
+            elif kind == ARG_STAR2:
+                arg = '**%s' % name
             else:
                 arg = name
             args.append(arg)
