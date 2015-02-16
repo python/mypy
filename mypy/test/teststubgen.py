@@ -10,7 +10,7 @@ from mypy.test.data import parse_test_cases
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
-from mypy.stubgen import generate_stub
+from mypy.stubgen import generate_stub, generate_stub_for_module
 
 
 class StubgenSuite(Suite):
@@ -33,7 +33,10 @@ def test_stubgen(testcase):
             file.write(source)
             file.close()
             try:
-                n = generate_stub(path, out_dir)
+                if testcase.name.endswith('_import'):
+                    generate_stub_for_module('prog', out_dir)
+                else:
+                    generate_stub(path, out_dir)
                 a = load_output(out_dir)
             except CompileError as e:
                 a = e.messages

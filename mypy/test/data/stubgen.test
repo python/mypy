@@ -273,13 +273,52 @@ class A:
 class A:
     def __eq__(self): pass
 
--- More test cases:
---   only include stuff in __all__
+[case testOmitDefsNotInAll_import]
+__all__ = [] + ['f']
+def f(): pass
+def g(): pass
+[out]
+def f(): pass
+
+[case testIncludeClassNotInAll_import]
+__all__ = [] + ['f']
+def f(): pass
+class A: pass
+[out]
+def f(): pass
+
+class A: pass
+
+[case testAllAndClass_import]
+__all__ = ['A']
+class A:
+    x = 1
+    def f(self): pass
+[out]
+from typing import Undefined, Any
+
+class A:
+    x = Undefined(Any)
+    def f(self): pass
+
+[case testMultiplePrivateDefs]
+class A: pass
+_x = 1
+_y = 1
+_z = 1
+class C: pass
+[out]
+class A: pass
+class C: pass
+
+
+-- More features:
+--   replace module if exists
 --   include from import for stuff in __all__
 --   mark as comments stuff in __all__ but no definition seen
 --   mark as comments stuff not in __all_ but with public names (at least classes)
+--   packages (create directory, find __init__, etc.)
+
 --   namedtuple
 --   do not export deleted names
---   empty line before/after non-empty classes
---   packages
 --   ? general base classes

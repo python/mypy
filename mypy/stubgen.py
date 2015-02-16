@@ -10,13 +10,18 @@ from mypy.nodes import (
 )
 
 
-def generate_stub(path, output_dir):
+def generate_stub(path, output_dir, _all_=None):
     source = open(path).read()
     ast = mypy.parse.parse(source)
-    gen = StubGenerator()
+    gen = StubGenerator(_all_)
     ast.accept(gen)
     with open(os.path.join(output_dir, os.path.basename(path)), 'w') as file:
         file.write(''.join(gen.output()))
+
+
+def generate_stub_for_module(module, output_dir):
+    mod = __import__(module)
+    generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None))
 
 
 # What was generated previously.
@@ -28,7 +33,8 @@ VAR = 'VAR'
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
-    def __init__(self):
+    def __init__(self, _all_):
+        self._all_ = _all_
         self._output = []
         self._import_lines = []
         self._imports = []
@@ -47,7 +53,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add('\n')
         self_inits = find_self_initializers(o)
         for init in self_inits:
-            self.add_init(init)
+            init_code = self.get_init(init)
+            if init_code:
+                self.add(init_code)
         self.add("%sdef %s(" % (self._indent, o.name()))
         args = []
         for i, (arg, kind) in enumerate(zip(o.args, o.arg_kinds)):
@@ -133,10 +141,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         found = False
         for item in items:
             if isinstance(item, NameExpr):
-                if not sep and not self._indent and self._state not in (EMPTY, VAR):
-                    self.add('\n')
-                    sep = True
-                found = self.add_init(item.name) or found
+                init = self.get_init(item.name)
+                if init:
+                    found = True
+                    if not sep and not self._indent and self._state not in (EMPTY, VAR):
+                        init = '\n' + init
+                        sep = True
+                    self.add(init)
         if found:
             self._state = VAR
 
@@ -154,16 +165,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_import_all(self, o):
         self.add_import_line('from %s import *\n' % o.id)
 
-    def add_init(self, lvalue):
+    def get_init(self, lvalue):
         if lvalue in self._vars[-1]:
-            return False
+            return None
         if self.is_private_name(lvalue):
-            return False
+            return None
         self._vars[-1].append(lvalue)
-        self.add('%s%s = Undefined(Any)\n' % (self._indent, lvalue))
         self.add_import('Undefined')
         self.add_import('Any')
-        return True
+        return '%s%s = Undefined(Any)\n' % (self._indent, lvalue)
 
     def add(self, string):
         self._output.append(string)
@@ -186,6 +196,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return imports + ''.join(self._output)
 
     def is_private_name(self, name):
+        if self.is_top_level() and self._all_ and name not in self._all_:
+            return True
         return name.startswith('_') and (not name.endswith('__')
                                          or name in ('__all__',
                                                      '__author__',
@@ -194,6 +206,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__repr__',
                                                      '__getstate__',
                                                      '__setstate__'))
+
+    def is_top_level(self):
+        return self._indent == ''
 
 
 def find_self_initializers(fdef):
@@ -220,5 +235,5 @@ def find_classes(cdef):
 
 if __name__ == '__main__':
     import sys
-    for path in sys.argv[1:]:
-        generate_stub(path, '.')
+    for module in sys.argv[1:]:
+        generate_stub_for_module(module, '.')
