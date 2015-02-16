@@ -262,6 +262,16 @@ class B(ValueError): pass
 class A(Exception): pass
 class B(ValueError): pass
 
+[case testOmitSomeSpecialMethos]
+class A:
+    def __str__(self): pass
+    def __repr__(self): pass
+    def __eq__(self): pass
+    def __getstate__(self): pass
+    def __setstate__(self, state): pass
+[out]
+class A:
+    def __eq__(self): pass
 
 -- More test cases:
 --   only include stuff in __all__
