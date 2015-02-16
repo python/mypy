@@ -98,6 +98,21 @@ class C:
     x = Undefined(Any)
     def __init__(self): pass
 
+[case testSelfAndClassBodyAssignment]
+x = 1
+class C:
+    x = 1
+    def __init__(self):
+        self.x = 1
+        self.x = 1
+[out]
+from typing import Undefined, Any
+
+x = Undefined(Any)
+class C:
+    x = Undefined(Any)
+    def __init__(self): pass
+
 -- More test cases:
 --   multiple variable assignment
 --   kw-only args

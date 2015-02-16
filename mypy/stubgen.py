@@ -24,6 +24,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._output = []
         self._imports = []
         self._indent = ''
+        self._vars = [[]]
 
     def visit_func_def(self, o):
         self_inits = find_self_initializers(o)
@@ -65,8 +66,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_class_def(self, o):
         self.add('class %s:\n' % o.name)
         self._indent += '    '
+        self._vars.append([])
         super().visit_class_def(o)
         self._indent = self._indent[:-4]
+        self._vars.pop()
 
     def visit_assignment_stmt(self, o):
         lvalue = o.lvalues[0]
@@ -74,6 +77,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add_init(lvalue.name)
 
     def add_init(self, lvalue):
+        if lvalue in self._vars[-1]:
+            return
+        self._vars[-1].append(lvalue)
         self.add('%s%s = Undefined(Any)\n' % (self._indent, lvalue))
         self.add_import('Undefined')
         self.add_import('Any')
