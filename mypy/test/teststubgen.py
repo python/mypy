@@ -34,9 +34,9 @@ def test_stubgen(testcase):
             file.close()
             try:
                 if testcase.name.endswith('_import'):
-                    generate_stub_for_module('prog', out_dir)
+                    generate_stub_for_module('prog', out_dir, quiet=True)
                 else:
-                    generate_stub(path, out_dir)
+                    generate_stub(path, out_dir, quiet=True)
                 a = load_output(out_dir)
             except CompileError as e:
                 a = e.messages

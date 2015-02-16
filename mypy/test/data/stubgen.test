@@ -311,9 +311,22 @@ class C: pass
 class A: pass
 class C: pass
 
+[case testIncludeFromImportIfInAll_import]
+from re import match, search, sub
+__all__ = ['match', 'sub', 'x']
+x = 1
+[out]
+from typing import Undefined, Any
+from re import match, sub
+
+match = match
+sub = sub
+
+x = Undefined(Any)
+
 
 -- More features:
---   include from import for stuff in __all__
+--   relative imports
 --   mark as comments stuff in __all__ but no definition seen
 --   mark as comments stuff not in __all_ but with public names (at least classes)
 --   packages (create directory, find __init__, etc.)

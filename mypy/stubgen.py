@@ -1,5 +1,6 @@
 """Generator of dynamically typed stubs for arbitrary modules."""
 
+import imp
 import os.path
 
 import mypy.parse
@@ -10,7 +11,7 @@ from mypy.nodes import (
 )
 
 
-def generate_stub(path, output_dir, _all_=None):
+def generate_stub(path, output_dir, _all_=None, quiet=False):
     source = open(path).read()
     ast = mypy.parse.parse(source)
     gen = StubGenerator(_all_)
@@ -18,14 +19,16 @@ def generate_stub(path, output_dir, _all_=None):
     target = os.path.join(output_dir, os.path.basename(path))
     with open(target, 'w') as file:
         file.write(''.join(gen.output()))
-    print('Created %s' % target)
+    if not quiet:
+        print('Created %s' % target)
 
 
-def generate_stub_for_module(module, output_dir):
+def generate_stub_for_module(module, output_dir, quiet=False):
     mod = __import__(module)
+    imp.reload(mod)
     for attr in module.split('.')[1:]:
         mod = getattr(mod, attr)
-    generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None))
+    generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None), quiet)
 
 
 # What was generated previously.
@@ -34,6 +37,7 @@ FUNC = 'FUNC'
 CLASS = 'CLASS'
 EMPTY_CLASS = 'EMPTY_CLASS'
 VAR = 'VAR'
+IMPORT_ALIAS = 'IMPORT_ALIAS'
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
@@ -168,6 +172,18 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_import_all(self, o):
         self.add_import_line('from %s import *\n' % o.id)
+
+    def visit_import_from(self, o):
+        if self._all_:
+            # Include import froms that import names defined in __all__.
+            names = [name for name, alias in o.names if name in self._all_ and name == alias]
+            if names:
+                self.add_import_line('from %s import %s\n' % (o.id, ', '.join(names)))
+                if self._state not in (EMPTY, IMPORT_ALIAS):
+                    self.add('\n')
+                for name in names:
+                    self.add('%s = %s\n' % (name, name))
+                self._state = IMPORT_ALIAS
 
     def get_init(self, lvalue):
         if lvalue in self._vars[-1]:
