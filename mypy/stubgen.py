@@ -6,7 +6,7 @@ import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ARG_STAR, ARG_STAR2
+    ListExpr, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 
 
@@ -42,6 +42,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             name = arg.name()
             init = o.init[i]
             if init:
+                if kind == ARG_NAMED and '*' not in args:
+                    args.append('*')
                 arg = '%s=' % name
                 init = init.rvalue
                 if isinstance(init, IntExpr):

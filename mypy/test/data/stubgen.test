@@ -175,8 +175,14 @@ from typing import Undefined, Any
 x = Undefined(Any)
 y = Undefined(Any)
 
+[case testKeywordOnlyArg]
+def f(x, *, y=1): pass
+def g(x, *, y=1, z=2): pass
+[out]
+def f(x, *, y=1): pass
+def g(x, *, y=1, z=2): pass
+
 -- More test cases:
---   kw-only args
 --   property
 --   only include stuff in __all__
 --   namedtuple
