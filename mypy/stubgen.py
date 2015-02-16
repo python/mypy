@@ -128,6 +128,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = FUNC
 
     def visit_decorator(self, o):
+        if self.is_private_name(o.func.name()):
+            return
         for decorator in o.decorators:
             if isinstance(decorator, NameExpr) and decorator.name in ('property',
                                                                       'staticmethod',

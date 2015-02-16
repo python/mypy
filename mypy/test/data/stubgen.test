@@ -369,9 +369,24 @@ class A:
 [out]
 class A: pass
 
+[case testSkipPrivateProperty]
+class A:
+    @property
+    def _foo(self): pass
+[out]
+class A: pass
+
+[case testSkipPrivateStaticAndClassMethod]
+class A:
+    @staticmethod
+    def _foo(): pass
+    @classmethod
+    def _bar(cls): pass
+[out]
+class A: pass
+
 
 -- More features/fixes:
---   skip properties with _ prefix
 --   namedtuple
 --   do not export deleted names
 --   ? general base classes
