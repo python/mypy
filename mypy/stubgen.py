@@ -1,4 +1,14 @@
-"""Generator of dynamically typed stubs for arbitrary modules."""
+"""Generator of dynamically typed stubs for arbitrary modules.
+
+Usage:
+
+  $ mkdir out
+  $ py -m mypy.stubgen urllib.parse
+
+  => Generate out/urllib/parse.py.
+
+Note: You should verify the generated stubs manually.
+"""
 
 import imp
 import os.path
