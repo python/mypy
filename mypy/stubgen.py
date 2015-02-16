@@ -1,12 +1,4 @@
-"""Automatically generate a dynamically typed stub for an arbitrary module.
-
-For example, to generate a stub for module 'acme':
-
-  $ python3 stubgen.py acme
-
-This would generate acme.py (or directory 'acme' if acme is a package) in the
-current directory.
-"""
+"""Generator of dynamically typed stubs for arbitrary modules."""
 
 import os.path
 
