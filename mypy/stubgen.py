@@ -22,9 +22,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(self):
         self._output = []
         self._imports = []
+        self._indent = ''
 
     def visit_func_def(self, o):
-        self.add("def %s(" % o.name())
+        self.add("%sdef %s(" % (self._indent, o.name()))
         args = []
         for i, (arg, kind) in enumerate(zip(o.args, o.arg_kinds)):
             name = arg.name()
@@ -57,8 +58,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("): pass\n")
 
-    def visit_int_expr(self, o):
-        self.add(str(o.value))
+    def visit_class_def(self, o):
+        self.add('class %s:\n' % o.name)
+        self._indent += '    '
+        super().visit_class_def(o)
+        self._indent = self._indent[:-4]
 
     def add(self, string):
         self._output.append(string)

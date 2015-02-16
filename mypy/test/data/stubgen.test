@@ -60,10 +60,18 @@ def f(x, **y): pass
 [out]
 def f(x, **y): pass
 
+[case testClass]
+class A:
+    def f(self, x):
+        x = 1
+def g(): pass
+[out]
+class A:
+    def f(self, x): pass
+def g(): pass
 
 -- More test cases:
 --   variables
---   classes
 --   self.x initialization
 --   multiple variable assignment
 --   kw-only args
@@ -71,3 +79,4 @@ def f(x, **y): pass
 --   skip _ functions/variables
 --   only include stuff in __all__
 --   packages
+--   ? base classes
