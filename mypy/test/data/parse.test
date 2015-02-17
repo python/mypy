@@ -2969,3 +2969,24 @@ MypyFile:1(
     MemberExpr:3(
       Ellipsis
       __class__)))
+
+[case testFunctionWithManyKindsOfArgs]
+def f(x, *args, *, y=None, **kw): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    MaxPos(1)
+    Args(
+      Var(x)
+      Var(y))
+    Init(
+      AssignmentStmt:1(
+        NameExpr(y)
+        NameExpr(None)))
+    VarArg(
+      Var(args))
+    DictVarArg(
+      Var(kw))
+    Block:1(
+      PassStmt:1())))

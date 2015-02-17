@@ -98,13 +98,6 @@ f(*x, y)
 [out]
 file, line 1: Parse error before "y"
 
-[case testInvalidBareAsteriskAndVarArgs1]
-def f(*x: A, *, y: B = 1) -> None: pass
-[out]
-file: In function "f":
-file, line 1: Parse error before *
-file, line 1: Parse error before end of line
-
 [case testInvalidBareAsteriskAndVarArgs2]
 def f(*x: A, *) -> None: pass
 [out]

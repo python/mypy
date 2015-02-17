@@ -334,7 +334,7 @@ class MessageBuilder:
         self.fail('{} not callable'.format(self.format(typ)), context)
         return AnyType()
 
-    def incompatible_argument(self, n: int, callee: CallableType, arg_type: Type,
+    def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
                               context: Context) -> None:
         """Report an error about an incompatible argument type.
 
@@ -394,7 +394,7 @@ class MessageBuilder:
                 self.format_simple(arg_type))
         else:
             try:
-                expected_type = callee.arg_types[n - 1]
+                expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
