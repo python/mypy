@@ -19,6 +19,9 @@ def get_text_content(msg, errors=''): pass
 def get_non_text_content(msg): pass
 def get_message_content(msg): pass
 def get_and_fixup_unknown_message_content(msg): pass
-def set_text_content(msg, string, subtype='', charset='', cte=None, disposition=None, filename=None, cid=None, params=None, headers=None): pass
-def set_message_content(msg, message, subtype='', cte=None, disposition=None, filename=None, cid=None, params=None, headers=None): pass
-def set_bytes_content(msg, data, maintype, subtype, cte='', disposition=None, filename=None, cid=None, params=None, headers=None): pass
+def set_text_content(msg, string, subtype='', charset='', cte=None, disposition=None,
+                     filename=None, cid=None, params=None, headers=None): pass
+def set_message_content(msg, message, subtype='', cte=None, disposition=None, filename=None,
+                        cid=None, params=None, headers=None): pass
+def set_bytes_content(msg, data, maintype, subtype, cte='', disposition=None, filename=None,
+                      cid=None, params=None, headers=None): pass

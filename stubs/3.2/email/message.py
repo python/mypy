@@ -42,7 +42,8 @@ class Message:
     def set_default_type(self, ctype): pass
     def get_params(self, failobj=None, header='', unquote=True): pass
     def get_param(self, param, failobj=None, header='', unquote=True): pass
-    def set_param(self, param, value, header='', requote=True, charset=None, language='', replace=False): pass
+    def set_param(self, param, value, header='', requote=True, charset=None, language='',
+                  replace=False): pass
     def del_param(self, param, header='', requote=True): pass
     def set_type(self, type, header='', requote=True): pass
     def get_filename(self, failobj=None): pass
