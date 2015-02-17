@@ -1,6 +1,8 @@
 import glob
 import os.path
+import random
 import shutil
+import time
 
 import typing
 
@@ -25,7 +27,8 @@ class StubgenSuite(Suite):
 
 def test_stubgen(testcase):
     source = '\n'.join(testcase.input)
-    path = 'prog.py'
+    name = 'prog%d' % random.randrange(1000 * 1000 * 1000)
+    path = '%s.py' % name
     out_dir = '_out'
     os.mkdir(out_dir)
     try:
@@ -34,7 +37,9 @@ def test_stubgen(testcase):
             file.close()
             try:
                 if testcase.name.endswith('_import'):
-                    generate_stub_for_module('prog', out_dir, quiet=True)
+                    # For some reason without this sleep fixes random test failures.
+                    time.sleep(0.01)
+                    generate_stub_for_module(name, out_dir, quiet=True)
                 else:
                     generate_stub(path, out_dir, quiet=True)
                 a = load_output(out_dir)
