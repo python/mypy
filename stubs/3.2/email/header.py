@@ -6,7 +6,8 @@ def decode_header(header): pass
 def make_header(decoded_seq, maxlinelen=None, header_name=None, continuation_ws=''): pass
 
 class Header:
-    def __init__(self, s=None, charset=None, maxlinelen=None, header_name=None, continuation_ws='', errors=''): pass
+    def __init__(self, s=None, charset=None, maxlinelen=None, header_name=None,
+                 continuation_ws='', errors=''): pass
     def __eq__(self, other): pass
     def __ne__(self, other): pass
     def append(self, s, charset=None, errors=''): pass
@@ -22,7 +23,6 @@ class _Accumulator(list):
     def __init__(self, initial_size=0): pass
     def push(self, fws, string): pass
     def pop_from(self, i=0): pass
-    def pop(self): pass
     def __len__(self): pass
     def reset(self, startval=None): pass
     def is_onlyws(self): pass
