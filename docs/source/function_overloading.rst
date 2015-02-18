@@ -21,7 +21,7 @@ yet) using the ``@overload`` decorator. For example, we can define an
    def abs(n: float) -> float: pass
 
 Note that we can't use ``Union[int, float]`` as the argument type,
-since this wouldn't allow us to express that the the return
+since this wouldn't allow us to express that the return
 type depends on the argument type.
 
 Now if we import ``abs`` as defined in the above library stub, we can

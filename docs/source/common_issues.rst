@@ -142,7 +142,7 @@ in Java):
 Mypy can't infer the type of ``o`` after the ``isinstance()`` check
 because of the ``and`` operator (this limitation will likely be lifted
 in the future).  We can write the above code without a cast by using a
-nested if statemet:
+nested if statement:
 
 .. code-block:: python
 
@@ -162,6 +162,6 @@ implementing a piece of functionality.
 Type inference in mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error
 messages. More powerful type inference strategies often have complex
-and difficult-to-prefict failure modes and could result in very
+and difficult-to-predict failure modes and could result in very
 confusing error messages. The tradeoff is that you as a programmer
 sometimes have to give the type checker a little help.

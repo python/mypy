@@ -6,7 +6,7 @@ Why have both dynamic and static typing?
 
 Dynamic typing can be flexible, powerful, convenient and easy. But
 it's not always the best approach; there are good reasons why many
-developers choose to use staticaly typed languages.
+developers choose to use statically typed languages.
 
 Here are some potential benefits of mypy-style static typing:
 
@@ -80,7 +80,7 @@ Will static typing make my programs run faster?
 Mypy only does static type checking and it does not improve
 performance. It has a minimal performance impact. In the future, there
 could be other tools that can compile statically typed mypy code to C
-modules or to efficient JVM bytecode, for example, but this outside
+modules or to efficient JVM bytecode, for example, but this is outside
 the scope of the mypy project. It may also be possible to modify
 existing Python VMs to take advantage of static type information, but
 whether this is feasible is still unknown. This is nontrivial since
