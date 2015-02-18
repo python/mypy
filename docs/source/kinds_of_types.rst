@@ -122,7 +122,7 @@ Class name forward references
 *****************************
 
 Python does not allow references to a class object before the class is
-defined. Thus this code is does not work as expected:
+defined. Thus this code does not work as expected:
 
 .. code-block:: python
 
@@ -147,7 +147,7 @@ Of course, instead of using a string literal type, you could move the
 function definition after the class definition. This is not always
 desirable or even possible, though.
 
-Any type can be entered as a string literal, and youn can combine
+Any type can be entered as a string literal, and you can combine
 string-literal types with non-string-literal types freely:
 
 .. code-block:: python
