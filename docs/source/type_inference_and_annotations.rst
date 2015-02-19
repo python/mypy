@@ -127,7 +127,7 @@ type separately:
    n, s = Undefined(int), Undefined(str)  # Declare an integer and a string
    i, found = 0, False # type: int, bool
 
-When using the latter form, you can optinally use parentheses around
+When using the latter form, you can optionally use parentheses around
 the types, assignment targets and assigned expression:
 
 .. code-block:: python

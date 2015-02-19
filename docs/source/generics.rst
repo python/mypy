@@ -87,7 +87,7 @@ impact:
 
 The savings are rarely significant, but it could make a difference in
 a performance-critical loop or function. Function annotations, on the
-other hand, are only evaluated during the defintion of the function,
+other hand, are only evaluated during the definition of the function,
 not during every call. Constructing type objects in function
 signatures rarely has any noticeable performance impact.
 
@@ -108,7 +108,7 @@ Generic type variables can also be used to define generic functions:
        return seq[0]
 
 As with generic classes, the type variable can be replaced with any
-type. That means first can we used with any sequence type, and the
+type. That means ``first`` can be used with any sequence type, and the
 return type is derived from the sequence item type. For example:
 
 .. code-block:: python
