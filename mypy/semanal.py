@@ -1310,7 +1310,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_with_stmt(self, s: WithStmt) -> None:
         for e in s.expr:
             e.accept(self)
-        for n in s.name:
+        for n in s.target:
             if n:
                 self.analyse_lvalue(n)
         self.visit_block(s.body)
@@ -1876,7 +1876,7 @@ class FirstPass(NodeVisitor):
         self.sem.analyse_lvalue(s.index, add_global=True)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
-        for n in s.name:
+        for n in s.target:
             if n:
                 self.sem.analyse_lvalue(n, add_global=True)
 

@@ -259,7 +259,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_with_stmt(self, node: WithStmt) -> Node:
         return WithStmt(self.nodes(node.expr),
-                        self.optional_names(node.name),
+                        self.optional_nodes(node.target),
                         self.block(node.body))
 
     def visit_print_stmt(self, node: PrintStmt) -> Node:

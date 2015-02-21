@@ -701,13 +701,13 @@ class TryStmt(Node):
 
 class WithStmt(Node):
     expr = Undefined(List[Node])
-    name = Undefined(List['NameExpr'])
+    target = Undefined(List[Node])
     body = Undefined(Block)
 
-    def __init__(self, expr: List[Node], name: List['NameExpr'],
+    def __init__(self, expr: List[Node], target: List[Node],
                  body: Block) -> None:
         self.expr = expr
-        self.name = name
+        self.target = target
         self.body = body
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

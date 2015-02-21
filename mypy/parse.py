@@ -967,23 +967,22 @@ class Parser:
 
     def parse_with_stmt(self) -> WithStmt:
         self.expect('with')
-        expr = List[Node]()
-        name = List[NameExpr]()
+        exprs = List[Node]()
+        targets = List[Node]()
         while True:
-            e = self.parse_expression(precedence[','])
+            expr = self.parse_expression(precedence[','])
             if self.current_str() == 'as':
                 self.expect('as')
-                n = self.parse_name_expr()
+                target = self.parse_expression(precedence[','])
             else:
-                n = None
-            expr.append(e)
-            name.append(n)
+                target = None
+            exprs.append(expr)
+            targets.append(target)
             if self.current_str() != ',':
                 break
             self.expect(',')
         body, _ = self.parse_block()
-        node = WithStmt(expr, name, body)
-        return node
+        return WithStmt(exprs, targets, body)
 
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')

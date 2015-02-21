@@ -1630,7 +1630,7 @@ MypyFile:1(
         NameExpr(open)
         Args(
           StrExpr(foo))))
-    Name(
+    Target(
       NameExpr(f))
     Block:1(
       PassStmt:2())))
@@ -2154,11 +2154,11 @@ MypyFile:1(
   WithStmt:1(
     Expr(
       NameExpr(x))
-    Name(
+    Target(
       NameExpr(y))
     Expr(
       NameExpr(a))
-    Name(
+    Target(
       NameExpr(b))
     Block:1(
       PassStmt:2()))
@@ -3117,3 +3117,17 @@ MypyFile:1(
           IntExpr(2))
         NameExpr(x)
         NameExpr(y)))))
+
+[case testComplexWithLvalue]
+with x as y.z: pass
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(x))
+    Target(
+      MemberExpr:1(
+        NameExpr(y)
+        z))
+    Block:1(
+      PassStmt:1())))

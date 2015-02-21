@@ -139,8 +139,8 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
     def visit_with_stmt(self, o: WithStmt) -> T:
         for i in range(len(o.expr)):
             o.expr[i].accept(self)
-            if o.name[i] is not None:
-                o.name[i].accept(self)
+            if o.target[i] is not None:
+                o.target[i].accept(self)
         o.body.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> T:

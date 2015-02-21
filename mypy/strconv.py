@@ -266,8 +266,8 @@ class StrConv(NodeVisitor[str]):
         a = []
         for i in range(len(o.expr)):
             a.append(('Expr', [o.expr[i]]))
-            if o.name[i]:
-                a.append(('Name', [o.name[i]]))
+            if o.target[i]:
+                a.append(('Target', [o.target[i]]))
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o):
