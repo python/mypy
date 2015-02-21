@@ -1306,3 +1306,8 @@ x = Undefined(Function[[], None])
 [out]
 main, line 2: Name 'Function' is not defined
 main, line 2: (Did you mean 'typing.Callable'?)
+
+[case testInvalidWithTarget]
+def f(): pass
+with f() as 1: pass  # E: Invalid assignment target
+[out]
