@@ -350,7 +350,7 @@ def f():
     return yield from h()
 [out]
 file: In function "f":
-file, line 2: Parse error before end of line
+file, line 2: Parse error before "yield"
 
 [case testImportDotModule]
 import .x
@@ -376,3 +376,18 @@ file, line 1: Parse error before end of line
 file, line 1: Parse error before numeric literal
 file, line 2: Parse error before "_"
 file, line 3: Parse error before "a"
+
+[case testBlockStatementInSingleLineIf]
+if 1: if 2: pass
+[out]
+file, line 1: Parse error before "if"
+
+[case testBlockStatementInSingleLineIf2]
+if 1: while 2: pass
+[out]
+file, line 1: Parse error before "while"
+
+[case testBlockStatementInSingleLineIf3]
+if 1: for x in y: pass
+[out]
+file, line 1: Parse error before "for"

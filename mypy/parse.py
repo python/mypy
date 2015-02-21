@@ -155,7 +155,6 @@ class Parser:
             if self.current_str() != ',':
                 break
             self.expect(',')
-        self.expect_break()
         node = Import(ids)
         self.imports.append(node)
         return node
@@ -211,7 +210,6 @@ class Parser:
                 self.expect(')')
             if node is None:
                 node = ImportFrom(name, relative, targets)
-        self.expect_break()
         self.imports.append(node)
         if name == '__future__':
             self.future_options.extend(target[0] for target in targets)
@@ -247,7 +245,9 @@ class Parser:
         defs = List[Node]()
         while not self.eof():
             try:
-                defn = self.parse_statement()
+                defn, is_simple = self.parse_statement()
+                if is_simple:
+                    self.expect_break()
                 if defn is not None:
                     if not self.try_combine_overloads(defn, defs):
                         defs.append(defn)
@@ -581,27 +581,42 @@ class Parser:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
-            node = Block([self.parse_statement()]).set_line(colon)
-            return cast(Block, node), None
+            nodes = [] # type: List[Node]
+            while True:
+                ind = self.ind
+                stmt, is_simple = self.parse_statement()
+                if not is_simple:
+                    self.parse_error_at(self.tok[ind])
+                    break
+                nodes.append(stmt)
+                brk = self.expect_break()
+                if brk.string != ';':
+                    break
+            node = Block(nodes)
+            node.set_line(colon)
+            return node, None
         else:
             # Indented block.
-            br = self.expect_break()
-            type = self.parse_type_comment(br, signature=True)
+            brk = self.expect_break()
+            type = self.parse_type_comment(brk, signature=True)
             self.expect_indent()
-            stmt = []  # type: List[Node]
+            stmt_list = []  # type: List[Node]
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:
-                    s = self.parse_statement()
-                    if s is not None:
-                        if not self.try_combine_overloads(s, stmt):
-                            stmt.append(s)
+                    stmt, is_simple = self.parse_statement()
+                    if is_simple:
+                        self.expect_break()
+                    if stmt is not None:
+                        if not self.try_combine_overloads(stmt, stmt_list):
+                            stmt_list.append(stmt)
                 except ParseError:
                     pass
             if isinstance(self.current(), Dedent):
                 self.skip()
-            node = Block(stmt).set_line(colon)
-            return cast(Block, node), type
+            node = Block(stmt_list)
+            node.set_line(colon)
+            return node, type
 
     def try_combine_overloads(self, s: Node, stmt: List[Node]) -> bool:
         if isinstance(s, Decorator) and stmt:
@@ -617,22 +632,28 @@ class Parser:
                 return True
         return False
 
-    def parse_statement(self) -> Node:
+    def parse_statement(self) -> Tuple[Node, bool]:
         stmt = Undefined  # type: Node
         t = self.current()
         ts = self.current_str()
+        is_simple = True  # Is this a non-block statement?
         if ts == 'if':
             stmt = self.parse_if_stmt()
+            is_simple = False
         elif ts == 'def':
             stmt = self.parse_function()
+            is_simple = False
         elif ts == 'while':
             stmt = self.parse_while_stmt()
+            is_simple = False
         elif ts == 'return':
             stmt = self.parse_return_stmt()
         elif ts == 'for':
             stmt = self.parse_for_stmt()
+            is_simple = False
         elif ts == 'try':
             stmt = self.parse_try_stmt()
+            is_simple = False
         elif ts == 'break':
             stmt = self.parse_break_stmt()
         elif ts == 'continue':
@@ -647,6 +668,7 @@ class Parser:
             stmt = self.parse_import_from()
         elif ts == 'class':
             stmt = self.parse_class_def()
+            is_simple = False
         elif ts == 'global':
             stmt = self.parse_global_decl()
         elif ts == 'nonlocal' and self.pyversion >= 3:
@@ -659,8 +681,10 @@ class Parser:
             stmt = self.parse_del_stmt()
         elif ts == 'with':
             stmt = self.parse_with_stmt()
+            is_simple = False
         elif ts == '@':
             stmt = self.parse_decorated_function_or_class()
+            is_simple = False
         elif ts == 'print' and (self.pyversion == 2 and
                                 'print_function' not in self.future_options):
             stmt = self.parse_print_stmt()
@@ -668,54 +692,50 @@ class Parser:
             stmt = self.parse_expression_or_assignment()
         if stmt is not None:
             stmt.set_line(t)
-        return stmt
+        return stmt, is_simple
 
     def parse_expression_or_assignment(self) -> Node:
-        e = self.parse_expression(star_expr_allowed=True)
+        expr = self.parse_expression(star_expr_allowed=True)
         if self.current_str() == '=':
-            return self.parse_assignment(e)
+            return self.parse_assignment(expr)
         elif self.current_str() in op_assign:
             # Operator assignment statement.
             op = self.current_str()[:-1]
             self.skip()
-            r = self.parse_expression()
-            self.expect_break()
-            node = OperatorAssignmentStmt(op, e, r)
-            return node
+            rvalue = self.parse_expression()
+            return OperatorAssignmentStmt(op, expr, rvalue)
         else:
             # Expression statement.
-            self.expect_break()
-            expr = ExpressionStmt(e)
-            return expr
+            return ExpressionStmt(expr)
 
-    def parse_assignment(self, lv: Any) -> Node:
+    def parse_assignment(self, lvalue: Any) -> Node:
         """Parse an assignment statement.
 
-        Assume that lvalue has been parsed already, and the current token is =.
+        Assume that lvalue has been parsed already, and the current token is '='.
         Also parse an optional '# type:' comment.
         """
-        assigns = [self.expect('=')]
-        lvalues = [lv]
-
-        e = self.parse_expression(star_expr_allowed=True)
+        self.expect('=')
+        lvalues = [lvalue]
+        expr = self.parse_expression(star_expr_allowed=True)
         while self.current_str() == '=':
-            lvalues.append(e)
-            assigns.append(self.skip())
-            e = self.parse_expression(star_expr_allowed=True)
-        br = self.expect_break()
-
-        type = self.parse_type_comment(br, signature=False)
-        assignment = AssignmentStmt(lvalues, e, type)
-        return assignment
+            self.skip()
+            lvalues.append(expr)
+            expr = self.parse_expression(star_expr_allowed=True)
+        cur = self.current()
+        if isinstance(cur, Break):
+            type = self.parse_type_comment(cur, signature=False)
+        else:
+            type = None
+        return AssignmentStmt(lvalues, expr, type)
 
     def parse_return_stmt(self) -> ReturnStmt:
         self.expect('return')
         expr = None  # type: Node
-        if not isinstance(self.current(), Break):
+        current = self.current()
+        if current.string == 'yield':
+            self.parse_error()
+        if not isinstance(current, Break):
             expr = self.parse_expression()
-            if isinstance(expr, YieldFromExpr): # "yield from" expressions can't be returned.
-                return None
-        self.expect_break()
         node = ReturnStmt(expr)
         return node
 
@@ -728,14 +748,12 @@ class Parser:
             if self.current_str() == 'from':
                 self.expect('from')
                 from_expr = self.parse_expression()
-        self.expect_break()
         node = RaiseStmt(expr, from_expr)
         return node
 
     def parse_assert_stmt(self) -> AssertStmt:
         self.expect('assert')
         expr = self.parse_expression()
-        self.expect_break()
         node = AssertStmt(expr)
         return node
 
@@ -748,12 +766,10 @@ class Parser:
                 self.expect("from")
                 expr = self.parse_expression()  # Here comes when yield from is not assigned
                 node_from = YieldFromStmt(expr)
-                self.expect_break()
                 return node_from  # return here, we've gotted the type
             else:
                 expr = self.parse_expression()
                 node = YieldStmt(expr)
-        self.expect_break()
         return node
 
     def parse_yield_from_expr(self) -> YieldFromExpr:
@@ -780,39 +796,33 @@ class Parser:
     def parse_del_stmt(self) -> DelStmt:
         self.expect('del')
         expr = self.parse_expression()
-        self.expect_break()
         node = DelStmt(expr)
         return node
 
     def parse_break_stmt(self) -> BreakStmt:
         self.expect('break')
-        self.expect_break()
         node = BreakStmt()
         return node
 
     def parse_continue_stmt(self) -> ContinueStmt:
         self.expect('continue')
-        self.expect_break()
         node = ContinueStmt()
         return node
 
     def parse_pass_stmt(self) -> PassStmt:
         self.expect('pass')
-        self.expect_break()
         node = PassStmt()
         return node
 
     def parse_global_decl(self) -> GlobalDecl:
         self.expect('global')
         names = self.parse_identifier_list()
-        self.expect_break()
         node = GlobalDecl(names)
         return node
 
     def parse_nonlocal_decl(self) -> NonlocalDecl:
         self.expect('nonlocal')
         names = self.parse_identifier_list()
-        self.expect_break()
         node = NonlocalDecl(names)
         return node
 
@@ -986,7 +996,6 @@ class Parser:
             else:
                 comma = False
                 break
-        self.expect_break()
         return PrintStmt(args, newline=not comma)
 
     # Parsing expressions
@@ -994,7 +1003,7 @@ class Parser:
     def parse_expression(self, prec: int = 0, star_expr_allowed: bool = False) -> Node:
         """Parse a subexpression within a specific precedence context."""
         expr = Undefined  # type: Node
-        t = self.current()  # Remember token for setting the line number.
+        current = self.current()  # Remember token for setting the line number.
 
         # Parse a "value" expression or unary operator expression and store
         # that in expr.
@@ -1014,24 +1023,24 @@ class Parser:
         elif s == '*' and star_expr_allowed:
             expr = self.parse_star_expr()
         else:
-            if isinstance(self.current(), Name):
+            if isinstance(current, Name):
                 # Name expression.
                 expr = self.parse_name_expr()
-            elif isinstance(self.current(), IntLit):
+            elif isinstance(current, IntLit):
                 expr = self.parse_int_expr()
-            elif isinstance(self.current(), StrLit):
+            elif isinstance(current, StrLit):
                 expr = self.parse_str_expr()
-            elif isinstance(self.current(), BytesLit):
+            elif isinstance(current, BytesLit):
                 expr = self.parse_bytes_literal()
-            elif isinstance(self.current(), UnicodeLit):
+            elif isinstance(current, UnicodeLit):
                 expr = self.parse_unicode_literal()
-            elif isinstance(self.current(), FloatLit):
+            elif isinstance(current, FloatLit):
                 expr = self.parse_float_expr()
-            elif isinstance(self.current(), ComplexLit):
+            elif isinstance(current, ComplexLit):
                 expr = self.parse_complex_expr()
-            elif isinstance(t, Keyword) and s == "yield":
+            elif isinstance(current, Keyword) and s == "yield":
                 expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
-            elif isinstance(t, EllipsisToken):
+            elif isinstance(current, EllipsisToken):
                 expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
@@ -1041,11 +1050,11 @@ class Parser:
         # simplifies recording the line number as not every node type needs to
         # deal with it separately.
         if expr.line < 0:
-            expr.set_line(t)
+            expr.set_line(current)
 
         # Parse operations that require a left argument (stored in expr).
         while True:
-            t = self.current()
+            current = self.current()
             s = self.current_str()
             if s == '(':
                 # Call expression.
@@ -1080,7 +1089,7 @@ class Parser:
                     break
             else:
                 # Binary operation or a special case.
-                if isinstance(self.current(), Op):
+                if isinstance(current, Op):
                     op = self.current_str()
                     op_prec = precedence[op]
                     if op == 'not':
@@ -1105,7 +1114,7 @@ class Parser:
             # simplifies recording the line number as not every node type
             # needs to deal with it separately.
             if expr.line < 0:
-                expr.set_line(t)
+                expr.set_line(current)
 
         return expr
 

@@ -2990,3 +2990,85 @@ MypyFile:1(
       Var(kw))
     Block:1(
       PassStmt:1())))
+
+[case testIfWithSemicolons]
+if 1: a; b
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      ExpressionStmt:1(
+        NameExpr(a))
+      ExpressionStmt:1(
+        NameExpr(b)))))
+
+[case testIfWithSemicolonsNested]
+while 2:
+    if 1: a; b
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(2)
+    Block:1(
+      IfStmt:2(
+        If(
+          IntExpr(1))
+        Then(
+          ExpressionStmt:2(
+            NameExpr(a))
+          ExpressionStmt:2(
+            NameExpr(b)))))))
+
+[case testIfElseWithSemicolons]
+if 1: global x; y = 1
+else: x = 1; return 3
+4
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      IntExpr(1))
+    Then(
+      GlobalDecl:1(
+        x)
+      AssignmentStmt:1(
+        NameExpr(y)
+        IntExpr(1)))
+    Else(
+      AssignmentStmt:2(
+        NameExpr(x)
+        IntExpr(1))
+      ReturnStmt:2(
+        IntExpr(3))))
+  ExpressionStmt:3(
+    IntExpr(4)))
+
+[case testIfElseWithSemicolonsNested]
+while 2:
+    if 1: global x; y = 1
+    else: x = 1; return 3
+4
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    IntExpr(2)
+    Block:1(
+      IfStmt:2(
+        If(
+          IntExpr(1))
+        Then(
+          GlobalDecl:2(
+            x)
+          AssignmentStmt:2(
+            NameExpr(y)
+            IntExpr(1)))
+        Else(
+          AssignmentStmt:3(
+            NameExpr(x)
+            IntExpr(1))
+          ReturnStmt:3(
+            IntExpr(3))))))
+  ExpressionStmt:4(
+    IntExpr(4)))
