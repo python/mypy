@@ -352,6 +352,37 @@ main, line 4: Argument 2 to "f" has incompatible type List[A]; expected "B"
 main, line 5: Argument 3 to "f" has incompatible type List[A]; expected "B"
 main, line 6: Argument 1 to "f" has incompatible type "Tuple[A, A, B]"; expected "B"
 
+[case testVarArgsAfterKeywordArgInCall1]
+def f(x: int, y: str) -> None: pass
+f(x=1, *[2])
+[builtins fixtures/list.py]
+[out]
+main, line 2: "f" gets multiple values for keyword argument "x"
+main, line 2: Argument 2 to "f" has incompatible type List[int]; expected "str"
+
+[case testVarArgsAfterKeywordArgInCall2]
+def f(x: int, y: str) -> None: pass
+f(y='x', *[1])
+[builtins fixtures/list.py]
+[out]
+main, line 2: "f" gets multiple values for keyword argument "y"
+main, line 2: Argument 2 to "f" has incompatible type List[int]; expected "str"
+
+[case testVarArgsAfterKeywordArgInCall3]
+def f(x: int, y: str) -> None: pass
+f(y='x', *(1,))
+[builtins fixtures/list.py]
+
+[case testVarArgsAfterKeywordArgInCall4]
+def f(x: int, *, y: str) -> None: pass
+f(y='x', *[1])
+[builtins fixtures/list.py]
+
+[case testVarArgsAfterKeywordArgInCall5]
+def f(x: int, *, y: str) -> None: pass
+f(y='x', *(1,))
+[builtins fixtures/list.py]
+
 
 -- Overloads + varargs
 -- -------------------

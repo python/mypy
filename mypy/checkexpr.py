@@ -1328,7 +1328,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
             argt = caller_arg_type(i)
             if isinstance(argt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
-                for k in range(len(argt.items)):
+                for _ in range(len(argt.items)):
                     if j < ncallee:
                         if callee_kinds[j] != nodes.ARG_STAR2:
                             map[j].append(i)

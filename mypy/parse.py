@@ -1356,8 +1356,7 @@ class Parser:
                 kinds.append(nodes.ARG_NAMED)
                 names.append(name.string)
                 named_args = True
-            elif (self.current_str() == '*' and not var_arg and not dict_arg
-                    and not named_args):
+            elif (self.current_str() == '*' and not var_arg and not dict_arg):
                 # *args
                 var_arg = True
                 self.expect('*')
