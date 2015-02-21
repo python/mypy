@@ -1207,7 +1207,7 @@ class Parser:
         items = List[Tuple[Node, Node]]()
         self.expect('{')
         while self.current_str() != '}' and not self.eol():
-            key = self.parse_expression(precedence['<if>'])
+            key = self.parse_expression(precedence['<for>'])
             if self.current_str() in [',', '}'] and items == []:
                 return self.parse_set_expr(key)
             elif self.current_str() == 'for' and items == []:

@@ -3086,3 +3086,34 @@ MypyFile:1(
         x
         IntExpr(1))
       VarArg)))
+
+[case testConditionalExpressionInSetComprehension]
+{ 1 if x else 2 for x in y }
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    SetComprehension:1(
+      GeneratorExpr:1(
+        ConditionalExpr:1(
+          Condition(
+            NameExpr(x))
+          IntExpr(1)
+          IntExpr(2))
+        NameExpr(x)
+        NameExpr(y)))))
+
+[case testConditionalExpressionInListComprehension]
+a = [ 1 if x else 2 for x in y ]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    ListComprehension:1(
+      GeneratorExpr:1(
+        ConditionalExpr:1(
+          Condition(
+            NameExpr(x))
+          IntExpr(1)
+          IntExpr(2))
+        NameExpr(x)
+        NameExpr(y)))))
