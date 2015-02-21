@@ -490,10 +490,6 @@ class Parser:
         if self.current_str() != ')' and self.current_str() != ':':
             while self.current_str() != ')':
                 if self.current_str() == '*' and self.peek().string == ',':
-                    if require_named:
-                        # can only have one bare star, must be before any
-                        # *args or **args
-                        self.parse_error()
                     self.expect('*')
                     require_named = True
                     bare_asterisk_before = len(args)

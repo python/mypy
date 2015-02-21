@@ -475,6 +475,21 @@ def x(): pass
 def f(): pass
 def g(): pass
 
+[case testNestedClass]
+class A:
+    class B:
+        x = 1
+        def f(self): pass
+    def g(self): pass
+[out]
+from typing import Undefined, Any
+
+class A:
+    class B:
+        x = Undefined(Any)
+        def f(self): pass
+    def g(self): pass
+
 
 -- More features/fixes:
 --   do not export deleted names

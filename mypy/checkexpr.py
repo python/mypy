@@ -517,7 +517,7 @@ class ExpressionChecker:
                                               tuple_counter)
                 self.check_arg(actual_type, arg_type,
                                callee.arg_types[i],
-                               actual + 1, callee, context, messages)
+                               actual + 1, i + 1, callee, context, messages)
 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
@@ -531,16 +531,16 @@ class ExpressionChecker:
                                                       tuple_counter)
                         self.check_arg(actual_type, arg_type,
                                        callee.arg_types[i],
-                                       actual + 1, callee, context, messages)
+                                       actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
-                  callee_type: Type, n: int, callee: CallableType,
+                  callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, Void):
             messages.does_not_return_value(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
-            messages.incompatible_argument(n, callee, original_caller_type,
+            messages.incompatible_argument(n, m, callee, original_caller_type,
                                            context)
 
     def overload_call_target(self, arg_types: List[Type], is_var_arg: bool,
