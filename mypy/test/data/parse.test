@@ -3072,3 +3072,17 @@ MypyFile:1(
             IntExpr(3))))))
   ExpressionStmt:4(
     IntExpr(4)))
+
+[case testKeywordArgumentAfterStarArgumentInCall]
+f(x=1, *y)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        NameExpr(y))
+      KwArgs(
+        x
+        IntExpr(1))
+      VarArg)))
