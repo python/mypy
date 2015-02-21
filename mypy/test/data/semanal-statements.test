@@ -630,7 +630,7 @@ MypyFile:1(
   WithStmt:1(
     Expr(
       NameExpr(object [builtins.object]))
-    Name(
+    Target(
       NameExpr(x* [__main__.x]))
     Block:1(
       ExpressionStmt:2(
@@ -648,7 +648,7 @@ MypyFile:1(
       WithStmt:2(
         Expr(
           NameExpr(f [__main__.f]))
-        Name(
+        Target(
           NameExpr(x* [l]))
         Block:2(
           ExpressionStmt:3(
@@ -671,11 +671,11 @@ MypyFile:1(
   WithStmt:3(
     Expr(
       NameExpr(object [builtins.object]))
-    Name(
+    Target(
       NameExpr(a* [__main__.a]))
     Expr(
       NameExpr(object [builtins.object]))
-    Name(
+    Target(
       NameExpr(b* [__main__.b]))
     Block:3(
       PassStmt:4())))

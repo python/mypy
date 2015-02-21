@@ -1638,12 +1638,12 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_with_stmt(self, s: WithStmt) -> Type:
         echk = self.expr_checker
-        for expr, name in zip(s.expr, s.name):
+        for expr, target in zip(s.expr, s.target):
             ctx = self.accept(expr)
             enter = echk.analyse_external_member_access('__enter__', ctx, expr)
             obj = echk.check_call(enter, [], [], expr)[0]
-            if name:
-                self.check_assignment(name, self.temp_node(obj, expr))
+            if target:
+                self.check_assignment(target, self.temp_node(obj, expr))
             exit = echk.analyse_external_member_access('__exit__', ctx, expr)
             arg = self.temp_node(AnyType(), expr)
             echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
