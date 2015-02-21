@@ -1684,5 +1684,5 @@ if __name__ == '__main__':
         print(tree)
     except CompileError as e:
         for msg in e.messages:
-            print(msg)
+            sys.stderr.write('%s\n' % msg)
         sys.exit(1)
