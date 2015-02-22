@@ -433,3 +433,14 @@ file, line 1: Invalid numeric literal
 # coding: uft-8
 [out]
 file, line 2: Unknown encoding 'uft-8'
+
+[case testInvalidEncoding2]
+# coding=Uft.8
+[out]
+file, line 1: Unknown encoding 'Uft.8'
+
+[case testInvalidEncoding2]
+#!/usr/bin python
+# vim: set fileencoding=uft8 :
+[out]
+file, line 2: Unknown encoding 'uft8'
