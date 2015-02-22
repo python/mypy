@@ -199,10 +199,6 @@ punctuators = [re.compile('[=,()@]|(->)'),
                re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
 
 
-# Source file encodings
-DEFAULT_ENCODING = '<default>'
-
-
 # Map single-character string escape sequences to corresponding characters.
 escape_map = {'a': '\x07',
               'b': '\x08',
@@ -277,7 +273,7 @@ class Lexer:
     s = ''     # The string being analyzed
     line = 0   # Current line number
     pre_whitespace = ''     # Whitespace and comments before the next token
-    enc = DEFAULT_ENCODING  # Encoding TODO implement properly
+    enc = ''                # Encoding
 
     # Generated tokens
     tok = Undefined(List[Token])
@@ -387,7 +383,8 @@ class Lexer:
             line = 2 if result.group(1) else 1
             return result.group(3).decode('ascii'), line
         else:
-            return 'utf8', -1
+            default_encoding = 'utf8' if self.pyversion >= 3 else 'ascii'
+            return default_encoding, -1
 
     def report_unicode_decode_error(self, exc: UnicodeDecodeError, text: bytes) -> None:
         lines = text.splitlines()
