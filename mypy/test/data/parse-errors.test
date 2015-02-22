@@ -402,3 +402,8 @@ from __future__ import *
 x = 1
 [out]
 file, line 1: Parse error before *
+
+[case testParseErrorBeforeUnicodeLiteral]
+x u'y'
+[out]
+file, line 1: Parse error before string literal

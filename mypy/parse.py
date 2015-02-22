@@ -1640,7 +1640,7 @@ def token_repr(tok: Token) -> str:
         return '"{}"'.format(tok.string)
     elif isinstance(tok, IntLit) or isinstance(tok, FloatLit) or isinstance(tok, ComplexLit):
         return 'numeric literal'
-    elif isinstance(tok, StrLit):
+    elif isinstance(tok, StrLit) or isinstance(tok, UnicodeLit):
         return 'string literal'
     elif (isinstance(tok, Punct) or isinstance(tok, Op)
           or isinstance(tok, Colon)):
