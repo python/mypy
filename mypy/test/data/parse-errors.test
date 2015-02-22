@@ -391,3 +391,8 @@ file, line 1: Parse error before "while"
 if 1: for x in y: pass
 [out]
 file, line 1: Parse error before "for"
+
+[case testUnexpectedEllipsis]
+a = a...
+[out]
+file, line 1: Parse error before ...

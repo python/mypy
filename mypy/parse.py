@@ -1649,6 +1649,8 @@ def token_repr(tok: Token) -> str:
         return 'indent'
     elif isinstance(tok, Dedent):
         return 'dedent'
+    elif isinstance(tok, EllipsisToken):
+        return '...'
     else:
         if isinstance(tok, LexError):
             t = tok.type
