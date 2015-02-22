@@ -1399,26 +1399,41 @@ class Parser:
 
     def parse_index_expr(self, base: Any) -> IndexExpr:
         self.expect('[')
+        index = self.parse_slice_item()
+        if self.current_str() == ',':
+            # Extended slicing such as x[1:, :2].
+            items = [index]
+            while self.current_str() == ',':
+                self.skip()
+                if self.current_str() == ']' or isinstance(self.current(), Break):
+                    break
+                items.append(self.parse_slice_item())
+            index = TupleExpr(items)
+            index.set_line(items[0])
+        self.expect(']')
+        node = IndexExpr(base, index)
+        return node
+
+    def parse_slice_item(self) -> Node:
         if self.current_str() != ':':
-            index = self.parse_expression(0)
+            item = self.parse_expression(precedence[','])
         else:
-            index = None
+            item = None
         if self.current_str() == ':':
             # Slice.
+            index = item
             colon = self.expect(':')
-            if self.current_str() != ']' and self.current_str() != ':':
-                end_index = self.parse_expression(0)
+            if self.current_str() not in (']', ':', ','):
+                end_index = self.parse_expression(precedence[','])
             else:
                 end_index = None
             stride = None  # type: Node
             if self.current_str() == ':':
                 self.expect(':')
-                if self.current_str() != ']':
-                    stride = self.parse_expression()
-            index = SliceExpr(index, end_index, stride).set_line(colon.line)
-        self.expect(']')
-        node = IndexExpr(base, index)
-        return node
+                if self.current_str() not in (']', ','):
+                    stride = self.parse_expression(precedence[','])
+            item = SliceExpr(index, end_index, stride).set_line(colon.line)
+        return item
 
     def parse_bin_op_expr(self, left: Node, prec: int) -> OpExpr:
         op = self.expect_type(Op)

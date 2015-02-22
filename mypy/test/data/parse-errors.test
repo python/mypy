@@ -407,3 +407,18 @@ file, line 1: Parse error before *
 x u'y'
 [out]
 file, line 1: Parse error before string literal
+
+[case testParseErrorInExtendedSlicing]
+x[:,
+[out]
+file, line 1: Parse error before end of line
+
+[case testParseErrorInExtendedSlicing2]
+x[:,::
+[out]
+file, line 1: Parse error before end of line
+
+[case testParseErrorInExtendedSlicing3]
+x[:,:
+[out]
+file, line 1: Parse error before end of line
