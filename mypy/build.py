@@ -83,7 +83,7 @@ class BuildResult:
 def build(program_path: str,
           target: int,
           module: str = None,
-          program_text: str = None,
+          program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
           output_dir: str = None,
@@ -236,11 +236,10 @@ def lookup_program(module: str, lib_path: List[str]) -> str:
             "mypy: can't find module '{}'".format(module)])
 
 
-def read_program(path: str) -> str:
+def read_program(path: str) -> bytes:
     try:
-        f = open(path)
-        text = f.read()
-        f.close()
+        with open(path, 'rb') as file:
+            text = file.read()
     except IOError as ioerr:
         raise CompileError([
             "mypy: can't read file '{}': {}".format(path, ioerr.strerror)])
@@ -642,7 +641,7 @@ class State:
 
 
 class UnprocessedFile(State):
-    def __init__(self, info: StateInfo, program_text: str) -> None:
+    def __init__(self, info: StateInfo, program_text: Union[str, bytes]) -> None:
         super().__init__(info)
         self.program_text = program_text
         trace('waiting {}'.format(info.path))
@@ -728,7 +727,7 @@ class UnprocessedFile(State):
         else:
             return False
 
-    def parse(self, source_text: str, fnam: str) -> MypyFile:
+    def parse(self, source_text: Union[str, bytes], fnam: str) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.

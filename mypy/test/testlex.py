@@ -396,12 +396,31 @@ class LexerSuite(Suite):
         self.assert_lex('0x', 'LexError(  ) ...')
         self.assert_lex('0xax', 'LexError(    ) ...')
 
+    def test_latin1_encoding(self):
+        self.assert_lex(b'# coding: latin1\n"\xbb"',
+                        'StrLit(# coding: latin1\\n"\xbb") Break() Eof()')
+
+    def test_utf8_encoding(self):
+        self.assert_lex('"\xbb"'.encode('utf8'),
+                        'StrLit("\xbb") Break() Eof()')
+        self.assert_lex(b'"\xbb"',
+                        "LexError('utf8' codec can't decode byte 187 in column 2) "
+                        'Break() Eof()')
+        self.assert_lex(b'\n"abcde\xbc"',
+                        "LexError('utf8' codec can't decode byte 188 in column 7) "
+                        'Break() Eof()')
+
+    def test_byte_order_mark(self):
+        self.assert_lex('\ufeff"\xbb"'.encode('utf8'),
+                        'Bom(\ufeff) StrLit("\xbb") Break() Eof()')
+
     # TODO
     #   invalid escape sequences in string literals etc.
 
     def assert_lex(self, src, lexed):
-        src = src.replace('\\n', '\n')
-        src = src.replace('\\r', '\r')
+        if isinstance(src, str):
+            src = src.replace('\\n', '\n')
+            src = src.replace('\\r', '\r')
 
         if lexed.endswith(' ...'):
             lexed = lexed[:-3] + 'Break() Eof()'
