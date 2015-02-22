@@ -3181,3 +3181,18 @@ from .... import x
 [out]
 MypyFile:1(
   ImportFrom:1(...., [x : x]))
+
+[case testParseExtendedSlicing]
+a[:, :]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(a)
+      TupleExpr:1(
+        SliceExpr:1(
+          <empty>
+          <empty>)
+        SliceExpr:1(
+          <empty>
+          <empty>)))))
