@@ -1416,7 +1416,7 @@ class Parser:
                     break
                 items.append(self.parse_slice_item())
             index = TupleExpr(items)
-            index.set_line(items[0])
+            index.set_line(items[0].line)
         self.expect(']')
         node = IndexExpr(base, index)
         return node
