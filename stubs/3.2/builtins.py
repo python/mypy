@@ -786,7 +786,15 @@ class SystemError(Exception): pass
 class TypeError(Exception): pass
 class UnboundLocalError(NameError): pass
 class UnicodeError(ValueError): pass
-class UnicodeDecodeError(UnicodeError): pass
+@builtinclass
+class UnicodeDecodeError(UnicodeError):
+    encoding = Undefined(str)
+    object = Undefined(bytes)
+    start = Undefined(int)
+    end = Undefined(int)
+    reason = Undefined(str)
+    def __init__(self, __encoding: str, __object: bytes, __start: int, __end: int,
+                 __reason: str) -> None: pass
 class UnicodeEncodeError(UnicodeError): pass
 class UnicodeTranslateError(UnicodeError): pass
 class ZeroDivisionError(ArithmeticError): pass

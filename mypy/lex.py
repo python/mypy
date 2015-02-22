@@ -9,7 +9,7 @@ This module can be run as a script (lex.py FILE).
 import re
 
 from mypy.util import short_type
-from typing import List, Undefined, Callable, Dict, Any, Match, Pattern, Set
+from typing import List, Undefined, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
 
 class Token:
@@ -132,31 +132,32 @@ class Bom(Token):
 class LexError(Token):
     """Lexer error token"""
 
-    def __init__(self, string: str, type: int) -> None:
+    def __init__(self, string: str, type: int, message: str = None) -> None:
         """Initialize token.
 
         The type argument is one of the error types below.
         """
         super().__init__(string)
         self.type = type
+        self.message = message
+
+    def __str__(self):
+        if self.message:
+            return 'LexError(%s)' % self.message
+        else:
+            return super().__str__()
 
 
 # Lexer error types
 NUMERIC_LITERAL_ERROR = 0
 UNTERMINATED_STRING_LITERAL = 1
 INVALID_CHARACTER = 2
-NON_ASCII_CHARACTER_IN_COMMENT = 3
-NON_ASCII_CHARACTER_IN_STRING = 4
-INVALID_UTF8_SEQUENCE = 5
-INVALID_BACKSLASH = 6
-INVALID_DEDENT = 7
-
-# Encoding contexts
-STR_CONTEXT = 1
-COMMENT_CONTEXT = 2
+DECODE_ERROR = 3
+INVALID_BACKSLASH = 4
+INVALID_DEDENT = 5
 
 
-def lex(string: str, first_line: int = 1, pyversion: int = 3) -> List[Token]:
+def lex(string: Union[str, bytes], first_line: int = 1, pyversion: int = 3) -> List[Token]:
     """Analyze string and return an array of token objects.
 
     The last token is always Eof.
@@ -196,13 +197,6 @@ punctuators = [re.compile('[=,()@]|(->)'),
                re.compile('\\['),
                re.compile(']'),
                re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
-
-
-# Source file encodings
-DEFAULT_ENCODING = 0
-ASCII_ENCODING = 1
-LATIN1_ENCODING = 2
-UTF8_ENCODING = 3
 
 
 # Map single-character string escape sequences to corresponding characters.
@@ -279,7 +273,7 @@ class Lexer:
     s = ''     # The string being analyzed
     line = 0   # Current line number
     pre_whitespace = ''     # Whitespace and comments before the next token
-    enc = DEFAULT_ENCODING  # Encoding TODO implement properly
+    enc = ''                # Encoding
 
     # Generated tokens
     tok = Undefined(List[Token])
@@ -326,14 +320,30 @@ class Lexer:
         if pyversion == 3:
             self.keywords = keywords_common | keywords3
 
-    def lex(self, s: str, first_line: int) -> None:
+    def lex(self, text: Union[str, bytes], first_line: int) -> None:
         """Lexically analyze a string, storing the tokens at the tok list."""
-        self.s = s
         self.i = 0
         self.line = first_line
 
-        if s.startswith('\xef\xbb\xbf'):
-            self.add_token(Bom(s[0:3]))
+        if isinstance(text, bytes):
+            if text.startswith(b'\xef\xbb\xbf'):
+                self.enc = 'utf8'
+                bom = True
+            else:
+                self.enc, enc_line = self.find_encoding(text)
+                bom = False
+            try:
+                decoded_text = text.decode(self.enc)
+            except UnicodeDecodeError as err:
+                self.report_unicode_decode_error(err, text)
+                return
+            except LookupError:
+                self.report_unknown_encoding(enc_line)
+                return
+            text = decoded_text
+            if bom:
+                self.add_token(Bom(text[0]))
+        self.s = text
 
         # Parse initial indent; otherwise first-line indent would not generate
         # an error.
@@ -343,9 +353,9 @@ class Lexer:
         map = self.map
 
         # Lex the file. Repeatedly call the lexer method for the current char.
-        while self.i < len(s):
+        while self.i < len(text):
             # Get the character code of the next character to lex.
-            c = ord(s[self.i])
+            c = ord(text[self.i])
             # Dispatch to the relevant lexer method. This will consume some
             # characters in the text, add a token to self.tok and increment
             # self.i.
@@ -365,6 +375,41 @@ class Lexer:
         # Close remaining open blocks with Dedent tokens.
         self.lex_indent()
 
+        self.add_token(Eof(''))
+
+    def find_encoding(self, text: bytes) -> Tuple[str, int]:
+        result = re.match(br'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)', text)
+        if result:
+            line = 2 if result.group(1) else 1
+            return result.group(3).decode('ascii'), line
+        else:
+            default_encoding = 'utf8' if self.pyversion >= 3 else 'ascii'
+            return default_encoding, -1
+
+    def report_unicode_decode_error(self, exc: UnicodeDecodeError, text: bytes) -> None:
+        lines = text.splitlines()
+        for line in lines:
+            try:
+                line.decode(self.enc)
+            except UnicodeDecodeError as new_exc:
+                exc = new_exc
+                break
+            self.line += 1
+        else:
+            self.line = 1
+        self.add_token(
+            LexError('', DECODE_ERROR,
+                        "%r codec can't decode byte %d in column %d" % (
+                         self.enc, line[exc.start], exc.start + 1)))
+        self.add_token(Break(''))
+        self.add_token(Eof(''))
+
+    def report_unknown_encoding(self, encoding_line: int) -> None:
+        self.line = encoding_line
+        self.add_token(
+            LexError('', DECODE_ERROR,
+                        "Unknown encoding %r" % self.enc))
+        self.add_token(Break(''))
         self.add_token(Eof(''))
 
     def lex_number_or_dot(self) -> None:
@@ -404,7 +449,7 @@ class Lexer:
         r'([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+([eE][-+]?[0-9]+)?)[jJ]')
     # These characters must not appear after a number literal.
     name_char_exp = re.compile('[a-zA-Z0-9_]')
-    octal_int = re.compile('0[0-9]')
+    octal_int = re.compile('0+[1-9]')
 
     def lex_number(self) -> None:
         """Analyse an int or float literal.
@@ -541,7 +586,6 @@ class Lexer:
                 if s.endswith('\n') or s.endswith('\r'):
                     self.lex_multiline_string_literal(re2, s)
                 else:
-                    self.verify_encoding(s, STR_CONTEXT)
                     if 'b' in prefix:
                         self.add_token(BytesLit(s))
                     elif 'u' in prefix:
@@ -605,7 +649,6 @@ class Lexer:
     def lex_comment(self) -> None:
         """Analyze a comment."""
         s = self.match(self.comment_exp)
-        self.verify_encoding(s, COMMENT_CONTEXT)
         self.add_pre_whitespace(s)
 
     backslash_exp = re.compile(r'\\(\n|\r\n?)')
@@ -807,25 +850,6 @@ class Lexer:
             # Ignore break after another break or dedent.
             t = self.tok[-1]
             return isinstance(t, Break) or isinstance(t, Dedent)
-
-    def verify_encoding(self, string: str, context: int) -> None:
-        """Verify that token is encoded correctly (using the file encoding)."""
-        codec = None  # type: str
-        if self.enc == ASCII_ENCODING:
-            codec = 'ascii'
-        elif self.enc in [UTF8_ENCODING, DEFAULT_ENCODING]:
-            codec = 'utf8'
-        if codec is not None:
-            try:
-                pass  # FIX string.decode(codec)
-            except UnicodeDecodeError:
-                type = INVALID_UTF8_SEQUENCE
-                if self.enc == ASCII_ENCODING:
-                    if context == STR_CONTEXT:
-                        type = NON_ASCII_CHARACTER_IN_STRING
-                    else:
-                        type = NON_ASCII_CHARACTER_IN_COMMENT
-                self.add_token(LexError('', type))
 
 
 if __name__ == '__main__':

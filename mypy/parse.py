@@ -66,7 +66,7 @@ op_comp = set([
 none = Token('')  # Empty token
 
 
-def parse(s: str, fnam: str = None, errors: Errors = None,
+def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
           pyversion: int = 3, custom_typing_module: str = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
@@ -77,7 +77,7 @@ def parse(s: str, fnam: str = None, errors: Errors = None,
     3 for 3.x).
     """
     parser = Parser(fnam, errors, pyversion, custom_typing_module)
-    tree = parser.parse(s)
+    tree = parser.parse(source)
     tree.path = fnam
     return tree
 
@@ -109,7 +109,7 @@ class Parser:
         else:
             self.errors.set_file('<input>')
 
-    def parse(self, s: str) -> MypyFile:
+    def parse(self, s: Union[str, bytes]) -> MypyFile:
         self.tok = lex.lex(s, pyversion=self.pyversion)
         self.ind = 0
         self.imports = []
@@ -1275,7 +1275,7 @@ class Parser:
         node.set_line(tok)
         return node
 
-    octal_int = re.compile('0[0-9]')
+    octal_int = re.compile('0+[1-9]')
 
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)
@@ -1687,14 +1687,10 @@ def token_repr(tok: Token) -> str:
                 if ord(tok.string) in range(33, 127):
                     msg += ' ' + tok.string
                 return msg
-            elif t == lex.INVALID_UTF8_SEQUENCE:
-                return 'invalid UTF-8 sequence'
-            elif t == lex.NON_ASCII_CHARACTER_IN_COMMENT:
-                return 'non-ASCII character in comment'
-            elif t == lex.NON_ASCII_CHARACTER_IN_STRING:
-                return 'non-ASCII character in string'
             elif t == lex.INVALID_DEDENT:
                 return 'inconsistent indentation'
+            elif t == lex.DECODE_ERROR:
+                return tok.message
         raise ValueError('Unknown token {}'.format(repr(tok)))
 
 
@@ -1705,7 +1701,7 @@ if __name__ == '__main__':
         print('Usage: parse.py FILE')
         sys.exit(2)
     fnam = sys.argv[1]
-    s = open(fnam).read()
+    s = open(fnam, 'rb').read()
     errors = Errors()
     try:
         tree = parse(s, fnam)
