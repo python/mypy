@@ -32,3 +32,7 @@ class Iterable(Generic[T]):
 class Iterator(Iterable[T], Generic[T]):
     @abstractmethod
     def __next__(self) -> T: pass
+
+class Sequence(Generic[T]):
+    @abstractmethod
+    def __getitem__(self, n: Any) -> T: pass

@@ -237,7 +237,7 @@ class TypeOpsSuite(Suite):
         for v in vars:
             tv.append(TypeVarDef(v, n, None, self.fx.o))
             n -= 1
-        return CallableType(a[:-1],
+        return CallableType(list(a[:-1]),
                         [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1),
                         a[-1],

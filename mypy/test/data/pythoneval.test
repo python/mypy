@@ -993,3 +993,12 @@ def f() -> Optional[int]: pass
 x = f()
 y = 1
 y = x
+
+[case testAppendToStarArg]
+import typing
+def f(*x: int) -> None:
+    x.append(1)
+f(1)
+[out]
+_program.py: In function "f":
+_program.py, line 3: Sequence[int] has no attribute "append"
