@@ -427,3 +427,9 @@ file, line 1: Parse error before end of line
 0377
 [out]
 file, line 1: Invalid numeric literal
+
+[case testInvalidEncoding]
+# foo
+# coding: uft-8
+[out]
+file, line 2: Unknown encoding 'uft-8'

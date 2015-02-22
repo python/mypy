@@ -9,7 +9,7 @@ This module can be run as a script (lex.py FILE).
 import re
 
 from mypy.util import short_type
-from typing import List, Undefined, Callable, Dict, Any, Match, Pattern, Set, Union
+from typing import List, Undefined, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
 
 class Token:
@@ -334,12 +334,15 @@ class Lexer:
                 self.enc = 'utf8'
                 bom = True
             else:
-                self.enc = self.find_encoding(text)
+                self.enc, enc_line = self.find_encoding(text)
                 bom = False
             try:
                 decoded_text = text.decode(self.enc)
             except UnicodeDecodeError as err:
                 self.report_unicode_decode_error(err, text)
+                return
+            except LookupError as err:
+                self.report_unknown_encoding(enc_line)
                 return
             text = decoded_text
             if bom:
@@ -378,12 +381,13 @@ class Lexer:
 
         self.add_token(Eof(''))
 
-    def find_encoding(self, text: bytes) -> str:
+    def find_encoding(self, text: bytes) -> Tuple[str, int]:
         result = re.match(br'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)', text)
         if result:
-            return result.group(3).decode('ascii')
+            line = 2 if result.group(1) else 1
+            return result.group(3).decode('ascii'), line
         else:
-            return 'utf8'
+            return 'utf8', -1
 
     def report_unicode_decode_error(self, exc: UnicodeDecodeError, text: bytes) -> None:
         lines = text.splitlines()
@@ -400,6 +404,14 @@ class Lexer:
             LexError('', DECODE_ERROR,
                         "%r codec can't decode byte %d in column %d" % (
                          self.enc, line[exc.start], exc.start + 1)))
+        self.add_token(Break(''))
+        self.add_token(Eof(''))
+
+    def report_unknown_encoding(self, encoding_line: int) -> None:
+        self.line = encoding_line
+        self.add_token(
+            LexError('', DECODE_ERROR,
+                        "Unknown encoding %r" % self.enc))
         self.add_token(Break(''))
         self.add_token(Eof(''))
 

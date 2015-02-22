@@ -38,7 +38,7 @@ def test_parser(testcase):
         pyversion = 2
 
     try:
-        n = parse('\n'.join(testcase.input), pyversion=pyversion)
+        n = parse(bytes('\n'.join(testcase.input), 'ascii'), pyversion=pyversion)
         a = str(n).split('\n')
     except CompileError as e:
         a = e.messages
@@ -63,7 +63,7 @@ class ParseErrorSuite(Suite):
 def test_parse_error(testcase):
     try:
         # Compile temporary file.
-        parse('\n'.join(testcase.input), INPUT_FILE_NAME)
+        parse(bytes('\n'.join(testcase.input), 'ascii'), INPUT_FILE_NAME)
         raise AssertionFailure('No errors reported')
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
