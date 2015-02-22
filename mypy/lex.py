@@ -199,10 +199,7 @@ punctuators = [re.compile('[=,()@]|(->)'),
 
 
 # Source file encodings
-DEFAULT_ENCODING = 0
-ASCII_ENCODING = 1
-LATIN1_ENCODING = 2
-UTF8_ENCODING = 3
+DEFAULT_ENCODING = '<default>'
 
 
 # Map single-character string escape sequences to corresponding characters.
@@ -326,14 +323,17 @@ class Lexer:
         if pyversion == 3:
             self.keywords = keywords_common | keywords3
 
-    def lex(self, s: str, first_line: int) -> None:
+    def lex(self, text: str, first_line: int) -> None:
         """Lexically analyze a string, storing the tokens at the tok list."""
-        self.s = s
+        self.s = text
         self.i = 0
         self.line = first_line
 
-        if s.startswith('\xef\xbb\xbf'):
-            self.add_token(Bom(s[0:3]))
+        if text.startswith('\xef\xbb\xbf'):
+            self.add_token(Bom(text[0:3]))
+            self.enc = 'utf8'
+        else:
+            self.enc = self.find_encoding(text)
 
         # Parse initial indent; otherwise first-line indent would not generate
         # an error.
@@ -343,9 +343,9 @@ class Lexer:
         map = self.map
 
         # Lex the file. Repeatedly call the lexer method for the current char.
-        while self.i < len(s):
+        while self.i < len(text):
             # Get the character code of the next character to lex.
-            c = ord(s[self.i])
+            c = ord(text[self.i])
             # Dispatch to the relevant lexer method. This will consume some
             # characters in the text, add a token to self.tok and increment
             # self.i.
@@ -366,6 +366,13 @@ class Lexer:
         self.lex_indent()
 
         self.add_token(Eof(''))
+
+    def find_encoding(self, text: str) -> None:
+        result = re.match(r'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)', text)
+        if result:
+            return result.group(3)
+        else:
+            return 'utf8'
 
     def lex_number_or_dot(self) -> None:
         """Analyse a token starting with a dot.
@@ -810,22 +817,17 @@ class Lexer:
 
     def verify_encoding(self, string: str, context: int) -> None:
         """Verify that token is encoded correctly (using the file encoding)."""
-        codec = None  # type: str
-        if self.enc == ASCII_ENCODING:
-            codec = 'ascii'
-        elif self.enc in [UTF8_ENCODING, DEFAULT_ENCODING]:
-            codec = 'utf8'
-        if codec is not None:
-            try:
-                pass  # FIX string.decode(codec)
-            except UnicodeDecodeError:
-                type = INVALID_UTF8_SEQUENCE
-                if self.enc == ASCII_ENCODING:
-                    if context == STR_CONTEXT:
-                        type = NON_ASCII_CHARACTER_IN_STRING
-                    else:
-                        type = NON_ASCII_CHARACTER_IN_COMMENT
-                self.add_token(LexError('', type))
+        codec = self.enc
+        try:
+            pass  # FIX string.decode(codec)
+        except UnicodeDecodeError:
+            type = INVALID_UTF8_SEQUENCE
+            if self.enc == ASCII_ENCODING:
+                if context == STR_CONTEXT:
+                    type = NON_ASCII_CHARACTER_IN_STRING
+                else:
+                    type = NON_ASCII_CHARACTER_IN_COMMENT
+            self.add_token(LexError('', type))
 
 
 if __name__ == '__main__':
