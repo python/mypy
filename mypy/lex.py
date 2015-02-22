@@ -440,7 +440,7 @@ class Lexer:
         r'([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+([eE][-+]?[0-9]+)?)[jJ]')
     # These characters must not appear after a number literal.
     name_char_exp = re.compile('[a-zA-Z0-9_]')
-    octal_int = re.compile('0[0-9]')
+    octal_int = re.compile('0+[1-9]')
 
     def lex_number(self) -> None:
         """Analyse an int or float literal.

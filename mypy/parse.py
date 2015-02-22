@@ -1275,7 +1275,7 @@ class Parser:
         node.set_line(tok)
         return node
 
-    octal_int = re.compile('0[0-9]')
+    octal_int = re.compile('0+[1-9]')
 
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)

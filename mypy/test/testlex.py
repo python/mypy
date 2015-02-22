@@ -33,8 +33,8 @@ class LexerSuite(Suite):
 
     def test_int_literals(self):
         self.assert_lex(
-            '0 1 0987654321 10002000300040005000600070008000',
-            'IntLit(0) IntLit( 1) LexError( 0987654321) '
+            '0 00 1 0987654321 10002000300040005000600070008000',
+            'IntLit(0) IntLit( 00) IntLit( 1) LexError( 0987654321) '
             'IntLit( 10002000300040005000600070008000) Break() Eof()')
 
     def test_hex_int_literals(self):
