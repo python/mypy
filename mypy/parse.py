@@ -182,6 +182,8 @@ class Parser:
         self.expect('import')
         node = None  # type: ImportBase
         if self.current_str() == '*':
+            if name == '__future__':
+                self.parse_error()
             # An import all from a module node:
             self.skip()
             node = ImportAll(name, relative)

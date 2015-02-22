@@ -396,3 +396,9 @@ file, line 1: Parse error before "for"
 a = a...
 [out]
 file, line 1: Parse error before ...
+
+[case testFromFutureImportStar]
+from __future__ import *
+x = 1
+[out]
+file, line 1: Parse error before *
