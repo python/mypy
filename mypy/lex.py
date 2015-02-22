@@ -404,6 +404,7 @@ class Lexer:
         r'([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+([eE][-+]?[0-9]+)?)[jJ]')
     # These characters must not appear after a number literal.
     name_char_exp = re.compile('[a-zA-Z0-9_]')
+    octal_int = re.compile('0[0-9]')
 
     def lex_number(self) -> None:
         """Analyse an int or float literal.
@@ -423,7 +424,11 @@ class Lexer:
             self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
         elif len(s1) == maxlen:
             # Integer literal.
-            self.add_token(IntLit(s1))
+            if self.pyversion >= 3 and self.octal_int.match(s1):
+                # Python 2 style octal literal such as 0377 not supported in Python 3.
+                self.add_token(LexError(s1, NUMERIC_LITERAL_ERROR))
+            else:
+                self.add_token(IntLit(s1))
         elif len(s2) == maxlen:
             # Float literal.
             self.add_token(FloatLit(s2))

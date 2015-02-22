@@ -1275,9 +1275,16 @@ class Parser:
         node.set_line(tok)
         return node
 
+    octal_int = re.compile('0[0-9]')
+
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)
-        node = IntExpr(int(tok.string, 0))
+        string = tok.string
+        if self.octal_int.match(string):
+            value = int(string, 8)
+        else:
+            value = int(tok.string, 0)
+        node = IntExpr(value)
         return node
 
     def parse_str_expr(self) -> Node:

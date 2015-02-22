@@ -59,3 +59,16 @@ MypyFile:1(
     TupleExpr:3(
       IntExpr(4)
       IntExpr(5))))
+
+[case testOctalIntLiteral]
+00
+01
+0377
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IntExpr(0))
+  ExpressionStmt:2(
+    IntExpr(1))
+  ExpressionStmt:3(
+    IntExpr(255)))

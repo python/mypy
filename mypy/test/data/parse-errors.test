@@ -422,3 +422,8 @@ file, line 1: Parse error before end of line
 x[:,:
 [out]
 file, line 1: Parse error before end of line
+
+[case testPython2OctalIntLiteralInPython3]
+0377
+[out]
+file, line 1: Invalid numeric literal
