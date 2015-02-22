@@ -1503,6 +1503,44 @@ MypyFile:1(
     Block:1(
       PassStmt:2())))
 
+[case testForAndTrailingCommaAfterIndexVar]
+for i, in x:
+    pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    TupleExpr:1(
+      NameExpr(i))
+    NameExpr(x)
+    Block:1(
+      PassStmt:2())))
+
+[case testListComprehensionAndTrailingCommaAfterIndexVar]
+x = [a for b, in c]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    ListComprehension:1(
+      GeneratorExpr:1(
+        NameExpr(a)
+        TupleExpr:1(
+          NameExpr(b))
+        NameExpr(c)))))
+
+[case testForAndTrailingCommaAfterIndexVars]
+for i, j, in x:
+    pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    TupleExpr:1(
+      NameExpr(i)
+      NameExpr(j))
+    NameExpr(x)
+    Block:1(
+      PassStmt:2())))
+
 [case testGeneratorWithCondition]
 x for y in z if 0
 [out]

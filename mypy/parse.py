@@ -875,6 +875,7 @@ class Parser:
     def parse_for_index_variables(self) -> Node:
         # Parse index variables of a 'for' statement.
         index_items = List[Node]()
+        force_tuple = False
 
         while True:
             v = self.parse_expression(precedence['in'],
@@ -883,8 +884,11 @@ class Parser:
             if self.current_str() != ',':
                 break
             self.skip()
+            if self.current_str() == 'in':
+                force_tuple = True
+                break
 
-        if len(index_items) == 1:
+        if len(index_items) == 1 and not force_tuple:
             index = index_items[0]
         else:
             index = TupleExpr(index_items)
