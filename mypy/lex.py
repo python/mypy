@@ -337,7 +337,7 @@ class Lexer:
             except UnicodeDecodeError as err:
                 self.report_unicode_decode_error(err, text)
                 return
-            except LookupError as err:
+            except LookupError:
                 self.report_unknown_encoding(enc_line)
                 return
             text = decoded_text
