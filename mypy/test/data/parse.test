@@ -3169,3 +3169,15 @@ MypyFile:1(
         z))
     Block:1(
       PassStmt:1())))
+
+[case testRelativeImportWithEllipsis]
+from ... import x
+[out]
+MypyFile:1(
+  ImportFrom:1(..., [x : x]))
+
+[case testRelativeImportWithEllipsis2]
+from .... import x
+[out]
+MypyFile:1(
+  ImportFrom:1(...., [x : x]))

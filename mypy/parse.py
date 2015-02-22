@@ -164,9 +164,9 @@ class Parser:
 
         # Build the list of beginning relative tokens.
         relative = 0
-        while self.current_str() == ".":
-            self.expect('.')
-            relative += 1
+        while self.current_str() in (".", "..."):
+            relative += len(self.current_str())
+            self.skip()
 
         # Parse qualified name to actually import from.
         if self.current_str() == "import":
