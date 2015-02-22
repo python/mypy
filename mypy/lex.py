@@ -859,6 +859,6 @@ if __name__ == '__main__':
         print('Usage: lex.py FILE')
         sys.exit(2)
     fnam = sys.argv[1]
-    s = open(fnam).read()
+    s = open(fnam, 'rb').read()
     for t in lex(s):
         print(t)
