@@ -1430,8 +1430,8 @@ class Parser:
             stride = None  # type: Node
             if self.current_str() == ':':
                 self.expect(':')
-                if self.current_str() != ']':
-                    stride = self.parse_expression()
+                if self.current_str() not in (']', ','):
+                    stride = self.parse_expression(precedence[','])
             item = SliceExpr(index, end_index, stride).set_line(colon.line)
         return item
 

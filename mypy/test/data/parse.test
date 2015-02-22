@@ -3196,3 +3196,33 @@ MypyFile:1(
         SliceExpr:1(
           <empty>
           <empty>)))))
+
+[case testParseExtendedSlicing2]
+a[1:2:, :,]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(a)
+      TupleExpr:1(
+        SliceExpr:1(
+          IntExpr(1)
+          IntExpr(2))
+        SliceExpr:1(
+          <empty>
+          <empty>)))))
+
+[case testParseExtendedSlicing3]
+a[1:2:3, ..., 1]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(a)
+      TupleExpr:1(
+        SliceExpr:1(
+          IntExpr(1)
+          IntExpr(2)
+          IntExpr(3))
+        Ellipsis
+        IntExpr(1)))))
