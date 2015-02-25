@@ -2,9 +2,13 @@
 
 TODO:
 
- - add tests
- - infer argument names and counts from documentation when unambigous
+ * infer argument names and counts from documentation when clearly unambigous
+ - infer constant sigs for special methods (__add__, __str__, etc.)
+ - try to infer sigs of __new__ / __init__
+ - include non-object base classes
+ - skip __module__, __weakref__ etc. noise in stubs
  - add empty lines for nicer formatting
+ - add tests
  - add from typing import ...
  - run against many C modules
 """
