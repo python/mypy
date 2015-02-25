@@ -6,11 +6,13 @@ TODO:
  - infer constant sigs for special methods (__add__, __str__, etc.)
  - try to infer sigs of __new__ / __init__
  - include non-object base classes
- - skip __module__, __weakref__ etc. noise in stubs
+ - skip __module__, __weakref__ etc. noise in stubs (maybe also __reduce__)
  - add empty lines for nicer formatting
  - add tests
  - add from typing import ...
  - run against many C modules
+ - integrate with stubgen
+ - include comment saying that this is a c module
 """
 
 import _datetime
