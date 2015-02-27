@@ -65,8 +65,8 @@ class StubgenUtilSuite(Suite):
                                            '.. function:: fn(arg',
                                            '.. function:: fn()',
                                            '  .. method:: fn2(arg)']),
-                                          [('fn', '()'),
-                                           ('fn2', '(arg)')])
+                                          ([('fn', '()'),
+                                            ('fn2', '(arg)')], []))
 
     def test_find_unique_signatures(self):
         assert_equal(find_unique_signatures(

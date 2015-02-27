@@ -40,15 +40,21 @@ def build_signature(fixed, optional):
 
 def parse_all_signatures(lines):
     sigs = []
+    class_sigs = []
     for line in lines:
         line = line.strip()
-        if re.match(r'\.\. *(function|method) *::', line):
+        m = re.match(r'\.\. *(function|method|class) *:: *[a-zA-Z_]', line)
+        if m:
             sig = line.split('::')[1].strip()
             parsed = parse_signature(sig)
             if parsed:
                 name, fixed, optional = parsed
-                sigs.append((name, build_signature(fixed, optional)))
-    return sorted(sigs)
+                if m.group(1) != 'class':
+                    sigs.append((name, build_signature(fixed, optional)))
+                else:
+                    class_sigs.append((name, build_signature(fixed, optional)))
+
+    return sorted(sigs), sorted(class_sigs)
 
 
 def find_unique_signatures(sigs):
@@ -59,4 +65,4 @@ def find_unique_signatures(sigs):
     for name, name_sigs in sig_map.items():
         if len(set(name_sigs)) == 1:
             result.append((name, name_sigs[0]))
-    return result
+    return sorted(result)

@@ -8,6 +8,11 @@ Usage:
   => Generate out/urllib/parse.py.
 
 Note: You should verify the generated stubs manually.
+
+TODO:
+
+ - C module stub generation
+ - infer some return types, such as no return statement with value -> None
 """
 
 import imp
