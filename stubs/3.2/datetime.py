@@ -150,6 +150,7 @@ class timedelta(SupportsAbs[timedelta]):
 
 
 class datetime:
+    # TODO: Is a subclass of date, but this would make some types incompatible.
     min = Undefined(datetime)
     max = Undefined(datetime)
     resolution = Undefined(timedelta)
@@ -158,6 +159,12 @@ class datetime:
                  minute: int = None, second: int = None, microseconds: int = None,
                  tzinfo: tzinfo = None) -> None: pass
 
+    @property
+    def year(self) -> int: pass
+    @property
+    def month(self) -> int: pass
+    @property
+    def day(self) -> int: pass
     @property
     def hour(self) -> int: pass
     @property
@@ -174,11 +181,18 @@ class datetime:
     @classmethod
     def utcfromtimestamp(cls, t: float) -> datetime: pass
     @classmethod
+    def today(cls) -> datetime: pass
+    @classmethod
+    def fromordinal(cls, n: int) -> datetime: pass
+    @classmethod
     def now(cls, tz: timezone = None) -> datetime: pass
     @classmethod
     def utcnow(cls) -> datetime: pass
     @classmethod
     def combine(cls, date: date, time: time) -> datetime: pass
+    def strftime(self, fmt: str) -> str: pass
+    def __format__(self, fmt: str) -> str: pass
+    def toordinal(self) -> int: pass
     def timetuple(self) -> tuple: pass # TODO return type
     def timestamp(self) -> float: pass
     def utctimetuple(self) -> tuple: pass # TODO return type
@@ -206,3 +220,6 @@ class datetime:
     @overload
     def __sub__(self, other: timedelta) -> datetime: pass
     def __hash__(self) -> int: pass
+    def weekday(self) -> int: pass
+    def isoweekday(self) -> int: pass
+    def isocalendar(self) -> Tuple[int, int, int]: pass
