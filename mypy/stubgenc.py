@@ -3,7 +3,6 @@
 TODO:
 
  * infer argument names and counts from documentation when clearly unambigous
- - include non-object base classes
  - infer constant sigs for special methods (__add__, __str__, etc.)
  - skip __module__, __weakref__ etc. noise in stubs (maybe also __reduce__)
  - add empty lines for nicer formatting
