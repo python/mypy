@@ -114,10 +114,15 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
             continue
         if attr not in done:
             variables.append('%s = Undefined(Any)' % attr)
-    if not methods and not variables:
-        output.append('class %s: pass' % class_name)
+    bases = obj.mro()[1:-1]
+    if bases:
+        bases_str = '(%s)' % ', '.join(base.__name__ for base in bases)
     else:
-        output.append('class %s:' % class_name)
+        bases_str = ''
+    if not methods and not variables:
+        output.append('class %s%s: pass' % (class_name, bases_str))
+    else:
+        output.append('class %s%s:' % (class_name, bases_str))
         for variable in variables:
             output.append('    %s' % variable)
         for method in methods:
