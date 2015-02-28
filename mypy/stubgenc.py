@@ -2,28 +2,24 @@
 
 TODO:
 
- * infer argument names and counts from documentation when clearly unambigous
  - infer constant sigs for special methods (__add__, __str__, etc.)
  - skip __module__, __weakref__ etc. noise in stubs (maybe also __reduce__)
  - add empty lines for nicer formatting
  - add tests
  - add from typing import ...
  - run against many C modules
- - integrate with stubgen
- - include comment saying that this is a c module
 """
 
 import _datetime
 import os.path
 
 
-from mypy.stubutil import parse_all_signatures, find_unique_signatures
+from mypy.stubutil import parse_all_signatures, find_unique_signatures, is_c_module, write_header
 
 
-def generate_stub_for_c_module(module_name, sigs={}, class_sigs={}):
+def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, class_sigs={}):
     module = __import__(module_name)
-    if '__file__' in module.__dict__ and not module.__dict__['__file__'].endswith('.so'):
-        raise RuntimeError('%s is not a C module' % module_name)
+    assert is_c_module(module), '%s is not a C module' % module_name
     functions = []
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
@@ -47,12 +43,15 @@ def generate_stub_for_c_module(module_name, sigs={}, class_sigs={}):
             if type_str not in ('int', 'str', 'bytes', 'float', 'bool'):
                 type_str = 'Any'
             variables.append('%s = Undefined(%s)' % (name, type_str))
-    for var in variables:
-        print(var)
-    for func in functions:
-        print(func)
-    for typ in types:
-        print(typ)
+    with open(target, 'w') as file:
+        if add_header:
+            write_header(file, module_name)
+        for line in variables:
+            file.write('%s\n' % line)
+        for line in functions:
+            file.write('%s\n' % line)
+        for line in types:
+            file.write('%s\n' % line)
 
 
 def is_c_function(obj):
@@ -134,26 +133,3 @@ def method_name_sort_key(name):
     if name.startswith('__') and name.endswith('__'):
         return (2, name)
     return (1, name)
-
-
-if __name__ == '__main__':
-    import sys
-    import glob
-    if not os.path.isdir('out'):
-        raise SystemExit('Directory out does not exist')
-    if sys.argv[1] == '--docpath':
-        docpath = sys.argv[2]
-        modules = sys.argv[3:]
-        all_sigs = []
-        all_class_sigs = []
-        for path in glob.glob('%s/*.rst' % docpath):
-            func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
-            all_sigs += func_sigs
-            all_class_sigs += class_sigs
-        sigs = dict(find_unique_signatures(all_sigs))
-        class_sigs = dict(find_unique_signatures(all_class_sigs))
-    else:
-        modules = sys.argv[1:]
-        sigs = {}
-    for module in modules:
-        generate_stub_for_c_module(module, sigs, class_sigs)
