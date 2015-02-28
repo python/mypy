@@ -407,4 +407,4 @@ if __name__ == '__main__':
         sigs = {}
         class_sigs = {}
     for module in args:
-        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs={})
+        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs)
