@@ -1,11 +1,18 @@
-"""Generator of dynamically typed stubs for arbitrary modules.
+"""Generator of dynamically typed draft stubs for arbitrary modules.
 
-Usage:
+Basic usage:
 
   $ mkdir out
   $ py -m mypy.stubgen urllib.parse
 
   => Generate out/urllib/parse.py.
+
+For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
+documentation for extra information. For this, use the --docpath option:
+
+  $ py -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+
+  => Generate out/curses.py.
 
 Note: You should verify the generated stubs manually.
 
