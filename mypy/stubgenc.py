@@ -128,7 +128,12 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
             continue
         if attr not in done:
             variables.append('%s = Undefined(Any)' % attr)
-    bases = obj.mro()[1:-1]
+    all_bases = obj.mro()[1:-1]
+    # Remove base classes of other bases as redundant.
+    bases = []
+    for base in all_bases:
+        if not any(issubclass(b, base) for b in bases):
+            bases.append(base)
     if bases:
         bases_str = '(%s)' % ', '.join(base.__name__ for base in bases)
     else:
