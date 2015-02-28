@@ -4,18 +4,46 @@
 
 from typing import Undefined, Any
 import io
-from _elementtree import SubElement, Element, ParseError, TreeBuilder, XMLParser
-
-SubElement = SubElement
-Element = Element
-ParseError = ParseError
-TreeBuilder = TreeBuilder
-XMLParser = XMLParser
 
 VERSION = Undefined(Any)
 
+class ParseError(SyntaxError): pass
+
 def iselement(element): pass
 
+class Element:
+    def __init__(self, tag, attrib=Undefined, **extra): pass
+    def append(self, *args, **kwargs): pass
+    def clear(self, *args, **kwargs): pass
+    def extend(self, *args, **kwargs): pass
+    def find(self, *args, **kwargs): pass
+    def findall(self, *args, **kwargs): pass
+    def findtext(self, match, default=Undefined, namespaces=Undefined): pass
+    def get(self, *args, **kwargs): pass
+    def getchildren(self): pass
+    def getiterator(self, tag=Undefined): pass
+    def insert(self, *args, **kwargs): pass
+    def items(self, *args, **kwargs): pass
+    def iter(self, *args, **kwargs): pass
+    def iterfind(self, match, namespaces=Undefined): pass
+    def itertext(self): pass
+    def keys(self): pass
+    def makeelement(self, tag, attrib): pass
+    def remove(self, *args, **kwargs): pass
+    def set(self, *args, **kwargs): pass
+    def __copy__(self): pass
+    def __deepcopy__(self): pass
+    def __delattr__(self, name): pass
+    def __delitem__(self, name): pass
+    def __getitem__(self, name): pass
+    def __getstate__(self): pass
+    def __len__(self): pass
+    def __setattr__(self, name, value): pass
+    def __setitem__(self, index, object): pass
+    def __setstate__(self, state): pass
+    def __sizeof__(self): pass
+
+def SubElement(parent, tag, attrib=Undefined, **extra): pass
 def Comment(text=None): pass
 def ProcessingInstruction(target, text=None): pass
 
@@ -86,3 +114,14 @@ class TreeBuilder:
     def data(self, data): pass
     def start(self, tag, attrs): pass
     def end(self, tag): pass
+
+class XMLParser:
+    target = Undefined(Any)
+    entity = Undefined(Any)
+    version = Undefined(Any)
+    def __init__(self, html=Undefined, target=Undefined, encoding=Undefined): pass
+    def _parse_whole(self, *args, **kwargs): pass
+    def _setevents(self, *args, **kwargs): pass
+    def close(self, *args, **kwargs): pass
+    def doctype(self, name, pubid, system): pass
+    def feed(self, data): pass
