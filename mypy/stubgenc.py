@@ -134,7 +134,10 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
             continue
         if attr not in done:
             variables.append('%s = Undefined(Any)' % attr)
-    all_bases = obj.mro()[1:-1]
+    all_bases = obj.mro()[1:]
+    if all_bases[-1] is object:
+        # TODO: Is this always object?
+        del all_bases[-1]
     # Remove base classes of other bases as redundant.
     bases = []
     for base in all_bases:
@@ -167,6 +170,7 @@ def is_skipped_attribute(attr):
                     '__str__',
                     '__repr__',
                     '__doc__',
+                    '__dict__',
                     '__module__',
                     '__weakref__')  # For pickling
 
