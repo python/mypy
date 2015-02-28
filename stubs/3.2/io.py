@@ -19,13 +19,35 @@ DEFAULT_BUFFER_SIZE = 0
 from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Undefined, Any
 import _io
 from _io import (
-    BlockingIOError, UnsupportedOperation, open, FileIO
+    BlockingIOError, open
 )
 
-BlockingIOError = BlockingIOError
-UnsupportedOperation = UnsupportedOperation
 open = open
-FileIO = FileIO
+BlockingIOError = BlockingIOError
+
+class UnsupportedOperation(ValueError, OSError): pass
+
+class FileIO(_io._RawIOBase):
+    _finalizing = Undefined(Any)
+    closed = Undefined(Any)
+    closefd = Undefined(Any)
+    mode = Undefined(Any)
+    def __init__(self, name, mode=Undefined, closefd=Undefined, opener=Undefined): pass
+    def _dealloc_warn(self, *args, **kwargs): pass
+    def close(self): pass
+    def fileno(self): pass
+    def isatty(self): pass
+    def read(self, *args, **kwargs): pass
+    def readable(self): pass
+    def readall(self): pass
+    def readinto(self): pass
+    def seek(self, *args, **kwargs): pass
+    def seekable(self): pass
+    def tell(self): pass
+    def truncate(self, *args, **kwargs): pass
+    def writable(self): pass
+    def write(self, *args, **kwargs): pass
+    def __getstate__(self): pass
 
 class BufferedReader(_io._BufferedIOBase):
     _finalizing = Undefined(Any)
