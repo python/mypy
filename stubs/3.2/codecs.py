@@ -1,8 +1,8 @@
-from typing import Any, BinaryIO, Callable
+from typing import Any, BinaryIO, Callable, Undefined
 
 BOM_UTF8 = b''
 
-class Codec(): pass
+class Codec: pass
 class StreamWriter(Codec): pass
 
 class CodecInfo(tuple):
@@ -18,3 +18,11 @@ def lookup(encoding: str) -> CodecInfo:
 
 # TODO This Callable is actually a StreamWriter constructor
 def getwriter(encoding: str) -> Callable[[BinaryIO], StreamWriter]: pass
+
+class IncrementalDecoder:
+    errors = Undefined(Any)
+    def __init__(self, errors=''): pass
+    def decode(self, input, final=False): pass
+    def reset(self): pass
+    def getstate(self): pass
+    def setstate(self, state): pass
