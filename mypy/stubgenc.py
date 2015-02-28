@@ -2,16 +2,13 @@
 
 TODO:
 
- - infer constant sigs for special methods (__add__, __str__, etc.)
  - skip __module__, __weakref__ etc. noise in stubs (maybe also __reduce__)
- - add empty lines for nicer formatting
- - add tests
- - add from typing import ...
+ - infer constant sigs for special methods (__add__, __str__, etc.)
  - run against many C modules
 """
 
-import _datetime
 import os.path
+import re
 
 
 from mypy.stubutil import parse_all_signatures, find_unique_signatures, is_c_module, write_header
@@ -43,15 +40,34 @@ def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, cl
             if type_str not in ('int', 'str', 'bytes', 'float', 'bool'):
                 type_str = 'Any'
             variables.append('%s = Undefined(%s)' % (name, type_str))
+    output = []
+    for line in variables:
+        output.append(line)
+    if output and functions:
+        output.append('')
+    for line in functions:
+        output.append(line)
+    for line in types:
+        if line.startswith('class') and output and output[-1]:
+            output.append('')
+        output.append(line)
+    output = add_typing_import(output)
     with open(target, 'w') as file:
         if add_header:
             write_header(file, module_name)
-        for line in variables:
+        for line in output:
             file.write('%s\n' % line)
-        for line in functions:
-            file.write('%s\n' % line)
-        for line in types:
-            file.write('%s\n' % line)
+
+
+def add_typing_import(output):
+    names = []
+    for name in 'Any', 'Undefined':
+        if any(re.search(r'\b%s\b' % name, line) for line in output):
+            names.append(name)
+    if names:
+        return ['from typing import %s' % ', '.join(names), ''] + output
+    else:
+        return output[:]
 
 
 def is_c_function(obj):
