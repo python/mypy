@@ -1,9 +1,6 @@
 """Stub generator for C modules.
 
-TODO:
-
- - infer constant sigs for special methods (__add__, __str__, etc.)
- - run against many C modules
+The public interface is via the mypy.stubgen module.
 """
 
 import os.path
