@@ -327,10 +327,10 @@ __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
 from typing import Undefined, Any
-from re import match, sub
+import re
 
-match = match
-sub = sub
+match = re.match
+sub = re.sub
 
 x = Undefined(Any)
 

@@ -287,12 +287,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             names = [name for name, alias in o.names
                      if name in self._all_ and name == alias]
             if names:
-                self.add_import_line('from %s%s import %s\n' % (
-                    '.' * o.relative, o.id, ', '.join(names)))
+                if o.relative:
+                    self.add_import_line('from %s import %s\n' % ('.' * o.relative, o.id))
+                else:
+                    self.add_import_line('import %s\n' % o.id)
                 if self._state not in (EMPTY, IMPORT_ALIAS):
                     self.add('\n')
                 for name in names:
-                    self.add('%s = %s\n' % (name, name))
+                    self.add('%s = %s.%s\n' % (name, o.id, name))
                     self.record_name(name)
                 self._state = IMPORT_ALIAS
         # Import names used as base classes.
