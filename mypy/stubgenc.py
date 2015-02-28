@@ -2,7 +2,6 @@
 
 TODO:
 
- - skip __module__, __weakref__ etc. noise in stubs (maybe also __reduce__)
  - infer constant sigs for special methods (__add__, __str__, etc.)
  - run against many C modules
 """
