@@ -8,82 +8,6 @@ DEFAULT_BUFFER_SIZE = Undefined(int)
 
 def open(*args, **kwargs): pass
 
-class BlockingIOError(OSError):
-    def __init__(self, *args, **kwargs): pass
-
-class BufferedReader(_BufferedIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
-    mode = Undefined(Any)
-    name = Undefined(Any)
-    raw = Undefined(Any)
-    def __init__(self, raw, buffer_size=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
-    def detach(self, *args, **kwargs): pass
-    def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def peek(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
-    def read1(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readinto(self, b): pass
-    def readline(self, *args, **kwargs): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def __getstate__(self): pass
-    def __next__(self): pass
-    def __sizeof__(self): pass
-
-class BufferedWriter(_BufferedIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
-    mode = Undefined(Any)
-    name = Undefined(Any)
-    raw = Undefined(Any)
-    def __init__(self, raw, buffer_size=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
-    def detach(self, *args, **kwargs): pass
-    def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def readable(self): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
-    def __sizeof__(self): pass
-
-class FileIO(_RawIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
-    closefd = Undefined(Any)
-    mode = Undefined(Any)
-    def __init__(self, name, mode=Undefined, closefd=Undefined, opener=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self): pass
-    def fileno(self): pass
-    def isatty(self): pass
-    def read(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readall(self): pass
-    def readinto(self): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
-
 class IncrementalNewlineDecoder:
     newlines = Undefined(Any)
     def __init__(self, *args, **kwargs): pass
@@ -109,10 +33,10 @@ class _IOBase:
     def _checkReadable(self, *args, **kwargs): pass
     def _checkSeekable(self, *args, **kwargs): pass
     def _checkWritable(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
+    def close(self): pass
     def fileno(self): pass
     def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
+    def isatty(self): pass
     def readable(self): pass
     def readline(self, *args, **kwargs): pass
     def readlines(self, *args, **kwargs): pass

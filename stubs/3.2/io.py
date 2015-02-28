@@ -17,14 +17,12 @@
 DEFAULT_BUFFER_SIZE = 0
 
 from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Undefined, Any
+import builtins
 import _io
-from _io import (
-    BlockingIOError, open
-)
 
-open = open
-BlockingIOError = BlockingIOError
+open = builtins.open
 
+class BlockingIOError(OSError): pass
 class UnsupportedOperation(ValueError, OSError): pass
 
 class FileIO(_io._RawIOBase):
