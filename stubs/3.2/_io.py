@@ -16,18 +16,15 @@ class IncrementalNewlineDecoder:
     def reset(self, *args, **kwargs): pass
     def setstate(self, state): pass
 
-class UnsupportedOperation(ValueError, OSError): pass
-
 class _BufferedIOBase(_IOBase):
     def detach(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
+    def read(self, size: int = -1): pass
     def read1(self, *args, **kwargs): pass
     def readinto(self, b): pass
     def write(self, *args, **kwargs): pass
 
 class _IOBase:
     closed = Undefined(Any)
-    __dict__ = Undefined(Any)
     def __init__(self, *args, **kwargs): pass
     def _checkClosed(self, *args, **kwargs): pass
     def _checkReadable(self, *args, **kwargs): pass
@@ -35,15 +32,15 @@ class _IOBase:
     def _checkWritable(self, *args, **kwargs): pass
     def close(self): pass
     def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
+    def flush(self): pass
     def isatty(self): pass
     def readable(self): pass
-    def readline(self, *args, **kwargs): pass
+    def readline(self, size: int = -1): pass
     def readlines(self, *args, **kwargs): pass
     def seek(self, *args, **kwargs): pass
     def seekable(self): pass
     def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
+    def truncate(self, size: int = None) -> int: pass
     def writable(self): pass
     def writelines(self, *args, **kwargs): pass
     def __del__(self): pass
@@ -53,7 +50,7 @@ class _IOBase:
     def __next__(self): pass
 
 class _RawIOBase(_IOBase):
-    def read(self, *args, **kwargs): pass
+    def read(self, size: int = -1): pass
     def readall(self): pass
 
 class _TextIOBase(_IOBase):
@@ -61,6 +58,6 @@ class _TextIOBase(_IOBase):
     errors = Undefined(Any)
     newlines = Undefined(Any)
     def detach(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
-    def readline(self, *args, **kwargs): pass
+    def read(self, size: int = -1): pass
+    def readline(self, size: int = -1): pass
     def write(self, *args, **kwargs): pass

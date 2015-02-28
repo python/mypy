@@ -26,121 +26,35 @@ class BlockingIOError(OSError): pass
 class UnsupportedOperation(ValueError, OSError): pass
 
 class FileIO(_io._RawIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
     closefd = Undefined(Any)
     mode = Undefined(Any)
     def __init__(self, name, mode=Undefined, closefd=Undefined, opener=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self): pass
-    def fileno(self): pass
-    def isatty(self): pass
-    def read(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readall(self): pass
-    def readinto(self): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
+    def readinto(self, b): pass
+    def write(self, b): pass
 
 class BufferedReader(_io._BufferedIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
     mode = Undefined(Any)
     name = Undefined(Any)
     raw = Undefined(Any)
     def __init__(self, raw, buffer_size=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
-    def detach(self, *args, **kwargs): pass
-    def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def peek(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
-    def read1(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readinto(self, b): pass
-    def readline(self, *args, **kwargs): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def __getstate__(self): pass
-    def __next__(self): pass
-    def __sizeof__(self): pass
+    def peek(self, size: int = -1): pass
 
 class BufferedWriter(_io._BufferedIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
     mode = Undefined(Any)
     name = Undefined(Any)
     raw = Undefined(Any)
     def __init__(self, raw, buffer_size=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
-    def detach(self, *args, **kwargs): pass
-    def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def readable(self): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
-    def __sizeof__(self): pass
 
 class BufferedRWPair(_io._BufferedIOBase):
-    closed = Undefined(Any)
     def __init__(self, reader, writer, buffer_size=Undefined): pass
-    def close(self, *args, **kwargs): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def peek(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
-    def read1(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readinto(self, b): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
+    def peek(self, size: int = -1): pass
 
 class BufferedRandom(_io._BufferedIOBase):
-    _finalizing = Undefined(Any)
-    closed = Undefined(Any)
     mode = Undefined(Any)
     name = Undefined(Any)
     raw = Undefined(Any)
     def __init__(self, raw, buffer_size=Undefined): pass
-    def _dealloc_warn(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
-    def detach(self, *args, **kwargs): pass
-    def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def peek(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
-    def read1(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readinto(self, b): pass
-    def readline(self, *args, **kwargs): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
-    def __next__(self): pass
-    def __sizeof__(self): pass
+    def peek(self, size: int = -1): pass
 
 SEEK_SET = Undefined(Any)
 SEEK_CUR = Undefined(Any)
@@ -208,6 +122,7 @@ class StringIO(TextIO):
     def __exit__(self, type, value, traceback) -> bool: pass
 
 class TextIOWrapper(TextIO):
+    # TODO: This is actually a base class of _io._TextIOBase.
     # write_through is undocumented but used by subprocess
     def __init__(self, buffer: IO[bytes], encoding: str = None,
                  errors: str = None, newline: str = None,
