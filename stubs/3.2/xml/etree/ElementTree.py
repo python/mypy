@@ -4,46 +4,18 @@
 
 from typing import Undefined, Any
 import io
-from _elementtree import *
+from _elementtree import SubElement, Element, ParseError, TreeBuilder, XMLParser
+
+SubElement = SubElement
+Element = Element
+ParseError = ParseError
+TreeBuilder = TreeBuilder
+XMLParser = XMLParser
 
 VERSION = Undefined(Any)
 
-class ParseError(SyntaxError): pass
-
 def iselement(element): pass
 
-class Element:
-    tag = Undefined(Any)
-    attrib = Undefined(Any)
-    text = Undefined(Any)
-    tail = Undefined(Any)
-    def __init__(self, tag, attrib=Undefined, **extra): pass
-    def makeelement(self, tag, attrib): pass
-    def copy(self): pass
-    def __len__(self): pass
-    def __bool__(self): pass
-    def __getitem__(self, index): pass
-    def __setitem__(self, index, element): pass
-    def __delitem__(self, index): pass
-    def append(self, subelement): pass
-    def extend(self, elements): pass
-    def insert(self, index, subelement): pass
-    def remove(self, subelement): pass
-    def getchildren(self): pass
-    def find(self, path, namespaces=None): pass
-    def findtext(self, path, default=None, namespaces=None): pass
-    def findall(self, path, namespaces=None): pass
-    def iterfind(self, path, namespaces=None): pass
-    def clear(self): pass
-    def get(self, key, default=None): pass
-    def set(self, key, value): pass
-    def keys(self): pass
-    def items(self): pass
-    def iter(self, tag=None): pass
-    def getiterator(self, tag=None): pass
-    def itertext(self): pass
-
-def SubElement(parent, tag, attrib=Undefined, **extra): pass
 def Comment(text=None): pass
 def ProcessingInstruction(target, text=None): pass
 
@@ -114,13 +86,3 @@ class TreeBuilder:
     def data(self, data): pass
     def start(self, tag, attrs): pass
     def end(self, tag): pass
-
-class XMLParser:
-    parser = Undefined(Any)
-    target = Undefined(Any)
-    entity = Undefined(Any)
-    version = Undefined(Any)
-    def __init__(self, html=0, target=None, encoding=None): pass
-    def doctype(self, name, pubid, system): pass
-    def feed(self, data): pass
-    def close(self): pass
