@@ -14,7 +14,8 @@ from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.stubgen import generate_stub, generate_stub_for_module
 from mypy.stubutil import (
-    parse_signature, parse_all_signatures, build_signature, find_unique_signatures
+    parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
+    infer_sig_from_docstring
 )
 
 
@@ -77,6 +78,14 @@ class StubgenUtilSuite(Suite):
              ('func3', '(arg, arg2)')]),
             [('func', '()'),
              ('func3', '(arg, arg2)')])
+
+    def test_infer_sig_from_docstring(self):
+        assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'), '(x)')
+        assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'), '(x, Y_a=None)')
+        assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), None)
+        assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), None)
+        assert_equal(infer_sig_from_docstring('\nfunc(x=z(y))', 'func'), None)
+        assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
 
 
 class StubgenSuite(Suite):

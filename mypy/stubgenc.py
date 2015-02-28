@@ -7,7 +7,10 @@ import os.path
 import re
 
 
-from mypy.stubutil import parse_all_signatures, find_unique_signatures, is_c_module, write_header
+from mypy.stubutil import (
+    parse_all_signatures, find_unique_signatures, is_c_module, write_header,
+    infer_sig_from_docstring
+)
 
 
 def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, class_sigs={}):
@@ -94,10 +97,13 @@ def generate_c_function_stub(module, name, obj, output, self_var=None, sigs={}, 
     if name in ('__new__', '__init__') and name not in sigs and class_name in class_sigs:
         sig = class_sigs[class_name]
     else:
-        if class_name and name not in sigs:
-            sig = infer_method_sig(name)
-        else:
-            sig = sigs.get(name, '(*args, **kwargs)')
+        docstr = getattr(obj, '__doc__', None)
+        sig = infer_sig_from_docstring(docstr, name)
+        if not sig:
+            if class_name and name not in sigs:
+                sig = infer_method_sig(name)
+            else:
+                sig = sigs.get(name, '(*args, **kwargs)')
     sig = sig[1:-1]
     if not sig:
         self_arg = self_arg.replace(', ', '')
@@ -168,7 +174,8 @@ def is_skipped_attribute(attr):
 def infer_method_sig(name):
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
-        if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs'):
+        if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',
+                    'int', 'float', 'trunc', 'complex', 'bool'):
             return '()'
         if name == 'getitem':
             return '(index)'
@@ -185,7 +192,7 @@ def infer_method_sig(name):
         if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                     'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
                     'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
-                    'divmod', 'rdivmod'):
+                    'divmod', 'rdivmod', 'pow', 'rpow'):
             return '(other)'
         if name in ('neg', 'pos'):
             return '()'
