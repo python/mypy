@@ -4,6 +4,8 @@
 
 from typing import Undefined
 
+# TODO: Compress and Decompress classes are not published by the module.
+
 DEFLATED = Undefined(int)
 DEF_BUF_SIZE = Undefined(int)
 DEF_MEM_LEVEL = Undefined(int)
