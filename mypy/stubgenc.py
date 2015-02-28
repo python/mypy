@@ -97,7 +97,10 @@ def generate_c_function_stub(module, name, obj, output, self_var=None, sigs={}, 
     if name in ('__new__', '__init__') and name not in sigs and class_name in class_sigs:
         sig = class_sigs[class_name]
     else:
-        sig = sigs.get(name, '(*args, **kwargs)')
+        if class_name and name not in sigs:
+            sig = infer_method_sig(name)
+        else:
+            sig = sigs.get(name, '(*args, **kwargs)')
     sig = sig[1:-1]
     if not sig:
         self_arg = self_arg.replace(', ', '')
@@ -160,3 +163,22 @@ def is_skipped_attribute(attr):
                     '__weakref__',
                     '__reduce__',       # For pickling
                     '__getinitargs__')  # For pickling
+
+
+def infer_method_sig(name):
+    if name.startswith('__') and name.endswith('__'):
+        name = name[2:-2]
+        if name == 'hash':
+            return '()'
+        if name == 'getitem':
+            return '(index)'
+        if name == 'setitem':
+            return '(index, object)'
+        if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
+                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
+                    'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
+                    'divmod', 'rdivmod'):
+            return '(other)'
+        if name in ('neg', 'pos'):
+            return '()'
+    return '(*args, **kwargs)'
