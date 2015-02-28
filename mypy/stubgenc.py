@@ -112,9 +112,7 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
-            if attr not in ('__getattribute__',
-                            '__str__',
-                            '__repr__'):
+            if not is_skipped_attribute(attr):
                 if is_c_classmethod(value):
                     methods.append('@classmethod')
                     self_var = 'cls'
@@ -124,7 +122,7 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
                                          class_name=class_name, class_sigs=class_sigs)
     variables = []
     for attr, value in items:
-        if attr == '__doc__':
+        if is_skipped_attribute(attr):
             continue
         if attr not in done:
             variables.append('%s = Undefined(Any)' % attr)
@@ -149,3 +147,14 @@ def method_name_sort_key(name):
     if name.startswith('__') and name.endswith('__'):
         return (2, name)
     return (1, name)
+
+
+def is_skipped_attribute(attr):
+    return attr in ('__getattribute__',
+                    '__str__',
+                    '__repr__',
+                    '__doc__',
+                    '__module__',
+                    '__weakref__',
+                    '__reduce__',       # For pickling
+                    '__getinitargs__')  # For pickling
