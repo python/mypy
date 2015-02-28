@@ -117,6 +117,9 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
                     self_var = 'cls'
                 else:
                     self_var = 'self'
+                if attr == '__new__':
+                    # TODO: We should support __new__.
+                    attr = '__init__'
                 generate_c_function_stub(module, attr, value, methods, self_var, sigs=sigs,
                                          class_name=class_name, class_sigs=class_sigs)
     variables = []
