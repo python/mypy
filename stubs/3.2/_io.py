@@ -14,7 +14,6 @@ class BlockingIOError(OSError):
 class BufferedRWPair(_BufferedIOBase):
     closed = Undefined(Any)
     def __init__(self, reader, writer, buffer_size=Undefined): pass
-    def __init__(self, reader, writer, buffer_size=Undefined): pass
     def close(self, *args, **kwargs): pass
     def flush(self, *args, **kwargs): pass
     def isatty(self, *args, **kwargs): pass
@@ -33,7 +32,6 @@ class BufferedRandom(_BufferedIOBase):
     mode = Undefined(Any)
     name = Undefined(Any)
     raw = Undefined(Any)
-    def __init__(self, raw, buffer_size=Undefined): pass
     def __init__(self, raw, buffer_size=Undefined): pass
     def _dealloc_warn(self, *args, **kwargs): pass
     def close(self, *args, **kwargs): pass
@@ -64,7 +62,6 @@ class BufferedReader(_BufferedIOBase):
     name = Undefined(Any)
     raw = Undefined(Any)
     def __init__(self, raw, buffer_size=Undefined): pass
-    def __init__(self, raw, buffer_size=Undefined): pass
     def _dealloc_warn(self, *args, **kwargs): pass
     def close(self, *args, **kwargs): pass
     def detach(self, *args, **kwargs): pass
@@ -93,7 +90,6 @@ class BufferedWriter(_BufferedIOBase):
     name = Undefined(Any)
     raw = Undefined(Any)
     def __init__(self, raw, buffer_size=Undefined): pass
-    def __init__(self, raw, buffer_size=Undefined): pass
     def _dealloc_warn(self, *args, **kwargs): pass
     def close(self, *args, **kwargs): pass
     def detach(self, *args, **kwargs): pass
@@ -110,40 +106,11 @@ class BufferedWriter(_BufferedIOBase):
     def __getstate__(self): pass
     def __sizeof__(self): pass
 
-class BytesIO(_BufferedIOBase):
-    closed = Undefined(Any)
-    def __init__(self, initial_bytes=Undefined): pass
-    def __init__(self, initial_bytes=Undefined): pass
-    def close(self): pass
-    def flush(self): pass
-    def getbuffer(self): pass
-    def getvalue(self): pass
-    def isatty(self): pass
-    def read(self, *args, **kwargs): pass
-    def read1(self, size): pass
-    def readable(self): pass
-    def readinto(self, bytearray): pass
-    def readline(self, *args, **kwargs): pass
-    def readlines(self, *args, **kwargs): pass
-    def seek(self, pos, whence=0): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, bytes): pass
-    def writelines(self, sequence_of_strings): pass
-    def __getstate__(self): pass
-    def __iter__(self): pass
-    def __next__(self): pass
-    def __setstate__(self, state): pass
-    def __sizeof__(self): pass
-
 class FileIO(_RawIOBase):
     _finalizing = Undefined(Any)
     closed = Undefined(Any)
     closefd = Undefined(Any)
     mode = Undefined(Any)
-    def __init__(self, name, mode=Undefined, closefd=Undefined, opener=Undefined): pass
     def __init__(self, name, mode=Undefined, closefd=Undefined, opener=Undefined): pass
     def _dealloc_warn(self, *args, **kwargs): pass
     def close(self): pass
@@ -164,61 +131,10 @@ class FileIO(_RawIOBase):
 class IncrementalNewlineDecoder:
     newlines = Undefined(Any)
     def __init__(self, *args, **kwargs): pass
-    def __init__(self, *args, **kwargs): pass
     def decode(self, *args, **kwargs): pass
     def getstate(self): pass
     def reset(self, *args, **kwargs): pass
     def setstate(self, state): pass
-
-class StringIO(_TextIOBase):
-    closed = Undefined(Any)
-    line_buffering = Undefined(Any)
-    newlines = Undefined(Any)
-    def __init__(self, initial_value=Undefined, newline=Undefined): pass
-    def __init__(self, initial_value=Undefined, newline=Undefined): pass
-    def close(self, *args, **kwargs): pass
-    def getvalue(self): pass
-    def read(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readline(self, *args, **kwargs): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
-    def __next__(self): pass
-    def __setstate__(self, state): pass
-
-class TextIOWrapper(_TextIOBase):
-    _CHUNK_SIZE = Undefined(Any)
-    _finalizing = Undefined(Any)
-    buffer = Undefined(Any)
-    closed = Undefined(Any)
-    encoding = Undefined(Any)
-    errors = Undefined(Any)
-    line_buffering = Undefined(Any)
-    name = Undefined(Any)
-    newlines = Undefined(Any)
-    def __init__(self, *args, **kwargs): pass
-    def __init__(self, *args, **kwargs): pass
-    def close(self, *args, **kwargs): pass
-    def detach(self, *args, **kwargs): pass
-    def fileno(self): pass
-    def flush(self, *args, **kwargs): pass
-    def isatty(self, *args, **kwargs): pass
-    def read(self, *args, **kwargs): pass
-    def readable(self): pass
-    def readline(self, *args, **kwargs): pass
-    def seek(self, *args, **kwargs): pass
-    def seekable(self): pass
-    def tell(self): pass
-    def truncate(self, *args, **kwargs): pass
-    def writable(self): pass
-    def write(self, *args, **kwargs): pass
-    def __getstate__(self): pass
-    def __next__(self): pass
 
 class UnsupportedOperation(ValueError, OSError): pass
 

@@ -16,8 +16,30 @@
 
 DEFAULT_BUFFER_SIZE = 0
 
-from builtins import open
-from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable
+from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Undefined, Any
+import _io
+from _io import (
+    BlockingIOError, UnsupportedOperation, open, FileIO, BufferedReader,
+    BufferedWriter, BufferedRWPair, BufferedRandom
+)
+
+BlockingIOError = BlockingIOError
+UnsupportedOperation = UnsupportedOperation
+open = open
+FileIO = FileIO
+BufferedReader = BufferedReader
+BufferedWriter = BufferedWriter
+BufferedRWPair = BufferedRWPair
+BufferedRandom = BufferedRandom
+
+SEEK_SET = Undefined(Any)
+SEEK_CUR = Undefined(Any)
+SEEK_END = Undefined(Any)
+
+class IOBase(_io._IOBase): pass
+class RawIOBase(_io._RawIOBase, IOBase): pass
+class BufferedIOBase(_io._BufferedIOBase, IOBase): pass
+class TextIOBase(_io._TextIOBase, IOBase): pass
 
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: bytes = b'') -> None: pass
