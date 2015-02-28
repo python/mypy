@@ -13,10 +13,10 @@ _dialects = Undefined(Any)
 def field_size_limit(new_limit=Undefined): pass
 def get_dialect(name): pass
 def list_dialects(): pass
-def reader(csvfile, dialect=Undefined, **fmtparams=Undefined): pass
-def register_dialect(name, dialect=Undefined, **fmtparams=Undefined): pass
+def reader(csvfile, dialect=Undefined, **fmtparams): pass
+def register_dialect(name, dialect=Undefined, **fmtparams): pass
 def unregister_dialect(name): pass
-def writer(csvfile, dialect=Undefined, **fmtparams=Undefined): pass
+def writer(csvfile, dialect=Undefined, **fmtparams): pass
 
 class Dialect:
     delimiter = Undefined(Any)
