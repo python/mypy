@@ -167,6 +167,7 @@ def is_skipped_attribute(attr):
                     '__str__',
                     '__repr__',
                     '__doc__',
+                    '__dict__',
                     '__module__',
                     '__weakref__')  # For pickling
 
