@@ -32,7 +32,12 @@ def parse_signature(sig):
 
 
 def build_signature(fixed, optional):
-    args = fixed + ['%s=Undefined' % arg for arg in optional]
+    args = fixed[:]
+    for arg in optional:
+        if arg.startswith('*'):
+            args.append(arg)
+        else:
+            args.append('%s=Undefined' % arg)
     sig = '(%s)' % ', '.join(args)
     # Ad-hoc fixes.
     sig = sig.replace('(self)', '')

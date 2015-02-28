@@ -60,6 +60,7 @@ class StubgenUtilSuite(Suite):
         assert_equal(build_signature(['arg'], []), '(arg)')
         assert_equal(build_signature(['arg', 'arg2'], []), '(arg, arg2)')
         assert_equal(build_signature(['arg'], ['arg2']), '(arg, arg2=Undefined)')
+        assert_equal(build_signature(['arg'], ['arg2', '**x']), '(arg, arg2=Undefined, **x)')
 
     def test_parse_all_signatures(self):
         assert_equal(parse_all_signatures(['random text',
