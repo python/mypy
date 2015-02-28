@@ -157,20 +157,26 @@ def is_skipped_attribute(attr):
                     '__repr__',
                     '__doc__',
                     '__module__',
-                    '__weakref__',
-                    '__reduce__',       # For pickling
-                    '__getinitargs__')  # For pickling
+                    '__weakref__')  # For pickling
 
 
 def infer_method_sig(name):
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
-        if name == 'hash':
+        if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs'):
             return '()'
         if name == 'getitem':
             return '(index)'
         if name == 'setitem':
             return '(index, object)'
+        if name in ('delattr', 'getattr'):
+            return '(name)'
+        if name == 'setattr':
+            return '(name, value)'
+        if name == 'getstate':
+            return '()'
+        if name == 'setstate':
+            return '(state)'
         if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                     'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
                     'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
