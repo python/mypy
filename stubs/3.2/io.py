@@ -2,28 +2,35 @@
 
 # Based on http://docs.python.org/3.2/library/io.html
 
-# Only a subset of functionality is included (see below).
-# TODO IOBase
-# TODO RawIOBase
-# TODO BufferedIOBase
-# TODO FileIO
-# TODO BufferedReader
-# TODO BufferedWriter
-# TODO BufferedRandom
-# TODO BufferedRWPair
-# TODO TextIOBase
-# TODO IncrementalNewlineDecoder
-
 DEFAULT_BUFFER_SIZE = 0
 
 from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Undefined, Any
 import builtins
+import codecs
 import _io
+
+DEFAULT_BUFFER_SIZE = Undefined(int)
+SEEK_SET = Undefined(int)
+SEEK_CUR = Undefined(int)
+SEEK_END = Undefined(int)
 
 open = builtins.open
 
 class BlockingIOError(OSError): pass
 class UnsupportedOperation(ValueError, OSError): pass
+
+class IncrementalNewlineDecoder(codecs.IncrementalDecoder):
+    newlines = Undefined(Any)
+    def __init__(self, *args, **kwargs): pass
+    def decode(self, input, final=False): pass
+    def getstate(self): pass
+    def reset(self): pass
+    def setstate(self, state): pass
+
+class IOBase(_io._IOBase): pass
+class RawIOBase(_io._RawIOBase, IOBase): pass
+class BufferedIOBase(_io._BufferedIOBase, IOBase): pass
+class TextIOBase(_io._TextIOBase, IOBase): pass
 
 class FileIO(_io._RawIOBase):
     closefd = Undefined(Any)
@@ -55,15 +62,6 @@ class BufferedRandom(_io._BufferedIOBase):
     raw = Undefined(Any)
     def __init__(self, raw, buffer_size=Undefined): pass
     def peek(self, size: int = -1): pass
-
-SEEK_SET = Undefined(Any)
-SEEK_CUR = Undefined(Any)
-SEEK_END = Undefined(Any)
-
-class IOBase(_io._IOBase): pass
-class RawIOBase(_io._RawIOBase, IOBase): pass
-class BufferedIOBase(_io._BufferedIOBase, IOBase): pass
-class TextIOBase(_io._TextIOBase, IOBase): pass
 
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: bytes = b'') -> None: pass

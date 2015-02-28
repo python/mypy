@@ -4,50 +4,34 @@
 
 from typing import Any, Undefined
 
-DEFAULT_BUFFER_SIZE = Undefined(int)
-
-def open(*args, **kwargs): pass
-
-class IncrementalNewlineDecoder:
-    newlines = Undefined(Any)
-    def __init__(self, *args, **kwargs): pass
-    def decode(self, *args, **kwargs): pass
-    def getstate(self): pass
-    def reset(self, *args, **kwargs): pass
-    def setstate(self, state): pass
-
-class _BufferedIOBase(_IOBase):
-    def detach(self, *args, **kwargs): pass
-    def read(self, size: int = -1): pass
-    def read1(self, *args, **kwargs): pass
-    def readinto(self, b): pass
-    def write(self, *args, **kwargs): pass
-
 class _IOBase:
     closed = Undefined(Any)
     def __init__(self, *args, **kwargs): pass
-    def _checkClosed(self, *args, **kwargs): pass
-    def _checkReadable(self, *args, **kwargs): pass
-    def _checkSeekable(self, *args, **kwargs): pass
-    def _checkWritable(self, *args, **kwargs): pass
     def close(self): pass
     def fileno(self): pass
     def flush(self): pass
     def isatty(self): pass
     def readable(self): pass
     def readline(self, size: int = -1): pass
-    def readlines(self, *args, **kwargs): pass
-    def seek(self, *args, **kwargs): pass
+    def readlines(self, hint: int = -1): pass
+    def seek(self, offset, whence=Undefined): pass
     def seekable(self): pass
     def tell(self): pass
     def truncate(self, size: int = None) -> int: pass
     def writable(self): pass
-    def writelines(self, *args, **kwargs): pass
+    def writelines(self, lines): pass
     def __del__(self): pass
     def __enter__(self): pass
     def __exit__(self, exc_type, exc_val, exc_tb): pass
     def __iter__(self): pass
     def __next__(self): pass
+
+class _BufferedIOBase(_IOBase):
+    def detach(self): pass
+    def read(self, size: int = -1): pass
+    def read1(self, size: int = -1): pass
+    def readinto(self, b): pass
+    def write(self, b): pass
 
 class _RawIOBase(_IOBase):
     def read(self, size: int = -1): pass
@@ -57,7 +41,7 @@ class _TextIOBase(_IOBase):
     encoding = Undefined(Any)
     errors = Undefined(Any)
     newlines = Undefined(Any)
-    def detach(self, *args, **kwargs): pass
+    def detach(self): pass
     def read(self, size: int = -1): pass
     def readline(self, size: int = -1): pass
-    def write(self, *args, **kwargs): pass
+    def write(self, b): pass
