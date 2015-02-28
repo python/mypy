@@ -101,11 +101,11 @@ def test_stubgen(testcase):
             file.close()
             try:
                 if testcase.name.endswith('_import'):
-                    # For some reason without this sleep fixes random test failures.
+                    # For some reason this sleep fixes random test failures.
                     time.sleep(0.01)
                     generate_stub_for_module(name, out_dir, quiet=True)
                 else:
-                    generate_stub(path, out_dir, quiet=True)
+                    generate_stub(path, out_dir)
                 a = load_output(out_dir)
             except CompileError as e:
                 a = e.messages
