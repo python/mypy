@@ -20,7 +20,7 @@ from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Und
 import _io
 from _io import (
     BlockingIOError, UnsupportedOperation, open, FileIO, BufferedReader,
-    BufferedWriter, BufferedRWPair, BufferedRandom
+    BufferedWriter
 )
 
 BlockingIOError = BlockingIOError
@@ -29,8 +29,50 @@ open = open
 FileIO = FileIO
 BufferedReader = BufferedReader
 BufferedWriter = BufferedWriter
-BufferedRWPair = BufferedRWPair
-BufferedRandom = BufferedRandom
+
+class BufferedRWPair(_BufferedIOBase):
+    closed = Undefined(Any)
+    def __init__(self, reader, writer, buffer_size=Undefined): pass
+    def close(self, *args, **kwargs): pass
+    def flush(self, *args, **kwargs): pass
+    def isatty(self, *args, **kwargs): pass
+    def peek(self, *args, **kwargs): pass
+    def read(self, *args, **kwargs): pass
+    def read1(self, *args, **kwargs): pass
+    def readable(self): pass
+    def readinto(self, b): pass
+    def writable(self): pass
+    def write(self, *args, **kwargs): pass
+    def __getstate__(self): pass
+
+class BufferedRandom(_BufferedIOBase):
+    _finalizing = Undefined(Any)
+    closed = Undefined(Any)
+    mode = Undefined(Any)
+    name = Undefined(Any)
+    raw = Undefined(Any)
+    def __init__(self, raw, buffer_size=Undefined): pass
+    def _dealloc_warn(self, *args, **kwargs): pass
+    def close(self, *args, **kwargs): pass
+    def detach(self, *args, **kwargs): pass
+    def fileno(self): pass
+    def flush(self, *args, **kwargs): pass
+    def isatty(self, *args, **kwargs): pass
+    def peek(self, *args, **kwargs): pass
+    def read(self, *args, **kwargs): pass
+    def read1(self, *args, **kwargs): pass
+    def readable(self): pass
+    def readinto(self, b): pass
+    def readline(self, *args, **kwargs): pass
+    def seek(self, *args, **kwargs): pass
+    def seekable(self): pass
+    def tell(self): pass
+    def truncate(self, *args, **kwargs): pass
+    def writable(self): pass
+    def write(self, *args, **kwargs): pass
+    def __getstate__(self): pass
+    def __next__(self): pass
+    def __sizeof__(self): pass
 
 SEEK_SET = Undefined(Any)
 SEEK_CUR = Undefined(Any)
