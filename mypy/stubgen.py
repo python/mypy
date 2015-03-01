@@ -26,6 +26,8 @@ import imp
 import os.path
 import sys
 
+from typing import Any
+
 import mypy.parse
 import mypy.traverser
 from mypy.nodes import (
@@ -404,8 +406,8 @@ if __name__ == '__main__':
     if args[0] == '--docpath':
         docpath = args[1]
         args = args[2:]
-        all_sigs = []
-        all_class_sigs = []
+        all_sigs = []  # type: Any
+        all_class_sigs = []  # type: Any
         for path in glob.glob('%s/*.rst' % docpath):
             func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
             all_sigs += func_sigs

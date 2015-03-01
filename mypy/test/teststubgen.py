@@ -13,6 +13,7 @@ from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.stubgen import generate_stub, generate_stub_for_module
+from mypy.stubgenc import infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
@@ -147,22 +148,22 @@ def add_file(path, result):
 
 class StubgencSuite(Suite):
     def test_infer_hash_sig(self):
-        assert_equal(infer_method_sig('__hash__', '()'))
+        assert_equal(infer_method_sig('__hash__'), '()')
 
     def test_infer_getitem_sig(self):
-        assert_equal(infer_method_sig('__getitem__', '(index)'))
+        assert_equal(infer_method_sig('__getitem__'), '(index)')
 
     def test_infer_setitem_sig(self):
-        assert_equal(infer_method_sig('__setitem__', '(index, object)'))
+        assert_equal(infer_method_sig('__setitem__'), '(index, object)')
 
     def test_infer_binary_op_sig(self):
         for op in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul'):
-            assert_equal(infer_method_sig('__%s__' % op, '(other)'))
+            assert_equal(infer_method_sig('__%s__' % op), '(other)')
 
     def test_infer_unary_op_sig(self):
         for op in ('neg', 'pos'):
-            assert_equal(infer_method_sig('__%s__' % op, '()'))
+            assert_equal(infer_method_sig('__%s__' % op), '()')
 
 
 if __name__ == '__main__':

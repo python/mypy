@@ -36,6 +36,7 @@ class AllSuite(Suite):
         self.test_check = testcheck.TypeCheckSuite()
         self.test_typegen = testtypegen.TypeExportSuite()
         self.test_stubgen = teststubgen.StubgenSuite()
+        self.test_stubgenc = teststubgen.StubgencSuite()
         self.test_stubgen_util = teststubgen.StubgenUtilSuite()
         super().__init__()
 
