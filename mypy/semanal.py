@@ -85,6 +85,7 @@ TRUTH_VALUE_UNKNOWN = 2
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
     'typing.Function': 'typing.Callable',
+    'typing.typevar': 'typing.TypeVar',
 }
 
 
@@ -1494,7 +1495,8 @@ class SemanticAnalyzer(NodeVisitor):
         # Bind references to module attributes.
         if isinstance(base, RefExpr) and cast(RefExpr,
                                               base).kind == MODULE_REF:
-            names = (cast(MypyFile, (cast(RefExpr, base)).node)).names
+            file = cast(MypyFile, cast(RefExpr, base).node)
+            names = file.names
             n = names.get(expr.name, None)
             if n:
                 n = self.normalize_type_alias(n, expr)
@@ -1503,6 +1505,18 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.kind = n.kind
                 expr.fullname = n.fullname
                 expr.node = n.node
+            else:
+                # We only catch some errors here; the rest will be
+                # catched during type checking.
+                #
+                # This way we can report a larger number of errors in
+                # one type checker run. If we reported errors here,
+                # the build would terminate after semantic analysis
+                # and we wouldn't be able to report any type errors.
+                full_name = '%s.%s' % (file.fullname(), expr.name)
+                if full_name in obsolete_name_mapping:
+                    self.fail("Module has no attribute %r (it's now called %r)" % (
+                        expr.name, obsolete_name_mapping[full_name]), expr)
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)

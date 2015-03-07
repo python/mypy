@@ -1311,3 +1311,24 @@ main, line 2: (Did you mean 'typing.Callable'?)
 def f(): pass
 with f() as 1: pass  # E: Invalid assignment target
 [out]
+
+[case testUseObsoleteNameForTypeVar]
+from typing import typevar
+t = typevar('t')
+[out]
+main, line 1: Module has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main, line 2: Name 'typevar' is not defined
+main, line 2: (Did you mean 'typing.TypeVar'?)
+--' (this fixes syntax highlighting)
+
+[case testUseObsoleteNameForTypeVar2]
+t = typevar('t')
+[out]
+main, line 1: Name 'typevar' is not defined
+main, line 1: (Did you mean 'typing.TypeVar'?)
+
+[case testUseObsoleteNameForTypeVar3]
+import typing
+t = typing.typevar('t')
+[out]
+main, line 2: Module has no attribute 'typevar' (it's now called 'typing.TypeVar')
