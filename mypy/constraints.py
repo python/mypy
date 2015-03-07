@@ -3,7 +3,7 @@
 from typing import List, cast, Undefined
 
 from mypy.types import (
-    CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVar,
+    CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
     Instance, TupleType, UnionType, Overloaded, ErasedType, is_named_instance
 )
 from mypy.expandtype import expand_caller_var_args
@@ -153,7 +153,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     # Non-trivial leaf type
 
-    def visit_type_var(self, template: TypeVar) -> List[Constraint]:
+    def visit_type_var(self, template: TypeVarType) -> List[Constraint]:
         return [Constraint(template.id, self.direction, self.actual)]
 
     # Non-leaf types

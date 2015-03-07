@@ -8,7 +8,7 @@ from typing import Any, Dict, List, cast, Tuple
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVar,
+    Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVarType,
     TypeQuery, ANY_TYPE_STRATEGY, CallableType
 )
 from mypy import nodes
@@ -178,7 +178,7 @@ class StatisticsVisitor(TraverserVisitor):
                 self.num_complex += 1
             else:
                 self.num_tuple += 1
-        elif isinstance(t, TypeVar):
+        elif isinstance(t, TypeVarType):
             self.num_typevar += 1
 
     def log(self, string: str) -> None:
@@ -251,7 +251,7 @@ def is_generic(t: Type) -> bool:
 
 def is_complex(t: Type) -> bool:
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType,
-                                           TypeVar))
+                                           TypeVarType))
 
 
 html_files = []  # type: List[Tuple[str, str, int, int]]

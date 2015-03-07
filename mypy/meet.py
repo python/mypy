@@ -2,7 +2,7 @@ from typing import cast, List
 
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVar,
+    Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, ErasedType, TypeList, UnionType
 )
 from mypy.sametypes import is_same_type
@@ -138,8 +138,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
 
-    def visit_type_var(self, t: TypeVar) -> Type:
-        if isinstance(self.s, TypeVar) and (cast(TypeVar, self.s)).id == t.id:
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if isinstance(self.s, TypeVarType) and (cast(TypeVarType, self.s)).id == t.id:
             return self.s
         else:
             return self.default(self.s)

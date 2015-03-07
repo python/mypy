@@ -9,7 +9,7 @@ from typing import Undefined, cast, List, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVar, TupleType, UnionType, Void, NoneTyp, AnyType,
+    Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
 from mypy.nodes import (
@@ -191,9 +191,9 @@ class MessageBuilder:
                     return '{}[{}]'.format(base_str, s)
                 else:
                     return '{}[...]'.format(base_str)
-        elif isinstance(typ, TypeVar):
+        elif isinstance(typ, TypeVarType):
             # This is similar to non-generic instance types.
-            return '"{}"'.format((cast(TypeVar, typ)).name)
+            return '"{}"'.format((cast(TypeVarType, typ)).name)
         elif isinstance(typ, TupleType):
             fallback = self.format_simple(typ.fallback)
             if fallback != '"tuple"':

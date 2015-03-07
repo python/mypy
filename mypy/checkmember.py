@@ -4,7 +4,7 @@ from typing import cast, Callable, List
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
-    Overloaded, TypeVar, TypeTranslator, UnionType
+    Overloaded, TypeVarType, TypeTranslator, UnionType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type, Decorator
@@ -299,11 +299,11 @@ class TvarTranslator(TypeTranslator):
         super().__init__()
         self.num_func_tvars = num_func_tvars
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         if t.id < 0:
             return t
         else:
-            return TypeVar(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound)
+            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound)
 
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:

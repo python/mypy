@@ -64,7 +64,7 @@ from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors
 from mypy.types import (
-    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVar, AnyType,
+    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
     replace_leading_arg_type, TupleType, UnionType, StarType
 )
@@ -1960,7 +1960,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     """
     tv = List[Type]()
     for i in range(len(typ.type_vars)):
-        tv.append(TypeVar(typ.type_vars[i], i + 1,
+        tv.append(TypeVarType(typ.type_vars[i], i + 1,
                           typ.defn.type_vars[i].values,
                           typ.defn.type_vars[i].upper_bound))
     inst = Instance(typ, tv)
