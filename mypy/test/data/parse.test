@@ -3226,3 +3226,17 @@ MypyFile:1(
           IntExpr(3))
         Ellipsis
         IntExpr(1)))))
+
+[case testParseIfExprInDictExpr]
+test =  { 'spam': 'eggs' if True else 'bacon' }
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(test)
+    DictExpr:1(
+      StrExpr(spam)
+      ConditionalExpr:1(
+        Condition(
+          NameExpr(True))
+        StrExpr(eggs)
+        StrExpr(bacon)))))

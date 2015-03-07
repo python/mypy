@@ -1220,7 +1220,7 @@ class Parser:
             elif self.current_str() != ':':
                 self.parse_error()
             colon = self.expect(':')
-            value = self.parse_expression(precedence['<if>'])
+            value = self.parse_expression(precedence['<for>'])
             if self.current_str() == 'for' and items == []:
                 return self.parse_dict_comprehension(key, value, colon)
             items.append((key, value))
