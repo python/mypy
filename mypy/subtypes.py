@@ -2,7 +2,7 @@ from typing import cast, List, Dict
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVar, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
+    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
     is_named_instance
 )
 import mypy.applytype
@@ -91,9 +91,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
-    def visit_type_var(self, left: TypeVar) -> bool:
+    def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
-        if isinstance(right, TypeVar):
+        if isinstance(right, TypeVarType):
             return left.name == right.name
         else:
             return is_named_instance(self.right, 'builtins.object')

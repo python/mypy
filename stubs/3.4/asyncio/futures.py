@@ -1,4 +1,4 @@
-from typing import Any, Callable, typevar, List, Generic, Iterable, Iterator
+from typing import Any, Callable, TypeVar, List, Generic, Iterable, Iterator
 from asyncio.events import AbstractEventLoop
 # __all__ = ['CancelledError', 'TimeoutError',
 #            'InvalidStateError',
@@ -6,7 +6,7 @@ from asyncio.events import AbstractEventLoop
 #            ]
 __all__ = ['Future']
 
-_T = typevar('_T')
+_T = TypeVar('_T')
 
 class _TracebackLogger:
     __slots__ = [] # type: List[str]

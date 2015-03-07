@@ -1,4 +1,4 @@
-from typing import builtinclass, Iterable, Iterator, Generic, typevar, List
+from typing import builtinclass, Iterable, Iterator, Generic, TypeVar, List
 
 @builtinclass
 class object:
@@ -23,7 +23,7 @@ class str:
     def __add__(self, x: str) -> str: pass
     def __getitem__(self, x: int) -> str: pass
 
-T = typevar('T')
+T = TypeVar('T')
 
 class list(Iterable[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: pass

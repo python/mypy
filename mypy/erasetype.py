@@ -2,7 +2,7 @@ import typing
 
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
-    Instance, TypeVar, CallableType, TupleType, UnionType, Overloaded, ErasedType,
+    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
     TypeTranslator, TypeList
 )
 
@@ -50,7 +50,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return Instance(t.type, [AnyType()] * len(t.args), t.line,
                         t.repr)
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         return AnyType()
 
     def visit_callable_type(self, t: CallableType) -> Type:
@@ -85,7 +85,7 @@ class GenericTypeEraser(TypeTranslator):
 
     # FIX: What about generic function types?
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         return AnyType()
 
     def visit_instance(self, t: Instance) -> Type:
@@ -100,5 +100,5 @@ def erase_typevars(t: Type) -> Type:
 class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         return AnyType()

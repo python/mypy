@@ -3,7 +3,7 @@
 from typing import Undefined, Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
-    Type, UnboundType, TypeVar, TupleType, UnionType, Instance, AnyType, CallableType,
+    Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
 from mypy.typerepr import TypeVarRepr
@@ -80,7 +80,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 else:
                     rep = None
                 values = cast(TypeVarExpr, sym.node).values
-                return TypeVar(t.name, sym.tvar_id, values, self.builtin_type('builtins.object'),
+                return TypeVarType(t.name, sym.tvar_id, values, self.builtin_type('builtins.object'),
                                t.line, rep)
             elif fullname == 'builtins.None':
                 return Void()
@@ -148,8 +148,8 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_instance(self, t: Instance) -> Type:
         return t
 
-    def visit_type_var(self, t: TypeVar) -> Type:
-        raise RuntimeError('TypeVar is already analysed')
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        raise RuntimeError('TypeVarType is already analysed')
 
     def visit_callable_type(self, t: CallableType) -> Type:
         res = CallableType(self.anal_array(t.arg_types),
@@ -263,9 +263,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 info.name(), s, act), t)
         elif info.defn.type_vars:
             # Check type argument values.
-            for arg, typevar in zip(t.args, info.defn.type_vars):
-                if typevar.values:
-                    if isinstance(arg, TypeVar):
+            for arg, TypeVar in zip(t.args, info.defn.type_vars):
+                if TypeVar.values:
+                    if isinstance(arg, TypeVarType):
                         arg_values = arg.values
                         if not arg_values:
                             self.fail('Type variable "{}" not valid as type '
@@ -275,7 +275,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
-                                               typevar.values, t)
+                                               TypeVar.values, t)
         for arg in t.args:
             arg.accept(self)
 
@@ -317,5 +317,5 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_type_list(self, t: TypeList) -> None:
         self.fail('Invalid type', t)
 
-    def visit_type_var(self, t: TypeVar) -> None:
+    def visit_type_var(self, t: TypeVarType) -> None:
         pass

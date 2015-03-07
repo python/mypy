@@ -222,14 +222,14 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testGenericTypeAlias]
-from typing import Generic, typevar
-T = typevar('T')
+from typing import Generic, TypeVar
+T = TypeVar('T')
 class G(Generic[T]): pass
 A = G[int]
 def f(x: A) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Generic : Generic, typevar : typevar])
+  ImportFrom:1(typing, [Generic : Generic, TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2())

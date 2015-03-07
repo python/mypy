@@ -133,8 +133,8 @@ class A: pass
 main: In function "f":
 
 [case testInferringGenericTypeForLvar]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 class A(Generic[T]): pass
 a_i = Undefined # type: A[int]
 a_s = Undefined # type: A[str]
@@ -405,8 +405,8 @@ b = '' # E: Incompatible types in assignment (expression has type "str", variabl
 
 
 [case testInferSimpleGenericFunction]
-from typing import Undefined, Tuple, typevar
-T = typevar('T')
+from typing import Undefined, Tuple, TypeVar
+T = TypeVar('T')
 a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: Tuple[A, object]
@@ -426,8 +426,8 @@ class B: pass
 [builtins fixtures/tuple.py]
 
 [case testInferringGenericFunctionTypeForLvar]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 def f() -> None:
     a = id
     b = Undefined # type: int
@@ -441,8 +441,8 @@ def id(x: T) -> T:
 main: In function "f":
 
 [case testUnderspecifiedInferenceResult]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 class A: pass
 a = Undefined # type: A
 
@@ -460,8 +460,8 @@ def g(a: T) -> None: pass
 main: In function "ff":
 
 [case testUnsolvableInferenceResult]
-from typing import typevar
-T = typevar('T')
+from typing import TypeVar
+T = TypeVar('T')
 f(A(), g()) # Fail
 f(A(), A())
 
@@ -473,8 +473,8 @@ main, line 3: Cannot infer type argument 1 of "f"
 main, line 3: "g" does not return a value
 
 [case testInferenceWithMultipleConstraints]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 a = Undefined # type: A
 b = Undefined # type: B
 
@@ -489,9 +489,9 @@ class A: pass
 class B(A): pass
 
 [case testInferenceWithMultipleVariables]
-from typing import Undefined, Tuple, typevar
-T = typevar('T')
-S = typevar('S')
+from typing import Undefined, Tuple, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
 a, b = Undefined, Undefined # type: (A, B)
 taa = Undefined # type: Tuple[A, A]
 tab = Undefined # type: Tuple[A, B]
@@ -516,8 +516,8 @@ main, line 11: Argument 1 to "f" has incompatible type "A"; expected "B"
 main, line 11: Argument 2 to "f" has incompatible type "B"; expected "A"
 
 [case testConstraintSolvingWithSimpleGenerics]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ao = Undefined # type: A[object]
 ab = Undefined # type: A[B]
 ac = Undefined # type: A[C]
@@ -544,8 +544,8 @@ class B: pass
 class C: pass
 
 [case testConstraintSolvingFailureWithSimpleGenerics]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ao = Undefined # type: A[object]
 ab = Undefined # type: A[B]
 
@@ -560,8 +560,8 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testTypeInferenceWithCalleeDefaultArgs]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 a = Undefined # type: A
 o = Undefined # type: object
 
@@ -584,7 +584,7 @@ class A: pass
 
 
 [case testGenericFunctionInferenceWithMultipleInheritance]
-from typing import typevar
+from typing import TypeVar
 
 class I: pass
 class J: pass
@@ -594,7 +594,7 @@ class B(I, J): pass
 class C(I): pass
 class D(J): pass
 
-T = typevar('T')
+T = TypeVar('T')
 def f(a: T, b: T) -> T: pass
 def g(x: I) -> None: pass
 
@@ -610,7 +610,7 @@ e = f(D(), C())
 g(e) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
 
 [case testGenericFunctionInferenceWithMultipleInheritance2]
-from typing import typevar
+from typing import TypeVar
 
 class I: pass
 class J: pass
@@ -619,7 +619,7 @@ class A(I): pass
 class B(A, J): pass
 class C(I, J): pass
 
-T = typevar('T')
+T = TypeVar('T')
 def f(a: T, b: T) -> T: pass
 def g(x: I) -> None: pass
 def h(x: J) -> None: pass
@@ -635,7 +635,7 @@ g(a)
 h(b) # E: Argument 1 to "h" has incompatible type "I"; expected "J"
 
 [case testGenericFunctionInferenceWithMultipleInheritance3]
-from typing import typevar
+from typing import TypeVar
 
 class I: pass
 class J: pass
@@ -645,7 +645,7 @@ class A(K): pass
 class B(A, I): pass
 class C(I, J): pass
 
-T = typevar('T')
+T = TypeVar('T')
 def f(a: T, b: T) -> T: pass
 def g(x: K) -> None: pass
 
@@ -657,9 +657,9 @@ c = f(A(), B())
 g(c)
 
 [case testPrecedenceOfFirstBaseAsInferenceResult]
-from typing import Undefined, typevar
+from typing import Undefined, TypeVar
 from abc import abstractmethod, ABCMeta
-T = typevar('T')
+T = TypeVar('T')
 a, i, j = Undefined, Undefined, Undefined # type: (A, I, J)
 
 a = f(B(), C())
@@ -679,9 +679,9 @@ class C(A, I, J): pass
 
 
 [case testNonOverloadedMapInference]
-from typing import typevar, Callable, List
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Callable, List
+t = TypeVar('t')
+s = TypeVar('s')
 class A: pass
 b = bool()
 def f(x: bool) -> A: pass

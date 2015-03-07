@@ -107,8 +107,8 @@ f(*it2) # E: Argument 1 to "f" has incompatible type Iterable[str]; expected "in
 
 
 [case testTypeInferenceWithCalleeVarArgs]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 a = Undefined # type: A
 b = Undefined # type: B
 c = Undefined # type: C
@@ -134,8 +134,8 @@ class C: pass
 [builtins fixtures/list.py]
 
 [case testTypeInferenceWithCalleeVarArgsAndDefaultArgs]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 a = Undefined # type: A
 o = Undefined # type: object
 
@@ -435,9 +435,9 @@ def f(a: B, *b: B) -> B: pass
 
 
 [case testCallerVarArgsListWithTypeInference]
-from typing import Undefined, List, typevar, Tuple
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, List, TypeVar, Tuple
+S = TypeVar('S')
+T = TypeVar('T')
 a, b, aa = Undefined, Undefined, Undefined # type: (A, B, List[A])
 
 a, b = f(*aa)    # Fail
@@ -468,9 +468,9 @@ main, line 11: List or tuple expected as variable arguments
 main, line 12: List or tuple expected as variable arguments
 
 [case testCallerVarArgsTupleWithTypeInference]
-from typing import Undefined, typevar, Tuple
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Tuple
+S = TypeVar('S')
+T = TypeVar('T')
 a, b = Undefined, Undefined # type: (A, B)
 
 a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "Tuple[A, B]"; expected "A"
@@ -489,9 +489,9 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testCallerVarargsAndComplexTypeInference]
-from typing import Undefined, List, typevar, Generic, Tuple
-T = typevar('T')
-S = typevar('S')
+from typing import Undefined, List, TypeVar, Generic, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
 a, b = Undefined, Undefined # type: (A, B)
 ao = Undefined # type: List[object]
 aa = Undefined # type: List[A]

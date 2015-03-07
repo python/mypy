@@ -45,7 +45,7 @@ from collections import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
 from typing import (
-    Any, typevar, Iterable, Sequence, List, Callable, Set, cast, SupportsInt, Union
+    Any, TypeVar, Iterable, Sequence, List, Callable, Set, cast, SupportsInt, Union
 )
 
 __all__ = ["Random","seed","random","uniform","randint","choice","sample",
@@ -69,7 +69,7 @@ RECIP_BPF = 2**-BPF # type: float
 
 import _random
 
-T = typevar('T')
+T = TypeVar('T')
 
 class Random(_random.Random):
     """Random number generator base class used by bound module functions.

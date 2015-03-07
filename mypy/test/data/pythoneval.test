@@ -152,8 +152,8 @@ f
 1
 
 [case testFunctionDecorator]
-from typing import typevar, cast
-ftype = typevar('ftype')
+from typing import TypeVar, cast
+ftype = TypeVar('ftype')
 def logged(f: ftype) -> ftype:
     def g(*args, **kwargs):
         print('enter', f.__name__)
@@ -336,8 +336,8 @@ if isinstance(x, tuple):
 1 x
 
 [case testTypevarValues]
-from typing import typevar
-T = typevar('T', values=(str, bytes))
+from typing import TypeVar
+T = TypeVar('T', values=(str, bytes))
 def f(x: T) -> T:
     if isinstance(x, str):
         return 'foo'
@@ -423,10 +423,10 @@ f(re.match(b'x*', b'xxy'))
 b'xx'
 
 [case testMultipleTypevarsWithValues]
-from typing import typevar
+from typing import TypeVar
 
-T = typevar('T', values=(int, str))
-S = typevar('S', values=(int, str))
+T = TypeVar('T', values=(int, str))
+S = TypeVar('S', values=(int, str))
 
 def f(t: T, s: S) -> None:
     t + s
@@ -760,8 +760,8 @@ setslice [0, 1, 2]
 reversed [2, 1, 0]
 
 [case testTupleAsSubtypeOfSequence]
-from typing import typevar, Sequence
-T = typevar('T')
+from typing import TypeVar, Sequence
+T = TypeVar('T')
 def f(a: Sequence[T]) -> None: print(a)
 f(tuple())
 [out]
@@ -975,9 +975,9 @@ print(r"""\"""$""")
 --' (hack to fix syntax highlighting)
 
 [case testSubclassBothGenericAndNonGenericABC]
-from typing import Generic, typevar
+from typing import Generic, TypeVar
 from abc import ABCMeta
-T = typevar('T')
+T = TypeVar('T')
 class A(metaclass=ABCMeta): pass
 class B(Generic[T]): pass
 class C(A, B): pass

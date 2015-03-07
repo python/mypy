@@ -5,7 +5,7 @@ import re
 from abc import abstractmethod, ABCMeta
 
 from typing import (
-    Any, overload, typevar, Undefined, List, Tuple, cast, Set, Dict, Union
+    Any, overload, TypeVar, Undefined, List, Tuple, cast, Set, Dict, Union
 )
 
 from mypy.lex import Token
@@ -23,7 +23,7 @@ class Context(metaclass=ABCMeta):
 import mypy.types
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 # Symbol table node kinds
@@ -34,7 +34,7 @@ LDEF = 0  # type: int
 GDEF = 1  # type: int
 MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
-# Type variable declared using typevar(...) has kind UNBOUND_TVAR. It's not
+# Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
 # valid as a type. A type variable is valid as a type (kind TVAR) within
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
@@ -1314,7 +1314,7 @@ class TypeApplication(Node):
 
 
 class TypeVarExpr(SymbolNode):
-    """Type variable expression typevar(...)."""
+    """Type variable expression TypeVar(...)."""
 
     _name = ''
     _fullname = ''

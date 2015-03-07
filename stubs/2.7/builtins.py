@@ -1,21 +1,21 @@
 # Stubs for builtins (Python 2.7)
 
 from typing import (
-    Undefined, typevar, Iterator, Iterable, overload,
+    Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, BinaryIO, builtinclass, ducktype, Union, AnyStr
 )
 from abc import abstractmethod, ABCMeta
 
-_T = typevar('_T')
-_KT = typevar('_KT')
-_VT = typevar('_VT')
-_S = typevar('_S')
-_T1 = typevar('_T1')
-_T2 = typevar('_T2')
-_T3 = typevar('_T3')
-_T4 = typevar('_T4')
+_T = TypeVar('_T')
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+_S = TypeVar('_S')
+_T1 = TypeVar('_T1')
+_T2 = TypeVar('_T2')
+_T3 = TypeVar('_T3')
+_T4 = TypeVar('_T4')
 
 staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.

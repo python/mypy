@@ -2,7 +2,7 @@ from typing import Dict, Tuple, List, cast, Undefined
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
-    Void, NoneTyp, TypeVar, Overloaded, TupleType, UnionType, ErasedType, TypeList
+    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList
 )
 
 
@@ -35,7 +35,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = Undefined(Dict[int, Type])  # typevar id -> value
+    variables = Undefined(Dict[int, Type])  # TypeVar id -> value
 
     def __init__(self, variables: Dict[int, Type]) -> None:
         self.variables = variables
@@ -66,7 +66,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         args = self.expand_types(t.args)
         return Instance(t.type, args, t.line, t.repr)
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
             inst = cast(Instance, repl)

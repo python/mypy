@@ -1,10 +1,10 @@
 import os
 import os.path
 
-from typing import Undefined, Tuple, List, typevar, Sequence, Any, Callable
+from typing import Undefined, Tuple, List, TypeVar, Sequence, Any, Callable
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 class ErrorInfo:

@@ -14,9 +14,9 @@ generic class that represents a stack:
 
 .. code-block:: python
 
-   from typing import typevar, Generic
+   from typing import TypeVar, Generic
 
-   T = typevar('T')
+   T = TypeVar('T')
 
    class Stack(Generic[T]):
        def __init__(self) -> None:
@@ -100,9 +100,9 @@ Generic type variables can also be used to define generic functions:
 
 .. code-block:: python
 
-   from typing import typevar, Sequence
+   from typing import TypeVar, Sequence
 
-   T = typevar('T')      # Declare type variable
+   T = TypeVar('T')      # Declare type variable
 
    def first(seq: Sequence[T]) -> T:   # Generic function
        return seq[0]
@@ -124,9 +124,9 @@ example we use the same type variable in two generic functions:
 
 .. code-block:: python
 
-   from typing typevar, Sequence
+   from typing TypeVar, Sequence
 
-   T = typevar('T')      # Declare type variable
+   T = TypeVar('T')      # Declare type variable
 
    def first(seq: Sequence[T]) -> T:
        return seq[0]
@@ -149,9 +149,9 @@ as its value. A typical example is a type variable that can only have values
 
 .. code-block:: python
 
-   from typing import typevar
+   from typing import TypeVar
 
-   AnyStr = typevar('AnyStr', values=(str, bytes))
+   AnyStr = TypeVar('AnyStr', values=(str, bytes))
 
 This is actually such a common type variable that ``AnyStr`` is
 defined in ``typing`` and we don't need to define it ourselves.
@@ -209,7 +209,7 @@ this is correct for ``concat``, since ``concat`` actually returns a
     >>> print(type(ss))
     <class 'str'>
 
-You can also use a ``typevar`` with ``values`` when defining a generic
+You can also use a ``TypeVar`` with ``values`` when defining a generic
 class. For example, mypy uses the type ``typing.Pattern[AnyStr]`` for the
 return value of ``re.compile``, since regular expressions can be based
 on a string or a bytes pattern.

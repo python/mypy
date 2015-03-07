@@ -4,7 +4,7 @@ from typing import Undefined, cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVar, TypeTranslator, ErasedType, FunctionLike, UnionType
+    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -288,7 +288,7 @@ class ExpressionChecker:
         # valid results.
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if isinstance(ret_type, TypeVar):
+        if isinstance(ret_type, TypeVarType):
             if ret_type.values or (not isinstance(ctx, Instance) or
                                    not cast(Instance, ctx).args):
                 # The return type is a type variable. If it has values, we can't easily restrict
@@ -1019,7 +1019,7 @@ class ExpressionChecker:
     def check_list_or_set_expr(self, items: List[Node], fullname: str,
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
-        tv = TypeVar('T', -1, [], self.chk.object_type())
+        tv = TypeVarType('T', -1, [], self.chk.object_type())
         constructor = CallableType([tv],
                                [nodes.ARG_STAR],
                                [None],
@@ -1055,8 +1055,8 @@ class ExpressionChecker:
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
-        tv1 = TypeVar('KT', -1, [], self.chk.object_type())
-        tv2 = TypeVar('VT', -2, [], self.chk.object_type())
+        tv1 = TypeVarType('KT', -1, [], self.chk.object_type())
+        tv2 = TypeVarType('VT', -2, [], self.chk.object_type())
         constructor = Undefined(CallableType)
         # The callable type represents a function like this:
         #
@@ -1169,7 +1169,7 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        tv = TypeVar('T', -1, [], self.chk.object_type())
+        tv = TypeVarType('T', -1, [], self.chk.object_type())
         constructor = CallableType([tv],
                                [nodes.ARG_POS],
                                [None],
@@ -1186,8 +1186,8 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        key_tv = TypeVar('KT', -1, [], self.chk.object_type())
-        value_tv = TypeVar('VT', -2, [], self.chk.object_type())
+        key_tv = TypeVarType('KT', -1, [], self.chk.object_type())
+        value_tv = TypeVarType('VT', -2, [], self.chk.object_type())
         constructor = CallableType([key_tv, value_tv],
                                [nodes.ARG_POS, nodes.ARG_POS],
                                [None, None],
@@ -1409,7 +1409,7 @@ class HasTypeVarQuery(types.TypeQuery):
     def __init__(self) -> None:
         super().__init__(False, types.ANY_TYPE_STRATEGY)
 
-    def visit_type_var(self, t: TypeVar) -> bool:
+    def visit_type_var(self, t: TypeVarType) -> bool:
         return True
 
 
@@ -1428,7 +1428,7 @@ class HasErasedComponentsQuery(types.TypeQuery):
 
 def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
     if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
-            isinstance(formal, AnyType) or isinstance(formal, TypeVar) or
+            isinstance(formal, AnyType) or isinstance(formal, TypeVarType) or
             isinstance(formal, CallableType)):
         # These could match anything at runtime.
         return True

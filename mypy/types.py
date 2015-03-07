@@ -1,12 +1,12 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Undefined, Any, typevar, List, Tuple, cast, Generic, Set
+from typing import Undefined, Any, TypeVar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 class Type(mypy.nodes.Context):
@@ -182,7 +182,7 @@ class Instance(Type):
         return visitor.visit_instance(self)
 
 
-class TypeVar(Type):
+class TypeVarType(Type):
     """A type variable type.
 
     This refers to either a class type variable (id > 0) or a function
@@ -513,7 +513,7 @@ class TypeVisitor(Generic[T]):
     def visit_erased_type(self, t: ErasedType) -> T:
         pass
 
-    def visit_type_var(self, t: TypeVar) -> T:
+    def visit_type_var(self, t: TypeVarType) -> T:
         pass
 
     def visit_instance(self, t: Instance) -> T:
@@ -569,7 +569,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_instance(self, t: Instance) -> Type:
         return Instance(t.type, self.translate_types(t.args), t.line, t.repr)
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
@@ -782,7 +782,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_erased_type(self, t: ErasedType) -> bool:
         return self.default
 
-    def visit_type_var(self, t: TypeVar) -> bool:
+    def visit_type_var(self, t: TypeVarType) -> bool:
         return self.default
 
     def visit_instance(self, t: Instance) -> bool:

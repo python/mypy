@@ -3,7 +3,7 @@
 import typing
 
 from mypy.lex import Token
-from mypy.types import Type, AnyType, NoneTyp, TypeTranslator, TypeVar
+from mypy.types import Type, AnyType, NoneTyp, TypeTranslator, TypeVarType
 from mypy.typerepr import AnyRepr
 
 
@@ -23,7 +23,7 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
     def __init__(self, func_tvars: bool) -> None:
         self.func_tvars = func_tvars
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         if t.id > 0 or self.func_tvars:
             if t.repr is not None:
                 # Give a representation for the dynamic type.
@@ -45,7 +45,7 @@ class ReplaceFuncTypeVarsVisitor(TypeTranslator):
     def __init__(self, target_type: Type) -> None:
         self.target_type = target_type
 
-    def visit_type_var(self, t: TypeVar) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> Type:
         if t.id < 0:
             return self.target_type
         else:

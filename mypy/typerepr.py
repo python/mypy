@@ -52,7 +52,7 @@ class CallableRepr:
 
 
 class TypeVarRepr:
-    """Representation of TypeVar."""
+    """Representation of TypeVarType."""
     def __init__(self, name: Any) -> None:
         self.name = name
 

@@ -30,7 +30,7 @@ __all__ = [
     'cast',
     'forwardref',
     'overload',
-    'typevar',
+    'TypeVar',
     # _Protocols and abstract base classes
     'Container',
     'Iterable',
@@ -182,14 +182,14 @@ def NamedTuple(typename, fields):
                                   (name for name, type in fields))
 
 
-class typevar(object):
+class TypeVar(object):
     def __init__(self, name, values=None):
         self.name = name
         self.values = values
 
 
 # Predefined type variables.
-AnyStr = typevar('AnyStr', values=(str, unicode))
+AnyStr = TypeVar('AnyStr', values=(str, unicode))
 
 
 class forwardref(object):
@@ -280,9 +280,9 @@ Undefined = Undefined()
 # Abstract classes
 
 
-T = typevar('T')
-KT = typevar('KT')
-VT = typevar('VT')
+T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 
 class SupportsInt(_Protocol):

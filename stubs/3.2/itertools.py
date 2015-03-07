@@ -2,11 +2,11 @@
 
 # Based on http://docs.python.org/3.2/library/itertools.html
 
-from typing import (Iterator, typevar, Iterable, overload, Any, Callable, Tuple,
+from typing import (Iterator, TypeVar, Iterable, overload, Any, Callable, Tuple,
                     Union, Sequence)
 
-_T = typevar('_T')
-_S = typevar('_S')
+_T = TypeVar('_T')
+_S = TypeVar('_S')
 
 def count(start: int = 0,
           step: int = 1) -> Iterator[int]: pass # more general types?

@@ -118,8 +118,8 @@ class A: pass
 class B: pass
 
 [case testGenericOverloadVariant]
-from typing import Undefined, overload, typevar, Generic, disjointclass
-t = typevar('t')
+from typing import Undefined, overload, TypeVar, Generic, disjointclass
+t = TypeVar('t')
 ab, ac, b, c = Undefined, Undefined, Undefined, Undefined # type: (A[B], A[C], B, C)
 b = f(ab)
 c = f(ac)
@@ -192,8 +192,8 @@ class A:
     def __getitem__(self, b: str) -> str: pass
 
 [case testOverloadedGetitemWithGenerics]
-from typing import Undefined, typevar, Generic, overload
-t = typevar('t')
+from typing import Undefined, TypeVar, Generic, overload
+t = TypeVar('t')
 a, b, c = Undefined, Undefined, Undefined # type: (A, B, C[A])
 a = c[a]
 b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")

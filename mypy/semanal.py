@@ -41,7 +41,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    Undefined, List, Dict, Set, Tuple, cast, Any, overload, typevar, Union, Optional
+    Undefined, List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
 )
 
 from mypy.nodes import (
@@ -64,7 +64,7 @@ from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors
 from mypy.types import (
-    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVar, AnyType,
+    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
     replace_leading_arg_type, TupleType, UnionType, StarType
 )
@@ -73,7 +73,7 @@ from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 # Inferred value of an expression.
@@ -85,6 +85,7 @@ TRUTH_VALUE_UNKNOWN = 2
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
     'typing.Function': 'typing.Callable',
+    'typing.typevar': 'typing.TypeVar',
 }
 
 
@@ -952,7 +953,7 @@ class SemanticAnalyzer(NodeVisitor):
             raise RuntimeError('Internal error (%s)' % type(lvalue))
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
-        """Check if s declares a typevar; it yes, store it in symbol table."""
+        """Check if s declares a TypeVar; it yes, store it in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
         if not isinstance(s.rvalue, CallExpr):
@@ -961,25 +962,25 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(call.callee, RefExpr):
             return
         callee = cast(RefExpr, call.callee)
-        if callee.fullname != 'typing.typevar':
+        if callee.fullname != 'typing.TypeVar':
             return
         # TODO Share code with check_argument_count in checkexpr.py?
         if len(call.args) < 1:
-            self.fail("Too few arguments for typevar()", s)
+            self.fail("Too few arguments for TypeVar()", s)
             return
         if len(call.args) > 2:
-            self.fail("Too many arguments for typevar()", s)
+            self.fail("Too many arguments for TypeVar()", s)
             return
         if call.arg_kinds not in ([ARG_POS], [ARG_POS, ARG_NAMED]):
-            self.fail("Unexpected arguments to typevar()", s)
+            self.fail("Unexpected arguments to TypeVar()", s)
             return
         if not isinstance(call.args[0], StrExpr):
-            self.fail("typevar() expects a string literal argument", s)
+            self.fail("TypeVar() expects a string literal argument", s)
             return
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
         if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected typevar() argument value", s)
+            self.fail("Unexpected TypeVar() argument value", s)
             return
         if not lvalue.is_def:
             if s.type:
@@ -990,7 +991,7 @@ class SemanticAnalyzer(NodeVisitor):
         if len(call.args) == 2:
             # Analyze values=(...) argument.
             if call.arg_names[1] != 'values':
-                self.fail("Unexpected keyword argument '{}' to typevar()".
+                self.fail("Unexpected keyword argument '{}' to TypeVar()".
                           format(call.arg_names[1]), s)
                 return
             expr = call.args[1]
@@ -1004,10 +1005,10 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
-        typevar = TypeVarExpr(name, node.fullname, values)
-        typevar.line = call.line
-        call.analyzed = typevar
-        node.node = typevar
+        TypeVar = TypeVarExpr(name, node.fullname, values)
+        TypeVar.line = call.line
+        call.analyzed = TypeVar
+        node.node = TypeVar
 
     def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
@@ -1494,7 +1495,8 @@ class SemanticAnalyzer(NodeVisitor):
         # Bind references to module attributes.
         if isinstance(base, RefExpr) and cast(RefExpr,
                                               base).kind == MODULE_REF:
-            names = (cast(MypyFile, (cast(RefExpr, base)).node)).names
+            file = cast(MypyFile, cast(RefExpr, base).node)
+            names = file.names
             n = names.get(expr.name, None)
             if n:
                 n = self.normalize_type_alias(n, expr)
@@ -1503,6 +1505,18 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.kind = n.kind
                 expr.fullname = n.fullname
                 expr.node = n.node
+            else:
+                # We only catch some errors here; the rest will be
+                # catched during type checking.
+                #
+                # This way we can report a larger number of errors in
+                # one type checker run. If we reported errors here,
+                # the build would terminate after semantic analysis
+                # and we wouldn't be able to report any type errors.
+                full_name = '%s.%s' % (file.fullname(), expr.name)
+                if full_name in obsolete_name_mapping:
+                    self.fail("Module has no attribute %r (it's now called %r)" % (
+                        expr.name, obsolete_name_mapping[full_name]), expr)
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
@@ -1960,7 +1974,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     """
     tv = List[Type]()
     for i in range(len(typ.type_vars)):
-        tv.append(TypeVar(typ.type_vars[i], i + 1,
+        tv.append(TypeVarType(typ.type_vars[i], i + 1,
                           typ.defn.type_vars[i].values,
                           typ.defn.type_vars[i].upper_bound))
     inst = Instance(typ, tv)

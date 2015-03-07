@@ -8,9 +8,9 @@ import warnings
 from math import log, exp, pi, fsum, sin
 from test import support
 
-from typing import Undefined, Any, Dict, List, Callable, Generic, typevar
+from typing import Undefined, Any, Dict, List, Callable, Generic, TypeVar
 
-RT = typevar('RT', values=(random.Random, random.SystemRandom))
+RT = TypeVar('RT', values=(random.Random, random.SystemRandom))
 
 class TestBasicOps(unittest.TestCase, Generic[RT]):
     # Superclass with tests common to all generators.

@@ -1,8 +1,8 @@
 # Builtins stub used in list-related test cases.
 
-from typing import typevar, Generic, builtinclass, Iterable, Iterator
+from typing import TypeVar, Generic, builtinclass, Iterable, Iterator
 
-T = typevar('T')
+T = TypeVar('T')
 
 @builtinclass
 class object:

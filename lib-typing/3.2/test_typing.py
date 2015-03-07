@@ -6,7 +6,7 @@ from typing import (
     _Protocol, Sized, Iterable, Iterator, Sequence, Union, Optional,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
-    cast, disjointclass, ducktype, forwardref, overload, typevar
+    cast, disjointclass, ducktype, forwardref, overload, TypeVar
 )
 
 
@@ -66,12 +66,12 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(f.__annotations__, {'x': int, 'return': str})
 
     def test_typevar(self):
-        t = typevar('t')
+        t = TypeVar('t')
         self.assertEqual(t.name, 't')
         self.assertIsNone(t.values)
 
     def test_typevar_values(self):
-        t = typevar('t', values=(int, str))
+        t = TypeVar('t', values=(int, str))
         self.assertEqual(t.name, 't')
         self.assertEqual(t.values, (int, str))
 
@@ -80,7 +80,7 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(AnyStr.values, (str, bytes))
 
     def test_simple_generic_class(self):
-        t = typevar('t')
+        t = TypeVar('t')
 
         class C(Generic[t]):
             pass
@@ -90,8 +90,8 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(C[int](), C)
 
     def test_generic_class_with_two_typeargs(self):
-        t = typevar('t')
-        u = typevar('u')
+        t = TypeVar('t')
+        u = TypeVar('u')
 
         class C(Generic[t, u]):
             pass
@@ -101,7 +101,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsInstance(C[int, str](), C)
 
     def test_abstract_generic_class(self):
-        t = typevar('t')
+        t = TypeVar('t')
         class C(Generic[t]):
             pass
         class D:
@@ -264,7 +264,7 @@ class TestTyping(unittest.TestCase):
         self.assertFalse(issubclass(dict, P))
 
     def test_generic_protocol(self):
-        t = typevar('t')
+        t = TypeVar('t')
         class P(_Protocol[t]):
             x = 1
         class A:
@@ -399,7 +399,7 @@ class TestTyping(unittest.TestCase):
             if not Undefined: pass
 
     def test_construct_class_with_abstract_method(self):
-        t = typevar('t')
+        t = TypeVar('t')
 
         class A(Generic[t]):
             @abstractmethod

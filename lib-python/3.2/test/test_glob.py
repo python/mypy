@@ -4,9 +4,9 @@ import glob
 import os
 import shutil
 
-from typing import typevar, Iterable, List
+from typing import TypeVar, Iterable, List
 
-T = typevar('T')
+T = TypeVar('T')
 
 class GlobTests(unittest.TestCase):
 

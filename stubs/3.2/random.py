@@ -8,10 +8,10 @@
 
 import _random
 from typing import (
-    Any, typevar, Sequence, List, Callable, AbstractSet, Union
+    Any, TypeVar, Sequence, List, Callable, AbstractSet, Union
 )
 
-_T = typevar('_T')
+_T = TypeVar('_T')
 
 class Random(_random.Random):
     def __init__(self, x: Any = None) -> None: pass

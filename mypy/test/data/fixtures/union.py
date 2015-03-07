@@ -1,7 +1,7 @@
 # Builtins stub used in tuple-related test cases.
 
 from isinstance import isinstance
-from typing import Iterable, typevar
+from typing import Iterable, TypeVar
 
 class object:
     def __init__(self): pass

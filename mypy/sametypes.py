@@ -2,7 +2,7 @@ from typing import List, cast
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVar, Instance, TypeVisitor, ErasedType, TypeList
+    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList
 )
 
 
@@ -62,9 +62,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
                 left.type == (cast(Instance, self.right)).type and
                 is_same_types(left.args, (cast(Instance, self.right)).args))
 
-    def visit_type_var(self, left: TypeVar) -> bool:
-        return (isinstance(self.right, TypeVar) and
-                left.id == (cast(TypeVar, self.right)).id)
+    def visit_type_var(self, left: TypeVarType) -> bool:
+        return (isinstance(self.right, TypeVarType) and
+                left.id == (cast(TypeVarType, self.right)).id)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics

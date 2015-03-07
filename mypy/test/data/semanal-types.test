@@ -193,9 +193,9 @@ MypyFile:1(
       NameExpr(b [__main__.b]))))
 
 [case testGenericType]
-from typing import typevar, Generic, Any
+from typing import TypeVar, Generic, Any
 
-t = typevar('t')
+t = TypeVar('t')
 
 class A(Generic[t]): pass
 class B: pass
@@ -203,7 +203,7 @@ x = None # type: A[B]
 y = None # type: A[Any]
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Any : Any])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, Any : Any])
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
@@ -225,15 +225,15 @@ MypyFile:1(
     __main__.A[Any]))
 
 [case testGenericType2]
-from typing import typevar, Generic, Any
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Generic, Any
+t = TypeVar('t')
+s = TypeVar('s')
 class A(Generic[t, s]): pass
 class B: pass
 x = None # type: A[B, Any]
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Any : Any])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, Any : Any])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -345,8 +345,8 @@ MypyFile:1(
     PassStmt:3()))
 
 [case testCast]
-from typing import typevar, Generic, Any, cast
-t = typevar('t')
+from typing import TypeVar, Generic, Any, cast
+t = TypeVar('t')
 class c: pass
 class d(Generic[t]): pass
 cast(Any, 1)
@@ -354,7 +354,7 @@ cast(c, 1)
 cast(d[c], c)
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Any : Any, cast : cast])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, Any : Any, cast : cast])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -411,14 +411,14 @@ MypyFile:1(
       _m._n.C)))
 
 [case testCastTargetWithTwoTypeArgs]
-from typing import typevar, Generic, cast
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Generic, cast
+t = TypeVar('t')
+s = TypeVar('s')
 class C(Generic[t, s]): pass
 cast(C[str, int], C)
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, cast : cast])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, cast : cast])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -481,13 +481,13 @@ MypyFile:1(
       builtins.int)))
 
 [case testFunctionTypeVariable]
-from typing import typevar, Undefined
-t = typevar('t')
+from typing import TypeVar, Undefined
+t = TypeVar('t')
 def f(x: t) -> None:
   y = Undefined # type: t
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Undefined : Undefined])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Undefined : Undefined])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -503,13 +503,13 @@ MypyFile:1(
         t`-1))))
 
 [case testTwoFunctionTypeVariables]
-from typing import typevar
-t = typevar('t')
-u = typevar('u')
+from typing import TypeVar
+t = TypeVar('t')
+u = TypeVar('u')
 def f(x: t, y: u, z: t) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -527,13 +527,13 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testNestedGenericFunctionTypeVariable]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: A[t], y) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -552,13 +552,13 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testNestedGenericFunctionTypeVariable2]
-from typing import typevar, Tuple, Generic
-t = typevar('t')
+from typing import TypeVar, Tuple, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Tuple[int, t]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Tuple : Tuple, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Tuple : Tuple, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -576,13 +576,13 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testNestedGenericFunctionTypeVariable3]
-from typing import typevar, Callable, Generic
-t = typevar('t')
+from typing import TypeVar, Callable, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Callable[[int, t], int]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Callable : Callable, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Callable : Callable, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -600,13 +600,13 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testNestedGenericFunctionTypeVariable4]
-from typing import typevar, Callable, Generic
-t = typevar('t')
+from typing import TypeVar, Callable, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Callable[[], t]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Callable : Callable, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Callable : Callable, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -624,12 +624,12 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testGenericFunctionTypeVariableInReturnType]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def f() -> t: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -656,13 +656,13 @@ MypyFile:1(
         PassStmt:2()))))
 
 [case testNestedGenericFunction]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def f() -> None:
     def g() -> t: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -677,15 +677,15 @@ MypyFile:1(
           PassStmt:4())))))
 
 [case testClassTvar]
-from typing import typevar, Generic
+from typing import TypeVar, Generic
 
-t = typevar('t')
+t = TypeVar('t')
 
 class c(Generic[t]):
   def f(self) -> t: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
@@ -702,16 +702,16 @@ MypyFile:1(
         PassStmt:6()))))
 
 [case testClassTvar2]
-from typing import typevar, Generic
+from typing import TypeVar, Generic
 
-t = typevar('t')
-s = typevar('s')
+t = TypeVar('t')
+s = TypeVar('s')
 
 class c(Generic[t, s]):
   def f(self, x: s) -> t: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
@@ -733,13 +733,13 @@ MypyFile:1(
         PassStmt:7()))))
 
 [case testGenericBaseClass]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class d(Generic[t]): pass
 class c(d[t], Generic[t]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -900,14 +900,14 @@ MypyFile:1(
         NameExpr(g [l])))))
 
 [case testImplicitGenericTypeArgs]
-from typing import typevar, Generic, Undefined
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Generic, Undefined
+t = TypeVar('t')
+s = TypeVar('s')
 class A(Generic[t, s]): pass
 x = Undefined # type: A
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Undefined : Undefined])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, Undefined : Undefined])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -926,14 +926,14 @@ MypyFile:1(
     __main__.A[Any, Any]))
 
 [case testImplicitTypeArgsAndGenericBaseClass]
-from typing import typevar, Generic
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Generic
+t = TypeVar('t')
+s = TypeVar('s')
 class B(Generic[s]): pass
 class A(B, Generic[t]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -954,13 +954,13 @@ MypyFile:1(
     PassStmt:5()))
 
 [case testTypeApplication]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 x = A[int]()
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -979,14 +979,14 @@ MypyFile:1(
       Args())))
 
 [case testTypeApplicationWithTwoTypeArgs]
-from typing import typevar, Generic, Any
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Generic, Any
+t = TypeVar('t')
+s = TypeVar('s')
 class A(Generic[t, s]): pass
 x = A[int, Any]()
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic, Any : Any])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, Any : Any])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -1010,13 +1010,13 @@ MypyFile:1(
       Args())))
 
 [case testFunctionTypeApplication]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def f(x: t) -> None: pass
 f[int](1)
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -1037,13 +1037,13 @@ MypyFile:1(
         IntExpr(1)))))
 
 [case testTypeApplicationWithStringLiteralType]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 A['int']()
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -1080,13 +1080,13 @@ MypyFile:1(
       PassStmt:1())))
 
 [case testQualifiedGeneric]
-from typing import typevar
+from typing import TypeVar
 import typing
-T = typevar('T')
+T = TypeVar('T')
 class A(typing.Generic[T]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   Import:2(typing : typing)
   AssignmentStmt:3(
     NameExpr(T* [__main__.T])
@@ -1099,7 +1099,7 @@ MypyFile:1(
 
 [case testQualifiedTypevar]
 import typing
-T = typing.typevar('T')
+T = typing.TypeVar('T')
 def f(x: T) -> T: pass
 [out]
 MypyFile:1(
@@ -1116,12 +1116,12 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testAliasedTypevar]
-from typing import typevar as tv
+from typing import TypeVar as tv
 T = tv('T')
 def f(x: T) -> T: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : tv])
+  ImportFrom:1(typing, [TypeVar : tv])
   AssignmentStmt:2(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2())
@@ -1134,13 +1134,13 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testLocalTypevar]
-from typing import typevar
+from typing import TypeVar
 def f():
-    T = typevar('T')
+    T = TypeVar('T')
     def g(x: T) -> T: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   FuncDef:2(
     f
     Block:2(
@@ -1156,13 +1156,13 @@ MypyFile:1(
           PassStmt:4())))))
 
 [case testClassLevelTypevar]
-from typing import typevar
+from typing import TypeVar
 class A:
-    T = typevar('T')
+    T = TypeVar('T')
     def g(self, x: T) -> T: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   ClassDef:2(
     A
     AssignmentStmt:3(
@@ -1183,8 +1183,8 @@ from _m import T
 class A(Generic[T]):
     y = None # type: T
 [file _m.py]
-from typing import typevar
-T = typevar('T')
+from typing import TypeVar
+T = TypeVar('T')
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Generic : Generic])
@@ -1206,8 +1206,8 @@ class A(Generic[_m.T]):
     def f(self, x: _m.T):
         b = None # type: _m.T
 [file _m.py]
-from typing import typevar
-T = typevar('T')
+from typing import TypeVar
+T = TypeVar('T')
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Generic : Generic])
@@ -1237,8 +1237,8 @@ import _m
 def f(x: _m.T) -> None:
     a = None # type: _m.T
 [file _m.py]
-from typing import typevar
-T = typevar('T')
+from typing import TypeVar
+T = TypeVar('T')
 [out]
 MypyFile:1(
   Import:1(_m : _m)
@@ -1292,12 +1292,12 @@ MypyFile:1(
           IntExpr(1))))))
 
 [case testTypevarWithValues]
-from typing import typevar, Any
-T = typevar('T', values=(int, str))
-S = typevar('S', values=(Any, int, str))
+from typing import TypeVar, Any
+T = TypeVar('T', values=(int, str))
+S = TypeVar('S', values=(Any, int, str))
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Any : Any])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Any : Any])
   AssignmentStmt:2(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2(
@@ -1313,12 +1313,12 @@ MypyFile:1(
         builtins.str))))
 
 [case testGenericFunctionWithValueSet]
-from typing import typevar
-T = typevar('T', values=(int, str))
+from typing import TypeVar
+T = TypeVar('T', values=(int, str))
 def f(x: T) -> T: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2(
@@ -1334,12 +1334,12 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testGenericClassWithValueSet]
-from typing import typevar, Generic
-T = typevar('T', values=(int, str))
+from typing import TypeVar, Generic
+T = TypeVar('T', values=(int, str))
 class C(Generic[T]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [typevar : typevar, Generic : Generic])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2(

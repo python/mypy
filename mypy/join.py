@@ -4,7 +4,7 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVar, CallableType, TupleType, ErasedType, TypeList,
+    ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike
 )
 from mypy.maptype import map_instance_to_supertype
@@ -110,8 +110,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
 
-    def visit_type_var(self, t: TypeVar) -> Type:
-        if isinstance(self.s, TypeVar) and (cast(TypeVar, self.s)).id == t.id:
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if isinstance(self.s, TypeVarType) and (cast(TypeVarType, self.s)).id == t.id:
             return self.s
         else:
             return self.default(self.s)
@@ -162,7 +162,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.default(typ.fallback)
         elif isinstance(typ, FunctionLike):
             return self.default(typ.fallback)
-        elif isinstance(typ, TypeVar):
+        elif isinstance(typ, TypeVarType):
             return self.default(typ.upper_bound)
         else:
             return AnyType()

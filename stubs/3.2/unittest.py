@@ -9,12 +9,12 @@
 
 from typing import (
     Any, Callable, Iterable, Undefined, Tuple, List, TextIO, Sequence,
-    overload, typevar, Pattern
+    overload, TypeVar, Pattern
 )
 from abc import abstractmethod, ABCMeta
 
-_T = typevar('_T')
-_FT = typevar('_FT')
+_T = TypeVar('_T')
+_FT = TypeVar('_FT')
 
 class Testable(metaclass=ABCMeta):
     @abstractmethod

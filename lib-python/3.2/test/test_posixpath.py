@@ -13,9 +13,9 @@ import sys
 from posixpath import realpath, abspath, dirname, basename
 
 import posix
-from typing import Any, typevar, Callable
+from typing import Any, TypeVar, Callable
 
-T = typevar('T')
+T = TypeVar('T')
 
 # An absolute path to a temporary filename for testing. We can't rely on TESTFN
 # being an absolute path, so we need this.

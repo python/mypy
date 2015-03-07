@@ -791,8 +791,8 @@ with A() as b:
     b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testWithStmtAndMultipleResults]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class B: pass
 class C: pass
 class A(Generic[t]):
