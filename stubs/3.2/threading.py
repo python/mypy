@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Any, Dict, Optional, Callable, typevar, Union
+from typing import Any, Dict, Optional, Callable, TypeVar, Union
 
 class Thread:
     name = ''
@@ -43,7 +43,7 @@ class RLock:
     def __enter__(self) -> bool: pass
     def __exit__(self, *args): pass
 
-_T = typevar('_T')
+_T = TypeVar('_T')
 
 class Condition:
     def acquire(self, blocking: bool = True, timeout: float = -1.0) -> bool: pass

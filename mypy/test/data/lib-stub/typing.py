@@ -9,7 +9,7 @@ Undefined = object()
 Any = object()
 Union = object()
 Optional = object()
-typevar = object()
+TypeVar = object()
 Generic = object()
 Tuple = object()
 Callable = object()
@@ -23,7 +23,7 @@ List = object()
 Dict = object()
 Set = object()
 
-T = typevar('T')
+T = TypeVar('T')
 
 class Iterable(Generic[T]):
     @abstractmethod

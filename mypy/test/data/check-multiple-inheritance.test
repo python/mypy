@@ -198,8 +198,8 @@ class C(A, B): pass
 
 
 [case testGenericInheritanceAndOverridingWithMultipleInheritance]
-from typing import Generic, typevar
-T = typevar('T')
+from typing import Generic, TypeVar
+T = TypeVar('T')
 class G(Generic[T]):
     def f(self, s: int) -> 'G[T]': pass
 class A(G[int]):

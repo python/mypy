@@ -152,8 +152,8 @@ import typing
 [out]
 
 [case testTupleAsSubtypeOfSequence_python2]
-from typing import typevar, Sequence
-T = typevar('T')
+from typing import TypeVar, Sequence
+T = TypeVar('T')
 def f(a): # type: (Sequence[T]) -> None
     print a
 f(tuple())

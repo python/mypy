@@ -263,8 +263,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 info.name(), s, act), t)
         elif info.defn.type_vars:
             # Check type argument values.
-            for arg, typevar in zip(t.args, info.defn.type_vars):
-                if typevar.values:
+            for arg, TypeVar in zip(t.args, info.defn.type_vars):
+                if TypeVar.values:
                     if isinstance(arg, TypeVarType):
                         arg_values = arg.values
                         if not arg_values:
@@ -275,7 +275,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
-                                               typevar.values, t)
+                                               TypeVar.values, t)
         for arg in t.args:
             arg.accept(self)
 

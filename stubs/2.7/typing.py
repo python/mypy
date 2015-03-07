@@ -9,7 +9,7 @@ cast = object()
 overload = object()
 Undefined = object()
 Any = object()
-typevar = object()
+TypeVar = object()
 Generic = object()
 Tuple = object()
 Callable = object()
@@ -32,13 +32,13 @@ Dict = TypeAlias(object)
 Set = TypeAlias(object)
 
 # Predefined type variables.
-AnyStr = typevar('AnyStr', values=(str, unicode))
+AnyStr = TypeVar('AnyStr', values=(str, unicode))
 
 # Abstract base classes.
 
-_T = typevar('_T')
-_KT = typevar('_KT')
-_VT = typevar('_VT')
+_T = TypeVar('_T')
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
 
 # TODO Container etc.
 

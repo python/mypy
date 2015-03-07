@@ -2,9 +2,9 @@
 
 # Based on http://docs.python.org/3.2/library/heapq.html
 
-from typing import typevar, List, Iterable, Any, Callable
+from typing import TypeVar, List, Iterable, Any, Callable
 
-_T = typevar('_T')
+_T = TypeVar('_T')
 
 def heappush(heap: List[_T], item: _T) -> None: pass
 def heappop(heap: List[_T]) -> _T: pass

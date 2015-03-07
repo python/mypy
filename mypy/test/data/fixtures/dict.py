@@ -1,9 +1,9 @@
 # Builtins stub used in dictionary-related test cases.
 
-from typing import typevar, Generic, Iterable, Iterator
+from typing import TypeVar, Generic, Iterable, Iterator
 
-T = typevar('T')
-S = typevar('S')
+T = TypeVar('T')
+S = TypeVar('S')
 
 class object:
     def __init__(self) -> None: pass

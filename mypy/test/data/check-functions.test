@@ -343,8 +343,8 @@ a.g(a, a) # E: Too many arguments
 a.g()     # E: Too few arguments
 
 [case testMethodAsDataAttributeInGenericClass]
-from typing import typevar, Generic, Undefined
-t = typevar('t')
+from typing import TypeVar, Generic, Undefined
+t = TypeVar('t')
 class B: pass
 class A(Generic[t]):
     def f(self, x: t) -> None: pass
@@ -354,8 +354,8 @@ a.g(B())
 a.g(a)   # E: Argument 1 has incompatible type A[B]; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
-from typing import Undefined, Any, typevar, Generic, Callable
-t = typevar('t')
+from typing import Undefined, Any, TypeVar, Generic, Callable
+t = TypeVar('t')
 class B: pass
 class C: pass
 x = Undefined # type: Any
@@ -367,8 +367,8 @@ ab.f()
 ac.f()   # E: Invalid method type
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
-from typing import Undefined, Any, typevar, Generic, Callable
-t = typevar('t')
+from typing import Undefined, Any, TypeVar, Generic, Callable
+t = TypeVar('t')
 class B: pass
 class C: pass
 x = Undefined # type: Any
@@ -460,8 +460,8 @@ main, line 8: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
 
 
 [case testCastsToAndFromFunctionTypes]
-from typing import typevar, Callable, Any, cast
-t = typevar('t')
+from typing import TypeVar, Callable, Any, cast
+t = TypeVar('t')
 def f(x: t,
       f1: Callable[[], None],
       f2: Callable[[Any], None], o: object) -> None:
@@ -476,8 +476,8 @@ def f(x: t,
 
 
 [case testTrivialStaticallyTypedFunctionDecorator]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def dec(f: t) -> t:
     return f
 @dec
@@ -486,8 +486,8 @@ f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testTrivialStaticallyTypedMethodDecorator]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def dec(f: t) -> t:
     return f
 class A:
@@ -498,8 +498,8 @@ A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 class B: pass
 
 [case testTrivialDecoratedNestedFunction]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def dec(f: t) -> t:
     return f
 def g() -> None:

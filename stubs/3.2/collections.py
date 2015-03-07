@@ -8,14 +8,14 @@
 # TODO more abstract base classes (interfaces in mypy)
 
 from typing import (
-    typevar, Iterable, Generic, Iterator, Dict, overload,
+    TypeVar, Iterable, Generic, Iterator, Dict, overload,
     Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized,
     Optional
 )
 
-_T = typevar('_T')
-_KT = typevar('_KT')
-_VT = typevar('_VT')
+_T = TypeVar('_T')
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
 
 
 # namedtuple is special-cased in the type checker; the initializer is ignored.

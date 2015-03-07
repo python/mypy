@@ -54,16 +54,16 @@ x = None # type: X
 main, line 2: Name 'X' is not defined
 
 [case testInvalidGenericArg]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 x = 0 # type: A[y]
 [out]
 main, line 4: Name 'y' is not defined
 
 [case testInvalidNumberOfGenericArgsInTypeDecl]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A: pass
 class B(Generic[t]): pass
 x = 0 # type: B[A, A]
@@ -126,8 +126,8 @@ x = A[B[int]]() # E: "B" expects no type arguments, but 1 given
 [out]
 
 [case testInvalidNumberOfGenericArgsInNestedGenericType]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 class A(Generic[T]): pass
 class B: pass
 def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
@@ -496,24 +496,24 @@ del z     # E: Name 'z' is not defined
 [out]
 
 [case testFunctionTvarScope]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def f(x: t) -> t: pass
 x = 0 # type: t
 [out]
 main, line 4: Invalid type "__main__.t"
 
 [case testClassTvarScope]
-from typing import Generic, typevar
-t = typevar('t')
+from typing import Generic, TypeVar
+t = TypeVar('t')
 class c(Generic[t]): pass
 x = 0 # type: t
 [out]
 main, line 4: Invalid type "__main__.t"
 
 [case testExpressionRefersToTypeVariable]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class c(Generic[t]):
     def f(self): x = t
 def f(y: t): x = t
@@ -770,9 +770,9 @@ foo = 0 # type: A.x      # E: Name 'A.x' is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
-from typing import typevar, Generic
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Generic
+t = TypeVar('t')
+s = TypeVar('s')
 class A(Generic[t]):
     class B(Generic[s]):
         x = 0 # type: A[s]
@@ -851,8 +851,8 @@ z = 0 # type: x.y    # E: Invalid type "__main__.x"
 [out]
 
 [case testInvalidCastTargetSyntax]
-from typing import cast, typevar, Generic
-t = typevar('t')
+from typing import cast, TypeVar, Generic
+t = TypeVar('t')
 class C(Generic[t]): pass
 cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
@@ -961,15 +961,15 @@ x = Undefined(Undefined) # E: Invalid type "typing.Undefined"
 [out]
 
 [case testInvalidTypeInTypeApplication]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
-A[typevar] # E: Invalid type "typing.typevar"
+A[TypeVar] # E: Invalid type "typing.TypeVar"
 [out]
 
 [case testInvalidTypeInTypeApplication2]
-from typing import typevar, Generic
-t = typevar('t')
+from typing import TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 A[1] # E: Type expected within [...]
 [out]
@@ -1035,8 +1035,8 @@ a[1], a[2] = Undefined, Undefined # type: int, int \
 [out]
 
 [case testMissingGenericImport]
-from typing import typevar
-T = typevar('T')
+from typing import TypeVar
+T = TypeVar('T')
 class A(Generic[T]): pass
 [out]
 main, line 3: Name 'Generic' is not defined
@@ -1047,17 +1047,17 @@ class A(Generic[int]): pass # E: Free type variable expected in Generic[...]
 [out]
 
 [case testInvalidTypeWithinNestedGenericClass]
-from typing import Generic, typevar
-T = typevar('T')
+from typing import Generic, TypeVar
+T = TypeVar('T')
 class A(Generic[T]):
     class B(Generic[T]): pass \
           # E: Free type variable expected in Generic[...]
 [out]
 
 [case testIncludingGenericTwiceInBaseClassList]
-from typing import Generic, typevar
-T = typevar('T')
-S = typevar('S')
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
 class A(Generic[T], Generic[S]): pass \
       # E: Duplicate Generic in bases
 [out]
@@ -1077,71 +1077,71 @@ class A(metaclass=f): pass # E: Invalid metaclass 'f'
 [out]
 
 [case testInvalidTypevarArguments]
-from typing import typevar
-a = typevar()       # E: Too few arguments for typevar()
-b = typevar(x='b')  # E: Unexpected arguments to typevar()
-c = typevar(1)      # E: typevar() expects a string literal argument
-d = typevar('D')    # E: Unexpected typevar() argument value
-e = typevar('e', values=(int, str), x=1) # E: Too many arguments for typevar()
-f = typevar('f', (int, str)) # E: Unexpected arguments to typevar()
-g = typevar('g', x=(int, str)) # E: Unexpected keyword argument 'x' to typevar()
+from typing import TypeVar
+a = TypeVar()       # E: Too few arguments for TypeVar()
+b = TypeVar(x='b')  # E: Unexpected arguments to TypeVar()
+c = TypeVar(1)      # E: TypeVar() expects a string literal argument
+d = TypeVar('D')    # E: Unexpected TypeVar() argument value
+e = TypeVar('e', values=(int, str), x=1) # E: Too many arguments for TypeVar()
+f = TypeVar('f', (int, str)) # E: Unexpected arguments to TypeVar()
+g = TypeVar('g', x=(int, str)) # E: Unexpected keyword argument 'x' to TypeVar()
 [out]
 
 [case testInvalidTypevarValues]
-from typing import typevar
-a = typevar('a', values=int) # E: The values argument must be a tuple literal
-b = typevar('b', values=(int)) # E: The values argument must be a tuple literal
-c = typevar('c', values=(int, 2)) # E: Type expected
+from typing import TypeVar
+a = TypeVar('a', values=int) # E: The values argument must be a tuple literal
+b = TypeVar('b', values=(int)) # E: The values argument must be a tuple literal
+c = TypeVar('c', values=(int, 2)) # E: Type expected
 [out]
 
 [case testLocalTypevarScope]
-from typing import typevar
+from typing import TypeVar
 def f() -> None:
-    T = typevar('T')
+    T = TypeVar('T')
 def g(x: T) -> None: pass # E: Name 'T' is not defined
 [out]
 main: In function "g":
 
 [case testClassTypevarScope]
-from typing import typevar
+from typing import TypeVar
 class A:
-    T = typevar('T')
+    T = TypeVar('T')
 def g(x: T) -> None: pass # E: Name 'T' is not defined
 [out]
 main: In function "g":
 
 [case testRedefineVariableAsTypevar]
-from typing import typevar
+from typing import TypeVar
 x = 0
-x = typevar('x') # E: Cannot redefine 'x' as a type variable
+x = TypeVar('x') # E: Cannot redefine 'x' as a type variable
 [out]
 
 [case testTypevarWithType]
-from typing import typevar
-x = typevar('x') # type: int # E: Cannot declare the type of a type variable
+from typing import TypeVar
+x = TypeVar('x') # type: int # E: Cannot declare the type of a type variable
 [out]
 
 [case testRedefineTypevar]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 t = 1 # E: Invalid assignment target
 [out]
 
 [case testRedefineTypevar2]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 def t(): pass # E: Name 't' already defined
 [out]
 
 [case testRedefineTypevar3]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 class t: pass # E: Name 't' already defined
 [out]
 
 [case testRedefineTypevar4]
-from typing import typevar
-t = typevar('t')
+from typing import TypeVar
+t = TypeVar('t')
 from typing import Generic as t # E: Name 't' already defined
 [out]
 

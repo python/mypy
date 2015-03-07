@@ -1,12 +1,12 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Undefined, Any, typevar, List, Tuple, cast, Generic, Set
+from typing import Undefined, Any, TypeVar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 class Type(mypy.nodes.Context):

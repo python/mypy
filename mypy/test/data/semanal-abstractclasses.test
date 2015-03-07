@@ -64,15 +64,15 @@ MypyFile:1(
 
 [case testAbstractGenericClass]
 from abc import abstractmethod
-from typing import Generic, typevar
-T = typevar('T')
+from typing import Generic, TypeVar
+T = TypeVar('T')
 class A(Generic[T]):
   @abstractmethod
   def f(self) -> 'A[T]': pass
 [out]
 MypyFile:1(
   ImportFrom:1(abc, [abstractmethod : abstractmethod])
-  ImportFrom:2(typing, [Generic : Generic, typevar : typevar])
+  ImportFrom:2(typing, [Generic : Generic, TypeVar : TypeVar])
   AssignmentStmt:3(
     NameExpr(T* [__main__.T])
     TypeVarExpr:3())

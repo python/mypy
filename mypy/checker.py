@@ -2,7 +2,7 @@
 
 import itertools
 
-from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Callable, typevar, Union
+from typing import Undefined, Any, Dict, Set, List, cast, overload, Tuple, Callable, TypeVar, Union
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -49,7 +49,7 @@ ISINSTANCE_OVERLAPPING = 0
 ISINSTANCE_ALWAYS_TRUE = 1
 ISINSTANCE_ALWAYS_FALSE = 2
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 def min_with_None_large(x: T, y: T) -> T:

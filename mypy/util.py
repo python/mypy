@@ -1,9 +1,9 @@
 """Utility functions."""
 
-from typing import typevar, List, Any
+from typing import TypeVar, List, Any
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 def short_type(obj: object) -> str:

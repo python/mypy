@@ -1,4 +1,4 @@
-from typing import Any, typevar, List, Callable, Tuple, Union, Dict, Undefined
+from typing import Any, TypeVar, List, Callable, Tuple, Union, Dict, Undefined
 from abc import ABCMeta, abstractmethod
 from asyncio.futures import Future
 
@@ -12,7 +12,7 @@ from asyncio.futures import Future
 
 __all__ = ['AbstractEventLoopPolicy', 'AbstractEventLoop', 'Handle', 'get_event_loop']
 
-_T = typevar('_T')
+_T = TypeVar('_T')
 
 PIPE = Undefined(Any)  # from subprocess.PIPE
 

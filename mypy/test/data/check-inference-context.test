@@ -5,8 +5,8 @@
 
 
 [case testBasicContextInference]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ab = Undefined # type: A[B]
 ao = Undefined # type: A[object]
 b = Undefined # type: B
@@ -21,8 +21,8 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testBasicContextInferenceForConstructor]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ab = Undefined # type: A[B]
 ao = Undefined # type: A[object]
 b = Undefined # type: B
@@ -35,8 +35,8 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testIncompatibleContextInference]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 b = Undefined # type: B
 c = Undefined # type: C
 ab = Undefined # type: A[B]
@@ -65,8 +65,8 @@ class C: pass
 
 
 [case testInferGenericLocalVariableTypeWithEmptyContext]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 def g() -> None:
     ao = Undefined # type: A[object]
     ab = Undefined # type: A[B]
@@ -88,8 +88,8 @@ class B: pass
 main: In function "g":
 
 [case testInferLocalVariableTypeWithUnderspecifiedGenericType]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 def g() -> None:
     x = f() # E: Need type annotation for variable
 
@@ -99,8 +99,8 @@ class A(Generic[T]): pass
 main: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithTupleRvalue]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 def g() -> None:
     ao = Undefined # type: A[object]
     ab = Undefined # type: A[B]
@@ -118,8 +118,8 @@ class B: pass
 main: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
-from typing import Undefined, typevar, List, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, List, Generic
+T = TypeVar('T')
 def h() -> None:
     ao = Undefined # type: A[object]
     ab = Undefined # type: A[B]
@@ -145,8 +145,8 @@ main: In function "h":
 
 
 [case testInferenceWithTypeVariableTwiceInReturnType]
-from typing import Undefined, typevar, Tuple, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Tuple, Generic
+T = TypeVar('T')
 b = Undefined # type: B
 o = Undefined # type: object
 ab = Undefined # type: A[B]
@@ -169,9 +169,9 @@ main, line 8: Incompatible types in assignment (expression has type A[B], variab
 main, line 9: Incompatible types in assignment (expression has type A[B], variable has type A[object])
 
 [case testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables]
-from typing import Undefined, typevar, Tuple, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Tuple, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 b = Undefined # type: B
 o = Undefined # type: object
 ab = Undefined # type: A[B]
@@ -205,8 +205,8 @@ main, line 12: Incompatible types in assignment (expression has type A[B], varia
 
 
 [case testMultipleTvatInstancesInArgs]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ac = Undefined # type: A[C]
 ab = Undefined # type: A[B]
 ao = Undefined # type: A[object]
@@ -235,8 +235,8 @@ class C(B): pass
 
 
 [case testNestedGenericFunctionCall1]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 aab = Undefined # type: A[A[B]]
 aao = Undefined # type: A[A[object]]
 ao = Undefined # type: A[object]
@@ -255,8 +255,8 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testNestedGenericFunctionCall2]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ab = Undefined # type: A[B]
 ao = Undefined # type: A[object]
 b = Undefined # type: B
@@ -275,8 +275,8 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testNestedGenericFunctionCall3]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 ab = Undefined # type: A[B]
 ao = Undefined # type: A[object]
 b = Undefined # type: B
@@ -303,8 +303,8 @@ class B: pass
 
 
 [case testMethodCallWithContextInference]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 o = Undefined # type: object
 b = Undefined # type: B
 c = Undefined # type: C
@@ -428,10 +428,10 @@ class A: pass
 [builtins fixtures/list.py]
 
 [case testComplexTypeInferenceWithTuple]
-from typing import typevar, Tuple, Generic
-k = typevar('k')
-t = typevar('t')
-v = typevar('v')
+from typing import TypeVar, Tuple, Generic
+k = TypeVar('k')
+t = TypeVar('t')
+v = TypeVar('v')
 def f(x: Tuple[k]) -> 'A[k]': pass
 
 d = f((A(),)) # type: A[A[B]]
@@ -448,8 +448,8 @@ class D(Generic[k, v]): pass
 
 
 [case testDictionaryLiteralInContext]
-from typing import Dict, typevar, Generic
-t = typevar('t')
+from typing import Dict, TypeVar, Generic
+t = TypeVar('t')
 class A(Generic[t]): pass
 class B: pass
 class C: pass
@@ -463,8 +463,8 @@ d = {A()    : A[C](),
 
 
 [case testInitializationWithInferredGenericType]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 c = f(A()) # type: C[A] # E: Argument 1 to "f" has incompatible type "A"; expected C[A]
 
 def f(x: T) -> T: pass
@@ -472,8 +472,8 @@ class C(Generic[T]): pass
 class A: pass
 
 [case testInferredGenericTypeAsReturnValue]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 def t() -> 'A[B]':
     return f(D()) # E: Argument 1 to "f" has incompatible type "D"; expected "B"
     return A()
@@ -488,8 +488,8 @@ class D: pass
 main: In function "t":
 
 [case testIntersectionWithInferredGenericArgument]
-from typing import overload, typevar, Generic
-T = typevar('T')
+from typing import overload, TypeVar, Generic
+T = TypeVar('T')
 f(A())
 
 @overload
@@ -500,9 +500,9 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testInferenceWithAbstractClassContext]
-from typing import typevar, Generic
+from typing import TypeVar, Generic
 from abc import abstractmethod, ABCMeta
-t = typevar('t')
+t = TypeVar('t')
 x = A() # type: I[int]
 y = A[object]() # type: I[int] # E: Incompatible types in assignment (expression has type A[object], variable has type I[int])
 
@@ -513,9 +513,9 @@ class A(I[t], Generic[t]):
     def f(self): pass
 
 [case testInferenceWithAbstractClassContext2]
-from typing import typevar, Generic
+from typing import TypeVar, Generic
 from abc import abstractmethod, ABCMeta
-t = typevar('t')
+t = TypeVar('t')
 a = f(A()) # type: A[int]
 aa = f(A[int]())
 class I(Generic[t]): pass
@@ -523,8 +523,8 @@ class A(I[t], Generic[t]): pass
 def f(i: I[t]) -> A[t]: pass
 
 [case testInferenceWithAbstractClassContext3]
-from typing import typevar, Generic, Iterable
-t = typevar('t')
+from typing import TypeVar, Generic, Iterable
+t = TypeVar('t')
 class set(Generic[t]):
     def __init__(self, iterable: Iterable[t]) -> None: pass
 b = bool()
@@ -534,8 +534,8 @@ l = set[object]([]) # E: Incompatible types in assignment (expression has type s
 [builtins fixtures/for.py]
 
 [case testInferenceWithAbstractClassContext4]
-from typing import typevar, Generic, Iterable
-t = typevar('t')
+from typing import TypeVar, Generic, Iterable
+t = TypeVar('t')
 class set(Generic[t]): pass
 def f(iterable: Iterable[t]) -> set[t]: pass
 b = bool()
@@ -550,9 +550,9 @@ l = f[object]([]) # E: Incompatible types in assignment (expression has type set
 
 
 [case testInferGenericTypeInAnyContext]
-from typing import Any, typevar, Generic
-s = typevar('s')
-t = typevar('t')
+from typing import Any, TypeVar, Generic
+s = TypeVar('s')
+t = TypeVar('t')
 x = [] # type: Any
 y = C() # type: Any
 class C(Generic[s, t]): pass
@@ -582,8 +582,8 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testInferLambdaAsGenericFunctionArgument]
-from typing import typevar, List, Any, Callable, Undefined
-t = typevar('t')
+from typing import TypeVar, List, Any, Callable, Undefined
+t = TypeVar('t')
 class A:
   x = Undefined # type: A
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
@@ -606,9 +606,9 @@ main, line 3: Incompatible types in assignment (expression has type Callable[[],
 
 
 [case testMapWithOverloadedFunc]
-from typing import typevar, Callable, List, overload, Any
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Callable, List, overload, Any
+t = TypeVar('t')
+s = TypeVar('s')
 def map(f: Callable[[t], s], seq: List[t]) -> List[s]: pass
 
 @overload
@@ -649,9 +649,9 @@ class C(B): pass
 
 
 [case testSomeTypeVarsInferredFromContext]
-from typing import Undefined, List, typevar
-t = typevar('t')
-s = typevar('s')
+from typing import Undefined, List, TypeVar
+t = TypeVar('t')
+s = TypeVar('s')
 # Some type variables can be inferred using context, but not all of them.
 a = Undefined # type: List[A]
 a = f(A(), B())
@@ -662,9 +662,9 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testSomeTypeVarsInferredFromContext2]
-from typing import Undefined, List, typevar
-s = typevar('s')
-t = typevar('t')
+from typing import Undefined, List, TypeVar
+s = TypeVar('s')
+t = TypeVar('t')
 # Like testSomeTypeVarsInferredFromContext, but tvars in different order.
 a = Undefined # type: List[A]
 a = f(A(), B())
@@ -675,9 +675,9 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testLambdaInListAndHigherOrderFunction]
-from typing import typevar, Callable, List
-t = typevar('t')
-s = typevar('s')
+from typing import TypeVar, Callable, List
+t = TypeVar('t')
+s = TypeVar('s')
 map(
   [lambda x: x], [])
 def map(f: List[Callable[[t], s]], a: List[t]) -> List[s]: pass
@@ -712,8 +712,8 @@ a = [''] * 3 # E: List item 1 has incompatible type "str"
 [builtins fixtures/list.py]
 
 [case testUnionTypeContext]
-from typing import Undefined, Union, List, typevar
-T = typevar('T')
+from typing import Undefined, Union, List, TypeVar
+T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
@@ -721,8 +721,8 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[No
 [builtins fixtures/isinstancelist.py]
 
 [case testIgnoringInferenceContext]
-from typing import typevar, List
-T = typevar('T')
+from typing import TypeVar, List
+T = TypeVar('T')
 def f(x: List[T]) -> T: pass
 def g(y: object) -> None: pass
 a = [1]

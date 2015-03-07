@@ -207,7 +207,7 @@ def dump_type_stats(tree: Node, path: str, inferred: bool = False,
     print('  generic  ', visitor.num_generic)
     print('  function ', visitor.num_function)
     print('  tuple    ', visitor.num_tuple)
-    print('  typevar  ', visitor.num_typevar)
+    print('  TypeVar  ', visitor.num_typevar)
     print('  complex  ', visitor.num_complex)
     print('  any      ', visitor.num_any)
 

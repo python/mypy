@@ -3,8 +3,8 @@
 
 
 [case testGenericMethodReturnType]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 a, b, c = Undefined, Undefined, Undefined # type: (A[B], B, C)
 c = a.f() # Fail
 b = a.f()
@@ -18,8 +18,8 @@ class C: pass
 main, line 4: Incompatible types in assignment (expression has type "B", variable has type "C")
 
 [case testGenericMethodArgument]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 a.f(c) # Fail
 a.f(b)
 
@@ -36,8 +36,8 @@ class C: pass
 main, line 3: Argument 1 to "f" of "A" has incompatible type "C"; expected "B"
 
 [case testGenericMemberVariable]
-from typing import typevar, Generic, Undefined
-T = typevar('T')
+from typing import TypeVar, Generic, Undefined
+T = TypeVar('T')
 class A(Generic[T]):
     def __init__(self, v: T) -> None:
         self.v = v
@@ -52,8 +52,8 @@ class C: pass
 main, line 8: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 [case testGenericMemberVariable]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 a, b, c = Undefined, Undefined, Undefined # type: (A[B], B, C)
 a.v = c # Fail
 a.v = b
@@ -66,8 +66,8 @@ class C: pass
 main, line 4: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 [case testSimpleGenericSubtyping]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 b, bb, c = Undefined, Undefined, Undefined # type: (A[B], A[B], A[C])
 c = b # Fail
 b = c # Fail
@@ -83,8 +83,8 @@ main, line 4: Incompatible types in assignment (expression has type A[B], variab
 main, line 5: Incompatible types in assignment (expression has type A[C], variable has type A[B])
 
 [case testGenericTypeCompatibilityWithAny]
-from typing import Undefined, Any, typevar, Generic
-T = typevar('T')
+from typing import Undefined, Any, TypeVar, Generic
+T = TypeVar('T')
 b, c, d = Undefined, Undefined, Undefined # type: (A[B], A[C], A[Any])
 
 b = d
@@ -98,8 +98,8 @@ class C(B): pass
 [out]
 
 [case testTypeVariableAsTypeArgument]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 a = Undefined # type: A[B]
 b = Undefined # type: A[B]
 c = Undefined # type: A[C]
@@ -119,9 +119,9 @@ main, line 7: Incompatible types in assignment (expression has type A[C], variab
 main, line 8: Incompatible types in assignment (expression has type A[B], variable has type A[C])
 
 [case testMultipleGenericTypeParametersWithMemberVars]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 a = Undefined # type: A[B, C]
 s = Undefined # type: B
 t = Undefined # type: C
@@ -142,9 +142,9 @@ main, line 8: Incompatible types in assignment (expression has type "B", variabl
 main, line 9: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 [case testMultipleGenericTypeParametersWithMethods]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 a = Undefined # type: A[B, C]
 s = Undefined # type: B
 t = Undefined # type: C
@@ -162,9 +162,9 @@ main, line 8: Argument 2 to "f" of "A" has incompatible type "B"; expected "C"
 main, line 9: Argument 1 to "f" of "A" has incompatible type "C"; expected "B"
 
 [case testMultipleGenericTypeParametersAndSubtyping]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 bc = Undefined # type: A[B, C]
 bb = Undefined # type: A[B, B]
 cb = Undefined # type: A[C, B]
@@ -193,8 +193,8 @@ main, line 10: Incompatible types in assignment (expression has type A[B, B], va
 
 
 [case testGenericTypeBody1]
-from typing import typevar, Generic, Undefined
-T = typevar('T')
+from typing import TypeVar, Generic, Undefined
+T = TypeVar('T')
 class A(Generic[T]):
     a = Undefined # type: T
 
@@ -212,9 +212,9 @@ main, line 7: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
 main, line 8: Incompatible types in assignment (expression has type A[T], variable has type A[B])
 
 [case testGenericTypeBodyWithMultipleVariables]
-from typing import typevar, Generic, Undefined
-S = typevar('S')
-T = typevar('T')
+from typing import TypeVar, Generic, Undefined
+S = TypeVar('S')
+T = TypeVar('T')
 class A(Generic[S, T]):
     def f(self) -> None:
         s = Undefined # type: S
@@ -235,8 +235,8 @@ main, line 10: Incompatible types in assignment (expression has type A[S, T], va
 main, line 11: Incompatible types in assignment (expression has type A[S, T], variable has type A[T, T])
 
 [case testCompatibilityOfNoneWithTypeVar]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 class A(Generic[T]):
     def f(self) -> None:
         a = None # type: T
@@ -244,8 +244,8 @@ class A(Generic[T]):
 [out]
 
 [case testCompatibilityOfTypeVarWithObject]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 class A(Generic[T]):
     def f(self) -> T:
         a = object() # type: T  # Fail
@@ -263,9 +263,9 @@ main, line 6: Incompatible types in assignment (expression has type "object", va
 
 
 [case testGenericOperations]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 a = Undefined # type: A[B, C]
 b = Undefined # type: B
 c = Undefined # type: C
@@ -291,8 +291,8 @@ main, line 10: Incompatible types in assignment (expression has type "B", variab
 main, line 11: Invalid index type "B" for "A"
 
 [case testOperatorAssignmentWithIndexLvalue1]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 b = Undefined # type: B
 c = Undefined # type: C
 ac = Undefined # type: A[C]
@@ -315,8 +315,8 @@ main, line 7: Incompatible types in assignment
 main, line 8: Invalid index type "C" for "A"
 
 [case testOperatorAssignmentWithIndexLvalue2]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 b = Undefined # type: B
 c = Undefined # type: C
 ac = Undefined # type: A[C]
@@ -343,8 +343,8 @@ main, line 9: Invalid index type "B" for "A"
 
 
 [case testNestedGenericTypes]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 aab = Undefined # type: A[A[B]]
 aac = Undefined # type: A[A[C]]
 ab = Undefined # type: A[B]
@@ -376,15 +376,15 @@ main, line 9: Incompatible types in assignment (expression has type A[A[B]], var
 
 
 [case testTrivialTypeApplication]
-from typing import typevar
-T = typevar('T')
+from typing import TypeVar
+T = TypeVar('T')
 def f(x: T) -> None: pass
 f[object](None)
 [out]
 
 [case testSimpleGenericFunction]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 class A: pass
 class B: pass
 a = Undefined # type: A
@@ -398,9 +398,9 @@ a = id[B](b)  # E: Incompatible types in assignment (expression has type "B", va
 a = id[A](a)
 
 [case testGenericFunctionWithTwoTypeArguments]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 
 class t(Generic[S, T]): pass
 class B: pass
@@ -419,9 +419,9 @@ tbb = f[B, C](b, tbc) # E: Incompatible types in assignment (expression has type
 tbc = f[B, C](b, tbc)
 
 [case testInvalidNumberOfTypeArgumentsForGenericFunction]
-from typing import Undefined, typevar, Generic
-s = typevar('s')
-t = typevar('t')
+from typing import Undefined, TypeVar, Generic
+s = TypeVar('s')
+t = TypeVar('t')
 class p(Generic[s, t]): pass
 def f(a: p[s, t]) -> None: pass
 def g() -> None: pass
@@ -435,8 +435,8 @@ f[object, object](a)
 -- NOTE: Commented out test cases that do not make sense currently.
 
 --[case testGenericMethodInNonGenericType]
---from typing import Undefined, typevar
---T = typevar('T')
+--from typing import Undefined, TypeVar
+--T = TypeVar('T')
 --a, b = Undefined, Undefined # type: (A, B)
 --class A:
 --    def f(self, a: T) -> T: pass
@@ -447,9 +447,9 @@ f[object, object](a)
 --a = a.f[A](a)
 
 --[case testGenericMethodInGenericType]
---from typing import Undefined, typevar, Generic
---T = typevar('T')
---S = typevar('S')
+--from typing import Undefined, TypeVar, Generic
+--T = TypeVar('T')
+--S = TypeVar('S')
 --class A(Generic[T]):
 --    def f(self, a: S) -> 'A[t[S, T]]':
 --        pass
@@ -467,9 +467,9 @@ f[object, object](a)
 --acb = ab.f[C](c)
 
 [case testTypeCheckingGenericFunctionBody]
-from typing import typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 class A: pass
 class p(Generic[T, S]):
     def __init__(self, t: T, a: S) -> None: pass
@@ -484,9 +484,9 @@ def f(s: S, t: T) -> p[T, A]:
 main: In function "f":
 
 [case testTypeCheckingGenericMethodBody]
-from typing import typevar, Generic
-T = typevar('T')
-S = typevar('S')
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
 class p(Generic[T, S]):
     def __init__(self, t: T, a: S) -> None: pass
 class A(Generic[T]):
@@ -506,8 +506,8 @@ main: In member "f" of class "A":
 
 
 [case testConstructingGenericInstanceWithEmptyConstructor]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 class A(Generic[T]): pass
 class B: pass
 class C: pass
@@ -520,8 +520,8 @@ main, line 6: Incompatible types in assignment (expression has type A[B], variab
 main, line 7: Incompatible types in assignment (expression has type A[B], variable has type A[C])
 
 [case testNonEmptyGenericTypeConstructor]
-from typing import Undefined, typevar, Generic
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+T = TypeVar('T')
 class B: pass
 class C: pass
 class A(Generic[T]):
@@ -536,9 +536,9 @@ ab = A[C](c, b) # E: Incompatible types in assignment (expression has type A[C],
 ac = A[C](c, b)
 
 [case testConstructorForGenericTypeWithMultipleArguments]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 class A(Generic[S, T]):
     def __init__(self, t: T, s: S) -> None: pass
 class B: pass
@@ -555,8 +555,8 @@ abc = A[B, C](c, b)
 acb = A[C, B](b, c)
 
 [case testGenericConstructorOfNonGenericType]
-from typing import Undefined, typevar
-T = typevar('T')
+from typing import Undefined, TypeVar
+T = TypeVar('T')
 class A:
     def __init__(self, a: T, b: T) -> None: pass
 class B: pass
@@ -581,9 +581,9 @@ main, line 4: Value of type "A" is not indexable
 main, line 5: Type application targets a non-generic function
 
 [case testInvalidNumberOfGenericArgsInTypeApplication]
-from typing import typevar, Generic
-T = typevar('T')
-S = typevar('S')
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
 class A(Generic[T, S]): pass
 x = A[int, str, int]() # E: Type application has too many types (2 expected)
 x = A[int]() # E: Type application has too few types (2 expected)
@@ -629,8 +629,8 @@ a[1], a[2] = a
 
 class A: pass
 [file builtins.py]
-from typing import typevar, Generic, Iterable
-T = typevar('T')
+from typing import TypeVar, Generic, Iterable
+T = TypeVar('T')
 class object: pass
 class list(Iterable[T], Generic[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
@@ -640,10 +640,10 @@ class tuple: pass
 class function: pass
 
 [case testMultipleAsssignmentWithIterable]
-from typing import Iterable, Undefined, typevar
+from typing import Iterable, Undefined, TypeVar
 a = Undefined(int)
 b = Undefined(str)
-T = typevar('T')
+T = TypeVar('T')
 
 def f(x: T) -> Iterable[T]: pass
 
@@ -659,13 +659,13 @@ b, b = f(b)
 
 
 [case testErrorWithLongGenericTypeName]
-from typing import Undefined, typevar, Generic
-B = typevar('B')
-C = typevar('C')
-D = typevar('D')
-E = typevar('E')
-F = typevar('F')
-G = typevar('G')
+from typing import Undefined, TypeVar, Generic
+B = TypeVar('B')
+C = TypeVar('C')
+D = TypeVar('D')
+E = TypeVar('E')
+F = TypeVar('F')
+G = TypeVar('G')
 class O: pass
 a = Undefined # type: A[object, object, object, object, object, object]
 
@@ -676,9 +676,9 @@ def f(a: O) -> None:
 class A(Generic[B, C, D, E, F, G]): pass
 
 [case testErrorWithShorterGenericTypeName]
-from typing import Undefined, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 a = Undefined # type: A[object, B]
 f(a) # E: Argument 1 to "f" has incompatible type A[object, B]; expected "B"
 
@@ -687,9 +687,9 @@ class A(Generic[S, T]): pass
 class B: pass
 
 [case testErrorWithShorterGenericTypeName2]
-from typing import Undefined, Callable, typevar, Generic
-S = typevar('S')
-T = typevar('T')
+from typing import Undefined, Callable, TypeVar, Generic
+S = TypeVar('S')
+T = TypeVar('T')
 a = Undefined # type: A[object, Callable[[], None]]
 f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "B"
 
@@ -723,8 +723,8 @@ b = f(b)
 [builtins fixtures/list.py]
 
 [case testGenericFunctionAsOverloadItem]
-from typing import Undefined, overload, typevar, List, disjointclass
-T = typevar('T')
+from typing import Undefined, overload, TypeVar, List, disjointclass
+T = TypeVar('T')
 class A: pass
 @disjointclass(list)
 class B: pass
@@ -746,8 +746,8 @@ b = f(b)
 [builtins fixtures/list.py]
 
 [case testOverloadedGenericFunction]
-from typing import overload, typevar, Undefined
-t = typevar('t')
+from typing import overload, TypeVar, Undefined
+t = TypeVar('t')
 class A: pass
 class B: pass
 
@@ -767,9 +767,9 @@ f[B](1, a) # E: No overload variant of "f" matches argument types
 
 
 [case testLocalTypeVariable]
-from typing import typevar
+from typing import TypeVar
 def f() -> None:
-    T = typevar('T')
+    T = TypeVar('T')
     def g(x: T) -> T: pass
     a = g(1)
     a = 1
@@ -778,9 +778,9 @@ def f() -> None:
 main: In function "f":
 
 [case testClassLevelTypeVariable]
-from typing import typevar
+from typing import TypeVar
 class A:
-    T = typevar('T')
+    T = TypeVar('T')
     def g(self, x: T) -> T: pass
 a = A().g(1)
 a = 1
@@ -792,8 +792,8 @@ a = '' # E: Incompatible types in assignment (expression has type "str", variabl
 
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
-from typing import typevar, Callable
-T = typevar('T', values=(int, str))
+from typing import TypeVar, Callable
+T = TypeVar('T', values=(int, str))
 def f(x: T) -> T: pass
 def g1(f: Callable[[str], str]) -> None: pass
 g1(f)
@@ -809,9 +809,9 @@ g3(f) # E: Argument 1 to "g3" has incompatible type Callable[[T], T]; \
 
 
 [case testIdentityHigherOrderFunction]
-from typing import Callable, typevar
-A = typevar('A')
-B = typevar('B')
+from typing import Callable, TypeVar
+A = TypeVar('A')
+B = TypeVar('B')
 def square(n: int) -> int:
     return n
 def id(f: Callable[[A], B]) -> Callable[[A], B]:
@@ -822,8 +822,8 @@ g('x')  # E: Argument 1 has incompatible type "str"; expected "int"
 
 
 [case testIdentityHigherOrderFunction2]
-from typing import Callable, typevar
-A = typevar('A')
+from typing import Callable, TypeVar
+A = TypeVar('A')
 def voidify(n: int) -> None: pass
 def identity(f: Callable[[A], None]) -> Callable[[A], None]:
     return f

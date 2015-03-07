@@ -35,7 +35,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = Undefined(Dict[int, Type])  # typevar id -> value
+    variables = Undefined(Dict[int, Type])  # TypeVar id -> value
 
     def __init__(self, variables: Dict[int, Type]) -> None:
         self.variables = variables

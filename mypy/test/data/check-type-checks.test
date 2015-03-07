@@ -105,8 +105,8 @@ def f(x: Any, n: int, s: str) -> None:
 main: In function "f":
 
 [case testIsinstanceAndGenericType]
-from typing import typevar, Generic
-T = typevar('T')
+from typing import TypeVar, Generic
+T = TypeVar('T')
 class C(Generic[T]):
     def f(self, x: T) -> None: pass
 def f(x: object) -> None:

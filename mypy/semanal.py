@@ -41,7 +41,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    Undefined, List, Dict, Set, Tuple, cast, Any, overload, typevar, Union, Optional
+    Undefined, List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
 )
 
 from mypy.nodes import (
@@ -73,7 +73,7 @@ from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 # Inferred value of an expression.
@@ -952,7 +952,7 @@ class SemanticAnalyzer(NodeVisitor):
             raise RuntimeError('Internal error (%s)' % type(lvalue))
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
-        """Check if s declares a typevar; it yes, store it in symbol table."""
+        """Check if s declares a TypeVar; it yes, store it in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
         if not isinstance(s.rvalue, CallExpr):
@@ -961,25 +961,25 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(call.callee, RefExpr):
             return
         callee = cast(RefExpr, call.callee)
-        if callee.fullname != 'typing.typevar':
+        if callee.fullname != 'typing.TypeVar':
             return
         # TODO Share code with check_argument_count in checkexpr.py?
         if len(call.args) < 1:
-            self.fail("Too few arguments for typevar()", s)
+            self.fail("Too few arguments for TypeVar()", s)
             return
         if len(call.args) > 2:
-            self.fail("Too many arguments for typevar()", s)
+            self.fail("Too many arguments for TypeVar()", s)
             return
         if call.arg_kinds not in ([ARG_POS], [ARG_POS, ARG_NAMED]):
-            self.fail("Unexpected arguments to typevar()", s)
+            self.fail("Unexpected arguments to TypeVar()", s)
             return
         if not isinstance(call.args[0], StrExpr):
-            self.fail("typevar() expects a string literal argument", s)
+            self.fail("TypeVar() expects a string literal argument", s)
             return
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
         if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected typevar() argument value", s)
+            self.fail("Unexpected TypeVar() argument value", s)
             return
         if not lvalue.is_def:
             if s.type:
@@ -990,7 +990,7 @@ class SemanticAnalyzer(NodeVisitor):
         if len(call.args) == 2:
             # Analyze values=(...) argument.
             if call.arg_names[1] != 'values':
-                self.fail("Unexpected keyword argument '{}' to typevar()".
+                self.fail("Unexpected keyword argument '{}' to TypeVar()".
                           format(call.arg_names[1]), s)
                 return
             expr = call.args[1]
@@ -1004,10 +1004,10 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
-        typevar = TypeVarExpr(name, node.fullname, values)
-        typevar.line = call.line
-        call.analyzed = typevar
-        node.node = typevar
+        TypeVar = TypeVarExpr(name, node.fullname, values)
+        TypeVar.line = call.line
+        call.analyzed = TypeVar
+        node.node = TypeVar
 
     def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""

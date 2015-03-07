@@ -3,13 +3,13 @@
 # NOTE: These are incomplete!
 
 from typing import (
-    typevar, Generic, Any, Callable, overload, Mapping, Iterator, Dict, Tuple,
+    TypeVar, Generic, Any, Callable, overload, Mapping, Iterator, Dict, Tuple,
     Iterable
 )
 
-_T = typevar('_T')
-_KT = typevar('_KT')
-_VT = typevar('_VT')
+_T = TypeVar('_T')
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
 
 class ReferenceType(Generic[_T]):
     # TODO members

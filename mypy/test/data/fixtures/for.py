@@ -1,9 +1,9 @@
 # builtins stub used in for statement test cases
 
-from typing import typevar, Generic, Iterable, Iterator
+from typing import TypeVar, Generic, Iterable, Iterator
 from abc import abstractmethod, ABCMeta
 
-t = typevar('t')
+t = TypeVar('t')
 
 class object:
     def __init__(self) -> None: pass

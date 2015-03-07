@@ -1,11 +1,11 @@
 """Generic abstract syntax tree node visitor"""
 
-from typing import typevar, Generic
+from typing import TypeVar, Generic
 
 import mypy.nodes
 
 
-T = typevar('T')
+T = TypeVar('T')
 
 
 class NodeVisitor(Generic[T]):

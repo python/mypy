@@ -1,8 +1,8 @@
 # Builtins stub used in set-related test cases.
 
-from typing import typevar, Generic, Iterator, Iterable
+from typing import TypeVar, Generic, Iterator, Iterable
 
-T = typevar('T')
+T = TypeVar('T')
 
 class object:
     def __init__(self) -> None: pass
