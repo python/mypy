@@ -24,7 +24,7 @@ from test import support
 from test.support import check_warnings, captured_stdout
 
 from typing import (
-    Any, Callable, Tuple, List, Sequence, BinaryIO, Traceback, IO, Union, _promote, cast
+    Any, Callable, Tuple, List, Sequence, BinaryIO, Traceback, IO, Union, cast
 )
 
 import bz2
@@ -851,7 +851,6 @@ class TestCopyFile(unittest.TestCase):
 
     _delete = False
 
-    @_promote(IO[str])
     class Faux(object):
         _entered = False
         _exited_with = None # type: tuple
