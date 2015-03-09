@@ -55,7 +55,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ConditionalExpr, DucktypeExpr, DisjointclassExpr,
+    StrExpr, PrintStmt, ConditionalExpr, PromoteExpr, DisjointclassExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
@@ -409,8 +409,8 @@ class SemanticAnalyzer(NodeVisitor):
         for decorator in defn.decorators:
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
-                if isinstance(analyzed, DucktypeExpr):
-                    defn.info.ducktype = analyzed.type
+                if isinstance(analyzed, PromoteExpr):
+                    defn.info._promote = analyzed.type
                 elif isinstance(analyzed, DisjointclassExpr):
                     node = analyzed.cls.node
                     if isinstance(node, TypeInfo):
@@ -1436,17 +1436,17 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = UndefinedExpr(type)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'typing.ducktype'):
-            # Special form ducktype(...).
-            if not self.check_fixed_args(expr, 1, 'ducktype'):
+        elif refers_to_fullname(expr.callee, 'typing._promote'):
+            # Special form _promote(...).
+            if not self.check_fixed_args(expr, 1, '_promote'):
                 return
             # Translate first argument to an unanalyzed type.
             try:
                 target = expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
-                self.fail('Argument 1 to ducktype is not a type', expr)
+                self.fail('Argument 1 to _promote is not a type', expr)
                 return
-            expr.analyzed = DucktypeExpr(target)
+            expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.disjointclass'):
@@ -1607,7 +1607,7 @@ class SemanticAnalyzer(NodeVisitor):
         expr.cond.accept(self)
         expr.else_expr.accept(self)
 
-    def visit_ducktype_expr(self, expr: DucktypeExpr) -> None:
+    def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
 
     def visit_disjointclass_expr(self, expr: DisjointclassExpr) -> None:

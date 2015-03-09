@@ -48,7 +48,7 @@ def builtinclass(cls):
     return cls
 
 
-def ducktype(type):
+def _promote(type):
     """Return a duck type declaration decorator.
 
     The decorator only affects type checking.

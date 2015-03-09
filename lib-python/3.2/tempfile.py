@@ -39,7 +39,7 @@ from random import Random as _Random
 from typing import (
     Any as _Any, Callable as _Callable, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
-    Iterable as _Iterable, IO as _IO, ducktype as _ducktype,
+    Iterable as _Iterable, IO as _IO, _promote as __promote,
     Traceback as _Traceback
 )
 
@@ -353,7 +353,7 @@ def mktemp(suffix: str = "", prefix: str = template, dir: str = None) -> str:
     raise IOError(_errno.EEXIST, "No usable temporary filename found")
 
 
-@_ducktype(_IO[_Any])
+@__promote(_IO[_Any])
 class _TemporaryFileWrapper:
     """Temporary file wrapper
 

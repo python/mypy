@@ -832,9 +832,9 @@ main: In class "B":
 
 
 [case testSimpleDucktypeDecorator]
-from typing import ducktype, Undefined
+from typing import _promote, Undefined
 class A: pass
-@ducktype(A)
+@_promote(A)
 class B: pass
 a = Undefined(A)
 b = Undefined(B)
@@ -842,11 +842,11 @@ b = a # E: Incompatible types in assignment (expression has type "A", variable h
 a = b
 
 [case testDucktypeTransitivityDecorator]
-from typing import ducktype, Undefined
+from typing import _promote, Undefined
 class A: pass
-@ducktype(A)
+@_promote(A)
 class B: pass
-@ducktype(B)
+@_promote(B)
 class C: pass
 a = Undefined(A)
 c = Undefined(C)

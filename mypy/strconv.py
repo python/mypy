@@ -136,8 +136,8 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ('Decorators', o.decorators))
         if o.is_builtinclass:
             a.insert(1, 'Builtinclass')
-        if o.info and o.info.ducktype:
-            a.insert(1, 'Ducktype({})'.format(o.info.ducktype))
+        if o.info and o.info._promote:
+            a.insert(1, 'Ducktype({})'.format(o.info._promote))
         if o.info and o.info.disjoint_classes:
             a.insert(1, ('Disjointclasses', [info.fullname() for
                                              info in o.info.disjoint_classes]))
@@ -411,8 +411,8 @@ class StrConv(NodeVisitor[str]):
                                                   o.info.name(),
                                                   o.info.tuple_type)
 
-    def visit_ducktype_expr(self, o):
-        return 'DucktypeExpr:{}({})'.format(o.line, o.type)
+    def visit__promote_expr(self, o):
+        return 'PromoteExpr:{}({})'.format(o.line, o.type)
 
     def visit_disjointclass_expr(self, o):
         return 'DisjointclassExpr:{}({})'.format(o.line, o.cls.fullname)

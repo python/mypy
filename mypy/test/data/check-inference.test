@@ -975,9 +975,9 @@ a.x.y  # E: "object" has no attribute "y"
 
 
 [case testListWithDucktypeCompatibility]
-from typing import List, Undefined, ducktype
+from typing import List, Undefined, _promote
 class A: pass
-@ducktype(A)
+@_promote(A)
 class B: pass
 a = Undefined(List[A])
 x1 = [A(), B()]
@@ -989,11 +989,11 @@ a = x3 # E: Incompatible types in assignment (expression has type List[B], varia
 [builtins fixtures/list.py]
 
 [case testListWithDucktypeCompatibilityAndTransitivity]
-from typing import List, Undefined, ducktype
+from typing import List, Undefined, _promote
 class A: pass
-@ducktype(A)
+@_promote(A)
 class B: pass
-@ducktype(B)
+@_promote(B)
 class C: pass
 a = Undefined(List[A])
 x1 = [A(), C()]

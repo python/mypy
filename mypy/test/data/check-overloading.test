@@ -478,13 +478,13 @@ main: In class "C":
 main, line 17: Signature of "f" incompatible with supertype "A"
 
 [case testOverloadingAndDucktypeCompatibility]
-from typing import overload, ducktype, builtinclass
+from typing import overload, _promote, builtinclass
 
 @builtinclass
 class A: pass
 
 @builtinclass
-@ducktype(A)
+@_promote(A)
 class B: pass
 
 @overload

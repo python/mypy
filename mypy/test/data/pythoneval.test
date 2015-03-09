@@ -462,8 +462,8 @@ f(1)
 [out]
 
 [case testDucktypeDeclaration]
-from typing import Undefined, ducktype
-@ducktype(str)
+from typing import Undefined, _promote
+@_promote(str)
 class S: pass
 def f() -> None:
     'foo' + S()

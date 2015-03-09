@@ -223,7 +223,7 @@ class NodeVisitor(Generic[T]):
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> T:
         pass
 
-    def visit_ducktype_expr(self, o: 'mypy.nodes.DucktypeExpr') -> T:
+    def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> T:
         pass
 
     def visit_disjointclass_expr(self, o: 'mypy.nodes.DisjointclassExpr') -> T:

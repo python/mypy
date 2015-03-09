@@ -1364,8 +1364,8 @@ class NamedTupleExpr(Node):
         return visitor.visit_namedtuple_expr(self)
 
 
-class DucktypeExpr(Node):
-    """Ducktype class decorator expression ducktype(...)."""
+class PromoteExpr(Node):
+    """Ducktype class decorator expression _promote(...)."""
 
     type = Undefined('mypy.types.Type')
 
@@ -1373,7 +1373,7 @@ class DucktypeExpr(Node):
         self.type = type
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_ducktype_expr(self)
+        return visitor.visit__promote_expr(self)
 
 
 class DisjointclassExpr(Node):
@@ -1445,8 +1445,8 @@ class TypeInfo(SymbolNode):
     # Direct base classes.
     bases = Undefined(List['mypy.types.Instance'])
 
-    # Duck type compatibility (ducktype decorator)
-    ducktype = None  # type: mypy.types.Type
+    # Duck type compatibility (_promote decorator)
+    _promote = None  # type: mypy.types.Type
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type

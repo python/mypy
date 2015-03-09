@@ -1353,17 +1353,17 @@ MypyFile:1(
     PassStmt:3()))
 
 [case testSimpleDucktypeDecorator]
-from typing import ducktype
-@ducktype(str)
+from typing import _promote
+@_promote(str)
 class S: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [ducktype : ducktype])
+  ImportFrom:1(typing, [_promote : _promote])
   ClassDef:2(
     S
     Ducktype(builtins.str)
     Decorators(
-      DucktypeExpr:2(builtins.str))
+      PromoteExpr:2(builtins.str))
     PassStmt:3()))
 
 [case testDisjointclassDecorator]
