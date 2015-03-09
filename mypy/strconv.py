@@ -137,7 +137,7 @@ class StrConv(NodeVisitor[str]):
         if o.is_builtinclass:
             a.insert(1, 'Builtinclass')
         if o.info and o.info._promote:
-            a.insert(1, 'Ducktype({})'.format(o.info._promote))
+            a.insert(1, 'Promote({})'.format(o.info._promote))
         if o.info and o.info.disjoint_classes:
             a.insert(1, ('Disjointclasses', [info.fullname() for
                                              info in o.info.disjoint_classes]))

@@ -1361,7 +1361,7 @@ MypyFile:1(
   ImportFrom:1(typing, [_promote : _promote])
   ClassDef:2(
     S
-    Ducktype(builtins.str)
+    Promote(builtins.str)
     Decorators(
       PromoteExpr:2(builtins.str))
     PassStmt:3()))

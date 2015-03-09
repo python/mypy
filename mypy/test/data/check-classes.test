@@ -827,7 +827,7 @@ class B(S, int): pass # E: Instance layout conflict in multiple inheritance
 main: In class "B":
 
 
--- Ducktype decorators
+-- _promote decorators
 -- -------------------
 
 
