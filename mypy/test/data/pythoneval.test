@@ -461,16 +461,6 @@ f(1.1)
 f(1)
 [out]
 
-[case testDucktypeDeclaration]
-from typing import Undefined, _promote
-@_promote(str)
-class S: pass
-def f() -> None:
-    'foo' + S()
-print(type(S()))
-[out]
-<class '__main__.S'>
-
 [case testsFloatOperations]
 import typing
 print(1.5 + 1.5)
