@@ -969,7 +969,13 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("Too few arguments for TypeVar()", s)
             return
         if call.arg_kinds != [ARG_POS] * len(call.arg_kinds):
-            self.fail("Unexpected arguments to TypeVar()", s)
+            if call.arg_kinds == [ARG_POS, ARG_NAMED] and call.arg_names[1] == 'values':
+                # Probably using obsolete syntax with values=(...). Explain the current syntax.
+                self.fail("TypeVar 'values' argument not supported", s)
+                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
+                          s)
+            else:
+                self.fail("Unexpected arguments to TypeVar()", s)
             return
         if not isinstance(call.args[0], StrExpr):
             self.fail("TypeVar() expects a string literal argument", s)

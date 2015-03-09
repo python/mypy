@@ -1089,10 +1089,16 @@ g = TypeVar('g', x=(int, str)) # E: Unexpected arguments to TypeVar()
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
-a = TypeVar('a', values=int) # E: Unexpected arguments to TypeVar()
 b = TypeVar('b', *[int]) # E: Unexpected arguments to TypeVar()
 c = TypeVar('c', int, 2) # E: Type expected
 [out]
+
+[case testObsoleteTypevarValuesSyntax]
+from typing import TypeVar
+a = TypeVar('a', values=(int, str))
+[out]
+main, line 2: TypeVar 'values' argument not supported
+main, line 2: Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))
 
 [case testLocalTypevarScope]
 from typing import TypeVar
