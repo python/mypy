@@ -4,7 +4,7 @@ from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, builtinclass, ducktype, Union
+    SupportsRound, IO, builtinclass, _promote, Union
 )
 from abc import abstractmethod, ABCMeta
 
@@ -49,7 +49,7 @@ class type:
     def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: pass
 
 @builtinclass
-@ducktype(float)
+@_promote(float)
 class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __init__(self, x: Union[SupportsInt, str, _byte_types]=None, base: int=None) -> None: pass
     def bit_length(self) -> int: pass
@@ -100,7 +100,7 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __hash__(self) -> int: pass
 
 @builtinclass
-@ducktype(complex)
+@_promote(complex)
 class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     def __init__(self, x: Union[SupportsFloat, str, _byte_types]=None) -> None: pass
     def as_integer_ratio(self) -> Tuple[int, int]: pass

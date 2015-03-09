@@ -72,7 +72,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if left.type.ducktype and is_subtype(left.type.ducktype,
+            if left.type._promote and is_subtype(left.type._promote,
                                                  self.right):
                 return True
             rname = right.type.fullname()

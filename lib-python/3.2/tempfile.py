@@ -39,8 +39,7 @@ from random import Random as _Random
 from typing import (
     Any as _Any, Callable as _Callable, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
-    Iterable as _Iterable, IO as _IO, ducktype as _ducktype,
-    Traceback as _Traceback
+    Iterable as _Iterable, IO as _IO, Traceback as _Traceback, cast as _cast,
 )
 
 try:
@@ -353,7 +352,6 @@ def mktemp(suffix: str = "", prefix: str = template, dir: str = None) -> str:
     raise IOError(_errno.EEXIST, "No usable temporary filename found")
 
 
-@_ducktype(_IO[_Any])
 class _TemporaryFileWrapper:
     """Temporary file wrapper
 
@@ -457,7 +455,7 @@ def NamedTemporaryFile(mode: str = 'w+b', buffering: int = -1,
     file = _io.open(fd, mode, buffering=buffering,
                     newline=newline, encoding=encoding)
 
-    return _TemporaryFileWrapper(file, name, delete)
+    return _cast(_IO[_Any], _TemporaryFileWrapper(file, name, delete))
 
 if _os.name != 'posix' or _sys.platform == 'cygwin':
     # On non-POSIX and Cygwin systems, assume that we cannot unlink a file

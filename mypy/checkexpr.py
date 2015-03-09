@@ -609,8 +609,8 @@ class ExpressionChecker:
         # Fixed function arguments.
         func_fixed = callee.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
-            # Use is_more_precise rather than is_subtype because it ignores ducktype
-            # declarations. This is important since ducktype declarations are ignored
+            # Use is_more_precise rather than is_subtype because it ignores _promote
+            # declarations. This is important since _promote declarations are ignored
             # when performing runtime type checking.
             if not is_compatible_overload_arg(arg_types[i], callee.arg_types[i]):
                 return False

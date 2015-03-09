@@ -7,7 +7,7 @@ from typing import (
     _Protocol, Sized, Iterable, Iterator, Sequence, Union, Optional,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
     SupportsAbs, Reversible, Undefined, AnyStr, annotations, builtinclass,
-    cast, disjointclass, ducktype, forwardref, overload, TypeVar
+    cast, disjointclass, forwardref, overload, TypeVar
 )
 
 
@@ -432,10 +432,6 @@ class TestTyping(unittest.TestCase):
         class A: pass
         self.assertIs(builtinclass(int), int)
         self.assertIs(builtinclass(A), A)
-
-    def test_ducktype(self):
-        class A: pass
-        self.assertIs(ducktype(str)(A), A)
 
     def test_disjointclass(self):
         class A: pass

@@ -14,7 +14,7 @@ Generic = object()
 Tuple = object()
 Callable = object()
 builtinclass = object()
-ducktype = object()
+_promote = object()
 disjointclass = object()
 NamedTuple = object()
 
