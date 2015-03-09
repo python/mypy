@@ -183,13 +183,15 @@ def NamedTuple(typename, fields):
 
 
 class TypeVar(object):
-    def __init__(self, name, values=None):
+    def __init__(self, name, *values):
         self.name = name
+        if not values:
+            values = None
         self.values = values
 
 
 # Predefined type variables.
-AnyStr = TypeVar('AnyStr', values=(str, unicode))
+AnyStr = TypeVar('AnyStr', str, unicode)
 
 
 class forwardref(object):

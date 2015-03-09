@@ -968,11 +968,14 @@ class SemanticAnalyzer(NodeVisitor):
         if len(call.args) < 1:
             self.fail("Too few arguments for TypeVar()", s)
             return
-        if len(call.args) > 2:
-            self.fail("Too many arguments for TypeVar()", s)
-            return
-        if call.arg_kinds not in ([ARG_POS], [ARG_POS, ARG_NAMED]):
-            self.fail("Unexpected arguments to TypeVar()", s)
+        if call.arg_kinds != [ARG_POS] * len(call.arg_kinds):
+            if call.arg_kinds == [ARG_POS, ARG_NAMED] and call.arg_names[1] == 'values':
+                # Probably using obsolete syntax with values=(...). Explain the current syntax.
+                self.fail("TypeVar 'values' argument not supported", s)
+                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
+                          s)
+            else:
+                self.fail("Unexpected arguments to TypeVar()", s)
             return
         if not isinstance(call.args[0], StrExpr):
             self.fail("TypeVar() expects a string literal argument", s)
@@ -988,19 +991,11 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return
-        if len(call.args) == 2:
-            # Analyze values=(...) argument.
-            if call.arg_names[1] != 'values':
-                self.fail("Unexpected keyword argument '{}' to TypeVar()".
-                          format(call.arg_names[1]), s)
-                return
-            expr = call.args[1]
-            if isinstance(expr, TupleExpr):
-                values = self.analyze_types(expr.items)
-            else:
-                self.fail('The values argument must be a tuple literal', s)
-                return
+        if len(call.args) > 1:
+            # Analyze enumeration of type variable values.
+            values = self.analyze_types(call.args[1:])
         else:
+            # Type variables can refer to an arbitrary type.
             values = []
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)

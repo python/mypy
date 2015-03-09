@@ -3,7 +3,7 @@
 
 [case testCallGenericFunctionWithTypeVarValueRestriction]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 f(1)
 f('x')
@@ -11,7 +11,7 @@ f(object()) # E: Type argument 1 of "f" has incompatible value "object"
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingContext]
 from typing import TypeVar, List
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> List[T]: pass
 i = [1]
 s = ['x']
@@ -23,14 +23,14 @@ o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
 from typing import TypeVar, Any
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 f(Any(object()))
 [out]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc]
 from typing import TypeVar, Any
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 def g():
     f(object())
@@ -38,7 +38,7 @@ def g():
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingSubtype]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 class S(str): pass
 f(S())
@@ -50,7 +50,7 @@ class A:
     def f(self, x: int) -> A: return self
 class B:
     def f(self, x: int) -> B: return self
-AB = TypeVar('AB', values=(A, B))
+AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
     x = x.f(1)
     return x.f(1)
@@ -63,7 +63,7 @@ class A:
 class B:
     def f(self) -> A: return A()
     def g(self) -> B: return B()
-AB = TypeVar('AB', values=(A, B))
+AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
     return x.f() # Error
 def g(x: AB) -> AB:
@@ -82,7 +82,7 @@ class A:
 class B:
     def f(self) -> B: return self
     def g(self) -> B: return B()
-AB = TypeVar('AB', values=(A, B))
+AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
     y = x
     if y:
@@ -94,7 +94,7 @@ main: In function "f":
 
 [case testTypeApplicationAndTypeVarValues]
 from typing import TypeVar, List
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> List[T]:
     return List[T]()
 def g(x: T) -> List[T]:
@@ -105,7 +105,7 @@ main: In function "g":
 
 [case testTypeDeclaredBasedOnTypeVarWithValues]
 from typing import TypeVar, Undefined
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T:
     a = Undefined(T)
     b = None # type: T
@@ -118,7 +118,7 @@ main: In function "f":
 
 [case testIsinstanceAndTypeVarValues]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
         return 2
@@ -135,7 +135,7 @@ main: In function "h":
 
 [case testIsinstanceAndTypeVarValues2]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
         return 2
@@ -153,7 +153,7 @@ main: In function "g":
 
 [case testIsinstanceAndTypeVarValues3]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
         y = 1
@@ -164,7 +164,7 @@ def f(x: T) -> T:
 
 [case testIsinstanceAndTypeVarValues4]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
         y = 1
@@ -177,7 +177,7 @@ main: In function "f":
 
 [case testIsinstanceAndTypeVarValues5]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
         y = object()
@@ -192,7 +192,7 @@ main: In function "f":
 from typing import TypeVar, Undefined
 class A: pass
 class B: pass
-T = TypeVar('T', values=(A, B))
+T = TypeVar('T', A, B)
 def f(x: T) -> None:
     y = x
     if isinstance(x, A):
@@ -204,7 +204,7 @@ def f(x: T) -> None:
         x = B()
         x = y
         x.foo() # E: "B" has no attribute "foo"
-S = TypeVar('S', values=(int, str))
+S = TypeVar('S', int, str)
 def g(x: S) -> None:
     y = x
     if isinstance(x, int):
@@ -216,7 +216,7 @@ main: In function "f":
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues2]
 from typing import TypeVar, Undefined
 class S(str): pass
-T = TypeVar('T', values=(S, int))
+T = TypeVar('T', S, int)
 def f(x: T) -> None:
     y = x
     if isinstance(x, S):
@@ -234,7 +234,7 @@ main: In function "f":
 
 [case testTypeVarValuesAndNestedCalls]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(m: T) -> int: pass
 def h(x: int) -> int: pass
 def g(a: T) -> None:
@@ -243,7 +243,7 @@ def g(a: T) -> None:
 
 [case testGenericTypeWithTypevarValues]
 from typing import TypeVar, Generic, Undefined, Any
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class A(Generic[X]): pass
 a = Undefined(A[int])
 b = Undefined(A[str])
@@ -252,7 +252,7 @@ c = Undefined(A[Any])
 
 [case testGenericTypeWithTypevarValuesAndTypeApplication]
 from typing import TypeVar, Generic, Undefined, Any
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class A(Generic[X]): pass
 A[int]()
 A[str]()
@@ -261,7 +261,7 @@ A[object]() # E: Type argument 1 of "A" has incompatible value "object"
 
 [case testConstructGenericTypeWithTypevarValuesAndTypeInference]
 from typing import TypeVar, Generic, Any
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class A(Generic[X]):
     def __init__(self, x: X) -> None: pass
 A(1)
@@ -272,8 +272,8 @@ A(object()) # E: Type argument 1 of "A" has incompatible value "object"
 [case testGenericTypeWithTypevarValuesAndTypevarArgument]
 from typing import TypeVar, Generic, Undefined
 class C: pass
-X = TypeVar('X', values=(int, str))
-Y = TypeVar('Y', values=(int, C))
+X = TypeVar('X', int, str)
+Y = TypeVar('Y', int, C)
 Z = TypeVar('Z')
 class D(Generic[X]):
     def __init__(self, x: X) -> None: pass
@@ -291,7 +291,7 @@ main, line 13: Type variable "Z" not valid as type argument value for "D"
 
 [case testGenericTypeWithTypevarValuesAndSubtypePromotion]
 from typing import TypeVar, Generic, Undefined
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class S(str): pass
 class C(Generic[X]):
     def __init__(self, x: X) -> None: pass
@@ -311,7 +311,7 @@ class B:
     def f(self, x: int) -> None: pass
     def g(self, x: str) -> None: pass
     def h(self, x: int) -> None: pass
-X = TypeVar('X', values=(A, B))
+X = TypeVar('X', A, B)
 class C(Generic[X]):
     def f(self, x: X) -> None:
         x.f(1)
@@ -322,7 +322,7 @@ main: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues1]
 from typing import TypeVar, Generic, Undefined
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class C(Generic[X]):
     x = Undefined(X)
     def f(self, x: X) -> None:
@@ -333,7 +333,7 @@ main: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues2]
 from typing import TypeVar, Generic, Undefined
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class C(Generic[X]):
     x = Undefined(X)
 cn = C[int]()
@@ -345,7 +345,7 @@ cs.x = 1 # E: Incompatible types in assignment (expression has type "int", varia
 
 [case testInferredAttributeInGenericClassBodyWithTypevarValues]
 from typing import TypeVar, Generic, Undefined
-X = TypeVar('X', values=(int, str))
+X = TypeVar('X', int, str)
 class C(Generic[X]):
     x = 1
 C.x = 1
@@ -357,8 +357,8 @@ class A:
     def f(self, x: int) -> None: pass
 class B:
     def f(self, x: str) -> None: pass
-X = TypeVar('X', values=(A, B))
-Y = TypeVar('Y', values=(int, str))
+X = TypeVar('X', A, B)
+Y = TypeVar('Y', int, str)
 class C(Generic[X, Y]):
     def f(self, x: X, y: Y) -> None:
         x.f(y)
@@ -371,8 +371,8 @@ main, line 10: Argument 1 to "f" of "B" has incompatible type "int"; expected "s
 from typing import TypeVar, Generic, Undefined
 class A: pass
 class B: pass
-X = TypeVar('X', values=(A, B))
-Y = TypeVar('Y', values=(int, str))
+X = TypeVar('X', A, B)
+Y = TypeVar('Y', int, str)
 class C(Generic[X, Y]): pass
 a = Undefined(C[A, int])
 b = Undefined(C[B, str])
@@ -383,8 +383,8 @@ c = Undefined(C[A, A])     # E: Invalid type argument value for "C"
 from typing import TypeVar
 class A: pass
 class B: pass
-X = TypeVar('X', values=(A, B))
-Y = TypeVar('Y', values=(int, str))
+X = TypeVar('X', A, B)
+Y = TypeVar('Y', int, str)
 def f(x: X, y: Y) -> None: pass
 f(A(), '')
 f(B(), 1)
@@ -394,7 +394,7 @@ f(1, 1) # E: Type argument 1 of "f" has incompatible value "int"
 [case testGenericFunctionWithNormalAndRestrictedTypevar]
 from typing import TypeVar, Generic, Undefined
 X = TypeVar('X')
-Y = TypeVar('Y', values=(int, str))
+Y = TypeVar('Y', int, str)
 class C(Generic[Y]):
     def __init__(self, y: Y) -> None: pass
 def f(x: X, y: Y, z: int) -> None:
@@ -413,7 +413,7 @@ main, line 11: "str" has no attribute "foo"
 
 [case testTypeVarWithValueInferredFromObjectReturnTypeContext]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def c1(x: object) -> None: pass
 def c2(x: int) -> None: pass
 def c3(x: str) -> None: pass
@@ -426,7 +426,7 @@ c3(g(1))   # E: Argument 1 to "c3" has incompatible type "int"; expected "str"
 
 [case testTypeVarWithValueInferredFromObjectReturnTypeContext2]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 class ss(str): pass
 def c(x: ss) -> None: pass
 def g(x: T) -> T: pass
@@ -444,7 +444,7 @@ main, line 7: Argument 1 to "c" has incompatible type "int"; expected "ss"
 [case testTypevarValuesSpecialCase1]
 from typing import TypeVar, Generic
 from abc import abstractmethod
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 class A(Generic[T]):
     @abstractmethod
     def f(self) -> 'A[T]': pass
@@ -460,14 +460,14 @@ main: In class "C":
 
 [case testDefaultArgumentValueInGenericClassWithTypevarValues]
 from typing import TypeVar, Generic
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 class C(Generic[T]):
     def f(self, x: int = None) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
 from typing import TypeVar, overload, Callable
 
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> None:
      y = m(g, x)
      x = y

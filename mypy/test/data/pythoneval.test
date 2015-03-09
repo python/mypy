@@ -337,7 +337,7 @@ if isinstance(x, tuple):
 
 [case testTypevarValues]
 from typing import TypeVar
-T = TypeVar('T', values=(str, bytes))
+T = TypeVar('T', str, bytes)
 def f(x: T) -> T:
     if isinstance(x, str):
         return 'foo'
@@ -425,8 +425,8 @@ b'xx'
 [case testMultipleTypevarsWithValues]
 from typing import TypeVar
 
-T = TypeVar('T', values=(int, str))
-S = TypeVar('S', values=(int, str))
+T = TypeVar('T', int, str)
+S = TypeVar('S', int, str)
 
 def f(t: T, s: S) -> None:
     t + s

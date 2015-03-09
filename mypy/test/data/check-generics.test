@@ -793,7 +793,7 @@ a = '' # E: Incompatible types in assignment (expression has type "str", variabl
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
 from typing import TypeVar, Callable
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T: pass
 def g1(f: Callable[[str], str]) -> None: pass
 g1(f)

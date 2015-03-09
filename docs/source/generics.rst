@@ -151,7 +151,7 @@ as its value. A typical example is a type variable that can only have values
 
    from typing import TypeVar
 
-   AnyStr = TypeVar('AnyStr', values=(str, bytes))
+   AnyStr = TypeVar('AnyStr', str, bytes)
 
 This is actually such a common type variable that ``AnyStr`` is
 defined in ``typing`` and we don't need to define it ourselves.
@@ -209,7 +209,7 @@ this is correct for ``concat``, since ``concat`` actually returns a
     >>> print(type(ss))
     <class 'str'>
 
-You can also use a ``TypeVar`` with ``values`` when defining a generic
-class. For example, mypy uses the type ``typing.Pattern[AnyStr]`` for the
-return value of ``re.compile``, since regular expressions can be based
-on a string or a bytes pattern.
+You can also use a ``TypeVar`` with a restricted set of possible
+values when defining a generic class. For example, mypy uses the type
+``typing.Pattern[AnyStr]`` for the return value of ``re.compile``,
+since regular expressions can be based on a string or a bytes pattern.

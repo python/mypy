@@ -71,7 +71,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(t.values)
 
     def test_typevar_values(self):
-        t = TypeVar('t', values=(int, str))
+        t = TypeVar('t', int, str)
         self.assertEqual(t.name, 't')
         self.assertEqual(t.values, (int, str))
 
