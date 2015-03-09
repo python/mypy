@@ -32,7 +32,7 @@ Dict = TypeAlias(object)
 Set = TypeAlias(object)
 
 # Predefined type variables.
-AnyStr = TypeVar('AnyStr', values=(str, unicode))
+AnyStr = TypeVar('AnyStr', str, unicode)
 
 # Abstract base classes.
 

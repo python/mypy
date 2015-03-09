@@ -1293,8 +1293,8 @@ MypyFile:1(
 
 [case testTypevarWithValues]
 from typing import TypeVar, Any
-T = TypeVar('T', values=(int, str))
-S = TypeVar('S', values=(Any, int, str))
+T = TypeVar('T', int, str)
+S = TypeVar('S', Any, int, str)
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [TypeVar : TypeVar, Any : Any])
@@ -1314,7 +1314,7 @@ MypyFile:1(
 
 [case testGenericFunctionWithValueSet]
 from typing import TypeVar
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 def f(x: T) -> T: pass
 [out]
 MypyFile:1(
@@ -1335,7 +1335,7 @@ MypyFile:1(
 
 [case testGenericClassWithValueSet]
 from typing import TypeVar, Generic
-T = TypeVar('T', values=(int, str))
+T = TypeVar('T', int, str)
 class C(Generic[T]): pass
 [out]
 MypyFile:1(

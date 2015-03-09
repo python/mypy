@@ -1082,16 +1082,16 @@ a = TypeVar()       # E: Too few arguments for TypeVar()
 b = TypeVar(x='b')  # E: Unexpected arguments to TypeVar()
 c = TypeVar(1)      # E: TypeVar() expects a string literal argument
 d = TypeVar('D')    # E: Unexpected TypeVar() argument value
-e = TypeVar('e', values=(int, str), x=1) # E: Too many arguments for TypeVar()
-f = TypeVar('f', (int, str)) # E: Unexpected arguments to TypeVar()
-g = TypeVar('g', x=(int, str)) # E: Unexpected keyword argument 'x' to TypeVar()
+e = TypeVar('e', int, str, x=1) # E: Unexpected arguments to TypeVar()
+f = TypeVar('f', (int, str)) # E: Type expected
+g = TypeVar('g', x=(int, str)) # E: Unexpected arguments to TypeVar()
 [out]
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
-a = TypeVar('a', values=int) # E: The values argument must be a tuple literal
-b = TypeVar('b', values=(int)) # E: The values argument must be a tuple literal
-c = TypeVar('c', values=(int, 2)) # E: Type expected
+a = TypeVar('a', values=int) # E: Unexpected arguments to TypeVar()
+b = TypeVar('b', *[int]) # E: Unexpected arguments to TypeVar()
+c = TypeVar('c', int, 2) # E: Type expected
 [out]
 
 [case testLocalTypevarScope]
