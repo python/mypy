@@ -209,7 +209,7 @@ this is correct for ``concat``, since ``concat`` actually returns a
     >>> print(type(ss))
     <class 'str'>
 
-You can also use a ``TypeVar`` with ``values`` when defining a generic
-class. For example, mypy uses the type ``typing.Pattern[AnyStr]`` for the
-return value of ``re.compile``, since regular expressions can be based
-on a string or a bytes pattern.
+You can also use a ``TypeVar`` with a restricted set of possible
+values when defining a generic class. For example, mypy uses the type
+``typing.Pattern[AnyStr]`` for the return value of ``re.compile``,
+since regular expressions can be based on a string or a bytes pattern.
