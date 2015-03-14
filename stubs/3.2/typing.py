@@ -15,7 +15,6 @@ Tuple = object()
 Callable = object()
 builtinclass = object()
 _promote = object()
-disjointclass = object()
 NamedTuple = object()
 
 # Type aliases and type constructors
@@ -54,8 +53,6 @@ class SupportsAbs(Generic[_T]):
     @abstractmethod
     def __abs__(self) -> _T: pass
 
-@disjointclass(int)
-@disjointclass(float)
 class SupportsRound(Generic[_T]):
     @abstractmethod
     def __round__(self, ndigits: int = 0) -> _T: pass
