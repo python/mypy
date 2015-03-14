@@ -883,11 +883,6 @@ class TypeChecker(NodeVisitor[Type]):
             for base2 in builtin_bases:
                 if not (base1 in base2.mro or base2 in base1.mro):
                     self.fail(messages.INSTANCE_LAYOUT_CONFLICT, typ)
-        # Verify that no disjointclass constraints are violated.
-        for base in typ.mro:
-            for disjoint in base.disjointclass_decls:
-                if disjoint in typ.mro:
-                    self.msg.disjointness_violation(base, disjoint, typ)
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:

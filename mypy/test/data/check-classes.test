@@ -867,25 +867,6 @@ g(1.1)
 [builtins fixtures/complex.py]
 
 
--- Disjointclass decorators
--- ------------------------
-
-
-[case testDisjointclassDecorator]
-from typing import disjointclass
-class A: pass
-@disjointclass(A)
-class B: pass
-class C(A, B): pass # Error
-class D(B, A): pass # Error
-b = B()
-[out]
-main: In class "C":
-main, line 5: disjointclass constraint of class B disallows A as a base class
-main: In class "D":
-main, line 6: disjointclass constraint of class B disallows A as a base class
-
-
 -- Operator methods
 -- ----------------
 
