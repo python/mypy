@@ -27,7 +27,6 @@ __all__ = [
     'Undefined',
     'Union',
     'cast',
-    'forwardref',
     'overload',
     'TypeVar',
     # Protocols and abstract base classes
@@ -41,21 +40,6 @@ __all__ = [
     'BinaryIO',
     'TextIO',
 ]
-
-
-def builtinclass(cls):
-    """Mark a class as a built-in/extension class for type checking."""
-    return cls
-
-
-def disjointclass(type):
-    """Return a disjoint class declaration decorator.
-
-    The decorator only affects type checking.
-    """
-    def decorator(cls):
-        return cls
-    return decorator
 
 
 class GenericMeta(ABCMeta):
@@ -182,11 +166,6 @@ class TypeVar:
 
 # Predefined type variables.
 AnyStr = TypeVar('AnyStr', str, bytes)
-
-
-class forwardref:
-    def __init__(self, name):
-        self.name = name
 
 
 def Any(x):

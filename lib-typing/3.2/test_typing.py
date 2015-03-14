@@ -5,8 +5,8 @@ from typing import (
     List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
     _Protocol, Sized, Iterable, Iterator, Sequence, Union, Optional,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
-    SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr, builtinclass,
-    cast, disjointclass, forwardref, overload, TypeVar
+    SupportsAbs, SupportsRound, Reversible, Undefined, AnyStr,
+    cast, overload, TypeVar
 )
 
 
@@ -368,13 +368,6 @@ class TestTyping(unittest.TestCase):
             def f(self): pass
         self.assertIsInstance(A(), P)
 
-    def test_forward_ref_in_annotation(self):
-        A = forwardref('A')
-        def f(a:A) -> A:
-            return a
-        self.assertEqual(A.name, 'A')
-        class A: pass
-
     def test_string_literal_in_annotation(self):
         def f(a:'str') -> 'str':
             return a + 'x'
@@ -432,16 +425,6 @@ class TestTyping(unittest.TestCase):
         class C(A):
             def f(self): pass
         C()
-
-    def test_builtinclass(self):
-        class A: pass
-        self.assertIs(builtinclass(int), int)
-        self.assertIs(builtinclass(A), A)
-
-    def test_disjointclass(self):
-        class A: pass
-        self.assertIs(disjointclass(str)(A), A)
-        self.assertIs(disjointclass('str')(A), A)
 
     def test_overload(self):
         with self.assertRaises(RuntimeError):
