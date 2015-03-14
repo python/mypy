@@ -15,7 +15,6 @@ Tuple = object()
 Callable = object()
 builtinclass = object()
 _promote = object()
-disjointclass = object()
 NamedTuple = object()
 
 # Type aliases.

@@ -506,13 +506,12 @@ print(' ', 2 * [3, 4])
   [3, 4, 3, 4]
 
 [case testNotImplemented]
-from typing import disjointclass
+import typing
 class A:
     def __add__(self, x: int) -> int:
         if isinstance(x, int):
             return x + 1
         return NotImplemented
-@disjointclass(int)
 class B:
     def __radd__(self, x: A) -> str:
         return 'x'
@@ -521,14 +520,6 @@ print(A() + B())
 [out]
 2
 x
-
-[case testDisjointclass]
-from typing import disjointclass
-@disjointclass(int)
-class A: pass
-print(A)
-[out]
-<class '__main__.A'>
 
 [case testMappingMethods]
 # Regression test

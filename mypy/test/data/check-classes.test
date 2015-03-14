@@ -1005,9 +1005,7 @@ main: In member "__radd__" of class "A":
 main, line 4: "Any" return type expected since argument to __radd__ does not support __add__
 
 [case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
-from typing import overload, disjointclass
-@disjointclass(int)
-@disjointclass(str)
+from typing import overload
 class A:
     @overload
     def __add__(self, x: int) -> int: pass
