@@ -435,16 +435,6 @@ _program.py: In function "f":
 _program.py, line 7: Unsupported operand types for + ("int" and "str")
 _program.py, line 7: Unsupported operand types for + ("str" and "int")
 
-[case testBuiltinclass]
-from typing import builtinclass
-@builtinclass
-class A:
-    def __init__(self, x):
-        self.x = x + 1
-print(A(2).x)
-[out]
-3
-
 [case testSystemExitCode]
 import typing
 print(SystemExit(5).code)
