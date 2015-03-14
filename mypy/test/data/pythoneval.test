@@ -544,7 +544,7 @@ False
 from typing import Undefined
 class X: pass
 class A:
-    def __add__(self, x: X) -> int:
+    def __add__(self, x) -> int:
         if isinstance(x, X):
             return 1
         return NotImplemented

@@ -196,10 +196,9 @@ T = TypeVar('T', A, B)
 def f(x: T) -> None:
     y = x
     if isinstance(x, A):
-        # This is checked both when x is A or B, since A and B are overlapping
-        # types.
+        # This is only checked when x is A, since A and B are not considered overlapping.
         x = y
-        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        x = A()
     else:
         x = B()
         x = y

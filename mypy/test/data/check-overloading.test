@@ -316,11 +316,11 @@ f(List[object]()) # E: Argument 1 to "f" has incompatible type List[object]; exp
 [case testOverlappingOverloadSignatures]
 from typing import overload
 class A: pass
-class B: pass
+class B(A): pass
 @overload
-def f(x: A) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: B) -> int: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
-def f(x: B) -> B: pass
+def f(x: A) -> str: pass
 
 [case testDisjointclassesAndOverload]
 from typing import overload, disjointclass
