@@ -138,9 +138,6 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, 'Builtinclass')
         if o.info and o.info._promote:
             a.insert(1, 'Promote({})'.format(o.info._promote))
-        if o.info and o.info.disjoint_classes:
-            a.insert(1, ('Disjointclasses', [info.fullname() for
-                                             info in o.info.disjoint_classes]))
         if o.info and o.info.tuple_type:
             a.insert(1, ('TupleType', [o.info.tuple_type]))
         return self.dump(a, o)

@@ -367,7 +367,6 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.calculate_abstract_status(defn.info)
         self.setup_type_promotion(defn)
-        self.setup_disjoint_classes(defn)
 
         # Restore analyzer state.
         self.block_depth.pop()
@@ -447,20 +446,6 @@ class SemanticAnalyzer(NodeVisitor):
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
-
-    def setup_disjoint_classes(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            if isinstance(decorator, CallExpr):
-                analyzed = decorator.analyzed
-                if isinstance(analyzed, DisjointclassExpr):
-                    node = analyzed.cls.node
-                    if isinstance(node, TypeInfo):
-                        defn.info.disjoint_classes.append(node)
-                        defn.info.disjointclass_decls.append(node)
-                        node.disjoint_classes.append(defn.info)
-                    else:
-                        self.fail('Argument 1 to disjointclass does not refer '
-                                  'to a class', analyzed)
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
