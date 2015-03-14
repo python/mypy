@@ -71,6 +71,8 @@ from mypy.types import (
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.lex import lex
+from mypy.parsetype import parse_type
 
 
 T = TypeVar('T')
@@ -406,12 +408,36 @@ class SemanticAnalyzer(NodeVisitor):
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
+    # Hard coded type promotions.
+    TYPE_PROMOTIONS = {
+        'builtins.int': 'builtins.float',
+        'builtins.float': 'builtins.complex',
+    }
+
+    # Hard coded type promotions for Python 2.
+    TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
+    TYPE_PROMOTIONS_PYTHON2.update({
+        'builtins.str': 'builtins.unicode',
+    })
+
     def setup_type_promotion(self, defn: ClassDef) -> None:
+        """Setup extra, ad-hoc subtyping relationships between classes (promotion).
+
+        This includes things like 'int' being compatible with 'float'.
+        """
+        promote_target = None # type: Type
         for decorator in defn.decorators:
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
                 if isinstance(analyzed, PromoteExpr):
-                    defn.info._promote = analyzed.type
+                    # _promote class decorator (undocumented faeture).
+                    promote_target = analyzed.type
+        if not promote_target:
+            promotions = (self.TYPE_PROMOTIONS if self.pyversion >= 3
+                          else self.TYPE_PROMOTIONS_PYTHON2)
+            if defn.fullname in promotions:
+                promote_target = self.named_type_or_none(promotions[defn.fullname])
+        defn.info._promote = promote_target
 
     def setup_disjoint_classes(self, defn: ClassDef) -> None:
         for decorator in defn.decorators:
@@ -606,6 +632,12 @@ class SemanticAnalyzer(NodeVisitor):
 
     def named_type(self, qualified_name: str) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
+        return Instance(cast(TypeInfo, sym.node), [])
+
+    def named_type_or_none(self, qualified_name: str) -> Instance:
+        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        if not sym:
+            return None
         return Instance(cast(TypeInfo, sym.node), [])
 
     def is_instance_type(self, t: Type) -> bool:
@@ -1711,6 +1743,22 @@ class SemanticAnalyzer(NodeVisitor):
         for i in range(1, len(parts) - 1):
             n = cast(MypyFile, n.names[parts[i]].node)
         return n.names[parts[-1]]
+
+    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode:
+        """Lookup a fully qualified name.
+
+        Assume that the name is defined. This happens in the global namespace -- the local
+        module namespace is ignored.
+        """
+        assert '.' in name
+        parts = name.split('.')
+        n = self.modules[parts[0]]
+        for i in range(1, len(parts) - 1):
+            next_sym = n.names.get(parts[i])
+            if not next_sym:
+                return None
+            n = cast(MypyFile, next_sym.node)
+        return n.names.get(parts[-1])
 
     def qualified_name(self, n: str) -> str:
         return self.cur_mod_id + '.' + n
