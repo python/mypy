@@ -80,8 +80,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 else:
                     rep = None
                 values = cast(TypeVarExpr, sym.node).values
-                return TypeVarType(t.name, sym.tvar_id, values, self.builtin_type('builtins.object'),
-                               t.line, rep)
+                return TypeVarType(t.name, sym.tvar_id, values,
+                                   self.builtin_type('builtins.object'),
+                                   t.line, rep)
             elif fullname == 'builtins.None':
                 return Void()
             elif fullname == 'typing.Any':
