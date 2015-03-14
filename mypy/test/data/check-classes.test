@@ -854,6 +854,19 @@ c = a # E: Incompatible types in assignment (expression has type "A", variable h
 a = c
 
 
+-- Hard coded type promotions
+-- --------------------------
+
+[case testHardCodedTypePromotions]
+import typing
+def f(x: float) -> None: pass
+def g(x: complex) -> None: pass
+f(1)
+g(1)
+g(1.1)
+[builtins fixtures/complex.py]
+
+
 -- Disjointclass decorators
 -- ------------------------
 
