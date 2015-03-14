@@ -362,7 +362,8 @@ class SemanticAnalyzer(NodeVisitor):
         defn.defs.accept(self)
 
         self.calculate_abstract_status(defn.info)
-        self.setup_ducktyping(defn)
+        self.setup_type_promotion(defn)
+        self.setup_disjoint_classes(defn)
 
         # Restore analyzer state.
         self.block_depth.pop()
@@ -405,13 +406,18 @@ class SemanticAnalyzer(NodeVisitor):
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
-    def setup_ducktyping(self, defn: ClassDef) -> None:
+    def setup_type_promotion(self, defn: ClassDef) -> None:
         for decorator in defn.decorators:
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
                 if isinstance(analyzed, PromoteExpr):
                     defn.info._promote = analyzed.type
-                elif isinstance(analyzed, DisjointclassExpr):
+
+    def setup_disjoint_classes(self, defn: ClassDef) -> None:
+        for decorator in defn.decorators:
+            if isinstance(decorator, CallExpr):
+                analyzed = decorator.analyzed
+                if isinstance(analyzed, DisjointclassExpr):
                     node = analyzed.cls.node
                     if isinstance(node, TypeInfo):
                         defn.info.disjoint_classes.append(node)
