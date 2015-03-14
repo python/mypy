@@ -51,26 +51,9 @@ def is_overlapping_types(t: Type, s: Type) -> bool:
     """Can a value of type t be a value of type s, or vice versa?"""
     if isinstance(t, Instance):
         if isinstance(s, Instance):
-            # If the classes are explicitly declared as disjoint, they can't
-            # overlap.
-            if t.type in s.type.disjoint_classes:
-                return False
-
-            # Built-in classes in the mro affect whether two types can be
-            # overlapping.
-            # TODO Find the most distant ancestor with the same memory layout,
-            #      since multiple inheritance seems possible if the memory
-            #      layout is the same.
-            tbuiltin = nearest_builtin_ancestor(t.type)
-            sbuiltin = nearest_builtin_ancestor(s.type)
-            if not sbuiltin or not tbuiltin:
-                return True
-
-            # If one is a base class of other, the types overlap, unless there
-            # is an explicit disjointclass constraint.
-            if tbuiltin in sbuiltin.mro or sbuiltin in tbuiltin.mro:
-                return True
-            return tbuiltin == sbuiltin
+            # Only consider two classes non-disjoint if one is included in the mro
+            # of another.
+            return t.type in s.type.mro or s.type in t.type.mro
     if isinstance(t, UnionType):
         return any(is_overlapping_types(item, s)
                    for item in t.items)

@@ -4,7 +4,7 @@ from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, BinaryIO, builtinclass, Union, AnyStr
+    SupportsRound, IO, BinaryIO, Union, AnyStr
 )
 from abc import abstractmethod, ABCMeta
 
@@ -21,7 +21,6 @@ staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.
 property = object()
 
-@builtinclass
 class object:
     __doc__ = ''
     __class__ = Undefined # type: type
@@ -33,7 +32,6 @@ class object:
     def __repr__(self) -> str: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class type:
     __name__ = ''
     __module__ = ''
@@ -44,7 +42,6 @@ class type:
     @staticmethod
     def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: pass
 
-@builtinclass
 class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     @overload
     def __init__(self) -> None: pass
@@ -99,7 +96,6 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __abs__(self) -> int: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     @overload
     def __init__(self) -> None: pass
@@ -142,7 +138,6 @@ class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     def __abs__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class complex(SupportsAbs[float]):
     @overload
     def __init__(self, re: float = 0.0, im: float = 0.0) -> None: pass
@@ -178,7 +173,6 @@ class complex(SupportsAbs[float]):
     def __abs__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class unicode(Sequence[unicode]):
     @overload
     def __init__(self) -> None: pass
@@ -264,7 +258,6 @@ class unicode(Sequence[unicode]):
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class str(Sequence[str]):
     def __init__(self, object: object) -> None: pass
     def capitalize(self) -> str: pass
@@ -368,7 +361,6 @@ class str(Sequence[str]):
     def __ge__(self, x: unicode) -> bool: pass
 
 
-@builtinclass
 class bytearray(Sequence[int]):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
@@ -544,18 +536,15 @@ class bytearray(Sequence[int]):
     @overload
     def __ge__(self, x: str) -> bool: pass
 
-@builtinclass
 class bool(int, SupportsInt, SupportsFloat):
     def __init__(self, o: object = False) -> None: pass
 
-@builtinclass
 class slice:
     start = 0
     step = 0
     stop = 0
     def __init__(self, start: int, stop: int, step: int) -> None: pass
 
-@builtinclass
 class tuple(Sequence[Any]):
     @overload
     def __init__(self) -> None: pass
@@ -576,13 +565,11 @@ class tuple(Sequence[Any]):
     def count(self, x: Any) -> int: pass
     def index(self, x: Any) -> int: pass
 
-@builtinclass
 class function:
     # TODO name of the class (corresponds to Python 'function' class)
     __name__ = ''
     __module__ = ''
 
-@builtinclass
 class list(Sequence[_T], Reversible[_T], Generic[_T]):
     @overload
     def __init__(self) -> None: pass
@@ -627,7 +614,6 @@ class list(Sequence[_T], Reversible[_T], Generic[_T]):
     def __lt__(self, x: List[_T]) -> bool: pass
     def __le__(self, x: List[_T]) -> bool: pass
 
-@builtinclass
 class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self) -> None: pass
@@ -669,7 +655,6 @@ class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     def __iter__(self) -> Iterator[_KT]: pass
     def __str__(self) -> str: pass
 
-@builtinclass
 class set(AbstractSet[_T], Generic[_T]):
     @overload
     def __init__(self) -> None: pass
@@ -689,7 +674,6 @@ class set(AbstractSet[_T], Generic[_T]):
     def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
     # TODO more set operations
 
-@builtinclass
 class frozenset(AbstractSet[_T], Generic[_T]):
     @overload
     def __init__(self) -> None: pass
@@ -706,14 +690,12 @@ class frozenset(AbstractSet[_T], Generic[_T]):
     def __xor__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
     # TODO more set operations
 
-@builtinclass
 class enumerate(Iterator[Tuple[int, _T]], Generic[_T]):
     def __init__(self, iterable: Iterable[_T], start: int = 0) -> None: pass
     def __iter__(self) -> Iterator[Tuple[int, _T]]: pass
     def next(self) -> Tuple[int, _T]: pass
     # TODO __getattribute__
 
-@builtinclass
 class xrange(Sized, Iterable[int], Reversible[int]):
     @overload
     def __init__(self, stop: int) -> None: pass
@@ -724,7 +706,6 @@ class xrange(Sized, Iterable[int], Reversible[int]):
     def __getitem__(self, i: int) -> int: pass
     def __reversed__(self) -> Iterator[int]: pass
 
-@builtinclass
 class module:
     __name__ = ''
     __file__ = ''
@@ -852,7 +833,6 @@ def __import__(name: unicode,
 
 # Exceptions
 
-@builtinclass
 class BaseException:
     args = Undefined # type: Any
     def __init__(self, *args: Any) -> None: pass
@@ -866,7 +846,6 @@ class Exception(BaseException): pass
 class StopIteration(Exception): pass
 class StandardError(Exception): pass
 class ArithmeticError(StandardError): pass
-@builtinclass
 class EnvironmentError(StandardError):
     errno = 0
     strerror = ''

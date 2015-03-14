@@ -116,7 +116,7 @@ class A:
 def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
-from typing import Undefined, Callable, overload, disjointclass
+from typing import Undefined, Callable, overload
 f = Undefined # type: Callable[[AA], A]
 g = Undefined # type: Callable[[B], B]
 h = Undefined # type: Callable[[A], AA]
@@ -131,7 +131,6 @@ g = j
 class A: pass
 class AA(A): pass
 
-@disjointclass(A)
 class B: pass
 
 @overload
@@ -149,7 +148,7 @@ def j(x: A) -> AA:
     pass
 
 [case testOverloadWithThreeItems]
-from typing import Undefined, Callable, overload, disjointclass
+from typing import Undefined, Callable, overload
 g1 = Undefined # type: Callable[[A], A]
 g2 = Undefined # type: Callable[[B], B]
 g3 = Undefined # type: Callable[[C], C]
@@ -169,12 +168,7 @@ b = f(b)
 c = f(c)
 
 class A: pass
-
-@disjointclass(A)
 class B: pass
-
-@disjointclass(A)
-@disjointclass(B)
 class C: pass
 
 @overload

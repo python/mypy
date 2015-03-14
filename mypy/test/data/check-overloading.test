@@ -47,7 +47,7 @@ class B: pass
 class C: pass
 
 [case testOverloadedFunctionReturnValue]
-from typing import Undefined, overload, disjointclass
+from typing import Undefined, overload
 a, b = Undefined, Undefined # type: (A, B)
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -59,7 +59,6 @@ def f(x: 'A') -> 'A': pass
 @overload
 def f(x: 'B') -> 'B': pass
 class A: pass
-@disjointclass(A)
 class B: pass
 
 [case testCallToOverloadedMethod]
@@ -78,7 +77,7 @@ class B: pass
 class C: pass
 
 [case testOverloadedMethodReturnValue]
-from typing import Undefined, overload, disjointclass
+from typing import Undefined, overload
 a, b = Undefined, Undefined # type: (A, B)
 b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = a.f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -90,7 +89,6 @@ class A:
   def f(self, x: 'A') -> 'A': pass
   @overload
   def f(self, x: 'B') -> 'B': pass
-@disjointclass(A)
 class B: pass
 
 [case testNonConsecutiveOverloads]
@@ -118,7 +116,7 @@ class A: pass
 class B: pass
 
 [case testGenericOverloadVariant]
-from typing import Undefined, overload, TypeVar, Generic, disjointclass
+from typing import Undefined, overload, TypeVar, Generic
 t = TypeVar('t')
 ab, ac, b, c = Undefined, Undefined, Undefined, Undefined # type: (A[B], A[C], B, C)
 b = f(ab)
@@ -131,7 +129,6 @@ def f(x: 'A[t]') -> t: pass
 @overload
 def f(x: 'B') -> 'B': pass
 class A(Generic[t]): pass
-@disjointclass(A)
 class B: pass
 class C: pass
 
@@ -279,7 +276,7 @@ class B: pass
 [builtins fixtures/function.py]
 
 [case testOverloadedInitAndTypeObjectInOverload]
-from typing import overload, Undefined, disjointclass
+from typing import overload, Undefined
 @overload
 def f(t: type) -> 'A': pass
 @overload
@@ -289,7 +286,6 @@ a = f(A)
 b = f(a)
 b = f(A) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = f(a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-@disjointclass(type)
 class A:
    @overload
    def __init__(self) -> None: pass
@@ -316,21 +312,11 @@ f(List[object]()) # E: Argument 1 to "f" has incompatible type List[object]; exp
 [case testOverlappingOverloadSignatures]
 from typing import overload
 class A: pass
-class B: pass
+class B(A): pass
 @overload
-def f(x: A) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: B) -> int: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
-def f(x: B) -> B: pass
-
-[case testDisjointclassesAndOverload]
-from typing import overload, disjointclass
-class A: pass
-@disjointclass(A)
-class B: pass
-@overload
-def f(x: A) -> A: pass
-@overload
-def f(x: B) -> B: pass
+def f(x: A) -> str: pass
 
 [case testContravariantOverlappingOverloadSignatures]
 from typing import overload

@@ -4,7 +4,7 @@ from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, builtinclass, Union
+    SupportsRound, IO, Union
 )
 from abc import abstractmethod, ABCMeta
 
@@ -26,7 +26,6 @@ property = object()
 
 _byte_types = Union[bytes, bytearray]
 
-@builtinclass
 class object:
     __doc__ = ''
     __class__ = Undefined # type: type
@@ -38,7 +37,6 @@ class object:
     def __repr__(self) -> str: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class type:
     __name__ = ''
     __module__ = ''
@@ -48,7 +46,6 @@ class type:
     @staticmethod
     def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: pass
 
-@builtinclass
 class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __init__(self, x: Union[SupportsInt, str, _byte_types]=None, base: int=None) -> None: pass
     def bit_length(self) -> int: pass
@@ -98,7 +95,6 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __abs__(self) -> int: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     def __init__(self, x: Union[SupportsFloat, str, _byte_types]=None) -> None: pass
     def as_integer_ratio(self) -> Tuple[int, int]: pass
@@ -137,7 +133,6 @@ class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
     def __abs__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class complex(SupportsAbs[float]):
     @overload
     def __init__(self, re: float = 0.0, im: float = 0.0) -> None: pass
@@ -171,7 +166,6 @@ class complex(SupportsAbs[float]):
     def __abs__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class str(Sequence[str]):
     @overload
     def __init__(self) -> None: pass
@@ -246,7 +240,6 @@ class str(Sequence[str]):
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-@builtinclass
 class bytes(Sequence[int]):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
@@ -318,7 +311,6 @@ class bytes(Sequence[int]):
     def __gt__(self, x: bytes) -> bool: pass
     def __ge__(self, x: bytes) -> bool: pass
 
-@builtinclass
 class bytearray(Sequence[int]):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
@@ -399,23 +391,19 @@ class bytearray(Sequence[int]):
     def __gt__(self, x: _byte_types) -> bool: pass
     def __ge__(self, x: _byte_types) -> bool: pass
 
-@builtinclass
 class memoryview():
     # TODO arg can be any obj supporting the buffer protocol
     def __init__(self, bytearray) -> None: pass
 
-@builtinclass
 class bool(int, SupportsInt, SupportsFloat):
     def __init__(self, o: object = False) -> None: pass
 
-@builtinclass
 class slice:
     start = 0
     step = 0
     stop = 0
     def __init__(self, start: int, stop: int, step: int) -> None: pass
 
-@builtinclass
 class tuple(Sequence[Any]):
     @overload
     def __init__(self) -> None: pass
@@ -438,14 +426,12 @@ class tuple(Sequence[Any]):
     def count(self, x: Any) -> int: pass
     def index(self, x: Any) -> int: pass
 
-@builtinclass
 class function:
     # TODO not defined in builtins!
     __name__ = ''
     __module__ = ''
     __code__ = Undefined(Any)
 
-@builtinclass
 class list(Sequence[_T], Reversible[_T], Generic[_T]):
     @overload
     def __init__(self) -> None: pass
@@ -491,7 +477,6 @@ class list(Sequence[_T], Reversible[_T], Generic[_T]):
     def __lt__(self, x: List[_T]) -> bool: pass
     def __le__(self, x: List[_T]) -> bool: pass
 
-@builtinclass
 class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self) -> None: pass
@@ -526,7 +511,6 @@ class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     def __iter__(self) -> Iterator[_KT]: pass
     def __str__(self) -> str: pass
 
-@builtinclass
 class set(AbstractSet[_T], Generic[_T]):
     def __init__(self, iterable: Iterable[_T]=None) -> None: pass
     def add(self, element: _T) -> None: pass
@@ -564,7 +548,6 @@ class set(AbstractSet[_T], Generic[_T]):
     def __gt__(self, s: AbstractSet[Any]) -> bool: pass
     # TODO more set operations
 
-@builtinclass
 class frozenset(AbstractSet[_T], Generic[_T]):
     def __init__(self, iterable: Iterable[_T]=None) -> None: pass
     def copy(self) -> frozenset[_T]: pass
@@ -588,14 +571,12 @@ class frozenset(AbstractSet[_T], Generic[_T]):
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
     def __gt__(self, s: AbstractSet[Any]) -> bool: pass
 
-@builtinclass
 class enumerate(Iterator[Tuple[int, _T]], Generic[_T]):
     def __init__(self, iterable: Iterable[_T], start: int = 0) -> None: pass
     def __iter__(self) -> Iterator[Tuple[int, _T]]: pass
     def __next__(self) -> Tuple[int, _T]: pass
     # TODO __getattribute__
 
-@builtinclass
 class range(Sequence[int], Reversible[int]):
     @overload
     def __init__(self, stop: int) -> None: pass
@@ -613,7 +594,6 @@ class range(Sequence[int], Reversible[int]):
     def __repr__(self) -> str: pass
     def __reversed__(self) -> Iterator[int]: pass
 
-@builtinclass
 class module:
     # TODO not defined in builtins!
     __name__ = ''
@@ -727,7 +707,6 @@ def __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] =
 
 # Ellipsis
 
-@builtinclass
 class ellipsis:
     # TODO not defined in builtins!
     def __init__(self) -> None: pass
@@ -736,7 +715,6 @@ Ellipsis = ellipsis()
 
 # Exceptions
 
-@builtinclass
 class BaseException:
     args = Undefined # type: Any
     def __init__(self, *args: Any) -> None: pass
@@ -744,12 +722,10 @@ class BaseException:
 
 class GeneratorExit(BaseException): pass
 class KeyboardInterrupt(BaseException): pass
-@builtinclass
 class SystemExit(BaseException):
     code = 0
 class Exception(BaseException): pass
 class ArithmeticError(Exception): pass
-@builtinclass
 class EnvironmentError(Exception):
     errno = 0
     strerror = ''
@@ -784,7 +760,6 @@ class SystemError(Exception): pass
 class TypeError(Exception): pass
 class UnboundLocalError(NameError): pass
 class UnicodeError(ValueError): pass
-@builtinclass
 class UnicodeDecodeError(UnicodeError):
     encoding = Undefined(str)
     object = Undefined(bytes)

@@ -1061,17 +1061,16 @@ NameExpr(7) : S
 
 [case testBinaryOperatorWithAnyLeftOperand]
 ## OpExpr
-from typing import Any, disjointclass
+from typing import Any
 class B:
     def __add__(self, x: int) -> str: pass
-@disjointclass(int)
 class A:
     def __radd__(self, x: B) -> int: pass
 Any(1) + A()
 B() + A()
 [out]
-OpExpr(8) : Any
-OpExpr(9) : builtins.int
+OpExpr(7) : Any
+OpExpr(8) : builtins.int
 
 [case testBinaryOperatorWithAnyRightOperand]
 ## OpExpr

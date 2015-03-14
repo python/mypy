@@ -389,7 +389,7 @@ f(y='x', *(1,))
 
 
 [case testIntersectionTypesAndVarArgs]
-from typing import Undefined, overload, disjointclass
+from typing import Undefined, overload
 a, b = Undefined, Undefined # type: (A, B)
 
 b = f()        # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -419,7 +419,6 @@ b = f(*(b, b))
 b = f(*[b])
 
 class A: pass
-@disjointclass(A)
 class B: pass
 
 @overload

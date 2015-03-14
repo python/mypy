@@ -665,11 +665,6 @@ class MessageBuilder:
         self.fail('Type argument {} of {} has incompatible value {}'.format(
             index, callable_name(callee), self.format(type)), context)
 
-    def disjointness_violation(self, cls: TypeInfo, disjoint: TypeInfo,
-                               context: Context) -> None:
-        self.fail('disjointclass constraint of class {} disallows {} as a '
-                  'base class'.format(cls.name(), disjoint.name()), context)
-
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '

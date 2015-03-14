@@ -703,9 +703,8 @@ class B: pass
 
 
 [case testGenericArgumentInOverload]
-from typing import Undefined, overload, List, disjointclass
+from typing import Undefined, overload, List
 class A: pass
-@disjointclass(list)
 class B: pass
 a, b = Undefined, Undefined # type: (A, B)
 
@@ -723,10 +722,9 @@ b = f(b)
 [builtins fixtures/list.py]
 
 [case testGenericFunctionAsOverloadItem]
-from typing import Undefined, overload, TypeVar, List, disjointclass
+from typing import Undefined, overload, TypeVar, List
 T = TypeVar('T')
 class A: pass
-@disjointclass(list)
 class B: pass
 
 @overload

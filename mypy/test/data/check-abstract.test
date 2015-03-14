@@ -510,5 +510,3 @@ class B:
 class C:
     def __add__(self, other: int) -> B: pass
 [out]
-main: In member "__radd__" of class "A":
-main, line 5: Signatures of "__radd__" of "A" and "__add__" of "C" are unsafely overlapping

@@ -55,7 +55,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ConditionalExpr, PromoteExpr, DisjointclassExpr,
+    StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
@@ -360,12 +360,13 @@ class SemanticAnalyzer(NodeVisitor):
         for decorator in defn.decorators:
             self.analyze_class_decorator(defn, decorator)
 
+        self.setup_is_builtinclass(defn)
+
         # Analyze class body.
         defn.defs.accept(self)
 
         self.calculate_abstract_status(defn.info)
         self.setup_type_promotion(defn)
-        self.setup_disjoint_classes(defn)
 
         # Restore analyzer state.
         self.block_depth.pop()
@@ -378,7 +379,14 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
         decorator.accept(self)
-        if refers_to_fullname(decorator, 'typing.builtinclass'):
+
+    def setup_is_builtinclass(self, defn: ClassDef):
+        for decorator in defn.decorators:
+            if refers_to_fullname(decorator, 'typing.builtinclass'):
+                defn.is_builtinclass = True
+        if defn.fullname == 'builtins.object':
+            # Only 'object' is marked as a built-in class, as otherwise things elsewhere
+            # would break. We need a better way of dealing with built-in classes.
             defn.is_builtinclass = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
@@ -438,20 +446,6 @@ class SemanticAnalyzer(NodeVisitor):
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
-
-    def setup_disjoint_classes(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            if isinstance(decorator, CallExpr):
-                analyzed = decorator.analyzed
-                if isinstance(analyzed, DisjointclassExpr):
-                    node = analyzed.cls.node
-                    if isinstance(node, TypeInfo):
-                        defn.info.disjoint_classes.append(node)
-                        defn.info.disjointclass_decls.append(node)
-                        node.disjoint_classes.append(defn.info)
-                    else:
-                        self.fail('Argument 1 to disjointclass does not refer '
-                                  'to a class', analyzed)
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
@@ -1487,17 +1481,6 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'typing.disjointclass'):
-            # Special form disjointclass(...).
-            if not self.check_fixed_args(expr, 1, 'disjointclass'):
-                return
-            arg = expr.args[0]
-            if isinstance(arg, RefExpr):
-                expr.analyzed = DisjointclassExpr(arg)
-                expr.analyzed.line = expr.line
-                expr.analyzed.accept(self)
-            else:
-                self.fail('Argument 1 to disjointclass is not a class', expr)
         else:
             # Normal call expression.
             for a in expr.args:
@@ -1647,9 +1630,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
-
-    def visit_disjointclass_expr(self, expr: DisjointclassExpr) -> None:
-        expr.cls.accept(self)
 
     #
     # Helpers
@@ -1961,8 +1941,7 @@ class FirstPass(NodeVisitor):
 class ThirdPass(TraverserVisitor[None]):
     """The third and final pass of semantic analysis.
 
-    Check type argument counts and values of generic types. Also update
-    TypeInfo disjointclass information.
+    Check type argument counts and values of generic types.
     """
 
     def __init__(self, errors: Errors) -> None:
@@ -1982,14 +1961,6 @@ class ThirdPass(TraverserVisitor[None]):
         for type in tdef.info.bases:
             self.analyze(type)
         info = tdef.info
-        # Collect declared disjoint classes from all base classes.
-        for base in info.mro:
-            for disjoint in base.disjoint_classes:
-                if disjoint not in info.disjoint_classes:
-                    info.disjoint_classes.append(disjoint)
-                    for subtype in disjoint.all_subtypes():
-                        if info not in subtype.disjoint_classes:
-                            subtype.disjoint_classes.append(info)
         super().visit_class_def(tdef)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

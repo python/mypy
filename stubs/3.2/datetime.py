@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Optional, SupportsAbs, Tuple, Undefined, Union, overload, disjointclass
+from typing import Optional, SupportsAbs, Tuple, Undefined, Union, overload
 
 MINYEAR = 0
 MAXYEAR = 0
@@ -102,10 +102,6 @@ class time:
 _date = date
 _time = time
 
-@disjointclass(int)
-@disjointclass(float)
-@disjointclass(date)
-@disjointclass(datetime)
 class timedelta(SupportsAbs[timedelta]):
     min = Undefined(timedelta)
     max = Undefined(timedelta)
