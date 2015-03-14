@@ -226,8 +226,5 @@ class NodeVisitor(Generic[T]):
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> T:
         pass
 
-    def visit_disjointclass_expr(self, o: 'mypy.nodes.DisjointclassExpr') -> T:
-        pass
-
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
         pass

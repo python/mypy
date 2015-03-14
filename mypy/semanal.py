@@ -55,7 +55,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
-    StrExpr, PrintStmt, ConditionalExpr, PromoteExpr, DisjointclassExpr,
+    StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
@@ -1481,17 +1481,6 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'typing.disjointclass'):
-            # Special form disjointclass(...).
-            if not self.check_fixed_args(expr, 1, 'disjointclass'):
-                return
-            arg = expr.args[0]
-            if isinstance(arg, RefExpr):
-                expr.analyzed = DisjointclassExpr(arg)
-                expr.analyzed.line = expr.line
-                expr.analyzed.accept(self)
-            else:
-                self.fail('Argument 1 to disjointclass is not a class', expr)
         else:
             # Normal call expression.
             for a in expr.args:
@@ -1641,9 +1630,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
-
-    def visit_disjointclass_expr(self, expr: DisjointclassExpr) -> None:
-        expr.cls.accept(self)
 
     #
     # Helpers
@@ -1955,8 +1941,7 @@ class FirstPass(NodeVisitor):
 class ThirdPass(TraverserVisitor[None]):
     """The third and final pass of semantic analysis.
 
-    Check type argument counts and values of generic types. Also update
-    TypeInfo disjointclass information.
+    Check type argument counts and values of generic types.
     """
 
     def __init__(self, errors: Errors) -> None:
@@ -1976,14 +1961,6 @@ class ThirdPass(TraverserVisitor[None]):
         for type in tdef.info.bases:
             self.analyze(type)
         info = tdef.info
-        # Collect declared disjoint classes from all base classes.
-        for base in info.mro:
-            for disjoint in base.disjoint_classes:
-                if disjoint not in info.disjoint_classes:
-                    info.disjoint_classes.append(disjoint)
-                    for subtype in disjoint.all_subtypes():
-                        if info not in subtype.disjoint_classes:
-                            subtype.disjoint_classes.append(info)
         super().visit_class_def(tdef)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

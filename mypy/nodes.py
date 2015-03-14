@@ -1376,18 +1376,6 @@ class PromoteExpr(Node):
         return visitor.visit__promote_expr(self)
 
 
-class DisjointclassExpr(Node):
-    """Disjoint class class decorator expression disjointclass(cls)."""
-
-    cls = Undefined(RefExpr)
-
-    def __init__(self, cls: RefExpr) -> None:
-        self.cls = cls
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_disjointclass_expr(self)
-
-
 # Constants
 
 
@@ -1461,8 +1449,6 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
-        self.disjoint_classes = []
-        self.disjointclass_decls = []
         if defn.type_vars:
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
