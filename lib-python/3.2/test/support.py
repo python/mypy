@@ -25,7 +25,7 @@ import fnmatch
 import logging.handlers
 
 import _thread, threading
-from typing import Any, Dict
+from typing import Any, Dict, cast
 #try:
 #    import multiprocessing.process
 #except ImportError:
@@ -441,7 +441,7 @@ def fcmp(x, y): # fuzzy comparison function
 
 # decorator for skipping tests on non-IEEE 754 platforms
 requires_IEEE_754 = unittest.skipUnless(
-    (Any(float)).__getformat__("double").startswith("IEEE"),
+    cast(Any, float).__getformat__("double").startswith("IEEE"),
     "test requires IEEE 754 doubles")
 
 is_jython = sys.platform.startswith('java')

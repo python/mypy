@@ -203,7 +203,7 @@ class PrettyPrinter:
                 (issubclass(typ, set) and r is set.__repr__) or
                 (issubclass(typ, frozenset) and r is frozenset.__repr__)
                ):
-                anyobj = Any(object) # TODO Collection?
+                anyobj = cast(Any, object) # TODO Collection?
                 length = _len(anyobj)
                 if issubclass(typ, list):
                     write('[')
@@ -322,7 +322,7 @@ def _safe_repr(object: object, context: Dict[int, int],
 
     if (issubclass(typ, list) and r is list.__repr__) or \
        (issubclass(typ, tuple) and r is tuple.__repr__):
-        anyobj = Any(object) # TODO Sequence?
+        anyobj = cast(Any, object) # TODO Sequence?
         if issubclass(typ, list):
             if not object:
                 return "[]", True, False
