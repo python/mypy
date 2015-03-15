@@ -1338,3 +1338,20 @@ import typing
 t = typing.typevar('t')
 [out]
 main, line 2: Module has no attribute 'typevar' (it's now called 'typing.TypeVar')
+--' (work around syntax highlighting :-/)
+
+[case testInvalidTypeAnnotation]
+import typing
+def f() -> None:
+    1[2] = 1  # type: int
+[out]
+main: In function "f":
+main, line 3: Unexpected type declaration
+
+[case testInvalidTypeAnnotation2]
+import typing
+def f() -> None:
+    f() = 1  # type: int
+[out]
+main: In function "f":
+main, line 3: Invalid assignment target

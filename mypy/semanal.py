@@ -982,7 +982,8 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Star type expected for starred expression', lvalue)
         else:
-            raise RuntimeError('Internal error (%s)' % type(lvalue))
+            # This has been flagged elsewhere as an error, so just ignore here.
+            pass
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
