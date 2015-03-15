@@ -1,3 +1,4 @@
+"""Type hinting"""
 # TODO:
 # Collections:
 # - MappingView, KeysView, ItemsView, ValuesView
@@ -1102,6 +1103,7 @@ class Dict(dict, MutableMapping, metaclass=_DictMeta):
 
 # TODO: These are just quick hacks to add missing functionality from mypy's typing.
 
+import collections
 import re
 
 
@@ -1117,3 +1119,8 @@ class _TypeAlias:
 
 Pattern = _TypeAlias(type(re.compile('')))
 Match = _TypeAlias(type(re.match('', '')))
+
+
+def NamedTuple(typename, fields):
+    return collections.namedtuple(typename,
+                                  (name for name, type in fields))
