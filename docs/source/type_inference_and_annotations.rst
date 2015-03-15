@@ -57,26 +57,6 @@ Type inference is not used in dynamically typed functions (those
 without an explicit return type) — every local variable type defaults
 to ``Any``, which is discussed later.
 
-Explicit types for collections
-******************************
-
-The type checker cannot always infer the type of a list or a
-dictionary. This often arises when creating an empty list or
-dictionary and assigning it to a new variable without an explicit
-variable type. In these cases you can give the type explicitly using
-the type name as a constructor:
-
-.. code-block:: python
-
-   l = List[int]()       # Create empty list with type List[int]
-   d = Dict[str, int]()  # Create empty dictionary (str -> int)
-
-Similarly, you can also give an explicit type when creating an empty set:
-
-.. code-block:: python
-
-   s = Set[int]()
-
 Explicit types for variables
 ****************************
 
@@ -87,7 +67,8 @@ Explicit types for variables
    s = 1                # Type check error
 
 The Undefined call evaluates to a special ``Undefined`` object that
-raises an exception on any operation:
+raises an exception on any operation (except for ``is``, which cannot
+be overloaded):
 
 .. code-block:: python
 
@@ -100,20 +81,31 @@ special comment after an assignment statement:
 
 .. code-block:: python
 
-   x = [] # type: List[int]
+   x = 1 # type: Union[int, str]
 
 Here the ``# type:`` comment applies both to the assignment target, in
-this case ``x``, and also the initializer expression, via context. The
-above code is equivalent to this:
+this case ``x``, and also the initializer expression, via context.
+The type checker infers the value of a variable from the initializer.
+
+Explicit types for collections
+******************************
+
+The type checker cannot always infer the type of a list or a
+dictionary. This often arises when creating an empty list or
+dictionary and assigning it to a new variable that doesn't have an explicit
+variable type. In these cases you can give the type explicitly using
+a type annotation comment:
 
 .. code-block:: python
 
-   x = List[int]()
+   l = []  # type: List[int]       # Create empty list with type List[int]
+   d = {}  # type: Dict[str, int]  # Create empty dictionary (str -> int)
 
-The type checker infers the value of a variable from the initializer,
-and if it is an empty collection such as ``[]``, the type is not
-well-defined. You can declare the collection type using one of the
-above syntax alternatives.
+Similarly, you can also give an explicit type when creating an empty set:
+
+.. code-block:: python
+
+   s = set()  # type: Set[int]
 
 Declaring multiple variable types at a time
 *******************************************
