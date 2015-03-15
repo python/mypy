@@ -357,7 +357,7 @@ class BuildManager:
         # Collect a list of all files.
         trees = []  # type: List[MypyFile]
         for state in self.states:
-            trees.append((cast('ParsedFile', state)).tree)
+            trees.append(cast(ParsedFile, state).tree)
 
         # Perform any additional passes after type checking for all the files.
         self.final_passes(trees, self.type_checker.type_map)

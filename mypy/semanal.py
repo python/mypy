@@ -894,7 +894,7 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.accept(self)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)):
-            items = (Any(lval)).items
+            items = cast(Any, lval).items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("Can't assign to ()", lval)
             self.analyse_tuple_or_list_lvalue(cast(Union[ListExpr, TupleExpr], lval),

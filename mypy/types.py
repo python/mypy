@@ -585,7 +585,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
-                         Any(t.fallback.accept(self)),
+                         cast(Any, t.fallback.accept(self)),
                          t.line, t.repr)
 
     def visit_star_type(self, t: StarType) -> Type:
