@@ -195,7 +195,7 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
         python_path:bool) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
-    path = List[str]()
+    path = []  # type: List[str]
 
     # Add MYPYPATH environment variable to library path, if defined.
     path_env = os.getenv('MYPYPATH')
@@ -304,7 +304,7 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules,
                                         self.pyversion)
-        self.states = List[State]()
+        self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
@@ -355,7 +355,7 @@ class BuildManager:
             self.errors.raise_error()
 
         # Collect a list of all files.
-        trees = List[MypyFile]()
+        trees = []  # type: List[MypyFile]
         for state in self.states:
             trees.append((cast('ParsedFile', state)).tree)
 
@@ -464,7 +464,7 @@ class BuildManager:
 
             return new_id
 
-        res = List[Tuple[str, int]]()
+        res = []  # type: List[Tuple[str, int]]
         for imp in file.imports:
             if not imp.is_unreachable:
                 if isinstance(imp, Import):
@@ -753,7 +753,7 @@ class ParsedFile(State):
         self.tree = tree
 
         # Build a list all directly imported moules (dependencies).
-        imp = List[str]()
+        imp = []  # type: List[str]
         for id, line in self.manager.all_imported_modules_in_file(tree):
             # Omit missing modules, as otherwise we could not type check
             # programs with missing modules.

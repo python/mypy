@@ -1071,7 +1071,7 @@ class ExpressionChecker:
                                [TypeVarDef('KT', -1, None, self.chk.object_type()),
                                 TypeVarDef('VT', -2, None, self.chk.object_type())])
         # Synthesize function arguments.
-        args = List[Node]()
+        args = []  # type: List[Node]
         for key, value in e.items:
             args.append(TupleExpr([key, value]))
         return self.check_call(constructor,

@@ -65,24 +65,6 @@ MypyFile:1(
       Types(
         builtins.list[builtins.int]))))
 
-[case testTypeApplicationWithinLambda]
-from typing import List
-lambda: List[int]()
-[builtins fixtures/list.py]
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [List : List])
-  ExpressionStmt:2(
-    FuncExpr:2(
-      Block:2(
-        ReturnStmt:2(
-          CallExpr:2(
-            TypeApplication:2(
-              NameExpr(List [builtins.list])
-              Types(
-                builtins.int))
-            Args()))))))
-
 [case testSimpleTypeAlias]
 import typing
 class A: pass

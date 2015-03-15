@@ -259,7 +259,7 @@ class FuncItem(FuncBase):
         self.type = typ
         self.expanded = []
 
-        i2 = List[AssignmentStmt]()
+        i2 = []  # type: List[AssignmentStmt]
         self.min_args = 0
         for i in range(len(init)):
             if init[i] is not None:
@@ -284,7 +284,7 @@ class FuncItem(FuncBase):
         return self
 
     def init_expressions(self) -> List[Node]:
-        res = List[Node]()
+        res = []  # type: List[Node]
         for i in self.init:
             if i is not None:
                 res.append(i.rvalue)
@@ -1629,7 +1629,7 @@ class SymbolTableNode:
 
 class SymbolTable(Dict[str, SymbolTableNode]):
     def __str__(self) -> str:
-        a = List[str]()
+        a = []  # type: List[str]
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
@@ -1683,7 +1683,7 @@ def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
         return method_callable(sig)
     else:
         sig = cast(mypy.types.Overloaded, sig)
-        items = List[mypy.types.CallableType]()
+        items = []  # type: List[mypy.types.CallableType]
         for c in sig.items():
             items.append(method_callable(c))
         return mypy.types.Overloaded(items)
@@ -1715,7 +1715,7 @@ def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
 
 def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
     seqs = [s[:] for s in seqs]
-    result = List[TypeInfo]()
+    result = []  # type: List[TypeInfo]
     while True:
         seqs = [s for s in seqs if s]
         if not seqs:

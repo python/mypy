@@ -587,7 +587,8 @@ t = TypeVar('t')
 class A:
   x = Undefined # type: A
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
-f(List[A](), lambda a: a.x)
+list_a = [] # type: List[A]
+f(list_a, lambda a: a.x)
 [builtins fixtures/list.py]
 
 [case testInvalidContextForLambda]

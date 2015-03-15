@@ -308,10 +308,10 @@ def stable_sort(a: Sequence[T], key: Callable[[T], Any]) -> List[T]:
     be at an earlier index than a[n + m].
     """
     # TODO use sorted with key (need support for keyword arguments)
-    l = List[Tuple[Any, int, T]]()
+    l = []  # type: List[Tuple[Any, int, T]]
     for i, x in enumerate(a):
         l.append((key(x), i, x))
-    result = List[T]()
+    result = []  # type: List[T]
     for k, j, y in sorted(l):
         result.append(y)
     return result

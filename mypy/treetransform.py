@@ -108,7 +108,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_inits(self,
                         inits: List[AssignmentStmt]) -> List[AssignmentStmt]:
-        result = List[AssignmentStmt]()
+        result = []  # type: List[AssignmentStmt]
         for init in inits:
             if init:
                 result.append(self.duplicate_assignment(init))
@@ -473,7 +473,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return [self.duplicate_name(name) for name in names]
 
     def optional_names(self, names: List[NameExpr]) -> List[NameExpr]:
-        result = List[NameExpr]()
+        result = []  # type: List[NameExpr]
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))

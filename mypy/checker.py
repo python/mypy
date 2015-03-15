@@ -71,7 +71,7 @@ class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self) -> None:
-        self.frames = List[Frame]()
+        self.frames = []  # type: List[Frame]
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
         # Set of other keys to invalidate if a key is changed.
@@ -390,7 +390,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
-                    lv = List[Node]()
+                    lv = []  # type: List[Node]
                     for v in defn.items:
                         lv.append(self.temp_node(v.type, v))
                     self.check_multi_assignment(lv, defn.init, defn.init)
@@ -723,7 +723,7 @@ class TypeChecker(NodeVisitor[Type]):
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
-        subst = List[List[Tuple[int, Type]]]()
+        subst = []  # type: List[List[Tuple[int, Type]]]
         tvars = typ.variables or []
         tvars = tvars[:]
         if defn.info:
@@ -734,7 +734,7 @@ class TypeChecker(NodeVisitor[Type]):
                 subst.append([(tvar.id, value)
                               for value in tvar.values])
         if subst:
-            result = List[Tuple[FuncItem, CallableType]]()
+            result = []  # type: List[Tuple[FuncItem, CallableType]]
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
                 expanded = cast(CallableType, expand_type(typ, mapping))
@@ -1385,7 +1385,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         broken = True
-        ending_frames = List[Frame]()
+        ending_frames = []  # type: List[Frame]
         clauses_frame = self.binder.push_frame()
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
@@ -1493,7 +1493,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        completed_frames = List[Frame]()
+        completed_frames = []  # type: List[Frame]
         self.binder.push_frame()
         self.binder.try_frames.add(len(self.binder.frames) - 2)
         self.accept(s.body)

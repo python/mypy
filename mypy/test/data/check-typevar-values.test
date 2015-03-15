@@ -92,17 +92,6 @@ def f(x: AB) -> AB:
 [out]
 main: In function "f":
 
-[case testTypeApplicationAndTypeVarValues]
-from typing import TypeVar, List
-T = TypeVar('T', int, str)
-def f(x: T) -> List[T]:
-    return List[T]()
-def g(x: T) -> List[T]:
-    return List[int]() # E: Incompatible return value type: expected builtins.list[builtins.str*], got builtins.list[builtins.int*]
-[builtins fixtures/list.py]
-[out]
-main: In function "g":
-
 [case testTypeDeclaredBasedOnTypeVarWithValues]
 from typing import TypeVar, Undefined
 T = TypeVar('T', int, str)
