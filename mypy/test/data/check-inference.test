@@ -712,10 +712,12 @@ d = d_aa() # E: Incompatible types in assignment (expression has type Dict[A, A]
 [case testSetLiteral]
 from typing import Undefined, Any, Set
 a, x = Undefined, Undefined # type: (int, Any)
+def s_i() -> Set[int]: return set()
+def s_s() -> Set[str]: return set()
 s = {a}
 s = {x}
-s = Set[int]()
-s = Set[str]() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
+s = s_i()
+s = s_s() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
 [builtins fixtures/set.py]
 
 

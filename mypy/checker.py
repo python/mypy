@@ -240,7 +240,7 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
-        for dep in self.dependencies.get(expr.literal_hash, Set[Key]()):
+        for dep in self.dependencies.get(expr.literal_hash, set()):
             for f in self.frames:
                 if dep in f:
                     del f[dep]

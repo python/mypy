@@ -437,7 +437,7 @@ class UnionType(Type):
             items = all_items
 
         from mypy.subtypes import is_subtype
-        removed = Set[int]()
+        removed = set()  # type: Set[int]
         for i in range(len(items)):
             if any(is_subtype(items[i], items[j]) for j in range(len(items))
                    if j not in removed and j != i):

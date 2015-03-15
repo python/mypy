@@ -307,7 +307,7 @@ class BuildManager:
         self.states = List[State]()
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
-        self.missing_modules = Set[str]()
+        self.missing_modules = set()  # type: Set[str]
 
     def process(self, initial_state: 'UnprocessedFile') -> BuildResult:
         """Perform a build.

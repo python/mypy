@@ -395,8 +395,8 @@ class SemanticAnalyzer(NodeVisitor):
         Set is_abstract of the type to True if the type has an unimplemented
         abstract attribute.  Also compute a list of abstract attributes.
         """
-        concrete = Set[str]()
-        abstract = List[str]()
+        concrete = set()  # type: Set[str]
+        abstract = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
                 node = symnode.node

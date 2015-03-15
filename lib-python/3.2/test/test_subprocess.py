@@ -1351,7 +1351,7 @@ class POSIXProcessTestCase(BaseTestCase):
     def test_pass_fds(self) -> None:
         fd_status = support.findfile("fd_status.py", subdir="subprocessdata")
 
-        open_fds = Set[int]()
+        open_fds = set()  # type: Set[int]
 
         for x in range(5):
             fds = os.pipe()

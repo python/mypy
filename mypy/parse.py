@@ -552,7 +552,7 @@ class Parser:
             return None
 
     def verify_argument_kinds(self, kinds: List[int], line: int) -> None:
-        found = Set[int]()
+        found = set()  # type: Set[int]
         for i, kind in enumerate(kinds):
             if kind == nodes.ARG_POS and found & set([nodes.ARG_OPT,
                                                       nodes.ARG_STAR,

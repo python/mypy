@@ -420,7 +420,7 @@ def _resolve_link(path: AnyStr) -> AnyStr:
     until we either arrive at something that isn't a symlink, or
     encounter a path we've seen before (meaning that there's a loop).
     """
-    paths_seen = Set[AnyStr]()
+    paths_seen = set()  # type: Set[AnyStr]
     while islink(path):
         if path in paths_seen:
             # Already seen this path, so we must have a symlink loop
