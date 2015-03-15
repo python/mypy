@@ -610,8 +610,13 @@ def abs(n: SupportsAbs[_T]) -> _T: pass
 def all(i: Iterable) -> bool: pass
 def any(i: Iterable) -> bool: pass
 def ascii(o: object) -> str: pass
+def bin(number: int) -> str: pass
 def callable(o: object) -> bool: pass
 def chr(code: int) -> str: pass
+def compile(source: Any, filename: Union[str, bytes], mode: str, flags: int = 0,
+            dont_inherit: int = 0) -> Any: pass
+def copyright() -> None: pass
+def credits() -> None: pass
 def delattr(o: Any, name: str) -> None: pass
 def dir(o: object = None) -> List[str]: pass
 _N = TypeVar('_N', int, float)
@@ -620,12 +625,14 @@ def eval(source: str, globals: Dict[str, Any] = None,
          locals: Mapping[str, Any] = None) -> Any: pass  # TODO code object as source
 def exec(object: str, globals: Dict[str, Any] = None,
          locals: Mapping[str, Any] = None) -> Any: pass  # TODO code object as source
+def exit(code: int = None) -> None: pass
 def filter(function: Callable[[_T], Any], iterable: Iterable[_T]) -> Iterator[_T]: pass
 def format(o: object, format_spec: str = '') -> str: pass
 def getattr(o: Any, name: str, default: Any = None) -> Any: pass
 def globals() -> Dict[str, Any]: pass
 def hasattr(o: Any, name: str) -> bool: pass
 def hash(o: object) -> int: pass
+def help(*args: Any, **kwds: Any) -> None: pass
 def hex(i: int) -> str: pass  # TODO __index__
 def id(o: object) -> int: pass
 def input(prompt: str = None) -> str: pass
@@ -641,6 +648,7 @@ def issubclass(cls: type, classinfo: type) -> bool: pass
 def len(o: Sized) -> int: pass
 @overload
 def len(o: tuple) -> int: pass
+def license() -> None: pass
 def locals() -> Dict[str, Any]: pass
 def vars(Any) -> Dict[str, Any]: pass
 @overload
@@ -674,6 +682,7 @@ def pow(x: int, y: int, z: int) -> Any: pass
 def pow(x: float, y: float) -> float: pass
 @overload
 def pow(x: float, y: float, z: float) -> float: pass
+def quit(code: int = None) -> None: pass
 @overload
 def reversed(object: Reversible[_T]) -> Iterator[_T]: pass
 @overload
@@ -735,6 +744,7 @@ class RuntimeError(Exception): pass
 class ValueError(Exception): pass
 class AssertionError(Exception): pass
 class AttributeError(Exception): pass
+class BufferError(Exception): pass
 class EOFError(Exception): pass
 class FloatingPointError(ArithmeticError): pass
 class IOError(EnvironmentError): pass
@@ -745,11 +755,23 @@ class MemoryError(Exception): pass
 class NameError(Exception): pass
 class NotImplementedError(RuntimeError): pass
 class OSError(EnvironmentError): pass
-class WindowsError(OSError): pass  # TODO Windows-only
-class ProcessLookupError(OSError): pass
+class BlockingIOError(OSError):
+    characters_written = 0
+class ChildProcessError(OSError): pass
 class ConnectionError(OSError): pass
+class BrokenPipeError(ConnectionError): pass
+class ConnectionAbortedError(ConnectionError): pass
+class ConnectionRefusedError(ConnectionError): pass
 class ConnectionResetError(ConnectionError): pass
-# TODO: VMSError?
+class FileExistsError(OSError): pass
+class FileNotFoundError(OSError): pass
+class InterruptedError(OSError): pass
+class IsADirectoryError(OSError): pass
+class NotADirectoryError(OSError): pass
+class PermissionError(OSError): pass
+class ProcessLookupError(OSError): pass
+class TimeoutError(OSError): pass
+class WindowsError(OSError): pass
 class OverflowError(ArithmeticError): pass
 class ReferenceError(Exception): pass
 class StopIteration(Exception): pass

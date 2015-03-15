@@ -973,3 +973,10 @@ f(1)
 [out]
 _program.py: In function "f":
 _program.py, line 3: Sequence[int] has no attribute "append"
+
+[case testExit]
+print('a')
+exit(2)
+print('b')
+[out]
+a
