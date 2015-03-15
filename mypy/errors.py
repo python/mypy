@@ -262,7 +262,7 @@ class Errors:
             i += 1
 
             # Sort the errors specific to a file according to line number.
-            a = stable_sort(errors[i0:i], lambda x: x.line)
+            a = sorted(errors[i0:i], key=lambda x: x.line)
             result.extend(a)
         return result
 
@@ -298,23 +298,6 @@ class CompileError(Exception):
     def __init__(self, messages: List[str]) -> None:
         super().__init__()
         self.messages = messages
-
-
-def stable_sort(a: Sequence[T], key: Callable[[T], Any]) -> List[T]:
-    """Perform a stable sort of a sequence.
-
-    If the original sequence has a[n] == a[n+m] (when comparing using
-    the comparison function f), in the sorted sequence item a[n] will
-    be at an earlier index than a[n + m].
-    """
-    # TODO use sorted with key (need support for keyword arguments)
-    l = []  # type: List[Tuple[Any, int, T]]
-    for i, x in enumerate(a):
-        l.append((key(x), i, x))
-    result = []  # type: List[T]
-    for k, j, y in sorted(l):
-        result.append(y)
-    return result
 
 
 def remove_path_prefix(path: str, prefix: str) -> str:
