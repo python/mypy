@@ -77,7 +77,7 @@ class ConditionalTypeBinder:
         # Set of other keys to invalidate if a key is changed.
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
         # Set of keys with dependencies added already.
-        self._added_dependencies = set()  # type Set[Key]
+        self._added_dependencies = set()  # type: Set[Key]
 
         self.frames_on_escape = {}  # type: Dict[int, List[Frame]]
 
@@ -93,7 +93,7 @@ class ConditionalTypeBinder:
         if isinstance(key, tuple):
             key = cast(Any, key)   # XXX sad
             if key != value:
-                self.dependencies[key] = set()  # type: Set[Key]
+                self.dependencies[key] = set()
                 self.dependencies.setdefault(key, set()).add(value)
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
