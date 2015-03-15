@@ -10,7 +10,7 @@ from typing import List, Tuple, Any, Callable, overload, Undefined, Union
 is_verbose = False
 is_quiet = False
 patterns = List[str]()
-times = List[Tuple[float, str]]()
+times = []  # type: List[Tuple[float, str]]
 
 
 class AssertionFailure(Exception):

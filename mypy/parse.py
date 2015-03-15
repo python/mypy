@@ -141,7 +141,7 @@ class Parser:
 
     def parse_import(self) -> Import:
         self.expect('import')
-        ids = List[Tuple[str, str]]()
+        ids = []  # type: List[Tuple[str, str]]
         while True:
             id = self.parse_qualified_name()
             if id == self.custom_typing_module:
@@ -191,7 +191,7 @@ class Parser:
             is_paren = self.current_str() == '('
             if is_paren:
                 self.expect('(')
-            targets = List[Tuple[str, str]]()
+            targets = []  # type: List[Tuple[str, str]]
             while True:
                 id, as_id = self.parse_import_name()
                 if '%s.%s' % (name, id) == self.custom_typing_module:
@@ -1149,7 +1149,7 @@ class Parser:
 
     def parse_list_expr(self) -> Node:
         """Parse list literal or list comprehension."""
-        items = List[Node]()
+        items = []  # type: List[Node]
         self.expect('[')
         while self.current_str() != ']' and not self.eol():
             items.append(self.parse_expression(precedence['<for>'], star_expr_allowed=True))
@@ -1174,11 +1174,11 @@ class Parser:
         return gen
 
     def parse_comp_for(self) -> Tuple[List[Node], List[Node], List[List[Node]]]:
-        indices = List[Node]()
-        sequences = List[Node]()
-        condlists = List[List[Node]]()
+        indices = []  # type: List[Node]
+        sequences = []  # type: List[Node]
+        condlists = []  # type: List[List[Node]]
         while self.current_str() == 'for':
-            conds = List[Node]()
+            conds = []  # type: List[Node]
             self.expect('for')
             index = self.parse_for_index_variables()
             indices.append(index)

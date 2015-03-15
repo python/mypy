@@ -200,7 +200,7 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def anal_bound_vars(self,
                         a: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
-        res = List[Tuple[int, Type]]()
+        res = []  # type: List[Tuple[int, Type]]
         for id, t in a:
             res.append((id, t.accept(self)))
         return res
