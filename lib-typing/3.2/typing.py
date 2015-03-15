@@ -16,11 +16,15 @@
 # Docstrings (e.g. ABCs).
 
 import abc
-import collections.abc
 import functools
 import inspect
 import sys
 import types
+
+try:
+    import collections.abc as collections_abc
+except ImportError:
+    import collections as collections_abc
 
 
 class TypingMeta(type):
@@ -995,55 +999,55 @@ def overload(func):
 # Various ABCs mimicking those in collections.abc.
 # A few are simply re-exported for completeness.
 
-Hashable = collections.abc.Hashable  # Not generic.
+Hashable = collections_abc.Hashable  # Not generic.
 
 
-class Iterable(Generic[T], extra=collections.abc.Iterable):
+class Iterable(Generic[T], extra=collections_abc.Iterable):
     pass
 
 
-class Iterator(Iterable, extra=collections.abc.Iterator):
+class Iterator(Iterable, extra=collections_abc.Iterator):
     pass
 
 
-Sized = collections.abc.Sized  # Not generic.
+Sized = collections_abc.Sized  # Not generic.
 
 
-class Container(Generic[T], extra=collections.abc.Container):
+class Container(Generic[T], extra=collections_abc.Container):
     pass
 
 
 # Callable was defined earlier.
 
 
-class AbstractSet(Sized, Iterable, Container, extra=collections.abc.Set):
+class AbstractSet(Sized, Iterable, Container, extra=collections_abc.Set):
     pass
 
 
-class MutableSet(AbstractSet, extra=collections.abc.MutableSet):
+class MutableSet(AbstractSet, extra=collections_abc.MutableSet):
     pass
 
 
 class Mapping(Sized, Iterable[KT], Container[KT], Generic[KT, VT],
-              extra=collections.abc.Mapping):
+              extra=collections_abc.Mapping):
     pass
 
 
 # TODO: View types.
 
 
-class MutableMapping(Mapping, extra=collections.abc.MutableMapping):
+class MutableMapping(Mapping, extra=collections_abc.MutableMapping):
     pass
 
 
-class Sequence(Sized, Iterable, Container, extra=collections.abc.Sequence):
+class Sequence(Sized, Iterable, Container, extra=collections_abc.Sequence):
     pass
 
 
 # TODO: ByteString.
 
 
-class MutableSequence(Sequence, extra=collections.abc.MutableSequence):
+class MutableSequence(Sequence, extra=collections_abc.MutableSequence):
     pass
 
 
