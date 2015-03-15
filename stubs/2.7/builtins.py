@@ -723,6 +723,7 @@ NotImplemented = Undefined  # type: Any
 def abs(n: SupportsAbs[_T]) -> _T: pass
 def all(i: Iterable) -> bool: pass
 def any(i: Iterable) -> bool: pass
+def bin(number: int) -> str: pass
 def callable(o: object) -> bool: pass
 def chr(code: int) -> str: pass
 def delattr(o: Any, name: unicode) -> None: pass
@@ -731,6 +732,7 @@ def dir(o: object = None) -> List[str]: pass
 def divmod(a: int, b: int) -> Tuple[int, int]: pass
 @overload
 def divmod(a: float, b: float) -> Tuple[float, float]: pass
+def exit(code: int = None) -> None: pass
 def filter(function: Callable[[_T], Any],
            iterable: Iterable[_T]) -> List[_T]: pass
 def format(o: object, format_spec: str = '') -> str: pass  # TODO unicode
@@ -740,6 +742,7 @@ def hash(o: object) -> int: pass
 def hex(i: int) -> str: pass  # TODO __index__
 def id(o: object) -> int: pass
 def input(prompt: unicode = None) -> Any: pass
+def intern(string: str) -> str: pass
 @overload
 def iter(iterable: Iterable[_T]) -> Iterator[_T]: pass
 @overload
@@ -793,8 +796,10 @@ def pow(x: int, y: int, z: int) -> Any: pass
 def pow(x: float, y: float) -> float: pass
 @overload
 def pow(x: float, y: float, z: float) -> float: pass
+def quit(code: int = None) -> None: pass
 def range(x: int, y: int = 0, step: int = 1) -> List[int]: pass
 def raw_input(prompt: unicode = None) -> str: pass
+def reload(module: Any) -> Any: pass
 @overload
 def reversed(object: Reversible[_T]) -> Iterator[_T]: pass
 @overload
@@ -814,6 +819,8 @@ def sorted(iterable: Iterable[_T], *,
            key: Callable[[_T], Any] = None,
            reverse: bool = False) -> List[_T]: pass
 def sum(iterable: Iterable[_T], start: _T = None) -> _T: pass
+def unichr(i: int) -> unicode: pass
+def vars(object: Any = None) -> Dict[str, Any]: pass
 @overload
 def zip(iter1: Iterable[_T1]) -> List[Tuple[_T1]]: pass
 @overload

@@ -650,7 +650,6 @@ def len(o: Sized) -> int: pass
 def len(o: tuple) -> int: pass
 def license() -> None: pass
 def locals() -> Dict[str, Any]: pass
-def vars(Any) -> Dict[str, Any]: pass
 @overload
 def map(func: Callable[[_T1], _S], iter1: Iterable[_T1]) -> Iterator[_S]: pass
 @overload
@@ -700,6 +699,7 @@ def setattr(object: Any, name: str, value: Any) -> None: pass
 def sorted(iterable: Iterable[_T], *, key: Callable[[_T], Any] = None,
            reverse: bool = False) -> List[_T]: pass
 def sum(iterable: Iterable[_T], start: _T = None) -> _T: pass
+def vars(object: Any = None) -> Dict[str, Any]: pass
 @overload
 def zip(iter1: Iterable[_T1]) -> Iterator[Tuple[_T1]]: pass
 @overload
