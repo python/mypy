@@ -305,8 +305,8 @@ class BuildManager:
                                         self.semantic_analyzer.modules,
                                         self.pyversion)
         self.states = List[State]()
-        self.module_files = Dict[str, str]()
-        self.module_deps = Dict[Tuple[str, str], bool]()
+        self.module_files = {}  # type: Dict[str, str]
+        self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = Set[str]()
 
     def process(self, initial_state: 'UnprocessedFile') -> BuildResult:

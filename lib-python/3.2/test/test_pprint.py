@@ -62,7 +62,7 @@ class QueryTestCase(unittest.TestCase):
         # Tie a knot.
         self.b[67] = self.a
         # Messy dict.
-        self.d = Dict[int, dict]()
+        self.d = {}  # type: Dict[int, dict]
         self.d[0] = self.d[1] = self.d[2] = self.d
 
         pp = pprint.PrettyPrinter()

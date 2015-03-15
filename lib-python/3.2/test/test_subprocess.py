@@ -406,7 +406,7 @@ class ProcessTestCase(BaseTestCase):
         for stdin_pipe in (False, True):
             for stdout_pipe in (False, True):
                 for stderr_pipe in (False, True):
-                    options = Dict[str, Any]()
+                    options = {}  # type: Dict[str, Any]
                     if stdin_pipe:
                         options['stdin'] = subprocess.PIPE
                     if stdout_pipe:
@@ -721,7 +721,7 @@ class ProcessTestCase(BaseTestCase):
         # the process is running for 2 seconds
         args = [sys.executable, "-c", 'import time; time.sleep(2)']
         for stream in ('stdout', 'stderr'):
-            kw = Dict[str, Any]({stream: subprocess.PIPE})
+            kw = {stream: subprocess.PIPE}  # type: Dict[str, Any]
             with subprocess.Popen(args, **kw) as process:
                 signal.alarm(1)
                 # communicate() will be interrupted by SIGALRM
@@ -1206,7 +1206,7 @@ class POSIXProcessTestCase(BaseTestCase):
             keyb = key.encode("ascii", "surrogateescape")
             valueb = value.encode("ascii", "surrogateescape")
             script = "import os; print(ascii(os.getenvb(%s)))" % repr(keyb)
-            envb = Dict[Any, Any](os.environ.copy().items())
+            envb = dict(os.environ.copy().items())  # type: Dict[Any, Any]
             envb[keyb] = valueb
             stdout = subprocess.check_output(
                 [sys.executable, "-c", script],

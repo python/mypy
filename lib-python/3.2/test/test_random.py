@@ -80,7 +80,7 @@ class TestBasicOps(unittest.TestCase, Generic[RT]):
             return n * factorial(n - 1)
         for k in range(n):
             expected = factorial(n) // factorial(n-k)
-            perms = Dict[tuple, object]()
+            perms = {}  # type: Dict[tuple, object]
             for i in range(trials):
                 perms[tuple(self.gen.sample(pop, k))] = None
                 if len(perms) == expected:

@@ -74,14 +74,15 @@ class ConditionalTypeBinder:
         self.frames = List[Frame]()
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
-        self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key
-                                                   # is changed
-        self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
+        # Set of other keys to invalidate if a key is changed.
+        self.dependencies = {}  # type: Dict[Key, Set[Key]]
+        # Set of keys with dependencies added already.
+        self._added_dependencies = set()  # type Set[Key]
 
-        self.frames_on_escape = Dict[int, List[Frame]]()
+        self.frames_on_escape = {}  # type: Dict[int, List[Frame]]
 
-        self.try_frames = Set[int]()
-        self.loop_frames = List[int]()
+        self.try_frames = set()  # type: Set[int]
+        self.loop_frames = []  # type: List[int]
 
     def _add_dependencies(self, key: Key, value: Key = None) -> None:
         if value is None:
@@ -92,8 +93,8 @@ class ConditionalTypeBinder:
         if isinstance(key, tuple):
             key = cast(Any, key)   # XXX sad
             if key != value:
-                self.dependencies[key] = Set[Key]()
-                self.dependencies.setdefault(key, Set[Key]()).add(value)
+                self.dependencies[key] = set()  # type: Set[Key]
+                self.dependencies.setdefault(key, set()).add(value)
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 

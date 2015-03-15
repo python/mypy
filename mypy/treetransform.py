@@ -46,7 +46,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def __init__(self) -> None:
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
-        self.var_map = Dict[Var, Var]()
+        self.var_map = {}  # type: Dict[Var, Var]
 
     def visit_mypy_file(self, node: MypyFile) -> Node:
         # NOTE: The 'names' and 'imports' instance variables will be empty!

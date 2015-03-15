@@ -117,7 +117,7 @@ class test__RandomNameSequence(TC):
     def test_many(self) -> None:
         # _RandomNameSequence returns no duplicate strings (stochastic)
 
-        dict = Dict[str, int]()
+        dict = {}  # type: Dict[str, int]
         r = self.r
         for i in range(TEST_FILES):
             s = next(r)

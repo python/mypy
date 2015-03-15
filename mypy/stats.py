@@ -43,9 +43,9 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line = -1
 
-        self.line_map = Dict[int, int]()
+        self.line_map = {}  # type: Dict[int, int]
 
-        self.output = List[str]()
+        self.output = []  # type: List[str]
 
         TraverserVisitor.__init__(self)
 

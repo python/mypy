@@ -1501,8 +1501,8 @@ class Popen(object):
                                                               List[bytes]]:
             stdout = None # type: List[bytes] # Return
             stderr = None # type: List[bytes] # Return
-            fd2file = Dict[int, Any]()
-            fd2output = Dict[int, List[bytes]]()
+            fd2file = {}  # type: Dict[int, Any]
+            fd2output = {}  # type: Dict[int, List[bytes]]
 
             poller = select.poll()
             def register_and_append(file_obj: IO[Any], eventmask: int) -> None:

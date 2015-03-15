@@ -166,7 +166,7 @@ def ignore_patterns(*patterns: str) -> Callable[[str, List[str]],
     Patterns is a sequence of glob-style patterns
     that are used to exclude files"""
     def _ignore_patterns(path: str, names: List[str]) -> Iterable[str]:
-        ignored_names = List[str]()
+        ignored_names = []  # type: List[str]
         for pattern in patterns:
             ignored_names.extend(fnmatch.filter(names, pattern))
         return set(ignored_names)
@@ -217,7 +217,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
         ignored_names = set()
 
     os.makedirs(dst)
-    errors = List[Tuple[str, str, str]]()
+    errors = []  # type: List[Tuple[str, str, str]]
     for name in names:
         if name in ignored_names:
             continue
@@ -287,7 +287,7 @@ def rmtree(path: str, ignore_errors: bool = False,
         onerror(os.path.islink, path, sys.exc_info())
         # can't continue even if onerror hook returns
         return
-    names = List[str]()
+    names = []  # type: List[str]
     try:
         names = os.listdir(path)
     except os.error as err:
@@ -637,7 +637,7 @@ def _check_unpack_options(extensions: List[str], function: Any,
                           extra_args: Sequence[Tuple[str, Any]]) -> None:
     """Checks what gets registered as an unpacker."""
     # first make sure no other unpacker is registered for this extension
-    existing_extensions = Dict[str, str]()
+    existing_extensions = {}  # type: Dict[str, str]
     for name, info in _UNPACK_FORMATS.items():
         for ext in info[0]:
             existing_extensions[ext] = name

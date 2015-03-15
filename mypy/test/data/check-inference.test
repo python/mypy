@@ -701,11 +701,12 @@ l = List[bool]() # E: Incompatible types in assignment (expression has type List
 from typing import Undefined, Dict
 class A: pass
 class B: pass
+def d_ab() -> Dict[A, B]: return {}
+def d_aa() -> Dict[A, A]: return {}
 a, b = Undefined, Undefined # type: (A, B)
 d = {a:b}
-d = Dict[A, B]()
-d = Dict[A, A]() # E: Incompatible types in assignment (expression has type Dict[A, A], variable has type Dict[A, B])
-d = Dict[B, B]() # E: Incompatible types in assignment (expression has type Dict[B, B], variable has type Dict[A, B])
+d = d_ab()
+d = d_aa() # E: Incompatible types in assignment (expression has type Dict[A, A], variable has type Dict[A, B])
 [builtins fixtures/dict.py]
 
 [case testSetLiteral]
