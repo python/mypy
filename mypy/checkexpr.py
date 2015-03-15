@@ -974,7 +974,7 @@ class ExpressionChecker:
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr)
+        source_type = self.accept(expr.expr, context=AnyType())
         target_type = expr.type
         if not self.is_valid_cast(source_type, target_type):
             self.msg.invalid_cast(target_type, source_type, expr)
