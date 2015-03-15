@@ -23,7 +23,7 @@ class BaseTestCase(unittest.TestCase):
 
     def show(self, textin: Sequence[str]) -> str:
         if isinstance(textin, list):
-            results = List[str]()
+            results = []  # type: List[str]
             for i in range(len(textin)):
                 results.append("  %d: %r" % (i, textin[i]))
             result = '\n'.join(results)

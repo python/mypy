@@ -553,7 +553,7 @@ class ProcessTestCase(BaseTestCase):
             max_handles = 1026 # too much for most UNIX systems
         else:
             max_handles = 2050 # too much for (at least some) Windows setups
-        handles = List[int]()
+        handles = []  # type: List[int]
         tmpdir = tempfile.mkdtemp()
         try:
             for i in range(max_handles):
@@ -953,7 +953,7 @@ class POSIXProcessTestCase(BaseTestCase):
 
     def test_specific_shell(self) -> None:
         # Issue #9265: Incorrect name passed as arg[0].
-        shells = List[str]()
+        shells = []  # type: List[str]
         for prefix in ['/bin', '/usr/bin/', '/usr/local/bin']:
             for name in ['bash', 'ksh']:
                 sh = os.path.join(prefix, name)
@@ -1012,7 +1012,7 @@ class POSIXProcessTestCase(BaseTestCase):
         # Issue #9905: test that subprocess pipes still work properly with
         # some standard fds closed
         stdin = 0
-        newfds = List[int]()
+        newfds = []  # type: List[int]
         for a in fds:
             b = os.dup(a)
             newfds.append(b)
@@ -1644,7 +1644,7 @@ class ProcessTestCaseNoPoll(ProcessTestCase):
 class HelperFunctionTests(unittest.TestCase):
     @unittest.skipIf(mswindows, "errno and EINTR make no sense on windows")
     def test_eintr_retry_call(self) -> None:
-        record_calls = List[Any]()
+        record_calls = []  # type: List[Any]
         def fake_os_func(*args: Any) -> tuple:
             record_calls.append(args)
             if len(record_calls) == 2:

@@ -60,7 +60,7 @@ class TestShutil(unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.tempdirs = List[str]()
+        self.tempdirs = []  # type: List[str]
 
     def tearDown(self) -> None:
         super().tearDown()
@@ -258,7 +258,7 @@ class TestShutil(unittest.TestCase):
             # testing callable-style
             try:
                 def _filter(src: str, names: Sequence[str]) -> List[str]:
-                    res = List[str]()
+                    res = []  # type: List[str]
                     for name in names:
                         path = os.path.join(src, name)
 
@@ -377,7 +377,7 @@ class TestShutil(unittest.TestCase):
         os.mkdir(os.path.join(src_dir, 'test_dir'))
         self._write_data(os.path.join(src_dir, 'test_dir', 'test.txt'), '456')
 
-        copied = List[Tuple[str, str]]()
+        copied = []  # type: List[Tuple[str, str]]
         def _copy(src: str, dst: str) -> None:
             copied.append((src, dst))
 
@@ -673,7 +673,7 @@ class TestShutil(unittest.TestCase):
     def _compare_dirs(self, dir1: str, dir2: str) -> List[str]:
         # check that dir1 and dir2 are equivalent,
         # return the diff
-        diff = List[str]()
+        diff = []  # type: List[str]
         for root, dirs, files in os.walk(dir1):
             for file_ in files:
                 path = os.path.join(root, file_)

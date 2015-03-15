@@ -356,7 +356,7 @@ def normpath(path: AnyStr) -> AnyStr:
         path.startswith(sep*2) and not path.startswith(sep*3)):
         initial_slashes = 2
     comps = path.split(sep)
-    new_comps = List[AnyStr]()
+    new_comps = []  # type: List[AnyStr]
     for comp in comps:
         if comp in (empty, dot):
             continue

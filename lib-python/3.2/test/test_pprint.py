@@ -37,8 +37,8 @@ class Unorderable:
 class QueryTestCase(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.a = List[Any](range(100))
-        self.b = List[Any](range(200))
+        self.a = list(range(100))  # type: List[Any]
+        self.b = list(range(200))  # type: List[Any]
         self.a[-12] = self.b
 
     def test_basic(self) -> None:
@@ -152,23 +152,23 @@ class QueryTestCase(unittest.TestCase):
  'read_io_runtime_us': 0,
  'write_io_runtime_us': 43690}"""
         # JLe: work around mypy issue #232
-        for type in List[Any]([dict, dict2]):
+        for type in cast(List[Any], [dict, dict2]):
             self.assertEqual(pprint.pformat(type(o)), exp)
 
         o2 = range(100)
         exp = '[%s]' % ',\n '.join(map(str, o2))
-        for type in List[Any]([list, list2]):
+        for type in cast(List[Any], [list, list2]):
             self.assertEqual(pprint.pformat(type(o2)), exp)
 
         o3 = tuple(range(100))
         exp = '(%s)' % ',\n '.join(map(str, o3))
-        for type in List[Any]([tuple, tuple2]):
+        for type in cast(List[Any], [tuple, tuple2]):
             self.assertEqual(pprint.pformat(type(o3)), exp)
 
         # indent parameter
         o4 = range(100)
         exp = '[   %s]' % ',\n    '.join(map(str, o4))
-        for type in List[Any]([list, list2]):
+        for type in cast(List[Any], [list, list2]):
             self.assertEqual(pprint.pformat(type(o4), indent=4), exp)
 
     def test_nested_indentations(self) -> None:

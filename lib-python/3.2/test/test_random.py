@@ -473,7 +473,7 @@ class TestDistributions(unittest.TestCase):
                 (g.weibullvariate, (1.0, 3.0), gamma(1+1/3.0),
                                   gamma(1+2/3.0)-gamma(1+1/3.0)**2) ]:
             setattr(g, 'random', x[:].pop)
-            y = List[float]()
+            y = []  # type: List[float]
             for i in range(len(x)):
                 try:
                     y.append(variate(*args))

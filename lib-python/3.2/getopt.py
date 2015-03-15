@@ -79,7 +79,7 @@ def getopt(args: List[str], shortopts: str,
 
     """
 
-    opts = List[Tuple[str, str]]()
+    opts = []  # type: List[Tuple[str, str]]
     if isinstance(longopts, str):
         longopts = [longopts]
     else:
@@ -112,8 +112,8 @@ def gnu_getopt(args: List[str], shortopts: str,
 
     """
 
-    opts = List[Tuple[str, str]]()
-    prog_args = List[str]()
+    opts = []  # type: List[Tuple[str, str]]
+    prog_args = []  # type: List[str]
     if isinstance(longopts, str):
         longopts = [longopts]
     else:

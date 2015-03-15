@@ -440,7 +440,7 @@ except:
 # exited at the time its __del__ method got called: those processes are wait()ed
 # for synchronously from _cleanup() when a new Popen object is created, to avoid
 # zombie processes.
-_active = List['Popen']()
+_active = []  # type: List[Popen]
 
 def _cleanup() -> None:
     for inst in _active[:]:
@@ -561,10 +561,10 @@ def list2cmdline(seq: Sequence[str]) -> str:
     # http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
     # or search http://msdn.microsoft.com for
     # "Parsing C++ Command-Line Arguments"
-    result = List[str]()
+    result = []  # type: List[str]
     needquote = False
     for arg in seq:
-        bs_buf = List[str]()
+        bs_buf = []  # type: List[str]
 
         # Add a space to separate this argument from the others
         if result:
@@ -1564,8 +1564,8 @@ class Popen(object):
 
         def _communicate_with_select(self, input: Any) -> Tuple[List[bytes],
                                                                 List[bytes]]:
-            read_set = List[IO[Any]]()
-            write_set = List[IO[Any]]()
+            read_set = []  # type: List[IO[Any]]
+            write_set = []  # type: List[IO[Any]]
             stdout = None # type: List[bytes] # Return
             stderr = None # type: List[bytes] # Return
 
