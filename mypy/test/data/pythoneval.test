@@ -328,8 +328,8 @@ print(A().f)
 3
 
 [case testIsinstanceWithTuple]
-from typing import Any
-x = Any((1, 'x'))
+from typing import cast, Any
+x = cast(Any, (1, 'x'))
 if isinstance(x, tuple):
     print(x[0], x[1])
 [out]
@@ -364,9 +364,9 @@ b'zar'
 
 [case testNameNotImportedFromTyping]
 import typing
-Any(1)
+cast(int, 2)
 [out]
-_program.py, line 2: Name 'Any' is not defined
+_program.py, line 2: Name 'cast' is not defined
 
 [case testBinaryIOType]
 from typing import BinaryIO
