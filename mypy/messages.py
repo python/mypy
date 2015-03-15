@@ -64,6 +64,9 @@ INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
 INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
+GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
+    "Generic type not valid as an expression any more (use '# type:' comment instead)"
+
 
 class MessageBuilder:
     """Helper class for reporting type checker error messages with parameters.

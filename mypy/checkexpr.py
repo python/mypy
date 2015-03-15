@@ -988,22 +988,8 @@ class ExpressionChecker:
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
-        expr_type = self.accept(tapp.expr)
-        if isinstance(expr_type, CallableType):
-            new_type = self.apply_generic_arguments(expr_type,
-                                                    tapp.types, tapp)
-        elif isinstance(expr_type, Overloaded):
-            overload = expr_type
-            # Only target items with the right number of generic type args.
-            items = [c for c in overload.items()
-                     if len(c.variables) == len(tapp.types)]
-            new_type = self.apply_generic_arguments2(Overloaded(items),
-                                                     tapp.types, tapp)
-        else:
-            self.chk.fail(messages.INVALID_TYPE_APPLICATION_TARGET_TYPE, tapp)
-            new_type = AnyType()
-        self.chk.type_map[tapp.expr] = new_type
-        return new_type
+        self.chk.fail(messages.GENERIC_TYPE_NOT_VALID_AS_EXPRESSION, tapp)
+        return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         return AnyType()

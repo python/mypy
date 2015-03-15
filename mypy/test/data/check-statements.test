@@ -798,7 +798,9 @@ class C: pass
 class A(Generic[t]):
     def __enter__(self) -> t: pass
     def __exit__(self, x, y, z): pass
-with A[B]() as b, A[C]() as c:
+a_b = A() # type: A[B]
+a_c = A() # type: A[C]
+with a_b as b, a_c as c:
     b = B()
     c = C()
     b = c # E: Incompatible types in assignment (expression has type "C", variable has type "B")
