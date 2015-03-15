@@ -537,7 +537,7 @@ l = set([object()]) # E: List item 1 has incompatible type "object"
 [builtins fixtures/for.py]
 
 
--- Infer generic type in 'any' context
+-- Infer generic type in 'Any' context
 -- -----------------------------------
 
 
