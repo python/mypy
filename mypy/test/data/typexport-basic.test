@@ -311,23 +311,6 @@ def g() -> None:
 [out]
 MemberExpr(9) : def [1:B] () -> B
 
-[case testImplicitBoundTypeVarsForConstructor]
-## CallExpr|TypeApplication|NameExpr
-from typing import Any, TypeVar, Generic
-T = TypeVar('T')
-class A(Generic[T]):
-  def __init__(self) -> None: pass
-class B: pass
-A[B]()
-A[Any]()
-[out]
-CallExpr(7) : A[B]
-NameExpr(7) : def [-1:B] () -> A[B]
-TypeApplication(7) : def [-1:B] () -> A[B]
-CallExpr(8) : A[Any]
-NameExpr(8) : def [-1:Any] () -> A[Any]
-TypeApplication(8) : def [-1:Any] () -> A[Any]
-
 [case testImplicitBoundTypeVarsForSelfMethodReference]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -402,19 +385,6 @@ TypeApplication(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
 --CallExpr(7) : Tuple[C, Any]
 --MemberExpr(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
 --TypeApplication(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
-
-[case testGenericFunctionWithTwoArgsAndTypeApp]
-## CallExpr|TypeApplication
-from typing import Any, TypeVar, Tuple
-S = TypeVar('S')
-T = TypeVar('T')
-class A: pass
-f[A, Any]()
-def f() -> Tuple[S, T]: pass
-[builtins fixtures/tuple.py]
-[out]
-CallExpr(6) : Tuple[A, Any]
-TypeApplication(6) : def [-1:A, -2:Any] () -> Tuple[A, Any]
 
 [case testGenericTypeVariableInference]
 from typing import TypeVar, Generic
@@ -980,10 +950,11 @@ class B: pass
 class A(Generic[t]):
     def f(self, x: t) -> None: pass
 A.f
-A.f(A[B](), B())
+a_b = A() # type: A[B]
+A.f(a_b, B())
 [out]
 MemberExpr(7) : def [t] (self: A[t`1], x: t`1)
-MemberExpr(8) : def [1:B] (self: A[B], x: B)
+MemberExpr(9) : def [1:B] (self: A[B], x: B)
 
 [case testUnboundOverloadedMethodOfGenericClass]
 ## CallExpr

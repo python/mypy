@@ -205,8 +205,8 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
     if tokens[i].string != '(':
         raise TypeParseError(tokens[i], i)
     i += 1
-    arg_types = List[Type]()
-    arg_kinds = List[int]()
+    arg_types = []  # type: List[Type]
+    arg_kinds = []  # type: List[int]
     while tokens[i].string != ')':
         if tokens[i].string == '*':
             arg_kinds.append(nodes.ARG_STAR)

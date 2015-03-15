@@ -140,7 +140,8 @@ a_i = Undefined # type: A[int]
 a_s = Undefined # type: A[str]
 
 def f() -> None:
-    a = A[int]()
+    a_int = A() # type: A[int]
+    a = a_int
     a = a_s # E: Incompatible types in assignment (expression has type A[str], variable has type A[int])
     a = a_i
 [builtins fixtures/tuple.py]
@@ -326,8 +327,10 @@ class C: pass
 class D: pass
 
 def f() -> None:
-    a, b = List[C]()
-    c, d, e = List[D]()
+    list_c = [C()]
+    list_d = [D()]
+    a, b = list_c
+    c, d, e = list_d
     a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
@@ -353,8 +356,10 @@ class C: pass
 class D: pass
 
 def f() -> None:
-    c1, (a, b) = C(), List[C]()
-    c2, (c, d, e) = C(), List[D]()
+    list_c = [C()]
+    list_d = [D()]
+    c1, (a, b) = C(), list_c
+    c2, (c, d, e) = C(), list_d
     a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
     c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
@@ -451,7 +456,6 @@ def ff() -> None:
 
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
-f[A]()
 g(a)
 
 def f() -> T: pass
@@ -688,8 +692,9 @@ def f(x: bool) -> A: pass
 def mymap(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 
 l = mymap(f, [b])
-l = List[A]()
-l = List[bool]() # E: Incompatible types in assignment (expression has type List[bool], variable has type List[A])
+l = [A()]
+lb = [b]
+l = lb # E: Incompatible types in assignment (expression has type List[bool], variable has type List[A])
 [builtins fixtures/for.py]
 
 
@@ -701,20 +706,23 @@ l = List[bool]() # E: Incompatible types in assignment (expression has type List
 from typing import Undefined, Dict
 class A: pass
 class B: pass
+def d_ab() -> Dict[A, B]: return {}
+def d_aa() -> Dict[A, A]: return {}
 a, b = Undefined, Undefined # type: (A, B)
 d = {a:b}
-d = Dict[A, B]()
-d = Dict[A, A]() # E: Incompatible types in assignment (expression has type Dict[A, A], variable has type Dict[A, B])
-d = Dict[B, B]() # E: Incompatible types in assignment (expression has type Dict[B, B], variable has type Dict[A, B])
+d = d_ab()
+d = d_aa() # E: Incompatible types in assignment (expression has type Dict[A, A], variable has type Dict[A, B])
 [builtins fixtures/dict.py]
 
 [case testSetLiteral]
 from typing import Undefined, Any, Set
 a, x = Undefined, Undefined # type: (int, Any)
+def s_i() -> Set[int]: return set()
+def s_s() -> Set[str]: return set()
 s = {a}
 s = {x}
-s = Set[int]()
-s = Set[str]() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
+s = s_i()
+s = s_s() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
 [builtins fixtures/set.py]
 
 
@@ -919,7 +927,8 @@ a.b = B() # E: Incompatible types in assignment (expression has type "B", variab
 
 [case testInferLambdaType]
 from typing import List, Callable, Undefined
-l = lambda: List[int]()
+li = [1]
+l = lambda: li
 f1 = l # type: Callable[[], List[int]]
 f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type Callable[[], List[int]], variable has type Callable[[], List[str]])
 [builtins fixtures/list.py]

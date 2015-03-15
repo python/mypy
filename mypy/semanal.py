@@ -224,8 +224,8 @@ class SemanticAnalyzer(NodeVisitor):
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, List[Type]]]:
         """Return list of unique type variables referred to in a callable."""
-        names = List[str]()
-        values = List[List[Type]]()
+        names = []  # type: List[str]
+        values = []  # type: List[List[Type]]
         for arg in type.arg_types + [type.ret_type]:
             for tvar, vals in self.find_type_variables_in_type(arg):
                 if tvar not in names:
@@ -236,7 +236,7 @@ class SemanticAnalyzer(NodeVisitor):
     def find_type_variables_in_type(
             self, type: Type) -> List[Tuple[str, List[Type]]]:
         """Return a list of all unique type variable references in type."""
-        result = List[Tuple[str, List[Type]]]()
+        result = []  # type: List[Tuple[str, List[Type]]]
         if isinstance(type, UnboundType):
             name = type.name
             node = self.lookup_qualified(name, type)
@@ -260,7 +260,7 @@ class SemanticAnalyzer(NodeVisitor):
         return self.lookup_qualified(tvar, context).kind == TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        t = List[CallableType]()
+        t = []  # type: List[CallableType]
         for item in defn.items:
             # TODO support decorated overloaded functions properly
             item.is_overload = True
@@ -317,7 +317,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def add_func_type_variables_to_symbol_table(
             self, defn: FuncItem) -> List[SymbolTableNode]:
-        nodes = List[SymbolTableNode]()
+        nodes = []  # type: List[SymbolTableNode]
         if defn.type:
             tt = defn.type
             names = self.type_var_names()
@@ -395,8 +395,8 @@ class SemanticAnalyzer(NodeVisitor):
         Set is_abstract of the type to True if the type has an unimplemented
         abstract attribute.  Also compute a list of abstract attributes.
         """
-        concrete = Set[str]()
-        abstract = List[str]()
+        concrete = set()  # type: Set[str]
+        abstract = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
                 node = symnode.node
@@ -459,8 +459,8 @@ class SemanticAnalyzer(NodeVisitor):
 
         Note that this is performed *before* semantic analysis.
         """
-        removed = List[int]()
-        type_vars = List[TypeVarDef]()
+        removed = []  # type: List[int]
+        type_vars = []  # type: List[TypeVarDef]
         for i, base_expr in enumerate(defn.base_type_exprs):
             try:
                 base = expr_to_unanalyzed_type(base_expr)
@@ -492,7 +492,7 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is None:
             return None
         if sym.node.fullname() == 'typing.Generic':
-            tvars = List[Tuple[str, List[Type]]]()
+            tvars = []  # type: List[Tuple[str, List[Type]]]
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
@@ -582,7 +582,7 @@ class SemanticAnalyzer(NodeVisitor):
         return self.anal_type(typ)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
-        base_classes = List[str]()
+        base_classes = []  # type: List[str]
         info = defn.info
         for base in info.bases:
             baseinfo = base.type
@@ -640,7 +640,7 @@ class SemanticAnalyzer(NodeVisitor):
     def add_class_type_variables_to_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
         vars = info.type_vars
-        nodes = List[SymbolTableNode]()
+        nodes = []  # type: List[SymbolTableNode]
         if vars:
             for i in range(len(vars)):
                 node = self.add_type_var(vars[i], i + 1, info)
@@ -982,7 +982,8 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Star type expected for starred expression', lvalue)
         else:
-            raise RuntimeError('Internal error (%s)' % type(lvalue))
+            # This has been flagged elsewhere as an error, so just ignore here.
+            pass
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
@@ -1184,7 +1185,7 @@ class SemanticAnalyzer(NodeVisitor):
                        typ=signature)
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
-        result = List[Type]()
+        result = []  # type: List[Type]
         for node in items:
             try:
                 result.append(self.anal_type(expr_to_unanalyzed_type(node)))
@@ -1205,7 +1206,7 @@ class SemanticAnalyzer(NodeVisitor):
                                 dec)
         for d in dec.decorators:
             d.accept(self)
-        removed = List[int]()
+        removed = []  # type: List[int]
         for i, d in enumerate(dec.decorators):
             if refers_to_fullname(d, 'abc.abstractmethod'):
                 removed.append(i)
@@ -1550,7 +1551,7 @@ class SemanticAnalyzer(NodeVisitor):
         if refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
-            types = List[Type]()
+            types = []  # type: List[Type]
             if isinstance(expr.index, TupleExpr):
                 items = (cast(TupleExpr, expr.index)).items
             else:
@@ -1992,7 +1993,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
-    tv = List[Type]()
+    tv = []  # type: List[Type]
     for i in range(len(typ.type_vars)):
         tv.append(TypeVarType(typ.type_vars[i], i + 1,
                           typ.defn.type_vars[i].values,
@@ -2067,7 +2068,7 @@ def enable_typevars(nodes: List[SymbolTableNode]) -> None:
 def remove_imported_names_from_symtable(names: SymbolTable,
                                         module: str) -> None:
     """Remove all imported names from the symbol table of a module."""
-    removed = List[str]()
+    removed = []  # type: List[str]
     for name, node in names.items():
         fullname = node.node.fullname()
         prefix = fullname[:fullname.rfind('.')]

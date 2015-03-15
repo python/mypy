@@ -16,12 +16,6 @@ dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
-   a = List[int]()   # Explicit type required in statically typed code
-
-Alternatively, you can use a type annotation in a comment:
-
-.. code-block:: python
-
    a = []   # type: List[int]
 
 Without the annotation the type checker has no way of figuring out the
@@ -40,7 +34,7 @@ comprehension. Here a type annotation is needed:
 
 .. code-block:: python
 
-   l = List[int]()
+   l = []  # type: List[int]
    for i in range(n):
        l.append(i * i)
 

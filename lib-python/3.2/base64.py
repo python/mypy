@@ -239,7 +239,7 @@ def b32decode(s: bytes, casefold: bool = False, map01: bytes = None) -> bytes:
         if padchars > 0:
             s = s[:-padchars]
     # Now decode the full quanta
-    parts = List[bytes]()
+    parts = []  # type: List[bytes]
     acc = 0
     shift = 35
     for c in s:
@@ -342,7 +342,7 @@ def encodebytes(s: bytes) -> bytes:
     of base-64 data."""
     if not isinstance(s, bytes_types):
         raise TypeError("expected bytes, not %s" % s.__class__.__name__)
-    pieces = List[bytes]()
+    pieces = []  # type: List[bytes]
     for i in range(0, len(s), MAXBINSIZE):
         chunk = s[i : i + MAXBINSIZE]
         pieces.append(binascii.b2a_base64(chunk))

@@ -326,7 +326,7 @@ class Random(_random.Random):
                 result[i] = pool[j]
                 pool[j] = pool[n-i-1]   # move non-selected item into vacancy
         else:
-            selected = Set[int]()
+            selected = set()  # type: Set[int]
             selected_add = selected.add
             for i in range(k):
                 j = randbelow(n)

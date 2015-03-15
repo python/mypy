@@ -71,17 +71,18 @@ class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self) -> None:
-        self.frames = List[Frame]()
+        self.frames = []  # type: List[Frame]
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
-        self.dependencies = Dict[Key, Set[Key]]()  # Set of other keys to invalidate if a key
-                                                   # is changed
-        self._added_dependencies = Set[Key]()      # Set of keys with dependencies added already
+        # Set of other keys to invalidate if a key is changed.
+        self.dependencies = {}  # type: Dict[Key, Set[Key]]
+        # Set of keys with dependencies added already.
+        self._added_dependencies = set()  # type: Set[Key]
 
-        self.frames_on_escape = Dict[int, List[Frame]]()
+        self.frames_on_escape = {}  # type: Dict[int, List[Frame]]
 
-        self.try_frames = Set[int]()
-        self.loop_frames = List[int]()
+        self.try_frames = set()  # type: Set[int]
+        self.loop_frames = []  # type: List[int]
 
     def _add_dependencies(self, key: Key, value: Key = None) -> None:
         if value is None:
@@ -92,8 +93,8 @@ class ConditionalTypeBinder:
         if isinstance(key, tuple):
             key = cast(Any, key)   # XXX sad
             if key != value:
-                self.dependencies[key] = Set[Key]()
-                self.dependencies.setdefault(key, Set[Key]()).add(value)
+                self.dependencies[key] = set()
+                self.dependencies.setdefault(key, set()).add(value)
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 
@@ -239,7 +240,7 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
-        for dep in self.dependencies.get(expr.literal_hash, Set[Key]()):
+        for dep in self.dependencies.get(expr.literal_hash, set()):
             for f in self.frames:
                 if dep in f:
                     del f[dep]
@@ -389,7 +390,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                  defn.init, defn.init)
                 else:
                     # Multiple assignment.
-                    lv = List[Node]()
+                    lv = []  # type: List[Node]
                     for v in defn.items:
                         lv.append(self.temp_node(v.type, v))
                     self.check_multi_assignment(lv, defn.init, defn.init)
@@ -722,7 +723,7 @@ class TypeChecker(NodeVisitor[Type]):
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
-        subst = List[List[Tuple[int, Type]]]()
+        subst = []  # type: List[List[Tuple[int, Type]]]
         tvars = typ.variables or []
         tvars = tvars[:]
         if defn.info:
@@ -733,7 +734,7 @@ class TypeChecker(NodeVisitor[Type]):
                 subst.append([(tvar.id, value)
                               for value in tvar.values])
         if subst:
-            result = List[Tuple[FuncItem, CallableType]]()
+            result = []  # type: List[Tuple[FuncItem, CallableType]]
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
                 expanded = cast(CallableType, expand_type(typ, mapping))
@@ -1384,7 +1385,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         broken = True
-        ending_frames = List[Frame]()
+        ending_frames = []  # type: List[Frame]
         clauses_frame = self.binder.push_frame()
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
@@ -1492,7 +1493,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        completed_frames = List[Frame]()
+        completed_frames = []  # type: List[Frame]
         self.binder.push_frame()
         self.binder.try_frames.add(len(self.binder.frames) - 2)
         self.accept(s.body)

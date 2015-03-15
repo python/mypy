@@ -97,7 +97,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         if isinstance(self.s, UnionType):
-            meets = List[Type]()
+            meets = []  # type: List[Type]
             for x in t.items:
                 for y in self.s.items:
                     meets.append(meet_types(x, y))

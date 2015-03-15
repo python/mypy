@@ -453,8 +453,10 @@ t = TypeVar('t')
 class A(Generic[t]): pass
 class B: pass
 class C: pass
-d = {A()    : A[C](),
-     A[B]() : A()} # type: Dict[A[B], A[C]]
+a_b = A() # type: A[B]
+a_c = A() # type: A[C]
+d = {A() : a_c,
+     a_b : A()} # type: Dict[A[B], A[C]]
 [builtins fixtures/dict.py]
 
 
@@ -504,7 +506,8 @@ from typing import TypeVar, Generic
 from abc import abstractmethod, ABCMeta
 t = TypeVar('t')
 x = A() # type: I[int]
-y = A[object]() # type: I[int] # E: Incompatible types in assignment (expression has type A[object], variable has type I[int])
+a_object = A() # type: A[object]
+y = a_object # type: I[int] # E: Incompatible types in assignment (expression has type A[object], variable has type I[int])
 
 class I(Generic[t]):
     @abstractmethod
@@ -517,7 +520,8 @@ from typing import TypeVar, Generic
 from abc import abstractmethod, ABCMeta
 t = TypeVar('t')
 a = f(A()) # type: A[int]
-aa = f(A[int]())
+a_int = A() # type: A[int]
+aa = f(a_int)
 class I(Generic[t]): pass
 class A(I[t], Generic[t]): pass
 def f(i: I[t]) -> A[t]: pass
@@ -529,23 +533,11 @@ class set(Generic[t]):
     def __init__(self, iterable: Iterable[t]) -> None: pass
 b = bool()
 l = set([b])
-l = set[bool]([])
-l = set[object]([]) # E: Incompatible types in assignment (expression has type set[object], variable has type set[bool])
-[builtins fixtures/for.py]
-
-[case testInferenceWithAbstractClassContext4]
-from typing import TypeVar, Generic, Iterable
-t = TypeVar('t')
-class set(Generic[t]): pass
-def f(iterable: Iterable[t]) -> set[t]: pass
-b = bool()
-l = f([b])
-l = f[bool]([])
-l = f[object]([]) # E: Incompatible types in assignment (expression has type set[object], variable has type set[bool])
+l = set([object()]) # E: List item 1 has incompatible type "object"
 [builtins fixtures/for.py]
 
 
--- Infer generic type in 'any' context
+-- Infer generic type in 'Any' context
 -- -----------------------------------
 
 
@@ -587,7 +579,8 @@ t = TypeVar('t')
 class A:
   x = Undefined # type: A
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
-f(List[A](), lambda a: a.x)
+list_a = [] # type: List[A]
+f(list_a, lambda a: a.x)
 [builtins fixtures/list.py]
 
 [case testInvalidContextForLambda]

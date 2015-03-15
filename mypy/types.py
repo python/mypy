@@ -321,7 +321,7 @@ class CallableType(FunctionLike):
         return bool(self.variables)
 
     def type_var_ids(self) -> List[int]:
-        a = List[int]()
+        a = []  # type: List[int]
         for tv in self.variables:
             a.append(tv.id)
         return a
@@ -358,7 +358,7 @@ class Overloaded(FunctionLike):
         return self._items[0].type_object()
 
     def with_name(self, name: str) -> 'Overloaded':
-        ni = List[CallableType]()
+        ni = []  # type: List[CallableType]
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
@@ -437,7 +437,7 @@ class UnionType(Type):
             items = all_items
 
         from mypy.subtypes import is_subtype
-        removed = Set[int]()
+        removed = set()  # type: Set[int]
         for i in range(len(items)):
             if any(is_subtype(items[i], items[j]) for j in range(len(items))
                    if j not in removed and j != i):

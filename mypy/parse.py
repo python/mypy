@@ -141,7 +141,7 @@ class Parser:
 
     def parse_import(self) -> Import:
         self.expect('import')
-        ids = List[Tuple[str, str]]()
+        ids = []  # type: List[Tuple[str, str]]
         while True:
             id = self.parse_qualified_name()
             if id == self.custom_typing_module:
@@ -191,7 +191,7 @@ class Parser:
             is_paren = self.current_str() == '('
             if is_paren:
                 self.expect('(')
-            targets = List[Tuple[str, str]]()
+            targets = []  # type: List[Tuple[str, str]]
             while True:
                 id, as_id = self.parse_import_name()
                 if '%s.%s' % (name, id) == self.custom_typing_module:
@@ -244,7 +244,7 @@ class Parser:
     # Parsing global definitions
 
     def parse_defs(self) -> List[Node]:
-        defs = List[Node]()
+        defs = []  # type: List[Node]
         while not self.eof():
             try:
                 defn, is_simple = self.parse_statement()
@@ -265,7 +265,7 @@ class Parser:
         metaclass = None  # type: str
 
         try:
-            commas, base_types = List[Token](), List[Node]()
+            commas, base_types = [], []  # type: List[Token], List[Node]
             try:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
@@ -305,7 +305,7 @@ class Parser:
         return self.parse_qualified_name()
 
     def parse_decorated_function_or_class(self) -> Node:
-        decorators = List[Node]()
+        decorators = []  # type: List[Node]
         while self.current_str() == '@':
             self.expect('@')
             decorators.append(self.parse_expression())
@@ -344,19 +344,22 @@ class Parser:
                                               [nodes.ARG_POS] + sig.arg_kinds,
                                               def_tok.line)
                     # Add implicit 'self' argument to signature.
-                    typ = CallableType(List[Type]([AnyType()]) + sig.arg_types,
-                                   kinds,
-                                   [arg.name() for arg in args],
-                                   sig.ret_type,
-                                   None)
+                    first_arg = [AnyType()]  # type: List[Type]
+                    typ = CallableType(
+                        first_arg + sig.arg_types,
+                        kinds,
+                        [arg.name() for arg in args],
+                        sig.ret_type,
+                        None)
                 else:
                     self.check_argument_kinds(kinds, sig.arg_kinds,
                                               def_tok.line)
-                    typ = CallableType(sig.arg_types,
-                                   kinds,
-                                   [arg.name() for arg in args],
-                                   sig.ret_type,
-                                   None)
+                    typ = CallableType(
+                        sig.arg_types,
+                        kinds,
+                        [arg.name() for arg in args],
+                        sig.ret_type,
+                        None)
 
             # If there was a serious error, we really cannot build a parse tree
             # node.
@@ -552,7 +555,7 @@ class Parser:
             return None
 
     def verify_argument_kinds(self, kinds: List[int], line: int) -> None:
-        found = Set[int]()
+        found = set()  # type: Set[int]
         for i, kind in enumerate(kinds):
             if kind == nodes.ARG_POS and found & set([nodes.ARG_OPT,
                                                       nodes.ARG_STAR,
@@ -829,7 +832,7 @@ class Parser:
         return node
 
     def parse_identifier_list(self) -> List[str]:
-        names = List[str]()
+        names = []  # type: List[str]
         while True:
             n = self.expect_type(Name)
             names.append(n.string)
@@ -876,7 +879,7 @@ class Parser:
 
     def parse_for_index_variables(self) -> Node:
         # Parse index variables of a 'for' statement.
-        index_items = List[Node]()
+        index_items = []  # type: List[Node]
         force_tuple = False
 
         while True:
@@ -902,7 +905,7 @@ class Parser:
         is_error = False
 
         self.expect('if')
-        expr = List[Node]()
+        expr = []  # type: List[Node]
         try:
             expr.append(self.parse_expression())
         except ParseError:
@@ -934,9 +937,9 @@ class Parser:
         self.expect('try')
         body, _ = self.parse_block()
         is_error = False
-        vars = List[NameExpr]()
-        types = List[Node]()
-        handlers = List[Block]()
+        vars = []  # type: List[NameExpr]
+        types = []  # type: List[Node]
+        handlers = []  # type: List[Block]
         while self.current_str() == 'except':
             self.expect('except')
             if not isinstance(self.current(), Colon):
@@ -973,8 +976,8 @@ class Parser:
 
     def parse_with_stmt(self) -> WithStmt:
         self.expect('with')
-        exprs = List[Node]()
-        targets = List[Node]()
+        exprs = []  # type: List[Node]
+        targets = []  # type: List[Node]
         while True:
             expr = self.parse_expression(precedence[','])
             if self.current_str() == 'as':
@@ -992,7 +995,7 @@ class Parser:
 
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
-        args = List[Node]()
+        args = []  # type: List[Node]
         while not isinstance(self.current(), Break):
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() == ',':
@@ -1149,7 +1152,7 @@ class Parser:
 
     def parse_list_expr(self) -> Node:
         """Parse list literal or list comprehension."""
-        items = List[Node]()
+        items = []  # type: List[Node]
         self.expect('[')
         while self.current_str() != ']' and not self.eol():
             items.append(self.parse_expression(precedence['<for>'], star_expr_allowed=True))
@@ -1174,11 +1177,11 @@ class Parser:
         return gen
 
     def parse_comp_for(self) -> Tuple[List[Node], List[Node], List[List[Node]]]:
-        indices = List[Node]()
-        sequences = List[Node]()
-        condlists = List[List[Node]]()
+        indices = []  # type: List[Node]
+        sequences = []  # type: List[Node]
+        condlists = []  # type: List[List[Node]]
         while self.current_str() == 'for':
-            conds = List[Node]()
+            conds = []  # type: List[Node]
             self.expect('for')
             index = self.parse_for_index_variables()
             indices.append(index)
@@ -1209,7 +1212,7 @@ class Parser:
         return ConditionalExpr(cond, left_expr, else_expr)
 
     def parse_dict_or_set_expr(self) -> Node:
-        items = List[Tuple[Node, Node]]()
+        items = []  # type: List[Tuple[Node, Node]]
         self.expect('{')
         while self.current_str() != '}' and not self.eol():
             key = self.parse_expression(precedence['<for>'])
@@ -1501,7 +1504,7 @@ class Parser:
          arg_names, commas, asterisk,
          assigns, arg_types) = self.parse_arg_list(allow_signature=False)
 
-        names = List[str]()
+        names = []  # type: List[str]
         for arg in args:
             names.append(arg.name())
 

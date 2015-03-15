@@ -19,7 +19,7 @@ class Options:
     def __init__(self) -> None:
         # Set default options.
         self.target = build.TYPE_CHECK
-        self.build_flags = List[str]()
+        self.build_flags = []  # type: List[str]
         self.pyversion = 3
         self.custom_typing_module = None  # type: str
         self.html_report_dir = None  # type: str

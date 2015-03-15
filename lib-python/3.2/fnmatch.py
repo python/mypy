@@ -51,7 +51,7 @@ def _compile_pattern(pat: AnyStr,
 
 def filter(names: Iterable[AnyStr], pat: AnyStr) -> List[AnyStr]:
     """Return the subset of the list NAMES that match PAT."""
-    result = List[AnyStr]()
+    result = []  # type: List[AnyStr]
     pat = os.path.normcase(pat)
     match = _compile_pattern(pat, isinstance(pat, bytes))
     if os.path is posixpath:

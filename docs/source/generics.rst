@@ -20,7 +20,8 @@ generic class that represents a stack:
 
    class Stack(Generic[T]):
        def __init__(self) -> None:
-           self.items = List[T]()  # Create an empty list with items of type T
+           # Create an empty list with items of type T
+           self.items = []  # type: List[T]
 
        def push(self, item: T) -> None:
            self.items.append(item)
@@ -38,7 +39,8 @@ Using ``Stack`` is similar to built-in container types:
 
 .. code-block:: python
 
-   stack = Stack[int]()   # Construct an empty Stack[int] instance
+   # Construct an empty Stack[int] instance
+   stack = Stack()  # type: Stack[int]
    stack.push(2)
    stack.pop()
    stack.push('x')        # Type error
@@ -75,21 +77,7 @@ The above examples illustrate that type variables are erased at
 runtime. Generic ``Stack`` or ``list`` instances are just ordinary
 Python objects, and they have no extra runtime overhead or magic due
 to being generic, other than a metaclass that overloads the indexing
-operator. If you worry about the overhead introduced by the type
-indexing operation when constructing instances, you can usually
-rewrite such code using a ``# type:`` annotation, which has no runtime
-impact:
-
-.. code-block:: python
-
-   x = List[int]()
-   x = [] # type: List[int]   # Like the above but faster.
-
-The savings are rarely significant, but it could make a difference in
-a performance-critical loop or function. Function annotations, on the
-other hand, are only evaluated during the definition of the function,
-not during every call. Constructing type objects in function
-signatures rarely has any noticeable performance impact.
+operator.
 
 .. _generic-functions:
 

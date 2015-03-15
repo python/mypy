@@ -193,20 +193,20 @@ class TypeAnalyser(TypeVisitor[Type]):
                         fallback=self.builtin_type('builtins.function'))
 
     def anal_array(self, a: List[Type]) -> List[Type]:
-        res = List[Type]()
+        res = []  # type: List[Type]
         for t in a:
             res.append(t.accept(self))
         return res
 
     def anal_bound_vars(self,
                         a: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
-        res = List[Tuple[int, Type]]()
+        res = []  # type: List[Tuple[int, Type]]
         for id, t in a:
             res.append((id, t.accept(self)))
         return res
 
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
-        a = List[TypeVarDef]()
+        a = []  # type: List[TypeVarDef]
         for vd in var_defs:
             a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),

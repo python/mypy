@@ -17,7 +17,7 @@ def solve_constraints(vars: List[int], constraints: List[Constraint]) -> List[Ty
     the type variable.
     """
     # Collect a list of constraints for each type variable.
-    cmap = Dict[int, List[Constraint]]()
+    cmap = {}  # type: Dict[int, List[Constraint]]
     for con in constraints:
         a = cmap.get(con.type_var, [])
         a.append(con)

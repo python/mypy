@@ -305,7 +305,7 @@ def _safe_repr(object: object, context: Dict[int, int],
         context[objid] = 1
         readable = True
         recursive = False
-        components = List[str]()
+        components = []  # type: List[str]
         append = components.append
         level += 1
         saferepr = _safe_repr

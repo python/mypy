@@ -80,7 +80,7 @@ class TestBasicOps(unittest.TestCase, Generic[RT]):
             return n * factorial(n - 1)
         for k in range(n):
             expected = factorial(n) // factorial(n-k)
-            perms = Dict[tuple, object]()
+            perms = {}  # type: Dict[tuple, object]
             for i in range(trials):
                 perms[tuple(self.gen.sample(pop, k))] = None
                 if len(perms) == expected:
@@ -473,7 +473,7 @@ class TestDistributions(unittest.TestCase):
                 (g.weibullvariate, (1.0, 3.0), gamma(1+1/3.0),
                                   gamma(1+2/3.0)-gamma(1+1/3.0)**2) ]:
             setattr(g, 'random', x[:].pop)
-            y = List[float]()
+            y = []  # type: List[float]
             for i in range(len(x)):
                 try:
                     y.append(variate(*args))

@@ -4,7 +4,7 @@ import glob
 import os
 import shutil
 
-from typing import TypeVar, Iterable, List
+from typing import TypeVar, Iterable, List, cast
 
 T = TypeVar('T')
 
@@ -58,7 +58,7 @@ class GlobTests(unittest.TestCase):
         eq(self.glob('a'), [self.norm('a')])
         eq(self.glob('a', 'D'), [self.norm('a', 'D')])
         eq(self.glob('aab'), [self.norm('aab')])
-        eq(self.glob('zymurgy'), List[str]()) # JLe: work around #230
+        eq(self.glob('zymurgy'), cast(List[str], []))  # JLe: work around #230
 
         # test return types are unicode, but only if os.listdir
         # returns unicode filenames
@@ -76,7 +76,7 @@ class GlobTests(unittest.TestCase):
         eq(self.glob('*a'), map(self.norm, ['a', 'aaa']))
         eq(self.glob('aa?'), map(self.norm, ['aaa', 'aab']))
         eq(self.glob('aa[ab]'), map(self.norm, ['aaa', 'aab']))
-        eq(self.glob('*q'), List[str]())
+        eq(self.glob('*q'), cast(List[str], []))  # JLe: work around #230
 
     def test_glob_nested_directory(self) -> None:
         eq = self.assertSequencesEqual_noorder
@@ -92,7 +92,7 @@ class GlobTests(unittest.TestCase):
     def test_glob_directory_names(self) -> None:
         eq = self.assertSequencesEqual_noorder
         eq(self.glob('*', 'D'), [self.norm('a', 'D')])
-        eq(self.glob('*', '*a'), List[str]())
+        eq(self.glob('*', '*a'), cast(List[str], []))  # JLe: work around #230
         eq(self.glob('a', '*', '*', '*a'),
            [self.norm('a', 'bcd', 'efg', 'ha')])
         eq(self.glob('?a?', '*F'), map(self.norm, [os.path.join('aaa', 'zzzF'),

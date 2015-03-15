@@ -92,7 +92,7 @@ class test_exports(TC):
             "TemporaryDirectory" : 1,
         }
 
-        unexp = List[str]()
+        unexp = []  # type: List[str]
         for key in dict:
             if key[0] != '_' and key not in expected:
                 unexp.append(key)
@@ -117,7 +117,7 @@ class test__RandomNameSequence(TC):
     def test_many(self) -> None:
         # _RandomNameSequence returns no duplicate strings (stochastic)
 
-        dict = Dict[str, int]()
+        dict = {}  # type: Dict[str, int]
         r = self.r
         for i in range(TEST_FILES):
             s = next(r)
@@ -280,7 +280,7 @@ class test__mkstemp_inner(TC):
 
     def test_basic_many(self) -> None:
         # _mkstemp_inner can create many files (stochastic)
-        extant = List[Any](range(TEST_FILES))
+        extant = list(range(TEST_FILES))  # type: List[Any]
         for i in extant:
             extant[i] = self.do_create(pre="aa")
 
@@ -496,7 +496,7 @@ class test_mkdtemp(TC):
 
     def test_basic_many(self) -> None:
         # mkdtemp can create many directories (stochastic)
-        extant = List[Any](range(TEST_FILES))
+        extant = list(range(TEST_FILES))  # type: List[Any]
         try:
             for i in extant:
                 extant[i] = self.do_create(pre="aa")
@@ -584,7 +584,7 @@ class test_mktemp(TC):
 
     def test_many(self) -> None:
         # mktemp can choose many usable file names (stochastic)
-        extant = List[Any](range(TEST_FILES))
+        extant = list(range(TEST_FILES))  # type: List[Any]
         for i in extant:
             extant[i] = self.do_create(pre="aa")
 

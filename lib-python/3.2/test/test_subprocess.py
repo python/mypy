@@ -406,7 +406,7 @@ class ProcessTestCase(BaseTestCase):
         for stdin_pipe in (False, True):
             for stdout_pipe in (False, True):
                 for stderr_pipe in (False, True):
-                    options = Dict[str, Any]()
+                    options = {}  # type: Dict[str, Any]
                     if stdin_pipe:
                         options['stdin'] = subprocess.PIPE
                     if stdout_pipe:
@@ -553,7 +553,7 @@ class ProcessTestCase(BaseTestCase):
             max_handles = 1026 # too much for most UNIX systems
         else:
             max_handles = 2050 # too much for (at least some) Windows setups
-        handles = List[int]()
+        handles = []  # type: List[int]
         tmpdir = tempfile.mkdtemp()
         try:
             for i in range(max_handles):
@@ -721,7 +721,7 @@ class ProcessTestCase(BaseTestCase):
         # the process is running for 2 seconds
         args = [sys.executable, "-c", 'import time; time.sleep(2)']
         for stream in ('stdout', 'stderr'):
-            kw = Dict[str, Any]({stream: subprocess.PIPE})
+            kw = {stream: subprocess.PIPE}  # type: Dict[str, Any]
             with subprocess.Popen(args, **kw) as process:
                 signal.alarm(1)
                 # communicate() will be interrupted by SIGALRM
@@ -953,7 +953,7 @@ class POSIXProcessTestCase(BaseTestCase):
 
     def test_specific_shell(self) -> None:
         # Issue #9265: Incorrect name passed as arg[0].
-        shells = List[str]()
+        shells = []  # type: List[str]
         for prefix in ['/bin', '/usr/bin/', '/usr/local/bin']:
             for name in ['bash', 'ksh']:
                 sh = os.path.join(prefix, name)
@@ -1012,7 +1012,7 @@ class POSIXProcessTestCase(BaseTestCase):
         # Issue #9905: test that subprocess pipes still work properly with
         # some standard fds closed
         stdin = 0
-        newfds = List[int]()
+        newfds = []  # type: List[int]
         for a in fds:
             b = os.dup(a)
             newfds.append(b)
@@ -1206,7 +1206,7 @@ class POSIXProcessTestCase(BaseTestCase):
             keyb = key.encode("ascii", "surrogateescape")
             valueb = value.encode("ascii", "surrogateescape")
             script = "import os; print(ascii(os.getenvb(%s)))" % repr(keyb)
-            envb = Dict[Any, Any](os.environ.copy().items())
+            envb = dict(os.environ.copy().items())  # type: Dict[Any, Any]
             envb[keyb] = valueb
             stdout = subprocess.check_output(
                 [sys.executable, "-c", script],
@@ -1351,7 +1351,7 @@ class POSIXProcessTestCase(BaseTestCase):
     def test_pass_fds(self) -> None:
         fd_status = support.findfile("fd_status.py", subdir="subprocessdata")
 
-        open_fds = Set[int]()
+        open_fds = set()  # type: Set[int]
 
         for x in range(5):
             fds = os.pipe()
@@ -1644,7 +1644,7 @@ class ProcessTestCaseNoPoll(ProcessTestCase):
 class HelperFunctionTests(unittest.TestCase):
     @unittest.skipIf(mswindows, "errno and EINTR make no sense on windows")
     def test_eintr_retry_call(self) -> None:
-        record_calls = List[Any]()
+        record_calls = []  # type: List[Any]
         def fake_os_func(*args: Any) -> tuple:
             record_calls.append(args)
             if len(record_calls) == 2:

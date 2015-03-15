@@ -63,7 +63,7 @@ class TextWrapper:
         Drop leading and trailing whitespace from lines.
     """
 
-    unicode_whitespace_trans = Dict[int, int]()
+    unicode_whitespace_trans = {}  # type: Dict[int, int]
     uspace = ord(' ')
     for x in _whitespace:
         unicode_whitespace_trans[ord(x)] = uspace
@@ -219,7 +219,7 @@ class TextWrapper:
         Whitespace chunks will be removed from the beginning and end of
         lines, but apart from that whitespace is preserved.
         """
-        lines = List[str]()
+        lines = []  # type: List[str]
         if self.width <= 0:
             raise ValueError("invalid width %r (must be > 0)" % self.width)
 
@@ -231,7 +231,7 @@ class TextWrapper:
 
             # Start the list of chunks that will make up the current line.
             # cur_len is just the length of all the chunks in cur_line.
-            cur_line = List[str]()
+            cur_line = []  # type: List[str]
             cur_len = 0
 
             # Figure out which static string will prefix this line.
