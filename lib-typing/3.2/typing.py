@@ -759,12 +759,12 @@ class GenericMeta(TypingMeta, abc.ABCMeta):
                     if params is None:
                         params = []
                     for bp in base.__parameters__:
-                        if isinstance(bp, TypingMeta):
-                            if not isinstance(bp, TypeVar):
-                                raise TypeError(
-                                    "Cannot inherit from a generic class "
-                                    "parameterized with a "
-                                    "non-type-variable %s" % bp)
+                        #if isinstance(bp, TypingMeta):
+                        #    if not isinstance(bp, TypeVar):
+                        #        raise TypeError(
+                        #            "Cannot inherit from a generic class "
+                        #            "parameterized with a "
+                        #            "non-type-variable %s" % bp)
                         if bp not in params:
                             params.append(bp)
             if params is not None:
@@ -988,6 +988,10 @@ def no_type_check_decorator(decorator):
     return wrapped_decorator
 
 
+def overload(func):
+    raise RuntimeError("Overloading only supported in library stubs")
+
+
 # Various ABCs mimicking those in collections.abc.
 # A few are simply re-exported for completeness.
 
@@ -1090,3 +1094,22 @@ class _DictMeta(GenericMeta):
 
 class Dict(dict, MutableMapping, metaclass=_DictMeta):
     pass
+
+
+# TODO: These are just quick hacks to add missing functionality from mypy's typing.
+
+import re
+
+
+class _TypeAlias:
+    """Class for defining generic aliases for library types."""
+
+    def __init__(self, target_type):
+        self.target_type = target_type
+
+    def __getitem__(self, typeargs):
+        return self.target_type
+
+
+Pattern = _TypeAlias(type(re.compile('')))
+Match = _TypeAlias(type(re.match('', '')))
