@@ -250,3 +250,29 @@ assigning the type to a variable:
 A type alias does not create a new type. It's just a shorthand notation
 for another type -- it's equivalent to the target type. Type aliases
 can be imported from modules like any names.
+
+Named tuples
+************
+
+Mypy recognizes named tuples and can type check code that defines or
+uses them.  In this example, we can detect code trying to access a
+missing attribute:
+
+.. code-block:: python
+
+    Point = namedtuple('Point', ['x', 'y'])
+    p = Point(x=1, y=2)
+    print(p.z)  # Error: Point has no attribute 'z'
+
+If you use ``namedtuple`` to define your named tuple, all the items
+are assumed to have ``Any`` types. That is, mypy doesn't know anything
+about item types. You can use ``typing.NamedTuple`` to also define
+item types:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    Point = NamedTuple('Point', [('x', int),
+                                 ('y', int)])
+    p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
