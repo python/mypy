@@ -122,6 +122,8 @@ explains how to download and install mypy.
    the Python interpreter to run mypy. The mypy tool is an ordinary
    mypy (and so also Python) program.
 
+.. _library-stubs:
+
 Library stubs
 *************
 

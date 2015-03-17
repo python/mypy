@@ -118,6 +118,8 @@ narrow down the type to a specific type:
    f('x')  # OK
    f(1.1)  # Error
 
+.. _optional:
+
 The type of None and optional types
 ***********************************
 
@@ -225,6 +227,8 @@ string-literal types with non-string-literal types freely:
 
 String literal types are never needed in ``# type:`` comments.
 
+.. _type-aliases:
+
 Type aliases
 ************
 
@@ -250,6 +254,8 @@ assigning the type to a variable:
 A type alias does not create a new type. It's just a shorthand notation
 for another type -- it's equivalent to the target type. Type aliases
 can be imported from modules like any names.
+
+.. _named-tuples:
 
 Named tuples
 ************
