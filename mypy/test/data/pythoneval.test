@@ -980,3 +980,17 @@ exit(2)
 print('b')
 [out]
 a
+
+[case testTypeVariableTypeComparability]
+from typing import TypeVar
+T = TypeVar('T')
+def eq(x: T, y: T, z: T) -> T:
+    if x == y:
+        return y
+    else:
+        return z
+print(eq(1, 2, 3))
+print(eq('x', 'x', 'z'))
+[out]
+3
+x
