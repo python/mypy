@@ -652,6 +652,45 @@ g3(f) # E: Argument 1 to "g3" has incompatible type Callable[[T], T]; \
            expected Callable[[object], object]
 
 
+--Operations on type variable types
+-- ---------------------------------
+
+
+[case testTypeVariableTypeEquality]
+from typing import TypeVar
+T = TypeVar('T')
+def f(a: T, b: T) -> T:
+    a.__ne__(b)
+    if a == b:
+        return a
+    else:
+        return b
+[builtins fixtures/ops.py]
+
+[case testTypeVariableTypeIs]
+from typing import TypeVar
+T = TypeVar('T')
+def f(a: T, b: T) -> T:
+    if a is b or a is 1:
+        return a
+    else:
+        return b
+[builtins fixtures/ops.py]
+
+[case testTypeVariableTypeLessThan]
+from typing import TypeVar
+T = TypeVar('T')
+def f(a: T, b: T) -> T:
+    if a < b:
+        return a
+    else:
+        return b
+[builtins fixtures/ops.py]
+[out]
+main: In function "f":
+main, line 4: Unsupported left operand type for < ("T")
+
+
 -- Special cases
 -- -------------
 
