@@ -89,6 +89,9 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # Look up from the 'function' type.
         return analyse_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                      builtin_type, msg, report_type=report_type)
+    elif isinstance(typ, TypeVarType):
+        return analyse_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
+                                     builtin_type, msg, report_type=report_type)
     return msg.has_no_attr(report_type, name, node)
 
 
