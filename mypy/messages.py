@@ -39,7 +39,7 @@ INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-INIT_MUST_NOT_HAVE_RETURN_TYPE = 'Cannot define return type for "__init__"'
+INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
     'Type of getter incompatible with setter'
 TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must an integer literal'

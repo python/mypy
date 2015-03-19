@@ -367,7 +367,15 @@ class A:
     def __init__(self) -> 'A': pass
 [out]
 main: In member "__init__" of class "A":
-main, line 3: Cannot define return type for "__init__"
+main, line 3: The return type of "__init__" must be None
+
+[case testConstructorWithImplicitReturnValueType]
+import typing
+class A:
+    def __init__(self, x: int): pass
+[out]
+main: In member "__init__" of class "A":
+main, line 3: The return type of "__init__" must be None
 
 [case testGlobalFunctionInitWithReturnType]
 import typing

@@ -502,7 +502,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if (fdef.info and fdef.name() == '__init__' and
                         not isinstance(typ.ret_type, Void) and
                         not self.dynamic_funcs[-1]):
-                    self.fail(messages.INIT_MUST_NOT_HAVE_RETURN_TYPE,
+                    self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
 
             if name in nodes.reverse_op_method_set:
