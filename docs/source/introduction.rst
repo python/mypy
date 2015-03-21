@@ -20,3 +20,7 @@ This document is a short introduction to mypy. It will get you started
 writing statically typed code. Knowledge of Python 3.x and some kind
 of a statically typed object-oriented language such as Java are
 assumed.
+
+.. note::
+   Mypy is still experimental. There will be changes
+   that break backward compatibility.

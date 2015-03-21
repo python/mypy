@@ -118,6 +118,74 @@ narrow down the type to a specific type:
    f('x')  # OK
    f(1.1)  # Error
 
+.. _optional:
+
+The type of None and optional types
+***********************************
+
+Mypy treats the type of ``None`` as special. ``None`` is a valid value
+for every type, which resembles ``null`` in Java and null pointers in
+C/C++. Unlike Java, C and C++, mypy doesn't treat primitives types
+specially: ``None`` is also valid for primitive types such as ``int``
+and ``float``.
+
+When initializing a variable as ``None``, ``None`` is usually an
+empty place-holder value, and the actual value is something else.
+This is why you need to annotate variable in cases like these:
+
+.. code-block:: python
+
+    count = None  # type: int
+    ...
+    count = 2  # Okay
+
+Mypy will complain if omit the type annotation, as it otherwise
+cannot infer a non-trivial type for ``count``. Remember that mypy
+uses the first assignment to a variable to infer the type of the
+variable.
+
+However, often it's useful to know whether a variable can be
+``None``. For example, this function accepts a ``None`` argument,
+but it's not obvious from its signature:
+
+.. code-block:: python
+
+    def greeting(name: str) -> str:
+        if name:
+            return 'Hello, {}'.format(name)
+        else:
+            return 'Hello, stranger'
+
+    print(greeting('Python'))  # Okay!
+    print(greeting(None))      # Also okay!
+
+Mypy lets you use ``Optional[t]`` to document that ``None`` is a
+valid argument type:
+
+.. code-block:: python
+
+    from typing import Optional
+
+    def greeting(name: Optional[str]) -> str:
+        if name:
+            return 'Hello, {}'.format(name)
+        else:
+            return 'Hello, stranger'
+
+Mypy treats this as semantically equivalent to the previous example,
+since ``None`` is implicitly valid for any type, but it's much more
+useful for a programmer who is reading the code. You can equivalently
+use ``Union[str, None]``, but ``Optional`` is shorter and more
+idiomatic.
+
+.. note::
+
+    ``None`` is also used as the return type for functions that don't
+    return a value, i.e. that implicitly return ``None``. Mypy doesn't
+    use ``NoneType`` for this, since it would
+    look awkward, even though that is the real name of the type of ``None``
+    (try ``type(None)`` in the interactive interpreter to see for yourself).
+
 Class name forward references
 *****************************
 
@@ -159,6 +227,8 @@ string-literal types with non-string-literal types freely:
 
 String literal types are never needed in ``# type:`` comments.
 
+.. _type-aliases:
+
 Type aliases
 ************
 
@@ -184,3 +254,31 @@ assigning the type to a variable:
 A type alias does not create a new type. It's just a shorthand notation
 for another type -- it's equivalent to the target type. Type aliases
 can be imported from modules like any names.
+
+.. _named-tuples:
+
+Named tuples
+************
+
+Mypy recognizes named tuples and can type check code that defines or
+uses them.  In this example, we can detect code trying to access a
+missing attribute:
+
+.. code-block:: python
+
+    Point = namedtuple('Point', ['x', 'y'])
+    p = Point(x=1, y=2)
+    print(p.z)  # Error: Point has no attribute 'z'
+
+If you use ``namedtuple`` to define your named tuple, all the items
+are assumed to have ``Any`` types. That is, mypy doesn't know anything
+about item types. You can use ``typing.NamedTuple`` to also define
+item types:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    Point = NamedTuple('Point', [('x', int),
+                                 ('y', int)])
+    p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
