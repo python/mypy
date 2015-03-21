@@ -1,31 +1,28 @@
-"""Type hinting"""
 # TODO:
-# Collections:
-# - MappingView, KeysView, ItemsView, ValuesView
-# - ByteString
-# - FrozenSet?
+# __all__ (should not include T, KT, VT)
+# Support Python 3.2
+# Make re, io submodules?
 # Other things from mypy's typing.py:
-# - io.{IO,BinaryIO,TextIO}
-# - re.{Match,Pattern}
-# - forwardref?
-# - overload
-# - namedtuple
-# what else?
+# - Reversible, SupportsInt, SupportsFloat, SupportsAbs, SupportsRound
 
 # TODO nits:
 # Get rid of asserts that are the caller's fault.
 # Docstrings (e.g. ABCs).
 
 import abc
+from abc import abstractmethod, abstractproperty
+import collections.abc
 import functools
 import inspect
+import re
 import sys
 import types
 
-try:
-    import collections.abc as collections_abc
-except ImportError:
-    import collections as collections_abc
+# Simple constants defined in the PEP.
+PY2 = sys.version_info[0] == 2
+PY3 = sys.version_info[0] >= 3
+WINDOWS = sys.platform == 'win32'
+POSIX = not WINDOWS
 
 
 class TypingMeta(type):
@@ -59,6 +56,9 @@ class TypingMeta(type):
         localns first, of course).
         """
         return self
+
+    def _has_type_var(self):
+        return False
 
     def __repr__(self):
         return '%s.%s' % (self.__module__, self.__qualname__)
@@ -104,6 +104,10 @@ class _ForwardRef(TypingMeta):
 
     def __repr__(self):
         return '_ForwardRef(%r)' % (self.__forward_arg__,)
+
+
+def _has_type_var(t):
+    return t is not None and isinstance(t, TypingMeta) and t._has_type_var()
 
 
 def _eval_type(t, globalns, localns):
@@ -239,6 +243,9 @@ class TypeVar(TypingMeta, metaclass=TypingMeta, _root=True):
         self.__binding__ = None
         return self
 
+    def _has_type_var(self):
+        return True
+
     def __repr__(self):
         return '~' + self.__name__
 
@@ -336,6 +343,7 @@ class VarBinding:
 
 
 # Some unconstrained type variables.  These are used by the container types.
+# TODO: Don't export these.
 T = TypeVar('T')  # Any type.
 KT = TypeVar('KT')  # Key type.
 VT = TypeVar('VT')  # Value type.
@@ -398,6 +406,13 @@ class UnionMeta(TypingMeta):
         else:
             return self.__class__(self.__name__, self.__bases__, {},
                                   p, _root=True)
+
+    def _has_type_var(self):
+        if self.__union_params__:
+            for t in self.__union_params__:
+                if _has_type_var(t):
+                    return True
+        return False
 
     def __repr__(self):
         r = super().__repr__()
@@ -528,6 +543,13 @@ class TupleMeta(TypingMeta):
         self.__tuple_params__ = parameters
         return self
 
+    def _has_type_var(self):
+        if self.__tuple_params__:
+            for t in self.__tuple_params__:
+                if _has_type_var(t):
+                    return True
+        return False
+
     def _eval_type(self, globalns, localns):
         tp = self.__tuple_params__
         if tp is None:
@@ -623,6 +645,13 @@ class CallableMeta(TypingMeta):
         self.__args__ = args
         self.__result__ = result
         return self
+
+    def _has_type_var(self):
+        if self.__args__:
+            for t in self.__args__:
+                if _has_type_var(t):
+                    return True
+        return _has_type_var(self.__result__)
 
     def _eval_type(self, globalns, localns):
         if self.__args__ is None and self.__result__ is None:
@@ -760,16 +789,15 @@ class GenericMeta(TypingMeta, abc.ABCMeta):
                             "You cannot inherit from magic class %s" %
                             repr(base))
                     if base.__parameters__ is None:
-                        continue
-                    if params is None:
-                        params = []
+                        continue  # The base is unparameterized.
                     for bp in base.__parameters__:
-                        #if isinstance(bp, TypingMeta):
-                        #    if not isinstance(bp, TypeVar):
-                        #        raise TypeError(
-                        #            "Cannot inherit from a generic class "
-                        #            "parameterized with a "
-                        #            "non-type-variable %s" % bp)
+                        if _has_type_var(bp) and not isinstance(bp, TypeVar):
+                            raise TypeError(
+                                "Cannot inherit from a generic class "
+                                "parameterized with "
+                                "non-type-variable %s" % bp)
+                        if params is None:
+                            params = []
                         if bp not in params:
                             params.append(bp)
             if params is not None:
@@ -781,6 +809,13 @@ class GenericMeta(TypingMeta, abc.ABCMeta):
         # Else __extra__ is inherited, eventually from the
         # (meta-)class default above.
         return self
+
+    def _has_type_var(self):
+        if self.__parameters__:
+            for t in self.__parameters__:
+                if _has_type_var(t):
+                    return True
+        return False
 
     def __repr__(self):
         r = super().__repr__()
@@ -918,12 +953,9 @@ def cast(typ, val):
 
     This returns the value unchanged.  To the type checker this
     signals that the return value has the designated type, but at
-    runtime we intentionally don't check this.  However, we do
-    insist that the first argument is a type.
+    runtime we intentionally don't check anything (we want this
+    to be as fast as possible).
     """
-    _type_check(typ, "cast(t, v): t must be a type.")
-    if isinstance(typ, str):
-        raise TypeError("cast(t, v): t cannot be a forward reference.")
     return val
 
 
@@ -994,62 +1026,63 @@ def no_type_check_decorator(decorator):
 
 
 def overload(func):
-    raise RuntimeError("Overloading only supported in library stubs")
+    raise RuntimeError("Overloading is only supported in library stubs")
 
 
 # Various ABCs mimicking those in collections.abc.
 # A few are simply re-exported for completeness.
 
-Hashable = collections_abc.Hashable  # Not generic.
+Hashable = collections.abc.Hashable  # Not generic.
 
 
-class Iterable(Generic[T], extra=collections_abc.Iterable):
+class Iterable(Generic[T], extra=collections.abc.Iterable):
     pass
 
 
-class Iterator(Iterable, extra=collections_abc.Iterator):
+class Iterator(Iterable, extra=collections.abc.Iterator):
     pass
 
 
-Sized = collections_abc.Sized  # Not generic.
+Sized = collections.abc.Sized  # Not generic.
 
 
-class Container(Generic[T], extra=collections_abc.Container):
+class Container(Generic[T], extra=collections.abc.Container):
     pass
 
 
 # Callable was defined earlier.
 
 
-class AbstractSet(Sized, Iterable, Container, extra=collections_abc.Set):
+class AbstractSet(Sized, Iterable, Container, extra=collections.abc.Set):
     pass
 
 
-class MutableSet(AbstractSet, extra=collections_abc.MutableSet):
+class MutableSet(AbstractSet, extra=collections.abc.MutableSet):
     pass
 
 
 class Mapping(Sized, Iterable[KT], Container[KT], Generic[KT, VT],
-              extra=collections_abc.Mapping):
+              extra=collections.abc.Mapping):
     pass
 
 
-# TODO: View types.
-
-
-class MutableMapping(Mapping, extra=collections_abc.MutableMapping):
+class MutableMapping(Mapping, extra=collections.abc.MutableMapping):
     pass
 
 
-class Sequence(Sized, Iterable, Container, extra=collections_abc.Sequence):
+class Sequence(Sized, Iterable, Container, extra=collections.abc.Sequence):
     pass
 
 
-# TODO: ByteString.
-
-
-class MutableSequence(Sequence, extra=collections_abc.MutableSequence):
+class MutableSequence(Sequence, extra=collections.abc.MutableSequence):
     pass
+
+
+class ByteString(Sequence[int], extra=collections.abc.ByteString):
+    pass
+
+
+ByteString.register(type(memoryview(b'')))
 
 
 class _ListMeta(GenericMeta):
@@ -1084,6 +1117,23 @@ class Set(set, MutableSet, metaclass=_SetMeta):
     pass
 
 
+class MappingView(Sized, Iterable, extra=collections.abc.MappingView):
+    pass
+
+
+class KeysView(MappingView, Set[KT], extra=collections.abc.KeysView):
+    pass
+
+
+# TODO: Enable Set[Tuple[KT, VT]] instead of Generic[KT, VT].
+class ItemsView(MappingView, Generic[KT, VT], extra=collections.abc.ItemsView):
+    pass
+
+
+class ValuesView(MappingView, extra=collections.abc.ValuesView):
+    pass
+
+
 class _DictMeta(GenericMeta):
 
     def __instancecheck__(self, obj):
@@ -1101,26 +1151,217 @@ class Dict(dict, MutableMapping, metaclass=_DictMeta):
     pass
 
 
-# TODO: These are just quick hacks to add missing functionality from mypy's typing.
+def NamedTuple(typename, fields):
+    """Typed version of namedtuple.
 
-import collections
-import re
+    Usage::
+
+        Employee = typing.NamedTuple('Employee', [('name', str), 'id', int)])
+
+    This is equivalent to::
+
+        Employee = collections.namedtuple('Employee', ['name', 'id'])
+
+    The resulting class has one extra attribute: _field_types,
+    giving a dict mapping field names to types.  (The field names
+    are in the _fields attribute, which is part of the namedtuple
+    API.)
+    """
+    fields = [(n, t) for n, t in fields]
+    cls = collections.namedtuple(typename, [n for n, t in fields])
+    cls._field_types = dict(fields)
+    return cls
+
+
+class IO(Generic[AnyStr]):
+    """Generic base class for TextIO and BinaryIO.
+
+    This is an abstract, generic version of the return of open().
+
+    NOTE: This does not distinguish between the different possible
+    classes (text vs. binary, read vs. write vs. read/write,
+    append-only, unbuffered).  The TextIO and BinaryIO subclasses
+    below capture the distinctions between text vs. binary, which is
+    pervasive in the interface; however we currently do not offer a
+    way to track the other distinctions in the type system.
+    """
+
+    @abstractproperty
+    def mode(self) -> str:
+        pass
+
+    @abstractproperty
+    def name(self) -> str:
+        pass
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
+    def closed(self) -> bool:
+        pass
+
+    @abstractmethod
+    def fileno(self) -> int:
+        pass
+
+    @abstractmethod
+    def flush(self) -> None:
+        pass
+
+    @abstractmethod
+    def isatty(self) -> bool:
+        pass
+
+    @abstractmethod
+    def read(self, n: int = -1) -> AnyStr:
+        pass
+
+    @abstractmethod
+    def readable(self) -> bool:
+        pass
+
+    @abstractmethod
+    def readline(self, limit: int = -1) -> AnyStr:
+        pass
+
+    @abstractmethod
+    def readlines(self, hint: int = -1) -> List[AnyStr]:
+        pass
+
+    @abstractmethod
+    def seek(self, offset: int, whence: int = 0) -> int:
+        pass
+
+    @abstractmethod
+    def seekable(self) -> bool:
+        pass
+
+    @abstractmethod
+    def tell(self) -> int:
+        pass
+
+    @abstractmethod
+    def truncate(self, size: int = None) -> int:
+        pass
+
+    @abstractmethod
+    def writable(self) -> bool:
+        pass
+
+    @abstractmethod
+    def write(self, s: AnyStr) -> int:
+        pass
+
+    @abstractmethod
+    def writelines(self, lines: List[AnyStr]) -> None:
+        pass
+
+    @abstractmethod
+    def __enter__(self) -> 'IO[AnyStr]':
+        pass
+
+    @abstractmethod
+    def __exit__(self, type, value, traceback) -> None:
+        pass
+
+
+class BinaryIO(IO[bytes]):
+    """Typed version of the return of open() in binary mode."""
+
+    @abstractmethod
+    def write(self, s: Union[bytes, bytearray]) -> int:
+        pass
+
+    @abstractmethod
+    def __enter__(self) -> 'BinaryIO':
+        pass
+
+
+class TextIO(IO[str]):
+    """Typed version of the return of open() in text mode."""
+
+    @abstractproperty
+    def buffer(self) -> BinaryIO:
+        pass
+
+    @abstractproperty
+    def encoding(self) -> str:
+        pass
+
+    @abstractproperty
+    def errors(self) -> str:
+        pass
+
+    @abstractproperty
+    def line_buffering(self) -> bool:
+        pass
+
+    @abstractproperty
+    def newlines(self) -> Any:
+        pass
+
+    @abstractmethod
+    def __enter__(self) -> 'TextIO':
+        pass
 
 
 class _TypeAlias:
-    """Class for defining generic aliases for library types."""
+    """Internal helper class for defining generic variants of concrete types.
 
-    def __init__(self, target_type):
-        self.target_type = target_type
+    Note that this is not a type; let's call it a pseudo-type.  It can
+    be used in instance and subclass checks, e.g. isinstance(m, Match)
+    or issubclass(type(m), Match).  However, it cannot be itself the
+    target of an issubclass() call; e.g. issubclass(Match, C) (for
+    some arbitrary class C) raises TypeError rather than returning
+    False.
+    """
 
-    def __getitem__(self, typeargs):
-        return self.target_type
+    def __init__(self, name, type_var, impl_type, type_checker):
+        """Constructor.
+
+        Args:
+            name: The name, e.g. 'Pattern'.
+            type_var: The type parameter, e.g. AnyStr, or the
+                specific type, e.g. str.
+            impl_type: The implementation type.
+            type_checker: Function that takes an impl_type instance.
+                and returns a value that should be a type_var instance.
+        """
+        assert isinstance(name, str), repr(name)
+        assert isinstance(type_var, type), repr(type_var)
+        assert isinstance(impl_type, type), repr(impl_type)
+        assert not isinstance(impl_type, TypingMeta), repr(impl_type)
+        self.name = name  # The name, e.g. 'Pattern'
+        self.type_var = type_var  # The type parameter, e.g. 'AnyStr', or the specific type, e.g. 'str'
+        self.impl_type = impl_type  # The implementation type
+        self.type_checker = type_checker  # Function that takes an impl_type instance and returns a value that should be a type_var instance
+
+    def __repr__(self):
+        return "%s[%s]" % (self.name, _type_repr(self.type_var))
+
+    def __getitem__(self, parameter):
+        assert isinstance(parameter, type), repr(parameter)
+        if not isinstance(self.type_var, TypeVar):
+            raise TypeError("%s cannot be further parameterized." % self)
+        if not issubclass(parameter, self.type_var):
+            raise TypeError("%s is not a valid substitution for %s." % (parameter, self.type_var))
+        return self.__class__(self.name, parameter, self.impl_type, self.type_checker)
+
+    def __instancecheck__(self, obj):
+        return isinstance(obj, self.impl_type) and isinstance(self.type_checker(obj), self.type_var)
+
+    def __subclasscheck__(self, cls):
+        if isinstance(cls, _TypeAlias):
+            # Covariance.  For now, we compare by name.
+            return (cls.name == self.name and issubclass(cls.type_var, self.type_var))
+        else:
+            # Note that this is too lenient, because the
+            # implementation type doesn't carry information about
+            # whether it is about bytes or str (for example).
+            return issubclass(cls, self.impl_type)
 
 
-Pattern = _TypeAlias(type(re.compile('')))
-Match = _TypeAlias(type(re.match('', '')))
-
-
-def NamedTuple(typename, fields):
-    return collections.namedtuple(typename,
-                                  (name for name, type in fields))
+Pattern = _TypeAlias('Pattern', AnyStr, type(re.compile('')), lambda p: p.pattern)
+Match =  _TypeAlias('Match', AnyStr, type(re.match('', '')), lambda m: m.re.pattern)

@@ -1,5 +1,6 @@
-import collections.abc
-from unittest import TestCase, mock
+from collections import namedtuple
+import re
+from unittest import TestCase, main, mock
 
 from typing import Any
 from typing import TypeVar, T, KT, VT, AnyStr
@@ -11,7 +12,23 @@ from typing import Undefined
 from typing import cast
 from typing import get_type_hints
 from typing import no_type_check, no_type_check_decorator
+from typing import NamedTuple
+from typing import IO, TextIO, BinaryIO
+from typing import Pattern, Match
 import typing
+
+
+class ConstantsTests(TestCase):
+
+    def test_py23(self):
+        assert isinstance(typing.PY2, bool)
+        assert isinstance(typing.PY3, bool)
+        assert typing.PY3 == (not typing.PY2)
+
+    def test_poswin(self):
+        assert isinstance(typing.POSIX, bool)
+        assert isinstance(typing.WINDOWS, bool)
+        assert typing.POSIX == (not typing.WINDOWS)
 
 
 class Employee:
@@ -252,9 +269,9 @@ class UnionTests(TestCase):
     def test_repr(self):
         self.assertEqual(repr(Union), 'typing.Union')
         u = Union[Employee, int]
-        self.assertEqual(repr(u), 'typing.Union[test_typing.Employee, int]')
+        self.assertEqual(repr(u), 'typing.Union[%s.Employee, int]' % __name__)
         u = Union[int, Employee]
-        self.assertEqual(repr(u), 'typing.Union[int, test_typing.Employee]')
+        self.assertEqual(repr(u), 'typing.Union[int, %s.Employee]' % __name__)
 
     def test_cannot_subclass(self):
         with self.assertRaises(TypeError):
@@ -607,7 +624,8 @@ class GenericTests(TestCase):
 
     def test_errors(self):
         with self.assertRaises(TypeError):
-            class C(SimpleMapping[XK, Any]):
+            B = SimpleMapping[XK, Any]
+            class C(Generic[B]):
                 pass
 
     def test_repr_2(self):
@@ -648,6 +666,50 @@ class GenericTests(TestCase):
         assert A[T] == A[T]
         assert A[T] != B[T]
 
+    def test_multiple_inheritance(self):
+
+        class A(Generic[T, VT]):
+            pass
+
+        class B(Generic[KT, T]):
+            pass
+
+        class C(A, Generic[KT, VT], B):
+            pass
+
+        assert C.__parameters__ == (T, VT, KT)
+
+    def test_nested(self):
+
+        class G(Generic):
+            pass
+
+        class Visitor(G[T]):
+
+            a = None
+
+            def set(self, a: T):
+                self.a = a
+
+            def get(self):
+                return self.a
+
+            def visit(self) -> T:
+                return self.a
+
+        V = Visitor[typing.List[int]]
+
+        class IntListVisitor(V):
+
+            def append(self, x: int):
+                self.a.append(x)
+
+        a = IntListVisitor()
+        a.set([])
+        a.append(1)
+        a.append(42)
+        assert a.get() == [1, 42]
+
 
 class UndefinedTest(TestCase):
 
@@ -681,10 +743,9 @@ class CastTest(TestCase):
         assert cast(None, 42) == 42
 
     def test_errors(self):
-        with self.assertRaises(TypeError):
-            cast(42, 42)
-        with self.assertRaises(TypeError):
-            cast('hello', 42)
+        # Bogus calls are not expected to fail.
+        cast(42, 42)
+        cast('hello', 42)
 
 
 class ForwardRefTest(TestCase):
@@ -791,6 +852,20 @@ class ForwardRefTest(TestCase):
         self.assertEqual(th, {})
 
 
+class OverloadTests(TestCase):
+
+    def test_overload_exists(self):
+        from typing import overload
+
+    def test_overload_fails(self):
+        from typing import overload
+
+        with self.assertRaises(RuntimeError):
+            @overload
+            def blah():
+                pass
+
+
 class CollectionsAbcTests(TestCase):
 
     def test_hashable(self):
@@ -840,6 +915,10 @@ class CollectionsAbcTests(TestCase):
         assert isinstance([], typing.MutableSequence)
         assert not isinstance((), typing.MutableSequence)
 
+    def test_bytestring(self):
+        assert isinstance(b'', typing.ByteString)
+        assert isinstance(bytearray(b''), typing.ByteString)
+
     def test_list(self):
         assert issubclass(list, typing.List)
         assert isinstance([], typing.List)
@@ -858,6 +937,12 @@ class CollectionsAbcTests(TestCase):
         assert isinstance({42}, t)
         assert not isinstance({''}, t)
 
+    def test_mapping_views(self):
+        # TODO: These tests are kind of lame.
+        assert isinstance({}.keys(), typing.KeysView)
+        assert isinstance({}.items(), typing.ItemsView)
+        assert isinstance({}.values(), typing.ValuesView)
+
     def test_dict(self):
         assert issubclass(dict, typing.Dict)
         assert isinstance({}, typing.Dict)
@@ -868,3 +953,101 @@ class CollectionsAbcTests(TestCase):
         assert not isinstance({42: 42}, t)
         assert not isinstance({'': 42}, t)
         assert not isinstance({'': ''}, t)
+
+
+class NamedTupleTests(TestCase):
+
+    def test_basics(self):
+        Emp = NamedTuple('Emp', [('name', str), ('id', int)])
+        assert issubclass(Emp, tuple)
+        joe = Emp('Joe', 42)
+        jim = Emp(name='Jim', id=1)
+        assert isinstance(joe, Emp)
+        assert isinstance(joe, tuple)
+        assert joe.name == 'Joe'
+        assert joe.id == 42
+        assert jim.name == 'Jim'
+        assert jim.id == 1
+        assert Emp.__name__ == 'Emp'
+        assert Emp._fields == ('name', 'id')
+        assert Emp._field_types == dict(name=str, id=int)
+
+
+class IOTests(TestCase):
+
+    def test_io(self):
+
+        def stuff(a: IO) -> AnyStr:
+            return a.readline()
+
+        a = stuff.__annotations__['a']
+        assert a.__parameters__ == (AnyStr,)
+
+    def test_textio(self):
+
+        def stuff(a: TextIO) -> str:
+            return a.readline()
+
+        a = stuff.__annotations__['a']
+        assert a.__parameters__ == (str,)
+
+    def test_binaryio(self):
+
+        def stuff(a: BinaryIO) -> bytes:
+            return a.readline()
+
+        a = stuff.__annotations__['a']
+        assert a.__parameters__ == (bytes,)
+
+
+class RETests(TestCase):
+    # Much of this is really testing _TypeAlias.
+
+    def test_basics(self):
+        pat = re.compile('[a-z]+', re.I)
+        assert isinstance(pat, Pattern)
+        assert isinstance(pat, Pattern[str])
+        assert not isinstance(pat, Pattern[bytes])
+        assert issubclass(type(pat), Pattern)
+        assert issubclass(type(pat), Pattern[str])
+
+        mat = pat.search('12345abcde.....')
+        assert isinstance(mat, Match)
+        assert isinstance(mat, Match[str])
+        assert not isinstance(mat, Match[bytes])
+        assert issubclass(type(mat), Match)
+        assert issubclass(type(mat), Match[str])
+
+        p = Pattern[Union[str, bytes]]
+        assert isinstance(pat, p)
+        assert issubclass(Pattern[str], Pattern)
+        assert issubclass(Pattern[str], p)
+
+        m = Match[Union[bytes, str]]
+        assert isinstance(mat, m)
+        assert issubclass(Match[bytes], Match)
+        assert issubclass(Match[bytes], m)
+
+    def test_errors(self):
+        with self.assertRaises(TypeError):
+            # Doesn't fit AnyStr.
+            Pattern[int]
+        with self.assertRaises(TypeError):
+            # Can't change type vars?
+            Match[T]
+        m = Match[Union[str, bytes]]
+        with self.assertRaises(TypeError):
+            # Too complicated?
+            m[str]
+
+    def test_repr(self):
+        assert repr(Pattern) == 'Pattern[~AnyStr]'
+        assert repr(Pattern[str]) == 'Pattern[str]'
+        assert repr(Pattern[bytes]) == 'Pattern[bytes]'
+        assert repr(Match) == 'Match[~AnyStr]'
+        assert repr(Match[str]) == 'Match[str]'
+        assert repr(Match[bytes]) == 'Match[bytes]'
+
+
+if __name__ == '__main__':
+    main()
