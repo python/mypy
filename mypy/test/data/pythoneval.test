@@ -31,13 +31,13 @@ def f():
 
 f()
 [out]
-'x' <class 'typing.Sized'> True
-[1] <class 'typing.Sequence'> True
-{1: 3} <class 'typing.Sequence'> False
-<str_iterator object at 0x...> <class 'typing.Iterator'> True
-'x' <class 'typing.Iterable'> True
-{} <class 'typing.Mapping'> True
-{1} <class 'typing.AbstractSet'> True
+'x' <class 'collections.abc.Sized'> True
+[1] typing.Sequence[~T] True
+{1: 3} typing.Sequence[~T] False
+<str_iterator object at 0x...> typing.Iterator[~T] True
+'x' typing.Iterable[~T] True
+{} typing.Mapping[~KT, ~VT] True
+{1} typing.AbstractSet[~T] True
 
 [case testSized]
 from typing import Sized
