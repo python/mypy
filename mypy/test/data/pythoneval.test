@@ -184,7 +184,7 @@ import math
 import typing
 print(math.__name__)
 print(type(math.__dict__))
-print(type(typing.__doc__))
+print(type(math.__doc__))
 print(math.__class__)
 [out]
 math
