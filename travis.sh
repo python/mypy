@@ -45,21 +45,15 @@ echo
 "$PYTHON" "$DRIVER" $STUBTEST || fail
 rm $STUBTEST
 
-# Sample checks
+# Checks sample code
 
-# Only run under 3.2
-
-if [ "`"$PYTHON" -c 'from sys import version_info as vi; print(vi.major, vi.minor)'`" == "3 2" ]; then
-    echo Type checking lib-python...
-    echo
-    cd lib-python/3.2
-    for f in test/test_*.py; do
-        mod=test.`basename "$f" .py`
-        echo $mod
-        "$PYTHON" "$DRIVER" -m $mod || fail
-    done
-else
-    echo "Skipping lib-python type checks (not Python 3.2!)"
-fi
+echo Type checking lib-python...
+echo
+cd lib-python/3.2
+for f in test/test_*.py; do
+    mod=test.`basename "$f" .py`
+    echo $mod
+    "$PYTHON" "$DRIVER" -m $mod || fail
+done
 
 exit $result
