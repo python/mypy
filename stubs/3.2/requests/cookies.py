@@ -1,4 +1,4 @@
-# Stubs for requests.cookies (Python 3.4)
+# Stubs for requests.cookies (Python 3)
 
 from typing import Undefined, Any, MutableMapping
 #import cookielib

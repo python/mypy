@@ -1,4 +1,4 @@
-# Stubs for requests.adapters (Python 3.4)
+# Stubs for requests.adapters (Python 3)
 
 from typing import Undefined, Any
 from . import models
@@ -52,7 +52,8 @@ class HTTPAdapter(BaseAdapter):
     max_retries = Undefined(Any)
     config = Undefined(Any)
     proxy_manager = Undefined(Any)
-    def __init__(self, pool_connections=Undefined, pool_maxsize=Undefined, max_retries=Undefined, pool_block=Undefined): pass
+    def __init__(self, pool_connections=Undefined, pool_maxsize=Undefined, max_retries=Undefined,
+                 pool_block=Undefined): pass
     poolmanager = Undefined(Any)
     def init_poolmanager(self, connections, maxsize, block=Undefined, **pool_kwargs): pass
     def proxy_manager_for(self, proxy, **proxy_kwargs): pass
@@ -64,4 +65,5 @@ class HTTPAdapter(BaseAdapter):
     def add_headers(self, request, **kwargs): pass
     def proxy_headers(self, proxy): pass
     # TODO: "request" is not actually optional, modified to please mypy.
-    def send(self, request=None, stream=False, timeout=None, verify=True, cert=None, proxies=None): pass
+    def send(self, request=None, stream=False, timeout=None, verify=True, cert=None,
+             proxies=None): pass

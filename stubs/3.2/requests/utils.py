@@ -1,4 +1,4 @@
-# Stubs for requests.utils (Python 3.4)
+# Stubs for requests.utils (Python 3)
 
 from typing import Undefined, Any
 from . import compat

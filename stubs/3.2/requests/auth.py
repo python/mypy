@@ -1,4 +1,4 @@
-# Stubs for requests.auth (Python 3.4)
+# Stubs for requests.auth (Python 3)
 
 from typing import Undefined, Any
 from . import compat
