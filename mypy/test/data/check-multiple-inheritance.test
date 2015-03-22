@@ -133,9 +133,22 @@ class A:
 class B:
     def f(self, x, y): pass
 class C(A, B): pass
+class D(B, A): pass
 [out]
 main: In class "C":
 main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main: In class "D":
+main, line 7: Definition of "f" in base class "B" is incompatible with definition in base class "A"
+
+
+[case testMethodOverridingWithBothDynamicallyAndStaticallyTypedMethods]
+class A:
+    def f(self) -> int: pass
+class B:
+    def f(self): pass
+class C(B, A): pass
+class D(A, B): pass
+[out]
 
 [case testInstanceVarNameOverlapInMultipleInheritanceWithInvalidTypes]
 import typing
