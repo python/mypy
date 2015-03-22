@@ -3,14 +3,14 @@
 Basic usage:
 
   $ mkdir out
-  $ py -m mypy.stubgen urllib.parse
+  $ python3 -m mypy.stubgen urllib.parse
 
   => Generate out/urllib/parse.py.
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
 
-  $ py -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+  $ python3 -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
 
   => Generate out/curses.py.
 
