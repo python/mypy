@@ -288,17 +288,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and name == alias]
-            if names:
-                if o.relative:
-                    self.add_import_line('from %s import %s\n' % ('.' * o.relative, o.id))
-                else:
-                    self.add_import_line('import %s\n' % o.id)
-                if self._state not in (EMPTY, IMPORT_ALIAS):
-                    self.add('\n')
-                for name in names:
-                    self.add('%s = %s.%s\n' % (name, o.id, name))
-                    self.record_name(name)
-                self._state = IMPORT_ALIAS
+            self.import_and_export_names(o.id, o.relative, names)
+        else:
+            # Include import from targets that import from a submodule of a package.
+            if o.relative:
+                names = [name for name, alias in o.names
+                         if name == alias]
+                self.import_and_export_names(o.id, o.relative, names)
         # Import names used as base classes.
         names = [(name, alias) for name, alias in o.names
                  if alias in self._base_classes]
@@ -311,6 +307,19 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     imp_names.append(name)
             self.add_import_line('from %s%s import %s\n' % (
                 '.' * o.relative, o.id, ', '.join(imp_names)))
+
+    def import_and_export_names(self, module_id, relative, names):
+        if names and module_id:
+            if relative:
+                self.add_import_line('from %s import %s\n' % ('.' * relative, module_id))
+            else:
+                self.add_import_line('import %s\n' % module_id)
+            if self._state not in (EMPTY, IMPORT_ALIAS):
+                self.add('\n')
+            for name in names:
+                self.add('%s = %s.%s\n' % (name, module_id, name))
+                self.record_name(name)
+            self._state = IMPORT_ALIAS
 
     def get_init(self, lvalue):
         if lvalue in self._vars[-1]:

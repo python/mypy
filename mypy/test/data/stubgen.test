@@ -490,6 +490,17 @@ class A:
         def f(self): pass
     def g(self): pass
 
+[case testExportViaRelativeImport]
+from .api import get
+[out]
+from . import api
+
+get = api.get
+
+[case testNoExportViaRelativeImport]
+from . import get
+[out]
+
 
 -- More features/fixes:
 --   do not export deleted names
