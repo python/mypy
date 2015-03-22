@@ -15,7 +15,9 @@ class CertificateError(ValueError): pass
 
 def match_hostname(cert, hostname): pass
 
-DefaultVerifyPaths = namedtuple('DefaultVerifyPaths', 'cafile capath openssl_cafile_env openssl_cafile openssl_capath_env openssl_capath')
+DefaultVerifyPaths = namedtuple(
+    'DefaultVerifyPaths',
+    'cafile capath openssl_cafile_env openssl_cafile openssl_capath_env openssl_capath')
 
 def get_default_verify_paths(): pass
 
@@ -34,7 +36,8 @@ class SSLContext(_SSLContext):
     def __new__(cls, protocol, *args, **kwargs): pass
     protocol = Undefined(Any)
     def __init__(self, protocol): pass
-    def wrap_socket(self, sock, server_side=False, do_handshake_on_connect=True, suppress_ragged_eofs=True, server_hostname=None): pass
+    def wrap_socket(self, sock, server_side=False, do_handshake_on_connect=True,
+                    suppress_ragged_eofs=True, server_hostname=None): pass
     def set_npn_protocols(self, npn_protocols): pass
     def load_default_certs(self, purpose=Undefined): pass
 
@@ -52,7 +55,11 @@ class SSLSocket(socket):
     do_handshake_on_connect = Undefined(Any)
     suppress_ragged_eofs = Undefined(Any)
     context = Undefined(Any)  # TODO: This should be a property.
-    def __init__(self, sock=None, keyfile=None, certfile=None, server_side=False, cert_reqs=Undefined, ssl_version=Undefined, ca_certs=None, do_handshake_on_connect=True, family=Undefined, type=Undefined, proto=0, fileno=None, suppress_ragged_eofs=True, npn_protocols=None, ciphers=None, server_hostname=None, _context=None): pass
+    def __init__(self, sock=None, keyfile=None, certfile=None, server_side=False,
+                 cert_reqs=Undefined, ssl_version=Undefined, ca_certs=None,
+                 do_handshake_on_connect=True, family=Undefined, type=Undefined, proto=0,
+                 fileno=None, suppress_ragged_eofs=True, npn_protocols=None, ciphers=None,
+                 server_hostname=None, _context=None): pass
     def dup(self): pass
     def read(self, len=0, buffer=None): pass
     def write(self, data): pass
@@ -79,7 +86,9 @@ class SSLSocket(socket):
     def accept(self): pass
     def get_channel_binding(self, cb_type=''): pass
 
-def wrap_socket(sock, keyfile=None, certfile=None, server_side=False, cert_reqs=Undefined, ssl_version=Undefined, ca_certs=None, do_handshake_on_connect=True, suppress_ragged_eofs=True, ciphers=None): pass
+def wrap_socket(sock, keyfile=None, certfile=None, server_side=False, cert_reqs=Undefined,
+                ssl_version=Undefined, ca_certs=None, do_handshake_on_connect=True,
+                suppress_ragged_eofs=True, ciphers=None): pass
 def cert_time_to_seconds(cert_time): pass
 
 PEM_HEADER = Undefined(Any)
