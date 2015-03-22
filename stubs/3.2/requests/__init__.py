@@ -1,4 +1,4 @@
-# Stubs for requests (Python 3.4)
+# Stubs for requests (based on version 2.6.0, Python 3)
 
 from typing import Undefined, Any
 from . import models
