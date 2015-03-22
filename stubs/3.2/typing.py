@@ -116,14 +116,8 @@ class Mapping(Iterable[_KT], Sized, Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass
     @abstractmethod
-    def __setitem__(self, k: _KT, v: _VT) -> None: pass
-    @abstractmethod
-    def __delitem__(self, v: _KT) -> None: pass
-    @abstractmethod
     def __contains__(self, o: object) -> bool: pass
 
-    @abstractmethod
-    def clear(self) -> None: pass
     @abstractmethod
     def copy(self) -> Mapping[_KT, _VT]: pass
     @overload
@@ -132,6 +126,23 @@ class Mapping(Iterable[_KT], Sized, Generic[_KT, _VT]):
     @overload
     @abstractmethod
     def get(self, k: _KT, default: _VT) -> _VT: pass
+
+    # TODO use views for the return values instead
+    @abstractmethod
+    def keys(self) -> AbstractSet[_KT]: pass
+    @abstractmethod
+    def values(self) -> AbstractSet[_VT]: pass
+    @abstractmethod
+    def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
+
+class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
+    @abstractmethod
+    def __setitem__(self, k: _KT, v: _VT) -> None: pass
+    @abstractmethod
+    def __delitem__(self, v: _KT) -> None: pass
+
+    @abstractmethod
+    def clear(self) -> None: pass
     @overload
     @abstractmethod
     def pop(self, k: _KT) -> _VT: pass
@@ -154,14 +165,6 @@ class Mapping(Iterable[_KT], Sized, Generic[_KT, _VT]):
     @overload
     @abstractmethod
     def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
-
-    # TODO use views for the return values instead
-    @abstractmethod
-    def keys(self) -> AbstractSet[_KT]: pass
-    @abstractmethod
-    def values(self) -> AbstractSet[_VT]: pass
-    @abstractmethod
-    def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
 
 class IO(Iterable[AnyStr], Generic[AnyStr]):
     # TODO detach

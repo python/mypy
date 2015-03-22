@@ -887,20 +887,30 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
+        """Check if attribute name in base1 is compatible with base2 in multiple inheritance.
+
+        Assume base1 comes before base2 in the MRO, and that base1 and base2 don't have
+        a direct subclass relationship (i.e., the compatibility requirement only derives from
+        multiple inheritance).
+        """
         if name == '__init__':
             # __init__ can be incompatible -- it's a special case.
             return
         first = base1[name]
         second = base2[name]
         first_type = first.type
+        if first_type is None and isinstance(first.node, FuncDef):
+            first_type = self.function_type(cast(FuncDef, first.node))
         second_type = second.type
+        if second_type is None and isinstance(second.node, FuncDef):
+            second_type = self.function_type(cast(FuncDef, second.node))
+        # TODO: What if first_type or second_type is None? What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
             first_sig = method_type(cast(FunctionLike, first_type))
             second_sig = method_type(cast(FunctionLike, second_type))
-            # TODO Can we relax the equivalency requirement?
-            ok = is_equivalent(first_sig, second_sig)
+            ok = is_subtype(first_sig, second_sig)
         else:
             ok = is_equivalent(first_type, second_type)
         if not ok:

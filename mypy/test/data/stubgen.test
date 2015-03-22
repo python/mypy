@@ -490,6 +490,24 @@ class A:
         def f(self): pass
     def g(self): pass
 
+[case testExportViaRelativeImport]
+from .api import get
+[out]
+from . import api
+
+get = api.get
+
+[case testExportViaRelativePackageImport]
+from .packages.urllib3.contrib import parse
+[out]
+from .packages.urllib3 import contrib
+
+parse = contrib.parse
+
+[case testNoExportViaRelativeImport]
+from . import get
+[out]
+
 
 -- More features/fixes:
 --   do not export deleted names

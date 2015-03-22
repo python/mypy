@@ -68,6 +68,7 @@ class BytesIO(BinaryIO):
     # TODO getbuffer
     # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
+    @property
     def closed(self) -> bool: pass
     def fileno(self) -> int: pass
     def flush(self) -> None: pass
@@ -98,6 +99,7 @@ class StringIO(TextIO):
                  newline: str = None) -> None: pass
     # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
+    @property
     def closed(self) -> bool: pass
     def fileno(self) -> int: pass
     def flush(self) -> None: pass
@@ -128,6 +130,7 @@ class TextIOWrapper(TextIO):
                  write_through: bool = True) -> None: pass
     # TODO see comments in BinaryIO for missing functionality
     def close(self) -> None: pass
+    @property
     def closed(self) -> bool: pass
     def fileno(self) -> int: pass
     def flush(self) -> None: pass
