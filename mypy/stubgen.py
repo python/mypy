@@ -19,6 +19,7 @@ Note: You should verify the generated stubs manually.
 TODO:
 
  - infer some return types, such as no return statement with value -> None
+ - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
 """
 
 import glob
