@@ -311,13 +311,19 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def import_and_export_names(self, module_id, relative, names):
         if names and module_id:
             if relative:
-                self.add_import_line('from %s import %s\n' % ('.' * relative, module_id))
+                if '.' not in module_id:
+                    self.add_import_line('from %s import %s\n' % ('.' * relative, module_id))
+                else:
+                    self.add_import_line(
+                        'from %s%s import %s\n' % ('.' * relative,
+                                                   '.'.join(module_id.split('.')[:-1]),
+                                                   module_id.split('.')[-1]))
             else:
                 self.add_import_line('import %s\n' % module_id)
             if self._state not in (EMPTY, IMPORT_ALIAS):
                 self.add('\n')
             for name in names:
-                self.add('%s = %s.%s\n' % (name, module_id, name))
+                self.add('%s = %s.%s\n' % (name, module_id.split('.')[-1], name))
                 self.record_name(name)
             self._state = IMPORT_ALIAS
 

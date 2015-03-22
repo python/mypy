@@ -497,6 +497,13 @@ from . import api
 
 get = api.get
 
+[case testExportViaRelativePackageImport]
+from .packages.urllib3.contrib import parse
+[out]
+from .packages.urllib3 import contrib
+
+parse = contrib.parse
+
 [case testNoExportViaRelativeImport]
 from . import get
 [out]
