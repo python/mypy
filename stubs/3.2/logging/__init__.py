@@ -37,7 +37,8 @@ class LogRecord:
     threadName = Undefined(Any)
     processName = Undefined(Any)
     process = Undefined(Any)
-    def __init__(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs): pass
+    def __init__(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None,
+                 **kwargs): pass
     def getMessage(self): pass
 
 def setLogRecordFactory(factory): pass
@@ -182,7 +183,8 @@ class Logger(Filterer):
     fatal = Undefined(Any)
     def log(self, level, msg, *args, **kwargs): pass
     def findCaller(self, stack_info=False): pass
-    def makeRecord(self, name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None): pass
+    def makeRecord(self, name, level, fn, lno, msg, args, exc_info, func=None, extra=None,
+                   sinfo=None): pass
     def handle(self, record): pass
     def addHandler(self, hdlr): pass
     def removeHandler(self, hdlr): pass

@@ -26,7 +26,8 @@ class BaseRotatingHandler(logging.FileHandler):
 class RotatingFileHandler(BaseRotatingHandler):
     maxBytes = Undefined(Any)
     backupCount = Undefined(Any)
-    def __init__(self, filename, mode='', maxBytes=0, backupCount=0, encoding=None, delay=False): pass
+    def __init__(self, filename, mode='', maxBytes=0, backupCount=0, encoding=None,
+                 delay=False): pass
     stream = Undefined(Any)
     def doRollover(self): pass
     def shouldRollover(self, record): pass
@@ -41,7 +42,8 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
     extMatch = Undefined(Any)
     dayOfWeek = Undefined(Any)
     rolloverAt = Undefined(Any)
-    def __init__(self, filename, when='', interval=1, backupCount=0, encoding=None, delay=False, utc=False, atTime=None): pass
+    def __init__(self, filename, when='', interval=1, backupCount=0, encoding=None, delay=False,
+                 utc=False, atTime=None): pass
     def computeRollover(self, currentTime): pass
     def shouldRollover(self, record): pass
     def getFilesToDelete(self): pass
@@ -132,7 +134,8 @@ class SMTPHandler(logging.Handler):
     subject = Undefined(Any)
     secure = Undefined(Any)
     timeout = Undefined(Any)
-    def __init__(self, mailhost, fromaddr, toaddrs, subject, credentials=None, secure=None, timeout=0.0): pass
+    def __init__(self, mailhost, fromaddr, toaddrs, subject, credentials=None, secure=None,
+                 timeout=0.0): pass
     def getSubject(self, record): pass
     def emit(self, record): pass
 
