@@ -1,10 +1,14 @@
 # Stubs for requests.api (Python 3)
 
-def request(method, url, **kwargs): pass
-def get(url, **kwargs): pass
-def options(url, **kwargs): pass
-def head(url, **kwargs): pass
-def post(url, data=None, json=None, **kwargs): pass
-def put(url, data=None, **kwargs): pass
-def patch(url, data=None, **kwargs): pass
-def delete(url, **kwargs): pass
+from typing import Union
+
+from .models import Response
+
+def request(method: str, url: Union[str, bytes], **kwargs) -> Response: pass
+def get(url: Union[str, bytes], **kwargs) -> Response: pass
+def options(url: Union[str, bytes], **kwargs) -> Response: pass
+def head(url: Union[str, bytes], **kwargs) -> Response: pass
+def post(url: Union[str, bytes], data=None, json=None, **kwargs) -> Response: pass
+def put(url: Union[str, bytes], data=None, **kwargs) -> Response: pass
+def patch(url: Union[str, bytes], data=None, **kwargs) -> Response: pass
+def delete(url: Union[str, bytes], **kwargs) -> Response: pass

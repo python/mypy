@@ -1,10 +1,13 @@
 # Stubs for requests.models (Python 3)
 
-from typing import Undefined, Any
+from typing import Undefined, Any, List, MutableMapping, Iterator, Dict
+import datetime
+
 from . import hooks
 from . import structures
 from . import auth
 from . import cookies
+from .cookies import RequestsCookieJar
 from .packages.urllib3 import fields
 from .packages.urllib3 import filepost
 from .packages.urllib3 import util
@@ -95,36 +98,37 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
 
 class Response:
     __attrs__ = Undefined(Any)
-    status_code = Undefined(Any)
-    headers = Undefined(Any)
+    status_code = Undefined(int)
+    headers = Undefined(MutableMapping[str, str])
     raw = Undefined(Any)
-    url = Undefined(Any)
-    encoding = Undefined(Any)
-    history = Undefined(Any)
-    reason = Undefined(Any)
-    cookies = Undefined(Any)
-    elapsed = Undefined(Any)
-    request = Undefined(Any)
-    def __init__(self): pass
-    def __bool__(self): pass
-    def __nonzero__(self): pass
-    def __iter__(self): pass
+    url = Undefined(str)
+    encoding = Undefined(str)
+    history = Undefined(List[Response])
+    reason = Undefined(str)
+    cookies = Undefined(RequestsCookieJar)
+    elapsed = Undefined(datetime.timedelta)
+    request = Undefined(PreparedRequest)
+    def __init__(self) -> None: pass
+    def __bool__(self) -> bool: pass
+    def __nonzero__(self) -> bool: pass
+    def __iter__(self) -> Iterator[bytes]: pass
     @property
-    def ok(self): pass
+    def ok(self) -> bool: pass
     @property
-    def is_redirect(self): pass
+    def is_redirect(self) -> bool: pass
     @property
-    def is_permanent_redirect(self): pass
+    def is_permanent_redirect(self) -> bool: pass
     @property
-    def apparent_encoding(self): pass
-    def iter_content(self, chunk_size=1, decode_unicode=False): pass
+    def apparent_encoding(self) -> str: pass
+    def iter_content(self, chunk_size: int = 1,
+                     decode_unicode: bool = False) -> Iterator[Any]: pass
     def iter_lines(self, chunk_size=Undefined, decode_unicode=None, delimiter=None): pass
     @property
-    def content(self): pass
+    def content(self) -> bytes: pass
     @property
-    def text(self): pass
-    def json(self, **kwargs): pass
+    def text(self) -> str: pass
+    def json(self, **kwargs) -> Any: pass
     @property
-    def links(self): pass
-    def raise_for_status(self): pass
-    def close(self): pass
+    def links(self) -> Dict[Any, Any]: pass
+    def raise_for_status(self) -> None: pass
+    def close(self) -> None: pass
