@@ -398,11 +398,13 @@ def get_qualified_name(o):
         return '<ERROR>'
 
 
-if __name__ == '__main__':
+def main():
     import sys
     if not os.path.isdir('out'):
-        raise SystemExit('Directory out does not exist')
+        raise SystemExit('Directory "out" does not exist')
     args = sys.argv[1:]
+    if not args:
+        raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] module ...')
     if args[0] == '--docpath':
         docpath = args[1]
         args = args[2:]
@@ -419,3 +421,7 @@ if __name__ == '__main__':
         class_sigs = {}
     for module in args:
         generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs)
+
+
+if __name__ == '__main__':
+    main()
