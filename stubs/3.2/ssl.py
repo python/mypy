@@ -51,11 +51,8 @@ class SSLSocket(socket):
     server_hostname = Undefined(Any)
     do_handshake_on_connect = Undefined(Any)
     suppress_ragged_eofs = Undefined(Any)
+    context = Undefined(Any)  # TODO: This should be a property.
     def __init__(self, sock=None, keyfile=None, certfile=None, server_side=False, cert_reqs=Undefined, ssl_version=Undefined, ca_certs=None, do_handshake_on_connect=True, family=Undefined, type=Undefined, proto=0, fileno=None, suppress_ragged_eofs=True, npn_protocols=None, ciphers=None, server_hostname=None, _context=None): pass
-    @property
-    def context(self): pass
-    @context.setter
-    def context(self, ctx): pass
     def dup(self): pass
     def read(self, len=0, buffer=None): pass
     def write(self, data): pass
