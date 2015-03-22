@@ -23,6 +23,7 @@ TODO:
  - maybe export more imported names if there is no __all__ (this affect ssl.SSLError, for example)
    - a quick and dirty heuristic would be to turn this on if a module has something like
      'from x import y as _y'
+ - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
 import glob
