@@ -205,6 +205,19 @@ class B:
     def __init__(self) -> None: pass
 class C(A, B): pass
 
+[case testMultipleInheritanceAndDifferentButCompatibleSignatures]
+class A:
+    def clear(self): pass
+
+class B:
+    def clear(self, x=None): pass
+
+class C(B, A): pass
+class D(A, B): pass
+[out]
+main: In class "D":
+main, line 8: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
+
 
 -- Special cases
 -- -------------
