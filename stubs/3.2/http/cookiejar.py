@@ -21,7 +21,9 @@ class Cookie:
     comment = Undefined(Any)
     comment_url = Undefined(Any)
     rfc2109 = Undefined(Any)
-    def __init__(self, version, name, value, port, port_specified, domain, domain_specified, domain_initial_dot, path, path_specified, secure, expires, discard, comment, comment_url, rest, rfc2109=False): pass
+    def __init__(self, version, name, value, port, port_specified, domain, domain_specified,
+                 domain_initial_dot, path, path_specified, secure, expires, discard, comment,
+                 comment_url, rest, rfc2109=False): pass
     def has_nonstandard_attr(self, name): pass
     def get_nonstandard_attr(self, name, default=None): pass
     def set_nonstandard_attr(self, name, value): pass
@@ -49,7 +51,11 @@ class DefaultCookiePolicy(CookiePolicy):
     strict_ns_domain = Undefined(Any)
     strict_ns_set_initial_dollar = Undefined(Any)
     strict_ns_set_path = Undefined(Any)
-    def __init__(self, blocked_domains=None, allowed_domains=None, netscape=True, rfc2965=False, rfc2109_as_netscape=None, hide_cookie2=False, strict_domain=False, strict_rfc2965_unverifiable=True, strict_ns_unverifiable=False, strict_ns_domain=Undefined, strict_ns_set_initial_dollar=False, strict_ns_set_path=False): pass
+    def __init__(self, blocked_domains=None, allowed_domains=None, netscape=True, rfc2965=False,
+                 rfc2109_as_netscape=None, hide_cookie2=False, strict_domain=False,
+                 strict_rfc2965_unverifiable=True, strict_ns_unverifiable=False,
+                 strict_ns_domain=Undefined, strict_ns_set_initial_dollar=False,
+                 strict_ns_set_path=False): pass
     def blocked_domains(self): pass
     def set_blocked_domains(self, blocked_domains): pass
     def is_blocked(self, domain): pass
