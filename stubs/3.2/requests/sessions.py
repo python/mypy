@@ -1,10 +1,11 @@
 # Stubs for requests.sessions (Python 3)
 
-from typing import Undefined, Any
+from typing import Undefined, Any, Union, MutableMapping
 from . import auth
 from . import compat
 from . import cookies
 from . import models
+from .models import Response
 from . import hooks
 from . import utils
 from . import exceptions
@@ -54,7 +55,7 @@ class SessionRedirectMixin:
 
 class Session(SessionRedirectMixin):
     __attrs__ = Undefined(Any)
-    headers = Undefined(Any)
+    headers = Undefined(MutableMapping[str, str])
     auth = Undefined(Any)
     proxies = Undefined(Any)
     hooks = Undefined(Any)
@@ -67,24 +68,25 @@ class Session(SessionRedirectMixin):
     cookies = Undefined(Any)
     adapters = Undefined(Any)
     redirect_cache = Undefined(Any)
-    def __init__(self): pass
-    def __enter__(self): pass
-    def __exit__(self, *args): pass
+    def __init__(self) -> None: pass
+    def __enter__(self) -> 'Session': pass
+    def __exit__(self, *args) -> None: pass
     def prepare_request(self, request): pass
-    def request(self, method, url, params=None, data=None, headers=None, cookies=None, files=None,
-                auth=None, timeout=None, allow_redirects=True, proxies=None, hooks=None,
-                stream=None, verify=None, cert=None, json=None): pass
-    def get(self, url, **kwargs): pass
-    def options(self, url, **kwargs): pass
-    def head(self, url, **kwargs): pass
-    def post(self, url, data=None, json=None, **kwargs): pass
-    def put(self, url, data=None, **kwargs): pass
-    def patch(self, url, data=None, **kwargs): pass
-    def delete(self, url, **kwargs): pass
+    def request(self, method: str, url: Union[str, bytes], params=None, data=None, headers=None,
+                cookies=None, files=None, auth=None, timeout=None, allow_redirects=True,
+                proxies=None, hooks=None, stream=None, verify=None, cert=None,
+                json=None) -> Response: pass
+    def get(self, url: Union[str, bytes], **kwargs) -> Response: pass
+    def options(self, url: Union[str, bytes], **kwargs) -> Response: pass
+    def head(self, url: Union[str, bytes], **kwargs) -> Response: pass
+    def post(self, url: Union[str, bytes], data=None, json=None, **kwargs) -> Response: pass
+    def put(self, url: Union[str, bytes], data=None, **kwargs) -> Response: pass
+    def patch(self, url: Union[str, bytes], data=None, **kwargs) -> Response: pass
+    def delete(self, url: Union[str, bytes], **kwargs) -> Response: pass
     def send(self, request, **kwargs): pass
     def merge_environment_settings(self, url, proxies, stream, verify, cert): pass
     def get_adapter(self, url): pass
-    def close(self): pass
+    def close(self) -> None: pass
     def mount(self, prefix, adapter): pass
 
-def session(): pass
+def session() -> Session: pass
