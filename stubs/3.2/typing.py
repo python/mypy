@@ -142,6 +142,8 @@ class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     def __delitem__(self, v: _KT) -> None: pass
 
     @abstractmethod
+    def copy(self) -> MutableMapping[_KT, _VT]: pass
+    @abstractmethod
     def clear(self) -> None: pass
     @overload
     @abstractmethod
