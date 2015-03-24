@@ -47,7 +47,7 @@ print(len(A()))
 [out]
 5
 
-[case testReversed-skip]
+[case testReversed]
 from typing import Reversible
 class A(Reversible):
     def __reversed__(self): return iter('foo')
@@ -62,7 +62,7 @@ print(list(reversed(A())))
 [['c', 'b', 'a']
 [['f', 'o', 'o']
 
-[case testIntAndFloatConversion-skip]
+[case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
 class A(SupportsInt):
     def __int__(self): return 5
@@ -84,7 +84,7 @@ print(float(B()))
 -9.0
 1.2
 
-[case testAbs-skip]
+[case testAbs]
 from typing import SupportsAbs
 class A(SupportsAbs[float]):
     def __abs__(self) -> float: return 5.5
@@ -109,7 +109,7 @@ abs(1.1) + 'x'  # Error
 _program.py, line 5: Unsupported operand types for + ("int" and "str")
 _program.py, line 7: Unsupported operand types for + ("float" and "str")
 
-[case testRound-skip]
+[case testRound]
 from typing import SupportsRound
 class A(SupportsRound):
     def __round__(self, ndigits=0): return 'x%d' % ndigits
