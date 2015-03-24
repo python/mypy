@@ -2,7 +2,7 @@
 
 from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
-    Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
+    Sequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, Union
 )
@@ -477,7 +477,7 @@ class list(Sequence[_T], Reversible[_T], Generic[_T]):
     def __lt__(self, x: List[_T]) -> bool: pass
     def __le__(self, x: List[_T]) -> bool: pass
 
-class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
+class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self) -> None: pass
     @overload

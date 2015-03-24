@@ -3,14 +3,14 @@
 Basic usage:
 
   $ mkdir out
-  $ py -m mypy.stubgen urllib.parse
+  $ python3 -m mypy.stubgen urllib.parse
 
   => Generate out/urllib/parse.py.
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
 
-  $ py -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+  $ python3 -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
 
   => Generate out/curses.py.
 
@@ -19,6 +19,11 @@ Note: You should verify the generated stubs manually.
 TODO:
 
  - infer some return types, such as no return statement with value -> None
+ - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
+ - maybe export more imported names if there is no __all__ (this affect ssl.SSLError, for example)
+   - a quick and dirty heuristic would be to turn this on if a module has something like
+     'from x import y as _y'
+ - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
 import glob
@@ -288,17 +293,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and name == alias]
-            if names:
-                if o.relative:
-                    self.add_import_line('from %s import %s\n' % ('.' * o.relative, o.id))
-                else:
-                    self.add_import_line('import %s\n' % o.id)
-                if self._state not in (EMPTY, IMPORT_ALIAS):
-                    self.add('\n')
-                for name in names:
-                    self.add('%s = %s.%s\n' % (name, o.id, name))
-                    self.record_name(name)
-                self._state = IMPORT_ALIAS
+            self.import_and_export_names(o.id, o.relative, names)
+        else:
+            # Include import from targets that import from a submodule of a package.
+            if o.relative:
+                names = [name for name, alias in o.names
+                         if name == alias]
+                self.import_and_export_names(o.id, o.relative, names)
         # Import names used as base classes.
         names = [(name, alias) for name, alias in o.names
                  if alias in self._base_classes]
@@ -311,6 +312,25 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     imp_names.append(name)
             self.add_import_line('from %s%s import %s\n' % (
                 '.' * o.relative, o.id, ', '.join(imp_names)))
+
+    def import_and_export_names(self, module_id, relative, names):
+        if names and module_id:
+            if relative:
+                if '.' not in module_id:
+                    self.add_import_line('from %s import %s\n' % ('.' * relative, module_id))
+                else:
+                    self.add_import_line(
+                        'from %s%s import %s\n' % ('.' * relative,
+                                                   '.'.join(module_id.split('.')[:-1]),
+                                                   module_id.split('.')[-1]))
+            else:
+                self.add_import_line('import %s\n' % module_id)
+            if self._state not in (EMPTY, IMPORT_ALIAS):
+                self.add('\n')
+            for name in names:
+                self.add('%s = %s.%s\n' % (name, module_id.split('.')[-1], name))
+                self.record_name(name)
+            self._state = IMPORT_ALIAS
 
     def get_init(self, lvalue):
         if lvalue in self._vars[-1]:
@@ -398,11 +418,13 @@ def get_qualified_name(o):
         return '<ERROR>'
 
 
-if __name__ == '__main__':
+def main():
     import sys
     if not os.path.isdir('out'):
-        raise SystemExit('Directory out does not exist')
+        raise SystemExit('Directory "out" does not exist')
     args = sys.argv[1:]
+    if not args:
+        raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] module ...')
     if args[0] == '--docpath':
         docpath = args[1]
         args = args[2:]
@@ -419,3 +441,7 @@ if __name__ == '__main__':
         class_sigs = {}
     for module in args:
         generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs)
+
+
+if __name__ == '__main__':
+    main()

@@ -4,7 +4,8 @@
 # based on http://docs.python.org/3.2/library/os.html
 
 from typing import (
-    Undefined, Mapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr, Optional
+    Undefined, Mapping, MutableMapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr,
+    Optional
 )
 from builtins import OSError as error
 import os.path as path
@@ -60,8 +61,8 @@ R_OK = 0
 W_OK = 0
 X_OK = 0
 
-environ = Undefined(Mapping[str, str])
-environb = Undefined(Mapping[bytes, bytes])
+environ = Undefined(MutableMapping[str, str])
+environb = Undefined(MutableMapping[bytes, bytes])
 
 confstr_names = Undefined(Dict[str, int])  # Unix only
 pathconf_names = Undefined(Dict[str, int]) # Unix only

@@ -12,6 +12,7 @@ from typing import (
     Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized,
     Optional
 )
+import typing
 
 _T = TypeVar('_T')
 _KT = TypeVar('_KT')
@@ -20,6 +21,9 @@ _VT = TypeVar('_VT')
 
 # namedtuple is special-cased in the type checker; the initializer is ignored.
 namedtuple = object()
+
+
+MutableMapping = typing.MutableMapping
 
 
 class deque(Sized, Iterable[_T], Generic[_T]):

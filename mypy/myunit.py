@@ -3,7 +3,7 @@ import re
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, overload, Undefined, Union
+from typing import List, Tuple, Any, Callable, Undefined, Union
 
 
 # TODO remove global state

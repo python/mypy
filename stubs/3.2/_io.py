@@ -5,8 +5,9 @@
 from typing import Any, Undefined
 
 class _IOBase:
-    closed = Undefined(Any)
     def __init__(self, *args, **kwargs): pass
+    @property
+    def closed(self): pass
     def close(self): pass
     def fileno(self): pass
     def flush(self): pass
