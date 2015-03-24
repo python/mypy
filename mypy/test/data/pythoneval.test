@@ -18,6 +18,7 @@ from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 def check(o, t):
     rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
     rep = rep.replace('sequenceiterator', 'str_iterator')
+    rep = rep.replace('_abcoll.Sized', 'collections.abc.Sized')
     print(rep, t, isinstance(o, t))
 
 def f():
