@@ -1,9 +1,5 @@
 # TODO:
-# __all__ (should not include T, KT, VT)
 # Support Python 3.2
-# Make re, io submodules?
-# Other things from mypy's typing.py:
-# - Reversible, SupportsInt, SupportsFloat, SupportsAbs, SupportsRound
 
 # TODO nits:
 # Get rid of asserts that are the caller's fault.
@@ -11,18 +7,85 @@
 
 import abc
 from abc import abstractmethod, abstractproperty
-import collections.abc
+import collections
 import functools
 import inspect
-import re
+import re as stdlib_re  # Avoid confusion with the re we export.
 import sys
 import types
+try:
+    import collections.abc as collections_abc
+except ImportError:
+    import collections as collections_abc  # Fallback for PY3.2.
+
+
+# Please keep __all__ alphabetized within each category.
+__all__ = [
+    # Generic classes and special types.
+    'AbstractSet',
+    'Any',
+    'AnyStr',
+    'ByteString',
+    'Callable',
+    'Container',
+    'Dict',
+    'Generic',
+    'Hashable',
+    'ItemsView',
+    'Iterable',
+    'Iterator',
+    'KeysView',
+    'List',
+    'Mapping',
+    'MappingView',
+    'MutableMapping',
+    'MutableSequence',
+    'MutableSet',
+    'NamedTuple',
+    'Optional',
+    'Reversible',
+    'Sequence',
+    'Set',
+    'Sized',
+    'SupportsAbs',
+    'SupportsFloat',
+    'SupportsInt',
+    'SupportsRound',
+    'Tuple',
+    'TypeVar',
+    'Undefined',
+    'Union',
+    'ValuesView',
+    # Compile-time constants.
+    'POSIX',
+    'PY2',
+    'PY3',
+    'WINDOWS',
+    # Functions and decorators.
+    'cast',
+    'get_type_hints',
+    'no_type_check',
+    'no_type_check_decorator',
+    'overload',
+    # Submodules.
+    'io',
+    're',
+    ]
+
 
 # Simple constants defined in the PEP.
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] >= 3
 WINDOWS = sys.platform == 'win32'
 POSIX = not WINDOWS
+
+
+def _qualname(x):
+    if sys.version_info[:2] >= (3, 3):
+        return x.__qualname__
+    else:
+        # Fall back to just name.
+        return x.__name__
 
 
 class TypingMeta(type):
@@ -37,6 +100,8 @@ class TypingMeta(type):
     This also defines a dummy constructor (all the work is done in
     __new__) and a nicer repr().
     """
+
+    _is_protocol = False
 
     def __new__(cls, name, bases, namespace, *, _root=False):
         if not _root:
@@ -61,7 +126,7 @@ class TypingMeta(type):
         return False
 
     def __repr__(self):
-        return '%s.%s' % (self.__module__, self.__qualname__)
+        return '%s.%s' % (self.__module__, _qualname(self))
 
 
 class Final:
@@ -132,10 +197,10 @@ class _TypeAlias:
         assert isinstance(type_var, type), repr(type_var)
         assert isinstance(impl_type, type), repr(impl_type)
         assert not isinstance(impl_type, TypingMeta), repr(impl_type)
-        self.name = name  # The name, e.g. 'Pattern'
-        self.type_var = type_var  # The type parameter, e.g. 'AnyStr', or the specific type, e.g. 'str'
-        self.impl_type = impl_type  # The implementation type
-        self.type_checker = type_checker  # Function that takes an impl_type instance and returns a value that should be a type_var instance
+        self.name = name
+        self.type_var = type_var
+        self.impl_type = impl_type
+        self.type_checker = type_checker
 
     def __repr__(self):
         return "%s[%s]" % (self.name, _type_repr(self.type_var))
@@ -145,16 +210,22 @@ class _TypeAlias:
         if not isinstance(self.type_var, TypeVar):
             raise TypeError("%s cannot be further parameterized." % self)
         if not issubclass(parameter, self.type_var):
-            raise TypeError("%s is not a valid substitution for %s." % (parameter, self.type_var))
-        return self.__class__(self.name, parameter, self.impl_type, self.type_checker)
+            raise TypeError("%s is not a valid substitution for %s." %
+                            (parameter, self.type_var))
+        return self.__class__(self.name, parameter,
+                              self.impl_type, self.type_checker)
 
     def __instancecheck__(self, obj):
-        return isinstance(obj, self.impl_type) and isinstance(self.type_checker(obj), self.type_var)
+        return (isinstance(obj, self.impl_type) and
+                isinstance(self.type_checker(obj), self.type_var))
 
     def __subclasscheck__(self, cls):
+        if cls is Any:
+            return True
         if isinstance(cls, _TypeAlias):
             # Covariance.  For now, we compare by name.
-            return (cls.name == self.name and issubclass(cls.type_var, self.type_var))
+            return (cls.name == self.name and
+                    issubclass(cls.type_var, self.type_var))
         else:
             # Note that this is too lenient, because the
             # implementation type doesn't carry information about
@@ -177,6 +248,8 @@ def _type_check(arg, msg):
     """Check that the argument is a type, and return it.
 
     As a special case, accept None and return type(None) instead.
+    Also, _TypeAlias instances (e.g. Match, Pattern) are acceptable.
+
     The msg argument is a human-readable error message, e.g.
 
         "Union[arg, ...]: arg should be a type."
@@ -202,9 +275,9 @@ def _type_repr(obj):
     """
     if isinstance(obj, type) and not isinstance(obj, TypingMeta):
         if obj.__module__ == 'builtins':
-            return obj.__qualname__
+            return _qualname(obj)
         else:
-            return '%s.%s' % (obj.__module__, obj.__qualname__)
+            return '%s.%s' % (obj.__module__, _qualname(obj))
     else:
         return repr(obj)
 
@@ -314,6 +387,8 @@ class TypeVar(TypingMeta, metaclass=TypingMeta, _root=True):
             return isinstance(instance, Union[self.__constraints__])
 
     def __subclasscheck__(self, cls):
+        if cls is Any:
+            return True
         if cls is self:
             return True
         elif self.__binding__ is not None:
@@ -500,6 +575,8 @@ class UnionMeta(TypingMeta):
         return any(isinstance(instance, t) for t in self.__union_params__)
 
     def __subclasscheck__(self, cls):
+        if cls is Any:
+            return True
         if self.__union_params__ is None:
             return isinstance(cls, UnionMeta)
         elif isinstance(cls, UnionMeta):
@@ -652,6 +729,8 @@ class TupleMeta(TypingMeta):
                     for x, p in zip(t, self.__tuple_params__)))
 
     def __subclasscheck__(self, cls):
+        if cls is Any:
+            return True
         if not isinstance(cls, type):
             return super().__subclasscheck__(cls)  # To TypeError.
         if issubclass(cls, tuple):
@@ -723,7 +802,7 @@ class CallableMeta(TypingMeta):
     def __repr__(self):
         r = super().__repr__()
         if self.__args__ is not None or self.__result__ is not None:
-            r += '%s[[%s], %s]' % (self.__qualname__,
+            r += '%s[[%s], %s]' % (_qualname(self),
                                    ', '.join(_type_repr(t)
                                              for t in self.__args__),
                                    _type_repr(self.__result__))
@@ -801,7 +880,8 @@ class CallableMeta(TypingMeta):
         return True
 
     def __subclasscheck__(self, cls):
-        # Compute issubclass(cls, self).
+        if cls is Any:
+            return True
         if not isinstance(cls, CallableMeta):
             return super().__subclasscheck__(cls)
         if self.__args__ is None and self.__result__ is None:
@@ -919,6 +999,8 @@ class GenericMeta(TypingMeta, abc.ABCMeta):
                               parameters=params, extra=self.__extra__)
 
     def __subclasscheck__(self, cls):
+        if cls is Any:
+            return True
         if super().__subclasscheck__(cls):
             return True
         if self.__extra__ is None:
@@ -1015,6 +1097,24 @@ def cast(typ, val):
     return val
 
 
+def _get_defaults(func):
+    """Internal helper to extract the default arguments, by name."""
+    code = func.__code__
+    pos_count = code.co_argcount
+    kw_count = code.co_kwonlyargcount
+    arg_names = code.co_varnames
+    kwarg_names = arg_names[pos_count:pos_count+kw_count]
+    arg_names = arg_names[:pos_count]
+    defaults = func.__defaults__ or ()
+    kwdefaults = func.__kwdefaults__
+    res = dict(kwdefaults) if kwdefaults else {}
+    pos_offset = pos_count - len(defaults)
+    for name, value in zip(arg_names[pos_offset:], defaults):
+        assert name not in res
+        res[name] = value
+    return res
+
+
 def get_type_hints(obj, globalns=None, localns=None):
     """Return type hints for a function or method object.
 
@@ -1043,13 +1143,13 @@ def get_type_hints(obj, globalns=None, localns=None):
             localns = sys._getframe(1).f_locals
     elif localns is None:
         localns = globalns
-    sig = inspect.Signature.from_function(obj)
+    defaults = _get_defaults(obj)
     hints = dict(obj.__annotations__)
     for name, value in hints.items():
         if isinstance(value, str):
             value = _ForwardRef(value)
         value = _eval_type(value, globalns, localns)
-        if name in sig.parameters and sig.parameters[name].default is None:
+        if name in defaults and defaults[name] is None:
             value = Optional[value]
         hints[name] = value
     return hints
@@ -1085,56 +1185,148 @@ def overload(func):
     raise RuntimeError("Overloading is only supported in library stubs")
 
 
+class _Protocol(Generic):
+    """Internal base class for protocol classes.
+
+    This implements a simple-minded structural isinstance check
+    (similar but more general than the one-offs in collections.abc
+    such as Hashable).
+    """
+
+    _is_protocol = True
+
+    @classmethod
+    def __subclasshook__(self, cls):
+        if not self._is_protocol:
+            # No structural checks since this isn't a protocol.
+            return NotImplemented
+
+        if self is _Protocol:
+            # Every class is a subclass of the empty protocol.
+            return True
+
+        # Find all attributes defined in the protocol.
+        attrs = self._get_protocol_attrs()
+
+        for attr in attrs:
+            if not any(attr in d.__dict__ for d in cls.__mro__):
+                return NotImplemented
+        return True
+
+    @classmethod
+    def _get_protocol_attrs(self):
+        # Get all Protocol base classes.
+        protocol_bases = []
+        for c in self.__mro__:
+            if getattr(c, '_is_protocol', False) and c.__name__ != '_Protocol':
+                protocol_bases.append(c)
+
+        # Get attributes included in protocol.
+        attrs = set()
+        for base in protocol_bases:
+            for attr in base.__dict__.keys():
+                # Include attributes not defined in any non-protocol bases.
+                for c in self.__mro__:
+                    if (c is not base and attr in c.__dict__ and
+                            not getattr(c, '_is_protocol', False)):
+                        break
+                else:
+                    if (not attr.startswith('_abc_') and
+                        attr != '__abstractmethods__' and
+                        attr != '_is_protocol' and
+                        attr != '__dict__' and
+                        attr != '_get_protocol_attrs' and
+                        attr != '__module__'):
+                        attrs.add(attr)
+
+        return attrs
+
+
 # Various ABCs mimicking those in collections.abc.
 # A few are simply re-exported for completeness.
 
-Hashable = collections.abc.Hashable  # Not generic.
+Hashable = collections_abc.Hashable  # Not generic.
 
 
-class Iterable(Generic[T], extra=collections.abc.Iterable):
+class Iterable(Generic[T], extra=collections_abc.Iterable):
     pass
 
 
-class Iterator(Iterable, extra=collections.abc.Iterator):
+class Iterator(Iterable, extra=collections_abc.Iterator):
     pass
 
 
-Sized = collections.abc.Sized  # Not generic.
+class SupportsInt(_Protocol):
+
+    @abstractmethod
+    def __int__(self) -> int:
+        pass
 
 
-class Container(Generic[T], extra=collections.abc.Container):
+class SupportsFloat(_Protocol):
+
+    @abstractmethod
+    def __float__(self) -> float:
+        pass
+
+
+class SupportsAbs(_Protocol[T]):
+
+    @abstractmethod
+    def __abs__(self) -> T:
+        pass
+
+
+class SupportsRound(_Protocol[T]):
+
+    @abstractmethod
+    def __round__(self, ndigits: int = 0) -> T:
+        pass
+
+
+class Reversible(_Protocol[T]):
+
+    @abstractmethod
+    def __reversed__(self) -> 'Iterator[T]':
+        pass
+
+
+Sized = collections_abc.Sized  # Not generic.
+
+
+class Container(Generic[T], extra=collections_abc.Container):
     pass
 
 
 # Callable was defined earlier.
 
 
-class AbstractSet(Sized, Iterable, Container, extra=collections.abc.Set):
+class AbstractSet(Sized, Iterable, Container, extra=collections_abc.Set):
     pass
 
 
-class MutableSet(AbstractSet, extra=collections.abc.MutableSet):
+class MutableSet(AbstractSet, extra=collections_abc.MutableSet):
     pass
 
 
 class Mapping(Sized, Iterable[KT], Container[KT], Generic[KT, VT],
-              extra=collections.abc.Mapping):
+              extra=collections_abc.Mapping):
     pass
 
 
-class MutableMapping(Mapping, extra=collections.abc.MutableMapping):
+class MutableMapping(Mapping, extra=collections_abc.MutableMapping):
     pass
 
 
-class Sequence(Sized, Iterable, Container, extra=collections.abc.Sequence):
+class Sequence(Sized, Iterable, Container, extra=collections_abc.Sequence):
     pass
 
 
-class MutableSequence(Sequence, extra=collections.abc.MutableSequence):
+class MutableSequence(Sequence, extra=collections_abc.MutableSequence):
     pass
 
 
-class ByteString(Sequence[int], extra=collections.abc.ByteString):
+class ByteString(Sequence[int], extra=collections_abc.ByteString):
     pass
 
 
@@ -1173,20 +1365,20 @@ class Set(set, MutableSet, metaclass=_SetMeta):
     pass
 
 
-class MappingView(Sized, Iterable, extra=collections.abc.MappingView):
+class MappingView(Sized, Iterable, extra=collections_abc.MappingView):
     pass
 
 
-class KeysView(MappingView, Set[KT], extra=collections.abc.KeysView):
+class KeysView(MappingView, Set[KT], extra=collections_abc.KeysView):
     pass
 
 
 # TODO: Enable Set[Tuple[KT, VT]] instead of Generic[KT, VT].
-class ItemsView(MappingView, Generic[KT, VT], extra=collections.abc.ItemsView):
+class ItemsView(MappingView, Generic[KT, VT], extra=collections_abc.ItemsView):
     pass
 
 
-class ValuesView(MappingView, extra=collections.abc.ValuesView):
+class ValuesView(MappingView, extra=collections_abc.ValuesView):
     pass
 
 
@@ -1363,5 +1555,30 @@ class TextIO(IO[str]):
         pass
 
 
-Pattern = _TypeAlias('Pattern', AnyStr, type(re.compile('')), lambda p: p.pattern)
-Match =  _TypeAlias('Match', AnyStr, type(re.match('', '')), lambda m: m.re.pattern)
+class io:
+    """Wrapper namespace for IO generic classes."""
+
+    __all__ = ['IO', 'TextIO', 'BinaryIO']
+    IO = IO
+    TextIO = TextIO
+    BinaryIO = BinaryIO
+
+io.__name__ = __name__ + '.io'
+sys.modules[io.__name__] = io
+
+
+Pattern = _TypeAlias('Pattern', AnyStr, type(stdlib_re.compile('')),
+                     lambda p: p.pattern)
+Match = _TypeAlias('Match', AnyStr, type(stdlib_re.match('', '')),
+                   lambda m: m.re.pattern)
+
+
+class re:
+    """Wrapper namespace for re type aliases."""
+
+    __all__ = ['Pattern', 'Match']
+    Pattern = Pattern
+    Match = Match
+
+re.__name__ = __name__ + '.re'
+sys.modules[re.__name__] = re

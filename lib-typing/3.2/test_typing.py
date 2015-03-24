@@ -1,6 +1,11 @@
 from collections import namedtuple
 import re
-from unittest import TestCase, main, mock
+import sys
+from unittest import TestCase, main
+try:
+    from unittest import mock
+except ImportError:
+    import mock  # 3rd party install, for PY3.2.
 
 from typing import Any
 from typing import TypeVar, T, KT, VT, AnyStr
@@ -89,6 +94,28 @@ class AnyTests(TestCase):
     def test_cannot_subscript(self):
         with self.assertRaises(TypeError):
             Any[int]
+
+    def test_any_is_subclass(self):
+        # Any should be considered a subclass of everything.
+        assert issubclass(Any, Any)
+        assert issubclass(Any, typing.List)
+        assert issubclass(Any, typing.List[int])
+        assert issubclass(Any, typing.List[T])
+        assert issubclass(Any, typing.Mapping)
+        assert issubclass(Any, typing.Mapping[str, int])
+        assert issubclass(Any, typing.Mapping[KT, VT])
+        assert issubclass(Any, Generic)
+        assert issubclass(Any, Generic[T])
+        assert issubclass(Any, Generic[KT, VT])
+        assert issubclass(Any, AnyStr)
+        assert issubclass(Any, Union)
+        assert issubclass(Any, Union[int, str])
+        assert issubclass(Any, typing.Match)
+        assert issubclass(Any, typing.Match[str])
+        # These expressions must simply not fail.
+        typing.Match[Any]
+        typing.Pattern[Any]
+        typing.IO[Any]
 
 
 class TypeVarTests(TestCase):
@@ -597,6 +624,31 @@ class MySimpleMapping(SimpleMapping):
             return default
 
 
+class ProtocolTests(TestCase):
+
+    def test_supports_int(self):
+        assert issubclass(int, typing.SupportsInt)
+        assert not issubclass(str, typing.SupportsInt)
+
+    def test_supports_float(self):
+        assert issubclass(float, typing.SupportsFloat)
+        assert not issubclass(str, typing.SupportsFloat)
+
+    def test_supports_abs(self):
+        assert issubclass(float, typing.SupportsAbs)
+        assert issubclass(int, typing.SupportsAbs)
+        assert not issubclass(str, typing.SupportsAbs)
+
+    def test_supports_round(self):
+        assert issubclass(float, typing.SupportsRound)
+        assert issubclass(int, typing.SupportsRound)
+        assert not issubclass(str, typing.SupportsRound)
+
+    def test_reversible(self):
+        assert issubclass(list, typing.Reversible)
+        assert not issubclass(int, typing.Reversible)
+
+
 class GenericTests(TestCase):
 
     def test_basics(self):
@@ -625,27 +677,32 @@ class GenericTests(TestCase):
     def test_errors(self):
         with self.assertRaises(TypeError):
             B = SimpleMapping[XK, Any]
+
             class C(Generic[B]):
                 pass
 
     def test_repr_2(self):
+        PY32 = sys.version_info[:2] < (3, 3)
 
         class C(Generic[T]):
             pass
 
         assert C.__module__ == __name__
-        assert C.__qualname__ == 'GenericTests.test_repr_2.<locals>.C'
+        if not PY32:
+            assert C.__qualname__ == 'GenericTests.test_repr_2.<locals>.C'
         assert repr(C).split('.')[-1] == 'C[~T]'
         X = C[int]
         assert X.__module__ == __name__
-        assert X.__qualname__ == 'C'
+        if not PY32:
+            assert X.__qualname__ == 'C'
         assert repr(X).split('.')[-1] == 'C[int]'
 
         class Y(C[int]):
             pass
 
         assert Y.__module__ == __name__
-        assert Y.__qualname__ == 'GenericTests.test_repr_2.<locals>.Y'
+        if not PY32:
+            assert Y.__qualname__ == 'GenericTests.test_repr_2.<locals>.Y'
         assert repr(Y).split('.')[-1] == 'Y[int]'
 
     def test_eq_1(self):
@@ -728,6 +785,13 @@ class UndefinedTest(TestCase):
 
     def test_repr(self):
         self.assertEqual(repr(Undefined(Any)), 'typing.Undefined(typing.Any)')
+
+    def test_type_alias(self):
+        # These simply must not fail.
+        Undefined(typing.re.Pattern)
+        Undefined(typing.re.Pattern[str])
+        Undefined(typing.re.Pattern[bytes])
+        Undefined(typing.re.Pattern[Any])
 
 
 class CastTest(TestCase):
@@ -999,6 +1063,14 @@ class IOTests(TestCase):
         a = stuff.__annotations__['a']
         assert a.__parameters__ == (bytes,)
 
+    def test_io_submodule(self):
+        from typing.io import IO, TextIO, BinaryIO, __all__, __name__
+        assert IO is typing.IO
+        assert TextIO is typing.TextIO
+        assert BinaryIO is typing.BinaryIO
+        assert set(__all__) == set(['IO', 'TextIO', 'BinaryIO'])
+        assert __name__ == 'typing.io'
+
 
 class RETests(TestCase):
     # Much of this is really testing _TypeAlias.
@@ -1047,6 +1119,32 @@ class RETests(TestCase):
         assert repr(Match) == 'Match[~AnyStr]'
         assert repr(Match[str]) == 'Match[str]'
         assert repr(Match[bytes]) == 'Match[bytes]'
+
+    def test_re_submodule(self):
+        from typing.re import Match, Pattern, __all__, __name__
+        assert Match is typing.Match
+        assert Pattern is typing.Pattern
+        assert set(__all__) == set(['Match', 'Pattern'])
+        assert __name__ == 'typing.re'
+
+
+class AllTests(TestCase):
+    """Tests for __all__."""
+
+    def test_all(self):
+        from typing import __all__ as a
+        # Don't test everything, just spot-check the first and last of every category.
+        assert 'AbstractSet' in a
+        assert 'ValuesView' in a
+        assert 'POSIX' in a
+        assert 'WINDOWS' in a
+        assert 'cast' in a
+        assert 'overload' in a
+        assert 'io' in a
+        assert 're' in a
+        # Spot-check that stdlib modules aren't exported.
+        assert 'os' not in a
+        assert 'sys' not in a
 
 
 if __name__ == '__main__':
