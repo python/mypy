@@ -6,7 +6,7 @@ import unittest
 
 import getopt
 
-from typing import Any
+from typing import cast, Any
 
 sentinel = object()
 
@@ -22,7 +22,7 @@ class GetoptTests(unittest.TestCase):
 
     def assertError(self, *args: Any, **kwargs: Any) -> None:
         # JLe: work around mypy bug #229
-        Any(self.assertRaises)(getopt.GetoptError, *args, **kwargs)
+        cast(Any, self.assertRaises)(getopt.GetoptError, *args, **kwargs)
 
     def test_short_has_arg(self) -> None:
         self.assertTrue(getopt.short_has_arg('a', 'a:'))

@@ -13,7 +13,7 @@ import sys
 from posixpath import realpath, abspath, dirname, basename
 
 import posix
-from typing import Any, TypeVar, Callable
+from typing import cast, Any, TypeVar, Callable
 
 T = TypeVar('T')
 
@@ -225,7 +225,7 @@ class PosixPathTest(unittest.TestCase):
         test_fn2 = support.TESTFN + "2"
         self._create_file(test_fn1)
         test_fns = [test_fn1, test_fn2]
-        Any(os.symlink)(*test_fns)
+        cast(Any, os.symlink)(*test_fns)
         stats = map(os.stat, test_fns)
         self.assertTrue(posixpath.samestat(*stats))
         os.remove(test_fn2)

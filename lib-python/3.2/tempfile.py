@@ -379,7 +379,7 @@ class _TemporaryFileWrapper:
         # Attribute lookups are delegated to the underlying file
         # and cached for non-numeric results
         # (i.e. methods are cached, closed and friends are not)
-        file = _Any(self).__dict__['file'] # type: _IO[_Any]
+        file = _cast(_Any, self).__dict__['file'] # type: _IO[_Any]
         a = getattr(file, name)
         if not isinstance(a, int):
             setattr(self, name, a)

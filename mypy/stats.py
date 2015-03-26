@@ -93,7 +93,7 @@ class StatisticsVisitor(TraverserVisitor):
                 else:
                     items = [lvalue]
                 for item in items:
-                    if hasattr(item, 'is_def') and Any(item).is_def:
+                    if hasattr(item, 'is_def') and cast(Any, item).is_def:
                         t = self.typemap.get(item)
                         if t:
                             self.type(t)

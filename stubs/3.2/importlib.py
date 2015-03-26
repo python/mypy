@@ -6,3 +6,4 @@ from typing import Any
 
 # TODO more precise type?
 def import_module(name: str, package: str = None) -> Any: pass
+def invalidate_caches() -> None: pass

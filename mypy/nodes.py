@@ -862,7 +862,7 @@ class NameExpr(RefExpr):
         self.literal_hash = ('Var', name,)
 
     def type_node(self):
-        return cast('TypeInfo', self.node)
+        return cast(TypeInfo, self.node)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_name_expr(self)

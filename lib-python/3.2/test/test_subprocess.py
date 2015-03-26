@@ -17,7 +17,7 @@ import gc
 
 import resource
 
-from typing import Any, Dict, Callable, Iterable, List, Set, Tuple
+from typing import Any, Dict, Callable, Iterable, List, Set, Tuple, cast
 
 mswindows = (sys.platform == "win32")
 
@@ -40,7 +40,7 @@ except AttributeError:
         """Replacement for mkstemp, calling mktemp."""
         fname = tempfile.mktemp()
         return os.open(fname, os.O_RDWR|os.O_CREAT), fname
-    mkstemp = Any(_mkstemp)
+    mkstemp = cast(Any, _mkstemp)
 
 
 class BaseTestCase(unittest.TestCase):
@@ -89,7 +89,7 @@ class ProcessTestCase(BaseTestCase):
         # check_output() function with zero return code
         output = subprocess.check_output(
                 [sys.executable, "-c", "print('BDFL')"])
-        self.assertIn(b'BDFL', Any(output)) # see #39
+        self.assertIn(b'BDFL', cast(Any, output)) # see #39
 
     def test_check_output_nonzero(self) -> None:
         # check_call() function with non-zero return code
@@ -103,7 +103,7 @@ class ProcessTestCase(BaseTestCase):
         output = subprocess.check_output(
                 [sys.executable, "-c", "import sys; sys.stderr.write('BDFL')"],
                 stderr=subprocess.STDOUT)
-        self.assertIn(b'BDFL', Any(output)) # see #39
+        self.assertIn(b'BDFL', cast(Any, output)) # see #39
 
     def test_check_output_stdout_arg(self) -> None:
         # check_output() function stderr redirected to stdout
@@ -633,7 +633,7 @@ class ProcessTestCase(BaseTestCase):
         # an invalid type of the bufsize argument should raise
         # TypeError.
         with self.assertRaises(TypeError):
-            subprocess.Popen([sys.executable, "-c", "pass"], Any("orange"))
+            subprocess.Popen([sys.executable, "-c", "pass"], cast(Any, "orange"))
 
     def test_bufsize_is_none(self) -> None:
         # bufsize=None should be the same as bufsize=0.
@@ -897,7 +897,7 @@ class POSIXProcessTestCase(BaseTestCase):
         # args is a string
         fd, fname = mkstemp()
         # reopen in text mode
-        with open(fd, "w", errors=Any("surrogateescape")) as fobj: # see #260
+        with open(fd, "w", errors=cast(Any, "surrogateescape")) as fobj: # see #260
             fobj.write("#!/bin/sh\n")
             fobj.write("exec '%s' -c 'import sys; sys.exit(47)'\n" %
                        sys.executable)
@@ -942,7 +942,7 @@ class POSIXProcessTestCase(BaseTestCase):
         # call() function with string argument on UNIX
         fd, fname = mkstemp()
         # reopen in text mode
-        with open(fd, "w", errors=Any("surrogateescape")) as fobj: # see #260
+        with open(fd, "w", errors=cast(Any, "surrogateescape")) as fobj: # see #260
             fobj.write("#!/bin/sh\n")
             fobj.write("exec '%s' -c 'import sys; sys.exit(47)'\n" %
                        sys.executable)

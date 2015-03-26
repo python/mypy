@@ -1,4 +1,5 @@
 import glob
+import importlib
 import os.path
 import random
 import shutil
@@ -110,10 +111,11 @@ def test_stubgen(testcase):
         with open(path, 'w') as file:
             file.write(source)
             file.close()
+            # Without this we may sometimes be unable to import the module below, as importlib
+            # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
+            reset_importlib_caches()
             try:
                 if testcase.name.endswith('_import'):
-                    # For some reason this sleep fixes random test failures.
-                    time.sleep(0.01)
                     generate_stub_for_module(name, out_dir, quiet=True)
                 else:
                     generate_stub(path, out_dir)
@@ -126,6 +128,13 @@ def test_stubgen(testcase):
     finally:
         shutil.rmtree(out_dir)
         os.remove(path)
+
+
+def reset_importlib_caches():
+    try:
+        importlib.invalidate_caches()
+    except (ImportError, AttributeError):
+        pass
 
 
 def load_output(dirname):

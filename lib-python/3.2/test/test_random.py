@@ -8,7 +8,7 @@ import warnings
 from math import log, exp, pi, fsum, sin
 from test import support
 
-from typing import Undefined, Any, Dict, List, Callable, Generic, TypeVar
+from typing import Undefined, Any, Dict, List, Callable, Generic, TypeVar, cast
 
 RT = TypeVar('RT', random.Random, random.SystemRandom)
 
@@ -267,7 +267,7 @@ class MersenneTwister_TestBasicOps(TestBasicOps[random.Random]):
         # Wrong type, s/b tuple of 625 ints
         self.assertRaises(TypeError, self.gen.setstate, (2, tuple(['a',]*625), None))
         # Last element s/b an int also
-        self.assertRaises(TypeError, self.gen.setstate, (2, Any((0,))*624+('a',), None))
+        self.assertRaises(TypeError, self.gen.setstate, (2, cast(Any, (0,))*624+('a',), None))
 
     def test_referenceImplementation(self) -> None:
         # Compare the python implementation with results from the original

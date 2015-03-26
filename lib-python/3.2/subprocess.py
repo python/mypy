@@ -373,9 +373,9 @@ if mswindows:
     import _subprocess
     class STARTUPINFO:
         dwFlags = 0
-        hStdInput = Any(None)
-        hStdOutput = Any(None)
-        hStdError = Any(None)
+        hStdInput = cast(Any, None)
+        hStdOutput = cast(Any, None)
+        hStdError = cast(Any, None)
         wShowWindow = 0
     class pywintypes:
         error = IOError
@@ -1048,8 +1048,8 @@ class Popen(object):
 
 
         def _communicate(self, input: Any) -> Tuple[Any, Any]:
-            stdout = Any(None) # Return
-            stderr = Any(None) # Return
+            stdout = cast(Any, None) # Return
+            stderr = cast(Any, None) # Return
 
             if self.stdout:
                 stdout = []
@@ -1483,8 +1483,8 @@ class Popen(object):
 
             # Translate newlines, if requested.
             # This also turns bytes into strings.
-            stdout3 = Any(stdout2)
-            stderr3 = Any(stderr2)
+            stdout3 = cast(Any, stdout2)
+            stderr3 = cast(Any, stderr2)
             if self.universal_newlines:
                 if stdout is not None:
                     stdout3 = self._translate_newlines(
