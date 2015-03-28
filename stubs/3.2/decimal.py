@@ -5,6 +5,8 @@ from typing import (
     Tuple,NamedTuple
 )
 
+_Decimal = Union[Decimal, int]
+
 BasicContext = Undefined(Context)
 DefaultContext = Undefined(Context)
 ExtendedContext = Undefined(Context)
@@ -43,8 +45,8 @@ class Context:
                  _ignored_flags=None) -> None: pass
     def Etiny(self): pass
     def Etop(self): pass
-    def abs(self, x: Decimal) -> Decimal: pass
-    def add(self, x: Decimal, y: Decimal) -> Decimal: pass
+    def abs(self, x: _Decimal) -> Decimal: pass
+    def add(self, x: _Decimal, y: _Decimal) -> Decimal: pass
     def canonical(self, x): pass
     def clear_flags(self): pass
     def clear_traps(self): pass
@@ -118,7 +120,7 @@ class ConversionSyntax(InvalidOperation): pass
 class Decimal(SupportsInt, SupportsFloat, SupportsAbs[Decimal], SupportsRound[int]):
     # TODO: SupportsCeil, SupportsFloor, SupportsTrunc?
 
-    def __init__(cls, value: Union[Decimal, str] = '', context: Context = None) -> None: pass
+    def __init__(cls, value: Union[_Decimal, str] = '', context: Context = None) -> None: pass
 
     @property
     def imag(self) -> Decimal: pass
@@ -128,16 +130,16 @@ class Decimal(SupportsInt, SupportsFloat, SupportsAbs[Decimal], SupportsRound[in
     def adjusted(self) -> int: pass
     def as_tuple(self) -> DecimalTuple: pass
     def canonical(self) -> Decimal: pass
-    def compare(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def compare_signal(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def compare_total(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def compare_total_mag(self, other: Decimal, context: Context = None) -> Decimal: pass
+    def compare(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def compare_signal(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def compare_total(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def compare_total_mag(self, other: _Decimal, context: Context = None) -> Decimal: pass
     def conjugate(self) -> Decimal: pass
     def copy_abs(self) -> Decimal: pass
     def copy_negate(self) -> Decimal: pass
-    def copy_sign(self, other: Decimal, context: Context = None) -> Decimal: pass
+    def copy_sign(self, other: _Decimal, context: Context = None) -> Decimal: pass
     def exp(self, context: Context = None) -> Decimal: pass
-    def fma(self, other: Decimal, third: Decimal, context: Context = None) -> Decimal: pass
+    def fma(self, other: _Decimal, third: _Decimal, context: Context = None) -> Decimal: pass
     @classmethod
     def from_float(cls, f: float) -> Decimal: pass
     def is_canonical(self) -> bool: pass
@@ -153,70 +155,70 @@ class Decimal(SupportsInt, SupportsFloat, SupportsAbs[Decimal], SupportsRound[in
     def ln(self, context: Context = None) -> Decimal: pass
     def log10(self, context: Context = None) -> Decimal: pass
     def logb(self, context: Context = None) -> Decimal: pass
-    def logical_and(self, other: Decimal, context: Context = None) -> Decimal: pass
+    def logical_and(self, other: _Decimal, context: Context = None) -> Decimal: pass
     def logical_invert(self, context: Context = None) -> Decimal: pass
-    def logical_or(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def logical_xor(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def max(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def max_mag(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def min(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def min_mag(self, other: Decimal, context: Context = None) -> Decimal: pass
+    def logical_or(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def logical_xor(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def max(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def max_mag(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def min(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def min_mag(self, other: _Decimal, context: Context = None) -> Decimal: pass
     def next_minus(self, context: Context = None) -> Decimal: pass
     def next_plus(self, context: Context = None) -> Decimal: pass
-    def next_toward(self, other: Decimal, context: Context = None) -> Decimal: pass
+    def next_toward(self, other: _Decimal, context: Context = None) -> Decimal: pass
     def normalize(self, context: Context = None) -> Decimal: pass
     def number_class(self, context: Context = None) -> str: pass
-    def quantize(self, exp: Decimal, rounding: str = None,
+    def quantize(self, exp: _Decimal, rounding: str = None,
                  context: Context = None) -> Decimal: pass
     def radix(self) -> Decimal: pass
-    def remainder_near(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def rotate(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def same_quantum(self, other: Decimal, context: Context = None) -> bool: pass
-    def scaleb(self, other: Decimal, context: Context = None) -> Decimal: pass
-    def shift(self, other: Decimal, context: Context = None) -> Decimal: pass
+    def remainder_near(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def rotate(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def same_quantum(self, other: _Decimal, context: Context = None) -> bool: pass
+    def scaleb(self, other: _Decimal, context: Context = None) -> Decimal: pass
+    def shift(self, other: _Decimal, context: Context = None) -> Decimal: pass
     def sqrt(self, context: Context = None) -> Decimal: pass
     def to_eng_string(self, context: Context = None) -> str: pass
     def to_integral(self, rounding: str = None, context: Context = None) -> Decimal: pass
     def to_integral_exact(self, rounding: str = None, context: Context = None) -> Decimal: pass
     def to_integral_value(self, rounding: str = None, context: Context = None) -> Decimal: pass
     def __abs__(self) -> Decimal: pass
-    def __add__(self, other: Decimal) -> Decimal: pass
+    def __add__(self, other: _Decimal) -> Decimal: pass
     def __bool__(self) -> bool: pass
     def __ceil__(self) -> int: pass
     def __complex__(self) -> complex: pass
     def __copy__(self) -> Decimal: pass
     def __deepcopy__(self) -> Decimal: pass
-    def __divmod__(self, other) -> Tuple[Decimal, Decimal]: pass
+    def __divmod__(self, other: _Decimal) -> Tuple[Decimal, Decimal]: pass
     def __eq__(self, other: object) -> bool: pass
     def __float__(self) -> float: pass
     def __floor__(self) -> int: pass
-    def __floordiv__(self, other: Decimal) -> Decimal: pass
+    def __floordiv__(self, other: _Decimal) -> Decimal: pass
     def __format__(self, specifier, context=None, _localeconv=None) -> str: pass
-    def __ge__(self, other: Decimal) -> bool: pass
-    def __gt__(self, other: Decimal) -> bool: pass
+    def __ge__(self, other: _Decimal) -> bool: pass
+    def __gt__(self, other: _Decimal) -> bool: pass
     def __hash__(self) -> int: pass
     def __int__(self) -> int: pass
-    def __le__(self, other: Decimal) -> bool: pass
-    def __lt__(self, other: Decimal) -> bool: pass
-    def __mod__(self, other: Decimal) -> Decimal: pass
-    def __mul__(self, other: Decimal) -> Decimal: pass
+    def __le__(self, other: _Decimal) -> bool: pass
+    def __lt__(self, other: _Decimal) -> bool: pass
+    def __mod__(self, other: _Decimal) -> Decimal: pass
+    def __mul__(self, other: _Decimal) -> Decimal: pass
     def __ne__(self, other: object) -> bool: pass
     def __neg__(self) -> Decimal: pass
     def __pos__(self) -> Decimal: pass
-    def __pow__(self, other: Decimal) -> Decimal: pass
-    def __radd__(self, other: Decimal) -> Decimal: pass
-    def __rdivmod__(self, other: Decimal) -> Tuple[Decimal, Decimal]: pass
+    def __pow__(self, other: _Decimal) -> Decimal: pass
+    def __radd__(self, other: int) -> Decimal: pass
+    def __rdivmod__(self, other: int) -> Tuple[Decimal, Decimal]: pass
     def __reduce__(self): pass
-    def __rfloordiv__(self, other: Decimal) -> Decimal: pass
-    def __rmod__(self, other: Decimal) -> Decimal: pass
-    def __rmul__(self, other: Decimal) -> Decimal: pass
+    def __rfloordiv__(self, other: int) -> Decimal: pass
+    def __rmod__(self, other: int) -> Decimal: pass
+    def __rmul__(self, other: int) -> Decimal: pass
     def __round__(self, n=None) -> int: pass
-    def __rpow__(self, other: Decimal) -> Decimal: pass
-    def __rsub__(self, other: Decimal) -> Decimal: pass
-    def __rtruediv__(self, other: Decimal) -> Decimal: pass
+    def __rpow__(self, other: int) -> Decimal: pass
+    def __rsub__(self, other: int) -> Decimal: pass
+    def __rtruediv__(self, other: int) -> Decimal: pass
     def __sizeof__(self) -> int: pass
-    def __sub__(self, other: Decimal) -> Decimal: pass
-    def __truediv__(self, other: Decimal) -> Decimal: pass
+    def __sub__(self, other: _Decimal) -> Decimal: pass
+    def __truediv__(self, other: _Decimal) -> Decimal: pass
     def __trunc__(self) -> int: pass
 
 class DecimalException(ArithmeticError): pass
