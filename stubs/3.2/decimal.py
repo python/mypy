@@ -2,7 +2,7 @@
 
 from typing import (
     Any, Undefined, Union, SupportsInt, SupportsFloat, SupportsAbs, SupportsRound, Sequence,
-    Tuple,NamedTuple
+    Tuple, NamedTuple, Dict
 )
 
 _Decimal = Union[Decimal, int]
@@ -25,13 +25,17 @@ ROUND_HALF_UP = Undefined(str)
 ROUND_UP = Undefined(str)
 
 def getcontext() -> Context: pass
-def localcontext(ctx: Context = None) -> Context: pass
+def localcontext(ctx: Context = None) -> _ContextManager: pass
 def setcontext(c: Context) -> None: pass
 
 DecimalTuple = NamedTuple('DecimalTuple',
                           [('sign', int),
                            ('digits', Sequence[int]), # TODO: Use Tuple[int, ...]
                            ('exponent', int)])
+
+class _ContextManager:
+    def __enter__(self) -> Context: pass
+    def __exit__(self, t, v, tb) -> None: pass
 
 class Context:
     Emax = Undefined(int)
@@ -40,6 +44,7 @@ class Context:
     clamp = Undefined(int)
     prec = Undefined(int)
     rounding = Undefined(str)
+    traps = Undefined(Dict[type, bool])
     def __init__(self, prec: int = None, rounding: str = None, Emin: int = None, Emax: int = None,
                  capitals: int = None, clamp: int = None, flags=None, traps=None,
                  _ignored_flags=None) -> None: pass
@@ -120,7 +125,9 @@ class ConversionSyntax(InvalidOperation): pass
 class Decimal(SupportsInt, SupportsFloat, SupportsAbs[Decimal], SupportsRound[int]):
     # TODO: SupportsCeil, SupportsFloor, SupportsTrunc?
 
-    def __init__(cls, value: Union[_Decimal, str] = '', context: Context = None) -> None: pass
+    def __init__(cls, value: Union[_Decimal, float, str,
+                                   Tuple[int, Sequence[int], int]] = '',
+                 context: Context = None) -> None: pass
 
     @property
     def imag(self) -> Decimal: pass
