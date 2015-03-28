@@ -995,3 +995,18 @@ print(eq('x', 'x', 'z'))
 [out]
 3
 x
+
+[case testIntDecimalCompatibility]
+import typing
+from decimal import Decimal
+print(Decimal(1) + 2)
+print(Decimal(1) - 2)
+print(1 + Decimal('2.34'))
+print(1 - Decimal('2.34'))
+print(2 * Decimal('2.34'))
+[out]
+3
+-1
+3.34
+-1.34
+4.68
