@@ -5,8 +5,34 @@ Dealing with common issues
 
 Statically typed function bodies are often identical to normal Python
 code, but sometimes you need to do things slightly differently. This
-section introduces some of the most common cases which require
-different conventions in statically typed code.
+section has examples of cases when you need to update your code
+to use static typing, and ideas for working
+around issues if the type checker gets confused about your code.
+
+Spurious errors and locally silencing the checker
+-------------------------------------------------
+
+You can use a ``# type: ignore`` comment to silence the type checker
+on a particular line. For example, let's say our code is using
+the C extension module ``frobnicate``, and there's no stub available.
+Mypy will complain about this, as it has no information about the
+module:
+
+.. code-block:: python
+
+    import frobnicate  # Error: No module "frobnicate"
+    frobnicate.start()
+
+You can add a ``# type: ignore`` comment to tell mypy to ignore this
+error:
+
+.. code-block:: python
+
+    import frobnicate  # type: ignore
+    frobnicate.start()  # Okay!
+
+The second line is now fine, since the ignore comment causes the name
+``frobnicate`` to get an implicit ``Any`` type.
 
 Types of empty collections
 --------------------------
@@ -16,7 +42,7 @@ dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
-   a = []   # type: List[int]
+   a = []  # type: List[int]
 
 Without the annotation the type checker has no way of figuring out the
 precise type of ``a``.
@@ -27,7 +53,7 @@ of the variable has been declared or inferred before:
 
 .. code-block:: python
 
-   a = []            # Okay if type of a known
+   a = []  # Okay if type of a known
 
 Sometimes you can avoid the explicit list item type by using a list
 comprehension. Here a type annotation is needed:
