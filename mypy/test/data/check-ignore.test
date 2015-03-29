@@ -18,3 +18,8 @@ from xyz_m import a, b # type: ignore
 a.foo
 b()
 1() # E: "int" not callable
+
+[case testIgnoreImportAllError]
+from xyz_m import * # type: ignore
+x   # E: Name 'x' is not defined
+1()
