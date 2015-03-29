@@ -7,25 +7,37 @@ List of major changes to this document:
 
    Some of the latest changes are not yet supported by the mypy
    version on PyPI. Use the
-   `development version on GitHub <https://github.com/JukkaL/mypy>`_ to get
+   `development version on GitHub <https://github.com/JukkaL/mypy>`_ to use
    them.
 
 - Mar 2015
-    Update documentation to reflect PEP 484.
-    Add :ref:`named-tuples` and :ref:`optional`.
-    Do not mention type application syntax (for
-    example, ``List[int]()``), as it's no longer supported,
-    due to PEP 484 compatibility. Rename ``typevar`` to
-    ``TypeVar``. Document ``# type: ignore`` which allows
-    locally ignoring spurious errors (:ref:`silencing_checker`).
-    No longer mention
-    ``Any(x)`` as a valid cast, as it will be phased out soon.
+    Update documentation to reflect PEP 484:
+
+    * Add :ref:`named-tuples` and :ref:`optional`.
+
+    * Do not mention type application syntax (for
+      example, ``List[int]()``), as it's no longer supported,
+      due to PEP 484 compatibility.
+
+    * Rename ``typevar`` to ``TypeVar``.
+
+    * Document ``# type: ignore`` which allows
+      locally ignoring spurious errors (:ref:`silencing_checker`).
+
+    * No longer mention
+      ``Any(x)`` as a valid cast, as it will be phased out soon.
+
+    * Mention the new ``.pyi`` stub file extension. Stubs can live
+      in the same directory as the rest of the program.
 
 - Jan 2015
-    Mypy moves closer to PEP 484.
-    Add :ref:`type-aliases`. Update discussion of
-    overloading -- it's now only supported in stubs.
-    Rename ``Function[...]`` to ``Callable[...]``.
+    Mypy moves closer to PEP 484:
+
+    * Add :ref:`type-aliases`.
+
+    * Update discussion of overloading -- it's now only supported in stubs.
+
+    * Rename ``Function[...]`` to ``Callable[...]``.
 
 - Dec 2014
     Publish mypy version 0.1.0 on PyPI.
