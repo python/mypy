@@ -7,3 +7,8 @@ x() # E: "int" not callable
 x = 1
 y # type: ignore
 z # E: Name 'z' is not defined
+
+[case testIgnoreImportError]
+import xyz_m # type: ignore
+xyz_m.foo
+1() # E: "int" not callable

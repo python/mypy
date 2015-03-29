@@ -127,7 +127,9 @@ class Parser:
         is_bom = self.parse_bom()
         defs = self.parse_defs()
         self.expect_type(Eof)
-        node = MypyFile(defs, self.imports, is_bom, self.ignored_lines)
+        imports = [node for node in self.imports
+                   if node.line not in self.ignored_lines]
+        node = MypyFile(defs, imports, is_bom, self.ignored_lines)
         return node
 
     # Parse the initial part
