@@ -166,8 +166,10 @@ for module ``csv``, and use a subdirectory with ``__init__.pyi`` for packages.
 
 If there is both a ``.py`` and a ``.pyi`` file for a module, the ``.pyi`` file
 takes precedence. This way you can easily add annotations for a module even if
-you don't want to modify the module. This can be useful, for example, if you
-use 3rd party open source code or legacy code that you don't want to modify.
+you don't want to modify the source code. This can be useful, for example, if you
+use 3rd party open source libraries in your program. You can also override the stubs
+mypy uses for standard libary modules, in case you need to make local
+modifications.
 
 That's it! Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,
