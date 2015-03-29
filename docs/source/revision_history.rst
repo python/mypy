@@ -16,7 +16,10 @@ List of major changes to this document:
     Do not mention type application syntax (for
     example, ``List[int]()``), as it's no longer supported,
     due to PEP 484 compatibility. Rename ``typevar`` to
-    ``TypeVar``.
+    ``TypeVar``. Document ``# type: ignore`` which allows
+    locally ignoring spurious errors (:ref:`silencing_checker`).
+    No longer mention
+    ``Any(x)`` as a valid cast, as it will be phased out soon.
 
 - Jan 2015
     Mypy moves closer to PEP 484.

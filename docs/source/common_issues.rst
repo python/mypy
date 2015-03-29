@@ -9,6 +9,8 @@ section has examples of cases when you need to update your code
 to use static typing, and ideas for working
 around issues if the type checker gets confused about your code.
 
+.. _silencing_checker:
+
 Spurious errors and locally silencing the checker
 -------------------------------------------------
 
