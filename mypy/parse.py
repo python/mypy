@@ -1568,7 +1568,7 @@ class Parser:
 
     def expect_break(self) -> Token:
         token = self.expect_type(Break)
-        if re.match(self.type_ignore_exp, token.pre):
+        if self.type_ignore_exp.match(token.pre):
             self.ignored_lines.add(token.line)
         return token
 

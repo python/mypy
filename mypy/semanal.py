@@ -164,6 +164,8 @@ class SemanticAnalyzer(NodeVisitor):
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
 
+        self.errors.set_ignored_lines(set())
+
     def visit_func_def(self, defn: FuncDef) -> None:
         self.errors.push_function(defn.name())
         self.update_function_type_variables(defn)
