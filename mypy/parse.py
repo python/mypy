@@ -1640,6 +1640,9 @@ class Parser:
         whitespace_or_comments = token.rep().strip()
         if self.annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
+            if type_as_str == 'ignore':
+                # Actually a "# type: ignore" annotation -> not a type.
+                return None
             tokens = lex.lex(type_as_str, token.line)
             if len(tokens) < 2:
                 # Empty annotation (only Eof token)

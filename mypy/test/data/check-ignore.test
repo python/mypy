@@ -23,3 +23,8 @@ b()
 from xyz_m import * # type: ignore
 x   # E: Name 'x' is not defined
 1()
+
+[case testIgnoreAssignmentTypeError]
+x = 1
+x = '' # type: ignore
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
