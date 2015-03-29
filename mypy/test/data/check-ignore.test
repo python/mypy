@@ -12,3 +12,9 @@ z # E: Name 'z' is not defined
 import xyz_m # type: ignore
 xyz_m.foo
 1() # E: "int" not callable
+
+[case testIgnoreImportFromError]
+from xyz_m import a, b # type: ignore
+a.foo
+b()
+1() # E: "int" not callable
