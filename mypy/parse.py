@@ -94,6 +94,8 @@ class Parser:
     imports = Undefined(List[ImportBase])
     # Names imported from __future__.
     future_options = Undefined(List[str])
+    # Lines to ignore (using # type: ignore).
+    ignored_lines = Undefined(Set[int])
 
     def __init__(self, fnam: str, errors: Errors, pyversion: int,
                  custom_typing_module: str = None) -> None:
@@ -114,6 +116,7 @@ class Parser:
         self.ind = 0
         self.imports = []
         self.future_options = []
+        self.ignored_lines = set()
         file = self.parse_file()
         if self.raise_on_error and self.errors.is_errors():
             self.errors.raise_error()
@@ -124,7 +127,7 @@ class Parser:
         is_bom = self.parse_bom()
         defs = self.parse_defs()
         self.expect_type(Eof)
-        node = MypyFile(defs, self.imports, is_bom)
+        node = MypyFile(defs, self.imports, is_bom, self.ignored_lines)
         return node
 
     # Parse the initial part
@@ -1549,9 +1552,10 @@ class Parser:
         self.errors.report(line, msg)
 
     def expect_type(self, typ: type) -> Token:
-        if isinstance(self.current(), typ):
+        current = self.current()
+        if isinstance(current, typ):
             self.ind += 1
-            return self.tok[self.ind - 1]
+            return current
         else:
             self.parse_error()
 
@@ -1559,7 +1563,10 @@ class Parser:
         return self.expect_type(Colon), self.expect_type(Break)
 
     def expect_break(self) -> Token:
-        return self.expect_type(Break)
+        token = self.expect_type(Break)
+        if '# type: ignore' in token.pre:
+            self.ignored_lines.add(token.line)
+        return token
 
     def current(self) -> Token:
         return self.tok[self.ind]

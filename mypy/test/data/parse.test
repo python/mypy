@@ -3240,3 +3240,24 @@ MypyFile:1(
           NameExpr(True))
         StrExpr(eggs)
         StrExpr(bacon)))))
+
+[case testIgnoreLine]
+import x # type: ignore
+[out]
+MypyFile:1(
+  Import:1(x : x)
+  IgnoredLines(1))
+
+[case testIgnore2Lines]
+x
+y # type: ignore
+z # type: ignore
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(x))
+  ExpressionStmt:2(
+    NameExpr(y))
+  ExpressionStmt:3(
+    NameExpr(z))
+  IgnoredLines(2, 3))

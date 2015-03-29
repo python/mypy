@@ -46,6 +46,7 @@ files = [
     'check-lists.test',
     'check-namedtuple.test',
     'check-type-aliases.test',
+    'check-ignore.test',
 ]
 
 

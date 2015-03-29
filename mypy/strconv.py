@@ -80,6 +80,9 @@ class StrConv(NodeVisitor[str]):
             # Insert path. Normalize directory separators to / to unify test
             # case# output in all platforms.
             a.insert(0, o.path.replace(os.sep, '/'))
+        if o.ignored_lines:
+            a.append('IgnoredLines(%s)' % ', '.join(str(line)
+                                                    for line in sorted(o.ignored_lines)))
         return self.dump(a, o)
 
     def visit_import(self, o):

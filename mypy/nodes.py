@@ -123,13 +123,18 @@ class MypyFile(SymbolNode):
     is_bom = False    # Is there a UTF-8 BOM at the start?
     names = Undefined('SymbolTable')
     imports = Undefined(List['ImportBase'])    # All import nodes within the file
+    ignored_lines = Undefined(Set[int])        # Lines to ignore when checking
 
     def __init__(self, defs: List[Node], imports: List['ImportBase'],
-                 is_bom: bool = False) -> None:
+                 is_bom: bool = False, ignored_lines: Set[int] = None) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
+        if ignored_lines:
+            self.ignored_lines = ignored_lines
+        else:
+            self.ignored_lines = set()
 
     def name(self) -> str:
         return self._name

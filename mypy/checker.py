@@ -341,11 +341,14 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
         self.errors.set_file(path)
+        self.errors.set_ignored_lines(file_node.ignored_lines)
         self.globals = file_node.names
         self.locals = None
 
         for d in file_node.defs:
             self.accept(d)
+
+        self.errors.set_ignored_lines(set())
 
     def accept(self, node: Node, type_context: Type = None) -> Type:
         """Type check a node in the given type context."""
