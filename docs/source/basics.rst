@@ -164,6 +164,11 @@ import.  You can create a stub easily; here is an overview:
 Use the normal Python file name conventions for modules, e.g. ``csv.pyi``
 for module ``csv``, and use a subdirectory with ``__init__.pyi`` for packages.
 
+If there is both a ``.py`` and a ``.pyi`` file for a module, the ``.pyi`` file
+takes precedence. This way you can easily add annotations for a module even if
+you don't want to modify the module. This can be useful, for example, if you
+use 3rd party open source code or legacy code that you don't want to modify.
+
 That's it! Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,
 consider making it available for other programmers that use mypy or
