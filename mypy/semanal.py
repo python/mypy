@@ -148,6 +148,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
+        self.errors.set_ignored_lines(file_node.ignored_lines)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.globals = file_node.names

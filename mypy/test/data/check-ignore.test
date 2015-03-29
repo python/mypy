@@ -1,0 +1,9 @@
+[case testIgnoreTypeError]
+x = 1
+x() # type: ignore
+x() # E: "int" not callable
+
+[case testIgnoreUndefinedName]
+x = 1
+y # type: ignore
+z # E: Name 'z' is not defined
