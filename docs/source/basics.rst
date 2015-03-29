@@ -130,8 +130,8 @@ Library stubs
 In order to type check code that uses library modules such as those
 included in the Python standard library, you need to have library
 *stubs*. A library stub defines a skeleton of the public interface
-of the library, including classes, variables and functions, and
-their types.
+of the library, including classes, variables and functions and
+their types, but empty function bodies (containing only ``pass``).
 
 For example, consider this code:
 
@@ -151,15 +151,18 @@ a definition like this for ``chr``:
 Mypy complains if it can't find a stub for a library module that you
 import.  You can create a stub easily; here is an overview:
 
-* Write a stub file for the library and store it as a ``.py`` file in
-  a directory reserved for stubs (e.g., ``myproject/stubs``).
-* Set the environment variable ``MYPYPATH`` to refer to the above directory.
+* Write a stub file for the library and store it as a ``.pyi`` file within
+  the mypy module search path. The Python interpreter will ignore the ``.pyi`` file,
+  so you can have stubs and normal Python files in the same directory.
+* Alternatively, create a ``.py`` file in
+  a directory reserved for stubs (e.g., ``myproject/stubs``). Also, you have
+  to set the environment variable ``MYPYPATH`` to refer to the above directory.
   For example::
 
-      $ export MYPYPATH=~/work/myproject/stubs
+    $ export MYPYPATH=~/work/myproject/stubs
 
-Use the normal Python file name conventions for modules, e.g. ``csv.py``
-for module ``csv``, and use a subdirectory with ``__init__.py`` for packages.
+Use the normal Python file name conventions for modules, e.g. ``csv.pyi``
+for module ``csv``, and use a subdirectory with ``__init__.pyi`` for packages.
 
 That's it! Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,
