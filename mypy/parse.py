@@ -1564,9 +1564,11 @@ class Parser:
     def expect_colon_and_break(self) -> Tuple[Token, Token]:
         return self.expect_type(Colon), self.expect_type(Break)
 
+    type_ignore_exp = re.compile(r'[ \t]*#[ \t]*type:[ \t]*ignore\b')
+
     def expect_break(self) -> Token:
         token = self.expect_type(Break)
-        if '# type: ignore' in token.pre:
+        if re.match(self.type_ignore_exp, token.pre):
             self.ignored_lines.add(token.line)
         return token
 

@@ -3261,3 +3261,34 @@ MypyFile:1(
   ExpressionStmt:3(
     NameExpr(z))
   IgnoredLines(2, 3))
+
+[case testCommentedOutIgnoreAnnotation]
+y ## type: ignore
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(y)))
+
+[case testInvalidIgnoreAnnotations]
+y # type: ignored
+y # type: IGNORE
+y # type : ignore
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(y))
+  ExpressionStmt:2(
+    NameExpr(y))
+  ExpressionStmt:3(
+    NameExpr(y)))
+
+[case testSpaceInIgnoreAnnotations]
+y #  type:  ignore    # foo
+y #type:ignore
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    NameExpr(y))
+  ExpressionStmt:2(
+    NameExpr(y))
+  IgnoredLines(1, 2))
