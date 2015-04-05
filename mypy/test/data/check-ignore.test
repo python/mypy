@@ -63,3 +63,9 @@ x = f() # type: ignore
 y = x
 x = 1
 [builtins fixtures/list.py]
+
+[case testIgnoreTypeInferenceErrorAndMultipleAssignment]
+x, y = [], [] # type: ignore
+z = x
+z = y
+[builtins fixtures/list.py]
