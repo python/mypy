@@ -1203,10 +1203,12 @@ class TypeChecker(NodeVisitor[Type]):
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, Void):
             self.check_not_void(init_type, context)
+            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif not self.is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for type
             # inference (it's not specific enough).
             self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         else:
             # Infer type of the target.
 
@@ -1224,6 +1226,21 @@ class TypeChecker(NodeVisitor[Type]):
         if var:
             var.type = type
             self.store_type(lvalue, type)
+
+    def set_inference_error_fallback_type(self, var: Var, lvalue: Node, type: Type,
+                                          context: Context) -> None:
+        """If errors on context line are ignored, store dummy type for variable.
+
+        If a program ignores error on type inference error, the variable should get some
+        inferred type so that if can used later on in the program. Example:
+
+          x = []  # type: ignore
+          x.append(1)   # Should be ok!
+
+        We implement this here by giving x a valid type (Any).
+        """
+        if context.line in self.errors.ignored_lines:
+            self.set_inferred_type(var, lvalue, AnyType())
 
     def is_valid_inferred_type(self, typ: Type) -> bool:
         """Is an inferred type invalid?
