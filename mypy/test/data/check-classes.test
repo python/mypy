@@ -830,6 +830,20 @@ a.f.x # E: "int" has no attribute "x"
 a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.py]
 
+[case testPropertyWithDeleterButNoSetter]
+import typing
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.deleter
+    def f(self, x) -> None:
+        pass
+a = A()
+a.f = a.f # E: Property "f" defined in "A" is read-only
+a.f.x # E: "int" has no attribute "x"
+[builtins fixtures/property.py]
+
 
 -- Multiple inheritance, non-object built-in class as base
 -- -------------------------------------------------------

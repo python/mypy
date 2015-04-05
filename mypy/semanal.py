@@ -295,10 +295,14 @@ class SemanticAnalyzer(NodeVisitor):
         Assume that the first method (@property) has already been analyzed.
         """
         defn.is_property = True
-        # The first item represents the entire property.
-        defn.items[0].var.is_settable_property = True
         items = defn.items
         for item in items[1:]:
+            if len(item.decorators) == 1:
+                node = item.decorators[0]
+                if isinstance(node, MemberExpr):
+                    if node.name == 'setter':
+                        # The first item represents the entire property.
+                        defn.items[0].var.is_settable_property = True
             item.func.accept(self)
 
     def analyse_function(self, defn: FuncItem) -> None:
