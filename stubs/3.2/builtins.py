@@ -2,8 +2,8 @@
 
 from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
-    Sequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic, Set,
-    AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
+    Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
+    Set, AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, Union
 )
 from abc import abstractmethod, ABCMeta
@@ -432,7 +432,7 @@ class function:
     __module__ = ''
     __code__ = Undefined(Any)
 
-class list(Sequence[_T], Reversible[_T], Generic[_T]):
+class list(MutableSequence[_T], Generic[_T]):
     @overload
     def __init__(self) -> None: pass
     @overload

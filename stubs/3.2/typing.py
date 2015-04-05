@@ -73,19 +73,42 @@ class Iterator(Iterable[_T], Generic[_T]):
     @abstractmethod
     def __next__(self) -> _T: pass
 
-class Sequence(Iterable[_T], Sized, Generic[_T]):
-    @abstractmethod
-    def __contains__(self, x: object) -> bool: pass
+class Sequence(Iterable[_T], Sized, Reversible[_T], Generic[_T]):
     @overload
     @abstractmethod
     def __getitem__(self, i: int) -> _T: pass
     @overload
     @abstractmethod
     def __getitem__(self, s: slice) -> Sequence[_T]: pass
-    @abstractmethod
+    # Mixin methods
     def index(self, x: Any) -> int: pass
-    @abstractmethod
     def count(self, x: Any) -> int: pass
+    def __contains__(self, x: object) -> bool: pass
+    def __iter__(self) -> Iterator[_T]: pass
+    def __reversed__(self) -> Iterator[_T]: pass
+
+class MutableSequence(Sequence[_T], Generic[_T]):
+    @abstractmethod
+    def insert(self, index: int, object: _T) -> None: pass
+    @overload
+    @abstractmethod
+    def __setitem__(self, i: int, o: _T) -> None: pass
+    @overload
+    @abstractmethod
+    def __setitem__(self, s: slice, o: Sequence[_T]) -> None: pass
+    @overload
+    @abstractmethod
+    def __delitem__(self, i: int) -> None: pass
+    @abstractmethod
+    @overload
+    def __delitem__(self, s: slice) -> None: pass
+    # Mixin methods
+    def append(self, object: _T) -> None: pass
+    def extend(self, iterable: Iterable[_T]) -> None: pass
+    def reverse(self) -> None: pass
+    def pop(self, index: int = -1) -> _T: pass
+    def remove(self, object: _T) -> None: pass
+    def __iadd__(self, x: Iterable[_T]) -> MutableSequence[_T]: pass
 
 class AbstractSet(Iterable[_T], Sized, Generic[_T]):
     @abstractmethod
