@@ -189,7 +189,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
     """
 
     typestr = typestr.strip()
-    tokens = lex(typestr, line)
+    tokens = lex(typestr, line)[0]
     result, i = parse_type(tokens, 0)
     if i < len(tokens) - 2:
         raise TypeParseError(tokens[i], i)

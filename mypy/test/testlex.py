@@ -425,7 +425,7 @@ class LexerSuite(Suite):
         if lexed.endswith(' ...'):
             lexed = lexed[:-3] + 'Break() Eof()'
 
-        l = lex(src)
+        l = lex(src)[0]
         r = []
         for t in l:
             r.append(str(t))
@@ -439,7 +439,7 @@ class LexerSuite(Suite):
         s = s.replace('\\n', '\n')
         s = s.replace('\\r', '\r')
 
-        tt = lex(s)
+        tt = lex(s)[0]
         r = []
         for t in tt:
             r.append(t.line)

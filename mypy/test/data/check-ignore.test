@@ -19,6 +19,14 @@ a.foo
 b()
 1() # E: "int" not callable
 
+[case testIgnoreImportFromErrorMultiline]
+from xyz_m import ( # type: ignore
+    a, b
+)
+a.foo
+b()
+1() # E: "int" not callable
+
 [case testIgnoreImportAllError]
 from xyz_m import * # type: ignore
 x   # E: Name 'x' is not defined
