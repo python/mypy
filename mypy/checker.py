@@ -1239,7 +1239,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         We implement this here by giving x a valid type (Any).
         """
-        if context.line in self.errors.ignored_lines:
+        if context.get_line() in self.errors.ignored_lines:
             self.set_inferred_type(var, lvalue, AnyType())
 
     def is_valid_inferred_type(self, typ: Type) -> bool:
