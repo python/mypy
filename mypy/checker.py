@@ -1053,9 +1053,11 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
                                           rvalue_type: TupleType, context: Context,
-                                          undefined_rvalue: bool, infer_lvalue_type: bool=True) -> None:
+                                          undefined_rvalue: bool,
+                                          infer_lvalue_type: bool = True) -> None:
         if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
-            star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
+            star_index = next((i for i, lv in enumerate(lvalues)
+                               if isinstance(lv, StarExpr)), len(lvalues))
 
             left_lvs = lvalues[:star_index]
             star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
@@ -1080,7 +1082,8 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
 
     def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
-        star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
+        star_index = next((i for i, lv in enumerate(lvalues)
+                           if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
         star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
         right_lvs = lvalues[star_index+1:]
@@ -1135,14 +1138,17 @@ class TypeChecker(NodeVisitor[Type]):
                 isinstance(type, Instance))
 
     def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
-                                             context: Context, infer_lvalue_type: bool=True) -> None:
+                                             context: Context,
+                                             infer_lvalue_type: bool = True) -> None:
         if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(cast(Instance,rvalue_type))
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
-                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context), infer_lvalue_type)
+                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
+                                          infer_lvalue_type)
                 else:
-                    self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
+                    self.check_assignment(lv, self.temp_node(item_type, context),
+                                          infer_lvalue_type)
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
