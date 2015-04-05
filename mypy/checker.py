@@ -1053,9 +1053,11 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
                                           rvalue_type: TupleType, context: Context,
-                                          undefined_rvalue: bool, infer_lvalue_type: bool=True) -> None:
+                                          undefined_rvalue: bool,
+                                          infer_lvalue_type: bool = True) -> None:
         if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
-            star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
+            star_index = next((i for i, lv in enumerate(lvalues)
+                               if isinstance(lv, StarExpr)), len(lvalues))
 
             left_lvs = lvalues[:star_index]
             star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
@@ -1080,7 +1082,8 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
 
     def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
-        star_index = next((i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues))
+        star_index = next((i for i, lv in enumerate(lvalues)
+                           if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
         star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
         right_lvs = lvalues[star_index+1:]
@@ -1135,14 +1138,17 @@ class TypeChecker(NodeVisitor[Type]):
                 isinstance(type, Instance))
 
     def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
-                                             context: Context, infer_lvalue_type: bool=True) -> None:
+                                             context: Context,
+                                             infer_lvalue_type: bool = True) -> None:
         if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(cast(Instance,rvalue_type))
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
-                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context), infer_lvalue_type)
+                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
+                                          infer_lvalue_type)
                 else:
-                    self.check_assignment(lv, self.temp_node(item_type, context), infer_lvalue_type)
+                    self.check_assignment(lv, self.temp_node(item_type, context),
+                                          infer_lvalue_type)
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
@@ -1197,10 +1203,12 @@ class TypeChecker(NodeVisitor[Type]):
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, Void):
             self.check_not_void(init_type, context)
+            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif not self.is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for type
             # inference (it's not specific enough).
             self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         else:
             # Infer type of the target.
 
@@ -1218,6 +1226,21 @@ class TypeChecker(NodeVisitor[Type]):
         if var:
             var.type = type
             self.store_type(lvalue, type)
+
+    def set_inference_error_fallback_type(self, var: Var, lvalue: Node, type: Type,
+                                          context: Context) -> None:
+        """If errors on context line are ignored, store dummy type for variable.
+
+        If a program ignores error on type inference error, the variable should get some
+        inferred type so that if can used later on in the program. Example:
+
+          x = []  # type: ignore
+          x.append(1)   # Should be ok!
+
+        We implement this here by giving x a valid type (Any).
+        """
+        if context.line in self.errors.ignored_lines:
+            self.set_inferred_type(var, lvalue, AnyType())
 
     def is_valid_inferred_type(self, typ: Type) -> bool:
         """Is an inferred type invalid?

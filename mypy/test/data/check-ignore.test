@@ -50,3 +50,22 @@ m.f() # type: ignore
 m.y # E: "module" has no attribute "y"
 [file m.py]
 [builtins fixtures/module.py]
+
+[case testIgnoreTypeInferenceError]
+x = [] # type: ignore
+y = x
+x.append(1)
+[builtins fixtures/list.py]
+
+[case testIgnoreTypeInferenceError2]
+def f() -> None: pass
+x = f() # type: ignore
+y = x
+x = 1
+[builtins fixtures/list.py]
+
+[case testIgnoreTypeInferenceErrorAndMultipleAssignment]
+x, y = [], [] # type: ignore
+z = x
+z = y
+[builtins fixtures/list.py]
