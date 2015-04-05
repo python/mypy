@@ -199,6 +199,7 @@ class FuncBase(SymbolNode):
     type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
+    is_property = False
 
     @abstractmethod
     def name(self) -> str: pass
@@ -380,6 +381,7 @@ class Var(SymbolNode):
     is_staticmethod = False
     is_classmethod = False
     is_property = False
+    is_settable_property = False
 
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name

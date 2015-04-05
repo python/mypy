@@ -264,13 +264,17 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         t = []  # type: List[CallableType]
-        for item in defn.items:
+        for i, item in enumerate(defn.items):
             # TODO support decorated overloaded functions properly
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
             t.append(cast(CallableType, function_type(item.func,
                                                   self.builtin_type('builtins.function'))))
+            if item.func.is_property and i == 0:
+                # This defines a property, probably with a setter and/or deleter.
+                self.analyse_property_with_multi_part_definition(defn)
+                break
             if not [dec for dec in item.decorators
                     if refers_to_fullname(dec, 'typing.overload')]:
                 self.fail("'overload' decorator expected", item)
@@ -284,6 +288,18 @@ class SemanticAnalyzer(NodeVisitor):
             defn.info = self.type
         elif self.is_func_scope():
             self.add_local_func(defn, defn)
+
+    def analyse_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
+        """Analyze a propery defined using multiple methods (e.g., using @x.setter).
+
+        Assume that the first method (@property) has already been analyzed.
+        """
+        defn.is_property = True
+        # The first item represents the entire property.
+        defn.items[0].var.is_settable_property = True
+        items = defn.items
+        for item in items[1:]:
+            item.func.accept(self)
 
     def analyse_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
@@ -1198,15 +1214,6 @@ class SemanticAnalyzer(NodeVisitor):
         return result
 
     def visit_decorator(self, dec: Decorator) -> None:
-        if not dec.is_overload:
-            if self.is_func_scope():
-                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec),
-                                dec)
-            elif self.type:
-                dec.var.info = self.type
-                dec.var.is_initialized_in_class = True
-                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
-                                dec)
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]
@@ -1232,13 +1239,22 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
-                if dec.is_overload:
-                    self.fail('A property cannot be overloaded', dec)
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.args) > 1:
                     self.fail('Too many arguments', dec.func)
         for i in reversed(removed):
             del dec.decorators[i]
+        if not dec.is_overload or dec.var.is_property:
+            if self.is_func_scope():
+                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec),
+                                dec)
+            elif self.type:
+                dec.var.info = self.type
+                dec.var.is_initialized_in_class = True
+                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
+                                dec)
+        if dec.decorators and dec.var.is_property:
+            self.fail('Decorated property not supported', dec)
         dec.func.accept(self)
         if not dec.decorators and not dec.var.is_property:
             # No non-special decorators left. We can trivially infer the type

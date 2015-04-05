@@ -416,6 +416,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> Type:
         num_abstract = 0
+        if defn.is_property:
+            # HACK: Infer the type of the property.
+            self.visit_decorator(defn.items[0])
         for fdef in defn.items:
             self.check_func_item(fdef.func, name=fdef.func.name())
             if fdef.func.is_abstract:

@@ -7,7 +7,7 @@ from mypy.types import (
     Overloaded, TypeVarType, TypeTranslator, UnionType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
-from mypy.nodes import ARG_POS, function_type, Decorator
+from mypy.nodes import ARG_POS, function_type, Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -47,6 +47,10 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)
         if method:
+            if method.is_property:
+                assert isinstance(method, OverloadedFuncDef)
+                method = cast(OverloadedFuncDef, method)
+                return lookup_var(name, method.items[0].var, typ, info, node, is_lvalue, msg)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             typ = map_instance_to_supertype(typ, method.info)
@@ -163,6 +167,41 @@ def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
         return AnyType()
     else:
         return msg.has_no_attr(report_type or itype, name, node)
+
+
+def lookup_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
+               is_lvalue: bool, msg: MessageBuilder) -> Type:
+    # Found a member variable.
+    itype = map_instance_to_supertype(itype, var.info)
+    if var.type:
+        t = expand_type_by_instance(var.type, itype)
+        if var.is_initialized_in_class and isinstance(t, FunctionLike):
+            if is_lvalue:
+                if var.is_property:
+                    if not var.is_settable_property:
+                        msg.read_only_property(name, info, node)
+                else:
+                    msg.cant_assign_to_method(node)
+
+            if not var.is_staticmethod:
+                # Class-level function objects and classmethods become bound
+                # methods: the former to the instance, the latter to the
+                # class.
+                functype = cast(FunctionLike, t)
+                check_method_type(functype, itype, node, msg)
+                signature = method_type(functype)
+                if var.is_property:
+                    # A property cannot have an overloaded type => the cast
+                    # is fine.
+                    return cast(CallableType, signature).ret_type
+                else:
+                    return signature
+        return t
+    else:
+        if not var.is_ready:
+            msg.cannot_determine_type(var.name(), node)
+        # Implicit 'Any' type.
+        return AnyType()
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str,
