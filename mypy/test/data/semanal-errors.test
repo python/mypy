@@ -1248,12 +1248,36 @@ class A:
 [case testOverloadedProperty]
 from typing import overload
 class A:
-    @overload  # E: A property cannot be overloaded
+    @overload  # E: Decorated property not supported
     @property
     def f(self) -> int: pass
-    @property  # E: A property cannot be overloaded
+    @property  # E: Decorated property not supported
     @overload
     def f(self) -> int: pass
+[builtins fixtures/property.py]
+[out]
+
+[case testOverloadedProperty2]
+from typing import overload
+class A:
+    @overload
+    def f(self) -> int: pass
+    @property  # E: Decorated property not supported
+    @overload
+    def f(self) -> int: pass
+[builtins fixtures/property.py]
+[out]
+
+[case testDecoratedProperty]
+import typing
+def dec(f): pass
+class A:
+    @dec  # E: Decorated property not supported
+    @property
+    def f(self) -> int: pass
+    @property  # E: Decorated property not supported
+    @dec
+    def g(self) -> int: pass
 [builtins fixtures/property.py]
 [out]
 
