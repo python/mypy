@@ -3292,3 +3292,24 @@ MypyFile:1(
   ExpressionStmt:2(
     NameExpr(y))
   IgnoredLines(1, 2))
+
+[case testIgnoreAnnotationAndMultilineStatement]
+x = {
+  1: 2  # type: ignore
+}
+y = {   # type: ignore
+  1: 2
+}       # type: ignore
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    DictExpr:1(
+      IntExpr(1)
+      IntExpr(2)))
+  AssignmentStmt:4(
+    NameExpr(y)
+    DictExpr:4(
+      IntExpr(1)
+      IntExpr(2)))
+  IgnoredLines(2, 4, 6))

@@ -112,11 +112,10 @@ class Parser:
             self.errors.set_file('<input>')
 
     def parse(self, s: Union[str, bytes]) -> MypyFile:
-        self.tok = lex.lex(s, pyversion=self.pyversion)
+        self.tok, self.ignored_lines = lex.lex(s, pyversion=self.pyversion)
         self.ind = 0
         self.imports = []
         self.future_options = []
-        self.ignored_lines = set()
         file = self.parse_file()
         if self.raise_on_error and self.errors.is_errors():
             self.errors.raise_error()
@@ -1564,13 +1563,8 @@ class Parser:
     def expect_colon_and_break(self) -> Tuple[Token, Token]:
         return self.expect_type(Colon), self.expect_type(Break)
 
-    type_ignore_exp = re.compile(r'[ \t]*#[ \t]*type:[ \t]*ignore\b')
-
     def expect_break(self) -> Token:
-        token = self.expect_type(Break)
-        if self.type_ignore_exp.match(token.pre):
-            self.ignored_lines.add(token.line)
-        return token
+        return self.expect_type(Break)
 
     def current(self) -> Token:
         return self.tok[self.ind]
@@ -1645,7 +1639,7 @@ class Parser:
             if type_as_str == 'ignore':
                 # Actually a "# type: ignore" annotation -> not a type.
                 return None
-            tokens = lex.lex(type_as_str, token.line)
+            tokens = lex.lex(type_as_str, token.line)[0]
             if len(tokens) < 2:
                 # Empty annotation (only Eof token)
                 self.errors.report(token.line, 'Empty type annotation')

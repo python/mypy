@@ -157,14 +157,16 @@ INVALID_BACKSLASH = 4
 INVALID_DEDENT = 5
 
 
-def lex(string: Union[str, bytes], first_line: int = 1, pyversion: int = 3) -> List[Token]:
-    """Analyze string and return an array of token objects.
+def lex(string: Union[str, bytes], first_line: int = 1,
+        pyversion: int = 3) -> Tuple[List[Token], Set[int]]:
+    """Analyze string, and return an array of token objects and the lines to ignore.
 
-    The last token is always Eof.
+    The last token is always Eof. The intention is to ignore any
+    semantic and type check errors on the ignored lines.
     """
     l = Lexer(pyversion)
     l.lex(string, first_line)
-    return l.tok
+    return l.tok, l.ignored_lines
 
 
 # Reserved words (not including operators)
@@ -291,12 +293,16 @@ class Lexer:
 
     pyversion = 3
 
+    # Lines to ignore (using # type: ignore).
+    ignored_lines = Undefined(Set[int])
+
     def __init__(self, pyversion: int = 3) -> None:
         self.map = [self.unknown_character] * 256
         self.tok = []
         self.indents = [0]
         self.open_brackets = []
         self.pyversion = pyversion
+        self.ignored_lines = set()
         # Fill in the map from valid character codes to relevant lexer methods.
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
                             ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
@@ -811,6 +817,8 @@ class Lexer:
         self.pre_whitespace += s
         self.i += len(s)
 
+    type_ignore_exp = re.compile(r'[ \t]*#[ \t]*type:[ \t]*ignore\b')
+
     def add_token(self, tok: Token) -> None:
         """Store a token.
 
@@ -823,6 +831,11 @@ class Lexer:
                 and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
         tok.pre = self.pre_whitespace
+        if self.type_ignore_exp.match(tok.pre):
+            delta = 0
+            if '\n' in tok.pre or '\r' in tok.pre:
+                delta += 1
+            self.ignored_lines.add(self.line - delta)
         tok.line = self.line
         self.tok.append(tok)
         self.i += len(tok.string)
