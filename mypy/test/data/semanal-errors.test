@@ -1251,7 +1251,7 @@ class A:
     @overload  # E: Decorated property not supported
     @property
     def f(self) -> int: pass
-    @property
+    @property  # E: Decorated property not supported
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.py]
