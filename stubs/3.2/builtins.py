@@ -328,6 +328,7 @@ class bytearray(MutableSequence[int]):
     def expandtabs(self, tabsize: int = 8) -> bytearray: pass
     def find(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
     def index(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def insert(self, index: int, object: int) -> None: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
