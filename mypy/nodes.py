@@ -298,6 +298,9 @@ class FuncItem(FuncBase):
                 res.append(None)
         return res
 
+    def is_dynamic(self):
+        return self.type is None
+
 
 class FuncDef(FuncItem):
     """Function definition.

@@ -293,10 +293,23 @@ class I(metaclass=ABCMeta):
     def g(self, x): pass
 class A(I):
     def f(self, x): pass
-    def g(self, x, y): pass \
+    def g(self, x, y) -> None: pass \
         # E: Signature of "g" incompatible with supertype "I"
 [out]
 main: In class "A":
+
+[case testAbstractClassWithAllDynamicTypes2]
+from abc import abstractmethod, ABCMeta
+import typing
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self, x): pass
+    @abstractmethod
+    def g(self, x): pass
+class A(I):
+    def f(self, x): pass
+    def g(self, x, y): pass
+[out]
 
 [case testAbstractClassWithImplementationUsingDynamicTypes]
 from abc import abstractmethod, ABCMeta
@@ -308,10 +321,8 @@ class I(metaclass=ABCMeta):
     def g(self, x: int) -> None: pass
 class A(I):
     def f(self, x): pass
-    def g(self, x, y): pass \
-        # E: Signature of "g" incompatible with supertype "I"
+    def g(self, x, y): pass
 [out]
-main: In class "A":
 
 
 -- Special cases
