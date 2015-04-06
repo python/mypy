@@ -12,17 +12,17 @@ if sys.version_info < (3, 2, 0):
     exit(1)
 
 version = '0.1.0'
-description = 'Optional static type checker for Python'
+description = 'Optional static typing for Python'
 long_description = '''
-Mypy -- Optional Static Type Checker for Python
-===============================================
+Mypy -- Optional Static Typing for Python
+=========================================
 
 Add type annotations to your Python programs, and use mypy to type
 check them.  Mypy is essentially a Python linter on steroids, and it
-can catch many programming errors by analyzing your program,
-without actually having to run anything.  Mypy has a powerful type
-system with features such as type inference, gradual typing, generics
-and union types.
+can catch many programming errors by analyzing your program, without
+actually having to run it.  Mypy has a powerful type system with
+features such as type inference, gradual typing, generics and union
+types.
 '''.lstrip()
 
 stubs = []
