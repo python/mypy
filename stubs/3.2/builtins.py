@@ -4,7 +4,7 @@ from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
     Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, Union, ItemsView, KeysView, ValuesView
+    SupportsRound, IO, Union, ItemsView, KeysView, ValuesView, ByteString
 )
 from abc import abstractmethod, ABCMeta
 
@@ -240,7 +240,7 @@ class str(Sequence[str]):
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-class bytes(Sequence[int]):
+class bytes(ByteString):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
     @overload
@@ -311,7 +311,7 @@ class bytes(Sequence[int]):
     def __gt__(self, x: bytes) -> bool: pass
     def __ge__(self, x: bytes) -> bool: pass
 
-class bytearray(MutableSequence[int]):
+class bytearray(MutableSequence[int], ByteString):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
     @overload

@@ -259,6 +259,8 @@ class TextIO(IO[str]):
     @abstractmethod
     def __enter__(self) -> TextIO: pass
 
+class ByteString(Sequence[int]): pass
+
 class Match(Generic[AnyStr]):
     pos = 0
     endpos = 0
