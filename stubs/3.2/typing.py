@@ -128,6 +128,20 @@ class AbstractSet(Iterable[_T], Container[_T], Sized, Generic[_T]):
     # TODO: Argument can be a more general ABC?
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
+class MutableSet(AbstractSet[_T], Generic[_T]):
+    @abstractmethod
+    def add(self, x: _T) -> None: pass
+    @abstractmethod
+    def discard(self, x: _T) -> None: pass
+    # Mixin methods
+    def clear(self) -> None: pass
+    def pop(self) -> _T: pass
+    def remove(self, element: _T) -> None: pass
+    def __ior__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
+    def __iand__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
+    def __ixor__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
+    def __isub__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
+
 class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass

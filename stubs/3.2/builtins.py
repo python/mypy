@@ -3,7 +3,7 @@
 from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
-    Set, AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
+    Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, Union
 )
 from abc import abstractmethod, ABCMeta
@@ -504,7 +504,7 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def __iter__(self) -> Iterator[_KT]: pass
     def __str__(self) -> str: pass
 
-class set(AbstractSet[_T], Generic[_T]):
+class set(MutableSet[_T], Generic[_T]):
     def __init__(self, iterable: Iterable[_T]=None) -> None: pass
     def add(self, element: _T) -> None: pass
     def clear(self) -> None: pass
