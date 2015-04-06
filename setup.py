@@ -17,9 +17,12 @@ long_description = '''
 Mypy -- Optional Static Type Checker for Python
 ===============================================
 
-Mypy lets you add type annotations to Python programs, type check them
-without running them, and run the programs using a standard Python 3
-interpreter.
+Add type annotations to your Python programs, and use mypy to type
+check them.  Mypy is essentially a Python linter on steroids, and it
+can catch many programming errors by analyzing your program,
+without actually having to run anything.  Mypy has a powerful type
+system with features such as type inference, gradual typing, generics
+and union types.
 '''.lstrip()
 
 stubs = []
