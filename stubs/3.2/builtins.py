@@ -374,10 +374,7 @@ class bytearray(MutableSequence[int]):
     def __setitem__(self, i: int, x: int) -> None: pass
     @overload
     def __setitem__(self, s: slice, x: Sequence[int]) -> None: pass
-    @overload
-    def __delitem__(self, i: int) -> None: pass
-    @overload
-    def __delitem__(self, s: slice) -> None: pass
+    def __delitem__(self, i: Union[int, slice]) -> None: pass
     def __add__(self, s: _byte_types) -> bytearray: pass
     # TODO: Mypy complains about __add__ and __iadd__ having different signatures.
     def __iadd__(self, s: Iterable[int]) -> bytearray: pass # type: ignore
@@ -462,10 +459,7 @@ class list(MutableSequence[_T], Generic[_T]):
     def __setitem__(self, i: int, o: _T) -> None: pass
     @overload
     def __setitem__(self, s: slice, o: Sequence[_T]) -> None: pass
-    @overload
-    def __delitem__(self, i: int) -> None: pass
-    @overload
-    def __delitem__(self, s: slice) -> None: pass
+    def __delitem__(self, i: Union[int, slice]) -> None: pass
     def __add__(self, x: List[_T]) -> List[_T]: pass
     def __iadd__(self, x: Iterable[_T]) -> List[_T]: pass
     def __mul__(self, n: int) -> List[_T]: pass
@@ -491,10 +485,8 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def pop(self, k: _KT, default: _VT=None) -> _VT: pass
     def popitem(self) -> Tuple[_KT, _VT]: pass
     def setdefault(self, k: _KT, default: _VT=None) -> _VT: pass
-    @overload
-    def update(self, m: Mapping[_KT, _VT]) -> None: pass
-    @overload
-    def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
+    def update(self, m: Union[Mapping[_KT, _VT],
+                              Iterable[Tuple[_KT, _VT]]]) -> None: pass
     def keys(self) -> Set[_KT]: pass
     def values(self) -> Set[_VT]: pass
     def items(self) -> Set[Tuple[_KT, _VT]]: pass
