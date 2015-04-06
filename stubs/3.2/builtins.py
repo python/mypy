@@ -311,7 +311,7 @@ class bytes(Sequence[int]):
     def __gt__(self, x: bytes) -> bool: pass
     def __ge__(self, x: bytes) -> bool: pass
 
-class bytearray(Sequence[int]):
+class bytearray(MutableSequence[int]):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
     @overload
@@ -379,7 +379,8 @@ class bytearray(Sequence[int]):
     @overload
     def __delitem__(self, s: slice) -> None: pass
     def __add__(self, s: _byte_types) -> bytearray: pass
-    def __iadd__(self, s: _byte_types) -> bytearray: pass
+    # TODO: Mypy complains about __add__ and __iadd__ having different signatures.
+    def __iadd__(self, s: Iterable[int]) -> bytearray: pass # type: ignore
     def __mul__(self, n: int) -> bytearray: pass
     def __rmul__(self, n: int) -> bytearray: pass
     def __imul__(self, n: int) -> bytearray: pass
