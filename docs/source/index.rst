@@ -6,13 +6,6 @@
 Welcome to Mypy documentation!
 ==============================
 
-.. note::
-
-   Mypy syntax is currently in transition, as mypy is migrating to
-   `PEP 484 <http://mypy-lang.blogspot.co.uk/2015/01/mypy-and-pep-484-type-hinting-draft.html>`_
-   compatible syntax. **This breaks backward compatibility.** This documentation may
-   not be up-to-date until the migration is complete.
-
 .. toctree::
    :maxdepth: 2
 

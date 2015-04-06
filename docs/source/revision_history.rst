@@ -3,12 +3,8 @@ Revision history
 
 List of major changes to this document:
 
-.. note::
-
-   Some of the latest changes are not yet supported by the mypy
-   version on PyPI. Use the
-   `development version on GitHub <https://github.com/JukkaL/mypy>`_ to use
-   them.
+- Apr 2015
+    Publish mypy version 0.2.0 on PyPI.
 
 - Mar 2015
     Update documentation to reflect PEP 484:
