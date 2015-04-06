@@ -65,6 +65,13 @@ class Sized(metaclass=ABCMeta):
     @abstractmethod
     def __len__(self) -> int: pass
 
+class Hashable(metaclass=ABCMeta):
+    # TODO: This is special, in that a subclass of a hashable class may not be hashable
+    #   (for example, list vs. object). It's not obvious how to represent this. This class
+    #   is currently mostly useless for static checking.
+    @abstractmethod
+    def __hash__(self) -> int: pass
+
 class Iterable(Generic[_T]):
     @abstractmethod
     def __iter__(self) -> Iterator[_T]: pass
