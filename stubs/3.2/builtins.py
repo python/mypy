@@ -4,7 +4,7 @@ from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
     Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, Union
+    SupportsRound, IO, Union, ItemsView, KeysView, ValuesView
 )
 from abc import abstractmethod, ABCMeta
 
@@ -487,9 +487,9 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def setdefault(self, k: _KT, default: _VT=None) -> _VT: pass
     def update(self, m: Union[Mapping[_KT, _VT],
                               Iterable[Tuple[_KT, _VT]]]) -> None: pass
-    def keys(self) -> Set[_KT]: pass
-    def values(self) -> Set[_VT]: pass
-    def items(self) -> Set[Tuple[_KT, _VT]]: pass
+    def keys(self) -> KeysView[_KT]: pass
+    def values(self) -> ValuesView[_VT]: pass
+    def items(self) -> ItemsView[_KT, _VT]: pass
     @staticmethod
     @overload
     def fromkeys(seq: Sequence[_T]) -> Dict[_T, Any]: pass  # TODO: Actually a class method

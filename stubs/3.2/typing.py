@@ -142,15 +142,29 @@ class MutableSet(AbstractSet[_T], Generic[_T]):
     def __ixor__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
     def __isub__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
 
+class MappingView(Sized):
+    def __len__(self) -> int: pass
+
+class ItemsView(AbstractSet[Tuple[_KT, _VT]], MappingView, Generic[_KT, _VT]):
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[Tuple[_KT, _VT]]: pass
+
+class KeysView(AbstractSet[_T], MappingView, Generic[_T]):
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[_T]: pass
+
+class ValuesView(MappingView, Iterable[_T], Generic[_T]):
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[_T]: pass
+
 class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass
     # Mixin methods
     def get(self, k: _KT, default: _VT = Undefined) -> _VT: pass
-    # TODO use views for the return values instead
-    def keys(self) -> AbstractSet[_KT]: pass
-    def values(self) -> AbstractSet[_VT]: pass
     def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
+    def keys(self) -> AbstractSet[_KT]: pass
+    def values(self) -> ValuesView[_VT]: pass
     def __contains__(self, o: object) -> bool: pass
 
 class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
