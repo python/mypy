@@ -401,7 +401,7 @@ class slice:
     start = 0
     step = 0
     stop = 0
-    def __init__(self, start: int, stop: int, step: int) -> None: pass
+    def __init__(self, start: int, stop: int = 0, step: int = 0) -> None: pass
 
 class tuple(Sequence[Any]):
     @overload
