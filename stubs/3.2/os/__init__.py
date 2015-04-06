@@ -5,7 +5,7 @@
 
 from typing import (
     Undefined, Mapping, MutableMapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr,
-    Optional
+    Optional, Generic
 )
 from builtins import OSError as error
 import os.path as path
@@ -61,8 +61,11 @@ R_OK = 0
 W_OK = 0
 X_OK = 0
 
-environ = Undefined(MutableMapping[str, str])
-environb = Undefined(MutableMapping[bytes, bytes])
+class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
+    def copy(self) -> _Environ[AnyStr]: pass
+
+environ = Undefined(_Environ[str])
+environb = Undefined(_Environ[bytes])
 
 confstr_names = Undefined(Dict[str, int])  # Unix only
 pathconf_names = Undefined(Dict[str, int]) # Unix only
