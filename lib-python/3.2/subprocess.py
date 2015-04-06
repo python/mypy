@@ -349,8 +349,9 @@ import errno
 
 from typing import (
     Any, Tuple, List, Sequence, Undefined, Callable, Mapping, cast, Set, Dict,
-    IO, TextIO, Traceback, AnyStr
+    IO, TextIO, AnyStr
 )
+from types import TracebackType
 
 # Exception classes used by this module.
 class CalledProcessError(Exception):
@@ -774,7 +775,7 @@ class Popen(object):
         return self
 
     def __exit__(self, type: type, value: BaseException,
-                 traceback: Traceback) -> bool:
+                 traceback: TracebackType) -> bool:
         if self.stdout:
             self.stdout.close()
         if self.stderr:

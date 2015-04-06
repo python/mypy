@@ -39,8 +39,9 @@ from random import Random as _Random
 from typing import (
     Any as _Any, Callable as _Callable, Iterator as _Iterator,
     Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
-    Iterable as _Iterable, IO as _IO, Traceback as _Traceback, cast as _cast,
+    Iterable as _Iterable, IO as _IO, cast as _cast,
 )
+from types import TracebackType as _TracebackType
 
 try:
     import fcntl as _fcntl
@@ -412,13 +413,13 @@ class _TemporaryFileWrapper:
         # Need to trap __exit__ as well to ensure the file gets
         # deleted when used in a with statement
         def __exit__(self, exc: type, value: BaseException,
-                     tb: _Traceback) -> bool:
+                     tb: _TracebackType) -> bool:
             result = self.file.__exit__(exc, value, tb)
             self.close()
             return result
     else:
         def __exit__(self, exc: type, value: BaseException,
-                     tb: _Traceback) -> bool:
+                     tb: _TracebackType) -> bool:
             self.file.__exit__(exc, value, tb)
 
 
@@ -551,7 +552,7 @@ class SpooledTemporaryFile:
         return self
 
     def __exit__(self, exc: type, value: BaseException,
-                 tb: _Traceback) -> bool:
+                 tb: _TracebackType) -> bool:
         self._file.close()
 
     # file protocol
@@ -687,7 +688,7 @@ class TemporaryDirectory(object):
                            ResourceWarning)
 
     def __exit__(self, exc: type, value: BaseException,
-                 tb: _Traceback) -> bool:
+                 tb: _TracebackType) -> bool:
         self.cleanup()
 
     def __del__(self) -> None:
