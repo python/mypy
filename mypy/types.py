@@ -464,7 +464,7 @@ class RuntimeTypeVar(Type):
 
     def __init__(self, node: mypy.nodes.Node) -> None:
         self.node = node
-        super().__init__(-1, None)
+        super().__init__(-1)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_runtime_type_var(self)
