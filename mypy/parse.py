@@ -446,9 +446,7 @@ class Parser:
 
         self.verify_argument_kinds(kinds, lparen.line)
 
-        names = []  # type: List[str]
-        for arg in args:
-            names.append(arg.name())
+        names = [arg.name() for arg in args]
 
         annotation = self.build_func_annotation(
             ret_type, arg_types, kinds, names, lparen.line)
