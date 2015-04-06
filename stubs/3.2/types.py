@@ -11,3 +11,9 @@ class ModuleType:
 
 class MethodType: pass
 class BuiltinMethodType: pass
+
+class TracebackType:
+    tb_frame = Undefined(Any)
+    tb_lasti = Undefined(int)
+    tb_lineno = Undefined(int)
+    tb_next = Undefined(Any)

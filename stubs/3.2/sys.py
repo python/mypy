@@ -4,9 +4,9 @@
 # based on http://docs.python.org/3.2/library/sys.html
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload, Traceback,
-    Optional
+    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload, Optional
 )
+from types import TracebackType
 
 # ----- sys variables -----
 abiflags = ''
@@ -113,8 +113,8 @@ def _clear_type_cache() -> None: pass
 def _current_frames() -> Dict[int, Any]: pass
 def displayhook(value: Optional[int]) -> None: pass
 def excepthook(type_: type, value: BaseException,
-               traceback: Traceback) -> None: pass
-def exc_info() -> Tuple[type, BaseException, Traceback]: pass
+               traceback: TracebackType) -> None: pass
+def exc_info() -> Tuple[type, BaseException, TracebackType]: pass
 def exit(arg: int = None) -> None: pass
 def getcheckinterval() -> int: pass  # deprecated
 def getdefaultencoding() -> str: pass

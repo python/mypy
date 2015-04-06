@@ -65,6 +65,13 @@ class Sized(metaclass=ABCMeta):
     @abstractmethod
     def __len__(self) -> int: pass
 
+class Hashable(metaclass=ABCMeta):
+    # TODO: This is special, in that a subclass of a hashable class may not be hashable
+    #   (for example, list vs. object). It's not obvious how to represent this. This class
+    #   is currently mostly useless for static checking.
+    @abstractmethod
+    def __hash__(self) -> int: pass
+
 class Iterable(Generic[_T]):
     @abstractmethod
     def __iter__(self) -> Iterator[_T]: pass
@@ -72,8 +79,13 @@ class Iterable(Generic[_T]):
 class Iterator(Iterable[_T], Generic[_T]):
     @abstractmethod
     def __next__(self) -> _T: pass
+    def __iter__(self) -> Iterator[_T]: pass
 
-class Sequence(Iterable[_T], Sized, Reversible[_T], Generic[_T]):
+class Container(Generic[_T]):
+    @abstractmethod
+    def __contains__(self, x: object) -> bool: pass
+
+class Sequence(Iterable[_T], Container[_T], Sized, Reversible[_T], Generic[_T]):
     @overload
     @abstractmethod
     def __getitem__(self, i: int) -> _T: pass
@@ -96,12 +108,8 @@ class MutableSequence(Sequence[_T], Generic[_T]):
     @overload
     @abstractmethod
     def __setitem__(self, s: slice, o: Sequence[_T]) -> None: pass
-    @overload
     @abstractmethod
-    def __delitem__(self, i: int) -> None: pass
-    @abstractmethod
-    @overload
-    def __delitem__(self, s: slice) -> None: pass
+    def __delitem__(self, i: Union[int, slice]) -> None: pass
     # Mixin methods
     def append(self, object: _T) -> None: pass
     def extend(self, iterable: Iterable[_T]) -> None: pass
@@ -110,53 +118,61 @@ class MutableSequence(Sequence[_T], Generic[_T]):
     def remove(self, object: _T) -> None: pass
     def __iadd__(self, x: Iterable[_T]) -> MutableSequence[_T]: pass
 
-class AbstractSet(Iterable[_T], Sized, Generic[_T]):
+class AbstractSet(Iterable[_T], Container[_T], Sized, Generic[_T]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
-    @abstractmethod
+    # Mixin methods
     def __le__(self, s: AbstractSet[Any]) -> bool: pass
-    @abstractmethod
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
-    @abstractmethod
     def __gt__(self, s: AbstractSet[Any]) -> bool: pass
-    @abstractmethod
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
-    @abstractmethod
     def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_T]: pass
-    # In order to support covariance,_T should not be used within an argument
+    # In order to support covariance, _T should not be used within an argument
     # type. We need union types to properly model this.
-    @abstractmethod
     def __or__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    @abstractmethod
     def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_T]: pass
-    @abstractmethod
     def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    # TODO argument can be any container?
-    @abstractmethod
+    # TODO: Argument can be a more general ABC?
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
-class Mapping(Iterable[_KT], Sized, Generic[_KT, _VT]):
+class MutableSet(AbstractSet[_T], Generic[_T]):
+    @abstractmethod
+    def add(self, x: _T) -> None: pass
+    @abstractmethod
+    def discard(self, x: _T) -> None: pass
+    # Mixin methods
+    def clear(self) -> None: pass
+    def pop(self) -> _T: pass
+    def remove(self, element: _T) -> None: pass
+    def __ior__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
+    def __iand__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
+    def __ixor__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
+    def __isub__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
+
+class MappingView(Sized):
+    def __len__(self) -> int: pass
+
+class ItemsView(AbstractSet[Tuple[_KT, _VT]], MappingView, Generic[_KT, _VT]):
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[Tuple[_KT, _VT]]: pass
+
+class KeysView(AbstractSet[_T], MappingView, Generic[_T]):
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[_T]: pass
+
+class ValuesView(MappingView, Iterable[_T], Generic[_T]):
+    def __contains__(self, o: object) -> bool: pass
+    def __iter__(self) -> Iterator[_T]: pass
+
+class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass
-    @abstractmethod
-    def __contains__(self, o: object) -> bool: pass
-
-    @abstractmethod
-    def copy(self) -> Mapping[_KT, _VT]: pass
-    @overload
-    @abstractmethod
-    def get(self, k: _KT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def get(self, k: _KT, default: _VT) -> _VT: pass
-
-    # TODO use views for the return values instead
-    @abstractmethod
-    def keys(self) -> AbstractSet[_KT]: pass
-    @abstractmethod
-    def values(self) -> AbstractSet[_VT]: pass
-    @abstractmethod
+    # Mixin methods
+    def get(self, k: _KT, default: _VT = Undefined) -> _VT: pass
     def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
+    def keys(self) -> AbstractSet[_KT]: pass
+    def values(self) -> ValuesView[_VT]: pass
+    def __contains__(self, o: object) -> bool: pass
 
 class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @abstractmethod
@@ -164,32 +180,12 @@ class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @abstractmethod
     def __delitem__(self, v: _KT) -> None: pass
 
-    @abstractmethod
-    def copy(self) -> MutableMapping[_KT, _VT]: pass
-    @abstractmethod
     def clear(self) -> None: pass
-    @overload
-    @abstractmethod
-    def pop(self, k: _KT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def pop(self, k: _KT, default: _VT) -> _VT: pass
-    @abstractmethod
+    def pop(self, k: _KT, default: _VT = Undefined) -> _VT: pass
     def popitem(self) -> Tuple[_KT, _VT]: pass
-    @overload
-    @abstractmethod
-    def setdefault(self, k: _KT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def setdefault(self, k: _KT, default: _VT) -> _VT: pass
-
-    # TODO keyword arguments
-    @overload
-    @abstractmethod
-    def update(self, m: Mapping[_KT, _VT]) -> None: pass
-    @overload
-    @abstractmethod
-    def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
+    def setdefault(self, k: _KT, default: _VT = Undefined) -> _VT: pass
+    def update(self, m: Union[Mapping[_KT, _VT],
+                              Iterable[Tuple[_KT, _VT]]]) -> None: pass
 
 class IO(Iterable[AnyStr], Generic[AnyStr]):
     # TODO detach
@@ -270,6 +266,8 @@ class TextIO(IO[str]):
     @abstractmethod
     def __enter__(self) -> TextIO: pass
 
+class ByteString(Sequence[int]): pass
+
 class Match(Generic[AnyStr]):
     pos = 0
     endpos = 0
@@ -329,5 +327,3 @@ class Pattern(Generic[AnyStr]):
     @overload
     def subn(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr,
              count: int = 0) -> Tuple[AnyStr, int]: pass
-
-class Traceback: pass

@@ -3,8 +3,8 @@
 from typing import (
     Undefined, TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
-    Set, AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, Union
+    Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
+    SupportsRound, IO, Union, ItemsView, KeysView, ValuesView, ByteString
 )
 from abc import abstractmethod, ABCMeta
 
@@ -240,7 +240,7 @@ class str(Sequence[str]):
     def __float__(self) -> float: pass
     def __hash__(self) -> int: pass
 
-class bytes(Sequence[int]):
+class bytes(ByteString):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
     @overload
@@ -311,7 +311,7 @@ class bytes(Sequence[int]):
     def __gt__(self, x: bytes) -> bool: pass
     def __ge__(self, x: bytes) -> bool: pass
 
-class bytearray(MutableSequence[int]):
+class bytearray(MutableSequence[int], ByteString):
     @overload
     def __init__(self, ints: Iterable[int]) -> None: pass
     @overload
@@ -328,6 +328,7 @@ class bytearray(MutableSequence[int]):
     def expandtabs(self, tabsize: int = 8) -> bytearray: pass
     def find(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
     def index(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def insert(self, index: int, object: int) -> None: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -374,10 +375,7 @@ class bytearray(MutableSequence[int]):
     def __setitem__(self, i: int, x: int) -> None: pass
     @overload
     def __setitem__(self, s: slice, x: Sequence[int]) -> None: pass
-    @overload
-    def __delitem__(self, i: int) -> None: pass
-    @overload
-    def __delitem__(self, s: slice) -> None: pass
+    def __delitem__(self, i: Union[int, slice]) -> None: pass
     def __add__(self, s: _byte_types) -> bytearray: pass
     # TODO: Mypy complains about __add__ and __iadd__ having different signatures.
     def __iadd__(self, s: Iterable[int]) -> bytearray: pass # type: ignore
@@ -403,7 +401,7 @@ class slice:
     start = 0
     step = 0
     stop = 0
-    def __init__(self, start: int, stop: int, step: int) -> None: pass
+    def __init__(self, start: int, stop: int = 0, step: int = 0) -> None: pass
 
 class tuple(Sequence[Any]):
     @overload
@@ -462,10 +460,7 @@ class list(MutableSequence[_T], Generic[_T]):
     def __setitem__(self, i: int, o: _T) -> None: pass
     @overload
     def __setitem__(self, s: slice, o: Sequence[_T]) -> None: pass
-    @overload
-    def __delitem__(self, i: int) -> None: pass
-    @overload
-    def __delitem__(self, s: slice) -> None: pass
+    def __delitem__(self, i: Union[int, slice]) -> None: pass
     def __add__(self, x: List[_T]) -> List[_T]: pass
     def __iadd__(self, x: Iterable[_T]) -> List[_T]: pass
     def __mul__(self, n: int) -> List[_T]: pass
@@ -491,13 +486,11 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def pop(self, k: _KT, default: _VT=None) -> _VT: pass
     def popitem(self) -> Tuple[_KT, _VT]: pass
     def setdefault(self, k: _KT, default: _VT=None) -> _VT: pass
-    @overload
-    def update(self, m: Mapping[_KT, _VT]) -> None: pass
-    @overload
-    def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
-    def keys(self) -> Set[_KT]: pass
-    def values(self) -> Set[_VT]: pass
-    def items(self) -> Set[Tuple[_KT, _VT]]: pass
+    def update(self, m: Union[Mapping[_KT, _VT],
+                              Iterable[Tuple[_KT, _VT]]]) -> None: pass
+    def keys(self) -> KeysView[_KT]: pass
+    def values(self) -> ValuesView[_VT]: pass
+    def items(self) -> ItemsView[_KT, _VT]: pass
     @staticmethod
     @overload
     def fromkeys(seq: Sequence[_T]) -> Dict[_T, Any]: pass  # TODO: Actually a class method
@@ -512,7 +505,7 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def __iter__(self) -> Iterator[_KT]: pass
     def __str__(self) -> str: pass
 
-class set(AbstractSet[_T], Generic[_T]):
+class set(MutableSet[_T], Generic[_T]):
     def __init__(self, iterable: Iterable[_T]=None) -> None: pass
     def add(self, element: _T) -> None: pass
     def clear(self) -> None: pass

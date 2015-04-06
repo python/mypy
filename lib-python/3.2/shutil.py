@@ -15,9 +15,9 @@ import tarfile
 import builtins
 
 from typing import (
-    Any, AnyStr, IO, List, Iterable, Callable, Tuple, Dict, Sequence, cast,
-    Traceback
+    Any, AnyStr, IO, List, Iterable, Callable, Tuple, Dict, Sequence, cast
 )
+from types import TracebackType
 
 try:
     import bz2
@@ -257,7 +257,7 @@ def copytree(src: str, dst: str, symlinks: bool = False,
         raise Error(errors)
 
 def rmtree(path: str, ignore_errors: bool = False,
-           onerror: Callable[[Any, str, Tuple[type, BaseException, Traceback]],
+           onerror: Callable[[Any, str, Tuple[type, BaseException, TracebackType]],
                               None] = None) -> None:
     """Recursively delete a directory tree.
 
@@ -271,12 +271,12 @@ def rmtree(path: str, ignore_errors: bool = False,
     """
     if ignore_errors:
         def _onerror(x: Any, y: str,
-                     z: Tuple[type, BaseException, Traceback]) -> None:
+                     z: Tuple[type, BaseException, TracebackType]) -> None:
             pass
         onerror = _onerror
     elif onerror is None:
         def __onerror(x: Any, y: str,
-                      z: Tuple[type, BaseException, Traceback]) -> None:
+                      z: Tuple[type, BaseException, TracebackType]) -> None:
             raise
         onerror = __onerror
     try:

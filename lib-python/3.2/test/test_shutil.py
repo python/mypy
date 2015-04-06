@@ -24,8 +24,9 @@ from test import support
 from test.support import check_warnings, captured_stdout
 
 from typing import (
-    Any, Callable, Tuple, List, Sequence, BinaryIO, Traceback, IO, Union, cast
+    Any, Callable, Tuple, List, Sequence, BinaryIO, IO, Union, cast
 )
+from types import TracebackType
 
 import bz2
 BZ2_SUPPORTED = True
@@ -128,7 +129,7 @@ class TestShutil(unittest.TestCase):
 
     def check_args_to_onerror(self, func: Callable[[str], Any], arg: str,
                               exc: Tuple[type, BaseException,
-                                         Traceback]) -> None:
+                                         TracebackType]) -> None:
         # test_rmtree_errors deliberately runs rmtree
         # on a directory that is chmod 400, which will fail.
         # This function is run when shutil.rmtree fails.
@@ -864,7 +865,7 @@ class TestCopyFile(unittest.TestCase):
         def __enter__(self) -> None:
             self._entered = True
         def __exit__(self, exc_type: type, exc_val: BaseException,
-                     exc_tb: Traceback) -> bool:
+                     exc_tb: TracebackType) -> bool:
             self._exited_with = exc_type, exc_val, exc_tb
             if self._raise_in_exit:
                 self._raised = True
