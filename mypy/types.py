@@ -272,6 +272,7 @@ class CallableType(FunctionLike):
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
         self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
+        self.is_kwargs = mypy.nodes.ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
