@@ -444,7 +444,8 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
         if defn.info:
-            self.check_method_override(defn)
+            if not defn.is_dynamic():
+                self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
             if not is_same_type(self.function_type(defn),
@@ -465,7 +466,7 @@ class TypeChecker(NodeVisitor[Type]):
             fdef = defn
 
         self.function_stack.append(defn)
-        self.dynamic_funcs.append(defn.type is None and not type_override)
+        self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
         if fdef:
             self.errors.push_function(fdef.name())

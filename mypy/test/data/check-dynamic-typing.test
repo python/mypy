@@ -630,11 +630,9 @@ import typing
 class B:
     def f(self, x: A) -> None: pass
 class A(B):
-    def f(self, x, y): # Fail
+    def f(self, x, y): # dynamic function not type checked
         x()
 [out]
-main: In class "A":
-main, line 5: Signature of "f" incompatible with supertype "B"
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature2]
 import typing
@@ -643,5 +641,15 @@ class B:
 class A(B):
     def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
         pass
+[out]
+main: In class "A":
+
+[case testInvalidOverrideArgumentCountWithImplicitSignature3]
+import typing
+class B:
+    def f(self, x: A) -> None: pass
+class A(B):
+    def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
+        x()
 [out]
 main: In class "A":
