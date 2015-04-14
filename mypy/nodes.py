@@ -74,8 +74,6 @@ class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
     line = -1
-    # Textual representation
-    repr = None  # type: Any
 
     literal = LITERAL_NO
     literal_hash = None  # type: Any

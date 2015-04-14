@@ -47,8 +47,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         raise RuntimeError()
 
     def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, [AnyType()] * len(t.args), t.line,
-                        t.repr)
+        return Instance(t.type, [AnyType()] * len(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return AnyType()

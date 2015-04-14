@@ -67,8 +67,7 @@ class StrConv(NodeVisitor[str]):
     def visit_mypy_file(self, o):
         # Skip implicit definitions.
         defs = o.defs
-        while (defs and isinstance(defs[0], mypy.nodes.VarDef) and
-                not defs[0].repr):
+        while (defs and isinstance(defs[0], mypy.nodes.VarDef)):
             defs = defs[1:]
         a = [defs]
         if o.is_bom:
