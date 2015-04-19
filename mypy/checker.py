@@ -1659,6 +1659,12 @@ class TypeChecker(NodeVisitor[Type]):
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:
+
+        for d in e.decorators:
+            if isinstance(d, NameExpr):
+                if d.name == 'no_type_check':
+                    return NoneTyp
+
         e.func.accept(self)
         sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
