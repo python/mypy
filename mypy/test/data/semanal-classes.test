@@ -331,6 +331,23 @@ MypyFile:1(
     ExpressionStmt:3(
       NameExpr(B [m]))))
 
+[case testClassWithBaseClassWithinClass]
+class A:
+    class B: pass
+    class C(B): pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    ClassDef:2(
+      B
+      PassStmt:2())
+    ClassDef:3(
+      C
+      BaseType(
+        B)
+      PassStmt:3())))
+
 [case testDeclarationReferenceToNestedClass]
 def f() -> None:
     class A: pass
