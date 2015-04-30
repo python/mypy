@@ -1662,7 +1662,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         for d in e.decorators:
             if isinstance(d, NameExpr):
-                if d.name == 'no_type_check':
+                if d.name == 'no_type_check' or d.name == 'typing.no_type_check':
                     return NoneTyp
 
         e.func.accept(self)

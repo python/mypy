@@ -561,13 +561,11 @@ def f(x, y): pass
 
 
 [case testDecoratorThatSwitchesTypeWithMethod]
-from typing import no_type_checks
+from typing import no_type_check
 
 @no_type_check
 def foo(x: 'bar', y: {'x': 4}) -> 42:
     1 + 'x'
-[out]
-x
 
 
 -- Conditional function definition

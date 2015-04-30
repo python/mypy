@@ -314,7 +314,8 @@ class Parser:
         while self.current_str() == '@':
             self.expect('@')
             d_exp = self.parse_expression()
-            if isinstance(d_exp, NameExpr) and d_exp.name == 'no_type_check':
+            if isinstance(d_exp, NameExpr) and (d_exp.name == 'no_type_check' or
+                                                d_exp.name == 'typing.no_type_check'):
                 no_type_checks = True
             decorators.append(d_exp)
             self.expect_break()
