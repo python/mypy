@@ -379,6 +379,7 @@ class MessageBuilder:
         msg = ''
         if callee.name == '<list>':
             name = callee.name[1:-1]
+            n -= 1
             msg = '{} item {} has incompatible type {}'.format(
                 name[0].upper() + name[1:], n, self.format_simple(arg_type))
         elif callee.name == '<list-comprehension>':
