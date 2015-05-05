@@ -18,7 +18,8 @@ from mypy.nodes import (
     Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr
+    DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr,
+    RefExpr
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -1659,11 +1660,10 @@ class TypeChecker(NodeVisitor[Type]):
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:
-
         for d in e.decorators:
-            if isinstance(d, NameExpr):
-                if d.name == 'no_type_check' or d.name == 'typing.no_type_check':
-                    return NoneTyp
+            if isinstance(d, RefExpr):
+                if d.fullname == 'typing.no_type_check':
+                    return NoneTyp()
 
         e.func.accept(self)
         sig = self.function_type(e.func)  # type: Type

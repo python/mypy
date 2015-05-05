@@ -314,8 +314,7 @@ class Parser:
         while self.current_str() == '@':
             self.expect('@')
             d_exp = self.parse_expression()
-            if isinstance(d_exp, NameExpr) and (d_exp.name == 'no_type_check' or
-                                                d_exp.name == 'typing.no_type_check'):
+            if self.is_no_type_check_decorator(d_exp):
                 no_type_checks = True
             decorators.append(d_exp)
             self.expect_break()
@@ -332,6 +331,15 @@ class Parser:
             cls = self.parse_class_def()
             cls.decorators = decorators
             return cls
+
+    def is_no_type_check_decorator(self, expr: Node) -> bool:
+        if isinstance(expr, NameExpr):
+            return expr.name == 'no_type_check'
+        elif isinstance(expr, MemberExpr):
+            if isinstance(expr.expr, NameExpr):
+                return expr.expr.name == 'typing' and expr.name == 'no_type_check'
+        else:
+            return False
 
     def parse_function(self, no_type_checks: bool=False) -> FuncDef:
         def_tok = self.expect('def')
@@ -447,7 +455,7 @@ class Parser:
             self.skip()
             if no_type_checks:
                 self.parse_expression()
-                ret_type = None
+                ret_type = None  # type: Type
             else:
                 ret_type = self.parse_type()
         else:
