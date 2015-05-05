@@ -16,6 +16,7 @@ Callable = object()
 builtinclass = object()
 _promote = object()
 NamedTuple = object()
+no_type_check = object()
 
 # Type aliases.
 List = object()
@@ -35,6 +36,3 @@ class Iterator(Iterable[T], Generic[T]):
 class Sequence(Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
-
-def no_type_check(func):
-    return func
