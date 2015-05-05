@@ -351,7 +351,7 @@ class SemanticAnalyzer(NodeVisitor):
                 name = item.name
                 if name in names:
                     self.name_already_defined(name, defn)
-                node = self.add_type_var(name, -i - 1, defn)
+                node = self.bind_type_var(name, -i - 1, defn)
                 nodes.append(node)
                 names.add(name)
         return nodes
@@ -362,7 +362,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return set(self.type.type_vars)
 
-    def add_type_var(self, fullname: str, id: int,
+    def bind_type_var(self, fullname: str, id: int,
                      context: Context) -> SymbolTableNode:
         node = self.lookup_qualified(fullname, context)
         node.kind = TVAR
@@ -550,7 +550,7 @@ class SemanticAnalyzer(NodeVisitor):
         if self.type_stack:
             # Disable type variables of the enclosing class.
             disable_typevars(self.type_stack[-1][1])
-        tvarnodes = self.add_class_type_variables_to_symbol_table(defn.info)
+        tvarnodes = self.bind_class_type_variables_in_symbol_table(defn.info)
         # Remember previous active class and type vars of *this* class.
         self.type_stack.append((self.type, tvarnodes))
         self.locals.append(None)  # Add class scope
@@ -662,13 +662,13 @@ class SemanticAnalyzer(NodeVisitor):
     def is_instance_type(self, t: Type) -> bool:
         return isinstance(t, Instance)
 
-    def add_class_type_variables_to_symbol_table(
+    def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
         vars = info.type_vars
         nodes = []  # type: List[SymbolTableNode]
         if vars:
             for i in range(len(vars)):
-                node = self.add_type_var(vars[i], i + 1, info)
+                node = self.bind_type_var(vars[i], i + 1, info)
                 nodes.append(node)
         return nodes
 

@@ -56,7 +56,10 @@ def analyse_type_alias(node: Node,
 
 
 class TypeAnalyser(TypeVisitor[Type]):
-    """Semantic analyzer for types (semantic analysis pass 2)."""
+    """Semantic analyzer for types (semantic analysis pass 2).
+
+    Converts unbound types into bound types.
+    """
 
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
